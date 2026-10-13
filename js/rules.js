@@ -9,12 +9,17 @@ export const RULES = {
   MYTHIC_CHANCE: 0.15,
   SECOND_PLAYER_BONUS_CARDS: 1,
   RECALL_COST_RATIO: 0.5,  // 회수 비용 = ceil(코스트 × 비율)
-  HAND_MAX: 10,            // 손패 최대 (회수 시에만 적용; 드로우는 제한 없음)
   AI_RECALL_MIN_COST: 30,  // AI가 회수를 고려하는 최소 코스트
   KILL_MANA_REFUND_RATIO: 0.2, // 처치 시 다음 턴 보너스 마나 = ceil(처치 카드 코스트 × 비율), 그 턴만 최대치 초과 가능
   LEVEL_MAX: 3,               // 처치로 오르는 카드 최대 레벨
   LEVEL_UP_RATIO: 0.1,        // 레벨업마다 ATK·최대HP +10% (최소 +1), 늘어난 만큼 HP 회복
-  OVERFLOW_TO_HERO: true,     // 공격으로 처치 시 남는 피해를 상대 영웅에게 // 후공 플레이어 시작 손패 추가 장수    // 덱에 MYTHIC(대부분 ABYSS) 1장이 NORMAL 1장 대신 들어갈 확률
+  OVERFLOW_TO_HERO: true,
+  // 마나 액션 (모두 턴당 1회)
+  SHUFFLE_COST: 50,       // 패 섞기: 손패 전부 덱에 넣고 섞은 뒤 같은 장수 드로우
+  HEAL_COST: 20,          // 기지 보강: 영웅 HP 회복
+  HEAL_AMOUNT: 300,
+  BUFF_COST: 30,          // 공격력 강화: 내 필드 카드 이번 턴 ATK +20%
+  BUFF_RATIO: 0.2,     // 공격으로 처치 시 남는 피해를 상대 영웅에게 // 후공 플레이어 시작 손패 추가 장수    // 덱에 MYTHIC(대부분 ABYSS) 1장이 NORMAL 1장 대신 들어갈 확률
 };
 
 export const ELEMENTS = {
@@ -61,7 +66,6 @@ export function recallCost(card) { return Math.ceil(card.cost * RULES.RECALL_COS
 /** 회수 가능 여부와 사유 */
 export function canRecall(unit, me) {
   const cost = recallCost(unit.card);
-  if (me.hand.length >= RULES.HAND_MAX) return { ok: false, cost, reason: `손패가 가득 찼습니다 (최대 ${RULES.HAND_MAX}장)` };
   if (cost > me.mana) return { ok: false, cost, reason: `마나가 부족합니다 (${me.mana}/${cost})` };
   return { ok: true, cost };
 }
@@ -124,11 +128,64 @@ export function resolveAttack(me, opp, unit, target) {
 
 /** 턴 시작 마나: 기본 충전 + 처치 보너스(그 턴만 최대치 초과 가능) */
 export function refillMana(p) {
+  p.used = {};                            // 턴당 1회 액션 사용 기록 초기화
   p.maxMana = Math.min(RULES.MANA_MAX, p.maxMana + RULES.MANA_PER_TURN);
   p.mana = p.maxMana + (p.bonusMana || 0);
   const bonus = p.bonusMana || 0; p.bonusMana = 0;
   return bonus;
 }
+
+// ===== 마나 액션 =====
+export const ACTIONS = {
+  shuffle: { label: '패 섞기', icon: '🔀', cost: () => RULES.SHUFFLE_COST },
+  heal:    { label: '기지 보강', icon: '🏰', cost: () => RULES.HEAL_COST },
+  buff:    { label: '공격력 강화', icon: '⚔️', cost: () => RULES.BUFF_COST },
+};
+
+/** 액션 사용 가능 여부 */
+export function canAction(type, p) {
+  const cost = ACTIONS[type].cost();
+  if (p.used?.[type]) return { ok: false, cost, reason: '이번 턴 사용함' };
+  if (p.mana < cost) return { ok: false, cost, reason: `마나 부족 (${p.mana}/${cost})` };
+  if (type === 'shuffle' && !p.hand.length) return { ok: false, cost, reason: '손패 없음' };
+  if (type === 'heal' && p.hp >= RULES.HERO_HP) return { ok: false, cost, reason: 'HP 최대' };
+  if (type === 'buff' && !p.field.length) return { ok: false, cost, reason: '필드 카드 없음' };
+  return { ok: true, cost };
+}
+
+/** 액션 실행. 결과 정보 반환 (실패 시 ok:false) */
+export function doAction(type, p) {
+  const c = canAction(type, p);
+  if (!c.ok) return c;
+  p.mana -= c.cost; p.used = { ...(p.used || {}), [type]: true };
+  if (type === 'shuffle') {
+    const n = p.hand.length;
+    p.deck = shuffle([...p.deck, ...p.hand]); p.hand = p.deck.splice(0, n);
+    return { ok: true, n };
+  }
+  if (type === 'heal') {
+    const before = p.hp; p.hp = Math.min(RULES.HERO_HP, p.hp + RULES.HEAL_AMOUNT);
+    return { ok: true, healed: p.hp - before };
+  }
+  // buff: 이번 턴 동안만. 늘어난 양을 기록해 두었다가 턴이 끝나면 되돌림
+  p.field.forEach(u => { const d = Math.max(1, Math.round(u.card.ATK * RULES.BUFF_RATIO)); u.card.ATK += d; u.buff = (u.buff || 0) + d; });
+  return { ok: true, n: p.field.length };
+}
+
+/** 턴 종료 시 강화 해제 */
+export function clearBuff(p) { p.field.forEach(u => { if (u.buff) { u.card.ATK -= u.buff; u.buff = 0; } }); }
+
+// ===== AI 액션 정책 (게임·시뮬레이션 공용) =====
+/** 소환 전: 낼 수 있는 카드가 없고 마나가 넉넉하면 패 섞기 */
+export function aiWantShuffle(me, opp) {
+  if (!canAction('shuffle', me).ok || me.hand.length < 2 || me.field.length >= RULES.FIELD_MAX || !me.deck.length) return false;
+  const playable = me.hand.some(c => canSummon(c, me, opp).ok);
+  return !playable && me.mana - RULES.SHUFFLE_COST >= 10;
+}
+/** 공격 전: 공격 가능한 카드 3장 이상이면 강화 */
+export function aiWantBuff(me) { return canAction('buff', me).ok && me.field.filter(u => u.canAttack).length >= 3; }
+/** 턴 끝: 영웅 HP 50% 이하이고 마나가 남으면 보강 */
+export function aiWantHeal(me) { return canAction('heal', me).ok && me.hp <= RULES.HERO_HP * 0.5; }
 
 export function shuffle(a) { a = [...a]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
 

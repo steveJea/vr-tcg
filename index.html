@@ -28,6 +28,7 @@
     <li>• 마나는 매 턴 +10 (최대 100), 카드 코스트만큼 사용</li>
     <li>• 내 필드 카드는 마나(코스트의 절반)를 내고 손패로 회수 가능</li>
     <li>• 적 카드 처치 시: 다음 턴 마나 보너스, 카드 레벨 업(최대 Lv3, ATK·HP +10%), 남는 피해는 적 영웅에게</li>
+    <li>• 마나 액션(턴당 1회): 패 섞기 50 · 기지 보강 20(HP +300) · 공격력 강화 30(이번 턴 ATK +20%)</li>
     <li>• 소환한 턴에는 공격 불가, 카드끼리 싸우면 서로 피해(반격)</li>
     <li>• 데미지 = ATK × 1.5 × 속성 배율 − 상대 DEF ÷ 2 (최소 1)</li>
   </ul>
@@ -68,6 +69,13 @@
       <button id="attack-all" class="px-3 md:px-6 py-2 rounded-xl bg-red-600 hover:bg-red-500 disabled:opacity-40 text-white text-sm font-bold">일괄 공격</button>
       <button id="end-turn" class="px-3 md:px-6 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 text-black font-bold">턴 종료</button>
     </div>
+  </div>
+
+  <!-- 마나 액션 -->
+  <div id="action-bar" class="grid grid-cols-3 gap-1.5">
+    <button id="act-shuffle" class="act-btn bg-zinc-900 border border-violet-500/40 hover:border-violet-400 disabled:opacity-40 rounded-xl px-1 py-1.5 text-[11px] md:text-sm font-bold leading-tight">🔀 패 섞기 <span class="text-sky-300">💧50</span><div class="reason text-[9px] md:text-[10px] text-red-400 font-normal h-3"></div></button>
+    <button id="act-heal" class="act-btn bg-zinc-900 border border-violet-500/40 hover:border-violet-400 disabled:opacity-40 rounded-xl px-1 py-1.5 text-[11px] md:text-sm font-bold leading-tight">🏰 기지 보강 <span class="text-sky-300">💧20</span><div class="reason text-[9px] md:text-[10px] text-red-400 font-normal h-3"></div></button>
+    <button id="act-buff" class="act-btn bg-zinc-900 border border-violet-500/40 hover:border-violet-400 disabled:opacity-40 rounded-xl px-1 py-1.5 text-[11px] md:text-sm font-bold leading-tight">⚔️ 공격력 강화 <span class="text-sky-300">💧30</span><div class="reason text-[9px] md:text-[10px] text-red-400 font-normal h-3"></div></button>
   </div>
 
   <!-- 손패 -->
