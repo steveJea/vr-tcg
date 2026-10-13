@@ -1,4 +1,4 @@
-import { RULES, ELEMENTS, elementMultiplier, calcDamage, canSummon, buildDeck, parseCSV } from './rules.js';
+import { RULES, ELEMENTS, elementMultiplier, calcDamage, canSummon, buildDeck, parseCSV, aiSummonOrder, aiPickTarget } from './rules.js';
 
 const IMG = 'https://raw.githubusercontent.com/steveJea/vr-ideal-worldcup/main/img/bt_img/';
 const NF = new Intl.NumberFormat('ko-KR');
@@ -109,22 +109,14 @@ async function aiTurn() {
   await sleep(AI_DELAY());
   const ai = S.ai, me = S.me;
   // 1) 비싼 카드부터 낼 수 있는 만큼 소환
-  for (const c of [...ai.hand].sort((a, b) => b.cost - a.cost || b.power - a.power)) {
+  for (const c of aiSummonOrder(ai.hand)) {
     if (canSummon(c, ai, me).ok) { summon('ai', c); await sleep(AI_DELAY()); }
   }
   // 2) 공격: 유리한 교환(내가 죽이고 살아남음, 또는 더 비싼 카드 처치) 우선, 없으면 영웅 공격
   for (const u of [...ai.field]) {
     if (S.over) break;
     if (!ai.field.includes(u) || !u.canAttack) continue;
-    let best = null, bestScore = 0;
-    for (const t of me.field) {
-      const kill = calcDamage(u.card, t.card) >= t.hp;
-      const die = calcDamage(t.card, u.card) >= u.hp;
-      let score = 0;
-      if (kill && !die) score = 100 + t.card.power;
-      else if (kill && die && t.card.power > u.card.power) score = 50 + t.card.power - u.card.power;
-      if (score > bestScore) { bestScore = score; best = t; }
-    }
+    const best = aiPickTarget(u, me.field);
     attack('ai', u, best);
     await sleep(AI_DELAY());
   }

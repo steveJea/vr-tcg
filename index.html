@@ -21,10 +21,10 @@
   <button id="start-btn" disabled class="px-12 py-4 rounded-2xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 text-black text-xl font-bold">불러오는 중...</button>
   <div id="stats" class="mt-6 text-zinc-400"></div>
   <ul class="mt-8 text-left text-sm text-zinc-400 space-y-1 max-w-md">
-    <li>• 영웅 HP 5,000 · 덱 30장 · 시작 손패 4장 · 매 턴 1장 드로우</li>
+    <li>• 영웅 HP 3,000 · 덱 30장 · 시작 손패 4장 · 매 턴 1장 드로우</li>
     <li>• 마나는 매 턴 +10 (최대 100), 카드 코스트만큼 사용</li>
     <li>• 소환한 턴에는 공격 불가, 카드끼리 싸우면 서로 피해(반격)</li>
-    <li>• 데미지 = ATK × 속성 배율 − 상대 DEF ÷ 2 (최소 1)</li>
+    <li>• 데미지 = ATK × 1.5 × 속성 배율 − 상대 DEF ÷ 2 (최소 1)</li>
   </ul>
 </section>
 
@@ -89,7 +89,7 @@
       <div>🔥 불 → 🌪️ 바람 → ❄️ 얼음 → 🔥 불 <br><span class="text-zinc-400">유리 ×1.5 / 불리 ×0.75</span></div>
       <div>✨ 빛 ↔ 🌑 어둠 <span class="text-zinc-400">서로 ×2 (기본 3속성과는 ×1)</span></div>
       <div>💀 심연 <span class="text-zinc-400">모든 속성에 ×1.25, 불리 없음.<br>단, ✨ 빛에게는 ×2 피해를 받음.<br>상대 필드에 빛 카드가 있으면 심연 카드 소환 불가.</span></div>
-      <div class="text-zinc-400 pt-2 border-t border-white/10">데미지 = max(1, ⌊ATK × 배율 − 대상 DEF ÷ 2⌋) · 영웅은 DEF 0</div>
+      <div class="text-zinc-400 pt-2 border-t border-white/10">데미지 = max(1, ⌊ATK × 1.5 × 배율 − 대상 DEF ÷ 2⌋) · 영웅은 DEF 0</div>
     </div>
   </div>
 </div>
