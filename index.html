@@ -9,6 +9,8 @@
     body { font-family: 'Inter', 'Noto Sans KR', system-ui, sans-serif; }
     .unit.ready > div:first-child { box-shadow: 0 0 0 2px #34d399; border-radius: .75rem; }
     .unit.target > div:first-child { box-shadow: 0 0 0 2px #ef4444; border-radius: .75rem; }
+    .float-text { animation: floatUp 1.2s ease-out forwards; transform: translate(-50%, 0); }
+    @keyframes floatUp { from { opacity: 1; margin-top: 0; } to { opacity: 0; margin-top: -48px; } }
     #me-hand::-webkit-scrollbar { height: 6px; } #me-hand::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 3px; }
   </style>
 </head>
@@ -24,6 +26,8 @@
     <li>• 영웅 HP 3,000 · 덱 30장 · 시작 손패 4장 · 매 턴 1장 드로우</li>
     <li>• 선공은 동전 던지기로 결정, 후공은 시작 손패 +1장</li>
     <li>• 마나는 매 턴 +10 (최대 100), 카드 코스트만큼 사용</li>
+    <li>• 내 필드 카드는 마나(코스트의 절반)를 내고 손패로 회수 가능</li>
+    <li>• 적 카드 처치 시: 다음 턴 마나 보너스, 카드 레벨 업(최대 Lv3, ATK·HP +10%), 남는 피해는 적 영웅에게</li>
     <li>• 소환한 턴에는 공격 불가, 카드끼리 싸우면 서로 피해(반격)</li>
     <li>• 데미지 = ATK × 1.5 × 속성 배율 − 상대 DEF ÷ 2 (최소 1)</li>
   </ul>
@@ -60,7 +64,10 @@
       <div class="h-2 bg-white/10 rounded-full mt-1 overflow-hidden"><div id="me-hpbar" class="h-full bg-emerald-400 transition-all"></div></div>
       <div class="flex justify-between text-[11px] text-zinc-400 mt-1"><span class="text-sky-300 font-bold">💧 마나 <span id="me-mana"></span></span><span>덱 <span id="me-deck"></span> · 손패 <span id="me-handcount"></span></span></div>
     </div>
-    <button id="end-turn" class="shrink-0 px-4 md:px-6 py-4 rounded-2xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 text-black font-bold">턴 종료</button>
+    <div class="shrink-0 flex flex-col gap-1.5">
+      <button id="attack-all" class="px-3 md:px-6 py-2 rounded-xl bg-red-600 hover:bg-red-500 disabled:opacity-40 text-white text-sm font-bold">일괄 공격</button>
+      <button id="end-turn" class="px-3 md:px-6 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 text-black font-bold">턴 종료</button>
+    </div>
   </div>
 
   <!-- 손패 -->

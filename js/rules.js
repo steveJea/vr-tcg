@@ -7,7 +7,14 @@ export const RULES = {
   // 덱 구성 (등급별 장수, 합계 30)
   DECK_COMPOSITION: { 'NORMAL': 10, 'RARE': 8, 'HIGH RARE': 6, 'SUPER RARE': 4, 'ULTRA RARE': 2 },
   MYTHIC_CHANCE: 0.15,
-  SECOND_PLAYER_BONUS_CARDS: 1, // 후공 플레이어 시작 손패 추가 장수    // 덱에 MYTHIC(대부분 ABYSS) 1장이 NORMAL 1장 대신 들어갈 확률
+  SECOND_PLAYER_BONUS_CARDS: 1,
+  RECALL_COST_RATIO: 0.5,  // 회수 비용 = ceil(코스트 × 비율)
+  HAND_MAX: 10,            // 손패 최대 (회수 시에만 적용; 드로우는 제한 없음)
+  AI_RECALL_MIN_COST: 30,  // AI가 회수를 고려하는 최소 코스트
+  KILL_MANA_REFUND_RATIO: 0.2, // 처치 시 다음 턴 보너스 마나 = ceil(처치 카드 코스트 × 비율), 그 턴만 최대치 초과 가능
+  LEVEL_MAX: 3,               // 처치로 오르는 카드 최대 레벨
+  LEVEL_UP_RATIO: 0.1,        // 레벨업마다 ATK·최대HP +10% (최소 +1), 늘어난 만큼 HP 회복
+  OVERFLOW_TO_HERO: true,     // 공격으로 처치 시 남는 피해를 상대 영웅에게 // 후공 플레이어 시작 손패 추가 장수    // 덱에 MYTHIC(대부분 ABYSS) 1장이 NORMAL 1장 대신 들어갈 확률
 };
 
 export const ELEMENTS = {
@@ -46,6 +53,81 @@ export function canSummon(card, me, opp) {
   if (card.class === 'ABYSS' && opp.field.some(u => u.card.class === 'LIGHT'))
     return { ok: false, reason: '상대 필드에 빛(LIGHT) 카드가 있어 심연(ABYSS) 카드를 소환할 수 없습니다' };
   return { ok: true };
+}
+
+/** 회수 비용 */
+export function recallCost(card) { return Math.ceil(card.cost * RULES.RECALL_COST_RATIO); }
+
+/** 회수 가능 여부와 사유 */
+export function canRecall(unit, me) {
+  const cost = recallCost(unit.card);
+  if (me.hand.length >= RULES.HAND_MAX) return { ok: false, cost, reason: `손패가 가득 찼습니다 (최대 ${RULES.HAND_MAX}장)` };
+  if (cost > me.mana) return { ok: false, cost, reason: `마나가 부족합니다 (${me.mana}/${cost})` };
+  return { ok: true, cost };
+}
+
+/** AI 회수 판단: 고코스트 카드가 다쳤고, 상대 필드의 어떤 카드 공격으로든 죽을 수 있으면 회수 */
+export function aiShouldRecall(unit, me, opp) {
+  if (unit.card.cost < RULES.AI_RECALL_MIN_COST || unit.hp >= unit.card.HP) return false;
+  if (!canRecall(unit, me).ok) return false;
+  return opp.field.some(t => calcDamage(t.card, unit.card) >= unit.hp);
+}
+
+/** 필드 유닛 생성: card는 레벨에 따라 바뀌는 사본, base는 원본(회수 시 원본으로 복귀) */
+export function makeUnit(card, uid) {
+  return { uid, base: card, card: { ...card }, hp: card.HP, maxHp: card.HP, level: 1, canAttack: false };
+}
+
+function levelUp(u) {
+  if (u.level >= RULES.LEVEL_MAX || u.hp <= 0) return null;
+  const dAtk = Math.max(1, Math.round(u.card.ATK * RULES.LEVEL_UP_RATIO));
+  const dHp = Math.max(1, Math.round(u.maxHp * RULES.LEVEL_UP_RATIO));
+  u.level++; u.card.ATK += dAtk; u.maxHp += dHp; u.card.HP = u.maxHp; u.hp += dHp;
+  return { dAtk, dHp, level: u.level };
+}
+
+/**
+ * 전투 처리 (게임·시뮬레이션 공용). me/opp: 플레이어 객체, unit: 공격자, target: 대상 유닛 또는 null(영웅).
+ * 처치 보상: 공격자 처치 → 레벨업 + 마나 환급 + 초과 피해 영웅에게 / 반격 처치 → 레벨업 + 마나 환급(초과 피해 없음).
+ * 반환: 이벤트 목록 (로그·연출용)
+ */
+export function resolveAttack(me, opp, unit, target) {
+  const ev = [];
+  unit.canAttack = false;
+  if (!target) {
+    const dmg = calcDamage(unit.card, null);
+    opp.hp = Math.max(0, opp.hp - dmg);
+    ev.push({ type: 'hero', who: 'me', unit, dmg });
+    return ev;
+  }
+  const d1 = calcDamage(unit.card, target.card), d2 = calcDamage(target.card, unit.card);
+  const tHpBefore = target.hp;
+  target.hp -= d1; unit.hp -= d2;
+  ev.push({ type: 'hit', unit, target, d1, d2, mult: elementMultiplier(unit.card.class, target.card.class) });
+  const reward = (killer, killerOwner, victim, isAttacker) => {
+    const refund = Math.ceil(victim.card.cost * RULES.KILL_MANA_REFUND_RATIO);
+    killerOwner.bonusMana = (killerOwner.bonusMana || 0) + refund;
+    ev.push({ type: 'refund', owner: killerOwner, killer, refund });
+    const lv = levelUp(killer);
+    if (lv) ev.push({ type: 'levelup', unit: killer, ...lv });
+    if (isAttacker && RULES.OVERFLOW_TO_HERO) {
+      const over = d1 - tHpBefore;
+      if (over > 0) { opp.hp = Math.max(0, opp.hp - over); ev.push({ type: 'overflow', unit: killer, dmg: over }); }
+    }
+  };
+  if (target.hp <= 0) { opp.field.splice(opp.field.indexOf(target), 1); ev.push({ type: 'destroy', unit: target }); }
+  if (unit.hp <= 0) { me.field.splice(me.field.indexOf(unit), 1); ev.push({ type: 'destroy', unit }); }
+  if (target.hp <= 0) reward(unit, me, target, true);
+  if (unit.hp <= 0) reward(target, opp, unit, false);
+  return ev;
+}
+
+/** 턴 시작 마나: 기본 충전 + 처치 보너스(그 턴만 최대치 초과 가능) */
+export function refillMana(p) {
+  p.maxMana = Math.min(RULES.MANA_MAX, p.maxMana + RULES.MANA_PER_TURN);
+  p.mana = p.maxMana + (p.bonusMana || 0);
+  const bonus = p.bonusMana || 0; p.bonusMana = 0;
+  return bonus;
 }
 
 export function shuffle(a) { a = [...a]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
