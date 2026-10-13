@@ -17,7 +17,7 @@ export const RULES = {
   // 마나 액션 (모두 턴당 1회)
   SHUFFLE_COST: 50,       // 패 섞기: 손패 전부 덱에 넣고 섞은 뒤 같은 장수 드로우
   HEAL_COST: 20,          // 기지 보강: 영웅 HP 회복
-  HEAL_AMOUNT: 300,
+  HEAL_AMOUNT: 200,
   BUFF_COST: 30,          // 공격력 강화: 내 필드 카드 이번 턴 ATK +20%
   BUFF_RATIO: 0.2,     // 공격으로 처치 시 남는 피해를 상대 영웅에게 // 후공 플레이어 시작 손패 추가 장수    // 덱에 MYTHIC(대부분 ABYSS) 1장이 NORMAL 1장 대신 들어갈 확률
 };
