@@ -1,9 +1,10 @@
 // AI vs AI 시뮬레이션: node tools/sim.mjs [games] [heroHP] [damageMult]
 import { readFileSync } from 'fs';
-import { RULES, calcDamage, canSummon, buildDeck, parseCSV, aiSummonOrder, aiPickTarget, canRecall, aiShouldRecall } from '../js/rules.js';
+import { RULES, calcDamage, canSummon, buildDeck, parseCSV, aiSummonOrder, aiPickTarget, canRecall, aiShouldRecall, makeUnit, resolveAttack, refillMana } from '../js/rules.js';
 
 const pool = parseCSV(readFileSync(new URL('../data/cards.csv', import.meta.url), 'utf8'));
-const [games = 500, hp, mult, bonusMana = 0, noRecall = 0] = process.argv.slice(2).map(Number);
+const [games = 500, hp, mult, bonusMana = 0, noRecall = 0, noRewards = 0] = process.argv.slice(2).map(Number);
+if (noRewards) { RULES.KILL_MANA_REFUND_RATIO = 0; RULES.LEVEL_MAX = 1; RULES.OVERFLOW_TO_HERO = false; }
 let recalls = 0; // bonusMana: 후공 첫 턴 추가 마나(실험용)
 if (hp) RULES.HERO_HP = hp;
 if (mult) RULES.DAMAGE_MULT = mult;
@@ -14,25 +15,19 @@ function play() {
   const P = [player(false), player(true)];
   for (let turn = 0; turn < 400; turn++) {
     const me = P[turn % 2], op = P[(turn + 1) % 2];
-    me.maxMana = Math.min(RULES.MANA_MAX, me.maxMana + RULES.MANA_PER_TURN); me.mana = me.maxMana + (turn === 1 ? bonusMana : 0);
+    refillMana(me); if (turn === 1) me.mana += bonusMana;
     if (me.deck.length) me.hand.push(me.deck.shift());
     me.field.forEach(u => u.canAttack = true);
     if (!noRecall) for (const u of [...me.field]) if (aiShouldRecall(u, me, op)) {
-      me.mana -= canRecall(u, me).cost; me.field.splice(me.field.indexOf(u), 1); me.hand.push(u.card); recalls++;
+      me.mana -= canRecall(u, me).cost; me.field.splice(me.field.indexOf(u), 1); me.hand.push(u.base); recalls++;
     }
     for (const c of aiSummonOrder(me.hand)) if (canSummon(c, me, op).ok) {
-      me.mana -= c.cost; me.hand.splice(me.hand.indexOf(c), 1); me.field.push({ card: c, hp: c.HP, canAttack: false });
+      me.mana -= c.cost; me.hand.splice(me.hand.indexOf(c), 1); me.field.push(makeUnit(c, 0));
     }
     for (const u of [...me.field]) {
       if (!me.field.includes(u) || !u.canAttack) continue;
-      u.canAttack = false;
-      const t = aiPickTarget(u, op.field);
-      if (!t) { op.hp -= calcDamage(u.card, null); if (op.hp <= 0) return { winner: turn % 2, rounds: Math.floor(turn / 2) + 1 }; }
-      else {
-        t.hp -= calcDamage(u.card, t.card); u.hp -= calcDamage(t.card, u.card);
-        if (t.hp <= 0) op.field.splice(op.field.indexOf(t), 1);
-        if (u.hp <= 0) me.field.splice(me.field.indexOf(u), 1);
-      }
+      resolveAttack(me, op, u, aiPickTarget(u, op.field));
+      if (op.hp <= 0) return { winner: turn % 2, rounds: Math.floor(turn / 2) + 1 };
     }
   }
   return { winner: -1, rounds: 200 };

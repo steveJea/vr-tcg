@@ -9,6 +9,8 @@
     body { font-family: 'Inter', 'Noto Sans KR', system-ui, sans-serif; }
     .unit.ready > div:first-child { box-shadow: 0 0 0 2px #34d399; border-radius: .75rem; }
     .unit.target > div:first-child { box-shadow: 0 0 0 2px #ef4444; border-radius: .75rem; }
+    .float-text { animation: floatUp 1.2s ease-out forwards; transform: translate(-50%, 0); }
+    @keyframes floatUp { from { opacity: 1; margin-top: 0; } to { opacity: 0; margin-top: -48px; } }
     #me-hand::-webkit-scrollbar { height: 6px; } #me-hand::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 3px; }
   </style>
 </head>
@@ -25,6 +27,7 @@
     <li>• 선공은 동전 던지기로 결정, 후공은 시작 손패 +1장</li>
     <li>• 마나는 매 턴 +10 (최대 100), 카드 코스트만큼 사용</li>
     <li>• 내 필드 카드는 마나(코스트의 절반)를 내고 손패로 회수 가능</li>
+    <li>• 적 카드 처치 시: 다음 턴 마나 보너스, 카드 레벨 업(최대 Lv3, ATK·HP +10%), 남는 피해는 적 영웅에게</li>
     <li>• 소환한 턴에는 공격 불가, 카드끼리 싸우면 서로 피해(반격)</li>
     <li>• 데미지 = ATK × 1.5 × 속성 배율 − 상대 DEF ÷ 2 (최소 1)</li>
   </ul>
