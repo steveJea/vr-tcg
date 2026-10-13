@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VR TCG - 카드 배틀</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: 'Inter', 'Noto Sans KR', system-ui, sans-serif; }
+    .unit.ready > div:first-child { box-shadow: 0 0 0 2px #34d399; border-radius: .75rem; }
+    .unit.target > div:first-child { box-shadow: 0 0 0 2px #ef4444; border-radius: .75rem; }
+    #me-hand::-webkit-scrollbar { height: 6px; } #me-hand::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 3px; }
+  </style>
+</head>
+<body class="bg-zinc-950 text-white min-h-screen select-none">
+
+<!-- 시작 화면 -->
+<section id="start-screen" class="min-h-screen flex flex-col items-center justify-center p-6 text-center">
+  <h1 class="text-4xl md:text-6xl font-black tracking-tight">VR <span class="text-emerald-400">TCG</span></h1>
+  <p class="text-zinc-400 mt-3 mb-8">캐릭터 카드를 소환해 상대 영웅의 HP를 0으로 만드세요.</p>
+  <button id="start-btn" disabled class="px-12 py-4 rounded-2xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 text-black text-xl font-bold">불러오는 중...</button>
+  <div id="stats" class="mt-6 text-zinc-400"></div>
+  <ul class="mt-8 text-left text-sm text-zinc-400 space-y-1 max-w-md">
+    <li>• 영웅 HP 5,000 · 덱 30장 · 시작 손패 4장 · 매 턴 1장 드로우</li>
+    <li>• 마나는 매 턴 +10 (최대 100), 카드 코스트만큼 사용</li>
+    <li>• 소환한 턴에는 공격 불가, 카드끼리 싸우면 서로 피해(반격)</li>
+    <li>• 데미지 = ATK × 속성 배율 − 상대 DEF ÷ 2 (최소 1)</li>
+  </ul>
+</section>
+
+<!-- 게임 화면 -->
+<section id="game" class="hidden max-w-5xl mx-auto px-2 py-2 flex flex-col gap-2 min-h-screen">
+  <!-- 상대 영웅 -->
+  <div class="flex items-center gap-2">
+    <div id="ai-hero" class="flex-1 bg-black/60 border border-red-500/40 rounded-2xl px-3 py-2 cursor-pointer">
+      <div class="flex justify-between text-xs md:text-sm"><span class="font-bold text-red-400">🤖 컴퓨터</span><span id="ai-hp" class="font-bold"></span></div>
+      <div class="h-2 bg-white/10 rounded-full mt-1 overflow-hidden"><div id="ai-hpbar" class="h-full bg-red-500 transition-all"></div></div>
+      <div class="flex justify-between text-[11px] text-zinc-400 mt-1"><span>💧 <span id="ai-mana"></span></span><span>덱 <span id="ai-deck"></span> · 손패 <span id="ai-handcount"></span></span></div>
+      <div id="ai-handcards" class="flex gap-1 mt-1"></div>
+    </div>
+    <button id="help-btn" class="w-10 h-10 shrink-0 rounded-full bg-zinc-800 border border-white/20 hover:border-emerald-400 font-bold" title="속성 상성">?</button>
+  </div>
+
+  <!-- 필드 -->
+  <div class="bg-zinc-900/60 border border-white/10 rounded-2xl p-2 flex flex-col gap-2">
+    <div id="ai-field" class="flex justify-center gap-1.5 md:gap-3 min-h-[110px] md:min-h-[150px]"></div>
+    <div class="flex items-center gap-2">
+      <div class="flex-1 h-px bg-white/10"></div>
+      <div id="turn-info" class="text-xs md:text-sm font-bold text-emerald-400"></div>
+      <div class="flex-1 h-px bg-white/10"></div>
+    </div>
+    <div id="me-field" class="flex justify-center gap-1.5 md:gap-3 min-h-[110px] md:min-h-[150px]"></div>
+  </div>
+
+  <!-- 내 영웅 + 턴 종료 -->
+  <div class="flex items-center gap-2">
+    <div class="flex-1 bg-black/60 border border-emerald-500/40 rounded-2xl px-3 py-2">
+      <div class="flex justify-between text-xs md:text-sm"><span class="font-bold text-emerald-400">🧑 나</span><span id="me-hp" class="font-bold"></span></div>
+      <div class="h-2 bg-white/10 rounded-full mt-1 overflow-hidden"><div id="me-hpbar" class="h-full bg-emerald-400 transition-all"></div></div>
+      <div class="flex justify-between text-[11px] text-zinc-400 mt-1"><span class="text-sky-300 font-bold">💧 마나 <span id="me-mana"></span></span><span>덱 <span id="me-deck"></span> · 손패 <span id="me-handcount"></span></span></div>
+    </div>
+    <button id="end-turn" class="shrink-0 px-4 md:px-6 py-4 rounded-2xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 text-black font-bold">턴 종료</button>
+  </div>
+
+  <!-- 손패 -->
+  <div id="me-hand" class="flex gap-2 overflow-x-auto pb-2 pt-3 px-1"></div>
+
+  <!-- 로그 -->
+  <details class="bg-black/50 border border-white/10 rounded-xl px-3 py-2 text-xs" open>
+    <summary class="cursor-pointer text-zinc-400">전투 기록</summary>
+    <div id="log" class="max-h-32 overflow-y-auto mt-1"></div>
+  </details>
+</section>
+
+<!-- 카드 상세 -->
+<div id="detail" class="hidden fixed inset-0 bg-black/80 items-center justify-center z-40 p-4">
+  <div class="bg-zinc-900 border border-white/15 rounded-3xl p-5 w-full max-w-md relative">
+    <button data-close="detail" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-zinc-800 hover:bg-zinc-700">✕</button>
+    <div id="detail-body"></div>
+  </div>
+</div>
+
+<!-- 속성 상성표 -->
+<div id="help" class="hidden fixed inset-0 bg-black/80 items-center justify-center z-40 p-4">
+  <div class="bg-zinc-900 border border-white/15 rounded-3xl p-5 w-full max-w-md relative text-sm">
+    <button data-close="help" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-zinc-800 hover:bg-zinc-700">✕</button>
+    <div class="text-xl font-black mb-3">속성 상성표</div>
+    <div class="space-y-2">
+      <div>🔥 불 → 🌪️ 바람 → ❄️ 얼음 → 🔥 불 <br><span class="text-zinc-400">유리 ×1.5 / 불리 ×0.75</span></div>
+      <div>✨ 빛 ↔ 🌑 어둠 <span class="text-zinc-400">서로 ×2 (기본 3속성과는 ×1)</span></div>
+      <div>💀 심연 <span class="text-zinc-400">모든 속성에 ×1.25, 불리 없음.<br>단, ✨ 빛에게는 ×2 피해를 받음.<br>상대 필드에 빛 카드가 있으면 심연 카드 소환 불가.</span></div>
+      <div class="text-zinc-400 pt-2 border-t border-white/10">데미지 = max(1, ⌊ATK × 배율 − 대상 DEF ÷ 2⌋) · 영웅은 DEF 0</div>
+    </div>
+  </div>
+</div>
+
+<!-- 종료 화면 -->
+<div id="end-screen" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4">
+  <div class="bg-zinc-900 border border-emerald-400/40 rounded-3xl p-8 text-center w-full max-w-sm">
+    <div id="end-title" class="text-4xl font-black mb-2"></div>
+    <div id="end-text" class="text-zinc-300 mb-6"></div>
+    <button id="restart-btn" class="w-full py-4 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black text-xl font-bold">다시 하기</button>
+    <button id="home-btn" class="w-full mt-3 py-3 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20">처음으로</button>
+  </div>
+</div>
+
+<script type="module" src="js/game.js"></script>
+</body>
+</html>
