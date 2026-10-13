@@ -1,4 +1,4 @@
-import { RULES, ELEMENTS, elementMultiplier, calcDamage, canSummon, buildDeck, parseCSV, aiSummonOrder, aiPickTarget, recallCost, canRecall, aiShouldRecall, makeUnit, resolveAttack, refillMana } from './rules.js';
+import { RULES, ELEMENTS, elementMultiplier, calcDamage, canSummon, buildDeck, parseCSV, aiSummonOrder, aiPickTarget, recallCost, canRecall, aiShouldRecall, makeUnit, resolveAttack, refillMana, ACTIONS, canAction, doAction, clearBuff, aiWantShuffle, aiWantBuff, aiWantHeal } from './rules.js';
 
 const IMG = 'https://raw.githubusercontent.com/steveJea/vr-ideal-worldcup/main/img/bt_img/';
 const NF = new Intl.NumberFormat('ko-KR');
@@ -45,12 +45,25 @@ function startGame() {
 function startTurn(who) {
   const p = S[who];
   S.turn = who; if (who === S.first) S.turnNo++;
+  clearBuff(opp(who));                   // 지난 턴 강화 해제
   const bonus = refillMana(p);
   if (bonus) { log(`${p.name}: 처치 보너스 마나 +${bonus}`, 'text-sky-300'); if (who === 'me') floatText(`💧 +${bonus}`, 'text-sky-300'); }
   if (p.deck.length) p.hand.push(p.deck.shift()); else log(`${p.name}: 덱이 비어 드로우를 건너뜁니다.`, 'text-zinc-500');
   p.field.forEach(u => u.canAttack = true);
   render();
   if (who === 'ai') aiTurn();
+}
+
+function useAction(who, type) {
+  const p = S[who], r = doAction(type, p);
+  if (!r.ok) return r;
+  const a = ACTIONS[type];
+  const detail = type === 'shuffle' ? `손패 ${r.n}장 다시 뽑기` : type === 'heal' ? `영웅 HP +${fmt(r.healed)}` : `필드 ${r.n}장 이번 턴 ATK +${Math.round(RULES.BUFF_RATIO * 100)}%`;
+  log(`${p.name}: ${a.icon} ${a.label} (마나 ${a.cost()}) — ${detail}`, 'text-violet-300');
+  if (type === 'heal') floatText(`+${fmt(r.healed)}`, 'text-emerald-300', who === 'me' ? 'me' : 'ai');
+  if (type === 'buff') floatText(`⚔️ ATK +${Math.round(RULES.BUFF_RATIO * 100)}%`, 'text-violet-300', who);
+  render();
+  return r;
 }
 
 function opp(who) { return who === 'me' ? S.ai : S.me; }
@@ -151,9 +164,11 @@ async function aiTurn() {
   // 1) 비싼 카드부터 낼 수 있는 만큼 소환
   // 0) 위험한 고코스트 카드 회수
   for (const u of [...ai.field]) if (aiShouldRecall(u, ai, me)) { recall('ai', u); await sleep(AI_DELAY()); }
+  if (aiWantShuffle(ai, me)) { useAction('ai', 'shuffle'); await sleep(AI_DELAY()); }
   for (const c of aiSummonOrder(ai.hand)) {
     if (canSummon(c, ai, me).ok) { summon('ai', c); await sleep(AI_DELAY()); }
   }
+  if (aiWantBuff(ai)) { useAction('ai', 'buff'); await sleep(AI_DELAY()); }
   // 2) 공격: 유리한 교환(내가 죽이고 살아남음, 또는 더 비싼 카드 처치) 우선, 없으면 영웅 공격
   for (const u of [...ai.field]) {
     if (S.over) break;
@@ -162,6 +177,7 @@ async function aiTurn() {
     attack('ai', u, best);
     await sleep(AI_DELAY());
   }
+  if (!S.over && aiWantHeal(ai)) { useAction('ai', 'heal'); await sleep(AI_DELAY()); }
   S.busy = false;
   if (!S.over) startTurn('me');
 }
@@ -206,6 +222,11 @@ function render() {
   const myTurn = S.turn === 'me' && !S.over && !S.busy;
   $('turn-info').textContent = S.over ? '게임 종료' : (S.turn === 'me' ? `내 턴 (${S.turnNo}라운드)` : `상대 턴 (${S.turnNo}라운드)...`);
   $('end-turn').disabled = !myTurn;
+  for (const type of Object.keys(ACTIONS)) {
+    const c = canAction(type, S.me), btn = $(`act-${type}`);
+    btn.disabled = !myTurn || !c.ok;
+    btn.querySelector('.reason').textContent = !myTurn ? '' : (c.ok ? '' : c.reason);
+  }
   $('attack-all').disabled = !myTurn || !S.me.field.some(u => u.canAttack);
   $('ai-hero').classList.toggle('ring-4', !!selected);
   $('ai-hero').classList.toggle('ring-red-500', !!selected);
@@ -308,6 +329,7 @@ function renderStats() {
 document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => hideModal(b.dataset.close));
 $('end-turn').onclick = endTurn;
 $('attack-all').onclick = attackAll;
+for (const type of Object.keys(ACTIONS)) $(`act-${type}`).onclick = () => { if (S.turn === 'me' && !S.busy && !S.over) useAction('me', type); };
 $('ai-hero').onclick = onHeroClick;
 $('help-btn').onclick = () => showModal('help');
 $('restart-btn').onclick = () => { renderStats(); startGame(); };
@@ -323,4 +345,4 @@ renderStats();
 })();
 
 // 테스트/디버그용
-window.TCG = { get S() { return S; }, RULES, elementMultiplier, calcDamage, canSummon, buildDeck, summon, attack, recall, attackAll, endTurn, canRecall, recallCost, makeUnit, resolveAttack, startGame, get POOL() { return POOL; }, render, Stats };
+window.TCG = { get S() { return S; }, RULES, elementMultiplier, calcDamage, canSummon, buildDeck, summon, attack, recall, attackAll, endTurn, canRecall, recallCost, makeUnit, resolveAttack, useAction, canAction, startGame, get POOL() { return POOL; }, render, Stats };
