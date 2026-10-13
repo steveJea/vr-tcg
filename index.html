@@ -22,6 +22,7 @@
   <div id="stats" class="mt-6 text-zinc-400"></div>
   <ul class="mt-8 text-left text-sm text-zinc-400 space-y-1 max-w-md">
     <li>• 영웅 HP 3,000 · 덱 30장 · 시작 손패 4장 · 매 턴 1장 드로우</li>
+    <li>• 선공은 동전 던지기로 결정, 후공은 시작 손패 +1장</li>
     <li>• 마나는 매 턴 +10 (최대 100), 카드 코스트만큼 사용</li>
     <li>• 소환한 턴에는 공격 불가, 카드끼리 싸우면 서로 피해(반격)</li>
     <li>• 데미지 = ATK × 1.5 × 속성 배율 − 상대 DEF ÷ 2 (최소 1)</li>
@@ -33,7 +34,7 @@
   <!-- 상대 영웅 -->
   <div class="flex items-center gap-2">
     <div id="ai-hero" class="flex-1 bg-black/60 border border-red-500/40 rounded-2xl px-3 py-2 cursor-pointer">
-      <div class="flex justify-between text-xs md:text-sm"><span class="font-bold text-red-400">🤖 컴퓨터</span><span id="ai-hp" class="font-bold"></span></div>
+      <div class="flex justify-between text-xs md:text-sm"><span class="font-bold text-red-400">🤖 컴퓨터 <span id="ai-order" class="ml-1 px-1.5 py-0.5 rounded bg-white/10 text-[10px] text-zinc-300"></span></span><span id="ai-hp" class="font-bold"></span></div>
       <div class="h-2 bg-white/10 rounded-full mt-1 overflow-hidden"><div id="ai-hpbar" class="h-full bg-red-500 transition-all"></div></div>
       <div class="flex justify-between text-[11px] text-zinc-400 mt-1"><span>💧 <span id="ai-mana"></span></span><span>덱 <span id="ai-deck"></span> · 손패 <span id="ai-handcount"></span></span></div>
       <div id="ai-handcards" class="flex gap-1 mt-1"></div>
@@ -55,7 +56,7 @@
   <!-- 내 영웅 + 턴 종료 -->
   <div class="flex items-center gap-2">
     <div class="flex-1 bg-black/60 border border-emerald-500/40 rounded-2xl px-3 py-2">
-      <div class="flex justify-between text-xs md:text-sm"><span class="font-bold text-emerald-400">🧑 나</span><span id="me-hp" class="font-bold"></span></div>
+      <div class="flex justify-between text-xs md:text-sm"><span class="font-bold text-emerald-400">🧑 나 <span id="me-order" class="ml-1 px-1.5 py-0.5 rounded bg-white/10 text-[10px] text-zinc-300"></span></span><span id="me-hp" class="font-bold"></span></div>
       <div class="h-2 bg-white/10 rounded-full mt-1 overflow-hidden"><div id="me-hpbar" class="h-full bg-emerald-400 transition-all"></div></div>
       <div class="flex justify-between text-[11px] text-zinc-400 mt-1"><span class="text-sky-300 font-bold">💧 마나 <span id="me-mana"></span></span><span>덱 <span id="me-deck"></span> · 손패 <span id="me-handcount"></span></span></div>
     </div>

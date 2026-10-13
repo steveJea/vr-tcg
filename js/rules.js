@@ -6,7 +6,8 @@ export const RULES = {
   MANA_PER_TURN: 10, MANA_MAX: 100, MAX_ABYSS_PER_DECK: 1,
   // 덱 구성 (등급별 장수, 합계 30)
   DECK_COMPOSITION: { 'NORMAL': 10, 'RARE': 8, 'HIGH RARE': 6, 'SUPER RARE': 4, 'ULTRA RARE': 2 },
-  MYTHIC_CHANCE: 0.15,    // 덱에 MYTHIC(대부분 ABYSS) 1장이 NORMAL 1장 대신 들어갈 확률
+  MYTHIC_CHANCE: 0.15,
+  SECOND_PLAYER_BONUS_CARDS: 1, // 후공 플레이어 시작 손패 추가 장수    // 덱에 MYTHIC(대부분 ABYSS) 1장이 NORMAL 1장 대신 들어갈 확률
 };
 
 export const ELEMENTS = {

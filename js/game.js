@@ -19,9 +19,10 @@ let selected = null;   // 선택된 공격 유닛 uid
 let uidSeq = 1;
 const AI_DELAY = () => (window.TCG_FAST ? 0 : 650);
 
-function newPlayer(name) {
+function newPlayer(name, second) {
   const deck = buildDeck(POOL);
-  return { name, hp: RULES.HERO_HP, deck, hand: deck.splice(0, RULES.OPENING_HAND), field: [], mana: 0, maxMana: 0 };
+  const n = RULES.OPENING_HAND + (second ? RULES.SECOND_PLAYER_BONUS_CARDS : 0);
+  return { name, hp: RULES.HERO_HP, deck, hand: deck.splice(0, n), field: [], mana: 0, maxMana: 0, second };
 }
 
 function log(msg, cls = '') {
@@ -31,16 +32,19 @@ function log(msg, cls = '') {
 }
 
 function startGame() {
-  S = { me: newPlayer('나'), ai: newPlayer('컴퓨터'), turn: 'me', turnNo: 0, over: false, busy: false };
+  const first = Math.random() < 0.5 ? 'me' : 'ai';   // 선공 동전 던지기
+  S = { me: newPlayer('나', first !== 'me'), ai: newPlayer('컴퓨터', first !== 'ai'), first, turn: first, turnNo: 0, over: false, busy: false };
   selected = null; $('log').innerHTML = '';
   $('end-screen').classList.add('hidden'); $('start-screen').classList.add('hidden'); $('game').classList.remove('hidden');
-  log('게임 시작! 내가 먼저 시작합니다.', 'text-emerald-400');
-  startTurn('me');
+  log(first === 'me' ? '🪙 동전 던지기: 내가 선공!' : `🪙 동전 던지기: 컴퓨터가 선공! (나는 후공, 시작 손패 +${RULES.SECOND_PLAYER_BONUS_CARDS})`, 'text-emerald-400');
+  $('me-order').textContent = first === 'me' ? '선공' : '후공';
+  $('ai-order').textContent = first === 'ai' ? '선공' : '후공';
+  startTurn(first);
 }
 
 function startTurn(who) {
   const p = S[who];
-  S.turn = who; if (who === 'me') S.turnNo++;
+  S.turn = who; if (who === S.first) S.turnNo++;
   p.maxMana = Math.min(RULES.MANA_MAX, p.maxMana + RULES.MANA_PER_TURN);
   p.mana = p.maxMana;
   if (p.deck.length) p.hand.push(p.deck.shift()); else log(`${p.name}: 덱이 비어 드로우를 건너뜁니다.`, 'text-zinc-500');
@@ -162,7 +166,7 @@ function render() {
   if (!S) return;
   renderHero('me'); renderHero('ai');
   const myTurn = S.turn === 'me' && !S.over && !S.busy;
-  $('turn-info').textContent = S.over ? '게임 종료' : (S.turn === 'me' ? `내 턴 (${S.turnNo})` : '상대 턴...');
+  $('turn-info').textContent = S.over ? '게임 종료' : (S.turn === 'me' ? `내 턴 (${S.turnNo}라운드)` : `상대 턴 (${S.turnNo}라운드)...`);
   $('end-turn').disabled = !myTurn;
   $('ai-hero').classList.toggle('ring-4', !!selected);
   $('ai-hero').classList.toggle('ring-red-500', !!selected);
