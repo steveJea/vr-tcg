@@ -7,7 +7,10 @@ export const RULES = {
   // 덱 구성 (등급별 장수, 합계 30)
   DECK_COMPOSITION: { 'NORMAL': 10, 'RARE': 8, 'HIGH RARE': 6, 'SUPER RARE': 4, 'ULTRA RARE': 2 },
   MYTHIC_CHANCE: 0.15,
-  SECOND_PLAYER_BONUS_CARDS: 1, // 후공 플레이어 시작 손패 추가 장수    // 덱에 MYTHIC(대부분 ABYSS) 1장이 NORMAL 1장 대신 들어갈 확률
+  SECOND_PLAYER_BONUS_CARDS: 1,
+  RECALL_COST_RATIO: 0.5,  // 회수 비용 = ceil(코스트 × 비율)
+  HAND_MAX: 10,            // 손패 최대 (회수 시에만 적용; 드로우는 제한 없음)
+  AI_RECALL_MIN_COST: 30,  // AI가 회수를 고려하는 최소 코스트 // 후공 플레이어 시작 손패 추가 장수    // 덱에 MYTHIC(대부분 ABYSS) 1장이 NORMAL 1장 대신 들어갈 확률
 };
 
 export const ELEMENTS = {
@@ -46,6 +49,24 @@ export function canSummon(card, me, opp) {
   if (card.class === 'ABYSS' && opp.field.some(u => u.card.class === 'LIGHT'))
     return { ok: false, reason: '상대 필드에 빛(LIGHT) 카드가 있어 심연(ABYSS) 카드를 소환할 수 없습니다' };
   return { ok: true };
+}
+
+/** 회수 비용 */
+export function recallCost(card) { return Math.ceil(card.cost * RULES.RECALL_COST_RATIO); }
+
+/** 회수 가능 여부와 사유 */
+export function canRecall(unit, me) {
+  const cost = recallCost(unit.card);
+  if (me.hand.length >= RULES.HAND_MAX) return { ok: false, cost, reason: `손패가 가득 찼습니다 (최대 ${RULES.HAND_MAX}장)` };
+  if (cost > me.mana) return { ok: false, cost, reason: `마나가 부족합니다 (${me.mana}/${cost})` };
+  return { ok: true, cost };
+}
+
+/** AI 회수 판단: 고코스트 카드가 다쳤고, 상대 필드의 어떤 카드 공격으로든 죽을 수 있으면 회수 */
+export function aiShouldRecall(unit, me, opp) {
+  if (unit.card.cost < RULES.AI_RECALL_MIN_COST || unit.hp >= unit.card.HP) return false;
+  if (!canRecall(unit, me).ok) return false;
+  return opp.field.some(t => calcDamage(t.card, unit.card) >= unit.hp);
 }
 
 export function shuffle(a) { a = [...a]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }

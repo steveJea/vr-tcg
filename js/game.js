@@ -1,4 +1,4 @@
-import { RULES, ELEMENTS, elementMultiplier, calcDamage, canSummon, buildDeck, parseCSV, aiSummonOrder, aiPickTarget } from './rules.js';
+import { RULES, ELEMENTS, elementMultiplier, calcDamage, canSummon, buildDeck, parseCSV, aiSummonOrder, aiPickTarget, recallCost, canRecall, aiShouldRecall } from './rules.js';
 
 const IMG = 'https://raw.githubusercontent.com/steveJea/vr-ideal-worldcup/main/img/bt_img/';
 const NF = new Intl.NumberFormat('ko-KR');
@@ -66,6 +66,32 @@ function summon(who, card) {
   return { ok: true };
 }
 
+function recall(who, unit) {
+  const p = S[who], check = canRecall(unit, p);
+  if (!check.ok || !p.field.includes(unit)) return check;
+  p.mana -= check.cost;
+  p.field = p.field.filter(u => u !== unit);
+  p.hand.push(unit.card);               // 손패로 돌아가며 HP는 원래대로
+  if (selected === unit.uid) selected = null;
+  log(`${p.name}: ${unit.card.name} 회수 (마나 ${check.cost})`, 'text-sky-300');
+  render();
+  return { ok: true };
+}
+
+async function attackAll() {
+  if (S.turn !== 'me' || S.over || S.busy) return;
+  const ready = S.me.field.filter(u => u.canAttack);
+  if (!ready.length) return;
+  S.busy = true; selected = null;
+  log(`일괄 공격! (${ready.length}장)`, 'text-emerald-400');
+  for (const u of ready) {
+    if (S.over) break;
+    S.busy = false; attack('me', u, null); S.busy = true;
+    await sleep(window.TCG_FAST ? 0 : 250);
+  }
+  S.busy = false; render();
+}
+
 function attack(who, unit, target) {
   const o = opp(who), p = S[who];
   if (!unit.canAttack || S.over) return;
@@ -113,6 +139,8 @@ async function aiTurn() {
   await sleep(AI_DELAY());
   const ai = S.ai, me = S.me;
   // 1) 비싼 카드부터 낼 수 있는 만큼 소환
+  // 0) 위험한 고코스트 카드 회수
+  for (const u of [...ai.field]) if (aiShouldRecall(u, ai, me)) { recall('ai', u); await sleep(AI_DELAY()); }
   for (const c of aiSummonOrder(ai.hand)) {
     if (canSummon(c, ai, me).ok) { summon('ai', c); await sleep(AI_DELAY()); }
   }
@@ -168,6 +196,7 @@ function render() {
   const myTurn = S.turn === 'me' && !S.over && !S.busy;
   $('turn-info').textContent = S.over ? '게임 종료' : (S.turn === 'me' ? `내 턴 (${S.turnNo}라운드)` : `상대 턴 (${S.turnNo}라운드)...`);
   $('end-turn').disabled = !myTurn;
+  $('attack-all').disabled = !myTurn || !S.me.field.some(u => u.canAttack);
   $('ai-hero').classList.toggle('ring-4', !!selected);
   $('ai-hero').classList.toggle('ring-red-500', !!selected);
 
@@ -207,7 +236,7 @@ function onUnitClick(who, u) {
   if (who === 'me') {
     if (myTurn && u.canAttack && selected !== u.uid) { selected = u.uid; render(); return; }
     if (selected === u.uid) { selected = null; render(); }
-    showDetail(u.card, { hp: u.hp });
+    showDetail(u.card, { hp: u.hp, unit: u });
   } else {
     if (myTurn && selected) {
       const a = S.me.field.find(x => x.uid === selected);
@@ -223,7 +252,7 @@ function onHeroClick() {
   if (a) attack('me', a, null);
 }
 
-function showDetail(c, { fromHand = false, hp } = {}) {
+function showDetail(c, { fromHand = false, hp, unit = null } = {}) {
   const e = ELEMENTS[c.class] || ELEMENTS.WIND;
   const check = fromHand ? canSummon(c, S.me, S.ai) : null;
   const myTurn = S.turn === 'me' && !S.over && !S.busy;
@@ -246,8 +275,13 @@ function showDetail(c, { fromHand = false, hp } = {}) {
     </div>
     ${fromHand ? `
       ${check.ok || !myTurn ? '' : `<div id="summon-reason" class="mt-3 text-sm text-red-400">${check.reason}</div>`}
-      <button id="summon-btn" ${check.ok && myTurn ? '' : 'disabled'} class="mt-4 w-full py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 text-black font-bold">소환하기</button>` : ''}`;
+      <button id="summon-btn" ${check.ok && myTurn ? '' : 'disabled'} class="mt-4 w-full py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 text-black font-bold">소환하기</button>` : ''}
+    ${unit ? (() => { const rc = canRecall(unit, S.me); return `
+      ${rc.ok || !myTurn ? '' : `<div id="recall-reason" class="mt-3 text-sm text-red-400">${rc.reason}</div>`}
+      <button id="recall-btn" ${rc.ok && myTurn ? '' : 'disabled'} class="mt-4 w-full py-3 rounded-2xl bg-sky-500 hover:bg-sky-400 disabled:opacity-40 text-black font-bold">회수 (마나 ${rc.cost})</button>
+      <div class="text-[11px] text-zinc-500 mt-1 text-center">손패로 돌아가며 HP가 회복됩니다</div>`; })() : ''}`;
   fixImages($('detail-body'));
+  if (unit && $('recall-btn')) $('recall-btn').onclick = () => { const r = recall('me', unit); if (r.ok) hideModal('detail'); };
   if (fromHand) $('summon-btn').onclick = () => { const r = summon('me', c); if (r.ok) hideModal('detail'); };
   showModal('detail');
 }
@@ -263,6 +297,7 @@ function renderStats() {
 // ===== 초기화 =====
 document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => hideModal(b.dataset.close));
 $('end-turn').onclick = endTurn;
+$('attack-all').onclick = attackAll;
 $('ai-hero').onclick = onHeroClick;
 $('help-btn').onclick = () => showModal('help');
 $('restart-btn').onclick = () => { renderStats(); startGame(); };
@@ -278,4 +313,4 @@ renderStats();
 })();
 
 // 테스트/디버그용
-window.TCG = { get S() { return S; }, RULES, elementMultiplier, calcDamage, canSummon, buildDeck, summon, attack, endTurn, startGame, get POOL() { return POOL; }, render, Stats };
+window.TCG = { get S() { return S; }, RULES, elementMultiplier, calcDamage, canSummon, buildDeck, summon, attack, recall, attackAll, endTurn, canRecall, recallCost, startGame, get POOL() { return POOL; }, render, Stats };

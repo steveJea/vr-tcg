@@ -1,9 +1,10 @@
 // AI vs AI 시뮬레이션: node tools/sim.mjs [games] [heroHP] [damageMult]
 import { readFileSync } from 'fs';
-import { RULES, calcDamage, canSummon, buildDeck, parseCSV, aiSummonOrder, aiPickTarget } from '../js/rules.js';
+import { RULES, calcDamage, canSummon, buildDeck, parseCSV, aiSummonOrder, aiPickTarget, canRecall, aiShouldRecall } from '../js/rules.js';
 
 const pool = parseCSV(readFileSync(new URL('../data/cards.csv', import.meta.url), 'utf8'));
-const [games = 500, hp, mult, bonusMana = 0] = process.argv.slice(2).map(Number); // bonusMana: 후공 첫 턴 추가 마나(실험용)
+const [games = 500, hp, mult, bonusMana = 0, noRecall = 0] = process.argv.slice(2).map(Number);
+let recalls = 0; // bonusMana: 후공 첫 턴 추가 마나(실험용)
 if (hp) RULES.HERO_HP = hp;
 if (mult) RULES.DAMAGE_MULT = mult;
 
@@ -16,6 +17,9 @@ function play() {
     me.maxMana = Math.min(RULES.MANA_MAX, me.maxMana + RULES.MANA_PER_TURN); me.mana = me.maxMana + (turn === 1 ? bonusMana : 0);
     if (me.deck.length) me.hand.push(me.deck.shift());
     me.field.forEach(u => u.canAttack = true);
+    if (!noRecall) for (const u of [...me.field]) if (aiShouldRecall(u, me, op)) {
+      me.mana -= canRecall(u, me).cost; me.field.splice(me.field.indexOf(u), 1); me.hand.push(u.card); recalls++;
+    }
     for (const c of aiSummonOrder(me.hand)) if (canSummon(c, me, op).ok) {
       me.mana -= c.cost; me.hand.splice(me.hand.indexOf(c), 1); me.field.push({ card: c, hp: c.HP, canAttack: false });
     }
@@ -38,4 +42,4 @@ const res = Array.from({ length: games }, play);
 const r = res.map(x => x.rounds).sort((a, b) => a - b);
 const q = p => r[Math.min(r.length - 1, Math.floor(p * r.length))];
 const first = res.filter(x => x.winner === 0).length / games;
-console.log(JSON.stringify({ heroHP: RULES.HERO_HP, mult: RULES.DAMAGE_MULT, games, median: q(0.5), p10: q(0.1), p90: q(0.9), bonusCards: RULES.SECOND_PLAYER_BONUS_CARDS, bonusMana, firstWin: +first.toFixed(3), unfinished: res.filter(x => x.winner < 0).length }));
+console.log(JSON.stringify({ heroHP: RULES.HERO_HP, mult: RULES.DAMAGE_MULT, games, median: q(0.5), p10: q(0.1), p90: q(0.9), bonusCards: RULES.SECOND_PLAYER_BONUS_CARDS, bonusMana, firstWin: +first.toFixed(3), recallsPerGame: +(recalls / games).toFixed(2), unfinished: res.filter(x => x.winner < 0).length }));
