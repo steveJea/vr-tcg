@@ -11,9 +11,10 @@ export const RULES = {
   RECALL_COST_RATIO: 0.5,  // 회수 비용 = ceil(코스트 × 비율)
   AI_RECALL_MIN_COST: 30,  // AI가 회수를 고려하는 최소 코스트
   KILL_MANA_REFUND_RATIO: 0.2, // 처치 시 다음 턴 보너스 마나 = ceil(처치 카드 코스트 × 비율), 그 턴만 최대치 초과 가능
-  // 레벨/경험치: 처치 시 XP = 처치한 카드 코스트. 다음 레벨 필요 XP = round(XP_BASE × 레벨^XP_EXP)
+  // 레벨/경험치: XP: 처치(killXp) + 공격 + 턴 종료 생존. 다음 레벨 필요 XP = round(XP_BASE × 레벨^XP_EXP)
   LEVEL_MAX: 10,              // Lv10 = 영웅 카드
-  XP_BASE: 4, XP_EXP: 1.3,    // Lv1→2: 4, Lv5→6: 32, Lv9→10: 70 (누적 약 310)
+  XP_BASE: 5.5, XP_EXP: 1.3,  // Lv1→2: 6, Lv5→6: 45, Lv9→10: 96 (누적 약 430)
+  KILL_XP_LEVEL_BONUS: 0.2,   // 처치 XP = round(처치 카드 코스트 × (1 + 처치 카드 레벨 × 0.2))
   ATTACK_XP: 5,               // 공격할 때마다 (살아남으면) 공격 카드 XP
   TURN_END_XP: 4,             // 내 턴 종료 시 필드에 살아있는 카드마다 XP
   LEVEL_UP_RATIO: 0.1,        // Lv2~5: 레벨업마다 원본 ATK·HP의 +10%
@@ -101,6 +102,9 @@ export const SKILLS = {
   taunt: { label: '도발', icon: '🎯', desc: '상대는 도발 카드부터 공격해야 합니다' },
 };
 export const hasSkill = (u, id) => !!u.skills?.includes(id);
+
+/** 처치 XP: 레벨 높은 카드를 잡을수록 더 많이 */
+export function killXp(victim) { return Math.round(victim.card.cost * (1 + victim.level * RULES.KILL_XP_LEVEL_BONUS)); }
 
 /** 다음 레벨까지 필요 XP */
 export function xpToNext(level) { return level >= RULES.LEVEL_MAX ? Infinity : Math.round(RULES.XP_BASE * Math.pow(level, RULES.XP_EXP)); }
@@ -215,7 +219,7 @@ export function resolveAttack(me, opp, unit, target) {
     const refund = Math.ceil(victim.card.cost * RULES.KILL_MANA_REFUND_RATIO);
     killerOwner.bonusMana = (killerOwner.bonusMana || 0) + refund;
     ev.push({ type: 'refund', owner: killerOwner, killer, refund });
-    const lv = gainXp(killer, victim.card.cost + (isAttacker ? RULES.ATTACK_XP : 0));
+    const lv = gainXp(killer, killXp(victim) + (isAttacker ? RULES.ATTACK_XP : 0));
     if (lv) ev.push({ type: 'levelup', unit: killer, ...lv });
     if (isAttacker && RULES.OVERFLOW_TO_HERO && !locked) {
       const over = d1 - tHpBefore;
