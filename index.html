@@ -11,6 +11,14 @@
     .unit.target > div:first-child { box-shadow: 0 0 0 2px #ef4444; border-radius: .75rem; }
     .float-text { animation: floatUp 1.2s ease-out forwards; transform: translate(-50%, 0); }
     @keyframes floatUp { from { opacity: 1; margin-top: 0; } to { opacity: 0; margin-top: -48px; } }
+    .fx-shake { animation: fxShake .32s linear; }
+    @keyframes fxShake { 0%,100% { translate: 0 0; } 15% { translate: -6px 0; } 30% { translate: 6px 0; } 45% { translate: -5px 0; } 60% { translate: 4px 0; } 75% { translate: -2px 0; } }
+    .fx-hitflash { filter: brightness(1.8) saturate(1.4); }
+    .fx-dmg { position: fixed; z-index: 40; pointer-events: none; font-weight: 900; font-size: 1.35rem; color: #f87171; text-shadow: 0 2px 4px #000, 0 0 8px #7f1d1d; transform: translate(-50%, -50%); animation: fxDmg .9s ease-out forwards; }
+    @keyframes fxDmg { 0% { opacity: 0; margin-top: 0; scale: .6; } 15% { opacity: 1; scale: 1.25; } 30% { scale: 1; } 100% { opacity: 0; margin-top: -42px; } }
+    .fx-dying { transition: opacity .3s ease, scale .3s ease !important; opacity: 0; scale: .7; }
+    .fx-attacker { position: relative; z-index: 30; }
+    @media (prefers-reduced-motion: reduce) { .fx-shake { animation-duration: .12s; } .fx-dmg { animation-duration: .45s; } }
     #me-hand::-webkit-scrollbar { height: 6px; } #me-hand::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 3px; }
   </style>
 </head>
@@ -60,7 +68,7 @@
 
   <!-- 내 영웅 + 턴 종료 -->
   <div class="flex items-center gap-2">
-    <div class="flex-1 bg-black/60 border border-emerald-500/40 rounded-2xl px-3 py-2">
+    <div id="me-hero" class="flex-1 bg-black/60 border border-emerald-500/40 rounded-2xl px-3 py-2">
       <div class="flex justify-between text-xs md:text-sm"><span class="font-bold text-emerald-400">🧑 나 <span id="me-order" class="ml-1 px-1.5 py-0.5 rounded bg-white/10 text-[10px] text-zinc-300"></span></span><span id="me-hp" class="font-bold"></span></div>
       <div class="h-2 bg-white/10 rounded-full mt-1 overflow-hidden"><div id="me-hpbar" class="h-full bg-emerald-400 transition-all"></div></div>
       <div class="flex justify-between text-[11px] text-zinc-400 mt-1"><span class="text-sky-300 font-bold">💧 마나 <span id="me-mana"></span></span><span>덱 <span id="me-deck"></span> · 손패 <span id="me-handcount"></span></span></div>
