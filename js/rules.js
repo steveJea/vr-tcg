@@ -1,4 +1,5 @@
 // ===== VR TCG 규칙 (순수 함수: UI와 분리, 테스트 가능) =====
+import { skillsOf, damageUnit, damageHero, checkDeath, afterBasicHit, refreshAll, onLevelChange } from './skills.js';
 export const RULES = {
   HERO_HP: 3000,          // 영웅 HP
   DAMAGE_MULT: 1.5,       // ATK에 곱하는 전체 데미지 배율 (DEF 차감 전)
@@ -94,14 +95,15 @@ export function aiShouldRecall(unit, me, opp) {
 
 /** 필드 유닛 생성: card는 레벨/아이템으로 바뀌는 사본, base는 원본(회수 시 원본으로 복귀 → 레벨·XP·아이템 초기화) */
 export function makeUnit(card, uid) {
-  return { uid, base: card, card: { ...card }, hp: card.HP, maxHp: card.HP, level: 1, xp: 0, items: {}, skills: [...(card.skills || [])], canAttack: false };
+  return { uid, base: card, card: { ...card }, hp: card.HP, maxHp: card.HP, level: 1, xp: 0, items: {}, skills: [...(card.skills || [])], canAttack: false,
+    raw: { ATK: card.ATK, DEF: card.DEF }, cd: {}, st: {}, fired: {}, gains: [], cry: 0, curse: 0, comboHp: 0, sk: skillsOf(card.id), mp: 0, maxMp: 0, mpRegen: 0 };
 }
 
 // ===== 스킬 훅 (아직 카드에 배정하지 않음). 카드 데이터에 skills: ['taunt'] 형태로 지정 =====
 export const SKILLS = {
   taunt: { label: '도발', icon: '🎯', desc: '상대는 도발 카드부터 공격해야 합니다' },
 };
-export const hasSkill = (u, id) => !!u.skills?.includes(id);
+export const hasSkill = (u, id) => !!u.skills?.includes(id) || !!u.st?.[id];
 
 /** 처치 XP: 레벨 높은 카드를 잡을수록 더 많이 */
 export function killXp(victim) { return Math.round(victim.card.cost * (1 + victim.level * RULES.KILL_XP_LEVEL_BONUS)); }
@@ -110,13 +112,20 @@ export function killXp(victim) { return Math.round(victim.card.cost * (1 + victi
 export function xpToNext(level) { return level >= RULES.LEVEL_MAX ? Infinity : Math.round(RULES.XP_BASE * Math.pow(level, RULES.XP_EXP)); }
 
 /** 한 번 레벨업 (원본 기준 증가, Lv6부터 체감) */
-function levelUpOnce(u) {
+export function levelUpOnce(u) {
   const next = u.level + 1;
   const r = next >= RULES.LEVEL_HIGH_FROM ? RULES.LEVEL_UP_RATIO_HIGH : RULES.LEVEL_UP_RATIO;
   const dAtk = Math.max(1, Math.round(u.base.ATK * r));
   const dHp = Math.max(1, Math.round(u.base.HP * r));
-  u.level = next; u.card.ATK += dAtk; u.maxHp += dHp; u.card.HP = u.maxHp; u.hp += dHp;
+  u.level = next; u.raw.ATK += dAtk; u.card.ATK += dAtk; u.maxHp += dHp; u.card.HP = u.maxHp; u.hp += dHp;
+  u.gains.push({ dAtk, dHp });
   return { dAtk, dHp };
+}
+/** 레벨 1 하락 (올랐던 만큼 되돌림, XP 0) */
+export function levelDown(u) {
+  if (u.level <= 1) return;
+  const g = u.gains.pop() || { dAtk: 0, dHp: 0 };
+  u.level--; u.xp = 0; u.raw.ATK -= g.dAtk; u.maxHp -= g.dHp; u.card.HP = u.maxHp; u.hp = Math.max(1, Math.min(u.hp, u.maxHp));
 }
 
 /** XP 획득 → 가능한 만큼 레벨업. 레벨업이 없으면 null */
@@ -128,6 +137,7 @@ export function gainXp(u, xp) {
     u.xp -= xpToNext(u.level); const d = levelUpOnce(u); dAtk += d.dAtk; dHp += d.dHp;
   }
   if (u.level >= RULES.LEVEL_MAX) u.xp = 0;
+  if (u.level > from) onLevelChange(u);
   return u.level > from ? { dAtk, dHp, level: u.level, from } : null;
 }
 
@@ -187,7 +197,7 @@ export function equip(type, unit, p) {
   const c = canEquip(type, unit, p);
   if (!c.ok) return c;
   p.mana -= c.cost; unit.items = { ...unit.items, [type]: true };
-  if (type === 'weapon') { const d = Math.max(1, Math.round(unit.base.ATK * RULES.WEAPON_ATK_RATIO)); unit.card.ATK += d; return { ok: true, d }; }
+  if (type === 'weapon') { const d = Math.max(1, Math.round(unit.base.ATK * RULES.WEAPON_ATK_RATIO)); unit.raw.ATK += d; refreshAll(p); return { ok: true, d }; }
   const d = Math.max(1, Math.round(unit.base.HP * RULES.ARMOR_HP_RATIO));
   unit.maxHp += d; unit.card.HP = unit.maxHp; unit.hp += d;
   return { ok: true, d };
@@ -201,36 +211,29 @@ export function equip(type, unit, p) {
 export function resolveAttack(me, opp, unit, target) {
   const ev = [];
   unit.canAttack = false;
+  refreshAll(me);
   const locked = heroLocked(me);
   if (!target) {
     if (locked) return ev;
-    const dmg = calcDamage(unit.card, null);
-    opp.hp = Math.max(0, opp.hp - dmg);
+    const dmg = damageHero(opp, calcDamage(unit.card, null), me, 'attack', unit);
     ev.push({ type: 'hero', who: 'me', unit, dmg });
-    const lv = gainXp(unit, RULES.ATTACK_XP);
-    if (lv) ev.push({ type: 'levelup', unit, ...lv });
+    gainXp(unit, RULES.ATTACK_XP);
     return ev;
   }
   const d1 = calcDamage(unit.card, target.card), d2 = calcDamage(target.card, unit.card);
   const tHpBefore = target.hp;
-  target.hp -= d1; unit.hp -= d2;
-  ev.push({ type: 'hit', unit, target, d1, d2, mult: elementMultiplier(unit.card.class, target.card.class) });
-  const reward = (killer, killerOwner, victim, isAttacker) => {
-    const refund = Math.ceil(victim.card.cost * RULES.KILL_MANA_REFUND_RATIO);
-    killerOwner.bonusMana = (killerOwner.bonusMana || 0) + refund;
-    ev.push({ type: 'refund', owner: killerOwner, killer, refund });
-    const lv = gainXp(killer, killXp(victim) + (isAttacker ? RULES.ATTACK_XP : 0));
-    if (lv) ev.push({ type: 'levelup', unit: killer, ...lv });
-    if (isAttacker && RULES.OVERFLOW_TO_HERO && !locked) {
-      const over = d1 - tHpBefore;
-      if (over > 0) { opp.hp = Math.max(0, opp.hp - over); ev.push({ type: 'overflow', unit: killer, dmg: over }); }
-    }
-  };
-  if (target.hp <= 0) { opp.field.splice(opp.field.indexOf(target), 1); ev.push({ type: 'destroy', unit: target }); }
-  if (unit.hp <= 0) { me.field.splice(me.field.indexOf(unit), 1); ev.push({ type: 'destroy', unit }); }
-  if (unit.hp > 0 && target.hp > 0) { const lv = gainXp(unit, RULES.ATTACK_XP); if (lv) ev.push({ type: 'levelup', unit, ...lv }); }
-  if (target.hp <= 0) reward(unit, me, target, true);
-  if (unit.hp <= 0) reward(target, opp, unit, false);
+  const r1 = damageUnit(target, d1, unit, { silent: true });
+  const r2 = damageUnit(unit, d2, target, { silent: true });
+  ev.push({ type: 'hit', unit, target, d1: r1, d2: r2, mult: elementMultiplier(unit.card.class, target.card.class) });
+  const tDead = target.hp <= 0, uDead = unit.hp <= 0;
+  if (!uDead) gainXp(unit, RULES.ATTACK_XP);
+  if (tDead) checkDeath(target, unit);
+  if (uDead) checkDeath(unit, target);
+  if (tDead && RULES.OVERFLOW_TO_HERO && !locked) {
+    const over = r1 - tHpBefore;
+    if (over > 0) { const d = damageHero(opp, over, me, 'overflow'); if (d > 0) ev.push({ type: 'overflow', unit, dmg: d }); }
+  }
+  afterBasicHit(unit, target);
   return ev;
 }
 
@@ -255,6 +258,7 @@ export const ACTIONS = {
 /** 액션 사용 가능 여부 */
 export function canAction(type, p) {
   const cost = ACTIONS[type].cost();
+  if (p.actionLock > 0) return { ok: false, cost, reason: '고유기술 봉인' };
   if (p.used?.[type]) return { ok: false, cost, reason: '이번 턴 사용함' };
   if (p.mana < cost) return { ok: false, cost, reason: `마나 부족 (${p.mana}/${cost})` };
   if (type === 'shuffle' && !p.hand.length) return { ok: false, cost, reason: '손패 없음' };
@@ -284,12 +288,13 @@ export function doAction(type, p) {
     return { ok: true, n: p.field.length, healed: total };
   }
   // buff: 이번 턴 동안만. 늘어난 양을 기록해 두었다가 턴이 끝나면 되돌림
-  p.field.forEach(u => { const d = Math.max(1, Math.round(u.card.ATK * RULES.BUFF_RATIO)); u.card.ATK += d; u.buff = (u.buff || 0) + d; });
+  p.field.forEach(u => { const d = Math.max(1, Math.round(u.raw.ATK * RULES.BUFF_RATIO)); u.raw.ATK += d; u.buff = (u.buff || 0) + d; });
+  refreshAll(p);
   return { ok: true, n: p.field.length };
 }
 
 /** 턴 종료 시 강화 해제 */
-export function clearBuff(p) { p.field.forEach(u => { if (u.buff) { u.card.ATK -= u.buff; u.buff = 0; } }); }
+export function clearBuff(p) { p.field.forEach(u => { if (u.buff) { u.raw.ATK -= u.buff; u.buff = 0; } }); refreshAll(p); }
 
 // ===== AI 액션 정책 (게임·시뮬레이션 공용) =====
 /** 소환 전: 낼 수 있는 카드가 없고 마나가 넉넉하면 패 섞기 */

@@ -1,4 +1,5 @@
-import { RULES, ELEMENTS, elementMultiplier, calcDamage, canSummon, buildDeck, parseCSV, aiSummonOrder, aiPickTarget, recallCost, canRecall, aiShouldRecall, makeUnit, resolveAttack, refillMana, ACTIONS, canAction, doAction, clearBuff, aiWantShuffle, aiWantBuff, aiWantHeal, aiWantFieldHeal, aiPickItem, endTurnXp, ITEMS, canEquip, equip, attackTargets, canTarget, autoTarget, heroLocked, xpToNext, SKILLS } from './rules.js';
+import { RULES, ELEMENTS, elementMultiplier, calcDamage, canSummon, buildDeck, parseCSV, aiSummonOrder, aiPickTarget, recallCost, canRecall, aiShouldRecall, makeUnit, resolveAttack, refillMana, ACTIONS, canAction, doAction, clearBuff, aiWantShuffle, aiWantBuff, aiWantHeal, aiWantFieldHeal, aiPickItem, endTurnXp, ITEMS, canEquip, equip, attackTargets, canTarget, autoTarget, heroLocked, xpToNext, SKILLS, gainXp } from './rules.js';
+import { setSkillData, setEmitter, initPlayers, placeUnit, turnStart, turnEnd, useSkill, skillState, aiPickSkill, refreshAll, statusIcons, skillsOf, combos, STATUS, SK } from './skills.js';
 
 const IMG = 'https://raw.githubusercontent.com/steveJea/vr-ideal-worldcup/main/img/bt_img/';
 const NF = new Intl.NumberFormat('ko-KR');
@@ -41,6 +42,7 @@ function startGame() {
   S = { me: newPlayer('나', first !== 'me'), ai: newPlayer('컴퓨터', first !== 'ai'), first, turn: first, turnNo: 0, over: false, busy: false };
   selected = null; $('log').innerHTML = '';
   $('end-screen').classList.add('hidden'); $('start-screen').classList.add('hidden'); $('game').classList.remove('hidden');
+  initPlayers(S.me, S.ai);
   log(first === 'me' ? '🪙 동전 던지기: 내가 선공!' : `🪙 동전 던지기: 컴퓨터가 선공! (나는 후공, 시작 손패 +${RULES.SECOND_PLAYER_BONUS_CARDS})`, 'text-emerald-400');
   $('me-order').textContent = first === 'me' ? '선공' : '후공';
   $('ai-order').textContent = first === 'ai' ? '선공' : '후공';
@@ -55,7 +57,9 @@ function startTurn(who) {
   if (bonus) { log(`${p.name}: 처치 보너스 마나 +${bonus}`, 'text-sky-300'); if (who === 'me') floatText(`💧 +${bonus}`, 'text-sky-300'); }
   if (p.deck.length) p.hand.push(p.deck.shift()); else log(`${p.name}: 덱이 비어 드로우를 건너뜁니다.`, 'text-zinc-500');
   p.field.forEach(u => u.canAttack = true);
+  turnStart(p);                           // 쿨타임·MP 회복, 턴 시작 패시브, 마비/혼란/교란 처리
   render();
+  if (checkEnd()) return;
   if (who === 'ai') aiTurn();
 }
 
@@ -88,8 +92,8 @@ function summon(who, card) {
   if (!check.ok) return check;
   p.mana -= card.cost;
   p.hand.splice(p.hand.indexOf(card), 1);
-  p.field.push(makeUnit(card, uidSeq++));
   log(`${p.name}: ${card.name} 소환 (코스트 ${card.cost})`);
+  placeUnit(p, card, makeUnit);
   render();
   return { ok: true };
 }
@@ -101,6 +105,7 @@ function recall(who, unit) {
   p.field = p.field.filter(u => u !== unit);
   p.hand.push(unit.base);               // 원본 카드로 복귀: HP·레벨·XP·아이템 초기화
   if (selected === unit.uid) selected = null;
+  refreshAll(p);
   log(`${p.name}: ${unit.card.name} 회수 (마나 ${check.cost}) — 레벨·아이템 초기화`, 'text-sky-300');
   render();
   return { ok: true };
@@ -193,7 +198,7 @@ async function attack(who, unit, target, fromBatch = false) {
   const hit = await lunge(aEl, tEl);
 
   const cls = who === 'me' ? 'text-emerald-300' : 'text-red-300';
-  const dying = [];
+  pendingDying = [];
   for (const e of resolveAttack(p, o, unit, target)) {
     if (e.type === 'hero') { log(`${unit.card.name} → ${o.name} 영웅 ${fmt(e.dmg)} 피해`, cls); shake(tEl); dmgNumber(tEl, `-${fmt(e.dmg)}`); }
     else if (e.type === 'hit') {
@@ -201,17 +206,11 @@ async function attack(who, unit, target, fromBatch = false) {
       shake(tEl); dmgNumber(tEl, `-${fmt(e.d1)}`);
       shake(aEl); dmgNumber(aEl, `-${fmt(e.d2)}`, '#fca5a5');
     }
-    else if (e.type === 'destroy') { log(`${e.unit.card.name} 파괴!`, 'text-zinc-400'); dying.push(e.unit === unit ? aEl : tEl); }
-    else if (e.type === 'refund') log(`${e.killer.card.name} 처치 보상: 다음 턴 마나 +${e.refund}`, 'text-sky-300');
-    else if (e.type === 'levelup') { log(`${e.unit.card.name} 레벨 업! Lv${e.level} (ATK +${e.dAtk}, HP +${e.dHp})`, 'text-amber-300'); floatText(`⬆ Lv${e.level}`, 'text-amber-300', S.me.field.includes(e.unit) ? 'me' : 'ai'); }
     else if (e.type === 'overflow') { log(`초과 피해 ${fmt(e.dmg)} → ${o.name} 영웅`, 'text-orange-300'); const h = heroEl(oWho); shake(h); dmgNumber(h, `💥 -${fmt(e.dmg)}`, '#fdba74'); }
   }
   renderHero(oWho); renderHero(who);
   await hit.back();
-  if (dying.length && !FX_OFF()) {
-    dying.forEach(el => el && el.classList.add('fx-dying'));
-    await sleep(fxMs(300));
-  }
+  await fadeDying();
   S.busy = prevBusy;
   if (!prevBusy) fastForward = false;
   render();
@@ -249,13 +248,74 @@ function checkEnd() {
 function endTurn() {
   if (S.turn !== 'me' || S.over || S.busy) return;
   selected = null;
-  levelupLog(endTurnXp(S.me));
+  endTurnXp(S.me); turnEnd(S.me);
+  render();
+  if (checkEnd()) return;
   startTurn('ai');
 }
 
-function levelupLog(evs) {
-  for (const e of evs) { log(`${e.unit.card.name} 레벨 업! Lv${e.level} (ATK +${e.dAtk}, HP +${e.dHp})`, 'text-amber-300'); }
-  if (evs.length) render();
+// ===== 스킬 =====
+const whoOf = p => (p === S.me ? 'me' : 'ai');
+let pendingDying = [];
+async function fadeDying() {
+  const els = pendingDying.filter(Boolean); pendingDying = [];
+  if (els.length && !FX_OFF()) { els.forEach(el => el.classList.add('fx-dying')); await sleep(fxMs(300)); }
+}
+const TYPE_COLOR = { '공격': 'bg-red-600', '도발': 'bg-orange-500', '회복': 'bg-emerald-600', '버프': 'bg-sky-600', '디버프': 'bg-purple-600' };
+
+/** 스킬 컷인: 스킬 이름 배너 (+ 연출 파일 훅: data/fx/<파일>) */
+async function cutIn(u, name, fx, passive = false) {
+  if (FX_OFF()) return;
+  const el = $('cutin');
+  const media = fx ? (/\.(mp4|webm)$/i.test(fx) ? `<video src="data/fx/${fx}" autoplay muted playsinline class="max-h-40 mx-auto rounded-xl mb-2"></video>` : `<img src="data/fx/${fx}" class="max-h-40 mx-auto rounded-xl mb-2" onerror="this.remove()">`) : '';
+  el.innerHTML = `${media}<div class="text-[11px] md:text-xs text-zinc-300">${u.owner.name} · ${u.card.name}${passive ? ' · 패시브' : ''}</div><div class="text-xl md:text-3xl font-black tracking-tight">${passive ? '✨ ' : '⚡ '}${name}</div>`;
+  el.className = `cutin fixed left-0 right-0 top-1/3 z-40 pointer-events-none text-center py-3 ${whoOf(u.owner) === 'me' ? 'cutin-me' : 'cutin-ai'}`;
+  await sleep(fxMs(passive ? 500 : 750));
+  el.className = 'hidden';
+}
+
+async function castSkill(who, u, s) {
+  const p = S[who];
+  if (S.over || !p.field.includes(u) || !skillState(u, s).ok) return;
+  const prevBusy = S.busy; S.busy = true; selected = null;
+  render();
+  await cutIn(u, s.name, s.fx);
+  pendingDying = [];
+  useSkill(u, s);
+  renderHero('me'); renderHero('ai');
+  await sleep(fxMs(450));
+  await fadeDying();
+  S.busy = prevBusy;
+  if (!prevBusy) fastForward = false;
+  render();
+  checkEnd();
+}
+
+/** 엔진 이벤트 → 로그·연출 */
+function onEngine(e) {
+  if (!S) return;
+  const uEl = u => u && unitEl(whoOf(u.owner), u);
+  const nm = u => u.card.name;
+  switch (e.type) {
+    case 'skill': log(`${e.unit.owner.name}: ${nm(e.unit)} ⚡[${e.skill.name}] (MP ${e.skill.mp})`, 'text-fuchsia-300'); break;
+    case 'passive': log(`${e.unit.owner.name}: ${nm(e.unit)} ✨[${e.name}]${e.text ? ' — ' + e.text : ''}`, 'text-fuchsia-200'); if (!FX_OFF()) dmgNumber(uEl(e.unit), `✨${e.name}`, '#f0abfc'); break;
+    case 'dmg': { const el = uEl(e.unit); shake(el); dmgNumber(el, typeof e.dmg === 'number' ? `-${fmt(e.dmg)}` : e.dmg); break; }
+    case 'hero': { const el = heroEl(whoOf(e.p)); shake(el); dmgNumber(el, `-${fmt(e.dmg)}`, e.kind === 'self' ? '#fca5a5' : undefined); log(`${e.p.name} 본진 ${fmt(e.dmg)} 피해${e.kind === 'self' ? ' (자기 공격)' : ''}`, 'text-orange-300'); break; }
+    case 'heal': dmgNumber(uEl(e.unit), `+${fmt(e.amt)}`, '#6ee7b7'); break;
+    case 'heroHeal': dmgNumber(heroEl(whoOf(e.p)), `+${fmt(e.amt)}`, '#6ee7b7'); log(`${e.p.name} 본진 HP +${fmt(e.amt)}`, 'text-emerald-300'); break;
+    case 'destroy': log(`${nm(e.unit)} 파괴!`, 'text-zinc-400'); pendingDying.push(uEl(e.unit)); break;
+    case 'refund': log(`${nm(e.killer)} 처치 보상: 다음 턴 마나 +${e.refund}`, 'text-sky-300'); break;
+    case 'levelup': log(`${nm(e.unit)} Lv${e.level}`, 'text-amber-300'); dmgNumber(uEl(e.unit), `⬆ Lv${e.level}`, '#fcd34d'); break;
+    case 'status': { const st = STATUS[e.kind]; const t = e.kind === 'mod' ? e.text : `${st?.icon || ''} ${st?.label || e.kind}`; dmgNumber(uEl(e.unit), t, '#c4b5fd'); log(`${nm(e.unit)}: ${t}`, 'text-purple-300'); break; }
+    case 'immune': dmgNumber(uEl(e.unit), '🔰 면역', '#93c5fd'); break;
+    case 'heroImmune': dmgNumber(heroEl(whoOf(e.p)), '🔰 무효', '#93c5fd'); break;
+    case 'resist': dmgNumber(uEl(e.unit), '✳️ 면역', '#93c5fd'); break;
+    case 'miss': log(`${nm(e.unit)}: ${e.text}`, 'text-zinc-400'); dmgNumber(uEl(e.unit), 'MISS', '#a1a1aa'); break;
+    case 'mp': if (typeof e.amt === 'string' || e.amt > 0) dmgNumber(uEl(e.unit), `MP +${e.amt}`, '#60a5fa'); else dmgNumber(uEl(e.unit), `MP ${e.amt}`, '#60a5fa'); break;
+    case 'forced': log(e.text, 'text-purple-300'); shake(uEl(e.unit)); break;
+    case 'revive': log(`${e.p.name}: ${e.card.name} 부활 → 손패`, 'text-emerald-300'); break;
+    case 'log': log(e.text, 'text-zinc-300'); break;
+  }
 }
 
 // ===== 간단한 AI =====
@@ -273,17 +333,19 @@ async function aiTurn() {
   for (let it; (it = aiPickItem(ai, me));) { equipItem('ai', it[1], it[0]); await sleep(AI_DELAY()); }
   if (aiWantFieldHeal(ai)) { useAction('ai', 'fieldheal'); await sleep(AI_DELAY()); }
   if (aiWantBuff(ai)) { useAction('ai', 'buff'); await sleep(AI_DELAY()); }
-  // 2) 공격: 유리한 교환(내가 죽이고 살아남음, 또는 더 비싼 카드 처치) 우선, 없으면 영웅 공격
+  // 2) 스킬 또는 공격: 쓸 만한 스킬이 있으면 스킬(공격 대신), 아니면 유리한 교환 우선 공격
   for (const u of [...ai.field]) {
     if (S.over) break;
     if (!ai.field.includes(u) || !u.canAttack) continue;
+    const sk = aiPickSkill(u);
+    if (sk) { await castSkill('ai', u, sk); await sleep(AI_DELAY()); continue; }
     const best = aiPickTarget(u, ai, me);
     if (best === undefined) continue;
     await attack('ai', u, best);
     await sleep(AI_DELAY());
   }
   if (!S.over && aiWantHeal(ai)) { useAction('ai', 'heal'); await sleep(AI_DELAY()); }
-  levelupLog(endTurnXp(ai));
+  if (!S.over) { endTurnXp(ai); turnEnd(ai); render(); checkEnd(); }
   S.busy = false; fastForward = false;
   if (!S.over) startTurn('me');
 }
@@ -298,7 +360,7 @@ function cardHTML(c, { hp, size = 'md', dim = false } = {}) {
     <div class="absolute top-1 left-1 w-6 h-6 md:w-7 md:h-7 rounded-full bg-sky-600 text-white text-[11px] md:text-xs font-black flex items-center justify-center border border-white/40">${c.cost}</div>
     <div class="absolute top-1 right-1 text-sm md:text-base" title="${e.label}">${e.icon}</div>
     <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/85 to-transparent px-1 pt-4 pb-1">
-      <div class="text-[10px] md:text-xs font-bold truncate">${c.name}</div>
+      <div class="text-[10px] md:text-xs font-bold truncate">${skillsOf(c.id).length ? '<span class="text-fuchsia-300" title="스킬 보유">✦</span>' : ''}${c.name}</div>
       <div class="text-[9px] md:text-[10px] text-amber-400 font-bold">⚡${fmt(c.power)}</div>
       <div class="flex justify-between whitespace-nowrap tracking-tighter ${small ? 'text-[8px]' : 'text-[9px]'} md:text-[11px] font-bold">
         <span class="text-orange-400">⚔${fmt(c.ATK)}</span><span class="text-red-400">♥${fmt(hp ?? c.HP)}</span><span class="text-sky-400">🛡${fmt(c.DEF)}</span>
@@ -342,6 +404,14 @@ function render() {
   $('hero-hint').className = `text-center text-[11px] md:text-xs font-bold ${tg.hero ? 'text-emerald-400' : 'text-amber-300'}`;
 
   for (const who of ['ai', 'me']) {
+    const p = S[who];
+    $(`${who}-syn`).innerHTML = [
+      ...p.activeSyn.map(x => { const el = ELEMENTS[x.cls] || {}; return `<span class="px-1.5 rounded-full bg-white/10 text-[10px] font-bold" title="속성 시너지: ${el.label || x.cls} ${x.n}장 → ATK·DEF +${Math.round(x.pct * 100)}%">${el.icon || ''}×${x.n} +${Math.round(x.pct * 100)}%</span>`; }),
+      ...p.activeCombos.map(c => `<span class="px-1.5 rounded-full bg-fuchsia-700/60 text-[10px] font-bold" title="조합 [${c.name}]: ${c.scope === 'all' ? '아군 전체' : '조합 카드'} ${c.desc} +${Math.round(c.value * 100)}%">🔗${c.name}</span>`),
+      p.actionLock > 0 ? '<span class="px-1.5 rounded-full bg-red-800 text-[10px] font-bold" title="셔플·보강·강화·필드 회복 사용 불가">🔒고유기술 봉인</span>' : '',
+      p.st?.heroShield ? '<span class="px-1.5 rounded-full bg-sky-800 text-[10px] font-bold" title="본진 방어력 +300% (피해 1/4)">🛡️본진 방어</span>' : '',
+      p.st?.heroInvuln ? '<span class="px-1.5 rounded-full bg-sky-800 text-[10px] font-bold" title="본진 공격 무효">🔰본진 무적</span>' : '',
+    ].join('');
     const box = $(`${who}-field`); box.innerHTML = '';
     if (!S[who].field.length) box.innerHTML = '<div class="text-zinc-600 text-xs self-center">빈 필드</div>';
     S[who].field.forEach(u => {
@@ -351,12 +421,17 @@ function render() {
       w.className = `unit cursor-pointer transition ${isSel ? '-translate-y-2 drop-shadow-[0_0_10px_#34d399]' : ''} ${ready ? 'ready' : ''} ${selected != null && who === 'ai' && tg.units.includes(u) ? 'target' : ''}`;
       w.dataset.uid = u.uid;
       const hero = u.level >= RULES.LEVEL_MAX;
+      const sts = statusIcons(u);
+      const skReady = who === 'me' && myTurn && u.sk.some(s => skillState(u, s).ok);
       const icons = [u.items?.weapon && ITEMS.weapon.icon, u.items?.armor && ITEMS.armor.icon, ...u.skills.map(k => SKILLS[k]?.icon)].filter(Boolean);
       w.innerHTML = `<div class="relative ${hero ? 'hero-card' : ''}">${cardHTML(u.card, { hp: u.hp, size: 'sm', dim: who === 'me' && !u.canAttack && myTurn })}` +
         `<div class="lv-badge absolute -top-1.5 left-1/2 -translate-x-1/2 px-1.5 rounded-full ${hero ? 'bg-gradient-to-r from-yellow-300 to-amber-500 shadow-[0_0_8px_#fbbf24]' : u.level > 1 ? 'bg-amber-400' : 'bg-zinc-600 text-white'} text-black text-[9px] md:text-[10px] font-black whitespace-nowrap">${hero ? '👑 ' : ''}Lv${u.level}</div>` +
-        (icons.length ? `<div class="item-icons absolute top-7 right-0.5 flex flex-col text-[11px] md:text-sm leading-tight drop-shadow">${icons.map(x => `<span>${x}</span>`).join('')}</div>` : '') + `</div>` +
-        (ready ? '<div class="text-center text-[10px] text-emerald-400 font-bold">공격 가능</div>' : '');
+        (icons.length ? `<div class="item-icons absolute top-7 right-0.5 flex flex-col text-[11px] md:text-sm leading-tight drop-shadow">${icons.map(x => `<span>${x}</span>`).join('')}</div>` : '') +
+        (sts.length ? `<div class="status-icons absolute top-7 left-0.5 flex flex-col text-[11px] md:text-sm leading-tight drop-shadow">${sts.map(x => `<span title="${x.title}">${x.icon}</span>`).join('')}</div>` : '') + `</div>` +
+        `<div class="mp-bar h-1.5 bg-white/10 rounded-full mt-0.5 overflow-hidden" title="MP ${u.mp}/${u.maxMp} (+${u.mpRegen}/턴)"><div class="h-full bg-blue-500" style="width:${u.maxMp ? Math.min(100, u.mp / u.maxMp * 100) : 0}%"></div></div>` +
+        `<div class="flex justify-center gap-1 h-4">${ready ? '<span class="text-[10px] text-emerald-400 font-bold">공격 가능</span>' : ''}${skReady ? '<button class="skill-btn text-[10px] px-1 rounded bg-fuchsia-600 hover:bg-fuchsia-500 font-bold">✦스킬</button>' : ''}</div>`;
       w.onclick = () => onUnitClick(who, u);
+      const sb = w.querySelector('.skill-btn'); if (sb) sb.onclick = ev => { ev.stopPropagation(); showDetail(u.card, { hp: u.hp, unit: u }); };
       box.appendChild(w);
     });
     fixImages(box);
@@ -387,7 +462,7 @@ function onUnitClick(who, u) {
       const a = S.me.field.find(x => x.uid === selected);
       if (a) { attack('me', a, u); return; }
     }
-    showDetail(u.card, { hp: u.hp });
+    showDetail(u.card, { hp: u.hp, view: u });
   }
 }
 
@@ -397,7 +472,7 @@ function onHeroClick() {
   if (a) attack('me', a, null); // 규칙 위반이면 attack()이 사유를 보여줌
 }
 
-function showDetail(c, { fromHand = false, hp, unit = null } = {}) {
+function showDetail(c, { fromHand = false, hp, unit = null, view = null } = {}) {
   const e = ELEMENTS[c.class] || ELEMENTS.WIND;
   const check = fromHand ? canSummon(c, S.me, S.ai) : null;
   const myTurn = S.turn === 'me' && !S.over && !S.busy;
@@ -418,6 +493,7 @@ function showDetail(c, { fromHand = false, hp, unit = null } = {}) {
       <div class="bg-zinc-800 rounded-xl p-2"><div class="text-[10px] text-zinc-400">HP</div><div class="font-bold text-red-400">${hp != null ? fmt(hp) + ' / ' : ''}${fmt(c.HP)}</div></div>
       <div class="bg-zinc-800 rounded-xl p-2"><div class="text-[10px] text-zinc-400">DEF</div><div class="font-bold text-sky-400">${fmt(c.DEF)}</div></div>
     </div>
+    ${skillListHTML(c, unit || view, myTurn)}
     ${fromHand ? `
       ${check.ok || !myTurn ? '' : `<div id="summon-reason" class="mt-3 text-sm text-red-400">${check.reason}</div>`}
       <button id="summon-btn" ${check.ok && myTurn ? '' : 'disabled'} class="mt-4 w-full py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 text-black font-bold">소환하기</button>` : ''}
@@ -432,10 +508,29 @@ function showDetail(c, { fromHand = false, hp, unit = null } = {}) {
       <button id="recall-btn" ${rc.ok && myTurn ? '' : 'disabled'} class="mt-4 w-full py-3 rounded-2xl bg-sky-500 hover:bg-sky-400 disabled:opacity-40 text-black font-bold">회수 (마나 ${rc.cost})</button>
       <div class="text-[11px] text-zinc-500 mt-1 text-center">손패로 돌아가며 HP가 회복되고, 레벨·XP·아이템은 초기화됩니다</div>`; })() : ''}`;
   fixImages($('detail-body'));
+  if (unit) $('detail-body').querySelectorAll('[data-skill]').forEach(b => b.onclick = () => { const s = unit.sk[+b.dataset.skill]; hideModal('detail'); castSkill('me', unit, s); });
   if (unit) $('detail-body').querySelectorAll('[data-equip]').forEach(b => b.onclick = () => { const r = equipItem('me', unit, b.dataset.equip); if (r.ok) showDetail(unit.card, { hp: unit.hp, unit }); });
   if (unit && $('recall-btn')) $('recall-btn').onclick = () => { const r = recall('me', unit); if (r.ok) hideModal('detail'); };
   if (fromHand) $('summon-btn').onclick = () => { const r = summon('me', c); if (r.ok) hideModal('detail'); };
   showModal('detail');
+}
+
+function skillListHTML(c, unit, myTurn) {
+  const list = unit ? unit.sk : skillsOf(c.id);
+  const mine = unit && unit.owner === S.me;
+  const head = unit ? `<div class="mt-3 flex items-center gap-2 text-xs"><span class="text-blue-300 font-bold">MP ${unit.mp}/${unit.maxMp}</span><div class="flex-1 h-2 bg-white/10 rounded-full overflow-hidden"><div class="h-full bg-blue-500" style="width:${unit.mp / unit.maxMp * 100}%"></div></div><span class="text-zinc-400">턴당 +${unit.mpRegen}</span></div>` +
+    (statusIcons(unit).length ? `<div class="mt-1 text-xs text-purple-300">${statusIcons(unit).map(x => `${x.icon} ${x.title}`).join(' · ')}</div>` : '') : '';
+  if (!list.length) return head;
+  return head + `<div class="mt-3 space-y-2 max-h-64 overflow-y-auto pr-1">${list.map((s, i) => {
+    const st = unit ? skillState(unit, s) : { ok: false, reason: `Lv${s.unlock} 해금` };
+    const locked = (unit ? unit.level : 1) < s.unlock;
+    return `<div class="rounded-xl p-2 ${locked ? 'bg-zinc-800/50 opacity-60' : 'bg-zinc-800'}">
+      <div class="flex items-center gap-1.5 flex-wrap"><span class="px-1.5 rounded text-[10px] font-bold ${TYPE_COLOR[s.type] || 'bg-zinc-600'}">${s.type}</span><span class="text-[10px] text-zinc-400">${s.mode === 'active' ? '액티브' : '패시브'}</span><span class="font-bold text-sm">${s.name}</span>
+        <span class="ml-auto text-[10px] text-zinc-400">${locked ? '🔒' : ''}Lv${s.unlock}${s.mode === 'active' ? ` · MP ${s.mp} · 쿨 ${s.cooldown}` : ''}</span></div>
+      <div class="text-[11px] text-zinc-300 mt-0.5">${s.desc}${s.note ? ` <span class="text-zinc-500">(${s.note})</span>` : ''}</div>
+      ${s.mode === 'active' && mine ? `<button data-skill="${i}" ${st.ok && myTurn ? '' : 'disabled'} class="mt-1 w-full py-1.5 rounded-lg bg-fuchsia-600 hover:bg-fuchsia-500 disabled:opacity-40 text-xs font-bold">${st.ok ? '사용 (공격 대신)' : st.reason}</button>` : ''}
+      ${s.mode === 'passive' && unit ? `<div class="text-[10px] mt-0.5 ${locked ? 'text-zinc-500' : 'text-emerald-400'}">${locked ? `Lv${s.unlock}에 해금` : (unit.fired[s.name] ? '발동됨' : '활성')}</div>` : ''}
+    </div>`; }).join('')}</div>`;
 }
 
 function showModal(id) { $(id).classList.remove('hidden'); $(id).classList.add('flex'); }
@@ -464,10 +559,14 @@ renderStats();
 (async () => {
   try {
     POOL = parseCSV(await (await fetch('data/cards.csv')).text());
+    const [sk, co] = await Promise.all(['data/skills.json', 'data/combos.json'].map(u => fetch(u).then(r => r.json())));
+    setSkillData(sk, co); setEmitter(onEngine);
     $('start-btn').disabled = false; $('start-btn').textContent = '게임 시작';
     $('start-btn').onclick = startGame;
   } catch (e) { $('start-btn').textContent = '카드 데이터를 불러오지 못했어요'; }
 })();
 
 // 테스트/디버그용
-window.TCG = { get S() { return S; }, RULES, elementMultiplier, calcDamage, canSummon, buildDeck, summon, attack, recall, attackAll, endTurn, canRecall, recallCost, makeUnit, resolveAttack, useAction, canAction, startGame, equipItem, attackTargets, get POOL() { return POOL; }, render, Stats };
+// 디버그: 카드 배치 TCG.put('me', id, 레벨)
+function debugPut(who, id, lv = 1) { const c = POOL.find(x => String(x.id) === String(id)); const u = placeUnit(S[who], c, makeUnit); while (u.level < lv) gainXp(u, xpToNext(u.level)); u.mp = u.maxMp; render(); return u; }
+window.TCG = { put: debugPut, castSkill, skillState, get S() { return S; }, RULES, elementMultiplier, calcDamage, canSummon, buildDeck, summon, attack, recall, attackAll, endTurn, canRecall, recallCost, makeUnit, resolveAttack, useAction, canAction, startGame, equipItem, attackTargets, get POOL() { return POOL; }, render, Stats };
