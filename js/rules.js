@@ -13,12 +13,14 @@ export const RULES = {
   KILL_MANA_REFUND_RATIO: 0.2, // 처치 시 다음 턴 보너스 마나 = ceil(처치 카드 코스트 × 비율), 그 턴만 최대치 초과 가능
   // 레벨/경험치: 처치 시 XP = 처치한 카드 코스트. 다음 레벨 필요 XP = round(XP_BASE × 레벨^XP_EXP)
   LEVEL_MAX: 10,              // Lv10 = 영웅 카드
-  XP_BASE: 10, XP_EXP: 1.3,   // Lv1→2: 10, Lv5→6: 81, Lv9→10: 174 (누적 약 770)
+  XP_BASE: 4, XP_EXP: 1.3,    // Lv1→2: 4, Lv5→6: 32, Lv9→10: 70 (누적 약 310)
+  ATTACK_XP: 5,               // 공격할 때마다 (살아남으면) 공격 카드 XP
+  TURN_END_XP: 4,             // 내 턴 종료 시 필드에 살아있는 카드마다 XP
   LEVEL_UP_RATIO: 0.1,        // Lv2~5: 레벨업마다 원본 ATK·HP의 +10%
   LEVEL_UP_RATIO_HIGH: 0.05,  // Lv6~10: 원본의 +5% (체감)
   LEVEL_HIGH_FROM: 6,
   // 영웅 공격 제한
-  HERO_GUARD_FIELD: 3,        // 상대 필드가 이 장수 이상이면 영웅 공격 불가 (카드만 공격)
+  HERO_GUARD_FIELD: 4,        // 상대 필드가 이 장수 이상이면 영웅 공격 불가 (카드만 공격)
   HERO_LOCK_TURNS: 2,         // 자기 첫 N턴 동안은 영웅 공격·초과 피해 불가
   // 아이템 (마나로 구매, 카드당 무기 1 + 방어구 1)
   WEAPON_COST: 30, WEAPON_ATK_RATIO: 0.15,
@@ -83,7 +85,8 @@ export function canRecall(unit, me) {
 
 /** AI 회수 판단: 고코스트 카드가 다쳤고, 상대 필드의 어떤 카드 공격으로든 죽을 수 있으면 회수 */
 export function aiShouldRecall(unit, me, opp) {
-  if (unit.card.cost < RULES.AI_RECALL_MIN_COST || unit.hp >= unit.card.HP) return false;
+  if (unit.card.cost < RULES.AI_RECALL_MIN_COST || unit.hp >= unit.maxHp) return false;
+  if (unit.items?.weapon || unit.items?.armor || unit.level >= 3) return false; // 투자한 카드는 회수하지 않음
   if (!canRecall(unit, me).ok) return false;
   return opp.field.some(t => calcDamage(t.card, unit.card) >= unit.hp);
 }
@@ -122,6 +125,13 @@ export function gainXp(u, xp) {
   }
   if (u.level >= RULES.LEVEL_MAX) u.xp = 0;
   return u.level > from ? { dAtk, dHp, level: u.level, from } : null;
+}
+
+/** 턴 종료: 살아있는 필드 카드마다 XP. 레벨업 이벤트 목록 반환 */
+export function endTurnXp(p) {
+  const ev = [];
+  for (const u of p.field) { const lv = gainXp(u, RULES.TURN_END_XP); if (lv) ev.push({ type: 'levelup', unit: u, ...lv }); }
+  return ev;
 }
 
 // ===== 공격 대상 규칙 =====
@@ -193,6 +203,8 @@ export function resolveAttack(me, opp, unit, target) {
     const dmg = calcDamage(unit.card, null);
     opp.hp = Math.max(0, opp.hp - dmg);
     ev.push({ type: 'hero', who: 'me', unit, dmg });
+    const lv = gainXp(unit, RULES.ATTACK_XP);
+    if (lv) ev.push({ type: 'levelup', unit, ...lv });
     return ev;
   }
   const d1 = calcDamage(unit.card, target.card), d2 = calcDamage(target.card, unit.card);
@@ -203,7 +215,7 @@ export function resolveAttack(me, opp, unit, target) {
     const refund = Math.ceil(victim.card.cost * RULES.KILL_MANA_REFUND_RATIO);
     killerOwner.bonusMana = (killerOwner.bonusMana || 0) + refund;
     ev.push({ type: 'refund', owner: killerOwner, killer, refund });
-    const lv = gainXp(killer, victim.card.cost);
+    const lv = gainXp(killer, victim.card.cost + (isAttacker ? RULES.ATTACK_XP : 0));
     if (lv) ev.push({ type: 'levelup', unit: killer, ...lv });
     if (isAttacker && RULES.OVERFLOW_TO_HERO && !locked) {
       const over = d1 - tHpBefore;
@@ -212,6 +224,7 @@ export function resolveAttack(me, opp, unit, target) {
   };
   if (target.hp <= 0) { opp.field.splice(opp.field.indexOf(target), 1); ev.push({ type: 'destroy', unit: target }); }
   if (unit.hp <= 0) { me.field.splice(me.field.indexOf(unit), 1); ev.push({ type: 'destroy', unit }); }
+  if (unit.hp > 0 && target.hp > 0) { const lv = gainXp(unit, RULES.ATTACK_XP); if (lv) ev.push({ type: 'levelup', unit, ...lv }); }
   if (target.hp <= 0) reward(unit, me, target, true);
   if (unit.hp <= 0) reward(target, opp, unit, false);
   return ev;
@@ -287,10 +300,17 @@ export function aiWantBuff(me) { return canAction('buff', me).ok && me.field.fil
 /** 필드 카드 2장 이상이 최대 HP의 80% 미만이면 필드 회복 */
 export function aiWantFieldHeal(me) { return canAction('fieldheal', me).ok && me.field.filter(u => u.hp < u.maxHp * 0.8).length >= 2; }
 /** 아이템: 남은 마나로 가장 비싼 카드부터 무기 → 방어구 (마나 10은 남김). 장착할 [type, unit] 반환 */
-export function aiPickItem(me) {
-  for (const u of [...me.field].sort((a, b) => b.card.cost - a.card.cost))
-    for (const type of ['weapon', 'armor'])
+export function aiPickItem(me, opp) {
+  const enemies = opp ? opp.field : [];
+  for (const u of [...me.field].sort((a, b) => b.card.cost - a.card.cost)) {
+    if (u.card.cost < 15 || u.hp < u.maxHp * 0.5) continue;               // 저가치·빈사 카드엔 투자 안 함
+    const threatened = enemies.some(t => calcDamage(t.card, u.card) >= u.hp);
+    for (const type of ['weapon', 'armor']) {
+      if (threatened && type === 'weapon') continue;                       // 곧 죽을 카드에 무기 X (방어구는 살릴 수 있으면 OK)
+      if (threatened && type === 'armor' && enemies.some(t => calcDamage(t.card, u.card) >= u.hp + Math.round(u.base.HP * RULES.ARMOR_HP_RATIO))) continue;
       if (canEquip(type, u, me).ok && me.mana - ITEMS[type].cost() >= 10) return [type, u];
+    }
+  }
   return null;
 }
 export function aiWantHeal(me) { return canAction('heal', me).ok && me.hp <= RULES.HERO_HP * 0.5; }

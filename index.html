@@ -54,6 +54,7 @@
       <div class="flex justify-between text-[11px] text-zinc-400 mt-1"><span>💧 <span id="ai-mana"></span></span><span>덱 <span id="ai-deck"></span> · 손패 <span id="ai-handcount"></span></span></div>
       <div id="ai-handcards" class="flex gap-1 mt-1"></div>
     </div>
+    <button id="fx-skip" class="h-10 shrink-0 px-2 rounded-full bg-zinc-800 border border-white/20 hover:border-emerald-400 text-xs font-bold whitespace-nowrap" title="공격 연출을 생략합니다 (연출 중 화면을 누르면 빨리 감기)">🎬 연출</button>
     <button id="help-btn" class="w-10 h-10 shrink-0 rounded-full bg-zinc-800 border border-white/20 hover:border-emerald-400 font-bold" title="속성 상성">?</button>
   </div>
 
@@ -120,10 +121,11 @@
       <div class="text-xl font-black pt-3 border-t border-white/10">전투 규칙</div>
       <ul class="list-disc pl-5 text-zinc-300 space-y-1">
         <li>자기 <b>첫 2턴</b>에는 영웅을 공격할 수 없어요 (초과 피해도 영웅에게 가지 않음)</li>
-        <li>상대 필드에 카드가 <b>3장 이상</b>이면 카드만 공격할 수 있어요. 2장 이하면 영웅 직접 공격 가능</li>
+        <li>상대 필드에 카드가 <b>4장 이상</b>이면 카드만 공격할 수 있어요. 3장 이하면 영웅 직접 공격 가능</li>
         <li>🎯 도발 카드가 있으면 그 카드부터 공격해야 해요</li>
-        <li>처치하면 처치한 카드 코스트만큼 XP 획득. 최대 <b>Lv10</b> (👑 영웅 카드), 레벨이 오를수록 필요 XP 증가<br><span class="text-zinc-400">Lv2~5: 원본 ATK·HP +10% / Lv6~10: +5%</span></li>
+        <li>XP: 처치 시 처치한 카드 코스트만큼 + 공격할 때마다 5 + 내 턴 종료 시 살아있는 카드마다 4. 최대 <b>Lv10</b> (👑 영웅 카드), 레벨이 오를수록 필요 XP 증가<br><span class="text-zinc-400">Lv2~5: 원본 ATK·HP +10% / Lv6~10: +5%</span></li>
         <li>아이템 (필드 카드를 눌러 장착): 🗡️ 무기 💧30 ATK +15% · 🛡️ 방어구 💧30 HP +20% (카드당 각 1개)</li>
+        <li>🎬 연출 스킵 버튼: 켜면 공격 연출 생략. 연출 중 화면을 누르면 빨리 감기</li>
         <li>회수하면 레벨·XP·아이템이 초기화돼요</li>
         <li>💚 필드 회복 💧20: 내 필드 카드 전체 최대 HP의 10% 회복 (턴당 1회)</li>
       </ul>

@@ -1,4 +1,4 @@
-import { RULES, ELEMENTS, elementMultiplier, calcDamage, canSummon, buildDeck, parseCSV, aiSummonOrder, aiPickTarget, recallCost, canRecall, aiShouldRecall, makeUnit, resolveAttack, refillMana, ACTIONS, canAction, doAction, clearBuff, aiWantShuffle, aiWantBuff, aiWantHeal, aiWantFieldHeal, aiPickItem, ITEMS, canEquip, equip, attackTargets, canTarget, autoTarget, heroLocked, xpToNext, SKILLS } from './rules.js';
+import { RULES, ELEMENTS, elementMultiplier, calcDamage, canSummon, buildDeck, parseCSV, aiSummonOrder, aiPickTarget, recallCost, canRecall, aiShouldRecall, makeUnit, resolveAttack, refillMana, ACTIONS, canAction, doAction, clearBuff, aiWantShuffle, aiWantBuff, aiWantHeal, aiWantFieldHeal, aiPickItem, endTurnXp, ITEMS, canEquip, equip, attackTargets, canTarget, autoTarget, heroLocked, xpToNext, SKILLS } from './rules.js';
 
 const IMG = 'https://raw.githubusercontent.com/steveJea/vr-ideal-worldcup/main/img/bt_img/';
 const NF = new Intl.NumberFormat('ko-KR');
@@ -17,7 +17,12 @@ let POOL = [];
 let S = null;          // 게임 상태
 let selected = null;   // 선택된 공격 유닛 uid
 let uidSeq = 1;
-const AI_DELAY = () => (window.TCG_FAST ? 0 : 650);
+// 연출 스킵: 토글(localStorage 저장) 또는 연출 중 클릭으로 현재 연출 빨리 감기
+const SKIP_KEY = 'vrTcgSkipFx';
+let skipFx = localStorage.getItem(SKIP_KEY) === '1';
+let fastForward = false;
+const FX_OFF = () => !!(window.TCG_FAST || skipFx || fastForward);
+const AI_DELAY = () => (window.TCG_FAST ? 0 : (skipFx || fastForward) ? 120 : 650);
 
 function newPlayer(name, second) {
   const deck = buildDeck(POOL);
@@ -115,24 +120,30 @@ async function attackAll() {
     await attack('me', u, t, true);
     await sleep(fxMs(60));
   }
-  S.busy = false; render();
+  S.busy = false; fastForward = false; render();
+}
+
+function renderSkipBtn() {
+  const b = $('fx-skip');
+  b.textContent = skipFx ? '⏩ 스킵 ON' : '🎬 연출';
+  b.classList.toggle('border-amber-400', skipFx); b.classList.toggle('text-amber-300', skipFx);
 }
 
 // ===== 공격 연출 =====
 const REDUCED = () => !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
-const fxMs = ms => (window.TCG_FAST ? 0 : REDUCED() ? Math.round(ms * 0.3) : ms);
+const fxMs = ms => (FX_OFF() ? 0 : REDUCED() ? Math.round(ms * 0.3) : ms);
 const unitEl = (who, u) => document.querySelector(`#${who}-field [data-uid="${u.uid}"]`);
 const heroEl = who => $(`${who}-hero`);
 
 function shake(el) {
-  if (!el || window.TCG_FAST) return;
+  if (!el || FX_OFF()) return;
   el.classList.remove('fx-shake', 'fx-hitflash'); void el.offsetWidth;
   el.classList.add('fx-shake', 'fx-hitflash');
   setTimeout(() => el.classList.remove('fx-shake', 'fx-hitflash'), 330);
 }
 
 function dmgNumber(el, text, color) {
-  if (!el || window.TCG_FAST) return;
+  if (!el || FX_OFF()) return;
   const r = el.getBoundingClientRect();
   const d = document.createElement('div');
   d.className = 'fx-dmg'; d.textContent = text;
@@ -145,7 +156,7 @@ function dmgNumber(el, text, color) {
 
 /** 공격자를 대상 쪽으로 돌진(getBoundingClientRect 차이 → transform). back()으로 제자리 복귀 */
 async function lunge(el, targetEl) {
-  if (!el || !targetEl || window.TCG_FAST) return { back: async () => {} };
+  if (!el || !targetEl || FX_OFF()) return { back: async () => {} };
   const a = el.getBoundingClientRect(), b = targetEl.getBoundingClientRect();
   const dx = (b.left + b.width / 2) - (a.left + a.width / 2);
   const dy = (b.top + b.height / 2) - (a.top + a.height / 2);
@@ -176,7 +187,7 @@ async function attack(who, unit, target, fromBatch = false) {
   const prevBusy = S.busy;
   S.busy = true; selected = null;
   const oWho = who === 'me' ? 'ai' : 'me';
-  if (!window.TCG_FAST) render();
+  if (!FX_OFF()) render();
   const aEl = unitEl(who, unit);
   const tEl = target ? unitEl(oWho, target) : heroEl(oWho);
   const hit = await lunge(aEl, tEl);
@@ -197,11 +208,12 @@ async function attack(who, unit, target, fromBatch = false) {
   }
   renderHero(oWho); renderHero(who);
   await hit.back();
-  if (dying.length && !window.TCG_FAST) {
+  if (dying.length && !FX_OFF()) {
     dying.forEach(el => el && el.classList.add('fx-dying'));
     await sleep(fxMs(300));
   }
   S.busy = prevBusy;
+  if (!prevBusy) fastForward = false;
   render();
   checkEnd();
 }
@@ -237,7 +249,13 @@ function checkEnd() {
 function endTurn() {
   if (S.turn !== 'me' || S.over || S.busy) return;
   selected = null;
+  levelupLog(endTurnXp(S.me));
   startTurn('ai');
+}
+
+function levelupLog(evs) {
+  for (const e of evs) { log(`${e.unit.card.name} 레벨 업! Lv${e.level} (ATK +${e.dAtk}, HP +${e.dHp})`, 'text-amber-300'); }
+  if (evs.length) render();
 }
 
 // ===== 간단한 AI =====
@@ -252,7 +270,7 @@ async function aiTurn() {
   for (const c of aiSummonOrder(ai.hand)) {
     if (canSummon(c, ai, me).ok) { summon('ai', c); await sleep(AI_DELAY()); }
   }
-  for (let it; (it = aiPickItem(ai));) { equipItem('ai', it[1], it[0]); await sleep(AI_DELAY()); }
+  for (let it; (it = aiPickItem(ai, me));) { equipItem('ai', it[1], it[0]); await sleep(AI_DELAY()); }
   if (aiWantFieldHeal(ai)) { useAction('ai', 'fieldheal'); await sleep(AI_DELAY()); }
   if (aiWantBuff(ai)) { useAction('ai', 'buff'); await sleep(AI_DELAY()); }
   // 2) 공격: 유리한 교환(내가 죽이고 살아남음, 또는 더 비싼 카드 처치) 우선, 없으면 영웅 공격
@@ -265,7 +283,8 @@ async function aiTurn() {
     await sleep(AI_DELAY());
   }
   if (!S.over && aiWantHeal(ai)) { useAction('ai', 'heal'); await sleep(AI_DELAY()); }
-  S.busy = false;
+  levelupLog(endTurnXp(ai));
+  S.busy = false; fastForward = false;
   if (!S.over) startTurn('me');
 }
 
@@ -434,6 +453,10 @@ $('attack-all').onclick = attackAll;
 for (const type of Object.keys(ACTIONS)) $(`act-${type}`).onclick = () => { if (S.turn === 'me' && !S.busy && !S.over) useAction('me', type); };
 $('ai-hero').onclick = onHeroClick;
 $('help-btn').onclick = () => showModal('help');
+$('fx-skip').onclick = e => { e.stopPropagation(); skipFx = !skipFx; localStorage.setItem(SKIP_KEY, skipFx ? '1' : '0'); if (S?.busy) fastForward = true; renderSkipBtn(); };
+// 연출 중 화면을 누르면 현재 연출 빨리 감기
+$('game').addEventListener('click', () => { if (S?.busy && !S.over) fastForward = true; }, true);
+renderSkipBtn();
 $('restart-btn').onclick = () => { renderStats(); startGame(); };
 $('home-btn').onclick = () => { $('end-screen').classList.add('hidden'); $('game').classList.add('hidden'); $('start-screen').classList.remove('hidden'); renderStats(); };
 renderStats();
