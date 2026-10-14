@@ -1,0 +1,54 @@
+// ===== 메인 화면: 불씨 파티클 + 배경음악 =====
+(() => {
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const screen = document.getElementById('start-screen');
+
+  // --- 불씨 파티클 (가벼운 canvas) ---
+  const cv = document.getElementById('embers');
+  if (cv && !reduce) {
+    const ctx = cv.getContext('2d');
+    let W = 0, H = 0, dpr = Math.min(2, window.devicePixelRatio || 1);
+    const resize = () => { W = cv.clientWidth; H = cv.clientHeight; cv.width = W * dpr; cv.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); };
+    resize(); addEventListener('resize', resize);
+    const N = Math.round(Math.min(70, (W * H) / 18000));
+    const mk = (init) => ({ x: Math.random() * W, y: init ? Math.random() * H : H + 10, r: 0.6 + Math.random() * 2.2, vy: 0.25 + Math.random() * 0.8, vx: (Math.random() - 0.5) * 0.3, ph: Math.random() * 6.28, life: 0.4 + Math.random() * 0.6 });
+    const ps = Array.from({ length: N }, () => mk(true));
+    const tick = () => {
+      if (!screen.classList.contains('hidden') && !document.hidden) {
+        ctx.clearRect(0, 0, W, H);
+        ctx.globalCompositeOperation = 'lighter';
+        for (const p of ps) {
+          p.y -= p.vy; p.ph += 0.03; p.x += p.vx + Math.sin(p.ph) * 0.35;
+          if (p.y < -10) Object.assign(p, mk(false));
+          const a = Math.max(0, Math.min(1, p.y / H)) * p.life;
+          const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r * 4);
+          g.addColorStop(0, `rgba(255, 200, 120, ${a})`); g.addColorStop(0.4, `rgba(239, 68, 68, ${a * 0.5})`); g.addColorStop(1, 'rgba(120, 0, 0, 0)');
+          ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.x, p.y, p.r * 4, 0, 6.283); ctx.fill();
+        }
+      }
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }
+
+  // --- 배경음악: audio/main.mp3 (없으면 조용히 무시) ---
+  const KEY = 'vrTcgSound';
+  let soundOn = localStorage.getItem(KEY) !== '0';
+  let audio = null, missing = false;
+  const btn = document.getElementById('main-sound');
+  const renderBtn = () => { if (btn) { btn.textContent = soundOn ? '🔊' : '🔇'; btn.classList.toggle('on', soundOn); btn.title = missing ? '배경음악 파일 없음 (audio/main.mp3)' : '배경음악 켜기/끄기'; } };
+  const getAudio = () => {
+    if (audio || missing) return audio;
+    audio = new Audio('audio/main.mp3'); audio.loop = true; audio.volume = 0.5; audio.preload = 'auto';
+    audio.addEventListener('error', () => { missing = true; audio = null; renderBtn(); });
+    return audio;
+  };
+  const play = () => { if (!soundOn) return; const a = getAudio(); if (a) a.play().catch(() => {}); };
+  const stop = () => { if (audio) audio.pause(); };
+  btn?.addEventListener('click', e => { e.stopPropagation(); soundOn = !soundOn; localStorage.setItem(KEY, soundOn ? '1' : '0'); soundOn ? play() : stop(); renderBtn(); });
+  // 브라우저 자동재생 정책: 첫 사용자 입력 후 재생
+  const first = () => { play(); removeEventListener('pointerdown', first); removeEventListener('keydown', first); };
+  addEventListener('pointerdown', first); addEventListener('keydown', first);
+  renderBtn();
+  window.VRSound = { play, stop, get on() { return soundOn; } };
+})();

@@ -3,7 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>VR TCG - 카드 배틀</title>
+  <title>VR: Abyss Gate</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/main-screen.css">
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     body { font-family: 'Inter', 'Noto Sans KR', system-ui, sans-serif; }
@@ -32,21 +35,29 @@
 <body class="bg-zinc-950 text-white min-h-screen select-none">
 
 <!-- 시작 화면 -->
-<section id="start-screen" class="min-h-screen flex flex-col items-center justify-center p-6 text-center">
-  <h1 class="text-4xl md:text-6xl font-black tracking-tight">VR <span class="text-emerald-400">TCG</span></h1>
-  <p class="text-zinc-400 mt-3 mb-8">캐릭터 카드를 소환해 상대 영웅의 HP를 0으로 만드세요.</p>
-  <button id="start-btn" disabled class="px-12 py-4 rounded-2xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 text-black text-xl font-bold">불러오는 중...</button>
-  <div id="stats" class="mt-6 text-zinc-400"></div>
-  <ul class="mt-8 text-left text-sm text-zinc-400 space-y-1 max-w-md">
-    <li>• 영웅 HP 3,000 · 덱 30장 · 시작 손패 4장 · 매 턴 1장 드로우</li>
-    <li>• 선공은 동전 던지기로 결정, 후공은 시작 손패 +1장</li>
-    <li>• 마나는 매 턴 +10 (최대 100), 카드 코스트만큼 사용</li>
-    <li>• 내 필드 카드는 마나(코스트의 절반)를 내고 손패로 회수 가능</li>
-    <li>• 적 카드 처치 시: 다음 턴 마나 보너스, 카드 레벨 업(최대 Lv3, ATK·HP +10%), 남는 피해는 적 영웅에게</li>
-    <li>• 마나 액션(턴당 1회): 패 섞기 50 · 기지 보강 20(HP +200) · 공격력 강화 30(이번 턴 ATK +20%)</li>
-    <li>• 소환한 턴에는 공격 불가, 카드끼리 싸우면 서로 피해(반격)</li>
-    <li>• 데미지 = ATK × 1.5 × 속성 배율 − 상대 DEF ÷ 2 (최소 1)</li>
-  </ul>
+<section id="start-screen" class="main-screen fixed inset-0 overflow-hidden text-center">
+  <picture class="main-bg">
+    <source media="(orientation: portrait), (max-aspect-ratio: 4/5)" srcset="img/main-portrait.webp" type="image/webp">
+    <source media="(orientation: portrait), (max-aspect-ratio: 4/5)" srcset="img/main-portrait.jpg">
+    <source srcset="img/main-landscape.webp" type="image/webp">
+    <img src="img/main-landscape.jpg" alt="" class="w-full h-full object-cover">
+  </picture>
+  <canvas id="embers" class="absolute inset-0 w-full h-full pointer-events-none"></canvas>
+  <div class="main-vignette absolute inset-0 pointer-events-none"></div>
+  <div class="relative z-10 h-full flex flex-col items-center justify-end md:justify-center px-6 pb-14 md:pb-0">
+    <div class="main-sub tracking-[0.4em] text-[11px] md:text-sm text-amber-200/80 mb-2">VR CARD BATTLE</div>
+    <h1 class="main-logo">VR<span class="colon">:</span> Abyss Gate</h1>
+    <div class="main-line my-4 md:my-6"></div>
+    <div class="flex flex-col gap-3 w-full max-w-xs">
+      <button id="start-btn" disabled class="main-btn main-btn-primary">불러오는 중...</button>
+      <div class="grid grid-cols-3 gap-2">
+        <button id="main-help" class="main-btn main-btn-sub">도움말</button>
+        <button id="main-skip" class="main-btn main-btn-sub" title="공격 연출 생략">🎬 연출</button>
+        <button id="main-sound" class="main-btn main-btn-sub" title="배경음악">🔊</button>
+      </div>
+    </div>
+    <div id="stats" class="mt-5 text-amber-100/70 text-sm drop-shadow"></div>
+  </div>
 </section>
 
 <!-- 게임 화면 -->
@@ -159,5 +170,6 @@
 
 <script type="module" src="js/game.js"></script>
 <div id="cutin" class="hidden"></div>
+<script src="js/main-screen.js"></script>
 </body>
 </html>
