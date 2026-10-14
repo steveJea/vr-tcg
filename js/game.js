@@ -95,29 +95,100 @@ async function attackAll() {
   if (S.turn !== 'me' || S.over || S.busy) return;
   const ready = S.me.field.filter(u => u.canAttack);
   if (!ready.length) return;
-  S.busy = true; selected = null;
+  S.busy = true; selected = null; render();
   log(`일괄 공격! (${ready.length}장)`, 'text-emerald-400');
   for (const u of ready) {
     if (S.over) break;
-    S.busy = false; attack('me', u, null); S.busy = true;
-    await sleep(window.TCG_FAST ? 0 : 250);
+    if (!S.me.field.includes(u) || !u.canAttack) continue;
+    await attack('me', u, null, true);
+    await sleep(fxMs(60));
   }
   S.busy = false; render();
 }
 
-function attack(who, unit, target) {
+// ===== 공격 연출 =====
+const REDUCED = () => !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+const fxMs = ms => (window.TCG_FAST ? 0 : REDUCED() ? Math.round(ms * 0.3) : ms);
+const unitEl = (who, u) => document.querySelector(`#${who}-field [data-uid="${u.uid}"]`);
+const heroEl = who => $(`${who}-hero`);
+
+function shake(el) {
+  if (!el || window.TCG_FAST) return;
+  el.classList.remove('fx-shake', 'fx-hitflash'); void el.offsetWidth;
+  el.classList.add('fx-shake', 'fx-hitflash');
+  setTimeout(() => el.classList.remove('fx-shake', 'fx-hitflash'), 330);
+}
+
+function dmgNumber(el, text, color) {
+  if (!el || window.TCG_FAST) return;
+  const r = el.getBoundingClientRect();
+  const d = document.createElement('div');
+  d.className = 'fx-dmg'; d.textContent = text;
+  if (color) d.style.color = color;
+  d.style.left = (r.left + r.width / 2 + (Math.random() - 0.5) * 16) + 'px';
+  d.style.top = (r.top + r.height * 0.4) + 'px';
+  document.body.appendChild(d);
+  setTimeout(() => d.remove(), 950);
+}
+
+/** 공격자를 대상 쪽으로 돌진(getBoundingClientRect 차이 → transform). back()으로 제자리 복귀 */
+async function lunge(el, targetEl) {
+  if (!el || !targetEl || window.TCG_FAST) return { back: async () => {} };
+  const a = el.getBoundingClientRect(), b = targetEl.getBoundingClientRect();
+  const dx = (b.left + b.width / 2) - (a.left + a.width / 2);
+  const dy = (b.top + b.height / 2) - (a.top + a.height / 2);
+  const k = 0.78;
+  el.classList.add('fx-attacker');
+  el.style.transition = `transform ${fxMs(90)}ms ease-out`;
+  el.style.transform = `translate(${dx * -0.06}px, ${dy * -0.06}px) scale(1.06)`;
+  await sleep(fxMs(90));
+  el.style.transition = `transform ${fxMs(150)}ms cubic-bezier(.5,0,1,1)`;
+  el.style.transform = `translate(${dx * k}px, ${dy * k}px) scale(1.1)`;
+  await sleep(fxMs(150));
+  return {
+    back: async () => {
+      el.style.transition = `transform ${fxMs(160)}ms ease-out`;
+      el.style.transform = '';
+      await sleep(fxMs(160));
+      el.classList.remove('fx-attacker'); el.style.transition = '';
+    }
+  };
+}
+
+/** 연출(돌진→충돌→복귀) 후 상태 반영. 전투 결과는 resolveAttack 그대로라 로직은 동일 */
+async function attack(who, unit, target, fromBatch = false) {
   const o = opp(who), p = S[who];
   if (!unit.canAttack || S.over) return;
+  if (!fromBatch && who === 'me' && S.busy) return;
+  const prevBusy = S.busy;
+  S.busy = true; selected = null;
+  const oWho = who === 'me' ? 'ai' : 'me';
+  if (!window.TCG_FAST) render();
+  const aEl = unitEl(who, unit);
+  const tEl = target ? unitEl(oWho, target) : heroEl(oWho);
+  const hit = await lunge(aEl, tEl);
+
   const cls = who === 'me' ? 'text-emerald-300' : 'text-red-300';
+  const dying = [];
   for (const e of resolveAttack(p, o, unit, target)) {
-    if (e.type === 'hero') { log(`${unit.card.name} → ${o.name} 영웅 ${fmt(e.dmg)} 피해`, cls); floatText(`-${fmt(e.dmg)}`, 'text-red-400', who === 'me' ? 'ai' : 'me'); }
-    else if (e.type === 'hit') log(`${unit.card.name} → ${target.card.name} ${fmt(e.d1)} 피해${e.mult !== 1 ? ` (속성 ×${e.mult})` : ''}, 반격 ${fmt(e.d2)}`, cls);
-    else if (e.type === 'destroy') log(`${e.unit.card.name} 파괴!`, 'text-zinc-400');
+    if (e.type === 'hero') { log(`${unit.card.name} → ${o.name} 영웅 ${fmt(e.dmg)} 피해`, cls); shake(tEl); dmgNumber(tEl, `-${fmt(e.dmg)}`); }
+    else if (e.type === 'hit') {
+      log(`${unit.card.name} → ${target.card.name} ${fmt(e.d1)} 피해${e.mult !== 1 ? ` (속성 ×${e.mult})` : ''}, 반격 ${fmt(e.d2)}`, cls);
+      shake(tEl); dmgNumber(tEl, `-${fmt(e.d1)}`);
+      shake(aEl); dmgNumber(aEl, `-${fmt(e.d2)}`, '#fca5a5');
+    }
+    else if (e.type === 'destroy') { log(`${e.unit.card.name} 파괴!`, 'text-zinc-400'); dying.push(e.unit === unit ? aEl : tEl); }
     else if (e.type === 'refund') log(`${e.killer.card.name} 처치 보상: 다음 턴 마나 +${e.refund}`, 'text-sky-300');
     else if (e.type === 'levelup') { log(`${e.unit.card.name} 레벨 업! Lv${e.level} (ATK +${e.dAtk}, HP +${e.dHp})`, 'text-amber-300'); floatText(`⬆ Lv${e.level}`, 'text-amber-300', S.me.field.includes(e.unit) ? 'me' : 'ai'); }
-    else if (e.type === 'overflow') { log(`초과 피해 ${fmt(e.dmg)} → ${o.name} 영웅`, 'text-orange-300'); floatText(`💥 -${fmt(e.dmg)}`, 'text-orange-300', who === 'me' ? 'ai' : 'me'); }
+    else if (e.type === 'overflow') { log(`초과 피해 ${fmt(e.dmg)} → ${o.name} 영웅`, 'text-orange-300'); const h = heroEl(oWho); shake(h); dmgNumber(h, `💥 -${fmt(e.dmg)}`, '#fdba74'); }
   }
-  selected = null;
+  renderHero(oWho); renderHero(who);
+  await hit.back();
+  if (dying.length && !window.TCG_FAST) {
+    dying.forEach(el => el && el.classList.add('fx-dying'));
+    await sleep(fxMs(300));
+  }
+  S.busy = prevBusy;
   render();
   checkEnd();
 }
@@ -174,7 +245,7 @@ async function aiTurn() {
     if (S.over) break;
     if (!ai.field.includes(u) || !u.canAttack) continue;
     const best = aiPickTarget(u, me.field);
-    attack('ai', u, best);
+    await attack('ai', u, best);
     await sleep(AI_DELAY());
   }
   if (!S.over && aiWantHeal(ai)) { useAction('ai', 'heal'); await sleep(AI_DELAY()); }
@@ -228,8 +299,8 @@ function render() {
     btn.querySelector('.reason').textContent = !myTurn ? '' : (c.ok ? '' : c.reason);
   }
   $('attack-all').disabled = !myTurn || !S.me.field.some(u => u.canAttack);
-  $('ai-hero').classList.toggle('ring-4', !!selected);
-  $('ai-hero').classList.toggle('ring-red-500', !!selected);
+  $('ai-hero').classList.toggle('ring-4', selected != null);
+  $('ai-hero').classList.toggle('ring-red-500', selected != null);
 
   for (const who of ['ai', 'me']) {
     const box = $(`${who}-field`); box.innerHTML = '';
@@ -238,7 +309,7 @@ function render() {
       const w = document.createElement('div');
       const isSel = selected === u.uid;
       const ready = who === 'me' && u.canAttack && myTurn;
-      w.className = `unit cursor-pointer transition ${isSel ? '-translate-y-2 drop-shadow-[0_0_10px_#34d399]' : ''} ${ready ? 'ready' : ''} ${selected && who === 'ai' ? 'target' : ''}`;
+      w.className = `unit cursor-pointer transition ${isSel ? '-translate-y-2 drop-shadow-[0_0_10px_#34d399]' : ''} ${ready ? 'ready' : ''} ${selected != null && who === 'ai' ? 'target' : ''}`;
       w.dataset.uid = u.uid;
       w.innerHTML = `<div class="relative">${cardHTML(u.card, { hp: u.hp, size: 'sm', dim: who === 'me' && !u.canAttack && myTurn })}${u.level > 1 ? `<div class="lv-badge absolute -top-1.5 left-1/2 -translate-x-1/2 px-1.5 rounded-full bg-amber-400 text-black text-[9px] md:text-[10px] font-black">Lv${u.level}</div>` : ''}</div>` +
         (ready ? '<div class="text-center text-[10px] text-emerald-400 font-bold">공격 가능</div>' : '');
@@ -269,16 +340,16 @@ function onUnitClick(who, u) {
     if (selected === u.uid) { selected = null; render(); }
     showDetail(u.card, { hp: u.hp, unit: u });
   } else {
-    if (myTurn && selected) {
+    if (myTurn && selected != null) {
       const a = S.me.field.find(x => x.uid === selected);
-      if (a) return attack('me', a, u);
+      if (a) { attack('me', a, u); return; }
     }
     showDetail(u.card, { hp: u.hp });
   }
 }
 
 function onHeroClick() {
-  if (!selected || S.turn !== 'me' || S.busy) return;
+  if (selected == null || S.turn !== 'me' || S.busy) return;
   const a = S.me.field.find(x => x.uid === selected);
   if (a) attack('me', a, null);
 }
