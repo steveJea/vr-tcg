@@ -1,0 +1,39 @@
+/* ===== 메인 화면: VR: Abyss Gate ===== */
+.main-screen { background: #0a0204; z-index: 20; }
+.main-screen.hidden { display: none; }
+.main-bg { position: absolute; inset: 0; display: block; }
+.main-bg img { animation: kenburns 32s ease-in-out infinite alternate; transform-origin: 50% 40%; will-change: transform; }
+@keyframes kenburns { from { transform: scale(1.02) translate(0, 0); } to { transform: scale(1.12) translate(-1.5%, -1%); } }
+.main-vignette {
+  background:
+    radial-gradient(ellipse at 50% 45%, transparent 35%, rgba(10,0,2,.55) 70%, rgba(5,0,1,.92) 100%),
+    linear-gradient(to bottom, rgba(10,0,2,.35), transparent 30%, transparent 55%, rgba(10,0,2,.85));
+}
+.main-logo {
+  font-family: 'Cinzel Decorative', 'Cinzel', serif; font-weight: 900; line-height: 1.05;
+  font-size: clamp(2.4rem, 8vw, 6rem); letter-spacing: .02em;
+  background: linear-gradient(180deg, #fff6d5 0%, #f5c96a 38%, #c7861f 62%, #7a2a10 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: drop-shadow(0 0 10px rgba(220, 38, 38, .55)) drop-shadow(0 0 28px rgba(160, 20, 20, .5)) drop-shadow(0 3px 2px rgba(0,0,0,.9));
+  animation: logoGlow 4s ease-in-out infinite;
+}
+.main-logo .colon { color: #ef4444; -webkit-text-fill-color: #ef4444; }
+@keyframes logoGlow { 50% { filter: drop-shadow(0 0 16px rgba(239, 68, 68, .8)) drop-shadow(0 0 40px rgba(180, 20, 20, .65)) drop-shadow(0 3px 2px rgba(0,0,0,.9)); } }
+.main-sub { font-family: 'Cinzel', serif; text-shadow: 0 0 8px rgba(0,0,0,.9); }
+.main-line { width: min(70vw, 420px); height: 1px; background: linear-gradient(90deg, transparent, #d4a24a, #ef4444, #d4a24a, transparent); box-shadow: 0 0 8px #b91c1c; }
+.main-btn {
+  font-family: 'Cinzel', 'Noto Sans KR', sans-serif; font-weight: 700; border-radius: .9rem;
+  border: 1px solid rgba(212, 162, 74, .7); color: #fde7b0; transition: transform .15s, box-shadow .2s, background .2s;
+  background: linear-gradient(180deg, rgba(60, 8, 12, .85), rgba(20, 2, 4, .9));
+  box-shadow: inset 0 0 12px rgba(239, 68, 68, .25), 0 4px 14px rgba(0,0,0,.6);
+  backdrop-filter: blur(2px);
+}
+.main-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: inset 0 0 16px rgba(239, 68, 68, .45), 0 0 18px rgba(220, 38, 38, .5); border-color: #f5c96a; }
+.main-btn:disabled { opacity: .5; }
+.main-btn-primary { padding: 1rem; font-size: 1.25rem; letter-spacing: .08em;
+  background: linear-gradient(180deg, #a3151f, #5b0a10 60%, #2a0306); border-color: #f5c96a; color: #fff3cf; text-shadow: 0 0 8px rgba(255, 200, 120, .6); }
+.main-btn-sub { padding: .6rem .25rem; font-size: .85rem; }
+.main-btn.on { border-color: #f5c96a; color: #fcd34d; }
+@media (prefers-reduced-motion: reduce) {
+  .main-bg img, .main-logo { animation: none; }
+}

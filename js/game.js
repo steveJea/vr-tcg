@@ -129,6 +129,7 @@ async function attackAll() {
 }
 
 function renderSkipBtn() {
+  const m = $('main-skip'); if (m) { m.textContent = skipFx ? '⏩ 스킵' : '🎬 연출'; m.classList.toggle('on', skipFx); }
   const b = $('fx-skip');
   b.textContent = skipFx ? '⏩ 스킵 ON' : '🎬 연출';
   b.classList.toggle('border-amber-400', skipFx); b.classList.toggle('text-amber-300', skipFx);
@@ -548,6 +549,8 @@ $('attack-all').onclick = attackAll;
 for (const type of Object.keys(ACTIONS)) $(`act-${type}`).onclick = () => { if (S.turn === 'me' && !S.busy && !S.over) useAction('me', type); };
 $('ai-hero').onclick = onHeroClick;
 $('help-btn').onclick = () => showModal('help');
+$('main-help').onclick = () => showModal('help');
+$('main-skip').onclick = () => { skipFx = !skipFx; localStorage.setItem(SKIP_KEY, skipFx ? '1' : '0'); renderSkipBtn(); };
 $('fx-skip').onclick = e => { e.stopPropagation(); skipFx = !skipFx; localStorage.setItem(SKIP_KEY, skipFx ? '1' : '0'); if (S?.busy) fastForward = true; renderSkipBtn(); };
 // 연출 중 화면을 누르면 현재 연출 빨리 감기
 $('game').addEventListener('click', () => { if (S?.busy && !S.over) fastForward = true; }, true);
