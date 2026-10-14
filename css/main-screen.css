@@ -37,3 +37,7 @@
 @media (prefers-reduced-motion: reduce) {
   .main-bg img, .main-logo { animation: none; }
 }
+
+/* 세로(모바일) 배경 영상 */
+.main-video { animation: none; }
+.main-video.hidden { display: none; }
