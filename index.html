@@ -20,6 +20,11 @@
     .hero-card > div:first-child { box-shadow: 0 0 0 3px #fbbf24, 0 0 14px 4px rgba(251,191,36,.7); animation: heroGlow 1.6s ease-in-out infinite; }
     @keyframes heroGlow { 50% { box-shadow: 0 0 0 3px #fde68a, 0 0 22px 8px rgba(251,191,36,.9); } }
     .fx-attacker { position: relative; z-index: 30; }
+    .cutin { animation: cutIn .75s ease-out both; text-shadow: 0 2px 8px #000; }
+    .cutin-me { background: linear-gradient(90deg, transparent, rgba(16,185,129,.55) 20%, rgba(16,185,129,.55) 80%, transparent); }
+    .cutin-ai { background: linear-gradient(90deg, transparent, rgba(220,38,38,.55) 20%, rgba(220,38,38,.55) 80%, transparent); }
+    @keyframes cutIn { 0% { opacity: 0; transform: translateX(-30%) skewX(-12deg); } 20% { opacity: 1; transform: none; } 85% { opacity: 1; } 100% { opacity: 0; transform: translateX(10%); } }
+    @media (prefers-reduced-motion: reduce) { .cutin { animation-duration: .3s; } }
     @media (prefers-reduced-motion: reduce) { .fx-shake { animation-duration: .12s; } .fx-dmg { animation-duration: .45s; } }
     #me-hand::-webkit-scrollbar { height: 6px; } #me-hand::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 3px; }
   </style>
@@ -53,6 +58,7 @@
       <div class="h-2 bg-white/10 rounded-full mt-1 overflow-hidden"><div id="ai-hpbar" class="h-full bg-red-500 transition-all"></div></div>
       <div class="flex justify-between text-[11px] text-zinc-400 mt-1"><span>💧 <span id="ai-mana"></span></span><span>덱 <span id="ai-deck"></span> · 손패 <span id="ai-handcount"></span></span></div>
       <div id="ai-handcards" class="flex gap-1 mt-1"></div>
+      <div id="ai-syn" class="flex flex-wrap gap-1 mt-1 empty:hidden"></div>
     </div>
     <button id="fx-skip" class="h-10 shrink-0 px-2 rounded-full bg-zinc-800 border border-white/20 hover:border-emerald-400 text-xs font-bold whitespace-nowrap" title="공격 연출을 생략합니다 (연출 중 화면을 누르면 빨리 감기)">🎬 연출</button>
     <button id="help-btn" class="w-10 h-10 shrink-0 rounded-full bg-zinc-800 border border-white/20 hover:border-emerald-400 font-bold" title="속성 상성">?</button>
@@ -75,6 +81,7 @@
     <div id="me-hero" class="flex-1 bg-black/60 border border-emerald-500/40 rounded-2xl px-3 py-2">
       <div class="flex justify-between text-xs md:text-sm"><span class="font-bold text-emerald-400">🧑 나 <span id="me-order" class="ml-1 px-1.5 py-0.5 rounded bg-white/10 text-[10px] text-zinc-300"></span></span><span id="me-hp" class="font-bold"></span></div>
       <div class="h-2 bg-white/10 rounded-full mt-1 overflow-hidden"><div id="me-hpbar" class="h-full bg-emerald-400 transition-all"></div></div>
+      <div id="me-syn" class="flex flex-wrap gap-1 mt-1 empty:hidden"></div>
       <div class="flex justify-between text-[11px] text-zinc-400 mt-1"><span class="text-sky-300 font-bold">💧 마나 <span id="me-mana"></span></span><span>덱 <span id="me-deck"></span> · 손패 <span id="me-handcount"></span></span></div>
     </div>
     <div class="shrink-0 flex flex-col gap-1.5">
@@ -126,6 +133,12 @@
         <li>XP: 처치 시 처치한 카드 코스트 × (1 + 그 카드 레벨 × 0.2) + 공격할 때마다 5 + 내 턴 종료 시 살아있는 카드마다 4. 최대 <b>Lv10</b> (👑 영웅 카드), 레벨이 오를수록 필요 XP 증가<br><span class="text-zinc-400">Lv2~5: 원본 ATK·HP +10% / Lv6~10: +5%</span></li>
         <li>아이템 (필드 카드를 눌러 장착): 🗡️ 무기 💧30 ATK +15% · 🛡️ 방어구 💧30 HP +20% (카드당 각 1개)</li>
         <li>🎬 연출 스킵 버튼: 켜면 공격 연출 생략. 연출 중 화면을 누르면 빨리 감기</li>
+        <li><b>✦ 스킬</b>: 스킬 카드는 MP(파란 바)를 씁니다. 최대 MP = 50 + 정신력(MEN), 자기 턴마다 4 + 품성(MOR)×0.16 회복. 마나(💧)와는 별개</li>
+        <li>액티브 스킬은 그 턴의 <b>공격 대신</b> 사용 (카드당 턴에 1번 행동). 쿨타임은 자기 턴 기준, 레벨이 해금 레벨 이상이어야 사용 가능. 필드 카드의 ✦스킬 버튼이나 상세 화면에서 사용</li>
+        <li>패시브: 해금 레벨에 도달하면 자동 적용. "발동 시" 패시브는 해금 순간 1번 발동</li>
+        <li>상태: 🩸출혈(ATK·DEF -5%, HP -5%) · ⚡마비(행동 불가, 2턴 연속 불가) · 💫혼란(자기 턴에 아군 공격) · 🌀교란(자기 본진 공격) · 🔰피해 면역 · ✳️디버프 면역 · 🎯도발 · 🔺🔻능력치 증감 · 🔒고유기술 봉인(셔플·보강·강화·필드 회복 불가)</li>
+        <li><b>속성 시너지</b>: 내 필드에 같은 속성 2/3/4/5장 → 그 속성 카드 ATK·DEF +10/15/20/30%</li>
+        <li><b>🔗 조합</b>: 지정 카드가 모두 내 필드에 있으면 발동 (조합 카드 또는 아군 전체 강화). 영웅 바 아래 배지에 마우스를 올리면 설명</li>
         <li>회수하면 레벨·XP·아이템이 초기화돼요</li>
         <li>💚 필드 회복 💧20: 내 필드 카드 전체 최대 HP의 10% 회복 (턴당 1회)</li>
       </ul>
@@ -145,5 +158,6 @@
 </div>
 
 <script type="module" src="js/game.js"></script>
+<div id="cutin" class="hidden"></div>
 </body>
 </html>

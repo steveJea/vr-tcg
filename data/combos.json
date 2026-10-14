@@ -1,0 +1,399 @@
+[
+ {
+  "name": "사라지지 않는 약속",
+  "cards": [
+   "2000400087",
+   "2000400088",
+   "2000400089"
+  ],
+  "scope": "combo",
+  "atk": false,
+  "def": true,
+  "hp": false,
+  "value": 0.15,
+  "desc": "방어력 증가"
+ },
+ {
+  "name": "칸니발 라이징",
+  "cards": [
+   "1000100007",
+   "2000100008"
+  ],
+  "scope": "combo",
+  "atk": true,
+  "def": false,
+  "hp": false,
+  "value": 0.15,
+  "desc": "공격력 증가"
+ },
+ {
+  "name": "악마의 유혹",
+  "cards": [
+   "1000200030",
+   "2001100241",
+   "2001100242",
+   "2000200027"
+  ],
+  "scope": "combo",
+  "atk": false,
+  "def": false,
+  "hp": true,
+  "value": 0.2,
+  "desc": "체력 증가"
+ },
+ {
+  "name": "천상의 조합",
+  "cards": [
+   "2001500316",
+   "2000400088",
+   "2001500314",
+   "2000400097"
+  ],
+  "scope": "combo",
+  "atk": true,
+  "def": true,
+  "hp": false,
+  "value": 0.2,
+  "desc": "공/방 증가"
+ },
+ {
+  "name": "너를 위해서",
+  "cards": [
+   "2000400097",
+   "2001700342"
+  ],
+  "scope": "combo",
+  "atk": true,
+  "def": false,
+  "hp": false,
+  "value": 0.1,
+  "desc": "공격력 증가"
+ },
+ {
+  "name": "검은 빛",
+  "cards": [
+   "1000200030",
+   "2001700342",
+   "2000300083"
+  ],
+  "scope": "combo",
+  "atk": true,
+  "def": true,
+  "hp": false,
+  "value": 0.2,
+  "desc": "공/방 증가"
+ },
+ {
+  "name": "검은 늪",
+  "cards": [
+   "2000500110",
+   "1001900346",
+   "1000500107"
+  ],
+  "scope": "combo",
+  "atk": false,
+  "def": false,
+  "hp": true,
+  "value": 0.05,
+  "desc": "체력 증가"
+ },
+ {
+  "name": "SERAPH",
+  "cards": [
+   "2001100243",
+   "2001100235",
+   "2001100233"
+  ],
+  "scope": "combo",
+  "atk": true,
+  "def": false,
+  "hp": false,
+  "value": 0.15,
+  "desc": "공격력 증가"
+ },
+ {
+  "name": "템페스트",
+  "cards": [
+   "2000700165",
+   "2000700163",
+   "2000700164"
+  ],
+  "scope": "combo",
+  "atk": true,
+  "def": true,
+  "hp": false,
+  "value": 0.1,
+  "desc": "공/방 증가"
+ },
+ {
+  "name": "붉은자매들",
+  "cards": [
+   "2000100001",
+   "2000300083",
+   "2001400248"
+  ],
+  "scope": "combo",
+  "atk": true,
+  "def": true,
+  "hp": false,
+  "value": 0.2,
+  "desc": "공/방 증가"
+ },
+ {
+  "name": "사생아",
+  "cards": [
+   "2000700165",
+   "2001100243"
+  ],
+  "scope": "combo",
+  "atk": true,
+  "def": true,
+  "hp": false,
+  "value": 0.15,
+  "desc": "공/방 증가"
+ },
+ {
+  "name": "특수경찰",
+  "cards": [
+   "2000000001",
+   "2000000003",
+   "2000000006"
+  ],
+  "scope": "combo",
+  "atk": true,
+  "def": true,
+  "hp": false,
+  "value": 0.1,
+  "desc": "공/방 증가"
+ },
+ {
+  "name": "라그나로크",
+  "cards": [
+   "2001500316",
+   "2000900234",
+   "1000200030"
+  ],
+  "scope": "all",
+  "atk": true,
+  "def": true,
+  "hp": true,
+  "value": 0.5,
+  "desc": "공/방/체 증가"
+ },
+ {
+  "name": "천사의 눈물",
+  "cards": [
+   "1000400092",
+   "2000400096"
+  ],
+  "scope": "combo",
+  "atk": false,
+  "def": false,
+  "hp": true,
+  "value": 0.05,
+  "desc": "체력 증가"
+ },
+ {
+  "name": "복수의 불꽃",
+  "cards": [
+   "1000400092",
+   "2000400097"
+  ],
+  "scope": "combo",
+  "atk": true,
+  "def": true,
+  "hp": false,
+  "value": 0.1,
+  "desc": "공/방 증가"
+ },
+ {
+  "name": "just for you",
+  "cards": [
+   "2000500111",
+   "2000500114"
+  ],
+  "scope": "combo",
+  "atk": true,
+  "def": true,
+  "hp": true,
+  "value": 0.05,
+  "desc": "공/방/체 증가"
+ },
+ {
+  "name": "무적남매",
+  "cards": [
+   "2000600115",
+   "2000600126",
+   "1000600130"
+  ],
+  "scope": "combo",
+  "atk": true,
+  "def": true,
+  "hp": true,
+  "value": 0.1,
+  "desc": "공/방/체 증가"
+ },
+ {
+  "name": "미안해",
+  "cards": [
+   "2000600116",
+   "2001900347"
+  ],
+  "scope": "combo",
+  "atk": true,
+  "def": true,
+  "hp": false,
+  "value": 0.1,
+  "desc": "공/방 증가"
+ },
+ {
+  "name": "펜싱선수",
+  "cards": [
+   "2001900347",
+   "2001400263",
+   "2000000004"
+  ],
+  "scope": "combo",
+  "atk": true,
+  "def": true,
+  "hp": false,
+  "value": 0.05,
+  "desc": "공/방 증가"
+ },
+ {
+  "name": "라이징이블",
+  "cards": [
+   "1000000001",
+   "1000000002",
+   "1000000003"
+  ],
+  "scope": "combo",
+  "atk": true,
+  "def": true,
+  "hp": false,
+  "value": 0.05,
+  "desc": "공/방 증가"
+ },
+ {
+  "name": "젊은 여경",
+  "cards": [
+   "2000000004",
+   "2000000005",
+   "2000000006"
+  ],
+  "scope": "combo",
+  "atk": true,
+  "def": true,
+  "hp": false,
+  "value": 0.05,
+  "desc": "공/방 증가"
+ },
+ {
+  "name": "예전의 너로",
+  "cards": [
+   "2002000353",
+   "2002000352"
+  ],
+  "scope": "combo",
+  "atk": true,
+  "def": true,
+  "hp": false,
+  "value": 0.1,
+  "desc": "공/방 증가"
+ },
+ {
+  "name": "아이돌",
+  "cards": [
+   "2001400246",
+   "2001400267",
+   "2001500314"
+  ],
+  "scope": "combo",
+  "atk": true,
+  "def": true,
+  "hp": true,
+  "value": 0.08,
+  "desc": "공/방/체 증가"
+ },
+ {
+  "name": "어둠의 자매",
+  "cards": [
+   "2000900225",
+   "2000900234"
+  ],
+  "scope": "combo",
+  "atk": true,
+  "def": true,
+  "hp": true,
+  "value": 0.15,
+  "desc": "공/방/체 증가"
+ },
+ {
+  "name": "너는 누구니",
+  "cards": [
+   "2000900234",
+   "2000900233"
+  ],
+  "scope": "combo",
+  "atk": true,
+  "def": true,
+  "hp": true,
+  "value": 0.1,
+  "desc": "공/방/체 증가"
+ },
+ {
+  "name": "지켜줄게?",
+  "cards": [
+   "2000900233",
+   "2000900236",
+   "2000900232"
+  ],
+  "scope": "combo",
+  "atk": false,
+  "def": false,
+  "hp": true,
+  "value": 0.05,
+  "desc": "체력 증가"
+ },
+ {
+  "name": "재미있게!",
+  "cards": [
+   "2000900206",
+   "2000900207"
+  ],
+  "scope": "combo",
+  "atk": true,
+  "def": false,
+  "hp": false,
+  "value": 0.1,
+  "desc": "공격력 증가"
+ },
+ {
+  "name": "비극의 서막",
+  "cards": [
+   "1000600122",
+   "1000600124",
+   "2000600132"
+  ],
+  "scope": "combo",
+  "atk": false,
+  "def": false,
+  "hp": true,
+  "value": 0.08,
+  "desc": "체력 증가"
+ },
+ {
+  "name": "다시 한 번",
+  "cards": [
+   "1000600120",
+   "1000600122",
+   "2000900234"
+  ],
+  "scope": "combo",
+  "atk": true,
+  "def": true,
+  "hp": true,
+  "value": 0.25,
+  "desc": "공/방/체 증가"
+ }
+]

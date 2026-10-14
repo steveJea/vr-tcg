@@ -13,3 +13,9 @@ VR 캐릭터 카드로 즐기는 1:1 카드 배틀 (컴퓨터 AI 상대). 정적
 - 아이템: 무기 💧30 ATK +15%, 방어구 💧30 HP +20% (카드당 각 1개), 회수 시 레벨·아이템 초기화
 - 필드 회복 💧20: 필드 카드 최대 HP 10% 회복
 - 스킬 훅: cards.csv에 `skills` 열(예: `taunt`, 여러 개는 `|`)을 추가하면 적용
+
+## 스킬 · 시너지 (v3)
+- 데이터: `data/skills.json`, `data/combos.json` ← 엑셀에서 `python3 tools/import_skills.py <xlsx>`로 생성
+- 엔진: `js/skills.js` (스킬별 효과는 스킬 이름으로 연결, 상태이상·MP·시너지·조합·AI 스킬 선택)
+- 연출 파일: 엑셀 '연출 파일' 칸에 파일명을 쓰고 `data/fx/`에 넣으면 컷인에 표시 (이미지 또는 mp4/webm)
+- 시뮬: `SIM_DETAIL=1 node tools/sim.mjs 3000` (스킬 사용 횟수·카드별 승률), `SIM_FORCE=<카드id> node tools/sim.mjs 300` (그 카드를 덱에 넣었을 때 승률)
