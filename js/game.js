@@ -1,4 +1,4 @@
-import { RULES, ELEMENTS, elementMultiplier, calcDamage, canSummon, buildDeck, parseCSV, aiSummonOrder, aiPickTarget, recallCost, canRecall, aiShouldRecall, makeUnit, resolveAttack, refillMana, ACTIONS, canAction, doAction, clearBuff, aiWantShuffle, aiWantBuff, aiWantHeal } from './rules.js';
+import { RULES, ELEMENTS, elementMultiplier, calcDamage, canSummon, buildDeck, parseCSV, aiSummonOrder, aiPickTarget, recallCost, canRecall, aiShouldRecall, makeUnit, resolveAttack, refillMana, ACTIONS, canAction, doAction, clearBuff, aiWantShuffle, aiWantBuff, aiWantHeal, aiWantFieldHeal, aiPickItem, endTurnXp, ITEMS, canEquip, equip, attackTargets, canTarget, autoTarget, heroLocked, xpToNext, SKILLS } from './rules.js';
 
 const IMG = 'https://raw.githubusercontent.com/steveJea/vr-ideal-worldcup/main/img/bt_img/';
 const NF = new Intl.NumberFormat('ko-KR');
@@ -17,7 +17,12 @@ let POOL = [];
 let S = null;          // 게임 상태
 let selected = null;   // 선택된 공격 유닛 uid
 let uidSeq = 1;
-const AI_DELAY = () => (window.TCG_FAST ? 0 : 650);
+// 연출 스킵: 토글(localStorage 저장) 또는 연출 중 클릭으로 현재 연출 빨리 감기
+const SKIP_KEY = 'vrTcgSkipFx';
+let skipFx = localStorage.getItem(SKIP_KEY) === '1';
+let fastForward = false;
+const FX_OFF = () => !!(window.TCG_FAST || skipFx || fastForward);
+const AI_DELAY = () => (window.TCG_FAST ? 0 : (skipFx || fastForward) ? 120 : 650);
 
 function newPlayer(name, second) {
   const deck = buildDeck(POOL);
@@ -58,10 +63,20 @@ function useAction(who, type) {
   const p = S[who], r = doAction(type, p);
   if (!r.ok) return r;
   const a = ACTIONS[type];
-  const detail = type === 'shuffle' ? `손패 ${r.n}장 다시 뽑기` : type === 'heal' ? `영웅 HP +${fmt(r.healed)}` : `필드 ${r.n}장 이번 턴 ATK +${Math.round(RULES.BUFF_RATIO * 100)}%`;
+  const detail = type === 'shuffle' ? `손패 ${r.n}장 다시 뽑기` : type === 'heal' ? `영웅 HP +${fmt(r.healed)}` : type === 'fieldheal' ? `필드 ${r.n}장 HP 총 +${fmt(r.healed)}` : `필드 ${r.n}장 이번 턴 ATK +${Math.round(RULES.BUFF_RATIO * 100)}%`;
   log(`${p.name}: ${a.icon} ${a.label} (마나 ${a.cost()}) — ${detail}`, 'text-violet-300');
   if (type === 'heal') floatText(`+${fmt(r.healed)}`, 'text-emerald-300', who === 'me' ? 'me' : 'ai');
+  if (type === 'fieldheal') floatText(`💚 +${fmt(r.healed)}`, 'text-emerald-300', who);
   if (type === 'buff') floatText(`⚔️ ATK +${Math.round(RULES.BUFF_RATIO * 100)}%`, 'text-violet-300', who);
+  render();
+  return r;
+}
+
+function equipItem(who, unit, type) {
+  const p = S[who], r = equip(type, unit, p);
+  if (!r.ok) return r;
+  const it = ITEMS[type];
+  log(`${p.name}: ${unit.card.name}에게 ${it.icon} ${it.label} 장착 (마나 ${it.cost()}) — ${type === 'weapon' ? 'ATK' : 'HP'} +${fmt(r.d)}`, 'text-amber-200');
   render();
   return r;
 }
@@ -84,9 +99,9 @@ function recall(who, unit) {
   if (!check.ok || !p.field.includes(unit)) return check;
   p.mana -= check.cost;
   p.field = p.field.filter(u => u !== unit);
-  p.hand.push(unit.base);               // 원본 카드로 복귀: HP·레벨 초기화
+  p.hand.push(unit.base);               // 원본 카드로 복귀: HP·레벨·XP·아이템 초기화
   if (selected === unit.uid) selected = null;
-  log(`${p.name}: ${unit.card.name} 회수 (마나 ${check.cost})`, 'text-sky-300');
+  log(`${p.name}: ${unit.card.name} 회수 (마나 ${check.cost}) — 레벨·아이템 초기화`, 'text-sky-300');
   render();
   return { ok: true };
 }
@@ -100,27 +115,35 @@ async function attackAll() {
   for (const u of ready) {
     if (S.over) break;
     if (!S.me.field.includes(u) || !u.canAttack) continue;
-    await attack('me', u, null, true);
+    const t = autoTarget(u, S.me, S.ai);
+    if (t === undefined) continue;          // 공격할 수 있는 대상 없음 (첫 턴 등)
+    await attack('me', u, t, true);
     await sleep(fxMs(60));
   }
-  S.busy = false; render();
+  S.busy = false; fastForward = false; render();
+}
+
+function renderSkipBtn() {
+  const b = $('fx-skip');
+  b.textContent = skipFx ? '⏩ 스킵 ON' : '🎬 연출';
+  b.classList.toggle('border-amber-400', skipFx); b.classList.toggle('text-amber-300', skipFx);
 }
 
 // ===== 공격 연출 =====
 const REDUCED = () => !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
-const fxMs = ms => (window.TCG_FAST ? 0 : REDUCED() ? Math.round(ms * 0.3) : ms);
+const fxMs = ms => (FX_OFF() ? 0 : REDUCED() ? Math.round(ms * 0.3) : ms);
 const unitEl = (who, u) => document.querySelector(`#${who}-field [data-uid="${u.uid}"]`);
 const heroEl = who => $(`${who}-hero`);
 
 function shake(el) {
-  if (!el || window.TCG_FAST) return;
+  if (!el || FX_OFF()) return;
   el.classList.remove('fx-shake', 'fx-hitflash'); void el.offsetWidth;
   el.classList.add('fx-shake', 'fx-hitflash');
   setTimeout(() => el.classList.remove('fx-shake', 'fx-hitflash'), 330);
 }
 
 function dmgNumber(el, text, color) {
-  if (!el || window.TCG_FAST) return;
+  if (!el || FX_OFF()) return;
   const r = el.getBoundingClientRect();
   const d = document.createElement('div');
   d.className = 'fx-dmg'; d.textContent = text;
@@ -133,7 +156,7 @@ function dmgNumber(el, text, color) {
 
 /** 공격자를 대상 쪽으로 돌진(getBoundingClientRect 차이 → transform). back()으로 제자리 복귀 */
 async function lunge(el, targetEl) {
-  if (!el || !targetEl || window.TCG_FAST) return { back: async () => {} };
+  if (!el || !targetEl || FX_OFF()) return { back: async () => {} };
   const a = el.getBoundingClientRect(), b = targetEl.getBoundingClientRect();
   const dx = (b.left + b.width / 2) - (a.left + a.width / 2);
   const dy = (b.top + b.height / 2) - (a.top + a.height / 2);
@@ -160,10 +183,11 @@ async function attack(who, unit, target, fromBatch = false) {
   const o = opp(who), p = S[who];
   if (!unit.canAttack || S.over) return;
   if (!fromBatch && who === 'me' && S.busy) return;
+  if (!canTarget(p, o, target)) { if (who === 'me') { const r = attackTargets(p, o).reason; log(r, 'text-red-400'); floatText(r, 'text-red-400 text-sm', 'ai'); } return; }
   const prevBusy = S.busy;
   S.busy = true; selected = null;
   const oWho = who === 'me' ? 'ai' : 'me';
-  if (!window.TCG_FAST) render();
+  if (!FX_OFF()) render();
   const aEl = unitEl(who, unit);
   const tEl = target ? unitEl(oWho, target) : heroEl(oWho);
   const hit = await lunge(aEl, tEl);
@@ -184,11 +208,12 @@ async function attack(who, unit, target, fromBatch = false) {
   }
   renderHero(oWho); renderHero(who);
   await hit.back();
-  if (dying.length && !window.TCG_FAST) {
+  if (dying.length && !FX_OFF()) {
     dying.forEach(el => el && el.classList.add('fx-dying'));
     await sleep(fxMs(300));
   }
   S.busy = prevBusy;
+  if (!prevBusy) fastForward = false;
   render();
   checkEnd();
 }
@@ -224,7 +249,13 @@ function checkEnd() {
 function endTurn() {
   if (S.turn !== 'me' || S.over || S.busy) return;
   selected = null;
+  levelupLog(endTurnXp(S.me));
   startTurn('ai');
+}
+
+function levelupLog(evs) {
+  for (const e of evs) { log(`${e.unit.card.name} 레벨 업! Lv${e.level} (ATK +${e.dAtk}, HP +${e.dHp})`, 'text-amber-300'); }
+  if (evs.length) render();
 }
 
 // ===== 간단한 AI =====
@@ -239,17 +270,21 @@ async function aiTurn() {
   for (const c of aiSummonOrder(ai.hand)) {
     if (canSummon(c, ai, me).ok) { summon('ai', c); await sleep(AI_DELAY()); }
   }
+  for (let it; (it = aiPickItem(ai, me));) { equipItem('ai', it[1], it[0]); await sleep(AI_DELAY()); }
+  if (aiWantFieldHeal(ai)) { useAction('ai', 'fieldheal'); await sleep(AI_DELAY()); }
   if (aiWantBuff(ai)) { useAction('ai', 'buff'); await sleep(AI_DELAY()); }
   // 2) 공격: 유리한 교환(내가 죽이고 살아남음, 또는 더 비싼 카드 처치) 우선, 없으면 영웅 공격
   for (const u of [...ai.field]) {
     if (S.over) break;
     if (!ai.field.includes(u) || !u.canAttack) continue;
-    const best = aiPickTarget(u, me.field);
+    const best = aiPickTarget(u, ai, me);
+    if (best === undefined) continue;
     await attack('ai', u, best);
     await sleep(AI_DELAY());
   }
   if (!S.over && aiWantHeal(ai)) { useAction('ai', 'heal'); await sleep(AI_DELAY()); }
-  S.busy = false;
+  levelupLog(endTurnXp(ai));
+  S.busy = false; fastForward = false;
   if (!S.over) startTurn('me');
 }
 
@@ -299,8 +334,12 @@ function render() {
     btn.querySelector('.reason').textContent = !myTurn ? '' : (c.ok ? '' : c.reason);
   }
   $('attack-all').disabled = !myTurn || !S.me.field.some(u => u.canAttack);
-  $('ai-hero').classList.toggle('ring-4', selected != null);
-  $('ai-hero').classList.toggle('ring-red-500', selected != null);
+  const tg = attackTargets(S.me, S.ai);
+  $('ai-hero').classList.toggle('ring-4', selected != null && tg.hero);
+  $('ai-hero').classList.toggle('ring-red-500', selected != null && tg.hero);
+  $('ai-hero').classList.toggle('opacity-70', S.turn === 'me' && !tg.hero);
+  $('hero-hint').textContent = S.turn === 'me' && !S.over ? (tg.hero ? '🎯 상대 영웅 공격 가능' : '🛡️ ' + tg.reason) : '';
+  $('hero-hint').className = `text-center text-[11px] md:text-xs font-bold ${tg.hero ? 'text-emerald-400' : 'text-amber-300'}`;
 
   for (const who of ['ai', 'me']) {
     const box = $(`${who}-field`); box.innerHTML = '';
@@ -309,9 +348,13 @@ function render() {
       const w = document.createElement('div');
       const isSel = selected === u.uid;
       const ready = who === 'me' && u.canAttack && myTurn;
-      w.className = `unit cursor-pointer transition ${isSel ? '-translate-y-2 drop-shadow-[0_0_10px_#34d399]' : ''} ${ready ? 'ready' : ''} ${selected != null && who === 'ai' ? 'target' : ''}`;
+      w.className = `unit cursor-pointer transition ${isSel ? '-translate-y-2 drop-shadow-[0_0_10px_#34d399]' : ''} ${ready ? 'ready' : ''} ${selected != null && who === 'ai' && tg.units.includes(u) ? 'target' : ''}`;
       w.dataset.uid = u.uid;
-      w.innerHTML = `<div class="relative">${cardHTML(u.card, { hp: u.hp, size: 'sm', dim: who === 'me' && !u.canAttack && myTurn })}${u.level > 1 ? `<div class="lv-badge absolute -top-1.5 left-1/2 -translate-x-1/2 px-1.5 rounded-full bg-amber-400 text-black text-[9px] md:text-[10px] font-black">Lv${u.level}</div>` : ''}</div>` +
+      const hero = u.level >= RULES.LEVEL_MAX;
+      const icons = [u.items?.weapon && ITEMS.weapon.icon, u.items?.armor && ITEMS.armor.icon, ...u.skills.map(k => SKILLS[k]?.icon)].filter(Boolean);
+      w.innerHTML = `<div class="relative ${hero ? 'hero-card' : ''}">${cardHTML(u.card, { hp: u.hp, size: 'sm', dim: who === 'me' && !u.canAttack && myTurn })}` +
+        `<div class="lv-badge absolute -top-1.5 left-1/2 -translate-x-1/2 px-1.5 rounded-full ${hero ? 'bg-gradient-to-r from-yellow-300 to-amber-500 shadow-[0_0_8px_#fbbf24]' : u.level > 1 ? 'bg-amber-400' : 'bg-zinc-600 text-white'} text-black text-[9px] md:text-[10px] font-black whitespace-nowrap">${hero ? '👑 ' : ''}Lv${u.level}</div>` +
+        (icons.length ? `<div class="item-icons absolute top-7 right-0.5 flex flex-col text-[11px] md:text-sm leading-tight drop-shadow">${icons.map(x => `<span>${x}</span>`).join('')}</div>` : '') + `</div>` +
         (ready ? '<div class="text-center text-[10px] text-emerald-400 font-bold">공격 가능</div>' : '');
       w.onclick = () => onUnitClick(who, u);
       box.appendChild(w);
@@ -351,7 +394,7 @@ function onUnitClick(who, u) {
 function onHeroClick() {
   if (selected == null || S.turn !== 'me' || S.busy) return;
   const a = S.me.field.find(x => x.uid === selected);
-  if (a) attack('me', a, null);
+  if (a) attack('me', a, null); // 규칙 위반이면 attack()이 사유를 보여줌
 }
 
 function showDetail(c, { fromHand = false, hp, unit = null } = {}) {
@@ -378,11 +421,18 @@ function showDetail(c, { fromHand = false, hp, unit = null } = {}) {
     ${fromHand ? `
       ${check.ok || !myTurn ? '' : `<div id="summon-reason" class="mt-3 text-sm text-red-400">${check.reason}</div>`}
       <button id="summon-btn" ${check.ok && myTurn ? '' : 'disabled'} class="mt-4 w-full py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 text-black font-bold">소환하기</button>` : ''}
+    ${unit ? `
+      <div class="mt-3 flex items-center gap-2 text-sm"><span class="font-black ${unit.level >= RULES.LEVEL_MAX ? 'text-amber-300' : ''}">${unit.level >= RULES.LEVEL_MAX ? '👑 영웅 ' : ''}Lv${unit.level}</span>
+        ${unit.level < RULES.LEVEL_MAX ? `<div class="flex-1 h-2 bg-white/10 rounded-full overflow-hidden"><div class="h-full bg-amber-400" style="width:${Math.min(100, unit.xp / xpToNext(unit.level) * 100)}%"></div></div><span class="text-[11px] text-zinc-400">XP ${unit.xp}/${xpToNext(unit.level)}</span>` : '<span class="text-[11px] text-zinc-400">최대 레벨</span>'}</div>
+      ${unit.skills.length ? `<div class="mt-1 text-xs text-zinc-300">${unit.skills.map(k => `${SKILLS[k]?.icon || ''} ${SKILLS[k]?.label || k}`).join(' · ')}</div>` : ''}
+      <div class="grid grid-cols-2 gap-2 mt-3">${Object.entries(ITEMS).map(([type, it]) => { const ce = canEquip(type, unit, S.me); return `
+        <button data-equip="${type}" ${ce.ok && myTurn ? '' : 'disabled'} class="py-2 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-black text-sm font-bold">${it.icon} ${it.label} ${it.desc()} <span class="text-sky-900">💧${it.cost()}</span><div class="text-[10px] font-normal h-3">${unit.items?.[type] ? '장착됨' : (!myTurn || ce.ok ? '' : ce.reason)}</div></button>`; }).join('')}</div>` : ''}
     ${unit ? (() => { const rc = canRecall(unit, S.me); return `
       ${rc.ok || !myTurn ? '' : `<div id="recall-reason" class="mt-3 text-sm text-red-400">${rc.reason}</div>`}
       <button id="recall-btn" ${rc.ok && myTurn ? '' : 'disabled'} class="mt-4 w-full py-3 rounded-2xl bg-sky-500 hover:bg-sky-400 disabled:opacity-40 text-black font-bold">회수 (마나 ${rc.cost})</button>
-      <div class="text-[11px] text-zinc-500 mt-1 text-center">손패로 돌아가며 HP가 회복됩니다</div>`; })() : ''}`;
+      <div class="text-[11px] text-zinc-500 mt-1 text-center">손패로 돌아가며 HP가 회복되고, 레벨·XP·아이템은 초기화됩니다</div>`; })() : ''}`;
   fixImages($('detail-body'));
+  if (unit) $('detail-body').querySelectorAll('[data-equip]').forEach(b => b.onclick = () => { const r = equipItem('me', unit, b.dataset.equip); if (r.ok) showDetail(unit.card, { hp: unit.hp, unit }); });
   if (unit && $('recall-btn')) $('recall-btn').onclick = () => { const r = recall('me', unit); if (r.ok) hideModal('detail'); };
   if (fromHand) $('summon-btn').onclick = () => { const r = summon('me', c); if (r.ok) hideModal('detail'); };
   showModal('detail');
@@ -403,6 +453,10 @@ $('attack-all').onclick = attackAll;
 for (const type of Object.keys(ACTIONS)) $(`act-${type}`).onclick = () => { if (S.turn === 'me' && !S.busy && !S.over) useAction('me', type); };
 $('ai-hero').onclick = onHeroClick;
 $('help-btn').onclick = () => showModal('help');
+$('fx-skip').onclick = e => { e.stopPropagation(); skipFx = !skipFx; localStorage.setItem(SKIP_KEY, skipFx ? '1' : '0'); if (S?.busy) fastForward = true; renderSkipBtn(); };
+// 연출 중 화면을 누르면 현재 연출 빨리 감기
+$('game').addEventListener('click', () => { if (S?.busy && !S.over) fastForward = true; }, true);
+renderSkipBtn();
 $('restart-btn').onclick = () => { renderStats(); startGame(); };
 $('home-btn').onclick = () => { $('end-screen').classList.add('hidden'); $('game').classList.add('hidden'); $('start-screen').classList.remove('hidden'); renderStats(); };
 renderStats();
@@ -416,4 +470,4 @@ renderStats();
 })();
 
 // 테스트/디버그용
-window.TCG = { get S() { return S; }, RULES, elementMultiplier, calcDamage, canSummon, buildDeck, summon, attack, recall, attackAll, endTurn, canRecall, recallCost, makeUnit, resolveAttack, useAction, canAction, startGame, get POOL() { return POOL; }, render, Stats };
+window.TCG = { get S() { return S; }, RULES, elementMultiplier, calcDamage, canSummon, buildDeck, summon, attack, recall, attackAll, endTurn, canRecall, recallCost, makeUnit, resolveAttack, useAction, canAction, startGame, equipItem, attackTargets, get POOL() { return POOL; }, render, Stats };

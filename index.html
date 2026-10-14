@@ -17,6 +17,8 @@
     .fx-dmg { position: fixed; z-index: 40; pointer-events: none; font-weight: 900; font-size: 1.35rem; color: #f87171; text-shadow: 0 2px 4px #000, 0 0 8px #7f1d1d; transform: translate(-50%, -50%); animation: fxDmg .9s ease-out forwards; }
     @keyframes fxDmg { 0% { opacity: 0; margin-top: 0; scale: .6; } 15% { opacity: 1; scale: 1.25; } 30% { scale: 1; } 100% { opacity: 0; margin-top: -42px; } }
     .fx-dying { transition: opacity .3s ease, scale .3s ease !important; opacity: 0; scale: .7; }
+    .hero-card > div:first-child { box-shadow: 0 0 0 3px #fbbf24, 0 0 14px 4px rgba(251,191,36,.7); animation: heroGlow 1.6s ease-in-out infinite; }
+    @keyframes heroGlow { 50% { box-shadow: 0 0 0 3px #fde68a, 0 0 22px 8px rgba(251,191,36,.9); } }
     .fx-attacker { position: relative; z-index: 30; }
     @media (prefers-reduced-motion: reduce) { .fx-shake { animation-duration: .12s; } .fx-dmg { animation-duration: .45s; } }
     #me-hand::-webkit-scrollbar { height: 6px; } #me-hand::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 3px; }
@@ -52,6 +54,7 @@
       <div class="flex justify-between text-[11px] text-zinc-400 mt-1"><span>💧 <span id="ai-mana"></span></span><span>덱 <span id="ai-deck"></span> · 손패 <span id="ai-handcount"></span></span></div>
       <div id="ai-handcards" class="flex gap-1 mt-1"></div>
     </div>
+    <button id="fx-skip" class="h-10 shrink-0 px-2 rounded-full bg-zinc-800 border border-white/20 hover:border-emerald-400 text-xs font-bold whitespace-nowrap" title="공격 연출을 생략합니다 (연출 중 화면을 누르면 빨리 감기)">🎬 연출</button>
     <button id="help-btn" class="w-10 h-10 shrink-0 rounded-full bg-zinc-800 border border-white/20 hover:border-emerald-400 font-bold" title="속성 상성">?</button>
   </div>
 
@@ -66,6 +69,7 @@
     <div id="me-field" class="flex justify-center gap-1.5 md:gap-3 min-h-[110px] md:min-h-[150px]"></div>
   </div>
 
+  <div id="hero-hint" class="text-center text-[11px] md:text-xs font-bold"></div>
   <!-- 내 영웅 + 턴 종료 -->
   <div class="flex items-center gap-2">
     <div id="me-hero" class="flex-1 bg-black/60 border border-emerald-500/40 rounded-2xl px-3 py-2">
@@ -80,10 +84,11 @@
   </div>
 
   <!-- 마나 액션 -->
-  <div id="action-bar" class="grid grid-cols-3 gap-1.5">
+  <div id="action-bar" class="grid grid-cols-2 md:grid-cols-4 gap-1.5">
     <button id="act-shuffle" class="act-btn bg-zinc-900 border border-violet-500/40 hover:border-violet-400 disabled:opacity-40 rounded-xl px-1 py-1.5 text-[11px] md:text-sm font-bold leading-tight">🔀 패 섞기 <span class="text-sky-300">💧50</span><div class="reason text-[9px] md:text-[10px] text-red-400 font-normal h-3"></div></button>
     <button id="act-heal" class="act-btn bg-zinc-900 border border-violet-500/40 hover:border-violet-400 disabled:opacity-40 rounded-xl px-1 py-1.5 text-[11px] md:text-sm font-bold leading-tight">🏰 기지 보강 <span class="text-sky-300">💧20</span><div class="reason text-[9px] md:text-[10px] text-red-400 font-normal h-3"></div></button>
     <button id="act-buff" class="act-btn bg-zinc-900 border border-violet-500/40 hover:border-violet-400 disabled:opacity-40 rounded-xl px-1 py-1.5 text-[11px] md:text-sm font-bold leading-tight">⚔️ 공격력 강화 <span class="text-sky-300">💧30</span><div class="reason text-[9px] md:text-[10px] text-red-400 font-normal h-3"></div></button>
+    <button id="act-fieldheal" class="act-btn bg-zinc-900 border border-violet-500/40 hover:border-violet-400 disabled:opacity-40 rounded-xl px-1 py-1.5 text-[11px] md:text-sm font-bold leading-tight">💚 필드 회복 <span class="text-sky-300">💧20</span><div class="reason text-[9px] md:text-[10px] text-red-400 font-normal h-3"></div></button>
   </div>
 
   <!-- 손패 -->
@@ -106,13 +111,24 @@
 
 <!-- 속성 상성표 -->
 <div id="help" class="hidden fixed inset-0 bg-black/80 items-center justify-center z-40 p-4">
-  <div class="bg-zinc-900 border border-white/15 rounded-3xl p-5 w-full max-w-md relative text-sm">
+  <div class="bg-zinc-900 border border-white/15 rounded-3xl p-5 w-full max-w-md relative text-sm max-h-[90vh] overflow-y-auto">
     <button data-close="help" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-zinc-800 hover:bg-zinc-700">✕</button>
-    <div class="text-xl font-black mb-3">속성 상성표</div>
+    <div class="text-xl font-black mb-3">속성 상성표 · 규칙</div>
     <div class="space-y-2">
       <div>🔥 불 → 🌪️ 바람 → ❄️ 얼음 → 🔥 불 <br><span class="text-zinc-400">유리 ×1.5 / 불리 ×0.75</span></div>
       <div>✨ 빛 ↔ 🌑 어둠 <span class="text-zinc-400">서로 ×2 (기본 3속성과는 ×1)</span></div>
       <div>💀 심연 <span class="text-zinc-400">모든 속성에 ×1.25, 불리 없음.<br>단, ✨ 빛에게는 ×2 피해를 받음.<br>상대 필드에 빛 카드가 있으면 심연 카드 소환 불가.</span></div>
+      <div class="text-xl font-black pt-3 border-t border-white/10">전투 규칙</div>
+      <ul class="list-disc pl-5 text-zinc-300 space-y-1">
+        <li>자기 <b>첫 2턴</b>에는 영웅을 공격할 수 없어요 (초과 피해도 영웅에게 가지 않음)</li>
+        <li>상대 필드에 카드가 <b>4장 이상</b>이면 카드만 공격할 수 있어요. 3장 이하면 영웅 직접 공격 가능</li>
+        <li>🎯 도발 카드가 있으면 그 카드부터 공격해야 해요</li>
+        <li>XP: 처치 시 처치한 카드 코스트 × (1 + 그 카드 레벨 × 0.2) + 공격할 때마다 5 + 내 턴 종료 시 살아있는 카드마다 4. 최대 <b>Lv10</b> (👑 영웅 카드), 레벨이 오를수록 필요 XP 증가<br><span class="text-zinc-400">Lv2~5: 원본 ATK·HP +10% / Lv6~10: +5%</span></li>
+        <li>아이템 (필드 카드를 눌러 장착): 🗡️ 무기 💧30 ATK +15% · 🛡️ 방어구 💧30 HP +20% (카드당 각 1개)</li>
+        <li>🎬 연출 스킵 버튼: 켜면 공격 연출 생략. 연출 중 화면을 누르면 빨리 감기</li>
+        <li>회수하면 레벨·XP·아이템이 초기화돼요</li>
+        <li>💚 필드 회복 💧20: 내 필드 카드 전체 최대 HP의 10% 회복 (턴당 1회)</li>
+      </ul>
       <div class="text-zinc-400 pt-2 border-t border-white/10">데미지 = max(1, ⌊ATK × 1.5 × 배율 − 대상 DEF ÷ 2⌋) · 영웅은 DEF 0</div>
     </div>
   </div>
