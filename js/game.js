@@ -299,8 +299,8 @@ function render() {
     btn.querySelector('.reason').textContent = !myTurn ? '' : (c.ok ? '' : c.reason);
   }
   $('attack-all').disabled = !myTurn || !S.me.field.some(u => u.canAttack);
-  $('ai-hero').classList.toggle('ring-4', !!selected);
-  $('ai-hero').classList.toggle('ring-red-500', !!selected);
+  $('ai-hero').classList.toggle('ring-4', selected != null);
+  $('ai-hero').classList.toggle('ring-red-500', selected != null);
 
   for (const who of ['ai', 'me']) {
     const box = $(`${who}-field`); box.innerHTML = '';
@@ -309,7 +309,7 @@ function render() {
       const w = document.createElement('div');
       const isSel = selected === u.uid;
       const ready = who === 'me' && u.canAttack && myTurn;
-      w.className = `unit cursor-pointer transition ${isSel ? '-translate-y-2 drop-shadow-[0_0_10px_#34d399]' : ''} ${ready ? 'ready' : ''} ${selected && who === 'ai' ? 'target' : ''}`;
+      w.className = `unit cursor-pointer transition ${isSel ? '-translate-y-2 drop-shadow-[0_0_10px_#34d399]' : ''} ${ready ? 'ready' : ''} ${selected != null && who === 'ai' ? 'target' : ''}`;
       w.dataset.uid = u.uid;
       w.innerHTML = `<div class="relative">${cardHTML(u.card, { hp: u.hp, size: 'sm', dim: who === 'me' && !u.canAttack && myTurn })}${u.level > 1 ? `<div class="lv-badge absolute -top-1.5 left-1/2 -translate-x-1/2 px-1.5 rounded-full bg-amber-400 text-black text-[9px] md:text-[10px] font-black">Lv${u.level}</div>` : ''}</div>` +
         (ready ? '<div class="text-center text-[10px] text-emerald-400 font-bold">공격 가능</div>' : '');
@@ -340,7 +340,7 @@ function onUnitClick(who, u) {
     if (selected === u.uid) { selected = null; render(); }
     showDetail(u.card, { hp: u.hp, unit: u });
   } else {
-    if (myTurn && selected) {
+    if (myTurn && selected != null) {
       const a = S.me.field.find(x => x.uid === selected);
       if (a) { attack('me', a, u); return; }
     }
@@ -349,7 +349,7 @@ function onUnitClick(who, u) {
 }
 
 function onHeroClick() {
-  if (!selected || S.turn !== 'me' || S.busy) return;
+  if (selected == null || S.turn !== 'me' || S.busy) return;
   const a = S.me.field.find(x => x.uid === selected);
   if (a) attack('me', a, null);
 }
