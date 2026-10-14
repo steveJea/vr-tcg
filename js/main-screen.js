@@ -3,6 +3,26 @@
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const screen = document.getElementById('start-screen');
 
+  // --- 세로 화면 배경 영상: 세로일 때만 src를 넣어 데스크톱은 다운로드하지 않음 ---
+  const vid = document.getElementById('main-video');
+  const portraitMq = matchMedia('(orientation: portrait), (max-aspect-ratio: 4/5)');
+  const syncVideo = () => {
+    if (!vid || reduce) return;                 // 동작 줄이기: 영상 대신 정지 이미지
+    if (portraitMq.matches) {
+      if (!vid.dataset.loaded) {
+        vid.dataset.loaded = '1';
+        vid.innerHTML = '<source src="video/main-portrait.webm" type="video/webm"><source src="video/main-portrait.mp4" type="video/mp4">';
+        vid.load();
+      }
+      vid.classList.remove('hidden');
+      vid.play().catch(() => {});
+    } else { vid.classList.add('hidden'); vid.pause(); }
+  };
+  syncVideo();
+  portraitMq.addEventListener?.('change', syncVideo);
+  // 게임 화면으로 가면 영상 정지, 돌아오면 재생
+  new MutationObserver(() => { if (!vid?.dataset.loaded) return; screen.classList.contains('hidden') ? vid.pause() : syncVideo(); }).observe(screen, { attributes: true, attributeFilter: ['class'] });
+
   // --- 불씨 파티클 (가벼운 canvas) ---
   const cv = document.getElementById('embers');
   if (cv && !reduce) {
