@@ -39,7 +39,19 @@
     @keyframes cutIn { 0% { opacity: 0; transform: translateX(-30%) skewX(-12deg); } 20% { opacity: 1; transform: none; } 85% { opacity: 1; } 100% { opacity: 0; transform: translateX(10%); } }
     @media (prefers-reduced-motion: reduce) { .cutin { animation-duration: .3s; } }
     @media (prefers-reduced-motion: reduce) { .fx-shake { animation-duration: .12s; } .fx-dmg { animation-duration: .45s; } }
-    #me-field .unit.dragging { opacity: .9; filter: drop-shadow(0 0 12px #a78bfa); cursor: grabbing; } #me-hand::-webkit-scrollbar { height: 6px; } #me-hand::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 3px; }
+    #my-turns{display:inline-flex;align-items:baseline;gap:2px;padding:1px 8px;border-radius:999px;font-weight:800;font-size:11px;border:1px solid;white-space:nowrap}
+#my-turns b{font-size:15px;line-height:1}#my-turns .of{opacity:.6;font-size:10px}
+@media (max-width:640px){#my-turns .lbl{display:none}#my-turns::before{content:'⏳'}}
+.turns-ok{color:#6ee7b7;border-color:#10b98166;background:#064e3b88}
+.turns-warn{color:#fdba74;border-color:#f97316;background:#7c2d1299}
+.turns-crit{color:#fff;border-color:#ef4444;background:#b91c1c;animation:turnPulse 1s ease-in-out infinite}
+@keyframes turnPulse{0%,100%{box-shadow:0 0 0 0 #ef4444aa;transform:scale(1)}50%{box-shadow:0 0 12px 4px #ef4444aa;transform:scale(1.08)}}
+#my-turns-pips{display:flex;gap:2px}#my-turns-pips i{flex:1;height:4px;border-radius:2px;background:#ffffff1a}
+#my-turns-pips i.on{background:#34d399}
+.turns-warn-p i.on{background:#fb923c!important}.turns-crit-p i.on{background:#ef4444!important}
+.last-turn-toast{position:fixed;left:50%;top:40%;transform:translate(-50%,-50%);z-index:60;padding:14px 28px;border-radius:18px;background:linear-gradient(135deg,#dc2626,#f97316);color:#fff;font-weight:900;font-size:clamp(22px,6vw,40px);box-shadow:0 0 40px #ef4444;pointer-events:none;animation:toastIn 2.2s ease forwards}
+@keyframes toastIn{0%{opacity:0;transform:translate(-50%,-50%) scale(.6)}12%{opacity:1;transform:translate(-50%,-50%) scale(1.1)}20%{transform:translate(-50%,-50%) scale(1)}80%{opacity:1}100%{opacity:0;transform:translate(-50%,-60%) scale(1)}}
+#me-field .unit.dragging { opacity: .9; filter: drop-shadow(0 0 12px #a78bfa); cursor: grabbing; } #me-hand::-webkit-scrollbar { height: 6px; } #me-hand::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 3px; }
   </style>
 </head>
 <body class="bg-zinc-950 text-white min-h-screen select-none">
@@ -91,7 +103,7 @@
     <div id="ai-field" class="flex justify-center gap-1.5 md:gap-3 min-h-[110px] md:min-h-[150px]"></div>
     <div class="flex items-center gap-2">
       <div class="flex-1 h-px bg-white/10"></div>
-      <div id="turn-info" class="text-xs md:text-sm font-bold text-emerald-400"></div>
+      <div id="turn-info" class="text-[10px] md:text-xs font-bold text-emerald-400"></div>
       <div class="flex-1 h-px bg-white/10"></div>
     </div>
     <div id="me-field" class="flex justify-center gap-1.5 md:gap-3 min-h-[110px] md:min-h-[150px]"></div>
@@ -101,7 +113,8 @@
   <!-- 내 영웅 + 턴 종료 -->
   <div class="flex items-center gap-2">
     <div id="me-hero" class="flex-1 bg-black/60 border border-emerald-500/40 rounded-2xl px-3 py-2">
-      <div class="flex justify-between text-xs md:text-sm"><span class="font-bold text-emerald-400">🧑 나 <span id="me-order" class="ml-1 px-1.5 py-0.5 rounded bg-white/10 text-[10px] text-zinc-300"></span></span><span id="me-hp" class="font-bold"></span></div>
+      <div class="flex justify-between text-xs md:text-sm"><span class="font-bold text-emerald-400">🧑 나 <span id="me-order" class="ml-1 px-1.5 py-0.5 rounded bg-white/10 text-[10px] text-zinc-300"></span></span><span class="flex items-center gap-2"><span id="my-turns" title="내 턴 남은 횟수 (현재 턴 포함)"><span class="lbl">내 턴 남은 횟수</span> <b id="my-turns-n"></b><span class="of">/15</span></span><span id="me-hp" class="font-bold"></span></span></div>
+      <div id="my-turns-pips" class="mt-1"></div>
       <div class="h-2 bg-white/10 rounded-full mt-1 overflow-hidden"><div id="me-hpbar" class="h-full bg-emerald-400 transition-all"></div></div>
       <div id="me-syn" class="flex flex-wrap gap-1 mt-1 empty:hidden"></div>
       <div class="flex justify-between text-[11px] text-zinc-400 mt-1"><span class="text-sky-300 font-bold">💧 마나 <span id="me-mana"></span></span><span>덱 <span id="me-deck"></span> · 손패 <span id="me-handcount"></span></span></div>
