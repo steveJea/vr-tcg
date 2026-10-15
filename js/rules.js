@@ -1,5 +1,5 @@
 // ===== VR TCG 규칙 (순수 함수: UI와 분리, 테스트 가능) =====
-import { skillsOf, damageUnit, damageHero, checkDeath, afterBasicHit, refreshAll, onLevelChange } from './skills.js';
+import { skillsOf, damageUnit, damageHero, checkDeath, afterBasicHit, refreshAll, onLevelChange, redirectAttack, counterMult, heal } from './skills.js';
 export const RULES = {
   HERO_HP: 3000,          // 영웅 HP
   DAMAGE_MULT: 1.5,       // ATK에 곱하는 전체 데미지 배율 (DEF 차감 전)
@@ -85,6 +85,8 @@ export function recallCost(card) { return Math.ceil(card.cost * RULES.RECALL_COS
 /** 회수 가능 여부와 사유 */
 export function canRecall(unit, me) {
   const cost = recallCost(unit.card);
+  if (unit.st?.para) return { ok: false, cost, reason: '마비 상태에서는 회수할 수 없습니다' };
+  if (unit.st?.disrupt) return { ok: false, cost, reason: '교란 상태에서는 회수할 수 없습니다' };
   if (cost > me.mana) return { ok: false, cost, reason: `마나가 부족합니다 (${me.mana}/${cost})` };
   return { ok: true, cost };
 }
@@ -224,7 +226,16 @@ export function resolveAttack(me, opp, unit, target) {
     gainXp(unit, RULES.ATTACK_XP);
     return ev;
   }
-  const d1 = calcDamage(unit.card, target.card), d2 = calcDamage(target.card, unit.card);
+  const rd = redirectAttack(unit, target);
+  if (rd.decoyOf) {   // 대신 맞기: 공격자 쪽 카드가 맞고 반격 없음, 처치 XP는 시전자
+    const proxy = rd.target, caster = rd.decoyOf;
+    const r1 = damageUnit(proxy, calcDamage(unit.card, proxy.card), unit, { silent: true });
+    ev.push({ type: 'hit', unit, target: proxy, d1: r1, d2: 0, mult: elementMultiplier(unit.card.class, proxy.card.class) });
+    if (proxy.hp <= 0 && checkDeath(proxy, caster) && caster.st.decoy?.healOnKill) heal(caster, caster.maxHp, '배신의 향연');
+    return ev;
+  }
+  const ratio = rd.ratio || 1; target = rd.target;
+  const d1 = Math.max(1, Math.round(calcDamage(unit.card, target.card) * ratio)), d2 = Math.round(calcDamage(target.card, unit.card) * (calcDamage(unit.card, target.card) * ratio < target.hp ? counterMult(target, unit) : 1));
   const tHpBefore = target.hp;
   const r1 = damageUnit(target, d1, unit, { silent: true });
   const r2 = damageUnit(unit, d2, target, { silent: true });
