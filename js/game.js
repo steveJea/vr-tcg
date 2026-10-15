@@ -468,7 +468,8 @@ function render() {
         (sts.length ? `<div class="status-icons absolute top-7 left-0.5 flex flex-col text-[11px] md:text-sm leading-tight drop-shadow">${sts.map(x => `<span title="${x.title}">${x.icon}</span>`).join('')}</div>` : '') + `</div>` +
         `<div class="mp-bar h-1.5 bg-white/10 rounded-full mt-0.5 overflow-hidden" title="MP ${u.mp}/${u.maxMp} (+${u.mpRegen}/턴)"><div class="h-full bg-blue-500" style="width:${u.maxMp ? Math.min(100, u.mp / u.maxMp * 100) : 0}%"></div></div>` +
         `<div class="flex justify-center gap-1 h-4">${ready ? '<span class="text-[10px] text-emerald-400 font-bold">공격 가능</span>' : ''}${skReady ? '<button class="skill-btn text-[10px] px-1 rounded bg-fuchsia-600 hover:bg-fuchsia-500 font-bold">✦스킬</button>' : ''}</div>`;
-      w.onclick = () => onUnitClick(who, u);
+      w.onclick = ev => { if (dragJustEnded) { ev.stopPropagation(); return; } onUnitClick(who, u); };
+      if (who === 'me' && myTurn) enableDrag(w, u);
       const sb = w.querySelector('.skill-btn'); if (sb) sb.onclick = ev => { ev.stopPropagation(); showDetail(u.card, { hp: u.hp, unit: u }); };
       box.appendChild(w);
     });
@@ -476,7 +477,8 @@ function render() {
   }
 
   const hand = $('me-hand'); hand.innerHTML = '';
-  S.me.hand.forEach(c => {
+  renderSortBar();
+  sortedHand(S.me.hand).forEach(c => {
     const w = document.createElement('div');
     const ok = myTurn && canSummon(c, S.me, S.ai).ok;
     w.className = `hand-card shrink-0 cursor-pointer transition hover:-translate-y-2 ${ok ? '' : 'opacity-60'}`;
@@ -487,6 +489,55 @@ function render() {
   });
   fixImages(hand);
   $('ai-handcards').innerHTML = S.ai.hand.map(() => '<div class="w-4 h-6 md:w-5 md:h-7 rounded bg-gradient-to-br from-zinc-700 to-zinc-900 border border-white/20"></div>').join('');
+}
+
+// ===== 손패 정렬 =====
+const SORT_KEY = 'tcg_hand_sort';
+const GRADE_RANK = { 'NORMAL': 0, 'RARE': 1, 'HIGH RARE': 2, 'SUPER RARE': 3, 'ULTRA RARE': 4, 'MYTHIC RARE': 5 };
+const SORTS = { none: '획득순', grade: '등급순', cost: '코스트순', atk: '공격력순', def: '방어력순', hp: '체력순' };
+const sortVal = { grade: c => GRADE_RANK[c.grade] ?? 0, cost: c => c.cost, atk: c => c.ATK, def: c => c.DEF, hp: c => c.HP };
+let handSort = localStorage.getItem(SORT_KEY) || 'none';
+if (!SORTS[handSort]) handSort = 'none';
+function sortedHand(hand) {
+  const f = sortVal[handSort]; if (!f) return [...hand];
+  return [...hand].sort((a, b) => (f(b) || 0) - (f(a) || 0) || (b.cost || 0) - (a.cost || 0));
+}
+function renderSortBar() {
+  const bar = $('hand-sort'); if (!bar) return;
+  bar.innerHTML = '<span class="text-zinc-400 mr-1">정렬</span>' + Object.entries(SORTS).map(([k, v]) =>
+    `<button data-sort="${k}" class="px-2 py-0.5 rounded-full border ${k === handSort ? 'bg-emerald-600 border-emerald-400 text-white' : 'bg-zinc-800 border-white/15 text-zinc-300'}">${v}</button>`).join('');
+  bar.querySelectorAll('[data-sort]').forEach(b => b.onclick = () => { handSort = b.dataset.sort; localStorage.setItem(SORT_KEY, handSort); render(); });
+}
+
+// ===== 필드 카드 드래그 앤 드롭 (내 턴만) =====
+let dragJustEnded = false;
+const DRAG_THRESHOLD = 8;
+function enableDrag(el, u) {
+  el.style.touchAction = 'none';
+  el.addEventListener('pointerdown', e => {
+    if (e.button > 0 || e.target.closest('.skill-btn')) return;
+    const sx = e.clientX, sy = e.clientY; let dragging = false;
+    const move = ev => {
+      const dx = ev.clientX - sx, dy = ev.clientY - sy;
+      if (!dragging && Math.hypot(dx, dy) < DRAG_THRESHOLD) return;
+      if (!dragging) { dragging = true; el.classList.add('dragging'); el.style.zIndex = 50; el.style.transition = 'none'; try { el.setPointerCapture(e.pointerId); } catch {} }
+      el.style.transform = `translate(${dx}px, ${dy}px) scale(1.06)`;
+    };
+    const up = ev => {
+      window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', up);
+      if (!dragging) return;
+      dragJustEnded = true; setTimeout(() => { dragJustEnded = false; }, 0);
+      const f = S.me.field, from = f.indexOf(u);
+      if (ev.type !== 'pointercancel' && from >= 0 && S.turn === 'me' && !S.busy && !S.over) {
+        const others = [...$('me-field').children].filter(x => x !== el && x.dataset.uid);
+        let to = others.findIndex(x => { const r = x.getBoundingClientRect(); return ev.clientX < r.left + r.width / 2; });
+        if (to < 0) to = others.length;
+        f.splice(from, 1); f.splice(to, 0, u);
+      }
+      render();
+    };
+    window.addEventListener('pointermove', move); window.addEventListener('pointerup', up); window.addEventListener('pointercancel', up);
+  });
 }
 
 function onUnitClick(who, u) {
@@ -613,4 +664,4 @@ renderStats();
 // 테스트/디버그용
 // 디버그: 카드 배치 TCG.put('me', id, 레벨)
 function debugPut(who, id, lv = 1) { const c = POOL.find(x => String(x.id) === String(id)); const u = placeUnit(S[who], c, makeUnit); while (u.level < lv) gainXp(u, xpToNext(u.level)); u.mp = u.maxMp; render(); return u; }
-window.TCG = { put: debugPut, castSkill, skillState, get S() { return S; }, RULES, elementMultiplier, calcDamage, canSummon, buildDeck, summon, attack, recall, attackAll, endTurn, canRecall, recallCost, makeUnit, resolveAttack, useAction, canAction, startGame, equipItem, doSacrifice, finish, attackTargets, get POOL() { return POOL; }, render, Stats };
+window.TCG = { sortedHand, get handSort() { return handSort; }, put: debugPut, castSkill, skillState, get S() { return S; }, RULES, elementMultiplier, calcDamage, canSummon, buildDeck, summon, attack, recall, attackAll, endTurn, canRecall, recallCost, makeUnit, resolveAttack, useAction, canAction, startGame, equipItem, doSacrifice, finish, attackTargets, get POOL() { return POOL; }, render, Stats };
