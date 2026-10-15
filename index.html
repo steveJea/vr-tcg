@@ -10,6 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/main-screen.css">
+  <link rel="stylesheet" href="css/howto.css">
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     .zoom-btn{width:22px;height:22px;border-radius:9999px;background:rgba(0,0,0,.6);border:1px solid rgba(255,255,255,.35);font-size:11px;line-height:1;display:flex;align-items:center;justify-content:center;z-index:5;cursor:zoom-in;touch-action:manipulation}
@@ -128,6 +129,7 @@
     <div class="main-line my-4 md:my-6"></div>
     <div class="flex flex-col gap-3 w-full max-w-xs">
       <button id="start-btn" disabled class="main-btn main-btn-primary">불러오는 중...</button>
+      <button id="main-howto" class="main-btn main-btn-sub">📖 How to Play</button>
       <div class="grid grid-cols-3 gap-2">
         <button id="main-help" class="main-btn main-btn-sub">도움말</button>
         <button id="main-skip" class="main-btn main-btn-sub" title="공격 연출 생략">🎬 연출</button>
@@ -224,6 +226,7 @@
   <div class="bg-zinc-900 border border-white/15 rounded-3xl p-5 w-full max-w-md relative text-sm modal-panel">
     <button data-close="help" aria-label="닫기" class="modal-x w-8 h-8 rounded-full bg-zinc-800 hover:bg-zinc-700">✕</button>
     <div class="text-xl font-black mb-3">속성 상성표 · 규칙</div>
+    <button id="help-howto" class="w-full mb-3 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-black font-bold">📖 How to Play · 🎓 튜토리얼</button>
     <div class="space-y-2">
       <div>🔥 불 → 🌪️ 바람 → ❄️ 얼음 → 🔥 불 <br><span class="text-zinc-400">유리 ×1.5 / 불리 ×0.75</span></div>
       <div>✨ 빛 ↔ 🌑 어둠 <span class="text-zinc-400">서로 ×2 (기본 3속성과는 ×1)</span></div>
@@ -269,5 +272,6 @@
 <script type="module" src="js/game.js"></script>
 <div id="cutin" class="hidden"></div>
 <script src="js/main-screen.js"></script>
+<script src="js/howto.js"></script>
 </body>
 </html>

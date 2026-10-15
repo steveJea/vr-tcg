@@ -1,0 +1,34 @@
+/* ===== How to Play 슬라이드 + 튜토리얼 ===== */
+#howto{position:fixed;inset:0;z-index:90;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;padding:12px}
+#howto.open{display:flex}
+#howto .ht-panel{position:relative;width:100%;max-width:440px;max-height:calc(100dvh - 24px);background:#18181b;border:1px solid rgba(251,191,36,.35);border-radius:24px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 10px 50px rgba(0,0,0,.7)}
+#howto .ht-head{display:flex;align-items:center;justify-content:space-between;padding:12px 14px 6px;font-weight:900;color:#fde68a;font-size:13px;letter-spacing:.08em}
+#howto .ht-x{width:36px;height:36px;border-radius:9999px;background:#27272a;color:#fff;font-size:16px}
+#howto .ht-view{overflow:hidden;touch-action:pan-y;flex:1;min-height:0}
+#howto .ht-track{display:flex;height:100%;transition:transform .32s cubic-bezier(.2,.8,.3,1)}
+#howto .ht-slide{flex:0 0 100%;padding:6px 20px 10px;display:flex;flex-direction:column;align-items:center;text-align:center;overflow-y:auto}
+#howto .ht-icon{font-size:64px;line-height:1.1;margin:8px 0 6px;filter:drop-shadow(0 4px 12px rgba(251,191,36,.35))}
+#howto .ht-shot{max-width:100%;max-height:120px;border-radius:12px;border:1px solid rgba(255,255,255,.15);margin:6px 0;object-fit:contain}
+#howto .ht-title{font-size:20px;font-weight:900;margin:4px 0 8px}
+#howto .ht-lines{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:6px;font-size:14px;color:#d4d4d8;line-height:1.45}
+#howto .ht-lines b{color:#fde68a}
+#howto .ht-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 12px 14px}
+#howto .ht-arrow{width:42px;height:42px;border-radius:9999px;background:#27272a;font-size:18px;color:#fff}
+#howto .ht-arrow:disabled{opacity:.3}
+#howto .ht-dots{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+#howto .ht-dots button{width:8px;height:8px;border-radius:9999px;background:#52525b;padding:0}
+#howto .ht-dots button.on{background:#fbbf24;width:20px}
+#howto .ht-tut{margin:0 12px 6px;padding:10px;border-radius:14px;background:linear-gradient(135deg,#059669,#10b981);color:#000;font-weight:900}
+/* 튜토리얼: 스포트라이트는 클릭을 막지 않음 (pointer-events:none) → 게임 로직 그대로 */
+#tut-spot{position:fixed;z-index:85;border-radius:14px;pointer-events:none;box-shadow:0 0 0 9999px rgba(0,0,0,.6),0 0 0 3px #fbbf24,0 0 18px 4px rgba(251,191,36,.7);transition:all .3s ease;display:none}
+#tut-box{position:fixed;z-index:86;left:50%;transform:translateX(-50%);width:min(92vw,380px);background:#18181b;border:2px solid #fbbf24;border-radius:18px;padding:12px 14px;color:#fff;box-shadow:0 8px 30px rgba(0,0,0,.7);display:none}
+#tut-box .tt-step{font-size:11px;color:#fbbf24;font-weight:800}
+#tut-box .tt-title{font-size:16px;font-weight:900;margin:2px 0 4px}
+#tut-box .tt-text{font-size:13px;color:#d4d4d8;line-height:1.45}
+#tut-box .tt-btns{display:flex;gap:6px;margin-top:10px;align-items:center}
+#tut-box .tt-btns button{padding:8px 12px;border-radius:12px;font-weight:800;font-size:13px}
+#tut-box label{font-size:11px;color:#a1a1aa;display:flex;gap:4px;align-items:center;margin-right:auto}
+#tut-offer{position:fixed;z-index:20;left:50%;top:14px;transform:translateX(-50%);width:min(92vw,360px);background:rgba(24,24,27,.95);border:1px solid #fbbf24;border-radius:18px;padding:12px;text-align:center;color:#fff;box-shadow:0 8px 30px rgba(0,0,0,.6)}
+#tut-offer .row{display:flex;gap:6px;margin-top:8px}
+#tut-offer .row button{flex:1;padding:8px;border-radius:12px;font-weight:800;font-size:13px}
+@media (prefers-reduced-motion: reduce){#howto .ht-track,#tut-spot{transition:none}}
