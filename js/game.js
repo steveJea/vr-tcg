@@ -326,12 +326,26 @@ function cutInHTML(u, name, fx, passive) {
   const media = fx ? (/\.(mp4|webm)$/i.test(fx) ? `<video src="data/fx/${fx}" autoplay muted playsinline class="cutin-media"></video>` : `<img src="data/fx/${fx}" class="cutin-media" alt="" onerror="this.remove()">`) : '';
   return `${media}<div class="cutin-text"><div class="text-[11px] md:text-xs text-zinc-200">${u.owner.name} · ${u.card.name}${passive ? ' · 패시브' : ''}</div><div class="text-xl md:text-3xl font-black tracking-tight">${passive ? '✨ ' : '⚡ '}${name}</div></div>`;
 }
+/** 슬래시 착지 순간(약 19%) 화면 살짝 흔들기 — 모션 줄이기 설정이면 생략 */
+let impactTimer;
+function slashImpact(ms) {
+  if (FX_OFF() || REDUCED() || !ms) return;
+  clearTimeout(impactTimer);
+  impactTimer = setTimeout(() => {
+    const root = document.querySelector('main') || document.body;
+    root.classList.remove('fx-shake'); void root.offsetWidth; root.classList.add('fx-shake');
+    setTimeout(() => root.classList.remove('fx-shake'), 330);
+  }, Math.round(ms * 0.19));
+}
 async function cutIn(u, name, fx, passive = false) {
   if (FX_OFF()) return;
   const el = $('cutin');
   el.innerHTML = cutInHTML(u, name, fx, passive);
+  const ms = fxMs(fx ? 1300 : passive ? 500 : 750);
+  el.style.setProperty('--dur', `${ms}ms`);
   el.className = `cutin ${fx ? 'cutin-img' : ''} fixed left-0 right-0 z-40 pointer-events-none text-center ${whoOf(u.owner) === 'me' ? 'cutin-me' : 'cutin-ai'}`;
-  await sleep(fxMs(fx ? 1300 : passive ? 500 : 750));
+  slashImpact(ms);
+  await sleep(ms);
   el.className = 'hidden';
 }
 /** 패시브 발동 연출: 카드별·스킬별 게임당 첫 발동만 큰 이미지(비동기, 턴 진행을 막지 않음), 이후는 작은 글자만 */
@@ -344,8 +358,12 @@ function passiveCutIn(u, name) {
   S.fxSeen.add(key);
   const el = $('cutin');
   el.innerHTML = cutInHTML(u, name, s.fx, true);
+  const ms = fxMs(1100);
+  el.style.setProperty('--dur', `${ms}ms`);
+  el.className = 'hidden'; void el.offsetWidth; // 애니메이션 재시작
   el.className = `cutin cutin-img fixed left-0 right-0 z-40 pointer-events-none text-center ${whoOf(u.owner) === 'me' ? 'cutin-me' : 'cutin-ai'}`;
-  clearTimeout(passiveTimer); passiveTimer = setTimeout(() => { el.className = 'hidden'; }, fxMs(1100));
+  slashImpact(ms);
+  clearTimeout(passiveTimer); passiveTimer = setTimeout(() => { el.className = 'hidden'; }, ms);
 }
 
 async function castSkill(who, u, s) {

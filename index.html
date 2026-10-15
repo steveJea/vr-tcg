@@ -51,14 +51,41 @@
     .cutin-img.cutin-me .cutin-text > div:last-child { color: #a7f3d0; } .cutin-img.cutin-ai .cutin-text > div:last-child { color: #fecaca; }
     .cutin-img.cutin-me .cutin-text { color: #d1fae5; } .cutin-img.cutin-ai .cutin-text { color: #fee2e2; }
     @media (orientation: portrait) { .cutin.cutin-img { aspect-ratio: auto; width: 100vw; height: min(62vh, 125vw); max-height: none; } }
-    .cutin.cutin-img { background: #000; animation-name: cutInImg; }
-    @keyframes cutInImg { 0% { opacity: 0; transform: scale(1.08); filter: brightness(2); } 15% { opacity: 1; transform: scale(1); filter: none; } 85% { opacity: 1; } 100% { opacity: 0; } }
+    .cutin.cutin-img { background: #000; }
     .hp-fill, .mp-bar > div { transition: width .35s ease-out; }
-    .cutin { animation: cutIn .75s ease-out both; text-shadow: 0 2px 8px #000; }
+    .cutin { --dir: 1; --dur: .75s; text-shadow: 0 2px 8px #000; animation: slashCut var(--dur) both; clip-path: polygon(5% 0, 100% 0, 95% 100%, 0 100%); }
+    .cutin.cutin-ai { --dir: -1; clip-path: polygon(0 0, 95% 0, 100% 100%, 5% 100%); }
     .cutin-me { background: linear-gradient(90deg, transparent, rgba(16,185,129,.55) 20%, rgba(16,185,129,.55) 80%, transparent); }
     .cutin-ai { background: linear-gradient(90deg, transparent, rgba(220,38,38,.55) 20%, rgba(220,38,38,.55) 80%, transparent); }
-    @keyframes cutIn { 0% { opacity: 0; transform: translateX(-30%) skewX(-12deg); } 20% { opacity: 1; transform: none; } 85% { opacity: 1; } 100% { opacity: 0; transform: translateX(10%); } }
-    @media (prefers-reduced-motion: reduce) { .cutin { animation-duration: .3s; } }
+    .cutin.cutin-img.cutin-me { box-shadow: 0 0 40px rgba(0,0,0,.8), inset 0 0 0 2px rgba(110,231,183,.6); }
+    .cutin.cutin-img.cutin-ai { box-shadow: 0 0 40px rgba(0,0,0,.8), inset 0 0 0 2px rgba(252,165,165,.6); }
+    /* 슬래시 컷인: 대각선 띠가 빠르게 들어옴(~250ms) → 번쩍 + 흔들림 → 천천히 흐름 → 반대쪽으로 베고 나감(~250ms) */
+    @keyframes slashCut {
+      0%   { transform: translateX(calc(var(--dir) * -125%)) skewX(calc(var(--dir) * -20deg)); animation-timing-function: cubic-bezier(.15,.85,.3,1); }
+      19%  { transform: translateX(0) skewX(calc(var(--dir) * -4deg)); }
+      26%  { transform: none; }
+      81%  { transform: none; animation-timing-function: cubic-bezier(.7,0,.85,.15); }
+      100% { transform: translateX(calc(var(--dir) * 125%)) skewX(calc(var(--dir) * -20deg)); }
+    }
+    .cutin::after { content: ''; position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; animation: slashFlash var(--dur) both; mix-blend-mode: screen; }
+    @keyframes slashFlash { 0%, 16% { opacity: 0; } 20% { opacity: .85; } 34%, 100% { opacity: 0; } }
+    .cutin-img .cutin-media { animation: slashDrift var(--dur) linear both; }
+    @keyframes slashDrift { 0% { transform: scale(1.12) translateX(calc(var(--dir) * 2%)); } 100% { transform: scale(1.04) translateX(calc(var(--dir) * -2%)); } }
+    .cutin .cutin-text { position: relative; overflow: hidden; animation: slashTitle var(--dur) both; }
+    .cutin-img .cutin-text { position: absolute; }
+    @keyframes slashTitle {
+      0%, 14% { opacity: 0; transform: translate(calc(var(--dir) * -40%), -40%) skewX(calc(var(--dir) * -18deg)); }
+      34% { opacity: 1; transform: none; animation-timing-function: ease-out; }
+      100% { opacity: 1; transform: none; }
+    }
+    .cutin .cutin-text::after { content: ''; position: absolute; top: 0; bottom: 0; width: 30%; left: -40%; background: linear-gradient(105deg, transparent, rgba(255,255,255,.75), transparent); transform: skewX(-20deg); animation: slashShine var(--dur) ease-in-out both; pointer-events: none; }
+    @keyframes slashShine { 0%, 30% { left: -40%; } 58%, 100% { left: 120%; } }
+    @keyframes cutInFade { 0% { opacity: 0; } 15% { opacity: 1; } 85% { opacity: 1; } 100% { opacity: 0; } }
+    @media (prefers-reduced-motion: reduce) {
+      .cutin { animation: cutInFade var(--dur) both !important; clip-path: none !important; }
+      .cutin::after, .cutin .cutin-text::after { display: none; }
+      .cutin-img .cutin-media, .cutin .cutin-text { animation: none !important; }
+    }
     @media (prefers-reduced-motion: reduce) { .fx-shake { animation-duration: .12s; } .fx-dmg { animation-duration: .45s; } }
     #my-turns{display:inline-flex;align-items:baseline;gap:2px;padding:1px 8px;border-radius:999px;font-weight:800;font-size:11px;border:1px solid;white-space:nowrap}
 #my-turns b{font-size:15px;line-height:1}#my-turns .of{opacity:.6;font-size:10px}
