@@ -53,9 +53,9 @@ export const STATUS = {
   debuffImmune: { icon: '✳️', label: '디버프 면역', desc: '디버프에 걸리지 않음' },
   taunt:   { icon: '🎯', label: '도발', desc: '상대는 이 카드부터 공격해야 함' },
   esoteric:{ icon: '☠️', label: 'Esoteric', debuff: true, desc: '매 턴 HP -10%, ATK -3% 누적' },
-  dot:     { icon: '🩻', label: '체력 고갈', debuff: true, desc: '매 턴 시작 시 HP 감소' },
+  dot:     { icon: '🩻', label: 'HP 고갈', debuff: true, desc: '매 턴 시작 시 HP 감소' },
   regen:   { icon: '💚', label: '재생', desc: '매 턴 시작 시 HP 회복' },
-  noheal:  { icon: '🚫', label: '회복 불가', debuff: true, desc: '체력이 회복되지 않음' },
+  noheal:  { icon: '🚫', label: '회복 불가', debuff: true, desc: 'HP가 회복되지 않음' },
   decoy:   { icon: '🪞', label: '대신 맞기', desc: '이 카드를 향한 기본 공격을 상대 카드가 대신 맞음' },
   seed:    { icon: '🌱', label: '쾌락의 씨앗', desc: '종료 시 HP 5% 회복' },
   mod:     { icon: '', label: '' },
@@ -163,7 +163,7 @@ export function damageHero(p, dmg, srcOwner, kind = 'hit', srcUnit = null) {
     if (zen) {
       p.once['참선'] = 1; stats.count('참선'); p.hp = Math.min(RULES.HERO_HP, Math.max(0, p.hp) + 300);
       p.st.heroInvuln = { t: 1 + (TURN.p === p ? 1 : 0) };
-      emit({ type: 'passive', unit: zen, name: '참선', text: '본진 붕괴 직전! 1턴 무적 + 체력 300 회복' });
+      emit({ type: 'passive', unit: zen, name: '참선', text: '본진 붕괴 직전! 1턴 무적 + HP 300 회복' });
     } else p.hp = 0;
   }
   return dmg;
@@ -316,7 +316,7 @@ export const ACTIVE = {
   '고갈될 예정입니다.': (u, p, f) => { if (chance(0.2)) live(f).forEach(t => addStatus(t, 'confuse', 1, {}, 'confuse')); else emit({ type: 'miss', unit: u, text: '확률 실패' }); },
   '이건 내분입니다.': (u, p, f) => debuffAll(f, '이건 내분입니다.', 2, { atk: -0.05, def: -0.05, label: 'ATK·DEF -5%' }),
   '나 좀 내버려둬': u => addStatus(u, 'decoy', 1, { pick: 'cost', male: true, label: '대신 맞기(코스트 최고)' }, 'decoy'),
-  '소녀의 거래': u => addStatus(u, 'decoy', 1, { pick: 'hp', male: true, label: '대신 맞기(체력 최고)' }, 'decoy'),
+  '소녀의 거래': u => addStatus(u, 'decoy', 1, { pick: 'hp', male: true, label: '대신 맞기(HP 최고)' }, 'decoy'),
   '영원한 유혹의 굴레': (u, p, f) => { const t = by(live(f).filter(x => x.card.cost < 40), x => x.card.cost, -1); if (t) addStatus(u, 'decoy', 1, { proxy: t, label: `${t.card.name} 대신 맞기` }, 'decoy'); else emit({ type: 'miss', unit: u, text: '대상 없음' }); },
   '배신의 향연': (u, p, f) => { const t = by(live(f), x => x.base.MOR || 0); if (t) addStatus(u, 'decoy', 1, { proxy: t, healOnKill: 1, label: `${t.card.name} 대신 맞기` }, 'decoy'); },
   '제발 그냥 가줘': (u, p, f) => { const t = by(males(f), x => x.card.cost, -1); if (!t) return; damageUnit(t, Math.ceil(t.hp * 0.8), u); checkDeath(t, u); },
