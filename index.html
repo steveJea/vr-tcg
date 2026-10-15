@@ -74,6 +74,10 @@
 @keyframes toastIn{0%{opacity:0;transform:translate(-50%,-50%) scale(.6)}12%{opacity:1;transform:translate(-50%,-50%) scale(1.1)}20%{transform:translate(-50%,-50%) scale(1)}80%{opacity:1}100%{opacity:0;transform:translate(-50%,-60%) scale(1)}}
 #me-field .unit.dragging { opacity: .9; filter: drop-shadow(0 0 12px #a78bfa); cursor: grabbing; } #me-hand::-webkit-scrollbar { height: 6px; } #me-hand::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 3px; }
   </style>
+<style>
+  .modal-panel{max-height:calc(100dvh - 2rem);overflow-y:auto;overscroll-behavior:contain}
+  .modal-x{position:sticky;top:0;float:right;margin:-.5rem -.5rem .25rem .5rem;z-index:10;box-shadow:0 2px 8px rgba(0,0,0,.6)}
+</style>
 </head>
 <body class="bg-zinc-950 text-white min-h-screen select-none">
 
@@ -168,15 +172,15 @@
 
 <!-- 카드 상세 -->
 <div id="detail" class="hidden fixed inset-0 bg-black/80 items-center justify-center z-40 p-4">
-  <div class="bg-zinc-900 border border-white/15 rounded-3xl p-5 w-full max-w-md relative">
-    <button data-close="detail" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-zinc-800 hover:bg-zinc-700">✕</button>
+  <div class="bg-zinc-900 border border-white/15 rounded-3xl p-5 w-full max-w-md relative modal-panel">
+    <button data-close="detail" aria-label="닫기" class="modal-x w-8 h-8 rounded-full bg-zinc-800 hover:bg-zinc-700">✕</button>
     <div id="detail-body"></div>
   </div>
 </div>
 
 <!-- 속성 상성표 -->
 <div id="endturn-confirm" class="hidden fixed inset-0 bg-black/70 items-center justify-center z-50 p-4">
-  <div class="bg-zinc-900 border border-amber-400/50 rounded-3xl p-5 w-full max-w-sm text-center shadow-2xl">
+  <div class="bg-zinc-900 border border-amber-400/50 rounded-3xl p-5 w-full max-w-sm text-center shadow-2xl modal-panel">
     <div class="text-3xl mb-2">⚠️</div>
     <div id="endturn-msg" class="text-base md:text-lg font-bold mb-4"></div>
     <div class="flex gap-2 justify-center">
@@ -187,8 +191,8 @@
   </div>
 </div>
 <div id="help" class="hidden fixed inset-0 bg-black/80 items-center justify-center z-40 p-4">
-  <div class="bg-zinc-900 border border-white/15 rounded-3xl p-5 w-full max-w-md relative text-sm max-h-[90vh] overflow-y-auto">
-    <button data-close="help" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-zinc-800 hover:bg-zinc-700">✕</button>
+  <div class="bg-zinc-900 border border-white/15 rounded-3xl p-5 w-full max-w-md relative text-sm modal-panel">
+    <button data-close="help" aria-label="닫기" class="modal-x w-8 h-8 rounded-full bg-zinc-800 hover:bg-zinc-700">✕</button>
     <div class="text-xl font-black mb-3">속성 상성표 · 규칙</div>
     <div class="space-y-2">
       <div>🔥 불 → 🌪️ 바람 → ❄️ 얼음 → 🔥 불 <br><span class="text-zinc-400">유리 ×1.5 / 불리 ×0.75</span></div>

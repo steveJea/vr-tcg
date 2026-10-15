@@ -722,6 +722,13 @@ function renderStats() {
 
 // ===== 초기화 =====
 document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => hideModal(b.dataset.close));
+// 바깥(어두운 배경) 탭 → 닫기. 누르기 시작과 끝이 모두 배경일 때만 (패널 안 스크롤/드래그로는 안 닫힘)
+const MODAL_IDS = ['detail', 'help', 'endturn-confirm'];
+for (const id of MODAL_IDS) { const m = $(id); let downOnBg = false;
+  m.addEventListener('pointerdown', e => { downOnBg = e.target === m; });
+  m.addEventListener('click', e => { if (downOnBg && e.target === m) hideModal(id); downOnBg = false; }); }
+document.addEventListener('keydown', e => { if (e.key !== 'Escape' || $('zoom-view')?.classList.contains('open')) return;
+  const open = MODAL_IDS.filter(id => !$(id).classList.contains('hidden')); if (open.length) hideModal(open[open.length - 1]); });
 // 턴 종료 확인: 행동 가능한 카드가 남아 있으면 물어봄 (내 턴 UI 전용, AI·시뮬레이터와 무관)
 const CONFIRM_KEY = 'tcg_skip_endturn_confirm';
 function idleUnits() {
