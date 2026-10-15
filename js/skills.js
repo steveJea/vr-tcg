@@ -57,6 +57,7 @@ export const STATUS = {
   regen:   { icon: '💚', label: '재생', desc: '매 턴 시작 시 HP 회복' },
   noheal:  { icon: '🚫', label: '회복 불가', debuff: true, desc: 'HP가 회복되지 않음' },
   decoy:   { icon: '🪞', label: '대신 맞기', desc: '이 카드를 향한 기본 공격을 상대 카드가 대신 맞음' },
+  pleading:{ icon: '🛡️', label: '꼭 이래야해?', desc: '피해 50% 감면, 반격 250%, 종료 시 HP 30% 회복' },
   seed:    { icon: '🌱', label: '쾌락의 씨앗', desc: '종료 시 HP 5% 회복' },
   mod:     { icon: '', label: '' },
 };
@@ -137,6 +138,7 @@ export function skillDamage(src, target, pct, { ignoreDef = 0, extra = 1 } = {})
 export function damageUnit(target, dmg, src = null, { silent = false } = {}) {
   if (!target.owner.field.includes(target)) return 0;
   if (target.st.immune) { emit({ type: 'immune', unit: target }); return 0; }
+  if (target.st.pleading) dmg = Math.round(dmg * 0.5);
   target.hp -= dmg;
   if (!silent) emit({ type: 'dmg', unit: target, dmg });
   if (src && src.hp > 0 && hasPassive(src, '우습네요') && heal(src, Math.round(dmg * 0.3), '흡혈')) stats.count('우습네요');
@@ -172,6 +174,16 @@ export function damageHero(p, dmg, srcOwner, kind = 'hit', srcUnit = null) {
 export function checkDeath(u, killer = null) {
   const p = u.owner;
   if (u.hp > 0 || !p.field.includes(u)) return false;
+  // 제발…그만 (문유선): 사망 시 1회 부활, HP 100%, 디버프 제거, 1턴 면역 + 도발
+  if (hasPassive(u, '제발…그만') && !u.fired['제발…그만']) {
+    u.fired['제발…그만'] = 1; stats.count('제발…그만');
+    emit({ type: 'passive', unit: u, name: '제발…그만', skill: (u.sk || []).find(s => s.name === '제발…그만') });
+    for (const [k, s] of Object.entries(u.st)) if (STATUS[s.kind]?.debuff || s.atk < 0 || s.def < 0) delete u.st[k];
+    u.curse = 0; u.hp = u.maxHp;
+    addStatus(u, 'immune', 1, {}, 'immune'); addStatus(u, 'taunt', 1, {}, 'taunt');
+    emit({ type: 'heal', unit: u, amt: u.maxHp, why: '제발…그만' }); refreshAll(p);
+    return false;
+  }
   p.field.splice(p.field.indexOf(u), 1);
   p.grave.push(u.base);
   p.lastDead = u.base;
@@ -327,6 +339,7 @@ export const ACTIVE = {
   '너의 이름은?': (u, p, f) => { const t = by(live(f), x => x.base.MOR || 0, -1); if (t && chance(0.4) && addStatus(t, 'para', 2, {}, 'para')) addStatus(t, '너의 이름은?', 2, { def: -0.15, label: 'DEF -15%' }, 'mod'); else emit({ type: 'miss', unit: u, text: '확률 실패' }); },
   '달빛 아래 파멸의 포옹': (u, p, f) => hitAll(u, f, 2, 0.2),
   '은은한 베일의 재앙': (u, p, f) => { const top = by(live(f), x => x.card.ATK, -1); hitAll(u, f, 2, 0.3); if (top && f.field.includes(top)) { damageUnit(top, skillDamage(u, top, 0.2), u); checkDeath(top, u); } },
+  '꼭 이래야해?': u => { addStatus(u, 'taunt', 1, {}, 'taunt'); addStatus(u, 'pleading', 1, {}, 'pleading'); },
   '쾌락의 씨앗': u => { addStatus(u, 'taunt', 1, {}, 'taunt'); addStatus(u, 'immune', 1, {}, 'immune'); addStatus(u, 'seed', 1, {}, 'seed'); },
   '광기의 신음': (u, p, f) => live(f).forEach(t => addStatus(t, 'dot', 3, { pct: 0.05, minOne: true, label: '광기의 신음' }, 'dot')),
   '이리 올래?': (u, p, f) => males(f).forEach(t => chance(0.4) && addStatus(t, 'para', 1, {}, 'para')),
@@ -385,7 +398,7 @@ export function redirectAttack(attacker, target) {
   }
   return { target };
 }
-export const counterMult = (target, attacker) => hasPassive(target, '이게 반격이야') ? 1.5 : 1;
+export const counterMult = (target, attacker) => (target.st.pleading ? 2.5 : 1) * (hasPassive(target, '이게 반격이야') ? 1.5 : 1);
 
 // ---- 스킬 사용 가능 여부 ----
 export function skillState(u, s) {
@@ -496,7 +509,7 @@ export function turnEnd(p) {
   // 상태 지속 감소 (자기 턴 종료 기준)
   for (const u of p.field) {
     if (u.paraBlock) u.paraBlock--;
-    for (const [k, s] of Object.entries(u.st)) if (--s.t <= 0) { delete u.st[k]; if (k === 'seed') heal(u, u.maxHp * 0.05, '쾌락의 씨앗'); if (k === 'para') u.paraBlock = 2; emit({ type: 'expire', unit: u, key: k }); }
+    for (const [k, s] of Object.entries(u.st)) if (--s.t <= 0) { delete u.st[k]; if (k === 'seed') heal(u, u.maxHp * 0.05, '쾌락의 씨앗'); if (k === 'pleading') heal(u, u.maxHp * 0.3, '꼭 이래야해?'); if (k === 'para') u.paraBlock = 2; emit({ type: 'expire', unit: u, key: k }); }
   }
   for (const [k, s] of Object.entries(p.st)) if (--s.t <= 0) delete p.st[k];
   if (p.actionLock > 0) p.actionLock--;
