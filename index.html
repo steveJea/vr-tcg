@@ -125,7 +125,7 @@
   <!-- 내 영웅 + 턴 종료 -->
   <div class="flex items-center gap-2">
     <div id="me-hero" class="flex-1 bg-black/60 border border-emerald-500/40 rounded-2xl px-3 py-2">
-      <div class="flex justify-between text-xs md:text-sm"><span class="font-bold text-emerald-400">🧑 나 <span id="me-order" class="ml-1 px-1.5 py-0.5 rounded bg-white/10 text-[10px] text-zinc-300"></span></span><span class="flex items-center gap-2"><span id="my-turns" title="내 턴 남은 횟수 (현재 턴 포함)"><span class="lbl">내 턴 남은 횟수</span> <b id="my-turns-n"></b><span class="of">/15</span></span><span id="me-hp" class="font-bold"></span></span></div>
+      <div class="flex justify-between text-xs md:text-sm"><span class="font-bold text-emerald-400">🧑 나 <span id="me-order" class="ml-1 px-1.5 py-0.5 rounded bg-white/10 text-[10px] text-zinc-300"></span></span><span class="flex items-center gap-2"><span id="my-turns" title="내 턴 남은 횟수 (현재 턴 포함)"><span class="lbl">내 턴 남은 횟수</span> <b id="my-turns-n"></b><span class="of" id="my-turns-max">/20</span></span><span id="me-hp" class="font-bold"></span></span></div>
       <div id="my-turns-pips" class="mt-1"></div>
       <div class="h-2 bg-white/10 rounded-full mt-1 overflow-hidden"><div id="me-hpbar" class="h-full bg-emerald-400 transition-all"></div></div>
       <div id="me-syn" class="flex flex-wrap gap-1 mt-1 empty:hidden"></div>
@@ -205,7 +205,7 @@
         <li>🩸 희생: 필드 카드를 없애고 코스트의 50% 마나 (턴당 1회, 카드 상세에서)</li>
         <li>💧 마나는 이월됩니다: 첫 턴 40, 이후 매 턴 +20, 최대 100</li>
         <li>💀 처치 마나: 공격이나 스킬로 적 카드를 처치하면 즉시 그 카드 코스트 × 0.3 마나 (최대 100까지)</li>
-        <li>⏱️ 전체 30턴(각자 15턴) 후 판정: 진영 HP → 남은 필드 카드 수 → 무승부</li>
+        <li>⏱️ 전체 40턴(각자 20턴) 후 판정: 진영 HP → 남은 필드 카드 수 → 무승부</li>
         <li>🌟 MR(미식 레어) 카드는 진영에 피해의 20%만 줍니다</li>
       </ul>
       <div class="text-zinc-400 pt-2 border-t border-white/10">데미지 = max(1, ⌊ATK × 1.5 × 배율 − 대상 DEF ÷ 2⌋) · 영웅은 DEF 0</div>

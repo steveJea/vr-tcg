@@ -1,5 +1,5 @@
 import { RULES, ELEMENTS, elementMultiplier, calcDamage, canSummon, buildDeck, parseCSV, aiSummonOrder, aiPickTarget, recallCost, canRecall, aiShouldRecall, makeUnit, resolveAttack, refillMana, ACTIONS, canAction, doAction, clearBuff, aiWantShuffle, aiWantBuff, aiWantHeal, aiWantFieldHeal, aiPickItem, endTurnXp, ITEMS, canEquip, equip, attackTargets, canTarget, autoTarget, heroLocked, xpToNext, SKILLS, gainXp, setCardPool, canSacrifice, sacrifice, aiPickSacrifice, aiWantAccel, judgeTimeout, JUDGE_LABEL } from './rules.js';
-import { setSkillData, setEmitter, initPlayers, placeUnit, turnStart, turnEnd, useSkill, skillState, aiPickSkill, refreshAll, statusIcons, skillsOf, combos, STATUS, SK } from './skills.js';
+import { setSkillData, setEmitter, initPlayers, placeUnit, turnStart, turnEnd, useSkill, skillState, aiPickSkill, refreshAll, statusIcons, skillsOf, combos, STATUS, SK, maleLure } from './skills.js';
 
 const IMG = 'https://raw.githubusercontent.com/steveJea/vr-ideal-worldcup/main/img/bt_img/';
 const NF = new Intl.NumberFormat('ko-KR');
@@ -129,14 +129,17 @@ async function attackAll() {
   if (!ready.length) return;
   S.busy = true; selected = null; render();
   log(`일괄 공격! (${ready.length}장)`, 'text-emerald-400');
-  for (const u of ready) {
-    if (S.over) break;
-    if (!S.me.field.includes(u) || !u.canAttack) continue;
-    const t = autoTarget(u, S.me, S.ai);
-    if (t === undefined) continue;          // 공격할 수 있는 대상 없음 (첫 턴 등)
-    await attack('me', u, t, true);
-    await sleep(fxMs(60));
-  }
+  try {
+    for (const u of ready) {
+      if (S.over) break;
+      if (!S.me.field.includes(u) || !u.canAttack) continue;
+      const t = autoTarget(u, S.me, S.ai);
+      if (t === undefined) continue;          // 공격할 수 있는 대상 없음 (첫 턴 등)
+      await attack('me', u, t, true);
+      await sleep(fxMs(60));
+    }
+  } catch (err) { reportError('attackAll', err); }
+  resetAnim();
   S.busy = false; fastForward = false; render();
 }
 
@@ -196,7 +199,8 @@ async function lunge(el, targetEl) {
   };
 }
 
-/** 연출(돌진→충돌→복귀) 후 상태 반영. 전투 결과는 resolveAttack 그대로라 로직은 동일 */
+/** 연출(돌진→충돌→복귀) 후 상태 반영. 전투 결과는 resolveAttack 그대로라 로직은 동일.
+ *  예외가 나도 finally에서 연출·busy를 되돌려 게임이 멈추지 않게 함 */
 async function attack(who, unit, target, fromBatch = false) {
   const o = opp(who), p = S[who];
   if (!unit.canAttack || S.over) return;
@@ -205,30 +209,53 @@ async function attack(who, unit, target, fromBatch = false) {
   const prevBusy = S.busy;
   S.busy = true; selected = null;
   const oWho = who === 'me' ? 'ai' : 'me';
-  if (!FX_OFF()) render();
-  const aEl = unitEl(who, unit);
-  const tEl = target ? unitEl(oWho, target) : heroEl(oWho);
-  const hit = await lunge(aEl, tEl);
+  let aEl = null;
+  try {
+    if (!FX_OFF()) render();
+    aEl = unitEl(who, unit);
+    // 남성 공격 유도(최윤희·이혜경): 영웅을 노려도 유도 카드 쪽으로 돌진하도록 미리 계산
+    const lure = maleLure(unit, o);
+    const shown = lure && lure !== target ? lure : target;
+    const tEl = shown ? (unitEl(oWho, shown) || heroEl(oWho)) : heroEl(oWho);
+    const hit = await withTimeout(lunge(aEl, tEl), 1500);
 
-  const cls = who === 'me' ? 'text-emerald-300' : 'text-red-300';
-  pendingDying = [];
-  for (const e of resolveAttack(p, o, unit, target)) {
-    if (e.type === 'hero') { log(`${unit.card.name} → ${o.name} 영웅 ${fmt(e.dmg)} 피해`, cls); shake(tEl); dmgNumber(tEl, `-${fmt(e.dmg)}`); }
-    else if (e.type === 'hit') {
-      const real = e.target || target, rEl = real === target ? tEl : (unitEl(oWho, real) || unitEl(who, real) || tEl);
-      log(`${unit.card.name} → ${real.card.name}${real !== target ? ` (${target.card.name} 대신)` : ''} ${fmt(e.d1)} 피해${e.mult !== 1 ? ` (속성 ×${e.mult})` : ''}, 반격 ${fmt(e.d2)}`, cls);
-      shake(rEl); dmgNumber(rEl, `-${fmt(e.d1)}`);
-      shake(aEl); dmgNumber(aEl, `-${fmt(e.d2)}`, '#fca5a5');
+    const cls = who === 'me' ? 'text-emerald-300' : 'text-red-300';
+    pendingDying = [];
+    for (const e of resolveAttack(p, o, unit, target)) {
+      if (e.type === 'hero') { log(`${unit.card.name} → ${o.name} 영웅 ${fmt(e.dmg)} 피해`, cls); shake(tEl); dmgNumber(tEl, `-${fmt(e.dmg)}`); }
+      else if (e.type === 'hit') {
+        const real = e.target || shown;
+        const rEl = (real && (unitEl(oWho, real) || unitEl(who, real))) || tEl;
+        const orig = shown || null;
+        log(`${unit.card.name} → ${real?.card?.name ?? '?'}${orig && real !== orig ? ` (${orig.card.name} 대신)` : (!orig ? ' (영웅 공격 유도)' : '')} ${fmt(e.d1)} 피해${e.mult !== 1 ? ` (속성 ×${e.mult})` : ''}, 반격 ${fmt(e.d2)}`, cls);
+        shake(rEl); dmgNumber(rEl, `-${fmt(e.d1)}`);
+        if (e.d2) { shake(aEl); dmgNumber(aEl, `-${fmt(e.d2)}`, '#fca5a5'); }
+      }
+      else if (e.type === 'overflow') { log(`초과 피해 ${fmt(e.dmg)} → ${o.name} 영웅`, 'text-orange-300'); const h = heroEl(oWho); shake(h); dmgNumber(h, `💥 -${fmt(e.dmg)}`, '#fdba74'); }
     }
-    else if (e.type === 'overflow') { log(`초과 피해 ${fmt(e.dmg)} → ${o.name} 영웅`, 'text-orange-300'); const h = heroEl(oWho); shake(h); dmgNumber(h, `💥 -${fmt(e.dmg)}`, '#fdba74'); }
+    renderHero(oWho); renderHero(who);
+    await withTimeout(hit?.back?.() ?? Promise.resolve(), 1500);
+    await withTimeout(fadeDying(), 1500);
+  } catch (err) {
+    reportError('attack', err);
+  } finally {
+    resetAnim(aEl);
+    unit.canAttack = false;
+    S.busy = prevBusy;
+    if (!prevBusy) fastForward = false;
+    render();
+    checkEnd();
   }
-  renderHero(oWho); renderHero(who);
-  await hit.back();
-  await fadeDying();
-  S.busy = prevBusy;
-  if (!prevBusy) fastForward = false;
-  render();
-  checkEnd();
+}
+
+/** 안전장치: 연출 promise 타임아웃, 남은 연출 정리, 오류 기록 */
+function withTimeout(pr, ms) { return Promise.race([pr, new Promise(r => setTimeout(r, ms))]); }
+function resetAnim(el) {
+  for (const x of [el, ...document.querySelectorAll('.fx-attacker')]) if (x) { x.classList.remove('fx-attacker'); x.style.transform = ''; x.style.transition = ''; }
+}
+function reportError(where, err) {
+  console.error(`[TCG] ${where}`, err);
+  (window.TCG_ERRORS ||= []).push(`${where}: ${err?.message || err}`);
 }
 
 /** 작은 떠오르는 글자 연출 */
@@ -325,17 +352,23 @@ async function castSkill(who, u, s) {
   const p = S[who];
   if (S.over || !p.field.includes(u) || !skillState(u, s).ok) return;
   const prevBusy = S.busy; S.busy = true; selected = null;
-  render();
-  await cutIn(u, s.name, s.fx);
-  pendingDying = [];
-  useSkill(u, s);
-  renderHero('me'); renderHero('ai');
-  await sleep(fxMs(450));
-  await fadeDying();
-  S.busy = prevBusy;
-  if (!prevBusy) fastForward = false;
-  render();
-  checkEnd();
+  try {
+    render();
+    await withTimeout(cutIn(u, s.name, s.fx), 3000);
+    pendingDying = [];
+    useSkill(u, s);
+    renderHero('me'); renderHero('ai');
+    await sleep(fxMs(450));
+    await withTimeout(fadeDying(), 1500);
+  } catch (err) {
+    reportError('skill', err);
+  } finally {
+    $('cutin').className = 'hidden'; resetAnim();
+    S.busy = prevBusy;
+    if (!prevBusy) fastForward = false;
+    render();
+    checkEnd();
+  }
 }
 
 /** 엔진 이벤트 → 로그·연출 */
@@ -367,6 +400,7 @@ function onEngine(e) {
 
 // ===== 간단한 AI =====
 async function aiTurn() {
+  try {
   S.busy = true; render();
   await sleep(AI_DELAY());
   const ai = S.ai, me = S.me;
@@ -395,8 +429,11 @@ async function aiTurn() {
     await sleep(AI_DELAY());
   }
   if (!S.over && aiWantHeal(ai)) { useAction('ai', 'heal'); await sleep(AI_DELAY()); }
-  if (!S.over) { endTurnXp(ai); turnEnd(ai); render(); checkEnd() || checkTimeout(); }
-  S.busy = false; fastForward = false;
+  } catch (err) { reportError('aiTurn', err); }
+  // 오류가 나도 턴은 반드시 넘어감
+  const ai = S.ai;
+  try { if (!S.over) { endTurnXp(ai); turnEnd(ai); render(); checkEnd() || checkTimeout(); } } catch (err) { reportError('aiTurnEnd', err); }
+  resetAnim(); S.busy = false; fastForward = false;
   if (!S.over) startTurn('me');
 }
 
@@ -453,7 +490,7 @@ function renderTurnsLeft() {
   const el = $('my-turns'); if (!el) return;
   const n = myTurnsLeft(), lvl = n <= 2 ? 'crit' : n <= 5 ? 'warn' : 'ok';
   el.className = `turns-${lvl}`;
-  $('my-turns-n').textContent = n;
+  $('my-turns-n').textContent = n; $('my-turns-max').textContent = '/' + MY_MAX;
   $('my-turns-pips').className = `mt-1 turns-${lvl}-p`;
   $('my-turns-pips').innerHTML = Array.from({ length: MY_MAX }, (_, i) => `<i class="${i < n ? 'on' : ''}"></i>`).join('');
 }
@@ -729,4 +766,10 @@ renderStats();
 // 테스트/디버그용
 // 디버그: 카드 배치 TCG.put('me', id, 레벨)
 function debugPut(who, id, lv = 1) { const c = POOL.find(x => String(x.id) === String(id)); const u = placeUnit(S[who], c, makeUnit); while (u.level < lv) gainXp(u, xpToNext(u.level)); u.mp = u.maxMp; render(); return u; }
-window.TCG = { cutIn, passiveCutIn, sortedHand, get handSort() { return handSort; }, put: debugPut, castSkill, skillState, get S() { return S; }, RULES, elementMultiplier, calcDamage, canSummon, buildDeck, summon, attack, recall, attackAll, endTurn, canRecall, recallCost, makeUnit, resolveAttack, useAction, canAction, startGame, equipItem, doSacrifice, finish, attackTargets, get POOL() { return POOL; }, render, Stats };
+function dupCheck() {
+  const out = [];
+  for (const who of ['me', 'ai']) { const P = S[who], seen = new Map();
+    for (const [where, list] of [['deck', P.deck], ['hand', P.hand], ['field', P.field.map(u => u.base)]]) for (const c of list) { const k = String(c.id); if (seen.has(k)) out.push(`${who}:${c.name} ${seen.get(k)}+${where}`); else seen.set(k, where); } }
+  return out;
+}
+window.TCG = { dupCheck, get errors() { return window.TCG_ERRORS || []; }, cutIn, passiveCutIn, sortedHand, get handSort() { return handSort; }, put: debugPut, castSkill, skillState, get S() { return S; }, RULES, elementMultiplier, calcDamage, canSummon, buildDeck, summon, attack, recall, attackAll, endTurn, canRecall, recallCost, makeUnit, resolveAttack, useAction, canAction, startGame, equipItem, doSacrifice, finish, attackTargets, get POOL() { return POOL; }, render, Stats };
