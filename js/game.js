@@ -39,7 +39,8 @@ function log(msg, cls = '') {
 
 function startGame() {
   const first = Math.random() < 0.5 ? 'me' : 'ai';   // 선공 동전 던지기
-  S = { me: newPlayer('나', first !== 'me'), ai: newPlayer('컴퓨터', first !== 'ai'), first, turn: first, turnNo: 0, totalTurns: 0, myTurns: 0, over: false, busy: false };
+  S = { me: newPlayer('나', first !== 'me'), ai: newPlayer('컴퓨터', first !== 'ai'), first, turn: first, turnNo: 0, totalTurns: 0, myTurns: 0, over: false, busy: false, fxSeen: new Set() };
+  preloadFx([...S.me.deck, ...S.me.hand, ...S.ai.deck, ...S.ai.hand]);
   selected = null; $('log').innerHTML = '';
   $('end-screen').classList.add('hidden'); $('start-screen').classList.add('hidden'); $('game').classList.remove('hidden');
   initPlayers(S.me, S.ai);
@@ -249,7 +250,7 @@ function finish(win, reason) {
   const st = Stats.record(win);
   $('end-title').innerHTML = win === null ? '<span class="text-zinc-200">무승부</span>' : win ? '<span class="text-emerald-400">승리!</span>' : '<span class="text-red-400">패배...</span>';
   const why = reason === 'ko' ? '진영 붕괴 (KO)' : `${RULES.MAX_TURNS}턴 종료 판정 · ${JUDGE_LABEL[reason]}`;
-  const detail = reason === 'ko' ? '' : `<div class="text-sm text-zinc-400 mt-1">진영 체력 나 ${fmt(S.me.hp)} : ${fmt(S.ai.hp)} 상대 · 필드 카드 ${S.me.field.length} : ${S.ai.field.length}</div>`;
+  const detail = reason === 'ko' ? '' : `<div class="text-sm text-zinc-400 mt-1">진영 HP 나 ${fmt(S.me.hp)} : ${fmt(S.ai.hp)} 상대 · 필드 카드 ${S.me.field.length} : ${S.ai.field.length}</div>`;
   $('end-text').innerHTML = `<div id="end-reason" class="font-bold text-amber-300">${why}</div>${detail}<div class="mt-2">${S.turnNo}라운드 · 전적 ${st.wins}승 ${st.losses}패${st.draws ? ` ${st.draws}무` : ''}</div>`;
   $('end-screen').classList.remove('hidden');
   render();
@@ -286,15 +287,38 @@ async function fadeDying() {
 }
 const TYPE_COLOR = { '공격': 'bg-red-600', '도발': 'bg-orange-500', '회복': 'bg-emerald-600', '버프': 'bg-sky-600', '디버프': 'bg-purple-600' };
 
-/** 스킬 컷인: 스킬 이름 배너 (+ 연출 파일 훅: data/fx/<파일>) */
+/** 스킬 컷인: 스킬 이름 배너 + 연출 이미지(data/fx/<파일>, 16:9, 모바일 세로는 가운데 기준으로 양옆 잘림) */
+const fxLoaded = new Set();
+function preloadFx(cards) {
+  for (const c of cards) for (const s of skillsOf(c.id)) {
+    if (!s.fx || fxLoaded.has(s.fx) || /\.(mp4|webm)$/i.test(s.fx)) continue;
+    fxLoaded.add(s.fx); const img = new Image(); img.decoding = 'async'; img.src = `data/fx/${s.fx}`;
+  }
+}
+function cutInHTML(u, name, fx, passive) {
+  const media = fx ? (/\.(mp4|webm)$/i.test(fx) ? `<video src="data/fx/${fx}" autoplay muted playsinline class="cutin-media"></video>` : `<img src="data/fx/${fx}" class="cutin-media" alt="" onerror="this.remove()">`) : '';
+  return `${media}<div class="cutin-text"><div class="text-[11px] md:text-xs text-zinc-200">${u.owner.name} · ${u.card.name}${passive ? ' · 패시브' : ''}</div><div class="text-xl md:text-3xl font-black tracking-tight">${passive ? '✨ ' : '⚡ '}${name}</div></div>`;
+}
 async function cutIn(u, name, fx, passive = false) {
   if (FX_OFF()) return;
   const el = $('cutin');
-  const media = fx ? (/\.(mp4|webm)$/i.test(fx) ? `<video src="data/fx/${fx}" autoplay muted playsinline class="max-h-40 mx-auto rounded-xl mb-2"></video>` : `<img src="data/fx/${fx}" class="max-h-40 mx-auto rounded-xl mb-2" onerror="this.remove()">`) : '';
-  el.innerHTML = `${media}<div class="text-[11px] md:text-xs text-zinc-300">${u.owner.name} · ${u.card.name}${passive ? ' · 패시브' : ''}</div><div class="text-xl md:text-3xl font-black tracking-tight">${passive ? '✨ ' : '⚡ '}${name}</div>`;
-  el.className = `cutin fixed left-0 right-0 top-1/3 z-40 pointer-events-none text-center py-3 ${whoOf(u.owner) === 'me' ? 'cutin-me' : 'cutin-ai'}`;
-  await sleep(fxMs(passive ? 500 : 750));
+  el.innerHTML = cutInHTML(u, name, fx, passive);
+  el.className = `cutin ${fx ? 'cutin-img' : ''} fixed left-0 right-0 z-40 pointer-events-none text-center ${whoOf(u.owner) === 'me' ? 'cutin-me' : 'cutin-ai'}`;
+  await sleep(fxMs(fx ? 1300 : passive ? 500 : 750));
   el.className = 'hidden';
+}
+/** 패시브 발동 연출: 카드별·스킬별 게임당 첫 발동만 큰 이미지(비동기, 턴 진행을 막지 않음), 이후는 작은 글자만 */
+let passiveTimer = null;
+function passiveCutIn(u, name) {
+  if (FX_OFF() || !S) return;
+  const s = u.sk?.find(x => x.name === name); if (!s?.fx) return;
+  S.fxSeen ||= new Set(); const key = `${u.uid}:${name}`;
+  if (S.fxSeen.has(key)) return;
+  S.fxSeen.add(key);
+  const el = $('cutin');
+  el.innerHTML = cutInHTML(u, name, s.fx, true);
+  el.className = `cutin cutin-img fixed left-0 right-0 z-40 pointer-events-none text-center ${whoOf(u.owner) === 'me' ? 'cutin-me' : 'cutin-ai'}`;
+  clearTimeout(passiveTimer); passiveTimer = setTimeout(() => { el.className = 'hidden'; }, fxMs(1100));
 }
 
 async function castSkill(who, u, s) {
@@ -321,7 +345,7 @@ function onEngine(e) {
   const nm = u => u.card.name;
   switch (e.type) {
     case 'skill': log(`${e.unit.owner.name}: ${nm(e.unit)} ⚡[${e.skill.name}] (MP ${e.skill.mp})`, 'text-fuchsia-300'); break;
-    case 'passive': log(`${e.unit.owner.name}: ${nm(e.unit)} ✨[${e.name}]${e.text ? ' — ' + e.text : ''}`, 'text-fuchsia-200'); if (!FX_OFF()) dmgNumber(uEl(e.unit), `✨${e.name}`, '#f0abfc'); break;
+    case 'passive': log(`${e.unit.owner.name}: ${nm(e.unit)} ✨[${e.name}]${e.text ? ' — ' + e.text : ''}`, 'text-fuchsia-200'); if (!FX_OFF()) { dmgNumber(uEl(e.unit), `✨${e.name}`, '#f0abfc'); passiveCutIn(e.unit, e.name); } break;
     case 'dmg': { const el = uEl(e.unit); shake(el); dmgNumber(el, typeof e.dmg === 'number' ? `-${fmt(e.dmg)}` : e.dmg); break; }
     case 'hero': { const el = heroEl(whoOf(e.p)); shake(el); dmgNumber(el, `-${fmt(e.dmg)}`, e.kind === 'self' ? '#fca5a5' : undefined); log(`${e.p.name} 본진 ${fmt(e.dmg)} 피해${e.kind === 'self' ? ' (자기 공격)' : ''}`, 'text-orange-300'); break; }
     case 'heal': dmgNumber(uEl(e.unit), `+${fmt(e.amt)}`, '#6ee7b7'); break;
@@ -439,7 +463,10 @@ function lastTurnToast() {
   document.body.appendChild(t); setTimeout(() => t.remove(), 2200);
 }
 
+const hpPrev = new Map();
+const hpText = t => String(t || '').replace(/체력/g, 'HP');
 function render() {
+  if (S) preloadFx([...S.me.field, ...S.ai.field].map(u => u.base || u.card));
   renderTurnsLeft();
   if (!S) return;
   renderHero('me'); renderHero('ai');
@@ -464,7 +491,7 @@ function render() {
     const p = S[who];
     $(`${who}-syn`).innerHTML = [
       ...p.activeSyn.map(x => { const el = ELEMENTS[x.cls] || {}; return `<span class="px-1.5 rounded-full bg-white/10 text-[10px] font-bold" title="속성 시너지: ${el.label || x.cls} ${x.n}장 → ATK·DEF +${Math.round(x.pct * 100)}%">${el.icon || ''}×${x.n} +${Math.round(x.pct * 100)}%</span>`; }),
-      ...p.activeCombos.map(c => `<span class="px-1.5 rounded-full bg-fuchsia-700/60 text-[10px] font-bold" title="조합 [${c.name}]: ${c.scope === 'all' ? '아군 전체' : '조합 카드'} ${c.desc} +${Math.round(c.value * 100)}%">🔗${c.name}</span>`),
+      ...p.activeCombos.map(c => `<span class="px-1.5 rounded-full bg-fuchsia-700/60 text-[10px] font-bold" title="조합 [${c.name}]: ${c.scope === 'all' ? '아군 전체' : '조합 카드'} ${hpText(c.desc)} +${Math.round(c.value * 100)}%">🔗${c.name}</span>`),
       p.actionLock > 0 ? '<span class="px-1.5 rounded-full bg-red-800 text-[10px] font-bold" title="셔플·보강·강화·필드 회복 사용 불가">🔒고유기술 봉인</span>' : '',
       p.st?.heroShield ? '<span class="px-1.5 rounded-full bg-sky-800 text-[10px] font-bold" title="본진 방어력 +300% (피해 1/4)">🛡️본진 방어</span>' : '',
       p.st?.heroInvuln ? '<span class="px-1.5 rounded-full bg-sky-800 text-[10px] font-bold" title="본진 공격 무효">🔰본진 무적</span>' : '',
@@ -485,6 +512,7 @@ function render() {
         `<div class="lv-badge absolute -top-1.5 left-1/2 -translate-x-1/2 px-1.5 rounded-full ${hero ? 'bg-gradient-to-r from-yellow-300 to-amber-500 shadow-[0_0_8px_#fbbf24]' : u.level > 1 ? 'bg-amber-400' : 'bg-zinc-600 text-white'} text-black text-[9px] md:text-[10px] font-black whitespace-nowrap">${hero ? '👑 ' : ''}Lv${u.level}</div>` +
         (icons.length ? `<div class="item-icons absolute top-7 right-0.5 flex flex-col text-[11px] md:text-sm leading-tight drop-shadow">${icons.map(x => `<span>${x}</span>`).join('')}</div>` : '') +
         (sts.length ? `<div class="status-icons absolute top-7 left-0.5 flex flex-col text-[11px] md:text-sm leading-tight drop-shadow">${sts.map(x => `<span title="${x.title}">${x.icon}</span>`).join('')}</div>` : '') + `</div>` +
+        `<div class="hp-bar h-1.5 bg-white/10 rounded-full mt-0.5 overflow-hidden" title="HP ${u.hp}/${u.maxHp}"><div class="hp-fill h-full bg-red-500" data-to="${u.maxHp ? Math.max(0, Math.min(100, u.hp / u.maxHp * 100)) : 0}" style="width:${hpPrev.get(String(u.uid)) ?? (u.maxHp ? Math.max(0, Math.min(100, u.hp / u.maxHp * 100)) : 0)}%"></div></div>` +
         `<div class="mp-bar h-1.5 bg-white/10 rounded-full mt-0.5 overflow-hidden" title="MP ${u.mp}/${u.maxMp} (+${u.mpRegen}/턴)"><div class="h-full bg-blue-500" style="width:${u.maxMp ? Math.min(100, u.mp / u.maxMp * 100) : 0}%"></div></div>` +
         `<div class="flex justify-center gap-1 h-4">${ready ? '<span class="text-[10px] text-emerald-400 font-bold">공격 가능</span>' : ''}${skReady ? '<button class="skill-btn text-[10px] px-1 rounded bg-fuchsia-600 hover:bg-fuchsia-500 font-bold">✦스킬</button>' : ''}</div>`;
       w.onclick = ev => { if (dragJustEnded) { ev.stopPropagation(); return; } onUnitClick(who, u); };
@@ -493,6 +521,7 @@ function render() {
       box.appendChild(w);
     });
     fixImages(box);
+    requestAnimationFrame(() => box.querySelectorAll('.hp-fill').forEach(f => { f.style.width = f.dataset.to + '%'; hpPrev.set(f.closest('[data-uid]').dataset.uid, +f.dataset.to); }));
   }
 
   const hand = $('me-hand'); hand.innerHTML = '';
@@ -513,7 +542,7 @@ function render() {
 // ===== 손패 정렬 =====
 const SORT_KEY = 'tcg_hand_sort';
 const GRADE_RANK = { 'NORMAL': 0, 'RARE': 1, 'HIGH RARE': 2, 'SUPER RARE': 3, 'ULTRA RARE': 4, 'MYTHIC RARE': 5 };
-const SORTS = { none: '획득순', grade: '등급순', cost: '코스트순', atk: '공격력순', def: '방어력순', hp: '체력순' };
+const SORTS = { none: '획득순', grade: '등급순', cost: '코스트순', atk: '공격력순', def: '방어력순', hp: 'HP순' };
 const sortVal = { grade: c => GRADE_RANK[c.grade] ?? 0, cost: c => c.cost, atk: c => c.ATK, def: c => c.DEF, hp: c => c.HP };
 let handSort = localStorage.getItem(SORT_KEY) || 'none';
 if (!SORTS[handSort]) handSort = 'none';
@@ -639,7 +668,7 @@ function skillListHTML(c, unit, myTurn) {
     return `<div class="rounded-xl p-2 ${locked ? 'bg-zinc-800/50 opacity-60' : 'bg-zinc-800'}">
       <div class="flex items-center gap-1.5 flex-wrap"><span class="px-1.5 rounded text-[10px] font-bold ${TYPE_COLOR[s.type] || 'bg-zinc-600'}">${s.type}</span><span class="text-[10px] text-zinc-400">${s.mode === 'active' ? '액티브' : '패시브'}</span><span class="font-bold text-sm">${s.name}</span>
         <span class="ml-auto text-[10px] text-zinc-400">${locked ? '🔒' : ''}Lv${s.unlock}${s.mode === 'active' ? ` · MP ${s.mp} · 쿨 ${s.cooldown}` : ''}</span></div>
-      <div class="text-[11px] text-zinc-300 mt-0.5">${s.desc}${s.note ? ` <span class="text-zinc-500">(${s.note})</span>` : ''}</div>
+      <div class="text-[11px] text-zinc-300 mt-0.5">${hpText(s.desc)}${s.note ? ` <span class="text-zinc-500">(${hpText(s.note)})</span>` : ''}</div>
       ${s.mode === 'active' && mine ? `<button data-skill="${i}" ${st.ok && myTurn ? '' : 'disabled'} class="mt-1 w-full py-1.5 rounded-lg bg-fuchsia-600 hover:bg-fuchsia-500 disabled:opacity-40 text-xs font-bold">${st.ok ? '사용 (공격 대신)' : st.reason}</button>` : ''}
       ${s.mode === 'passive' && unit ? `<div class="text-[10px] mt-0.5 ${locked ? 'text-zinc-500' : 'text-emerald-400'}">${locked ? `Lv${s.unlock}에 해금` : (unit.fired[s.name] ? '발동됨' : '활성')}</div>` : ''}
     </div>`; }).join('')}</div>`;
@@ -683,4 +712,4 @@ renderStats();
 // 테스트/디버그용
 // 디버그: 카드 배치 TCG.put('me', id, 레벨)
 function debugPut(who, id, lv = 1) { const c = POOL.find(x => String(x.id) === String(id)); const u = placeUnit(S[who], c, makeUnit); while (u.level < lv) gainXp(u, xpToNext(u.level)); u.mp = u.maxMp; render(); return u; }
-window.TCG = { sortedHand, get handSort() { return handSort; }, put: debugPut, castSkill, skillState, get S() { return S; }, RULES, elementMultiplier, calcDamage, canSummon, buildDeck, summon, attack, recall, attackAll, endTurn, canRecall, recallCost, makeUnit, resolveAttack, useAction, canAction, startGame, equipItem, doSacrifice, finish, attackTargets, get POOL() { return POOL; }, render, Stats };
+window.TCG = { cutIn, passiveCutIn, sortedHand, get handSort() { return handSort; }, put: debugPut, castSkill, skillState, get S() { return S; }, RULES, elementMultiplier, calcDamage, canSummon, buildDeck, summon, attack, recall, attackAll, endTurn, canRecall, recallCost, makeUnit, resolveAttack, useAction, canAction, startGame, equipItem, doSacrifice, finish, attackTargets, get POOL() { return POOL; }, render, Stats };

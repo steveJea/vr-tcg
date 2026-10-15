@@ -17,16 +17,27 @@ def main(path):
     wb = openpyxl.load_workbook(path, data_only=True)
     root = os.path.join(os.path.dirname(__file__), '..', 'data')
     skills = {}
+    fxdir = os.path.join(root, 'fx')
+    def fxname(cid, idx, v):
+        v = str(v or '').strip()
+        if v.endswith('.0'): v = v[:-2]
+        if v.isdigit(): v = f'{cid}_{v}'                        # 연출 칸에 스킬 번호만 적은 경우
+        if not v: v = f'{cid}_{idx}'                             # 비어 있으면 카드아이디_순번 파일이 있는지 확인
+        if '.' in v: return v
+        for ext in ('webp', 'jpg', 'png', 'mp4', 'webm'):
+            if os.path.exists(os.path.join(fxdir, f'{v}.{ext}')): return f'{v}.{ext}'
+        return ''
     ws = wb['스킬']
     for r in list(ws.iter_rows(values_only=True))[1:]:
         if not r or not r[0] or not r[2]: continue
         cid = str(r[0]).strip()
+        idx = len(skills.get(cid, [])) + 1
         skills.setdefault(cid, []).append({
             'card': str(r[1] or '').strip(), 'name': str(r[2]).strip(),
             'type': str(r[3] or '').strip(), 'mode': 'passive' if '패시브' in str(r[4]) else 'active',
             'target': str(r[5] or '').strip(), 'desc': str(r[6] or '').strip(), 'value': '' if r[7] is None else str(r[7]),
             'duration': num(r[8]), 'mp': num(r[9]), 'cooldown': num(r[10]), 'unlock': num(r[11], 1) or 1,
-            'fx': str(r[12] or '').strip(), 'note': str(r[13] or '').strip(),
+            'fx': fxname(cid, idx, r[12]), 'note': str(r[13] or '').strip(),
         })
     combos = []
     ws = wb['특정 조합']

@@ -320,7 +320,7 @@ export function judgeTimeout(a, b) {
   if (a.field.length !== b.field.length) return { winner: a.field.length > b.field.length ? a : b, reason: 'cards' };
   return { winner: null, reason: 'draw' };
 }
-export const JUDGE_LABEL = { ko: 'KO', hp: '진영 체력 우세', cards: '남은 카드 수 우세', draw: '무승부' };
+export const JUDGE_LABEL = { ko: 'KO', hp: '진영 HP 우세', cards: '남은 카드 수 우세', draw: '무승부' };
 
 /** 액션 사용 가능 여부 */
 export function canAction(type, p) {
