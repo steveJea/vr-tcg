@@ -36,7 +36,10 @@
     .cutin { top: 33%; padding: .75rem 0; }
     .cutin.cutin-img { top: 0; bottom: 0; margin: auto !important; padding: 0; aspect-ratio: 16/9; max-height: 70vh; width: min(100vw, calc(70vh * 16 / 9)); margin: 0 auto; overflow: hidden; border-block: 2px solid rgba(255,255,255,.35); box-shadow: 0 0 40px rgba(0,0,0,.8); }
     .cutin-img .cutin-media { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center; }
-    .cutin-img .cutin-text { position: absolute; left: 0; right: 0; bottom: 0; padding: 1.5rem .5rem .6rem; background: linear-gradient(transparent, rgba(0,0,0,.85)); }
+    .cutin-img .cutin-text { position: absolute; left: 0; right: 0; top: 0; padding: .6rem .75rem 1.6rem; display: flex; flex-direction: column-reverse; align-items: center; gap: 2px; background: linear-gradient(rgba(0,0,0,.9) 0%, rgba(0,0,0,.65) 60%, transparent); }
+    .cutin-img .cutin-text > div:last-child { font-size: clamp(26px, 5.2vw, 56px) !important; line-height: 1.1; font-weight: 900; letter-spacing: -.01em; overflow-wrap: anywhere; -webkit-text-stroke: 1.5px rgba(0,0,0,.9); paint-order: stroke fill; text-shadow: 0 0 6px #000, 0 0 18px currentColor, 0 3px 0 #000; }
+    .cutin-img .cutin-text > div:first-child { font-size: clamp(12px, 2vw, 18px) !important; font-weight: 700; color: #e4e4e7 !important; text-shadow: 0 1px 3px #000; }
+    .cutin-img.cutin-me .cutin-text > div:last-child { color: #a7f3d0; } .cutin-img.cutin-ai .cutin-text > div:last-child { color: #fecaca; }
     .cutin-img.cutin-me .cutin-text { color: #d1fae5; } .cutin-img.cutin-ai .cutin-text { color: #fee2e2; }
     @media (orientation: portrait) { .cutin.cutin-img { aspect-ratio: auto; width: 100vw; height: min(62vh, 125vw); max-height: none; } }
     .cutin.cutin-img { background: #000; animation-name: cutInImg; }
