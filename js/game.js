@@ -69,7 +69,7 @@ function useAction(who, type) {
   const p = S[who], r = doAction(type, p);
   if (!r.ok) return r;
   const a = ACTIONS[type];
-  const detail = type === 'accel' ? `다음 턴부터 매 턴 마나 +${r.n * RULES.ACCEL_BONUS} (${r.n}/${RULES.ACCEL_MAX})` : type === 'shuffle' ? `전체 카드에서 새 카드 ${r.n}장` : type === 'heal' ? `영웅 HP +${fmt(r.healed)}` : type === 'fieldheal' ? `필드 ${r.n}장 HP 총 +${fmt(r.healed)}` : `필드 ${r.n}장 이번 턴 ATK +${Math.round(RULES.BUFF_RATIO * 100)}%`;
+  const detail = type === 'accel' ? `다음 턴부터 매 턴 마나 +${r.n * RULES.ACCEL_BONUS} (${r.n}/${RULES.ACCEL_MAX})` : type === 'shuffle' ? `전체 카드에서 새 카드 ${r.n}장` : type === 'heal' ? `진영 HP +${fmt(r.healed)}` : type === 'fieldheal' ? `필드 ${r.n}장 HP 총 +${fmt(r.healed)}` : `필드 ${r.n}장 이번 턴 ATK +${Math.round(RULES.BUFF_RATIO * 100)}%`;
   log(`${p.name}: ${a.icon} ${a.label} (마나 ${a.cost()}) — ${detail}`, 'text-violet-300');
   if (type === 'heal') floatText(`+${fmt(r.healed)}`, 'text-emerald-300', who === 'me' ? 'me' : 'ai');
   if (type === 'fieldheal') floatText(`💚 +${fmt(r.healed)}`, 'text-emerald-300', who);
@@ -213,7 +213,7 @@ async function attack(who, unit, target, fromBatch = false) {
   try {
     if (!FX_OFF()) render();
     aEl = unitEl(who, unit);
-    // 남성 공격 유도(최윤희·이혜경): 영웅을 노려도 유도 카드 쪽으로 돌진하도록 미리 계산
+    // 남성 공격 유도(최윤희·이혜경): 진영을 노려도 유도 카드 쪽으로 돌진하도록 미리 계산
     const lure = maleLure(unit, o);
     const shown = lure && lure !== target ? lure : target;
     const tEl = shown ? (unitEl(oWho, shown) || heroEl(oWho)) : heroEl(oWho);
@@ -222,16 +222,16 @@ async function attack(who, unit, target, fromBatch = false) {
     const cls = who === 'me' ? 'text-emerald-300' : 'text-red-300';
     pendingDying = [];
     for (const e of resolveAttack(p, o, unit, target)) {
-      if (e.type === 'hero') { log(`${unit.card.name} → ${o.name} 영웅 ${fmt(e.dmg)} 피해`, cls); shake(tEl); dmgNumber(tEl, `-${fmt(e.dmg)}`); }
+      if (e.type === 'hero') { log(`${unit.card.name} → ${o.name} 진영 ${fmt(e.dmg)} 피해`, cls); shake(tEl); dmgNumber(tEl, `-${fmt(e.dmg)}`); }
       else if (e.type === 'hit') {
         const real = e.target || shown;
         const rEl = (real && (unitEl(oWho, real) || unitEl(who, real))) || tEl;
         const orig = shown || null;
-        log(`${unit.card.name} → ${real?.card?.name ?? '?'}${orig && real !== orig ? ` (${orig.card.name} 대신)` : (!orig ? ' (영웅 공격 유도)' : '')} ${fmt(e.d1)} 피해${e.mult !== 1 ? ` (속성 ×${e.mult})` : ''}, 반격 ${fmt(e.d2)}`, cls);
+        log(`${unit.card.name} → ${real?.card?.name ?? '?'}${orig && real !== orig ? ` (${orig.card.name} 대신)` : (!orig ? ' (진영 공격 유도)' : '')} ${fmt(e.d1)} 피해${e.mult !== 1 ? ` (속성 ×${e.mult})` : ''}, 반격 ${fmt(e.d2)}`, cls);
         shake(rEl); dmgNumber(rEl, `-${fmt(e.d1)}`);
         if (e.d2) { shake(aEl); dmgNumber(aEl, `-${fmt(e.d2)}`, '#fca5a5'); }
       }
-      else if (e.type === 'overflow') { log(`초과 피해 ${fmt(e.dmg)} → ${o.name} 영웅`, 'text-orange-300'); const h = heroEl(oWho); shake(h); dmgNumber(h, `💥 -${fmt(e.dmg)}`, '#fdba74'); }
+      else if (e.type === 'overflow') { log(`초과 피해 ${fmt(e.dmg)} → ${o.name} 진영`, 'text-orange-300'); const h = heroEl(oWho); shake(h); dmgNumber(h, `💥 -${fmt(e.dmg)}`, '#fdba74'); }
     }
     renderHero(oWho); renderHero(who);
     await withTimeout(hit?.back?.() ?? Promise.resolve(), 1500);
@@ -540,7 +540,7 @@ function render() {
   $('ai-hero').classList.toggle('ring-4', selected != null && tg.hero);
   $('ai-hero').classList.toggle('ring-red-500', selected != null && tg.hero);
   $('ai-hero').classList.toggle('opacity-70', S.turn === 'me' && !tg.hero);
-  $('hero-hint').textContent = S.turn === 'me' && !S.over ? (tg.hero ? '🎯 상대 영웅 공격 가능' : '🛡️ ' + tg.reason) : '';
+  $('hero-hint').textContent = S.turn === 'me' && !S.over ? (tg.hero ? '🎯 상대 진영 공격 가능' : '🛡️ ' + tg.reason) : '';
   $('hero-hint').className = `text-center text-[11px] md:text-xs font-bold ${tg.hero ? 'text-emerald-400' : 'text-amber-300'}`;
 
   for (const who of ['ai', 'me']) {

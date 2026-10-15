@@ -162,7 +162,7 @@ export const heroLocked = me => (me.turnsTaken || 0) <= RULES.HERO_LOCK_TURNS;
 export function attackTargets(me, opp) {
   const taunts = opp.field.filter(u => hasSkill(u, 'taunt'));
   if (taunts.length) return { units: taunts, hero: false, reason: '도발 카드부터 공격해야 합니다' };
-  if (heroLocked(me)) return { units: [...opp.field], hero: false, reason: `첫 ${RULES.HERO_LOCK_TURNS}턴에는 영웅을 공격할 수 없습니다` };
+  if (heroLocked(me)) return { units: [...opp.field], hero: false, reason: `첫 ${RULES.HERO_LOCK_TURNS}턴에는 진영을 공격할 수 없습니다` };
   if (opp.field.length >= RULES.HERO_GUARD_FIELD) return { units: [...opp.field], hero: false, reason: `상대 필드에 ${RULES.HERO_GUARD_FIELD}장 이상 있으면 카드만 공격할 수 있습니다` };
   return { units: [...opp.field], hero: true, reason: '' };
 }
