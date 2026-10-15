@@ -15,7 +15,7 @@ export const RULES = {
   SECOND_PLAYER_BONUS_CARDS: 1,
   RECALL_COST_RATIO: 0.5,  // 회수 비용 = ceil(코스트 × 비율)
   AI_RECALL_MIN_COST: 30,  // AI가 회수를 고려하는 최소 코스트
-  KILL_MANA_REFUND_RATIO: 0.2, // 처치 시 다음 턴 보너스 마나 = ceil(처치 카드 코스트 × 비율), 그 턴만 최대치 초과 가능
+  KILL_MANA_RATIO: 0.3,       // 처치 시 즉시 마나 = round(처치 카드 코스트 × 0.3), 최대 마나까지
   // 레벨/경험치: XP: 처치(killXp) + 공격 + 턴 종료 생존. 다음 레벨 필요 XP = round(XP_BASE × 레벨^XP_EXP)
   LEVEL_MAX: 10,              // Lv10 = 영웅 카드
   XP_BASE: 5.5, XP_EXP: 1.3,  // Lv1→2: 6, Lv5→6: 45, Lv9→10: 96 (누적 약 430)
