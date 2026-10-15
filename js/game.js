@@ -704,7 +704,7 @@ function skillListHTML(c, unit, myTurn) {
     const st = unit ? skillState(unit, s) : { ok: false, reason: `Lv${s.unlock} 해금` };
     const locked = (unit ? unit.level : 1) < s.unlock;
     return `<div class="rounded-xl p-2 ${locked ? 'bg-zinc-800/50 opacity-60' : 'bg-zinc-800'}">
-      <div class="flex items-center gap-1.5 flex-wrap"><span class="px-1.5 rounded text-[10px] font-bold ${TYPE_COLOR[s.type] || 'bg-zinc-600'}">${s.type}</span><span class="text-[10px] text-zinc-400">${s.mode === 'active' ? '액티브' : '패시브'}</span><span class="font-bold text-sm">${s.name}</span>${s.fx && !/\.(mp4|webm)$/i.test(s.fx) ? `<button type="button" class="zoom-btn zoom-inline" data-zoomfx="${s.fx}" data-title="${s.name}" title="스킬 이미지 크게 보기">🔍</button>` : ''}
+      <div class="flex items-center gap-1.5 flex-wrap"><span class="px-1.5 rounded text-[10px] font-bold ${TYPE_COLOR[s.type] || 'bg-zinc-600'}">${s.type}</span><span class="text-[10px] text-zinc-400">${s.mode === 'active' ? '액티브' : '패시브'}</span><span class="font-bold text-sm">${s.name}</span>
         <span class="ml-auto text-[10px] text-zinc-400">${locked ? '🔒' : ''}Lv${s.unlock}${s.mode === 'active' ? ` · MP ${s.mp} · 쿨 ${s.cooldown}` : ''}</span></div>
       <div class="text-[11px] text-zinc-300 mt-0.5">${hpText(s.desc)}${s.note ? ` <span class="text-zinc-500">(${hpText(s.note)})</span>` : ''}</div>
       ${s.mode === 'active' && mine ? `<button data-skill="${i}" ${st.ok && myTurn ? '' : 'disabled'} class="mt-1 w-full py-1.5 rounded-lg bg-fuchsia-600 hover:bg-fuchsia-500 disabled:opacity-40 text-xs font-bold">${st.ok ? '사용 (공격 대신)' : st.reason}</button>` : ''}
@@ -792,7 +792,6 @@ function openZoom({ src, title, sub = '', stats = '' }) {
 }
 function closeZoom() { const ov = $('zoom-view'); if (ov) ov.classList.remove('open'); }
 function zoomFromBtn(b) {
-  if (b.dataset.zoomfx) return openZoom({ src: `data/fx/${b.dataset.zoomfx}`, title: b.dataset.title || '스킬' });
   const c = POOL.find(x => String(x.id) === b.dataset.zoom); if (!c) return;
   const r = rarityOf(c), e = ELEMENTS[c.class] || ELEMENTS.WIND, hp = b.dataset.hp;
   openZoom({ src: `${IMG}${c.id}.webp`, title: c.name,
