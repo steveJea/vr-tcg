@@ -454,6 +454,7 @@ function cardHTML(c, { hp, size = 'md', dim = false } = {}) {
   return `
   <div class="card-frame ${rar.cls} relative ${small ? 'w-[64px] md:w-[96px]' : 'w-[78px] md:w-[110px]'} bg-zinc-900 rounded-xl overflow-hidden ${dim ? 'opacity-50' : ''} shadow-lg" data-grade="${rar.short}">
     <img src="${IMG}${c.id}.webp" data-id="${c.id}" class="card-img w-full aspect-[3/4] object-cover" alt="${c.name}">
+    <button type="button" class="zoom-btn absolute bottom-[46px] md:bottom-[58px] right-1" data-zoom="${c.id}"${hp != null ? ` data-hp="${hp}"` : ''} title="크게 보기" aria-label="크게 보기">🔍</button>
     <div class="absolute top-1 left-1 w-6 h-6 md:w-7 md:h-7 rounded-full bg-sky-600 text-white text-[11px] md:text-xs font-black flex items-center justify-center border border-white/40">${c.cost}</div>
     <div class="absolute top-1 right-1 text-sm md:text-base" title="${e.label}">${e.icon}</div>
     <div class="rar-badge absolute left-1 top-7 md:top-9" title="${rar.label}">${rar.short}</div>
@@ -652,7 +653,7 @@ function showDetail(c, { fromHand = false, hp, unit = null, view = null } = {}) 
   const myTurn = S.turn === 'me' && !S.over && !S.busy;
   $('detail-body').innerHTML = `
     <div class="flex gap-4">
-      <img src="${IMG}${c.id}.webp" data-id="${c.id}" class="card-img w-32 md:w-40 aspect-[3/4] object-cover rounded-xl ring-2 ${e.ring}">
+      <div class="relative shrink-0"><img src="${IMG}${c.id}.webp" data-id="${c.id}" class="card-img w-32 md:w-40 aspect-[3/4] object-cover rounded-xl ring-2 ${e.ring}"><button type="button" class="zoom-btn absolute bottom-1 right-1" data-zoom="${c.id}"${hp != null ? ` data-hp="${hp}"` : ''} title="크게 보기" aria-label="크게 보기">🔍</button></div>
       <div class="flex-1 min-w-0">
         <div class="text-2xl font-black">${c.name}</div>
         <div class="text-zinc-400 text-sm"><span class="rar-badge rar-inline ${rarityOf(c).cls}">${rarityOf(c).short}</span> ${c.grade} · 스킬 ${skillsOf(c.id).length}개 · ${c.region} · ${c.age}세</div>
@@ -703,7 +704,7 @@ function skillListHTML(c, unit, myTurn) {
     const st = unit ? skillState(unit, s) : { ok: false, reason: `Lv${s.unlock} 해금` };
     const locked = (unit ? unit.level : 1) < s.unlock;
     return `<div class="rounded-xl p-2 ${locked ? 'bg-zinc-800/50 opacity-60' : 'bg-zinc-800'}">
-      <div class="flex items-center gap-1.5 flex-wrap"><span class="px-1.5 rounded text-[10px] font-bold ${TYPE_COLOR[s.type] || 'bg-zinc-600'}">${s.type}</span><span class="text-[10px] text-zinc-400">${s.mode === 'active' ? '액티브' : '패시브'}</span><span class="font-bold text-sm">${s.name}</span>
+      <div class="flex items-center gap-1.5 flex-wrap"><span class="px-1.5 rounded text-[10px] font-bold ${TYPE_COLOR[s.type] || 'bg-zinc-600'}">${s.type}</span><span class="text-[10px] text-zinc-400">${s.mode === 'active' ? '액티브' : '패시브'}</span><span class="font-bold text-sm">${s.name}</span>${s.fx && !/\.(mp4|webm)$/i.test(s.fx) ? `<button type="button" class="zoom-btn zoom-inline" data-zoomfx="${s.fx}" data-title="${s.name}" title="스킬 이미지 크게 보기">🔍</button>` : ''}
         <span class="ml-auto text-[10px] text-zinc-400">${locked ? '🔒' : ''}Lv${s.unlock}${s.mode === 'active' ? ` · MP ${s.mp} · 쿨 ${s.cooldown}` : ''}</span></div>
       <div class="text-[11px] text-zinc-300 mt-0.5">${hpText(s.desc)}${s.note ? ` <span class="text-zinc-500">(${hpText(s.note)})</span>` : ''}</div>
       ${s.mode === 'active' && mine ? `<button data-skill="${i}" ${st.ok && myTurn ? '' : 'disabled'} class="mt-1 w-full py-1.5 rounded-lg bg-fuchsia-600 hover:bg-fuchsia-500 disabled:opacity-40 text-xs font-bold">${st.ok ? '사용 (공격 대신)' : st.reason}</button>` : ''}
@@ -772,4 +773,28 @@ function dupCheck() {
     for (const [where, list] of [['deck', P.deck], ['hand', P.hand], ['field', P.field.map(u => u.base)]]) for (const c of list) { const k = String(c.id); if (seen.has(k)) out.push(`${who}:${c.name} ${seen.get(k)}+${where}`); else seen.set(k, where); } }
   return out;
 }
-window.TCG = { dupCheck, get errors() { return window.TCG_ERRORS || []; }, cutIn, passiveCutIn, sortedHand, get handSort() { return handSort; }, put: debugPut, castSkill, skillState, get S() { return S; }, RULES, elementMultiplier, calcDamage, canSummon, buildDeck, summon, attack, recall, attackAll, endTurn, canRecall, recallCost, makeUnit, resolveAttack, useAction, canAction, startGame, equipItem, doSacrifice, finish, attackTargets, get POOL() { return POOL; }, render, Stats };
+// ===== 이미지 크게 보기 (🔍 버튼 전용) =====
+function openZoom({ src, title, sub = '', stats = '' }) {
+  let ov = $('zoom-view');
+  if (!ov) { ov = document.createElement('div'); ov.id = 'zoom-view'; document.body.appendChild(ov);
+    ov.addEventListener('click', e => { if (!e.target.closest('.zoom-img, .zoom-info') || e.target.closest('.zoom-close')) closeZoom(); }); }
+  ov.innerHTML = `<button type="button" class="zoom-close" aria-label="닫기">✕</button>
+    <img class="zoom-img" src="${src}" alt="${title}">
+    <div class="zoom-info"><div class="text-xl font-black">${title}</div>${sub ? `<div class="text-sm text-zinc-300 mt-0.5">${sub}</div>` : ''}${stats ? `<div class="mt-1 font-bold text-sm flex gap-3 justify-center flex-wrap">${stats}</div>` : ''}</div>`;
+  ov.classList.add('open');
+}
+function closeZoom() { const ov = $('zoom-view'); if (ov) ov.classList.remove('open'); }
+function zoomFromBtn(b) {
+  if (b.dataset.zoomfx) return openZoom({ src: `data/fx/${b.dataset.zoomfx}`, title: b.dataset.title || '스킬' });
+  const c = POOL.find(x => String(x.id) === b.dataset.zoom); if (!c) return;
+  const r = rarityOf(c), e = ELEMENTS[c.class] || ELEMENTS.WIND, hp = b.dataset.hp;
+  openZoom({ src: `${IMG}${c.id}.webp`, title: c.name,
+    sub: `<span class="rar-badge rar-inline ${r.cls}">${r.short}</span> ${r.label} · ${e.icon} ${e.label} · 코스트 ${c.cost}`,
+    stats: `<span class="text-amber-400">⚡${fmt(c.power)}</span><span class="text-orange-400">⚔ ATK ${fmt(c.ATK)}</span><span class="text-red-400">♥ HP ${hp != null ? fmt(+hp) + ' / ' : ''}${fmt(c.HP)}</span><span class="text-sky-400">🛡 DEF ${fmt(c.DEF)}</span>` });
+}
+// 캡처 단계에서 가로채서 카드 선택/드래그/상세창이 같이 동작하지 않게 함
+['pointerdown', 'mousedown', 'touchstart'].forEach(t => document.addEventListener(t, e => { if (e.target.closest?.('.zoom-btn')) e.stopPropagation(); }, { capture: true, passive: true }));
+document.addEventListener('click', e => { const b = e.target.closest?.('.zoom-btn'); if (!b) return; e.stopPropagation(); e.preventDefault(); zoomFromBtn(b); }, true);
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('zoom-view')?.classList.contains('open')) { e.stopPropagation(); closeZoom(); } }, true);
+
+window.TCG = { openZoom, closeZoom, dupCheck, get errors() { return window.TCG_ERRORS || []; }, cutIn, passiveCutIn, sortedHand, get handSort() { return handSort; }, put: debugPut, castSkill, skillState, get S() { return S; }, RULES, elementMultiplier, calcDamage, canSummon, buildDeck, summon, attack, recall, attackAll, endTurn, canRecall, recallCost, makeUnit, resolveAttack, useAction, canAction, startGame, equipItem, doSacrifice, finish, attackTargets, get POOL() { return POOL; }, render, Stats };
