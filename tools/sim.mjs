@@ -12,7 +12,7 @@ const FORCE = process.env.SIM_FORCE ? pool.find(c => String(c.id) === process.en
 const cardStat = {}; // id → { games, wins }
 const [games = 500, hp, mult, bonusMana = 0, noRecall = 0, noRewards = 0, noActions = 0] = process.argv.slice(2).map(Number);
 if (process.env.SIM_RULES) Object.assign(RULES, JSON.parse(process.env.SIM_RULES)); // 예: SIM_RULES='{"HEAL_AMOUNT":200}'
-if (noRewards) { RULES.KILL_MANA_REFUND_RATIO = 0; RULES.LEVEL_MAX = 1; RULES.OVERFLOW_TO_HERO = false; }
+if (noRewards) { RULES.KILL_MANA_RATIO = 0; RULES.LEVEL_MAX = 1; RULES.OVERFLOW_TO_HERO = false; }
 let recalls = 0, forcedWins = 0; const acts = { shuffle: 0, heal: 0, buff: 0, fieldheal: 0, item: 0, sacrifice: 0, accel: 0 }; let gamesWith = { shuffle: 0, heal: 0, buff: 0, fieldheal: 0, item: 0, sacrifice: 0, accel: 0 }; const reasons = { ko: 0, hp: 0, cards: 0, draw: 0 }; let manaSum = 0, manaN = 0; const maxLv = []; let lvl10 = 0, gamesLv10 = 0; // bonusMana: 후공 첫 턴 추가 마나(실험용)
 if (hp) RULES.HERO_HP = hp;
 if (mult) RULES.DAMAGE_MULT = mult;

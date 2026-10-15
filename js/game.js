@@ -351,7 +351,7 @@ function onEngine(e) {
     case 'heal': dmgNumber(uEl(e.unit), `+${fmt(e.amt)}`, '#6ee7b7'); break;
     case 'heroHeal': dmgNumber(heroEl(whoOf(e.p)), `+${fmt(e.amt)}`, '#6ee7b7'); log(`${e.p.name} 본진 HP +${fmt(e.amt)}`, 'text-emerald-300'); break;
     case 'destroy': log(`${nm(e.unit)} 파괴!`, 'text-zinc-400'); pendingDying.push(uEl(e.unit)); break;
-    case 'refund': log(`${nm(e.killer)} 처치 보상: 다음 턴 마나 +${e.refund}`, 'text-sky-300'); break;
+    case 'refund': log(`${nm(e.killer)} 처치 보상: 마나 +${e.refund}`, 'text-sky-300'); if (e.refund > 0 && !FX_OFF()) dmgNumber(heroEl(whoOf(e.owner)), `💧 +${e.refund} 마나`, '#7dd3fc'); renderHero(whoOf(e.owner)); break;
     case 'levelup': log(`${nm(e.unit)} Lv${e.level}`, 'text-amber-300'); dmgNumber(uEl(e.unit), `⬆ Lv${e.level}`, '#fcd34d'); break;
     case 'status': { const st = STATUS[e.kind]; const t = e.kind === 'mod' ? e.text : `${st?.icon || ''} ${st?.label || e.kind}`; dmgNumber(uEl(e.unit), t, '#c4b5fd'); log(`${nm(e.unit)}: ${t}`, 'text-purple-300'); break; }
     case 'immune': dmgNumber(uEl(e.unit), '🔰 면역', '#93c5fd'); break;
@@ -684,7 +684,24 @@ function renderStats() {
 
 // ===== 초기화 =====
 document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => hideModal(b.dataset.close));
-$('end-turn').onclick = endTurn;
+// 턴 종료 확인: 행동 가능한 카드가 남아 있으면 물어봄 (내 턴 UI 전용, AI·시뮬레이터와 무관)
+const CONFIRM_KEY = 'tcg_skip_endturn_confirm';
+function idleUnits() {
+  const tg = attackTargets(S.me, S.ai);
+  if (!tg.hero && !tg.units.length) return [];
+  return S.me.field.filter(u => u.canAttack && !u.st?.para && !u.st?.confuse && !u.st?.stun);
+}
+function requestEndTurn() {
+  if (S.turn !== 'me' || S.over || S.busy) return;
+  const n = idleUnits().length;
+  if (!n || localStorage.getItem(CONFIRM_KEY) === '1') return endTurn();
+  $('endturn-msg').textContent = `행동 안 한 카드가 ${n}장 있어요. 턴을 넘길까요?`;
+  $('endturn-noask').checked = false;
+  showModal('endturn-confirm');
+}
+$('endturn-ok').onclick = () => { if ($('endturn-noask').checked) localStorage.setItem(CONFIRM_KEY, '1'); hideModal('endturn-confirm'); endTurn(); };
+$('endturn-cancel').onclick = () => hideModal('endturn-confirm');
+$('end-turn').onclick = requestEndTurn;
 $('attack-all').onclick = attackAll;
 for (const type of Object.keys(ACTIONS)) $(`act-${type}`).onclick = () => { if (S.turn === 'me' && !S.busy && !S.over) useAction('me', type); };
 $('ai-hero').onclick = onHeroClick;

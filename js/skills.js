@@ -183,9 +183,11 @@ export function checkDeath(u, killer = null) {
   // 천사의 절규: 아군 사망마다
   for (const a of p.field) if (hasPassive(a, '천사의 절규')) { stats.count('천사의 절규'); a.cry++; heal(a, a.maxHp * 0.2, '천사의 절규'); emit({ type: 'passive', unit: a, name: '천사의 절규' }); }
   if (killer && killer.owner !== p) {
-    const refund = Math.ceil(u.card.cost * RULES.KILL_MANA_REFUND_RATIO);
-    killer.owner.bonusMana = (killer.owner.bonusMana || 0) + refund;
-    emit({ type: 'refund', owner: killer.owner, killer, refund });
+    const o = killer.owner, before = o.mana || 0;
+    o.mana = Math.min(RULES.MANA_MAX, before + Math.round(u.card.cost * RULES.KILL_MANA_RATIO));
+    const refund = o.mana - before;
+    o.killMana = (o.killMana || 0) + refund;
+    emit({ type: 'refund', owner: o, killer, refund });
     gainXp(killer, killXp(u));
   }
   refreshAll(p);
