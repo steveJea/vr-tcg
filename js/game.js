@@ -1,4 +1,4 @@
-import { RULES, ELEMENTS, elementMultiplier, calcDamage, canSummon, buildDeck, parseCSV, aiSummonOrder, aiPickTarget, recallCost, canRecall, aiShouldRecall, makeUnit, resolveAttack, refillMana, ACTIONS, canAction, doAction, clearBuff, aiWantShuffle, aiWantBuff, aiWantHeal, aiWantFieldHeal, aiPickItem, endTurnXp, ITEMS, canEquip, equip, attackTargets, canTarget, autoTarget, heroLocked, xpToNext, SKILLS, gainXp } from './rules.js';
+import { RULES, ELEMENTS, elementMultiplier, calcDamage, canSummon, buildDeck, parseCSV, aiSummonOrder, aiPickTarget, recallCost, canRecall, aiShouldRecall, makeUnit, resolveAttack, refillMana, ACTIONS, canAction, doAction, clearBuff, aiWantShuffle, aiWantBuff, aiWantHeal, aiWantFieldHeal, aiPickItem, endTurnXp, ITEMS, canEquip, equip, attackTargets, canTarget, autoTarget, heroLocked, xpToNext, SKILLS, gainXp, setCardPool, canSacrifice, sacrifice, aiPickSacrifice, aiWantAccel, judgeTimeout, JUDGE_LABEL } from './rules.js';
 import { setSkillData, setEmitter, initPlayers, placeUnit, turnStart, turnEnd, useSkill, skillState, aiPickSkill, refreshAll, statusIcons, skillsOf, combos, STATUS, SK } from './skills.js';
 
 const IMG = 'https://raw.githubusercontent.com/steveJea/vr-ideal-worldcup/main/img/bt_img/';
@@ -10,8 +10,8 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 // ===== 전적 저장 (나중에 서버 저장으로 교체 가능하도록 분리) =====
 const Stats = {
   KEY: 'vrTcgStats.v1',
-  load() { try { return { wins: 0, losses: 0, ...JSON.parse(localStorage.getItem(this.KEY)) }; } catch { return { wins: 0, losses: 0 }; } },
-  record(win) { const s = this.load(); win ? s.wins++ : s.losses++; localStorage.setItem(this.KEY, JSON.stringify(s)); return s; },
+  load() { try { return { wins: 0, losses: 0, draws: 0, ...JSON.parse(localStorage.getItem(this.KEY)) }; } catch { return { wins: 0, losses: 0, draws: 0 }; } },
+  record(win) { const s = this.load(); win === null ? s.draws++ : win ? s.wins++ : s.losses++; localStorage.setItem(this.KEY, JSON.stringify(s)); return s; },
 };
 
 let POOL = [];
@@ -39,7 +39,7 @@ function log(msg, cls = '') {
 
 function startGame() {
   const first = Math.random() < 0.5 ? 'me' : 'ai';   // 선공 동전 던지기
-  S = { me: newPlayer('나', first !== 'me'), ai: newPlayer('컴퓨터', first !== 'ai'), first, turn: first, turnNo: 0, over: false, busy: false };
+  S = { me: newPlayer('나', first !== 'me'), ai: newPlayer('컴퓨터', first !== 'ai'), first, turn: first, turnNo: 0, totalTurns: 0, over: false, busy: false };
   selected = null; $('log').innerHTML = '';
   $('end-screen').classList.add('hidden'); $('start-screen').classList.add('hidden'); $('game').classList.remove('hidden');
   initPlayers(S.me, S.ai);
@@ -51,7 +51,7 @@ function startGame() {
 
 function startTurn(who) {
   const p = S[who];
-  S.turn = who; if (who === S.first) S.turnNo++;
+  S.turn = who; if (who === S.first) S.turnNo++; S.totalTurns++;
   clearBuff(opp(who));                   // 지난 턴 강화 해제
   const bonus = refillMana(p);
   if (bonus) { log(`${p.name}: 처치 보너스 마나 +${bonus}`, 'text-sky-300'); if (who === 'me') floatText(`💧 +${bonus}`, 'text-sky-300'); }
@@ -67,7 +67,7 @@ function useAction(who, type) {
   const p = S[who], r = doAction(type, p);
   if (!r.ok) return r;
   const a = ACTIONS[type];
-  const detail = type === 'shuffle' ? `손패 ${r.n}장 다시 뽑기` : type === 'heal' ? `영웅 HP +${fmt(r.healed)}` : type === 'fieldheal' ? `필드 ${r.n}장 HP 총 +${fmt(r.healed)}` : `필드 ${r.n}장 이번 턴 ATK +${Math.round(RULES.BUFF_RATIO * 100)}%`;
+  const detail = type === 'accel' ? `다음 턴부터 매 턴 마나 +${r.n * RULES.ACCEL_BONUS} (${r.n}/${RULES.ACCEL_MAX})` : type === 'shuffle' ? `전체 카드에서 새 카드 ${r.n}장` : type === 'heal' ? `영웅 HP +${fmt(r.healed)}` : type === 'fieldheal' ? `필드 ${r.n}장 HP 총 +${fmt(r.healed)}` : `필드 ${r.n}장 이번 턴 ATK +${Math.round(RULES.BUFF_RATIO * 100)}%`;
   log(`${p.name}: ${a.icon} ${a.label} (마나 ${a.cost()}) — ${detail}`, 'text-violet-300');
   if (type === 'heal') floatText(`+${fmt(r.healed)}`, 'text-emerald-300', who === 'me' ? 'me' : 'ai');
   if (type === 'fieldheal') floatText(`💚 +${fmt(r.healed)}`, 'text-emerald-300', who);
@@ -96,6 +96,16 @@ function summon(who, card) {
   placeUnit(p, card, makeUnit);
   render();
   return { ok: true };
+}
+
+function doSacrifice(who, unit) {
+  const p = S[who], r = sacrifice(unit, p);
+  if (!r.ok) return r;
+  if (selected === unit.uid) selected = null;
+  log(`${p.name}: ${unit.card.name} 희생 — 마나 +${r.gain}`, 'text-rose-300');
+  floatText(`🩸 마나 +${r.gain}`, 'text-sky-300', who);
+  render();
+  return r;
 }
 
 function recall(who, unit) {
@@ -232,18 +242,28 @@ function floatText(text, cls, side = 'me') {
   setTimeout(() => el.remove(), 1200);
 }
 
+function finish(win, reason) {
+  S.over = true;
+  const st = Stats.record(win);
+  $('end-title').innerHTML = win === null ? '<span class="text-zinc-200">무승부</span>' : win ? '<span class="text-emerald-400">승리!</span>' : '<span class="text-red-400">패배...</span>';
+  const why = reason === 'ko' ? '진영 붕괴 (KO)' : `${RULES.MAX_TURNS}턴 종료 판정 · ${JUDGE_LABEL[reason]}`;
+  const detail = reason === 'ko' ? '' : `<div class="text-sm text-zinc-400 mt-1">진영 체력 나 ${fmt(S.me.hp)} : ${fmt(S.ai.hp)} 상대 · 필드 카드 ${S.me.field.length} : ${S.ai.field.length}</div>`;
+  $('end-text').innerHTML = `<div id="end-reason" class="font-bold text-amber-300">${why}</div>${detail}<div class="mt-2">${S.turnNo}라운드 · 전적 ${st.wins}승 ${st.losses}패${st.draws ? ` ${st.draws}무` : ''}</div>`;
+  $('end-screen').classList.remove('hidden');
+  render();
+  return true;
+}
+
 function checkEnd() {
   if (S.over) return true;
-  if (S.ai.hp <= 0 || S.me.hp <= 0) {
-    S.over = true;
-    const win = S.ai.hp <= 0;
-    const st = Stats.record(win);
-    $('end-title').innerHTML = win ? '<span class="text-emerald-400">승리!</span>' : '<span class="text-red-400">패배...</span>';
-    $('end-text').textContent = `${S.turnNo}턴 · 전적 ${st.wins}승 ${st.losses}패`;
-    $('end-screen').classList.remove('hidden');
-    return true;
-  }
+  if (S.ai.hp <= 0 || S.me.hp <= 0) return finish(S.ai.hp <= 0, 'ko');
   return false;
+}
+/** 턴 종료 후: 전체 턴 제한 도달 시 판정 */
+function checkTimeout() {
+  if (S.over || S.totalTurns < RULES.MAX_TURNS) return S.over;
+  const j = judgeTimeout(S.me, S.ai);
+  return finish(j.winner === null ? null : j.winner === S.me, j.reason);
 }
 
 function endTurn() {
@@ -251,7 +271,7 @@ function endTurn() {
   selected = null;
   endTurnXp(S.me); turnEnd(S.me);
   render();
-  if (checkEnd()) return;
+  if (checkEnd() || checkTimeout()) return;
   startTurn('ai');
 }
 
@@ -328,10 +348,13 @@ async function aiTurn() {
   // 0) 위험한 고코스트 카드 회수
   for (const u of [...ai.field]) if (aiShouldRecall(u, ai, me)) { recall('ai', u); await sleep(AI_DELAY()); }
   if (aiWantShuffle(ai, me)) { useAction('ai', 'shuffle'); await sleep(AI_DELAY()); }
+  if (aiWantAccel(ai, true)) { useAction('ai', 'accel'); await sleep(AI_DELAY()); }
+  { const v = aiPickSacrifice(ai, me); if (v) { doSacrifice('ai', v); await sleep(AI_DELAY()); } }
   for (const c of aiSummonOrder(ai.hand)) {
     if (canSummon(c, ai, me).ok) { summon('ai', c); await sleep(AI_DELAY()); }
   }
   for (let it; (it = aiPickItem(ai, me));) { equipItem('ai', it[1], it[0]); await sleep(AI_DELAY()); }
+  if (aiWantAccel(ai)) { useAction('ai', 'accel'); await sleep(AI_DELAY()); }
   if (aiWantFieldHeal(ai)) { useAction('ai', 'fieldheal'); await sleep(AI_DELAY()); }
   if (aiWantBuff(ai)) { useAction('ai', 'buff'); await sleep(AI_DELAY()); }
   // 2) 스킬 또는 공격: 쓸 만한 스킬이 있으면 스킬(공격 대신), 아니면 유리한 교환 우선 공격
@@ -346,22 +369,34 @@ async function aiTurn() {
     await sleep(AI_DELAY());
   }
   if (!S.over && aiWantHeal(ai)) { useAction('ai', 'heal'); await sleep(AI_DELAY()); }
-  if (!S.over) { endTurnXp(ai); turnEnd(ai); render(); checkEnd(); }
+  if (!S.over) { endTurnXp(ai); turnEnd(ai); render(); checkEnd() || checkTimeout(); }
   S.busy = false; fastForward = false;
   if (!S.over) startTurn('me');
 }
 
 // ===== 렌더링 =====
+const RARITY = {
+  'NORMAL':      { short: 'N',  label: '노멀',       cls: 'rar-n' },
+  'RARE':        { short: 'R',  label: '레어',       cls: 'rar-r' },
+  'HIGH RARE':   { short: 'HR', label: '하이 레어',  cls: 'rar-hr' },
+  'SUPER RARE':  { short: 'SR', label: '슈퍼 레어',  cls: 'rar-sr' },
+  'ULTRA RARE':  { short: 'UR', label: '울트라 레어', cls: 'rar-ur' },
+  'MYTHIC RARE': { short: 'MR', label: '미식 레어',  cls: 'rar-mr' },
+};
+const rarityOf = c => RARITY[c.grade] || RARITY.NORMAL;
 function cardHTML(c, { hp, size = 'md', dim = false } = {}) {
   const e = ELEMENTS[c.class] || ELEMENTS.WIND;
   const small = size === 'sm';
+  const rar = rarityOf(c), nSk = skillsOf(c.id).length;
   return `
-  <div class="relative ${small ? 'w-[64px] md:w-[96px]' : 'w-[78px] md:w-[110px]'} bg-zinc-900 rounded-xl overflow-hidden ring-2 ${e.ring} ${dim ? 'opacity-50' : ''} shadow-lg">
+  <div class="card-frame ${rar.cls} relative ${small ? 'w-[64px] md:w-[96px]' : 'w-[78px] md:w-[110px]'} bg-zinc-900 rounded-xl overflow-hidden ${dim ? 'opacity-50' : ''} shadow-lg" data-grade="${rar.short}">
     <img src="${IMG}${c.id}.jpg" data-id="${c.id}" class="card-img w-full aspect-[3/4] object-cover" alt="${c.name}">
     <div class="absolute top-1 left-1 w-6 h-6 md:w-7 md:h-7 rounded-full bg-sky-600 text-white text-[11px] md:text-xs font-black flex items-center justify-center border border-white/40">${c.cost}</div>
     <div class="absolute top-1 right-1 text-sm md:text-base" title="${e.label}">${e.icon}</div>
+    <div class="rar-badge absolute left-1 top-7 md:top-9" title="${rar.label}">${rar.short}</div>
+    ${nSk ? `<div class="sk-count absolute right-1 top-6 md:top-8" title="스킬 ${nSk}개">✦${nSk}</div>` : ''}
     <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/85 to-transparent px-1 pt-4 pb-1">
-      <div class="text-[10px] md:text-xs font-bold truncate">${skillsOf(c.id).length ? '<span class="text-fuchsia-300" title="스킬 보유">✦</span>' : ''}${c.name}</div>
+      <div class="text-[10px] md:text-xs font-bold truncate">${c.name}</div>
       <div class="text-[9px] md:text-[10px] text-amber-400 font-bold">⚡${fmt(c.power)}</div>
       <div class="flex justify-between whitespace-nowrap tracking-tighter ${small ? 'text-[8px]' : 'text-[9px]'} md:text-[11px] font-bold">
         <span class="text-orange-400">⚔${fmt(c.ATK)}</span><span class="text-red-400">♥${fmt(hp ?? c.HP)}</span><span class="text-sky-400">🛡${fmt(c.DEF)}</span>
@@ -380,7 +415,7 @@ function renderHero(who) {
   const p = S[who];
   $(`${who}-hp`).textContent = `${fmt(p.hp)} / ${fmt(RULES.HERO_HP)}`;
   $(`${who}-hpbar`).style.width = (p.hp / RULES.HERO_HP * 100) + '%';
-  $(`${who}-mana`).textContent = `${p.mana} / ${p.maxMana}`;
+  $(`${who}-mana`).textContent = `${p.mana} / ${p.maxMana}` + (p.accel ? ` ⚙️+${RULES.MANA_PER_TURN + p.accel * RULES.ACCEL_BONUS}/턴` : '');
   $(`${who}-deck`).textContent = p.deck.length;
   $(`${who}-handcount`).textContent = p.hand.length;
 }
@@ -389,7 +424,8 @@ function render() {
   if (!S) return;
   renderHero('me'); renderHero('ai');
   const myTurn = S.turn === 'me' && !S.over && !S.busy;
-  $('turn-info').textContent = S.over ? '게임 종료' : (S.turn === 'me' ? `내 턴 (${S.turnNo}라운드)` : `상대 턴 (${S.turnNo}라운드)...`);
+  const tl = `${Math.min(S.totalTurns, RULES.MAX_TURNS)}/${RULES.MAX_TURNS}턴`;
+  $('turn-info').textContent = S.over ? '게임 종료' : (S.turn === 'me' ? `내 턴 · ${tl}` : `상대 턴 · ${tl}...`);
   $('end-turn').disabled = !myTurn;
   for (const type of Object.keys(ACTIONS)) {
     const c = canAction(type, S.me), btn = $(`act-${type}`);
@@ -482,7 +518,7 @@ function showDetail(c, { fromHand = false, hp, unit = null, view = null } = {}) 
       <img src="${IMG}${c.id}.jpg" data-id="${c.id}" class="card-img w-32 md:w-40 aspect-[3/4] object-cover rounded-xl ring-2 ${e.ring}">
       <div class="flex-1 min-w-0">
         <div class="text-2xl font-black">${c.name}</div>
-        <div class="text-zinc-400 text-sm">${c.grade} · ${c.region} · ${c.age}세</div>
+        <div class="text-zinc-400 text-sm"><span class="rar-badge rar-inline ${rarityOf(c).cls}">${rarityOf(c).short}</span> ${c.grade} · 스킬 ${skillsOf(c.id).length}개 · ${c.region} · ${c.age}세</div>
         <div class="mt-2 ${e.color} font-bold">${e.icon} ${e.label} (${c.class})</div>
         <div class="text-zinc-300 text-sm">타입: ${c.attribute}</div>
         <div class="mt-2 text-amber-400 font-black text-xl">⚡ ${fmt(c.power)}</div>
@@ -507,10 +543,14 @@ function showDetail(c, { fromHand = false, hp, unit = null, view = null } = {}) 
     ${unit ? (() => { const rc = canRecall(unit, S.me); return `
       ${rc.ok || !myTurn ? '' : `<div id="recall-reason" class="mt-3 text-sm text-red-400">${rc.reason}</div>`}
       <button id="recall-btn" ${rc.ok && myTurn ? '' : 'disabled'} class="mt-4 w-full py-3 rounded-2xl bg-sky-500 hover:bg-sky-400 disabled:opacity-40 text-black font-bold">회수 (마나 ${rc.cost})</button>
-      <div class="text-[11px] text-zinc-500 mt-1 text-center">손패로 돌아가며 HP가 회복되고, 레벨·XP·아이템은 초기화됩니다</div>`; })() : ''}`;
+      <div class="text-[11px] text-zinc-500 mt-1 text-center">손패로 돌아가며 HP가 회복되고, 레벨·XP·아이템은 초기화됩니다</div>`; })() : ''}
+    ${unit ? (() => { const sc = canSacrifice(unit, S.me); return `
+      <button id="sacrifice-btn" ${sc.ok && myTurn ? '' : 'disabled'} class="mt-2 w-full py-2.5 rounded-2xl bg-rose-600 hover:bg-rose-500 disabled:opacity-40 text-white font-bold">🩸 희생 (마나 +${sc.gain})${sc.ok || !myTurn ? '' : ` — ${sc.reason}`}</button>
+      <div class="text-[11px] text-zinc-500 mt-1 text-center">카드를 없애고 코스트의 ${Math.round(RULES.SACRIFICE_RATIO * 100)}%를 마나로 (턴당 1회)</div>`; })() : ''}`;
   fixImages($('detail-body'));
   if (unit) $('detail-body').querySelectorAll('[data-skill]').forEach(b => b.onclick = () => { const s = unit.sk[+b.dataset.skill]; hideModal('detail'); castSkill('me', unit, s); });
   if (unit) $('detail-body').querySelectorAll('[data-equip]').forEach(b => b.onclick = () => { const r = equipItem('me', unit, b.dataset.equip); if (r.ok) showDetail(unit.card, { hp: unit.hp, unit }); });
+  if (unit && $('sacrifice-btn')) $('sacrifice-btn').onclick = () => { const r = doSacrifice('me', unit); if (r.ok) hideModal('detail'); };
   if (unit && $('recall-btn')) $('recall-btn').onclick = () => { const r = recall('me', unit); if (r.ok) hideModal('detail'); };
   if (fromHand) $('summon-btn').onclick = () => { const r = summon('me', c); if (r.ok) hideModal('detail'); };
   showModal('detail');
@@ -539,7 +579,7 @@ function hideModal(id) { $(id).classList.add('hidden'); $(id).classList.remove('
 
 function renderStats() {
   const s = Stats.load();
-  $('stats').textContent = `전적: ${s.wins}승 ${s.losses}패`;
+  $('stats').textContent = `전적: ${s.wins}승 ${s.losses}패${s.draws ? ` ${s.draws}무` : ''}`;
 }
 
 // ===== 초기화 =====
@@ -561,7 +601,7 @@ renderStats();
 
 (async () => {
   try {
-    POOL = parseCSV(await (await fetch('data/cards.csv')).text());
+    POOL = parseCSV(await (await fetch('data/cards.csv')).text()); setCardPool(POOL);
     const [sk, co] = await Promise.all(['data/skills.json', 'data/combos.json'].map(u => fetch(u).then(r => r.json())));
     setSkillData(sk, co); setEmitter(onEngine);
     $('start-btn').disabled = false; $('start-btn').textContent = '게임 시작';
@@ -572,4 +612,4 @@ renderStats();
 // 테스트/디버그용
 // 디버그: 카드 배치 TCG.put('me', id, 레벨)
 function debugPut(who, id, lv = 1) { const c = POOL.find(x => String(x.id) === String(id)); const u = placeUnit(S[who], c, makeUnit); while (u.level < lv) gainXp(u, xpToNext(u.level)); u.mp = u.maxMp; render(); return u; }
-window.TCG = { put: debugPut, castSkill, skillState, get S() { return S; }, RULES, elementMultiplier, calcDamage, canSummon, buildDeck, summon, attack, recall, attackAll, endTurn, canRecall, recallCost, makeUnit, resolveAttack, useAction, canAction, startGame, equipItem, attackTargets, get POOL() { return POOL; }, render, Stats };
+window.TCG = { put: debugPut, castSkill, skillState, get S() { return S; }, RULES, elementMultiplier, calcDamage, canSummon, buildDeck, summon, attack, recall, attackAll, endTurn, canRecall, recallCost, makeUnit, resolveAttack, useAction, canAction, startGame, equipItem, doSacrifice, finish, attackTargets, get POOL() { return POOL; }, render, Stats };

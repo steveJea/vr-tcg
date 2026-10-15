@@ -4,7 +4,11 @@ export const RULES = {
   HERO_HP: 3000,          // 영웅 HP
   DAMAGE_MULT: 1.5,       // ATK에 곱하는 전체 데미지 배율 (DEF 차감 전)
   FIELD_MAX: 5, DECK_SIZE: 30, OPENING_HAND: 4,
-  MANA_PER_TURN: 10, MANA_MAX: 100, MAX_ABYSS_PER_DECK: 1,
+  MANA_START: 30, MANA_PER_TURN: 10, MANA_MAX: 100, MAX_ABYSS_PER_DECK: 1, // 마나는 이월: 첫 턴 30, 이후 매 턴 +10(+가속기), 최대 100
+  MAX_TURNS: 30,              // 전체 30턴(각자 15턴) 후 판정승
+  MR_HERO_DMG_RATIO: 0.2,     // MYTHIC RARE 카드가 진영(영웅)에 주는 피해 배율 (일반·스킬·초과 피해)
+  SACRIFICE_RATIO: 0.5,       // 희생: 필드 카드 1장 제거 → 코스트 × 0.5 마나 (턴당 1회)
+  ACCEL_COST: 30, ACCEL_BONUS: 5, ACCEL_MAX: 5, // 마나 가속기: 다음 턴부터 매 턴 +5, 최대 5회
   // 덱 구성 (등급별 장수, 합계 30)
   DECK_COMPOSITION: { 'NORMAL': 10, 'RARE': 8, 'HIGH RARE': 6, 'SUPER RARE': 4, 'ULTRA RARE': 2 },
   MYTHIC_CHANCE: 0.15,
@@ -231,7 +235,7 @@ export function resolveAttack(me, opp, unit, target) {
   if (uDead) checkDeath(unit, target);
   if (tDead && RULES.OVERFLOW_TO_HERO && !locked) {
     const over = r1 - tHpBefore;
-    if (over > 0) { const d = damageHero(opp, over, me, 'overflow'); if (d > 0) ev.push({ type: 'overflow', unit, dmg: d }); }
+    if (over > 0) { const d = damageHero(opp, over, me, 'overflow', unit); if (d > 0) ev.push({ type: 'overflow', unit, dmg: d }); }
   }
   afterBasicHit(unit, target);
   return ev;
@@ -241,8 +245,9 @@ export function resolveAttack(me, opp, unit, target) {
 export function refillMana(p) {
   p.turnsTaken = (p.turnsTaken || 0) + 1;   // 자기 턴 수 (영웅 공격 잠금 판정용)
   p.used = {};                            // 턴당 1회 액션 사용 기록 초기화
-  p.maxMana = Math.min(RULES.MANA_MAX, p.maxMana + RULES.MANA_PER_TURN);
-  p.mana = p.maxMana + (p.bonusMana || 0);
+  p.maxMana = RULES.MANA_MAX;
+  const gain = p.turnsTaken === 1 ? RULES.MANA_START : RULES.MANA_PER_TURN + (p.accel || 0) * RULES.ACCEL_BONUS;
+  p.mana = Math.min(RULES.MANA_MAX, Math.max(p.mana || 0, 0) + gain) + (p.bonusMana || 0);
   const bonus = p.bonusMana || 0; p.bonusMana = 0;
   return bonus;
 }
@@ -253,13 +258,63 @@ export const ACTIONS = {
   heal:    { label: '기지 보강', icon: '🏰', cost: () => RULES.HEAL_COST },
   buff:    { label: '공격력 강화', icon: '⚔️', cost: () => RULES.BUFF_COST },
   fieldheal: { label: '필드 회복', icon: '💚', cost: () => RULES.FIELD_HEAL_COST },
+  accel:   { label: '마나 가속기', icon: '⚙️', cost: () => RULES.ACCEL_COST },
 };
+
+/** 셔플용 전체 카드 풀 */
+let CARD_POOL = [];
+export function setCardPool(pool) { CARD_POOL = pool; }
+
+/** 희생: 필드 카드 제거 → 코스트 × 비율 마나. 턴당 1회 */
+export const sacrificeGain = card => Math.ceil(card.cost * RULES.SACRIFICE_RATIO);
+export function canSacrifice(unit, p) {
+  const gain = sacrificeGain(unit.card);
+  if (p.used?.sacrifice) return { ok: false, gain, reason: '이번 턴 희생함' };
+  if (!p.field.includes(unit)) return { ok: false, gain, reason: '필드 카드 아님' };
+  return { ok: true, gain };
+}
+export function sacrifice(unit, p) {
+  const c = canSacrifice(unit, p);
+  if (!c.ok) return c;
+  p.used = { ...(p.used || {}), sacrifice: true };
+  p.field.splice(p.field.indexOf(unit), 1);
+  (p.grave ||= []).push(unit.base);
+  p.mana += c.gain;
+  refreshAll(p);
+  return { ok: true, gain: c.gain };
+}
+/** AI 희생: 손패 카드를 희생 마나로 낼 수 있게 되고, 희생 카드가 그보다 훨씬 싸고 투자 안 된 경우 */
+export function aiPickSacrifice(me, opp) {
+  if (me.used?.sacrifice || !me.field.length) return null;
+  const cands = me.field.filter(u => u.level <= 2 && !u.items?.weapon && !u.items?.armor).sort((a, b) => a.card.cost - b.card.cost);
+  for (const u of cands) {
+    const gain = sacrificeGain(u.card);
+    const want = me.hand.filter(c => c.cost > me.mana && c.cost <= me.mana + gain && c.cost >= u.card.cost * 2 && !(c.class === 'ABYSS' && opp.field.some(x => x.card.class === 'LIGHT')));
+    if (want.length) return u;
+  }
+  return null;
+}
+/** AI 가속기: 초반(자기 8턴 이내)에 마나가 남으면 투자 */
+export function aiWantAccel(me, early = false) {
+  if (!canAction('accel', me).ok) return false;
+  const t = me.turnsTaken || 0;
+  return early ? t >= 2 && t <= 6 && (me.accel || 0) < 3 : t <= 10;
+}
+
+/** 턴 제한 판정: 진영 HP → 필드 카드 수 → 무승부. a,b 플레이어. 반환 { winner: a|b|null, reason } */
+export function judgeTimeout(a, b) {
+  if (a.hp !== b.hp) return { winner: a.hp > b.hp ? a : b, reason: 'hp' };
+  if (a.field.length !== b.field.length) return { winner: a.field.length > b.field.length ? a : b, reason: 'cards' };
+  return { winner: null, reason: 'draw' };
+}
+export const JUDGE_LABEL = { ko: 'KO', hp: '진영 체력 우세', cards: '남은 카드 수 우세', draw: '무승부' };
 
 /** 액션 사용 가능 여부 */
 export function canAction(type, p) {
   const cost = ACTIONS[type].cost();
   if (p.actionLock > 0) return { ok: false, cost, reason: '고유기술 봉인' };
-  if (p.used?.[type]) return { ok: false, cost, reason: '이번 턴 사용함' };
+  if (type === 'accel' && (p.accel || 0) >= RULES.ACCEL_MAX) return { ok: false, cost, reason: `최대 ${RULES.ACCEL_MAX}회` };
+  if (type !== 'accel' && p.used?.[type]) return { ok: false, cost, reason: '이번 턴 사용함' };
   if (p.mana < cost) return { ok: false, cost, reason: `마나 부족 (${p.mana}/${cost})` };
   if (type === 'shuffle' && !p.hand.length) return { ok: false, cost, reason: '손패 없음' };
   if (type === 'heal' && p.hp >= RULES.HERO_HP) return { ok: false, cost, reason: 'HP 최대' };
@@ -273,9 +328,20 @@ export function doAction(type, p) {
   const c = canAction(type, p);
   if (!c.ok) return c;
   p.mana -= c.cost; p.used = { ...(p.used || {}), [type]: true };
+  if (type === 'accel') { p.accel = (p.accel || 0) + 1; return { ok: true, n: p.accel }; }
   if (type === 'shuffle') {
+    // 손패를 버리고 전체 카드 풀에서 완전히 새 카드를 뽑음 (MYTHIC 제외, 심연은 덱 제한 준수)
     const n = p.hand.length;
-    p.deck = shuffle([...p.deck, ...p.hand]); p.hand = p.deck.splice(0, n);
+    const own = new Set([...p.hand, ...p.field.map(u => u.base)].map(c => c.id));
+    let abyss = [...p.deck, ...p.field.map(u => u.base)].filter(c => c.class === 'ABYSS').length;
+    const fresh = [];
+    for (const c of shuffle(CARD_POOL.length ? CARD_POOL : [...p.deck, ...p.hand])) {
+      if (fresh.length >= n) break;
+      if (own.has(c.id) || c.grade === 'MYTHIC RARE') continue;
+      if (c.class === 'ABYSS') { if (abyss >= RULES.MAX_ABYSS_PER_DECK) continue; abyss++; }
+      fresh.push(c); own.add(c.id);
+    }
+    p.hand = fresh;
     return { ok: true, n };
   }
   if (type === 'heal') {
@@ -299,7 +365,7 @@ export function clearBuff(p) { p.field.forEach(u => { if (u.buff) { u.raw.ATK -=
 // ===== AI 액션 정책 (게임·시뮬레이션 공용) =====
 /** 소환 전: 낼 수 있는 카드가 없고 마나가 넉넉하면 패 섞기 */
 export function aiWantShuffle(me, opp) {
-  if (!canAction('shuffle', me).ok || me.hand.length < 2 || me.field.length >= RULES.FIELD_MAX || !me.deck.length) return false;
+  if (!canAction('shuffle', me).ok || me.hand.length < 2 || me.field.length >= RULES.FIELD_MAX) return false;
   const playable = me.hand.some(c => canSummon(c, me, opp).ok);
   return !playable && me.mana - RULES.SHUFFLE_COST >= 10;
 }

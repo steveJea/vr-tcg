@@ -142,6 +142,7 @@ export function healHero(p, amt) { const b = p.hp; p.hp = Math.min(RULES.HERO_HP
 export function damageHero(p, dmg, srcOwner, kind = 'hit', srcUnit = null) {
   if (srcOwner && srcOwner !== p && heroLocked(srcOwner)) return 0;
   if (p.st.heroInvuln) { emit({ type: 'heroImmune', p }); return 0; }
+  if (srcUnit && srcOwner && srcOwner !== p && srcUnit.card?.grade === 'MYTHIC RARE') dmg = Math.max(1, Math.round(dmg * RULES.MR_HERO_DMG_RATIO));
   if (p.st.heroShield) dmg = Math.max(1, Math.round(dmg / (1 + p.st.heroShield.def)));
   p.hp -= dmg;
   if (kind !== 'attack' && kind !== 'overflow') emit({ type: 'hero', p, dmg, kind });
