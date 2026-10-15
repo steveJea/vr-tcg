@@ -39,7 +39,7 @@ function log(msg, cls = '') {
 
 function startGame() {
   const first = Math.random() < 0.5 ? 'me' : 'ai';   // 선공 동전 던지기
-  S = { me: newPlayer('나', first !== 'me'), ai: newPlayer('컴퓨터', first !== 'ai'), first, turn: first, turnNo: 0, totalTurns: 0, over: false, busy: false };
+  S = { me: newPlayer('나', first !== 'me'), ai: newPlayer('컴퓨터', first !== 'ai'), first, turn: first, turnNo: 0, totalTurns: 0, myTurns: 0, over: false, busy: false };
   selected = null; $('log').innerHTML = '';
   $('end-screen').classList.add('hidden'); $('start-screen').classList.add('hidden'); $('game').classList.remove('hidden');
   initPlayers(S.me, S.ai);
@@ -52,6 +52,7 @@ function startGame() {
 function startTurn(who) {
   const p = S[who];
   S.turn = who; if (who === S.first) S.turnNo++; S.totalTurns++;
+  if (who === 'me') { S.myTurns++; if (myTurnsLeft() === 1) lastTurnToast(); }
   clearBuff(opp(who));                   // 지난 턴 강화 해제
   const bonus = refillMana(p);
   if (bonus) { log(`${p.name}: 처치 보너스 마나 +${bonus}`, 'text-sky-300'); if (who === 'me') floatText(`💧 +${bonus}`, 'text-sky-300'); }
@@ -421,7 +422,25 @@ function renderHero(who) {
   $(`${who}-handcount`).textContent = p.hand.length;
 }
 
+// ===== 내 남은 턴 표시 =====
+const MY_MAX = RULES.MAX_TURNS / 2;
+function myTurnsLeft() { return Math.max(0, MY_MAX - S.myTurns + (S.turn === 'me' && !S.over ? 1 : 0)); }
+function renderTurnsLeft() {
+  const el = $('my-turns'); if (!el) return;
+  const n = myTurnsLeft(), lvl = n <= 2 ? 'crit' : n <= 5 ? 'warn' : 'ok';
+  el.className = `turns-${lvl}`;
+  $('my-turns-n').textContent = n;
+  $('my-turns-pips').className = `mt-1 turns-${lvl}-p`;
+  $('my-turns-pips').innerHTML = Array.from({ length: MY_MAX }, (_, i) => `<i class="${i < n ? 'on' : ''}"></i>`).join('');
+}
+function lastTurnToast() {
+  const t = document.createElement('div');
+  t.className = 'last-turn-toast'; t.textContent = '⏳ 마지막 턴!';
+  document.body.appendChild(t); setTimeout(() => t.remove(), 2200);
+}
+
 function render() {
+  renderTurnsLeft();
   if (!S) return;
   renderHero('me'); renderHero('ai');
   const myTurn = S.turn === 'me' && !S.over && !S.busy;
