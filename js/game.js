@@ -213,8 +213,9 @@ async function attack(who, unit, target, fromBatch = false) {
   for (const e of resolveAttack(p, o, unit, target)) {
     if (e.type === 'hero') { log(`${unit.card.name} → ${o.name} 영웅 ${fmt(e.dmg)} 피해`, cls); shake(tEl); dmgNumber(tEl, `-${fmt(e.dmg)}`); }
     else if (e.type === 'hit') {
-      log(`${unit.card.name} → ${target.card.name} ${fmt(e.d1)} 피해${e.mult !== 1 ? ` (속성 ×${e.mult})` : ''}, 반격 ${fmt(e.d2)}`, cls);
-      shake(tEl); dmgNumber(tEl, `-${fmt(e.d1)}`);
+      const real = e.target || target, rEl = real === target ? tEl : (unitEl(oWho, real) || unitEl(who, real) || tEl);
+      log(`${unit.card.name} → ${real.card.name}${real !== target ? ` (${target.card.name} 대신)` : ''} ${fmt(e.d1)} 피해${e.mult !== 1 ? ` (속성 ×${e.mult})` : ''}, 반격 ${fmt(e.d2)}`, cls);
+      shake(rEl); dmgNumber(rEl, `-${fmt(e.d1)}`);
       shake(aEl); dmgNumber(aEl, `-${fmt(e.d2)}`, '#fca5a5');
     }
     else if (e.type === 'overflow') { log(`초과 피해 ${fmt(e.dmg)} → ${o.name} 영웅`, 'text-orange-300'); const h = heroEl(oWho); shake(h); dmgNumber(h, `💥 -${fmt(e.dmg)}`, '#fdba74'); }
