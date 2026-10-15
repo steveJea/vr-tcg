@@ -358,6 +358,12 @@ function cleanse(a) { for (const [k, s] of Object.entries(a.st)) if (STATUS[s.ki
 const REQ = { '껌밟기': f => females(f).length, '되겠냐?': f => females(f).length, '귀여운 고문자': f => females(f).length,
   '나 좀 내버려둬': f => males(f).length, '제발 그냥 가줘': f => males(f).length, '소녀의 거래': f => males(f).length, '피눈물': f => males(f).length, '이리 올래?': f => males(f).length, '짜릿하니?': f => males(f).length };
 
+/** 남성 기본 공격 유도: [나 좀 내버려둬]/[소녀의 거래] 시전 중(decoy.male)인 카드 중 코스트 최고. 마비·혼란 시 미발동 */
+export function maleLure(attacker, side) {
+  if (attacker.base.gender !== 'MALE') return null;
+  const c = side.field.filter(x => x.st.decoy?.male && !x.st.para && !x.st.confuse);
+  return c.length ? by(c, x => x.card.cost, -1) : null;
+}
 /** 기본 공격 대상 재지정: 대신 맞기(decoy) → 수호(아기토끼·튀 므 망크). 반환 { target, ratio, proxyOf } */
 const GUARD = { '아기토끼': '2000100008', '튀 므 망크': '2000600116' };
 export function redirectAttack(attacker, target) {

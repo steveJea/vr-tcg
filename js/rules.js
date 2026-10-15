@@ -1,5 +1,5 @@
 // ===== VR TCG 규칙 (순수 함수: UI와 분리, 테스트 가능) =====
-import { skillsOf, damageUnit, damageHero, checkDeath, afterBasicHit, refreshAll, onLevelChange, redirectAttack, counterMult, heal } from './skills.js';
+import { skillsOf, damageUnit, damageHero, checkDeath, afterBasicHit, refreshAll, onLevelChange, redirectAttack, counterMult, heal, maleLure } from './skills.js';
 export const RULES = {
   HERO_HP: 3000,          // 영웅 HP
   DAMAGE_MULT: 1.5,       // ATK에 곱하는 전체 데미지 배율 (DEF 차감 전)
@@ -219,6 +219,8 @@ export function resolveAttack(me, opp, unit, target) {
   unit.canAttack = false;
   refreshAll(me);
   const locked = heroLocked(me);
+  const lure = maleLure(unit, opp);   // 최윤희·이혜경: 남성 기본 공격(영웅 포함) 유도
+  if (lure && lure !== target) target = lure;
   if (!target) {
     if (locked) return ev;
     const dmg = damageHero(opp, calcDamage(unit.card, null), me, 'attack', unit);
