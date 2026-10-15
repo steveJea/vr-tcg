@@ -243,7 +243,7 @@ function floatText(text, cls, side = 'me') {
 }
 
 function finish(win, reason) {
-  S.over = true;
+  S.over = true; hideModal('detail');
   const st = Stats.record(win);
   $('end-title').innerHTML = win === null ? '<span class="text-zinc-200">무승부</span>' : win ? '<span class="text-emerald-400">승리!</span>' : '<span class="text-red-400">패배...</span>';
   const why = reason === 'ko' ? '진영 붕괴 (KO)' : `${RULES.MAX_TURNS}턴 종료 판정 · ${JUDGE_LABEL[reason]}`;

@@ -4,7 +4,7 @@ export const RULES = {
   HERO_HP: 3000,          // 영웅 HP
   DAMAGE_MULT: 1.5,       // ATK에 곱하는 전체 데미지 배율 (DEF 차감 전)
   FIELD_MAX: 5, DECK_SIZE: 30, OPENING_HAND: 4,
-  MANA_START: 30, MANA_PER_TURN: 10, MANA_MAX: 100, MAX_ABYSS_PER_DECK: 1, // 마나는 이월: 첫 턴 30, 이후 매 턴 +10(+가속기), 최대 100
+  MANA_START: 40, MANA_PER_TURN: 20, MANA_MAX: 100, MAX_ABYSS_PER_DECK: 1, // 마나는 이월: 첫 턴 40, 이후 매 턴 +20(+가속기), 최대 100
   MAX_TURNS: 30,              // 전체 30턴(각자 15턴) 후 판정승
   MR_HERO_DMG_RATIO: 0.2,     // MYTHIC RARE 카드가 진영(영웅)에 주는 피해 배율 (일반·스킬·초과 피해)
   SACRIFICE_RATIO: 0.5,       // 희생: 필드 카드 1장 제거 → 코스트 × 0.5 마나 (턴당 1회)
