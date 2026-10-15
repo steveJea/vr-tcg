@@ -142,7 +142,7 @@
 
 <!-- 게임 화면 -->
 <section id="game" class="hidden max-w-5xl mx-auto px-2 py-2 flex flex-col gap-2 min-h-screen">
-  <!-- 상대 영웅 -->
+  <!-- 상대 진영 -->
   <div class="flex items-center gap-2">
     <div id="ai-hero" class="flex-1 bg-black/60 border border-red-500/40 rounded-2xl px-3 py-2 cursor-pointer">
       <div class="flex justify-between text-xs md:text-sm"><span class="font-bold text-red-400">🤖 컴퓨터 <span id="ai-order" class="ml-1 px-1.5 py-0.5 rounded bg-white/10 text-[10px] text-zinc-300"></span></span><span id="ai-hp" class="font-bold"></span></div>
@@ -167,7 +167,7 @@
   </div>
 
   <div id="hero-hint" class="text-center text-[11px] md:text-xs font-bold"></div>
-  <!-- 내 영웅 + 턴 종료 -->
+  <!-- 내 진영 + 턴 종료 -->
   <div class="flex items-center gap-2">
     <div id="me-hero" class="flex-1 bg-black/60 border border-emerald-500/40 rounded-2xl px-3 py-2">
       <div class="flex justify-between text-xs md:text-sm"><span class="font-bold text-emerald-400">🧑 나 <span id="me-order" class="ml-1 px-1.5 py-0.5 rounded bg-white/10 text-[10px] text-zinc-300"></span></span><span class="flex items-center gap-2"><span id="my-turns" title="내 턴 남은 횟수 (현재 턴 포함)"><span class="lbl">내 턴 남은 횟수</span> <b id="my-turns-n"></b><span class="of" id="my-turns-max">/20</span></span><span id="me-hp" class="font-bold"></span></span></div>
@@ -233,8 +233,8 @@
       <div>💀 심연 <span class="text-zinc-400">모든 속성에 ×1.25, 불리 없음.<br>단, ✨ 빛에게는 ×2 피해를 받음.<br>상대 필드에 빛 카드가 있으면 심연 카드 소환 불가.</span></div>
       <div class="text-xl font-black pt-3 border-t border-white/10">전투 규칙</div>
       <ul class="list-disc pl-5 text-zinc-300 space-y-1">
-        <li>자기 <b>첫 2턴</b>에는 영웅을 공격할 수 없어요 (초과 피해도 영웅에게 가지 않음)</li>
-        <li>상대 필드에 카드가 <b>4장 이상</b>이면 카드만 공격할 수 있어요. 3장 이하면 영웅 직접 공격 가능</li>
+        <li>자기 <b>첫 2턴</b>에는 진영을 공격할 수 없어요 (초과 피해도 진영에게 가지 않음)</li>
+        <li>상대 필드에 카드가 <b>4장 이상</b>이면 카드만 공격할 수 있어요. 3장 이하면 진영 직접 공격 가능</li>
         <li>🎯 도발 카드가 있으면 그 카드부터 공격해야 해요</li>
         <li>XP: 처치 시 처치한 카드 코스트 × (1 + 그 카드 레벨 × 0.2) + 공격할 때마다 5 + 내 턴 종료 시 살아있는 카드마다 4. 최대 <b>Lv10</b> (👑 영웅 카드), 레벨이 오를수록 필요 XP 증가<br><span class="text-zinc-400">Lv2~5: 원본 ATK·HP +10% / Lv6~10: +5%</span></li>
         <li>아이템 (필드 카드를 눌러 장착): 🗡️ 무기 💧30 ATK +15% · 🛡️ 방어구 💧30 HP +20% (카드당 각 1개)</li>
@@ -244,7 +244,7 @@
         <li>패시브: 해금 레벨에 도달하면 자동 적용. "발동 시" 패시브는 해금 순간 1번 발동</li>
         <li>상태: 🩸출혈(ATK·DEF -5%, HP -5%) · ⚡마비(행동 불가, 2턴 연속 불가) · 💫혼란(자기 턴에 아군 공격) · 🌀교란(자기 본진 공격) · 🔰피해 면역 · ✳️디버프 면역 · 🎯도발 · 🔺🔻능력치 증감 · 🔒고유기술 봉인(셔플·보강·강화·필드 회복 불가)</li>
         <li><b>속성 시너지</b>: 내 필드에 같은 속성 2/3/4/5장 → 그 속성 카드 ATK·DEF +10/15/20/30%</li>
-        <li><b>🔗 조합</b>: 지정 카드가 모두 내 필드에 있으면 발동 (조합 카드 또는 아군 전체 강화). 영웅 바 아래 배지에 마우스를 올리면 설명</li>
+        <li><b>🔗 조합</b>: 지정 카드가 모두 내 필드에 있으면 발동 (조합 카드 또는 아군 전체 강화). 진영 바 아래 배지에 마우스를 올리면 설명</li>
         <li>회수하면 레벨·XP·아이템이 초기화돼요</li>
         <li>💚 필드 회복 💧20: 내 필드 카드 전체 최대 HP의 10% 회복 (턴당 1회)</li>
         <li>⚙️ 마나 가속기 💧30: 다음 턴부터 매 턴 마나 +5 (최대 5회 중첩)</li>
@@ -254,7 +254,7 @@
         <li>⏱️ 전체 40턴(각자 20턴) 후 판정: 진영 HP → 남은 필드 카드 수 → 무승부</li>
         <li>🌟 MR(미식 레어) 카드는 진영에 피해의 20%만 줍니다</li>
       </ul>
-      <div class="text-zinc-400 pt-2 border-t border-white/10">데미지 = max(1, ⌊ATK × 1.5 × 배율 − 대상 DEF ÷ 2⌋) · 영웅은 DEF 0</div>
+      <div class="text-zinc-400 pt-2 border-t border-white/10">데미지 = max(1, ⌊ATK × 1.5 × 배율 − 대상 DEF ÷ 2⌋) · 진영은 DEF 0</div>
     </div>
   </div>
 </div>
