@@ -287,7 +287,7 @@ export const ACTIVE = {
   '장미가시의 세레나데': (u, p, f) => debuffAll(f, '장미가시의 세레나데', 3, { atk: -0.2, label: '장미가시: ATK -20%', rose: u }),
   // 임혜리
   '주님 저희를 구하소서': (u, p) => live(p).forEach(a => { heal(a, a.maxHp * 0.2); cleanse(a); }),
-  '하느님의 영광': (u, p) => { if (!p.grave.length) return; const c = by(p.grave, x => x.cost, -1); p.grave.splice(p.grave.indexOf(c), 1); p.hand.push(c); emit({ type: 'revive', p, card: c }); },
+  '하느님의 영광': (u, p) => { if (!p.grave.length) return; const c = by(p.grave, x => x.cost, -1); p.grave.splice(p.grave.indexOf(c), 1); if (!owns(p, c)) { p.hand.push(c); emit({ type: 'revive', p, card: c }); } },
   // 이지영
   'Incipit nunc sic': (u, p, f) => { const d = hitAll(u, f, 1, 0.5); if (d) gainMp(u, u.maxMp * 0.15 * d, '사망자 수'); },
   'Divina tibi poena adveniat': (u, p) => { addStatus(u, 'Divina', 2, { atk: 2.0, label: 'ATK +200%' }, 'mod'); live(p).filter(a => a !== u).forEach(a => addStatus(a, 'Divina', 2, { atk: 0.3, label: 'ATK +30%' }, 'mod')); },
@@ -349,10 +349,11 @@ export const ACTIVE = {
   '쾌락의 착각': (u, p) => live(p).forEach(a => heal(a, a.maxHp * 0.05)),
   '기무라 락': (u, p, f) => { const t = by(live(f), x => x.card.cost); if (t) multiHit(u, t, 5, 0.3); },
   '이번만이야': (u, p) => { const c = p.lastDead; if (!c || !p.grave.includes(c)) return; p.grave.splice(p.grave.lastIndexOf(c), 1); p.lastDead = null;
-    p.hand.push(c); emit({ type: 'revive', p, card: c }); },
+    if (!owns(p, c)) { p.hand.push(c); emit({ type: 'revive', p, card: c }); } },
   '촉촉한가요?': (u, p) => males(p).forEach(a => heal(a, a.maxHp * 0.03)),
   '이게 공격이야!': (u, p, f) => { const t = by(live(f), x => x.card.DEF); if (t) multiHit(u, t, 5, 0.2, { ignoreDef: 0.1 }); },
 };
+const owns = (p, c) => [...p.deck, ...p.hand, ...p.field.map(u => u.base)].some(x => String(x.id) === String(c.id));
 const females = side => live(side).filter(x => x.base.gender === 'FEMALE');
 const males = side => live(side).filter(x => x.base.gender === 'MALE');
 function cleanse(a) { for (const [k, s] of Object.entries(a.st)) if (STATUS[s.kind]?.debuff || s.atk < 0 || s.def < 0) delete a.st[k]; a.curse = 0; }

@@ -5,7 +5,7 @@ export const RULES = {
   DAMAGE_MULT: 1.5,       // ATK에 곱하는 전체 데미지 배율 (DEF 차감 전)
   FIELD_MAX: 5, DECK_SIZE: 30, OPENING_HAND: 4,
   MANA_START: 40, MANA_PER_TURN: 20, MANA_MAX: 100, MAX_ABYSS_PER_DECK: 1, // 마나는 이월: 첫 턴 40, 이후 매 턴 +20(+가속기), 최대 100
-  MAX_TURNS: 30,              // 전체 30턴(각자 15턴) 후 판정승
+  MAX_TURNS: 40,              // 전체 40턴(각자 20턴) 후 판정승
   MR_HERO_DMG_RATIO: 0.2,     // MYTHIC RARE 카드가 진영(영웅)에 주는 피해 배율 (일반·스킬·초과 피해)
   SACRIFICE_RATIO: 0.5,       // 희생: 필드 카드 1장 제거 → 코스트 × 0.5 마나 (턴당 1회)
   ACCEL_COST: 30, ACCEL_BONUS: 5, ACCEL_MAX: 5, // 마나 가속기: 다음 턴부터 매 턴 +5, 최대 5회
@@ -255,6 +255,9 @@ export function resolveAttack(me, opp, unit, target) {
 }
 
 /** 턴 시작 마나: 기본 충전 + 처치 보너스(그 턴만 최대치 초과 가능) */
+/** 플레이어가 이미 이 카드를 갖고 있는지 (덱·손패·필드) */
+export function ownsCard(p, id) { id = String(id); return [...p.deck, ...p.hand, ...p.field.map(u => u.base)].some(c => String(c.id) === id); }
+
 export function refillMana(p) {
   p.turnsTaken = (p.turnsTaken || 0) + 1;   // 자기 턴 수 (영웅 공격 잠금 판정용)
   p.used = {};                            // 턴당 1회 액션 사용 기록 초기화
@@ -345,7 +348,8 @@ export function doAction(type, p) {
   if (type === 'shuffle') {
     // 손패를 버리고 전체 카드 풀에서 완전히 새 카드를 뽑음 (MYTHIC 제외, 심연은 덱 제한 준수)
     const n = p.hand.length;
-    const own = new Set([...p.hand, ...p.field.map(u => u.base)].map(c => c.id));
+    // 중복 금지: 덱·손패·필드·무덤(부활 가능)에 있는 카드는 제외
+    const own = new Set([...p.deck, ...p.hand, ...p.field.map(u => u.base), ...(p.grave || [])].map(c => c.id));
     let abyss = [...p.deck, ...p.field.map(u => u.base)].filter(c => c.class === 'ABYSS').length;
     const fresh = [];
     for (const c of shuffle(CARD_POOL.length ? CARD_POOL : [...p.deck, ...p.hand])) {

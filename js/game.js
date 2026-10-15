@@ -490,7 +490,7 @@ function renderTurnsLeft() {
   const el = $('my-turns'); if (!el) return;
   const n = myTurnsLeft(), lvl = n <= 2 ? 'crit' : n <= 5 ? 'warn' : 'ok';
   el.className = `turns-${lvl}`;
-  $('my-turns-n').textContent = n;
+  $('my-turns-n').textContent = n; $('my-turns-max').textContent = '/' + MY_MAX;
   $('my-turns-pips').className = `mt-1 turns-${lvl}-p`;
   $('my-turns-pips').innerHTML = Array.from({ length: MY_MAX }, (_, i) => `<i class="${i < n ? 'on' : ''}"></i>`).join('');
 }
@@ -766,4 +766,10 @@ renderStats();
 // 테스트/디버그용
 // 디버그: 카드 배치 TCG.put('me', id, 레벨)
 function debugPut(who, id, lv = 1) { const c = POOL.find(x => String(x.id) === String(id)); const u = placeUnit(S[who], c, makeUnit); while (u.level < lv) gainXp(u, xpToNext(u.level)); u.mp = u.maxMp; render(); return u; }
-window.TCG = { get errors() { return window.TCG_ERRORS || []; }, cutIn, passiveCutIn, sortedHand, get handSort() { return handSort; }, put: debugPut, castSkill, skillState, get S() { return S; }, RULES, elementMultiplier, calcDamage, canSummon, buildDeck, summon, attack, recall, attackAll, endTurn, canRecall, recallCost, makeUnit, resolveAttack, useAction, canAction, startGame, equipItem, doSacrifice, finish, attackTargets, get POOL() { return POOL; }, render, Stats };
+function dupCheck() {
+  const out = [];
+  for (const who of ['me', 'ai']) { const P = S[who], seen = new Map();
+    for (const [where, list] of [['deck', P.deck], ['hand', P.hand], ['field', P.field.map(u => u.base)]]) for (const c of list) { const k = String(c.id); if (seen.has(k)) out.push(`${who}:${c.name} ${seen.get(k)}+${where}`); else seen.set(k, where); } }
+  return out;
+}
+window.TCG = { dupCheck, get errors() { return window.TCG_ERRORS || []; }, cutIn, passiveCutIn, sortedHand, get handSort() { return handSort; }, put: debugPut, castSkill, skillState, get S() { return S; }, RULES, elementMultiplier, calcDamage, canSummon, buildDeck, summon, attack, recall, attackAll, endTurn, canRecall, recallCost, makeUnit, resolveAttack, useAction, canAction, startGame, equipItem, doSacrifice, finish, attackTargets, get POOL() { return POOL; }, render, Stats };
