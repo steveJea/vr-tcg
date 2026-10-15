@@ -453,7 +453,7 @@ function cardHTML(c, { hp, size = 'md', dim = false } = {}) {
   const rar = rarityOf(c), nSk = skillsOf(c.id).length;
   return `
   <div class="card-frame ${rar.cls} relative ${small ? 'w-[64px] md:w-[96px]' : 'w-[78px] md:w-[110px]'} bg-zinc-900 rounded-xl overflow-hidden ${dim ? 'opacity-50' : ''} shadow-lg" data-grade="${rar.short}">
-    <img src="${IMG}${c.id}.jpg" data-id="${c.id}" class="card-img w-full aspect-[3/4] object-cover" alt="${c.name}">
+    <img src="${IMG}${c.id}.webp" data-id="${c.id}" class="card-img w-full aspect-[3/4] object-cover" alt="${c.name}">
     <div class="absolute top-1 left-1 w-6 h-6 md:w-7 md:h-7 rounded-full bg-sky-600 text-white text-[11px] md:text-xs font-black flex items-center justify-center border border-white/40">${c.cost}</div>
     <div class="absolute top-1 right-1 text-sm md:text-base" title="${e.label}">${e.icon}</div>
     <div class="rar-badge absolute left-1 top-7 md:top-9" title="${rar.label}">${rar.short}</div>
@@ -470,7 +470,7 @@ function cardHTML(c, { hp, size = 'md', dim = false } = {}) {
 
 function fixImages(root) {
   root.querySelectorAll('img.card-img').forEach(img => {
-    img.onerror = () => { img.onerror = null; img.src = `${IMG}${img.dataset.id}.png`; };
+    img.onerror = () => { img.onerror = null; img.src = `${IMG}${img.dataset.id}.webp`; };
   });
 }
 
@@ -652,7 +652,7 @@ function showDetail(c, { fromHand = false, hp, unit = null, view = null } = {}) 
   const myTurn = S.turn === 'me' && !S.over && !S.busy;
   $('detail-body').innerHTML = `
     <div class="flex gap-4">
-      <img src="${IMG}${c.id}.jpg" data-id="${c.id}" class="card-img w-32 md:w-40 aspect-[3/4] object-cover rounded-xl ring-2 ${e.ring}">
+      <img src="${IMG}${c.id}.webp" data-id="${c.id}" class="card-img w-32 md:w-40 aspect-[3/4] object-cover rounded-xl ring-2 ${e.ring}">
       <div class="flex-1 min-w-0">
         <div class="text-2xl font-black">${c.name}</div>
         <div class="text-zinc-400 text-sm"><span class="rar-badge rar-inline ${rarityOf(c).cls}">${rarityOf(c).short}</span> ${c.grade} · 스킬 ${skillsOf(c.id).length}개 · ${c.region} · ${c.age}세</div>
