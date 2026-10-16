@@ -314,6 +314,46 @@ async function fadeDying() {
 }
 const TYPE_COLOR = { '공격': 'bg-red-600', '도발': 'bg-orange-500', '회복': 'bg-emerald-600', '버프': 'bg-sky-600', '디버프': 'bg-purple-600' };
 
+
+/** 스킬 보이스: data/voice/<카드id>_<스킬번호>.mp3 (index.json에 있는 것만). 실패해도 게임은 그대로 진행 */
+const VOICE_ON_KEY = 'vrTcgVoiceOn', VOICE_VOL_KEY = 'vrTcgVoiceVol';
+let voiceOn = localStorage.getItem(VOICE_ON_KEY) !== '0';
+let voiceVol = Math.min(1, Math.max(0, parseFloat(localStorage.getItem(VOICE_VOL_KEY) ?? '0.8') || 0));
+let voiceSet = null, voiceCur = null;
+const voiceCache = new Map();
+fetch('data/voice/index.json').then(r => r.ok ? r.json() : []).then(a => { voiceSet = new Set(a); }).catch(() => { voiceSet = new Set(); });
+function voiceKey(u, name) {
+  try { const i = skillsOf(u.card.id).findIndex(x => x.name === name); return i < 0 ? null : `${u.card.id}_${i + 1}`; } catch { return null; }
+}
+function voiceAudio(k) {
+  let a = voiceCache.get(k);
+  if (!a) { a = new Audio(); a.preload = 'auto'; a.src = `data/voice/${k}.mp3`; voiceCache.set(k, a); }
+  return a;
+}
+function preloadVoice(cards) {
+  if (!voiceSet) return;
+  for (const c of cards) skillsOf(c.id).forEach((s, i) => { const k = `${c.id}_${i + 1}`; if (voiceSet.has(k)) voiceAudio(k); });
+}
+function playVoice(u, name) {
+  try {
+    if (!voiceOn || !voiceSet || !u) return;
+    const k = voiceKey(u, name); if (!k || !voiceSet.has(k)) return;
+    if (voiceCur) { try { voiceCur.pause(); voiceCur.currentTime = 0; } catch {} }
+    const a = voiceAudio(k); a.volume = voiceVol; a.currentTime = 0; voiceCur = a;
+    const p = a.play(); if (p && p.catch) p.catch(() => {});
+  } catch {}
+}
+let voiceUnlocked = false;
+function unlockVoice() {
+  if (voiceUnlocked) return; voiceUnlocked = true;
+  try { const a = new Audio('data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//tQxAADB8AhSmxhIIEVCSiJrDCQBTcu3UrAIwUdkRgQbFAZC1CQEwTJ9mjRvBA4UOLD8nKVOWfh+UlK3z/177OXrfOdKl7pyn3Xf//WreyTRUoAWgBgkOAGbZHBgG1OF6zM82DWbZaUmMBptgQhGjsyYqc9ae9XFz280948NMBWInljyzsNRFLPWdnZGWrddDsjK1unuSrVN9jJsK8KuQtQCtMBjCEtImISdNKJOopIpBFpNSMbIHCSRpRR5iakjTiyzLhchUUBwCgyKiweBv/7UsQbg8isVNoMPMjAAAA0gAAABEVFGmgqK////9bP/6XCykxBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq'); a.volume = 0; const p = a.play(); if (p && p.catch) p.catch(() => {}); } catch {}
+}
+document.addEventListener('pointerdown', unlockVoice, { capture: true, once: true });
+function renderVoiceBtn() {
+  const b = document.getElementById('voice-toggle'), r = document.getElementById('voice-vol');
+  if (b) { b.textContent = voiceOn ? '🔊' : '🔇'; b.title = voiceOn ? '스킬 보이스 끄기' : '스킬 보이스 켜기'; }
+  if (r) { r.value = String(Math.round(voiceVol * 100)); r.disabled = !voiceOn; }
+}
 /** 스킬 컷인: 스킬 이름 배너 + 연출 이미지(data/fx/<파일>, 16:9, 모바일 세로는 가운데 기준으로 양옆 잘림) */
 const fxLoaded = new Set();
 function preloadFx(cards) {
@@ -321,6 +361,7 @@ function preloadFx(cards) {
     if (!s.fx || fxLoaded.has(s.fx) || /\.(mp4|webm)$/i.test(s.fx)) continue;
     fxLoaded.add(s.fx); const img = new Image(); img.decoding = 'async'; img.src = `data/fx/${s.fx}`;
   }
+  try { preloadVoice(cards); } catch {}
 }
 function cutInHTML(u, name, fx, passive) {
   const media = fx ? (/\.(mp4|webm)$/i.test(fx) ? `<video src="data/fx/${fx}" autoplay muted playsinline class="cutin-media"></video>` : `<img src="data/fx/${fx}" class="cutin-media" alt="" onerror="this.remove()">`) : '';
@@ -338,6 +379,7 @@ function slashImpact(ms) {
   }, Math.round(ms * 0.19));
 }
 async function cutIn(u, name, fx, passive = false) {
+  playVoice(u, name);
   if (FX_OFF()) return;
   const el = $('cutin');
   el.innerHTML = cutInHTML(u, name, fx, passive);
@@ -351,10 +393,12 @@ async function cutIn(u, name, fx, passive = false) {
 /** 패시브 발동 연출: 카드별·스킬별 게임당 첫 발동만 큰 이미지(비동기, 턴 진행을 막지 않음), 이후는 작은 글자만 */
 let passiveTimer = null;
 function passiveCutIn(u, name) {
-  if (FX_OFF() || !S) return;
-  const s = u.sk?.find(x => x.name === name); if (!s?.fx) return;
+  if (!S) return;
   S.fxSeen ||= new Set(); const key = `${u.uid}:${name}`;
   if (S.fxSeen.has(key)) return;
+  const s = u.sk?.find(x => x.name === name);
+  if (s?.fx || FX_OFF()) playVoice(u, name);
+  if (FX_OFF() || !s?.fx) { if (voiceKey(u, name)) S.fxSeen.add(key); return; }
   S.fxSeen.add(key);
   const el = $('cutin');
   el.innerHTML = cutInHTML(u, name, s.fx, true);
@@ -771,6 +815,10 @@ $('ai-hero').onclick = onHeroClick;
 $('help-btn').onclick = () => showModal('help');
 $('main-help').onclick = () => showModal('help');
 $('main-skip').onclick = () => { skipFx = !skipFx; localStorage.setItem(SKIP_KEY, skipFx ? '1' : '0'); renderSkipBtn(); };
+$('voice-toggle').onclick = e => { e.stopPropagation(); voiceOn = !voiceOn; localStorage.setItem(VOICE_ON_KEY, voiceOn ? '1' : '0'); if (!voiceOn && voiceCur) try { voiceCur.pause(); } catch {} renderVoiceBtn(); };
+$('voice-vol').oninput = e => { voiceVol = (+e.target.value || 0) / 100; localStorage.setItem(VOICE_VOL_KEY, String(voiceVol)); if (voiceCur) voiceCur.volume = voiceVol; };
+$('voice-vol').onclick = e => e.stopPropagation();
+renderVoiceBtn();
 $('fx-skip').onclick = e => { e.stopPropagation(); skipFx = !skipFx; localStorage.setItem(SKIP_KEY, skipFx ? '1' : '0'); if (S?.busy) fastForward = true; renderSkipBtn(); };
 // 연출 중 화면을 누르면 현재 연출 빨리 감기
 $('game').addEventListener('click', () => { if (S?.busy && !S.over) fastForward = true; }, true);
@@ -821,4 +869,4 @@ function zoomFromBtn(b) {
 document.addEventListener('click', e => { const b = e.target.closest?.('.zoom-btn'); if (!b) return; e.stopPropagation(); e.preventDefault(); zoomFromBtn(b); }, true);
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('zoom-view')?.classList.contains('open')) { e.stopPropagation(); closeZoom(); } }, true);
 
-window.TCG = { openZoom, closeZoom, dupCheck, get errors() { return window.TCG_ERRORS || []; }, cutIn, passiveCutIn, sortedHand, get handSort() { return handSort; }, put: debugPut, castSkill, skillState, get S() { return S; }, RULES, elementMultiplier, calcDamage, canSummon, buildDeck, summon, attack, recall, attackAll, endTurn, canRecall, recallCost, makeUnit, resolveAttack, useAction, canAction, startGame, equipItem, doSacrifice, finish, attackTargets, get POOL() { return POOL; }, render, Stats };
+window.TCG = { get voice() { return { on: voiceOn, vol: voiceVol, cur: voiceCur && { src: voiceCur.src, paused: voiceCur.paused, t: voiceCur.currentTime }, set: voiceSet && voiceSet.size }; }, openZoom, closeZoom, dupCheck, get errors() { return window.TCG_ERRORS || []; }, cutIn, passiveCutIn, sortedHand, get handSort() { return handSort; }, put: debugPut, castSkill, skillState, get S() { return S; }, RULES, elementMultiplier, calcDamage, canSummon, buildDeck, summon, attack, recall, attackAll, endTurn, canRecall, recallCost, makeUnit, resolveAttack, useAction, canAction, startGame, equipItem, doSacrifice, finish, attackTargets, get POOL() { return POOL; }, render, Stats };
