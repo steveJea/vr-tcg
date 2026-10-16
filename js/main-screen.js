@@ -71,9 +71,27 @@
   const renderBtn = () => { if (btn) { btn.textContent = soundOn ? '🔊' : '🔇'; btn.classList.toggle('on', soundOn); btn.title = missing ? '배경음악 파일 없음 (audio/main.mp3)' : '배경음악 켜기/끄기'; } };
   const getAudio = () => {
     if (audio || missing) return audio;
-    audio = new Audio('audio/main.mp3'); audio.loop = true; audio.volume = baseVol * (ducked ? DUCK : 1); audio.preload = 'auto';
-    audio.addEventListener('error', () => { missing = true; audio = null; renderBtn(); });
+    audio = new Audio(src); audio.loop = true; audio.volume = baseVol * (ducked ? DUCK : 1); audio.preload = 'auto';
+    const el = audio; audio.addEventListener('error', () => { if (audio !== el || !el.getAttribute('src')) return; missing = true; audio = null; renderBtn(); });
     return audio;
+  };
+  // 트랙 전환(크로스페이드): 스토리 모드 장면별 BGM. 덕킹·음소거·볼륨 설정은 그대로 적용
+  let src = 'audio/main.mp3', xfRaf = 0;
+  const setTrack = (next, ms = 900) => {
+    if (!next || next === src) return;
+    src = next;
+    const old = audio; audio = null; missing = false;
+    cancelAnimationFrame(fadeRaf); cancelAnimationFrame(xfRaf);
+    const a = getAudio(); if (!a) return;
+    a.volume = 0;
+    const target = () => baseVol * (ducked ? DUCK : 1);
+    if (soundOn) a.play().catch(() => {});
+    const v0 = old ? old.volume : 0, t0 = performance.now();
+    const step = t => { const k = Math.min(1, Math.max(0, (t - t0) / ms));
+      if (old) old.volume = Math.max(0, v0 * (1 - k));
+      if (audio === a) a.volume = Math.min(1, target() * k);
+      if (k < 1) xfRaf = requestAnimationFrame(step); else if (old) { old.pause(); old.removeAttribute('src'); old.load(); } };
+    xfRaf = requestAnimationFrame(step);
   };
   const play = () => { if (!soundOn) return; const a = getAudio(); if (a) a.play().catch(() => {}); };
   const stop = () => { if (audio) audio.pause(); };
@@ -82,5 +100,5 @@
   const first = () => { play(); removeEventListener('pointerdown', first); removeEventListener('keydown', first); };
   addEventListener('pointerdown', first); addEventListener('keydown', first);
   renderBtn();
-  window.VRSound = { play, stop, duck, setVolume, get on() { return soundOn; }, get ducked() { return ducked; }, get volume() { return audio ? audio.volume : null; }, get baseVolume() { return baseVol; } };
+  window.VRSound = { play, stop, duck, setVolume, setTrack, get track() { return src; }, get on() { return soundOn; }, get ducked() { return ducked; }, get volume() { return audio ? audio.volume : null; }, get baseVolume() { return baseVol; } };
 })();
