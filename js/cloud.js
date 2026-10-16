@@ -132,5 +132,5 @@ async function init() {
     sb = null; ready = false; render();
   }
 }
-window.VRCloud = { get user() { return user; }, get sb() { return sb; }, login, logout, push };
+window.VRCloud = { get user() { return user; }, get sb() { return sb; }, get ready() { return ready; }, login, logout, push };
 init();
