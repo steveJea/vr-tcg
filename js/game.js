@@ -812,7 +812,7 @@ function showDetail(c, { fromHand = false, hp, unit = null, view = null } = {}) 
   const myTurn = S.turn === 'me' && !S.over && !S.busy;
   $('detail-body').innerHTML = `
     <div class="flex gap-4">
-      <div class="relative shrink-0"><img src="${IMG}${c.id}.webp" data-id="${c.id}" class="card-img w-32 md:w-40 aspect-[3/4] object-cover rounded-xl ring-2 ${e.ring}"><button type="button" class="zoom-btn absolute bottom-1 right-1" data-zoom="${c.id}"${hp != null ? ` data-hp="${hp}"` : ''} title="크게 보기" aria-label="크게 보기">🔍</button></div>
+      <div class="relative shrink-0"><img src="${IMG}${c.id}.webp" data-id="${c.id}" class="card-img w-32 md:w-40 aspect-[3/4] object-cover rounded-xl ring-2 ${e.ring}">${window.rarityStars?.(c, 'base', 'rstars-over') || ''}<button type="button" class="zoom-btn absolute bottom-1 right-1" data-zoom="${c.id}"${hp != null ? ` data-hp="${hp}"` : ''} title="크게 보기" aria-label="크게 보기">🔍</button></div>
       <div class="flex-1 min-w-0">
         <div class="text-2xl font-black">${c.name}</div>
         <div class="text-zinc-400 text-sm"><span class="rar-badge rar-inline ${rarityOf(c).cls}">${rarityOf(c).short}</span> ${c.grade} · 스킬 ${skillsOf(c.id).length}개 · ${c.region} · ${c.age}세</div>
@@ -969,12 +969,12 @@ function dupCheck() {
   return out;
 }
 // ===== 이미지 크게 보기 (🔍 버튼 전용) =====
-function openZoom({ src, title, sub = '', stats = '' }) {
+function openZoom({ src, title, sub = '', stats = '', stars = '' }) {
   let ov = $('zoom-view');
   if (!ov) { ov = document.createElement('div'); ov.id = 'zoom-view'; document.body.appendChild(ov);
     ov.addEventListener('click', e => { if (!e.target.closest('.zoom-img, .zoom-info') || e.target.closest('.zoom-close')) closeZoom(); }); }
   ov.innerHTML = `<button type="button" class="zoom-close" aria-label="닫기">✕</button>
-    <img class="zoom-img" src="${src}" alt="${title}">
+    ${stars}<img class="zoom-img" src="${src}" alt="${title}">
     <div class="zoom-info"><div class="text-xl font-black">${title}</div>${sub ? `<div class="text-sm text-zinc-300 mt-0.5">${sub}</div>` : ''}${stats ? `<div class="mt-1 font-bold text-sm flex gap-3 justify-center flex-wrap">${stats}</div>` : ''}</div>`;
   ov.classList.add('open');
 }
@@ -982,7 +982,7 @@ function closeZoom() { const ov = $('zoom-view'); if (ov) ov.classList.remove('o
 function zoomFromBtn(b) {
   const c = POOL.find(x => String(x.id) === b.dataset.zoom); if (!c) return;
   const r = rarityOf(c), e = ELEMENTS[c.class] || ELEMENTS.WIND, hp = b.dataset.hp;
-  openZoom({ src: `${IMG}${c.id}.webp`, title: c.name,
+  openZoom({ src: `${IMG}${c.id}.webp`, title: c.name, stars: window.rarityStars?.(c, 'base', 'rstars-lg') || '',
     sub: `<span class="rar-badge rar-inline ${r.cls}">${r.short}</span> ${r.label} · ${e.icon} ${e.label} · 코스트 ${c.cost}`,
     stats: `<span class="text-amber-400">⚡${fmt(c.power)}</span><span class="text-orange-400">⚔ ATK ${fmt(c.ATK)}</span><span class="text-red-400">♥ HP ${hp != null ? fmt(+hp) + ' / ' : ''}${fmt(c.HP)}</span><span class="text-sky-400">🛡 DEF ${fmt(c.DEF)}</span>` });
 }

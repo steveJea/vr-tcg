@@ -125,13 +125,13 @@
   }
 
   // --- 크게 보기 (갤러리 전용) ---
-  function zoom(src, title, sub) {
+  function zoom(src, title, sub, grade) {
     let z = $('gal-zoom');
     if (!z) {
       z = document.createElement('div'); z.id = 'gal-zoom'; z.className = 'gal-zoom hidden'; document.body.appendChild(z);
       z.addEventListener('click', e => { if (!e.target.closest('.gal-zimg') || e.target.closest('.gal-zx')) z.classList.add('hidden'); });
     }
-    z.innerHTML = `<button class="gal-x gal-zx" aria-label="닫기">✕</button><img class="gal-zimg" src="${src}" alt="${esc(title)}"><div class="gal-zcap"><b>${esc(title)}</b>${sub ? `<div>${esc(sub)}</div>` : ''}</div>`;
+    z.innerHTML = `<button class="gal-x gal-zx" aria-label="닫기">✕</button>${grade ? (window.rarityStars?.(grade, 'base', 'rstars-lg') || '') : ''}<img class="gal-zimg" src="${src}" alt="${esc(title)}"><div class="gal-zcap"><b>${esc(title)}</b>${sub ? `<div>${esc(sub)}</div>` : ''}</div>`;
     z.classList.remove('hidden');
   }
 
@@ -152,7 +152,7 @@
     m.addEventListener('click', e => { if (e.target === m) close(); });
     $('gal-close').onclick = close;
     $('gal-detail').addEventListener('click', e => {
-      const zb = e.target.closest('[data-zsrc]'); if (zb) { zoom(zb.dataset.zsrc, zb.dataset.ztitle, zb.dataset.zsub); return; }
+      const zb = e.target.closest('[data-zsrc]'); if (zb) { zoom(zb.dataset.zsrc, zb.dataset.ztitle, zb.dataset.zsub, zb.dataset.zgrade); return; }
       const vb = e.target.closest('[data-voice]'); if (vb) { playVoice(vb.dataset.voice); return; }
       if (e.target.id === 'gal-detail' || e.target.closest('.gal-x')) $('gal-detail').classList.add('hidden'); });
     $('gal-grid').addEventListener('click', e => { const t = e.target.closest('[data-cid]'); if (t) detail(t.dataset.cid); });
@@ -217,8 +217,8 @@
     const el = $('gal-detail');
     el.innerHTML = `<div class="gal-dbox rar-${s} ${deco}">
       <button class="gal-x gal-dx" aria-label="닫기">✕</button>
-      <div class="gal-dimg"><img src="${portrait}" alt="${esc(c.name)}" data-zsrc="${portrait}" data-ztitle="${esc(c.name)}" data-zsub="${LABEL[s]}" onerror="this.style.visibility='hidden'">${crownHtml(t, true)}
-        <button class="gal-zbtn" data-zsrc="${portrait}" data-ztitle="${esc(c.name)}" data-zsub="${LABEL[s]}" aria-label="크게 보기">🔍</button></div>
+      <div class="gal-dimg"><img src="${portrait}" alt="${esc(c.name)}" data-zsrc="${portrait}" data-ztitle="${esc(c.name)}" data-zsub="${LABEL[s]}" data-zgrade="${s}" onerror="this.style.visibility='hidden'">${window.rarityStars?.(s, 'base', 'rstars-over') || ''}${crownHtml(t, true)}
+        <button class="gal-zbtn" data-zsrc="${portrait}" data-ztitle="${esc(c.name)}" data-zsub="${LABEL[s]}" data-zgrade="${s}" aria-label="크게 보기">🔍</button></div>
       <div class="gal-dname">${esc(c.name)}</div>
       <div class="gal-drar"><span class="gal-rar inline">${s}</span> ${LABEL[s]}${t ? ` · <span class="gal-tname vip-${TIERS[t].k}">${TIERS[t].e} ${TIERS[t].n}</span>` : ''}</div>
       <div class="gal-rows">${row('수집 횟수', `${o.count}회`)}${row('MVP', o.mvp_count > 0 ? `👑 ${o.mvp_count}회` : '아직 없음')}${row('처음 수집', date)}${row('HP · ATK · DEF', `${c.HP} · ${c.ATK} · ${c.DEF}`)}</div>
