@@ -10,23 +10,26 @@
   const STAT_LABEL = { ATK: '⚔ ATK', HP: '♥ HP', DEF: '🛡 DEF' };
   const RAR = { 'NORMAL': 'N', 'RARE': 'R', 'HIGH RARE': 'HR', 'SUPER RARE': 'SR', 'ULTRA RARE': 'UR', 'MYTHIC RARE': 'MR' };
 
-  const user = () => window.VRCloud?.user || window.__STORY_MOCK_USER || null;
+  const user = () => (window.__STORY_MOCK_CLOUD || window.VRCloud)?.user || window.__STORY_MOCK_USER || null;
   const pool = () => window.TCG?.POOL || [];
   const card = id => pool().find(c => String(c.id) === String(id));
-  let save = null, cloudOk = true;
+  let save = null, cloudOk = true, serverMode = false;
+  const cloud = () => window.__STORY_MOCK_CLOUD || window.VRCloud;
 
   // ----- 저장 -----
   const KEY = () => `vrTcgStory.v1:${user()?.id || 'guest'}`;
   const fresh = () => ({ v: 1, openingSeen: false, starter: null, owned: [], points: 0, cleared: {}, updatedAt: 0 });
   function loadLocal() { try { return JSON.parse(localStorage.getItem(KEY())) || null; } catch { return null; } }
   async function load() {
-    let local = loadLocal(), cloud = null;
-    const sb = window.VRCloud?.sb, u = window.VRCloud?.user;
+    let local = loadLocal(), cdata = null;
+    const sb = cloud()?.sb, u = cloud()?.user;
     if (sb && u) {
-      try { const { data, error } = await sb.from('story_progress').select('data').eq('user_id', u.id).maybeSingle(); if (error) throw error; cloud = data?.data || null; }
-      catch (e) { cloudOk = false; console.warn('[story] 클라우드 불러오기 실패 → 브라우저 저장 사용', e?.message || e); }
+      try { const { data, error } = await sb.from('story_progress').select('data').eq('user_id', u.id).maybeSingle(); if (error) throw error; cdata = data?.data || {}; serverMode = true; cloudOk = true; }
+      catch (e) { cloudOk = false; serverMode = false; console.warn('[story] 클라우드 불러오기 실패 → 브라우저 저장 사용', e?.message || e); }
     }
-    save = clampPoints({ ...fresh(), ...((cloud?.updatedAt || 0) >= (local?.updatedAt || 0) ? (cloud || local) : local) });
+    // 서버 모드: 서버 기록이 기준 (브라우저 저장은 캐시). 테이블이 없을 때만 브라우저 저장으로 진행
+    save = clampPoints({ ...fresh(), ...(serverMode ? cdata : local || {}) });
+    if (serverMode) cacheLocal();
   }
   // 반복 클리어 악용 방지: (보유 + 분배한) 포인트는 첫 클리어로 얻을 수 있는 총량을 넘을 수 없음
   function earnedPoints(sv) {
@@ -39,14 +42,22 @@
     sv.points = Math.max(0, Math.min(sv.points | 0, earnedPoints(sv) - used));
     return sv;
   }
-  async function persist() {
-    save.updatedAt = Date.now();
-    try { localStorage.setItem(KEY(), JSON.stringify(save)); } catch {}
-    const sb = window.VRCloud?.sb, u = window.VRCloud?.user;
-    if (!sb || !u || !cloudOk) return;
-    try { const { error } = await sb.from('story_progress').upsert({ user_id: u.id, data: save, updated_at: new Date().toISOString() }); if (error) throw error; }
-    catch (e) { cloudOk = false; console.warn('[story] 클라우드 저장 실패 → 브라우저 저장만', e?.message || e); }
+  function cacheLocal() { try { localStorage.setItem(KEY(), JSON.stringify(save)); } catch {} }
+  // 브라우저 저장 (테이블이 없을 때만 쓰는 대체 경로)
+  async function persist() { save.updatedAt = Date.now(); cacheLocal(); }
+  const missingFn = e => /PGRST202|PGRST205|42883|42P01|Could not find|does not exist/i.test(`${e?.code} ${e?.message}`);
+  /** 서버 쓰기: 서버 함수(rpc) 호출 후 서버가 돌려준 data 로 교체. 서버 함수가 없으면 local() 로 브라우저 저장 */
+  async function act(rpc, args, local, pick = r => r) {
+    if (serverMode) {
+      const { data, error } = await cloud().sb.rpc(rpc, args);
+      if (!error) { const r = data || {}; save = clampPoints({ ...fresh(), ...(pick(r) || {}) }); cacheLocal(); return { ok: true, r }; }
+      if (!missingFn(error)) { console.warn('[story] 서버 거부', rpc, error.message); toast(`⚠️ 저장 실패: ${error.message}`); return { ok: false, error }; }
+      serverMode = false; cloudOk = false; console.warn('[story] 서버 함수 없음 → 브라우저 저장', rpc);
+    }
+    const r = await local?.(); await persist(); return { ok: true, r, local: true };
   }
+  async function reload() { if (!serverMode) return; try { const u = cloud().user; const { data } = await cloud().sb.from('story_progress').select('data').eq('user_id', u.id).maybeSingle(); if (data?.data) { save = clampPoints({ ...fresh(), ...data.data }); cacheLocal(); } } catch {} }
+
 
   // ----- 카드 계산 -----
   function boosted(o) {
@@ -122,7 +133,7 @@
     const o = D.opening;
     show(`<div class="story-opening">${o.video ? `<video id="story-op-video" src="${esc(o.video)}" ${o.poster ? `poster="${esc(o.poster)}"` : ''} autoplay playsinline class="w-full max-h-[70vh] rounded-2xl bg-black"></video>` : `<div class="story-op-ph"><div class="story-chapter-big">${esc(o.title)}</div><div class="text-zinc-400 mt-3">${esc(o.text)}</div></div>`}
       <button id="story-op-skip" class="story-btn mt-6">${o.video ? '건너뛰기' : '계속하기'} ▶</button></div>`);
-    const done = async () => { save.openingSeen = true; await persist(); save.starter ? renderMap() : renderSelect(); };
+    const done = async () => { await act('story_mark_seen', { p_key: 'openingSeen' }, () => { save.openingSeen = true; }); save.starter ? renderMap() : renderSelect(); };
     $('story-op-skip').onclick = done; const v = $('story-op-video'); if (v) v.onended = done;
   }
 
@@ -135,7 +146,7 @@
     root().querySelectorAll('[data-pick]').forEach(b => b.onclick = () => {
       const c = card(b.dataset.pick);
       const p = popup(`<div class="text-lg font-black mb-3">${esc(c.name)}(으)로 시작할까요?</div>${tile(c)}<div class="flex gap-2 mt-4"><button data-close-pop class="flex-1 py-2.5 rounded-xl bg-zinc-700 font-bold">취소</button><button id="story-pick-ok" class="flex-1 py-2.5 rounded-xl bg-amber-400 text-black font-bold">결정</button></div>`);
-      $('story-pick-ok').onclick = async () => { p.close(); save.starter = String(c.id); save.owned = [{ id: String(c.id), boost: {} }]; await persist(); const ch = chapterFor(D.chapters[0]); chapterIntro(ch, () => startStory(ch)); };
+      $('story-pick-ok').onclick = async () => { p.close(); const r = await act('story_choose_starter', { p_id: String(c.id) }, () => { save.starter = String(c.id); save.owned = [{ id: String(c.id), boost: {}, count: 1 }, ...save.owned.filter(o => o.id !== String(c.id))]; }); if (!r.ok) return renderSelect(); const ch = chapterFor(D.chapters[0]); chapterIntro(ch, () => startStory(ch)); };
     });
   }
 
@@ -147,7 +158,7 @@
   // 시작 스토리: 캐릭터 선택 직후 1번
   function startStory(ch) {
     if (!ch.start?.length || save.startSeen) return renderMap();
-    playLines(ch.start, [], async () => { save.startSeen = true; await persist(); renderMap(); });
+    playLines(ch.start, [], async () => { await act('story_mark_seen', { p_key: 'startSeen' }, () => { save.startSeen = true; }); renderMap(); });
   }
   const clearedOf = ch => save.cleared[ch.id] || [];
   function renderMap() {
@@ -161,7 +172,7 @@
         return `${i ? `<div class="story-path ${st !== 'lock' ? 'on' : ''}"></div>` : ''}<button class="story-node ${st} ${p.type}" data-phase="${p.no}" ${st === 'lock' ? 'disabled' : ''}><span class="story-node-dot">${st === 'done' ? '✔' : p.type === 'boss' ? '👑' : st === 'lock' ? '🔒' : p.no}</span><span class="story-node-label">Phase.${p.no}${p.type === 'boss' ? ' BOSS' : ''}</span></button>`; }).join('')}</div>
       <div class="story-status">${leader ? `<div>리더 <b class="text-amber-300">${esc(leader.name)}</b> · 보유 카드 <b>${save.owned.length}</b>장</div>` : ''}
         <div>스탯 포인트 <b class="text-emerald-300">${save.points}</b> ${save.points ? '<button class="story-mini" data-go="stats">분배하기</button>' : ''}</div>
-        ${!cloudOk ? '<div class="text-[11px] text-amber-400">⚠️ 서버 저장 준비 중이라 이 브라우저에만 저장돼요</div>' : ''}</div>
+        ${!serverMode && !window.__STORY_MOCK_USER ? '<div class="text-[11px] text-amber-400">⚠️ 서버 저장 준비 중이라 이 브라우저에만 저장돼요</div>' : ''}</div>
       ${nextNo ? '' : '<div class="text-center text-emerald-300 font-bold mt-4">🎉 챕터 1 클리어! 다음 챕터는 준비 중이에요.</div>'}`);
     bind({ stats: () => openStats(renderMap) });
     root().querySelectorAll('[data-phase]').forEach(b => b.onclick = () => startPhase(ch, ch.phases.find(p => p.no === +b.dataset.phase)));
@@ -197,7 +208,9 @@
     step();
   }
 
-  function battle(ch, ph, enemies) {
+  async function battle(ch, ph, enemies) {
+    const st = await act('story_start_phase', { p_chapter: ch.id, p_phase: ph.no }, () => {});
+    if (!st.ok) return renderMap();
     root().classList.add('hidden');
     const boss = ph.type === 'boss';
     bgm(boss ? 'boss' : 'battle');
@@ -216,18 +229,21 @@
         <div class="flex flex-col gap-2 max-w-xs mx-auto mt-6"><button class="story-btn" id="story-retry">다시 도전</button><button class="story-back" data-go="map">챕터 지도로</button></div></div>`);
       bind(); $('story-retry').onclick = () => startPhase(ch, ph); return;
     }
-    const first = !clearedOf(ch).includes(ph.no);
-    let reward = null, pts = 0;
-    if (first) {
+    // 서버가 첫 클리어 여부·보상(카드·포인트)을 결정. 재클리어는 보상 없음
+    let first = !clearedOf(ch).includes(ph.no), reward = null, pts = 0;
+    const res = await act('story_complete_phase', { p_chapter: ch.id, p_phase: ph.no }, () => {
+      if (!first) return {};
       const have = new Set(save.owned.map(o => o.id));
-      reward = ch.rewardCard ? rand(pool().filter(c => c.grade === ch.rewardCard && !have.has(String(c.id)))) : null;
-      if (ph.type === 'boss' && ch.ending?.length) await new Promise(r => playLines(ch.ending, [], r, 'ending'));
-      if (reward) save.owned.push({ id: String(reward.id), boost: {} });
+      const rc = ch.rewardCard ? rand(pool().filter(c => c.grade === ch.rewardCard && !have.has(String(c.id)))) : null;
+      if (rc) save.owned.push({ id: String(rc.id), boost: {}, count: 1 });
       save.cleared[ch.id] = [...clearedOf(ch), ph.no];
-    }
-    pts = first ? D.statPoints[ph.type] : 0;   // 스탯 포인트는 페이즈 첫 클리어 때만
-    save.points += pts;
-    await persist();
+      save.points += D.statPoints[ph.type];   // 스탯 포인트는 페이즈 첫 클리어 때만
+      return { first: true, points: D.statPoints[ph.type], reward_id: rc && String(rc.id) };
+    }, r => r.data);
+    if (!res.ok) { show(`<div class="text-center py-10"><div class="story-chapter-big text-amber-300">!</div><div class="text-zinc-300 mt-2">결과를 서버에 저장하지 못했어요. 다시 도전해 주세요.</div><div class="flex flex-col gap-2 max-w-xs mx-auto mt-6"><button class="story-back" data-go="map">챕터 지도로</button></div></div>`); bind(); return; }
+    const r = res.r || {};
+    first = !!r.first; pts = r.points | 0; reward = r.reward_id ? card(r.reward_id) : null;
+    if (first && ph.type === 'boss' && ch.ending?.length) await new Promise(ok => playLines(ch.ending, [], ok, 'ending'));
     show(`<div class="text-center py-6"><div class="story-chapter-sub">Phase.${ph.no} CLEAR</div><div class="story-chapter-big text-emerald-300">VICTORY</div>
       ${reward ? `<div class="mt-4 text-amber-200 font-bold">🎁 보상 카드 획득!</div><div class="flex justify-center mt-2 story-reward">${tile(reward)}</div>` : `<div class="mt-4 text-zinc-400 text-sm">${first ? '이번 챕터는 카드 보상 없이 스탯 포인트만 받아요.' : '이미 클리어한 페이즈라 카드 보상은 없어요.'}</div>`}
       <div class="mt-4 text-lg">${pts ? `스탯 포인트 <b class="text-emerald-300">+${pts}</b> (보유 ${save.points})` : '<span class="text-zinc-400 text-sm">다시 클리어한 페이즈라 스탯 포인트는 없어요.</span>'}</div>
@@ -248,7 +264,12 @@
       p.el.querySelectorAll('[data-sel]').forEach(b => b.onclick = () => { sel = +b.dataset.sel; draw(); });
       p.el.querySelectorAll('[data-inc]').forEach(b => b.onclick = () => { if (!left) return; temp[sel][b.dataset.inc] = (temp[sel][b.dataset.inc] || 0) + 1; left--; draw(); });
       p.el.querySelectorAll('[data-dec]').forEach(b => b.onclick = () => { temp[sel][b.dataset.dec]--; left++; draw(); });
-      $('story-stat-ok').onclick = async () => { save.owned.forEach((x, i) => x.boost = temp[i]); save.points = left; await persist(); p.close(); };
+      $('story-stat-ok').onclick = async () => {
+        const alloc = {};
+        save.owned.forEach((x, i) => { for (const st of STATS) { const n = (temp[i][st] || 0) - (x.boost?.[st] || 0); if (n > 0) (alloc[x.id] ||= {})[st] = n; } });
+        if (Object.keys(alloc).length) await act('story_allocate', { p_alloc: alloc }, () => { save.owned.forEach((x, i) => x.boost = temp[i]); save.points = left; });
+        p.close();
+      };
     };
     draw();
   }
@@ -280,7 +301,7 @@
   async function drawOnce() {
     const day = kstDay();
     if (save.gachaLast === day) return { ok: false, reason: 'already' };
-    const sb = window.VRCloud?.sb, u = window.VRCloud?.user;
+    const sb = cloud()?.sb, u = cloud()?.user;
     let res = null;
     if (window.__GACHA_MOCK) res = await window.__GACHA_MOCK();
     else if (sb && u) {
@@ -290,6 +311,7 @@
     }
     if (!res) { const g = window.rollGachaRarity(); const c = rand(pool().filter(x => x.grade === g)); res = { ok: true, card_id: String(c.id), grade: g, local: true }; }
     if (!res.ok) { if (res.reason === 'already') { save.gachaLast = day; await persist(); } return res; }
+    if (serverMode && !res.local && !window.__GACHA_MOCK) { await reload(); res.count = save.owned.find(o => o.id === String(res.card_id))?.count || res.count || 1; return res; }
     res.count = addOwned(res.card_id);
     save.gachaLast = day;
     await persist();
