@@ -276,7 +276,10 @@
       save.points += D.statPoints[ph.type];   // 스탯 포인트는 페이즈 첫 클리어 때만
       return { first: true, points: D.statPoints[ph.type], reward_id: rc && String(rc.id), exp };
     }, r => r.data);
-    if (!res.ok) { show(`<div class="text-center py-10"><div class="story-chapter-big text-amber-300">!</div><div class="text-zinc-300 mt-2">결과를 서버에 저장하지 못했어요. 다시 도전해 주세요.</div><div class="flex flex-col gap-2 max-w-xs mx-auto mt-6"><button class="story-back" data-go="map">챕터 지도로</button></div></div>`); bind(); return; }
+    if (!res.ok) {
+      const m = String(res.error?.message || ''), why = /too fast/.test(m) ? '전투가 너무 빨리 끝나서 기록이 인정되지 않았어요.' : /battle not started/.test(m) ? '전투 시작 기록이 없어요. (새로고침·다른 기기에서 전투를 시작했을 수 있어요)' : `결과를 서버에 저장하지 못했어요.${m ? ` (${esc(m)})` : ''}`;
+      show(`<div class="text-center py-10"><div class="story-chapter-big text-amber-300">!</div><div class="text-zinc-300 mt-2">${why}<br>다시 도전해 주세요.</div><div class="flex flex-col gap-2 max-w-xs mx-auto mt-6"><button class="story-btn" id="story-retry">다시 도전</button><button class="story-back" data-go="map">챕터 지도로</button></div></div>`);
+      bind(); $('story-retry').onclick = () => startPhase(ch, ph); return; }
     const r = res.r || {};
     first = !!r.first; pts = r.points | 0; reward = r.reward_id ? card(r.reward_id) : null;
     if (first && ph.type === 'boss' && ch.ending?.length) await new Promise(ok => playLines(ch.ending, [], ok, 'ending'));
