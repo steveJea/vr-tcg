@@ -61,14 +61,19 @@
   }
   const introOf = s => D.chapters[0].byStarter?.[s.id]?.intro || s.tagline;
 
+  // ----- BGM -----
+  const BGM = { story: 'audio/story_story.mp3', battle: 'audio/story_battle.mp3', boss: 'audio/story_boss.mp3', ending: 'audio/story_ending.mp3', main: 'audio/main.mp3' };
+  const bgm = k => { try { window.VRSound?.setTrack?.(BGM[k]); } catch {} };
+
   // ----- 화면 -----
   const root = () => $('story-screen');
-  function show(html) {
+  function show(html, track = 'story') {
+    bgm(track);
     const r = root(); r.innerHTML = `<div class="story-wrap">${html}</div>`;
     r.classList.remove('hidden'); $('start-screen').classList.add('hidden'); $('game').classList.add('hidden');
     r.scrollTop = 0;
   }
-  function home() { root().classList.add('hidden'); $('start-screen').classList.remove('hidden'); }
+  function home() { bgm('main'); root().classList.add('hidden'); $('start-screen').classList.remove('hidden'); }
   const topBar = (title, back = 'home') => `<div class="story-top"><button class="story-back" data-go="${back}">← ${back === 'home' ? '처음으로' : '돌아가기'}</button><div class="story-top-title">${title}</div><button class="story-mycards" data-go="cards">🃏 보유 카드</button></div>`;
   function bind(extra = {}) {
     root().querySelectorAll('[data-go]').forEach(b => b.onclick = () => ({ home, map: renderMap, cards: renderCards, ...extra })[b.dataset.go]?.());
@@ -160,7 +165,7 @@
   function dialogue(ch, ph, enemies) {
     playLines(ph.lines?.[save.starter] || ph.lines?.default || [], enemies, () => battle(ch, ph, enemies));
   }
-  function playLines(lines, enemies, next) {
+  function playLines(lines, enemies, next, track = 'story') {
     const starter = card(save.starter), enemy = enemies[0];
     const byName = n => enemies.find(c => c.name === n) || pool().filter(c => c.name === n).sort((a, b) => (a.region === starter?.region ? -1 : 0) - (b.region === starter?.region ? -1 : 0))[0] || null;
     const who = L => L.portrait !== undefined ? (L.portrait === 'starter' ? starter : L.portrait === 'enemy' ? enemy : L.portrait ? card(L.portrait) : null)
@@ -175,7 +180,7 @@
       show(`<div class="story-dlg" id="story-dlg">
         <div class="story-dlg-stage">${pc ? (slug ? `<img class="story-portrait sp ${left ? 'left' : 'right'}" src="img/story/portraits/${slug}_${ex}.webp" alt="${esc(pc.name)}" onerror="this.onerror=null;this.classList.remove('sp');this.src='${IMG}${pc.id}.webp'">` : `<img class="story-portrait ${left ? 'left' : 'right'}" src="${IMG}${pc.id}.webp" alt="${esc(pc.name)}">`) : ''}</div>
         <div class="story-dlg-box">${sp ? `<div class="story-dlg-name">${esc(sp)}</div>` : ''}<div class="story-dlg-text">${esc(L.text)}</div><div class="story-dlg-next">▼ ${i + 1}/${lines.length}</div></div>
-        <button class="story-dlg-skip" id="story-dlg-skip">건너뛰기 ⏭</button></div>`);
+        <button class="story-dlg-skip" id="story-dlg-skip">건너뛰기 ⏭</button></div>`, track);
       $('story-dlg').onclick = e => { if (e.target.id === 'story-dlg-skip') { i = lines.length; } else i++; step(); };
     };
     step();
@@ -184,6 +189,7 @@
   function battle(ch, ph, enemies) {
     root().classList.add('hidden');
     const boss = ph.type === 'boss';
+    bgm(boss ? 'boss' : 'battle');
     window.TCG.startStory({
       me: ownedCards(), ai: enemies, win: boss ? 'ko' : 'wipe', aiHp: boss ? (ph.baseHp || 500) : undefined, aiName: ph.enemyName || (boss ? '보스' : '적군'), first: 'me',
       onEnd: (win, reason) => result(ch, ph, win, reason),
@@ -204,7 +210,7 @@
     if (first) {
       const have = new Set(save.owned.map(o => o.id));
       reward = rand(normals().filter(c => !have.has(String(c.id))));
-      if (ph.type === 'boss' && ch.ending?.length) await new Promise(r => playLines(ch.ending, [], r));
+      if (ph.type === 'boss' && ch.ending?.length) await new Promise(r => playLines(ch.ending, [], r, 'ending'));
       if (reward) save.owned.push({ id: String(reward.id), boost: {} });
       save.cleared[ch.id] = [...clearedOf(ch), ph.no];
     }
