@@ -182,3 +182,18 @@ end $$;
 
 revoke all on function public.gallery_register(text[], text) from public, anon;
 grant execute on function public.gallery_register(text[], text) to authenticated;
+
+-- ===== 스토리 모드 (supabase/story.sql 과 동일) =====
+create table if not exists public.story_progress (
+  user_id     uuid primary key references auth.users(id) on delete cascade default auth.uid(),
+  data        jsonb not null default '{}'::jsonb check (pg_column_size(data) < 200000),
+  updated_at  timestamptz not null default now()
+);
+alter table public.story_progress enable row level security;
+drop policy if exists "story_select_own" on public.story_progress;
+create policy "story_select_own" on public.story_progress for select using (user_id = auth.uid());
+drop policy if exists "story_insert_own" on public.story_progress;
+create policy "story_insert_own" on public.story_progress for insert with check (user_id = auth.uid());
+drop policy if exists "story_update_own" on public.story_progress;
+create policy "story_update_own" on public.story_progress for update using (user_id = auth.uid()) with check (user_id = auth.uid());
+grant select, insert, update on public.story_progress to authenticated;
