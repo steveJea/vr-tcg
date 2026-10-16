@@ -96,7 +96,8 @@ drop trigger if exists matches_rate_limit on public.matches;
 create trigger matches_rate_limit before insert on public.matches
   for each row execute function public.matches_rate_limit();
 
--- 6) 랭킹 (다음 단계 UI용) - 닉네임과 점수만 공개
+-- 6) 랭킹 - 닉네임/점수/승무패만 공개, is_me = 로그인한 본인 행 여부 (user_id 비공개)
+--    (컬럼은 끝에만 추가 → create or replace 로 재실행 가능)
 --    점수: 승 3점, 무 1점, 패 0점 / 주간 = 이번 주 월요일 00:00 (KST) 부터
 create or replace view public.rankings_weekly
 with (security_invoker = false) as
@@ -106,7 +107,10 @@ select
                               min(m.created_at)) as rank,
   p.nickname,
   sum(case m.result when 'win' then 3 when 'draw' then 1 else 0 end)::int as score,
-  (count(*) filter (where m.result = 'win'))::int as wins
+  (count(*) filter (where m.result = 'win'))::int as wins,
+  (count(*) filter (where m.result = 'draw'))::int as draws,
+  (count(*) filter (where m.result not in ('win','draw')))::int as losses,
+  (m.user_id = auth.uid()) as is_me
 from public.matches m
 join public.profiles p on p.id = m.user_id
 where m.created_at >= (date_trunc('week', now() at time zone 'Asia/Seoul') at time zone 'Asia/Seoul')
@@ -120,7 +124,10 @@ select
                               min(m.created_at)) as rank,
   p.nickname,
   sum(case m.result when 'win' then 3 when 'draw' then 1 else 0 end)::int as score,
-  (count(*) filter (where m.result = 'win'))::int as wins
+  (count(*) filter (where m.result = 'win'))::int as wins,
+  (count(*) filter (where m.result = 'draw'))::int as draws,
+  (count(*) filter (where m.result not in ('win','draw')))::int as losses,
+  (m.user_id = auth.uid()) as is_me
 from public.matches m
 join public.profiles p on p.id = m.user_id
 group by m.user_id, p.nickname;
