@@ -78,7 +78,7 @@ const shuffleArr = a => { a = [...a]; for (let i = a.length - 1; i > 0; i--) { c
 function startGame(story = null) {
   if (story && typeof story.then === 'function' || story instanceof Event) story = null;
   const first = story?.first || (Math.random() < 0.5 ? 'me' : 'ai');   // 선공 동전 던지기
-  S = { me: newPlayer('나', first !== 'me', story?.me, story?.meHp), ai: newPlayer(story?.aiName || '컴퓨터', first !== 'ai', story?.ai, story?.aiHp), first, story, turn: first, turnNo: 0, totalTurns: 0, myTurns: 0, over: false, busy: false, fxSeen: new Set(), mercBought: 0, mercOffer: [], log: { dmg: new Map(), total: 0, skills: 0, merc: null } };
+  S = { me: newPlayer('나', first !== 'me', story?.me, story?.meHp), ai: newPlayer(story?.aiName || '컴퓨터', first !== 'ai', story?.ai, story?.aiHp), first, story, turn: first, turnNo: 0, totalTurns: 0, myTurns: 0, over: false, busy: false, fxSeen: new Set(), mercBought: 0, mercOffer: [], log: { dmg: new Map(), total: 0, skills: 0, merc: null, played: new Set(), kills: {} } };
   S.mercOffer = story ? [] : Merc.roll(POOL);
   const noBase = story?.win === 'wipe';   // 스토리 일반전: 진영 개념 없음
   S.me.noBase = S.ai.noBase = noBase;
@@ -139,6 +139,7 @@ function summon(who, card) {
   p.mana -= card.cost;
   p.hand.splice(p.hand.indexOf(card), 1);
   log(`${p.name}: ${card.name} 소환 (코스트 ${card.cost})`);
+  if (who === 'me' && S.story) S.log.played.add(String(card.id));   // 스토리: 참전 카드 기록 (EXP 지급용)
   placeUnit(p, card, makeUnit);
   render();
   return { ok: true };
@@ -321,7 +322,7 @@ function finish(win, reason) {
   if (S.story) {   // 스토리 모드: 아케이드 전적·랭킹·갤러리에 기록하지 않고 스토리 화면으로 결과 전달
     render();
     const cb = S.story.onEnd;
-    setTimeout(() => { $('game').classList.add('hidden'); try { cb?.(win, reason, { turns: S.turnNo, damage: S.log.total }); } catch (err) { reportError('storyEnd', err); } }, FX_OFF() ? 0 : 900);
+    setTimeout(() => { $('game').classList.add('hidden'); try { cb?.(win, reason, { turns: S.turnNo, damage: S.log.total, played: [...S.log.played], kills: { ...S.log.kills } }); } catch (err) { reportError('storyEnd', err); } }, FX_OFF() ? 0 : 900);
     return true;
   }
   const st = Stats.record(win);
@@ -560,7 +561,8 @@ function onEngine(e) {
     case 'heal': dmgNumber(uEl(e.unit), `+${fmt(e.amt)}`, '#6ee7b7'); break;
     case 'heroHeal': dmgNumber(heroEl(whoOf(e.p)), `+${fmt(e.amt)}`, '#6ee7b7'); log(`${e.p.name} 본진 HP +${fmt(e.amt)}`, 'text-emerald-300'); break;
     case 'destroy': log(`${nm(e.unit)} 파괴!`, 'text-zinc-400'); pendingDying.push(uEl(e.unit)); break;
-    case 'refund': log(`${nm(e.killer)} 처치 보상: 마나 +${e.refund}`, 'text-sky-300'); if (e.refund > 0 && !FX_OFF()) dmgNumber(heroEl(whoOf(e.owner)), `💧 +${e.refund} 마나`, '#7dd3fc'); renderHero(whoOf(e.owner)); break;
+    case 'refund': if (S.story && e.owner === S.me && e.killer?.card) { const k = String(e.killer.card.id); S.log.kills[k] = (S.log.kills[k] || 0) + 1; }
+      log(`${nm(e.killer)} 처치 보상: 마나 +${e.refund}`, 'text-sky-300'); if (e.refund > 0 && !FX_OFF()) dmgNumber(heroEl(whoOf(e.owner)), `💧 +${e.refund} 마나`, '#7dd3fc'); renderHero(whoOf(e.owner)); break;
     case 'levelup': log(`${nm(e.unit)} Lv${e.level}`, 'text-amber-300'); dmgNumber(uEl(e.unit), `⬆ Lv${e.level}`, '#fcd34d'); break;
     case 'status': { const st = STATUS[e.kind]; const t = e.kind === 'mod' ? e.text : `${st?.icon || ''} ${st?.label || e.kind}`; dmgNumber(uEl(e.unit), t, '#c4b5fd'); log(`${nm(e.unit)}: ${t}`, 'text-purple-300'); break; }
     case 'immune': dmgNumber(uEl(e.unit), '🔰 면역', '#93c5fd'); break;

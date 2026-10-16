@@ -89,3 +89,41 @@
 .g-ur::before{inset:-10px;filter:blur(12px)}
 .story-top .story-mycards,.story-top .story-back{white-space:nowrap}
 @media (max-width:640px){.story-top-title{display:none}.story-top .story-mycards,.story-top .story-back{padding:5px 9px;font-size:11px}}
+
+/* ----- 스탯 분배 이름 탭: 스크롤바 숨김 + 좌우 화살표 ----- */
+.story-tabwrap { display: flex; align-items: center; gap: 4px; margin-bottom: .5rem; }
+.story-tabs { flex: 1; min-width: 0; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none; -webkit-overflow-scrolling: touch; padding: 2px 0; }
+.story-tabs::-webkit-scrollbar { display: none; }
+.story-tabs > * { flex: 0 0 auto; }
+.story-tab-arr { flex: 0 0 auto; width: 26px; height: 26px; border-radius: 9999px; background: #3f3f46; color: #fff; font-size: 18px; line-height: 1; font-weight: 900; display: flex; align-items: center; justify-content: center; transition: opacity .2s; }
+.story-tab-arr:hover:not(:disabled) { background: #10b981; color: #000; }
+.story-tab-arr:disabled { opacity: 0; pointer-events: none; }
+.story-tabwrap.fit .story-tab-arr { display: none; }
+
+/* ----- 카드 레벨 · 폐기 ----- */
+.story-owned { cursor: pointer; position: relative; }
+.story-owned:hover .story-card { border-color: rgba(52,211,153,.6); }
+.story-lv { display: flex; justify-content: space-between; align-items: baseline; gap: 4px; font-size: 10px; margin-top: 3px; padding: 0 2px; }
+.story-lv b { color: #fde68a; font-size: 11px; }
+.story-lv span { color: #a1a1aa; }
+.story-lv em { color: #f472b6; font-style: normal; font-weight: 900; }
+.story-exp { height: 4px; border-radius: 9px; background: #27272a; overflow: hidden; margin: 2px 2px 0; }
+.story-exp i { display: block; height: 100%; background: linear-gradient(90deg, #38bdf8, #34d399); transition: width .6s; }
+.story-cpts { position: absolute; top: 26px; left: 4px; z-index: 2; background: #0ea5e9; color: #fff; font-size: 10px; font-weight: 900; padding: 1px 5px; border-radius: 9px; }
+.story-explist { max-width: 22rem; margin: 1rem auto 0; display: flex; flex-direction: column; gap: 6px; text-align: left; }
+.story-exprow { display: flex; gap: 8px; align-items: center; background: rgba(39,39,42,.7); border: 1px solid #3f3f46; border-radius: 10px; padding: 6px 8px; }
+.story-exprow img { width: 36px; aspect-ratio: 3/4; object-fit: cover; border-radius: 6px; }
+.story-exprow.up { border-color: #fbbf24; box-shadow: 0 0 12px rgba(251,191,36,.35); animation: story-lvpulse 1.2s ease-out 2; }
+.story-lvup-tag { font-size: 10px; font-weight: 900; color: #fbbf24; margin-top: 2px; }
+@keyframes story-lvpulse { 50% { box-shadow: 0 0 22px rgba(251,191,36,.8); } }
+.story-lvup-fx { position: fixed; inset: 0; z-index: 80; pointer-events: none; display: flex; align-items: center; justify-content: center; }
+.story-lvup-fx span { font-size: clamp(2rem, 9vw, 4rem); font-weight: 900; letter-spacing: .05em; color: #fde68a; text-shadow: 0 0 18px #f59e0b, 0 0 40px #f59e0b; animation: story-lvup 1.6s ease-out forwards; }
+@keyframes story-lvup { 0% { transform: scale(.4) translateY(30px); opacity: 0; } 25% { transform: scale(1.15); opacity: 1; } 70% { transform: scale(1); opacity: 1; } 100% { transform: translateY(-40px); opacity: 0; } }
+.story-hint { margin-top: 10px; font-size: 12px; color: #fcd34d; background: rgba(251,191,36,.1); border: 1px solid rgba(251,191,36,.35); border-radius: 10px; padding: 6px 10px; }
+.story-warn { margin-top: 8px; font-size: 12px; color: #fca5a5; background: rgba(239,68,68,.12); border: 1px solid rgba(239,68,68,.4); border-radius: 10px; padding: 6px 10px; }
+.story-target-list { display: flex; flex-direction: column; gap: 6px; max-height: 50vh; overflow-y: auto; }
+.story-target { display: flex; gap: 8px; align-items: center; background: #27272a; border: 1px solid #3f3f46; border-radius: 10px; padding: 6px 8px; }
+.story-target:hover { border-color: #34d399; }
+.story-target img { width: 34px; aspect-ratio: 3/4; object-fit: cover; border-radius: 6px; }
+.story-pop-panel button:disabled { opacity: .45; cursor: not-allowed; }
+.story-pop-panel .story-tab-arr:disabled { opacity: 0; }
