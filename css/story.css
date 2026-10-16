@@ -58,3 +58,34 @@
 @media (max-width:640px){.story-select{gap:6px}.story-node-dot{width:42px;height:42px;font-size:16px}.story-node.boss .story-node-dot{width:50px;height:50px}.story-node-label{font-size:9px}.story-card-stats{font-size:9px}}
 .story-intro-text{white-space:pre-line;line-height:1.5}
 .story-portrait.sp{border-radius:0;box-shadow:none;object-fit:contain;max-height:66vh;margin-bottom:-40px;transform:scale(1.12);transform-origin:bottom center;-webkit-mask-image:radial-gradient(closest-side at 50% 46%,#000 62%,transparent 100%);mask-image:radial-gradient(closest-side at 50% 46%,#000 62%,transparent 100%);filter:drop-shadow(0 0 30px rgba(245,158,11,.12))}
+/* ===== 일일 카드 뽑기 ===== */
+.story-badge{display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;margin-left:4px;border-radius:999px;background:#ef4444;color:#fff;font-size:10px;font-style:normal;font-weight:900;animation:storyPulse 1.4s infinite}
+.story-dup{position:absolute;margin-top:-26px;right:6px;padding:0 6px;border-radius:6px;background:#f59e0b;color:#111;font-size:11px;font-weight:900}
+.story-card{position:relative}
+.story-dup-inline{padding:0 6px;border-radius:6px;background:#f59e0b;color:#111;font-weight:900}
+.gacha-stage{position:relative;width:170px;height:227px;margin:16px auto 10px;perspective:900px}
+.gacha-card{position:relative;width:100%;height:100%;transform-style:preserve-3d;transition:transform 0.9s cubic-bezier(.3,1.4,.5,1)}
+.gacha-card.flip{transform:rotateY(180deg)}
+.gacha-face{position:absolute;inset:0;border-radius:14px;backface-visibility:hidden;-webkit-backface-visibility:hidden;overflow:hidden}
+.gacha-back{display:flex;align-items:center;justify-content:center;font-size:56px;background:repeating-linear-gradient(45deg,#3f1d0b,#3f1d0b 10px,#1c1917 10px,#1c1917 20px);border:3px solid #b45309}
+.gacha-front{transform:rotateY(180deg);background:#18181b;border:3px solid #a1a1aa}
+.gacha-front img{width:100%;height:100%;object-fit:cover}
+.gacha-name{position:absolute;bottom:0;left:0;right:0;padding:16px 4px 6px;background:linear-gradient(transparent,#000);font-weight:900}
+.gacha-stage::before{content:'';position:absolute;inset:-14px;border-radius:24px;opacity:0;transition:opacity .6s .6s;pointer-events:none}
+.gacha-stage[class*="g-"]::before{opacity:1}
+.g-n::before{box-shadow:0 0 22px 4px rgba(212,212,216,.45)}
+.g-r::before{box-shadow:0 0 28px 8px rgba(56,189,248,.6)}
+.g-hr::before{box-shadow:0 0 34px 10px rgba(52,211,153,.7)}
+.g-sr::before{box-shadow:0 0 44px 14px rgba(192,132,252,.85);animation:gachaPulse 1.2s 1.2s infinite}
+.g-ur::before{inset:-22px;background:conic-gradient(from 0deg,#f43f5e,#f59e0b,#facc15,#22c55e,#38bdf8,#a855f7,#f43f5e);filter:blur(16px);animation:gachaSpin 2.2s linear infinite}
+.g-ur .gacha-front{border-color:#facc15;box-shadow:0 0 30px #fde047}
+.g-sr .gacha-front{border-color:#c084fc}.g-hr .gacha-front{border-color:#34d399}.g-r .gacha-front{border-color:#38bdf8}
+.g-ur .gacha-card.flip{animation:gachaShake .5s .9s}
+@keyframes gachaSpin{to{transform:rotate(360deg)}}
+@keyframes gachaPulse{50%{opacity:.55}}
+@keyframes gachaShake{20%{transform:rotateY(180deg) scale(1.08)}60%{transform:rotateY(180deg) scale(.98)}100%{transform:rotateY(180deg) scale(1)}}
+.g-text-n{color:#e4e4e7}.g-text-r{color:#38bdf8}.g-text-hr{color:#34d399}.g-text-sr{color:#c084fc}.g-text-ur{background:linear-gradient(90deg,#f43f5e,#facc15,#38bdf8,#a855f7);-webkit-background-clip:text;background-clip:text;color:transparent}
+.story-dup{top:6px;right:6px;margin-top:0;z-index:2}
+.g-ur::before{inset:-10px;filter:blur(12px)}
+.story-top .story-mycards,.story-top .story-back{white-space:nowrap}
+@media (max-width:640px){.story-top-title{display:none}.story-top .story-mycards,.story-top .story-back{padding:5px 9px;font-size:11px}}
