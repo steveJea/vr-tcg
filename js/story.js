@@ -53,6 +53,14 @@
     return out;
   }
 
+  // 고른 캐릭터 전용 대본(byStarter)이 있으면 챕터 기본값 위에 덮어씀
+  function chapterFor(base) {
+    const o = base.byStarter?.[save?.starter]; if (!o) return base;
+    return { ...base, subtitle: o.subtitle ?? base.subtitle, start: o.start, ending: o.ending,
+      phases: base.phases.map(p => { const x = o.phases?.[p.no]; return x ? { ...p, ...x, lines: x.lines ? { default: x.lines } : p.lines } : p; }) };
+  }
+  const introOf = s => D.chapters[0].byStarter?.[s.id]?.intro || s.tagline;
+
   // ----- 화면 -----
   const root = () => $('story-screen');
   function show(html) {
@@ -105,13 +113,13 @@
   function renderSelect() {
     show(`<div class="text-center"><div class="story-chapter-sub">MAIN STORY</div><div class="text-2xl md:text-3xl font-black mt-1">함께할 캐릭터를 골라 주세요</div>
       <div class="text-sm text-zinc-400 mt-1">고른 카드는 내 카드로 영구 귀속되고, 리더가 돼요. (나중에 바꿀 수 없어요)</div></div>
-      <div class="story-select">${D.starters.map(s => { const c = card(s.id); return c ? `<button class="story-pick" data-pick="${s.id}">${tile(c)}<div class="text-xs text-zinc-400 mt-1">${esc(s.tagline)}</div></button>` : ''; }).join('')}</div>
+      <div class="story-select">${D.starters.map(s => { const c = card(s.id); return c ? `<button class="story-pick" data-pick="${s.id}">${tile(c)}<div class="text-xs text-zinc-400 mt-1 story-intro-text">${esc(introOf(s))}</div></button>` : ''; }).join('')}</div>
       <div class="text-center mt-4"><button class="story-back" data-go="home">← 처음으로</button></div>`);
     bind();
     root().querySelectorAll('[data-pick]').forEach(b => b.onclick = () => {
       const c = card(b.dataset.pick);
       const p = popup(`<div class="text-lg font-black mb-3">${esc(c.name)}(으)로 시작할까요?</div>${tile(c)}<div class="flex gap-2 mt-4"><button data-close-pop class="flex-1 py-2.5 rounded-xl bg-zinc-700 font-bold">취소</button><button id="story-pick-ok" class="flex-1 py-2.5 rounded-xl bg-amber-400 text-black font-bold">결정</button></div>`);
-      $('story-pick-ok').onclick = async () => { p.close(); save.starter = String(c.id); save.owned = [{ id: String(c.id), boost: {} }]; await persist(); chapterIntro(D.chapters[0], renderMap); };
+      $('story-pick-ok').onclick = async () => { p.close(); save.starter = String(c.id); save.owned = [{ id: String(c.id), boost: {} }]; await persist(); const ch = chapterFor(D.chapters[0]); chapterIntro(ch, () => startStory(ch)); };
     });
   }
 
@@ -120,9 +128,15 @@
     $('story-intro').onclick = next;
   }
 
+  // 시작 스토리: 캐릭터 선택 직후 1번
+  function startStory(ch) {
+    if (!ch.start?.length || save.startSeen) return renderMap();
+    playLines(ch.start, [], async () => { save.startSeen = true; await persist(); renderMap(); });
+  }
   const clearedOf = ch => save.cleared[ch.id] || [];
   function renderMap() {
-    const ch = D.chapters[0], done = clearedOf(ch);
+    const ch = chapterFor(D.chapters[0]), done = clearedOf(ch);
+    if (ch.start?.length && !save.startSeen) return startStory(ch);
     const nextNo = ch.phases.find(p => !done.includes(p.no))?.no;
     const leader = boosted(save.owned[0]);
     show(`${topBar(esc(ch.title))}
@@ -144,14 +158,18 @@
   }
 
   function dialogue(ch, ph, enemies) {
-    const lines = ph.lines?.[save.starter] || ph.lines?.default || [];
+    playLines(ph.lines?.[save.starter] || ph.lines?.default || [], enemies, () => battle(ch, ph, enemies));
+  }
+  function playLines(lines, enemies, next) {
     const starter = card(save.starter), enemy = enemies[0];
-    const who = x => x === 'starter' ? starter : x === 'enemy' ? enemy : x ? card(x) : null;
+    const byName = n => enemies.find(c => c.name === n) || pool().filter(c => c.name === n).sort((a, b) => (a.region === starter?.region ? -1 : 0) - (b.region === starter?.region ? -1 : 0))[0] || null;
+    const who = L => L.portrait !== undefined ? (L.portrait === 'starter' ? starter : L.portrait === 'enemy' ? enemy : L.portrait ? card(L.portrait) : null)
+      : (D.noPortrait || []).includes(L.speaker) ? null : L.speaker === starter?.name ? starter : byName(L.speaker);
     let i = 0;
     const step = () => {
-      if (i >= lines.length) return battle(ch, ph, enemies);
-      const L = lines[i], pc = who(L.portrait), sp = L.speaker === 'starter' ? starter?.name : L.speaker === 'enemy' ? enemy?.name : L.speaker;
-      const left = L.portrait !== 'enemy';
+      if (i >= lines.length) return next();
+      const L = lines[i], pc = who(L), sp = L.speaker === 'starter' ? starter?.name : L.speaker === 'enemy' ? enemy?.name : (L.speaker === '내레이션' ? null : L.speaker);
+      const left = pc ? pc === starter : true;
       show(`<div class="story-dlg" id="story-dlg">
         <div class="story-dlg-stage">${pc ? `<img class="story-portrait ${left ? 'left' : 'right'}" src="${IMG}${pc.id}.webp" alt="${esc(pc.name)}">` : ''}</div>
         <div class="story-dlg-box">${sp ? `<div class="story-dlg-name">${esc(sp)}</div>` : ''}<div class="story-dlg-text">${esc(L.text)}</div><div class="story-dlg-next">▼ ${i + 1}/${lines.length}</div></div>
@@ -184,6 +202,7 @@
     if (first) {
       const have = new Set(save.owned.map(o => o.id));
       reward = rand(normals().filter(c => !have.has(String(c.id))));
+      if (ph.type === 'boss' && ch.ending?.length) await new Promise(r => playLines(ch.ending, [], r));
       if (reward) save.owned.push({ id: String(reward.id), boost: {} });
       save.cleared[ch.id] = [...clearedOf(ch), ph.no];
     }
