@@ -38,7 +38,7 @@
     return n;
   }
   function clampPoints(sv) {
-    const used = (sv.owned || []).reduce((a, o) => a + Object.values(o.boost || {}).reduce((x, y) => x + (+y || 0), 0), 0);
+    const used = (sv.owned || []).reduce((a, o) => a + Object.values(o.boost || {}).reduce((x, y) => x + (+y || 0), 0) - (o.spentCard | 0), 0);   // 카드 전용 포인트로 쓴 양은 제외
     sv.points = Math.max(0, Math.min(sv.points | 0, earnedPoints(sv) - used));
     return sv;
   }
@@ -65,6 +65,32 @@
     const b = o.boost || {}, k = D.statPerPoint;
     return { ...c, ATK: c.ATK + (b.ATK || 0) * k.ATK, HP: c.HP + (b.HP || 0) * k.HP, DEF: c.DEF + (b.DEF || 0) * k.DEF };
   }
+
+  // ----- 카드 레벨 (서버 story_levels.sql 과 같은 규칙. 브라우저 저장 대체 경로·미리보기용) -----
+  // 다음 레벨 EXP = 레벨×100 · 최대 레벨 N20 R30 HR40 SR50 UR60 MR70 (+ex 합성 1회당 +10, 추후 EX 합성용) · 레벨업마다 카드 전용 포인트 +1
+  const LV_CAP = { 'NORMAL': 20, 'RARE': 30, 'HIGH RARE': 40, 'SUPER RARE': 50, 'ULTRA RARE': 60, 'MYTHIC RARE': 70 };
+  const FEED_EXP = { 'NORMAL': 50, 'RARE': 150, 'HIGH RARE': 400, 'SUPER RARE': 1000, 'ULTRA RARE': 3000, 'MYTHIC RARE': 6000 };
+  const lvCap = o => (LV_CAP[card(o.id)?.grade] || 20) + 10 * Math.max(0, o.ex | 0);
+  const norm = o => Object.assign(o, { count: Math.max(1, o.count | 0 || 1), boost: o.boost || {}, level: Math.max(1, o.level | 0 || 1), exp: Math.max(0, o.exp | 0), totalExp: Math.max(0, o.totalExp | 0), cpts: Math.max(0, o.cpts | 0), spentCard: Math.max(0, o.spentCard | 0) });
+  /** EXP 적용 결과 (원본 변경 없음): { level, exp, totalExp, cpts, wasted } */
+  function gainCalc(o, amt) {
+    const n = norm({ ...o }), cap = lvCap(n); let { level, exp, totalExp, cpts } = n, wasted = 0;
+    if (level >= cap) return { level, exp: 0, totalExp, cpts, wasted: amt };
+    exp += amt;
+    while (level < cap && exp >= level * 100) { exp -= level * 100; level++; cpts++; }
+    if (level >= cap) { wasted = exp; totalExp += amt - exp; exp = 0; } else totalExp += amt;
+    return { level, exp, totalExp, cpts, wasted };
+  }
+  function feedCalc(src, tgt) {
+    const a = card(src.id), b = card(tgt.id), whole = (src.count || 1) <= 1;
+    let amt = FEED_EXP[a?.grade] || 50;
+    if (a && b && a.name === b.name) amt = Math.floor(amt * 1.5);
+    if (whole) amt += Math.floor((src.totalExp | 0) * 0.5);
+    const refund = whole ? Math.max(0, Object.values(src.boost || {}).reduce((x, y) => x + (+y || 0), 0) - (src.spentCard | 0)) : 0;
+    return { amt, whole, refund };
+  }
+  const lvBar = o => { const n = norm({ ...o }), cap = lvCap(n), max = n.level >= cap;
+    return `<div class="story-lv"><b>Lv.${n.level}</b>${max ? '<em>MAX</em>' : `<span>${n.exp}/${n.level * 100}</span>`}</div><div class="story-exp"><i style="width:${max ? 100 : Math.min(100, n.exp / n.level)}%"></i></div>`; };
   const ownedCards = () => save.owned.map(boosted).filter(Boolean);
   const normals = () => pool().filter(c => c.grade === 'NORMAL').sort((a, b) => a.power - b.power);
   const rand = a => a[Math.floor(Math.random() * a.length)];
@@ -110,8 +136,8 @@
     let down = false;
     m.onpointerdown = e => { down = e.target === m; };
     m.onclick = e => { if (down && e.target === m) close(); down = false; };
-    const close = () => { m.className = 'hidden'; m.innerHTML = ''; onClose?.(); };
-    m.querySelectorAll('[data-close-pop]').forEach(b => b.onclick = close);
+    const close = silent => { m.className = 'hidden'; m.innerHTML = ''; if (silent !== true) onClose?.(); };   // close(true): 다음 팝업으로 넘어갈 때 onClose 생략
+    m.querySelectorAll('[data-close-pop]').forEach(b => b.onclick = () => close());
     return { el: m, close };
   }
 
@@ -216,14 +242,14 @@
     bgm(boss ? 'boss' : 'battle');
     window.TCG.startStory({
       me: ownedCards(), ai: enemies, win: boss ? 'ko' : 'wipe', aiHp: boss ? (ph.baseHp || 500) : undefined, aiName: ph.enemyName || (boss ? '보스' : '적군'), first: 'me',
-      onEnd: (win, reason) => result(ch, ph, win, reason),
+      onEnd: (win, reason, st) => result(ch, ph, win, reason, st),
     });
     if (ph.tip) setTimeout(() => toast(`💡 ${ph.tip}`), 400);
     toast(boss ? '👑 보스전: 상대 진영을 무너뜨리세요!' : '⚔️ 일반전: 상대 카드를 모두 쓰러뜨리세요!');
   }
   function toast(t) { const el = document.createElement('div'); el.className = 'story-toast'; el.textContent = t; document.body.appendChild(el); setTimeout(() => el.remove(), 3200); }
 
-  async function result(ch, ph, win, reason) {
+  async function result(ch, ph, win, reason, st = {}) {
     if (!win) {
       show(`<div class="text-center py-10"><div class="story-chapter-big text-red-400">DEFEAT</div><div class="text-zinc-300 mt-2">${reason === 'wipe' ? '내 카드가 모두 쓰러졌어요.' : reason === 'timeout' ? '턴 제한 안에 적을 모두 쓰러뜨리지 못했어요.' : '패배했어요.'} 스탯을 올리고 다시 도전해 보세요!</div>
         <div class="flex flex-col gap-2 max-w-xs mx-auto mt-6"><button class="story-btn" id="story-retry">다시 도전</button><button class="story-back" data-go="map">챕터 지도로</button></div></div>`);
@@ -231,14 +257,24 @@
     }
     // 서버가 첫 클리어 여부·보상(카드·포인트)을 결정. 재클리어는 보상 없음
     let first = !clearedOf(ch).includes(ph.no), reward = null, pts = 0;
-    const res = await act('story_complete_phase', { p_chapter: ch.id, p_phase: ph.no }, () => {
-      if (!first) return {};
+    // 전투 EXP: 이번 전투에 낸 내 카드 + 처치 수 (서버가 보유 여부·처치 상한·배율을 다시 계산)
+    const kills = st.kills || {}, p_stats = [...new Set(st.played || [])].slice(0, 30).map(id => ({ id, kills: kills[id] | 0 }));
+    const res = await act('story_complete_phase', { p_chapter: ch.id, p_phase: ph.no, p_stats }, () => {
+      const exp = [], cap = ph.enemies?.ids?.length || ph.enemies?.count || 99; let ksum = 0;
+      for (const s of p_stats) {
+        const o = save.owned.find(x => x.id === s.id); if (!o) continue;
+        const k = Math.min(s.kills, Math.max(0, cap - ksum)); ksum += k;
+        const gain = (60 + 20 * k) * (ph.type === 'boss' ? 2 : 1), from = norm(o).level, g = gainCalc(o, gain);
+        Object.assign(o, { level: g.level, exp: g.exp, totalExp: g.totalExp, cpts: g.cpts });
+        exp.push({ id: s.id, kills: k, exp: gain, from, level: g.level });
+      }
+      if (!first) return { exp };
       const have = new Set(save.owned.map(o => o.id));
       const rc = ch.rewardCard ? rand(pool().filter(c => c.grade === ch.rewardCard && !have.has(String(c.id)))) : null;
       if (rc) save.owned.push({ id: String(rc.id), boost: {}, count: 1 });
       save.cleared[ch.id] = [...clearedOf(ch), ph.no];
       save.points += D.statPoints[ph.type];   // 스탯 포인트는 페이즈 첫 클리어 때만
-      return { first: true, points: D.statPoints[ph.type], reward_id: rc && String(rc.id) };
+      return { first: true, points: D.statPoints[ph.type], reward_id: rc && String(rc.id), exp };
     }, r => r.data);
     if (!res.ok) { show(`<div class="text-center py-10"><div class="story-chapter-big text-amber-300">!</div><div class="text-zinc-300 mt-2">결과를 서버에 저장하지 못했어요. 다시 도전해 주세요.</div><div class="flex flex-col gap-2 max-w-xs mx-auto mt-6"><button class="story-back" data-go="map">챕터 지도로</button></div></div>`); bind(); return; }
     const r = res.r || {};
@@ -246,28 +282,58 @@
     if (first && ph.type === 'boss' && ch.ending?.length) await new Promise(ok => playLines(ch.ending, [], ok, 'ending'));
     show(`<div class="text-center py-6"><div class="story-chapter-sub">Phase.${ph.no} CLEAR</div><div class="story-chapter-big text-emerald-300">VICTORY</div>
       ${reward ? `<div class="mt-4 text-amber-200 font-bold">🎁 보상 카드 획득!</div><div class="flex justify-center mt-2 story-reward">${tile(reward)}</div>` : `<div class="mt-4 text-zinc-400 text-sm">${first ? '이번 챕터는 카드 보상 없이 스탯 포인트만 받아요.' : '이미 클리어한 페이즈라 카드 보상은 없어요.'}</div>`}
+      ${expList(r.exp)}
       <div class="mt-4 text-lg">${pts ? `스탯 포인트 <b class="text-emerald-300">+${pts}</b> (보유 ${save.points})` : '<span class="text-zinc-400 text-sm">다시 클리어한 페이즈라 스탯 포인트는 없어요.</span>'}</div>
       <div class="flex flex-col gap-2 max-w-xs mx-auto mt-5"><button class="story-btn" data-go="stats">📈 스탯 분배하기</button><button class="story-back" data-go="map">챕터 지도로</button></div></div>`);
     bind({ stats: () => openStats(renderMap) });
+    if ((r.exp || []).some(e => e.level > e.from)) levelUpFx();
+  }
+  // 전투 EXP 결과 목록
+  function expList(list) {
+    if (!list?.length) return '';
+    return `<div class="story-explist">${list.map(e => { const c = card(e.id), o = save.owned.find(x => x.id === e.id) || { id: e.id, level: e.level }, up = e.level > e.from;
+      return `<div class="story-exprow ${up ? 'up' : ''}"><img src="${IMG}${e.id}.webp" alt=""><div class="flex-1 min-w-0"><div class="flex justify-between text-xs"><b class="truncate">${esc(c?.name)}</b><span class="text-sky-300">EXP +${e.exp}${e.kills ? ` · 처치 ${e.kills}` : ''}</span></div>${lvBar(o)}${up ? `<div class="story-lvup-tag">LEVEL UP! Lv.${e.from} → Lv.${e.level} · 카드 포인트 +${e.level - e.from}</div>` : ''}</div></div>`; }).join('')}</div>`;
+  }
+  function levelUpFx(text = 'LEVEL UP!') {
+    const el = document.createElement('div'); el.className = 'story-lvup-fx'; el.innerHTML = `<span>${text}</span>`;
+    document.body.appendChild(el); try { window.VRSound?.sfx?.('levelup'); } catch {}
+    setTimeout(() => el.remove(), 1600);
   }
 
   // ----- 스탯 분배 (팝업) -----
-  function openStats(after) {
-    let sel = 0, temp = save.owned.map(o => ({ ...(o.boost || {}) })), left = save.points;
+  // 카드 전용 포인트(레벨업 보상, 그 카드에만)를 먼저 쓰고, 모자라면 전역 포인트(첫 클리어 보상)를 씀
+  function openStats(after, start = 0) {
+    save.owned.forEach(norm);
+    let sel = start, left = save.points, tabX = 0;
+    const temp = save.owned.map(o => ({ ...(o.boost || {}) })), cleft = save.owned.map(o => o.cpts | 0), gUsed = save.owned.map(() => 0);
+    const added = i => STATS.reduce((a, st) => a + (temp[i][st] || 0) - (save.owned[i].boost?.[st] || 0), 0);
     const draw = () => {
-      const o = save.owned[sel], c = boosted({ id: o.id, boost: temp[sel] }), k = D.statPerPoint;
-      const p = popup(`<div class="text-lg font-black mb-1">📈 스탯 분배</div><div class="text-xs text-zinc-400 mb-3">남은 포인트 <b class="text-emerald-300 text-base">${left}</b> · 포인트 1당 ATK +${k.ATK}, HP +${k.HP}, DEF +${k.DEF}</div>
-        <div class="flex gap-1.5 overflow-x-auto pb-2 mb-2">${save.owned.map((x, i) => { const cc = card(x.id); return `<button data-sel="${i}" class="story-chip ${i === sel ? 'on' : ''}">${i === 0 ? '👑 ' : ''}${esc(cc?.name)}</button>`; }).join('')}</div>
-        <div class="flex gap-3 items-center"><img src="${IMG}${c.id}.webp" class="w-20 aspect-[3/4] object-cover rounded-lg" alt=""><div class="flex-1 space-y-2">${STATS.map(s => `<div class="flex items-center gap-2"><span class="w-16 text-sm font-bold">${STAT_LABEL[s]}</span><span class="flex-1 font-black">${fmt(c[s])}${temp[sel][s] ? ` <span class="text-emerald-300 text-xs">(+${temp[sel][s] * k[s]})</span>` : ''}</span><button data-dec="${s}" class="story-pm" ${(temp[sel][s] || 0) > (o.boost?.[s] || 0) ? '' : 'disabled'}>−</button><button data-inc="${s}" class="story-pm" ${left ? '' : 'disabled'}>＋</button></div>`).join('')}</div></div>
+      const o = save.owned[sel], c = boosted({ id: o.id, boost: temp[sel] }), k = D.statPerPoint, avail = left + cleft[sel];
+      const p = popup(`<div class="text-lg font-black mb-1">📈 스탯 분배</div><div class="text-xs text-zinc-400 mb-3">공용 포인트 <b class="text-emerald-300 text-base">${left}</b> · 이 카드 전용 <b class="text-sky-300 text-base" id="story-cpts">${cleft[sel]}</b> · 포인트 1당 ATK +${k.ATK}, HP +${k.HP}, DEF +${k.DEF}<div class="text-[11px] text-zinc-500">카드 전용 포인트(레벨업 보상)를 먼저 써요</div></div>
+        <div class="story-tabwrap"><button class="story-tab-arr l" aria-label="왼쪽">‹</button><div class="story-tabs">${save.owned.map((x, i) => { const cc = card(x.id); return `<button data-sel="${i}" class="story-chip ${i === sel ? 'on' : ''}">${i === 0 ? '👑 ' : ''}${esc(cc?.name)} <small>Lv.${x.level}</small>${cleft[i] ? ` <b class="text-sky-300">+${cleft[i]}</b>` : ''}</button>`; }).join('')}</div><button class="story-tab-arr r" aria-label="오른쪽">›</button></div>
+        <div class="flex gap-3 items-center"><img src="${IMG}${c.id}.webp" class="w-20 aspect-[3/4] object-cover rounded-lg" alt=""><div class="flex-1 space-y-2">${STATS.map(s => `<div class="flex items-center gap-2"><span class="w-16 text-sm font-bold">${STAT_LABEL[s]}</span><span class="flex-1 font-black">${fmt(c[s])}${(temp[sel][s] || 0) ? ` <span class="text-emerald-300 text-xs">(+${temp[sel][s] * k[s]})</span>` : ''}</span><button data-dec="${s}" class="story-pm" ${(temp[sel][s] || 0) > (o.boost?.[s] || 0) ? '' : 'disabled'}>−</button><button data-inc="${s}" class="story-pm" ${avail ? '' : 'disabled'}>＋</button></div>`).join('')}</div></div>
         <div class="mt-3 text-[11px] text-zinc-500">🗡️ 무기 · 🛡️ 방어구 장착은 준비 중이에요 (Coming soon)</div>
         <div class="flex gap-2 mt-4"><button data-close-pop class="flex-1 py-2.5 rounded-xl bg-zinc-700 font-bold">취소</button><button id="story-stat-ok" class="flex-1 py-2.5 rounded-xl bg-emerald-500 text-black font-bold">확정</button></div>`, after);
+      // 이름 탭: 스크롤바 숨김(스와이프 가능) + 좌우 화살표. 끝에서는 화살표 비활성/숨김. 다시 그려도 스크롤 위치 유지
+      const row = p.el.querySelector('.story-tabs'), al = p.el.querySelector('.story-tab-arr.l'), ar = p.el.querySelector('.story-tab-arr.r');
+      const arrows = () => { const max = row.scrollWidth - row.clientWidth - 1; al.disabled = row.scrollLeft <= 0; ar.disabled = row.scrollLeft >= max; p.el.querySelector('.story-tabwrap').classList.toggle('fit', max <= 0); };
+      row.scrollLeft = tabX; if (tabX === 0) row.querySelector('.on')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      row.onscroll = () => { tabX = row.scrollLeft; arrows(); };
+      al.onclick = () => row.scrollBy({ left: -row.clientWidth * 0.7, behavior: 'smooth' });
+      ar.onclick = () => row.scrollBy({ left: row.clientWidth * 0.7, behavior: 'smooth' });
+      arrows();
       p.el.querySelectorAll('[data-sel]').forEach(b => b.onclick = () => { sel = +b.dataset.sel; draw(); });
-      p.el.querySelectorAll('[data-inc]').forEach(b => b.onclick = () => { if (!left) return; temp[sel][b.dataset.inc] = (temp[sel][b.dataset.inc] || 0) + 1; left--; draw(); });
-      p.el.querySelectorAll('[data-dec]').forEach(b => b.onclick = () => { temp[sel][b.dataset.dec]--; left++; draw(); });
+      p.el.querySelectorAll('[data-inc]').forEach(b => b.onclick = () => {
+        if (cleft[sel]) cleft[sel]--; else if (left) { left--; gUsed[sel]++; } else return;
+        temp[sel][b.dataset.inc] = (temp[sel][b.dataset.inc] || 0) + 1; draw(); });
+      p.el.querySelectorAll('[data-dec]').forEach(b => b.onclick = () => {
+        temp[sel][b.dataset.dec]--; if (gUsed[sel]) { gUsed[sel]--; left++; } else cleft[sel]++; draw(); });
       $('story-stat-ok').onclick = async () => {
         const alloc = {};
         save.owned.forEach((x, i) => { for (const st of STATS) { const n = (temp[i][st] || 0) - (x.boost?.[st] || 0); if (n > 0) (alloc[x.id] ||= {})[st] = n; } });
-        if (Object.keys(alloc).length) await act('story_allocate', { p_alloc: alloc }, () => { save.owned.forEach((x, i) => x.boost = temp[i]); save.points = left; });
+        if (Object.keys(alloc).length) await act('story_allocate', { p_alloc: alloc }, () => {
+          save.owned.forEach((x, i) => { const fromCard = added(i) - gUsed[i]; x.boost = temp[i]; x.cpts -= fromCard; x.spentCard += fromCard; });
+          save.points = left; });
         p.close();
       };
     };
@@ -275,14 +341,66 @@
   }
 
   // ----- 보유 카드 -----
+  const cptsTotal = () => save.owned.reduce((a, o) => a + (o.cpts | 0), 0);
   function renderCards() {
-    const k = D.statPerPoint;
-    show(`${topBar('🃏 보유 카드', 'map')}<div class="text-center text-sm text-zinc-400 my-2">스토리 모드 전용 · ${save.owned.length}장 · 스탯 포인트 ${save.points}</div>
+    const k = D.statPerPoint; save.owned.forEach(norm);
+    const anyPts = save.points || cptsTotal();
+    show(`${topBar('🃏 보유 카드', 'map')}<div class="text-center text-sm text-zinc-400 my-2">스토리 모드 전용 · ${save.owned.length}종 · 공용 포인트 ${save.points}${cptsTotal() ? ` · 카드 전용 ${cptsTotal()}` : ''}</div>
+      <div class="text-center text-[11px] text-zinc-500 -mt-1 mb-2">카드를 누르면 상세 · 폐기할 수 있어요</div>
       <div class="story-grid">${save.owned.map((o, i) => { const c = boosted(o); if (!c) return ''; const b = o.boost || {};
         const up = STATS.filter(s => b[s]).map(s => `${s} +${b[s] * k[s]}`).join(' · ');
-        return tile(c, `${(o.count || 1) > 1 ? `<div class="story-dup">x${o.count}</div>` : ''}<div class="text-[10px] text-emerald-300 h-3">${i === 0 ? '👑 리더 ' : ''}${up}</div><div class="story-equip"><span>🗡️ 무기</span><span>🛡️ 방어구</span><em>준비 중</em></div>`); }).join('')}</div>
-      ${save.points ? '<div class="text-center mt-4"><button class="story-btn" data-go="stats">📈 스탯 분배하기</button></div>' : ''}`);
+        return `<div data-card="${i}" class="story-owned">${tile(c, `${o.count > 1 ? `<div class="story-dup">x${o.count}</div>` : ''}${o.cpts ? `<div class="story-cpts">+${o.cpts}</div>` : ''}${lvBar(o)}<div class="text-[10px] text-emerald-300 h-3">${i === 0 ? '👑 리더 ' : ''}${up}</div><div class="story-equip"><span>🗡️ 무기</span><span>🛡️ 방어구</span><em>준비 중</em></div>`)}</div>`; }).join('')}</div>
+      ${anyPts ? '<div class="text-center mt-4"><button class="story-btn" data-go="stats">📈 스탯 분배하기</button></div>' : ''}`);
     bind({ stats: () => openStats(renderCards) });
+    document.querySelectorAll('[data-card]').forEach(el => el.onclick = () => cardDetail(+el.dataset.card));
+  }
+  const isLeader = o => o.id === save.starter;
+  const canDiscard = o => !(isLeader(o) && o.count <= 1) && save.owned.length > 1 || o.count > 1;
+  function cardDetail(i) {
+    const o = norm(save.owned[i]), c = boosted(o); if (!c) return;
+    const cap = lvCap(o), dup = o.count > 1;
+    const p = popup(`<div class="flex gap-3"><img src="${IMG}${c.id}.webp" class="w-24 aspect-[3/4] object-cover rounded-lg" alt=""><div class="flex-1 min-w-0">
+        <div class="text-lg font-black truncate">${isLeader(o) ? '👑 ' : ''}${esc(c.name)} <span class="text-xs text-zinc-400">${RAR[c.grade] || 'N'}</span></div>
+        ${lvBar(o)}<div class="text-[11px] text-zinc-400 mt-1">최대 Lv.${cap} · 누적 EXP ${fmt(o.totalExp)}${dup ? ` · 보유 x${o.count}` : ''}</div>
+        <div class="flex gap-3 mt-2 text-sm"><span class="text-orange-400">⚔${fmt(c.ATK)}</span><span class="text-red-400">♥${fmt(c.HP)}</span><span class="text-sky-400">🛡${fmt(c.DEF)}</span></div>
+        <div class="text-xs mt-1">카드 전용 포인트 <b class="text-sky-300">${o.cpts}</b></div></div></div>
+      ${dup ? `<div class="story-hint">💡 같은 카드가 ${o.count}장 있어요. 중복 카드는 나중에 합성(EX)에 쓸 수 있으니 폐기는 신중하게!</div>` : ''}
+      <div class="flex gap-2 mt-4"><button id="story-d-stats" class="flex-1 py-2.5 rounded-xl bg-emerald-500 text-black font-bold" ${save.points || o.cpts ? '' : 'disabled'}>📈 스탯 분배</button>
+      <button id="story-d-discard" class="flex-1 py-2.5 rounded-xl bg-red-500/80 font-bold" ${canDiscard(o) ? '' : 'disabled'}>🗑️ 폐기</button></div>
+      ${isLeader(o) && !dup ? '<div class="text-[11px] text-zinc-500 mt-2 text-center">리더 카드는 폐기할 수 없어요</div>' : ''}`, renderCards);
+    $('story-d-stats').onclick = () => { p.close(true); openStats(renderCards, i); };
+    $('story-d-discard').onclick = () => { p.close(true); pickTarget(i); };
+  }
+  // 폐기: EXP를 받을 카드 1장 고르기
+  function pickTarget(i) {
+    const src = save.owned[i], sc = card(src.id);
+    const targets = save.owned.map((o, j) => ({ o, j })).filter(({ o, j }) => j !== i || src.count > 1);
+    const p = popup(`<div class="text-lg font-black mb-1">🗑️ ${esc(sc?.name)} 폐기</div><div class="text-xs text-zinc-400 mb-3">EXP를 받을 카드를 골라 주세요${src.count > 1 ? ' · 중복 1장만 사라져요' : ''}</div>
+      <div class="story-target-list">${targets.map(({ o, j }) => { const c = card(o.id), f = feedCalc(src, o), g = gainCalc(o, f.amt);
+        return `<button data-t="${j}" class="story-target"><img src="${IMG}${o.id}.webp" alt=""><div class="flex-1 min-w-0 text-left"><div class="text-sm font-bold truncate">${esc(c?.name)}${c?.name === sc?.name ? ' <span class="text-amber-300 text-[10px]">같은 이름 ×1.5</span>' : ''}</div><div class="text-[11px] text-zinc-400">Lv.${o.level} → <b class="${g.level > o.level ? 'text-emerald-300' : ''}">Lv.${g.level}</b> · EXP +${fmt(f.amt)}${g.wasted ? ` <span class="text-red-300">(${fmt(g.wasted)} 낭비)</span>` : ''}</div></div></button>`; }).join('')}</div>
+      <button data-close-pop class="w-full mt-3 py-2.5 rounded-xl bg-zinc-700 font-bold">취소</button>`, renderCards);
+    p.el.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { p.close(true); confirmDiscard(i, +b.dataset.t); });
+  }
+  function confirmDiscard(i, j) {
+    const src = save.owned[i], tgt = save.owned[j], sc = card(src.id), tc = card(tgt.id), f = feedCalc(src, tgt), g = gainCalc(tgt, f.amt);
+    const p = popup(`<div class="text-lg font-black mb-2">정말 폐기할까요?</div>
+      <div class="text-sm"><b>${esc(sc?.name)}</b>${src.count > 1 ? ` (x${src.count} 중 1장)` : ''} → <b>${esc(tc?.name)}</b> EXP <b class="text-sky-300">+${fmt(f.amt)}</b></div>
+      <div class="text-sm mt-1">Lv.${tgt.level} → <b class="text-emerald-300">Lv.${g.level}</b>${g.level > tgt.level ? ` · 카드 전용 포인트 +${g.level - tgt.level}` : ''}</div>
+      ${g.wasted ? `<div class="story-warn">⚠️ 최대 레벨(Lv.${lvCap(tgt)})을 넘는 EXP ${fmt(g.wasted)}은 사라져요.</div>` : ''}
+      ${f.refund ? `<div class="text-xs text-emerald-300 mt-1">이 카드에 쓴 공용 포인트 ${f.refund}은 돌려받아요.</div>` : ''}
+      ${src.count > 1 ? '<div class="story-hint">💡 중복 카드는 나중에 합성(EX)에 쓸 수 있어요.</div>' : f.whole && (src.cpts || src.spentCard) ? '<div class="text-[11px] text-zinc-400 mt-1">카드 전용 포인트와 그걸로 올린 스탯은 함께 사라져요.</div>' : ''}
+      <div class="flex gap-2 mt-4"><button data-close-pop class="flex-1 py-2.5 rounded-xl bg-zinc-700 font-bold">취소</button><button id="story-disc-ok" class="flex-1 py-2.5 rounded-xl bg-red-500 font-bold">폐기</button></div>`, renderCards);
+    $('story-disc-ok').onclick = async () => {
+      const ok = $('story-disc-ok'); ok.disabled = true;
+      const res = await act('story_discard', { p_id: src.id, p_target: tgt.id }, () => {
+        const from = tgt.level; Object.assign(tgt, { level: g.level, exp: g.exp, totalExp: g.totalExp, cpts: g.cpts });
+        if (f.whole) save.owned.splice(i, 1); else src.count--;
+        save.points += f.refund;
+        return { exp: f.amt, from, level: g.level, refund: f.refund };
+      }, r => r.data);
+      p.close(true); renderCards();
+      if (res.ok) { const r = res.r || {}; toast(`🗑️ ${sc?.name} 폐기 · ${tc?.name} EXP +${r.exp}`); if (r.level > r.from) levelUpFx(`LEVEL UP! Lv.${r.level}`); }
+    };
   }
 
   // ----- 일일 카드 뽑기 (하루 1회, KST 자정 초기화) -----
