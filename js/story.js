@@ -165,7 +165,7 @@
     root().classList.add('hidden');
     const boss = ph.type === 'boss';
     window.TCG.startStory({
-      me: ownedCards(), ai: enemies, win: boss ? 'ko' : 'wipe', aiHp: boss ? (ph.baseHp || 500) : undefined, aiName: boss ? '보스' : '적', first: 'me',
+      me: ownedCards(), ai: enemies, win: boss ? 'ko' : 'wipe', aiHp: boss ? (ph.baseHp || 500) : undefined, aiName: ph.enemyName || (boss ? '보스' : '적군'), first: 'me',
       onEnd: (win, reason) => result(ch, ph, win, reason),
     });
     if (ph.tip) setTimeout(() => toast(`💡 ${ph.tip}`), 400);
@@ -175,7 +175,7 @@
 
   async function result(ch, ph, win, reason) {
     if (!win) {
-      show(`<div class="text-center py-10"><div class="story-chapter-big text-red-400">DEFEAT</div><div class="text-zinc-300 mt-2">${reason === 'wipe' ? '내 카드가 모두 쓰러졌어요.' : '패배했어요.'} 스탯을 올리고 다시 도전해 보세요!</div>
+      show(`<div class="text-center py-10"><div class="story-chapter-big text-red-400">DEFEAT</div><div class="text-zinc-300 mt-2">${reason === 'wipe' ? '내 카드가 모두 쓰러졌어요.' : reason === 'timeout' ? '턴 제한 안에 적을 모두 쓰러뜨리지 못했어요.' : '패배했어요.'} 스탯을 올리고 다시 도전해 보세요!</div>
         <div class="flex flex-col gap-2 max-w-xs mx-auto mt-6"><button class="story-btn" id="story-retry">다시 도전</button><button class="story-back" data-go="map">챕터 지도로</button></div></div>`);
       bind(); $('story-retry').onclick = () => startPhase(ch, ph); return;
     }

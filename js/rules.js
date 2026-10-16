@@ -162,6 +162,7 @@ export const heroLocked = me => (me.turnsTaken || 0) <= RULES.HERO_LOCK_TURNS;
 export function attackTargets(me, opp) {
   const taunts = opp.field.filter(u => hasSkill(u, 'taunt'));
   if (taunts.length) return { units: taunts, hero: false, reason: '도발 카드부터 공격해야 합니다' };
+  if (opp.noBase) return { units: [...opp.field], hero: false, reason: '일반전: 상대 카드를 모두 쓰러뜨리세요' };
   if (heroLocked(me)) return { units: [...opp.field], hero: false, reason: `첫 ${RULES.HERO_LOCK_TURNS}턴에는 진영을 공격할 수 없습니다` };
   if (opp.field.length >= RULES.HERO_GUARD_FIELD) return { units: [...opp.field], hero: false, reason: `상대 필드에 ${RULES.HERO_GUARD_FIELD}장 이상 있으면 카드만 공격할 수 있습니다` };
   return { units: [...opp.field], hero: true, reason: '' };
@@ -328,6 +329,7 @@ export const JUDGE_LABEL = { ko: 'KO', hp: '진영 HP 우세', cards: '남은 �
 /** 액션 사용 가능 여부 */
 export function canAction(type, p) {
   const cost = ACTIONS[type].cost();
+  if (type === 'heal' && p.noBase) return { ok: false, cost, reason: '일반전 불가' };
   if (p.actionLock > 0) return { ok: false, cost, reason: '고유기술 봉인' };
   if (type === 'accel' && (p.accel || 0) >= RULES.ACCEL_MAX) return { ok: false, cost, reason: `최대 ${RULES.ACCEL_MAX}회` };
   if (type !== 'accel' && p.used?.[type]) return { ok: false, cost, reason: '이번 턴 사용함' };

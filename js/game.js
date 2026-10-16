@@ -79,6 +79,10 @@ function startGame(story = null) {
   const first = story?.first || (Math.random() < 0.5 ? 'me' : 'ai');   // 선공 동전 던지기
   S = { me: newPlayer('나', first !== 'me', story?.me, story?.meHp), ai: newPlayer(story?.aiName || '컴퓨터', first !== 'ai', story?.ai, story?.aiHp), first, story, turn: first, turnNo: 0, totalTurns: 0, myTurns: 0, over: false, busy: false, fxSeen: new Set(), mercBought: 0, mercOffer: [], log: { dmg: new Map(), total: 0, skills: 0, merc: null } };
   S.mercOffer = story ? [] : Merc.roll(POOL);
+  const noBase = story?.win === 'wipe';   // 스토리 일반전: 진영 개념 없음
+  S.me.noBase = S.ai.noBase = noBase;
+  for (const w of ['me', 'ai']) { $(`${w}-hp`).classList.toggle('hidden', noBase); $(`${w}-hpbar`).parentElement.classList.toggle('hidden', noBase); }
+  { const lbl = $('ai-order').parentElement.firstChild; if (lbl?.nodeType === 3) lbl.textContent = story ? `${story.aiName || '적군'} ` : '🤖 컴퓨터 '; }
   preloadFx([...S.me.deck, ...S.me.hand, ...S.ai.deck, ...S.ai.hand]);
   selected = null; $('log').innerHTML = '';
   $('end-screen').classList.add('hidden'); $('start-screen').classList.add('hidden'); $('game').classList.remove('hidden');
@@ -344,6 +348,7 @@ function checkEnd() {
 /** 턴 종료 후: 전체 턴 제한 도달 시 판정 */
 function checkTimeout() {
   if (S.over || S.totalTurns < RULES.MAX_TURNS) return S.over;
+  if (S.story?.win === 'wipe') return finish(false, 'timeout');   // 스토리 일반전: 턴 제한 도달 = 패배
   const j = judgeTimeout(S.me, S.ai);
   return finish(j.winner === null ? null : j.winner === S.me, j.reason);
 }
@@ -696,7 +701,7 @@ function render() {
   $('ai-hero').classList.toggle('ring-4', selected != null && tg.hero);
   $('ai-hero').classList.toggle('ring-red-500', selected != null && tg.hero);
   $('ai-hero').classList.toggle('opacity-70', S.turn === 'me' && !tg.hero);
-  $('hero-hint').textContent = S.turn === 'me' && !S.over ? (tg.hero ? '🎯 상대 진영 공격 가능' : '🛡️ ' + tg.reason) : '';
+  $('hero-hint').textContent = S.ai.noBase ? (S.over ? '' : '⚔️ 일반전: 상대 카드를 모두 쓰러뜨리면 승리') : S.turn === 'me' && !S.over ? (tg.hero ? '🎯 상대 진영 공격 가능' : '🛡️ ' + tg.reason) : '';
   $('hero-hint').className = `text-center text-[11px] md:text-xs font-bold ${tg.hero ? 'text-emerald-400' : 'text-amber-300'}`;
 
   for (const who of ['ai', 'me']) {

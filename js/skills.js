@@ -155,6 +155,12 @@ export function healHero(p, amt) { const b = p.hp; p.hp = Math.min((p.maxHp || R
 
 /** 본진 피해. srcOwner가 자기 첫 N턴이면 차단 (자기 본진 강제 공격은 예외) */
 export function damageHero(p, dmg, srcOwner, kind = 'hit', srcUnit = null) {
+  if (p.noBase) {   // 스토리 일반전: 진영 없음. 진영을 노린 피해는 상대 카드(HP 가장 낮은 카드)에게, 초과·자기 피해는 무효
+    if (kind === 'overflow' || kind === 'self' || !srcOwner || srcOwner === p) return 0;
+    const t = p.field.filter(u => u.hp > 0).sort((a, b) => a.hp - b.hp)[0];
+    if (t) { damageUnit(t, Math.round(dmg), srcUnit); checkDeath(t, srcUnit); }
+    return 0;
+  }
   if (srcOwner && srcOwner !== p && heroLocked(srcOwner)) return 0;
   if (p.st.heroInvuln) { emit({ type: 'heroImmune', p }); return 0; }
   if (srcUnit && srcOwner && srcOwner !== p && srcUnit.card?.grade === 'MYTHIC RARE') dmg = Math.max(1, Math.round(dmg * RULES.MR_HERO_DMG_RATIO));

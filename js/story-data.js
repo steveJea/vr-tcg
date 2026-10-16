@@ -16,20 +16,20 @@ window.STORY_DATA = {
     {
       id: 1, title: 'CHAPTER 1', subtitle: '(챕터 제목 준비 중)',
       phases: [
-        // enemies: 노멀 카드 power 순위 구간 [from, to) 에서 count 장 / 또는 ids: ['카드id', ...] 로 직접 지정
-        { no: 1, type: 'normal', title: '(페이즈 1 제목)', tip: '카드를 소환하고 상대 카드를 공격해 보세요.', enemies: { count: 1, rank: [0, 30] },
+        // enemyName: 전투 화면 상대 이름 / enemies: 노멀 카드 power 순위 구간 [from, to) 에서 count 장 / 또는 ids: ['카드id', ...] 로 직접 지정
+        { no: 1, type: 'normal', enemyName: '적군', title: '(페이즈 1 제목)', tip: '카드를 소환하고 상대 카드를 공격해 보세요.', enemies: { count: 1, rank: [0, 30] },
           lines: { default: [
             { speaker: null, portrait: null, text: '(나레이션 대사 자리)' },
             { speaker: 'starter', portrait: 'starter', text: '(주인공 대사 자리)' },
             { speaker: 'enemy', portrait: 'enemy', text: '(적 대사 자리)' },
           ] } },
-        { no: 2, type: 'normal', title: '(페이즈 2 제목)', tip: 'MP가 차면 스킬을 쓸 수 있어요. 카드를 눌러 확인해 보세요.', enemies: { count: 2, rank: [0, 50] },
+        { no: 2, type: 'normal', enemyName: '적군', title: '(페이즈 2 제목)', tip: 'MP가 차면 스킬을 쓸 수 있어요. 카드를 눌러 확인해 보세요.', enemies: { count: 2, rank: [0, 50] },
           lines: { default: [ { speaker: 'starter', portrait: 'starter', text: '(대사 자리)' }, { speaker: 'enemy', portrait: 'enemy', text: '(대사 자리)' } ] } },
-        { no: 3, type: 'normal', title: '(페이즈 3 제목)', tip: '상대 카드를 쓰러뜨리면 상대 MP 일부를 흡수해요.', enemies: { count: 2, rank: [30, 90] },
+        { no: 3, type: 'normal', enemyName: '적군', title: '(페이즈 3 제목)', tip: '상대 카드를 쓰러뜨리면 상대 MP 일부를 흡수해요.', enemies: { count: 2, rank: [30, 90] },
           lines: { default: [ { speaker: 'starter', portrait: 'starter', text: '(대사 자리)' }, { speaker: 'enemy', portrait: 'enemy', text: '(대사 자리)' } ] } },
-        { no: 4, type: 'normal', title: '(페이즈 4 제목)', tip: '속성 상성을 이용하면 더 큰 피해를 줄 수 있어요.', enemies: { count: 3, rank: [50, 120] },
+        { no: 4, type: 'normal', enemyName: '적군', title: '(페이즈 4 제목)', tip: '속성 상성을 이용하면 더 큰 피해를 줄 수 있어요.', enemies: { count: 3, rank: [50, 120] },
           lines: { default: [ { speaker: 'starter', portrait: 'starter', text: '(대사 자리)' }, { speaker: 'enemy', portrait: 'enemy', text: '(대사 자리)' } ] } },
-        { no: 5, type: 'boss', title: '(보스전 제목)', tip: '보스전! 상대 진영 HP를 0으로 만들면 승리해요.', enemies: { count: 4, rank: [120, 203] }, baseHp: 500,
+        { no: 5, type: 'boss', enemyName: '보스', title: '(보스전 제목)', tip: '보스전! 상대 진영 HP를 0으로 만들면 승리해요.', enemies: { count: 4, rank: [120, 203] }, baseHp: 500,
           lines: { default: [ { speaker: 'enemy', portrait: 'enemy', text: '(보스 대사 자리)' }, { speaker: 'starter', portrait: 'starter', text: '(대사 자리)' } ] } },
       ],
     },
