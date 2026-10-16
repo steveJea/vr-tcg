@@ -1,6 +1,6 @@
 // ===== 카드 갤러리 =====
 // 판이 끝나면(로그인 유저만) 승리: 필드에 남은 내 카드 전부 / 패배·무승부: MVP 1장을 갤러리에 등록.
-// 저장은 Supabase gallery 테이블 + gallery_register RPC. 스킬 이미지는 절대 노출하지 않음(초상화만).
+// 저장은 Supabase gallery 테이블 + gallery_register RPC. 스킬 이미지는 VIP 왕관 등급으로 개방된 것만 노출.
 (() => {
   const IMG = 'https://raw.githubusercontent.com/steveJea/vr-ideal-worldcup/main/img/bt_img/';
   const ORDER = ['NORMAL', 'RARE', 'HIGH RARE', 'SUPER RARE', 'ULTRA RARE', 'MYTHIC RARE'];
@@ -11,6 +11,33 @@
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const cloud = () => window.VRCloud;
   const logged = () => !!(cloud()?.sb && cloud()?.user);
+
+  // --- VIP 왕관 등급 (mvp_count) ---
+  const TIERS = [null,
+    { k: 'blue', e: '🔵', n: '파란 왕관' }, { k: 'purple', e: '🟣', n: '보라 왕관' },
+    { k: 'yellow', e: '🟡', n: '노란 왕관' }, { k: 'red', e: '🔴', n: '붉은 왕관' }];
+  const tierOf = m => Math.min(4, Math.max(0, +m || 0));
+  const crownHtml = (t, big) => t ? `<span class="gal-crown vip-${TIERS[t].k}${big ? ' big' : ''}" title="${TIERS[t].n}">👑<i>${TIERS[t].e}</i></span>` : '';
+  // 등급 t의 보상: 스킬 t가 있으면 스킬 개방, 없으면 꾸미기 보상 (2=금테, 3=특별 배경, 4=붉은 반짝 테두리는 항상)
+  const rewardText = (t, nSkill) => t <= nSkill ? `스킬 ${t} 개방` : ({ 1: '', 2: '금테 프레임', 3: '특별 배경', 4: '붉은 반짝 테두리' }[t] || '') + (t === 4 && nSkill >= 4 ? ' + 붉은 반짝 테두리' : '');
+  let skills = null, voices = null;
+  async function loadSkills() {
+    if (skills) return;
+    try { skills = await (await fetch('data/skills.json')).json(); } catch { skills = {}; }
+    try { voices = new Set(await (await fetch('data/voice/index.json')).json()); } catch { voices = new Set(); }
+  }
+  const skillsOf = id => (skills && skills[id]) || [];
+  let voiceAudio = null;
+  function playVoice(key) {
+    try {
+      voiceAudio?.pause();
+      const a = voiceAudio = new Audio(`data/voice/${key}.mp3`);
+      a.addEventListener('playing', () => window.VRSound?.duck?.(true));
+      const off = () => setTimeout(() => { if (voiceAudio === a || a.paused) window.VRSound?.duck?.(false); }, 60);
+      a.addEventListener('ended', off); a.addEventListener('pause', off); a.addEventListener('error', off);
+      a.play().catch(off);
+    } catch {}
+  }
 
   let cards = null, owned = new Map(), filter = 'ALL';
   async function loadCards() {
@@ -72,6 +99,7 @@
     try {
       await loadCards();
       const res = await register(ids, mvp);
+      await loadSkills();
       res.forEach(r => owned.set(r.card_id, { ...(owned.get(r.card_id) || {}), ...r }));
       const items = ids.map(id => ({ c: cardById(id), r: res.find(x => x.card_id === id) })).filter(x => x.c);
       const nNew = items.filter(x => x.r?.is_new).length;
@@ -79,13 +107,33 @@
         <div class="gal-end-row">${items.map(({ c, r }) => `<div class="gal-end-card rar-${SHORT[c.grade]}">
           <img src="${IMG}${c.id}.webp" alt="${esc(c.name)}" onerror="this.style.visibility='hidden'">
           ${r?.is_new ? '<span class="gal-new">NEW!</span>' : `<span class="gal-cnt">×${r?.count ?? ''}</span>`}
-          <div class="gal-end-name">${esc(c.name)}</div></div>`).join('')}</div>`;
+          ${crownHtml(tierOf(r?.mvp_count))}
+          <div class="gal-end-name">${esc(c.name)}</div></div>`).join('')}</div>${promoNote(items, mvp)}`;
     } catch (err) {
       console.warn('[gallery] register failed', err);
       writePending([...readPending(), { uid: cloud().user.id, ids, mvp, at: Date.now() }]);
       box.innerHTML = `<div class="gal-hint">📡 지금은 갤러리에 저장하지 못했어요. 다음에 연결되면 자동으로 수집돼요</div>`;
     }
   });
+
+  function promoNote(items, mvp) {
+    const it = items.find(x => x.c.id === mvp && x.r); if (!it) return '';
+    const now = tierOf(it.r.mvp_count), before = tierOf(it.r.mvp_count - 1);
+    if (now <= before) return '';
+    const rw = rewardText(now, skillsOf(it.c.id).length);
+    return `<div class="gal-promo vip-${TIERS[now].k}">👑 ${esc(it.c.name)} ${before ? TIERS[before].e : '✨'}→${TIERS[now].e} ${now === 1 ? 'VIP 등극!' : '승급!'}${rw ? ` ${rw}` : ''}${now === 4 ? ' (최종)' : ''}</div>`;
+  }
+
+  // --- 크게 보기 (갤러리 전용) ---
+  function zoom(src, title, sub) {
+    let z = $('gal-zoom');
+    if (!z) {
+      z = document.createElement('div'); z.id = 'gal-zoom'; z.className = 'gal-zoom hidden'; document.body.appendChild(z);
+      z.addEventListener('click', e => { if (!e.target.closest('.gal-zimg') || e.target.closest('.gal-zx')) z.classList.add('hidden'); });
+    }
+    z.innerHTML = `<button class="gal-x gal-zx" aria-label="닫기">✕</button><img class="gal-zimg" src="${src}" alt="${esc(title)}"><div class="gal-zcap"><b>${esc(title)}</b>${sub ? `<div>${esc(sub)}</div>` : ''}</div>`;
+    z.classList.remove('hidden');
+  }
 
   // --- 갤러리 화면 ---
   function ensureModal() {
@@ -103,10 +151,14 @@
     document.body.appendChild(m);
     m.addEventListener('click', e => { if (e.target === m) close(); });
     $('gal-close').onclick = close;
-    $('gal-detail').addEventListener('click', e => { if (e.target.id === 'gal-detail' || e.target.closest('.gal-x')) $('gal-detail').classList.add('hidden'); });
+    $('gal-detail').addEventListener('click', e => {
+      const zb = e.target.closest('[data-zsrc]'); if (zb) { zoom(zb.dataset.zsrc, zb.dataset.ztitle, zb.dataset.zsub); return; }
+      const vb = e.target.closest('[data-voice]'); if (vb) { playVoice(vb.dataset.voice); return; }
+      if (e.target.id === 'gal-detail' || e.target.closest('.gal-x')) $('gal-detail').classList.add('hidden'); });
     $('gal-grid').addEventListener('click', e => { const t = e.target.closest('[data-cid]'); if (t) detail(t.dataset.cid); });
     $('gal-filters').addEventListener('click', e => { const b = e.target.closest('[data-f]'); if (b) { filter = b.dataset.f; draw(); } });
-    document.addEventListener('keydown', e => { if (e.key === 'Escape' && !m.classList.contains('hidden')) { $('gal-detail').classList.contains('hidden') ? close() : $('gal-detail').classList.add('hidden'); } });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('gal-zoom') && !$('gal-zoom').classList.contains('hidden')) { $('gal-zoom').classList.add('hidden'); return; }
+      if (e.key === 'Escape' && !m.classList.contains('hidden')) { $('gal-detail').classList.contains('hidden') ? close() : $('gal-detail').classList.add('hidden'); } });
   }
   function close() { $('gal-modal').classList.add('hidden'); document.body.classList.remove('gal-lock'); }
 
@@ -115,7 +167,7 @@
     $('gal-modal').classList.remove('hidden'); document.body.classList.add('gal-lock');
     $('gal-detail').classList.add('hidden');
     $('gal-msg').textContent = '불러오는 중...'; $('gal-grid').innerHTML = '';
-    try { await loadCards(); } catch { $('gal-msg').textContent = '카드 목록을 불러오지 못했어요. 인터넷 연결을 확인해 주세요.'; return; }
+    try { await loadCards(); await loadSkills(); } catch { $('gal-msg').textContent = '카드 목록을 불러오지 못했어요. 인터넷 연결을 확인해 주세요.'; return; }
     let msg = '';
     if (!logged()) { owned = new Map(); msg = cloud()?.sb ? '🔑 로그인하면 카드가 갤러리에 수집돼요' : '📡 지금은 서버에 연결할 수 없어요. 게스트로는 수집되지 않아요'; }
     else { try { await flushPending(); await fetchOwned(); } catch (e) { console.warn('[gallery] load failed', e); msg = '📡 갤러리를 불러오지 못했어요. 잠시 후 다시 시도해 주세요'; } }
@@ -135,25 +187,42 @@
     $('gal-grid').innerHTML = list.map(c => {
       const o = owned.get(c.id), s = SHORT[c.grade];
       if (!o) return `<div class="gal-card locked rar-${s}"><div class="gal-q">?</div><span class="gal-rar">${s}</span></div>`;
-      return `<button class="gal-card rar-${s} ${o.mvp_count > 0 ? 'mvp' : ''}" data-cid="${c.id}">
+      const t = tierOf(o.mvp_count);
+      return `<button class="gal-card rar-${s} ${t ? 'vip vip-' + TIERS[t].k : ''}" data-cid="${c.id}">
         <img loading="lazy" src="${IMG}${c.id}.webp" alt="${esc(c.name)}" onerror="this.style.visibility='hidden'">
-        <span class="gal-rar">${s}</span>${o.mvp_count > 0 ? '<span class="gal-crown">👑</span>' : ''}
+        <span class="gal-rar">${s}</span>${crownHtml(t)}
         <div class="gal-name">${esc(c.name)}</div></button>`;
     }).join('');
   }
 
   function detail(id) {
     const c = cardById(id), o = owned.get(id); if (!c || !o) return;
-    const s = SHORT[c.grade];
+    const s = SHORT[c.grade], t = tierOf(o.mvp_count), sk = skillsOf(c.id);
     const d = new Date(o.first_at), date = isNaN(d) ? '-' : d.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' });
     const row = (k, v) => `<div class="gal-row"><span>${k}</span><b>${v}</b></div>`;
+    const deco = [t ? 'vip vip-' + TIERS[t].k : '', t >= 2 && sk.length < 2 ? 'deco-gold' : '', t >= 3 && sk.length < 3 ? 'deco-bg' : ''].join(' ');
+    const portrait = `${IMG}${c.id}.webp`;
+    // 스킬 목록: 개방된 스킬만 이미지 경로를 HTML에 넣음 (잠긴 스킬 이미지는 절대 노출 안 함)
+    const skHtml = sk.slice(0, 4).map((k, i) => {
+      const n = i + 1, key = `${c.id}_${n}`;
+      if (t < n) return `<div class="gal-sk locked"><div class="gal-sk-lock">🔒</div><div class="gal-sk-txt"><b>${n}. ${esc(k.name)}</b><span>${TIERS[n].e} ${TIERS[n].n}에서 개방</span></div></div>`;
+      const fx = k.fx ? `data/fx/${k.fx}` : '';
+      const img = fx ? `<button class="gal-sk-img" data-zsrc="${fx}" data-ztitle="${esc(c.name)} · ${esc(k.name)}" data-zsub="스킬 ${n}" aria-label="스킬 이미지 크게 보기"><img src="${fx}" alt="${esc(k.name)}" loading="lazy" onerror="this.parentNode.remove()"></button>` : '';
+      const vo = voices?.has(key) ? `<button class="gal-voice" data-voice="${key}" aria-label="음성 듣기">🔊 듣기</button>` : '';
+      return `<div class="gal-sk open">${img}<div class="gal-sk-txt"><b>${n}. ${esc(k.name)}</b><span>${TIERS[n].e} 개방됨</span></div>${vo}</div>`;
+    }).join('');
+    const extra = [2, 3, 4].filter(n => n > sk.length).map(n => `<div class="gal-perk ${t >= n ? 'on' : ''}">${t >= n ? TIERS[n].e : '🔒'} ${rewardText(n, sk.length)}${t >= n ? '' : ` · ${TIERS[n].n}`}</div>`);
+    if (sk.length >= 4) extra.push(`<div class="gal-perk ${t >= 4 ? 'on' : ''}">${t >= 4 ? '🔴' : '🔒'} 붉은 반짝 테두리${t >= 4 ? '' : ' · 붉은 왕관'}</div>`);
+    const nextTxt = t >= 4 ? '🔴 최종 등급 달성!' : `다음: ${TIERS[t + 1].e} ${TIERS[t + 1].n} (MVP ${t + 1}회)`;
     const el = $('gal-detail');
-    el.innerHTML = `<div class="gal-dbox rar-${s} ${o.mvp_count > 0 ? 'mvp' : ''}">
+    el.innerHTML = `<div class="gal-dbox rar-${s} ${deco}">
       <button class="gal-x gal-dx" aria-label="닫기">✕</button>
-      <div class="gal-dimg"><img src="${IMG}${c.id}.webp" alt="${esc(c.name)}" onerror="this.style.visibility='hidden'">${o.mvp_count > 0 ? '<span class="gal-crown big">👑</span>' : ''}</div>
+      <div class="gal-dimg"><img src="${portrait}" alt="${esc(c.name)}" data-zsrc="${portrait}" data-ztitle="${esc(c.name)}" data-zsub="${LABEL[s]}" onerror="this.style.visibility='hidden'">${crownHtml(t, true)}
+        <button class="gal-zbtn" data-zsrc="${portrait}" data-ztitle="${esc(c.name)}" data-zsub="${LABEL[s]}" aria-label="크게 보기">🔍</button></div>
       <div class="gal-dname">${esc(c.name)}</div>
-      <div class="gal-drar"><span class="gal-rar inline">${s}</span> ${LABEL[s]}</div>
-      <div class="gal-rows">${row('수집 횟수', `${o.count}회`)}${row('MVP', o.mvp_count > 0 ? `👑 ${o.mvp_count}회` : '아직 없음')}${row('처음 수집', date)}${row('HP · ATK · DEF', `${c.HP} · ${c.ATK} · ${c.DEF}`)}</div></div>`;
+      <div class="gal-drar"><span class="gal-rar inline">${s}</span> ${LABEL[s]}${t ? ` · <span class="gal-tname vip-${TIERS[t].k}">${TIERS[t].e} ${TIERS[t].n}</span>` : ''}</div>
+      <div class="gal-rows">${row('수집 횟수', `${o.count}회`)}${row('MVP', o.mvp_count > 0 ? `👑 ${o.mvp_count}회` : '아직 없음')}${row('처음 수집', date)}${row('HP · ATK · DEF', `${c.HP} · ${c.ATK} · ${c.DEF}`)}</div>
+      <div class="gal-vip"><div class="gal-vip-h">👑 VIP 보상 <span>${nextTxt}</span></div>${skHtml}${extra.join('')}</div></div>`;
     el.classList.remove('hidden');
   }
 
@@ -167,5 +236,5 @@
   }
   document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', addButton) : addButton();
   setTimeout(flushPending, 4000);
-  window.VRGallery = { open, close };
+  window.VRGallery = { open, close, _test: { setOwned: m => { owned = m; }, detail, draw, promoNote, loadCards, loadSkills, cardById } };
 })();
