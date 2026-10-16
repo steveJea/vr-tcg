@@ -140,6 +140,7 @@ export function damageUnit(target, dmg, src = null, { silent = false } = {}) {
   if (target.st.immune) { emit({ type: 'immune', unit: target }); return 0; }
   if (target.st.pleading) dmg = Math.round(dmg * 0.5);
   target.hp -= dmg;
+  if (src && dmg > 0 && src.owner !== target.owner) emit({ type: 'dealt', src, dmg });
   if (!silent) emit({ type: 'dmg', unit: target, dmg });
   if (src && src.hp > 0 && hasPassive(src, '우습네요') && heal(src, Math.round(dmg * 0.3), '흡혈')) stats.count('우습네요');
   return dmg;
@@ -158,6 +159,7 @@ export function damageHero(p, dmg, srcOwner, kind = 'hit', srcUnit = null) {
   if (srcUnit && srcOwner && srcOwner !== p && srcUnit.card?.grade === 'MYTHIC RARE') dmg = Math.max(1, Math.round(dmg * RULES.MR_HERO_DMG_RATIO));
   if (p.st.heroShield) dmg = Math.max(1, Math.round(dmg / (1 + p.st.heroShield.def)));
   p.hp -= dmg;
+  if (srcUnit && dmg > 0 && srcUnit.owner !== p) emit({ type: 'dealt', src: srcUnit, dmg });
   if (kind !== 'attack' && kind !== 'overflow') emit({ type: 'hero', p, dmg, kind });
   if (srcUnit && srcUnit.hp > 0 && hasPassive(srcUnit, '우습네요')) heal(srcUnit, Math.round(dmg * 0.3), '흡혈');
   if (p.hp <= 0) {

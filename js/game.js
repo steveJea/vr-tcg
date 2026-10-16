@@ -85,7 +85,7 @@ function log(msg, cls = '') {
 
 function startGame() {
   const first = Math.random() < 0.5 ? 'me' : 'ai';   // 선공 동전 던지기
-  S = { me: newPlayer('나', first !== 'me'), ai: newPlayer('컴퓨터', first !== 'ai'), first, turn: first, turnNo: 0, totalTurns: 0, myTurns: 0, over: false, busy: false, fxSeen: new Set(), mercBought: 0, mercOffer: [] };
+  S = { me: newPlayer('나', first !== 'me'), ai: newPlayer('컴퓨터', first !== 'ai'), first, turn: first, turnNo: 0, totalTurns: 0, myTurns: 0, over: false, busy: false, fxSeen: new Set(), mercBought: 0, mercOffer: [], log: { dmg: new Map(), total: 0, skills: 0, merc: null } };
   S.mercOffer = Merc.roll(POOL);
   preloadFx([...S.me.deck, ...S.me.hand, ...S.ai.deck, ...S.ai.hand]);
   selected = null; $('log').innerHTML = '';
@@ -326,6 +326,7 @@ function finish(win, reason) {
   const why = reason === 'ko' ? '진영 붕괴 (KO)' : `${RULES.MAX_TURNS}턴 종료 판정 · ${JUDGE_LABEL[reason]}`;
   const detail = reason === 'ko' ? '' : `<div class="text-sm text-zinc-400 mt-1">진영 HP 나 ${fmt(S.me.hp)} : ${fmt(S.ai.hp)} 상대 · 필드 카드 ${S.me.field.length} : ${S.ai.field.length}</div>`;
   $('end-text').innerHTML = `<div id="end-reason" class="font-bold text-amber-300">${why}</div>${detail}<div class="mt-2">${S.turnNo}라운드 · 전적 ${st.wins}승 ${st.losses}패${st.draws ? ` ${st.draws}무` : ''}</div>`;
+  try { showEnding(win, reason); } catch (err) { reportError('ending', err); }
   $('end-screen').classList.remove('hidden');
   render();
   return true;
@@ -350,6 +351,51 @@ function endTurn() {
   render();
   if (checkEnd() || checkTimeout()) return;
   startTurn('ai');
+}
+
+// ===== 엔딩 =====
+/** MVP = 이번 판 상대에게 가장 많은 피해를 준 내 카드. 피해 기록이 없으면 필드→손패 중 등급·코스트 높은 카드 */
+function pickMvp() {
+  const best = [...S.log.dmg.values()].sort((a, b) => b.dmg - a.dmg)[0];
+  if (best) return best;
+  const pool = [...S.me.field.map(u => u.card), ...S.me.hand];
+  pool.sort((a, b) => (GRADE_RANK[b.grade] ?? 0) - (GRADE_RANK[a.grade] ?? 0) || b.cost - a.cost);
+  return pool[0] ? { card: pool[0], dmg: 0 } : null;
+}
+function mvpVoice(card) {
+  try {
+    if (!voiceOn || !voiceSet || !card) return;
+    const n = skillsOf(card.id).length;
+    for (let i = 1; i <= Math.max(n, 3); i++) { const k = `${card.id}_${i}`; if (voiceSet.has(k)) {
+      if (voiceCur) { try { voiceCur.pause(); } catch {} }
+      const a = voiceAudio(k); a.volume = voiceVol; a.currentTime = 0; voiceCur = a;
+      const pr = a.play(); if (pr && pr.catch) pr.catch(() => {}); return k; } }
+  } catch {}
+}
+function showEnding(win, reason) {
+  const mvp = pickMvp(), L = S.log;
+  const kind = win === null ? 'draw' : win ? 'win' : 'lose';
+  const title = { win: 'VICTORY', lose: 'DEFEAT', draw: 'DRAW' }[kind];
+  const sub = { win: '승리!', lose: '패배...', draw: '무승부' }[kind];
+  const box = $('end-screen');
+  box.className = `end-${kind} hidden fixed inset-0 flex items-center justify-center z-50 p-3 overflow-y-auto`;
+  const mvpHTML = mvp ? `<div class="end-mvp ${kind === 'win' ? 'end-mvp-big' : ''}">
+      <img src="${IMG}${mvp.card.id}.webp" alt="${mvp.card.name}" onerror="this.style.visibility='hidden'">
+      <div class="end-mvp-tag">MVP · ${mvp.card.name}${mvp.dmg ? ` · 피해 ${fmt(mvp.dmg)}` : ''}</div></div>` : '';
+  const row = (k, v) => `<div class="flex justify-between gap-3 py-1 border-b border-white/10"><span class="text-zinc-400">${k}</span><span class="font-bold text-zinc-100">${v}</span></div>`;
+  $('end-title').innerHTML = `<div class="end-slash"><div class="end-big">${title}</div></div><div class="text-base font-bold mt-1 ${kind === 'win' ? 'text-emerald-300' : kind === 'lose' ? 'text-red-400' : 'text-zinc-200'}">${sub}</div>`;
+  $('end-mvp-wrap').innerHTML = mvpHTML;
+  $('end-stats').innerHTML = row('진행 턴', `${S.myTurns || S.turnNo}턴 (${S.turnNo}라운드)`) + row('준 피해 합계', fmt(L.total)) + row('사용한 스킬', `${L.skills}회`)
+    + row('고용한 용병', L.merc ? `🗡️ ${L.merc.name}` : '없음') + row('진영 HP', `나 ${fmt(Math.max(0, S.me.hp))} : ${fmt(Math.max(0, S.ai.hp))} 상대`);
+  S.endShare = `VR: Abyss Gate에서 ${sub}${mvp ? ` MVP는 ${mvp.card.name}!` : ''} (${S.turnNo}라운드, 피해 ${fmt(L.total)})`;
+  if (kind === 'win' && mvp) setTimeout(() => mvpVoice(mvp.card), FX_OFF() ? 0 : 500);
+}
+async function shareResult() {
+  const url = 'https://tcg.mbbs.kr/', text = S?.endShare || 'VR: Abyss Gate';
+  const msg = $('end-share-msg');
+  try { if (navigator.share) { await navigator.share({ title: 'VR: Abyss Gate', text, url }); return; } } catch (e) { if (e?.name === 'AbortError') return; }
+  try { await navigator.clipboard.writeText(`${text} ${url}`); msg.textContent = '링크를 복사했어요!'; }
+  catch { msg.textContent = `${text} ${url}`; }
 }
 
 // ===== 스킬 =====
@@ -466,6 +512,7 @@ async function castSkill(who, u, s) {
     await withTimeout(cutIn(u, s.name, s.fx), 3000);
     pendingDying = [];
     useSkill(u, s);
+    if (who === 'me') S.log.skills++;
     renderHero('me'); renderHero('ai');
     await sleep(fxMs(450));
     await withTimeout(fadeDying(), 1500);
@@ -485,6 +532,7 @@ function onEngine(e) {
   if (!S) return;
   const uEl = u => u && unitEl(whoOf(u.owner), u);
   const nm = u => u.card.name;
+  if (e.type === 'dealt') { if (e.src.owner === S.me) { const L = S.log, k = e.src.card.id, r = L.dmg.get(k) || { card: e.src.card, dmg: 0 }; r.dmg += e.dmg; L.dmg.set(k, r); L.total += e.dmg; } return; }
   switch (e.type) {
     case 'skill': log(`${e.unit.owner.name}: ${nm(e.unit)} ⚡[${e.skill.name}] (MP ${e.skill.mp})`, 'text-fuchsia-300'); break;
     case 'passive': log(`${e.unit.owner.name}: ${nm(e.unit)} ✨[${e.name}]${e.text ? ' — ' + e.text : ''}`, 'text-fuchsia-200'); if (!FX_OFF()) { dmgNumber(uEl(e.unit), `✨${e.name}`, '#f0abfc'); passiveCutIn(e.unit, e.name); } break;
@@ -847,7 +895,7 @@ function buyMerc(id) {
   if (S.turn !== 'me' || S.over || S.busy) return;
   const c = S.mercOffer.find(x => String(x.id) === String(id)), r = c && Merc.canBuy(c, S.me);
   if (!r?.ok) return;
-  S.me.mana -= r.cost; S.mercBought++;
+  S.me.mana -= r.cost; S.mercBought++; S.log.merc = c;
   S.me.hand.push(c);
   Merc.save([...Merc.load(), c.id]);
   preloadFx([c]);
@@ -898,6 +946,7 @@ $('fx-skip').onclick = e => { e.stopPropagation(); skipFx = !skipFx; localStorag
 // 연출 중 화면을 누르면 현재 연출 빨리 감기
 $('game').addEventListener('click', () => { if (S?.busy && !S.over) fastForward = true; }, true);
 renderSkipBtn();
+$('share-btn').onclick = shareResult;
 $('restart-btn').onclick = () => { renderStats(); startGame(); };
 $('home-btn').onclick = () => { $('end-screen').classList.add('hidden'); $('game').classList.add('hidden'); $('start-screen').classList.remove('hidden'); renderStats(); };
 renderStats();

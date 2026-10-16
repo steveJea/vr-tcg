@@ -91,6 +91,25 @@
       81%  { transform: none; animation-timing-function: cubic-bezier(.7,0,.85,.15); }
       100% { transform: translateX(calc(var(--dir) * 125%)) skewX(calc(var(--dir) * -20deg)); }
     }
+
+  /* 엔딩 화면 */
+  #end-screen.end-win { background: radial-gradient(circle at 50% 30%, rgba(16,120,90,.45), transparent 70%), #04080a; }
+  #end-screen.end-lose { background: radial-gradient(circle at 50% 30%, rgba(90,20,20,.45), transparent 70%), #050303; }
+  #end-screen.end-draw { background: rgba(10,10,12,.98); }
+  .end-slash { position: relative; overflow: hidden; padding: .4rem 0; }
+  .end-slash::before { content: ''; position: absolute; left: -10%; right: -10%; top: 50%; height: 4px; background: linear-gradient(90deg, transparent, #fff, transparent); transform: rotate(-8deg); animation: endSlash .6s ease-out both; }
+  .end-big { font-size: clamp(2.6rem, 13vw, 4rem); font-weight: 900; letter-spacing: .05em; font-style: italic; animation: endIn .7s cubic-bezier(.2,1.4,.4,1) .15s both; }
+  .end-win .end-big { color: #fde68a; text-shadow: 0 0 18px rgba(250,204,21,.8), 0 3px 0 #92400e; }
+  .end-lose .end-big { color: #fca5a5; text-shadow: 0 0 14px rgba(220,38,38,.7); filter: saturate(.7); }
+  .end-draw .end-big { color: #e4e4e7; }
+  .end-mvp { position: relative; margin: 0 auto .6rem; width: min(42%, 20vh); animation: endIn .6s ease-out .35s both; }
+  .end-mvp-big { width: min(68%, 30vh); clip-path: polygon(8% 0, 100% 0, 92% 100%, 0 100%); }
+  .end-mvp img { width: 100%; aspect-ratio: 3/4; object-fit: cover; border-radius: .8rem; box-shadow: 0 0 24px rgba(250,204,21,.45); }
+  .end-lose .end-mvp img { filter: grayscale(.6) brightness(.7); box-shadow: none; }
+  .end-mvp-tag { position: absolute; left: 0; right: 0; bottom: 0; padding: .3rem; font-size: .75rem; font-weight: 800; background: linear-gradient(transparent, rgba(0,0,0,.85)); border-radius: 0 0 .8rem .8rem; }
+  @keyframes endSlash { from { transform: translateX(-100%) rotate(-8deg); opacity: 1; } to { transform: translateX(100%) rotate(-8deg); opacity: 0; } }
+  @keyframes endIn { from { transform: scale(1.6) skewX(-12deg); opacity: 0; } to { transform: none; opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) { .end-slash::before, .end-big, .end-mvp { animation: none; } }
     .cutin::after { content: ''; position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; animation: slashFlash var(--dur) both; mix-blend-mode: screen; }
     @keyframes slashFlash { 0%, 16% { opacity: 0; } 20% { opacity: .85; } 34%, 100% { opacity: 0; } }
     .cutin-img .cutin-media { animation: slashDrift var(--dur) linear both; }
@@ -301,12 +320,16 @@
 </div>
 
 <!-- 종료 화면 -->
-<div id="end-screen" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4">
-  <div class="bg-zinc-900 border border-emerald-400/40 rounded-3xl p-8 text-center w-full max-w-sm">
-    <div id="end-title" class="text-4xl font-black mb-2"></div>
-    <div id="end-text" class="text-zinc-300 mb-6"></div>
-    <button id="restart-btn" class="w-full py-4 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black text-xl font-bold">다시 하기</button>
-    <button id="home-btn" class="w-full mt-3 py-3 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20">처음으로</button>
+<div id="end-screen" class="hidden fixed inset-0 flex items-center justify-center z-50 p-3 overflow-y-auto">
+  <div class="end-card relative text-center w-full max-w-sm my-auto">
+    <div id="end-title" class="mb-2"></div>
+    <div id="end-mvp-wrap"></div>
+    <div id="end-text" class="text-zinc-300 text-sm mb-2"></div>
+    <div id="end-stats" class="text-sm text-left bg-black/40 rounded-2xl px-4 py-2 mb-4"></div>
+    <button id="restart-btn" class="w-full py-3.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black text-lg font-bold">다시 하기</button>
+    <button id="share-btn" class="w-full mt-2 py-3 rounded-2xl bg-sky-500 hover:bg-sky-400 text-black font-bold">공유하기</button>
+    <div id="end-share-msg" class="text-xs text-sky-300 mt-1 min-h-[1rem] break-all"></div>
+    <button id="home-btn" class="w-full mt-1 py-2.5 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20">처음으로</button>
   </div>
 </div>
 
