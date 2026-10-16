@@ -55,11 +55,23 @@
   const KEY = 'vrTcgSound';
   let soundOn = localStorage.getItem(KEY) !== '0';
   let audio = null, missing = false;
+  // 덕킹: 스킬 보이스가 나오는 동안 BGM을 기본 볼륨의 35%로 부드럽게(200ms) 낮춤
+  const DUCK = 0.35, FADE = 200;
+  let baseVol = 0.5, ducked = false, fadeRaf = 0;
+  const fadeTo = (target) => {
+    cancelAnimationFrame(fadeRaf);
+    if (!audio) return;
+    const from = audio.volume, t0 = performance.now();
+    const step = (t) => { if (!audio) return; const k = Math.min(1, (t - t0) / FADE); audio.volume = Math.min(1, Math.max(0, from + (target - from) * k)); if (k < 1) fadeRaf = requestAnimationFrame(step); };
+    fadeRaf = requestAnimationFrame(step);
+  };
+  const duck = (on) => { on = !!on; if (on === ducked) return; ducked = on; fadeTo(baseVol * (ducked ? DUCK : 1)); };
+  const setVolume = (v) => { baseVol = Math.min(1, Math.max(0, +v || 0)); fadeTo(baseVol * (ducked ? DUCK : 1)); };
   const btn = document.getElementById('main-sound');
   const renderBtn = () => { if (btn) { btn.textContent = soundOn ? '🔊' : '🔇'; btn.classList.toggle('on', soundOn); btn.title = missing ? '배경음악 파일 없음 (audio/main.mp3)' : '배경음악 켜기/끄기'; } };
   const getAudio = () => {
     if (audio || missing) return audio;
-    audio = new Audio('audio/main.mp3'); audio.loop = true; audio.volume = 0.5; audio.preload = 'auto';
+    audio = new Audio('audio/main.mp3'); audio.loop = true; audio.volume = baseVol * (ducked ? DUCK : 1); audio.preload = 'auto';
     audio.addEventListener('error', () => { missing = true; audio = null; renderBtn(); });
     return audio;
   };
@@ -70,5 +82,5 @@
   const first = () => { play(); removeEventListener('pointerdown', first); removeEventListener('keydown', first); };
   addEventListener('pointerdown', first); addEventListener('keydown', first);
   renderBtn();
-  window.VRSound = { play, stop, get on() { return soundOn; } };
+  window.VRSound = { play, stop, duck, setVolume, get on() { return soundOn; }, get ducked() { return ducked; }, get volume() { return audio ? audio.volume : null; }, get baseVolume() { return baseVol; } };
 })();
