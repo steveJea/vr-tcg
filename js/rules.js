@@ -333,7 +333,7 @@ export function canAction(type, p) {
   if (type !== 'accel' && p.used?.[type]) return { ok: false, cost, reason: '이번 턴 사용함' };
   if (p.mana < cost) return { ok: false, cost, reason: `마나 부족 (${p.mana}/${cost})` };
   if (type === 'shuffle' && !p.hand.length) return { ok: false, cost, reason: '손패 없음' };
-  if (type === 'heal' && p.hp >= RULES.HERO_HP) return { ok: false, cost, reason: 'HP 최대' };
+  if (type === 'heal' && p.hp >= (p.maxHp || RULES.HERO_HP)) return { ok: false, cost, reason: 'HP 최대' };
   if (type === 'buff' && !p.field.length) return { ok: false, cost, reason: '필드 카드 없음' };
   if (type === 'fieldheal' && !p.field.some(u => u.hp < u.maxHp)) return { ok: false, cost, reason: '회복할 카드 없음' };
   return { ok: true, cost };
@@ -362,7 +362,7 @@ export function doAction(type, p) {
     return { ok: true, n };
   }
   if (type === 'heal') {
-    const before = p.hp; p.hp = Math.min(RULES.HERO_HP, p.hp + RULES.HEAL_AMOUNT);
+    const before = p.hp; p.hp = Math.min(p.maxHp || RULES.HERO_HP, p.hp + Math.round(RULES.HEAL_AMOUNT * (p.maxHp || RULES.HERO_HP) / RULES.HERO_HP));
     return { ok: true, healed: p.hp - before };
   }
   if (type === 'fieldheal') {
@@ -405,7 +405,7 @@ export function aiPickItem(me, opp) {
   }
   return null;
 }
-export function aiWantHeal(me) { return canAction('heal', me).ok && me.hp <= RULES.HERO_HP * 0.5; }
+export function aiWantHeal(me) { return canAction('heal', me).ok && me.hp <= (me.maxHp || RULES.HERO_HP) * 0.5; }
 
 export function shuffle(a) { a = [...a]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
 

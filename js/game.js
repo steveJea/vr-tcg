@@ -60,10 +60,10 @@ let fastForward = false;
 const FX_OFF = () => !!(window.TCG_FAST || skipFx || fastForward);
 const AI_DELAY = () => (window.TCG_FAST ? 0 : (skipFx || fastForward) ? 120 : 650);
 
-function newPlayer(name, second) {
-  const deck = buildDeck(POOL);
+function newPlayer(name, second, deckOverride = null, hp = RULES.HERO_HP) {
+  const deck = deckOverride ? shuffleArr(deckOverride) : buildDeck(POOL);
   const n = RULES.OPENING_HAND + (second ? RULES.SECOND_PLAYER_BONUS_CARDS : 0);
-  return { name, hp: RULES.HERO_HP, deck, hand: deck.splice(0, n), field: [], mana: 0, maxMana: 0, second };
+  return { name, hp, maxHp: hp, deck, hand: deck.splice(0, n), field: [], mana: 0, maxMana: 0, second };
 }
 
 function log(msg, cls = '') {
@@ -72,10 +72,13 @@ function log(msg, cls = '') {
   $('log').prepend(el);
 }
 
-function startGame() {
-  const first = Math.random() < 0.5 ? 'me' : 'ai';   // 선공 동전 던지기
-  S = { me: newPlayer('나', first !== 'me'), ai: newPlayer('컴퓨터', first !== 'ai'), first, turn: first, turnNo: 0, totalTurns: 0, myTurns: 0, over: false, busy: false, fxSeen: new Set(), mercBought: 0, mercOffer: [], log: { dmg: new Map(), total: 0, skills: 0, merc: null } };
-  S.mercOffer = Merc.roll(POOL);
+const shuffleArr = a => { a = [...a]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+/** story: 스토리 모드 전투 설정 { me:[카드], ai:[카드], win:'wipe'|'ko', meHp, aiHp, aiName, first, onEnd(win, reason) }. 없으면 아케이드 */
+function startGame(story = null) {
+  if (story && typeof story.then === 'function' || story instanceof Event) story = null;
+  const first = story?.first || (Math.random() < 0.5 ? 'me' : 'ai');   // 선공 동전 던지기
+  S = { me: newPlayer('나', first !== 'me', story?.me, story?.meHp), ai: newPlayer(story?.aiName || '컴퓨터', first !== 'ai', story?.ai, story?.aiHp), first, story, turn: first, turnNo: 0, totalTurns: 0, myTurns: 0, over: false, busy: false, fxSeen: new Set(), mercBought: 0, mercOffer: [], log: { dmg: new Map(), total: 0, skills: 0, merc: null } };
+  S.mercOffer = story ? [] : Merc.roll(POOL);
   preloadFx([...S.me.deck, ...S.me.hand, ...S.ai.deck, ...S.ai.hand]);
   selected = null; $('log').innerHTML = '';
   $('end-screen').classList.add('hidden'); $('start-screen').classList.add('hidden'); $('game').classList.remove('hidden');
@@ -310,6 +313,12 @@ function floatText(text, cls, side = 'me') {
 
 function finish(win, reason) {
   S.over = true; hideModal('detail');
+  if (S.story) {   // 스토리 모드: 아케이드 전적·랭킹·갤러리에 기록하지 않고 스토리 화면으로 결과 전달
+    render();
+    const cb = S.story.onEnd;
+    setTimeout(() => { $('game').classList.add('hidden'); try { cb?.(win, reason, { turns: S.turnNo, damage: S.log.total }); } catch (err) { reportError('storyEnd', err); } }, FX_OFF() ? 0 : 900);
+    return true;
+  }
   const st = Stats.record(win);
   $('end-title').innerHTML = win === null ? '<span class="text-zinc-200">무승부</span>' : win ? '<span class="text-emerald-400">승리!</span>' : '<span class="text-red-400">패배...</span>';
   const why = reason === 'ko' ? '진영 붕괴 (KO)' : `${RULES.MAX_TURNS}턴 종료 판정 · ${JUDGE_LABEL[reason]}`;
@@ -325,6 +334,11 @@ function finish(win, reason) {
 function checkEnd() {
   if (S.over) return true;
   if (S.ai.hp <= 0 || S.me.hp <= 0) return finish(S.ai.hp <= 0, 'ko');
+  if (S.story?.win === 'wipe') {   // 스토리 일반전: 상대 카드(필드·손패·덱) 전멸 시 승리, 내 카드 전멸 시 패배
+    const gone = p => !p.field.length && !p.hand.length && !p.deck.length;
+    if (gone(S.ai)) return finish(true, 'wipe');
+    if (gone(S.me)) return finish(false, 'wipe');
+  }
   return false;
 }
 /** 턴 종료 후: 전체 턴 제한 도달 시 판정 */
@@ -632,9 +646,9 @@ function fixImages(root) {
 }
 
 function renderHero(who) {
-  const p = S[who];
-  $(`${who}-hp`).textContent = `${fmt(p.hp)} / ${fmt(RULES.HERO_HP)}`;
-  $(`${who}-hpbar`).style.width = (p.hp / RULES.HERO_HP * 100) + '%';
+  const p = S[who], max = p.maxHp || RULES.HERO_HP;
+  $(`${who}-hp`).textContent = `${fmt(p.hp)} / ${fmt(max)}`;
+  $(`${who}-hpbar`).style.width = Math.max(0, p.hp / max * 100) + '%';
   $(`${who}-mana`).textContent = `${p.mana} / ${p.maxMana}` + (p.accel ? ` ⚙️+${RULES.MANA_PER_TURN + p.accel * RULES.ACCEL_BONUS}/턴` : '');
   $(`${who}-deck`).textContent = p.deck.length;
   $(`${who}-handcount`).textContent = p.hand.length;
@@ -674,8 +688,9 @@ function render() {
     btn.querySelector('.reason').textContent = !myTurn ? '' : (c.ok ? '' : c.reason);
   }
   { const btn = $('act-merc'), done = S.mercBought >= Merc.MAX_PER_BATTLE;
-    btn.disabled = !myTurn || done;
-    btn.querySelector('.reason').textContent = myTurn && done ? '이번 판 고용 완료' : ''; }
+    btn.disabled = !myTurn || done || !!S.story;
+    btn.querySelector('.reason').textContent = S.story ? '스토리 불가' : myTurn && done ? '이번 판 고용 완료' : ''; }
+  if (S.story) { const b = $('act-shuffle'); b.disabled = true; b.querySelector('.reason').textContent = '스토리 불가'; }
   $('attack-all').disabled = !myTurn || !S.me.field.some(u => u.canAttack);
   const tg = attackTargets(S.me, S.ai);
   $('ai-hero').classList.toggle('ring-4', selected != null && tg.hero);
@@ -901,7 +916,7 @@ function buyMerc(id) {
   floatText(`🗡️ ${c.name} 고용!`, 'text-amber-300', 'me');
   hideModal('merc'); render();
 }
-$('act-merc').onclick = () => { if (S?.turn !== 'me' || S.over || S.busy) return; renderMerc(); showModal('merc'); };
+$('act-merc').onclick = () => { if (S?.story || S?.turn !== 'me' || S.over || S.busy) return; renderMerc(); showModal('merc'); };
 
 // ===== 초기화 =====
 document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => hideModal(b.dataset.close));
@@ -931,7 +946,7 @@ $('endturn-ok').onclick = () => { if ($('endturn-noask').checked) localStorage.s
 $('endturn-cancel').onclick = () => hideModal('endturn-confirm');
 $('end-turn').onclick = requestEndTurn;
 $('attack-all').onclick = attackAll;
-for (const type of Object.keys(ACTIONS)) $(`act-${type}`).onclick = () => { if (S.turn === 'me' && !S.busy && !S.over) useAction('me', type); };
+for (const type of Object.keys(ACTIONS)) $(`act-${type}`).onclick = () => { if (S.story && type === 'shuffle') return; if (S.turn === 'me' && !S.busy && !S.over) useAction('me', type); };
 $('ai-hero').onclick = onHeroClick;
 $('help-btn').onclick = () => showModal('help');
 $('main-help').onclick = () => showModal('help');
@@ -946,6 +961,8 @@ $('game').addEventListener('click', () => { if (S?.busy && !S.over) fastForward 
 renderSkipBtn();
 $('share-btn').onclick = shareResult;
 $('restart-btn').onclick = () => { renderStats(); startGame(); };
+/** 스토리 모드 전투 시작 (js/story.js에서 호출) */
+function startStory(cfg) { hideModal('detail'); startGame(cfg); }
 $('home-btn').onclick = () => { $('end-screen').classList.add('hidden'); $('game').classList.add('hidden'); $('start-screen').classList.remove('hidden'); renderStats(); };
 renderStats();
 
@@ -954,8 +971,9 @@ renderStats();
     POOL = parseCSV(await (await fetch('data/cards.csv')).text()); setCardPool(POOL);
     const [sk, co] = await Promise.all(['data/skills.json', 'data/combos.json'].map(u => fetch(u).then(r => r.json())));
     setSkillData(sk, co); setEmitter(onEngine);
-    $('start-btn').disabled = false; $('start-btn').textContent = '게임 시작';
-    $('start-btn').onclick = startGame;
+    $('start-btn').disabled = false; $('start-btn').textContent = '⚔️ 아케이드 모드';
+    $('start-btn').onclick = () => startGame();
+    window.dispatchEvent(new CustomEvent('tcg:ready'));
   } catch (e) { $('start-btn').textContent = '카드 데이터를 불러오지 못했어요'; }
 })();
 
@@ -991,4 +1009,4 @@ function zoomFromBtn(b) {
 document.addEventListener('click', e => { const b = e.target.closest?.('.zoom-btn'); if (!b) return; e.stopPropagation(); e.preventDefault(); zoomFromBtn(b); }, true);
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('zoom-view')?.classList.contains('open')) { e.stopPropagation(); closeZoom(); } }, true);
 
-window.TCG = { voiceTest(k) { if (!voiceSet?.has(k)) return false; const a = voiceAudio(k); a.volume = voiceVol; a.currentTime = 0; voiceCur = a; a.play().catch(() => {}); return true; }, get voiceActive() { return voiceActive.size; }, get voice() { return { on: voiceOn, vol: voiceVol, cur: voiceCur && { src: voiceCur.src, paused: voiceCur.paused, t: voiceCur.currentTime }, set: voiceSet && voiceSet.size }; }, openZoom, closeZoom, dupCheck, get errors() { return window.TCG_ERRORS || []; }, cutIn, passiveCutIn, sortedHand, get handSort() { return handSort; }, put: debugPut, castSkill, skillState, get S() { return S; }, RULES, elementMultiplier, calcDamage, canSummon, buildDeck, summon, attack, recall, attackAll, endTurn, canRecall, recallCost, makeUnit, resolveAttack, useAction, canAction, startGame, equipItem, doSacrifice, finish, attackTargets, get POOL() { return POOL; }, render, Stats };
+window.TCG = { voiceTest(k) { if (!voiceSet?.has(k)) return false; const a = voiceAudio(k); a.volume = voiceVol; a.currentTime = 0; voiceCur = a; a.play().catch(() => {}); return true; }, get voiceActive() { return voiceActive.size; }, get voice() { return { on: voiceOn, vol: voiceVol, cur: voiceCur && { src: voiceCur.src, paused: voiceCur.paused, t: voiceCur.currentTime }, set: voiceSet && voiceSet.size }; }, openZoom, closeZoom, dupCheck, get errors() { return window.TCG_ERRORS || []; }, cutIn, passiveCutIn, sortedHand, get handSort() { return handSort; }, put: debugPut, castSkill, skillState, get S() { return S; }, RULES, elementMultiplier, calcDamage, canSummon, buildDeck, summon, attack, recall, attackAll, endTurn, canRecall, recallCost, makeUnit, resolveAttack, useAction, canAction, startGame, startStory, cardHTML, get ready() { return POOL.length > 0; }, equipItem, doSacrifice, finish, attackTargets, get POOL() { return POOL; }, render, Stats };

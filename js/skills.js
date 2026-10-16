@@ -151,7 +151,7 @@ export function heal(u, amt, why = '') {
   const h = Math.min(u.maxHp - u.hp, Math.round(amt)); if (h <= 0) return 0;
   u.hp += h; emit({ type: 'heal', unit: u, amt: h, why }); return h;
 }
-export function healHero(p, amt) { const b = p.hp; p.hp = Math.min(RULES.HERO_HP, p.hp + Math.round(amt)); if (p.hp > b) emit({ type: 'heroHeal', p, amt: p.hp - b }); return p.hp - b; }
+export function healHero(p, amt) { const b = p.hp; p.hp = Math.min((p.maxHp || RULES.HERO_HP), p.hp + Math.round(amt)); if (p.hp > b) emit({ type: 'heroHeal', p, amt: p.hp - b }); return p.hp - b; }
 
 /** 본진 피해. srcOwner가 자기 첫 N턴이면 차단 (자기 본진 강제 공격은 예외) */
 export function damageHero(p, dmg, srcOwner, kind = 'hit', srcUnit = null) {
@@ -166,7 +166,7 @@ export function damageHero(p, dmg, srcOwner, kind = 'hit', srcUnit = null) {
   if (p.hp <= 0) {
     const zen = !p.once['참선'] && findPassiveUnit(p, '참선');
     if (zen) {
-      p.once['참선'] = 1; stats.count('참선'); p.hp = Math.min(RULES.HERO_HP, Math.max(0, p.hp) + 300);
+      p.once['참선'] = 1; stats.count('참선'); p.hp = Math.min((p.maxHp || RULES.HERO_HP), Math.max(0, p.hp) + 300);
       p.st.heroInvuln = { t: 1 + (TURN.p === p ? 1 : 0) };
       emit({ type: 'passive', unit: zen, name: '참선', text: '본진 붕괴 직전! 1턴 무적 + HP 300 회복' });
     } else p.hp = 0;
@@ -238,7 +238,7 @@ const PASSIVE_ONCE = {
   'Noli spem tibi erigere': (u, p, f) => { for (const t of [...f.field]) { damageUnit(t, Math.ceil(t.maxHp * 0.95), null); checkDeath(t, u); } },
   '진멸의 여제': (u, p) => { p.st.heroShield = { def: 3, t: 2 + (TURN.p === p ? 1 : 0) }; for (const a of p.field) addStatus(a, 'immune', 2, {}, 'immune'); },
   '반야': u => { for (const [k, s] of Object.entries(u.st)) if (STATUS[s.kind]?.debuff || s.atk < 0 || s.def < 0) delete u.st[k]; u.curse = 0; },
-  '존재의 증명': (u, p) => { for (const a of [...p.field]) for (let i = 0; i < 2 && a.level < RULES.LEVEL_MAX; i++) { levelUpOnce(a); onLevelChange(a); } healHero(p, RULES.HERO_HP * 0.5); },
+  '존재의 증명': (u, p) => { for (const a of [...p.field]) for (let i = 0; i < 2 && a.level < RULES.LEVEL_MAX; i++) { levelUpOnce(a); onLevelChange(a); } healHero(p, (p.maxHp || RULES.HERO_HP) * 0.5); },
 };
 
 // ===== 액티브 스킬 =====
@@ -278,7 +278,7 @@ export const ACTIVE = {
   '울자!': (u, p, f) => { const t = by(live(f), x => x.card.ATK, -1); if (t) multiHit(u, t, 5, t.base.gender === 'FEMALE' ? 0.35 : 0.3); },
   // 서성민
   '반야': (u, p) => live(p).forEach(a => heal(a, a.maxHp * 0.2)),
-  '열반': (u, p) => { live(p).forEach(a => heal(a, a.maxHp * 0.1)); healHero(p, RULES.HERO_HP * 0.1); },
+  '열반': (u, p) => { live(p).forEach(a => heal(a, a.maxHp * 0.1)); healHero(p, (p.maxHp || RULES.HERO_HP) * 0.1); },
   // 이성호
   'Fiat Lux': (u, p, f) => { const full = f.field.length >= RULES.FIELD_MAX; hitAll(u, f, 2, 0.3); if (!full) heroHit(u, f, 0.3); },
   'Sperandum Est Infestis': (u, p, f) => { const ts = live(f); for (let i = 0; i < 2; i++) ts.forEach(t => damageUnit(t, skillDamage(u, t, 0.2, { extra: t.card.cost < 30 ? 2 : 1 }), u)); ts.forEach(t => checkDeath(t, u)); },
@@ -460,7 +460,7 @@ export function turnStart(p) {
   }
   // 임혜리 주님의 기적: 아군·본진 5% 회복
   const hy = findPassiveUnit(p, '주님의 기적');
-  if (hy) { emit({ type: 'passive', unit: hy, name: '주님의 기적' }); stats.count('주님의 기적'); p.field.forEach(a => heal(a, a.maxHp * 0.05)); healHero(p, RULES.HERO_HP * 0.05); }
+  if (hy) { emit({ type: 'passive', unit: hy, name: '주님의 기적' }); stats.count('주님의 기적'); p.field.forEach(a => heal(a, a.maxHp * 0.05)); healHero(p, (p.maxHp || RULES.HERO_HP) * 0.05); }
   // Esoteric Method: 매 턴 HP -10%, ATK -3% 누적
   for (const u of [...p.field]) if (u.st.esoteric) { u.st.esoteric.stack = (u.st.esoteric.stack || 0) + 1; damageUnit(u, Math.max(1, Math.round(u.maxHp * 0.1)), null); checkDeath(u, u.st.esoteric.caster || null); }
   // v2: 체력 고갈 / 재생
@@ -538,7 +538,7 @@ export function aiPickSkill(u) {
     const canKill = f.field.some(t => calcDamage(u.card, t.card) >= t.hp && calcDamage(t.card, u.card) < u.hp);
     switch (s.name) {
       case '반야': case '주님 저희를 구하소서': sc = lowHp >= 2 ? 90 + lowHp * 5 : 0; break;
-      case '열반': sc = (lowHp >= 2 || p.hp < RULES.HERO_HP * 0.6) ? 95 : 0; break;
+      case '열반': sc = (lowHp >= 2 || p.hp < (p.maxHp || RULES.HERO_HP) * 0.6) ? 95 : 0; break;
       case '하느님의 영광': sc = p.grave.length && p.hand.length < 10 ? 80 + Math.max(...p.grave.map(c => c.cost)) : 0; break;
       case 'Divina tibi poena adveniat': sc = p.field.length >= 2 && n ? 120 : 0; break;
       case 'Fatal Temptation': case '죽는다…': sc = heroOk ? 115 : 0; break;
