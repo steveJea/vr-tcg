@@ -127,3 +127,51 @@ group by m.user_id, p.nickname;
 
 revoke all on public.rankings_weekly, public.rankings_all from anon, authenticated;
 grant select on public.rankings_weekly, public.rankings_all to anon, authenticated;
+
+-- =====================================================================
+-- [카드 갤러리] (gallery) - 이 블록만 따로 실행해도 됨. 여러 번 실행해도 안전.
+-- =====================================================================
+create table if not exists public.gallery (
+  user_id    uuid not null references auth.users(id) on delete cascade default auth.uid(),
+  card_id    text not null check (char_length(card_id) between 1 and 40),
+  count      int  not null default 0 check (count >= 0),
+  mvp_count  int  not null default 0 check (mvp_count >= 0),
+  first_at   timestamptz not null default now(),
+  last_at    timestamptz not null default now(),
+  primary key (user_id, card_id)
+);
+
+alter table public.gallery enable row level security;
+drop policy if exists "gallery_own_select" on public.gallery;
+create policy "gallery_own_select" on public.gallery for select using (auth.uid() = user_id);
+-- 쓰기는 아래 RPC(gallery_register)로만. 직접 insert/update/delete 정책 없음.
+revoke insert, update, delete on public.gallery from anon, authenticated;
+grant select on public.gallery to authenticated;
+
+-- 판 종료 시 카드 등록: 카드별 count +1, MVP는 mvp_count +1. 새로 수집된 카드 여부 반환.
+create or replace function public.gallery_register(p_cards text[], p_mvp text default null)
+returns table (card_id text, count int, mvp_count int, is_new boolean)
+language plpgsql security definer set search_path = public as $$
+#variable_conflict use_column
+declare uid uuid := auth.uid(); ids text[];
+begin
+  if uid is null then raise exception 'not logged in'; end if;
+  select array_agg(distinct x) into ids
+    from unnest(coalesce(p_cards, '{}') || case when p_mvp is null then '{}'::text[] else array[p_mvp] end) x
+    where x is not null and char_length(x) between 1 and 40;
+  if ids is null then return; end if;
+  if array_length(ids, 1) > 12 then raise exception 'too many cards'; end if;
+  -- 도배 방지: 15초 안에 연속 등록 불가
+  if exists (select 1 from public.gallery g where g.user_id = uid and g.last_at > now() - interval '15 seconds') then
+    raise exception 'too fast';
+  end if;
+  return query
+  insert into public.gallery as g (user_id, card_id, count, mvp_count, first_at, last_at)
+  select uid, x, 1, (x = p_mvp)::int, now(), now() from unnest(ids) x
+  on conflict (user_id, card_id) do update
+    set count = g.count + 1, mvp_count = g.mvp_count + excluded.mvp_count, last_at = now()
+  returning g.card_id, g.count, g.mvp_count, (g.count = 1);
+end $$;
+
+revoke all on function public.gallery_register(text[], text) from public, anon;
+grant execute on function public.gallery_register(text[], text) to authenticated;

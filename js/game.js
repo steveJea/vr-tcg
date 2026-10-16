@@ -316,7 +316,7 @@ function finish(win, reason) {
   const detail = reason === 'ko' ? '' : `<div class="text-sm text-zinc-400 mt-1">진영 HP 나 ${fmt(S.me.hp)} : ${fmt(S.ai.hp)} 상대 · 필드 카드 ${S.me.field.length} : ${S.ai.field.length}</div>`;
   $('end-text').innerHTML = `<div id="end-reason" class="font-bold text-amber-300">${why}</div>${detail}<div class="mt-2">${S.turnNo}라운드 · 전적 ${st.wins}승 ${st.losses}패${st.draws ? ` ${st.draws}무` : ''}</div>`;
   try { showEnding(win, reason); } catch (err) { reportError('ending', err); }
-  try { const mvp = pickMvp(); window.dispatchEvent(new CustomEvent('vr:match', { detail: { result: win === null ? 'draw' : win ? 'win' : 'lose', reason, turns: S.turnNo, damage: S.log.total, skills: S.log.skills, mvpId: mvp?.card.id, mvpName: mvp?.card.name, mercId: S.log.merc?.id } })); } catch {}
+  try { const mvp = pickMvp(); window.dispatchEvent(new CustomEvent('vr:match', { detail: { result: win === null ? 'draw' : win ? 'win' : 'lose', reason, turns: S.turnNo, damage: S.log.total, skills: S.log.skills, mvpId: mvp?.card.id, mvpName: mvp?.card.name, mercId: S.log.merc?.id, fieldIds: S.me.field.map(u => (u.base || u.card).id) } })); } catch {}
   $('end-screen').classList.remove('hidden');
   render();
   return true;
