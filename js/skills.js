@@ -7,6 +7,7 @@ export const SK = {
   MP_BASE: 50, MP_PER_MEN: 1,           // 최대 MP = 50 + MEN (51~150)
   MP_REGEN_BASE: 4, MP_REGEN_PER_MOR: 0.16, // 턴당 MP 회복 = 4 + MOR × 0.16 (약 4~20)
   MP_START_RATIO: 0.5,                  // 소환 시 MP 50%로 시작
+  MP_ABSORB_RATIO: 0.2, MP_ABSORB_MIN: 3, // 처치 시 상대가 가진 현재 MP의 20% 흡수 (최소 3)
   SYNERGY: { 2: 0.10, 3: 0.15, 4: 0.20, 5: 0.30 }, // 같은 속성 필드 장수별 ATK·DEF 보너스
 };
 
@@ -192,6 +193,8 @@ export function checkDeath(u, killer = null) {
   if (p.foe && hasPassive(u, '나는 멈춘다')) { emit({ type: 'passive', unit: u, name: '나는 멈춘다' }); stats.count('나는 멈춘다'); live(p.foe).forEach(t => addStatus(t, 'para', 1, {}, 'para')); }
   if (p.foe && hasPassive(u, '더는 나를 밀지마')) { emit({ type: 'passive', unit: u, name: '더는 나를 밀지마' }); stats.count('더는 나를 밀지마'); live(p.foe).forEach(t => bleedOn(t, u, 2)); }
   emit({ type: 'destroy', unit: u });
+  // MP 흡수: 처치한 카드가 상대의 현재 MP 20% 흡수 (최소 3)
+  if (killer && killer.owner !== p && killer.hp > 0 && killer.owner.field.includes(killer)) gainMp(killer, Math.max(SK.MP_ABSORB_MIN, Math.round((u.mp || 0) * SK.MP_ABSORB_RATIO)), '흡수');
   // 표식: 사망 시 시전자 MP 회복
   for (const s of Object.values(u.st)) if (s.mpOnDeath && s.caster && s.caster.owner.field.includes(s.caster)) gainMp(s.caster, s.caster.maxMp * s.mpOnDeath, s.label);
   // 천사의 절규: 아군 사망마다
