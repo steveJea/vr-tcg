@@ -104,7 +104,7 @@ window.STORY_DATA.chapters[0].byStarter = { '2000600126': {
         },
         {
           "speaker": "문지예",
-          "text": "그럼 쓰러뜨리고 물어볼게요."
+          "text": "그럼 쓰러뜨리고 물어볼게요.", "expr": "화남"
         },
         {
           "speaker": "유진아",
@@ -140,7 +140,7 @@ window.STORY_DATA.chapters[0].byStarter = { '2000600126': {
         },
         {
           "speaker": "문지예",
-          "text": "거절할게요. 대신 이길게요."
+          "text": "거절할게요. 대신 이길게요.", "expr": "웃음"
         },
         {
           "speaker": "정아영",
@@ -181,7 +181,7 @@ window.STORY_DATA.chapters[0].byStarter = { '2000600126': {
         },
         {
           "speaker": "문지예",
-          "text": "약속했잖아요!"
+          "text": "약속했잖아요!", "expr": "화남"
         },
         {
           "speaker": "정아영",
@@ -211,7 +211,7 @@ window.STORY_DATA.chapters[0].byStarter = { '2000600126': {
         },
         {
           "speaker": "오명준",
-          "text": "여왕벌 막내가 우리 집엔 웬일이야?"
+          "text": "여왕벌 막내가 우리 집엔 웬일이야?", "expr": "웃음"
         },
         {
           "speaker": "문지예",
@@ -219,15 +219,15 @@ window.STORY_DATA.chapters[0].byStarter = { '2000600126': {
         },
         {
           "speaker": "오명준",
-          "text": "알면 너도 그 남자처럼 될 텐데?"
+          "text": "알면 너도 그 남자처럼 될 텐데?", "expr": "웃음"
         },
         {
           "speaker": "문지예",
-          "text": "그래도 알아야겠어요."
+          "text": "그래도 알아야겠어요.", "expr": "화남"
         },
         {
           "speaker": "오명준",
-          "text": "좋아. 무너뜨려 보든가!"
+          "text": "좋아. 무너뜨려 보든가!", "expr": "화남"
         }
       ],
       "leader": "1000600121"
@@ -245,7 +245,7 @@ window.STORY_DATA.chapters[0].byStarter = { '2000600126': {
     },
     {
       "speaker": "문지예",
-      "text": "오빠, 그만해요! 사람 죽어요!"
+      "text": "오빠, 그만해요! 사람 죽어요!", "expr": "화남"
     },
     {
       "speaker": "문지철",
@@ -364,7 +364,7 @@ window.STORY_DATA.chapters[0].byStarter['2001500294'] = {
         },
         {
           "speaker": "안리",
-          "text": "괜찮아. 다 한 방이면 돼."
+          "text": "괜찮아. 다 한 방이면 돼.", "expr": "웃음"
         },
         {
           "speaker": "추나리",
@@ -392,11 +392,11 @@ window.STORY_DATA.chapters[0].byStarter['2001500294'] = {
         },
         {
           "speaker": "안리",
-          "text": "먼저 건드린 건 그쪽이에요."
+          "text": "먼저 건드린 건 그쪽이에요.", "expr": "화남"
         },
         {
           "speaker": "홍가영",
-          "text": "나도 같이 할게! 은메달도 메달이야!"
+          "text": "나도 같이 할게! 은메달도 메달이야!", "expr": "웃음"
         },
         {
           "speaker": "안리",
@@ -429,7 +429,7 @@ window.STORY_DATA.chapters[0].byStarter['2001500294'] = {
         },
         {
           "speaker": "안리",
-          "text": "하… 진짜 끈질기네."
+          "text": "하… 진짜 끈질기네.", "expr": "화남"
         },
         {
           "speaker": "홍가영",
@@ -441,7 +441,7 @@ window.STORY_DATA.chapters[0].byStarter['2001500294'] = {
         },
         {
           "speaker": "안리",
-          "text": "덤벼. 한 번에 정리해 줄게."
+          "text": "덤벼. 한 번에 정리해 줄게.", "expr": "화남"
         }
       ]
     },
@@ -459,15 +459,15 @@ window.STORY_DATA.chapters[0].byStarter['2001500294'] = {
       "lines": [
         {
           "speaker": "송철순",
-          "text": "우리 구역에서 날뛰는 꼬맹이가 너냐?"
+          "text": "우리 구역에서 날뛰는 꼬맹이가 너냐?", "expr": "웃음"
         },
         {
           "speaker": "안리",
-          "text": "그쪽이 대장이에요? 애들 좀 말려요."
+          "text": "그쪽이 대장이에요? 애들 좀 말려요.", "expr": "화남"
         },
         {
           "speaker": "송철순",
-          "text": "내 애들을 팼으면 값을 치러야지."
+          "text": "내 애들을 팼으면 값을 치러야지.", "expr": "화남"
         },
         {
           "speaker": "홍가영",
@@ -475,11 +475,11 @@ window.STORY_DATA.chapters[0].byStarter['2001500294'] = {
         },
         {
           "speaker": "안리",
-          "text": "걱정 마. 금메달은 그냥 딴 게 아니야."
+          "text": "걱정 마. 금메달은 그냥 딴 게 아니야.", "expr": "웃음"
         },
         {
           "speaker": "송철순",
-          "text": "건방진 년. 오늘 버릇 고쳐 주마!"
+          "text": "건방진 년. 오늘 버릇 고쳐 주마!", "expr": "화남"
         }
       ],
       "leader": "1001500287"
@@ -493,15 +493,15 @@ window.STORY_DATA.chapters[0].byStarter['2001500294'] = {
     },
     {
       "speaker": "홍가영",
-      "text": "안리야, 오늘 스파링 너무 빡셌어!"
+      "text": "안리야, 오늘 스파링 너무 빡셌어!", "expr": "웃음"
     },
     {
       "speaker": "안리",
-      "text": "엄살은. 너 은메달리스트잖아."
+      "text": "엄살은. 너 은메달리스트잖아.", "expr": "웃음"
     },
     {
       "speaker": "홍가영",
-      "text": "금메달한테 듣고 싶지 않거든?"
+      "text": "금메달한테 듣고 싶지 않거든?", "expr": "화남"
     },
     {
       "speaker": "내레이션",
@@ -519,7 +519,7 @@ window.STORY_DATA.chapters[0].byStarter['2001500294'] = {
   "ending": [
     {
       "speaker": "송철순",
-      "text": "크윽… 이, 이런 꼬맹이한테…."
+      "text": "크윽… 이, 이런 꼬맹이한테….", "expr": "화남"
     },
     {
       "speaker": "내레이션",
@@ -527,7 +527,7 @@ window.STORY_DATA.chapters[0].byStarter['2001500294'] = {
     },
     {
       "speaker": "송철순",
-      "text": "너… 후회할 거야."
+      "text": "너… 후회할 거야.", "expr": "화남"
     },
     {
       "speaker": "홍가영",
@@ -575,7 +575,7 @@ window.STORY_DATA.chapters[0].byStarter['2000200044'] = {
         },
         {
           "speaker": "용지혜",
-          "text": "비켜요. 안 비키면… 넘길 거예요."
+          "text": "비켜요. 안 비키면… 넘길 거예요.", "expr": "화남"
         }
       ]
     },
@@ -643,7 +643,7 @@ window.STORY_DATA.chapters[0].byStarter['2000200044'] = {
         },
         {
           "speaker": "용지혜",
-          "text": "이번엔 안 봐줘요. 돌격!"
+          "text": "이번엔 안 봐줘요. 돌격!", "expr": "화남"
         }
       ]
     },
@@ -664,7 +664,7 @@ window.STORY_DATA.chapters[0].byStarter['2000200044'] = {
         },
         {
           "speaker": "용지혜",
-          "text": "지효는…? 지효 어디 갔어!"
+          "text": "지효는…? 지효 어디 갔어!", "expr": "화남"
         },
         {
           "speaker": "선인구",
@@ -676,7 +676,7 @@ window.STORY_DATA.chapters[0].byStarter['2000200044'] = {
         },
         {
           "speaker": "용지혜",
-          "text": "…그 사람, 어디 있어요."
+          "text": "…그 사람, 어디 있어요.", "expr": "화남"
         },
         {
           "speaker": "선인구",
@@ -706,11 +706,11 @@ window.STORY_DATA.chapters[0].byStarter['2000200044'] = {
         },
         {
           "speaker": "문희찬",
-          "text": "감동의 재회네. 근데 공짜는 없어."
+          "text": "감동의 재회네. 근데 공짜는 없어.", "expr": "웃음"
         },
         {
           "speaker": "문희찬",
-          "text": "네 동생은 남고은 누님 물건이야."
+          "text": "네 동생은 남고은 누님 물건이야.", "expr": "웃음"
         },
         {
           "speaker": "용지혜",
@@ -718,11 +718,11 @@ window.STORY_DATA.chapters[0].byStarter['2000200044'] = {
         },
         {
           "speaker": "문희찬",
-          "text": "알면 됐고. 동생 두고 꺼져."
+          "text": "알면 됐고. 동생 두고 꺼져.", "expr": "화남"
         },
         {
           "speaker": "용지혜",
-          "text": "싫어요. 지효는 제가 데려가요."
+          "text": "싫어요. 지효는 제가 데려가요.", "expr": "화남"
         }
       ],
       "leader": "1000200046"
@@ -762,7 +762,7 @@ window.STORY_DATA.chapters[0].byStarter['2000200044'] = {
   "ending": [
     {
       "speaker": "문희찬",
-      "text": "크윽… 누님이 가만 안 둘 거다."
+      "text": "크윽… 누님이 가만 안 둘 거다.", "expr": "화남"
     },
     {
       "speaker": "용지효",
@@ -770,7 +770,7 @@ window.STORY_DATA.chapters[0].byStarter['2000200044'] = {
     },
     {
       "speaker": "용지혜",
-      "text": "괜찮아. 이제 집에 가자."
+      "text": "괜찮아. 이제 집에 가자.", "expr": "웃음"
     },
     {
       "speaker": "내레이션",
@@ -794,3 +794,8 @@ window.STORY_DATA.chapters[0].byStarter['2000200044'] = {
     }
   ]
 };
+
+// ===== 스토리 전용 초상화 (img/story/portraits/<slug>_<base|angry|smile>.webp) =====
+// 대사 표정: expr: '화남' | '웃음' (기본 '기본'), 또는 speaker를 '문지예(화남)'처럼 써도 됩니다. 초상화가 없는 인물은 카드 그림으로 대체.
+window.STORY_DATA.portraits = { '문지예': 'jiye', '용지혜': 'jihye', '안리': 'anri', '홍가영': 'gayoung', '오명준': 'myungjun', '송철순': 'cheolsun', '문희찬': 'heechan' };
+window.STORY_DATA.exprSlug = { '기본': 'base', '화남': 'angry', '웃음': 'smile' };
