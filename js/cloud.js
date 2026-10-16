@@ -8,7 +8,8 @@ const REDIRECT = location.hostname === 'tcg.mbbs.kr' ? 'https://tcg.mbbs.kr/' : 
 
 // 클라우드에 동기화할 localStorage 키 (전적 + 설정)
 const STATS_KEY = 'vrTcgStats.v1';
-const SYNC_KEYS = [STATS_KEY, 'vrTcgSkipFx', 'vrTcgVoiceOn', 'vrTcgVoiceVol', 'vrTcgSound', 'tcg_hand_sort', 'tcg_skip_endturn_confirm', 'vrTutorialDone'];
+// 아케이드 전적은 동기화하지 않음 (게스트 기록이 계정에 섞이지 않게). 계정 전적은 서버 matches 에서 집계
+const SYNC_KEYS = ['vrTcgSkipFx', 'vrTcgVoiceOn', 'vrTcgVoiceVol', 'vrTcgSound', 'tcg_hand_sort', 'tcg_skip_endturn_confirm', 'vrTutorialDone'];
 
 let sb = null, user = null, ready = false, pushTimer = null, applying = false;
 const $ = id => document.getElementById(id);
@@ -59,6 +60,20 @@ async function syncOnLogin() {
   } catch (e) { console.warn('[cloud] sync failed', e); }
 }
 
+// 계정 아케이드 전적 = 서버 matches 집계 (스토리 전투는 기록 안 됨). 실패하면 기존 계정 캐시 유지
+async function loadRecord() {
+  if (!sb || !user) return;
+  const uid = user.id;
+  try {
+    const cnt = async r => { const { count, error } = await sb.from('matches').select('id', { count: 'exact', head: true }).eq('user_id', uid).eq('result', r); if (error) throw error; return count || 0; };
+    const [wins, losses, draws] = await Promise.all(['win', 'lose', 'draw'].map(cnt));
+    if (user?.id !== uid) return;
+    origSet.call(localStorage, `${STATS_KEY}:${uid}`, JSON.stringify({ wins, losses, draws }));
+  } catch (e) { console.warn('[cloud] 전적 불러오기 실패', e?.message || e); }
+  window.dispatchEvent(new CustomEvent('vr:user'));
+}
+const fireUser = () => window.dispatchEvent(new CustomEvent('vr:user'));
+
 async function loadProfile() {
   const meta = user.user_metadata || {};
   let p = { nickname: meta.name || meta.full_name || (user.email || '').split('@')[0] || '플레이어', avatar_url: meta.avatar_url };
@@ -74,7 +89,7 @@ function render(p) {
   const box = $('acct-box'); if (!box) return;
   if (!ready) { box.innerHTML = ''; return; }
   if (!user) {
-    box.innerHTML = `<button id="acct-login" class="main-btn main-btn-sub w-full">🔑 구글로 로그인 <span class="text-[11px] opacity-70">(전적 저장)</span></button>`;
+    box.innerHTML = `<button id="acct-login" class="main-btn main-btn-sub w-full">🔑 구글로 로그인 <span class="text-[11px] opacity-70">(아케이드 전적 저장)</span></button>`;
     $('acct-login').onclick = login;
   } else {
     const av = p?.avatar_url ? `<img src="${esc(p.avatar_url)}" alt="" referrerpolicy="no-referrer" class="w-6 h-6 rounded-full">` : '👤';
@@ -92,7 +107,7 @@ async function login() {
 }
 async function logout() {
   try { await push(); await sb.auth.signOut(); } catch {}
-  user = null; render();
+  user = null; render(); fireUser();
 }
 
 // 판 결과 기록 (game.js가 'vr:match' 이벤트 발생)
@@ -118,7 +133,9 @@ async function init() {
     const onUser = async u => {
       const isNew = u && u.id !== user?.id;
       user = u || null;
+      fireUser();
       if (!user) return render();
+      loadRecord();
       render({ nickname: '불러오는 중...' });
       if (isNew) await syncOnLogin();
       render(await loadProfile());

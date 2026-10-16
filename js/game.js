@@ -8,8 +8,9 @@ const $ = id => document.getElementById(id);
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 // ===== 전적 저장 (나중에 서버 저장으로 교체 가능하도록 분리) =====
+// 아케이드 전적: 게스트는 브라우저 기록, 로그인하면 계정별 키(서버 matches 집계로 채움)라 계정끼리 섞이지 않음
 const Stats = {
-  KEY: 'vrTcgStats.v1',
+  get KEY() { const u = window.VRCloud?.user?.id; return u ? `vrTcgStats.v1:${u}` : 'vrTcgStats.v1'; },
   load() { try { return { wins: 0, losses: 0, draws: 0, ...JSON.parse(localStorage.getItem(this.KEY)) }; } catch { return { wins: 0, losses: 0, draws: 0 }; } },
   record(win) { const s = this.load(); win === null ? s.draws++ : win ? s.wins++ : s.losses++; localStorage.setItem(this.KEY, JSON.stringify(s)); return s; },
 };
@@ -327,7 +328,7 @@ function finish(win, reason) {
   $('end-title').innerHTML = win === null ? '<span class="text-zinc-200">무승부</span>' : win ? '<span class="text-emerald-400">승리!</span>' : '<span class="text-red-400">패배...</span>';
   const why = reason === 'ko' ? '진영 붕괴 (KO)' : `${RULES.MAX_TURNS}턴 종료 판정 · ${JUDGE_LABEL[reason]}`;
   const detail = reason === 'ko' ? '' : `<div class="text-sm text-zinc-400 mt-1">진영 HP 나 ${fmt(S.me.hp)} : ${fmt(S.ai.hp)} 상대 · 필드 카드 ${S.me.field.length} : ${S.ai.field.length}</div>`;
-  $('end-text').innerHTML = `<div id="end-reason" class="font-bold text-amber-300">${why}</div>${detail}<div class="mt-2">${S.turnNo}라운드 · 전적 ${st.wins}승 ${st.losses}패${st.draws ? ` ${st.draws}무` : ''}</div>`;
+  $('end-text').innerHTML = `<div id="end-reason" class="font-bold text-amber-300">${why}</div>${detail}<div class="mt-2">${S.turnNo}라운드 · 아케이드 전적 ${st.wins}승 ${st.losses}패${st.draws ? ` ${st.draws}무` : ''}</div>`;
   try { showEnding(win, reason); } catch (err) { reportError('ending', err); }
   try { const mvp = pickMvp(); window.dispatchEvent(new CustomEvent('vr:match', { detail: { result: win === null ? 'draw' : win ? 'win' : 'lose', reason, turns: S.turnNo, damage: S.log.total, skills: S.log.skills, mvpId: mvp?.card.id, mvpName: mvp?.card.name, mercId: S.log.merc?.id, fieldIds: S.me.field.map(u => (u.base || u.card).id) } })); } catch {}
   $('end-screen').classList.remove('hidden');
@@ -896,7 +897,7 @@ function hideModal(id) { $(id).classList.add('hidden'); $(id).classList.remove('
 
 function renderStats() {
   const s = Stats.load();
-  $('stats').textContent = `전적: ${s.wins}승 ${s.losses}패${s.draws ? ` ${s.draws}무` : ''}`;
+  $('stats').textContent = `${window.VRCloud?.user ? '☁️ ' : ''}아케이드 전적: ${s.wins}승 ${s.losses}패${s.draws ? ` ${s.draws}무` : ''}`;
 }
 
 // ===== 용병 고용 UI =====
@@ -970,6 +971,7 @@ $('restart-btn').onclick = () => { renderStats(); startGame(); };
 function startStory(cfg) { hideModal('detail'); startGame(cfg); }
 $('home-btn').onclick = () => { $('end-screen').classList.add('hidden'); $('game').classList.add('hidden'); $('start-screen').classList.remove('hidden'); renderStats(); };
 renderStats();
+window.addEventListener('vr:user', renderStats);   // 로그인·로그아웃·계정 변경 시 바로 갱신
 
 (async () => {
   try {
