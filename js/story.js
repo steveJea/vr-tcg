@@ -26,7 +26,18 @@
       try { const { data, error } = await sb.from('story_progress').select('data').eq('user_id', u.id).maybeSingle(); if (error) throw error; cloud = data?.data || null; }
       catch (e) { cloudOk = false; console.warn('[story] 클라우드 불러오기 실패 → 브라우저 저장 사용', e?.message || e); }
     }
-    save = { ...fresh(), ...((cloud?.updatedAt || 0) >= (local?.updatedAt || 0) ? (cloud || local) : local) };
+    save = clampPoints({ ...fresh(), ...((cloud?.updatedAt || 0) >= (local?.updatedAt || 0) ? (cloud || local) : local) });
+  }
+  // 반복 클리어 악용 방지: (보유 + 분배한) 포인트는 첫 클리어로 얻을 수 있는 총량을 넘을 수 없음
+  function earnedPoints(sv) {
+    let n = 0;
+    for (const ch of D.chapters) for (const no of sv.cleared?.[ch.id] || []) { const ph = ch.phases.find(p => p.no === no); if (ph) n += D.statPoints[ph.type] || 0; }
+    return n;
+  }
+  function clampPoints(sv) {
+    const used = (sv.owned || []).reduce((a, o) => a + Object.values(o.boost || {}).reduce((x, y) => x + (+y || 0), 0), 0);
+    sv.points = Math.max(0, Math.min(sv.points | 0, earnedPoints(sv) - used));
+    return sv;
   }
   async function persist() {
     save.updatedAt = Date.now();
@@ -74,9 +85,9 @@
     r.scrollTop = 0;
   }
   function home() { bgm('main'); root().classList.add('hidden'); $('start-screen').classList.remove('hidden'); }
-  const topBar = (title, back = 'home') => `<div class="story-top"><button class="story-back" data-go="${back}">← ${back === 'home' ? '처음으로' : '돌아가기'}</button><div class="story-top-title">${title}</div><button class="story-mycards" data-go="cards">🃏 보유 카드</button></div>`;
+  const topBar = (title, back = 'home') => `<div class="story-top"><button class="story-back" data-go="${back}">← ${back === 'home' ? '처음으로' : '돌아가기'}</button><div class="story-top-title">${title}</div><span class="flex gap-1.5"><button class="story-mycards story-gacha-btn" data-go="gacha">🎴 카드 뽑기${canDraw() ? '<i class="story-badge">1</i>' : ''}</button><button class="story-mycards" data-go="cards">🃏 보유 카드</button></span></div>`;
   function bind(extra = {}) {
-    root().querySelectorAll('[data-go]').forEach(b => b.onclick = () => ({ home, map: renderMap, cards: renderCards, ...extra })[b.dataset.go]?.());
+    root().querySelectorAll('[data-go]').forEach(b => b.onclick = () => ({ home, map: renderMap, cards: renderCards, gacha: openGacha, ...extra })[b.dataset.go]?.());
   }
   const tile = (c, extra = '') => `<div class="story-card"><div class="story-card-img"><img src="${IMG}${c.id}.webp" alt="${esc(c.name)}" loading="lazy" onerror="this.style.visibility='hidden'"><span class="story-rar">${RAR[c.grade] || 'N'}</span></div><div class="story-card-name">${esc(c.name)}</div><div class="story-card-stats"><span class="text-orange-400">⚔${fmt(c.ATK)}</span><span class="text-red-400">♥${fmt(c.HP)}</span><span class="text-sky-400">🛡${fmt(c.DEF)}</span></div>${extra}</div>`;
 
@@ -209,17 +220,17 @@
     let reward = null, pts = 0;
     if (first) {
       const have = new Set(save.owned.map(o => o.id));
-      reward = rand(normals().filter(c => !have.has(String(c.id))));
+      reward = ch.rewardCard ? rand(pool().filter(c => c.grade === ch.rewardCard && !have.has(String(c.id)))) : null;
       if (ph.type === 'boss' && ch.ending?.length) await new Promise(r => playLines(ch.ending, [], r, 'ending'));
       if (reward) save.owned.push({ id: String(reward.id), boost: {} });
       save.cleared[ch.id] = [...clearedOf(ch), ph.no];
     }
-    pts = first ? D.statPoints[ph.type] : 1;   // 재도전 승리도 1포인트
+    pts = first ? D.statPoints[ph.type] : 0;   // 스탯 포인트는 페이즈 첫 클리어 때만
     save.points += pts;
     await persist();
     show(`<div class="text-center py-6"><div class="story-chapter-sub">Phase.${ph.no} CLEAR</div><div class="story-chapter-big text-emerald-300">VICTORY</div>
-      ${reward ? `<div class="mt-4 text-amber-200 font-bold">🎁 보상 카드 획득!</div><div class="flex justify-center mt-2 story-reward">${tile(reward)}</div>` : '<div class="mt-4 text-zinc-400 text-sm">이미 클리어한 페이즈라 카드 보상은 없어요.</div>'}
-      <div class="mt-4 text-lg">스탯 포인트 <b class="text-emerald-300">+${pts}</b> (보유 ${save.points})</div>
+      ${reward ? `<div class="mt-4 text-amber-200 font-bold">🎁 보상 카드 획득!</div><div class="flex justify-center mt-2 story-reward">${tile(reward)}</div>` : `<div class="mt-4 text-zinc-400 text-sm">${first ? '이번 챕터는 카드 보상 없이 스탯 포인트만 받아요.' : '이미 클리어한 페이즈라 카드 보상은 없어요.'}</div>`}
+      <div class="mt-4 text-lg">${pts ? `스탯 포인트 <b class="text-emerald-300">+${pts}</b> (보유 ${save.points})` : '<span class="text-zinc-400 text-sm">다시 클리어한 페이즈라 스탯 포인트는 없어요.</span>'}</div>
       <div class="flex flex-col gap-2 max-w-xs mx-auto mt-5"><button class="story-btn" data-go="stats">📈 스탯 분배하기</button><button class="story-back" data-go="map">챕터 지도로</button></div></div>`);
     bind({ stats: () => openStats(renderMap) });
   }
@@ -248,9 +259,66 @@
     show(`${topBar('🃏 보유 카드', 'map')}<div class="text-center text-sm text-zinc-400 my-2">스토리 모드 전용 · ${save.owned.length}장 · 스탯 포인트 ${save.points}</div>
       <div class="story-grid">${save.owned.map((o, i) => { const c = boosted(o); if (!c) return ''; const b = o.boost || {};
         const up = STATS.filter(s => b[s]).map(s => `${s} +${b[s] * k[s]}`).join(' · ');
-        return tile(c, `<div class="text-[10px] text-emerald-300 h-3">${i === 0 ? '👑 리더 ' : ''}${up}</div><div class="story-equip"><span>🗡️ 무기</span><span>🛡️ 방어구</span><em>준비 중</em></div>`); }).join('')}</div>
+        return tile(c, `${(o.count || 1) > 1 ? `<div class="story-dup">x${o.count}</div>` : ''}<div class="text-[10px] text-emerald-300 h-3">${i === 0 ? '👑 리더 ' : ''}${up}</div><div class="story-equip"><span>🗡️ 무기</span><span>🛡️ 방어구</span><em>준비 중</em></div>`); }).join('')}</div>
       ${save.points ? '<div class="text-center mt-4"><button class="story-btn" data-go="stats">📈 스탯 분배하기</button></div>' : ''}`);
     bind({ stats: () => openStats(renderCards) });
+  }
+
+  // ----- 일일 카드 뽑기 (하루 1회, KST 자정 초기화) -----
+  const KST = 9 * 3600e3;
+  const kstDay = (t = Date.now()) => new Date(t + KST).toISOString().slice(0, 10);
+  const msToReset = () => { const t = Date.now() + KST; return 86400e3 - (t % 86400e3); };
+  const canDraw = () => !!save && save.gachaLast !== kstDay();
+  const hms = ms => { const s = Math.max(0, Math.ceil(ms / 1000)); return [s / 3600 | 0, (s / 60 | 0) % 60, s % 60].map(n => String(n).padStart(2, '0')).join(':'); };
+  const GLOW = { 'NORMAL': 'n', 'RARE': 'r', 'HIGH RARE': 'hr', 'SUPER RARE': 'sr', 'ULTRA RARE': 'ur' };
+  function addOwned(id, n = 1) {
+    const o = save.owned.find(x => x.id === String(id));
+    if (o) o.count = (o.count || 1) + n; else save.owned.push({ id: String(id), boost: {}, count: 1 });
+    return save.owned.find(x => x.id === String(id)).count;
+  }
+  // 서버 RPC(story_daily_draw)로 추첨. 함수가 아직 없으면(SQL 미실행) 브라우저에서 추첨 (이 경우는 새로고침 방지가 약함)
+  async function drawOnce() {
+    const day = kstDay();
+    if (save.gachaLast === day) return { ok: false, reason: 'already' };
+    const sb = window.VRCloud?.sb, u = window.VRCloud?.user;
+    let res = null;
+    if (window.__GACHA_MOCK) res = await window.__GACHA_MOCK();
+    else if (sb && u) {
+      const { data, error } = await sb.rpc('story_daily_draw');
+      if (!error) res = data;
+      else if (!/story_daily_draw|PGRST202|42883|Could not find/i.test(`${error.code} ${error.message}`)) return { ok: false, reason: 'error', msg: error.message };
+    }
+    if (!res) { const g = window.rollGachaRarity(); const c = rand(pool().filter(x => x.grade === g)); res = { ok: true, card_id: String(c.id), grade: g, local: true }; }
+    if (!res.ok) { if (res.reason === 'already') { save.gachaLast = day; await persist(); } return res; }
+    res.count = addOwned(res.card_id);
+    save.gachaLast = day;
+    await persist();
+    return res;
+  }
+  let gachaTimer = 0;
+  function openGacha() {
+    clearInterval(gachaTimer);
+    const avail = canDraw();
+    const p = popup(`<div class="text-lg font-black">🎴 오늘의 카드 뽑기</div><div class="text-[11px] text-zinc-400 mt-1">하루 1회 무료 · 매일 자정(KST) 초기화<br>N 70% · R 20% · HR 6.5% · SR 3% · UR 0.5%</div>
+      <div class="gacha-stage"><div class="gacha-card" id="gacha-card"><div class="gacha-face gacha-back">🎴</div><div class="gacha-face gacha-front" id="gacha-front"></div></div></div>
+      <div id="gacha-msg" class="text-sm min-h-[1.5rem]"></div>
+      ${avail ? '<button id="gacha-go" class="story-btn w-full mt-2">뽑기!</button>' : ''}
+      <div id="gacha-next" class="text-xs text-zinc-400 mt-2"></div>
+      <button data-close-pop class="w-full mt-2 py-2 rounded-xl bg-white/10">닫기</button>`, () => { clearInterval(gachaTimer); if (!root().classList.contains('hidden') && root().querySelector('.story-map')) renderMap(); });
+    const tick = () => { const n = $('gacha-next'); if (!n) return clearInterval(gachaTimer); n.textContent = canDraw() ? '' : `다음 뽑기까지 ${hms(msToReset())}`; };
+    tick(); gachaTimer = setInterval(tick, 1000);
+    const go = $('gacha-go'); if (!go) { $('gacha-msg').textContent = '오늘은 이미 뽑았어요.'; return; }
+    go.onclick = async () => {
+      go.disabled = true; go.textContent = '뽑는 중...';
+      const r = await drawOnce();
+      if (!r.ok) { go.remove(); $('gacha-msg').textContent = r.reason === 'already' ? '오늘은 이미 뽑았어요.' : `뽑기에 실패했어요: ${r.msg || ''}`; tick(); return; }
+      const c = card(r.card_id), g = GLOW[r.grade] || 'n';
+      $('gacha-front').innerHTML = `<img src="${IMG}${c.id}.webp" alt="${esc(c.name)}"><span class="story-rar">${RAR[c.grade]}</span><div class="gacha-name">${esc(c.name)}</div>`;
+      const el = $('gacha-card'); el.parentElement.className = `gacha-stage g-${g}`;
+      setTimeout(() => el.classList.add('flip'), 350);
+      go.remove();
+      setTimeout(() => { $('gacha-msg').innerHTML = `<b class="g-text-${g}">${RAR[c.grade]} · ${esc(c.name)}</b> 획득!${r.count > 1 ? ` <span class="story-dup-inline">x${r.count}</span>` : ''}<div class="text-[11px] text-zinc-400">보유 카드에 추가됐어요</div>`; tick(); }, 1300);
+    };
   }
 
   function mountButton() {
@@ -260,5 +328,5 @@
     window.addEventListener('tcg:ready', () => { b.disabled = false; });
   }
   mountButton();
-  window.VRStory = { enter, get save() { return save; }, renderMap, renderCards, openStats, renderSelect };
+  window.VRStory = { enter, openGacha, drawOnce, kstDay, get save() { return save; }, renderMap, renderCards, openStats, renderSelect };
 })();

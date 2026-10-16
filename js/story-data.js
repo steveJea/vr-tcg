@@ -15,6 +15,7 @@ window.STORY_DATA = {
   chapters: [
     {
       id: 1, title: 'CHAPTER 1', subtitle: '(챕터 제목 준비 중)',
+      rewardCard: 'NORMAL',   // 페이즈 첫 클리어 시 무료 카드 등급. 없으면(챕터 2~) 스탯 포인트만
       phases: [
         // enemyName: 전투 화면 상대 이름 / enemies: 노멀 카드 power 순위 구간 [from, to) 에서 count 장 / 또는 ids: ['카드id', ...] 로 직접 지정
         { no: 1, type: 'normal', enemyName: '적군', title: '(페이즈 1 제목)', tip: '카드를 소환하고 상대 카드를 공격해 보세요.', enemies: { count: 1, rank: [0, 30] },
@@ -799,3 +800,7 @@ window.STORY_DATA.chapters[0].byStarter['2000200044'] = {
 // 대사 표정: expr: '화남' | '웃음' (기본 '기본'), 또는 speaker를 '문지예(화남)'처럼 써도 됩니다. 초상화가 없는 인물은 카드 그림으로 대체.
 window.STORY_DATA.portraits = { '문지예': 'jiye', '용지혜': 'jihye', '안리': 'anri', '홍가영': 'gayoung', '오명준': 'myungjun', '송철순': 'cheolsun', '문희찬': 'heechan' };
 window.STORY_DATA.exprSlug = { '기본': 'base', '화남': 'angry', '웃음': 'smile' };
+
+// ===== 일일 카드 뽑기 확률 (서버 supabase/gacha.sql 과 동일하게 유지) =====
+window.STORY_DATA.gacha = { rates: [['NORMAL', 0.70], ['RARE', 0.20], ['HIGH RARE', 0.065], ['SUPER RARE', 0.03], ['ULTRA RARE', 0.005]] };
+window.rollGachaRarity = (r = Math.random()) => { let acc = 0; for (const [g, p] of window.STORY_DATA.gacha.rates) { acc += p; if (r < acc) return g; } return 'NORMAL'; };
