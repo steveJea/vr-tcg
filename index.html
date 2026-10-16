@@ -212,12 +212,13 @@
   </div>
 
   <!-- 마나 액션 -->
-  <div id="action-bar" class="grid grid-cols-3 md:grid-cols-5 gap-1.5">
+  <div id="action-bar" class="grid grid-cols-3 md:grid-cols-6 gap-1.5">
     <button id="act-shuffle" class="act-btn bg-zinc-900 border border-violet-500/40 hover:border-violet-400 disabled:opacity-40 rounded-xl px-1 py-1.5 text-[11px] md:text-sm font-bold leading-tight">🔀 패 섞기 <span class="text-sky-300">💧50</span><div class="reason text-[9px] md:text-[10px] text-red-400 font-normal h-3"></div></button>
     <button id="act-heal" class="act-btn bg-zinc-900 border border-violet-500/40 hover:border-violet-400 disabled:opacity-40 rounded-xl px-1 py-1.5 text-[11px] md:text-sm font-bold leading-tight">🏰 기지 보강 <span class="text-sky-300">💧20</span><div class="reason text-[9px] md:text-[10px] text-red-400 font-normal h-3"></div></button>
     <button id="act-buff" class="act-btn bg-zinc-900 border border-violet-500/40 hover:border-violet-400 disabled:opacity-40 rounded-xl px-1 py-1.5 text-[11px] md:text-sm font-bold leading-tight">⚔️ 공격력 강화 <span class="text-sky-300">💧30</span><div class="reason text-[9px] md:text-[10px] text-red-400 font-normal h-3"></div></button>
     <button id="act-fieldheal" class="act-btn bg-zinc-900 border border-violet-500/40 hover:border-violet-400 disabled:opacity-40 rounded-xl px-1 py-1.5 text-[11px] md:text-sm font-bold leading-tight">💚 필드 회복 <span class="text-sky-300">💧20</span><div class="reason text-[9px] md:text-[10px] text-red-400 font-normal h-3"></div></button>
     <button id="act-accel" class="act-btn bg-zinc-900 border border-violet-500/40 hover:border-violet-400 disabled:opacity-40 rounded-xl px-1 py-1.5 text-[11px] md:text-sm font-bold leading-tight">⚙️ 마나 가속기 <span class="text-sky-300">💧30</span><div class="reason text-[9px] md:text-[10px] text-red-400 font-normal h-3"></div></button>
+    <button id="act-merc" class="act-btn bg-zinc-900 border border-amber-400/50 hover:border-amber-300 disabled:opacity-40 rounded-xl px-1 py-1.5 text-[11px] md:text-sm font-bold leading-tight">🗡️ 용병 고용 <span class="text-amber-300 text-[10px]">1회</span><div class="reason text-[9px] md:text-[10px] text-red-400 font-normal h-3"></div></button>
   </div>
 
   <!-- 손패 -->
@@ -230,6 +231,17 @@
     <div id="log" class="max-h-32 overflow-y-auto mt-1"></div>
   </details>
 </section>
+
+<!-- 용병 고용 -->
+<div id="merc" class="hidden fixed inset-0 bg-black/80 items-center justify-center z-40 p-4">
+  <div class="bg-zinc-900 border border-amber-400/50 rounded-3xl p-5 w-full max-w-md relative modal-panel">
+    <button data-close="merc" aria-label="닫기" class="modal-x w-8 h-8 rounded-full bg-zinc-800 hover:bg-zinc-700">✕</button>
+    <div class="text-xl font-black mb-1">🗡️ 용병 고용</div>
+    <div class="text-xs text-zinc-400 mb-3">마나로 HR·SR·UR 카드를 고용해요. 한 판에 1명, 고용한 카드는 손패에 들어오고 <b class="text-amber-300">내 카드로 계속 보유</b>돼요.<br>가격: HR ×1.2 · SR ×1.5 · UR ×1.8 (올림)</div>
+    <div id="merc-list" class="flex justify-center gap-2 flex-wrap"></div>
+    <div id="merc-msg" class="text-center text-xs mt-3 text-zinc-400"></div>
+  </div>
+</div>
 
 <!-- 카드 상세 -->
 <div id="detail" class="hidden fixed inset-0 bg-black/80 items-center justify-center z-40 p-4">

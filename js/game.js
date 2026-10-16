@@ -15,6 +15,51 @@ const Stats = {
 };
 
 let POOL = [];
+
+// ===== 용병 시스템 =====
+// 배틀 중 마나로 HR·SR·UR 카드 고용 (한 판 1명). 고용한 카드는 영구 보유 → 다음 판부터 내 덱에 포함.
+const Merc = {
+  KEY: 'vrTcgMercs.v1',
+  PRICE: { 'HIGH RARE': 1.2, 'SUPER RARE': 1.5, 'ULTRA RARE': 1.8 },   // N·R·MR은 판매 안 함
+  OFFER_N: 3,
+  MAX_PER_BATTLE: 1,
+  load() { try { const a = JSON.parse(localStorage.getItem(this.KEY)); return Array.isArray(a) ? a.map(String) : []; } catch { return []; } },
+  save(ids) { localStorage.setItem(this.KEY, JSON.stringify([...new Set(ids.map(String))])); },
+  price(c) { return Math.ceil(c.cost * this.PRICE[c.grade]); },
+  eligible(c) { return c.grade in this.PRICE; },
+  // 보유 여부 판정 (나중에 카드 결합 시스템이 나오면 여기만 바꾸면 됨)
+  isOwned(c, p) {
+    const id = String(c.id);
+    if (this.load().includes(id)) return true;
+    return [...p.deck, ...p.hand, ...p.field.map(u => u.base || u.card), ...(p.grave || [])].some(x => String(x.id) === id);
+  },
+  // 이번 판 용병 목록: 판마다 HR·SR·UR 각 1장씩 랜덤 (부족하면 아무 대상 등급에서 채움)
+  roll(pool) {
+    const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+    const out = [];
+    for (const g of Object.keys(this.PRICE)) { const c = pick(pool.filter(x => x.grade === g && !out.includes(x))); if (c) out.push(c); }
+    const rest = pool.filter(x => this.eligible(x) && !out.includes(x));
+    while (out.length < this.OFFER_N && rest.length) out.push(rest.splice(Math.floor(Math.random() * rest.length), 1)[0]);
+    return out;
+  },
+  // 보유 용병을 덱에 넣음: 같은 등급 카드 1장과 교체 (덱 장수 유지)
+  addToDeck(deck) {
+    for (const id of this.load()) {
+      const c = POOL.find(x => String(x.id) === id);
+      if (!c || deck.some(x => String(x.id) === id)) continue;
+      const mine = new Set(this.load());
+      const idx = deck.findIndex(x => x.grade === c.grade && !mine.has(String(x.id)));
+      if (idx >= 0) deck[idx] = c; else deck.push(c);
+    }
+  },
+  canBuy(c, p) {
+    if (S.mercBought >= this.MAX_PER_BATTLE) return { ok: false, reason: '이번 판 고용 완료' };
+    if (this.isOwned(c, p)) return { ok: false, reason: '보유 중' };
+    const cost = this.price(c);
+    if (p.mana < cost) return { ok: false, reason: '마나 부족' };
+    return { ok: true, cost };
+  },
+};
 let S = null;          // 게임 상태
 let selected = null;   // 선택된 공격 유닛 uid
 let uidSeq = 1;
@@ -27,6 +72,7 @@ const AI_DELAY = () => (window.TCG_FAST ? 0 : (skipFx || fastForward) ? 120 : 65
 
 function newPlayer(name, second) {
   const deck = buildDeck(POOL);
+  if (name === '나') Merc.addToDeck(deck);
   const n = RULES.OPENING_HAND + (second ? RULES.SECOND_PLAYER_BONUS_CARDS : 0);
   return { name, hp: RULES.HERO_HP, deck, hand: deck.splice(0, n), field: [], mana: 0, maxMana: 0, second };
 }
@@ -39,7 +85,8 @@ function log(msg, cls = '') {
 
 function startGame() {
   const first = Math.random() < 0.5 ? 'me' : 'ai';   // 선공 동전 던지기
-  S = { me: newPlayer('나', first !== 'me'), ai: newPlayer('컴퓨터', first !== 'ai'), first, turn: first, turnNo: 0, totalTurns: 0, myTurns: 0, over: false, busy: false, fxSeen: new Set() };
+  S = { me: newPlayer('나', first !== 'me'), ai: newPlayer('컴퓨터', first !== 'ai'), first, turn: first, turnNo: 0, totalTurns: 0, myTurns: 0, over: false, busy: false, fxSeen: new Set(), mercBought: 0, mercOffer: [] };
+  S.mercOffer = Merc.roll(POOL);
   preloadFx([...S.me.deck, ...S.me.hand, ...S.ai.deck, ...S.ai.hand]);
   selected = null; $('log').innerHTML = '';
   $('end-screen').classList.add('hidden'); $('start-screen').classList.add('hidden'); $('game').classList.remove('hidden');
@@ -579,6 +626,9 @@ function render() {
     btn.disabled = !myTurn || !c.ok;
     btn.querySelector('.reason').textContent = !myTurn ? '' : (c.ok ? '' : c.reason);
   }
+  { const btn = $('act-merc'), done = S.mercBought >= Merc.MAX_PER_BATTLE;
+    btn.disabled = !myTurn || done;
+    btn.querySelector('.reason').textContent = myTurn && done ? '이번 판 고용 완료' : ''; }
   $('attack-all').disabled = !myTurn || !S.me.field.some(u => u.canAttack);
   const tg = attackTargets(S.me, S.ai);
   $('ai-hero').classList.toggle('ring-4', selected != null && tg.hero);
@@ -782,10 +832,35 @@ function renderStats() {
   $('stats').textContent = `전적: ${s.wins}승 ${s.losses}패${s.draws ? ` ${s.draws}무` : ''}`;
 }
 
+// ===== 용병 고용 UI =====
+function renderMerc() {
+  $('merc-list').innerHTML = S.mercOffer.map(c => {
+    const r = Merc.canBuy(c, S.me), price = Merc.price(c);
+    return `<div class="flex flex-col items-center gap-1">${cardHTML(c, { dim: !r.ok })}
+      <button data-merc="${c.id}" ${r.ok ? '' : 'disabled'} class="w-full px-2 py-1.5 rounded-lg bg-amber-400 hover:bg-amber-300 disabled:bg-zinc-700 disabled:text-zinc-400 text-black text-xs font-bold">💧${price}</button>
+      <div class="text-[10px] h-3 ${r.ok ? 'text-zinc-500' : 'text-red-400'}">${r.ok ? `기본 ${c.cost} ×${Merc.PRICE[c.grade]}` : r.reason}</div></div>`;
+  }).join('');
+  $('merc-msg').textContent = `보유 마나 💧${S.me.mana}`;
+  $('merc-list').querySelectorAll('[data-merc]').forEach(b => b.onclick = () => buyMerc(b.dataset.merc));
+}
+function buyMerc(id) {
+  if (S.turn !== 'me' || S.over || S.busy) return;
+  const c = S.mercOffer.find(x => String(x.id) === String(id)), r = c && Merc.canBuy(c, S.me);
+  if (!r?.ok) return;
+  S.me.mana -= r.cost; S.mercBought++;
+  S.me.hand.push(c);
+  Merc.save([...Merc.load(), c.id]);
+  preloadFx([c]);
+  log(`나: 🗡️ 용병 ${c.name} 고용 (마나 ${r.cost}) — 손패에 추가, 영구 보유!`, 'text-amber-300');
+  floatText(`🗡️ ${c.name} 고용!`, 'text-amber-300', 'me');
+  hideModal('merc'); render();
+}
+$('act-merc').onclick = () => { if (S?.turn !== 'me' || S.over || S.busy) return; renderMerc(); showModal('merc'); };
+
 // ===== 초기화 =====
 document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => hideModal(b.dataset.close));
 // 바깥(어두운 배경) 탭 → 닫기. 누르기 시작과 끝이 모두 배경일 때만 (패널 안 스크롤/드래그로는 안 닫힘)
-const MODAL_IDS = ['detail', 'help', 'endturn-confirm'];
+const MODAL_IDS = ['detail', 'help', 'endturn-confirm', 'merc'];
 for (const id of MODAL_IDS) { const m = $(id); let downOnBg = false;
   m.addEventListener('pointerdown', e => { downOnBg = e.target === m; });
   m.addEventListener('click', e => { if (downOnBg && e.target === m) hideModal(id); downOnBg = false; }); }
