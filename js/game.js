@@ -34,7 +34,9 @@ const Merc = {
     return [...p.deck, ...p.hand, ...p.field.map(u => u.base || u.card), ...(p.grave || [])].some(x => String(x.id) === id);
   },
   // 이번 판 용병 목록: 판마다 HR·SR·UR 각 1장씩 랜덤 (부족하면 아무 대상 등급에서 채움)
-  roll(pool) {
+  roll(pool, p) {
+    // 이번 판 내 덱·손패에 이미 있는 카드는 목록에서 빼기 (예전엔 목록에 떠서 '보유 중'으로 막혔음)
+    if (p) pool = pool.filter(x => !this.isOwned(x, p));
     const pick = arr => arr[Math.floor(Math.random() * arr.length)];
     const out = [];
     for (const g of Object.keys(this.PRICE)) { const c = pick(pool.filter(x => x.grade === g && !out.includes(x))); if (c) out.push(c); }
@@ -43,8 +45,9 @@ const Merc = {
     return out;
   },
   canBuy(c, p) {
+    if (S.mercHired === String(c.id)) return { ok: false, reason: '고용됨', hired: true };
     if (S.mercBought >= this.MAX_PER_BATTLE) return { ok: false, reason: '이번 판 고용 완료' };
-    if (this.isOwned(c, p)) return { ok: false, reason: '보유 중' };
+    if (this.isOwned(c, p)) return { ok: false, reason: '이번 판 덱에 있음' };
     const cost = this.price(c);
     if (p.mana < cost) return { ok: false, reason: '마나 부족' };
     return { ok: true, cost };
@@ -78,8 +81,8 @@ const shuffleArr = a => { a = [...a]; for (let i = a.length - 1; i > 0; i--) { c
 function startGame(story = null) {
   if (story && typeof story.then === 'function' || story instanceof Event) story = null;
   const first = story?.first || (Math.random() < 0.5 ? 'me' : 'ai');   // 선공 동전 던지기
-  S = { me: newPlayer('나', first !== 'me', story?.me, story?.meHp), ai: newPlayer(story?.aiName || '컴퓨터', first !== 'ai', story?.ai, story?.aiHp), first, story, turn: first, turnNo: 0, totalTurns: 0, myTurns: 0, over: false, busy: false, fxSeen: new Set(), mercBought: 0, mercOffer: [], log: { dmg: new Map(), total: 0, skills: 0, merc: null, played: new Set(), kills: {} } };
-  S.mercOffer = story ? [] : Merc.roll(POOL);
+  S = { me: newPlayer('나', first !== 'me', story?.me, story?.meHp), ai: newPlayer(story?.aiName || '컴퓨터', first !== 'ai', story?.ai, story?.aiHp), first, story, turn: first, turnNo: 0, totalTurns: 0, myTurns: 0, over: false, busy: false, fxSeen: new Set(), mercBought: 0, mercHired: null, mercOffer: [], log: { dmg: new Map(), total: 0, skills: 0, merc: null, played: new Set(), kills: {} } };
+  S.mercOffer = story ? [] : Merc.roll(POOL, S.me);
   const noBase = story?.win === 'wipe';   // 스토리 일반전: 진영 개념 없음
   S.me.noBase = S.ai.noBase = noBase;
   for (const w of ['me', 'ai']) { $(`${w}-hp`).classList.toggle('hidden', noBase); $(`${w}-hpbar`).parentElement.classList.toggle('hidden', noBase); }
@@ -907,8 +910,8 @@ function renderMerc() {
   $('merc-list').innerHTML = S.mercOffer.map(c => {
     const r = Merc.canBuy(c, S.me), price = Merc.price(c);
     return `<div class="flex flex-col items-center gap-1">${cardHTML(c, { dim: !r.ok })}
-      <button data-merc="${c.id}" ${r.ok ? '' : 'disabled'} class="w-full px-2 py-1.5 rounded-lg bg-amber-400 hover:bg-amber-300 disabled:bg-zinc-700 disabled:text-zinc-400 text-black text-xs font-bold">💧${price}</button>
-      <div class="text-[10px] h-3 ${r.ok ? 'text-zinc-500' : 'text-red-400'}">${r.ok ? `기본 ${c.cost} ×${Merc.PRICE[c.grade]}` : r.reason}</div></div>`;
+      <button data-merc="${c.id}" ${r.ok ? '' : 'disabled'} class="w-full px-2 py-1.5 rounded-lg bg-amber-400 hover:bg-amber-300 disabled:bg-zinc-700 disabled:text-zinc-400 text-black text-xs font-bold">${r.hired ? '✅ 고용됨' : `💧${price}`}</button>
+      <div class="text-[10px] h-3 ${r.ok ? 'text-zinc-500' : r.hired ? 'text-amber-300' : 'text-red-400'}">${r.ok ? `기본 ${c.cost} ×${Merc.PRICE[c.grade]}` : r.reason}</div></div>`;
   }).join('');
   $('merc-msg').textContent = `보유 마나 💧${S.me.mana}`;
   $('merc-list').querySelectorAll('[data-merc]').forEach(b => b.onclick = () => buyMerc(b.dataset.merc));
@@ -917,7 +920,7 @@ function buyMerc(id) {
   if (S.turn !== 'me' || S.over || S.busy) return;
   const c = S.mercOffer.find(x => String(x.id) === String(id)), r = c && Merc.canBuy(c, S.me);
   if (!r?.ok) return;
-  S.me.mana -= r.cost; S.mercBought++; S.log.merc = c;
+  S.me.mana -= r.cost; S.mercBought++; S.mercHired = String(c.id); S.log.merc = c;
   S.me.hand.push(c);
   preloadFx([c]);
   log(`나: 🗡️ 용병 ${c.name} 고용 (마나 ${r.cost}) — 손패에 추가 (이번 판 한정)`, 'text-amber-300');
