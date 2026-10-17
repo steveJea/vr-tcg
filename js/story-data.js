@@ -197,10 +197,11 @@ window.STORY_DATA.chapters[0].byStarter = { '2000600126': {
     },
     "5": {
       "title": "하이에나 굴",
-      "enemyName": "오명준",
+      "enemyName": "곽재준",
+      "bossId": "1000300076",
       "enemies": {
         "ids": [
-          "1000600121",
+          "1000300076",
           "2000600129",
           "2000600136",
           "2000600118"
@@ -209,14 +210,14 @@ window.STORY_DATA.chapters[0].byStarter = { '2000600126': {
       "lines": [
         {
           "speaker": "정아영",
-          "text": "크윽… 오명준 오빠한테 이를 거야!"
+          "text": "크윽… 곽재준 오빠한테 이를 거야!"
         },
         {
           "speaker": "내레이션",
           "text": "구로 배척지의 무력집단, 하이에나."
         },
         {
-          "speaker": "오명준",
+          "speaker": "곽재준",
           "text": "여왕벌 막내가 우리 집엔 웬일이야?", "expr": "웃음"
         },
         {
@@ -224,7 +225,7 @@ window.STORY_DATA.chapters[0].byStarter = { '2000600126': {
           "text": "USB를 찾으라고 시킨 사람, 누구죠?"
         },
         {
-          "speaker": "오명준",
+          "speaker": "곽재준",
           "text": "알면 너도 그 남자처럼 될 텐데?", "expr": "웃음"
         },
         {
@@ -232,11 +233,11 @@ window.STORY_DATA.chapters[0].byStarter = { '2000600126': {
           "text": "그래도 알아야겠어요.", "expr": "화남"
         },
         {
-          "speaker": "오명준",
+          "speaker": "곽재준",
           "text": "좋아. 무너뜨려 보든가!", "expr": "화남"
         }
       ],
-      "leader": "1000600121"
+      "leader": "1000300076"
     }
   },
   "intro": "구로 배척지 '여왕벌클럽'의 2인자.\n잔인한 언니와 오빠를 멈춰 세우는 단 하나의 브레이크.\n싸움은 약하지만, 사람의 마음을 읽는 데엔 누구보다 빠르다.",
@@ -280,11 +281,11 @@ window.STORY_DATA.chapters[0].byStarter = { '2000600126': {
   ],
   "ending": [
     {
-      "speaker": "오명준",
+      "speaker": "곽재준",
       "text": "…강남. 압구정에서 내려온 일이야."
     },
     {
-      "speaker": "오명준",
+      "speaker": "곽재준",
       "text": "우린 심부름꾼일 뿐이라고."
     },
     {
@@ -292,7 +293,7 @@ window.STORY_DATA.chapters[0].byStarter = { '2000600126': {
       "text": "이름은요?"
     },
     {
-      "speaker": "오명준",
+      "speaker": "곽재준",
       "text": "임… 유리. 열일곱 살짜리 꼬마래."
     },
     {
