@@ -150,7 +150,7 @@
     return { level, exp, totalExp, cpts, wasted };
   }
   function feedCalc(src, tgt) {
-    // 폐기 1장 EXP: 등급 기본 × (같은 이름 1.5) + 그 장의 누적 EXP 50%, 공용 포인트로 올린 강화는 환급 (서버와 같음)
+    // 분해 1장 EXP: 등급 기본 × (같은 이름 1.5) + 그 장의 누적 EXP 50%, 공용 포인트로 올린 강화는 환급 (서버와 같음)
     const a = card(src.id), b = card(tgt.id), same = !!(a && b && a.name === b.name);
     let amt = FEED_EXP[a?.grade] || 50;
     if (same) amt = Math.floor(amt * 1.5);
@@ -631,7 +631,7 @@
     const k = D.statPerPoint; save.owned.forEach(norm);
     const anyPts = save.points || cptsTotal(), gs = groups();
     show(`${topBar('🃏 보유 카드', 'hub')}<div class="text-center text-sm text-zinc-400 my-2">스토리 모드 전용 · ${gs.length}종 ${save.owned.length}장 · 공용 포인트 ${save.points}${cptsTotal() ? ` · 카드 전용 ${cptsTotal()}` : ''}</div>
-      <div class="text-center text-[11px] text-zinc-500 -mt-1 mb-2">카드를 누르면 상세 · 폐기 · 합성 ${save.owned.length > 1 ? '<button class="story-mini story-mini-red ml-1" data-go="bulk">' + ic('discard', { alt: '' }) + ' 일괄 폐기</button>' : ''}</div>
+      <div class="text-center text-[11px] text-zinc-500 -mt-1 mb-2">카드를 누르면 상세 · 분해 · 합성 ${save.owned.length > 1 ? '<button class="story-mini story-mini-red ml-1" data-go="bulk">' + ic('discard', { alt: '' }) + ' 일괄 분해</button>' : ''}</div>
       <div class="story-grid">${gs.map(gr => { const o = gr.rep, c = boosted(o); if (!c) return ''; const b = o.boost || {}, n = gr.list.length, open = openGroups.has(gr.id);
         const up = STATS.filter(s => b[s]).map(s => `${s} +${ptGain(s, b[s])}`).join(' · ');
         const mergeable = gr.list.some(canMerge);
@@ -657,8 +657,8 @@
       ${n > 1 ? '<div class="story-hint">💡 전투에는 같은 카드 중 1장만 나가요 (리더 · 없으면 레벨이 가장 높은 장). 남는 장은 합성 재료로 쓸 수 있어요.</div>' : ''}
       ${canMerge(o) ? `<button id="story-d-merge" class="story-merge-btn">${ic('merge', { alt: '' })} 합성 (EX${exOf(o)} → EX${exOf(o) + 1})</button>` : exOf(o) >= maxEx(o) ? `<div class="text-[11px] text-red-300 mt-2 text-center">최대 합성 단계 (EX${maxEx(o)})</div>` : ''}
       <div class="flex gap-2 mt-4"><button id="story-d-stats" class="flex-1 py-2.5 rounded-xl bg-emerald-500 text-black font-bold" ${save.points || o.cpts ? '' : 'disabled'}>📈 스탯 분배</button>
-      <button id="story-d-discard" class="flex-1 py-2.5 rounded-xl bg-red-500/80 font-bold" ${canDiscard(o) ? '' : 'disabled'}>${ic('discard', { alt: '' })} 폐기</button></div>
-      ${isLeader(o) ? '<div class="text-[11px] text-zinc-500 mt-2 text-center">리더 카드는 폐기할 수 없어요</div>' : ''}`, renderCards);
+      <button id="story-d-discard" class="flex-1 py-2.5 rounded-xl bg-red-500/80 font-bold" ${canDiscard(o) ? '' : 'disabled'}>${ic('discard', { alt: '' })} 분해</button></div>
+      ${isLeader(o) ? '<div class="text-[11px] text-zinc-500 mt-2 text-center">리더 카드는 분해할 수 없어요</div>' : ''}`, renderCards);
     $('story-d-stats').onclick = () => { p.close(true); openStats(renderCards, idxOf(o)); };
     $('story-d-discard').onclick = () => { p.close(true); pickTarget(o.uid); };
     const mb = $('story-d-merge'); if (mb) mb.onclick = () => { p.close(true); mergePreview(o.uid); };
@@ -705,22 +705,22 @@
       levelUpFx(`EX${res.r.ex} 합성! +${res.r.bonus}%`);
     };
   }
-  // ----- 일괄 폐기: 여러 장(인스턴스)을 골라 EXP를 대상 1장에 (서버 story_discard_many, 전부 성공 또는 전부 취소) -----
+  // ----- 일괄 분해: 여러 장(인스턴스)을 골라 EXP를 대상 1장에 (서버 story_discard_many, 전부 성공 또는 전부 취소) -----
   function bulkCalc(sel, tgt) {
     let n = 0, amt = 0, same = 0, refund = 0; const ids = [];
     for (const o of save.owned) { if (!sel.has(o.uid) || o.uid === tgt.uid) continue; const f = feedCalc(o, tgt); amt += f.amt; refund += f.refund; n++; if (f.same) same++; ids.push(o.uid); }
     return { n, amt, same, refund, ids };
   }
-  /** 일괄 폐기 1단계: EXP 받을 카드 고르기 (기본 선택 없음) */
+  /** 일괄 분해 1단계: EXP 받을 카드 고르기 (기본 선택 없음) */
   function bulkPickTarget(st = {}) {
     save.owned.forEach(norm);
     const list = groups().flatMap(gr => gr.list);
-    const p = popup(`<div class="text-lg font-black mb-1">${ic('discard', { alt: '' })} 일괄 폐기</div>
-      <div class="story-bulk-steps"><b class="on">① EXP 받을 카드</b><span>② 폐기할 카드</span></div>
-      <div class="text-xs text-zinc-400 mb-2">먼저 <b class="text-emerald-300">EXP를 받을 카드</b>를 골라 주세요. 그다음 폐기할 카드를 고를 수 있어요.</div>
+    const p = popup(`<div class="text-lg font-black mb-1">${ic('discard', { alt: '' })} 일괄 분해</div>
+      <div class="story-bulk-steps"><b class="on">① EXP 받을 카드</b><span>② 분해할 카드</span></div>
+      <div class="text-xs text-zinc-400 mb-2">먼저 <b class="text-emerald-300">EXP를 받을 카드</b>를 골라 주세요. 그다음 분해할 카드를 고를 수 있어요.</div>
       <div class="story-target-list">${list.map(o => { const c = card(o.id);
         return `<button data-bt="${o.uid}" class="story-target ${o.uid === st.tu ? 'cur' : ''}"><img src="${IMG}${o.id}.webp" alt=""><div class="flex-1 min-w-0 text-left"><div class="text-sm font-bold truncate">${isLeader(o) ? ic('crown', { alt: '리더' }) + ' ' : ''}${esc(exName(o, c?.name))} <span class="text-[10px] text-zinc-400">${RAR[c?.grade] || 'N'}</span></div><div class="text-[11px] text-zinc-400">Lv.${o.level} / ${lvCap(o)}${o.level >= lvCap(o) ? ' <span class="text-red-300">최대 레벨</span>' : ''}</div></div><span class="text-emerald-300 text-sm">선택 ›</span></button>`; }).join('')}</div>
-      <button class="w-full mt-3 py-2.5 rounded-xl bg-red-500 font-bold" disabled>② 폐기할 카드 고르기</button>
+      <button class="w-full mt-3 py-2.5 rounded-xl bg-red-500 font-bold" disabled>② 분해할 카드 고르기</button>
       <button data-close-pop class="w-full mt-2 py-2.5 rounded-xl bg-zinc-700 font-bold">취소</button>`, renderCards);
     p.el.querySelectorAll('[data-bt]').forEach(b => b.onclick = () => { p.close(true); bulkDiscard({ ...st, tu: b.dataset.bt, scroll: 0 }); });
   }
@@ -734,17 +734,17 @@
     const list = groups().flatMap(gr => gr.list);
     const grades = Object.keys(RAR).filter(gr => save.owned.some(o => !locked(o) && card(o.id)?.grade === gr));
     const spare = o => !locked(o) && copiesOf(o.id).length > 1 && repOf(o.id) !== o;
-    const p = popup(`<div class="text-lg font-black mb-1">${ic('discard', { alt: '' })} 일괄 폐기</div>
-      <div class="story-bulk-steps"><span>① EXP 받을 카드</span><b class="on">② 폐기할 카드</b></div>
+    const p = popup(`<div class="text-lg font-black mb-1">${ic('discard', { alt: '' })} 일괄 분해</div>
+      <div class="story-bulk-steps"><span>① EXP 받을 카드</span><b class="on">② 분해할 카드</b></div>
       <div class="story-bulk-tgt"><img src="${IMG}${tgt.id}.webp" alt=""><div class="flex-1 min-w-0 text-left"><div class="text-[11px] text-emerald-300 font-bold">EXP 받을 카드</div><div class="text-lg font-black truncate">${isLeader(tgt) ? ic('crown', { alt: '리더' }) + ' ' : ''}${esc(exName(tgt, card(tgt.id)?.name))}</div><div class="text-xs text-zinc-400">${RAR[card(tgt.id)?.grade] || 'N'} · Lv.${tgt.level} / ${lvCap(tgt)}</div></div><button id="bulk-change" class="story-chip">바꾸기</button></div>
-      <div class="text-xs text-zinc-400 mb-1">고른 카드를 모두 폐기하고, EXP를 위 카드에 몰아줘요</div>
+      <div class="text-xs text-zinc-400 mb-1">고른 카드를 모두 분해하고, EXP를 위 카드에 몰아줘요</div>
       <div class="flex flex-wrap gap-1.5 my-2"><button class="story-chip" data-q="all">전체 선택</button>${save.owned.some(spare) ? '<button class="story-chip" data-q="spare">출전 안 하는 중복만</button>' : ''}${grades.map(gr => `<button class="story-chip" data-q="${gr}">${RAR[gr]} 전체</button>`).join('')}<button class="story-chip" data-q="none">선택 해제</button></div>
       <div class="story-bulk-list" id="bulk-list">${list.map(o => { const c = card(o.id), lk = locked(o), on = sel.has(o.uid);
-        return `<div class="story-bulk-row ${lk ? 'lock' : ''} ${on ? 'on' : ''}" ${lk ? '' : `data-row="${o.uid}"`}><input type="checkbox" ${on ? 'checked' : ''} ${lk ? 'disabled' : ''}><img src="${IMG}${o.id}.webp" alt=""><div class="flex-1 min-w-0"><div class="text-sm font-bold truncate">${esc(exName(o, c?.name))} <span class="text-[10px] text-zinc-400">${RAR[c?.grade] || 'N'} · Lv.${o.level}</span>${c?.name === card(tgt.id)?.name && !lk ? ' <span class="text-amber-300 text-[10px]">×1.5</span>' : ''}</div><div class="text-[10px] text-zinc-500">${lk ? (o.uid === tu ? 'EXP 받을 카드' : '리더 · 폐기 불가') : `${repOf(o.id) === o ? '⚔️ 출전 카드 · ' : ''}누적 EXP ${fmt(o.totalExp)}`}</div></div></div>`; }).join('')}</div>
-      <div class="story-bulk-sum">${f.n ? `<b>${f.n}장</b> 선택 · EXP <b class="text-sky-300">+${fmt(f.amt)}</b>${f.same ? ` <span class="text-amber-300 text-[11px]">(같은 이름 ${f.same}장 ×1.5)</span>` : ''}<br>${esc(exName(tgt, card(tgt.id)?.name))} Lv.${tgt.level} → <b class="text-emerald-300">Lv.${g.level}</b> · 스탯 +${lvPct(tgt)}% → +${lvPct({ id: tgt.id, level: g.level })}%${f.refund ? `<br><span class="text-emerald-300 text-[11px]">공용 포인트 ${f.refund} 돌려받음</span>` : ''}` : '<span class="text-zinc-500">폐기할 카드를 골라 주세요</span>'}</div>
+        return `<div class="story-bulk-row ${lk ? 'lock' : ''} ${on ? 'on' : ''}" ${lk ? '' : `data-row="${o.uid}"`}><input type="checkbox" ${on ? 'checked' : ''} ${lk ? 'disabled' : ''}><img src="${IMG}${o.id}.webp" alt=""><div class="flex-1 min-w-0"><div class="text-sm font-bold truncate">${esc(exName(o, c?.name))} <span class="text-[10px] text-zinc-400">${RAR[c?.grade] || 'N'} · Lv.${o.level}</span>${c?.name === card(tgt.id)?.name && !lk ? ' <span class="text-amber-300 text-[10px]">×1.5</span>' : ''}</div><div class="text-[10px] text-zinc-500">${lk ? (o.uid === tu ? 'EXP 받을 카드' : '리더 · 분해 불가') : `${repOf(o.id) === o ? '⚔️ 출전 카드 · ' : ''}누적 EXP ${fmt(o.totalExp)}`}</div></div></div>`; }).join('')}</div>
+      <div class="story-bulk-sum">${f.n ? `<b>${f.n}장</b> 선택 · EXP <b class="text-sky-300">+${fmt(f.amt)}</b>${f.same ? ` <span class="text-amber-300 text-[11px]">(같은 이름 ${f.same}장 ×1.5)</span>` : ''}<br>${esc(exName(tgt, card(tgt.id)?.name))} Lv.${tgt.level} → <b class="text-emerald-300">Lv.${g.level}</b> · 스탯 +${lvPct(tgt)}% → +${lvPct({ id: tgt.id, level: g.level })}%${f.refund ? `<br><span class="text-emerald-300 text-[11px]">공용 포인트 ${f.refund} 돌려받음</span>` : ''}` : '<span class="text-zinc-500">분해할 카드를 골라 주세요</span>'}</div>
       ${g.wasted && f.n ? `<div class="story-warn">⚠️ 최대 레벨(Lv.${lvCap(tgt)})을 넘는 EXP ${fmt(g.wasted)}은 사라져요.</div>` : ''}
-      ${f.n && save.owned.some(o => sel.has(o.uid) && canMergeAny(o)) ? '<div class="story-hint">💡 같은 카드가 여러 장이면 폐기 대신 합성(EX)에 쓸 수도 있어요.</div>' : ''}
-      <div class="flex gap-2 mt-3"><button data-close-pop class="flex-1 py-2.5 rounded-xl bg-zinc-700 font-bold">취소</button><button id="bulk-ok" class="flex-1 py-2.5 rounded-xl bg-red-500 font-bold" ${f.n ? '' : 'disabled'}>${f.n ? `${f.n}장 분해 → ${esc(card(tgt.id)?.name)}에게 EXP` : '폐기할 카드를 골라 주세요'}</button></div>`, renderCards);
+      ${f.n && save.owned.some(o => sel.has(o.uid) && canMergeAny(o)) ? '<div class="story-hint">💡 같은 카드가 여러 장이면 분해 대신 합성(EX)에 쓸 수도 있어요.</div>' : ''}
+      <div class="flex gap-2 mt-3"><button data-close-pop class="flex-1 py-2.5 rounded-xl bg-zinc-700 font-bold">취소</button><button id="bulk-ok" class="flex-1 py-2.5 rounded-xl bg-red-500 font-bold" ${f.n ? '' : 'disabled'}>${f.n ? `${f.n}장 분해 → ${esc(card(tgt.id)?.name)}에게 EXP` : '분해할 카드를 골라 주세요'}</button></div>`, renderCards);
     const box = $('bulk-list'); box.scrollTop = st.scroll || 0;
     const re = () => bulkDiscard({ tu, sel, scroll: box.scrollTop });
     $('bulk-change').onclick = () => { p.close(true); bulkPickTarget({ tu, sel }); };
@@ -757,12 +757,12 @@
   const canMergeAny = o => copiesOf(o.id).length > 1 && exOf(o) < maxEx(o);
   function confirmBulk(tu, sel, f, g, scroll) {
     const tgt = byUid(tu), names = save.owned.filter(o => sel.has(o.uid)).map(o => `${esc(exName(o, card(o.id)?.name))} Lv.${o.level}`);
-    const p = popup(`<div class="text-lg font-black mb-2">정말 폐기할까요?</div>
-      <div class="text-sm"><b>${f.n}장</b>을 폐기하고 <b>${esc(exName(tgt, card(tgt.id)?.name))}</b>에게 EXP <b class="text-sky-300">+${fmt(f.amt)}</b></div>
+    const p = popup(`<div class="text-lg font-black mb-2">정말 분해할까요?</div>
+      <div class="text-sm"><b>${f.n}장</b>을 분해하고 <b>${esc(exName(tgt, card(tgt.id)?.name))}</b>에게 EXP <b class="text-sky-300">+${fmt(f.amt)}</b></div>
       <div class="text-[11px] text-zinc-400 mt-1 max-h-24 overflow-y-auto">${names.join(', ')}</div>
       <div class="text-sm mt-1">Lv.${tgt.level} → <b class="text-emerald-300">Lv.${g.level}</b></div>
       ${g.wasted ? `<div class="story-warn">⚠️ 최대 레벨(Lv.${lvCap(tgt)})을 넘는 EXP ${fmt(g.wasted)}은 사라져요.</div>` : ''}
-      <div class="text-[11px] text-red-300 mt-2">폐기한 카드는 되돌릴 수 없어요.</div>
+      <div class="text-[11px] text-red-300 mt-2">분해한 카드는 되돌릴 수 없어요.</div>
       <div class="flex gap-2 mt-4"><button id="bulk-no" class="flex-1 py-2.5 rounded-xl bg-zinc-700 font-bold">취소</button><button id="bulk-yes" class="flex-1 py-2.5 rounded-xl bg-red-500 font-bold">${f.n}장 분해 → ${esc(card(tgt.id)?.name)}에게 EXP</button></div>`, renderCards);
     $('bulk-no').onclick = () => { p.close(true); bulkDiscard({ tu, sel, scroll }); };
     $('bulk-yes').onclick = async () => {
@@ -774,14 +774,14 @@
         return { count: f.n, exp: f.amt, from, level: g.level, refund: f.refund };
       }, r => r.data);
       p.close(true); renderCards();
-      if (res.ok) { const r = res.r || {}; toast(`🗑️ ${r.count}장 폐기 · ${card(tgt.id)?.name} EXP +${fmt(r.exp)}`); if (r.level > r.from) levelUpFx(`LEVEL UP! Lv.${r.level}`); }
+      if (res.ok) { const r = res.r || {}; toast(`🗑️ ${r.count}장 분해 · ${card(tgt.id)?.name} EXP +${fmt(r.exp)}`); if (r.level > r.from) levelUpFx(`LEVEL UP! Lv.${r.level}`); }
     };
   }
-  // ----- 1장 폐기: EXP를 받을 카드 고르기 -----
+  // ----- 1장 분해: EXP를 받을 카드 고르기 -----
   function pickTarget(su) {
     const src = byUid(su), sc = card(src.id);
     const targets = groups().flatMap(gr => gr.list).filter(o => o.uid !== su);
-    const p = popup(`<div class="text-lg font-black mb-1">${ic('discard', { alt: '' })} ${esc(exName(src, sc?.name))} Lv.${src.level} 폐기</div><div class="text-xs text-zinc-400 mb-3">EXP를 받을 카드를 골라 주세요</div>
+    const p = popup(`<div class="text-lg font-black mb-1">${ic('discard', { alt: '' })} ${esc(exName(src, sc?.name))} Lv.${src.level} 분해</div><div class="text-xs text-zinc-400 mb-3">EXP를 받을 카드를 골라 주세요</div>
       <div class="story-target-list">${targets.map(o => { const c = card(o.id), f = feedCalc(src, o), g = gainCalc(o, f.amt);
         return `<button data-t="${o.uid}" class="story-target"><img src="${IMG}${o.id}.webp" alt=""><div class="flex-1 min-w-0 text-left"><div class="text-sm font-bold truncate">${isLeader(o) ? ic('crown', { alt: '리더' }) + ' ' : ''}${esc(exName(o, c?.name))}${f.same ? ' <span class="text-amber-300 text-[10px]">같은 이름 ×1.5</span>' : ''}</div><div class="text-[11px] text-zinc-400">Lv.${o.level} → <b class="${g.level > o.level ? 'text-emerald-300' : ''}">Lv.${g.level}</b> · EXP +${fmt(f.amt)}${g.wasted ? ` <span class="text-red-300">(${fmt(g.wasted)} 낭비)</span>` : ''}</div></div></button>`; }).join('')}</div>
       <button data-close-pop class="w-full mt-3 py-2.5 rounded-xl bg-zinc-700 font-bold">취소</button>`, renderCards);
@@ -789,14 +789,14 @@
   }
   function confirmDiscard(su, tu) {
     const src = byUid(su), tgt = byUid(tu), sc = card(src.id), tc = card(tgt.id), f = feedCalc(src, tgt), g = gainCalc(tgt, f.amt);
-    const p = popup(`<div class="text-lg font-black mb-2">정말 폐기할까요?</div>
+    const p = popup(`<div class="text-lg font-black mb-2">정말 분해할까요?</div>
       <div class="text-sm"><b>${esc(exName(src, sc?.name))}</b> Lv.${src.level} → <b>${esc(exName(tgt, tc?.name))}</b> EXP <b class="text-sky-300">+${fmt(f.amt)}</b></div>
       <div class="text-sm mt-1">Lv.${tgt.level} → <b class="text-emerald-300">Lv.${g.level}</b>${g.level > tgt.level ? ` · 스탯 +${lvPct(tgt)}% → +${lvPct({ id: tgt.id, level: g.level })}%` : ''}</div>
       ${g.wasted ? `<div class="story-warn">⚠️ 최대 레벨(Lv.${lvCap(tgt)})을 넘는 EXP ${fmt(g.wasted)}은 사라져요.</div>` : ''}
       ${f.refund ? `<div class="text-xs text-emerald-300 mt-1">이 카드에 쓴 공용 포인트 ${f.refund}은 돌려받아요.</div>` : ''}
       ${canMergeAny(src) ? '<div class="story-hint">💡 같은 카드가 여러 장이면 합성(EX) 재료로 쓸 수도 있어요.</div>' : ''}
       ${src.cpts || src.spentCard ? '<div class="text-[11px] text-zinc-400 mt-1">카드 전용 포인트와 그걸로 올린 스탯은 함께 사라져요.</div>' : ''}
-      <div class="flex gap-2 mt-4"><button data-close-pop class="flex-1 py-2.5 rounded-xl bg-zinc-700 font-bold">취소</button><button id="story-disc-ok" class="flex-1 py-2.5 rounded-xl bg-red-500 font-bold">폐기</button></div>`, renderCards);
+      <div class="flex gap-2 mt-4"><button data-close-pop class="flex-1 py-2.5 rounded-xl bg-zinc-700 font-bold">취소</button><button id="story-disc-ok" class="flex-1 py-2.5 rounded-xl bg-red-500 font-bold">분해</button></div>`, renderCards);
     $('story-disc-ok').onclick = async () => {
       $('story-disc-ok').disabled = true;
       const res = await act('story_discard', { p_id: su, p_target: tu }, () => {
@@ -806,7 +806,7 @@
         return { exp: f.amt, from, level: g.level, refund: f.refund };
       }, r => r.data);
       p.close(true); renderCards();
-      if (res.ok) { const r = res.r || {}; toast(`🗑️ ${sc?.name} 폐기 · ${tc?.name} EXP +${r.exp}`); if (r.level > r.from) levelUpFx(`LEVEL UP! Lv.${r.level}`); }
+      if (res.ok) { const r = res.r || {}; toast(`🗑️ ${sc?.name} 분해 · ${tc?.name} EXP +${r.exp}`); if (r.level > r.from) levelUpFx(`LEVEL UP! Lv.${r.level}`); }
     };
   }
 

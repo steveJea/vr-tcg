@@ -12,7 +12,7 @@
     // set2
     crown:   { src: 'leader_crown.webp', alt: '왕관' },
     merge:   { src: 'merge.webp',   alt: '합성' },
-    discard: { src: 'discard.webp', alt: '폐기' },
+    discard: { src: 'discard.webp', alt: '분해' },
     merc:    { src: 'merc.webp',    alt: '용병' },
     weapon:  { src: 'merc.webp',    alt: '무기' },
     opening: { src: 'opening.webp', alt: '연출' },
