@@ -208,3 +208,22 @@ span.story-lvpct { background: rgba(251,191,36,.12); border: 1px solid rgba(251,
 .story-forced-h small{font-weight:500;color:#a1a1aa}
 .story-pick-card.locked{cursor:default;outline:2px solid #38bdf8;outline-offset:-2px;border-radius:12px}
 .story-forced{margin-bottom:6px}
+/* ===== 스토리 메인 (허브) ===== */
+/* 배경: img/story/hub/bg_pc.webp (16:9) / bg_m.webp (9:16). 파일이 없으면 아래 겹친 메인 배경이 보임 */
+.story-hub-bg{position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:linear-gradient(180deg,rgba(0,0,0,.35),rgba(0,0,0,.25) 40%,rgba(0,0,0,.85)),url(../img/story/hub/bg_pc.webp) center/cover no-repeat,url(../img/main-landscape.webp) center/cover no-repeat,#0c0a09}
+@media (max-aspect-ratio:3/4),(max-width:600px){.story-hub-bg{background:linear-gradient(180deg,rgba(0,0,0,.35),rgba(0,0,0,.25) 40%,rgba(0,0,0,.85)),url(../img/story/hub/bg_m.webp) center/cover no-repeat,url(../img/main-portrait.webp) center/cover no-repeat,#0c0a09}}
+.story-hub{position:relative;z-index:1;max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+.story-hub .main-btn{font-family:'Noto Sans KR',sans-serif}
+.story-hub-go{display:flex;flex-direction:column;align-items:center;gap:2px;padding:.9rem 1rem;margin-top:8vh}
+.story-hub-go b{font-size:1.6rem;letter-spacing:.04em;color:#fde68a}
+.story-hub-go small{font-size:.8rem;color:#e7d3a8;font-weight:500}
+.story-hub-list{display:flex;flex-direction:column;gap:8px}
+.story-hub-ch{display:flex;justify-content:space-between;align-items:center;gap:8px;text-align:left;padding:.55rem .8rem}
+.story-hub-ch-t{font-weight:800}
+.story-hub-ch-s{font-size:.8rem;color:#fcd34d;white-space:nowrap}
+.story-hub-ch.locked .story-hub-ch-s{color:#a1a1aa}
+.story-hub-menu{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:6px}
+.story-hub-menu .main-btn{position:relative;padding:.6rem .2rem;font-size:.85rem;word-break:keep-all;line-height:1.25;display:flex;flex-direction:column;align-items:center;gap:2px}
+.story-hub-menu small{font-size:.65rem;color:#a1a1aa}
+.story-shop{max-width:420px;margin:12px auto 0;text-align:center}
