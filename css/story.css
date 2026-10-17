@@ -101,7 +101,7 @@
 .story-tab-arr:disabled { opacity: 0; pointer-events: none; }
 .story-tabwrap.fit .story-tab-arr { display: none; }
 
-/* ----- 카드 레벨 · 폐기 ----- */
+/* ----- 카드 레벨 · 분해 ----- */
 .story-owned { cursor: pointer; position: relative; }
 .story-owned:hover .story-card { border-color: rgba(52,211,153,.6); }
 .story-lv { display: flex; justify-content: space-between; align-items: baseline; gap: 4px; font-size: 10px; margin-top: 3px; padding: 0 2px; }
@@ -139,7 +139,7 @@
 .story-ovp-tap button { display: flex; flex-direction: column; align-items: center; gap: 10px; color: #fff; font-size: 54px; line-height: 1; }
 .story-ovp-tap button span { font-size: 16px; font-weight: 800; background: rgba(251,191,36,.9); color: #000; padding: 8px 16px; border-radius: 9999px; }
 
-/* ----- 레벨 스탯 보너스 · 일괄 폐기 ----- */
+/* ----- 레벨 스탯 보너스 · 일괄 분해 ----- */
 .story-lvpct { color: #fbbf24; font-style: normal; font-weight: 900; }
 .story-lv .story-lvpct { font-size: 10px; }
 span.story-lvpct { background: rgba(251,191,36,.12); border: 1px solid rgba(251,191,36,.4); border-radius: 9999px; padding: 1px 8px; }
@@ -248,3 +248,14 @@ span.story-lvpct { background: rgba(251,191,36,.12); border: 1px solid rgba(251,
 .story-tk-card div{padding:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .story-tk-card.g-r{border-color:#38bdf8}.story-tk-card.g-hr{border-color:#34d399;box-shadow:0 0 10px #34d39988}.story-tk-card.g-sr{border-color:#c084fc;box-shadow:0 0 12px #c084fcaa}.story-tk-card.g-ur{border-color:#facc15;box-shadow:0 0 16px #facc15cc}
 @keyframes tkIn{from{opacity:0;transform:translateY(8px) scale(.9)}to{opacity:1;transform:none}}
+/* 일괄 분해: 단계 표시 · EXP 받을 카드 고정 */
+.story-bulk-steps{display:flex;gap:6px;justify-content:center;font-size:11px;margin:2px 0 8px}
+.story-bulk-steps>*{padding:2px 10px;border-radius:999px;background:rgba(255,255,255,.06);color:#a1a1aa;font-weight:700}
+.story-bulk-steps .on{background:rgba(52,211,153,.18);color:#6ee7b7}
+.story-bulk-tgt{position:sticky;top:-18px;z-index:2;display:flex;gap:10px;align-items:center;margin:0 -4px 8px;padding:8px 10px;border-radius:14px;background:#14251d;border:1px solid #34d399;box-shadow:0 6px 14px rgba(0,0,0,.5)}
+.story-bulk-tgt img{width:56px;aspect-ratio:3/4;object-fit:cover;border-radius:8px}
+.story-target.cur{border-color:#34d399}
+
+/* 보유 카드 정렬 */
+.story-sortbar{display:flex;justify-content:center;gap:6px;margin:0 0 10px}
+.story-sortbar .story-chip{cursor:pointer}
