@@ -206,9 +206,9 @@
     r.scrollTop = 0;
   }
   function home() { bgm('main'); root().classList.add('hidden'); $('start-screen').classList.remove('hidden'); }
-  const topBar = (title, back = 'home') => `<div class="story-top"><button class="story-back" data-go="${back}">← ${back === 'home' ? '처음으로' : '돌아가기'}</button><div class="story-top-title">${title}</div><span class="flex gap-1.5"><button class="story-mycards story-gacha-btn" data-go="gacha">🎴 카드 뽑기${canDraw() ? '<i class="story-badge">1</i>' : ''}</button><button class="story-mycards" data-go="cards">🃏 보유 카드</button></span></div>`;
+  const topBar = (title, back = 'home') => `<div class="story-top"><button class="story-back" data-go="${back}">← ${back === 'home' ? '처음으로' : back === 'hub' ? '스토리 메인' : '돌아가기'}</button><div class="story-top-title">${title}</div><span class="flex gap-1.5"><button class="story-mycards story-gacha-btn" data-go="gacha">🎴 카드 뽑기${canDraw() ? '<i class="story-badge">1</i>' : ''}</button><button class="story-mycards" data-go="cards">🃏 보유 카드</button></span></div>`;
   function bind(extra = {}) {
-    root().querySelectorAll('[data-go]').forEach(b => b.onclick = () => ({ home, map: renderMap, cards: renderCards, gacha: openGacha, ...extra })[b.dataset.go]?.());
+    root().querySelectorAll('[data-go]').forEach(b => b.onclick = () => ({ home, hub: renderHub, map: renderMap, cards: renderCards, gacha: renderShop, ...extra })[b.dataset.go]?.());
   }
   const tile = (c, extra = '') => `<div class="story-card"><div class="story-card-img"><img src="${IMG}${c.id}.webp" alt="${esc(c.name)}" loading="lazy" onerror="this.style.visibility='hidden'"><span class="story-rar">${RAR[c.grade] || 'N'}</span></div><div class="story-card-name">${esc(c.name)}</div><div class="story-card-stats"><span class="text-orange-400">${ic('atk', { cls: 'ui-ic-sm' })}${fmt(c.ATK)}</span><span class="text-red-400">${ic('hp', { cls: 'ui-ic-sm' })}${fmt(c.HP)}</span><span class="text-sky-400">${ic('def', { cls: 'ui-ic-sm' })}${fmt(c.DEF)}</span></div>${extra}</div>`;
 
@@ -237,7 +237,7 @@
     await checkChapters(); curCh = null;
     if (!save.openingSeen) return renderOpening();
     if (!save.starter) return renderSelect();
-    renderMap();
+    renderHub();
     // 스탯 규칙 변경 안내 (한 번만)
     const RF = `vrTcgStatRefundSeen:${user()?.id || 'guest'}:${D.statRuleV || 1}`;
     if (save.statRefunded && !localStorage.getItem(RF)) {
@@ -247,7 +247,7 @@
         <div class="text-sm text-zinc-300 space-y-1"><div>· 포인트 1당 ATK +${k.ATK}, HP +${k.HP}, DEF +${k.DEF}</div><div>· 같은 스탯 ${D.statFull + 1}번째 포인트부터는 절반만 올라요</div><div>· 한 스탯에는 그 카드 포인트 합계의 절반(올림)까지만 넣을 수 있어요</div>
         <div class="text-emerald-300 font-bold mt-2">지금까지 분배한 포인트를 모두 돌려드렸어요. 다시 분배해 주세요!</div></div>
         <div class="flex gap-2 mt-4"><button data-close-pop class="flex-1 py-2.5 rounded-xl bg-zinc-700 font-bold">나중에</button><button id="story-refund-go" class="flex-1 py-2.5 rounded-xl bg-emerald-500 text-black font-bold">📈 지금 분배</button></div>`);
-      $('story-refund-go').onclick = () => { $('story-pop')?.querySelector('[data-close-pop]')?.click(); openStats(() => renderMap()); };
+      $('story-refund-go').onclick = () => { $('story-pop')?.querySelector('[data-close-pop]')?.click(); openStats(() => renderHub()); };
     }
   }
 
@@ -344,7 +344,7 @@
     const tabs = D.chapters.length > 1 ? `<div class="story-chtabs">${D.chapters.map((c, i) => { const open = chapterOpen(i), why = !open ? (i && !chapterDone(D.chapters[i - 1]) ? `${esc(D.chapters[i - 1].title)} 클리어 후` : '준비 중') : '';
       return `<button class="story-chtab ${i === curCh ? 'on' : ''}" data-ch="${i}" ${open ? '' : 'disabled'}>${open ? '' : '🔒 '}${esc(c.title)}${why ? `<small>${why}</small>` : ''}</button>`; }).join('')}</div>` : '';
     const nextCh = D.chapters[curCh + 1], nextOpen = nextCh && chapterOpen(curCh + 1);
-    show(`${topBar(esc(ch.title))}${tabs}
+    show(`${topBar(esc(ch.title), 'hub')}${tabs}
       <div class="text-center mt-2"><div class="story-chapter-big text-3xl md:text-5xl">${esc(ch.title)}</div><div class="story-chapter-name">${esc(ch.subtitle)}</div>
         ${hero ? `<div class="story-route-tag">루트 <b>${esc(hero.name)}</b>${clearedOf(ch).length ? '' : ' <button class="story-mini" data-go="route">루트 바꾸기</button>'}</div>` : ''}</div>
       ${rows.map(r => `<div class="story-map ${rows.length > 1 ? 'story-map-row' : ''}">${r.map(node).join('')}</div>`).join('')}
@@ -357,6 +357,42 @@
     bind({ stats: () => openStats(renderMap), opening: () => playOpening(renderMap), route: () => renderRouteSelect(curCh) });
     root().querySelectorAll('[data-ch]').forEach(b => b.onclick = () => renderMap(+b.dataset.ch));
     root().querySelectorAll('[data-phase]').forEach(b => b.onclick = () => startPhase(ch, ch.phases.find(p => p.no === +b.dataset.phase)));
+  }
+
+  // ----- 스토리 메인 (허브): 이어하기 · 챕터 목록 · 메뉴. 배경 img/story/hub/bg_pc.webp / bg_m.webp (없으면 메인 배경) -----
+  function nextPlay() {   // 열린 챕터 중 안 깬 페이즈가 있는 첫 챕터
+    for (let i = 0; i < D.chapters.length && chapterOpen(i); i++) {
+      const base = D.chapters[i], ch = chapterFor(base), ph = ch.phases.find(p => !clearedOf(ch).includes(p.no));
+      if (ph) return { i, base, ch, ph };
+    }
+    return null;
+  }
+  function renderHub() {
+    const nx = nextPlay();
+    const rows = D.chapters.map((base, i) => {
+      const open = chapterOpen(i), ch = chapterFor(base), n = clearedOf(ch).length, tot = ch.phases.length, r = routeOf(base), hero = r && card(r);
+      const why = open ? '' : (i && !chapterDone(D.chapters[i - 1]) ? `${esc(D.chapters[i - 1].title)} 클리어 후` : '준비 중');
+      return `<button class="story-hub-ch main-btn ${open ? '' : 'locked'}" data-hubch="${i}" ${open ? '' : 'disabled'}>
+        <span class="story-hub-ch-t">${open ? '' : '🔒 '}${esc(base.title)}${ch.subtitle ? ` 「${esc(ch.subtitle)}」` : ''}</span>
+        <span class="story-hub-ch-s">${open ? `${hero ? `${esc(hero.name)} 루트 · ` : base.byRoute ? '루트 선택 전 · ' : ''}${n}/${tot}${n >= tot ? ' ✔ 클리어' : ''}` : why}</span></button>`; }).join('');
+    show(`<div class="story-hub-bg" aria-hidden="true"></div><div class="story-hub">
+      <div class="story-top"><button class="story-back" data-go="home">← 처음으로</button><div class="story-top-title">스토리 모드</div><span></span></div>
+      <button class="story-hub-go main-btn" id="story-continue" ${nx ? '' : 'disabled'}><b>▶ 이어하기</b><small>${nx ? `${esc(nx.base.title)} · Phase.${nx.ph.no}${nx.ph.title ? ` 「${esc(nx.ph.title)}」` : ''}${nx.ph.type === 'boss' ? ' · BOSS' : ''}` : '열린 챕터를 모두 클리어했어요'}</small></button>
+      <div class="story-hub-list">${rows}</div>
+      <div class="story-hub-menu">
+        <button class="main-btn" data-go="gacha">🎴 카드 뽑기${canDraw() ? '<i class="story-badge">1</i>' : ''}</button>
+        <button class="main-btn" data-go="cards">🃏 내 카드/스탯${save.points ? ` <i class="story-badge">${save.points}</i>` : ''}</button>
+        <button class="main-btn" disabled title="준비 중">📅 이벤트 스토리 <small>준비 중</small></button></div>
+    </div>`);
+    bind();
+    root().querySelectorAll('[data-hubch]').forEach(b => b.onclick = () => renderMap(+b.dataset.hubch));
+    $('story-continue').onclick = () => {
+      if (!nx) return;
+      curCh = nx.i;
+      // 루트 선택·시작 대사가 남았으면 지도 쪽 흐름으로, 아니면 바로 다음 페이즈
+      if ((nx.base.byRoute && !routeOf(nx.base)) || (nx.i === 0 && nx.ch.start?.length && !save.startSeen) || (nx.ch.route && nx.ch.start?.length && !routeStartSeen(nx.ch))) return renderMap(nx.i);
+      startPhase(nx.ch, nx.ph);
+    };
   }
 
   function startPhase(ch, ph) {
@@ -591,7 +627,7 @@
   function renderCards() {
     const k = D.statPerPoint; save.owned.forEach(norm);
     const anyPts = save.points || cptsTotal(), gs = groups();
-    show(`${topBar('🃏 보유 카드', 'map')}<div class="text-center text-sm text-zinc-400 my-2">스토리 모드 전용 · ${gs.length}종 ${save.owned.length}장 · 공용 포인트 ${save.points}${cptsTotal() ? ` · 카드 전용 ${cptsTotal()}` : ''}</div>
+    show(`${topBar('🃏 보유 카드', 'hub')}<div class="text-center text-sm text-zinc-400 my-2">스토리 모드 전용 · ${gs.length}종 ${save.owned.length}장 · 공용 포인트 ${save.points}${cptsTotal() ? ` · 카드 전용 ${cptsTotal()}` : ''}</div>
       <div class="text-center text-[11px] text-zinc-500 -mt-1 mb-2">카드를 누르면 상세 · 폐기 · 합성 ${save.owned.length > 1 ? '<button class="story-mini story-mini-red ml-1" data-go="bulk">' + ic('discard', { alt: '' }) + ' 일괄 폐기</button>' : ''}</div>
       <div class="story-grid">${gs.map(gr => { const o = gr.rep, c = boosted(o); if (!c) return ''; const b = o.boost || {}, n = gr.list.length, open = openGroups.has(gr.id);
         const up = STATS.filter(s => b[s]).map(s => `${s} +${ptGain(s, b[s])}`).join(' · ');
@@ -789,15 +825,17 @@
     return res;
   }
   let gachaTimer = 0;
-  function openGacha() {
+  // ----- 상점 (카드 뽑기) 화면: 규칙은 그대로 (하루 1회 무료) -----
+  function renderShop() {
     clearInterval(gachaTimer);
     const avail = canDraw();
-    const p = popup(`<div class="text-lg font-black">🎴 오늘의 카드 뽑기</div><div class="text-[11px] text-zinc-400 mt-1">하루 1회 무료 · 매일 자정(KST) 초기화<br>N 70% · R 20% · HR 6.5% · SR 3% · UR 0.5%</div>
+    show(`${topBar('🎴 카드 뽑기', 'hub')}<div class="story-shop story-pop-panel"><div class="text-lg font-black">🎴 오늘의 카드 뽑기</div><div class="text-[11px] text-zinc-400 mt-1">하루 1회 무료 · 매일 자정(KST) 초기화<br>N 70% · R 20% · HR 6.5% · SR 3% · UR 0.5%</div>
       <div class="gacha-stage"><div class="gacha-card" id="gacha-card"><div class="gacha-face gacha-back">🎴</div><div class="gacha-face gacha-front" id="gacha-front"></div></div></div>
       <div id="gacha-msg" class="text-sm min-h-[1.5rem]"></div>
       ${avail ? '<button id="gacha-go" class="story-btn w-full mt-2">뽑기!</button>' : ''}
       <div id="gacha-next" class="text-xs text-zinc-400 mt-2"></div>
-      <button data-close-pop class="w-full mt-2 py-2 rounded-xl bg-white/10">닫기</button>`, () => { clearInterval(gachaTimer); if (!root().classList.contains('hidden') && root().querySelector('.story-map')) renderMap(); });
+      <button data-go="cards" class="w-full mt-2 py-2 rounded-xl bg-white/10">🃏 내 카드 보기</button></div>`);
+    bind();
     const tick = () => { const n = $('gacha-next'); if (!n) return clearInterval(gachaTimer); n.textContent = canDraw() ? '' : `다음 뽑기까지 ${hms(msToReset())}`; };
     tick(); gachaTimer = setInterval(tick, 1000);
     const go = $('gacha-go'); if (!go) { $('gacha-msg').textContent = '오늘은 이미 뽑았어요.'; return; }
@@ -810,6 +848,7 @@
       const el = $('gacha-card'); el.parentElement.className = `gacha-stage g-${g}`;
       setTimeout(() => el.classList.add('flip'), 350);
       go.remove();
+      root().querySelector('.story-gacha-btn .story-badge')?.remove();
       setTimeout(() => { $('gacha-msg').innerHTML = `<b class="g-text-${g}">${RAR[c.grade]} · ${esc(c.name)}</b> 획득!${r.count > 1 ? ` <span class="story-dup-inline">x${r.count}</span>` : ''}<div class="text-[11px] text-zinc-400">보유 카드에 추가됐어요</div>`; tick(); }, 1300);
     };
   }
@@ -822,5 +861,6 @@
     window.addEventListener('tcg:ready', () => { b.disabled = false; });
   }
   mountButton();
-  window.VRStory = { enter, openGacha, drawOnce, kstDay, get save() { return save; }, renderMap, renderCards, openStats, renderSelect };
+  const openGacha = renderShop;
+  window.VRStory = { enter, openGacha, renderHub, renderShop, drawOnce, kstDay, get save() { return save; }, renderMap, renderCards, openStats, renderSelect };
 })();
