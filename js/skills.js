@@ -46,16 +46,16 @@ export function initUnit(u, p) {
 
 // ---- 상태이상 ----
 export const STATUS = {
-  bleed:   { icon: '🩸', label: '출혈', debuff: true, desc: 'ATK·DEF -5%, 걸릴 때 최대 HP 5% 손실' },
+  bleed:   { icon: '🩸', img: 'bleed', label: '출혈', debuff: true, desc: 'ATK·DEF -5%, 걸릴 때 최대 HP 5% 손실' },
   para:    { icon: '⚡', label: '마비', debuff: true, desc: '행동 불가 (연속 2턴 마비 불가)' },
   confuse: { icon: '💫', label: '혼란', debuff: true, desc: '자기 턴에 아군을 강제 공격' },
   disrupt: { icon: '🌀', label: '교란', debuff: true, desc: '자기 턴에 자기 본진을 강제 공격' },
-  immune:  { icon: '🔰', label: '피해 면역', desc: '모든 피해 무효' },
+  immune:  { icon: '🔰', img: 'immune', label: '피해 면역', desc: '모든 피해 무효' },
   debuffImmune: { icon: '✳️', label: '디버프 면역', desc: '디버프에 걸리지 않음' },
-  taunt:   { icon: '🎯', label: '도발', desc: '상대는 이 카드부터 공격해야 함' },
+  taunt:   { icon: '🎯', img: 'taunt', label: '도발', desc: '상대는 이 카드부터 공격해야 함' },
   esoteric:{ icon: '☠️', label: 'Esoteric', debuff: true, desc: '매 턴 HP -10%, ATK -3% 누적' },
   dot:     { icon: '🩻', label: 'HP 고갈', debuff: true, desc: '매 턴 시작 시 HP 감소' },
-  regen:   { icon: '💚', label: '재생', desc: '매 턴 시작 시 HP 회복' },
+  regen:   { icon: '💚', img: 'heal', label: '재생', desc: '매 턴 시작 시 HP 회복' },
   noheal:  { icon: '🚫', label: '회복 불가', debuff: true, desc: 'HP가 회복되지 않음' },
   decoy:   { icon: '🪞', label: '대신 맞기', desc: '이 카드를 향한 기본 공격을 상대 카드가 대신 맞음' },
   pleading:{ icon: '🛡️', label: '꼭 이래야해?', desc: '피해 50% 감면, 반격 250%, 종료 시 HP 30% 회복' },
@@ -81,7 +81,7 @@ export function statusIcons(u) {
   const out = [];
   for (const [k, s] of Object.entries(u.st)) {
     if (s.kind === 'mod') out.push({ icon: MOD_ICON(s.atk || 0, s.def || 0), title: `${s.label || k} (${s.t}턴)` });
-    else if (STATUS[s.kind]) out.push({ icon: STATUS[s.kind].icon, title: `${STATUS[s.kind].label} (${s.t}턴)` });
+    else if (STATUS[s.kind]) out.push({ icon: STATUS[s.kind].icon, img: STATUS[s.kind].img, title: `${STATUS[s.kind].label} (${s.t}턴)` });
   }
   if (u.curse && foeHasPassive(u.owner, '자수정 눈물의 지옥 교향곡')) out.push({ icon: '🥀', title: `지옥 교향곡 ×${u.curse}` });
   if (u.cry) out.push({ icon: '😇', title: `천사의 절규 ×${u.cry}` });

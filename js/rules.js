@@ -42,12 +42,12 @@ export const RULES = {
 };
 
 export const ELEMENTS = {
-  FIRE:  { label: '불',   icon: '🔥', color: 'text-orange-400', ring: 'ring-orange-500' },
-  WIND:  { label: '바람', icon: '🌪️', color: 'text-teal-300',   ring: 'ring-teal-400' },
-  ICE:   { label: '얼음', icon: '❄️', color: 'text-sky-300',    ring: 'ring-sky-400' },
-  DARK:  { label: '어둠', icon: '🌑', color: 'text-purple-400', ring: 'ring-purple-500' },
-  LIGHT: { label: '빛',   icon: '✨', color: 'text-yellow-300', ring: 'ring-yellow-400' },
-  ABYSS: { label: '심연', icon: '💀', color: 'text-rose-500',   ring: 'ring-rose-600' },
+  FIRE:  { label: '불',   icon: '🔥', img: 'el_fire', color: 'text-orange-400', ring: 'ring-orange-500' },
+  WIND:  { label: '바람', icon: '🌪️', img: 'el_wind', color: 'text-teal-300',   ring: 'ring-teal-400' },
+  ICE:   { label: '얼음', icon: '❄️', img: 'el_ice', color: 'text-sky-300',    ring: 'ring-sky-400' },
+  DARK:  { label: '어둠', icon: '🌑', img: 'el_dark', color: 'text-purple-400', ring: 'ring-purple-500' },
+  LIGHT: { label: '빛',   icon: '✨', img: 'el_light', color: 'text-yellow-300', ring: 'ring-yellow-400' },
+  ABYSS: { label: '심연', icon: '💀', img: 'el_death', color: 'text-rose-500',   ring: 'ring-rose-600' },
 };
 
 const BEATS = { FIRE: 'WIND', WIND: 'ICE', ICE: 'FIRE' };
@@ -107,7 +107,7 @@ export function makeUnit(card, uid) {
 
 // ===== 스킬 훅 (아직 카드에 배정하지 않음). 카드 데이터에 skills: ['taunt'] 형태로 지정 =====
 export const SKILLS = {
-  taunt: { label: '도발', icon: '🎯', desc: '상대는 도발 카드부터 공격해야 합니다' },
+  taunt: { label: '도발', icon: '🎯', img: 'taunt', desc: '상대는 도발 카드부터 공격해야 합니다' },
 };
 export const hasSkill = (u, id) => !!u.skills?.includes(id) || !!u.st?.[id];
 
@@ -193,7 +193,7 @@ export function autoTarget(u, me, opp) {
 
 // ===== 아이템 =====
 export const ITEMS = {
-  weapon: { label: '무기', icon: '🗡️', cost: () => RULES.WEAPON_COST, desc: () => `ATK +${Math.round(RULES.WEAPON_ATK_RATIO * 100)}%` },
+  weapon: { label: '무기', icon: '🗡️', img: 'weapon', cost: () => RULES.WEAPON_COST, desc: () => `ATK +${Math.round(RULES.WEAPON_ATK_RATIO * 100)}%` },
   armor:  { label: '방어구', icon: '🛡️', cost: () => RULES.ARMOR_COST, desc: () => `HP +${Math.round(RULES.ARMOR_HP_RATIO * 100)}%` },
 };
 export function canEquip(type, unit, p) {
@@ -273,11 +273,11 @@ export function refillMana(p) {
 
 // ===== 마나 액션 =====
 export const ACTIONS = {
-  shuffle: { label: '패 섞기', icon: '🔀', cost: () => RULES.SHUFFLE_COST },
-  heal:    { label: '기지 보강', icon: '🏰', cost: () => RULES.HEAL_COST },
-  buff:    { label: '공격력 강화', icon: '⚔️', cost: () => RULES.BUFF_COST },
-  fieldheal: { label: '필드 회복', icon: '💚', cost: () => RULES.FIELD_HEAL_COST },
-  accel:   { label: '마나 가속기', icon: '⚙️', cost: () => RULES.ACCEL_COST },
+  shuffle: { label: '패 섞기', icon: '🔀', img: 'shuffle', cost: () => RULES.SHUFFLE_COST },
+  heal:    { label: '기지 보강', icon: '🏰', img: 'base', cost: () => RULES.HEAL_COST },
+  buff:    { label: '공격력 강화', icon: '⚔️', img: 'atk', cost: () => RULES.BUFF_COST },
+  fieldheal: { label: '필드 회복', icon: '💚', img: 'heal', cost: () => RULES.FIELD_HEAL_COST },
+  accel:   { label: '마나 가속기', icon: '⚙️', img: 'gear', cost: () => RULES.ACCEL_COST },
 };
 
 /** 셔플용 전체 카드 풀 */

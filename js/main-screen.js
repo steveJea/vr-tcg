@@ -68,7 +68,7 @@
   const duck = (on) => { on = !!on; if (on === ducked) return; ducked = on; fadeTo(baseVol * (ducked ? DUCK : 1)); };
   const setVolume = (v) => { baseVol = Math.min(1, Math.max(0, +v || 0)); fadeTo(baseVol * (ducked ? DUCK : 1)); };
   const btn = document.getElementById('main-sound');
-  const renderBtn = () => { if (btn) { btn.textContent = soundOn ? '🔊' : '🔇'; btn.classList.toggle('on', soundOn); btn.title = missing ? '배경음악 파일 없음 (audio/main.mp3)' : '배경음악 켜기/끄기'; } };
+  const renderBtn = () => { if (btn) { btn.innerHTML = window.VRIcon ? VRIcon.icon(soundOn ? 'sound_on' : 'sound_off') : (soundOn ? '🔊' : '🔇'); btn.classList.toggle('on', soundOn); btn.title = missing ? '배경음악 파일 없음 (audio/main.mp3)' : '배경음악 켜기/끄기'; } };
   const getAudio = () => {
     if (audio || missing) return audio;
     audio = new Audio(src); audio.loop = true; audio.volume = baseVol * (ducked ? DUCK : 1); audio.preload = 'auto';

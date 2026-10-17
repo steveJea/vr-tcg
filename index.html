@@ -56,6 +56,26 @@
     .fx-hitflash { filter: brightness(1.8) saturate(1.4); }
     .fx-dmg { position: fixed; z-index: 40; pointer-events: none; font-weight: 900; font-size: 1.35rem; color: #f87171; text-shadow: 0 2px 4px #000, 0 0 8px #7f1d1d; transform: translate(-50%, -50%); animation: fxDmg .9s ease-out forwards; }
     @keyframes fxDmg { 0% { opacity: 0; margin-top: 0; scale: .6; } 15% { opacity: 1; scale: 1.25; } 30% { scale: 1; } 100% { opacity: 0; margin-top: -42px; } }
+    /* UI 아이콘 (js/icons.js): 글자 크기에 맞춤 */
+    .ui-ic { display: inline-block; width: 1.2em; height: 1.2em; vertical-align: -0.25em; object-fit: contain; pointer-events: none; user-select: none; }
+    .ui-ic-sm { width: 1em; height: 1em; vertical-align: -0.15em; }
+    /* 어두운 남색 배경에서 어둠 속성 아이콘이 묻히지 않게 옅은 외곽광 */
+    .ui-ic-el_dark { filter: drop-shadow(0 0 1px rgba(255,255,255,.75)) drop-shadow(0 0 2px rgba(196,181,253,.55)); }
+    .ht-icon .ui-ic { width: 1em; height: 1em; }
+    /* 타격 이펙트: 대상 카드 위에 스프라이트 (확대 + 페이드) */
+    .fx-hit { position: fixed; z-index: 35; pointer-events: none; transform: translate(-50%, -50%) scale(.45); opacity: 0; animation: fxHit .36s ease-out forwards; will-change: transform, opacity; }
+    .fx-hit.blood { animation-duration: .4s; }
+    @keyframes fxHit { 0% { opacity: 0; transform: translate(-50%, -50%) scale(.45) rotate(var(--rot, 0deg)); } 25% { opacity: 1; } 60% { opacity: .9; transform: translate(-50%, -50%) scale(1.05) rotate(var(--rot, 0deg)); } 100% { opacity: 0; transform: translate(-50%, -50%) scale(1.25) rotate(var(--rot, 0deg)); } }
+    /* 전투 배경: 전투 시작 때만 이미지 지정 (data-bg), 어두운 덧칠로 가독성 유지 */
+    #battle-bg { position: fixed; inset: 0; z-index: -1; pointer-events: none; background-color: #09090b; background-size: cover; background-position: center; opacity: 0; transition: opacity .5s ease; }
+    #battle-bg.on { opacity: 1; }
+    #battle-bg::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,.62), rgba(0,0,0,.48) 40%, rgba(0,0,0,.66)); }
+    #battle-bg[data-bg="normal"] { background-image: url(img/ui/bg_normal.webp); }
+    #battle-bg[data-bg="boss"] { background-image: url(img/ui/bg_boss.webp); }
+    @media (min-aspect-ratio: 1/1) {
+      #battle-bg[data-bg="normal"] { background-image: url(img/ui/bg_normal_wide.webp); }
+      #battle-bg[data-bg="boss"] { background-image: url(img/ui/bg_boss_wide.webp); }
+    }
     .fx-dying { transition: opacity .3s ease, scale .3s ease !important; opacity: 0; scale: .7; }
     .card-frame { box-shadow: 0 0 0 2px var(--rc); }
     .rar-n { --rc: #71717a; } .rar-r { --rc: #22c55e; } .rar-hr { --rc: #3b82f6; } .rar-sr { --rc: #a855f7; } .rar-ur { --rc: #f97316; } .rar-mr { --rc: #f43f5e; }
@@ -179,12 +199,12 @@
     <div class="flex flex-col gap-3 w-full max-w-xs">
       <button id="start-btn" disabled class="main-btn main-btn-primary">불러오는 중...</button>
       <div id="acct-box"></div>
-      <button id="main-rank" class="main-btn main-btn-sub">🏆 랭킹</button>
+      <button id="main-rank" class="main-btn main-btn-sub"><img src="img/ui/rank.webp" alt="랭킹" class="ui-ic ui-ic-rank" width="64" height="64"> 랭킹</button>
       <button id="main-howto" class="main-btn main-btn-sub">📖 How to Play</button>
       <div class="grid grid-cols-3 gap-2">
         <button id="main-help" class="main-btn main-btn-sub">도움말</button>
-        <button id="main-skip" class="main-btn main-btn-sub" title="공격 연출 생략">🎬 연출</button>
-        <button id="main-sound" class="main-btn main-btn-sub" title="배경음악">🔊</button>
+        <button id="main-skip" class="main-btn main-btn-sub" title="공격 연출 생략"><img src="img/ui/opening.webp" alt="연출" class="ui-ic ui-ic-opening" width="64" height="64"> 연출</button>
+        <button id="main-sound" class="main-btn main-btn-sub" title="배경음악"><img src="img/ui/sound_on.webp" alt="소리 켜짐" class="ui-ic ui-ic-sound_on" width="64" height="64"></button>
       </div>
     </div>
     <div id="stats" class="mt-5 text-amber-100/70 text-sm drop-shadow"></div>
@@ -192,19 +212,20 @@
 </section>
 
 <!-- 게임 화면 -->
+<div id="battle-bg" aria-hidden="true"></div>
 <section id="game" class="hidden max-w-5xl mx-auto px-2 py-2 flex flex-col gap-2 min-h-screen">
   <!-- 상대 진영 -->
   <div class="flex items-center gap-2">
     <div id="ai-hero" class="flex-1 bg-black/60 border border-red-500/40 rounded-2xl px-3 py-2 cursor-pointer">
       <div class="flex justify-between text-xs md:text-sm"><span class="font-bold text-red-400">🤖 컴퓨터 <span id="ai-order" class="ml-1 px-1.5 py-0.5 rounded bg-white/10 text-[10px] text-zinc-300"></span></span><span id="ai-hp" class="font-bold"></span></div>
       <div class="h-2 bg-white/10 rounded-full mt-1 overflow-hidden"><div id="ai-hpbar" class="h-full bg-red-500 transition-all"></div></div>
-      <div class="flex justify-between text-[11px] text-zinc-400 mt-1"><span>💧 <span id="ai-mana"></span></span><span class="deck-info">덱 <span id="ai-deck"></span> · 손패 <span id="ai-handcount"></span></span></div>
+      <div class="flex justify-between text-[11px] text-zinc-400 mt-1"><span><img src="img/ui/mana.webp" alt="마나" class="ui-ic" width="64" height="64"> <span id="ai-mana"></span></span><span class="deck-info">덱 <span id="ai-deck"></span> · 손패 <span id="ai-handcount"></span></span></div>
       <div id="ai-handcards" class="flex gap-1 mt-1"></div>
       <div id="ai-boss" class="hidden mt-1"></div>
       <div id="ai-syn" class="flex flex-wrap gap-1 mt-1 empty:hidden"></div>
     </div>
-    <div class="flex items-center gap-1 shrink-0 h-10 px-2 rounded-full bg-zinc-800 border border-white/20"><button id="voice-toggle" class="text-base leading-none" title="스킬 보이스">🔊</button><input id="voice-vol" type="range" min="0" max="100" step="5" class="w-14 md:w-20 accent-emerald-400" title="보이스 볼륨" aria-label="보이스 볼륨"></div>
-    <button id="fx-skip" class="h-10 shrink-0 px-2 rounded-full bg-zinc-800 border border-white/20 hover:border-emerald-400 text-xs font-bold whitespace-nowrap" title="공격 연출을 생략합니다 (연출 중 화면을 누르면 빨리 감기)">🎬 연출</button>
+    <div class="flex items-center gap-1 shrink-0 h-10 px-2 rounded-full bg-zinc-800 border border-white/20"><button id="voice-toggle" class="text-base leading-none" title="스킬 보이스"><img src="img/ui/sound_on.webp" alt="소리 켜짐" class="ui-ic ui-ic-sound_on" width="64" height="64"></button><input id="voice-vol" type="range" min="0" max="100" step="5" class="w-14 md:w-20 accent-emerald-400" title="보이스 볼륨" aria-label="보이스 볼륨"></div>
+    <button id="fx-skip" class="h-10 shrink-0 px-2 rounded-full bg-zinc-800 border border-white/20 hover:border-emerald-400 text-xs font-bold whitespace-nowrap" title="공격 연출을 생략합니다 (연출 중 화면을 누르면 빨리 감기)"><img src="img/ui/opening.webp" alt="연출" class="ui-ic ui-ic-opening" width="64" height="64"> 연출</button>
     <button id="help-btn" class="w-10 h-10 shrink-0 rounded-full bg-zinc-800 border border-white/20 hover:border-emerald-400 font-bold" title="속성 상성">?</button>
   </div>
 
@@ -227,7 +248,7 @@
       <div id="my-turns-pips" class="mt-1"></div>
       <div class="h-2 bg-white/10 rounded-full mt-1 overflow-hidden"><div id="me-hpbar" class="h-full bg-emerald-400 transition-all"></div></div>
       <div id="me-syn" class="flex flex-wrap gap-1 mt-1 empty:hidden"></div>
-      <div class="flex justify-between text-[11px] text-zinc-400 mt-1"><span class="text-sky-300 font-bold">💧 마나 <span id="me-mana"></span></span><span class="deck-info">덱 <span id="me-deck"></span> · 손패 <span id="me-handcount"></span></span></div>
+      <div class="flex justify-between text-[11px] text-zinc-400 mt-1"><span class="text-sky-300 font-bold"><img src="img/ui/mana.webp" alt="" class="ui-ic" width="64" height="64"> 마나 <span id="me-mana"></span></span><span class="deck-info">덱 <span id="me-deck"></span> · 손패 <span id="me-handcount"></span></span></div>
     </div>
     <div class="shrink-0 flex flex-col gap-1.5">
       <button id="attack-all" class="px-3 md:px-6 py-2 rounded-xl bg-red-600 hover:bg-red-500 disabled:opacity-40 text-white text-sm font-bold">일괄 공격</button>
@@ -237,12 +258,12 @@
 
   <!-- 마나 액션 -->
   <div id="action-bar" class="grid grid-cols-3 md:grid-cols-6 gap-1.5">
-    <button id="act-shuffle" class="act-btn bg-zinc-900 border border-violet-500/40 hover:border-violet-400 disabled:opacity-40 rounded-xl px-1 py-1.5 text-[11px] md:text-sm font-bold leading-tight">🔀 패 섞기 <span class="text-sky-300">💧50</span><div class="reason text-[9px] md:text-[10px] text-red-400 font-normal h-3"></div></button>
-    <button id="act-heal" class="act-btn bg-zinc-900 border border-violet-500/40 hover:border-violet-400 disabled:opacity-40 rounded-xl px-1 py-1.5 text-[11px] md:text-sm font-bold leading-tight">🏰 기지 보강 <span class="text-sky-300">💧20</span><div class="reason text-[9px] md:text-[10px] text-red-400 font-normal h-3"></div></button>
-    <button id="act-buff" class="act-btn bg-zinc-900 border border-violet-500/40 hover:border-violet-400 disabled:opacity-40 rounded-xl px-1 py-1.5 text-[11px] md:text-sm font-bold leading-tight">⚔️ 공격력 강화 <span class="text-sky-300">💧30</span><div class="reason text-[9px] md:text-[10px] text-red-400 font-normal h-3"></div></button>
-    <button id="act-fieldheal" class="act-btn bg-zinc-900 border border-violet-500/40 hover:border-violet-400 disabled:opacity-40 rounded-xl px-1 py-1.5 text-[11px] md:text-sm font-bold leading-tight">💚 필드 회복 <span class="text-sky-300">💧20</span><div class="reason text-[9px] md:text-[10px] text-red-400 font-normal h-3"></div></button>
-    <button id="act-accel" class="act-btn bg-zinc-900 border border-violet-500/40 hover:border-violet-400 disabled:opacity-40 rounded-xl px-1 py-1.5 text-[11px] md:text-sm font-bold leading-tight">⚙️ 마나 가속기 <span class="text-sky-300">💧30</span><div class="reason text-[9px] md:text-[10px] text-red-400 font-normal h-3"></div></button>
-    <button id="act-merc" class="act-btn bg-zinc-900 border border-amber-400/50 hover:border-amber-300 disabled:opacity-40 rounded-xl px-1 py-1.5 text-[11px] md:text-sm font-bold leading-tight">🗡️ 용병 고용 <span class="text-amber-300 text-[10px]">1회</span><div class="reason text-[9px] md:text-[10px] text-red-400 font-normal h-3"></div></button>
+    <button id="act-shuffle" class="act-btn bg-zinc-900 border border-violet-500/40 hover:border-violet-400 disabled:opacity-40 rounded-xl px-1 py-1.5 text-[11px] md:text-sm font-bold leading-tight"><img src="img/ui/shuffle.webp" alt="패 섞기" class="ui-ic ui-ic-shuffle" width="64" height="64"> 패 섞기 <span class="text-sky-300"><img src="img/ui/mana.webp" alt="마나" class="ui-ic" width="64" height="64">50</span><div class="reason text-[9px] md:text-[10px] text-red-400 font-normal h-3"></div></button>
+    <button id="act-heal" class="act-btn bg-zinc-900 border border-violet-500/40 hover:border-violet-400 disabled:opacity-40 rounded-xl px-1 py-1.5 text-[11px] md:text-sm font-bold leading-tight"><img src="img/ui/base.webp" alt="진영" class="ui-ic ui-ic-base" width="64" height="64"> 기지 보강 <span class="text-sky-300"><img src="img/ui/mana.webp" alt="마나" class="ui-ic" width="64" height="64">20</span><div class="reason text-[9px] md:text-[10px] text-red-400 font-normal h-3"></div></button>
+    <button id="act-buff" class="act-btn bg-zinc-900 border border-violet-500/40 hover:border-violet-400 disabled:opacity-40 rounded-xl px-1 py-1.5 text-[11px] md:text-sm font-bold leading-tight"><img src="img/ui/atk.webp" alt="" class="ui-ic" width="64" height="64"> 공격력 강화 <span class="text-sky-300"><img src="img/ui/mana.webp" alt="마나" class="ui-ic" width="64" height="64">30</span><div class="reason text-[9px] md:text-[10px] text-red-400 font-normal h-3"></div></button>
+    <button id="act-fieldheal" class="act-btn bg-zinc-900 border border-violet-500/40 hover:border-violet-400 disabled:opacity-40 rounded-xl px-1 py-1.5 text-[11px] md:text-sm font-bold leading-tight"><img src="img/ui/heal.webp" alt="회복" class="ui-ic ui-ic-heal" width="64" height="64"> 필드 회복 <span class="text-sky-300"><img src="img/ui/mana.webp" alt="마나" class="ui-ic" width="64" height="64">20</span><div class="reason text-[9px] md:text-[10px] text-red-400 font-normal h-3"></div></button>
+    <button id="act-accel" class="act-btn bg-zinc-900 border border-violet-500/40 hover:border-violet-400 disabled:opacity-40 rounded-xl px-1 py-1.5 text-[11px] md:text-sm font-bold leading-tight"><img src="img/ui/gear.webp" alt="가속기" class="ui-ic ui-ic-gear" width="64" height="64"> 마나 가속기 <span class="text-sky-300"><img src="img/ui/mana.webp" alt="마나" class="ui-ic" width="64" height="64">30</span><div class="reason text-[9px] md:text-[10px] text-red-400 font-normal h-3"></div></button>
+    <button id="act-merc" class="act-btn bg-zinc-900 border border-amber-400/50 hover:border-amber-300 disabled:opacity-40 rounded-xl px-1 py-1.5 text-[11px] md:text-sm font-bold leading-tight"><img src="img/ui/merc.webp" alt="용병" class="ui-ic ui-ic-merc" width="64" height="64"> 용병 고용 <span class="text-amber-300 text-[10px]">1회</span><div class="reason text-[9px] md:text-[10px] text-red-400 font-normal h-3"></div></button>
   </div>
 
   <!-- 손패 -->
@@ -260,7 +281,7 @@
 <div id="merc" class="hidden fixed inset-0 bg-black/80 items-center justify-center z-40 p-4">
   <div class="bg-zinc-900 border border-amber-400/50 rounded-3xl p-5 w-full max-w-md relative modal-panel">
     <button data-close="merc" aria-label="닫기" class="modal-x w-8 h-8 rounded-full bg-zinc-800 hover:bg-zinc-700">✕</button>
-    <div class="text-xl font-black mb-1">🗡️ 용병 고용</div>
+    <div class="text-xl font-black mb-1"><img src="img/ui/merc.webp" alt="용병" class="ui-ic ui-ic-merc" width="64" height="64"> 용병 고용</div>
     <div class="text-xs text-zinc-400 mb-3">마나로 HR·SR·UR 카드를 고용해요. 한 판에 1명, 고용한 카드는 <b class="text-amber-300">이번 판 동안</b> 손패에 들어와요 (판이 끝나면 리셋).<br>가격: HR ×1.2 · SR ×1.5 · UR ×1.8 (올림)</div>
     <div id="merc-list" class="flex justify-center gap-2 flex-wrap"></div>
     <div id="merc-msg" class="text-center text-xs mt-3 text-zinc-400"></div>
@@ -293,29 +314,29 @@
     <div class="text-xl font-black mb-3">속성 상성표 · 규칙</div>
     <button id="help-howto" class="w-full mb-3 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-black font-bold">📖 How to Play · 🎓 튜토리얼</button>
     <div class="space-y-2">
-      <div>🔥 불 → 🌪️ 바람 → ❄️ 얼음 → 🔥 불 <br><span class="text-zinc-400">유리 ×1.5 / 불리 ×0.75</span></div>
-      <div>✨ 빛 ↔ 🌑 어둠 <span class="text-zinc-400">서로 ×2 (기본 3속성과는 ×1)</span></div>
-      <div>💀 심연 <span class="text-zinc-400">모든 속성에 ×1.25, 불리 없음.<br>단, ✨ 빛에게는 ×2 피해를 받음.<br>상대 필드에 빛 카드가 있으면 심연 카드 소환 불가.</span></div>
+      <div><img src="img/ui/el_fire.webp" alt="불" class="ui-ic ui-ic-el_fire" width="64" height="64"> 불 → <img src="img/ui/el_wind.webp" alt="바람" class="ui-ic ui-ic-el_wind" width="64" height="64"> 바람 → <img src="img/ui/el_ice.webp" alt="얼음" class="ui-ic ui-ic-el_ice" width="64" height="64"> 얼음 → <img src="img/ui/el_fire.webp" alt="불" class="ui-ic ui-ic-el_fire" width="64" height="64"> 불 <br><span class="text-zinc-400">유리 ×1.5 / 불리 ×0.75</span></div>
+      <div><img src="img/ui/el_light.webp" alt="빛" class="ui-ic ui-ic-el_light" width="64" height="64"> 빛 ↔ <img src="img/ui/el_dark.webp" alt="어둠" class="ui-ic ui-ic-el_dark" width="64" height="64"> 어둠 <span class="text-zinc-400">서로 ×2 (기본 3속성과는 ×1)</span></div>
+      <div><img src="img/ui/el_death.webp" alt="심연" class="ui-ic ui-ic-el_death" width="64" height="64"> 심연 <span class="text-zinc-400">모든 속성에 ×1.25, 불리 없음.<br>단, <img src="img/ui/el_light.webp" alt="빛" class="ui-ic ui-ic-el_light" width="64" height="64"> 빛에게는 ×2 피해를 받음.<br>상대 필드에 빛 카드가 있으면 심연 카드 소환 불가.</span></div>
       <div class="text-xl font-black pt-3 border-t border-white/10">전투 규칙</div>
       <ul class="list-disc pl-5 text-zinc-300 space-y-1">
         <li>자기 <b>첫 2턴</b>에는 진영을 공격할 수 없어요 (초과 피해도 진영에게 가지 않음)</li>
         <li>상대 필드에 카드가 <b>4장 이상</b>이면 카드만 공격할 수 있어요. 3장 이하면 진영 직접 공격 가능</li>
-        <li>🎯 도발 카드가 있으면 그 카드부터 공격해야 해요</li>
-        <li>XP: 처치 시 처치한 카드 코스트 × (1 + 그 카드 레벨 × 0.2) + 공격할 때마다 5 + 내 턴 종료 시 살아있는 카드마다 4. 최대 <b>Lv10</b> (👑 영웅 카드), 레벨이 오를수록 필요 XP 증가<br><span class="text-zinc-400">Lv2~5: 원본 ATK·HP +10% / Lv6~10: +5%</span></li>
-        <li>아이템 (필드 카드를 눌러 장착): 🗡️ 무기 💧30 ATK +15% · 🛡️ 방어구 💧30 HP +20% (카드당 각 1개)</li>
-        <li>🎬 연출 스킵 버튼: 켜면 공격 연출 생략. 연출 중 화면을 누르면 빨리 감기</li>
-        <li><b>✦ 스킬</b>: 스킬 카드는 MP(파란 바)를 씁니다. 최대 MP = 50 + 정신력(MEN), 자기 턴마다 4 + 품성(MOR)×0.16 회복. 마나(💧)와는 별개</li>
+        <li><img src="img/ui/taunt.webp" alt="도발" class="ui-ic ui-ic-taunt" width="64" height="64"> 도발 카드가 있으면 그 카드부터 공격해야 해요</li>
+        <li>XP: 처치 시 처치한 카드 코스트 × (1 + 그 카드 레벨 × 0.2) + 공격할 때마다 5 + 내 턴 종료 시 살아있는 카드마다 4. 최대 <b>Lv10</b> (<img src="img/ui/leader_crown.webp" alt="왕관" class="ui-ic ui-ic-crown" width="64" height="64"> 영웅 카드), 레벨이 오를수록 필요 XP 증가<br><span class="text-zinc-400">Lv2~5: 원본 ATK·HP +10% / Lv6~10: +5%</span></li>
+        <li>아이템 (필드 카드를 눌러 장착): <img src="img/ui/merc.webp" alt="용병" class="ui-ic ui-ic-merc" width="64" height="64"> 무기 <img src="img/ui/mana.webp" alt="마나" class="ui-ic" width="64" height="64">30 ATK +15% · 🛡️ 방어구 <img src="img/ui/mana.webp" alt="마나" class="ui-ic" width="64" height="64">30 HP +20% (카드당 각 1개)</li>
+        <li><img src="img/ui/opening.webp" alt="연출" class="ui-ic ui-ic-opening" width="64" height="64"> 연출 스킵 버튼: 켜면 공격 연출 생략. 연출 중 화면을 누르면 빨리 감기</li>
+        <li><b>✦ 스킬</b>: 스킬 카드는 MP(파란 바)를 씁니다. 최대 MP = 50 + 정신력(MEN), 자기 턴마다 4 + 품성(MOR)×0.16 회복. 마나(<img src="img/ui/mana.webp" alt="마나" class="ui-ic" width="64" height="64">)와는 별개</li>
         <li>액티브 스킬은 그 턴의 <b>공격 대신</b> 사용 (카드당 턴에 1번 행동). 쿨타임은 자기 턴 기준, 레벨이 해금 레벨 이상이어야 사용 가능. 필드 카드의 ✦스킬 버튼이나 상세 화면에서 사용</li>
         <li>패시브: 해금 레벨에 도달하면 자동 적용. "발동 시" 패시브는 해금 순간 1번 발동</li>
-        <li>상태: 🩸출혈(ATK·DEF -5%, HP -5%) · ⚡마비(행동 불가, 2턴 연속 불가) · 💫혼란(자기 턴에 아군 공격) · 🌀교란(자기 본진 공격) · 🔰피해 면역 · ✳️디버프 면역 · 🎯도발 · 🔺🔻능력치 증감 · 🔒고유기술 봉인(셔플·보강·강화·필드 회복 불가)</li>
+        <li>상태: <img src="img/ui/bleed.webp" alt="출혈" class="ui-ic ui-ic-bleed" width="64" height="64">출혈(ATK·DEF -5%, HP -5%) · ⚡마비(행동 불가, 2턴 연속 불가) · 💫혼란(자기 턴에 아군 공격) · 🌀교란(자기 본진 공격) · <img src="img/ui/immune.webp" alt="면역" class="ui-ic ui-ic-immune" width="64" height="64">피해 면역 · ✳️디버프 면역 · <img src="img/ui/taunt.webp" alt="도발" class="ui-ic ui-ic-taunt" width="64" height="64">도발 · 🔺🔻능력치 증감 · 🔒고유기술 봉인(셔플·보강·강화·필드 회복 불가)</li>
         <li><b>속성 시너지</b>: 내 필드에 같은 속성 2/3/4/5장 → 그 속성 카드 ATK·DEF +10/15/20/30%</li>
         <li><b>🔗 조합</b>: 지정 카드가 모두 내 필드에 있으면 발동 (조합 카드 또는 아군 전체 강화). 진영 바 아래 배지에 마우스를 올리면 설명</li>
         <li>회수하면 레벨·XP·아이템이 초기화돼요</li>
-        <li>💚 필드 회복 💧20: 내 필드 카드 전체 최대 HP의 10% 회복 (턴당 1회)</li>
-        <li>⚙️ 마나 가속기 💧30: 다음 턴부터 매 턴 마나 +5 (최대 5회 중첩)</li>
-        <li>🩸 희생: 필드 카드를 없애고 코스트의 50% 마나 (턴당 1회, 카드 상세에서)</li>
-        <li>💧 마나는 이월됩니다: 첫 턴 40, 이후 매 턴 +20, 최대 100</li>
-        <li>💀 처치 마나: 공격이나 스킬로 적 카드를 처치하면 즉시 그 카드 코스트 × 0.3 마나 (최대 100까지)</li>
+        <li><img src="img/ui/heal.webp" alt="회복" class="ui-ic ui-ic-heal" width="64" height="64"> 필드 회복 <img src="img/ui/mana.webp" alt="마나" class="ui-ic" width="64" height="64">20: 내 필드 카드 전체 최대 HP의 10% 회복 (턴당 1회)</li>
+        <li><img src="img/ui/gear.webp" alt="가속기" class="ui-ic ui-ic-gear" width="64" height="64"> 마나 가속기 <img src="img/ui/mana.webp" alt="마나" class="ui-ic" width="64" height="64">30: 다음 턴부터 매 턴 마나 +5 (최대 5회 중첩)</li>
+        <li><img src="img/ui/bleed.webp" alt="출혈" class="ui-ic ui-ic-bleed" width="64" height="64"> 희생: 필드 카드를 없애고 코스트의 50% 마나 (턴당 1회, 카드 상세에서)</li>
+        <li><img src="img/ui/mana.webp" alt="마나" class="ui-ic" width="64" height="64"> 마나는 이월됩니다: 첫 턴 40, 이후 매 턴 +20, 최대 100</li>
+        <li><img src="img/ui/el_death.webp" alt="심연" class="ui-ic ui-ic-el_death" width="64" height="64"> 처치 마나: 공격이나 스킬로 적 카드를 처치하면 즉시 그 카드 코스트 × 0.3 마나 (최대 100까지)</li>
         <li>⏱️ 전체 40턴(각자 20턴) 후 판정: 진영 HP → 남은 필드 카드 수 → 무승부</li>
         <li>🌟 MR(미식 레어) 카드는 진영에 피해의 20%만 줍니다</li>
       </ul>
@@ -338,6 +359,7 @@
   </div>
 </div>
 
+<script src="js/icons.js"></script>
 <script src="js/rarity-stars.js"></script>
 <script type="module" src="js/game.js"></script>
 <script type="module" src="js/cloud.js"></script>
