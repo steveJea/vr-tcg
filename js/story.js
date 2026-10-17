@@ -151,11 +151,26 @@
   }
 
   // 고른 캐릭터 전용 대본(byStarter)이 있으면 챕터 기본값 위에 덮어씀
+  // 챕터 2~: 고른 루트(byRoute, save.routes[챕터 id]) 대본을 덮어씀. 루트 주인공(hero)은 출전 카드 필수
+  const routeOf = base => base.byRoute ? save?.routes?.[base.id] || null : null;
   function chapterFor(base) {
-    const o = base.byStarter?.[save?.starter]; if (!o) return base;
-    return { ...base, subtitle: o.subtitle ?? base.subtitle, start: o.start, ending: o.ending,
+    const key = base.byStarter ? save?.starter : routeOf(base);
+    const o = (base.byStarter || base.byRoute)?.[key]; if (!o) return base;
+    return { ...base, route: base.byRoute ? key : undefined, hero: o.hero, subtitle: o.subtitle ?? base.subtitle, start: base.byRoute ? o.start ?? base.start : o.start, ending: base.byRoute ? o.ending ?? base.ending : o.ending,
       phases: base.phases.map(p => { const x = o.phases?.[p.no]; return x ? { ...p, ...x, lines: x.lines ? { default: x.lines } : p.lines } : p; }) };
   }
+  // ----- 챕터 선택 -----
+  let curCh = null;          // 보고 있는 챕터 위치 (D.chapters 기준)
+  let chReady = {};          // 서버에 페이즈 설정이 있는 챕터 (서버 모드에서만 확인)
+  const chapterDone = base => base.phases.every(p => (save.cleared[base.id] || []).includes(p.no));
+  const chapterOpen = i => i === 0 || (chapterDone(D.chapters[i - 1]) && chReady[D.chapters[i].id] !== false);
+  async function checkChapters() {
+    chReady = {};
+    if (!serverMode) return;
+    try { const { data, error } = await cloud().sb.from('story_phase_config').select('chapter'); if (error) throw error; const have = new Set((data || []).map(r => r.chapter));
+      for (const c of D.chapters) chReady[c.id] = have.has(c.id); } catch {}
+  }
+  const latestOpen = () => { let i = 0; while (i + 1 < D.chapters.length && chapterOpen(i + 1)) i++; return i; }
   const introOf = s => D.chapters[0].byStarter?.[s.id]?.intro || s.tagline;
 
   // ----- BGM -----
@@ -199,6 +214,7 @@
     }
     if (!window.TCG?.ready) return;
     await load();
+    await checkChapters(); curCh = null;
     if (!save.openingSeen) return renderOpening();
     if (!save.starter) return renderSelect();
     renderMap();
@@ -254,28 +270,61 @@
     $('story-intro').onclick = next;
   }
 
+  // ----- 루트 선택 (챕터 2~): 서버 story_choose_route. 그 챕터 페이즈를 깨기 전까지만 바꿀 수 있음 -----
+  function renderRouteSelect(i) {
+    const base = D.chapters[i], cur = routeOf(base);
+    show(`${topBar(esc(base.title))}<div class="text-center mt-3"><div class="story-chapter-sub">${esc(base.title)}</div><div class="text-2xl md:text-3xl font-black mt-1">${esc(base.routeTitle || '루트를 골라 주세요')}</div>
+      <div class="text-sm text-zinc-400 mt-1">${esc(base.routeNote || '')}</div></div>
+      <div class="story-select">${(base.routeOrder || Object.keys(base.byRoute)).map(id => [id, base.byRoute[id]]).map(([id, r]) => { const c = card(id); return c ? `<button class="story-pick ${cur === id ? 'on' : ''}" data-route="${id}">${tile(c, `<div class="text-[10px] mt-0.5 ${repOf(id) ? 'text-emerald-300' : 'text-sky-300'}">${repOf(id) ? '보유 카드로 출전' : '게스트로 출전'}</div>`)}<div class="text-xs text-zinc-400 mt-1 story-intro-text">${esc(r.tagline || '')}</div></button>` : ''; }).join('')}</div>
+      <div class="text-center mt-4"><button class="story-back" data-go="${cur ? 'map' : 'prev'}">← ${cur ? '돌아가기' : `${esc(D.chapters[Math.max(0, i - 1)].title)}로`}</button></div>`);
+    bind({ map: () => renderMap(i), prev: () => renderMap(Math.max(0, i - 1)) });
+    root().querySelectorAll('[data-route]').forEach(b => b.onclick = () => {
+      const c = card(b.dataset.route);
+      const p = popup(`<div class="text-lg font-black mb-3">${esc(c.name)} 루트로 갈까요?</div>${tile(c)}<div class="text-xs text-zinc-400 mt-2">페이즈를 하나라도 깨면 루트를 바꿀 수 없어요.</div><div class="flex gap-2 mt-4"><button data-close-pop class="flex-1 py-2.5 rounded-xl bg-zinc-700 font-bold">취소</button><button id="story-route-ok" class="flex-1 py-2.5 rounded-xl bg-amber-400 text-black font-bold">결정</button></div>`);
+      $('story-route-ok').onclick = async () => { p.close(true); const r = await act('story_choose_route', { p_chapter: base.id, p_route: String(c.id) }, () => { save.routes = { ...(save.routes || {}), [base.id]: String(c.id) }; });
+        if (!r.ok) return renderRouteSelect(i); curCh = i; const ch = chapterFor(base); chapterIntro(ch, () => renderMap(i)); };
+    });
+  }
+  // 루트 시작 스토리: 루트마다 1번 (본 표시는 이 브라우저에만 저장)
+  const RS_KEY = ch => `vrTcgStoryRouteStart:${user()?.id || 'guest'}:${ch.id}:${ch.route}`;
+  const routeStartSeen = ch => { try { return localStorage.getItem(RS_KEY(ch)) === '1'; } catch { return true; } };
+  function routeStart(ch) { playLines(ch.start, [], () => { try { localStorage.setItem(RS_KEY(ch), '1'); } catch {} renderMap(); }, 'story', ch.hero); }
+
   // 시작 스토리: 캐릭터 선택 직후 1번
   function startStory(ch) {
     if (!ch.start?.length || save.startSeen) return renderMap();
     playLines(ch.start, [], async () => { await act('story_mark_seen', { p_key: 'startSeen' }, () => { save.startSeen = true; }); renderMap(); });
   }
   const clearedOf = ch => save.cleared[ch.id] || [];
-  function renderMap() {
-    const ch = chapterFor(D.chapters[0]), done = clearedOf(ch);
-    if (ch.start?.length && !save.startSeen) return startStory(ch);
+  function renderMap(idx) {
+    if (typeof idx === 'number') curCh = idx;
+    if (curCh == null || !chapterOpen(curCh)) curCh = latestOpen();
+    const base = D.chapters[curCh];
+    if (base.byRoute && !routeOf(base)) return renderRouteSelect(curCh);
+    const ch = chapterFor(base), done = clearedOf(ch);
+    if (curCh === 0 && ch.start?.length && !save.startSeen) return startStory(ch);
+    if (ch.route && ch.start?.length && !routeStartSeen(ch)) return routeStart(ch);
     const nextNo = ch.phases.find(p => !done.includes(p.no))?.no;
     const leader = boosted(byUid(save.leader) || save.owned[0]);
-    show(`${topBar(esc(ch.title))}
-      <div class="text-center mt-2"><div class="story-chapter-big text-3xl md:text-5xl">${esc(ch.title)}</div><div class="story-chapter-name">${esc(ch.subtitle)}</div></div>
-      <div class="story-map">${ch.phases.map((p, i) => { const st = done.includes(p.no) ? 'done' : p.no === nextNo ? 'next' : 'lock';
-        return `${i ? `<div class="story-path ${st !== 'lock' ? 'on' : ''}"></div>` : ''}<button class="story-node ${st} ${p.type}" data-phase="${p.no}" ${st === 'lock' ? 'disabled' : ''}><span class="story-node-dot">${st === 'done' ? '✔' : p.type === 'boss' ? ic('crown', { alt: '보스', cls: 'story-node-ic' }) : st === 'lock' ? '🔒' : p.no}</span><span class="story-node-label">Phase.${p.no}${p.type === 'boss' ? ' BOSS' : ''}</span></button>`; }).join('')}</div>
+    const hero = ch.hero && card(ch.hero);
+    const node = (p, i) => { const st = done.includes(p.no) ? 'done' : p.no === nextNo ? 'next' : 'lock';
+      return `${i ? `<div class="story-path ${st !== 'lock' ? 'on' : ''}"></div>` : ''}<button class="story-node ${st} ${p.type}" data-phase="${p.no}" ${st === 'lock' ? 'disabled' : ''}><span class="story-node-dot">${st === 'done' ? '✔' : p.type === 'boss' ? ic('crown', { alt: '보스', cls: 'story-node-ic' }) : st === 'lock' ? '🔒' : p.no}</span><span class="story-node-label">Phase.${p.no}${p.type === 'boss' ? ' BOSS' : ''}</span></button>`; };
+    const rows = []; for (let k = 0; k < ch.phases.length; k += 5) rows.push(ch.phases.slice(k, k + 5));   // 5칸씩 한 줄
+    const tabs = D.chapters.length > 1 ? `<div class="story-chtabs">${D.chapters.map((c, i) => { const open = chapterOpen(i), why = !open ? (i && !chapterDone(D.chapters[i - 1]) ? `${esc(D.chapters[i - 1].title)} 클리어 후` : '준비 중') : '';
+      return `<button class="story-chtab ${i === curCh ? 'on' : ''}" data-ch="${i}" ${open ? '' : 'disabled'}>${open ? '' : '🔒 '}${esc(c.title)}${why ? `<small>${why}</small>` : ''}</button>`; }).join('')}</div>` : '';
+    const nextCh = D.chapters[curCh + 1], nextOpen = nextCh && chapterOpen(curCh + 1);
+    show(`${topBar(esc(ch.title))}${tabs}
+      <div class="text-center mt-2"><div class="story-chapter-big text-3xl md:text-5xl">${esc(ch.title)}</div><div class="story-chapter-name">${esc(ch.subtitle)}</div>
+        ${hero ? `<div class="story-route-tag">루트 <b>${esc(hero.name)}</b>${clearedOf(ch).length ? '' : ' <button class="story-mini" data-go="route">루트 바꾸기</button>'}</div>` : ''}</div>
+      ${rows.map(r => `<div class="story-map ${rows.length > 1 ? 'story-map-row' : ''}">${r.map(node).join('')}</div>`).join('')}
       <div class="story-status">${leader ? `<div>리더 <b class="text-amber-300">${esc(leader.name)}</b> · 보유 카드 <b>${save.owned.length}</b>장</div>` : ''}
         <div class="story-rule">⚔️ 스토리 전투: 출전 카드 최대 ${MAX_PICK()}장이 모두 필드에서 시작해요 (손패·드로우·용병 없음, 내 진영 없음). 내 카드가 모두 쓰러지거나 ${RULES_TURNS()}턴이 지나면 패배 · 일반전은 상대 카드 전멸, 👑 보스전은 상대 진영 HP 0이면 승리</div>
         <div>스탯 포인트 <b class="text-emerald-300">${save.points}</b> ${save.points ? '<button class="story-mini" data-go="stats">분배하기</button>' : ''}</div>
         ${!serverMode && !window.__STORY_MOCK_USER ? '<div class="text-[11px] text-amber-400">⚠️ 서버 저장 준비 중이라 이 브라우저에만 저장돼요</div>' : ''}</div>
-      ${nextNo ? '' : '<div class="text-center text-emerald-300 font-bold mt-4">🎉 챕터 1 클리어! 다음 챕터는 준비 중이에요.</div>'}
+      ${nextNo ? '' : `<div class="text-center text-emerald-300 font-bold mt-4">🎉 ${esc(ch.title)} 클리어! ${nextOpen ? `<button class="story-btn ml-1" data-ch="${curCh + 1}">${esc(nextCh.title)}로 →</button>` : '다음 챕터는 준비 중이에요.'}</div>`}
       <div class="text-center mt-5">${replayBtn}</div>`);
-    bind({ stats: () => openStats(renderMap), opening: () => playOpening(renderMap) });
+    bind({ stats: () => openStats(renderMap), opening: () => playOpening(renderMap), route: () => renderRouteSelect(curCh) });
+    root().querySelectorAll('[data-ch]').forEach(b => b.onclick = () => renderMap(+b.dataset.ch));
     root().querySelectorAll('[data-phase]').forEach(b => b.onclick = () => startPhase(ch, ch.phases.find(p => p.no === +b.dataset.phase)));
   }
 
@@ -286,10 +335,10 @@
   }
 
   function dialogue(ch, ph, enemies) {
-    playLines(ph.lines?.[save.starter] || ph.lines?.default || [], enemies, () => pickDeck(ch, ph, enemies));
+    playLines(ph.lines?.[save.starter] || ph.lines?.default || [], enemies, () => pickDeck(ch, ph, enemies), 'story', ph.hero || ch.hero);
   }
-  function playLines(lines, enemies, next, track = 'story') {
-    const starter = card(save.starter), enemy = enemies[0];
+  function playLines(lines, enemies, next, track = 'story', heroId = null) {
+    const starter = card(heroId || save.starter), enemy = enemies[0];
     const byName = n => enemies.find(c => c.name === n) || pool().filter(c => c.name === n).sort((a, b) => (a.region === starter?.region ? -1 : 0) - (b.region === starter?.region ? -1 : 0))[0] || null;
     const who = L => L.portrait !== undefined ? (L.portrait === 'starter' ? starter : L.portrait === 'enemy' ? enemy : L.portrait ? card(L.portrait) : null)
       : (D.noPortrait || []).includes(L.speaker) ? null : L.speaker === starter?.name ? starter : byName(L.speaker);
@@ -325,28 +374,43 @@
   }
   const PICK_KEY = () => `vrTcgStoryPick:${user()?.id || 'guest'}`;
   /** 출전 카드 고르기 (카드마다 1장, 최대 5장). 보유 카드가 5종 이하면 전부 출전 */
+  /** 페이즈 필수 출전: party.forced (없으면 루트 주인공). 보유하지 않은 카드는 게스트(리더 레벨, 강화·EX 없음, 전투 EXP 없음) */
+  const isGuest = o => String(o?.uid || '').startsWith('guest:');
+  function guestOf(id) {
+    const lead = byUid(save.leader) || save.owned[0], g = { uid: 'guest:' + id, id: String(id), boost: {}, level: 1, exp: 0, totalExp: 0, cpts: 0, spentCard: 0, ex: 0, exb: 0, guest: true };
+    g.level = Math.max(1, Math.min(lvCap(g), norm({ ...(lead || {}) }).level || 1)); return g;
+  }
+  function partyOf(ch, ph) {
+    const pt = ph.party || (ch.hero ? { forced: [ch.hero] } : null);
+    const forced = (pt?.forced || []).map(id => repOf(id) || guestOf(id)).filter(o => card(o.id));
+    return { forced, exclude: new Set([...(pt?.exclude || []), ...(pt?.forced || [])].map(String)) };
+  }
   function pickDeck(ch, ph, enemies) {
-    const list = deckInstances().sort((a, b) => (b.uid === save.leader) - (a.uid === save.leader) || (boosted(b)?.power || 0) - (boosted(a)?.power || 0));
-    if (list.length <= MAX_PICK()) return battle(ch, ph, enemies, list);
+    const { forced, exclude } = partyOf(ch, ph), slots = Math.max(0, MAX_PICK() - forced.length);
+    const list = deckInstances().filter(o => !exclude.has(o.id)).sort((a, b) => (b.uid === save.leader) - (a.uid === save.leader) || (boosted(b)?.power || 0) - (boosted(a)?.power || 0));
+    if (list.length <= slots && !forced.length) return battle(ch, ph, enemies, list);
     let last = []; try { last = JSON.parse(localStorage.getItem(PICK_KEY()) || '[]'); } catch {}
     const valid = new Set(list.map(o => o.uid));
-    let sel = last.filter(u => valid.has(u)).slice(0, MAX_PICK());
-    if (!sel.length) sel = list.slice(0, MAX_PICK()).map(o => o.uid);
+    let sel = last.filter(u => valid.has(u)).slice(0, slots);
+    if (!sel.length) sel = list.slice(0, slots).map(o => o.uid);
     const boss = ph.type === 'boss';
+    const fTile = o => { const c = boosted(o); return `<div class="story-pick-card on locked" title="이번 페이즈 필수 출전">${tile(c, `<div class="text-[10px] ${isGuest(o) ? 'text-sky-300' : 'text-zinc-400'}">Lv.${norm({ ...o }).level}${isGuest(o) ? ' · 게스트' : ''}</div>`)}<i class="story-pick-check">🔒</i></div>`; };
     const draw = () => {
-      const p = popup(`<div class="story-pop-title">출전 카드 선택 <span class="text-emerald-300">${sel.length}/${MAX_PICK()}</span></div>
+      const p = popup(`<div class="story-pop-title">출전 카드 선택 <span class="text-emerald-300">${forced.length + sel.length}/${MAX_PICK()}</span></div>
         <div class="text-xs text-zinc-400 mb-2">고른 카드가 모두 필드에서 시작해요. 손패·드로우는 없고, 내 카드가 모두 쓰러지면 패배예요.${boss ? '<br>👑 보스전: 보스는 진영 안에서 쓰러지지 않아요. 상대 진영 HP를 0으로!' : ''}</div>
+        ${forced.length ? `<div class="story-forced-h">${ic('crown', { alt: '' })} 필수 출전 ${forced.length}장 <small>(게스트는 리더 레벨로 함께 싸우고, 전투 EXP는 받지 않아요)</small></div><div class="story-grid story-deckpick story-forced">${forced.map(fTile).join('')}</div>
+          <div class="story-forced-h">나머지 ${slots}장 고르기${[...exclude].filter(id => !forced.some(o => o.id === id)).map(id => card(id)).filter(Boolean).map(c => ` · <span class="text-red-300">${esc(c.name)} 출전 불가</span>`).join('')}</div>` : ''}
         <div class="story-grid story-deckpick">${list.map(o => { const c = boosted(o), on = sel.includes(o.uid);
           return `<button class="story-pick-card ${on ? 'on' : ''}" data-pick="${o.uid}">${tile(c, `<div class="text-[10px] text-zinc-400">Lv.${norm({ ...o }).level}${o.uid === save.leader ? ` · ${ic('crown', { alt: '' })} 리더` : ''}</div>`)}${on ? '<i class="story-pick-check">✔</i>' : ''}</button>`; }).join('')}</div>
-        <div class="flex gap-2 mt-3"><button class="story-back flex-1" data-close-pop>취소</button><button class="story-btn flex-1" id="story-deck-ok" ${sel.length ? '' : 'disabled'}>출전 (${sel.length}장)</button></div>`, () => renderMap());
+        <div class="flex gap-2 mt-3"><button class="story-back flex-1" data-close-pop>취소</button><button class="story-btn flex-1" id="story-deck-ok" ${sel.length || forced.length ? '' : 'disabled'}>출전 (${forced.length + sel.length}장)</button></div>`, () => renderMap());
       p.el.querySelectorAll('[data-pick]').forEach(b => b.onclick = () => {
         const u = b.dataset.pick;
         if (sel.includes(u)) sel = sel.filter(x => x !== u);
-        else if (sel.length < MAX_PICK()) sel.push(u);
+        else if (sel.length < slots) sel.push(u);
         else { toast(`최대 ${MAX_PICK()}장까지 출전할 수 있어요.`); return; }
         p.close(true); draw();
       });
-      $('story-deck-ok').onclick = () => { if (!sel.length) return; try { localStorage.setItem(PICK_KEY(), JSON.stringify(sel)); } catch {} p.close(true); battle(ch, ph, enemies, list.filter(o => sel.includes(o.uid))); };
+      $('story-deck-ok').onclick = () => { if (!sel.length && !forced.length) return; try { localStorage.setItem(PICK_KEY(), JSON.stringify(sel)); } catch {} p.close(true); battle(ch, ph, enemies, [...forced, ...list.filter(o => sel.includes(o.uid))]); };
     };
     draw();
   }
@@ -381,7 +445,7 @@
     // 서버가 첫 클리어 여부·보상(카드·포인트)을 결정. 재클리어는 보상 없음
     let first = !clearedOf(ch).includes(ph.no), reward = null, pts = 0;
     // 전투 EXP: 이번 전투에 낸 내 카드 + 처치 수 (서버가 보유 여부·처치 상한·배율을 다시 계산)
-    const kills = st.kills || {}, p_stats = [...new Set(st.played || [])].slice(0, 30).map(id => ({ uid: deckUid[id], id, kills: kills[id] | 0 }));
+    const kills = st.kills || {}, p_stats = [...new Set(st.played || [])].filter(id => !isGuest({ uid: deckUid[id] })).slice(0, 30).map(id => ({ uid: deckUid[id], id, kills: kills[id] | 0 }));
     const res = await act('story_complete_phase', { p_chapter: ch.id, p_phase: ph.no, p_stats }, () => {
       const exp = [], cap = Math.max(0, (ph.enemies?.ids?.length || ph.enemies?.count || 99) - (ph.type === 'boss' ? 1 : 0)); let ksum = 0;   // 보스 카드는 쓰러지지 않음
       for (const s of p_stats) {
@@ -405,7 +469,7 @@
       bind(); $('story-retry').onclick = () => startPhase(ch, ph); return; }
     const r = res.r || {};
     first = !!r.first; pts = r.points | 0; reward = r.reward_id ? card(r.reward_id) : null;
-    if (first && ph.type === 'boss' && ch.ending?.length) await new Promise(ok => playLines(ch.ending, [], ok, 'ending'));
+    if (first && ph.type === 'boss' && ch.ending?.length) await new Promise(ok => playLines(ch.ending, [], ok, 'ending', ch.hero));
     show(`<div class="text-center py-6"><div class="story-chapter-sub">Phase.${ph.no} CLEAR</div><div class="story-chapter-big text-emerald-300">VICTORY</div>
       ${reward ? `<div class="mt-4 text-amber-200 font-bold">🎁 보상 카드 획득!</div><div class="flex justify-center mt-2 story-reward">${tile(reward)}</div>` : `<div class="mt-4 text-zinc-400 text-sm">${first ? '이번 챕터는 카드 보상 없이 스탯 포인트만 받아요.' : '이미 클리어한 페이즈라 카드 보상은 없어요.'}</div>`}
       ${expList(r.exp)}
