@@ -62,7 +62,7 @@ const SKIP_KEY = 'vrTcgSkipFx';
 let skipFx = localStorage.getItem(SKIP_KEY) === '1';
 let fastForward = false;
 const FX_OFF = () => !!(window.TCG_FAST || skipFx || fastForward);
-const AI_DELAY = () => (window.TCG_FAST ? 0 : (skipFx || fastForward) ? 120 : 650);
+const AI_DELAY = () => (window.TCG_FAST ? 0 : (skipFx || fastForward) ? 60 : 325);
 
 function newPlayer(name, second, deckOverride = null, hp = RULES.HERO_HP, fieldStart = false) {
   const deck = deckOverride ? (fieldStart ? [...deckOverride] : shuffleArr(deckOverride)) : buildDeck(POOL);
@@ -217,7 +217,9 @@ function renderSkipBtn() {
 
 // ===== 공격 연출 =====
 const REDUCED = () => !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
-const fxMs = ms => (FX_OFF() ? 0 : REDUCED() ? Math.round(ms * 0.3) : ms);
+const FX_SPEED = 0.5; // 공격·피격·사망 연출 2배속 (컷인은 cutinMs로 원래 속도 유지)
+const fxMs = ms => (FX_OFF() ? 0 : REDUCED() ? Math.round(ms * 0.3 * FX_SPEED) : Math.round(ms * FX_SPEED));
+const cutinMs = ms => (FX_OFF() ? 0 : REDUCED() ? Math.round(ms * 0.3) : ms);
 const unitEl = (who, u) => document.querySelector(`#${who}-field [data-uid="${u.uid}"], #${who}-boss [data-uid="${u.uid}"]`);
 const heroEl = who => $(`${who}-hero`);
 
@@ -238,7 +240,7 @@ function hitFx(el, kind = 'impact') {
   img.style.left = (r.left + r.width / 2) + 'px'; img.style.top = (r.top + r.height / 2) + 'px';
   img.style.setProperty('--rot', `${Math.round(Math.random() * 60 - 30)}deg`);
   document.body.appendChild(img);
-  setTimeout(() => img.remove(), 450);
+  setTimeout(() => img.remove(), 225);
 }
 let hitPreloaded = false;
 function preloadHit() { if (hitPreloaded) return; hitPreloaded = true; for (const src of Object.values(HIT_IMG)) { const i = new Image(); i.src = src; } }
@@ -254,7 +256,7 @@ function shake(el) {
   if (!el || FX_OFF()) return;
   el.classList.remove('fx-shake', 'fx-hitflash'); void el.offsetWidth;
   el.classList.add('fx-shake', 'fx-hitflash');
-  setTimeout(() => el.classList.remove('fx-shake', 'fx-hitflash'), 330);
+  setTimeout(() => el.classList.remove('fx-shake', 'fx-hitflash'), 165);
 }
 
 function dmgNumber(el, text, color, html = false) {
@@ -266,7 +268,7 @@ function dmgNumber(el, text, color, html = false) {
   d.style.left = (r.left + r.width / 2 + (Math.random() - 0.5) * 16) + 'px';
   d.style.top = (r.top + r.height * 0.4) + 'px';
   document.body.appendChild(d);
-  setTimeout(() => d.remove(), 950);
+  setTimeout(() => d.remove(), 475);
 }
 
 /** 공격자를 대상 쪽으로 돌진(getBoundingClientRect 차이 → transform). back()으로 제자리 복귀 */
@@ -311,7 +313,7 @@ async function attack(who, unit, target, fromBatch = false) {
     const lure = maleLure(unit, o);
     const shown = lure && lure !== target ? lure : target;
     const tEl = shown ? (unitEl(oWho, shown) || heroEl(oWho)) : heroEl(oWho);
-    const hit = await withTimeout(lunge(aEl, tEl), 1500);
+    const hit = await withTimeout(lunge(aEl, tEl), 750);
 
     const cls = who === 'me' ? 'text-emerald-300' : 'text-red-300';
     pendingDying = [];
@@ -328,8 +330,8 @@ async function attack(who, unit, target, fromBatch = false) {
       else if (e.type === 'overflow') { log(`초과 피해 ${fmt(e.dmg)} → ${o.name} 진영`, 'text-orange-300'); const h = heroEl(oWho); shake(h); hitFx(h); dmgNumber(h, `💥 -${fmt(e.dmg)}`, '#fdba74'); }
     }
     renderHero(oWho); renderHero(who);
-    await withTimeout(hit?.back?.() ?? Promise.resolve(), 1500);
-    await withTimeout(fadeDying(), 1500);
+    await withTimeout(hit?.back?.() ?? Promise.resolve(), 750);
+    await withTimeout(fadeDying(), 750);
   } catch (err) {
     reportError('attack', err);
   } finally {
@@ -545,7 +547,7 @@ async function cutIn(u, name, fx, passive = false) {
   if (FX_OFF()) return;
   const el = $('cutin');
   el.innerHTML = cutInHTML(u, name, fx, passive);
-  const ms = fxMs(fx ? 1300 : passive ? 500 : 750);
+  const ms = cutinMs(fx ? 1300 : passive ? 500 : 750);
   el.style.setProperty('--dur', `${ms}ms`);
   el.className = `cutin ${fx ? 'cutin-img' : ''} fixed left-0 right-0 z-40 pointer-events-none text-center ${whoOf(u.owner) === 'me' ? 'cutin-me' : 'cutin-ai'}`;
   slashImpact(ms);
@@ -564,7 +566,7 @@ function passiveCutIn(u, name) {
   S.fxSeen.add(key);
   const el = $('cutin');
   el.innerHTML = cutInHTML(u, name, s.fx, true);
-  const ms = fxMs(1100);
+  const ms = cutinMs(1100);
   el.style.setProperty('--dur', `${ms}ms`);
   el.className = 'hidden'; void el.offsetWidth; // 애니메이션 재시작
   el.className = `cutin cutin-img fixed left-0 right-0 z-40 pointer-events-none text-center ${whoOf(u.owner) === 'me' ? 'cutin-me' : 'cutin-ai'}`;
@@ -584,7 +586,7 @@ async function castSkill(who, u, s) {
     if (who === 'me') S.log.skills++;
     renderHero('me'); renderHero('ai');
     await sleep(fxMs(450));
-    await withTimeout(fadeDying(), 1500);
+    await withTimeout(fadeDying(), 750);
   } catch (err) {
     reportError('skill', err);
   } finally {
