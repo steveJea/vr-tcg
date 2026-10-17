@@ -3,7 +3,7 @@
 // lines.default 는 공통 대사, lines[카드id] 가 있으면 그 캐릭터를 골랐을 때 그 대사를 씁니다.
 window.STORY_DATA = {
   // 오프닝: 메인 스토리 첫 진입 시 1번 재생. video 경로를 넣으면 영상, 비어 있으면 자리표시 화면
-  opening: { video: '', poster: '', title: 'OPENING', text: '오프닝 영상이 들어갈 자리예요. (준비 중)' },
+  opening: { video: 'video/opening.mp4', poster: 'img/story/opening_poster.webp', title: 'OPENING', text: '' },
   starters: [
     { id: '2000600126', name: '문지예', tagline: '(소개 문구 준비 중)' },
     { id: '2000200044', name: '용지혜', tagline: '(소개 문구 준비 중)' },

@@ -85,7 +85,7 @@
     const a = getAudio(); if (!a) return;
     a.volume = 0;
     const target = () => baseVol * (ducked ? DUCK : 1);
-    if (soundOn) a.play().catch(() => {});
+    if (soundOn && !held) a.play().catch(() => {});
     const v0 = old ? old.volume : 0, t0 = performance.now();
     const step = t => { const k = Math.min(1, Math.max(0, (t - t0) / ms));
       if (old) old.volume = Math.max(0, v0 * (1 - k));
@@ -93,12 +93,15 @@
       if (k < 1) xfRaf = requestAnimationFrame(step); else if (old) { old.pause(); old.removeAttribute('src'); old.load(); } };
     xfRaf = requestAnimationFrame(step);
   };
-  const play = () => { if (!soundOn) return; const a = getAudio(); if (a) a.play().catch(() => {}); };
+  // 일시 정지 유지(오프닝 영상 등): hold(true) 동안은 재생·트랙 전환 시 자동 재생을 막고, hold(false) 로 다시 재생
+  let held = false;
+  const play = () => { if (!soundOn || held) return; const a = getAudio(); if (a) a.play().catch(() => {}); };
   const stop = () => { if (audio) audio.pause(); };
+  const hold = (on) => { held = !!on; held ? stop() : play(); };
   btn?.addEventListener('click', e => { e.stopPropagation(); soundOn = !soundOn; localStorage.setItem(KEY, soundOn ? '1' : '0'); soundOn ? play() : stop(); renderBtn(); });
   // 브라우저 자동재생 정책: 첫 사용자 입력 후 재생
   const first = () => { play(); removeEventListener('pointerdown', first); removeEventListener('keydown', first); };
   addEventListener('pointerdown', first); addEventListener('keydown', first);
   renderBtn();
-  window.VRSound = { play, stop, duck, setVolume, setTrack, get track() { return src; }, get on() { return soundOn; }, get ducked() { return ducked; }, get volume() { return audio ? audio.volume : null; }, get baseVolume() { return baseVol; } };
+  window.VRSound = { play, stop, hold, duck, setVolume, setTrack, get track() { return src; }, get held() { return held; }, get paused() { return !audio || audio.paused; }, get on() { return soundOn; }, get ducked() { return ducked; }, get volume() { return audio ? audio.volume : null; }, get baseVolume() { return baseVol; } };
 })();
