@@ -110,8 +110,12 @@ function refreshSide(p) {
   const lvAura = (side, name, base) => side.field.filter(x => hasPassive(x, name)).reduce((t, x) => t + base + 0.002 * (x.level - 1), 0);
   const auraA = lvAura(p, '비오는 밤', 0.03) - (p.foe ? lvAura(p.foe, '응? 어쩌라고?', 0.02) : 0);
   const auraD = lvAura(p, '잔상', 0.02) - (p.foe ? lvAura(p.foe, '마지막 바람', 0.02) : 0) - (foeHasPassive(p, '넌 안 된다니까?') ? 0.05 : 0);
+  // 스토리 리더 스킬: 리더가 내 필드에 있는 동안 아군 ATK·DEF·HP %, 상대 리더의 적 전체 감소(eAtk·eDef)는 여기서 뺌
+  const lsOn = side => side && side.leaderSkill && side.field.some(x => x.isLeader) ? side.leaderSkill : null;
+  const ls = lsOn(p), fls = lsOn(p.foe);
+  const lA = (ls?.atk || 0) - (fls?.eAtk || 0), lD = (ls?.def || 0) - (fls?.eDef || 0), lH = ls?.hp || 0;
   for (const u of p.field) {
-    let a = 0, d = 0, h = 0;
+    let a = lA, d = lD, h = lH;
     const syn = p.activeSyn.find(s => s.cls === u.card.class); if (syn) { a += syn.pct; d += syn.pct; }
     for (const c of p.activeCombos) if (c.scope === 'all' || c.cards.includes(String(u.base.id))) { if (c.atk) a += c.value; if (c.def) d += c.value; if (c.hp) h += c.value; }
     for (const s of Object.values(u.st)) { a += s.atk || 0; d += s.def || 0; }
@@ -220,8 +224,23 @@ export function checkDeath(u, killer = null) {
     emit({ type: 'refund', owner: o, killer, refund });
     gainXp(killer, killXp(u));
   }
+  if (u.isLeader && !p.once.leaderDown) leaderDown(p, u);
   refreshAll(p);
   return true;
+}
+/** 스토리 리더가 쓰러짐 (1전투 1번): 아군 진영 HP −(최대의 30%). 진영이 없는 스토리 내 진영은 남은 아군 카드 전체가 각자 최대 HP의 30%를 잃음 (쓰러질 수 있음) */
+function leaderDown(p, u) {
+  p.once.leaderDown = 1;
+  const pct = p.leaderSkill?.deathPenalty ?? 0.3;
+  if (!p.noBase) {
+    const dmg = Math.round((p.maxHp || RULES.HERO_HP) * pct);
+    p.hp = Math.max(0, p.hp - dmg);
+    emit({ type: 'leaderDown', p, unit: u, dmg, pct, base: true });
+    return;
+  }
+  const hit = p.field.filter(a => a.hp > 0).map(a => { const dmg = Math.max(1, Math.round(a.maxHp * pct)); a.hp -= dmg; emit({ type: 'dmg', unit: a, dmg }); return [a, dmg]; });
+  emit({ type: 'leaderDown', p, unit: u, pct, dmg: hit.reduce((t, [, d]) => t + d, 0), n: hit.length });
+  for (const [a] of hit) checkDeath(a, null);
 }
 export function gainMp(u, amt, why = '') { const b = u.mp; u.mp = Math.min(u.maxMp, Math.round(u.mp + amt)); if (u.mp > b) emit({ type: 'mp', unit: u, amt: u.mp - b, why }); }
 

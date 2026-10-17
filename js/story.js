@@ -138,7 +138,7 @@
   const mergeCalc = (o, m) => { const cap = lvCap(o), ratio = Math.min(1, o.level / cap), mcap = lvCap(m), mratio = Math.min(1, m.level / mcap), bonus = Math.round(10 * ratio * mratio * 100) / 100;
     return { cap, ratio, mcap, mratio, bonus, exb: Math.round((exbOf(o) + bonus) * 100) / 100, ex: exOf(o) + 1, capTo: cap + 5 }; };
   /** 합성 재료 후보: 같은 카드의 다른 장 (리더 제외), 레벨 높은 순 */
-  const materialsOf = o => copiesOf(o.id).filter(x => x.uid !== o.uid && x.uid !== save.leader).sort((a, b) => b.level - a.level || b.exp - a.exp);
+  const materialsOf = o => copiesOf(o.id).filter(x => x.uid !== o.uid && !isLocked(x)).sort((a, b) => b.level - a.level || b.exp - a.exp);
   const norm = o => Object.assign(o, { boost: o.boost || {}, level: Math.max(1, o.level | 0 || 1), exp: Math.max(0, o.exp | 0), totalExp: Math.max(0, o.totalExp | 0), cpts: Math.max(0, o.cpts | 0), spentCard: Math.max(0, o.spentCard | 0) });
   /** EXP 적용 결과 (원본 변경 없음): { level, exp, totalExp, cpts, wasted } */
   function gainCalc(o, amt) {
@@ -471,6 +471,7 @@
           <div class="story-forced-h">나머지 ${slots}장 고르기${[...exclude].filter(id => !forced.some(o => o.id === id)).map(id => card(id)).filter(Boolean).map(c => ` · <span class="text-red-300">${esc(c.name)} 출전 불가</span>`).join('')}</div>` : ''}
         <div class="story-grid story-deckpick">${list.map(o => { const c = boosted(o), on = sel.includes(o.uid);
           return `<button class="story-pick-card ${on ? 'on' : ''}" data-pick="${o.uid}">${tile(c, `<div class="text-[10px] text-zinc-400">Lv.${norm({ ...o }).level}${o.uid === save.leader ? ` · ${ic('crown', { alt: '' })} 리더` : ''}</div>`)}${on ? '<i class="story-pick-check">✔</i>' : ''}</button>`; }).join('')}</div>
+        ${(() => { const lo = byUid(save.leader); if (!lo) return ''; const inF = forced.some(f => f.uid === lo.uid), out = inF ? '' : exclude.has(lo.id) ? '이번 페이즈에는 리더가 출전할 수 없어 리더 스킬이 꺼져요' : !sel.includes(lo.uid) ? '리더를 출전시키지 않으면 리더 스킬이 꺼져요' : ''; return out ? `<div class="story-hint">${ic('crown', { alt: '' })} ${out}</div>` : `<div class="text-[11px] text-amber-200 mt-2">${ic('crown', { alt: '' })} 리더 스킬 켜짐: ${esc(leaderEff(lo.id)?.text || '')}</div>`; })()}
         <div class="flex gap-2 mt-3 story-pop-actions"><button class="story-back flex-1" data-close-pop>취소</button><button class="story-btn flex-1" id="story-deck-ok" ${sel.length || forced.length ? '' : 'disabled'}>출전 (${forced.length + sel.length}장)</button></div>`, () => renderMap());
       p.el.querySelectorAll('[data-pick]').forEach(b => b.onclick = () => {
         const u = b.dataset.pick;
@@ -497,7 +498,7 @@
     // 보스 카드를 맨 앞에 (진영 안 표시), 나머지는 그대로
     const ai = bc ? [bc, ...enemies.filter(c => c !== bc)] : enemies;
     window.TCG.startStory({
-      me, ai, win: boss ? 'ko' : 'wipe', aiHp: boss ? bossHp(ch, ph) : undefined, bossId: bc ? String(bc.id) : undefined, aiName: ph.enemyName || (boss ? '보스' : '적군'), first: 'me',
+      me, ai, leader: (() => { const lo = me.find(c => c.uid === save.leader), le = lo && leaderEff(lo.id); return le ? { ...le, uid: lo.uid } : undefined; })(), win: boss ? 'ko' : 'wipe', aiHp: boss ? bossHp(ch, ph) : undefined, bossId: bc ? String(bc.id) : undefined, aiName: ph.enemyName || (boss ? '보스' : '적군'), first: 'me',
       onEnd: (win, reason, st) => result(ch, ph, win, reason, st),
     });
     if (ph.tip) setTimeout(() => toast(`💡 ${ph.tip}`), 3400);   // 규칙 안내 뒤에 이어서 (겹치지 않게)
@@ -616,7 +617,22 @@
   // ----- 보유 카드 (카드별로 묶어서 보여 주고, 펼치면 한 장씩) -----
   const cptsTotal = () => save.owned.reduce((a, o) => a + (o.cpts | 0), 0);
   const isLeader = o => !!o && o.uid === save.leader;
-  const canDiscard = o => !isLeader(o) && save.owned.length > 1;
+  /** 분해 잠금: 직접 잠근 카드 + 리더(자동 잠금). 잠긴 카드는 분해·합성 재료로 못 씀 (서버도 같은 검사) */
+  const isLocked = o => !!o && (isLeader(o) || !!o.locked);
+  const canDiscard = o => !isLocked(o) && save.owned.length > 1;
+  // ----- 리더 스킬 (스토리 전용): 속성 효과 + 클래스 효과 -----
+  const LS_KEYS = [['atk', 'ATK'], ['def', 'DEF'], ['hp', 'HP']], LS_FOE = [['eAtk', 'ATK'], ['eDef', 'DEF']];
+  const pc = v => Math.round(v * 100);
+  function leaderEff(id) {
+    const c = card(id), L = D.leader; if (!c || !L) return null;
+    const el = L.el[c.class] || {}, cl = L.cls[c.attribute] || {}, e = {};
+    for (const k of ['atk', 'def', 'hp', 'eAtk', 'eDef']) { const v = Math.round(((el[k] || 0) + (cl[k] || 0)) * 1000) / 1000; if (v) e[k] = v; }
+    const own = LS_KEYS.filter(([k]) => e[k]).map(([k, l]) => `${l} +${pc(e[k])}%`), foe = LS_FOE.filter(([k]) => e[k]).map(([k, l]) => `${l} −${pc(e[k])}%`);
+    const text = [own.length ? `아군 전체 ${own.join(' · ')}` : '', foe.length ? `적 전체 ${foe.join(' · ')}` : ''].filter(Boolean).join(' / ');
+    const short = [...own, ...LS_FOE.filter(([k]) => e[k]).map(([k, l]) => `적${l} −${pc(e[k])}%`)].join(' ');
+    return { ...e, name: c.name, label: `${el.name || c.class}·${cl.name || c.attribute}`, text, short, deathPenalty: L.deathPenalty ?? 0.3 };
+  }
+  const leaderUnlocked = () => chapterDone(D.chapters[0]);   // 리더 변경: 챕터 1 클리어 후
   const canMerge = o => exOf(o) < maxEx(o) && materialsOf(o).length > 0;
   const idxOf = o => save.owned.indexOf(o);
   let openGroups = new Set();
@@ -644,13 +660,14 @@
     const anyPts = save.points || cptsTotal(), gs = groups();
     show(`${topBar('🃏 보유 카드', 'hub')}<div class="text-center text-sm text-zinc-400 my-2">스토리 모드 전용 · ${gs.length}종 ${save.owned.length}장 · 공용 포인트 ${save.points}${cptsTotal() ? ` · 카드 전용 ${cptsTotal()}` : ''}</div>
       <div class="text-center text-[11px] text-zinc-500 -mt-1 mb-2">카드를 누르면 상세 · 분해 · 합성 ${save.owned.length > 1 ? '<button class="story-mini story-mini-red ml-1" data-go="bulk">' + ic('discard', { alt: '' }) + ' 일괄 분해</button>' : ''}</div>
+      ${(() => { const lo = byUid(save.leader), le = lo && leaderEff(lo.id); return le ? `<div class="story-leader-bar"><div class="min-w-0">${ic('crown', { alt: '' })} 리더 <b>${esc(exName(lo, card(lo.id)?.name))}</b> <small>${esc(le.label)}</small><div class="text-[11px] text-amber-100/80">${esc(le.text)}</div></div><button class="story-mini" data-go="leader" ${leaderUnlocked() ? '' : 'disabled title="챕터 1 클리어 후"'}>${leaderUnlocked() ? '리더 변경' : '🔒 챕터 1 클리어 후 변경'}</button></div>` : ''; })()}
       ${gs.length > 1 ? sortBar() : ''}<div class="story-grid">${gs.map(gr => { const o = gr.rep, c = boosted(o); if (!c) return ''; const b = o.boost || {}, n = gr.list.length, open = openGroups.has(gr.id);
         const up = STATS.filter(s => b[s]).map(s => `${s} +${ptGain(s, b[s])}`).join(' · ');
         const mergeable = gr.list.some(canMerge);
-        return `<div class="story-group ${open ? 'open' : ''}"><div data-uid="${o.uid}" class="story-owned">${tile(c, `${n > 1 ? `<div class="story-dup">x${n}</div>` : ''}${o.cpts ? `<div class="story-cpts">+${o.cpts}</div>` : ''}${exOf(o) ? `<div class="story-exbadge">EX${exOf(o)}</div>` : ''}${lvBar(o)}<div class="text-[10px] text-emerald-300 h-3">${isLeader(o) ? ic('crown', { alt: '' }) + ' 리더 ' : n > 1 ? '⚔️ 출전 ' : ''}${up}</div>${mergeable ? `<button class="story-merge-mini" data-merge="${(gr.list.find(canMerge)).uid}">${ic('merge', { alt: '' })} 합성</button>` : ''}${n > 1 ? `<button class="story-expand" data-expand="${gr.id}">${open ? '▴ 접기' : `▾ ${n}장 모두 보기`}</button>` : ''}<div class="story-equip"><span>🗡️ 무기</span><span>🛡️ 방어구</span><em>준비 중</em></div>`)}</div>
-          ${open ? `<div class="story-copies">${gr.list.map(x => `<button class="story-copy" data-uid="${x.uid}"><span class="font-bold">${isLeader(x) ? ic('crown', { alt: '리더' }) + ' ' : x === o ? '⚔️ ' : ''}Lv.${x.level}${exOf(x) ? ` <i class="text-red-300 not-italic">EX${exOf(x)}</i>` : ''}</span><span class="text-[10px] text-zinc-400">${ic('atk', { cls: 'ui-ic-sm' })}${fmt(statCalc(x, 'ATK'))} ${ic('hp', { cls: 'ui-ic-sm' })}${fmt(statCalc(x, 'HP'))} ${ic('def', { cls: 'ui-ic-sm' })}${fmt(statCalc(x, 'DEF'))}</span></button>`).join('')}</div>` : ''}</div>`; }).join('')}</div>
+        return `<div class="story-group ${open ? 'open' : ''}"><div data-uid="${o.uid}" class="story-owned">${tile(c, `${n > 1 ? `<div class="story-dup">x${n}</div>` : ''}${o.cpts ? `<div class="story-cpts">+${o.cpts}</div>` : ''}${gr.list.some(x => x.locked && !isLeader(x)) ? '<div class="story-lockbadge" title="분해 잠금">🔒</div>' : ''}${exOf(o) ? `<div class="story-exbadge">EX${exOf(o)}</div>` : ''}${lvBar(o)}<div class="text-[10px] text-emerald-300 h-3">${isLeader(o) ? ic('crown', { alt: '' }) + ' 리더 ' : n > 1 ? '⚔️ 출전 ' : ''}${up}</div>${mergeable ? `<button class="story-merge-mini" data-merge="${(gr.list.find(canMerge)).uid}">${ic('merge', { alt: '' })} 합성</button>` : ''}${n > 1 ? `<button class="story-expand" data-expand="${gr.id}">${open ? '▴ 접기' : `▾ ${n}장 모두 보기`}</button>` : ''}<div class="story-equip"><span>🗡️ 무기</span><span>🛡️ 방어구</span><em>준비 중</em></div>`)}</div>
+          ${open ? `<div class="story-copies">${gr.list.map(x => `<button class="story-copy" data-uid="${x.uid}"><span class="font-bold">${isLeader(x) ? ic('crown', { alt: '리더' }) + ' ' : x === o ? '⚔️ ' : ''}${x.locked && !isLeader(x) ? '🔒 ' : ''}Lv.${x.level}${exOf(x) ? ` <i class="text-red-300 not-italic">EX${exOf(x)}</i>` : ''}</span><span class="text-[10px] text-zinc-400">${ic('atk', { cls: 'ui-ic-sm' })}${fmt(statCalc(x, 'ATK'))} ${ic('hp', { cls: 'ui-ic-sm' })}${fmt(statCalc(x, 'HP'))} ${ic('def', { cls: 'ui-ic-sm' })}${fmt(statCalc(x, 'DEF'))}</span></button>`).join('')}</div>` : ''}</div>`; }).join('')}</div>
       ${anyPts ? '<div class="text-center mt-4"><button class="story-btn" data-go="stats">📈 스탯 분배하기</button></div>' : ''}`);
-    bind({ stats: () => openStats(renderCards), bulk: () => bulkDiscard() });
+    bind({ stats: () => openStats(renderCards), bulk: () => bulkDiscard(), leader: () => pickLeader() });
     root().querySelectorAll('[data-uid]').forEach(el => el.onclick = () => cardDetail(el.dataset.uid));
     root().querySelectorAll('[data-merge]').forEach(b => b.onclick = e => { e.stopPropagation(); mergePreview(b.dataset.merge); });
     root().querySelectorAll('[data-sort]').forEach(b => b.onclick = () => { setSort(b.dataset.sort); renderCards(); });
@@ -671,7 +688,12 @@
       ${canMerge(o) ? `<button id="story-d-merge" class="story-merge-btn">${ic('merge', { alt: '' })} 합성 (EX${exOf(o)} → EX${exOf(o) + 1})</button>` : exOf(o) >= maxEx(o) ? `<div class="text-[11px] text-red-300 mt-2 text-center">최대 합성 단계 (EX${maxEx(o)})</div>` : ''}
       <div class="flex gap-2 mt-4"><button id="story-d-stats" class="flex-1 py-2.5 rounded-xl bg-emerald-500 text-black font-bold" ${save.points || o.cpts ? '' : 'disabled'}>📈 스탯 분배</button>
       <button id="story-d-discard" class="flex-1 py-2.5 rounded-xl bg-red-500/80 font-bold" ${canDiscard(o) ? '' : 'disabled'}>${ic('discard', { alt: '' })} 분해</button></div>
-      ${isLeader(o) ? '<div class="text-[11px] text-zinc-500 mt-2 text-center">리더 카드는 분해할 수 없어요</div>' : ''}`, renderCards);
+      ${(() => { const le = leaderEff(o.id); return le ? `<div class="story-leader-eff ${isLeader(o) ? 'on' : ''}">${ic('crown', { alt: '' })} <b>리더 스킬</b> <small>${esc(le.label)}</small><div>${esc(le.text)}</div>${isLeader(o) ? '' : '<small class="text-zinc-500">이 카드를 리더로 하면 적용돼요</small>'}</div>` : ''; })()}
+      <div class="flex gap-2 mt-2"><button id="story-d-lock" class="flex-1 py-2 rounded-xl bg-zinc-700 font-bold text-sm" ${isLeader(o) ? 'disabled' : ''}>${isLeader(o) ? '🔒 리더 자동 잠금' : o.locked ? '🔓 잠금 해제' : '🔒 분해 잠금'}</button>
+      ${isLeader(o) ? '' : `<button id="story-d-leader" class="flex-1 py-2 rounded-xl bg-amber-500/90 text-black font-bold text-sm" ${leaderUnlocked() ? '' : 'disabled'}>${ic('crown', { alt: '' })} ${leaderUnlocked() ? '리더로 지정' : '리더 변경: 챕터 1 클리어 후'}</button>`}</div>
+      ${isLocked(o) ? `<div class="text-[11px] text-zinc-500 mt-2 text-center">${isLeader(o) ? '리더 카드는 자동으로 잠겨 분해·합성 재료로 쓸 수 없어요' : '잠긴 카드는 분해·합성 재료로 쓸 수 없어요'}</div>` : ''}`, renderCards);
+    $('story-d-lock').onclick = () => { p.close(true); setLock(o.uid, !o.locked); };
+    { const lb = $('story-d-leader'); if (lb) lb.onclick = () => { p.close(true); confirmLeader(o.uid, () => cardDetail(o.uid)); }; }
     $('story-d-stats').onclick = () => { p.close(true); openStats(renderCards, idxOf(o)); };
     $('story-d-discard').onclick = () => { p.close(true); pickTarget(o.uid); };
     const mb = $('story-d-merge'); if (mb) mb.onclick = () => { p.close(true); mergePreview(o.uid); };
@@ -707,7 +729,7 @@
     $('merge-yes').onclick = async () => {
       $('merge-yes').disabled = true;
       const res = await act('story_merge', { p_target: tu, p_material: mu }, () => {
-        if (!byUid(mu) || mu === tu || mat.id !== o.id || isLeader(mat) || exOf(o) >= maxEx(o)) return null;
+        if (!byUid(mu) || mu === tu || mat.id !== o.id || isLocked(mat) || exOf(o) >= maxEx(o)) return null;
         Object.assign(o, { ex: m.ex, exb: m.exb, level: 1, exp: 0 });
         save.owned.splice(idxOf(mat), 1);
         return { ex: m.ex, bonus: m.bonus, exb: m.exb };
@@ -716,6 +738,39 @@
       if (!res.ok || !res.r) return renderCards();
       cardDetail(tu);
       levelUpFx(`EX${res.r.ex} 합성! +${res.r.bonus}%`);
+    };
+  }
+  // ----- 분해 잠금 (서버 story_set_lock) -----
+  async function setLock(u, on) {
+    const o = byUid(u); if (!o || isLeader(o)) return cardDetail(u);
+    const res = await act('story_set_lock', { p_uid: u, p_on: !!on }, () => { if (on) o.locked = true; else delete o.locked; return { locked: !!on }; }, r => r.data);
+    if (res.ok) toast(on ? `🔒 ${card(o.id)?.name} 잠금 · 분해·합성 재료로 쓸 수 없어요` : `🔓 ${card(o.id)?.name} 잠금 해제`);
+    renderCards(); if (byUid(u)) cardDetail(u);
+  }
+  // ----- 리더 변경 (챕터 1 클리어 후, 서버 story_set_leader). 시작 캐릭터(starter)·루트는 그대로 -----
+  function pickLeader() {
+    if (!leaderUnlocked()) return toast('리더 변경은 챕터 1을 클리어하면 열려요.');
+    save.owned.forEach(norm);
+    const list = groups().map(gr => gr.list[0]).filter(Boolean);
+    const p = popup(`<div class="text-lg font-black mb-1">${ic('crown', { alt: '' })} 리더 변경</div>
+      <div class="text-xs text-zinc-400 mb-2">리더 스킬(속성 + 클래스)은 리더가 출전해 필드에 있는 동안 아군 전체에 적용돼요. 리더가 쓰러지면 해제되고 아군 진영 HP −${pc(D.leader?.deathPenalty ?? 0.3)}%.</div>
+      <div class="story-target-list">${list.map(o => { const c = card(o.id), le = leaderEff(o.id);
+        return `<button data-ld="${o.uid}" class="story-target ${isLeader(o) ? 'cur' : ''}" ${isLeader(o) ? 'disabled' : ''}><img src="${IMG}${o.id}.webp" alt=""><div class="flex-1 min-w-0 text-left"><div class="text-sm font-bold truncate">${isLeader(o) ? ic('crown', { alt: '리더' }) + ' ' : ''}${esc(exName(o, c?.name))} <span class="text-[10px] text-zinc-400">${RAR[c?.grade] || 'N'} · Lv.${o.level}</span></div><div class="text-[11px] text-amber-200">${esc(le?.label || '')} · ${esc(le?.text || '')}</div></div><span class="text-emerald-300 text-sm">${isLeader(o) ? '현재' : '선택 ›'}</span></button>`; }).join('')}</div>
+      <button data-close-pop class="w-full mt-3 py-2.5 rounded-xl bg-zinc-700 font-bold">취소</button>`, renderCards);
+    p.el.querySelectorAll('[data-ld]').forEach(b => b.onclick = () => { p.close(true); confirmLeader(b.dataset.ld, pickLeader); });
+  }
+  function confirmLeader(u, back) {
+    const o = byUid(u), c = card(o?.id), le = leaderEff(o?.id); if (!o || isLeader(o) || isGuest(o)) return renderCards();
+    const p = popup(`<div class="text-lg font-black mb-2">${esc(exName(o, c?.name))}을(를) 리더로 할까요?</div>
+      <div class="story-leader-eff on">${ic('crown', { alt: '' })} <b>리더 스킬</b> <small>${esc(le?.label || '')}</small><div>${esc(le?.text || '')}</div></div>
+      <div class="text-[11px] text-zinc-400 mt-2">리더는 자동으로 분해 잠금돼요. 시작 캐릭터와 챕터 루트는 바뀌지 않아요. 언제든 다시 바꿀 수 있어요.</div>
+      <div class="flex gap-2 mt-4"><button id="ld-no" class="flex-1 py-2.5 rounded-xl bg-zinc-700 font-bold">취소</button><button id="ld-yes" class="flex-1 py-2.5 rounded-xl bg-amber-500 text-black font-bold">리더로 지정</button></div>`, renderCards);
+    $('ld-no').onclick = () => { p.close(true); back ? back() : renderCards(); };
+    $('ld-yes').onclick = async () => {
+      $('ld-yes').disabled = true;
+      const res = await act('story_set_leader', { p_uid: u }, () => { if (!leaderUnlocked() || !byUid(u)) return null; save.leader = u; return { leader: u }; }, r => r.data);
+      p.close(true); renderCards();
+      if (res.ok && save.leader === u) toast(`👑 리더 변경: ${c?.name} · ${le?.text || ''}`);
     };
   }
   // ----- 일괄 분해: 여러 장(인스턴스)을 골라 EXP를 대상 1장에 (서버 story_discard_many, 전부 성공 또는 전부 취소) -----
@@ -741,7 +796,7 @@
     save.owned.forEach(norm);
     if (!st.tu || !byUid(st.tu)) return bulkPickTarget(st);   // 대상이 없으면 1단계부터 (기본 선택 없음)
     const tu = st.tu, sel = st.sel || new Set();
-    const tgt = byUid(tu), locked = o => o.uid === tu || isLeader(o);
+    const tgt = byUid(tu), locked = o => o.uid === tu || isLocked(o);
     for (const k of [...sel]) { const o = byUid(k); if (!o || locked(o)) sel.delete(k); }
     const f = bulkCalc(sel, tgt), g = gainCalc(tgt, f.amt);
     const list = groups().flatMap(gr => gr.list);
@@ -753,7 +808,7 @@
       <div class="text-xs text-zinc-400 mb-1">고른 카드를 모두 분해하고, EXP를 위 카드에 몰아줘요</div>
       <div class="flex flex-wrap gap-1.5 my-2"><button class="story-chip" data-q="all">전체 선택</button>${save.owned.some(spare) ? '<button class="story-chip" data-q="spare">출전 안 하는 중복만</button>' : ''}${grades.map(gr => `<button class="story-chip" data-q="${gr}">${RAR[gr]} 전체</button>`).join('')}<button class="story-chip" data-q="none">선택 해제</button></div>
       <div class="story-bulk-list" id="bulk-list">${list.map(o => { const c = card(o.id), lk = locked(o), on = sel.has(o.uid);
-        return `<div class="story-bulk-row ${lk ? 'lock' : ''} ${on ? 'on' : ''}" ${lk ? '' : `data-row="${o.uid}"`}><input type="checkbox" ${on ? 'checked' : ''} ${lk ? 'disabled' : ''}><img src="${IMG}${o.id}.webp" alt=""><div class="flex-1 min-w-0"><div class="text-sm font-bold truncate">${esc(exName(o, c?.name))} <span class="text-[10px] text-zinc-400">${RAR[c?.grade] || 'N'} · Lv.${o.level}</span>${c?.name === card(tgt.id)?.name && !lk ? ' <span class="text-amber-300 text-[10px]">×1.5</span>' : ''}</div><div class="text-[10px] text-zinc-500">${lk ? (o.uid === tu ? 'EXP 받을 카드' : '리더 · 분해 불가') : `${repOf(o.id) === o ? '⚔️ 출전 카드 · ' : ''}누적 EXP ${fmt(o.totalExp)}`}</div></div></div>`; }).join('')}</div>
+        return `<div class="story-bulk-row ${lk ? 'lock' : ''} ${on ? 'on' : ''}" ${lk ? '' : `data-row="${o.uid}"`}><input type="checkbox" ${on ? 'checked' : ''} ${lk ? 'disabled' : ''}><img src="${IMG}${o.id}.webp" alt=""><div class="flex-1 min-w-0"><div class="text-sm font-bold truncate">${esc(exName(o, c?.name))} <span class="text-[10px] text-zinc-400">${RAR[c?.grade] || 'N'} · Lv.${o.level}</span>${c?.name === card(tgt.id)?.name && !lk ? ' <span class="text-amber-300 text-[10px]">×1.5</span>' : ''}</div><div class="text-[10px] text-zinc-500">${lk ? (o.uid === tu ? 'EXP 받을 카드' : isLeader(o) ? '리더 · 분해 불가' : '🔒 잠금 · 분해 불가') : `${repOf(o.id) === o ? '⚔️ 출전 카드 · ' : ''}누적 EXP ${fmt(o.totalExp)}`}</div></div></div>`; }).join('')}</div>
       <div class="story-bulk-sum">${f.n ? `<b>${f.n}장</b> 선택 · EXP <b class="text-sky-300">+${fmt(f.amt)}</b>${f.same ? ` <span class="text-amber-300 text-[11px]">(같은 이름 ${f.same}장 ×1.5)</span>` : ''}<br>${esc(exName(tgt, card(tgt.id)?.name))} Lv.${tgt.level} → <b class="text-emerald-300">Lv.${g.level}</b> · 스탯 +${lvPct(tgt)}% → +${lvPct({ id: tgt.id, level: g.level })}%${f.refund ? `<br><span class="text-emerald-300 text-[11px]">공용 포인트 ${f.refund} 돌려받음</span>` : ''}` : '<span class="text-zinc-500">분해할 카드를 골라 주세요</span>'}</div>
       ${g.wasted && f.n ? `<div class="story-warn">⚠️ 최대 레벨(Lv.${lvCap(tgt)})을 넘는 EXP ${fmt(g.wasted)}은 사라져요.</div>` : ''}
       ${f.n && save.owned.some(o => sel.has(o.uid) && canMergeAny(o)) ? '<div class="story-hint">💡 같은 카드가 여러 장이면 분해 대신 합성(EX)에 쓸 수도 있어요.</div>' : ''}

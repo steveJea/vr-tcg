@@ -17,6 +17,21 @@ window.STORY_DATA = {
   statFull: 5,
   // 스탯 규칙 버전. 2 = 위 규칙 (예전 분배는 한 번 전부 돌려줌)
   statRuleV: 2,
+  // 기본 리더 스킬 (스토리 전용): 리더 카드의 속성(class) 효과 + 클래스(attribute) 효과를 더해 아군 전체에 적용 (리더가 필드에 있는 동안).
+  // atk·def·hp = 아군 비율, eAtk·eDef = 적 전체 감소 비율. 리더가 쓰러지면 효과가 꺼지고 아군 진영 HP −30% (1전투 1번)
+  leader: {
+    deathPenalty: 0.3,
+    el: {
+      FIRE: { name: '불', atk: 0.05 }, ICE: { name: '얼음', def: 0.05 }, WIND: { name: '바람', hp: 0.05 },
+      DARK: { name: '어둠', atk: 0.03, hp: 0.03 }, LIGHT: { name: '빛', def: 0.03, hp: 0.03 }, ABYSS: { name: '심연', atk: 0.04, def: 0.02 },
+    },
+    cls: {
+      CHARGE: { name: '돌격', atk: 0.03 }, DEFENSE: { name: '방어', def: 0.04 }, CRUSH: { name: '분쇄', atk: 0.02, def: 0.02 }, SUPPORT: { name: '지원', hp: 0.04 },
+      DISTURB: { name: '교란', eAtk: 0.03 }, FASCINATION: { name: '매혹', eDef: 0.03 },
+      OVERWHELMING: { name: '압도', atk: 0.05, def: 0.05 }, FURIOUS: { name: '격노', atk: 0.05, eDef: 0.05 },
+      PHENOMENAL: { name: '경이', atk: 0.03, def: 0.03, hp: 0.04 }, EXTERMINATE: { name: '섬멸', atk: 0.04, eDef: 0.03, eAtk: 0.02 },
+    },
+  },
   // 스토리 전투: 출전 카드 최대 장수 (전부 필드에서 시작, 손패·드로우 없음)
   battleCards: 5,
   // 보스전 상대 진영 HP: 챕터 순서대로 (챕터 1 = 500, 이후 챕터 1의 +50%씩). 표보다 뒤 챕터는 마지막 값 + 250씩.
