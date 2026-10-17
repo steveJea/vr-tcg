@@ -338,16 +338,17 @@
     playLines(ph.lines?.[save.starter] || ph.lines?.default || [], enemies, () => pickDeck(ch, ph, enemies), 'story', ph.hero || ch.hero);
   }
   function playLines(lines, enemies, next, track = 'story', heroId = null) {
-    const starter = card(heroId || save.starter), enemy = enemies[0];
+    const heroes = (Array.isArray(heroId) ? heroId : [heroId || save.starter]).map(card).filter(Boolean);   // 대사 왼쪽(주인공) 자리. 여러 명 가능
+    const starter = heroes[0] || card(save.starter), enemy = enemies[0];
     const byName = n => enemies.find(c => c.name === n) || pool().filter(c => c.name === n).sort((a, b) => (a.region === starter?.region ? -1 : 0) - (b.region === starter?.region ? -1 : 0))[0] || null;
     const who = L => L.portrait !== undefined ? (L.portrait === 'starter' ? starter : L.portrait === 'enemy' ? enemy : L.portrait ? card(L.portrait) : null)
-      : (D.noPortrait || []).includes(L.speaker) ? null : L.speaker === starter?.name ? starter : byName(L.speaker);
+      : (D.noPortrait || []).includes(L.speaker) ? null : (heroes.find(h => h.name === L.speaker) || byName(L.speaker));
     let i = 0;
     const step = () => {
       if (i >= lines.length) return next();
       const L0 = lines[i], tag = /^(.+?)\s*\((기본|화남|웃음)\)$/.exec(L0.speaker || ''), L = tag ? { ...L0, speaker: tag[1], expr: L0.expr || tag[2] } : L0;
       const pc = who(L), sp = L.speaker === 'starter' ? starter?.name : L.speaker === 'enemy' ? enemy?.name : (L.speaker === '내레이션' ? null : L.speaker);
-      const left = pc ? pc === starter : true;
+      const left = pc ? heroes.includes(pc) : true;
       const slug = pc && D.portraits?.[pc.name], ex = D.exprSlug?.[L.expr || '기본'] || 'base';
       show(`<div class="story-dlg" id="story-dlg">
         <div class="story-dlg-stage">${pc ? (slug ? `<img class="story-portrait sp ${left ? 'left' : 'right'}" src="img/story/portraits/${slug}_${ex}.webp" alt="${esc(pc.name)}" onerror="this.onerror=null;this.classList.remove('sp');this.src='${IMG}${pc.id}.webp'">` : `<img class="story-portrait ${left ? 'left' : 'right'}" src="${IMG}${pc.id}.webp" alt="${esc(pc.name)}">`) : ''}</div>
@@ -469,7 +470,14 @@
       bind(); $('story-retry').onclick = () => startPhase(ch, ph); return; }
     const r = res.r || {};
     first = !!r.first; pts = r.points | 0; reward = r.reward_id ? card(r.reward_id) : null;
-    if (first && ph.type === 'boss' && ch.ending?.length) await new Promise(ok => playLines(ch.ending, [], ok, 'ending', ch.hero));
+    // 승리 후 대사: 페이즈 after(막간·루트 엔딩) → 보스면 챕터 엔딩. 첫 클리어 때만
+    if (first && ph.after?.length) await new Promise(ok => {
+      const go = () => playLines(ph.after, [], ok, /엔딩/.test(ph.afterTitle || '') ? 'ending' : 'story', ph.hero || ch.hero);
+      if (!ph.afterTitle) return go();
+      show(`<div class="story-intro" id="story-intro"><div class="story-chapter-sub">${esc(ch.title)} · Phase.${ph.no} 승리 후</div><div class="story-chapter-name">${esc(ph.afterTitle)}</div><div class="text-xs text-zinc-500 mt-8">화면을 누르면 계속</div></div>`);
+      $('story-intro').onclick = go;
+    });
+    if (first && ph.type === 'boss' && ch.ending?.length) await new Promise(ok => playLines(ch.ending, [], ok, 'ending', ph.hero || ch.hero));
     show(`<div class="text-center py-6"><div class="story-chapter-sub">Phase.${ph.no} CLEAR</div><div class="story-chapter-big text-emerald-300">VICTORY</div>
       ${reward ? `<div class="mt-4 text-amber-200 font-bold">🎁 보상 카드 획득!</div><div class="flex justify-center mt-2 story-reward">${tile(reward)}</div>` : `<div class="mt-4 text-zinc-400 text-sm">${first ? '이번 챕터는 카드 보상 없이 스탯 포인트만 받아요.' : '이미 클리어한 페이즈라 카드 보상은 없어요.'}</div>`}
       ${expList(r.exp)}
