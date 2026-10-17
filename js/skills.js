@@ -385,8 +385,8 @@ export const ACTIVE = {
   '이게 공격이야!': (u, p, f) => { const t = by(live(f), x => x.card.DEF); if (t) multiHit(u, t, 5, 0.2, { ignoreDef: 0.1 }); },
   // 용지혜: DEF 최저 적에게 20%×3회, 살아 있으면 30% 확률 1턴 마비
   '돌격!': (u, p, f) => { const t = by(live(f), x => x.card.DEF); if (!t || multiHit(u, t, 3, 0.2)) return; if (chance(0.3)) addStatus(t, 'para', 1, {}, 'para'); else emit({ type: 'miss', unit: t, text: '마비 실패' }); },
-  // 안리: 적 전체 5%×5회, 처치 시 아군 전체 1턴 ATK +2%
-  '머신건': (u, p, f) => { if (hitAll(u, f, 5, 0.05)) { live(p).forEach(a => addStatus(a, '머신건', 1, { atk: 0.02, label: '머신건: ATK +2%' }, 'mod')); emit({ type: 'log', text: `${u.card.name} [머신건] 처치! 아군 전체 ATK +2% (1턴)` }); } },
+  // 안리: 적 전체 10%×5회, 처치 시 아군 전체 1턴 ATK +2%
+  '머신건': (u, p, f) => { if (hitAll(u, f, 5, 0.1)) { live(p).forEach(a => addStatus(a, '머신건', 1, { atk: 0.02, label: '머신건: ATK +2%' }, 'mod')); emit({ type: 'log', text: `${u.card.name} [머신건] 처치! 아군 전체 ATK +2% (1턴)` }); } },
   // 이명진: 이영아를 지키는 맹세 (맹세는 이영아가 필드를 떠날 때까지 유지). 사용한 턴에 첫 1회분 바로 적용
   '지킨다': u => { u.st.vow = { kind: 'vow', t: 999, stack: 0, def: 0 }; emit({ type: 'status', unit: u, kind: 'vow', key: 'vow', text: '지킨다' }); vowTick(u); },
   // 김후: 적마다 40% 확률로 2턴 도발당함(김후만 공격·스킬 불가). 2턴(상대 턴 기준) 뒤 김후 HP 30% 회복
