@@ -63,17 +63,26 @@
   // 최종 스탯 = 기본 스탯 × 레벨 배율(반올림) + 스탯 포인트 강화. 레벨 배율 = 1 + 등급별 비율 × (레벨 − 1)
   const LV_RATE = { 'NORMAL': 0.01, 'RARE': 0.02, 'HIGH RARE': 0.03, 'SUPER RARE': 0.04, 'ULTRA RARE': 0.05, 'MYTHIC RARE': 0.06 };
   const lvPct = o => { const c = card(o.id); return c ? Math.round((LV_RATE[c.grade] || 0.01) * (Math.max(1, o.level | 0 || 1) - 1) * 100) : 0; };
+  // EX 합성: 기본 스탯 × (1 + EX 보너스 합계%) 가 새 기본 스탯 → 그 위에 레벨 % → 반올림 → 포인트 강화 더하기
+  const exOf = o => Math.max(0, o?.ex | 0), exbOf = o => Math.max(0, +o?.exb || 0);
+  const exName = (o, name) => exOf(o) ? `[EX${exOf(o)}] ${name}` : name;
+  const statCalc = (o, s) => { const c = card(o.id); return Math.round(c[s] * (1 + exbOf(o) / 100) * (1 + lvPct(o) / 100)) + ((o.boost || {})[s] || 0) * D.statPerPoint[s]; };
   function boosted(o) {
     const c = card(o.id); if (!c) return null;
-    const b = o.boost || {}, k = D.statPerPoint, m = 1 + lvPct(o) / 100;
-    return { ...c, ATK: Math.round(c.ATK * m) + (b.ATK || 0) * k.ATK, HP: Math.round(c.HP * m) + (b.HP || 0) * k.HP, DEF: Math.round(c.DEF * m) + (b.DEF || 0) * k.DEF };
+    return { ...c, name: exName(o, c.name), ex: exOf(o), ATK: statCalc(o, 'ATK'), HP: statCalc(o, 'HP'), DEF: statCalc(o, 'DEF') };
   }
 
   // ----- 카드 레벨 (서버 story_levels.sql 과 같은 규칙. 브라우저 저장 대체 경로·미리보기용) -----
   // 다음 레벨 EXP = 레벨×100 · 최대 레벨 N20 R30 HR40 SR50 UR60 MR70 (+ex 합성 1회당 +10, 추후 EX 합성용) · 레벨당 기본 스탯 +N1% R2% HR3% SR4% UR5% MR6% (레벨업 포인트 지급은 없음, 예전에 받은 카드 전용 포인트는 그대로 사용 가능)
   const LV_CAP = { 'NORMAL': 20, 'RARE': 30, 'HIGH RARE': 40, 'SUPER RARE': 50, 'ULTRA RARE': 60, 'MYTHIC RARE': 70 };
   const FEED_EXP = { 'NORMAL': 50, 'RARE': 150, 'HIGH RARE': 400, 'SUPER RARE': 1000, 'ULTRA RARE': 3000, 'MYTHIC RARE': 6000 };
-  const lvCap = o => (LV_CAP[card(o.id)?.grade] || 20) + 10 * Math.max(0, o.ex | 0);
+  const lvCap = o => (LV_CAP[card(o.id)?.grade] || 20) + 5 * exOf(o);   // EX 단계마다 최대 레벨 +5
+  const MAX_EX = { 'NORMAL': 1, 'RARE': 2, 'HIGH RARE': 3, 'SUPER RARE': 4, 'ULTRA RARE': 5, 'MYTHIC RARE': 6 };
+  const maxEx = o => MAX_EX[card(o.id)?.grade] || 1;
+  const MAT_RATIO = 1;   // 재료(중복 사본) 레벨 비율: 사본은 레벨을 따로 갖지 않아 1 (서버 _story_merge_mat_ratio 와 같음)
+  /** 합성 미리보기 (서버 story_merge 와 같은 계산) */
+  const mergeCalc = o => { const cap = lvCap(o), ratio = Math.min(1, o.level / cap), bonus = Math.round(10 * ratio * MAT_RATIO * 100) / 100;
+    return { cap, ratio, bonus, exb: Math.round((exbOf(o) + bonus) * 100) / 100, ex: exOf(o) + 1, capTo: cap + 5 }; };
   const norm = o => Object.assign(o, { count: Math.max(1, o.count | 0 || 1), boost: o.boost || {}, level: Math.max(1, o.level | 0 || 1), exp: Math.max(0, o.exp | 0), totalExp: Math.max(0, o.totalExp | 0), cpts: Math.max(0, o.cpts | 0), spentCard: Math.max(0, o.spentCard | 0) });
   /** EXP 적용 결과 (원본 변경 없음): { level, exp, totalExp, cpts, wasted } */
   function gainCalc(o, amt) {
@@ -380,29 +389,68 @@
       <div class="text-center text-[11px] text-zinc-500 -mt-1 mb-2">카드를 누르면 상세 · 폐기할 수 있어요 ${save.owned.length > 1 ? '<button class="story-mini story-mini-red ml-1" data-go="bulk">🗑️ 일괄 폐기</button>' : ''}</div>
       <div class="story-grid">${save.owned.map((o, i) => { const c = boosted(o); if (!c) return ''; const b = o.boost || {};
         const up = STATS.filter(s => b[s]).map(s => `${s} +${b[s] * k[s]}`).join(' · ');
-        return `<div data-card="${i}" class="story-owned">${tile(c, `${o.count > 1 ? `<div class="story-dup">x${o.count}</div>` : ''}${o.cpts ? `<div class="story-cpts">+${o.cpts}</div>` : ''}${lvBar(o)}<div class="text-[10px] text-emerald-300 h-3">${i === 0 ? '👑 리더 ' : ''}${up}</div><div class="story-equip"><span>🗡️ 무기</span><span>🛡️ 방어구</span><em>준비 중</em></div>`)}</div>`; }).join('')}</div>
+        return `<div data-card="${i}" class="story-owned">${tile(c, `${o.count > 1 ? `<div class="story-dup">x${o.count}</div>` : ''}${o.cpts ? `<div class="story-cpts">+${o.cpts}</div>` : ''}${exOf(o) ? `<div class="story-exbadge">EX${exOf(o)}</div>` : ''}${lvBar(o)}${o.count > 1 && exOf(o) < maxEx(o) ? `<button class="story-merge-mini" data-merge="${i}">✨ 합성</button>` : ''}<div class="text-[10px] text-emerald-300 h-3">${i === 0 ? '👑 리더 ' : ''}${up}</div><div class="story-equip"><span>🗡️ 무기</span><span>🛡️ 방어구</span><em>준비 중</em></div>`)}</div>`; }).join('')}</div>
       ${anyPts ? '<div class="text-center mt-4"><button class="story-btn" data-go="stats">📈 스탯 분배하기</button></div>' : ''}`);
     bind({ stats: () => openStats(renderCards), bulk: () => bulkDiscard() });
     document.querySelectorAll('[data-card]').forEach(el => el.onclick = () => cardDetail(+el.dataset.card));
+    document.querySelectorAll('[data-merge]').forEach(b => b.onclick = e => { e.stopPropagation(); mergePreview(+b.dataset.merge); });
   }
   const isLeader = o => o.id === save.starter;
   const canDiscard = o => !(isLeader(o) && o.count <= 1) && save.owned.length > 1 || o.count > 1;
   function cardDetail(i) {
     const o = norm(save.owned[i]), c = boosted(o); if (!c) return;
     const cap = lvCap(o), dup = o.count > 1;
-    const p = popup(`<div class="flex gap-3"><img src="${IMG}${c.id}.webp" class="w-24 aspect-[3/4] object-cover rounded-lg" alt=""><div class="flex-1 min-w-0">
+    const p = popup(`<div class="flex gap-3"><div class="relative shrink-0 self-start"><img src="${IMG}${c.id}.webp" class="w-24 aspect-[3/4] object-cover rounded-lg" alt="">${window.rarityStars?.(c, exOf(o) ? 'ex' : 'base', 'rstars-over') || ''}</div><div class="flex-1 min-w-0">
         <div class="text-lg font-black truncate">${isLeader(o) ? '👑 ' : ''}${esc(c.name)} <span class="text-xs text-zinc-400">${RAR[c.grade] || 'N'}</span></div>
         ${lvBar(o)}<div class="text-[11px] text-zinc-400 mt-1">최대 Lv.${cap} · 누적 EXP ${fmt(o.totalExp)}${dup ? ` · 보유 x${o.count}` : ''}</div>
         <div class="text-xs mt-2"><span class="story-lvpct">Lv.${o.level} +${lvPct(o)}%</span> <span class="text-zinc-500">기본 스탯에 레벨 보너스</span></div>
-        <div class="story-statrows">${STATS.map(s => { const base = card(o.id)[s], lvB = Math.round(base * (1 + lvPct(o) / 100)) - base, pt = (o.boost?.[s] || 0) * D.statPerPoint[s];
-          return `<div><span>${STAT_LABEL[s]}</span><b>${fmt(c[s])}</b><small>기본 ${fmt(base)}${lvB ? ` <i class="text-amber-300">+${fmt(lvB)} 레벨</i>` : ''}${pt ? ` <i class="text-emerald-300">+${fmt(pt)} 포인트</i>` : ''}</small></div>`; }).join('')}</div>
+        ${exOf(o) ? `<div class="text-xs mt-1"><span class="story-expct">EX${exOf(o)} +${exbOf(o)}%</span> <span class="text-zinc-500">합성 보너스 (기본 스탯) · ${exOf(o)}/${maxEx(o)}</span></div>` : ''}
+        <div class="story-statrows">${STATS.map(s => { const base = card(o.id)[s], exB = Math.round(base * (1 + exbOf(o) / 100)) - base, lvB = Math.round(base * (1 + exbOf(o) / 100) * (1 + lvPct(o) / 100)) - base - exB, pt = (o.boost?.[s] || 0) * D.statPerPoint[s];
+          return `<div><span>${STAT_LABEL[s]}</span><b>${fmt(c[s])}</b><small>기본 ${fmt(base)}${exB ? ` <i class="text-red-300">+${fmt(exB)} EX</i>` : ''}${lvB ? ` <i class="text-amber-300">+${fmt(lvB)} 레벨</i>` : ''}${pt ? ` <i class="text-emerald-300">+${fmt(pt)} 포인트</i>` : ''}</small></div>`; }).join('')}</div>
         ${o.cpts ? `<div class="text-xs mt-1">남은 카드 전용 포인트 <b class="text-sky-300">${o.cpts}</b></div>` : ''}</div></div>
-      ${dup ? `<div class="story-hint">💡 같은 카드가 ${o.count}장 있어요. 중복 카드는 나중에 합성(EX)에 쓸 수 있으니 폐기는 신중하게!</div>` : ''}
+      ${dup && exOf(o) < maxEx(o) ? `<div class="story-hint">💡 같은 카드가 ${o.count}장 있어요. 중복 1장으로 합성(EX)할 수 있어요.</div>` : ''}
+      ${dup && exOf(o) < maxEx(o) ? `<button id="story-d-merge" class="story-merge-btn">✨ 합성 (EX${exOf(o)} → EX${exOf(o) + 1})</button>` : exOf(o) >= maxEx(o) ? `<div class="text-[11px] text-red-300 mt-2 text-center">최대 합성 단계 (EX${maxEx(o)})</div>` : ''}
       <div class="flex gap-2 mt-4"><button id="story-d-stats" class="flex-1 py-2.5 rounded-xl bg-emerald-500 text-black font-bold" ${save.points || o.cpts ? '' : 'disabled'}>📈 스탯 분배</button>
       <button id="story-d-discard" class="flex-1 py-2.5 rounded-xl bg-red-500/80 font-bold" ${canDiscard(o) ? '' : 'disabled'}>🗑️ 폐기</button></div>
       ${isLeader(o) && !dup ? '<div class="text-[11px] text-zinc-500 mt-2 text-center">리더 카드는 폐기할 수 없어요</div>' : ''}`, renderCards);
     $('story-d-stats').onclick = () => { p.close(true); openStats(renderCards, i); };
     $('story-d-discard').onclick = () => { p.close(true); pickTarget(i); };
+    const mb = $('story-d-merge'); if (mb) mb.onclick = () => { p.close(true); mergePreview(i); };
+  }
+  // ----- EX 합성: 대상 + 같은 카드 중복 1장 → EX +1, 기본 스탯 보너스, 레벨 1로 초기화 (서버 story_merge) -----
+  function mergePreview(i) {
+    const o = norm(save.owned[i]), c = card(o.id), m = mergeCalc(o), after = { ...o, ex: m.ex, exb: m.exb, level: 1, exp: 0 };
+    const p = popup(`<div class="text-lg font-black mb-1">✨ 합성 미리보기</div>
+      <div class="flex gap-3 items-center"><div class="relative shrink-0"><img src="${IMG}${c.id}.webp" class="w-20 aspect-[3/4] object-cover rounded-lg" alt="">${window.rarityStars?.(c, 'ex', 'rstars-over') || ''}</div>
+        <div class="flex-1 min-w-0 text-sm"><div class="font-black">${esc(exName(o, c.name))} → <span class="text-red-300">${esc(exName(after, c.name))}</span></div>
+        <div class="text-xs text-zinc-400">중복 1장 소모 (보유 x${o.count} → x${o.count - 1})</div>
+        <div class="mt-1">합성 보너스 <b class="text-red-300">+${m.bonus}%</b> <span class="text-xs text-zinc-400">(누적 ${exbOf(o)}% → ${m.exb}%)</span></div></div></div>
+      <div class="story-merge-calc">10% × 대상 Lv.${o.level}/${m.cap} (${Math.round(m.ratio * 100)}%) × 재료 레벨 비율 ${MAT_RATIO * 100}% = <b>+${m.bonus}%</b></div>
+      <div class="story-statrows mt-2">${STATS.map(s => `<div><span>${STAT_LABEL[s]}</span><b>${fmt(statCalc(o, s))}</b><small>→ <b class="text-white">${fmt(statCalc(after, s))}</b> (Lv.1 기준)</small></div>`).join('')}</div>
+      <div class="text-xs mt-2">레벨 Lv.${o.level} → <b class="text-amber-300">Lv.1</b> · 최대 레벨 Lv.${m.cap} → <b class="text-emerald-300">Lv.${m.capTo}</b></div>
+      ${m.ratio < 1 ? `<div class="story-hint">💡 대상 레벨이 높을수록 보너스가 커요. 최대 레벨(Lv.${m.cap})에서 합성하면 +10%예요.</div>` : ''}
+      <div class="story-warn">⚠️ 합성하면 레벨이 1로 초기화돼요. (EXP 0)</div>
+      <div class="flex gap-2 mt-4"><button data-close-pop class="flex-1 py-2.5 rounded-xl bg-zinc-700 font-bold">취소</button><button id="merge-next" class="flex-1 py-2.5 rounded-xl bg-red-500 font-bold">합성하기</button></div>`, renderCards);
+    $('merge-next').onclick = () => { p.close(true); mergeConfirm(i, m); };
+  }
+  function mergeConfirm(i, m) {
+    const o = save.owned[i], c = card(o.id);
+    const p = popup(`<div class="text-lg font-black mb-2">정말 합성할까요?</div>
+      <div class="text-sm"><b>${esc(exName(o, c.name))}</b> Lv.${o.level} 이 <b class="text-red-300">${esc(exName({ ex: m.ex }, c.name))}</b> <b class="text-amber-300">Lv.1</b> 이 돼요.</div>
+      <div class="story-warn">⚠️ 레벨이 1로 초기화되고 중복 1장이 사라져요. 되돌릴 수 없어요.</div>
+      <div class="flex gap-2 mt-4"><button data-close-pop class="flex-1 py-2.5 rounded-xl bg-zinc-700 font-bold">취소</button><button id="merge-yes" class="flex-1 py-2.5 rounded-xl bg-red-500 font-bold">합성</button></div>`, renderCards);
+    $('merge-yes').onclick = async () => {
+      $('merge-yes').disabled = true;
+      const res = await act('story_merge', { p_id: o.id }, () => {
+        if (o.count < 2 || exOf(o) >= maxEx(o)) return null;
+        Object.assign(o, { count: o.count - 1, ex: m.ex, exb: m.exb, level: 1, exp: 0 });
+        return { ex: m.ex, bonus: m.bonus, exb: m.exb };
+      }, r => r.data);
+      p.close(true);
+      if (!res.ok || !res.r) return renderCards();
+      cardDetail(save.owned.findIndex(x => x.id === o.id));
+      levelUpFx(`EX${res.r.ex} 합성! +${res.r.bonus}%`);
+    };
   }
   // ----- 일괄 폐기: 여러 장을 골라 EXP를 대상 1장에 (서버 story_discard_many, 전부 성공 또는 전부 취소) -----
   /** 선택(sel: {id: 장수}) → 미리보기 { n, amt, same, refund, ids } (서버와 같은 규칙) */

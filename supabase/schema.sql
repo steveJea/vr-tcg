@@ -1543,3 +1543,40 @@ begin
 end $$;
 revoke all on function public.story_discard_many(text[], text) from public, anon;
 grant execute on function public.story_discard_many(text[], text) to authenticated;
+
+-- ===== 스토리 EX 합성 (supabase/story_merge.sql 과 동일) =====
+-- 최대 레벨: EX 단계마다 +5
+create or replace function public._story_cap(g text, ex int default 0) returns int language sql immutable as $$
+  select (case g when 'NORMAL' then 20 when 'RARE' then 30 when 'HIGH RARE' then 40 when 'SUPER RARE' then 50 when 'ULTRA RARE' then 60 when 'MYTHIC RARE' then 70 else 20 end) + 5 * greatest(0, coalesce(ex, 0))
+$$;
+-- 등급별 최대 EX 단계
+create or replace function public._story_max_ex(g text) returns int language sql immutable as $$
+  select case g when 'NORMAL' then 1 when 'RARE' then 2 when 'HIGH RARE' then 3 when 'SUPER RARE' then 4 when 'ULTRA RARE' then 5 when 'MYTHIC RARE' then 6 else 1 end
+$$;
+-- 재료(중복 사본) 레벨 비율. 사본은 레벨이 따로 없어서 1
+create or replace function public._story_merge_mat_ratio(e jsonb) returns numeric language sql immutable as $$ select 1.0::numeric $$;
+revoke all on function public._story_cap(text, int), public._story_max_ex(text), public._story_merge_mat_ratio(jsonb) from public, anon, authenticated;
+
+create or replace function public.story_merge(p_id text) returns jsonb language plpgsql security definer set search_path = public as $$
+declare uid uuid := auth.uid(); d jsonb; owned jsonb; i int; e jsonb; g text; ex int; lv int; cap int; bonus numeric; exb numeric;
+begin
+  d := _story_lock(uid);
+  owned := case when jsonb_typeof(d->'owned') = 'array' then d->'owned' else '[]'::jsonb end;
+  select x.n - 1 into i from jsonb_array_elements(owned) with ordinality x(e, n) where x.e->>'id' = p_id limit 1;
+  if i is null then raise exception 'card not owned'; end if;
+  e := _story_norm(owned->i);
+  if (e->>'count')::int < 2 then raise exception 'no duplicate'; end if;
+  select grade into g from story_card_pool where id = p_id;
+  g := coalesce(g, 'NORMAL');
+  ex := greatest(0, coalesce((e->>'ex')::int, 0));
+  if ex >= _story_max_ex(g) then raise exception 'max ex'; end if;
+  lv := (e->>'level')::int; cap := _story_cap(g, ex);
+  bonus := round(10 * least(1, lv::numeric / cap) * _story_merge_mat_ratio(e), 2);
+  exb := round(coalesce((e->>'exb')::numeric, 0) + bonus, 2);
+  e := e || jsonb_build_object('count', (e->>'count')::int - 1, 'ex', ex + 1, 'exb', exb, 'level', 1, 'exp', 0);
+  owned := jsonb_set(owned, array[i::text], e);
+  d := _story_save(uid, jsonb_set(d, '{owned}', owned));
+  return jsonb_build_object('data', d, 'ex', ex + 1, 'bonus', bonus, 'exb', exb, 'from_level', lv, 'cap_from', cap, 'cap_to', _story_cap(g, ex + 1));
+end $$;
+revoke all on function public.story_merge(text) from public, anon;
+grant execute on function public.story_merge(text) to authenticated;
