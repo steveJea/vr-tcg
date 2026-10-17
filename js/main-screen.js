@@ -68,7 +68,12 @@
   const duck = (on) => { on = !!on; if (on === ducked) return; ducked = on; fadeTo(baseVol * (ducked ? DUCK : 1)); };
   const setVolume = (v) => { baseVol = Math.min(1, Math.max(0, +v || 0)); fadeTo(baseVol * (ducked ? DUCK : 1)); };
   const btn = document.getElementById('main-sound');
-  const renderBtn = () => { if (btn) { btn.innerHTML = window.VRIcon ? VRIcon.icon(soundOn ? 'sound_on' : 'sound_off') : (soundOn ? '🔊' : '🔇'); btn.classList.toggle('on', soundOn); btn.title = missing ? '배경음악 파일 없음 (audio/main.mp3)' : '배경음악 켜기/끄기'; } };
+  const renderBtn = () => {
+    if (!btn) return;
+    btn.textContent = soundOn ? 'ON' : 'OFF'; btn.setAttribute('aria-checked', String(soundOn));
+    btn.classList.toggle('on', soundOn); btn.title = missing ? '배경음악 파일 없음 (audio/main.mp3)' : '배경음악 켜기/끄기';
+    const ic = document.getElementById('main-sound-ic'); if (ic) ic.src = `img/ui/${soundOn ? 'sound_on' : 'sound_off'}.webp`;
+  };
   const getAudio = () => {
     if (audio || missing) return audio;
     audio = new Audio(src); audio.loop = true; audio.volume = baseVol * (ducked ? DUCK : 1); audio.preload = 'auto';
@@ -104,4 +109,20 @@
   addEventListener('pointerdown', first); addEventListener('keydown', first);
   renderBtn();
   window.VRSound = { play, stop, hold, duck, setVolume, setTrack, get track() { return src; }, get held() { return held; }, get paused() { return !audio || audio.paused; }, get on() { return soundOn; }, get ducked() { return ducked; }, get volume() { return audio ? audio.volume : null; }, get baseVolume() { return baseVol; } };
+})();
+
+// ===== 메인 화면: 설정 팝업 (연출 스킵·배경음악). 바깥 클릭·Esc·닫기로 닫힘 =====
+(() => {
+  const gear = document.getElementById('main-settings'), pop = document.getElementById('main-settings-pop');
+  if (!gear || !pop) return;
+  const isOpen = () => !pop.classList.contains('hidden');
+  const open = () => { pop.classList.remove('hidden'); gear.setAttribute('aria-expanded', 'true'); setTimeout(() => document.getElementById('main-skip')?.focus(), 0); };
+  const close = (refocus = true) => { if (!isOpen()) return; pop.classList.add('hidden'); gear.setAttribute('aria-expanded', 'false'); if (refocus) gear.focus(); };
+  gear.addEventListener('click', e => { e.stopPropagation(); isOpen() ? close() : open(); });
+  pop.addEventListener('click', e => { if (e.target === pop || e.target.closest('[data-close-settings]')) close(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && isOpen()) close(); });
+  // 게임 화면으로 넘어가면 닫기
+  new MutationObserver(() => { if (document.getElementById('start-screen').classList.contains('hidden')) close(false); })
+    .observe(document.getElementById('start-screen'), { attributes: true, attributeFilter: ['class'] });
+  window.VRSettings = { open, close, get isOpen() { return isOpen(); } };
 })();

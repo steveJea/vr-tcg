@@ -6,7 +6,6 @@
 .story-back,.story-mycards,.story-mini{padding:6px 12px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);font-size:13px;font-weight:700}
 .story-mini{padding:2px 10px;margin-left:6px;background:#059669;border-color:#34d399}
 .story-btn{padding:12px 20px;border-radius:16px;background:linear-gradient(180deg,#fbbf24,#d97706);color:#1c1917;font-weight:900;box-shadow:0 0 18px rgba(251,191,36,.35)}
-.story-entry{margin-top:8px;background:linear-gradient(180deg,#a78bfa,#6d28d9)!important;color:#fff!important}
 .story-chapter-sub{font-size:12px;letter-spacing:.35em;color:#fbbf24;font-weight:800}
 .story-chapter-big{font-size:clamp(40px,9vw,88px);font-weight:900;letter-spacing:.04em;line-height:1.05;background:linear-gradient(180deg,#fff7ed,#f59e0b);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 16px rgba(245,158,11,.45))}
 .story-chapter-name{font-size:18px;color:#e7e5e4;margin-top:6px}

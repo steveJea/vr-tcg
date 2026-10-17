@@ -89,13 +89,15 @@ function render(p) {
   const box = $('acct-box'); if (!box) return;
   if (!ready) { box.innerHTML = ''; return; }
   if (!user) {
-    box.innerHTML = `<button id="acct-login" class="main-btn main-btn-sub w-full">🔑 구글로 로그인 <span class="text-[11px] opacity-70">(아케이드 전적 저장)</span></button>`;
+    box.innerHTML = `<button id="acct-login" type="button" class="main-btn acct-login" title="로그인하면 아케이드 전적과 스토리 진행이 저장돼요"><img src="img/ui/login.webp" alt="" class="ui-ic" width="64" height="64"><span>구글 로그인</span><small>전적 저장</small></button>`;
     $('acct-login').onclick = login;
   } else {
-    const av = p?.avatar_url ? `<img src="${esc(p.avatar_url)}" alt="" referrerpolicy="no-referrer" class="w-6 h-6 rounded-full">` : '👤';
-    box.innerHTML = `<div class="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-black/40 text-sm text-amber-100">
-      <span class="flex items-center gap-2 truncate">${av}<span class="truncate">${esc(p?.nickname)}님</span><span class="text-[11px] text-emerald-300">☁️ 저장 중</span></span>
-      <button id="acct-logout" class="text-xs underline opacity-80 hover:opacity-100 shrink-0">로그아웃</button></div>`;
+    const av = p?.avatar_url
+      ? `<img src="${esc(p.avatar_url)}" alt="" referrerpolicy="no-referrer" class="acct-avatar" onerror="this.onerror=null;this.src='img/ui/profile.webp'">`
+      : `<img src="img/ui/profile.webp" alt="" class="acct-avatar">`;
+    box.innerHTML = `<div class="acct-chip" title="로그인됨 · 진행 상황이 클라우드에 저장 중">
+      ${av}<span class="acct-name">${esc(p?.nickname)}님</span>
+      <button id="acct-logout" type="button" class="acct-logout">로그아웃</button></div>`;
     $('acct-logout').onclick = logout;
   }
 }

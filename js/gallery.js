@@ -229,7 +229,8 @@
 
   // --- 타이틀 버튼 ---
   function addButton() {
-    const howto = $('main-howto'); if (!howto || $('main-gallery')) return;
+    const ex = $('main-gallery'); if (ex) { ex.onclick = open; return; }   // 메인 메달 버튼(index.html)
+    const howto = $('main-howto'); if (!howto) return;
     const b = document.createElement('button');
     b.id = 'main-gallery'; b.className = 'main-btn main-btn-sub'; b.innerHTML = `${IC('gallery')} 갤러리`;
     b.onclick = open;

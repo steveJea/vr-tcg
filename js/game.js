@@ -207,8 +207,9 @@ async function attackAll() {
   S.busy = false; fastForward = false; render();
 }
 
+function setStartLabel(t) { const b = $('start-btn'), l = b?.querySelector('.main-banner-title'); if (l) l.textContent = t; else if (b) b.textContent = t; }
 function renderSkipBtn() {
-  const m = $('main-skip'); if (m) { m.innerHTML = skipFx ? '⏩ 스킵' : `${ic('opening', { alt: '' })} 연출`; m.classList.toggle('on', skipFx); }
+  const m = $('main-skip'); if (m) { m.textContent = skipFx ? 'ON' : 'OFF'; m.setAttribute('aria-checked', String(skipFx)); m.classList.toggle('on', skipFx); }
   const b = $('fx-skip');
   b.innerHTML = skipFx ? '⏩ 스킵 ON' : `${ic('opening', { alt: '' })} 연출`;
   b.classList.toggle('border-amber-400', skipFx); b.classList.toggle('text-amber-300', skipFx);
@@ -1035,10 +1036,10 @@ window.addEventListener('vr:user', renderStats);   // 로그인·로그아웃·�
     POOL = parseCSV(await (await fetch('data/cards.csv')).text()); setCardPool(POOL);
     const [sk, co] = await Promise.all(['data/skills.json', 'data/combos.json'].map(u => fetch(u).then(r => r.json())));
     setSkillData(sk, co); setEmitter(onEngine);
-    $('start-btn').disabled = false; $('start-btn').textContent = '⚔️ 아케이드 모드';
+    $('start-btn').disabled = false; setStartLabel('아케이드 모드');
     $('start-btn').onclick = () => startGame();
     window.dispatchEvent(new CustomEvent('tcg:ready'));
-  } catch (e) { $('start-btn').textContent = '카드 데이터를 불러오지 못했어요'; }
+  } catch (e) { setStartLabel('카드 데이터를 불러오지 못했어요'); }
 })();
 
 // 테스트/디버그용
