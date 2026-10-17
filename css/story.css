@@ -193,3 +193,18 @@ span.story-lvpct { background: rgba(251,191,36,.12); border: 1px solid rgba(251,
 .boss-crown { position: absolute; top: -14px; left: 50%; transform: translateX(-50%); z-index: 5; font-size: 18px; filter: drop-shadow(0 0 4px #f59e0b); pointer-events: none; }
 
 .story-node-dot .story-node-ic { width: 1.6em; height: 1.6em; vertical-align: middle; }
+
+/* ===== 챕터 탭 · 10페이즈 지도 · 루트 · 필수 출전 ===== */
+.story-chtabs{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:10px 0 2px}
+.story-chtab{display:flex;flex-direction:column;align-items:center;padding:6px 14px;border-radius:999px;border:1px solid #52525b;background:#18181b;color:#d4d4d8;font-weight:800;font-size:13px;line-height:1.2}
+.story-chtab small{font-size:10px;font-weight:500;color:#a1a1aa}
+.story-chtab.on{border-color:#fbbf24;background:#78350f;color:#fde68a}
+.story-chtab:disabled{opacity:.55;cursor:not-allowed}
+.story-map-row{margin:18px 0 6px}
+.story-map-row + .story-map-row{margin-top:4px}
+.story-route-tag{display:inline-flex;align-items:center;gap:6px;margin-top:6px;padding:3px 10px;border-radius:999px;background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.4);font-size:12px;color:#fde68a}
+.story-pick.on{outline:2px solid #fbbf24;outline-offset:2px;border-radius:14px}
+.story-forced-h{font-size:12px;font-weight:800;color:#fde68a;margin:6px 0 4px;text-align:left}
+.story-forced-h small{font-weight:500;color:#a1a1aa}
+.story-pick-card.locked{cursor:default;outline:2px solid #38bdf8;outline-offset:-2px;border-radius:12px}
+.story-forced{margin-bottom:6px}
