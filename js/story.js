@@ -234,7 +234,7 @@
     }
     if (!window.TCG?.ready) return;
     await load();
-    await checkChapters(); curCh = null;
+    await checkChapters(); curCh = null; tickets = null;
     if (!save.openingSeen) return renderOpening();
     if (!save.starter) return renderSelect();
     renderHub();
@@ -380,11 +380,12 @@
       <button class="story-hub-go main-btn" id="story-continue" ${nx ? '' : 'disabled'}><b>▶ 이어하기</b><small>${nx ? `${esc(nx.base.title)} · Phase.${nx.ph.no}${nx.ph.title ? ` 「${esc(nx.ph.title)}」` : ''}${nx.ph.type === 'boss' ? ' · BOSS' : ''}` : '열린 챕터를 모두 클리어했어요'}</small></button>
       <div class="story-hub-list">${rows}</div>
       <div class="story-hub-menu">
-        <button class="main-btn" data-go="gacha">🎴 카드 뽑기${canDraw() ? '<i class="story-badge">1</i>' : ''}</button>
+        <button class="main-btn" data-go="gacha">🎴 카드 뽑기${canDraw() ? '<i class="story-badge">1</i>' : ''}<small class="story-hub-tk">${tickets ? `🎟️ ${tickets}` : ''}</small></button>
         <button class="main-btn" data-go="cards">🃏 내 카드/스탯${save.points ? ` <i class="story-badge">${save.points}</i>` : ''}</button>
         <button class="main-btn" disabled title="준비 중">📅 이벤트 스토리 <small>준비 중</small></button></div>
     </div>`);
     bind();
+    if (tickets == null) syncTickets().then(r => { if (r.added) toast(`🎟️ 소환권 +${r.added} (챕터 클리어 보상)`); const el = root().querySelector('.story-hub-tk'); if (el) el.textContent = tickets ? `🎟️ ${tickets}` : ''; });
     root().querySelectorAll('[data-hubch]').forEach(b => b.onclick = () => renderMap(+b.dataset.hubch));
     $('story-continue').onclick = () => {
       if (!nx) return;
@@ -545,8 +546,10 @@
       $('story-intro').onclick = go;
     });
     if (first && ph.type === 'boss' && ch.ending?.length) await new Promise(ok => playLines(ch.ending, [], ok, 'ending', ph.hero || ch.hero));
+    const tk = first && chapterDone(D.chapters.find(c => c.id === ch.id) || ch) ? await syncTickets() : null;   // 챕터 첫 클리어 → 소환권
     show(`<div class="text-center py-6"><div class="story-chapter-sub">Phase.${ph.no} CLEAR</div><div class="story-chapter-big text-emerald-300">VICTORY</div>
       ${reward ? `<div class="mt-4 text-amber-200 font-bold">🎁 보상 카드 획득!</div><div class="flex justify-center mt-2 story-reward">${tile(reward)}</div>` : `<div class="mt-4 text-zinc-400 text-sm">${first ? '이번 챕터는 카드 보상 없이 스탯 포인트만 받아요.' : '이미 클리어한 페이즈라 카드 보상은 없어요.'}</div>`}
+      ${tk?.added ? `<div class="mt-3 text-amber-200 font-bold">🎟️ 챕터 클리어 보상: 소환권 +${tk.added} <small class="text-zinc-400">(특수 뽑기에서 사용)</small></div>` : ''}
       ${expList(r.exp)}
       <div class="mt-4 text-lg">${pts ? `스탯 포인트 <b class="text-emerald-300">+${pts}</b> (보유 ${save.points})` : '<span class="text-zinc-400 text-sm">다시 클리어한 페이즈라 스탯 포인트는 없어요.</span>'}</div>
       <div class="flex flex-col gap-2 max-w-xs mx-auto mt-5"><button class="story-btn" data-go="stats">📈 스탯 분배하기</button><button class="story-back" data-go="map">챕터 지도로</button></div></div>`);
@@ -824,19 +827,98 @@
     await persist();
     return res;
   }
-  let gachaTimer = 0;
-  // ----- 상점 (카드 뽑기) 화면: 규칙은 그대로 (하루 1회 무료) -----
-  function renderShop() {
+  // ----- 소환권 (특수 뽑기): 챕터 첫 클리어마다 +10. 서버 모드는 서버(story_tickets / story_ticket_draw)가 기준 -----
+  const G = () => D.gacha;
+  let tickets = null, ticketSrv = null;   // ticketSrv: 서버 함수 사용 여부 (null = 아직 모름)
+  const ticketMissing = e => /story_ticket|PGRST202|42883|Could not find/i.test(`${e?.code} ${e?.message}`);
+  function localTicketSync() {   // 브라우저 저장 모드: 다 깬 챕터마다 한 번 +10
+    const got = new Set(save.ticketChs || []); let added = 0;
+    for (const c of D.chapters) if (chapterDone(c) && !got.has(c.id)) { got.add(c.id); added += G().ticketsPerChapter; }
+    if (added) { save.tickets = (save.tickets | 0) + added; save.ticketChs = [...got]; persist(); }
+    return { tickets: save.tickets | 0, added };
+  }
+  /** 소환권 개수 갱신 (+ 새로 받은 양). 반환 { tickets, added } */
+  async function syncTickets() {
+    const sb = cloud()?.sb, u = cloud()?.user;
+    if (window.__TICKET_MOCK) { const r = await window.__TICKET_MOCK.sync(); tickets = r.tickets; return r; }
+    if (serverMode && sb && u && ticketSrv !== false) {
+      const { data, error } = await sb.rpc('story_tickets');
+      if (!error) { ticketSrv = true; tickets = data.tickets | 0; return data; }
+      if (!ticketMissing(error)) return { tickets: tickets | 0, added: 0, error: error.message };
+      ticketSrv = false;
+    }
+    const r = localTicketSync(); tickets = r.tickets; return r;
+  }
+  /** 특수 뽑기 n회 (1 또는 10). 반환 { ok, cards:[{card_id, grade}], tickets } */
+  async function drawTickets(n) {
+    const sb = cloud()?.sb, u = cloud()?.user;
+    let res = null;
+    if (window.__TICKET_MOCK) res = await window.__TICKET_MOCK.draw(n);
+    else if (serverMode && sb && u && ticketSrv !== false) {
+      const { data, error } = await sb.rpc('story_ticket_draw', { p_count: n });
+      if (!error) res = data; else if (!ticketMissing(error)) return { ok: false, reason: 'error', msg: error.message }; else ticketSrv = false;
+    }
+    if (res) {
+      if (res.ok) { tickets = res.tickets | 0; if (!window.__TICKET_MOCK) await reload(); else for (const c of res.cards) addOwned(c.card_id); }
+      return res;
+    }
+    // 브라우저 저장 모드 (서버 함수 없음)
+    localTicketSync();
+    if ((save.tickets | 0) < n) return { ok: false, reason: 'tickets', tickets: save.tickets | 0 };
+    const cards = []; let hr = false;
+    for (let i = 0; i < n; i++) {
+      let r = Math.random(); if (n === 10 && i === 9 && !hr) r = 0.8 + Math.random() * 0.2;   // 10회 HR 이상 보장
+      const g = window.rollGachaRarity(r, G().special); if (!['NORMAL', 'RARE'].includes(g)) hr = true;
+      const c = rand(pool().filter(x => x.grade === g)); addOwned(c.id); cards.push({ card_id: String(c.id), grade: g });
+    }
+    save.tickets -= n; tickets = save.tickets; await persist();
+    return { ok: true, cards, tickets, local: true };
+  }
+  const ticketBadge = n => `<span class="story-ticket" title="소환권">🎟️ <b>${n ?? '…'}</b></span>`;
+  const pct = p => `${+(p * 100).toFixed(1)}%`;
+  function showRates() {
+    const row = (t, rs, note) => `<div class="mb-3"><div class="font-bold mb-1">${t}</div><div class="story-rates">${rs.map(([g, p]) => `<span class="g-text-${GLOW[g]}">${RAR[g]}</span><b>${pct(p)}</b>`).join('')}</div>${note ? `<div class="text-[11px] text-zinc-400 mt-1">${note}</div>` : ''}</div>`;
+    popup(`<div class="text-lg font-black mb-3">📊 뽑기 확률</div>${row('일반 뽑기 (하루 1회 무료)', G().rates, '매일 자정(KST, 한국 시간 00:00) 초기화')}${row('특수 뽑기 (소환권 1장 = 1회)', G().special, `10회 뽑기는 HR 이상 1장 보장 · 소환권은 챕터를 처음 다 깰 때마다 +${G().ticketsPerChapter}`)}<button data-close-pop class="w-full mt-1 py-2 rounded-xl bg-white/10">닫기</button>`);
+  }
+
+  let gachaTimer = 0, shopTab = 'daily';
+  // ----- 상점 (카드 뽑기) 화면: 일반 뽑기(하루 1회 무료) · 특수 뽑기(소환권) -----
+  function renderShop(tab) {
+    if (tab) shopTab = tab;
     clearInterval(gachaTimer);
-    const avail = canDraw();
-    show(`${topBar('🎴 카드 뽑기', 'hub')}<div class="story-shop story-pop-panel"><div class="text-lg font-black">🎴 오늘의 카드 뽑기</div><div class="text-[11px] text-zinc-400 mt-1">하루 1회 무료 · 매일 자정(KST) 초기화<br>N 70% · R 20% · HR 6.5% · SR 3% · UR 0.5%</div>
+    const avail = canDraw(), daily = shopTab === 'daily';
+    show(`${topBar('🎴 카드 뽑기', 'hub')}<div class="story-shop story-pop-panel">
+      <div class="story-shop-tabs"><button class="${daily ? 'on' : ''}" data-tab="daily">일반 뽑기${avail ? '<i class="story-badge">1</i>' : ''}</button><button class="${daily ? '' : 'on'}" data-tab="special">특수 뽑기 ${ticketBadge(tickets)}</button></div>
+      ${daily ? `<div class="text-lg font-black">🎴 오늘의 카드 뽑기</div><div class="text-[11px] text-zinc-400 mt-1">하루 1회 무료 · 매일 자정(KST) 초기화</div>
       <div class="gacha-stage"><div class="gacha-card" id="gacha-card"><div class="gacha-face gacha-back">🎴</div><div class="gacha-face gacha-front" id="gacha-front"></div></div></div>
       <div id="gacha-msg" class="text-sm min-h-[1.5rem]"></div>
       ${avail ? '<button id="gacha-go" class="story-btn w-full mt-2">뽑기!</button>' : ''}
-      <div id="gacha-next" class="text-xs text-zinc-400 mt-2"></div>
+      <div id="gacha-next" class="text-xs text-zinc-400 mt-2"></div>`
+      : `<div class="text-lg font-black">✨ 특수 뽑기</div><div class="text-[11px] text-zinc-400 mt-1">소환권 1장 = 1회 · 10회는 HR 이상 1장 보장<br>소환권은 챕터를 처음 다 깰 때마다 +${G().ticketsPerChapter}</div>
+      <div class="my-3 text-base">보유 ${ticketBadge(tickets)}</div>
+      <div id="tk-result" class="story-tk-result"></div><div id="gacha-msg" class="text-sm min-h-[1.5rem]"></div>
+      <div class="flex gap-2"><button class="story-btn flex-1" data-draw="1" ${(tickets | 0) >= 1 ? '' : 'disabled'}>1회 <small>🎟️1</small></button><button class="story-btn flex-1" data-draw="10" ${(tickets | 0) >= 10 ? '' : 'disabled'}>10회 <small>🎟️10</small></button></div>`}
+      <button id="gacha-rates" class="w-full mt-2 py-2 rounded-xl bg-white/10 text-sm">📊 확률 보기</button>
       <button data-go="cards" class="w-full mt-2 py-2 rounded-xl bg-white/10">🃏 내 카드 보기</button></div>`);
     bind();
-    const tick = () => { const n = $('gacha-next'); if (!n) return clearInterval(gachaTimer); n.textContent = canDraw() ? '' : `다음 뽑기까지 ${hms(msToReset())}`; };
+    root().querySelectorAll('[data-tab]').forEach(b => b.onclick = () => renderShop(b.dataset.tab));
+    $('gacha-rates').onclick = showRates;
+    if (tickets == null) syncTickets().then(r => { if (root().querySelector('.story-shop')) { if (r.added) toast(`🎟️ 소환권 +${r.added} (챕터 클리어 보상)`); renderShop(); } });
+    if (!daily) {
+      root().querySelectorAll('[data-draw]').forEach(b => b.onclick = async () => {
+        root().querySelectorAll('[data-draw]').forEach(x => x.disabled = true); $('gacha-msg').textContent = '뽑는 중...';
+        const r = await drawTickets(+b.dataset.draw);
+        if (!r.ok) { $('gacha-msg').textContent = r.reason === 'tickets' ? '소환권이 부족해요.' : `뽑기에 실패했어요: ${r.msg || ''}`; return; }
+        const best = r.cards.reduce((a, c) => Math.max(a, Object.keys(GLOW).indexOf(c.grade)), 0);
+        root().querySelectorAll('.story-ticket b').forEach(x => x.textContent = tickets);
+        $('tk-result').innerHTML = r.cards.map((x, i) => { const c = card(x.card_id); return `<div class="story-tk-card g-${GLOW[x.grade]}" style="animation-delay:${i * 0.08}s"><img src="${IMG}${c.id}.webp" alt="${esc(c.name)}"><span class="story-rar">${RAR[x.grade]}</span><div>${esc(c.name)}</div></div>`; }).join('');
+        $('tk-result').className = `story-tk-result n${r.cards.length}`;
+        $('gacha-msg').innerHTML = `${r.cards.length}장 획득! <span class="g-text-${Object.values(GLOW)[best]}">최고 ${RAR[Object.keys(GLOW)[best]]}</span><div class="text-[11px] text-zinc-400">보유 카드에 추가됐어요</div>`;
+        root().querySelectorAll('[data-draw]').forEach(x => x.disabled = (tickets | 0) < +x.dataset.draw);
+      });
+      return;
+    }
+    const tick = () => { const n = $('gacha-next'); if (!n) return clearInterval(gachaTimer); n.textContent = canDraw() ? '' : `다음 무료 뽑기까지 ${hms(msToReset())} (한국 시간 자정)`; };
     tick(); gachaTimer = setInterval(tick, 1000);
     const go = $('gacha-go'); if (!go) { $('gacha-msg').textContent = '오늘은 이미 뽑았어요.'; return; }
     go.onclick = async () => {
@@ -848,7 +930,7 @@
       const el = $('gacha-card'); el.parentElement.className = `gacha-stage g-${g}`;
       setTimeout(() => el.classList.add('flip'), 350);
       go.remove();
-      root().querySelector('.story-gacha-btn .story-badge')?.remove();
+      root().querySelectorAll('.story-gacha-btn .story-badge, [data-tab="daily"] .story-badge').forEach(x => x.remove());
       setTimeout(() => { $('gacha-msg').innerHTML = `<b class="g-text-${g}">${RAR[c.grade]} · ${esc(c.name)}</b> 획득!${r.count > 1 ? ` <span class="story-dup-inline">x${r.count}</span>` : ''}<div class="text-[11px] text-zinc-400">보유 카드에 추가됐어요</div>`; tick(); }, 1300);
     };
   }

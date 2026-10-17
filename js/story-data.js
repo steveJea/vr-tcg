@@ -813,5 +813,7 @@ window.STORY_DATA.portraits = { '문지예': 'jiye', '용지혜': 'jihye', '안�
 window.STORY_DATA.exprSlug = { '기본': 'base', '화남': 'angry', '웃음': 'smile' };
 
 // ===== 일일 카드 뽑기 확률 (서버 supabase/gacha.sql 과 동일하게 유지) =====
-window.STORY_DATA.gacha = { rates: [['NORMAL', 0.70], ['RARE', 0.20], ['HIGH RARE', 0.065], ['SUPER RARE', 0.03], ['ULTRA RARE', 0.005]] };
-window.rollGachaRarity = (r = Math.random()) => { let acc = 0; for (const [g, p] of window.STORY_DATA.gacha.rates) { acc += p; if (r < acc) return g; } return 'NORMAL'; };
+window.STORY_DATA.gacha = { rates: [['NORMAL', 0.70], ['RARE', 0.20], ['HIGH RARE', 0.065], ['SUPER RARE', 0.03], ['ULTRA RARE', 0.005]],
+  // 특수 뽑기 (소환권 1장 = 1회). 서버 supabase/story_gacha.sql 과 같게 유지. 10회는 HR 이상 1장 보장, 챕터 첫 클리어마다 소환권 +10
+  special: [['NORMAL', 0.50], ['RARE', 0.30], ['HIGH RARE', 0.16], ['SUPER RARE', 0.032], ['ULTRA RARE', 0.008]], ticketsPerChapter: 10 };
+window.rollGachaRarity = (r = Math.random(), rates = window.STORY_DATA.gacha.rates) => { let acc = 0; for (const [g, p] of rates) { acc += p; if (r < acc) return g; } return 'NORMAL'; };
