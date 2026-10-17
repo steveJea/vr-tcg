@@ -299,7 +299,7 @@ async function attack(who, unit, target, fromBatch = false) {
   const o = opp(who), p = S[who];
   if (!unit.canAttack || S.over) return;
   if (!fromBatch && who === 'me' && S.busy) return;
-  if (!canTarget(p, o, target)) { if (who === 'me') { const r = attackTargets(p, o).reason; log(r, 'text-red-400'); floatText(r, 'text-red-400 text-sm', 'ai'); } return; }
+  if (!canTarget(p, o, target, unit)) { if (who === 'me') { const r = attackTargets(p, o, unit).reason; log(r, 'text-red-400'); floatText(r, 'text-red-400 text-sm', 'ai'); } return; }
   const prevBusy = S.busy;
   S.busy = true; selected = null;
   const oWho = who === 'me' ? 'ai' : 'me';
@@ -749,7 +749,7 @@ function render() {
     btn.querySelector('.reason').textContent = S.story ? '스토리 불가' : myTurn && done ? '이번 판 고용 완료' : ''; }
   if (S.story) { const b = $('act-shuffle'); b.disabled = true; b.querySelector('.reason').textContent = '스토리 불가'; }
   $('attack-all').disabled = !myTurn || !S.me.field.some(u => u.canAttack);
-  const tg = attackTargets(S.me, S.ai);
+  const tg = attackTargets(S.me, S.ai, selected != null ? S.me.field.find(x => x.uid === selected) : null);
   $('ai-hero').classList.toggle('ring-4', selected != null && tg.hero);
   $('ai-hero').classList.toggle('ring-red-500', selected != null && tg.hero);
   $('ai-hero').classList.toggle('opacity-70', S.turn === 'me' && !tg.hero);

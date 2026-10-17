@@ -60,6 +60,9 @@ export const STATUS = {
   decoy:   { icon: '🪞', label: '대신 맞기', desc: '이 카드를 향한 기본 공격을 상대 카드가 대신 맞음' },
   pleading:{ icon: '🛡️', label: '꼭 이래야해?', desc: '피해 50% 감면, 반격 250%, 종료 시 HP 30% 회복' },
   seed:    { icon: '🌱', label: '쾌락의 씨앗', desc: '종료 시 HP 5% 회복' },
+  provoked:{ icon: '🎯', img: 'taunt', label: '도발당함', debuff: true, desc: '도발한 카드만 공격할 수 있고 스킬을 쓸 수 없음' },
+  notweak: { icon: '😤', img: 'taunt', label: '나는 약하지 않아', desc: '도발 효과가 끝나면 최대 HP 30% 회복' },
+  vow:     { icon: '🛡️', img: 'def', label: '지킨다', desc: '이영아가 같은 필드에 있는 동안 매 턴 DEF +0.4% 누적, 최대 HP 2% 회복' },
   mod:     { icon: '', label: '' },
 };
 const MOD_ICON = (atk, def) => (atk > 0 || def > 0) ? '🔺' : '🔻';
@@ -81,7 +84,7 @@ export function statusIcons(u) {
   const out = [];
   for (const [k, s] of Object.entries(u.st)) {
     if (s.kind === 'mod') out.push({ icon: MOD_ICON(s.atk || 0, s.def || 0), title: `${s.label || k} (${s.t}턴)` });
-    else if (STATUS[s.kind]) out.push({ icon: STATUS[s.kind].icon, img: STATUS[s.kind].img, title: `${STATUS[s.kind].label} (${s.t}턴)` });
+    else if (STATUS[s.kind]) out.push({ icon: STATUS[s.kind].icon, img: STATUS[s.kind].img, title: s.kind === 'vow' ? `지킨다: DEF +${(s.def * 100).toFixed(1)}% (이영아와 함께)` : s.kind === 'provoked' ? `도발당함: ${s.by?.card?.name || ''}만 공격 · 스킬 불가 (${s.t}턴)` : `${STATUS[s.kind].label} (${s.t}턴)` });
   }
   if (u.curse && foeHasPassive(u.owner, '자수정 눈물의 지옥 교향곡')) out.push({ icon: '🥀', title: `지옥 교향곡 ×${u.curse}` });
   if (u.cry) out.push({ icon: '😇', title: `천사의 절규 ×${u.cry}` });
@@ -201,6 +204,8 @@ export function checkDeath(u, killer = null) {
   if (p.foe && hasPassive(u, '나는 멈춘다')) { emit({ type: 'passive', unit: u, name: '나는 멈춘다' }); stats.count('나는 멈춘다'); live(p.foe).forEach(t => addStatus(t, 'para', 1, {}, 'para')); }
   if (p.foe && hasPassive(u, '더는 나를 밀지마')) { emit({ type: 'passive', unit: u, name: '더는 나를 밀지마' }); stats.count('더는 나를 밀지마'); live(p.foe).forEach(t => bleedOn(t, u, 2)); }
   emit({ type: 'destroy', unit: u });
+  // 이명진 지킨다: 맹세 중 이영아가 쓰러지면 쿨타임 전부 초기화 + 3턴 ATK +60%
+  if (String(u.base.id) === YOUNGA_ID) for (const a of p.field) if (a.st.vow) vowBroken(a);
   // MP 흡수: 처치한 카드가 상대의 현재 MP 20% 흡수 (최소 3)
   if (killer && killer.owner !== p && killer.hp > 0 && killer.owner.field.includes(killer)) gainMp(killer, Math.max(SK.MP_ABSORB_MIN, Math.round((u.mp || 0) * SK.MP_ABSORB_RATIO)), '흡수');
   // 표식: 사망 시 시전자 MP 회복
@@ -378,13 +383,52 @@ export const ACTIVE = {
     if (!owns(p, c)) { p.hand.push(c); emit({ type: 'revive', p, card: c }); } },
   '촉촉한가요?': (u, p) => males(p).forEach(a => heal(a, a.maxHp * 0.03)),
   '이게 공격이야!': (u, p, f) => { const t = by(live(f), x => x.card.DEF); if (t) multiHit(u, t, 5, 0.2, { ignoreDef: 0.1 }); },
+  // 용지혜: DEF 최저 적에게 20%×3회, 살아 있으면 30% 확률 1턴 마비
+  '돌격!': (u, p, f) => { const t = by(live(f), x => x.card.DEF); if (!t || multiHit(u, t, 3, 0.2)) return; if (chance(0.3)) addStatus(t, 'para', 1, {}, 'para'); else emit({ type: 'miss', unit: t, text: '마비 실패' }); },
+  // 안리: 적 전체 5%×5회, 처치 시 아군 전체 1턴 ATK +2%
+  '머신건': (u, p, f) => { if (hitAll(u, f, 5, 0.05)) { live(p).forEach(a => addStatus(a, '머신건', 1, { atk: 0.02, label: '머신건: ATK +2%' }, 'mod')); emit({ type: 'log', text: `${u.card.name} [머신건] 처치! 아군 전체 ATK +2% (1턴)` }); } },
+  // 이명진: 이영아를 지키는 맹세 (맹세는 이영아가 필드를 떠날 때까지 유지). 사용한 턴에 첫 1회분 바로 적용
+  '지킨다': u => { u.st.vow = { kind: 'vow', t: 999, stack: 0, def: 0 }; emit({ type: 'status', unit: u, kind: 'vow', key: 'vow', text: '지킨다' }); vowTick(u); },
+  // 김후: 적마다 40% 확률로 2턴 도발당함(김후만 공격·스킬 불가). 2턴(상대 턴 기준) 뒤 김후 HP 30% 회복
+  '나는 약하지 않아': (u, p, f) => {
+    let n = 0;
+    for (const t of live(f)) { if (chance(NOTWEAK.CHANCE)) { if (addStatus(t, 'provoked', NOTWEAK.TURNS, { by: u }, 'provoked')) n++; } else emit({ type: 'miss', unit: t, text: '도발 저항' }); }
+    emit({ type: 'log', text: `${u.card.name}: "나는 약하지 않아!" — 도발 ${n}/${f.field.length}명 성공` });
+    f.st['notweak:' + u.uid] = { t: NOTWEAK.TURNS + (TURN.p === f ? 1 : 0), notweak: u };
+    u.st.notweak = { kind: 'notweak', t: 99 };
+  },
 };
 const owns = (p, c) => [...p.deck, ...p.hand, ...p.field.map(u => u.base)].some(x => String(x.id) === String(c.id));
 const females = side => live(side).filter(x => x.base.gender === 'FEMALE');
 const males = side => live(side).filter(x => x.base.gender === 'MALE');
 function cleanse(a) { for (const [k, s] of Object.entries(a.st)) if (STATUS[s.kind]?.debuff || s.atk < 0 || s.def < 0) delete a.st[k]; a.curse = 0; }
+// ---- 이명진 [지킨다] · 김후 [나는 약하지 않아] ----
+export const YOUNGA_ID = '2000600132';
+export const VOW = { DEF_STEP: 0.004, HEAL: 0.02, RAGE_ATK: 0.6, RAGE_TURNS: 3 };
+export const NOTWEAK = { CHANCE: 0.4, TURNS: 2, HEAL: 0.3 };
+const younga = side => side.field.find(x => String(x.base.id) === YOUNGA_ID);
+/** 맹세 1회분: DEF +0.4% 누적, 최대 HP 2% 회복 */
+function vowTick(u) {
+  const v = u.st.vow; if (!v) return;
+  v.stack = (v.stack || 0) + 1; v.def = VOW.DEF_STEP * v.stack;
+  emit({ type: 'log', text: `${u.card.name} [지킨다] DEF +${(v.def * 100).toFixed(1)}% (누적 ${v.stack})` });
+  heal(u, u.maxHp * VOW.HEAL, '지킨다');
+}
+function vowBroken(u) {
+  delete u.st.vow;
+  for (const k in u.cd) u.cd[k] = 0;
+  addStatus(u, '지킨다 분노', VOW.RAGE_TURNS, { atk: VOW.RAGE_ATK, label: `지킨다: ATK +${VOW.RAGE_ATK * 100}%` }, 'mod');
+  emit({ type: 'passive', unit: u, name: '지킨다', text: `이영아가 쓰러졌다! 쿨타임 초기화 · ${VOW.RAGE_TURNS}턴 ATK +${VOW.RAGE_ATK * 100}%` });
+  stats.count('지킨다 분노');
+}
+/** 도발당한 카드가 공격해야 하는 대상 (도발한 카드가 상대 필드에 살아 있고 보스가 아닐 때) */
+export function provoker(u) {
+  const b = u?.st?.provoked?.by;
+  return b && b.hp > 0 && u.owner?.foe?.field.includes(b) && !b.undying ? b : null;
+}
 /** 대상 조건이 있는 스킬 (상대 필드에 해당 성별이 없으면 비활성) */
 const REQ = { '껌밟기': f => females(f).length, '되겠냐?': f => females(f).length, '귀여운 고문자': f => females(f).length,
+  '지킨다': (f, u) => younga(u.owner) && !u.st.vow,
   '나 좀 내버려둬': f => males(f).length, '제발 그냥 가줘': f => males(f).length, '소녀의 거래': f => males(f).length, '피눈물': f => males(f).length, '이리 올래?': f => males(f).length, '짜릿하니?': f => males(f).length };
 
 /** 남성 기본 공격 유도: [나 좀 내버려둬]/[소녀의 거래] 시전 중(decoy.male)인 카드 중 코스트 최고. 마비·혼란 시 미발동 */
@@ -417,12 +461,13 @@ export const counterMult = (target, attacker) => (target.st.pleading ? 2.5 : 1) 
 export function skillState(u, s) {
   if (s.mode !== 'active') return { ok: false, reason: '패시브' };
   if (u.level < s.unlock) return { ok: false, reason: `Lv${s.unlock} 해금` };
+  if (provoker(u)) return { ok: false, reason: '도발당함 (스킬 불가)' };
   if (/게임 당 1회/.test(s.note) && u.owner.once['a:' + s.name]) return { ok: false, reason: '게임 당 1회 (사용함)' };
   if (u.cd[s.name] > 0) return { ok: false, reason: `쿨타임 ${u.cd[s.name]}턴` };
   if (u.mp < s.mp) return { ok: false, reason: `MP 부족 (${u.mp}/${s.mp})` };
   if (!u.canAttack) return { ok: false, reason: '이번 턴 행동함' };
   if (!ACTIVE[s.name]) return { ok: false, reason: '미구현' };
-  if (REQ[s.name] && !REQ[s.name](u.owner.foe)) return { ok: false, reason: '대상 없음' };
+  if (REQ[s.name] && !REQ[s.name](u.owner.foe, u)) return { ok: false, reason: s.name === '지킨다' ? (u.st.vow ? '맹세 유지 중' : '이영아가 필드에 없음') : '대상 없음' };
   return { ok: true };
 }
 /** 액티브 스킬 사용 (그 턴 공격 대신) */
@@ -466,6 +511,8 @@ export function turnStart(p) {
     for (const k in u.cd) if (u.cd[k] > 0) u.cd[k]--;
     u.mp = Math.min(u.maxMp, u.mp + u.mpRegen);
   }
+  // 이명진 지킨다: 이영아가 같은 필드에 있으면 매 턴 DEF +0.4% 누적·HP 2% 회복, 없으면(회수 등) 맹세 해제
+  for (const u of p.field) if (u.st.vow) { if (younga(p)) vowTick(u); else { delete u.st.vow; emit({ type: 'expire', unit: u, key: 'vow' }); } }
   // 임혜리 주님의 기적: 아군·본진 5% 회복
   const hy = findPassiveUnit(p, '주님의 기적');
   if (hy) { emit({ type: 'passive', unit: hy, name: '주님의 기적' }); stats.count('주님의 기적'); p.field.forEach(a => heal(a, a.maxHp * 0.05)); healHero(p, (p.maxHp || RULES.HERO_HP) * 0.05); }
@@ -524,7 +571,11 @@ export function turnEnd(p) {
     if (u.paraBlock) u.paraBlock--;
     for (const [k, s] of Object.entries(u.st)) if (--s.t <= 0) { delete u.st[k]; if (k === 'seed') heal(u, u.maxHp * 0.05, '쾌락의 씨앗'); if (k === 'pleading') heal(u, u.maxHp * 0.3, '꼭 이래야해?'); if (k === 'para') u.paraBlock = 2; emit({ type: 'expire', unit: u, key: k }); }
   }
-  for (const [k, s] of Object.entries(p.st)) if (--s.t <= 0) delete p.st[k];
+  for (const [k, s] of Object.entries(p.st)) if (--s.t <= 0) {
+    delete p.st[k];
+    // 김후 나는 약하지 않아: 도발 효과 종료 → HP 30% 회복
+    const kh = s.notweak; if (kh) { delete kh.st.notweak; if (heal(kh, kh.maxHp * NOTWEAK.HEAL, '나는 약하지 않아')) { emit({ type: 'passive', unit: kh, name: '나는 약하지 않아', text: `도발 종료 · HP ${NOTWEAK.HEAL * 100}% 회복` }); stats.count('나는 약하지 않아 회복'); } }
+  }
   if (p.actionLock > 0) p.actionLock--;
   refreshAll(p);
 }
@@ -559,6 +610,8 @@ export function aiPickSkill(u) {
       case '이번만이야': sc = p.lastDead && p.grave.includes(p.lastDead) ? 90 + p.lastDead.cost : 0; break;
       case '나 좀 내버려둬': case '소녀의 거래': case '영원한 유혹의 굴레': case '배신의 향연': sc = n >= 2 ? 80 : 0; break;
       case '제발 그냥 가줘': sc = 110; break;
+      case '지킨다': sc = 88; break;   // 조건(이영아 필드·맹세 전)은 skillState에서 확인
+      case '나는 약하지 않아': sc = n >= 2 ? 92 + n * 4 : n ? 70 : 0; break;
       case '러시안룰렛': sc = n ? 90 + by(f.field, x => x.card.cost).card.cost : 0; break;
       default:
         if (s.type === '디버프') sc = n >= 3 && !canKill ? 80 + n * 3 : 0;

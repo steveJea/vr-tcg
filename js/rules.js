@@ -159,7 +159,10 @@ export function endTurnXp(p) {
 export const heroLocked = me => (me.turnsTaken || 0) <= RULES.HERO_LOCK_TURNS;
 
 /** 공격 가능한 대상 목록: { units: [...], hero: bool, reason } */
-export function attackTargets(me, opp) {
+export function attackTargets(me, opp, attacker = null) {
+  // 도발당함(김후 [나는 약하지 않아]): 그 카드는 도발한 카드만 공격 가능
+  const pv = attacker?.st?.provoked?.by;
+  if (pv && pv.hp > 0 && opp.field.includes(pv) && !pv.undying) return { units: [pv], hero: false, reason: `도발당함: ${pv.card.name}만 공격할 수 있습니다` };
   // 스토리 보스(undying): 진영 안에 있어 공격 대상이 아니고, 진영 방어(HERO_GUARD_FIELD) 장수에도 세지 않음
   const field = opp.field.filter(u => !u.undying);
   const taunts = field.filter(u => hasSkill(u, 'taunt'));
@@ -169,8 +172,8 @@ export function attackTargets(me, opp) {
   if (field.length >= RULES.HERO_GUARD_FIELD) return { units: field, hero: false, reason: `상대 필드에 ${RULES.HERO_GUARD_FIELD}장 이상 있으면 카드만 공격할 수 있습니다` };
   return { units: field, hero: true, reason: '' };
 }
-export function canTarget(me, opp, target) {
-  const t = attackTargets(me, opp);
+export function canTarget(me, opp, target, attacker = null) {
+  const t = attackTargets(me, opp, attacker);
   return target ? t.units.includes(target) : t.hero;
 }
 
@@ -186,7 +189,7 @@ export function pickFieldTarget(u, units) {
 }
 /** 공격 대상 선택 (null=영웅, undefined=공격 불가) */
 export function autoTarget(u, me, opp) {
-  const t = attackTargets(me, opp);
+  const t = attackTargets(me, opp, u);
   if (t.hero) return null;
   return t.units.length ? pickFieldTarget(u, t.units) : undefined;
 }
@@ -445,7 +448,7 @@ export function aiSummonOrder(hand) { return [...hand].sort((a, b) => b.cost - a
 
 /** AI: 공격 대상. 유리한 교환 우선, 없으면 영웅(null). 영웅 공격 불가면 강제로 필드 카드 선택, 대상 없으면 undefined */
 export function aiPickTarget(u, me, opp) {
-  const allowed = attackTargets(me, opp);
+  const allowed = attackTargets(me, opp, u);
   let best = null, bestScore = 0;
   for (const t of allowed.units) {
     const kill = calcDamage(u.card, t.card) >= t.hp;
