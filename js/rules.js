@@ -5,6 +5,7 @@ export const RULES = {
   DAMAGE_MULT: 1.5,       // ATK에 곱하는 전체 데미지 배율 (DEF 차감 전)
   FIELD_MAX: 5, DECK_SIZE: 30, OPENING_HAND: 4,
   MANA_START: 40, MANA_PER_TURN: 20, MANA_MAX: 100, MAX_ABYSS_PER_DECK: 1, // 마나는 이월: 첫 턴 40, 이후 매 턴 +20(+가속기), 최대 100
+  COUNTER_RATIO: 0.5,         // 반격 = 대상 피해 계산 × 반격 배율(패시브) × 0.5. 대상이 쓰러지면 반격 없음, 반격으로는 공격자가 쓰러지지 않음(HP 1)
   MAX_TURNS: 40,              // 전체 40턴(각자 20턴) 후 판정승
   MR_HERO_DMG_RATIO: 0.2,     // MYTHIC RARE 카드가 진영(영웅)에 주는 피해 배율 (일반·스킬·초과 피해)
   SACRIFICE_RATIO: 0.5,       // 희생: 필드 카드 1장 제거 → 코스트 × 0.5 마나 (턴당 1회)
@@ -181,7 +182,7 @@ export function canTarget(me, opp, target, attacker = null) {
 export function pickFieldTarget(u, units) {
   let best, bestScore = -Infinity;
   for (const t of units) {
-    const kill = calcDamage(u.card, t.card) >= t.hp, die = calcDamage(t.card, u.card) >= u.hp;
+    const kill = calcDamage(u.card, t.card) >= t.hp, die = false;   // 반격으로는 쓰러지지 않음
     const score = (kill ? 2e6 : 0) + (kill && !die ? 1e6 : 0) + (kill ? t.card.cost * 1000 : 0) - t.hp;
     if (score > bestScore) { bestScore = score; best = t; }
   }
@@ -217,9 +218,16 @@ export function equip(type, unit, p) {
 
 /**
  * 전투 처리 (게임·시뮬레이션 공용). me/opp: 플레이어 객체, unit: 공격자, target: 대상 유닛 또는 null(영웅).
- * 처치 보상: 공격자 처치 → 레벨업 + 마나 환급 + 초과 피해 영웅에게 / 반격 처치 → 레벨업 + 마나 환급(초과 피해 없음).
+ * 처치 보상: 공격자 처치 → 레벨업 + 마나 환급 + 초과 피해 영웅에게. 처치하면 반격 없음, 반격은 50%이고 공격자는 반격으로 쓰러지지 않음(HP 1).
  * 반환: 이벤트 목록 (로그·연출용)
  */
+/** 반격 피해: 받는 쪽은 HP 1 아래로 내려가지 않음. 실제 깎인 양 반환 */
+export function counterHit(u, dmg, src) {
+  if (dmg <= 0 || u.hp <= 0) return 0;
+  const before = u.hp, r = damageUnit(u, dmg, src, { silent: true });
+  if (u.hp < 1) u.hp = 1;
+  return Math.min(r, before - u.hp);
+}
 export function resolveAttack(me, opp, unit, target) {
   const ev = [];
   unit.canAttack = false;
@@ -243,11 +251,13 @@ export function resolveAttack(me, opp, unit, target) {
     return ev;
   }
   const ratio = rd.ratio || 1; target = rd.target;
-  const d1 = Math.max(1, Math.round(calcDamage(unit.card, target.card) * ratio)), d2 = Math.round(calcDamage(target.card, unit.card) * (calcDamage(unit.card, target.card) * ratio < target.hp ? counterMult(target, unit) : 1));
+  const d1 = Math.max(1, Math.round(calcDamage(unit.card, target.card) * ratio));
   const tHpBefore = target.hp;
   const r1 = damageUnit(target, d1, unit, { silent: true });
-  const r2 = damageUnit(unit, d2, target, { silent: true });
-  ev.push({ type: 'hit', unit, target, d1: r1, d2: r2, mult: elementMultiplier(unit.card.class, target.card.class) });
+  // 반격: 대상이 쓰러졌으면 없음. 살아 있으면 (피해 × 반격 배율 × 50%), 공격자는 반격으로 쓰러지지 않음(HP 1 남김)
+  const killed = target.hp <= 0, d2 = killed ? 0 : Math.max(0, Math.round(calcDamage(target.card, unit.card) * counterMult(target, unit) * RULES.COUNTER_RATIO));
+  const r2 = counterHit(unit, d2, target);
+  ev.push({ type: 'hit', unit, target, d1: r1, d2: r2, mult: elementMultiplier(unit.card.class, target.card.class), killed, survived: r2 > 0 && unit.hp === 1 });
   const tDead = target.hp <= 0, uDead = unit.hp <= 0;
   if (!uDead) gainXp(unit, RULES.ATTACK_XP);
   if (tDead) checkDeath(target, unit);
@@ -452,7 +462,7 @@ export function aiPickTarget(u, me, opp) {
   let best = null, bestScore = 0;
   for (const t of allowed.units) {
     const kill = calcDamage(u.card, t.card) >= t.hp;
-    const die = calcDamage(t.card, u.card) >= u.hp;
+    const die = false;   // 처치하면 반격 없음 · 반격으로는 쓰러지지 않음
     let score = 0;
     if (kill && !die) score = 100 + t.card.power;
     else if (kill && die && t.card.power > u.card.power) score = 50 + t.card.power - u.card.power;

@@ -495,7 +495,8 @@ export function afterBasicHit(attacker, target) {
     // 임예리 장미가시: 표식된 적이 임예리를 피격 → 기본 공격 반격
     if (attacker.st['장미가시의 세레나데'] && target.base.id === attacker.st['장미가시의 세레나데'].rose?.base.id && tp.field.includes(target) && attacker.owner.field.includes(attacker)) {
       emit({ type: 'passive', unit: target, name: '장미가시 반격' }); stats.count('장미가시 반격');
-      damageUnit(attacker, calcDamage(target.card, attacker.card), target); checkDeath(attacker, target);
+      const before = attacker.hp; damageUnit(attacker, calcDamage(target.card, attacker.card), target); if (attacker.hp < 1 && before >= 1) attacker.hp = 1;   // 반격으로는 쓰러지지 않음
+      checkDeath(attacker, target);
     }
   } finally { noCounter--; }
 }
@@ -592,7 +593,7 @@ export function aiPickSkill(u) {
     let sc = 0;
     const heroOk = !heroLocked(p);
     // 기본 공격으로 처치 가능한 대상이 있으면 보조 스킬보다 공격 우선
-    const canKill = f.field.some(t => calcDamage(u.card, t.card) >= t.hp && calcDamage(t.card, u.card) < u.hp);
+    const canKill = f.field.some(t => calcDamage(u.card, t.card) >= t.hp);   // 처치하면 반격 없음
     switch (s.name) {
       case '반야': case '주님 저희를 구하소서': sc = lowHp >= 2 ? 90 + lowHp * 5 : 0; break;
       case '열반': sc = (lowHp >= 2 || p.hp < (p.maxHp || RULES.HERO_HP) * 0.6) ? 95 : 0; break;
