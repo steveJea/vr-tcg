@@ -160,12 +160,14 @@ export const heroLocked = me => (me.turnsTaken || 0) <= RULES.HERO_LOCK_TURNS;
 
 /** 공격 가능한 대상 목록: { units: [...], hero: bool, reason } */
 export function attackTargets(me, opp) {
-  const taunts = opp.field.filter(u => hasSkill(u, 'taunt'));
+  // 스토리 보스(undying): 진영 안에 있어 공격 대상이 아니고, 진영 방어(HERO_GUARD_FIELD) 장수에도 세지 않음
+  const field = opp.field.filter(u => !u.undying);
+  const taunts = field.filter(u => hasSkill(u, 'taunt'));
   if (taunts.length) return { units: taunts, hero: false, reason: '도발 카드부터 공격해야 합니다' };
-  if (opp.noBase) return { units: [...opp.field], hero: false, reason: '일반전: 상대 카드를 모두 쓰러뜨리세요' };
-  if (heroLocked(me)) return { units: [...opp.field], hero: false, reason: `첫 ${RULES.HERO_LOCK_TURNS}턴에는 진영을 공격할 수 없습니다` };
-  if (opp.field.length >= RULES.HERO_GUARD_FIELD) return { units: [...opp.field], hero: false, reason: `상대 필드에 ${RULES.HERO_GUARD_FIELD}장 이상 있으면 카드만 공격할 수 있습니다` };
-  return { units: [...opp.field], hero: true, reason: '' };
+  if (opp.noBase) return { units: field, hero: false, reason: '일반전: 상대 카드를 모두 쓰러뜨리세요' };
+  if (heroLocked(me)) return { units: field, hero: false, reason: `첫 ${RULES.HERO_LOCK_TURNS}턴에는 진영을 공격할 수 없습니다` };
+  if (field.length >= RULES.HERO_GUARD_FIELD) return { units: field, hero: false, reason: `상대 필드에 ${RULES.HERO_GUARD_FIELD}장 이상 있으면 카드만 공격할 수 있습니다` };
+  return { units: field, hero: true, reason: '' };
 }
 export function canTarget(me, opp, target) {
   const t = attackTargets(me, opp);
@@ -288,6 +290,7 @@ export function canSacrifice(unit, p) {
   const gain = sacrificeGain(unit.card);
   if (p.used?.sacrifice) return { ok: false, gain, reason: '이번 턴 희생함' };
   if (!p.field.includes(unit)) return { ok: false, gain, reason: '필드 카드 아님' };
+  if (unit.undying) return { ok: false, gain, reason: '보스는 희생할 수 없음' };
   return { ok: true, gain };
 }
 export function sacrifice(unit, p) {
@@ -303,7 +306,7 @@ export function sacrifice(unit, p) {
 /** AI 희생: 손패 카드를 희생 마나로 낼 수 있게 되고, 희생 카드가 그보다 훨씬 싸고 투자 안 된 경우 */
 export function aiPickSacrifice(me, opp) {
   if (me.used?.sacrifice || !me.field.length) return null;
-  const cands = me.field.filter(u => u.level <= 2 && !u.items?.weapon && !u.items?.armor).sort((a, b) => a.card.cost - b.card.cost);
+  const cands = me.field.filter(u => !u.undying && u.level <= 2 && !u.items?.weapon && !u.items?.armor).sort((a, b) => a.card.cost - b.card.cost);
   for (const u of cands) {
     const gain = sacrificeGain(u.card);
     const want = me.hand.filter(c => c.cost > me.mana && c.cost <= me.mana + gain && c.cost >= u.card.cost * 2 && !(c.class === 'ABYSS' && opp.field.some(x => x.card.class === 'LIGHT')));

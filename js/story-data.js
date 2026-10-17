@@ -12,13 +12,18 @@ window.STORY_DATA = {
   // 밸런스: 승리 시 스탯 포인트, 포인트 1당 상승량
   statPoints: { normal: 3, boss: 5 },
   statPerPoint: { ATK: 2, HP: 10, DEF: 2 },
+  // 스토리 전투: 출전 카드 최대 장수 (전부 필드에서 시작, 손패·드로우 없음)
+  battleCards: 5,
+  // 보스전 상대 진영 HP: 챕터 순서대로 (챕터 1 = 500, 이후 챕터 1의 +50%씩). 표보다 뒤 챕터는 마지막 값 + 250씩.
+  // 페이즈에 baseHp 를 직접 적으면 그 값이 우선. 보스 카드는 페이즈의 bossId → enemyName 과 같은 이름의 카드 → (ids 지정 시) 첫 카드 → 가장 강한 카드 순으로 정함
+  bossBaseHp: [500, 750, 1000, 1250, 1500],
   chapters: [
     {
       id: 1, title: 'CHAPTER 1', subtitle: '(챕터 제목 준비 중)',
       rewardCard: 'NORMAL',   // 페이즈 첫 클리어 시 무료 카드 등급. 없으면(챕터 2~) 스탯 포인트만
       phases: [
         // enemyName: 전투 화면 상대 이름 / enemies: 노멀 카드 power 순위 구간 [from, to) 에서 count 장 / 또는 ids: ['카드id', ...] 로 직접 지정
-        { no: 1, type: 'normal', enemyName: '적군', title: '(페이즈 1 제목)', tip: '카드를 소환하고 상대 카드를 공격해 보세요.', enemies: { count: 1, rank: [0, 30] },
+        { no: 1, type: 'normal', enemyName: '적군', title: '(페이즈 1 제목)', tip: '출전 카드가 모두 필드에서 시작해요. 내 카드를 누르고 상대 카드를 눌러 공격해 보세요.', enemies: { count: 1, rank: [0, 30] },
           lines: { default: [
             { speaker: null, portrait: null, text: '(나레이션 대사 자리)' },
             { speaker: 'starter', portrait: 'starter', text: '(주인공 대사 자리)' },
@@ -30,7 +35,7 @@ window.STORY_DATA = {
           lines: { default: [ { speaker: 'starter', portrait: 'starter', text: '(대사 자리)' }, { speaker: 'enemy', portrait: 'enemy', text: '(대사 자리)' } ] } },
         { no: 4, type: 'normal', enemyName: '적군', title: '(페이즈 4 제목)', tip: '속성 상성을 이용하면 더 큰 피해를 줄 수 있어요.', enemies: { count: 3, rank: [50, 120] },
           lines: { default: [ { speaker: 'starter', portrait: 'starter', text: '(대사 자리)' }, { speaker: 'enemy', portrait: 'enemy', text: '(대사 자리)' } ] } },
-        { no: 5, type: 'boss', enemyName: '보스', title: '(보스전 제목)', tip: '보스전! 상대 진영 HP를 0으로 만들면 승리해요.', enemies: { count: 4, rank: [120, 203] }, baseHp: 500,
+        { no: 5, type: 'boss', enemyName: '보스', title: '(보스전 제목)', tip: '보스전! 👑 보스는 진영 안에 있어 쓰러지지 않아요. 다른 카드를 피하거나 쓰러뜨리고 상대 진영 HP를 0으로 만드세요.', enemies: { count: 4, rank: [120, 203] },
           lines: { default: [ { speaker: 'enemy', portrait: 'enemy', text: '(보스 대사 자리)' }, { speaker: 'starter', portrait: 'starter', text: '(대사 자리)' } ] } },
       ],
     },
