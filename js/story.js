@@ -711,29 +711,43 @@
     for (const o of save.owned) { if (!sel.has(o.uid) || o.uid === tgt.uid) continue; const f = feedCalc(o, tgt); amt += f.amt; refund += f.refund; n++; if (f.same) same++; ids.push(o.uid); }
     return { n, amt, same, refund, ids };
   }
-  const instLabel = o => `${isLeader(o) ? '👑 ' : ''}${exName(o, card(o.id)?.name)} · ${RAR[card(o.id)?.grade] || 'N'} · Lv.${o.level}`;
+  /** 일괄 폐기 1단계: EXP 받을 카드 고르기 (기본 선택 없음) */
+  function bulkPickTarget(st = {}) {
+    save.owned.forEach(norm);
+    const list = groups().flatMap(gr => gr.list);
+    const p = popup(`<div class="text-lg font-black mb-1">${ic('discard', { alt: '' })} 일괄 폐기</div>
+      <div class="story-bulk-steps"><b class="on">① EXP 받을 카드</b><span>② 폐기할 카드</span></div>
+      <div class="text-xs text-zinc-400 mb-2">먼저 <b class="text-emerald-300">EXP를 받을 카드</b>를 골라 주세요. 그다음 폐기할 카드를 고를 수 있어요.</div>
+      <div class="story-target-list">${list.map(o => { const c = card(o.id);
+        return `<button data-bt="${o.uid}" class="story-target ${o.uid === st.tu ? 'cur' : ''}"><img src="${IMG}${o.id}.webp" alt=""><div class="flex-1 min-w-0 text-left"><div class="text-sm font-bold truncate">${isLeader(o) ? ic('crown', { alt: '리더' }) + ' ' : ''}${esc(exName(o, c?.name))} <span class="text-[10px] text-zinc-400">${RAR[c?.grade] || 'N'}</span></div><div class="text-[11px] text-zinc-400">Lv.${o.level} / ${lvCap(o)}${o.level >= lvCap(o) ? ' <span class="text-red-300">최대 레벨</span>' : ''}</div></div><span class="text-emerald-300 text-sm">선택 ›</span></button>`; }).join('')}</div>
+      <button class="w-full mt-3 py-2.5 rounded-xl bg-red-500 font-bold" disabled>② 폐기할 카드 고르기</button>
+      <button data-close-pop class="w-full mt-2 py-2.5 rounded-xl bg-zinc-700 font-bold">취소</button>`, renderCards);
+    p.el.querySelectorAll('[data-bt]').forEach(b => b.onclick = () => { p.close(true); bulkDiscard({ ...st, tu: b.dataset.bt, scroll: 0 }); });
+  }
   function bulkDiscard(st = {}) {
     save.owned.forEach(norm);
-    const tu = st.tu && byUid(st.tu) ? st.tu : (save.leader && byUid(save.leader) ? save.leader : save.owned[0].uid), sel = st.sel || new Set();
+    if (!st.tu || !byUid(st.tu)) return bulkPickTarget(st);   // 대상이 없으면 1단계부터 (기본 선택 없음)
+    const tu = st.tu, sel = st.sel || new Set();
     const tgt = byUid(tu), locked = o => o.uid === tu || isLeader(o);
     for (const k of [...sel]) { const o = byUid(k); if (!o || locked(o)) sel.delete(k); }
     const f = bulkCalc(sel, tgt), g = gainCalc(tgt, f.amt);
     const list = groups().flatMap(gr => gr.list);
     const grades = Object.keys(RAR).filter(gr => save.owned.some(o => !locked(o) && card(o.id)?.grade === gr));
     const spare = o => !locked(o) && copiesOf(o.id).length > 1 && repOf(o.id) !== o;
-    const p = popup(`<div class="text-lg font-black mb-1">${ic('discard', { alt: '' })} 일괄 폐기</div><div class="text-xs text-zinc-400 mb-2">고른 카드를 모두 폐기하고, EXP를 한 카드에 몰아줘요</div>
-      <label class="text-xs text-zinc-300 font-bold">EXP 받을 카드</label>
-      <select id="bulk-target" class="story-select-box">${list.map(o => `<option value="${o.uid}" ${o.uid === tu ? 'selected' : ''}>${esc(instLabel(o))}</option>`).join('')}</select>
+    const p = popup(`<div class="text-lg font-black mb-1">${ic('discard', { alt: '' })} 일괄 폐기</div>
+      <div class="story-bulk-steps"><span>① EXP 받을 카드</span><b class="on">② 폐기할 카드</b></div>
+      <div class="story-bulk-tgt"><img src="${IMG}${tgt.id}.webp" alt=""><div class="flex-1 min-w-0 text-left"><div class="text-[11px] text-emerald-300 font-bold">EXP 받을 카드</div><div class="text-lg font-black truncate">${isLeader(tgt) ? ic('crown', { alt: '리더' }) + ' ' : ''}${esc(exName(tgt, card(tgt.id)?.name))}</div><div class="text-xs text-zinc-400">${RAR[card(tgt.id)?.grade] || 'N'} · Lv.${tgt.level} / ${lvCap(tgt)}</div></div><button id="bulk-change" class="story-chip">바꾸기</button></div>
+      <div class="text-xs text-zinc-400 mb-1">고른 카드를 모두 폐기하고, EXP를 위 카드에 몰아줘요</div>
       <div class="flex flex-wrap gap-1.5 my-2"><button class="story-chip" data-q="all">전체 선택</button>${save.owned.some(spare) ? '<button class="story-chip" data-q="spare">출전 안 하는 중복만</button>' : ''}${grades.map(gr => `<button class="story-chip" data-q="${gr}">${RAR[gr]} 전체</button>`).join('')}<button class="story-chip" data-q="none">선택 해제</button></div>
       <div class="story-bulk-list" id="bulk-list">${list.map(o => { const c = card(o.id), lk = locked(o), on = sel.has(o.uid);
         return `<div class="story-bulk-row ${lk ? 'lock' : ''} ${on ? 'on' : ''}" ${lk ? '' : `data-row="${o.uid}"`}><input type="checkbox" ${on ? 'checked' : ''} ${lk ? 'disabled' : ''}><img src="${IMG}${o.id}.webp" alt=""><div class="flex-1 min-w-0"><div class="text-sm font-bold truncate">${esc(exName(o, c?.name))} <span class="text-[10px] text-zinc-400">${RAR[c?.grade] || 'N'} · Lv.${o.level}</span>${c?.name === card(tgt.id)?.name && !lk ? ' <span class="text-amber-300 text-[10px]">×1.5</span>' : ''}</div><div class="text-[10px] text-zinc-500">${lk ? (o.uid === tu ? 'EXP 받을 카드' : '리더 · 폐기 불가') : `${repOf(o.id) === o ? '⚔️ 출전 카드 · ' : ''}누적 EXP ${fmt(o.totalExp)}`}</div></div></div>`; }).join('')}</div>
       <div class="story-bulk-sum">${f.n ? `<b>${f.n}장</b> 선택 · EXP <b class="text-sky-300">+${fmt(f.amt)}</b>${f.same ? ` <span class="text-amber-300 text-[11px]">(같은 이름 ${f.same}장 ×1.5)</span>` : ''}<br>${esc(exName(tgt, card(tgt.id)?.name))} Lv.${tgt.level} → <b class="text-emerald-300">Lv.${g.level}</b> · 스탯 +${lvPct(tgt)}% → +${lvPct({ id: tgt.id, level: g.level })}%${f.refund ? `<br><span class="text-emerald-300 text-[11px]">공용 포인트 ${f.refund} 돌려받음</span>` : ''}` : '<span class="text-zinc-500">폐기할 카드를 골라 주세요</span>'}</div>
       ${g.wasted && f.n ? `<div class="story-warn">⚠️ 최대 레벨(Lv.${lvCap(tgt)})을 넘는 EXP ${fmt(g.wasted)}은 사라져요.</div>` : ''}
       ${f.n && save.owned.some(o => sel.has(o.uid) && canMergeAny(o)) ? '<div class="story-hint">💡 같은 카드가 여러 장이면 폐기 대신 합성(EX)에 쓸 수도 있어요.</div>' : ''}
-      <div class="flex gap-2 mt-3"><button data-close-pop class="flex-1 py-2.5 rounded-xl bg-zinc-700 font-bold">취소</button><button id="bulk-ok" class="flex-1 py-2.5 rounded-xl bg-red-500 font-bold" ${f.n ? '' : 'disabled'}>${f.n ? `${f.n}장 폐기` : '폐기'}</button></div>`, renderCards);
+      <div class="flex gap-2 mt-3"><button data-close-pop class="flex-1 py-2.5 rounded-xl bg-zinc-700 font-bold">취소</button><button id="bulk-ok" class="flex-1 py-2.5 rounded-xl bg-red-500 font-bold" ${f.n ? '' : 'disabled'}>${f.n ? `${f.n}장 분해 → ${esc(card(tgt.id)?.name)}에게 EXP` : '폐기할 카드를 골라 주세요'}</button></div>`, renderCards);
     const box = $('bulk-list'); box.scrollTop = st.scroll || 0;
     const re = () => bulkDiscard({ tu, sel, scroll: box.scrollTop });
-    $('bulk-target').onchange = e => bulkDiscard({ tu: e.target.value, sel, scroll: box.scrollTop });
+    $('bulk-change').onclick = () => { p.close(true); bulkPickTarget({ tu, sel }); };
     p.el.querySelectorAll('[data-q]').forEach(b => b.onclick = () => { const q = b.dataset.q;
       if (q === 'none') sel.clear(); else for (const o of save.owned) if (!locked(o) && (q === 'all' || (q === 'spare' ? spare(o) : card(o.id)?.grade === q))) sel.add(o.uid);
       re(); });
@@ -749,7 +763,7 @@
       <div class="text-sm mt-1">Lv.${tgt.level} → <b class="text-emerald-300">Lv.${g.level}</b></div>
       ${g.wasted ? `<div class="story-warn">⚠️ 최대 레벨(Lv.${lvCap(tgt)})을 넘는 EXP ${fmt(g.wasted)}은 사라져요.</div>` : ''}
       <div class="text-[11px] text-red-300 mt-2">폐기한 카드는 되돌릴 수 없어요.</div>
-      <div class="flex gap-2 mt-4"><button id="bulk-no" class="flex-1 py-2.5 rounded-xl bg-zinc-700 font-bold">취소</button><button id="bulk-yes" class="flex-1 py-2.5 rounded-xl bg-red-500 font-bold">${f.n}장 폐기</button></div>`, renderCards);
+      <div class="flex gap-2 mt-4"><button id="bulk-no" class="flex-1 py-2.5 rounded-xl bg-zinc-700 font-bold">취소</button><button id="bulk-yes" class="flex-1 py-2.5 rounded-xl bg-red-500 font-bold">${f.n}장 분해 → ${esc(card(tgt.id)?.name)}에게 EXP</button></div>`, renderCards);
     $('bulk-no').onclick = () => { p.close(true); bulkDiscard({ tu, sel, scroll }); };
     $('bulk-yes').onclick = async () => {
       $('bulk-yes').disabled = true;

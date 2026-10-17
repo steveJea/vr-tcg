@@ -248,3 +248,10 @@ span.story-lvpct { background: rgba(251,191,36,.12); border: 1px solid rgba(251,
 .story-tk-card div{padding:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .story-tk-card.g-r{border-color:#38bdf8}.story-tk-card.g-hr{border-color:#34d399;box-shadow:0 0 10px #34d39988}.story-tk-card.g-sr{border-color:#c084fc;box-shadow:0 0 12px #c084fcaa}.story-tk-card.g-ur{border-color:#facc15;box-shadow:0 0 16px #facc15cc}
 @keyframes tkIn{from{opacity:0;transform:translateY(8px) scale(.9)}to{opacity:1;transform:none}}
+/* 일괄 폐기: 단계 표시 · EXP 받을 카드 고정 */
+.story-bulk-steps{display:flex;gap:6px;justify-content:center;font-size:11px;margin:2px 0 8px}
+.story-bulk-steps>*{padding:2px 10px;border-radius:999px;background:rgba(255,255,255,.06);color:#a1a1aa;font-weight:700}
+.story-bulk-steps .on{background:rgba(52,211,153,.18);color:#6ee7b7}
+.story-bulk-tgt{position:sticky;top:-18px;z-index:2;display:flex;gap:10px;align-items:center;margin:0 -4px 8px;padding:8px 10px;border-radius:14px;background:#14251d;border:1px solid #34d399;box-shadow:0 6px 14px rgba(0,0,0,.5)}
+.story-bulk-tgt img{width:56px;aspect-ratio:3/4;object-fit:cover;border-radius:8px}
+.story-target.cur{border-color:#34d399}
