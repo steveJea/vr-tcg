@@ -625,14 +625,26 @@
     for (const o of save.owned) { if (!m.has(o.id)) m.set(o.id, []); m.get(o.id).push(norm(o)); }
     const deck = new Map(deckInstances().map(o => [o.id, o]));
     return [...m.entries()].map(([id, list]) => ({ id, rep: deck.get(id), list: list.sort((a, b) => (isLeader(b) - isLeader(a)) || (b === deck.get(id)) - (a === deck.get(id)) || b.level - a.level) }))
-      .sort((a, b) => isLeader(b.rep) - isLeader(a.rep));
+      .sort((a, b) => (isLeader(b.rep) - isLeader(a.rep)) || sortCmp(a, b));
   }
+  // ----- 보유 카드 정렬: 등급순 · 레벨순 · 획득순 (기본 획득순 최신 먼저, 같은 버튼 다시 누르면 오름/내림 전환, localStorage 기억) -----
+  const SORT_KEY = 'vr-story-card-sort', SORTS = { new: '획득순', grade: '등급순', level: '레벨순' }, GRADE_ORD = Object.keys(RAR);
+  let cardSort = (() => { try { const v = JSON.parse(localStorage.getItem(SORT_KEY)); if (v && SORTS[v.k]) return { k: v.k, desc: v.desc !== false }; } catch {} return { k: 'new', desc: true }; })();
+  const setSort = k => { cardSort = cardSort.k === k ? { k, desc: !cardSort.desc } : { k, desc: true }; try { localStorage.setItem(SORT_KEY, JSON.stringify(cardSort)); } catch {} };
+  /** 그룹 정렬 키: 획득 = 그 카드의 가장 최근 장(보유 목록 순서), 등급 = 등급 순위, 레벨 = 대표 장 레벨. 동점은 등급 → 레벨 → 최신 순 */
+  function sortCmp(a, b) {
+    const nw = g => Math.max(...g.list.map(idxOf)), gr = g => GRADE_ORD.indexOf(card(g.id)?.grade || 'NORMAL'), lv = g => g.rep?.level || 0;
+    const key = { new: [nw], grade: [gr, lv, nw], level: [lv, gr, nw] }[cardSort.k];
+    for (const f of key) { const d = f(a) - f(b); if (d) return cardSort.desc ? -d : d; }
+    return 0;
+  }
+  const sortBar = () => `<div class="story-sortbar">${Object.entries(SORTS).map(([k, l]) => `<button class="story-chip ${cardSort.k === k ? 'on' : ''}" data-sort="${k}" aria-pressed="${cardSort.k === k}">${l}${cardSort.k === k ? (cardSort.desc ? ' ▼' : ' ▲') : ''}</button>`).join('')}</div>`;
   function renderCards() {
     const k = D.statPerPoint; save.owned.forEach(norm);
     const anyPts = save.points || cptsTotal(), gs = groups();
     show(`${topBar('🃏 보유 카드', 'hub')}<div class="text-center text-sm text-zinc-400 my-2">스토리 모드 전용 · ${gs.length}종 ${save.owned.length}장 · 공용 포인트 ${save.points}${cptsTotal() ? ` · 카드 전용 ${cptsTotal()}` : ''}</div>
       <div class="text-center text-[11px] text-zinc-500 -mt-1 mb-2">카드를 누르면 상세 · 분해 · 합성 ${save.owned.length > 1 ? '<button class="story-mini story-mini-red ml-1" data-go="bulk">' + ic('discard', { alt: '' }) + ' 일괄 분해</button>' : ''}</div>
-      <div class="story-grid">${gs.map(gr => { const o = gr.rep, c = boosted(o); if (!c) return ''; const b = o.boost || {}, n = gr.list.length, open = openGroups.has(gr.id);
+      ${gs.length > 1 ? sortBar() : ''}<div class="story-grid">${gs.map(gr => { const o = gr.rep, c = boosted(o); if (!c) return ''; const b = o.boost || {}, n = gr.list.length, open = openGroups.has(gr.id);
         const up = STATS.filter(s => b[s]).map(s => `${s} +${ptGain(s, b[s])}`).join(' · ');
         const mergeable = gr.list.some(canMerge);
         return `<div class="story-group ${open ? 'open' : ''}"><div data-uid="${o.uid}" class="story-owned">${tile(c, `${n > 1 ? `<div class="story-dup">x${n}</div>` : ''}${o.cpts ? `<div class="story-cpts">+${o.cpts}</div>` : ''}${exOf(o) ? `<div class="story-exbadge">EX${exOf(o)}</div>` : ''}${lvBar(o)}<div class="text-[10px] text-emerald-300 h-3">${isLeader(o) ? ic('crown', { alt: '' }) + ' 리더 ' : n > 1 ? '⚔️ 출전 ' : ''}${up}</div>${mergeable ? `<button class="story-merge-mini" data-merge="${(gr.list.find(canMerge)).uid}">${ic('merge', { alt: '' })} 합성</button>` : ''}${n > 1 ? `<button class="story-expand" data-expand="${gr.id}">${open ? '▴ 접기' : `▾ ${n}장 모두 보기`}</button>` : ''}<div class="story-equip"><span>🗡️ 무기</span><span>🛡️ 방어구</span><em>준비 중</em></div>`)}</div>
@@ -641,6 +653,7 @@
     bind({ stats: () => openStats(renderCards), bulk: () => bulkDiscard() });
     root().querySelectorAll('[data-uid]').forEach(el => el.onclick = () => cardDetail(el.dataset.uid));
     root().querySelectorAll('[data-merge]').forEach(b => b.onclick = e => { e.stopPropagation(); mergePreview(b.dataset.merge); });
+    root().querySelectorAll('[data-sort]').forEach(b => b.onclick = () => { setSort(b.dataset.sort); renderCards(); });
     root().querySelectorAll('[data-expand]').forEach(b => b.onclick = e => { e.stopPropagation(); const g = b.dataset.expand; openGroups.has(g) ? openGroups.delete(g) : openGroups.add(g); renderCards(); });
   }
   function cardDetail(u) {

@@ -255,3 +255,7 @@ span.story-lvpct { background: rgba(251,191,36,.12); border: 1px solid rgba(251,
 .story-bulk-tgt{position:sticky;top:-18px;z-index:2;display:flex;gap:10px;align-items:center;margin:0 -4px 8px;padding:8px 10px;border-radius:14px;background:#14251d;border:1px solid #34d399;box-shadow:0 6px 14px rgba(0,0,0,.5)}
 .story-bulk-tgt img{width:56px;aspect-ratio:3/4;object-fit:cover;border-radius:8px}
 .story-target.cur{border-color:#34d399}
+
+/* 보유 카드 정렬 */
+.story-sortbar{display:flex;justify-content:center;gap:6px;margin:0 0 10px}
+.story-sortbar .story-chip{cursor:pointer}
