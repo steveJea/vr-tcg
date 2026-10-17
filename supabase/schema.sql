@@ -735,7 +735,7 @@ on conflict (chapter, phase) do update set type = excluded.type, points = exclud
 
 -- 스탯 포인트 1당 상승량은 클라이언트(js/story-data.js statPerPoint)에서 적용: ATK+2 / HP+10 / DEF+2
 -- 전투 최소 시간 (초): 전투 시작 기록 후 이 시간 이전의 클리어 요청은 거부
-create or replace function public._story_min_battle_secs() returns int language sql immutable as $$ select 15 $$;
+create or replace function public._story_min_battle_secs() returns int language sql immutable as $$ select 3 $$;
 
 -- 3) 내부 도우미
 -- 첫 클리어로 얻을 수 있는 포인트 총량
