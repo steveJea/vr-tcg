@@ -100,10 +100,13 @@ function startGame(story = null) {
       for (const c of p.deck.splice(0, RULES.FIELD_MAX)) {
         const u = placeUnit(p, c, makeUnit);
         if (who === 'me') S.log.played.add(String(c.id));
+        if (who === 'me' && story.leader && c.uid && c.uid === story.leader.uid && !p.field.some(x => x.isLeader)) { u.isLeader = true; p.leaderSkill = story.leader; }
         if (who === 'ai' && story.bossId != null && String(c.id) === String(story.bossId) && !p.field.some(x => x.undying)) { u.undying = true; u.boss = true; }
       }
       p.deck = [];
     }
+    refreshAll(S.me);
+    if (S.me.leaderSkill) log(`👑 리더 스킬 [${S.me.leaderSkill.name} · ${S.me.leaderSkill.label}]: ${S.me.leaderSkill.text}. 리더가 쓰러지면 해제되고 아군 진영 HP −${Math.round((S.me.leaderSkill.deathPenalty ?? 0.3) * 100)}%`, 'text-amber-300');
     log(story.win === 'ko' ? '👑 보스전: 보스는 진영 안에서 쓰러지지 않아요. 상대 진영 HP를 0으로!' : '⚔️ 일반전: 상대 카드를 모두 쓰러뜨리세요!', 'text-amber-300');
   }
   if (fs) log('⚔️ 출전 카드가 모두 필드에서 시작합니다 (손패·드로우 없음).', 'text-emerald-400');
@@ -611,6 +614,11 @@ function onEngine(e) {
     case 'hero': { const el = heroEl(whoOf(e.p)); shake(el); if (e.dmg > 0) hitFx(el, 'blood'); dmgNumber(el, `-${fmt(e.dmg)}`, e.kind === 'self' ? '#fca5a5' : undefined); log(`${e.p.name} 본진 ${fmt(e.dmg)} 피해${e.kind === 'self' ? ' (자기 공격)' : ''}`, 'text-orange-300'); break; }
     case 'heal': dmgNumber(uEl(e.unit), `+${fmt(e.amt)}`, '#6ee7b7'); break;
     case 'heroHeal': dmgNumber(heroEl(whoOf(e.p)), `+${fmt(e.amt)}`, '#6ee7b7'); log(`${e.p.name} 본진 HP +${fmt(e.amt)}`, 'text-emerald-300'); break;
+    case 'leaderDown': {
+      const pc = Math.round((e.pct || 0.3) * 100);
+      if (e.base) { const el = heroEl(whoOf(e.p)); shake(el); dmgNumber(el, `-${fmt(e.dmg)}`, '#fca5a5'); }
+      log(`👑 ${e.p.name}: 리더 ${nm(e.unit)} 쓰러짐! 리더 스킬 해제 · ${e.base ? `진영 HP −${fmt(e.dmg)} (최대의 ${pc}%)` : `아군 진영 HP −${pc}% (남은 아군 ${e.n}장, 총 ${fmt(e.dmg)} 피해)`}`, 'text-red-400 font-bold');
+      break; }
     case 'destroy': log(`${nm(e.unit)} 파괴!`, 'text-zinc-400'); pendingDying.push(uEl(e.unit)); break;
     case 'refund': if (S.story && e.owner === S.me && e.killer?.card) { const k = String(e.killer.card.id); S.log.kills[k] = (S.log.kills[k] || 0) + 1; }
       log(`${nm(e.killer)} 처치 보상: 마나 +${e.refund}`, 'text-sky-300'); if (e.refund > 0 && !FX_OFF()) dmgNumber(heroEl(whoOf(e.owner)), `${ic('mana')} +${e.refund} 마나`, '#7dd3fc', true); renderHero(whoOf(e.owner)); break;
@@ -760,7 +768,9 @@ function render() {
 
   for (const who of ['ai', 'me']) {
     const p = S[who];
+    const lsk = p.leaderSkill, lAlive = lsk && p.field.some(x => x.isLeader);
     $(`${who}-syn`).innerHTML = [
+      lsk ? `<span class="px-1.5 rounded-full text-[10px] font-bold ${lAlive ? 'bg-amber-600/70 text-amber-50' : 'bg-zinc-700 text-zinc-400 line-through'}" title="리더 스킬 (${escHtml(lsk.name)} · ${escHtml(lsk.label)}): ${escHtml(lsk.text)}${lAlive ? '' : ' — 리더가 쓰러져 해제됨'}">${ic('crown', { alt: '' })}${escHtml(lsk.label)} ${escHtml(lsk.short)}</span>` : '',
       ...p.activeSyn.map(x => { const el = ELEMENTS[x.cls] || {}; return `<span class="px-1.5 rounded-full bg-white/10 text-[10px] font-bold" title="속성 시너지: ${el.label || x.cls} ${x.n}장 → ATK·DEF +${Math.round(x.pct * 100)}%">${icOf(el)}×${x.n} +${Math.round(x.pct * 100)}%</span>`; }),
       ...p.activeCombos.map(c => `<span class="px-1.5 rounded-full bg-fuchsia-700/60 text-[10px] font-bold" title="조합 [${c.name}]: ${c.scope === 'all' ? '아군 전체' : '조합 카드'} ${hpText(c.desc)} +${Math.round(c.value * 100)}%">🔗${c.name}</span>`),
       p.actionLock > 0 ? '<span class="px-1.5 rounded-full bg-red-800 text-[10px] font-bold" title="셔플·보강·강화·필드 회복 사용 불가">🔒고유기술 봉인</span>' : '',
