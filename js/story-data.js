@@ -804,7 +804,7 @@ window.STORY_DATA.chapters[0].byStarter['2000200044'] = {
 
 // ===== 스토리 전용 초상화 (img/story/portraits/<slug>_<base|angry|smile>.webp) =====
 // 대사 표정: expr: '화남' | '웃음' (기본 '기본'), 또는 speaker를 '문지예(화남)'처럼 써도 됩니다. 초상화가 없는 인물은 카드 그림으로 대체.
-window.STORY_DATA.portraits = { '문지예': 'jiye', '용지혜': 'jihye', '안리': 'anri', '홍가영': 'gayoung', '오명준': 'myungjun', '송철순': 'cheolsun', '문희찬': 'heechan' };
+window.STORY_DATA.portraits = { '문지예': 'jiye', '용지혜': 'jihye', '안리': 'anri', '홍가영': 'gayoung', '오명준': 'myungjun', '송철순': 'cheolsun', '문희찬': 'heechan', '곽재준': 'kwak_jaejun' };
 window.STORY_DATA.exprSlug = { '기본': 'base', '화남': 'angry', '웃음': 'smile' };
 
 // ===== 일일 카드 뽑기 확률 (서버 supabase/gacha.sql 과 동일하게 유지) =====
