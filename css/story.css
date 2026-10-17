@@ -137,3 +137,26 @@
 .story-ovp-tap.hidden { display: none; }
 .story-ovp-tap button { display: flex; flex-direction: column; align-items: center; gap: 10px; color: #fff; font-size: 54px; line-height: 1; }
 .story-ovp-tap button span { font-size: 16px; font-weight: 800; background: rgba(251,191,36,.9); color: #000; padding: 8px 16px; border-radius: 9999px; }
+
+/* ----- 레벨 스탯 보너스 · 일괄 폐기 ----- */
+.story-lvpct { color: #fbbf24; font-style: normal; font-weight: 900; }
+.story-lv .story-lvpct { font-size: 10px; }
+span.story-lvpct { background: rgba(251,191,36,.12); border: 1px solid rgba(251,191,36,.4); border-radius: 9999px; padding: 1px 8px; }
+.story-statrows { margin-top: 6px; display: flex; flex-direction: column; gap: 3px; }
+.story-statrows > div { display: flex; align-items: baseline; gap: 8px; font-size: 13px; }
+.story-statrows span { width: 4.2rem; font-weight: 700; }
+.story-statrows b { min-width: 3rem; font-weight: 900; }
+.story-statrows small { font-size: 10px; color: #a1a1aa; }
+.story-statrows i { font-style: normal; }
+.story-select-box { width: 100%; margin-top: 4px; background: #27272a; border: 1px solid #3f3f46; border-radius: 10px; padding: 8px 10px; font-size: 14px; color: #fff; }
+.story-bulk-list { max-height: 38vh; overflow-y: auto; display: flex; flex-direction: column; gap: 5px; }
+.story-bulk-row { display: flex; align-items: center; gap: 8px; background: #27272a; border: 1px solid #3f3f46; border-radius: 10px; padding: 5px 8px; cursor: pointer; }
+.story-bulk-row.on { border-color: #f87171; background: rgba(239,68,68,.12); }
+.story-bulk-row.lock { opacity: .45; cursor: not-allowed; }
+.story-bulk-row input { width: 18px; height: 18px; accent-color: #ef4444; pointer-events: none; }
+.story-bulk-row img { width: 30px; aspect-ratio: 3/4; object-fit: cover; border-radius: 5px; }
+.story-qty { display: flex; align-items: center; gap: 4px; font-size: 12px; }
+.story-qty button { width: 22px; height: 22px; border-radius: 6px; background: #3f3f46; font-weight: 900; }
+.story-bulk-sum { margin-top: 8px; font-size: 13px; background: rgba(39,39,42,.8); border-radius: 10px; padding: 8px 10px; }
+.story-bulk-row, .story-statrows { text-align: left; }
+.story-mini.story-mini-red { background: #b91c1c; border-color: #f87171; }
