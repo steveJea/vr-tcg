@@ -1,5 +1,6 @@
 // ===== 랭킹 팝업 (Supabase rankings_weekly / rankings_all, anon 키로 공개 조회) =====
 (() => {
+  const IC = n => window.VRIcon?.icon(n) || '';   // js/icons.js
   const URL_ = 'https://htarwisgkkphutxxnuak.supabase.co/rest/v1/';
   const KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh0YXJ3aXNna2twaHV0eHhudWFrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIxNTMwOTgsImV4cCI6MjEwNzcyOTA5OH0.xaIda-o8QwRhoG5yDRLAcMo8LbU1rNHUA7xznO-tEfc';
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -31,7 +32,7 @@
   const ov = document.createElement('div');
   ov.id = 'rank-ov';
   ov.innerHTML = `<div id="rank-box" role="dialog" aria-label="랭킹">
-    <div class="rh"><span>🏆 랭킹</span><button class="rx" aria-label="닫기">×</button></div>
+    <div class="rh"><span>${IC('rank')} 랭킹</span><button class="rx" aria-label="닫기">×</button></div>
     <div class="rt"><button data-t="weekly">주간</button><button data-t="all">전체</button></div>
     <div class="rn"></div><div class="rl"></div><div class="mine"></div><div class="rf"></div></div>`;
   document.body.appendChild(ov);
@@ -63,7 +64,7 @@
     $('.rn').textContent = tab === 'weekly' ? '주간 랭킹은 매주 월요일 0시(한국 시간)에 초기화돼요 · 승 3점, 무 1점' : '서비스 시작부터 누적된 점수예요 · 승 3점, 무 1점';
     $('.rl').innerHTML = '<div class="empty">불러오는 중...</div>'; $('.mine').innerHTML = '';
     const logged = !!window.VRCloud?.user;
-    $('.rf').innerHTML = logged ? '' : '로그인하면 랭킹에 참여할 수 있어요!<button id="rank-login">🔑 구글로 로그인</button>';
+    $('.rf').innerHTML = logged ? '' : `로그인하면 랭킹에 참여할 수 있어요!<button id="rank-login">${IC('login')} 구글로 로그인</button>`;
     const lb = $('#rank-login'); if (lb) lb.onclick = () => window.VRCloud ? window.VRCloud.login() : alert('지금은 로그인 서버에 연결할 수 없어요.');
     const view = tab === 'weekly' ? 'rankings_weekly' : 'rankings_all', cur = tab;
     const tok = logged ? await token() : null;

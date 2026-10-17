@@ -88,6 +88,7 @@ function startGame(story = null) {
   S.me.noBase = !!story; S.ai.noBase = story?.win === 'wipe';
   for (const w of ['me', 'ai']) { $(`${w}-hp`).classList.toggle('hidden', S[w].noBase); $(`${w}-hpbar`).parentElement.classList.toggle('hidden', S[w].noBase); }
   $('game').classList.toggle('story-field', !!story);
+  setBattleBg(story?.win === 'ko' ? 'boss' : 'normal'); preloadHit();
   { const lbl = $('ai-order').parentElement.firstChild; if (lbl?.nodeType === 3) lbl.textContent = story ? `${story.aiName || '적군'} ` : '🤖 컴퓨터 '; }
   preloadFx([...S.me.deck, ...S.me.hand, ...S.ai.deck, ...S.ai.hand]);
   selected = null; $('log').innerHTML = '';
@@ -118,7 +119,7 @@ function startTurn(who) {
   if (who === 'me') { S.myTurns++; if (myTurnsLeft() === 1) lastTurnToast(); }
   clearBuff(opp(who));                   // 지난 턴 강화 해제
   const bonus = refillMana(p);
-  if (bonus) { log(`${p.name}: 처치 보너스 마나 +${bonus}`, 'text-sky-300'); if (who === 'me') floatText(`💧 +${bonus}`, 'text-sky-300'); }
+  if (bonus) { log(`${p.name}: 처치 보너스 마나 +${bonus}`, 'text-sky-300'); if (who === 'me') floatText(`${ic('mana')} +${bonus}`, 'text-sky-300', 'me', true); }
   if (S.story) { /* 스토리: 드로우 없음 */ } else if (p.deck.length) p.hand.push(p.deck.shift()); else log(`${p.name}: 덱이 비어 드로우를 건너뜁니다.`, 'text-zinc-500');
   p.field.forEach(u => u.canAttack = true);
   turnStart(p);                           // 쿨타임·MP 회복, 턴 시작 패시브, 마비/혼란/교란 처리
@@ -134,8 +135,8 @@ function useAction(who, type) {
   const detail = type === 'accel' ? `다음 턴부터 매 턴 마나 +${r.n * RULES.ACCEL_BONUS} (${r.n}/${RULES.ACCEL_MAX})` : type === 'shuffle' ? `전체 카드에서 새 카드 ${r.n}장` : type === 'heal' ? `진영 HP +${fmt(r.healed)}` : type === 'fieldheal' ? `필드 ${r.n}장 HP 총 +${fmt(r.healed)}` : `필드 ${r.n}장 이번 턴 ATK +${Math.round(RULES.BUFF_RATIO * 100)}%`;
   log(`${p.name}: ${a.icon} ${a.label} (마나 ${a.cost()}) — ${detail}`, 'text-violet-300');
   if (type === 'heal') floatText(`+${fmt(r.healed)}`, 'text-emerald-300', who === 'me' ? 'me' : 'ai');
-  if (type === 'fieldheal') floatText(`💚 +${fmt(r.healed)}`, 'text-emerald-300', who);
-  if (type === 'buff') floatText(`⚔️ ATK +${Math.round(RULES.BUFF_RATIO * 100)}%`, 'text-violet-300', who);
+  if (type === 'fieldheal') floatText(`${ic('heal')} +${fmt(r.healed)}`, 'text-emerald-300', who, true);
+  if (type === 'buff') floatText(`${ic('atk')} ATK +${Math.round(RULES.BUFF_RATIO * 100)}%`, 'text-violet-300', who, true);
   render();
   return r;
 }
@@ -168,7 +169,7 @@ function doSacrifice(who, unit) {
   if (!r.ok) return r;
   if (selected === unit.uid) selected = null;
   log(`${p.name}: ${unit.card.name} 희생 — 마나 +${r.gain}`, 'text-rose-300');
-  floatText(`🩸 마나 +${r.gain}`, 'text-sky-300', who);
+  floatText(`${ic('bleed')} 마나 +${r.gain}`, 'text-sky-300', who, true);
   render();
   return r;
 }
@@ -207,9 +208,9 @@ async function attackAll() {
 }
 
 function renderSkipBtn() {
-  const m = $('main-skip'); if (m) { m.textContent = skipFx ? '⏩ 스킵' : '🎬 연출'; m.classList.toggle('on', skipFx); }
+  const m = $('main-skip'); if (m) { m.innerHTML = skipFx ? '⏩ 스킵' : `${ic('opening', { alt: '' })} 연출`; m.classList.toggle('on', skipFx); }
   const b = $('fx-skip');
-  b.textContent = skipFx ? '⏩ 스킵 ON' : '🎬 연출';
+  b.innerHTML = skipFx ? '⏩ 스킵 ON' : `${ic('opening', { alt: '' })} 연출`;
   b.classList.toggle('border-amber-400', skipFx); b.classList.toggle('text-amber-300', skipFx);
 }
 
@@ -219,6 +220,35 @@ const fxMs = ms => (FX_OFF() ? 0 : REDUCED() ? Math.round(ms * 0.3) : ms);
 const unitEl = (who, u) => document.querySelector(`#${who}-field [data-uid="${u.uid}"], #${who}-boss [data-uid="${u.uid}"]`);
 const heroEl = who => $(`${who}-hero`);
 
+// ===== 아이콘 (js/icons.js) =====
+const ic = (n, o) => window.VRIcon?.icon(n, o) || '';
+const icOf = d => (d?.img && ic(d.img)) || d?.icon || '';   // 데이터(ELEMENTS·STATUS·ACTIONS·ITEMS)의 img 가 있으면 그림, 없으면 이모지
+const escHtml = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+/** 타격 스프라이트: kind 'impact'(일반 타격) | 'blood'(속성 유리·스킬 피해). 대상 카드 위에 확대+페이드. 스킬 컷인(data/fx)과 별개 */
+const HIT_IMG = { impact: 'img/ui/hit_impact.webp', blood: 'img/ui/hit_blood.webp' };
+function hitFx(el, kind = 'impact') {
+  if (!el || FX_OFF() || REDUCED() || !el.isConnected) return;
+  const r = el.getBoundingClientRect(); if (!r.width) return;
+  const img = document.createElement('img');
+  img.src = HIT_IMG[kind] || HIT_IMG.impact; img.alt = ''; img.className = `fx-hit ${kind}`; img.setAttribute('aria-hidden', 'true');
+  const size = Math.round(Math.min(Math.max(r.width, r.height) * (kind === 'blood' ? 1.25 : 1.1), 340));
+  img.style.width = img.style.height = size + 'px';
+  img.style.left = (r.left + r.width / 2) + 'px'; img.style.top = (r.top + r.height / 2) + 'px';
+  img.style.setProperty('--rot', `${Math.round(Math.random() * 60 - 30)}deg`);
+  document.body.appendChild(img);
+  setTimeout(() => img.remove(), 450);
+}
+let hitPreloaded = false;
+function preloadHit() { if (hitPreloaded) return; hitPreloaded = true; for (const src of Object.values(HIT_IMG)) { const i = new Image(); i.src = src; } }
+
+/** 전투 배경: 전투가 시작될 때만 이미지를 받음 (CSS data-bg). 아케이드·스토리 일반 = normal, 스토리 보스 = boss */
+function setBattleBg(kind) {
+  const bg = $('battle-bg'); if (!bg) return;
+  bg.dataset.bg = kind; bg.classList.add('on');
+  if (!bg._watch) { bg._watch = new MutationObserver(() => bg.classList.toggle('on', !$('game').classList.contains('hidden'))); bg._watch.observe($('game'), { attributes: true, attributeFilter: ['class'] }); }
+}
+
 function shake(el) {
   if (!el || FX_OFF()) return;
   el.classList.remove('fx-shake', 'fx-hitflash'); void el.offsetWidth;
@@ -226,11 +256,11 @@ function shake(el) {
   setTimeout(() => el.classList.remove('fx-shake', 'fx-hitflash'), 330);
 }
 
-function dmgNumber(el, text, color) {
+function dmgNumber(el, text, color, html = false) {
   if (!el || FX_OFF()) return;
   const r = el.getBoundingClientRect();
   const d = document.createElement('div');
-  d.className = 'fx-dmg'; d.textContent = text;
+  d.className = 'fx-dmg'; if (html) d.innerHTML = text; else d.textContent = text;
   if (color) d.style.color = color;
   d.style.left = (r.left + r.width / 2 + (Math.random() - 0.5) * 16) + 'px';
   d.style.top = (r.top + r.height * 0.4) + 'px';
@@ -285,16 +315,16 @@ async function attack(who, unit, target, fromBatch = false) {
     const cls = who === 'me' ? 'text-emerald-300' : 'text-red-300';
     pendingDying = [];
     for (const e of resolveAttack(p, o, unit, target)) {
-      if (e.type === 'hero') { log(`${unit.card.name} → ${o.name} 진영 ${fmt(e.dmg)} 피해`, cls); shake(tEl); dmgNumber(tEl, `-${fmt(e.dmg)}`); }
+      if (e.type === 'hero') { log(`${unit.card.name} → ${o.name} 진영 ${fmt(e.dmg)} 피해`, cls); shake(tEl); hitFx(tEl); dmgNumber(tEl, `-${fmt(e.dmg)}`); }
       else if (e.type === 'hit') {
         const real = e.target || shown;
         const rEl = (real && (unitEl(oWho, real) || unitEl(who, real))) || tEl;
         const orig = shown || null;
         log(`${unit.card.name} → ${real?.card?.name ?? '?'}${orig && real !== orig ? ` (${orig.card.name} 대신)` : (!orig ? ' (진영 공격 유도)' : '')} ${fmt(e.d1)} 피해${e.mult !== 1 ? ` (속성 ×${e.mult})` : ''}, 반격 ${fmt(e.d2)}`, cls);
-        shake(rEl); dmgNumber(rEl, `-${fmt(e.d1)}`);
-        if (e.d2) { shake(aEl); dmgNumber(aEl, `-${fmt(e.d2)}`, '#fca5a5'); }
+        shake(rEl); hitFx(rEl, e.mult > 1 ? 'blood' : 'impact'); dmgNumber(rEl, `-${fmt(e.d1)}`);   // 속성 유리(크리티컬) = 피 튀김
+        if (e.d2) { shake(aEl); hitFx(aEl); dmgNumber(aEl, `-${fmt(e.d2)}`, '#fca5a5'); }
       }
-      else if (e.type === 'overflow') { log(`초과 피해 ${fmt(e.dmg)} → ${o.name} 진영`, 'text-orange-300'); const h = heroEl(oWho); shake(h); dmgNumber(h, `💥 -${fmt(e.dmg)}`, '#fdba74'); }
+      else if (e.type === 'overflow') { log(`초과 피해 ${fmt(e.dmg)} → ${o.name} 진영`, 'text-orange-300'); const h = heroEl(oWho); shake(h); hitFx(h); dmgNumber(h, `💥 -${fmt(e.dmg)}`, '#fdba74'); }
     }
     renderHero(oWho); renderHero(who);
     await withTimeout(hit?.back?.() ?? Promise.resolve(), 1500);
@@ -322,13 +352,13 @@ function reportError(where, err) {
 }
 
 /** 작은 떠오르는 글자 연출 */
-function floatText(text, cls, side = 'me') {
+function floatText(text, cls, side = 'me', html = false) {
   const anchor = $(side === 'me' ? 'me-field' : 'ai-field');
   if (!anchor) return;
   const r = anchor.getBoundingClientRect();
   const el = document.createElement('div');
   el.className = `float-text fixed z-30 pointer-events-none font-black text-lg drop-shadow ${cls}`;
-  el.textContent = text;
+  if (html) el.innerHTML = text; else el.textContent = text;
   el.style.left = (r.left + r.width / 2 + (Math.random() - 0.5) * 80) + 'px';
   el.style.top = (r.top + r.height / 2) + 'px';
   document.body.appendChild(el);
@@ -415,7 +445,7 @@ function showEnding(win, reason) {
   $('end-title').innerHTML = `<div class="end-slash"><div class="end-big">${title}</div></div><div class="text-base font-bold mt-1 ${kind === 'win' ? 'text-emerald-300' : kind === 'lose' ? 'text-red-400' : 'text-zinc-200'}">${sub}</div>`;
   $('end-mvp-wrap').innerHTML = mvpHTML;
   $('end-stats').innerHTML = row('진행 턴', `${S.myTurns || S.turnNo}턴 (${S.turnNo}라운드)`) + row('준 피해 합계', fmt(L.total)) + row('사용한 스킬', `${L.skills}회`)
-    + row('고용한 용병', L.merc ? `🗡️ ${L.merc.name}` : '없음') + row('진영 HP', `나 ${fmt(Math.max(0, S.me.hp))} : ${fmt(Math.max(0, S.ai.hp))} 상대`);
+    + row('고용한 용병', L.merc ? `${ic('merc')} ${L.merc.name}` : '없음') + row('진영 HP', `나 ${fmt(Math.max(0, S.me.hp))} : ${fmt(Math.max(0, S.ai.hp))} 상대`);
   S.endShare = `VR: Abyss Gate에서 ${sub}${mvp ? ` MVP는 ${mvp.card.name}!` : ''} (${S.turnNo}라운드, 피해 ${fmt(L.total)})`;
   if (kind === 'win' && mvp) setTimeout(() => mvpVoice(mvp.card), FX_OFF() ? 0 : 500);
 }
@@ -482,7 +512,7 @@ function unlockVoice() {
 document.addEventListener('pointerdown', unlockVoice, { capture: true, once: true });
 function renderVoiceBtn() {
   const b = document.getElementById('voice-toggle'), r = document.getElementById('voice-vol');
-  if (b) { b.textContent = voiceOn ? '🔊' : '🔇'; b.title = voiceOn ? '스킬 보이스 끄기' : '스킬 보이스 켜기'; }
+  if (b) { b.innerHTML = ic(voiceOn ? 'sound_on' : 'sound_off'); b.title = voiceOn ? '스킬 보이스 끄기' : '스킬 보이스 켜기'; }
   if (r) { r.value = String(Math.round(voiceVol * 100)); r.disabled = !voiceOn; }
 }
 /** 스킬 컷인: 스킬 이름 배너 + 연출 이미지(data/fx/<파일>, 16:9, 모바일 세로는 가운데 기준으로 양옆 잘림) */
@@ -496,7 +526,7 @@ function preloadFx(cards) {
 }
 function cutInHTML(u, name, fx, passive) {
   const media = fx ? (/\.(mp4|webm)$/i.test(fx) ? `<video src="data/fx/${fx}" autoplay muted playsinline class="cutin-media"></video>` : `<img src="data/fx/${fx}" class="cutin-media" alt="" onerror="this.remove()">`) : '';
-  return `${media}<div class="cutin-text"><div class="text-[11px] md:text-xs text-zinc-200">${u.owner.name} · ${u.card.name}${passive ? ' · 패시브' : ''}</div><div class="text-xl md:text-3xl font-black tracking-tight">${passive ? '✨ ' : '⚡ '}${name}</div></div>`;
+  return `${media}<div class="cutin-text"><div class="text-[11px] md:text-xs text-zinc-200">${u.owner.name} · ${u.card.name}${passive ? ' · 패시브' : ''}</div><div class="text-xl md:text-3xl font-black tracking-tight">${passive ? '✨ ' : ic('skill', { alt: '스킬' }) + ' '}${name}</div></div>`;
 }
 /** 슬래시 착지 순간(약 19%) 화면 살짝 흔들기 — 모션 줄이기 설정이면 생략 */
 let impactTimer;
@@ -574,17 +604,17 @@ function onEngine(e) {
   switch (e.type) {
     case 'skill': log(`${e.unit.owner.name}: ${nm(e.unit)} ⚡[${e.skill.name}] (MP ${e.skill.mp})`, 'text-fuchsia-300'); break;
     case 'passive': log(`${e.unit.owner.name}: ${nm(e.unit)} ✨[${e.name}]${e.text ? ' — ' + e.text : ''}`, 'text-fuchsia-200'); if (!FX_OFF()) { dmgNumber(uEl(e.unit), `✨${e.name}`, '#f0abfc'); passiveCutIn(e.unit, e.name); } break;
-    case 'dmg': { const el = uEl(e.unit); shake(el); dmgNumber(el, typeof e.dmg === 'number' ? `-${fmt(e.dmg)}` : e.dmg); break; }
-    case 'hero': { const el = heroEl(whoOf(e.p)); shake(el); dmgNumber(el, `-${fmt(e.dmg)}`, e.kind === 'self' ? '#fca5a5' : undefined); log(`${e.p.name} 본진 ${fmt(e.dmg)} 피해${e.kind === 'self' ? ' (자기 공격)' : ''}`, 'text-orange-300'); break; }
+    case 'dmg': { const el = uEl(e.unit); shake(el); if (typeof e.dmg !== 'number' || e.dmg > 0) hitFx(el, 'blood'); dmgNumber(el, typeof e.dmg === 'number' ? `-${fmt(e.dmg)}` : e.dmg); break; }
+    case 'hero': { const el = heroEl(whoOf(e.p)); shake(el); if (e.dmg > 0) hitFx(el, 'blood'); dmgNumber(el, `-${fmt(e.dmg)}`, e.kind === 'self' ? '#fca5a5' : undefined); log(`${e.p.name} 본진 ${fmt(e.dmg)} 피해${e.kind === 'self' ? ' (자기 공격)' : ''}`, 'text-orange-300'); break; }
     case 'heal': dmgNumber(uEl(e.unit), `+${fmt(e.amt)}`, '#6ee7b7'); break;
     case 'heroHeal': dmgNumber(heroEl(whoOf(e.p)), `+${fmt(e.amt)}`, '#6ee7b7'); log(`${e.p.name} 본진 HP +${fmt(e.amt)}`, 'text-emerald-300'); break;
     case 'destroy': log(`${nm(e.unit)} 파괴!`, 'text-zinc-400'); pendingDying.push(uEl(e.unit)); break;
     case 'refund': if (S.story && e.owner === S.me && e.killer?.card) { const k = String(e.killer.card.id); S.log.kills[k] = (S.log.kills[k] || 0) + 1; }
-      log(`${nm(e.killer)} 처치 보상: 마나 +${e.refund}`, 'text-sky-300'); if (e.refund > 0 && !FX_OFF()) dmgNumber(heroEl(whoOf(e.owner)), `💧 +${e.refund} 마나`, '#7dd3fc'); renderHero(whoOf(e.owner)); break;
+      log(`${nm(e.killer)} 처치 보상: 마나 +${e.refund}`, 'text-sky-300'); if (e.refund > 0 && !FX_OFF()) dmgNumber(heroEl(whoOf(e.owner)), `${ic('mana')} +${e.refund} 마나`, '#7dd3fc', true); renderHero(whoOf(e.owner)); break;
     case 'levelup': log(`${nm(e.unit)} Lv${e.level}`, 'text-amber-300'); dmgNumber(uEl(e.unit), `⬆ Lv${e.level}`, '#fcd34d'); break;
-    case 'status': { const st = STATUS[e.kind]; const t = e.kind === 'mod' ? e.text : `${st?.icon || ''} ${st?.label || e.kind}`; dmgNumber(uEl(e.unit), t, '#c4b5fd'); log(`${nm(e.unit)}: ${t}`, 'text-purple-300'); break; }
-    case 'immune': dmgNumber(uEl(e.unit), '🔰 면역', '#93c5fd'); break;
-    case 'heroImmune': dmgNumber(heroEl(whoOf(e.p)), '🔰 무효', '#93c5fd'); break;
+    case 'status': { const st = STATUS[e.kind]; const t = e.kind === 'mod' ? e.text : `${st?.icon || ''} ${st?.label || e.kind}`; dmgNumber(uEl(e.unit), e.kind === 'mod' ? escHtml(t) : `${icOf(st)} ${escHtml(st?.label || e.kind)}`, '#c4b5fd', true); log(`${nm(e.unit)}: ${t}`, 'text-purple-300'); break; }
+    case 'immune': dmgNumber(uEl(e.unit), `${ic('immune')} 면역`, '#93c5fd', true); break;
+    case 'heroImmune': dmgNumber(heroEl(whoOf(e.p)), `${ic('immune')} 무효`, '#93c5fd', true); break;
     case 'resist': dmgNumber(uEl(e.unit), '✳️ 면역', '#93c5fd'); break;
     case 'miss': log(`${nm(e.unit)}: ${e.text}`, 'text-zinc-400'); dmgNumber(uEl(e.unit), 'MISS', '#a1a1aa'); break;
     case 'mp': if (typeof e.amt === 'string' || e.amt > 0) dmgNumber(uEl(e.unit), `MP +${e.amt}`, '#60a5fa'); else dmgNumber(uEl(e.unit), `MP ${e.amt}`, '#60a5fa'); break;
@@ -652,14 +682,14 @@ function cardHTML(c, { hp, size = 'md', dim = false } = {}) {
     <img src="${IMG}${c.id}.webp" data-id="${c.id}" class="card-img w-full aspect-[3/4] object-cover" alt="${c.name}">
     <button type="button" class="zoom-btn absolute bottom-[46px] md:bottom-[58px] right-1" data-zoom="${c.id}"${hp != null ? ` data-hp="${hp}"` : ''} title="크게 보기" aria-label="크게 보기">🔍</button>
     <div class="absolute top-1 left-1 w-6 h-6 md:w-7 md:h-7 rounded-full bg-sky-600 text-white text-[11px] md:text-xs font-black flex items-center justify-center border border-white/40">${c.cost}</div>
-    <div class="absolute top-1 right-1 text-sm md:text-base" title="${e.label}">${e.icon}</div>
+    <div class="absolute top-1 right-1 text-sm md:text-base" title="${e.label}">${icOf(e)}</div>
     <div class="rar-badge absolute left-1 top-7 md:top-9" title="${rar.label}">${rar.short}</div>
     ${nSk ? `<div class="sk-count absolute right-1 top-6 md:top-8" title="스킬 ${nSk}개">✦${nSk}</div>` : ''}
     <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/85 to-transparent px-1 pt-4 pb-1">
       <div class="text-[10px] md:text-xs font-bold truncate">${c.name}</div>
       <div class="text-[9px] md:text-[10px] text-amber-400 font-bold">⚡${fmt(c.power)}</div>
       <div class="flex justify-between whitespace-nowrap tracking-tighter ${small ? 'text-[8px]' : 'text-[9px]'} md:text-[11px] font-bold">
-        <span class="text-orange-400">⚔${fmt(c.ATK)}</span><span class="text-red-400">♥${fmt(hp ?? c.HP)}</span><span class="text-sky-400">🛡${fmt(c.DEF)}</span>
+        <span class="text-orange-400">${ic('atk', { cls: 'ui-ic-sm' })}${fmt(c.ATK)}</span><span class="text-red-400">${ic('hp', { cls: 'ui-ic-sm' })}${fmt(hp ?? c.HP)}</span><span class="text-sky-400">${ic('def', { cls: 'ui-ic-sm' })}${fmt(c.DEF)}</span>
       </div>
     </div>
   </div>`;
@@ -675,7 +705,7 @@ function renderHero(who) {
   const p = S[who], max = p.maxHp || RULES.HERO_HP;
   $(`${who}-hp`).textContent = `${fmt(p.hp)} / ${fmt(max)}`;
   $(`${who}-hpbar`).style.width = Math.max(0, p.hp / max * 100) + '%';
-  $(`${who}-mana`).textContent = `${p.mana} / ${p.maxMana}` + (p.accel ? ` ⚙️+${RULES.MANA_PER_TURN + p.accel * RULES.ACCEL_BONUS}/턴` : '');
+  $(`${who}-mana`).innerHTML = `${p.mana} / ${p.maxMana}` + (p.accel ? ` ${ic('gear', { cls: 'ui-ic-sm' })}+${RULES.MANA_PER_TURN + p.accel * RULES.ACCEL_BONUS}/턴` : '');
   $(`${who}-deck`).textContent = p.deck.length;
   $(`${who}-handcount`).textContent = p.hand.length;
 }
@@ -722,17 +752,17 @@ function render() {
   $('ai-hero').classList.toggle('ring-4', selected != null && tg.hero);
   $('ai-hero').classList.toggle('ring-red-500', selected != null && tg.hero);
   $('ai-hero').classList.toggle('opacity-70', S.turn === 'me' && !tg.hero);
-  $('hero-hint').textContent = S.story && S.over ? '' : S.ai.noBase ? (S.over ? '' : '⚔️ 일반전: 상대 카드를 모두 쓰러뜨리면 승리') : S.turn === 'me' && !S.over ? (tg.hero ? '🎯 상대 진영 공격 가능' : '🛡️ ' + tg.reason) : '';
+  $('hero-hint').innerHTML = S.story && S.over ? '' : S.ai.noBase ? (S.over ? '' : '⚔️ 일반전: 상대 카드를 모두 쓰러뜨리면 승리') : S.turn === 'me' && !S.over ? (tg.hero ? `${ic('taunt', { alt: '' })} 상대 진영 공격 가능` : `${ic('def', { alt: '' })} ${escHtml(tg.reason)}`) : '';
   $('hero-hint').className = `text-center text-[11px] md:text-xs font-bold ${tg.hero ? 'text-emerald-400' : 'text-amber-300'}`;
 
   for (const who of ['ai', 'me']) {
     const p = S[who];
     $(`${who}-syn`).innerHTML = [
-      ...p.activeSyn.map(x => { const el = ELEMENTS[x.cls] || {}; return `<span class="px-1.5 rounded-full bg-white/10 text-[10px] font-bold" title="속성 시너지: ${el.label || x.cls} ${x.n}장 → ATK·DEF +${Math.round(x.pct * 100)}%">${el.icon || ''}×${x.n} +${Math.round(x.pct * 100)}%</span>`; }),
+      ...p.activeSyn.map(x => { const el = ELEMENTS[x.cls] || {}; return `<span class="px-1.5 rounded-full bg-white/10 text-[10px] font-bold" title="속성 시너지: ${el.label || x.cls} ${x.n}장 → ATK·DEF +${Math.round(x.pct * 100)}%">${icOf(el)}×${x.n} +${Math.round(x.pct * 100)}%</span>`; }),
       ...p.activeCombos.map(c => `<span class="px-1.5 rounded-full bg-fuchsia-700/60 text-[10px] font-bold" title="조합 [${c.name}]: ${c.scope === 'all' ? '아군 전체' : '조합 카드'} ${hpText(c.desc)} +${Math.round(c.value * 100)}%">🔗${c.name}</span>`),
       p.actionLock > 0 ? '<span class="px-1.5 rounded-full bg-red-800 text-[10px] font-bold" title="셔플·보강·강화·필드 회복 사용 불가">🔒고유기술 봉인</span>' : '',
-      p.st?.heroShield ? '<span class="px-1.5 rounded-full bg-sky-800 text-[10px] font-bold" title="본진 방어력 +300% (피해 1/4)">🛡️본진 방어</span>' : '',
-      p.st?.heroInvuln ? '<span class="px-1.5 rounded-full bg-sky-800 text-[10px] font-bold" title="본진 공격 무효">🔰본진 무적</span>' : '',
+      p.st?.heroShield ? `<span class="px-1.5 rounded-full bg-sky-800 text-[10px] font-bold" title="본진 방어력 +300% (피해 1/4)">${ic('def')}본진 방어</span>` : '',
+      p.st?.heroInvuln ? `<span class="px-1.5 rounded-full bg-sky-800 text-[10px] font-bold" title="본진 공격 무효">${ic('immune')}본진 무적</span>` : '',
     ].join('');
     const box = $(`${who}-field`); box.innerHTML = '';
     const bossBox = $(`${who}-boss`); if (bossBox) { bossBox.innerHTML = ''; bossBox.classList.toggle('hidden', !S[who].field.some(u => u.undying)); }
@@ -746,11 +776,11 @@ function render() {
       const hero = u.level >= RULES.LEVEL_MAX;
       const sts = statusIcons(u);
       const skReady = who === 'me' && myTurn && u.sk.some(s => skillState(u, s).ok);
-      const icons = [u.items?.weapon && ITEMS.weapon.icon, u.items?.armor && ITEMS.armor.icon, ...u.skills.map(k => SKILLS[k]?.icon)].filter(Boolean);
+      const icons = [u.items?.weapon && icOf(ITEMS.weapon), u.items?.armor && icOf(ITEMS.armor), ...u.skills.map(k => icOf(SKILLS[k]))].filter(Boolean);
       w.innerHTML = `<div class="relative ${hero ? 'hero-card' : ''}">${cardHTML(u.card, { hp: u.hp, size: 'sm', dim: who === 'me' && !u.canAttack && myTurn })}` +
-        `<div class="lv-badge absolute -top-1.5 left-1/2 -translate-x-1/2 px-1.5 rounded-full ${hero ? 'bg-gradient-to-r from-yellow-300 to-amber-500 shadow-[0_0_8px_#fbbf24]' : u.level > 1 ? 'bg-amber-400' : 'bg-zinc-600 text-white'} text-black text-[9px] md:text-[10px] font-black whitespace-nowrap">${hero ? '👑 ' : ''}Lv${u.level}</div>` +
+        `<div class="lv-badge absolute -top-1.5 left-1/2 -translate-x-1/2 px-1.5 rounded-full ${hero ? 'bg-gradient-to-r from-yellow-300 to-amber-500 shadow-[0_0_8px_#fbbf24]' : u.level > 1 ? 'bg-amber-400' : 'bg-zinc-600 text-white'} text-black text-[9px] md:text-[10px] font-black whitespace-nowrap">${hero ? ic('crown', { cls: 'ui-ic-sm' }) + ' ' : ''}Lv${u.level}</div>` +
         (icons.length ? `<div class="item-icons absolute top-7 right-0.5 flex flex-col text-[11px] md:text-sm leading-tight drop-shadow">${icons.map(x => `<span>${x}</span>`).join('')}</div>` : '') +
-        (sts.length ? `<div class="status-icons absolute top-7 left-0.5 flex flex-col text-[11px] md:text-sm leading-tight drop-shadow">${sts.map(x => `<span title="${x.title}">${x.icon}</span>`).join('')}</div>` : '') + `</div>` +
+        (sts.length ? `<div class="status-icons absolute top-7 left-0.5 flex flex-col text-[11px] md:text-sm leading-tight drop-shadow">${sts.map(x => `<span title="${x.title}">${icOf(x)}</span>`).join('')}</div>` : '') + `</div>` +
         `<div class="hp-bar h-1.5 bg-white/10 rounded-full mt-0.5 overflow-hidden" title="HP ${u.hp}/${u.maxHp}"><div class="hp-fill h-full bg-red-500" data-to="${u.maxHp ? Math.max(0, Math.min(100, u.hp / u.maxHp * 100)) : 0}" style="width:${hpPrev.get(String(u.uid)) ?? (u.maxHp ? Math.max(0, Math.min(100, u.hp / u.maxHp * 100)) : 0)}%"></div></div>` +
         `<div class="mp-bar h-1.5 bg-white/10 rounded-full mt-0.5 overflow-hidden" title="MP ${u.mp}/${u.maxMp} (+${u.mpRegen}/턴)"><div class="h-full bg-blue-500" style="width:${u.maxMp ? Math.min(100, u.mp / u.maxMp * 100) : 0}%"></div></div>` +
         `<div class="flex justify-center gap-1 h-4">${ready ? '<span class="text-[10px] text-emerald-400 font-bold">공격 가능</span>' : ''}${skReady ? '<button class="skill-btn text-[10px] px-1 rounded bg-fuchsia-600 hover:bg-fuchsia-500 font-bold">✦스킬</button>' : ''}</div>`;
@@ -758,10 +788,10 @@ function render() {
       if (who === 'me' && myTurn) enableDrag(w, u);
       const sb = w.querySelector('.skill-btn'); if (sb) sb.onclick = ev => { ev.stopPropagation(); showDetail(u.card, { hp: u.hp, unit: u }); };
       if (u.undying && bossBox) {   // 스토리 보스: 진영 안에 표시 (공격 대상 아님, 쓰러지지 않음)
-        w.insertAdjacentHTML('afterbegin', '<div class="boss-crown" title="보스: 진영 안에 있어 공격할 수 없고 쓰러지지 않아요">👑</div>');
+        w.insertAdjacentHTML('afterbegin', `<div class="boss-crown" title="보스: 진영 안에 있어 공격할 수 없고 쓰러지지 않아요">${ic('crown', { alt: '보스' })}</div>`);
         const wrap = document.createElement('div'); wrap.className = 'flex items-center gap-2';
         wrap.appendChild(w);
-        wrap.insertAdjacentHTML('beforeend', `<div class="text-[10px] md:text-xs leading-snug"><div class="font-black text-amber-300">👑 보스</div><div class="text-zinc-300 font-bold truncate max-w-[64px] md:max-w-[120px]">${u.card.name}</div><div class="text-zinc-400">진영 안 · 불사</div><div class="text-zinc-500 hidden md:block">매 턴 공격·스킬 사용</div></div>`);
+        wrap.insertAdjacentHTML('beforeend', `<div class="text-[10px] md:text-xs leading-snug"><div class="font-black text-amber-300">${ic('crown', { alt: '' })} 보스</div><div class="text-zinc-300 font-bold truncate max-w-[64px] md:max-w-[120px]">${u.card.name}</div><div class="text-zinc-400">진영 안 · 불사</div><div class="text-zinc-500 hidden md:block">매 턴 공격·스킬 사용</div></div>`);
         bossBox.appendChild(wrap);
       } else box.appendChild(w);
     });
@@ -864,7 +894,7 @@ function showDetail(c, { fromHand = false, hp, unit = null, view = null } = {}) 
       <div class="flex-1 min-w-0">
         <div class="text-2xl font-black">${c.name}</div>
         <div class="text-zinc-400 text-sm"><span class="rar-badge rar-inline ${rarityOf(c).cls}">${rarityOf(c).short}</span> ${c.grade} · 스킬 ${skillsOf(c.id).length}개 · ${c.region} · ${c.age}세</div>
-        <div class="mt-2 ${e.color} font-bold">${e.icon} ${e.label} (${c.class})</div>
+        <div class="mt-2 ${e.color} font-bold">${icOf(e)} ${e.label} (${c.class})</div>
         <div class="text-zinc-300 text-sm">타입: ${c.attribute}</div>
         <div class="mt-2 text-amber-400 font-black text-xl">⚡ ${fmt(c.power)}</div>
         <div class="text-sky-400 font-bold">코스트 ${c.cost}</div>
@@ -880,17 +910,17 @@ function showDetail(c, { fromHand = false, hp, unit = null, view = null } = {}) 
       ${check.ok || !myTurn ? '' : `<div id="summon-reason" class="mt-3 text-sm text-red-400">${check.reason}</div>`}
       <button id="summon-btn" ${check.ok && myTurn ? '' : 'disabled'} class="mt-4 w-full py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 text-black font-bold">소환하기</button>` : ''}
     ${unit ? `
-      <div class="mt-3 flex items-center gap-2 text-sm"><span class="font-black ${unit.level >= RULES.LEVEL_MAX ? 'text-amber-300' : ''}">${unit.level >= RULES.LEVEL_MAX ? '👑 영웅 ' : ''}Lv${unit.level}</span>
+      <div class="mt-3 flex items-center gap-2 text-sm"><span class="font-black ${unit.level >= RULES.LEVEL_MAX ? 'text-amber-300' : ''}">${unit.level >= RULES.LEVEL_MAX ? ic('crown') + ' 영웅 ' : ''}Lv${unit.level}</span>
         ${unit.level < RULES.LEVEL_MAX ? `<div class="flex-1 h-2 bg-white/10 rounded-full overflow-hidden"><div class="h-full bg-amber-400" style="width:${Math.min(100, unit.xp / xpToNext(unit.level) * 100)}%"></div></div><span class="text-[11px] text-zinc-400">XP ${unit.xp}/${xpToNext(unit.level)}</span>` : '<span class="text-[11px] text-zinc-400">최대 레벨</span>'}</div>
-      ${unit.skills.length ? `<div class="mt-1 text-xs text-zinc-300">${unit.skills.map(k => `${SKILLS[k]?.icon || ''} ${SKILLS[k]?.label || k}`).join(' · ')}</div>` : ''}
+      ${unit.skills.length ? `<div class="mt-1 text-xs text-zinc-300">${unit.skills.map(k => `${icOf(SKILLS[k])} ${SKILLS[k]?.label || k}`).join(' · ')}</div>` : ''}
       <div class="grid grid-cols-2 gap-2 mt-3">${Object.entries(ITEMS).map(([type, it]) => { const ce = canEquip(type, unit, S.me); return `
-        <button data-equip="${type}" ${ce.ok && myTurn ? '' : 'disabled'} class="py-2 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-black text-sm font-bold">${it.icon} ${it.label} ${it.desc()} <span class="text-sky-900">💧${it.cost()}</span><div class="text-[10px] font-normal h-3">${unit.items?.[type] ? '장착됨' : (!myTurn || ce.ok ? '' : ce.reason)}</div></button>`; }).join('')}</div>` : ''}
+        <button data-equip="${type}" ${ce.ok && myTurn ? '' : 'disabled'} class="py-2 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-black text-sm font-bold">${icOf(it)} ${it.label} ${it.desc()} <span class="text-sky-900">${ic('mana')}${it.cost()}</span><div class="text-[10px] font-normal h-3">${unit.items?.[type] ? '장착됨' : (!myTurn || ce.ok ? '' : ce.reason)}</div></button>`; }).join('')}</div>` : ''}
     ${unit ? (() => { const rc = canRecall(unit, S.me); return `
       ${rc.ok || !myTurn ? '' : `<div id="recall-reason" class="mt-3 text-sm text-red-400">${rc.reason}</div>`}
       <button id="recall-btn" ${rc.ok && myTurn ? '' : 'disabled'} class="mt-4 w-full py-3 rounded-2xl bg-sky-500 hover:bg-sky-400 disabled:opacity-40 text-black font-bold">회수 (마나 ${rc.cost})</button>
       <div class="text-[11px] text-zinc-500 mt-1 text-center">손패로 돌아가며 HP가 회복되고, 레벨·XP·아이템은 초기화됩니다</div>`; })() : ''}
     ${unit ? (() => { const sc = canSacrifice(unit, S.me); return `
-      <button id="sacrifice-btn" ${sc.ok && myTurn ? '' : 'disabled'} class="mt-2 w-full py-2.5 rounded-2xl bg-rose-600 hover:bg-rose-500 disabled:opacity-40 text-white font-bold">🩸 희생 (마나 +${sc.gain})${sc.ok || !myTurn ? '' : ` — ${sc.reason}`}</button>
+      <button id="sacrifice-btn" ${sc.ok && myTurn ? '' : 'disabled'} class="mt-2 w-full py-2.5 rounded-2xl bg-rose-600 hover:bg-rose-500 disabled:opacity-40 text-white font-bold">${ic('bleed', { alt: '' })} 희생 (마나 +${sc.gain})${sc.ok || !myTurn ? '' : ` — ${sc.reason}`}</button>
       <div class="text-[11px] text-zinc-500 mt-1 text-center">카드를 없애고 코스트의 ${Math.round(RULES.SACRIFICE_RATIO * 100)}%를 마나로 (턴당 1회)</div>`; })() : ''}`;
   fixImages($('detail-body'));
   if (unit) $('detail-body').querySelectorAll('[data-skill]').forEach(b => b.onclick = () => { const s = unit.sk[+b.dataset.skill]; hideModal('detail'); castSkill('me', unit, s); });
@@ -905,7 +935,7 @@ function skillListHTML(c, unit, myTurn) {
   const list = unit ? unit.sk : skillsOf(c.id);
   const mine = unit && unit.owner === S.me;
   const head = unit ? `<div class="mt-3 flex items-center gap-2 text-xs"><span class="text-blue-300 font-bold">MP ${unit.mp}/${unit.maxMp}</span><div class="flex-1 h-2 bg-white/10 rounded-full overflow-hidden"><div class="h-full bg-blue-500" style="width:${unit.mp / unit.maxMp * 100}%"></div></div><span class="text-zinc-400">턴당 +${unit.mpRegen}</span></div>` +
-    (statusIcons(unit).length ? `<div class="mt-1 text-xs text-purple-300">${statusIcons(unit).map(x => `${x.icon} ${x.title}`).join(' · ')}</div>` : '') : '';
+    (statusIcons(unit).length ? `<div class="mt-1 text-xs text-purple-300">${statusIcons(unit).map(x => `${icOf(x)} ${x.title}`).join(' · ')}</div>` : '') : '';
   if (!list.length) return head;
   return head + `<div class="mt-3 space-y-2 max-h-64 overflow-y-auto pr-1">${list.map((s, i) => {
     const st = unit ? skillState(unit, s) : { ok: false, reason: `Lv${s.unlock} 해금` };
@@ -932,10 +962,10 @@ function renderMerc() {
   $('merc-list').innerHTML = S.mercOffer.map(c => {
     const r = Merc.canBuy(c, S.me), price = Merc.price(c);
     return `<div class="flex flex-col items-center gap-1">${cardHTML(c, { dim: !r.ok })}
-      <button data-merc="${c.id}" ${r.ok ? '' : 'disabled'} class="w-full px-2 py-1.5 rounded-lg bg-amber-400 hover:bg-amber-300 disabled:bg-zinc-700 disabled:text-zinc-400 text-black text-xs font-bold">${r.hired ? '✅ 고용됨' : `💧${price}`}</button>
+      <button data-merc="${c.id}" ${r.ok ? '' : 'disabled'} class="w-full px-2 py-1.5 rounded-lg bg-amber-400 hover:bg-amber-300 disabled:bg-zinc-700 disabled:text-zinc-400 text-black text-xs font-bold">${r.hired ? '✅ 고용됨' : `${ic('mana')}${price}`}</button>
       <div class="text-[10px] h-3 ${r.ok ? 'text-zinc-500' : r.hired ? 'text-amber-300' : 'text-red-400'}">${r.ok ? `기본 ${c.cost} ×${Merc.PRICE[c.grade]}` : r.reason}</div></div>`;
   }).join('');
-  $('merc-msg').textContent = `보유 마나 💧${S.me.mana}`;
+  $('merc-msg').innerHTML = `보유 마나 ${ic('mana')}${S.me.mana}`;
   $('merc-list').querySelectorAll('[data-merc]').forEach(b => b.onclick = () => buyMerc(b.dataset.merc));
 }
 function buyMerc(id) {
@@ -946,7 +976,7 @@ function buyMerc(id) {
   S.me.hand.push(c);
   preloadFx([c]);
   log(`나: 🗡️ 용병 ${c.name} 고용 (마나 ${r.cost}) — 손패에 추가 (이번 판 한정)`, 'text-amber-300');
-  floatText(`🗡️ ${c.name} 고용!`, 'text-amber-300', 'me');
+  floatText(`${ic('merc')} ${escHtml(c.name)} 고용!`, 'text-amber-300', 'me', true);
   hideModal('merc'); render();
 }
 $('act-merc').onclick = () => { if (S?.story || S?.turn !== 'me' || S.over || S.busy) return; renderMerc(); showModal('merc'); };
@@ -1035,8 +1065,8 @@ function zoomFromBtn(b) {
   const c = POOL.find(x => String(x.id) === b.dataset.zoom); if (!c) return;
   const r = rarityOf(c), e = ELEMENTS[c.class] || ELEMENTS.WIND, hp = b.dataset.hp;
   openZoom({ src: `${IMG}${c.id}.webp`, title: b.dataset.name || c.name, stars: window.rarityStars?.(c, b.dataset.ex ? 'ex' : 'base', 'rstars-lg') || '',   // 스토리 EX 카드: 빨간 별
-    sub: `<span class="rar-badge rar-inline ${r.cls}">${r.short}</span> ${r.label} · ${e.icon} ${e.label} · 코스트 ${c.cost}`,
-    stats: `<span class="text-amber-400">⚡${fmt(c.power)}</span><span class="text-orange-400">⚔ ATK ${fmt(c.ATK)}</span><span class="text-red-400">♥ HP ${hp != null ? fmt(+hp) + ' / ' : ''}${fmt(c.HP)}</span><span class="text-sky-400">🛡 DEF ${fmt(c.DEF)}</span>` });
+    sub: `<span class="rar-badge rar-inline ${r.cls}">${r.short}</span> ${r.label} · ${icOf(e)} ${e.label} · 코스트 ${c.cost}`,
+    stats: `<span class="text-amber-400">⚡${fmt(c.power)}</span><span class="text-orange-400">${ic('atk')} ATK ${fmt(c.ATK)}</span><span class="text-red-400">${ic('hp')} HP ${hp != null ? fmt(+hp) + ' / ' : ''}${fmt(c.HP)}</span><span class="text-sky-400">${ic('def')} DEF ${fmt(c.DEF)}</span>` });
 }
 // 캡처 단계에서 가로채서 카드 선택/드래그/상세창이 같이 동작하지 않게 함
 ['pointerdown', 'mousedown', 'touchstart'].forEach(t => document.addEventListener(t, e => { if (e.target.closest?.('.zoom-btn')) e.stopPropagation(); }, { capture: true, passive: true }));

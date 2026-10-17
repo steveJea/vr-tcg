@@ -2,6 +2,7 @@
 // 판이 끝나면(로그인 유저만) 승리: 필드에 남은 내 카드 전부 / 패배·무승부: MVP 1장을 갤러리에 등록.
 // 저장은 Supabase gallery 테이블 + gallery_register RPC. 스킬 이미지는 VIP 왕관 등급으로 개방된 것만 노출.
 (() => {
+  const IC = n => window.VRIcon?.icon(n) || '';   // js/icons.js
   const IMG = 'https://raw.githubusercontent.com/steveJea/vr-ideal-worldcup/main/img/bt_img/';
   const ORDER = ['NORMAL', 'RARE', 'HIGH RARE', 'SUPER RARE', 'ULTRA RARE', 'MYTHIC RARE'];
   const SHORT = { 'NORMAL': 'N', 'RARE': 'R', 'HIGH RARE': 'HR', 'SUPER RARE': 'SR', 'ULTRA RARE': 'UR', 'MYTHIC RARE': 'MR' };
@@ -17,7 +18,7 @@
     { k: 'blue', e: '🔵', n: '파란 왕관' }, { k: 'purple', e: '🟣', n: '보라 왕관' },
     { k: 'yellow', e: '🟡', n: '노란 왕관' }, { k: 'red', e: '🔴', n: '붉은 왕관' }];
   const tierOf = m => Math.min(4, Math.max(0, +m || 0));
-  const crownHtml = (t, big) => t ? `<span class="gal-crown vip-${TIERS[t].k}${big ? ' big' : ''}" title="${TIERS[t].n}">👑<i>${TIERS[t].e}</i></span>` : '';
+  const crownHtml = (t, big) => t ? `<span class="gal-crown vip-${TIERS[t].k}${big ? ' big' : ''}" title="${TIERS[t].n}">${IC('crown')}<i>${TIERS[t].e}</i></span>` : '';
   // 등급 t의 보상: 스킬 t가 있으면 스킬 개방, 없으면 꾸미기 보상 (2=금테, 3=특별 배경, 4=붉은 반짝 테두리는 항상)
   const rewardText = (t, nSkill) => t <= nSkill ? `스킬 ${t} 개방` : ({ 1: '', 2: '금테 프레임', 3: '특별 배경', 4: '붉은 반짝 테두리' }[t] || '') + (t === 4 && nSkill >= 4 ? ' + 붉은 반짝 테두리' : '');
   let skills = null, voices = null;
@@ -88,14 +89,14 @@
     const m = e.detail || {};
     const box = endBox();
     if (!logged()) {
-      box.innerHTML = `<div class="gal-hint">🖼️ 로그인하면 카드가 갤러리에 수집돼요</div>`;
+      box.innerHTML = `<div class="gal-hint">${IC('gallery')} 로그인하면 카드가 갤러리에 수집돼요</div>`;
       return;
     }
     const ids = m.result === 'win' ? [...new Set((m.fieldIds || []).map(String))] : [];
     const mvp = m.mvpId ? String(m.mvpId) : null;
     if (m.result !== 'win' && mvp) ids.push(mvp);
     if (!ids.length) { box.innerHTML = `<div class="gal-hint">이번 판은 갤러리에 수집된 카드가 없어요</div>`; return; }
-    box.innerHTML = `<div class="gal-hint">🖼️ 갤러리에 수집 중...</div>`;
+    box.innerHTML = `<div class="gal-hint">${IC('gallery')} 갤러리에 수집 중...</div>`;
     try {
       await loadCards();
       const res = await register(ids, mvp);
@@ -103,7 +104,7 @@
       res.forEach(r => owned.set(r.card_id, { ...(owned.get(r.card_id) || {}), ...r }));
       const items = ids.map(id => ({ c: cardById(id), r: res.find(x => x.card_id === id) })).filter(x => x.c);
       const nNew = items.filter(x => x.r?.is_new).length;
-      box.innerHTML = `<div class="gal-end-title">🖼️ 갤러리 수집 ${items.length}장${nNew ? ` · <span class="gal-new-txt">NEW ${nNew}</span>` : ''}</div>
+      box.innerHTML = `<div class="gal-end-title">${IC('gallery')} 갤러리 수집 ${items.length}장${nNew ? ` · <span class="gal-new-txt">NEW ${nNew}</span>` : ''}</div>
         <div class="gal-end-row">${items.map(({ c, r }) => `<div class="gal-end-card rar-${SHORT[c.grade]}">
           <img src="${IMG}${c.id}.webp" alt="${esc(c.name)}" onerror="this.style.visibility='hidden'">
           ${r?.is_new ? '<span class="gal-new">NEW!</span>' : `<span class="gal-cnt">×${r?.count ?? ''}</span>`}
@@ -121,7 +122,7 @@
     const now = tierOf(it.r.mvp_count), before = tierOf(it.r.mvp_count - 1);
     if (now <= before) return '';
     const rw = rewardText(now, skillsOf(it.c.id).length);
-    return `<div class="gal-promo vip-${TIERS[now].k}">👑 ${esc(it.c.name)} ${before ? TIERS[before].e : '✨'}→${TIERS[now].e} ${now === 1 ? 'VIP 등극!' : '승급!'}${rw ? ` ${rw}` : ''}${now === 4 ? ' (최종)' : ''}</div>`;
+    return `<div class="gal-promo vip-${TIERS[now].k}">${IC('crown')} ${esc(it.c.name)} ${before ? TIERS[before].e : '✨'}→${TIERS[now].e} ${now === 1 ? 'VIP 등극!' : '승급!'}${rw ? ` ${rw}` : ''}${now === 4 ? ' (최종)' : ''}</div>`;
   }
 
   // --- 크게 보기 (갤러리 전용) ---
@@ -141,7 +142,7 @@
     const m = document.createElement('div');
     m.id = 'gal-modal'; m.className = 'gal-modal hidden';
     m.innerHTML = `<div class="gal-panel" role="dialog" aria-label="카드 갤러리">
-      <div class="gal-head"><div><div class="gal-title">🖼️ 카드 갤러리</div><div id="gal-progress" class="gal-progress"></div></div>
+      <div class="gal-head"><div><div class="gal-title">${IC('gallery')} 카드 갤러리</div><div id="gal-progress" class="gal-progress"></div></div>
         <button id="gal-close" class="gal-x" aria-label="닫기">✕</button></div>
       <div class="gal-bar"><div id="gal-bar-fill"></div></div>
       <div id="gal-filters" class="gal-filters"></div>
@@ -171,7 +172,7 @@
     let msg = '';
     if (!logged()) { owned = new Map(); msg = cloud()?.sb ? '🔑 로그인하면 카드가 갤러리에 수집돼요' : '📡 지금은 서버에 연결할 수 없어요. 게스트로는 수집되지 않아요'; }
     else { try { await flushPending(); await fetchOwned(); } catch (e) { console.warn('[gallery] load failed', e); msg = '📡 갤러리를 불러오지 못했어요. 잠시 후 다시 시도해 주세요'; } }
-    $('gal-msg').innerHTML = msg ? (logged() || !cloud()?.sb ? esc(msg) : `${esc(msg)} <button id="gal-login" class="gal-login">로그인</button>`) : '';
+    $('gal-msg').innerHTML = msg ? (logged() || !cloud()?.sb ? esc(msg) : `${window.VRIcon ? VRIcon.swap(esc(msg)) : esc(msg)} <button id="gal-login" class="gal-login">로그인</button>`) : '';
     if ($('gal-login')) $('gal-login').onclick = () => cloud().login();
     draw();
   }
@@ -208,7 +209,7 @@
       if (t < n) return `<div class="gal-sk locked"><div class="gal-sk-lock">🔒</div><div class="gal-sk-txt"><b>${n}. ${esc(k.name)}</b><span>${TIERS[n].e} ${TIERS[n].n}에서 개방</span></div></div>`;
       const fx = k.fx ? `data/fx/${k.fx}` : '';
       const img = fx ? `<button class="gal-sk-img" data-zsrc="${fx}" data-ztitle="${esc(c.name)} · ${esc(k.name)}" data-zsub="스킬 ${n}" aria-label="스킬 이미지 크게 보기"><img src="${fx}" alt="${esc(k.name)}" loading="lazy" onerror="this.parentNode.remove()"></button>` : '';
-      const vo = voices?.has(key) ? `<button class="gal-voice" data-voice="${key}" aria-label="음성 듣기">🔊 듣기</button>` : '';
+      const vo = voices?.has(key) ? `<button class="gal-voice" data-voice="${key}" aria-label="음성 듣기">${IC('sound_on')} 듣기</button>` : '';
       return `<div class="gal-sk open">${img}<div class="gal-sk-txt"><b>${n}. ${esc(k.name)}</b><span>${TIERS[n].e} 개방됨</span></div>${vo}</div>`;
     }).join('');
     const extra = [2, 3, 4].filter(n => n > sk.length).map(n => `<div class="gal-perk ${t >= n ? 'on' : ''}">${t >= n ? TIERS[n].e : '🔒'} ${rewardText(n, sk.length)}${t >= n ? '' : ` · ${TIERS[n].n}`}</div>`);
@@ -221,8 +222,8 @@
         <button class="gal-zbtn" data-zsrc="${portrait}" data-ztitle="${esc(c.name)}" data-zsub="${LABEL[s]}" data-zgrade="${s}" aria-label="크게 보기">🔍</button></div>
       <div class="gal-dname">${esc(c.name)}</div>
       <div class="gal-drar"><span class="gal-rar inline">${s}</span> ${LABEL[s]}${t ? ` · <span class="gal-tname vip-${TIERS[t].k}">${TIERS[t].e} ${TIERS[t].n}</span>` : ''}</div>
-      <div class="gal-rows">${row('수집 횟수', `${o.count}회`)}${row('MVP', o.mvp_count > 0 ? `👑 ${o.mvp_count}회` : '아직 없음')}${row('처음 수집', date)}${row('HP · ATK · DEF', `${c.HP} · ${c.ATK} · ${c.DEF}`)}</div>
-      <div class="gal-vip"><div class="gal-vip-h">👑 VIP 보상 <span>${nextTxt}</span></div>${skHtml}${extra.join('')}</div></div>`;
+      <div class="gal-rows">${row('수집 횟수', `${o.count}회`)}${row('MVP', o.mvp_count > 0 ? `${IC('crown')} ${o.mvp_count}회` : '아직 없음')}${row('처음 수집', date)}${row('HP · ATK · DEF', `${c.HP} · ${c.ATK} · ${c.DEF}`)}</div>
+      <div class="gal-vip"><div class="gal-vip-h">${IC('crown')} VIP 보상 <span>${nextTxt}</span></div>${skHtml}${extra.join('')}</div></div>`;
     el.classList.remove('hidden');
   }
 
@@ -230,7 +231,7 @@
   function addButton() {
     const howto = $('main-howto'); if (!howto || $('main-gallery')) return;
     const b = document.createElement('button');
-    b.id = 'main-gallery'; b.className = 'main-btn main-btn-sub'; b.textContent = '🖼️ 갤러리';
+    b.id = 'main-gallery'; b.className = 'main-btn main-btn-sub'; b.innerHTML = `${IC('gallery')} 갤러리`;
     b.onclick = open;
     howto.parentNode.insertBefore(b, howto.nextSibling);
   }
