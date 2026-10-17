@@ -51,10 +51,10 @@
     .unit.target > div:first-child { box-shadow: 0 0 0 2px #ef4444; border-radius: .75rem; }
     .float-text { animation: floatUp 1.2s ease-out forwards; transform: translate(-50%, 0); }
     @keyframes floatUp { from { opacity: 1; margin-top: 0; } to { opacity: 0; margin-top: -48px; } }
-    .fx-shake { animation: fxShake .32s linear; }
+    .fx-shake { animation: fxShake .16s linear; }
     @keyframes fxShake { 0%,100% { translate: 0 0; } 15% { translate: -6px 0; } 30% { translate: 6px 0; } 45% { translate: -5px 0; } 60% { translate: 4px 0; } 75% { translate: -2px 0; } }
     .fx-hitflash { filter: brightness(1.8) saturate(1.4); }
-    .fx-dmg { position: fixed; z-index: 40; pointer-events: none; font-weight: 900; font-size: 1.35rem; color: #f87171; text-shadow: 0 2px 4px #000, 0 0 8px #7f1d1d; transform: translate(-50%, -50%); animation: fxDmg .9s ease-out forwards; }
+    .fx-dmg { position: fixed; z-index: 40; pointer-events: none; font-weight: 900; font-size: 1.35rem; color: #f87171; text-shadow: 0 2px 4px #000, 0 0 8px #7f1d1d; transform: translate(-50%, -50%); animation: fxDmg .45s ease-out forwards; }
     @keyframes fxDmg { 0% { opacity: 0; margin-top: 0; scale: .6; } 15% { opacity: 1; scale: 1.25; } 30% { scale: 1; } 100% { opacity: 0; margin-top: -42px; } }
     /* UI 아이콘 (js/icons.js): 글자 크기에 맞춤 */
     .ui-ic { display: inline-block; width: 1.2em; height: 1.2em; vertical-align: -0.25em; object-fit: contain; pointer-events: none; user-select: none; }
@@ -63,8 +63,8 @@
     .ui-ic-el_dark { filter: drop-shadow(0 0 1px rgba(255,255,255,.75)) drop-shadow(0 0 2px rgba(196,181,253,.55)); }
     .ht-icon .ui-ic { width: 1em; height: 1em; }
     /* 타격 이펙트: 대상 카드 위에 스프라이트 (확대 + 페이드) */
-    .fx-hit { position: fixed; z-index: 35; pointer-events: none; transform: translate(-50%, -50%) scale(.45); opacity: 0; animation: fxHit .36s ease-out forwards; will-change: transform, opacity; }
-    .fx-hit.blood { animation-duration: .4s; }
+    .fx-hit { position: fixed; z-index: 35; pointer-events: none; transform: translate(-50%, -50%) scale(.45); opacity: 0; animation: fxHit .18s ease-out forwards; will-change: transform, opacity; }
+    .fx-hit.blood { animation-duration: .2s; }
     @keyframes fxHit { 0% { opacity: 0; transform: translate(-50%, -50%) scale(.45) rotate(var(--rot, 0deg)); } 25% { opacity: 1; } 60% { opacity: .9; transform: translate(-50%, -50%) scale(1.05) rotate(var(--rot, 0deg)); } 100% { opacity: 0; transform: translate(-50%, -50%) scale(1.25) rotate(var(--rot, 0deg)); } }
     /* 전투 배경: 전투 시작 때만 이미지 지정 (data-bg), 어두운 덧칠로 가독성 유지 */
     #battle-bg { position: fixed; inset: 0; z-index: -1; pointer-events: none; background-color: #09090b; background-size: cover; background-position: center; opacity: 0; transition: opacity .5s ease; }
@@ -76,7 +76,7 @@
       #battle-bg[data-bg="normal"] { background-image: url(img/ui/bg_normal_wide.webp); }
       #battle-bg[data-bg="boss"] { background-image: url(img/ui/bg_boss_wide.webp); }
     }
-    .fx-dying { transition: opacity .3s ease, scale .3s ease !important; opacity: 0; scale: .7; }
+    .fx-dying { transition: opacity .15s ease, scale .15s ease !important; opacity: 0; scale: .7; }
     .card-frame { box-shadow: 0 0 0 2px var(--rc); }
     .rar-n { --rc: #71717a; } .rar-r { --rc: #22c55e; } .rar-hr { --rc: #3b82f6; } .rar-sr { --rc: #a855f7; } .rar-ur { --rc: #f97316; } .rar-mr { --rc: #f43f5e; }
     .rar-mr { box-shadow: 0 0 0 2px #f43f5e, 0 0 10px 2px rgba(244,63,94,.6); }
@@ -150,7 +150,7 @@
       .cutin::after, .cutin .cutin-text::after { display: none; }
       .cutin-img .cutin-media, .cutin .cutin-text { animation: none !important; }
     }
-    @media (prefers-reduced-motion: reduce) { .fx-shake { animation-duration: .12s; } .fx-dmg { animation-duration: .45s; } }
+    @media (prefers-reduced-motion: reduce) { .fx-shake { animation-duration: .06s; } .fx-dmg { animation-duration: .22s; } }
     #my-turns{display:inline-flex;align-items:baseline;gap:2px;padding:1px 8px;border-radius:999px;font-weight:800;font-size:11px;border:1px solid;white-space:nowrap}
 #my-turns b{font-size:15px;line-height:1}#my-turns .of{opacity:.6;font-size:10px}
 @media (max-width:640px){#my-turns .lbl{display:none}#my-turns::before{content:'⏳'}}
