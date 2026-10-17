@@ -155,20 +155,44 @@
     renderMap();
   }
 
-  function renderOpening() {
-    const o = D.opening;
-    show(`<div class="story-opening">${o.video ? `<video id="story-op-video" src="${esc(o.video)}" ${o.poster ? `poster="${esc(o.poster)}"` : ''} autoplay playsinline class="w-full max-h-[70vh] rounded-2xl bg-black"></video>` : `<div class="story-op-ph"><div class="story-chapter-big">${esc(o.title)}</div><div class="text-zinc-400 mt-3">${esc(o.text)}</div></div>`}
-      <button id="story-op-skip" class="story-btn mt-6">${o.video ? '건너뛰기' : '계속하기'} ▶</button></div>`);
-    const done = async () => { await act('story_mark_seen', { p_key: 'openingSeen' }, () => { save.openingSeen = true; }); save.starter ? renderMap() : renderSelect(); };
-    $('story-op-skip').onclick = done; const v = $('story-op-video'); if (v) v.onended = done;
+  // ----- 오프닝 영상 (처음 들어올 때 1회 + '오프닝 다시 보기') -----
+  // 전체 화면 · 화면을 누르면 건너뛰기 버튼 표시 · 소리 자동재생이 막히면 '눌러서 재생' 안내 · 재생 중 BGM 정지
+  // 영상은 이 함수가 불릴 때만 만들어짐(메인 화면에서 미리 받지 않음)
+  function playOpening(next) {
+    const o = D.opening; if (!o.video) return next();
+    const snd = window.VRSound; snd?.hold?.(true);
+    document.getElementById('story-opening-fx')?.remove();
+    const el = document.createElement('div'); el.id = 'story-opening-fx'; el.className = 'story-ovp';
+    el.innerHTML = `<video playsinline preload="auto" ${o.poster ? `poster="${esc(o.poster)}"` : ''} src="${esc(o.video)}"></video>
+      <button class="story-ovp-skip" type="button">건너뛰기 ▶▶</button>
+      <div class="story-ovp-tap hidden"><button type="button">▶<span>눌러서 오프닝 보기</span></button></div>`;
+    document.body.appendChild(el);
+    const v = el.querySelector('video'), skip = el.querySelector('.story-ovp-skip'), tap = el.querySelector('.story-ovp-tap');
+    let hideT = 0, ended = false;
+    const showSkip = () => { skip.classList.add('on'); clearTimeout(hideT); hideT = setTimeout(() => skip.classList.remove('on'), 3000); };
+    const finish = () => { if (ended) return; ended = true; clearTimeout(hideT); removeEventListener('keydown', key); try { v.pause(); v.removeAttribute('src'); v.load(); } catch {} el.remove(); snd?.hold?.(false); next(); };
+    const key = e => { if (e.key === 'Escape') finish(); };
+    const start = () => v.play().then(() => tap.classList.add('hidden')).catch(() => { tap.classList.remove('hidden'); });
+    skip.onclick = e => { e.stopPropagation(); finish(); };
+    tap.querySelector('button').onclick = e => { e.stopPropagation(); v.muted = false; v.play().then(() => { tap.classList.add('hidden'); showSkip(); }).catch(() => { v.muted = true; v.play().then(() => tap.classList.add('hidden')).catch(() => {}); }); };
+    el.onclick = () => showSkip();
+    v.onended = finish; v.onerror = () => { if (v.getAttribute('src')) finish(); };   // 영상 파일을 못 읽으면 바로 다음으로
+    addEventListener('keydown', key);
+    showSkip(); start();
+    window.__storyOpening = { el, v, finish };
   }
+  function renderOpening() {
+    show('<div class="min-h-[60vh]"></div>');
+    playOpening(async () => { await act('story_mark_seen', { p_key: 'openingSeen' }, () => { save.openingSeen = true; }); save.starter ? renderMap() : renderSelect(); });
+  }
+  const replayBtn = '<button class="story-back" data-go="opening">🎬 오프닝 다시 보기</button>';
 
   function renderSelect() {
     show(`<div class="text-center"><div class="story-chapter-sub">MAIN STORY</div><div class="text-2xl md:text-3xl font-black mt-1">함께할 캐릭터를 골라 주세요</div>
       <div class="text-sm text-zinc-400 mt-1">고른 카드는 내 카드로 영구 귀속되고, 리더가 돼요. (나중에 바꿀 수 없어요)</div></div>
       <div class="story-select">${D.starters.map(s => { const c = card(s.id); return c ? `<button class="story-pick" data-pick="${s.id}">${tile(c)}<div class="text-xs text-zinc-400 mt-1 story-intro-text">${esc(introOf(s))}</div></button>` : ''; }).join('')}</div>
-      <div class="text-center mt-4"><button class="story-back" data-go="home">← 처음으로</button></div>`);
-    bind();
+      <div class="text-center mt-4 flex gap-2 justify-center flex-wrap"><button class="story-back" data-go="home">← 처음으로</button>${replayBtn}</div>`);
+    bind({ opening: () => playOpening(renderSelect) });
     root().querySelectorAll('[data-pick]').forEach(b => b.onclick = () => {
       const c = card(b.dataset.pick);
       const p = popup(`<div class="text-lg font-black mb-3">${esc(c.name)}(으)로 시작할까요?</div>${tile(c)}<div class="flex gap-2 mt-4"><button data-close-pop class="flex-1 py-2.5 rounded-xl bg-zinc-700 font-bold">취소</button><button id="story-pick-ok" class="flex-1 py-2.5 rounded-xl bg-amber-400 text-black font-bold">결정</button></div>`);
@@ -199,8 +223,9 @@
       <div class="story-status">${leader ? `<div>리더 <b class="text-amber-300">${esc(leader.name)}</b> · 보유 카드 <b>${save.owned.length}</b>장</div>` : ''}
         <div>스탯 포인트 <b class="text-emerald-300">${save.points}</b> ${save.points ? '<button class="story-mini" data-go="stats">분배하기</button>' : ''}</div>
         ${!serverMode && !window.__STORY_MOCK_USER ? '<div class="text-[11px] text-amber-400">⚠️ 서버 저장 준비 중이라 이 브라우저에만 저장돼요</div>' : ''}</div>
-      ${nextNo ? '' : '<div class="text-center text-emerald-300 font-bold mt-4">🎉 챕터 1 클리어! 다음 챕터는 준비 중이에요.</div>'}`);
-    bind({ stats: () => openStats(renderMap) });
+      ${nextNo ? '' : '<div class="text-center text-emerald-300 font-bold mt-4">🎉 챕터 1 클리어! 다음 챕터는 준비 중이에요.</div>'}
+      <div class="text-center mt-5">${replayBtn}</div>`);
+    bind({ stats: () => openStats(renderMap), opening: () => playOpening(renderMap) });
     root().querySelectorAll('[data-phase]').forEach(b => b.onclick = () => startPhase(ch, ch.phases.find(p => p.no === +b.dataset.phase)));
   }
 
