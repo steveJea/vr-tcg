@@ -323,7 +323,7 @@ async function attack(who, unit, target, fromBatch = false) {
         const real = e.target || shown;
         const rEl = (real && (unitEl(oWho, real) || unitEl(who, real))) || tEl;
         const orig = shown || null;
-        log(`${unit.card.name} → ${real?.card?.name ?? '?'}${orig && real !== orig ? ` (${orig.card.name} 대신)` : (!orig ? ' (진영 공격 유도)' : '')} ${fmt(e.d1)} 피해${e.mult !== 1 ? ` (속성 ×${e.mult})` : ''}, 반격 ${fmt(e.d2)}`, cls);
+        log(`${unit.card.name} → ${real?.card?.name ?? '?'}${orig && real !== orig ? ` (${orig.card.name} 대신)` : (!orig ? ' (진영 공격 유도)' : '')} ${fmt(e.d1)} 피해${e.mult !== 1 ? ` (속성 ×${e.mult})` : ''}${e.killed ? ', 처치 (반격 없음)' : `, 반격 ${fmt(e.d2)}${e.survived ? ' (HP 1로 버팀)' : ''}`}`, cls);
         shake(rEl); hitFx(rEl, e.mult > 1 ? 'blood' : 'impact'); dmgNumber(rEl, `-${fmt(e.d1)}`);   // 속성 유리(크리티컬) = 피 튀김
         if (e.d2) { shake(aEl); hitFx(aEl); dmgNumber(aEl, `-${fmt(e.d2)}`, '#fca5a5'); }
       }

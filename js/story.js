@@ -32,7 +32,7 @@
     }
     // 서버 모드: 서버 기록이 기준 (브라우저 저장은 캐시). 테이블이 없을 때만 브라우저 저장으로 진행
     save = clampPoints({ ...fresh(), ...(serverMode ? cdata : local || {}) });
-    if (serverMode) cacheLocal();
+    if (serverMode || save.statRefunded) cacheLocal();
   }
   // 반복 클리어 악용 방지: (보유 + 분배한) 포인트는 첫 클리어로 얻을 수 있는 총량을 넘을 수 없음
   function earnedPoints(sv) {
@@ -40,8 +40,19 @@
     for (const ch of D.chapters) for (const no of sv.cleared?.[ch.id] || []) { const ph = ch.phases.find(p => p.no === no); if (ph) n += D.statPoints[ph.type] || 0; }
     return n;
   }
+  /** 스탯 규칙이 바뀌면 예전 분배를 전부 돌려줌: 카드 전용 포인트로 쓴 만큼은 그 카드 전용으로, 나머지는 공용 포인트로 (서버는 story_statpt.sql) */
+  function refundStats(sv) {
+    if ((sv.statV | 0) >= (D.statRuleV || 1)) return;
+    let any = 0;
+    for (const o of sv.owned || []) {
+      const used = Object.values(o.boost || {}).reduce((x, y) => x + (+y || 0), 0), card = Math.min(used, o.spentCard | 0);
+      sv.points = (sv.points | 0) + used - card; o.cpts = (o.cpts | 0) + card; o.spentCard = 0; o.boost = {}; any += used;
+    }
+    sv.statV = D.statRuleV || 1; if (any) sv.statRefunded = true;   // 돌려준 게 있을 때만 안내
+  }
   function clampPoints(sv) {
     migrate(sv);
+    if (!serverMode) refundStats(sv);   // 서버 모드는 서버(SQL)가 돌려줌
     const used = (sv.owned || []).reduce((a, o) => a + Object.values(o.boost || {}).reduce((x, y) => x + (+y || 0), 0) - (o.spentCard | 0), 0);   // 카드 전용 포인트로 쓴 양은 제외
     sv.points = Math.max(0, Math.min(sv.points | 0, earnedPoints(sv) - used));
     return sv;
@@ -101,7 +112,16 @@
   // EX 합성: 기본 스탯 × (1 + EX 보너스 합계%) 가 새 기본 스탯 → 그 위에 레벨 % → 반올림 → 포인트 강화 더하기
   const exOf = o => Math.max(0, o?.ex | 0), exbOf = o => Math.max(0, +o?.exb || 0);
   const exName = (o, name) => exOf(o) ? `[EX${exOf(o)}] ${name}` : name;
-  const statCalc = (o, s) => { const c = card(o.id); return Math.round(c[s] * (1 + exbOf(o) / 100) * (1 + lvPct(o) / 100)) + ((o.boost || {})[s] || 0) * D.statPerPoint[s]; };
+  // ----- 스탯 포인트 규칙 (서버 story_statpt.sql 과 같음) -----
+  /** 한 스탯에 n 포인트 넣었을 때 오르는 양: statFull 개까지 1당 statPerPoint, 그 뒤로는 절반 (버림) */
+  const ptGain = (s, n) => { n = Math.max(0, n | 0); const k = D.statPerPoint[s], f = D.statFull ?? Infinity; return k * Math.min(n, f) + Math.floor(k * Math.max(0, n - f) / 2); };
+  /** 다음 1포인트 효율 표시: 그대로면 +k, 절반 구간이면 +k/2 */
+  const ptNext = (s, n) => { const k = D.statPerPoint[s]; return (n | 0) >= (D.statFull ?? Infinity) ? k / 2 : k; };
+  /** 한 스탯 상한: 그 카드 포인트 합계의 절반(올림) */
+  const ptCap = total => Math.ceil(Math.max(0, total) / 2);
+  const ptSum = b => STATS.reduce((a, s) => a + (b?.[s] | 0), 0);
+  const ptOk = b => { const cap = ptCap(ptSum(b)); return STATS.every(s => (b?.[s] | 0) <= cap); };
+  const statCalc = (o, s) => { const c = card(o.id); return Math.round(c[s] * (1 + exbOf(o) / 100) * (1 + lvPct(o) / 100)) + ptGain(s, (o.boost || {})[s]); };
   function boosted(o) {
     const c = card(o.id); if (!c) return null;
     return { ...c, name: exName(o, c.name), ex: exOf(o), ATK: statCalc(o, 'ATK'), HP: statCalc(o, 'HP'), DEF: statCalc(o, 'DEF') };
@@ -218,6 +238,17 @@
     if (!save.openingSeen) return renderOpening();
     if (!save.starter) return renderSelect();
     renderMap();
+    // 스탯 규칙 변경 안내 (한 번만)
+    const RF = `vrTcgStatRefundSeen:${user()?.id || 'guest'}:${D.statRuleV || 1}`;
+    if (save.statRefunded && !localStorage.getItem(RF)) {
+      try { localStorage.setItem(RF, '1'); } catch {}
+      const k = D.statPerPoint;
+      popup(`<div class="text-lg font-black mb-2">📈 스탯 포인트 규칙이 바뀌었어요</div>
+        <div class="text-sm text-zinc-300 space-y-1"><div>· 포인트 1당 ATK +${k.ATK}, HP +${k.HP}, DEF +${k.DEF}</div><div>· 같은 스탯 ${D.statFull + 1}번째 포인트부터는 절반만 올라요</div><div>· 한 스탯에는 그 카드 포인트 합계의 절반(올림)까지만 넣을 수 있어요</div>
+        <div class="text-emerald-300 font-bold mt-2">지금까지 분배한 포인트를 모두 돌려드렸어요. 다시 분배해 주세요!</div></div>
+        <div class="flex gap-2 mt-4"><button data-close-pop class="flex-1 py-2.5 rounded-xl bg-zinc-700 font-bold">나중에</button><button id="story-refund-go" class="flex-1 py-2.5 rounded-xl bg-emerald-500 text-black font-bold">📈 지금 분배</button></div>`);
+      $('story-refund-go').onclick = () => { $('story-pop')?.querySelector('[data-close-pop]')?.click(); openStats(() => renderMap()); };
+    }
   }
 
   // ----- 오프닝 영상 (처음 들어올 때 1회 + '오프닝 다시 보기') -----
@@ -507,9 +538,12 @@
     const added = i => STATS.reduce((a, st) => a + (temp[i][st] || 0) - (save.owned[i].boost?.[st] || 0), 0);
     const draw = () => {
       const o = save.owned[sel], c = boosted({ ...o, boost: temp[sel] }), k = D.statPerPoint, avail = left + cleft[sel];
-      const p = popup(`<div class="text-lg font-black mb-1">📈 스탯 분배</div><div class="text-xs text-zinc-400 mb-3">공용 포인트 <b class="text-emerald-300 text-base">${left}</b>${cleft[sel] ? ` · 이 카드 전용 <b class="text-sky-300 text-base" id="story-cpts">${cleft[sel]}</b>` : ''} · 포인트 1당 ATK +${k.ATK}, HP +${k.HP}, DEF +${k.DEF}${cleft.some(Boolean) ? '<div class="text-[11px] text-zinc-500">예전에 받은 카드 전용 포인트를 먼저 써요</div>' : ''}</div>
+      const p = popup(`<div class="text-lg font-black mb-1">📈 스탯 분배</div><div class="text-xs text-zinc-400 mb-3">공용 포인트 <b class="text-emerald-300 text-base">${left}</b>${cleft[sel] ? ` · 이 카드 전용 <b class="text-sky-300 text-base" id="story-cpts">${cleft[sel]}</b>` : ''} · 포인트 1당 ATK +${k.ATK}, HP +${k.HP}, DEF +${k.DEF}
+          <div class="text-[11px] text-zinc-500 mt-0.5">같은 스탯 ${D.statFull + 1}번째 포인트부터는 절반 · 한 스탯에는 이 카드 포인트 합계의 절반(올림)까지</div>${cleft.some(Boolean) ? '<div class="text-[11px] text-zinc-500">예전에 받은 카드 전용 포인트를 먼저 써요</div>' : ''}</div>
         <div class="story-tabwrap"><button class="story-tab-arr l" aria-label="왼쪽">‹</button><div class="story-tabs">${save.owned.map((x, i) => { const cc = card(x.id); return `<button data-sel="${i}" class="story-chip ${i === sel ? 'on' : ''}">${x.uid === save.leader ? ic('crown', { alt: '리더' }) + ' ' : ''}${esc(exName(x, cc?.name))} <small>Lv.${x.level}</small>${cleft[i] ? ` <b class="text-sky-300">+${cleft[i]}</b>` : ''}</button>`; }).join('')}</div><button class="story-tab-arr r" aria-label="오른쪽">›</button></div>
-        <div class="flex gap-3 items-center"><img src="${IMG}${c.id}.webp" class="w-20 aspect-[3/4] object-cover rounded-lg" alt=""><div class="flex-1 space-y-2">${STATS.map(s => `<div class="flex items-center gap-2"><span class="w-16 text-sm font-bold">${STAT_LABEL[s]}</span><span class="flex-1 font-black">${fmt(c[s])}${(temp[sel][s] || 0) ? ` <span class="text-emerald-300 text-xs">(+${temp[sel][s] * k[s]})</span>` : ''}</span><button data-dec="${s}" class="story-pm" ${(temp[sel][s] || 0) > (o.boost?.[s] || 0) ? '' : 'disabled'}>−</button><button data-inc="${s}" class="story-pm" ${avail ? '' : 'disabled'}>＋</button></div>`).join('')}</div></div>
+        <div class="flex gap-3 items-center"><img src="${IMG}${c.id}.webp" class="w-20 aspect-[3/4] object-cover rounded-lg" alt=""><div class="flex-1 space-y-2">${STATS.map(s => { const n = temp[sel][s] | 0, sum = ptSum(temp[sel]), cap = ptCap(sum + 1), canInc = avail && n + 1 <= cap, canDec = n > (o.boost?.[s] || 0) && ptOk({ ...temp[sel], [s]: n - 1 });
+          return `<div class="flex items-center gap-2"><span class="w-16 text-sm font-bold">${STAT_LABEL[s]}</span><span class="flex-1 font-black">${fmt(c[s])}${n ? ` <span class="text-emerald-300 text-xs">(+${fmt(ptGain(s, n))})</span>` : ''}
+            <span class="story-ptinfo block text-[10px] font-normal ${n >= D.statFull ? 'text-amber-300' : 'text-zinc-500'}">${n}포인트 (최대 ${ptCap(sum)}) · 다음 +${ptNext(s, n)}${n >= D.statFull ? ' (절반)' : ''}${avail && !canInc ? ' · <i class="not-italic text-red-300">상한</i>' : ''}</span></span><button data-dec="${s}" class="story-pm" ${canDec ? '' : 'disabled'}>−</button><button data-inc="${s}" class="story-pm" ${canInc ? '' : 'disabled'}>＋</button></div>`; }).join('')}</div></div>
         <div class="mt-3 text-[11px] text-zinc-500">🗡️ 무기 · 🛡️ 방어구 장착은 준비 중이에요 (Coming soon)</div>
         <div class="flex gap-2 mt-4"><button data-close-pop class="flex-1 py-2.5 rounded-xl bg-zinc-700 font-bold">취소</button><button id="story-stat-ok" class="flex-1 py-2.5 rounded-xl bg-emerald-500 text-black font-bold">확정</button></div>`, after);
       // 이름 탭: 스크롤바 숨김(스와이프 가능) + 좌우 화살표. 끝에서는 화살표 비활성/숨김. 다시 그려도 스크롤 위치 유지
@@ -522,9 +556,11 @@
       arrows();
       p.el.querySelectorAll('[data-sel]').forEach(b => b.onclick = () => { sel = +b.dataset.sel; draw(); });
       p.el.querySelectorAll('[data-inc]').forEach(b => b.onclick = () => {
+        if (!ptOk({ ...temp[sel], [b.dataset.inc]: (temp[sel][b.dataset.inc] | 0) + 1 })) return;
         if (cleft[sel]) cleft[sel]--; else if (left) { left--; gUsed[sel]++; } else return;
         temp[sel][b.dataset.inc] = (temp[sel][b.dataset.inc] || 0) + 1; draw(); });
       p.el.querySelectorAll('[data-dec]').forEach(b => b.onclick = () => {
+        if (!ptOk({ ...temp[sel], [b.dataset.dec]: (temp[sel][b.dataset.dec] | 0) - 1 })) return;
         temp[sel][b.dataset.dec]--; if (gUsed[sel]) { gUsed[sel]--; left++; } else cleft[sel]++; draw(); });
       $('story-stat-ok').onclick = async () => {
         const alloc = {};
@@ -558,7 +594,7 @@
     show(`${topBar('🃏 보유 카드', 'map')}<div class="text-center text-sm text-zinc-400 my-2">스토리 모드 전용 · ${gs.length}종 ${save.owned.length}장 · 공용 포인트 ${save.points}${cptsTotal() ? ` · 카드 전용 ${cptsTotal()}` : ''}</div>
       <div class="text-center text-[11px] text-zinc-500 -mt-1 mb-2">카드를 누르면 상세 · 폐기 · 합성 ${save.owned.length > 1 ? '<button class="story-mini story-mini-red ml-1" data-go="bulk">' + ic('discard', { alt: '' }) + ' 일괄 폐기</button>' : ''}</div>
       <div class="story-grid">${gs.map(gr => { const o = gr.rep, c = boosted(o); if (!c) return ''; const b = o.boost || {}, n = gr.list.length, open = openGroups.has(gr.id);
-        const up = STATS.filter(s => b[s]).map(s => `${s} +${b[s] * k[s]}`).join(' · ');
+        const up = STATS.filter(s => b[s]).map(s => `${s} +${ptGain(s, b[s])}`).join(' · ');
         const mergeable = gr.list.some(canMerge);
         return `<div class="story-group ${open ? 'open' : ''}"><div data-uid="${o.uid}" class="story-owned">${tile(c, `${n > 1 ? `<div class="story-dup">x${n}</div>` : ''}${o.cpts ? `<div class="story-cpts">+${o.cpts}</div>` : ''}${exOf(o) ? `<div class="story-exbadge">EX${exOf(o)}</div>` : ''}${lvBar(o)}<div class="text-[10px] text-emerald-300 h-3">${isLeader(o) ? ic('crown', { alt: '' }) + ' 리더 ' : n > 1 ? '⚔️ 출전 ' : ''}${up}</div>${mergeable ? `<button class="story-merge-mini" data-merge="${(gr.list.find(canMerge)).uid}">${ic('merge', { alt: '' })} 합성</button>` : ''}${n > 1 ? `<button class="story-expand" data-expand="${gr.id}">${open ? '▴ 접기' : `▾ ${n}장 모두 보기`}</button>` : ''}<div class="story-equip"><span>🗡️ 무기</span><span>🛡️ 방어구</span><em>준비 중</em></div>`)}</div>
           ${open ? `<div class="story-copies">${gr.list.map(x => `<button class="story-copy" data-uid="${x.uid}"><span class="font-bold">${isLeader(x) ? ic('crown', { alt: '리더' }) + ' ' : x === o ? '⚔️ ' : ''}Lv.${x.level}${exOf(x) ? ` <i class="text-red-300 not-italic">EX${exOf(x)}</i>` : ''}</span><span class="text-[10px] text-zinc-400">${ic('atk', { cls: 'ui-ic-sm' })}${fmt(statCalc(x, 'ATK'))} ${ic('hp', { cls: 'ui-ic-sm' })}${fmt(statCalc(x, 'HP'))} ${ic('def', { cls: 'ui-ic-sm' })}${fmt(statCalc(x, 'DEF'))}</span></button>`).join('')}</div>` : ''}</div>`; }).join('')}</div>
@@ -576,7 +612,7 @@
         ${lvBar(o)}<div class="text-[11px] text-zinc-400 mt-1">최대 Lv.${cap} · 누적 EXP ${fmt(o.totalExp)}${n > 1 ? ` · 같은 카드 ${n}장 중 1장${rep ? ' (⚔️ 전투 출전)' : ''}` : ''}</div>
         <div class="text-xs mt-2"><span class="story-lvpct">Lv.${o.level} +${lvPct(o)}%</span> <span class="text-zinc-500">기본 스탯에 레벨 보너스</span></div>
         ${exOf(o) ? `<div class="text-xs mt-1"><span class="story-expct">EX${exOf(o)} +${exbOf(o)}%</span> <span class="text-zinc-500">합성 보너스 (기본 스탯) · ${exOf(o)}/${maxEx(o)}</span></div>` : ''}
-        <div class="story-statrows">${STATS.map(s => { const base = card(o.id)[s], exB = Math.round(base * (1 + exbOf(o) / 100)) - base, lvB = Math.round(base * (1 + exbOf(o) / 100) * (1 + lvPct(o) / 100)) - base - exB, pt = (o.boost?.[s] || 0) * D.statPerPoint[s];
+        <div class="story-statrows">${STATS.map(s => { const base = card(o.id)[s], exB = Math.round(base * (1 + exbOf(o) / 100)) - base, lvB = Math.round(base * (1 + exbOf(o) / 100) * (1 + lvPct(o) / 100)) - base - exB, pt = ptGain(s, o.boost?.[s]);
           return `<div><span>${STAT_LABEL[s]}</span><b>${fmt(c[s])}</b><small>기본 ${fmt(base)}${exB ? ` <i class="text-red-300">+${fmt(exB)} EX</i>` : ''}${lvB ? ` <i class="text-amber-300">+${fmt(lvB)} 레벨</i>` : ''}${pt ? ` <i class="text-emerald-300">+${fmt(pt)} 포인트</i>` : ''}</small></div>`; }).join('')}</div>
         ${o.cpts ? `<div class="text-xs mt-1">남은 카드 전용 포인트 <b class="text-sky-300">${o.cpts}</b></div>` : ''}</div></div>
       ${n > 1 ? '<div class="story-hint">💡 전투에는 같은 카드 중 1장만 나가요 (리더 · 없으면 레벨이 가장 높은 장). 남는 장은 합성 재료로 쓸 수 있어요.</div>' : ''}
