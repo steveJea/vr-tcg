@@ -227,3 +227,19 @@ span.story-lvpct { background: rgba(251,191,36,.12); border: 1px solid rgba(251,
 .story-hub-menu .main-btn{position:relative;padding:.6rem .2rem;font-size:.85rem;word-break:keep-all;line-height:1.25;display:flex;flex-direction:column;align-items:center;gap:2px}
 .story-hub-menu small{font-size:.65rem;color:#a1a1aa}
 .story-shop{max-width:420px;margin:12px auto 0;text-align:center}
+/* ===== 상점 탭 · 소환권 · 특수 뽑기 결과 ===== */
+.story-shop-tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px}
+.story-shop-tabs button{position:relative;padding:.55rem .4rem;border-radius:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);font-weight:800;color:#d4d4d8}
+.story-shop-tabs button.on{background:linear-gradient(180deg,rgba(70,10,14,.95),rgba(22,3,5,.95));border-color:#d4a24a;color:#fde68a}
+.story-ticket{display:inline-flex;align-items:center;gap:3px;padding:1px 8px;border-radius:999px;background:linear-gradient(180deg,#fcd34d,#b45309);color:#1c0a00;font-size:.75em;font-weight:900;box-shadow:0 0 0 1px rgba(0,0,0,.4) inset}
+.story-hub-tk{font-size:.7rem;color:#fcd34d}
+.story-rates{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;text-align:center;font-size:.8rem;background:rgba(255,255,255,.05);border-radius:10px;padding:6px}
+.story-rates span{font-weight:900}.story-rates b{grid-row:2}
+.story-tk-result{display:grid;gap:6px;margin:6px 0}
+.story-tk-result.n1{grid-template-columns:minmax(0,150px);justify-content:center}
+.story-tk-result.n10{grid-template-columns:repeat(5,1fr)}
+.story-tk-card{position:relative;border-radius:8px;overflow:hidden;background:#111;font-size:10px;font-weight:700;opacity:0;animation:tkIn .35s forwards;border:2px solid #52525b}
+.story-tk-card img{width:100%;aspect-ratio:3/4;object-fit:cover;display:block}
+.story-tk-card div{padding:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.story-tk-card.g-r{border-color:#38bdf8}.story-tk-card.g-hr{border-color:#34d399;box-shadow:0 0 10px #34d39988}.story-tk-card.g-sr{border-color:#c084fc;box-shadow:0 0 12px #c084fcaa}.story-tk-card.g-ur{border-color:#facc15;box-shadow:0 0 16px #facc15cc}
+@keyframes tkIn{from{opacity:0;transform:translateY(8px) scale(.9)}to{opacity:1;transform:none}}
