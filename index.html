@@ -198,8 +198,9 @@
     <div id="ai-hero" class="flex-1 bg-black/60 border border-red-500/40 rounded-2xl px-3 py-2 cursor-pointer">
       <div class="flex justify-between text-xs md:text-sm"><span class="font-bold text-red-400">🤖 컴퓨터 <span id="ai-order" class="ml-1 px-1.5 py-0.5 rounded bg-white/10 text-[10px] text-zinc-300"></span></span><span id="ai-hp" class="font-bold"></span></div>
       <div class="h-2 bg-white/10 rounded-full mt-1 overflow-hidden"><div id="ai-hpbar" class="h-full bg-red-500 transition-all"></div></div>
-      <div class="flex justify-between text-[11px] text-zinc-400 mt-1"><span>💧 <span id="ai-mana"></span></span><span>덱 <span id="ai-deck"></span> · 손패 <span id="ai-handcount"></span></span></div>
+      <div class="flex justify-between text-[11px] text-zinc-400 mt-1"><span>💧 <span id="ai-mana"></span></span><span class="deck-info">덱 <span id="ai-deck"></span> · 손패 <span id="ai-handcount"></span></span></div>
       <div id="ai-handcards" class="flex gap-1 mt-1"></div>
+      <div id="ai-boss" class="hidden mt-1"></div>
       <div id="ai-syn" class="flex flex-wrap gap-1 mt-1 empty:hidden"></div>
     </div>
     <div class="flex items-center gap-1 shrink-0 h-10 px-2 rounded-full bg-zinc-800 border border-white/20"><button id="voice-toggle" class="text-base leading-none" title="스킬 보이스">🔊</button><input id="voice-vol" type="range" min="0" max="100" step="5" class="w-14 md:w-20 accent-emerald-400" title="보이스 볼륨" aria-label="보이스 볼륨"></div>
@@ -226,7 +227,7 @@
       <div id="my-turns-pips" class="mt-1"></div>
       <div class="h-2 bg-white/10 rounded-full mt-1 overflow-hidden"><div id="me-hpbar" class="h-full bg-emerald-400 transition-all"></div></div>
       <div id="me-syn" class="flex flex-wrap gap-1 mt-1 empty:hidden"></div>
-      <div class="flex justify-between text-[11px] text-zinc-400 mt-1"><span class="text-sky-300 font-bold">💧 마나 <span id="me-mana"></span></span><span>덱 <span id="me-deck"></span> · 손패 <span id="me-handcount"></span></span></div>
+      <div class="flex justify-between text-[11px] text-zinc-400 mt-1"><span class="text-sky-300 font-bold">💧 마나 <span id="me-mana"></span></span><span class="deck-info">덱 <span id="me-deck"></span> · 손패 <span id="me-handcount"></span></span></div>
     </div>
     <div class="shrink-0 flex flex-col gap-1.5">
       <button id="attack-all" class="px-3 md:px-6 py-2 rounded-xl bg-red-600 hover:bg-red-500 disabled:opacity-40 text-white text-sm font-bold">일괄 공격</button>

@@ -64,9 +64,9 @@ let fastForward = false;
 const FX_OFF = () => !!(window.TCG_FAST || skipFx || fastForward);
 const AI_DELAY = () => (window.TCG_FAST ? 0 : (skipFx || fastForward) ? 120 : 650);
 
-function newPlayer(name, second, deckOverride = null, hp = RULES.HERO_HP) {
-  const deck = deckOverride ? shuffleArr(deckOverride) : buildDeck(POOL);
-  const n = RULES.OPENING_HAND + (second ? RULES.SECOND_PLAYER_BONUS_CARDS : 0);
+function newPlayer(name, second, deckOverride = null, hp = RULES.HERO_HP, fieldStart = false) {
+  const deck = deckOverride ? (fieldStart ? [...deckOverride] : shuffleArr(deckOverride)) : buildDeck(POOL);
+  const n = fieldStart ? 0 : RULES.OPENING_HAND + (second ? RULES.SECOND_PLAYER_BONUS_CARDS : 0);
   return { name, hp, maxHp: hp, deck, hand: deck.splice(0, n), field: [], mana: 0, maxMana: 0, second };
 }
 
@@ -81,17 +81,32 @@ const shuffleArr = a => { a = [...a]; for (let i = a.length - 1; i > 0; i--) { c
 function startGame(story = null) {
   if (story && typeof story.then === 'function' || story instanceof Event) story = null;
   const first = story?.first || (Math.random() < 0.5 ? 'me' : 'ai');   // 선공 동전 던지기
-  S = { me: newPlayer('나', first !== 'me', story?.me, story?.meHp), ai: newPlayer(story?.aiName || '컴퓨터', first !== 'ai', story?.ai, story?.aiHp), first, story, turn: first, turnNo: 0, totalTurns: 0, myTurns: 0, over: false, busy: false, fxSeen: new Set(), mercBought: 0, mercHired: null, mercOffer: [], log: { dmg: new Map(), total: 0, skills: 0, merc: null, played: new Set(), kills: {} } };
+  const fs = !!story;   // 스토리: 손패 없이 출전 카드 전부 필드에서 시작
+  S = { me: newPlayer('나', first !== 'me', story?.me, story?.meHp, fs), ai: newPlayer(story?.aiName || '적군', first !== 'ai', story?.ai, story?.aiHp, fs), first, story, turn: first, turnNo: 0, totalTurns: 0, myTurns: 0, over: false, busy: false, fxSeen: new Set(), mercBought: 0, mercHired: null, mercOffer: [], log: { dmg: new Map(), total: 0, skills: 0, merc: null, played: new Set(), kills: {} } };
   S.mercOffer = story ? [] : Merc.roll(POOL, S.me);
-  const noBase = story?.win === 'wipe';   // 스토리 일반전: 진영 개념 없음
-  S.me.noBase = S.ai.noBase = noBase;
-  for (const w of ['me', 'ai']) { $(`${w}-hp`).classList.toggle('hidden', noBase); $(`${w}-hpbar`).parentElement.classList.toggle('hidden', noBase); }
+  // 스토리: 내 진영 없음(일반·보스 공통). 상대 진영은 보스전에만 존재
+  S.me.noBase = !!story; S.ai.noBase = story?.win === 'wipe';
+  for (const w of ['me', 'ai']) { $(`${w}-hp`).classList.toggle('hidden', S[w].noBase); $(`${w}-hpbar`).parentElement.classList.toggle('hidden', S[w].noBase); }
+  $('game').classList.toggle('story-field', !!story);
   { const lbl = $('ai-order').parentElement.firstChild; if (lbl?.nodeType === 3) lbl.textContent = story ? `${story.aiName || '적군'} ` : '🤖 컴퓨터 '; }
   preloadFx([...S.me.deck, ...S.me.hand, ...S.ai.deck, ...S.ai.hand]);
   selected = null; $('log').innerHTML = '';
   $('end-screen').classList.add('hidden'); $('start-screen').classList.add('hidden'); $('game').classList.remove('hidden');
   initPlayers(S.me, S.ai);
-  log(first === 'me' ? '🪙 동전 던지기: 내가 선공!' : `🪙 동전 던지기: 컴퓨터가 선공! (나는 후공, 시작 손패 +${RULES.SECOND_PLAYER_BONUS_CARDS})`, 'text-emerald-400');
+  if (fs) {   // 스토리: 양측 카드 전부 필드에 배치 (최대 FIELD_MAX)
+    for (const who of ['me', 'ai']) {
+      const p = S[who];
+      for (const c of p.deck.splice(0, RULES.FIELD_MAX)) {
+        const u = placeUnit(p, c, makeUnit);
+        if (who === 'me') S.log.played.add(String(c.id));
+        if (who === 'ai' && story.bossId != null && String(c.id) === String(story.bossId) && !p.field.some(x => x.undying)) { u.undying = true; u.boss = true; }
+      }
+      p.deck = [];
+    }
+    log(story.win === 'ko' ? '👑 보스전: 보스는 진영 안에서 쓰러지지 않아요. 상대 진영 HP를 0으로!' : '⚔️ 일반전: 상대 카드를 모두 쓰러뜨리세요!', 'text-amber-300');
+  }
+  if (fs) log('⚔️ 출전 카드가 모두 필드에서 시작합니다 (손패·드로우 없음).', 'text-emerald-400');
+  else log(first === 'me' ? '🪙 동전 던지기: 내가 선공!' : `🪙 동전 던지기: 컴퓨터가 선공! (나는 후공, 시작 손패 +${RULES.SECOND_PLAYER_BONUS_CARDS})`, 'text-emerald-400');
   $('me-order').textContent = first === 'me' ? '선공' : '후공';
   $('ai-order').textContent = first === 'ai' ? '선공' : '후공';
   startTurn(first);
@@ -104,7 +119,7 @@ function startTurn(who) {
   clearBuff(opp(who));                   // 지난 턴 강화 해제
   const bonus = refillMana(p);
   if (bonus) { log(`${p.name}: 처치 보너스 마나 +${bonus}`, 'text-sky-300'); if (who === 'me') floatText(`💧 +${bonus}`, 'text-sky-300'); }
-  if (p.deck.length) p.hand.push(p.deck.shift()); else log(`${p.name}: 덱이 비어 드로우를 건너뜁니다.`, 'text-zinc-500');
+  if (S.story) { /* 스토리: 드로우 없음 */ } else if (p.deck.length) p.hand.push(p.deck.shift()); else log(`${p.name}: 덱이 비어 드로우를 건너뜁니다.`, 'text-zinc-500');
   p.field.forEach(u => u.canAttack = true);
   turnStart(p);                           // 쿨타임·MP 회복, 턴 시작 패시브, 마비/혼란/교란 처리
   render();
@@ -159,7 +174,7 @@ function doSacrifice(who, unit) {
 }
 
 function recall(who, unit) {
-  const p = S[who], check = canRecall(unit, p);
+  const p = S[who], check = S.story ? { ok: false, cost: 0, reason: '스토리 불가' } : canRecall(unit, p);
   if (!check.ok || !p.field.includes(unit)) return check;
   p.mana -= check.cost;
   p.field = p.field.filter(u => u !== unit);
@@ -201,7 +216,7 @@ function renderSkipBtn() {
 // ===== 공격 연출 =====
 const REDUCED = () => !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
 const fxMs = ms => (FX_OFF() ? 0 : REDUCED() ? Math.round(ms * 0.3) : ms);
-const unitEl = (who, u) => document.querySelector(`#${who}-field [data-uid="${u.uid}"]`);
+const unitEl = (who, u) => document.querySelector(`#${who}-field [data-uid="${u.uid}"], #${who}-boss [data-uid="${u.uid}"]`);
 const heroEl = who => $(`${who}-hero`);
 
 function shake(el) {
@@ -343,9 +358,9 @@ function finish(win, reason) {
 function checkEnd() {
   if (S.over) return true;
   if (S.ai.hp <= 0 || S.me.hp <= 0) return finish(S.ai.hp <= 0, 'ko');
-  if (S.story?.win === 'wipe') {   // 스토리 일반전: 상대 카드(필드·손패·덱) 전멸 시 승리, 내 카드 전멸 시 패배
+  if (S.story) {   // 스토리: 내 필드 카드 전멸 시 패배 / 일반전은 상대 카드 전멸 시 승리 (보스전은 진영 HP 0)
     const gone = p => !p.field.length && !p.hand.length && !p.deck.length;
-    if (gone(S.ai)) return finish(true, 'wipe');
+    if (S.story.win === 'wipe' && gone(S.ai)) return finish(true, 'wipe');
     if (gone(S.me)) return finish(false, 'wipe');
   }
   return false;
@@ -353,7 +368,7 @@ function checkEnd() {
 /** 턴 종료 후: 전체 턴 제한 도달 시 판정 */
 function checkTimeout() {
   if (S.over || S.totalTurns < RULES.MAX_TURNS) return S.over;
-  if (S.story?.win === 'wipe') return finish(false, 'timeout');   // 스토리 일반전: 턴 제한 도달 = 패배
+  if (S.story) return finish(false, 'timeout');   // 스토리(일반·보스): 턴 제한 도달 = 패배
   const j = judgeTimeout(S.me, S.ai);
   return finish(j.winner === null ? null : j.winner === S.me, j.reason);
 }
@@ -707,7 +722,7 @@ function render() {
   $('ai-hero').classList.toggle('ring-4', selected != null && tg.hero);
   $('ai-hero').classList.toggle('ring-red-500', selected != null && tg.hero);
   $('ai-hero').classList.toggle('opacity-70', S.turn === 'me' && !tg.hero);
-  $('hero-hint').textContent = S.ai.noBase ? (S.over ? '' : '⚔️ 일반전: 상대 카드를 모두 쓰러뜨리면 승리') : S.turn === 'me' && !S.over ? (tg.hero ? '🎯 상대 진영 공격 가능' : '🛡️ ' + tg.reason) : '';
+  $('hero-hint').textContent = S.story && S.over ? '' : S.ai.noBase ? (S.over ? '' : '⚔️ 일반전: 상대 카드를 모두 쓰러뜨리면 승리') : S.turn === 'me' && !S.over ? (tg.hero ? '🎯 상대 진영 공격 가능' : '🛡️ ' + tg.reason) : '';
   $('hero-hint').className = `text-center text-[11px] md:text-xs font-bold ${tg.hero ? 'text-emerald-400' : 'text-amber-300'}`;
 
   for (const who of ['ai', 'me']) {
@@ -720,12 +735,13 @@ function render() {
       p.st?.heroInvuln ? '<span class="px-1.5 rounded-full bg-sky-800 text-[10px] font-bold" title="본진 공격 무효">🔰본진 무적</span>' : '',
     ].join('');
     const box = $(`${who}-field`); box.innerHTML = '';
-    if (!S[who].field.length) box.innerHTML = '<div class="text-zinc-600 text-xs self-center">빈 필드</div>';
+    const bossBox = $(`${who}-boss`); if (bossBox) { bossBox.innerHTML = ''; bossBox.classList.toggle('hidden', !S[who].field.some(u => u.undying)); }
+    if (!S[who].field.some(u => !u.undying)) box.innerHTML = '<div class="text-zinc-600 text-xs self-center">빈 필드</div>';
     S[who].field.forEach(u => {
       const w = document.createElement('div');
       const isSel = selected === u.uid;
       const ready = who === 'me' && u.canAttack && myTurn;
-      w.className = `unit cursor-pointer transition ${isSel ? '-translate-y-2 drop-shadow-[0_0_10px_#34d399]' : ''} ${ready ? 'ready' : ''} ${selected != null && who === 'ai' && tg.units.includes(u) ? 'target' : ''}`;
+      w.className = `unit ${u.undying ? 'boss-unit' : ''} cursor-pointer transition ${isSel ? '-translate-y-2 drop-shadow-[0_0_10px_#34d399]' : ''} ${ready ? 'ready' : ''} ${selected != null && who === 'ai' && tg.units.includes(u) ? 'target' : ''}`;
       w.dataset.uid = u.uid;
       const hero = u.level >= RULES.LEVEL_MAX;
       const sts = statusIcons(u);
@@ -741,10 +757,16 @@ function render() {
       w.onclick = ev => { if (dragJustEnded) { ev.stopPropagation(); return; } onUnitClick(who, u); };
       if (who === 'me' && myTurn) enableDrag(w, u);
       const sb = w.querySelector('.skill-btn'); if (sb) sb.onclick = ev => { ev.stopPropagation(); showDetail(u.card, { hp: u.hp, unit: u }); };
-      box.appendChild(w);
+      if (u.undying && bossBox) {   // 스토리 보스: 진영 안에 표시 (공격 대상 아님, 쓰러지지 않음)
+        w.insertAdjacentHTML('afterbegin', '<div class="boss-crown" title="보스: 진영 안에 있어 공격할 수 없고 쓰러지지 않아요">👑</div>');
+        const wrap = document.createElement('div'); wrap.className = 'flex items-center gap-2';
+        wrap.appendChild(w);
+        wrap.insertAdjacentHTML('beforeend', `<div class="text-[10px] md:text-xs leading-snug"><div class="font-black text-amber-300">👑 보스</div><div class="text-zinc-300 font-bold truncate max-w-[64px] md:max-w-[120px]">${u.card.name}</div><div class="text-zinc-400">진영 안 · 불사</div><div class="text-zinc-500 hidden md:block">매 턴 공격·스킬 사용</div></div>`);
+        bossBox.appendChild(wrap);
+      } else box.appendChild(w);
     });
-    fixImages(box);
-    requestAnimationFrame(() => box.querySelectorAll('.hp-fill').forEach(f => { f.style.width = f.dataset.to + '%'; hpPrev.set(f.closest('[data-uid]').dataset.uid, +f.dataset.to); }));
+    fixImages(box); if (bossBox) fixImages(bossBox);
+    requestAnimationFrame(() => [...box.querySelectorAll('.hp-fill'), ...(bossBox ? bossBox.querySelectorAll('.hp-fill') : [])].forEach(f => { f.style.width = f.dataset.to + '%'; hpPrev.set(f.closest('[data-uid]').dataset.uid, +f.dataset.to); }));
   }
 
   const hand = $('me-hand'); hand.innerHTML = '';

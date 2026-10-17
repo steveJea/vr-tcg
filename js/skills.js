@@ -141,6 +141,7 @@ export function damageUnit(target, dmg, src = null, { silent = false } = {}) {
   if (target.st.immune) { emit({ type: 'immune', unit: target }); return 0; }
   if (target.st.pleading) dmg = Math.round(dmg * 0.5);
   target.hp -= dmg;
+  if (target.undying && target.hp < 1) target.hp = 1;   // 스토리 보스: 쓰러지지 않음
   if (src && dmg > 0 && src.owner !== target.owner) emit({ type: 'dealt', src, dmg });
   if (!silent) emit({ type: 'dmg', unit: target, dmg });
   if (src && src.hp > 0 && hasPassive(src, '우습네요') && heal(src, Math.round(dmg * 0.3), '흡혈')) stats.count('우습네요');
@@ -157,7 +158,7 @@ export function healHero(p, amt) { const b = p.hp; p.hp = Math.min((p.maxHp || R
 export function damageHero(p, dmg, srcOwner, kind = 'hit', srcUnit = null) {
   if (p.noBase) {   // 스토리 일반전: 진영 없음. 진영을 노린 피해는 상대 카드(HP 가장 낮은 카드)에게, 초과·자기 피해는 무효
     if (kind === 'overflow' || kind === 'self' || !srcOwner || srcOwner === p) return 0;
-    const t = p.field.filter(u => u.hp > 0).sort((a, b) => a.hp - b.hp)[0];
+    const t = p.field.filter(u => u.hp > 0 && !u.undying).sort((a, b) => a.hp - b.hp)[0];
     if (t) { damageUnit(t, Math.round(dmg), srcUnit); checkDeath(t, srcUnit); }
     return 0;
   }
@@ -183,6 +184,7 @@ export function damageHero(p, dmg, srcOwner, kind = 'hit', srcUnit = null) {
 export function checkDeath(u, killer = null) {
   const p = u.owner;
   if (u.hp > 0 || !p.field.includes(u)) return false;
+  if (u.undying) { u.hp = 1; return false; }   // 스토리 보스: 즉사·스킬로도 쓰러지지 않음
   // 제발…그만 (문유선): 사망 시 1회 부활, HP 100%, 디버프 제거, 1턴 면역 + 도발
   if (hasPassive(u, '제발…그만') && !u.fired['제발…그만']) {
     u.fired['제발…그만'] = 1; stats.count('제발…그만');
