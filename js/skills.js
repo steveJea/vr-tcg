@@ -63,6 +63,9 @@ export const STATUS = {
   provoked:{ icon: '🎯', img: 'taunt', label: '도발당함', debuff: true, desc: '도발한 카드만 공격할 수 있고 스킬을 쓸 수 없음' },
   notweak: { icon: '😤', img: 'taunt', label: '나는 약하지 않아', desc: '도발 효과가 끝나면 최대 HP 30% 회복' },
   vow:     { icon: '🛡️', img: 'def', label: '지킨다', desc: '이영아가 같은 필드에 있는 동안 매 턴 DEF +0.4% 누적, 최대 HP 2% 회복' },
+  thorns:  { icon: '🌵', label: '반격 강화', desc: '받는 피해 감소·반격 배율 증가 (반격으로는 공격자가 쓰러지지 않음)' },
+  evade:   { icon: '💨', label: '회피', desc: '기본 공격을 확률로 회피 (회피 시 피해·반격 없음, 스킬은 회피 불가)' },
+  soulsteal:{ icon: '👻', label: '영혼 강탈', desc: '이 카드를 기본 공격한 상대의 MP 20% 제거' },
   mod:     { icon: '', label: '' },
 };
 const MOD_ICON = (atk, def) => (atk > 0 || def > 0) ? '🔺' : '🔻';
@@ -125,6 +128,8 @@ function refreshSide(p) {
     if (male) { a -= 0.5; d -= 0.5; }
     if (symph && u.curse) { a -= 0.02 * u.curse; d -= 0.02 * u.curse; }
     if (u.cry) { a += 0.05 * u.cry; d += 0.05 * u.cry; }
+    if (hasPassive(u, '부덕의 괴력')) a += 0.1;   // 서태우
+    if (hasPassive(u, '마르쉐')) d += 0.05;       // 유아리
     u.mods = { atk: a, def: d, hp: h };
     u.card.ATK = Math.max(1, Math.round(u.raw.ATK * Math.max(0.1, 1 + a)));
     u.card.DEF = Math.max(0, Math.round(u.raw.DEF * Math.max(0, 1 + d)));
@@ -147,11 +152,13 @@ export function damageUnit(target, dmg, src = null, { silent = false } = {}) {
   if (!target.owner.field.includes(target)) return 0;
   if (target.st.immune) { emit({ type: 'immune', unit: target }); return 0; }
   if (target.st.pleading) dmg = Math.round(dmg * 0.5);
+  if (target.st.thorns?.red) dmg = Math.round(dmg * (1 - target.st.thorns.red));   // 이게 프로야·에메랄드 쇼크
   target.hp -= dmg;
   if (target.undying && target.hp < 1) target.hp = 1;   // 스토리 보스: 쓰러지지 않음
   if (src && dmg > 0 && src.owner !== target.owner) emit({ type: 'dealt', src, dmg });
   if (!silent) emit({ type: 'dmg', unit: target, dmg });
   if (src && src.hp > 0 && hasPassive(src, '우습네요') && heal(src, Math.round(dmg * 0.3), '흡혈')) stats.count('우습네요');
+  if (src && src.hp > 0 && src.owner !== target.owner && hasPassive(src, '플레쉬') && heal(src, Math.round(dmg * 0.1), '플레쉬')) stats.count('플레쉬');
   return dmg;
 }
 export function heal(u, amt, why = '') {
@@ -177,6 +184,7 @@ export function damageHero(p, dmg, srcOwner, kind = 'hit', srcUnit = null) {
   if (srcUnit && dmg > 0 && srcUnit.owner !== p) emit({ type: 'dealt', src: srcUnit, dmg });
   if (kind !== 'attack' && kind !== 'overflow') emit({ type: 'hero', p, dmg, kind });
   if (srcUnit && srcUnit.hp > 0 && hasPassive(srcUnit, '우습네요')) heal(srcUnit, Math.round(dmg * 0.3), '흡혈');
+  if (srcUnit && srcUnit.hp > 0 && hasPassive(srcUnit, '플레쉬')) heal(srcUnit, Math.round(dmg * 0.1), '플레쉬');
   if (p.hp <= 0) {
     const zen = !p.once['참선'] && findPassiveUnit(p, '참선');
     if (zen) {
@@ -204,6 +212,16 @@ export function checkDeath(u, killer = null) {
   }
   p.field.splice(p.field.indexOf(u), 1);
   p.grave.push(u.base);
+  // 문지철 너..는..데리고..갈게: 사망 시 품성 최저 적 250 고정 피해, 처치하면 양 옆 80
+  if (p.foe && hasPassive(u, '너..는..데리고..갈게')) {
+    const f = p.foe, t = by(live(f).filter(x => !x.undying), x => x.base.MOR || 0);
+    if (t) {
+      emit({ type: 'passive', unit: u, name: '너..는..데리고..갈게', text: `${t.card.name}에게 250 고정 피해` }); stats.count('너..는..데리고..갈게');
+      const nb = sides(f, t);
+      damageUnit(t, 250, null);
+      if (checkDeath(t, null)) { nb.forEach(x => damageUnit(x, 80, null)); nb.forEach(x => checkDeath(x, null)); }
+    }
+  }
   p.lastDead = u.base;
   if (p.foe && hasPassive(u, '나는 멈춘다')) { emit({ type: 'passive', unit: u, name: '나는 멈춘다' }); stats.count('나는 멈춘다'); live(p.foe).forEach(t => addStatus(t, 'para', 1, {}, 'para')); }
   if (p.foe && hasPassive(u, '더는 나를 밀지마')) { emit({ type: 'passive', unit: u, name: '더는 나를 밀지마' }); stats.count('더는 나를 밀지마'); live(p.foe).forEach(t => bleedOn(t, u, 2)); }
@@ -292,6 +310,32 @@ function hitAll(src, f, n, pct, opt = {}) {
 const heroHit = (src, f, pct) => damageHero(f, skillDamage(src, null, pct), src.owner, 'skill', src);
 const debuffAll = (f, key, turns, data) => live(f).forEach(t => addStatus(t, key, turns, data, data.kind || 'mod'));
 const bleedOn = (t, src, turns = 1) => { if (addStatus(t, 'bleed', turns, { atk: -0.05, def: -0.05 }, 'bleed')) { damageUnit(t, Math.max(1, Math.round(t.maxHp * 0.05)), null); checkDeath(t, src); } };
+/** 현재 HP의 pct 제거 (카드당 최대 cap) */
+const hpCut = (u, f, pct, cap) => { const ts = live(f); ts.forEach(t => damageUnit(t, Math.min(cap, Math.max(1, Math.round(t.hp * pct))), u)); ts.forEach(t => checkDeath(t, u)); };
+/** 필드 양 옆 카드 */
+const sides = (side, t) => { const i = side.field.indexOf(t); return [side.field[i - 1], side.field[i + 1]].filter(Boolean); };
+/** 도발 + DEF 상승 (+ 종료 시 회복) */
+const tauntSelf = (u, name, turns, def, endHeal = 0) => { addStatus(u, 'taunt', turns, {}, 'taunt'); addStatus(u, name, turns, { def, endHeal, label: `${name}: DEF +${Math.round(def * 100)}%${endHeal ? `, 종료 시 HP ${endHeal * 100}% 회복` : ''}` }, 'mod'); };
+/** 고정 피해 + 양 옆 고정 피해, 사망자 있으면 MP 회복 */
+const fixedBlast = (u, f, t, main, side, mp) => { if (!t) return; const nb = sides(f, t); damageUnit(t, main, u); nb.forEach(x => damageUnit(x, side, u)); let d = 0; [t, ...nb].forEach(x => { if (checkDeath(x, u)) d++; }); if (d) gainMp(u, u.maxMp * mp, '사망자 발생'); };
+/** 주 대상 피해 + 양 옆에 그 피해의 r */
+const splash = (u, f, t, pct, r) => { if (!t) return; const nb = sides(f, t); const d = damageUnit(t, skillDamage(u, t, pct), u); nb.forEach(x => damageUnit(x, Math.max(1, Math.round(d * r)), u)); [t, ...nb].forEach(x => checkDeath(x, u)); };
+/** 적 전체 1회 타격, 처치된 카드의 초과 피해는 본진으로 (본진 공격 불가 턴·일반전은 무효) */
+function hitAllOverflow(src, f, pct) {
+  let over = 0; const ts = live(f);
+  for (const t of ts) { if (!f.field.includes(t)) continue; const before = t.hp, d = damageUnit(t, skillDamage(src, t, pct), src); if (t.hp <= 0) over += Math.max(0, d - before); }
+  ts.forEach(t => checkDeath(t, src));
+  if (over > 0) { const d = damageHero(f, over, src.owner, 'overflow', src); if (d > 0) emit({ type: 'log', text: `${src.card.name} 초과 피해 ${d} → ${f.name || '상대'} 진영` }); }
+}
+/** 다회 타격 + 중간에 대상이 쓰러지면 다음 대상으로 (전이마다 남은 횟수 -1) */
+function retargetHits(src, f, n, pct, pick) {
+  let t = pick(live(f)), left = n;
+  while (t && left > 0) {
+    damageUnit(t, skillDamage(src, t, pct), src); left--;
+    if (checkDeath(t, src)) { left--; t = pick(live(f)); if (t && left > 0) emit({ type: 'log', text: `${src.card.name}: ${t.card.name}에게 전이 (남은 ${left}회)` }); }
+  }
+}
+const pickRandom = arr => arr.length ? arr[Math.floor(rng() * arr.length)] : null;
 const yuriKiss = (u, f, prob, kind) => { if (chance(prob)) live(f).forEach(t => addStatus(t, kind, 1, {}, kind)); else emit({ type: 'miss', unit: u, text: '확률 실패' }); f.actionLock = Math.max(f.actionLock, 1); emit({ type: 'log', text: `${f.name || '상대'}: 다음 턴 고유기술(셔플·보강·강화·필드 회복) 봉인` }); };
 
 export const ACTIVE = {
@@ -316,8 +360,8 @@ export const ACTIVE = {
   'Sperandum Est Infestis': (u, p, f) => { const ts = live(f); for (let i = 0; i < 2; i++) ts.forEach(t => damageUnit(t, skillDamage(u, t, 0.2, { extra: t.card.cost < 30 ? 2 : 1 }), u)); ts.forEach(t => checkDeath(t, u)); },
   'Memento Mori': (u, p, f) => { const ts = live(f); hitAll(u, f, 3, 0.2); ts.forEach(t => f.field.includes(t) && chance(0.2) && addStatus(t, 'para', 1, {}, 'para')); },
   // 임유리
-  '아름다운 고통의 키스': (u, p, f) => yuriKiss(u, f, 0.3, 'confuse'),
-  '더 울어, 예쁘게!': (u, p, f) => yuriKiss(u, f, 0.3, 'disrupt'),
+  '아름다운 고통의 키스': (u, p, f) => { hpCut(u, f, 0.08, 120); yuriKiss(u, f, 0.3, 'confuse'); },
+  '더 울어, 예쁘게!': (u, p, f) => { hpCut(u, f, 0.12, 180); yuriKiss(u, f, 0.3, 'disrupt'); },
   '천천히 찢는 사랑': (u, p, f) => { const ts = live(f); hitAll(u, f, 2, 0.4); ts.forEach(t => f.field.includes(t) && chance(0.5) && bleedOn(t, u)); },
   // 임나리
   'Seductive Whisper': (u, p, f) => { if (hitAll(u, f, 3, 0.2)) gainMp(u, u.maxMp * 0.1, '사망자 발생'); },
@@ -332,8 +376,8 @@ export const ACTIVE = {
   // 김신현
   '신기하네요': (u, p, f, s) => { const t = by(live(f), x => x.card.ATK, -1); if (t && multiHit(u, t, 10, 0.2)) u.cd[s.name] = 0; },
   // 임예리
-  '달빛 속 배신의 속삭임': (u, p, f) => debuffAll(f, '달빛 속 배신의 속삭임', 2, { def: -0.2, label: '달빛: DEF -20%', mpOnDeath: 0.1, caster: u }),
-  '장미가시의 세레나데': (u, p, f) => debuffAll(f, '장미가시의 세레나데', 3, { atk: -0.2, label: '장미가시: ATK -20%', rose: u }),
+  '달빛 속 배신의 속삭임': (u, p, f) => (hitAll(u, f, 1, 0.1), debuffAll(f, '달빛 속 배신의 속삭임', 2, { def: -0.2, label: '달빛: DEF -20%', mpOnDeath: 0.1, caster: u })),
+  '장미가시의 세레나데': (u, p, f) => { hitAll(u, f, 1, 0.1); debuffAll(f, '장미가시의 세레나데', 3, { atk: -0.2, label: '장미가시: ATK -20%', rose: u }); addStatus(u, 'taunt', 1, {}, 'taunt'); },
   // 임혜리
   '주님 저희를 구하소서': (u, p) => live(p).forEach(a => { heal(a, a.maxHp * 0.2); cleanse(a); }),
   '하느님의 영광': (u, p) => { if (!p.grave.length) return; const c = by(p.grave, x => x.cost, -1); p.grave.splice(p.grave.indexOf(c), 1); if (!owns(p, c)) { p.hand.push(c); emit({ type: 'revive', p, card: c }); } },
@@ -414,7 +458,73 @@ export const ACTIVE = {
     f.st['notweak:' + u.uid] = { t: NOTWEAK.TURNS + (TURN.p === f ? 1 : 0), notweak: u };
     u.st.notweak = { kind: 'notweak', t: 99 };
   },
+  // ===== SR 스킬 =====
+  // 금어진
+  '건드리지마!': (u, p, f) => { const t = by(live(f), x => x.base.MOR || 0); if (t) multiHit(u, t, 3, 0.4); },
+  '너는 내가 끝낸다!': (u, p, f) => { const t = live(f).find(x => String(x.base.id) === CHANGWON_ID); if (t && multiHit(u, t, 1, 2.0)) gainMp(u, u.maxMp * 0.5, '최창원 처치'); },
+  // 선우민철
+  '한 번 들어와봐': u => tauntSelf(u, '한 번 들어와봐', 1, 0.05, 0.1),
+  '이게 프로야.': u => addStatus(u, 'thorns', 2, { red: 0.5, cm: 1.2, label: '이게 프로야: 피해 -50%, 반격 +20%' }, 'thorns'),
+  // 민지은
+  '감당 못할걸요?': (u, p, f) => { const t = by(live(f), x => x.hp, -1); if (!t) return; for (let i = 0; i < 3 && f.field.includes(t) && t.hp > 0; i++) damageUnit(t, skillDamage(u, t, 0.4, { extra: t.hp < t.maxHp * 0.5 ? 1.1 : 1 }), u); checkDeath(t, u); },
+  '이런 경험 있나요?': (u, p, f) => retargetHits(u, f, 5, 0.3, arr => by(arr, x => x.level * 1000 + x.card.cost, -1)),
+  // 오설화
+  '이게 진짜거든요?': (u, p, f) => { const ts = live(f); ts.forEach(t => damageUnit(t, skillDamage(u, t, Math.max(0.01, (101 - (t.base.MOR || 0)) / 100)), u)); ts.forEach(t => checkDeath(t, u)); },
+  // 장무영
+  '단 한방에 끝낸다.': (u, p, f) => { const t = by(live(f), x => x.card.cost, -1); if (t) multiHit(u, t, 1, 1.5, { ignoreDef: 0.2 }); },
+  '이게 연격이야.': (u, p, f) => { const t = by(live(f), x => x.card.cost, -1); if (t) multiHit(u, t, 5, 0.35, { ignoreDef: 0.3 }); },
+  // 문재
+  '으흐흐…반갑다': (u, p, f) => { const t = by(live(f), x => x.hp); if (t) multiHit(u, t, 5, 0.3); },
+  '으흐흐흐…잘가라': (u, p, f) => { const t = by(live(f), x => x.hp); if (t && multiHit(u, t, 10, 0.2)) gainMp(u, u.maxMp * 0.1, '처치'); },
+  // 양겨울
+  '공부만 잘하는 게 아니에요': (u, p, f) => fixedBlast(u, f, by(live(f), x => x.card.ATK, -1), 80, 25, 0.1),
+  '저는 다치게 하고싶지 않아요': (u, p, f) => fixedBlast(u, f, by(live(f), x => x.card.ATK, -1), 150, 50, 0.15),
+  // 윤믿음
+  '자주봐요!': (u, p, f) => splash(u, f, by(live(f), x => x.base.MOR || 0), 0.8, 0.2),
+  '느낌이..오나요?': (u, p, f) => splash(u, f, by(live(f), x => x.base.MOR || 0), 1.0, 0.3),
+  // 고세린 (2스킬 [아..기분좋아~]는 종료 시 자동 발동)
+  '때리지 말라니까!': u => tauntSelf(u, '때리지 말라니까!', 1, 0.2),
+  // 김재신
+  '아이돌 파워!': (u, p, f) => { if (hitAll(u, f, 2, 0.2)) gainMp(u, u.maxMp * 0.1, '처치'); },
+  // 강준철
+  '빠르게 돌진': (u, p, f) => { const t = pickRandom(live(f)); if (t && multiHit(u, t, 1, 1.3)) heal(u, u.maxHp * 0.1, '빠르게 돌진'); },
+  '전광석화': (u, p, f) => { const t = pickRandom(live(f)); if (t && multiHit(u, t, 5, 0.3, { ignoreDef: 0.2 })) gainMp(u, u.maxMp * 0.1, '처치'); },
+  // 김재섭
+  '싸이코의 부활': (u, p, f) => hitAll(u, f, 2, 0.2),
+  '싸이코의 복수': (u, p, f) => { const top = by(live(f), x => x.card.ATK, -1); hitAll(u, f, 2, 0.3); if (top && f.field.includes(top)) { damageUnit(top, skillDamage(u, top, 0.2), u); checkDeath(top, u); } },
+  // 인창수
+  '피를 부른다': (u, p, f) => { const ts = live(f); ts.forEach(t => damageUnit(t, skillDamage(u, t, 0.3, { extra: t.base.gender === 'FEMALE' ? 1.1 : 1 }), u)); ts.forEach(t => checkDeath(t, u)); },
+  '심장이 뛴다': (u, p, f) => { const ts = live(f); ts.forEach(t => damageUnit(t, skillDamage(u, t, 0.4, { extra: t.base.gender === 'FEMALE' ? 1.15 : 1 }), u)); ts.forEach(t => checkDeath(t, u)); },
+  // 선미영
+  '에메랄드 쇼크': u => addStatus(u, 'thorns', 2, { red: 0.5, cm: 2, label: '에메랄드 쇼크: 피해 -50%, 반격 ×2' }, 'thorns'),
+  '다이아 크래시': u => tauntSelf(u, '다이아 크래시', 1, 0.15),
+  // 서태우
+  '고릴라 파워': (u, p, f) => { const t = by(live(f), x => x.hp); if (t) multiHit(u, t, 5, 0.3); },
+  // 고정태
+  '불을 훔친 자': u => addStatus(u, 'thorns', 2, { cm: 2, leech: 0.1, label: '불을 훔친 자: 반격 ×2, 반격 흡혈 10%' }, 'thorns'),
+  '불을 꺼뜨린 자': u => tauntSelf(u, '불을 꺼뜨린 자', 1, 0.1),
+  // 임창열
+  '일격으로!': (u, p, f) => { const t = by(live(f), x => x.card.cost); if (t && !multiHit(u, t, 3, 0.2) && chance(0.2)) bleedOn(t, u); },
+  '천재의 일격': (u, p, f) => { const t = by(live(f), x => x.card.cost); if (t && !multiHit(u, t, 3, 0.4) && chance(0.4)) bleedOn(t, u); },
+  // 문지철
+  '너..는..끝났..어': (u, p, f) => { const t = by(live(f), x => x.card.cost, -1); if (t) multiHit(u, t, 1, 1.5); },
+  // 정치욱
+  '그렇게 약해서 되겠어?': u => tauntSelf(u, '그렇게 약해서 되겠어?', 1, 0.1, 0.1),
+  '그렇게 느려도 되겠어?': u => addStatus(u, 'evade', 2, { p: 0.4, label: '회피 40%' }, 'evade'),
+  // 김소영
+  '이거…마셔볼래?': (u, p, f) => live(f).forEach(t => addStatus(t, 'dot', 2, { pct: 0.05, caster: u, label: '이거…마셔볼래?' }, 'dot')),
+  '저기…나랑 갈래?': (u, p, f) => live(f).forEach(t => addStatus(t, 'dot', 2, { pct: 0.03, caster: u, mpDrainEnd: 0.3, label: '저기…나랑 갈래?' }, 'dot')),
+  // 정다윤
+  '영혼을 유혹합니다': u => tauntSelf(u, '영혼을 유혹합니다', 2, 0.1, 0.1),
+  '영혼을 강탈합니다': u => { addStatus(u, 'taunt', 1, {}, 'taunt'); addStatus(u, 'soulsteal', 1, { pct: 0.2 }, 'soulsteal'); },
+  // 서오성
+  '나쁜 남자': (u, p, f) => { const ts = females(f); ts.forEach(t => damageUnit(t, skillDamage(u, t, 0.4), u)); ts.forEach(t => checkDeath(t, u)); },
+  '진짜 악당': (u, p, f) => { const ts = live(f); ts.forEach(t => damageUnit(t, skillDamage(u, t, 0.4, { extra: t.base.gender === 'FEMALE' ? 1.3 : 1 }), u)); ts.forEach(t => checkDeath(t, u)); },
+  // 정하루
+  '드론 폭격!': (u, p, f) => hitAllOverflow(u, f, 0.3),
+  '드론 연사!': (u, p, f) => { if (!f.noBase && !heroLocked(p)) heroHit(u, f, 1.5); else hitAll(u, f, 1, 0.3); },
 };
+export const CHANGWON_ID = '1002100371';
 const owns = (p, c) => [...p.deck, ...p.hand, ...p.field.map(u => u.base)].some(x => String(x.id) === String(c.id));
 const females = side => live(side).filter(x => x.base.gender === 'FEMALE');
 const males = side => live(side).filter(x => x.base.gender === 'MALE');
@@ -444,7 +554,8 @@ export function provoker(u) {
   return b && b.hp > 0 && u.owner?.foe?.field.includes(b) && !b.undying ? b : null;
 }
 /** 대상 조건이 있는 스킬 (상대 필드에 해당 성별이 없으면 비활성) */
-const REQ = { '껌밟기': f => females(f).length, '되겠냐?': f => females(f).length, '귀여운 고문자': f => females(f).length,
+const REQ = { '껌밟기': f => females(f).length, '나쁜 남자': f => females(f).length, '진짜 악당': f => females(f).length,
+  '너는 내가 끝낸다!': f => f.field.some(x => String(x.base.id) === CHANGWON_ID), '되겠냐?': f => females(f).length, '귀여운 고문자': f => females(f).length,
   '지킨다': (f, u) => younga(u.owner) && !u.st.vow,
   '나 좀 내버려둬': f => males(f).length, '제발 그냥 가줘': f => males(f).length, '소녀의 거래': f => males(f).length, '피눈물': f => males(f).length, '이리 올래?': f => males(f).length, '짜릿하니?': f => males(f).length };
 
@@ -455,7 +566,7 @@ export function maleLure(attacker, side) {
   return c.length ? by(c, x => x.card.cost, -1) : null;
 }
 /** 기본 공격 대상 재지정: 대신 맞기(decoy) → 수호(아기토끼·튀 므 망크). 반환 { target, ratio, proxyOf } */
-const GUARD = { '아기토끼': '2000100008', '튀 므 망크': '2000600116' };
+const GUARD = { '아기토끼': '2000100008', '튀 므 망크': '2000600116', '내가 오빠잖아.': '2002000354' };   // 내가 오빠잖아: 강준철 → 강재아
 export function redirectAttack(attacker, target) {
   const tp = target.owner;
   const dc = target.st.decoy;
@@ -472,7 +583,15 @@ export function redirectAttack(attacker, target) {
   }
   return { target };
 }
-export const counterMult = (target, attacker) => (target.st.pleading ? 2.5 : 1) * (hasPassive(target, '이게 반격이야') ? 1.5 : 1);
+/** 장미가시: 표식된 공격자가 임예리를 기본 공격 → 일반 반격 대신 기본 공격 100% (= 50% × 2) */
+export const roseCounter = (target, attacker) => !!attacker?.st?.['장미가시의 세레나데'] && String(attacker.st['장미가시의 세레나데'].rose?.base?.id) === String(target.base.id);
+export const counterMult = (target, attacker) => (target.st.pleading ? 2.5 : 1) * (hasPassive(target, '이게 반격이야') ? 1.5 : 1) * (target.st.thorns?.cm || 1) * (roseCounter(target, attacker) ? 2 : 1);
+/** 정치욱 [그렇게 느려도 되겠어?]: 기본 공격 회피 판정 */
+export function rollEvade(target, attacker) {
+  const e = target.st.evade; if (!e || !chance(e.p || 0)) return false;
+  emit({ type: 'passive', unit: target, name: '회피', text: `${attacker.card.name}의 공격을 회피!` }); stats.count('회피');
+  return true;
+}
 
 // ---- 스킬 사용 가능 여부 ----
 export function skillState(u, s) {
@@ -484,7 +603,7 @@ export function skillState(u, s) {
   if (u.mp < s.mp) return { ok: false, reason: `MP 부족 (${u.mp}/${s.mp})` };
   if (!u.canAttack) return { ok: false, reason: '이번 턴 행동함' };
   if (!ACTIVE[s.name]) return { ok: false, reason: '미구현' };
-  if (REQ[s.name] && !REQ[s.name](u.owner.foe, u)) return { ok: false, reason: s.name === '지킨다' ? (u.st.vow ? '맹세 유지 중' : '이영아가 필드에 없음') : '대상 없음' };
+  if (REQ[s.name] && !REQ[s.name](u.owner.foe, u)) return { ok: false, reason: s.name === '지킨다' ? (u.st.vow ? '맹세 유지 중' : '이영아가 필드에 없음') : s.name === '너는 내가 끝낸다!' ? '상대 필드에 최창원 없음' : '대상 없음' };
   return { ok: true };
 }
 /** 액티브 스킬 사용 (그 턴 공격 대신) */
@@ -511,12 +630,11 @@ export function afterBasicHit(attacker, target) {
     if (attacker.card.class === 'FIRE') for (const a of [...tp.field]) if (hasPassive(a, '水火相剋') && a.mp >= 30 && attacker.owner.field.includes(attacker)) {
       a.mp -= 30; emit({ type: 'passive', unit: a, name: '水火相剋' }); stats.count('水火相剋'); ACTIVE['人鬼相半'](a, tp, tp.foe);
     }
-    // 임예리 장미가시: 표식된 적이 임예리를 피격 → 기본 공격 반격
-    if (attacker.st['장미가시의 세레나데'] && target.base.id === attacker.st['장미가시의 세레나데'].rose?.base.id && tp.field.includes(target) && attacker.owner.field.includes(attacker)) {
-      emit({ type: 'passive', unit: target, name: '장미가시 반격' }); stats.count('장미가시 반격');
-      const before = attacker.hp; damageUnit(attacker, calcDamage(target.card, attacker.card), target); if (attacker.hp < 1 && before >= 1) attacker.hp = 1;   // 반격으로는 쓰러지지 않음
-      checkDeath(attacker, target);
-    }
+    // 임예리 장미가시 반격은 resolveAttack의 반격 배율(×2 = 기본 공격 100%)로 처리 — 일반 반격을 대체
+    if (roseCounter(target, attacker)) { emit({ type: 'passive', unit: target, name: '장미가시 반격', text: '일반 반격 대신 기본 공격 100%' }); stats.count('장미가시 반격'); }
+    // 정다윤 영혼을 강탈합니다: 기본 공격한 상대 MP 20% 제거
+    const ss = target.st.soulsteal;
+    if (ss && attacker.owner.field.includes(attacker) && attacker.mp > 0) { const m = Math.round(attacker.mp * (ss.pct || 0.2)); if (m > 0) { attacker.mp -= m; emit({ type: 'mp', unit: attacker, amt: -m }); emit({ type: 'passive', unit: target, name: '영혼을 강탈합니다', text: `${attacker.card.name} MP -${m}` }); stats.count('영혼 강탈'); } }
   } finally { noCounter--; }
 }
 
@@ -554,6 +672,13 @@ export function turnStart(p) {
     emit({ type: 'passive', unit: u, name: '공허의 제왕' }); stats.count('공허의 제왕');
     hitAll(u, f, 1, 0.2); heroHit(u, f, 0.2);
   }
+  // 오설화 [이래서 제가 유명해요]·김재신 [리얼 아이돌!]: 턴 시작 시 적 전체 8% 자동 타격
+  for (const u of [...p.field]) for (const nm of ['이래서 제가 유명해요', '리얼 아이돌!']) if (hasPassive(u, nm) && p.field.includes(u) && f.field.length) {
+    emit({ type: 'passive', unit: u, name: nm }); stats.count(nm);
+    if (hitAll(u, f, 1, 0.08) && nm === '리얼 아이돌!') gainMp(u, u.maxMp * 0.1, '처치');
+  }
+  // 유아리 마르쉐: 매 턴 HP 3% 회복
+  for (const u of p.field) if (hasPassive(u, '마르쉐')) heal(u, u.maxHp * 0.03, '마르쉐');
   // 마비 / 혼란 / 교란 → 강제 행동
   for (const u of [...p.field]) {
     if (!p.field.includes(u)) continue;
@@ -574,6 +699,12 @@ export function turnStart(p) {
   }
   refreshAll(p);
 }
+/** 상태 종료 시 효과: 종료 회복, MP 하락(저기…나랑 갈래?), 고세린 [아..기분좋아~] */
+function onExpire(u, k, s) {
+  if (s.endHeal) heal(u, u.maxHp * s.endHeal, k);
+  if (s.mpDrainEnd && u.mp > 0) { const m = Math.round(u.mp * s.mpDrainEnd); if (m > 0) { u.mp -= m; emit({ type: 'mp', unit: u, amt: -m }); emit({ type: 'log', text: `${u.card.name} [${s.label || k}] 종료 · MP -${m}` }); } }
+  if (k === '때리지 말라니까!' && hasPassive(u, '아..기분좋아~')) { u.st.regen = { kind: 'regen', pct: 0.07, t: 3 }; emit({ type: 'passive', unit: u, name: '아..기분좋아~', text: '3턴 간 매 턴 HP 7% 회복' }); stats.count('아..기분좋아~'); }
+}
 /** 자기 턴 종료 (endTurnXp 다음에 호출) */
 export function turnEnd(p) {
   const f = p.foe;
@@ -587,7 +718,7 @@ export function turnEnd(p) {
   // 상태 지속 감소 (자기 턴 종료 기준)
   for (const u of p.field) {
     if (u.paraBlock) u.paraBlock--;
-    for (const [k, s] of Object.entries(u.st)) if (--s.t <= 0) { delete u.st[k]; if (k === 'seed') heal(u, u.maxHp * 0.05, '쾌락의 씨앗'); if (k === 'pleading') heal(u, u.maxHp * 0.3, '꼭 이래야해?'); if (k === 'para') u.paraBlock = 2; emit({ type: 'expire', unit: u, key: k }); }
+    for (const [k, s] of Object.entries(u.st)) if (--s.t <= 0) { delete u.st[k]; if (k === 'seed') heal(u, u.maxHp * 0.05, '쾌락의 씨앗'); if (k === 'pleading') heal(u, u.maxHp * 0.3, '꼭 이래야해?'); if (k === 'para') u.paraBlock = 2; emit({ type: 'expire', unit: u, key: k }); onExpire(u, k, s); }
   }
   for (const [k, s] of Object.entries(p.st)) if (--s.t <= 0) {
     delete p.st[k];
@@ -630,6 +761,11 @@ export function aiPickSkill(u) {
       case '제발 그냥 가줘': sc = 110; break;
       case '지킨다': sc = 88; break;   // 조건(이영아 필드·맹세 전)은 skillState에서 확인
       case '나는 약하지 않아': sc = n >= 2 ? 92 + n * 4 : n ? 70 : 0; break;
+      case '한 번 들어와봐': case '때리지 말라니까!': case '다이아 크래시': case '불을 꺼뜨린 자': case '그렇게 약해서 되겠어?': case '영혼을 유혹합니다':
+        sc = n && p.field.length >= 2 && !canKill ? 78 + p.field.length * 3 : 0; break;
+      case '영혼을 강탈합니다': sc = n && !canKill ? 80 + n * 3 : 0; break;
+      case '이게 프로야.': case '에메랄드 쇼크': case '불을 훔친 자': case '그렇게 느려도 되겠어?': sc = n >= 2 && !canKill ? 82 + n * 3 : 0; break;
+      case '이거…마셔볼래?': case '저기…나랑 갈래?': sc = n >= 2 ? 82 + n * 4 : 0; break;
       case '러시안룰렛': sc = n ? 90 + by(f.field, x => x.card.cost).card.cost : 0; break;
       default:
         if (s.type === '디버프') sc = n >= 3 && !canKill ? 80 + n * 3 : 0;
