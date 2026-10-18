@@ -1,5 +1,5 @@
 // ===== VR TCG 규칙 (순수 함수: UI와 분리, 테스트 가능) =====
-import { skillsOf, damageUnit, damageHero, checkDeath, afterBasicHit, refreshAll, onLevelChange, redirectAttack, counterMult, heal, maleLure } from './skills.js';
+import { skillsOf, damageUnit, damageHero, checkDeath, afterBasicHit, refreshAll, onLevelChange, redirectAttack, counterMult, heal, maleLure, rollEvade } from './skills.js';
 export const RULES = {
   HERO_HP: 3000,          // 영웅 HP
   DAMAGE_MULT: 1.5,       // ATK에 곱하는 전체 데미지 배율 (DEF 차감 전)
@@ -251,12 +251,15 @@ export function resolveAttack(me, opp, unit, target) {
     return ev;
   }
   const ratio = rd.ratio || 1; target = rd.target;
+  // 회피(정치욱 [그렇게 느려도 되겠어?]): 피해·반격 없음
+  if (rollEvade(target, unit)) { ev.push({ type: 'evade', unit, target }); gainXp(unit, RULES.ATTACK_XP); return ev; }
   const d1 = Math.max(1, Math.round(calcDamage(unit.card, target.card) * ratio));
   const tHpBefore = target.hp;
   const r1 = damageUnit(target, d1, unit, { silent: true });
   // 반격: 대상이 쓰러졌으면 없음. 살아 있으면 (피해 × 반격 배율 × 50%), 공격자는 반격으로 쓰러지지 않음(HP 1 남김)
   const killed = target.hp <= 0, d2 = killed ? 0 : Math.max(0, Math.round(calcDamage(target.card, unit.card) * counterMult(target, unit) * RULES.COUNTER_RATIO));
   const r2 = counterHit(unit, d2, target);
+  if (r2 > 0 && target.st.thorns?.leech) heal(target, Math.round(r2 * target.st.thorns.leech), '반격 흡혈');   // 고정태 [불을 훔친 자]
   ev.push({ type: 'hit', unit, target, d1: r1, d2: r2, mult: elementMultiplier(unit.card.class, target.card.class), killed, survived: r2 > 0 && unit.hp === 1 });
   const tDead = target.hp <= 0, uDead = unit.hp <= 0;
   if (!uDead) gainXp(unit, RULES.ATTACK_XP);

@@ -330,6 +330,7 @@ async function attack(who, unit, target, fromBatch = false) {
         shake(rEl); hitFx(rEl, e.mult > 1 ? 'blood' : 'impact'); dmgNumber(rEl, `-${fmt(e.d1)}`);   // 속성 유리(크리티컬) = 피 튀김
         if (e.d2) { shake(aEl); hitFx(aEl); dmgNumber(aEl, `-${fmt(e.d2)}`, '#fca5a5'); }
       }
+      else if (e.type === 'evade') { const rEl = unitEl(oWho, e.target) || tEl; log(`${unit.card.name} → ${e.target.card.name} 공격 회피! (피해·반격 없음)`, cls); dmgNumber(rEl, 'MISS', '#e0f2fe'); }
       else if (e.type === 'overflow') { log(`초과 피해 ${fmt(e.dmg)} → ${o.name} 진영`, 'text-orange-300'); const h = heroEl(oWho); shake(h); hitFx(h); dmgNumber(h, `💥 -${fmt(e.dmg)}`, '#fdba74'); }
     }
     renderHero(oWho); renderHero(who);
