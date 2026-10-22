@@ -28,16 +28,16 @@
     g.save(); rr(g, px, py, pw, ph, 28); g.clip(); g.fillStyle = '#111827'; g.fillRect(px, py, pw, ph);
     const im = await loadImg(info.portrait);
     if (im) { const s = Math.max(pw / im.width, ph / im.height), iw = im.width * s, ih = im.height * s; g.drawImage(im, px + (pw - iw) / 2, py + (ph - ih) / 2, iw, ih); }
-    const sh = g.createLinearGradient(0, py + ph - 260, 0, py + ph); sh.addColorStop(0, 'rgba(0,0,0,0)'); sh.addColorStop(1, 'rgba(0,0,0,.85)'); g.fillStyle = sh; g.fillRect(px, py + ph - 260, pw, 260);
+    const sh = g.createLinearGradient(0, py + ph - 220, 0, py + ph); sh.addColorStop(0, 'rgba(0,0,0,0)'); sh.addColorStop(1, 'rgba(0,0,0,.8)'); g.fillStyle = sh; g.fillRect(px, py + ph - 220, pw, 220);
     g.restore();
     g.lineWidth = 6; g.strokeStyle = col; rr(g, px, py, pw, ph, 28); g.stroke();
     // 등급 배지
     g.fillStyle = col; rr(g, px + 24, py + 24, 150, 72, 20); g.fill();
     g.fillStyle = '#fff'; g.font = '900 48px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(info.short, px + 99, py + 62);
     if (info.crown) { g.font = '64px system-ui, sans-serif'; g.fillText('👑', px + pw - 70, py + 64); }
-    // 이름 / 등급
-    g.textAlign = 'left'; g.fillStyle = '#fff'; g.font = '900 76px system-ui, sans-serif'; g.fillText(String(info.name).slice(0, 14), px + 36, py + ph - 110);
-    g.fillStyle = col; g.font = '700 38px system-ui, sans-serif'; g.fillText(`${info.label}${info.crown ? ` · ${info.crown.e} ${info.crown.n}` : ''}`, px + 36, py + ph - 44);
+    // 이름 (등급·왕관 줄 없음: 등급은 왼쪽 위 배지, 왕관은 오른쪽 위)
+    g.textAlign = 'left'; g.fillStyle = '#fff'; g.font = '900 80px system-ui, sans-serif';
+    g.shadowColor = 'rgba(0,0,0,.6)'; g.shadowBlur = 12; g.fillText(String(info.name).slice(0, 14), px + 40, py + ph - 72); g.shadowBlur = 0;
     // 스탯 줄
     const stats = [['HP', info.hp], ['ATK', info.atk], ['DEF', info.def], ['전투력', Number(info.power || 0).toLocaleString('ko-KR')]];
     const sw = (W - 120) / 4;
