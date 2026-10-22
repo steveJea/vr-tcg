@@ -78,8 +78,12 @@
     }
     .fx-dying { transition: opacity .15s ease, scale .15s ease !important; opacity: 0; scale: .7; }
     .card-frame { box-shadow: 0 0 0 2px var(--rc); }
-    .rar-n { --rc: #71717a; } .rar-r { --rc: #22c55e; } .rar-hr { --rc: #3b82f6; } .rar-sr { --rc: #a855f7; } .rar-ur { --rc: #f97316; } .rar-mr { --rc: #f43f5e; }
-    .rar-mr { box-shadow: 0 0 0 2px #f43f5e, 0 0 10px 2px rgba(244,63,94,.6); }
+    .rar-n { --rc: #9ca3af; } .rar-r { --rc: #84cc16; } .rar-hr { --rc: #3b82f6; } .rar-sr { --rc: #a855f7; } .rar-ur { --rc: #eab308; } .rar-mr { --rc: #ef4444; }
+    .card-frame { box-shadow: 0 0 0 2px var(--rc); background: linear-gradient(180deg, color-mix(in srgb, var(--rc) 35%, #18181b), #18181b 60%) !important; }
+    .rar-ur { box-shadow: 0 0 0 2px #eab308, 0 0 8px 1px rgba(234,179,8,.5); }
+    .rar-mr { box-shadow: 0 0 0 2px #ef4444, 0 0 10px 2px rgba(239,68,68,.6); }
+    /* LR(무지개) 자리: 카드 등급에 LEGEND RARE 가 생기면 rar-lr 클래스만 붙이면 됨 */
+    .rar-lr { --rc: #f472b6; box-shadow: 0 0 0 2px transparent; border: 2px solid transparent; background: linear-gradient(#18181b,#18181b) padding-box, conic-gradient(red, orange, yellow, lime, cyan, blue, violet, red) border-box !important; }
     .rar-badge { font-size: 9px; font-weight: 900; line-height: 1; padding: 2px 4px; border-radius: 4px; color: #fff; background: var(--rc, #71717a); border: 1px solid rgba(255,255,255,.5); }
     .rar-inline { display: inline-block; }
     .sk-count { font-size: 9px; font-weight: 900; line-height: 1; padding: 2px 3px; border-radius: 4px; color: #f5d0fe; background: rgba(112,26,117,.85); border: 1px solid #e879f9; }
@@ -267,6 +271,7 @@
     </div>
     <div class="shrink-0 flex flex-col gap-1.5">
       <button id="attack-all" class="px-3 md:px-6 py-2 rounded-xl bg-red-600 hover:bg-red-500 disabled:opacity-40 text-white text-sm font-bold">일괄 공격</button>
+      <button id="story-giveup" class="hidden px-3 md:px-6 py-1.5 rounded-xl bg-zinc-800 border border-red-500/50 hover:bg-red-900/60 text-red-200 text-xs md:text-sm font-bold">🏳️ 도전 포기</button>
       <button id="end-turn" class="px-3 md:px-6 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 text-black font-bold">턴 종료</button>
     </div>
   </div>
