@@ -15,6 +15,7 @@
 
   const user = () => (window.__STORY_MOCK_CLOUD || window.VRCloud)?.user || window.__STORY_MOCK_USER || null;
   const pool = () => window.TCG?.POOL || [];
+  const skillsOf = id => window.TCG?.skillsOf?.(id) || [];
   const card = id => pool().find(c => String(c.id) === String(id));
   let save = null, cloudOk = true, serverMode = false;
   const cloud = () => window.__STORY_MOCK_CLOUD || window.VRCloud;
@@ -208,9 +209,10 @@
   function home() { bgm('main'); root().classList.add('hidden'); $('start-screen').classList.remove('hidden'); }
   const topBar = (title, back = 'home') => `<div class="story-top"><button class="story-back" data-go="${back}">← ${back === 'home' ? '처음으로' : back === 'hub' ? '스토리 메인' : '돌아가기'}</button><div class="story-top-title">${title}</div><span class="flex gap-1.5"><button class="story-mycards story-gacha-btn" data-go="gacha">🎴 카드 뽑기${canDraw() ? '<i class="story-badge">1</i>' : ''}</button><button class="story-mycards" data-go="cards">🃏 보유 카드</button></span></div>`;
   function bind(extra = {}) {
-    root().querySelectorAll('[data-go]').forEach(b => b.onclick = () => ({ home, hub: renderHub, map: renderMap, cards: renderCards, gacha: renderShop, ...extra })[b.dataset.go]?.());
+    root().querySelectorAll('[data-go]').forEach(b => b.onclick = () => ({ home, hub: renderHub, map: renderMap, cards: renderCards, gacha: renderShop, bonds: renderBonds, ...extra })[b.dataset.go]?.());
   }
-  const tile = (c, extra = '') => `<div class="story-card"><div class="story-card-img"><img src="${IMG}${c.id}.webp" alt="${esc(c.name)}" loading="lazy" onerror="this.style.visibility='hidden'"><span class="story-rar">${RAR[c.grade] || 'N'}</span></div><div class="story-card-name">${esc(c.name)}</div><div class="story-card-stats"><span class="text-orange-400">${ic('atk', { cls: 'ui-ic-sm' })}${fmt(c.ATK)}</span><span class="text-red-400">${ic('hp', { cls: 'ui-ic-sm' })}${fmt(c.HP)}</span><span class="text-sky-400">${ic('def', { cls: 'ui-ic-sm' })}${fmt(c.DEF)}</span></div>${extra}</div>`;
+  const rcls = c => `rar-${(RAR[c?.grade] || 'N').toLowerCase()}`;
+  const tile = (c, extra = '') => `<div class="story-card ${rcls(c)}"><div class="story-card-img"><img src="${IMG}${c.id}.webp" alt="${esc(c.name)}" loading="lazy" onerror="this.style.visibility='hidden'"><span class="story-rar">${RAR[c.grade] || 'N'}</span></div><div class="story-card-name">${esc(c.name)}</div><div class="story-card-stats"><span class="text-orange-400">${ic('atk', { cls: 'ui-ic-sm' })}${fmt(c.ATK)}</span><span class="text-red-400">${ic('hp', { cls: 'ui-ic-sm' })}${fmt(c.HP)}</span><span class="text-sky-400">${ic('def', { cls: 'ui-ic-sm' })}${fmt(c.DEF)}</span></div>${extra}</div>`;
 
   // 바깥 클릭으로 닫히는 팝업
   function popup(html, onClose) {
@@ -367,6 +369,22 @@
     }
     return null;
   }
+  // ----- 인연: data/combos.json 의 특정 조합. 보유한 카드는 공개, 없는 카드는 실루엣 -----
+  const combosAll = () => window.TCG?.combos?.() || [];
+  const bondEff = b => { const k = [b.atk && 'ATK', b.def && 'DEF', b.hp && 'HP'].filter(Boolean).join('·'); return `${b.scope === 'all' ? '아군 전체' : '조합 카드'} ${k} +${Math.round((b.value || 0) * 100)}%`; };
+  function bondStats() { const have = new Set(save.owned.map(o => o.id)), list = combosAll(); return { total: list.length, done: list.filter(b => b.cards.every(id => have.has(String(id)))).length }; }
+  function renderBonds() {
+    const have = new Set(save.owned.map(o => o.id)), list = combosAll().map(b => ({ ...b, n: b.cards.filter(id => have.has(String(id))).length }))
+      .sort((a, b) => (b.n === b.cards.length) - (a.n === a.cards.length) || b.n / b.cards.length - a.n / a.cards.length);
+    const st = bondStats();
+    show(`${topBar('🤝 인연', 'hub')}<div class="text-center text-sm text-zinc-400 my-2">특정 카드가 함께 필드에 있으면 발동해요 · 완성 ${st.done}/${st.total}</div>
+      <div class="story-bonds">${list.map(b => { const full = b.n === b.cards.length;
+        return `<div class="story-bond ${full ? 'full' : ''}"><div class="story-bond-h"><b>${esc(b.name)}</b><span class="story-bond-n">${b.n}/${b.cards.length}${full ? ' ✔' : ''}</span></div>
+          <div class="story-bond-cards">${b.cards.map(id => { const c = card(id), own = have.has(String(id));
+            return `<div class="story-bond-card ${own ? 'own' : 'sil'} ${rcls(c)}"><img src="${IMG}${id}.webp" alt="" loading="lazy" onerror="this.style.visibility='hidden'"><span>${own ? esc(c?.name || '') : '???'}</span></div>`; }).join('')}</div>
+          <div class="story-bond-eff">${esc(bondEff(b))}</div></div>`; }).join('') || '<div class="text-center text-zinc-500">인연 데이터가 없어요</div>'}</div>`);
+    bind();
+  }
   function renderHub() {
     const nx = nextPlay();
     const rows = D.chapters.map((base, i) => {
@@ -382,6 +400,7 @@
       <div class="story-hub-menu">
         <button class="main-btn" data-go="gacha">🎴 카드 뽑기${canDraw() ? '<i class="story-badge">1</i>' : ''}<small class="story-hub-tk">${tickets ? `🎟️ ${tickets}` : ''}</small></button>
         <button class="main-btn" data-go="cards">🃏 내 카드/스탯${save.points ? ` <i class="story-badge">${save.points}</i>` : ''}</button>
+        <button class="main-btn" data-go="bonds">🤝 인연${(() => { const b = bondStats(); return b.total ? ` <small>${b.done}/${b.total}</small>` : ''; })()}</button>
         <button class="main-btn" disabled title="준비 중">📅 이벤트 스토리 <small>준비 중</small></button></div>
     </div>`);
     bind();
@@ -456,12 +475,16 @@
   }
   function pickDeck(ch, ph, enemies) {
     const { forced, exclude } = partyOf(ch, ph), slots = Math.max(0, MAX_PICK() - forced.length);
-    const list = deckInstances().filter(o => !exclude.has(o.id)).sort((a, b) => (b.uid === save.leader) - (a.uid === save.leader) || (boosted(b)?.power || 0) - (boosted(a)?.power || 0));
-    if (list.length <= slots && !forced.length) return battle(ch, ph, enemies, list);
+    const all = deckInstances().filter(o => !exclude.has(o.id));
+    if (all.length <= slots && !forced.length) return battle(ch, ph, enemies, all);
     let last = []; try { last = JSON.parse(localStorage.getItem(PICK_KEY()) || '[]'); } catch {}
-    const valid = new Set(list.map(o => o.uid));
+    const valid = new Set(all.map(o => o.uid));
     let sel = last.filter(u => valid.has(u)).slice(0, slots);
-    if (!sel.length) sel = list.slice(0, slots).map(o => o.uid);
+    if (!sel.length) sel = all.slice().sort((a, b) => (isLeader(b) - isLeader(a)) || (boosted(b)?.power || 0) - (boosted(a)?.power || 0)).slice(0, slots).map(o => o.uid);
+    const deck0 = new Set(sel);   // 현재 덱: 창을 연 순간의 출전 카드 (고르는 동안 자리가 바뀌지 않게)
+    let list = sortInst(all, deck0);
+    /** 출전 카드 타일: 등급·별·기술 수·레벨·이름 */
+    const pickTile = o => { const c = boosted(o), n = skillsOf(o.id).length; return `<div class="story-card story-pick-tile ${rcls(c)}"><div class="story-card-img"><img src="${IMG}${c.id}.webp" alt="${esc(c.name)}" loading="lazy" onerror="this.style.visibility='hidden'"><span class="story-rar">${RAR[c.grade] || 'N'}</span>${window.rarityStars?.(c, exOf(o) ? 'ex' : 'base', 'rstars-over rstars-sm') || ''}${n ? `<span class="story-skn" title="기술 ${n}개">✦${n}</span>` : ''}${deck0.has(o.uid) ? '<span class="story-curdeck">현재 덱</span>' : ''}</div><div class="story-card-name">${esc(c.name)}</div><div class="text-[11px] text-zinc-300 font-bold">Lv.${norm({ ...o }).level}${isLeader(o) ? ` · ${ic('crown', { alt: '' })} 리더` : ''}</div></div>`; };
     const boss = ph.type === 'boss';
     const fTile = o => { const c = boosted(o); return `<div class="story-pick-card on locked" title="이번 페이즈 필수 출전">${tile(c, `<div class="text-[10px] ${isGuest(o) ? 'text-sky-300' : 'text-zinc-400'}">Lv.${norm({ ...o }).level}${isGuest(o) ? ' · 게스트' : ''}</div>`)}<i class="story-pick-check">🔒</i></div>`; };
     const draw = () => {
@@ -469,8 +492,8 @@
         <div class="text-xs text-zinc-400 mb-2">고른 카드가 모두 필드에서 시작해요. 손패·드로우는 없고, 내 카드가 모두 쓰러지면 패배예요.${boss ? '<br>👑 보스전: 보스는 진영 안에서 쓰러지지 않아요. 상대 진영 HP를 0으로!' : ''}</div>
         ${forced.length ? `<div class="story-forced-h">${ic('crown', { alt: '' })} 필수 출전 ${forced.length}장 <small>(게스트는 리더 레벨로 함께 싸우고, 전투 EXP는 받지 않아요)</small></div><div class="story-grid story-deckpick story-forced">${forced.map(fTile).join('')}</div>
           <div class="story-forced-h">나머지 ${slots}장 고르기${[...exclude].filter(id => !forced.some(o => o.id === id)).map(id => card(id)).filter(Boolean).map(c => ` · <span class="text-red-300">${esc(c.name)} 출전 불가</span>`).join('')}</div>` : ''}
-        <div class="story-grid story-deckpick">${list.map(o => { const c = boosted(o), on = sel.includes(o.uid);
-          return `<button class="story-pick-card ${on ? 'on' : ''}" data-pick="${o.uid}">${tile(c, `<div class="text-[10px] text-zinc-400">Lv.${norm({ ...o }).level}${o.uid === save.leader ? ` · ${ic('crown', { alt: '' })} 리더` : ''}</div>`)}${on ? '<i class="story-pick-check">✔</i>' : ''}</button>`; }).join('')}</div>
+        ${sortBar()}<div class="story-grid story-deckpick">${list.map(o => { const on = sel.includes(o.uid);
+          return `<button class="story-pick-card ${on ? 'on' : ''}" data-pick="${o.uid}">${pickTile(o)}${on ? '<i class="story-pick-check">✔</i>' : ''}</button>`; }).join('')}</div>
         ${(() => { const lo = byUid(save.leader); if (!lo) return ''; const inF = forced.some(f => f.uid === lo.uid), out = inF ? '' : exclude.has(lo.id) ? '이번 페이즈에는 리더가 출전할 수 없어 리더 스킬이 꺼져요' : !sel.includes(lo.uid) ? '리더를 출전시키지 않으면 리더 스킬이 꺼져요' : ''; return out ? `<div class="story-hint">${ic('crown', { alt: '' })} ${out}</div>` : `<div class="text-[11px] text-amber-200 mt-2">${ic('crown', { alt: '' })} 리더 스킬 켜짐: ${esc(leaderEff(lo.id)?.text || '')}</div>`; })()}
         <div class="flex gap-2 mt-3 story-pop-actions"><button class="story-back flex-1" data-close-pop>취소</button><button class="story-btn flex-1" id="story-deck-ok" ${sel.length || forced.length ? '' : 'disabled'}>출전 (${forced.length + sel.length}장)</button></div>`, () => renderMap());
       p.el.querySelectorAll('[data-pick]').forEach(b => b.onclick = () => {
@@ -480,6 +503,7 @@
         else { toast(`최대 ${MAX_PICK()}장까지 출전할 수 있어요.`); return; }
         p.close(true); draw();
       });
+      p.el.querySelectorAll('[data-sort]').forEach(b => b.onclick = () => { setSort(b.dataset.sort); list = sortInst(all, deck0); p.close(true); draw(); });
       $('story-deck-ok').onclick = () => { if (!sel.length && !forced.length) return; try { localStorage.setItem(PICK_KEY(), JSON.stringify(sel)); } catch {} p.close(true); battle(ch, ph, enemies, [...forced, ...list.filter(o => sel.includes(o.uid))]); };
     };
     draw();
@@ -508,7 +532,7 @@
 
   async function result(ch, ph, win, reason, st = {}) {
     if (!win) {
-      show(`<div class="text-center py-10"><div class="story-chapter-big text-red-400">DEFEAT</div><div class="text-zinc-300 mt-2">${reason === 'wipe' ? '내 필드 카드가 모두 쓰러졌어요.' : reason === 'timeout' ? (ph.type === 'boss' ? '턴 제한 안에 상대 진영을 무너뜨리지 못했어요.' : '턴 제한 안에 적을 모두 쓰러뜨리지 못했어요.') : '패배했어요.'} 스탯을 올리고 다시 도전해 보세요!</div>
+      show(`<div class="text-center py-10"><div class="story-chapter-big text-red-400">DEFEAT</div><div class="text-zinc-300 mt-2">${reason === 'giveup' ? '도전을 포기했어요.' : reason === 'wipe' ? '내 필드 카드가 모두 쓰러졌어요.' : reason === 'timeout' ? (ph.type === 'boss' ? '턴 제한 안에 상대 진영을 무너뜨리지 못했어요.' : '턴 제한 안에 적을 모두 쓰러뜨리지 못했어요.') : '패배했어요.'} 스탯을 올리고 다시 도전해 보세요!</div>
         <div class="flex flex-col gap-2 max-w-xs mx-auto mt-6"><button class="story-btn" id="story-retry">다시 도전</button><button class="story-back" data-go="map">챕터 지도로</button></div></div>`);
       bind(); $('story-retry').onclick = () => startPhase(ch, ph); return;
     }
@@ -654,7 +678,17 @@
     for (const f of key) { const d = f(a) - f(b); if (d) return cardSort.desc ? -d : d; }
     return 0;
   }
+  /** 인스턴스 목록 정렬 (모든 카드 목록 창 공용): 리더 → pin(현재 덱 등) → 고른 정렬 */
+  function sortInst(list, pin = null) {
+    const nw = o => idxOf(o), gr = o => GRADE_ORD.indexOf(card(o.id)?.grade || 'NORMAL'), lv = o => o.level | 0;
+    const key = { new: [nw], grade: [gr, lv, nw], level: [lv, gr, nw] }[cardSort.k];
+    return list.slice().sort((a, b) => (isLeader(b) - isLeader(a)) || (pin ? (pin.has(b.uid) - pin.has(a.uid)) : 0) || (() => { for (const f of key) { const d = f(a) - f(b); if (d) return cardSort.desc ? -d : d; } return 0; })());
+  }
+  /** 팝업 안 정렬 버튼: 누르면 팝업을 다시 그림 */
+  const bindSort = (p, again) => p.el.querySelectorAll('[data-sort]').forEach(b => b.onclick = () => { setSort(b.dataset.sort); p.close(true); again(); });
   const sortBar = () => `<div class="story-sortbar">${Object.entries(SORTS).map(([k, l]) => `<button class="story-chip ${cardSort.k === k ? 'on' : ''}" data-sort="${k}" aria-pressed="${cardSort.k === k}">${l}${cardSort.k === k ? (cardSort.desc ? ' ▼' : ' ▲') : ''}</button>`).join('')}</div>`;
+  /** 내 카드 썸네일: 별(등급) + 이름 + 현재 레벨만 */
+  const ownTile = (o, c, badges = '', after = '') => `<div class="story-card story-own-tile ${rcls(c)}"><div class="story-card-img"><img src="${IMG}${c.id}.webp" alt="${esc(c.name)}" loading="lazy" onerror="this.style.visibility='hidden'">${window.rarityStars?.(c, exOf(o) ? 'ex' : 'base', 'rstars-over rstars-sm') || ''}${isLeader(o) ? `<span class="story-own-leader" title="리더">${ic('crown', { alt: '리더' })}</span>` : ''}${o.cpts ? `<div class="story-cpts">+${o.cpts}</div>` : ''}${badges}</div><div class="story-card-name">${esc(exName(o, c.name.replace(/^\[EX\d+\] /, '')))}</div><div class="story-own-lv">Lv.${o.level}</div>${after}</div>`;
   function renderCards() {
     const k = D.statPerPoint; save.owned.forEach(norm);
     const anyPts = save.points || cptsTotal(), gs = groups();
@@ -664,7 +698,7 @@
       ${gs.length > 1 ? sortBar() : ''}<div class="story-grid">${gs.map(gr => { const o = gr.rep, c = boosted(o); if (!c) return ''; const b = o.boost || {}, n = gr.list.length, open = openGroups.has(gr.id);
         const up = STATS.filter(s => b[s]).map(s => `${s} +${ptGain(s, b[s])}`).join(' · ');
         const mergeable = gr.list.some(canMerge);
-        return `<div class="story-group ${open ? 'open' : ''}"><div data-uid="${o.uid}" class="story-owned">${tile(c, `${n > 1 ? `<div class="story-dup">x${n}</div>` : ''}${o.cpts ? `<div class="story-cpts">+${o.cpts}</div>` : ''}${gr.list.some(x => x.locked && !isLeader(x)) ? '<div class="story-lockbadge" title="분해 잠금">🔒</div>' : ''}${exOf(o) ? `<div class="story-exbadge">EX${exOf(o)}</div>` : ''}${lvBar(o)}<div class="text-[10px] text-emerald-300 h-3">${isLeader(o) ? ic('crown', { alt: '' }) + ' 리더 ' : n > 1 ? '⚔️ 출전 ' : ''}${up}</div>${mergeable ? `<button class="story-merge-mini" data-merge="${(gr.list.find(canMerge)).uid}">${ic('merge', { alt: '' })} 합성</button>` : ''}${n > 1 ? `<button class="story-expand" data-expand="${gr.id}">${open ? '▴ 접기' : `▾ ${n}장 모두 보기`}</button>` : ''}<div class="story-equip"><span>🗡️ 무기</span><span>🛡️ 방어구</span><em>준비 중</em></div>`)}</div>
+        return `<div class="story-group ${open ? 'open' : ''}"><div data-uid="${o.uid}" class="story-owned">${ownTile(o, c, `${n > 1 ? `<div class="story-dup">x${n}</div>` : ''}${gr.list.some(x => x.locked && !isLeader(x)) ? '<div class="story-lockbadge" title="분해 잠금">🔒</div>' : ''}`, `${mergeable ? `<button class="story-merge-mini" data-merge="${(gr.list.find(canMerge)).uid}">${ic('merge', { alt: '' })} 합성</button>` : ''}${n > 1 ? `<button class="story-expand" data-expand="${gr.id}">${open ? '▴ 접기' : `▾ ${n}장 모두 보기`}</button>` : ''}`)}</div>
           ${open ? `<div class="story-copies">${gr.list.map(x => `<button class="story-copy" data-uid="${x.uid}"><span class="font-bold">${isLeader(x) ? ic('crown', { alt: '리더' }) + ' ' : x === o ? '⚔️ ' : ''}${x.locked && !isLeader(x) ? '🔒 ' : ''}Lv.${x.level}${exOf(x) ? ` <i class="text-red-300 not-italic">EX${exOf(x)}</i>` : ''}</span><span class="text-[10px] text-zinc-400">${ic('atk', { cls: 'ui-ic-sm' })}${fmt(statCalc(x, 'ATK'))} ${ic('hp', { cls: 'ui-ic-sm' })}${fmt(statCalc(x, 'HP'))} ${ic('def', { cls: 'ui-ic-sm' })}${fmt(statCalc(x, 'DEF'))}</span></button>`).join('')}</div>` : ''}</div>`; }).join('')}</div>
       ${anyPts ? '<div class="text-center mt-4"><button class="story-btn" data-go="stats">📈 스탯 분배하기</button></div>' : ''}`);
     bind({ stats: () => openStats(renderCards), bulk: () => bulkDiscard(), leader: () => pickLeader() });
@@ -691,7 +725,8 @@
       ${(() => { const le = leaderEff(o.id); return le ? `<div class="story-leader-eff ${isLeader(o) ? 'on' : ''}">${ic('crown', { alt: '' })} <b>리더 스킬</b> <small>${esc(le.label)}</small><div>${esc(le.text)}</div>${isLeader(o) ? '' : '<small class="text-zinc-500">이 카드를 리더로 하면 적용돼요</small>'}</div>` : ''; })()}
       <div class="flex gap-2 mt-2"><button id="story-d-lock" class="flex-1 py-2 rounded-xl bg-zinc-700 font-bold text-sm" ${isLeader(o) ? 'disabled' : ''}>${isLeader(o) ? '🔒 리더 자동 잠금' : o.locked ? '🔓 잠금 해제' : '🔒 분해 잠금'}</button>
       ${isLeader(o) ? '' : `<button id="story-d-leader" class="flex-1 py-2 rounded-xl bg-amber-500/90 text-black font-bold text-sm" ${leaderUnlocked() ? '' : 'disabled'}>${ic('crown', { alt: '' })} ${leaderUnlocked() ? '리더로 지정' : '리더 변경: 챕터 1 클리어 후'}</button>`}</div>
-      ${isLocked(o) ? `<div class="text-[11px] text-zinc-500 mt-2 text-center">${isLeader(o) ? '리더 카드는 자동으로 잠겨 분해·합성 재료로 쓸 수 없어요' : '잠긴 카드는 분해·합성 재료로 쓸 수 없어요'}</div>` : ''}`, renderCards);
+      ${isLocked(o) ? `<div class="text-[11px] text-zinc-500 mt-2 text-center">${isLeader(o) ? '리더 카드는 자동으로 잠겨 분해·합성 재료로 쓸 수 없어요' : '잠긴 카드는 분해·합성 재료로 쓸 수 없어요'}</div>` : ''}
+      ${skillsOf(o.id).length ? `<div class="story-detail-skills"><div class="text-sm font-black mt-4">보유 기술 ${skillsOf(o.id).length}개</div>${window.TCG?.skillListHTML?.(c, o.level) || ''}</div>` : ''}`, renderCards);
     $('story-d-lock').onclick = () => { p.close(true); setLock(o.uid, !o.locked); };
     { const lb = $('story-d-leader'); if (lb) lb.onclick = () => { p.close(true); confirmLeader(o.uid, () => cardDetail(o.uid)); }; }
     $('story-d-stats').onclick = () => { p.close(true); openStats(renderCards, idxOf(o)); };
@@ -751,13 +786,14 @@
   function pickLeader() {
     if (!leaderUnlocked()) return toast('리더 변경은 챕터 1을 클리어하면 열려요.');
     save.owned.forEach(norm);
-    const list = groups().map(gr => gr.list[0]).filter(Boolean);
-    const p = popup(`<div class="text-lg font-black mb-1">${ic('crown', { alt: '' })} 리더 변경</div>
+    const list = sortInst(groups().map(gr => gr.list[0]).filter(Boolean));
+    const p = popup(`<div class="text-lg font-black mb-1">${ic('crown', { alt: '' })} 리더 변경</div>${sortBar()}
       <div class="text-xs text-zinc-400 mb-2">리더 스킬(속성 + 클래스)은 리더가 출전해 필드에 있는 동안 아군 전체에 적용돼요. 리더가 쓰러지면 해제되고 아군 진영 HP −${pc(D.leader?.deathPenalty ?? 0.3)}%.</div>
       <div class="story-target-list">${list.map(o => { const c = card(o.id), le = leaderEff(o.id);
         return `<button data-ld="${o.uid}" class="story-target ${isLeader(o) ? 'cur' : ''}" ${isLeader(o) ? 'disabled' : ''}><img src="${IMG}${o.id}.webp" alt=""><div class="flex-1 min-w-0 text-left"><div class="text-sm font-bold truncate">${isLeader(o) ? ic('crown', { alt: '리더' }) + ' ' : ''}${esc(exName(o, c?.name))} <span class="text-[10px] text-zinc-400">${RAR[c?.grade] || 'N'} · Lv.${o.level}</span></div><div class="text-[11px] text-amber-200">${esc(le?.label || '')} · ${esc(le?.text || '')}</div></div><span class="text-emerald-300 text-sm">${isLeader(o) ? '현재' : '선택 ›'}</span></button>`; }).join('')}</div>
       <button data-close-pop class="w-full mt-3 py-2.5 rounded-xl bg-zinc-700 font-bold">취소</button>`, renderCards);
     p.el.querySelectorAll('[data-ld]').forEach(b => b.onclick = () => { p.close(true); confirmLeader(b.dataset.ld, pickLeader); });
+    bindSort(p, pickLeader);
   }
   function confirmLeader(u, back) {
     const o = byUid(u), c = card(o?.id), le = leaderEff(o?.id); if (!o || isLeader(o) || isGuest(o)) return renderCards();
@@ -782,8 +818,8 @@
   /** 일괄 분해 1단계: EXP 받을 카드 고르기 (기본 선택 없음) */
   function bulkPickTarget(st = {}) {
     save.owned.forEach(norm);
-    const list = groups().flatMap(gr => gr.list);
-    const p = popup(`<div class="text-lg font-black mb-1">${ic('discard', { alt: '' })} 일괄 분해</div>
+    const list = sortInst(save.owned);
+    const p = popup(`<div class="text-lg font-black mb-1">${ic('discard', { alt: '' })} 일괄 분해</div>${sortBar()}
       <div class="story-bulk-steps"><b class="on">① EXP 받을 카드</b><span>② 분해할 카드</span></div>
       <div class="text-xs text-zinc-400 mb-2">먼저 <b class="text-emerald-300">EXP를 받을 카드</b>를 골라 주세요. 그다음 분해할 카드를 고를 수 있어요.</div>
       <div class="story-target-list">${list.map(o => { const c = card(o.id);
@@ -791,6 +827,7 @@
       <button class="w-full mt-3 py-2.5 rounded-xl bg-red-500 font-bold" disabled>② 분해할 카드 고르기</button>
       <button data-close-pop class="w-full mt-2 py-2.5 rounded-xl bg-zinc-700 font-bold">취소</button>`, renderCards);
     p.el.querySelectorAll('[data-bt]').forEach(b => b.onclick = () => { p.close(true); bulkDiscard({ ...st, tu: b.dataset.bt, scroll: 0 }); });
+    bindSort(p, () => bulkPickTarget(st));
   }
   function bulkDiscard(st = {}) {
     save.owned.forEach(norm);
@@ -799,7 +836,7 @@
     const tgt = byUid(tu), locked = o => o.uid === tu || isLocked(o);
     for (const k of [...sel]) { const o = byUid(k); if (!o || locked(o)) sel.delete(k); }
     const f = bulkCalc(sel, tgt), g = gainCalc(tgt, f.amt);
-    const list = groups().flatMap(gr => gr.list);
+    const list = sortInst(save.owned);
     const grades = Object.keys(RAR).filter(gr => save.owned.some(o => !locked(o) && card(o.id)?.grade === gr));
     const spare = o => !locked(o) && copiesOf(o.id).length > 1 && repOf(o.id) !== o;
     const p = popup(`<div class="text-lg font-black mb-1">${ic('discard', { alt: '' })} 일괄 분해</div>
@@ -807,7 +844,7 @@
       <div class="story-bulk-tgt"><img src="${IMG}${tgt.id}.webp" alt=""><div class="flex-1 min-w-0 text-left"><div class="text-[11px] text-emerald-300 font-bold">EXP 받을 카드</div><div class="text-lg font-black truncate">${isLeader(tgt) ? ic('crown', { alt: '리더' }) + ' ' : ''}${esc(exName(tgt, card(tgt.id)?.name))}</div><div class="text-xs text-zinc-400">${RAR[card(tgt.id)?.grade] || 'N'} · Lv.${tgt.level} / ${lvCap(tgt)}</div></div><button id="bulk-change" class="story-chip">바꾸기</button></div>
       <div class="text-xs text-zinc-400 mb-1">고른 카드를 모두 분해하고, EXP를 위 카드에 몰아줘요</div>
       <div class="flex flex-wrap gap-1.5 my-2"><button class="story-chip" data-q="all">전체 선택</button>${save.owned.some(spare) ? '<button class="story-chip" data-q="spare">출전 안 하는 중복만</button>' : ''}${grades.map(gr => `<button class="story-chip" data-q="${gr}">${RAR[gr]} 전체</button>`).join('')}<button class="story-chip" data-q="none">선택 해제</button></div>
-      <div class="story-bulk-list" id="bulk-list">${list.map(o => { const c = card(o.id), lk = locked(o), on = sel.has(o.uid);
+      ${sortBar()}<div class="story-bulk-list" id="bulk-list">${list.map(o => { const c = card(o.id), lk = locked(o), on = sel.has(o.uid);
         return `<div class="story-bulk-row ${lk ? 'lock' : ''} ${on ? 'on' : ''}" ${lk ? '' : `data-row="${o.uid}"`}><input type="checkbox" ${on ? 'checked' : ''} ${lk ? 'disabled' : ''}><img src="${IMG}${o.id}.webp" alt=""><div class="flex-1 min-w-0"><div class="text-sm font-bold truncate">${esc(exName(o, c?.name))} <span class="text-[10px] text-zinc-400">${RAR[c?.grade] || 'N'} · Lv.${o.level}</span>${c?.name === card(tgt.id)?.name && !lk ? ' <span class="text-amber-300 text-[10px]">×1.5</span>' : ''}</div><div class="text-[10px] text-zinc-500">${lk ? (o.uid === tu ? 'EXP 받을 카드' : isLeader(o) ? '리더 · 분해 불가' : '🔒 잠금 · 분해 불가') : `${repOf(o.id) === o ? '⚔️ 출전 카드 · ' : ''}누적 EXP ${fmt(o.totalExp)}`}</div></div></div>`; }).join('')}</div>
       <div class="story-bulk-sum">${f.n ? `<b>${f.n}장</b> 선택 · EXP <b class="text-sky-300">+${fmt(f.amt)}</b>${f.same ? ` <span class="text-amber-300 text-[11px]">(같은 이름 ${f.same}장 ×1.5)</span>` : ''}<br>${esc(exName(tgt, card(tgt.id)?.name))} Lv.${tgt.level} → <b class="text-emerald-300">Lv.${g.level}</b> · 스탯 +${lvPct(tgt)}% → +${lvPct({ id: tgt.id, level: g.level })}%${f.refund ? `<br><span class="text-emerald-300 text-[11px]">공용 포인트 ${f.refund} 돌려받음</span>` : ''}` : '<span class="text-zinc-500">분해할 카드를 골라 주세요</span>'}</div>
       ${g.wasted && f.n ? `<div class="story-warn">⚠️ 최대 레벨(Lv.${lvCap(tgt)})을 넘는 EXP ${fmt(g.wasted)}은 사라져요.</div>` : ''}
@@ -821,6 +858,7 @@
       re(); });
     p.el.querySelectorAll('[data-row]').forEach(r => r.onclick = () => { const k = r.dataset.row; sel.has(k) ? sel.delete(k) : sel.add(k); re(); });
     $('bulk-ok').onclick = () => { if (f.n) { p.close(true); confirmBulk(tu, sel, f, g, box.scrollTop); } };
+    bindSort(p, () => bulkDiscard({ tu, sel, scroll: 0 }));
   }
   const canMergeAny = o => copiesOf(o.id).length > 1 && exOf(o) < maxEx(o);
   function confirmBulk(tu, sel, f, g, scroll) {
@@ -848,12 +886,13 @@
   // ----- 1장 분해: EXP를 받을 카드 고르기 -----
   function pickTarget(su) {
     const src = byUid(su), sc = card(src.id);
-    const targets = groups().flatMap(gr => gr.list).filter(o => o.uid !== su);
-    const p = popup(`<div class="text-lg font-black mb-1">${ic('discard', { alt: '' })} ${esc(exName(src, sc?.name))} Lv.${src.level} 분해</div><div class="text-xs text-zinc-400 mb-3">EXP를 받을 카드를 골라 주세요</div>
+    const targets = sortInst(save.owned.filter(o => o.uid !== su));
+    const p = popup(`<div class="text-lg font-black mb-1">${ic('discard', { alt: '' })} ${esc(exName(src, sc?.name))} Lv.${src.level} 분해</div><div class="text-xs text-zinc-400 mb-3">EXP를 받을 카드를 골라 주세요</div>${sortBar()}
       <div class="story-target-list">${targets.map(o => { const c = card(o.id), f = feedCalc(src, o), g = gainCalc(o, f.amt);
         return `<button data-t="${o.uid}" class="story-target"><img src="${IMG}${o.id}.webp" alt=""><div class="flex-1 min-w-0 text-left"><div class="text-sm font-bold truncate">${isLeader(o) ? ic('crown', { alt: '리더' }) + ' ' : ''}${esc(exName(o, c?.name))}${f.same ? ' <span class="text-amber-300 text-[10px]">같은 이름 ×1.5</span>' : ''}</div><div class="text-[11px] text-zinc-400">Lv.${o.level} → <b class="${g.level > o.level ? 'text-emerald-300' : ''}">Lv.${g.level}</b> · EXP +${fmt(f.amt)}${g.wasted ? ` <span class="text-red-300">(${fmt(g.wasted)} 낭비)</span>` : ''}</div></div></button>`; }).join('')}</div>
       <button data-close-pop class="w-full mt-3 py-2.5 rounded-xl bg-zinc-700 font-bold">취소</button>`, renderCards);
     p.el.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { p.close(true); confirmDiscard(su, b.dataset.t); });
+    bindSort(p, () => pickTarget(su));
   }
   function confirmDiscard(su, tu) {
     const src = byUid(su), tgt = byUid(tu), sc = card(src.id), tc = card(tgt.id), f = feedCalc(src, tgt), g = gainCalc(tgt, f.amt);

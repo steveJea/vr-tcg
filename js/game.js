@@ -86,6 +86,9 @@ function startGame(story = null) {
   S.mercOffer = story ? [] : Merc.roll(POOL, S.me);
   // 스토리: 내 진영 없음(일반·보스 공통). 상대 진영은 보스전에만 존재
   S.me.noBase = !!story; S.ai.noBase = story?.win === 'wipe';
+  S.me.noActs = S.ai.noActs = !!story;   // 스토리: 마나 가속기·공격력 강화·필드 회복 없음
+  for (const t of ['accel', 'buff', 'fieldheal']) $(`act-${t}`)?.classList.toggle('hidden', !!story);
+  $('story-giveup')?.classList.toggle('hidden', !story);
   for (const w of ['me', 'ai']) { $(`${w}-hp`).classList.toggle('hidden', S[w].noBase); $(`${w}-hpbar`).parentElement.classList.toggle('hidden', S[w].noBase); }
   $('game').classList.toggle('story-field', !!story);
   setBattleBg(story?.win === 'ko' ? 'boss' : 'normal'); preloadHit();
@@ -945,7 +948,7 @@ function showDetail(c, { fromHand = false, hp, unit = null, view = null } = {}) 
   showModal('detail');
 }
 
-function skillListHTML(c, unit, myTurn) {
+function skillListHTML(c, unit, myTurn, lv = 1) {
   const list = unit ? unit.sk : skillsOf(c.id);
   const mine = unit && unit.owner === S.me;
   const head = unit ? `<div class="mt-3 flex items-center gap-2 text-xs"><span class="text-blue-300 font-bold">MP ${unit.mp}/${unit.maxMp}</span><div class="flex-1 h-2 bg-white/10 rounded-full overflow-hidden"><div class="h-full bg-blue-500" style="width:${unit.mp / unit.maxMp * 100}%"></div></div><span class="text-zinc-400">턴당 +${unit.mpRegen}</span></div>` +
@@ -953,7 +956,7 @@ function skillListHTML(c, unit, myTurn) {
   if (!list.length) return head;
   return head + `<div class="mt-3 space-y-2 max-h-64 overflow-y-auto pr-1">${list.map((s, i) => {
     const st = unit ? skillState(unit, s) : { ok: false, reason: `Lv${s.unlock} 해금` };
-    const locked = (unit ? unit.level : 1) < s.unlock;
+    const locked = (unit ? unit.level : lv) < s.unlock;
     return `<div class="rounded-xl p-2 ${locked ? 'bg-zinc-800/50 opacity-60' : 'bg-zinc-800'}">
       <div class="flex items-center gap-1.5 flex-wrap"><span class="px-1.5 rounded text-[10px] font-bold ${TYPE_COLOR[s.type] || 'bg-zinc-600'}">${s.type}</span><span class="text-[10px] text-zinc-400">${s.mode === 'active' ? '액티브' : '패시브'}</span><span class="font-bold text-sm">${s.name}</span>
         <span class="ml-auto text-[10px] text-zinc-400">${locked ? '🔒' : ''}Lv${s.unlock}${s.mode === 'active' ? ` · MP ${s.mp} · 쿨 ${s.cooldown}` : ''}</span></div>
@@ -1039,6 +1042,16 @@ renderSkipBtn();
 $('share-btn').onclick = shareResult;
 $('restart-btn').onclick = () => { renderStats(); startGame(); };
 /** 스토리 모드 전투 시작 (js/story.js에서 호출) */
+/** 스토리 [도전 포기]: 확인 후 패배 처리 */
+function giveUp() {
+  if (!S?.story || S.over) return;
+  let ov = $('giveup-confirm');
+  if (!ov) { ov = document.createElement('div'); ov.id = 'giveup-confirm'; ov.className = 'fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4'; document.body.appendChild(ov); }
+  ov.innerHTML = `<div class="giveup-box bg-zinc-900 border border-white/15 rounded-2xl p-5 max-w-xs w-full text-center"><div class="text-lg font-black mb-1">도전을 포기할까요?</div><div class="text-sm text-zinc-400 mb-4">패배로 처리돼요. 전투 EXP·보상은 받지 않아요.</div><div class="flex gap-2"><button class="flex-1 py-2.5 rounded-xl bg-zinc-700 font-bold" data-gu="no">계속 싸우기</button><button class="flex-1 py-2.5 rounded-xl bg-red-600 font-bold" data-gu="yes">포기</button></div></div>`;
+  ov.classList.remove('hidden');
+  ov.onclick = e => { const b = e.target.closest('[data-gu]'); if (!b && e.target.closest('.giveup-box')) return; ov.classList.add('hidden'); if (b?.dataset.gu === 'yes' && !S.over) finish(false, 'giveup'); };
+}
+$('story-giveup')?.addEventListener('click', giveUp);
 function startStory(cfg) { hideModal('detail'); startGame(cfg); }
 $('home-btn').onclick = () => { $('end-screen').classList.add('hidden'); $('game').classList.add('hidden'); $('start-screen').classList.remove('hidden'); renderStats(); };
 renderStats();
@@ -1087,4 +1100,4 @@ function zoomFromBtn(b) {
 document.addEventListener('click', e => { const b = e.target.closest?.('.zoom-btn'); if (!b) return; e.stopPropagation(); e.preventDefault(); zoomFromBtn(b); }, true);
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('zoom-view')?.classList.contains('open')) { e.stopPropagation(); closeZoom(); } }, true);
 
-window.TCG = { voiceTest(k) { if (!voiceSet?.has(k)) return false; const a = voiceAudio(k); a.volume = voiceVol; a.currentTime = 0; voiceCur = a; a.play().catch(() => {}); return true; }, get voiceActive() { return voiceActive.size; }, get voice() { return { on: voiceOn, vol: voiceVol, cur: voiceCur && { src: voiceCur.src, paused: voiceCur.paused, t: voiceCur.currentTime }, set: voiceSet && voiceSet.size }; }, openZoom, closeZoom, dupCheck, get errors() { return window.TCG_ERRORS || []; }, cutIn, passiveCutIn, sortedHand, get handSort() { return handSort; }, put: debugPut, castSkill, skillState, get S() { return S; }, RULES, elementMultiplier, calcDamage, canSummon, buildDeck, summon, attack, recall, attackAll, endTurn, canRecall, recallCost, makeUnit, resolveAttack, useAction, canAction, startGame, startStory, cardHTML, get ready() { return POOL.length > 0; }, equipItem, doSacrifice, finish, attackTargets, get POOL() { return POOL; }, render, Stats };
+window.TCG = { skillsOf, combos, skillListHTML: (c, lv) => skillListHTML(c, null, false, lv), voiceTest(k) { if (!voiceSet?.has(k)) return false; const a = voiceAudio(k); a.volume = voiceVol; a.currentTime = 0; voiceCur = a; a.play().catch(() => {}); return true; }, get voiceActive() { return voiceActive.size; }, get voice() { return { on: voiceOn, vol: voiceVol, cur: voiceCur && { src: voiceCur.src, paused: voiceCur.paused, t: voiceCur.currentTime }, set: voiceSet && voiceSet.size }; }, openZoom, closeZoom, dupCheck, get errors() { return window.TCG_ERRORS || []; }, cutIn, passiveCutIn, sortedHand, get handSort() { return handSort; }, put: debugPut, castSkill, skillState, get S() { return S; }, RULES, elementMultiplier, calcDamage, canSummon, buildDeck, summon, attack, recall, attackAll, endTurn, canRecall, recallCost, makeUnit, resolveAttack, useAction, canAction, startGame, startStory, cardHTML, get ready() { return POOL.length > 0; }, equipItem, doSacrifice, finish, attackTargets, get POOL() { return POOL; }, render, Stats };

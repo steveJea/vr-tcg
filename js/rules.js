@@ -346,9 +346,12 @@ export function judgeTimeout(a, b) {
 export const JUDGE_LABEL = { ko: 'KO', hp: '진영 HP 우세', cards: '남은 카드 수 우세', draw: '무승부' };
 
 /** 액션 사용 가능 여부 */
+/** 스토리 전투에서 쓰지 않는 고유기술 (양쪽 모두) */
+export const STORY_NO_ACTS = new Set(['accel', 'buff', 'fieldheal']);
 export function canAction(type, p) {
   const cost = ACTIONS[type].cost();
   if (type === 'heal' && p.noBase) return { ok: false, cost, reason: '일반전 불가' };
+  if (p.noActs && STORY_NO_ACTS.has(type)) return { ok: false, cost, reason: '스토리 불가' };
   if (p.actionLock > 0) return { ok: false, cost, reason: '고유기술 봉인' };
   if (type === 'accel' && (p.accel || 0) >= RULES.ACCEL_MAX) return { ok: false, cost, reason: `최대 ${RULES.ACCEL_MAX}회` };
   if (type !== 'accel' && p.used?.[type]) return { ok: false, cost, reason: '이번 턴 사용함' };
