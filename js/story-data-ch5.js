@@ -1,9 +1,9 @@
-// ===== 스토리 챕터 5 「멈추지 않는 비」 (대본: vroyale/story/ch5_gyeoul.md, 글 문학순이 → python3 tools/ch5_import.py <파일> 로 생성. 직접 고쳐도 됨) =====
+// ===== 스토리 챕터 5 「영원히 멈추지 않는 비」 (대본: vroyale/story/ch5_gyeoul.md, 글 문학순이 → python3 tools/ch5_import.py <파일> 로 생성. 직접 고쳐도 됨) =====
 // 단일 루트(single): 주인공 한겨울 (페이즈 10 은 진하린). party: banClass(속성 출전 불가) · maxGrade. enemies.boost: 스토리 전용 적 능력치. rules.undying: 쓰러지지 않는 적
 window.STORY_DATA.chapters.push({
  "id": 5,
  "title": "CHAPTER 5",
- "subtitle": "멈추지 않는 비",
+ "subtitle": "영원히 멈추지 않는 비",
  "rewardCard": null,
  "hero": "2000600116",
  "single": true,
