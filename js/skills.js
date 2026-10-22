@@ -171,6 +171,7 @@ const skScale = v => SKC ? v * SKC.m : v;
 
 export function damageUnit(target, dmg, src = null, { silent = false } = {}) {
   if (!target.owner.field.includes(target)) return 0;
+  if (target.noDamage) { emit({ type: 'immune', unit: target }); return 0; }   // 스토리 규칙: 피해를 입지 않음 (챕터 4 각성 이민채)
   if (SKC && src === SKC.u && src.owner !== target.owner && dmg > 0) dmg = Math.max(1, Math.round(skScale(dmg)));   // 스킬 레벨
   if (target.st.immune) { emit({ type: 'immune', unit: target }); return 0; }
   // 성별 간 피해 (모든 모드·기본 공격·스킬·반격 공통): 남→여 85%, 여→남 105%
@@ -298,7 +299,7 @@ function leaderDown(p, u) {
     emit({ type: 'leaderDown', p, unit: u, dmg, pct, base: true });
     return;
   }
-  const hit = p.field.filter(a => a.hp > 0).map(a => { const dmg = Math.max(1, Math.round(a.maxHp * pct)); a.hp -= dmg; emit({ type: 'dmg', unit: a, dmg }); return [a, dmg]; });
+  const hit = p.field.filter(a => a.hp > 0 && !a.noDamage).map(a => { const dmg = Math.max(1, Math.round(a.maxHp * pct)); a.hp -= dmg; emit({ type: 'dmg', unit: a, dmg }); return [a, dmg]; });
   emit({ type: 'leaderDown', p, unit: u, pct, dmg: hit.reduce((t, [, d]) => t + d, 0), n: hit.length });
   for (const [a] of hit) checkDeath(a, null);
 }

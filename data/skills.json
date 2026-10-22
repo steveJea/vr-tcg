@@ -2844,5 +2844,37 @@
    "fx": "2000000013_2.webp",
    "note": ""
   }
+ ],
+ "2000000022": [
+  {
+   "card": "[각성] 이민채",
+   "name": "사랑해!!!",
+   "type": "공격",
+   "mode": "active",
+   "target": "적 단일",
+   "desc": "랜덤 2인을 공격력 15%로 5회 타격한다.",
+   "value": "15%*5",
+   "duration": 0,
+   "mp": 30,
+   "cooldown": 3,
+   "unlock": 5,
+   "fx": "2000000022_1.webp",
+   "note": "npc"
+  },
+  {
+   "card": "[각성] 이민채",
+   "name": "진짜 진짜 사랑해",
+   "type": "버프",
+   "mode": "passive",
+   "target": "자신",
+   "desc": "1턴 후 부활한다.",
+   "value": "",
+   "duration": 99,
+   "mp": 0,
+   "cooldown": 1,
+   "unlock": 1,
+   "fx": "2000000022_2.webp",
+   "note": "npc"
+  }
  ]
 }
