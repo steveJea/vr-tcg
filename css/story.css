@@ -473,3 +473,7 @@ span.story-lvpct { background: rgba(251,191,36,.12); border: 1px solid rgba(251,
 .cd-ic .ui-ic{width:1.4em;height:1.4em}.cd-ic.stats{background:#10b981}.cd-ic.discard{background:rgba(239,68,68,.8)}
 .cd-ic:disabled,.cd-sm:disabled{opacity:.4}
 .cd-sm{flex:1;height:2.4rem;border-radius:10px;background:#3f3f46;font-weight:700;font-size:12px;white-space:nowrap}.cd-sm.lead{background:rgba(245,158,11,.9);color:#111}
+.cd-img{width:44%;max-width:12rem;filter:drop-shadow(0 6px 14px rgba(0,0,0,.6))}
+.cd-img img{box-shadow:0 0 0 1px rgba(255,255,255,.15)}
+.cd-sm.merge{background:linear-gradient(90deg,#dc2626,#f97316);color:#fff;flex:none;padding:0 10px}
+.cd-sm .ui-ic{width:1.2em;height:1.2em;vertical-align:-3px}
