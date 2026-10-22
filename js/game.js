@@ -106,13 +106,17 @@ function startGame(story = null) {
   const ao = story ? ArcadeOpts.DEF : ArcadeOpts.load(), grades = story ? null : allowedGrades(ao);
   const gPool = grades ? POOL.filter(c => grades.has(c.grade)) : null;
   S = { me: newPlayer('나', first !== 'me', story?.me, story?.meHp, fs, grades), ai: newPlayer(story?.aiName || '적군', first !== 'ai', story?.ai, story?.aiHp, fs, grades), opts: ao, maxTurns: story ? RULES.MAX_TURNS : (ao.turns || Infinity), first, story, turn: first, turnNo: 0, totalTurns: 0, myTurns: 0, over: false, busy: false, fxSeen: new Set(), mercBought: 0, mercHired: null, mercOffer: [], log: { dmg: new Map(), total: 0, skills: 0, merc: null, played: new Set(), kills: {} } };
-  S.mercOffer = story ? [] : Merc.roll(gPool || POOL, S.me);
+  // 아케이드 일반대전(기본 설정)만 기지 보강·필드 회복·용병 고용 가능. 스토리·퀘스트·아케이드 변형 설정은 공격력 강화만
+  S.limitedAids = !!story || !ArcadeOpts.isDefault(ao);
+  S.mercOffer = S.limitedAids ? [] : Merc.roll(gPool || POOL, S.me);
   if (gPool) S.me.pool = S.ai.pool = gPool;   // 패 섞기도 허용 등급에서만
   S.me.clearFirst = S.ai.clearFirst = !story && !!ao.clearFirst;   // 카드 먼저 제거: 양측 공통 규칙
   // 스토리: 내 진영 없음(일반·보스 공통). 상대 진영은 보스전에만 존재
   S.me.noBase = !!story; S.ai.noBase = story?.win === 'wipe';
-  S.me.noActs = S.ai.noActs = !!story;   // 스토리: 마나 가속기·공격력 강화·필드 회복 없음
-  for (const t of ['accel', 'buff', 'fieldheal']) $(`act-${t}`)?.classList.toggle('hidden', !!story);
+  S.me.noActs = S.ai.noActs = !!story;   // 스토리: 마나 가속기·필드 회복 없음 (공격력 강화는 가능)
+  S.me.limitedAids = S.ai.limitedAids = S.limitedAids;
+  for (const t of ['accel', 'buff', 'fieldheal', 'heal']) $(`act-${t}`)?.classList.toggle('hidden', t === 'buff' ? false : t === 'accel' ? !!story : S.limitedAids);
+  $('act-merc')?.classList.toggle('hidden', S.limitedAids);
   $('story-giveup')?.classList.toggle('hidden', !story);
   for (const w of ['me', 'ai']) { $(`${w}-hp`).classList.toggle('hidden', S[w].noBase); $(`${w}-hpbar`).parentElement.classList.toggle('hidden', S[w].noBase); }
   $('game').classList.toggle('story-field', !!story);
@@ -561,7 +565,7 @@ function renderVoiceBtn() {
 // ===== 효과음 (SE 시트: 코드 → audio/se/00코드_0n.mp3, 변형 중 무작위) =====
 // 1 맞는 소리 · 2 카드 소환 · 3 본진 타격 · 4 버튼 클릭 · 5 UR 소환 · 6 MR 소환 · 7 공격하는 소리
 const SE_FILES = { 1: 4, 2: 2, 3: 4, 4: 3, 5: 1, 6: 1, 7: 3 };
-const SE_ON_KEY = 'vrTcgSe', SE_VOL = { 1: 0.45, 2: 0.6, 3: 0.6, 4: 0.35, 5: 0.75, 6: 0.8, 7: 0.45 };
+const SE_ON_KEY = 'vrTcgSe', SE_VOL = { 1: 0.225, 2: 0.3, 3: 0.3, 4: 0.175, 5: 0.375, 6: 0.4, 7: 0.225 };   // 효과음 음량: 이전 값의 50% (2026-10-22). 보이스는 그대로
 let seOn = localStorage.getItem(SE_ON_KEY) !== '0';
 const seCache = new Map(), seLast = {};
 function playSe(code) {
@@ -571,7 +575,7 @@ function playSe(code) {
     const k = `${String(code).padStart(3, '0')}_${String(1 + Math.floor(Math.random() * SE_FILES[code])).padStart(2, '0')}`;
     let base = seCache.get(k); if (!base) { base = new Audio(`audio/se/${k}.mp3`); base.preload = 'auto'; seCache.set(k, base); }
     const a = base.paused || base.ended ? base : base.cloneNode();   // 겹쳐 재생 허용
-    a.volume = (SE_VOL[code] || 0.5) * (voiceVol || 0.8); a.currentTime = 0;
+    a.volume = (SE_VOL[code] || 0.25) * (voiceVol || 0.8); a.currentTime = 0;
     const pr = a.play(); if (pr?.catch) pr.catch(() => {});
   } catch {}
 }
@@ -902,8 +906,8 @@ function render() {
     btn.querySelector('.reason').textContent = !myTurn ? '' : (c.ok ? '' : c.reason);
   }
   { const btn = $('act-merc'), done = S.mercBought >= Merc.MAX_PER_BATTLE;
-    btn.disabled = !myTurn || done || !!S.story;
-    btn.querySelector('.reason').textContent = S.story ? '스토리 불가' : myTurn && done ? '이번 판 고용 완료' : ''; }
+    btn.disabled = !myTurn || done || !!S.limitedAids;
+    btn.querySelector('.reason').textContent = S.limitedAids ? '일반대전 전용' : myTurn && done ? '이번 판 고용 완료' : ''; }
   if (S.story) { const b = $('act-shuffle'); b.disabled = true; b.querySelector('.reason').textContent = '스토리 불가'; }
   $('attack-all').disabled = !myTurn || !S.me.field.some(u => u.canAttack);
   const tg = attackTargets(S.me, S.ai, selected != null ? S.me.field.find(x => x.uid === selected) : null);
@@ -1139,7 +1143,7 @@ function buyMerc(id) {
   floatText(`${ic('merc')} ${escHtml(c.name)} 고용!`, 'text-amber-300', 'me', true);
   hideModal('merc'); render();
 }
-$('act-merc').onclick = () => { if (S?.story || S?.turn !== 'me' || S.over || S.busy) return; renderMerc(); showModal('merc'); };
+$('act-merc').onclick = () => { if (S?.limitedAids || S?.story || S?.turn !== 'me' || S.over || S.busy) return; renderMerc(); showModal('merc'); };
 
 // ===== 초기화 =====
 document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => hideModal(b.dataset.close));
