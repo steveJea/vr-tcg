@@ -1081,7 +1081,7 @@ function render() {
     hand.appendChild(w);
   });
   fixImages(hand);
-  $('ai-handcards').innerHTML = S.ai.hand.map(() => '<div class="w-4 h-6 md:w-5 md:h-7 rounded bg-gradient-to-br from-zinc-700 to-zinc-900 border border-white/20"></div>').join('');
+  $('ai-handcards').innerHTML = S.ai.hand.map(() => '<div class="flex-1 min-w-[3px] max-w-4 md:max-w-5 h-6 md:h-7 rounded bg-gradient-to-br from-zinc-700 to-zinc-900 border border-white/20"></div>').join('');
 }
 
 // ===== 손패 정렬 =====
