@@ -20,7 +20,7 @@
   const user = () => (window.__STORY_MOCK_CLOUD || window.VRCloud)?.user || window.__STORY_MOCK_USER || null;
   const pool = () => window.TCG?.POOL || [];
   const skillsOf = id => window.TCG?.skillsOf?.(id) || [];
-  const card = id => pool().find(c => String(c.id) === String(id));
+  const card = id => pool().find(c => String(c.id) === String(id)) || (window.TCG?.NPC || []).find(c => String(c.id) === String(id));   // NPC: 스토리 적 전용
   let save = null, cloudOk = true, serverMode = false;
   const cloud = () => window.__STORY_MOCK_CLOUD || window.VRCloud;
 
@@ -566,14 +566,14 @@
     if (ps) P.status(true);
     root().classList.add('hidden');
     const boss = ph.type === 'boss';
-    bgm(boss ? 'boss' : 'battle');
+    bgm(boss || ph.bgm === 'boss' ? 'boss' : 'battle');
     const me = (picked || deckInstances()).slice(0, MAX_PICK()).map(o => ({ ...boosted(o), uid: o.uid })).filter(x => x.id);
     deckUid = Object.fromEntries(me.map(c => [String(c.id), c.uid]));
     const bc = boss ? bossOf(ph, enemies) : null;
     // 보스 카드를 맨 앞에 (진영 안 표시), 나머지는 그대로
     const ai = bc ? [bc, ...enemies.filter(c => c !== bc)] : enemies;
     window.TCG.startStory({
-      me, ai, leader: (() => { const lo = me.find(c => c.uid === save.leader), le = lo && leaderEff(lo.id); return le ? { ...le, uid: lo.uid } : undefined; })(), win: boss ? 'ko' : 'wipe', aiHp: boss ? bossHp(ch, ph) : undefined, bossId: bc ? String(bc.id) : undefined, aiName: ph.enemyName || (boss ? '보스' : '적군'), first: ph.enemyFirst ? 'ai' : 'me',   // 기본 내가 선공, 페이즈 enemyFirst 면 적 선공
+      me, ai, leader: (() => { const lo = me.find(c => c.uid === save.leader), le = lo && leaderEff(lo.id); return le ? { ...le, uid: lo.uid } : undefined; })(), win: boss ? 'ko' : 'wipe', aiHp: boss ? bossHp(ch, ph) : undefined, bossId: bc ? String(bc.id) : undefined, aiName: ph.enemyName || (boss ? '보스' : '적군'), rules: ph.rules || undefined, first: ph.enemyFirst ? 'ai' : 'me',   // 기본 내가 선공, 페이즈 enemyFirst 면 적 선공
      
       onEnd: (win, reason, st) => result(ch, ph, win, reason, st),
     });
@@ -594,10 +594,45 @@
   }
   function toast(t) { const el = document.createElement('div'); el.className = 'story-toast'; el.textContent = t; document.body.appendChild(el); setTimeout(() => el.remove(), 3200); }
 
+  // ----- 챕터 엔딩 영상 (YouTube). 챕터별 설정: ENDING_VIDEO[챕터 id] 또는 챕터 데이터 endingVideo. 비어 있으면 영상 없음 -----
+  const ENDING_VIDEO = { 2: 'EwJcOHqGFck', 3: 'l5oe0IaFjV4', 4: 'sOI2OJzhQSo' };
+  const videoOf = ch => String(ch?.endingVideo ?? ENDING_VIDEO[ch?.id] ?? '').trim();
+  /** 유튜브 오버레이: 소리 켜고 자동 재생 시도 → 막히면 음소거 자동 재생 + 큰 '소리 켜고 보기' 버튼. 재생 중 BGM 멈춤, 닫으면 다시 재생. 닫을 때 resolve */
+  function endingVideo(ch) {
+    const id = videoOf(ch); if (!/^[\w-]{6,20}$/.test(id)) return Promise.resolve(false);
+    return new Promise(done => {
+      const S_ = window.VRSound; let held = false;
+      try { S_?.hold?.(true); held = true; } catch {}
+      try { if (!held) S_?.stop?.(); } catch {}
+      const m = document.createElement('div'); m.id = 'story-video'; m.className = 'story-video';
+      const src = muted => `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&playsinline=1&rel=0&modestbranding=1&enablejsapi=1&origin=${encodeURIComponent(location.origin)}${muted ? '&mute=1' : ''}`;
+      m.innerHTML = `<div class="story-video-box"><iframe id="story-video-ifr" src="${src(false)}" title="ending" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>
+        <button type="button" class="story-video-tap hidden" id="story-video-tap">🔊 소리 켜고 보기</button></div>
+        <button type="button" class="story-video-x" id="story-video-x" aria-label="닫기">✕</button>`;
+      document.body.appendChild(m);
+      const ifr = m.querySelector('iframe'), tap = m.querySelector('#story-video-tap');
+      const cmd = (func, args = []) => { try { ifr.contentWindow.postMessage(JSON.stringify({ event: 'command', func, args }), '*'); } catch {} };
+      let playing = false;
+      const onMsg = e => { if (!/youtube/.test(e.origin || '')) return; try { const d = typeof e.data === 'string' ? JSON.parse(e.data) : e.data; const st = d?.info?.playerState ?? (d?.event === 'onStateChange' ? d.info : undefined); if (st === 1) playing = true; if (st === 0) close(); } catch {} };
+      window.addEventListener('message', onMsg);
+      ifr.addEventListener('load', () => { try { ifr.contentWindow.postMessage(JSON.stringify({ event: 'listening', id: 'story-video' }), '*'); } catch {} });
+      // 소리 있는 자동 재생이 막히면(2.5초 안에 재생 안 됨) 음소거로 다시 + 큰 버튼으로 소리 켜기
+      const fb = setTimeout(() => { if (playing) return; ifr.src = src(true); tap.classList.remove('hidden'); }, 2500);
+      tap.onclick = () => { cmd('unMute'); cmd('setVolume', [100]); cmd('playVideo'); tap.classList.add('hidden'); };
+      let closed = false;
+      function close() {
+        if (closed) return; closed = true; clearTimeout(fb); window.removeEventListener('message', onMsg); m.remove();
+        try { if (held) S_?.hold?.(false); else S_?.play?.(); } catch {}
+        done(true);
+      }
+      m.querySelector('#story-video-x').onclick = close;
+      m.onclick = e => { if (e.target === m) close(); };   // 바깥 누르면 닫기
+    });
+  }
   async function result(ch, ph, win, reason, st = {}) {
     if (!win) {
       const ab = serverMode && window.VRPlayer ? await window.VRPlayer.abort() : null;
-      show(`<div class="text-center py-10"><div class="story-chapter-big text-red-400">DEFEAT</div><div class="text-zinc-300 mt-2">${reason === 'giveup' ? '도전을 포기했어요.' : reason === 'wipe' ? '내 필드 카드가 모두 쓰러졌어요.' : reason === 'timeout' ? (ph.type === 'boss' ? '턴 제한 안에 상대 진영을 무너뜨리지 못했어요.' : '턴 제한 안에 적을 모두 쓰러뜨리지 못했어요.') : '패배했어요.'} 스탯을 올리고 다시 도전해 보세요!</div>${ab?.refunded ? `<div class="mt-2 text-emerald-300 text-sm">🔋 행동력 ${ab.refunded} 반환 (보유 ${ab.stamina}/${ab.stamina_max})</div>` : ''}
+      show(`<div class="text-center py-10"><div class="story-chapter-big text-red-400">DEFEAT</div><div class="text-zinc-300 mt-2">${reason === 'giveup' ? '도전을 포기했어요.' : reason === 'wipe' ? '내 필드 카드가 모두 쓰러졌어요.' : reason === 'mustlive' ? `${esc(card(ph.rules?.mustLive?.[0])?.name || '주인공')} 카드가 쓰러졌어요.` : reason === 'timeout' ? (ph.type === 'boss' ? '턴 제한 안에 상대 진영을 무너뜨리지 못했어요.' : '턴 제한 안에 적을 모두 쓰러뜨리지 못했어요.') : '패배했어요.'} 스탯을 올리고 다시 도전해 보세요!</div>${ab?.refunded ? `<div class="mt-2 text-emerald-300 text-sm">🔋 행동력 ${ab.refunded} 반환 (보유 ${ab.stamina}/${ab.stamina_max})</div>` : ''}
         <div class="flex flex-col gap-2 max-w-xs mx-auto mt-6"><button class="story-btn" id="story-retry">다시 도전</button><button class="story-back" data-go="map">챕터 지도로</button></div></div>`);
       bind(); $('story-retry').onclick = () => startPhase(ch, ph); return;
     }
@@ -636,7 +671,8 @@
       show(`<div class="story-intro" id="story-intro"><div class="story-chapter-sub">${esc(ch.title)} · Phase.${ph.no} 승리 후</div><div class="story-chapter-name">${esc(ph.afterTitle)}</div><div class="text-xs text-zinc-500 mt-8">화면을 누르면 계속</div></div>`);
       $('story-intro').onclick = go;
     });
-    if (first && ph.type === 'boss' && ch.ending?.length) await new Promise(ok => playLines(ch.ending, [], ok, 'ending', ph.hero || ch.hero));
+    if (first && (ph.type === 'boss' || ph.final) && ch.ending?.length) await new Promise(ok => playLines(ch.ending, [], ok, 'ending', ph.hero || ch.hero));
+    if (first && chapterDone(D.chapters.find(c => c.id === ch.id) || ch)) await endingVideo(ch);   // 챕터 엔딩 영상 (있으면)
     const tk = first && chapterDone(D.chapters.find(c => c.id === ch.id) || ch) ? await syncTickets() : null;   // 챕터 첫 클리어 → 소환권
     show(`<div class="text-center py-6"><div class="story-chapter-sub">Phase.${ph.no} CLEAR</div><div class="story-chapter-big text-emerald-300">VICTORY</div>
       ${reward ? `<div class="mt-4 text-amber-200 font-bold">🎁 보상 카드 획득!</div><div class="flex justify-center mt-2 story-reward">${tile(reward)}</div>` : `<div class="mt-4 text-zinc-400 text-sm">${first ? '이번 챕터는 카드 보상 없이 스탯 포인트만 받아요.' : '이미 클리어한 페이즈라 카드 보상은 없어요.'}</div>`}
@@ -1247,5 +1283,5 @@
     /** 마지막으로 고른 출전 카드 (없으면 빈 배열). 보유 카드가 출전 수 이하면 전부 */
     lastDeck: () => { const all = deckInstances(); if (all.length <= MAX_PICK()) return all; let last = []; try { last = JSON.parse(localStorage.getItem(PICK_KEY()) || '[]'); } catch {} const by = new Map(all.map(o => [o.uid, o])); return last.map(u => by.get(u)).filter(Boolean).slice(0, MAX_PICK()); },
   };
-  window.VRStory = { api, bgm, BGM, summary, enter, openGacha, renderHub, renderShop, drawOnce, kstDay, get save() { return save; }, renderMap, renderCards, openStats, renderSelect };
+  window.VRStory = { api, bgm, BGM, endingVideo, videoOf, summary, enter, openGacha, renderHub, renderShop, drawOnce, kstDay, get save() { return save; }, renderMap, renderCards, openStats, renderSelect };
 })();

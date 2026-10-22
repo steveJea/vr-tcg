@@ -1,5 +1,5 @@
 import { RULES, ELEMENTS, elementMultiplier, calcDamage, canSummon, buildDeck, parseCSV, aiSummonOrder, aiPickTarget, recallCost, canRecall, aiShouldRecall, makeUnit, resolveAttack, refillMana, ACTIONS, canAction, doAction, clearBuff, aiWantShuffle, aiWantBuff, aiWantHeal, aiWantFieldHeal, aiPickItem, endTurnXp, ITEMS, canEquip, equip, attackTargets, canTarget, autoTarget, heroLocked, xpToNext, SKILLS, gainXp, setCardPool, canSacrifice, sacrifice, aiPickSacrifice, aiWantAccel, judgeTimeout, JUDGE_LABEL, genderMult, GRADES, GRADE_SHORT, allowedGrades, baseEvade } from './rules.js';
-import { setSkillData, setEmitter, initPlayers, placeUnit, turnStart, turnEnd, useSkill, skillState, aiPickSkill, skillLvOf, skillCdAt, skillLvMult, SKILL_LV_MAX, refreshAll, statusIcons, skillsOf, combos, STATUS, SK, maleLure } from './skills.js';
+import { setSkillData, setEmitter, initPlayers, placeUnit, turnStart, turnEnd, useSkill, skillState, aiPickSkill, skillLvOf, skillCdAt, skillLvMult, SKILL_LV_MAX, refreshAll, statusIcons, skillsOf, combos, STATUS, SK, maleLure, checkDeath } from './skills.js';
 
 const IMG = 'https://raw.githubusercontent.com/steveJea/vr-ideal-worldcup/main/img/bt_img/';
 const NF = new Intl.NumberFormat('ko-KR');
@@ -15,7 +15,10 @@ const Stats = {
   record(win) { const s = this.load(); win === null ? s.draws++ : win ? s.wins++ : s.losses++; localStorage.setItem(this.KEY, JSON.stringify(s)); return s; },
 };
 
-let POOL = [];
+// 카드 그림 대체: bt_img(외부 저장소)에 없는 카드(NPC 등)는 img/cards/<id>.webp
+document.addEventListener('error', e => { const t = e.target; if (t?.tagName !== 'IMG' || t.dataset.fb) return; const m = /\/bt_img\/(\d+)\.webp$/.exec(t.src || ''); if (m) { t.dataset.fb = '1'; t.src = `img/cards/${m[1]}.webp`; } }, true);
+let POOL = [], NPC = [];   // NPC: 스토리 적 전용 카드
+const isNpc = c => !!c && /^(1|true|npc|y)$/i.test(String(c.npc || '').trim());
 
 // ===== 용병 시스템 =====
 // 배틀 중 마나로 HR·SR·UR 카드 고용 (한 판 1명). 고용한 카드는 그 판에서만 쓰고, 판이 끝나면 리셋.
@@ -135,6 +138,7 @@ function startGame(story = null) {
         if (who === 'me') S.log.played.add(String(c.id));
         if (who === 'me' && story.leader && c.uid && c.uid === story.leader.uid && !p.field.some(x => x.isLeader)) { u.isLeader = true; p.leaderSkill = story.leader; }
         if (who === 'ai' && story.bossId != null && String(c.id) === String(story.bossId) && !p.field.some(x => x.undying)) { u.undying = true; u.boss = true; }
+        if (who === 'ai' && story.rules?.invuln != null && String(c.id) === String(story.rules.invuln) && !p.field.some(x => x.noDamage)) { u.undying = true; u.noDamage = true; u.boss = true; }
       }
       p.deck = [];
     }
@@ -154,6 +158,7 @@ function startGame(story = null) {
 function startTurn(who) {
   const p = S[who];
   S.turn = who; if (who === S.first) S.turnNo++; S.totalTurns++;
+  if (S.story?.rules && storyTurnRules(who)) return true;
   if (who === 'me') { S.myTurns++; if (myTurnsLeft() === 1) lastTurnToast(); }
   clearBuff(opp(who));                   // 지난 턴 강화 해제
   const bonus = refillMana(p);
@@ -446,12 +451,52 @@ function finish(win, reason) {
   return true;
 }
 
+// ===== 스토리 페이즈 규칙 (story.rules) =====
+// mustLive: [카드 id] 내 카드가 쓰러지면 패배 · revive: [{ id, level: 1|'keep', times }] 적 카드가 쓰러지면 상대(적) 다음 턴 시작에 부활
+// invuln: 적 카드 id (피해 없음·쓰러지지 않음) · expire: invuln 카드가 이 라운드 수가 지나면 자동 사망 (부활 대기·부활 카드도 함께 소멸)
+function storyOnDeath(u) {
+  const R = S.story.rules, id = String(u.card.id);
+  if (u.owner === S.me && (R.mustLive || []).map(String).includes(id)) { S.mustLiveDown = u.card.name; log(`💔 ${u.card.name} 카드가 쓰러졌다! 이 페이즈는 ${u.card.name} 카드가 살아 있어야 해요`, 'text-red-400'); }
+  if (u.owner === S.ai && !S.expired) {
+    const r = (R.revive || []).find(x => String(x.id) === id); if (!r) return;
+    const used = (S.reviveUsed ||= {}), k = id + ':' + (u.reviveSlot ?? u.uid);
+    if (r.times && (used[k] | 0) >= r.times) return;
+    used[k] = (used[k] | 0) + 1;
+    (S.ai.reviveQ ||= []).push({ card: u.base, level: r.level === 'keep' ? u.level : 1, slot: u.reviveSlot ?? u.uid, key: k });
+    log(`🩸 ${u.card.name}: 1턴 후 부활해요`, 'text-fuchsia-300');
+  }
+}
+/** 턴 시작 규칙. true 를 돌려주면 전투가 끝남 */
+function storyTurnRules(who) {
+  const R = S.story.rules, p = S[who];
+  if (R.expire && R.invuln != null && !S.expired && S.turnNo > R.expire) {
+    S.expired = true; S.ai.reviveQ = [];
+    for (const u of [...S.ai.field]) {
+      const isBoss = String(u.card.id) === String(R.invuln);
+      u.undying = false; u.noDamage = false; u.hp = 0; checkDeath(u);
+      if (isBoss) log(`🔥 ${R.expire}턴 경과: ${u.card.name}의 각성이 다 타 버렸다!`, 'text-amber-300');
+    }
+    render(); if (checkEnd()) return true;
+  }
+  if (p.reviveQ?.length) {
+    const q = p.reviveQ.splice(0);
+    for (const r of q) {
+      if (p.field.length >= RULES.FIELD_MAX) { p.reviveQ.push(r); continue; }
+      const u = placeUnit(p, { ...r.card }, makeUnit); u.reviveSlot = r.slot;
+      while (u.level < r.level) { const need = xpToNext(u.level) - (u.xp | 0); if (!isFinite(need) || !gainXp(u, Math.max(1, need))) break; }
+      log(`🩸 ${u.card.name} 부활! (Lv${u.level})`, 'text-fuchsia-300');
+    }
+    refreshAll(p); render();
+  }
+  return false;
+}
 function checkEnd() {
   if (S.over) return true;
   if (S.ai.hp <= 0 || S.me.hp <= 0) return finish(S.ai.hp <= 0, 'ko');
   if (S.story) {   // 스토리: 내 필드 카드 전멸 시 패배 / 일반전은 상대 카드 전멸 시 승리 (보스전은 진영 HP 0)
     const gone = p => !p.field.length && !p.hand.length && !p.deck.length;
-    if (S.story.win === 'wipe' && gone(S.ai)) return finish(true, 'wipe');
+    if (S.mustLiveDown) return finish(false, 'mustlive');
+    if (S.story.win === 'wipe' && gone(S.ai) && !(S.ai.reviveQ || []).length) return finish(true, 'wipe');
     if (gone(S.me)) return finish(false, 'wipe');
   }
   return false;
@@ -807,7 +852,7 @@ function onEngine(e) {
       if (e.base) { const el = heroEl(whoOf(e.p)); shake(el); dmgNumber(el, `-${fmt(e.dmg)}`, '#fca5a5'); }
       log(`👑 ${e.p.name}: 리더 ${nm(e.unit)} 쓰러짐! 리더 스킬 해제 · ${e.base ? `진영 HP −${fmt(e.dmg)} (최대의 ${pc}%)` : `아군 진영 HP −${pc}% (남은 아군 ${e.n}장, 총 ${fmt(e.dmg)} 피해)`}`, 'text-red-400 font-bold');
       break; }
-    case 'destroy': log(`${nm(e.unit)} 파괴!`, 'text-zinc-400'); pendingDying.push(uEl(e.unit)); break;
+    case 'destroy': log(`${nm(e.unit)} 파괴!`, 'text-zinc-400'); pendingDying.push(uEl(e.unit)); if (S.story?.rules) storyOnDeath(e.unit); break;
     case 'refund': if (S.story && e.owner === S.me && e.killer?.card) { const k = String(e.killer.card.id); S.log.kills[k] = (S.log.kills[k] || 0) + 1; }
       log(`${nm(e.killer)} 처치 보상: 마나 +${e.refund}`, 'text-sky-300'); if (e.refund > 0 && !FX_OFF()) dmgNumber(heroEl(whoOf(e.owner)), `${ic('mana')} +${e.refund} 마나`, '#7dd3fc', true); renderHero(whoOf(e.owner)); break;
     case 'levelup': log(`${nm(e.unit)} Lv${e.level}`, 'text-amber-300'); dmgNumber(uEl(e.unit), `⬆ Lv${e.level}`, '#fcd34d'); break;
@@ -1308,7 +1353,10 @@ window.addEventListener('vr:user', renderStats);   // 로그인·로그아웃·�
 
 (async () => {
   try {
-    POOL = parseCSV(await (await fetch('data/cards.csv')).text()); setCardPool(POOL);
+    // NPC 카드 (npc 칸 = 1, data/npc_cards.csv): 스토리 적 전용. 뽑기·갤러리·보유 카드·아케이드·카드 풀(POOL)에서 제외
+    { const all = parseCSV(await (await fetch('data/cards.csv')).text()), npc = await fetch('data/npc_cards.csv').then(r => r.ok ? r.text() : '').then(t => t ? parseCSV(t) : []).catch(() => []);
+      POOL = all.filter(c => !isNpc(c)); NPC = [...all.filter(isNpc), ...npc.filter(isNpc)]; }
+    setCardPool(POOL);
     const [sk, co] = await Promise.all(['data/skills.json', 'data/combos.json'].map(u => fetch(u).then(r => r.json())));
     setSkillData(sk, co); setEmitter(onEngine);
     $('start-btn').disabled = false; setStartLabel('아케이드 모드');
@@ -1350,4 +1398,4 @@ function zoomFromBtn(b) {
 document.addEventListener('click', e => { const b = e.target.closest?.('.zoom-btn'); if (!b) return; e.stopPropagation(); e.preventDefault(); zoomFromBtn(b); }, true);
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('zoom-view')?.classList.contains('open')) { e.stopPropagation(); closeZoom(); } }, true);
 
-window.TCG = { cardTitle, cardTags, cardStats, regionShort, playStinger, showCardInfo, skillsOf, combos, arcadeOpts: ArcadeOpts, openArcadeOpts, playSe, onEnter, checkEvents, showEvent, mvpVoice, get events() { return EVENTS; }, get seOn() { return seOn; }, skillListHTML: (c, lv, opt) => skillListHTML(c, null, false, lv, opt), voiceTest(k) { if (!voiceSet?.has(k)) return false; const a = voiceAudio(k); a.volume = voiceVol; a.currentTime = 0; voiceCur = a; a.play().catch(() => {}); return true; }, get voiceActive() { return voiceActive.size; }, get voice() { return { on: voiceOn, vol: voiceVol, cur: voiceCur && { src: voiceCur.src, paused: voiceCur.paused, t: voiceCur.currentTime }, set: voiceSet && voiceSet.size }; }, openZoom, closeZoom, dupCheck, get errors() { return window.TCG_ERRORS || []; }, cutIn, passiveCutIn, sortedHand, get handSort() { return handSort; }, put: debugPut, castSkill, skillState, get S() { return S; }, RULES, elementMultiplier, calcDamage, canSummon, buildDeck, summon, attack, recall, attackAll, endTurn, canRecall, recallCost, makeUnit, resolveAttack, useAction, canAction, startGame, startStory, cardHTML, get ready() { return POOL.length > 0; }, equipItem, doSacrifice, finish, attackTargets, get POOL() { return POOL; }, render, Stats };
+window.TCG = { get NPC() { return NPC; }, cardById: id => POOL.find(c => String(c.id) === String(id)) || NPC.find(c => String(c.id) === String(id)), isNpc, cardTitle, cardTags, cardStats, regionShort, playStinger, showCardInfo, skillsOf, combos, arcadeOpts: ArcadeOpts, openArcadeOpts, playSe, onEnter, checkEvents, showEvent, mvpVoice, get events() { return EVENTS; }, get seOn() { return seOn; }, skillListHTML: (c, lv, opt) => skillListHTML(c, null, false, lv, opt), voiceTest(k) { if (!voiceSet?.has(k)) return false; const a = voiceAudio(k); a.volume = voiceVol; a.currentTime = 0; voiceCur = a; a.play().catch(() => {}); return true; }, get voiceActive() { return voiceActive.size; }, get voice() { return { on: voiceOn, vol: voiceVol, cur: voiceCur && { src: voiceCur.src, paused: voiceCur.paused, t: voiceCur.currentTime }, set: voiceSet && voiceSet.size }; }, openZoom, closeZoom, dupCheck, get errors() { return window.TCG_ERRORS || []; }, cutIn, passiveCutIn, sortedHand, get handSort() { return handSort; }, put: debugPut, castSkill, skillState, get S() { return S; }, RULES, elementMultiplier, calcDamage, canSummon, buildDeck, summon, attack, recall, attackAll, endTurn, canRecall, recallCost, makeUnit, resolveAttack, useAction, canAction, startGame, startStory, cardHTML, get ready() { return POOL.length > 0; }, equipItem, doSacrifice, finish, attackTargets, get POOL() { return POOL; }, render, Stats };
