@@ -1,5 +1,5 @@
 import { RULES, ELEMENTS, elementMultiplier, calcDamage, canSummon, buildDeck, parseCSV, aiSummonOrder, aiPickTarget, recallCost, canRecall, aiShouldRecall, makeUnit, resolveAttack, refillMana, ACTIONS, canAction, doAction, clearBuff, aiWantShuffle, aiWantBuff, aiWantHeal, aiWantFieldHeal, aiPickItem, endTurnXp, ITEMS, canEquip, equip, attackTargets, canTarget, autoTarget, heroLocked, xpToNext, SKILLS, gainXp, setCardPool, canSacrifice, sacrifice, aiPickSacrifice, aiWantAccel, judgeTimeout, JUDGE_LABEL, genderMult, GRADES, GRADE_SHORT, allowedGrades, baseEvade } from './rules.js';
-import { setSkillData, setEmitter, initPlayers, placeUnit, turnStart, turnEnd, useSkill, skillState, aiPickSkill, skillLvOf, skillCdAt, skillLvMult, SKILL_LV_MAX, refreshAll, statusIcons, skillsOf, combos, STATUS, SK, maleLure, checkDeath } from './skills.js';
+import { setSpare, spareBlocked, setSkillData, setEmitter, initPlayers, placeUnit, turnStart, turnEnd, useSkill, skillState, aiPickSkill, skillLvOf, skillCdAt, skillLvMult, SKILL_LV_MAX, refreshAll, statusIcons, skillsOf, combos, STATUS, SK, maleLure, checkDeath } from './skills.js';
 
 const IMG = 'https://raw.githubusercontent.com/steveJea/vr-ideal-worldcup/main/img/bt_img/';
 const NF = new Intl.NumberFormat('ko-KR');
@@ -104,6 +104,7 @@ const shuffleArr = a => { a = [...a]; for (let i = a.length - 1; i > 0; i--) { c
 /** story: 스토리 모드 전투 설정 { me:[카드], ai:[카드], win:'wipe'|'ko', meHp, aiHp, aiName, first, onEnd(win, reason) }. 없으면 아케이드 */
 function startGame(story = null) {
   if (story && typeof story.then === 'function' || story instanceof Event) story = null;
+  setSpare(story?.spare);   // 스토리 보호 규칙 (없으면 해제)
   const first = story?.first || (Math.random() < 0.5 ? 'me' : 'ai');   // 선공 동전 던지기
   if (!story) { try { window.VRSound?.setTrack?.('audio/arcade_battle.mp3'); } catch {} }   // 아케이드 전용 BGM (나가면 메인으로)
   const fs = !!story;   // 스토리: 손패 없이 출전 카드 전부 필드에서 시작
@@ -895,6 +896,7 @@ async function aiTurn() {
   for (const u of [...ai.field]) {
     if (S.over) break;
     if (!ai.field.includes(u) || !u.canAttack) continue;
+    if (spareBlocked(u)) { u.canAttack = false; log(`${u.card.name}: 공격할 대상이 없어 턴을 넘깁니다`, 'text-zinc-400'); floatText(`${u.card.name} 행동 안 함`, 'text-zinc-300 text-sm', 'ai'); await sleep(AI_DELAY()); continue; }
     const sk = aiPickSkill(u);
     if (sk) { await castSkill('ai', u, sk); await sleep(AI_DELAY()); continue; }
     const best = aiPickTarget(u, ai, me);

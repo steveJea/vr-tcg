@@ -559,6 +559,8 @@
   }
 
   let deckUid = {};   // 이번 전투 출전 카드 id → 인스턴스 uid
+  /** 스토리 보호 규칙: 공격자 id → 공격하지 않는 카드 id (기본 공격·스킬·반격·광역 모두) */
+  const STORY_SPARE = { '2000500114': ['2000500111'] };   // 조윤이 → 조윤하
   async function battle(ch, ph, enemies, picked) {
     const P = window.VRPlayer, ps = serverMode && P ? await P.status(true) : null;
     if (ps && ps.stamina < P.cost) { staminaShort(ps); return renderMap(); }
@@ -568,7 +570,9 @@
     root().classList.add('hidden');
     const boss = ph.type === 'boss';
     bgm(boss || ph.bgm === 'boss' ? 'boss' : 'battle');
-    const me = (picked || deckInstances()).slice(0, MAX_PICK()).map(o => ({ ...boosted(o), uid: o.uid })).filter(x => x.id);
+    // party.statMul: { 카드id: { HP: 2, DEF: 2 } } → 이 페이즈에서만 해당 카드 스탯 배율 (최종 스탯 × 배율, 반올림)
+    const SM = ph.party?.statMul || {}, mul = c => { const m = SM[String(c.id)]; if (!m) return c; const o = { ...c }; for (const k of Object.keys(m)) if (o[k] != null) o[k] = Math.round(o[k] * m[k]); return o; };
+    const me = (picked || deckInstances()).slice(0, MAX_PICK()).map(o => mul({ ...boosted(o), uid: o.uid })).filter(x => x.id);
     deckUid = Object.fromEntries(me.map(c => [String(c.id), c.uid]));
     const bc = boss ? bossOf(ph, enemies) : null;
     // 보스 카드를 맨 앞에 (진영 안 표시), 나머지는 그대로
@@ -576,6 +580,7 @@
     window.TCG.startStory({
       me, ai, leader: (() => { const lo = me.find(c => c.uid === save.leader), le = lo && leaderEff(lo.id); return le ? { ...le, uid: lo.uid } : undefined; })(), win: boss ? 'ko' : 'wipe', aiHp: boss ? bossHp(ch, ph) : undefined, bossId: bc ? String(bc.id) : undefined, aiName: ph.enemyName || (boss ? '보스' : '적군'), rules: battleRules(ch, ph), first: ph.enemyFirst ? 'ai' : 'me',   // 기본 내가 선공, 페이즈 enemyFirst 면 적 선공
      
+      spare: STORY_SPARE,   // 조윤이는 조윤하를 공격하지 않음
       onEnd: (win, reason, st) => result(ch, ph, win, reason, st),
     });
     showConditions(ch, ph);   // 승리·패배 조건 (닫을 수 있음)

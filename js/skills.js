@@ -342,7 +342,13 @@ const PASSIVE_ONCE = {
 };
 
 // ===== 액티브 스킬 =====
-const live = p => [...p.field];
+// 대상 제외 (스토리): SPARE = { 공격자 카드id: [보호 카드id...] } → 그 공격자는 기본 공격·스킬·반격·광역 모두 그 카드를 대상으로 삼지 않음
+let SPARE = null, ACTOR = null;
+export function setSpare(m) { SPARE = m && Object.keys(m).length ? m : null; }
+export function spares(a, t) { if (!SPARE || !a || !t || a.owner === t.owner) return false; const l = SPARE[String(a.card?.id)]; return !!l && l.includes(String(t.card?.id)); }
+/** 보호 규칙 때문에 칠 수 있는 상대가 하나도 없음 → 이번 턴 행동 없음 */
+export function spareBlocked(u) { if (!SPARE || !SPARE[String(u?.card?.id)] || !u.owner?.foe) return false; const fs = u.owner.foe.field.filter(x => x.hp > 0); return fs.length > 0 && fs.every(x => spares(u, x)); }
+const live = p => ACTOR ? p.field.filter(x => !spares(ACTOR, x)) : [...p.field];
 const by = (arr, f, dir = 1) => arr.slice().sort((a, b) => dir * (f(a) - f(b)))[0];
 export const chance = p => rng() < p;
 /** 자기 디버프 1개 해제 (빛 정화). 해제했으면 true */
@@ -717,7 +723,8 @@ export function useSkill(u, s) {
   stats.count(s.name);
   refreshAll(p);
   const prevSKC = SKC, slv = skillLvOf(u, s); SKC = slv > 1 ? { u, m: skillLvMult(slv) } : null;
-  try { ACTIVE[s.name](u, p, p.foe, s); } finally { SKC = prevSKC; }
+  const prevA = ACTOR; ACTOR = u;
+  try { ACTIVE[s.name](u, p, p.foe, s); } finally { SKC = prevSKC; ACTOR = prevA; }
   refreshAll(p);
   return { ok: true };
 }
@@ -841,6 +848,7 @@ export function turnEnd(p) {
 // ===== AI: 스킬 선택 =====
 export function aiPickSkill(u) {
   const p = u.owner, f = p.foe;
+  if (spareBlocked(u)) return null;
   const cands = [];
   // MP 저축: 해금된 최상위 액티브가 MP 부족이면 50% 확률로 하위 스킬을 아끼고 기본 공격
   const top = (u.sk || []).filter(s => s.mode === 'active' && u.level >= s.unlock && ACTIVE[s.name]).sort((a, b) => b.unlock - a.unlock)[0];
