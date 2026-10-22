@@ -150,15 +150,6 @@
     if (level >= cap) { wasted = exp; totalExp += amt - exp; exp = 0; } else totalExp += amt;
     return { level, exp, totalExp, cpts, wasted };
   }
-  function feedCalc(src, tgt) {
-    // 분해 1장 EXP: 등급 기본 × (같은 이름 1.5) + 그 장의 누적 EXP 50%, 공용 포인트로 올린 강화는 환급 (서버와 같음)
-    const a = card(src.id), b = card(tgt.id), same = !!(a && b && a.name === b.name);
-    let amt = FEED_EXP[a?.grade] || 50;
-    if (same) amt = Math.floor(amt * 1.5);
-    amt += Math.floor((src.totalExp | 0) * 0.5);
-    const refund = Math.max(0, Object.values(src.boost || {}).reduce((x, y) => x + (+y || 0), 0) - (src.spentCard | 0));
-    return { amt, whole: true, refund, same };
-  }
   const lvBar = o => { const n = norm({ ...o }), cap = lvCap(n), max = n.level >= cap;
     const pc = lvPct(n); return `<div class="story-lv"><b>Lv.${n.level}${pc ? ` <i class="story-lvpct">+${pc}%</i>` : ''}</b>${max ? '<em>MAX</em>' : `<span>${n.exp}/${n.level * 100}</span>`}</div><div class="story-exp"><i style="width:${max ? 100 : Math.min(100, n.exp / n.level)}%"></i></div>`; };
   const ownedCards = () => deckInstances().map(o => ({ ...boosted(o), uid: o.uid })).filter(x => x.id);
@@ -597,6 +588,7 @@
     show(`<div class="text-center py-6"><div class="story-chapter-sub">Phase.${ph.no} CLEAR</div><div class="story-chapter-big text-emerald-300">VICTORY</div>
       ${reward ? `<div class="mt-4 text-amber-200 font-bold">🎁 보상 카드 획득!</div><div class="flex justify-center mt-2 story-reward">${tile(reward)}</div>` : `<div class="mt-4 text-zinc-400 text-sm">${first ? '이번 챕터는 카드 보상 없이 스탯 포인트만 받아요.' : '이미 클리어한 페이즈라 카드 보상은 없어요.'}</div>`}
       ${tk?.added ? `<div class="mt-3 text-amber-200 font-bold">🎟️ 챕터 클리어 보상: 소환권 +${tk.added} <small class="text-zinc-400">(특수 뽑기에서 사용)</small></div>` : ''}
+      ${r.drops ? `<div class="story-drops mt-3">${first ? '🎁 첫 클리어 ' : ''}획득 ${curTxt(r.drops)}</div>` : ''}
       ${playerResult(pr)}
       ${expList(r.exp)}
       <div class="mt-4 text-lg">${pts ? `스탯 포인트 <b class="text-emerald-300">+${pts}</b> (보유 ${save.points})` : '<span class="text-zinc-400 text-sm">다시 클리어한 페이즈라 스탯 포인트는 없어요.</span>'}</div>
@@ -832,112 +824,91 @@
       if (res.ok && save.leader === u) toast(`👑 리더 변경: ${c?.name} · ${le?.text || ''}`);
     };
   }
-  // ----- 일괄 분해: 여러 장(인스턴스)을 골라 EXP를 대상 1장에 (서버 story_discard_many, 전부 성공 또는 전부 취소) -----
-  function bulkCalc(sel, tgt) {
-    let n = 0, amt = 0, same = 0, refund = 0; const ids = [];
-    for (const o of save.owned) { if (!sel.has(o.uid) || o.uid === tgt.uid) continue; const f = feedCalc(o, tgt); amt += f.amt; refund += f.refund; n++; if (f.same) same++; ids.push(o.uid); }
-    return { n, amt, same, refund, ids };
+  // ----- 분해 (단계 E-3): 카드를 재화로 바꿈 (서버 story_dismantle, 전부 성공 또는 전부 취소). EXP 는 주지 않음 -----
+  // 등급별 수익 (서버 _dismantle_yield 와 같음) + 누적 EXP 50% 를 순수한 피로 (EXP 10 = 피 1). 공용 포인트로 올린 강화는 환급
+  const DIS_YIELD = { 'NORMAL': [20, 10, 0], 'RARE': [50, 30, 1], 'HIGH RARE': [120, 80, 3], 'SUPER RARE': [300, 200, 10], 'ULTRA RARE': [800, 500, 30], 'MYTHIC RARE': [2000, 1200, 80] };
+  function disCalc(o) {
+    const y = DIS_YIELD[card(o.id)?.grade] || DIS_YIELD.NORMAL;
+    const refund = Math.max(0, Object.values(o.boost || {}).reduce((x, v) => x + (+v || 0), 0) - (o.spentCard | 0));
+    return { gold: y[0], blood: y[1] + Math.floor((o.totalExp | 0) * 0.5 / 10) + Math.floor((o.bloodSpent | 0) * 0.5), soul: y[2], refund };
   }
-  /** 일괄 분해 1단계: EXP 받을 카드 고르기 (기본 선택 없음) */
-  function bulkPickTarget(st = {}) {
-    save.owned.forEach(norm);
-    const list = sortInst(save.owned);
-    const p = popup(`<div class="text-lg font-black mb-1">${ic('discard', { alt: '' })} 일괄 분해</div>${sortBar()}
-      <div class="story-bulk-steps"><b class="on">① EXP 받을 카드</b><span>② 분해할 카드</span></div>
-      <div class="text-xs text-zinc-400 mb-2">먼저 <b class="text-emerald-300">EXP를 받을 카드</b>를 골라 주세요. 그다음 분해할 카드를 고를 수 있어요.</div>
-      <div class="story-target-list">${list.map(o => { const c = card(o.id);
-        return `<button data-bt="${o.uid}" class="story-target ${o.uid === st.tu ? 'cur' : ''}"><img src="${IMG}${o.id}.webp" alt=""><div class="flex-1 min-w-0 text-left"><div class="text-sm font-bold truncate">${isLeader(o) ? ic('crown', { alt: '리더' }) + ' ' : ''}${esc(exName(o, c?.name))} <span class="text-[10px] text-zinc-400">${RAR[c?.grade] || 'N'}</span></div><div class="text-[11px] text-zinc-400">Lv.${o.level} / ${lvCap(o)}${o.level >= lvCap(o) ? ' <span class="text-red-300">최대 레벨</span>' : ''}</div></div><span class="text-emerald-300 text-sm">선택 ›</span></button>`; }).join('')}</div>
-      <button class="w-full mt-3 py-2.5 rounded-xl bg-red-500 font-bold" disabled>② 분해할 카드 고르기</button>
-      <button data-close-pop class="w-full mt-2 py-2.5 rounded-xl bg-zinc-700 font-bold">취소</button>`, renderCards);
-    p.el.querySelectorAll('[data-bt]').forEach(b => b.onclick = () => { p.close(true); bulkDiscard({ ...st, tu: b.dataset.bt, scroll: 0 }); });
-    bindSort(p, () => bulkPickTarget(st));
+  function bulkCalc(sel) {
+    const f = { n: 0, gold: 0, blood: 0, soul: 0, refund: 0, ids: [] };
+    for (const o of save.owned) { if (!sel.has(o.uid)) continue; const d = disCalc(o); f.gold += d.gold; f.blood += d.blood; f.soul += d.soul; f.refund += d.refund; f.n++; f.ids.push(o.uid); }
+    return f;
+  }
+  const curTxt = c => window.VRPlayer?.curTxt?.(c) || `🪙 +${fmt(c.gold | 0)} · 🩸 +${fmt(c.blood | 0)}${c.soul ? ` · 🔥 +${fmt(c.soul)}` : ''}`;
+  const disLocked = o => isLeader(o) || isLocked(o);
+  async function doDismantle(ids, n, back) {
+    const res = await act('story_dismantle', { p_uids: ids }, () => {
+      const f = bulkCalc(new Set(ids)); save.owned = save.owned.filter(o => !ids.includes(o.uid)); save.points += f.refund;
+      return { count: f.n, gold: 0, blood: 0, soul: 0, refund: f.refund, local: true };
+    }, r => r.data);
+    back();
+    if (!res.ok) return;
+    const r = res.r || {};
+    if (res.local) { toast(`🗑️ ${n}장 분해 (재화는 서버 저장에서만 받아요)`); return; }
+    showDisResult(r);
+  }
+  function showDisResult(r) {
+    const p = popup(`<div class="text-center"><div class="text-lg font-black">🗑️ ${r.count | 0}장 분해 완료</div>
+      <div class="story-drops mt-3">${curTxt(r)}</div>
+      ${r.refund ? `<div class="text-xs text-emerald-300 mt-2">공용 포인트 ${r.refund} 돌려받음</div>` : ''}
+      ${r.wallet ? `<div class="text-[11px] text-zinc-400 mt-2">보유: 🪙 ${fmt(r.wallet.gold)} · 🩸 ${fmt(r.wallet.blood)} · 🔥 ${fmt(r.wallet.soul)}</div>` : ''}
+      <button data-close-pop class="w-full mt-4 py-2.5 rounded-xl bg-zinc-700 font-bold">확인</button></div>`, renderCards);
+    try { window.TCG?.playSe?.(5); } catch {}
+    return p;
   }
   function bulkDiscard(st = {}) {
     save.owned.forEach(norm);
-    if (!st.tu || !byUid(st.tu)) return bulkPickTarget(st);   // 대상이 없으면 1단계부터 (기본 선택 없음)
-    const tu = st.tu, sel = st.sel || new Set();
-    const tgt = byUid(tu), locked = o => o.uid === tu || isLocked(o);
-    for (const k of [...sel]) { const o = byUid(k); if (!o || locked(o)) sel.delete(k); }
-    const f = bulkCalc(sel, tgt), g = gainCalc(tgt, f.amt);
+    const sel = st.sel || new Set();
+    for (const k of [...sel]) { const o = byUid(k); if (!o || disLocked(o)) sel.delete(k); }
+    const f = bulkCalc(sel);
     const list = sortInst(save.owned);
-    const grades = Object.keys(RAR).filter(gr => save.owned.some(o => !locked(o) && card(o.id)?.grade === gr));
-    const spare = o => !locked(o) && copiesOf(o.id).length > 1 && repOf(o.id) !== o;
+    const grades = Object.keys(RAR).filter(gr => save.owned.some(o => !disLocked(o) && card(o.id)?.grade === gr));
+    const spare = o => !disLocked(o) && copiesOf(o.id).length > 1 && repOf(o.id) !== o;
     const p = popup(`<div class="text-lg font-black mb-1">${ic('discard', { alt: '' })} 일괄 분해</div>
-      <div class="story-bulk-steps"><span>① EXP 받을 카드</span><b class="on">② 분해할 카드</b></div>
-      <div class="story-bulk-tgt"><img src="${IMG}${tgt.id}.webp" alt=""><div class="flex-1 min-w-0 text-left"><div class="text-[11px] text-emerald-300 font-bold">EXP 받을 카드</div><div class="text-lg font-black truncate">${isLeader(tgt) ? ic('crown', { alt: '리더' }) + ' ' : ''}${esc(exName(tgt, card(tgt.id)?.name))}</div><div class="text-xs text-zinc-400">${RAR[card(tgt.id)?.grade] || 'N'} · Lv.${tgt.level} / ${lvCap(tgt)}</div></div><button id="bulk-change" class="story-chip">바꾸기</button></div>
-      <div class="text-xs text-zinc-400 mb-1">고른 카드를 모두 분해하고, EXP를 위 카드에 몰아줘요</div>
+      <div class="text-xs text-zinc-400 mb-1">고른 카드를 모두 분해하고 <b class="text-amber-200">재화</b>(골드 · 순수한 피 · 각성자의 혼)를 받아요</div>
       <div class="flex flex-wrap gap-1.5 my-2"><button class="story-chip" data-q="all">전체 선택</button>${save.owned.some(spare) ? '<button class="story-chip" data-q="spare">출전 안 하는 중복만</button>' : ''}${grades.map(gr => `<button class="story-chip" data-q="${gr}">${RAR[gr]} 전체</button>`).join('')}<button class="story-chip" data-q="none">선택 해제</button></div>
-      ${sortBar()}<div class="story-bulk-list" id="bulk-list">${list.map(o => { const c = card(o.id), lk = locked(o), on = sel.has(o.uid);
-        return `<div class="story-bulk-row ${lk ? 'lock' : ''} ${on ? 'on' : ''}" ${lk ? '' : `data-row="${o.uid}"`}><input type="checkbox" ${on ? 'checked' : ''} ${lk ? 'disabled' : ''}><img src="${IMG}${o.id}.webp" alt=""><div class="flex-1 min-w-0"><div class="text-sm font-bold truncate">${esc(exName(o, c?.name))} <span class="text-[10px] text-zinc-400">${RAR[c?.grade] || 'N'} · Lv.${o.level}</span>${c?.name === card(tgt.id)?.name && !lk ? ' <span class="text-amber-300 text-[10px]">×1.5</span>' : ''}</div><div class="text-[10px] text-zinc-500">${lk ? (o.uid === tu ? 'EXP 받을 카드' : isLeader(o) ? '리더 · 분해 불가' : '🔒 잠금 · 분해 불가') : `${repOf(o.id) === o ? '⚔️ 출전 카드 · ' : ''}누적 EXP ${fmt(o.totalExp)}`}</div></div></div>`; }).join('')}</div>
-      <div class="story-bulk-sum">${f.n ? `<b>${f.n}장</b> 선택 · EXP <b class="text-sky-300">+${fmt(f.amt)}</b>${f.same ? ` <span class="text-amber-300 text-[11px]">(같은 이름 ${f.same}장 ×1.5)</span>` : ''}<br>${esc(exName(tgt, card(tgt.id)?.name))} Lv.${tgt.level} → <b class="text-emerald-300">Lv.${g.level}</b> · 스탯 +${lvPct(tgt)}% → +${lvPct({ id: tgt.id, level: g.level })}%${f.refund ? `<br><span class="text-emerald-300 text-[11px]">공용 포인트 ${f.refund} 돌려받음</span>` : ''}` : '<span class="text-zinc-500">분해할 카드를 골라 주세요</span>'}</div>
-      ${g.wasted && f.n ? `<div class="story-warn">⚠️ 최대 레벨(Lv.${lvCap(tgt)})을 넘는 EXP ${fmt(g.wasted)}은 사라져요.</div>` : ''}
+      ${sortBar()}<div class="story-bulk-list" id="bulk-list">${list.map(o => { const c = card(o.id), lk = disLocked(o), on = sel.has(o.uid), d = disCalc(o);
+        return `<div class="story-bulk-row ${lk ? 'lock' : ''} ${on ? 'on' : ''}" ${lk ? '' : `data-row="${o.uid}"`}><input type="checkbox" ${on ? 'checked' : ''} ${lk ? 'disabled' : ''}><img src="${IMG}${o.id}.webp" alt=""><div class="flex-1 min-w-0"><div class="text-sm font-bold truncate">${esc(exName(o, c?.name))} <span class="text-[10px] text-zinc-400">${RAR[c?.grade] || 'N'} · Lv.${o.level}</span></div><div class="text-[10px] text-zinc-500">${lk ? (isLeader(o) ? '리더 · 분해 불가' : '🔒 잠금 · 분해 불가') : `${repOf(o.id) === o ? '⚔️ 출전 카드 · ' : ''}${curTxt(d)}`}</div></div></div>`; }).join('')}</div>
+      <div class="story-bulk-sum">${f.n ? `<b>${f.n}장</b> 선택 · <span class="story-drops">${curTxt(f)}</span>${f.refund ? `<br><span class="text-emerald-300 text-[11px]">공용 포인트 ${f.refund} 돌려받음</span>` : ''}` : '<span class="text-zinc-500">분해할 카드를 골라 주세요</span>'}</div>
       ${f.n && save.owned.some(o => sel.has(o.uid) && canMergeAny(o)) ? '<div class="story-hint">💡 같은 카드가 여러 장이면 분해 대신 합성(EX)에 쓸 수도 있어요.</div>' : ''}
-      <div class="flex gap-2 mt-3"><button data-close-pop class="flex-1 py-2.5 rounded-xl bg-zinc-700 font-bold">취소</button><button id="bulk-ok" class="flex-1 py-2.5 rounded-xl bg-red-500 font-bold" ${f.n ? '' : 'disabled'}>${f.n ? `${f.n}장 분해 → ${esc(card(tgt.id)?.name)}에게 EXP` : '분해할 카드를 골라 주세요'}</button></div>`, renderCards);
+      <div class="flex gap-2 mt-3"><button data-close-pop class="flex-1 py-2.5 rounded-xl bg-zinc-700 font-bold">취소</button><button id="bulk-ok" class="flex-1 py-2.5 rounded-xl bg-red-500 font-bold" ${f.n ? '' : 'disabled'}>${f.n ? `${f.n}장 분해` : '분해할 카드를 골라 주세요'}</button></div>`, renderCards);
     const box = $('bulk-list'); box.scrollTop = st.scroll || 0;
-    const re = () => bulkDiscard({ tu, sel, scroll: box.scrollTop });
-    $('bulk-change').onclick = () => { p.close(true); bulkPickTarget({ tu, sel }); };
+    const re = () => bulkDiscard({ sel, scroll: box.scrollTop });
     p.el.querySelectorAll('[data-q]').forEach(b => b.onclick = () => { const q = b.dataset.q;
-      if (q === 'none') sel.clear(); else for (const o of save.owned) if (!locked(o) && (q === 'all' || (q === 'spare' ? spare(o) : card(o.id)?.grade === q))) sel.add(o.uid);
+      if (q === 'none') sel.clear(); else for (const o of save.owned) if (!disLocked(o) && (q === 'all' || (q === 'spare' ? spare(o) : card(o.id)?.grade === q))) sel.add(o.uid);
       re(); });
     p.el.querySelectorAll('[data-row]').forEach(r => r.onclick = () => { const k = r.dataset.row; sel.has(k) ? sel.delete(k) : sel.add(k); re(); });
-    $('bulk-ok').onclick = () => { if (f.n) { p.close(true); confirmBulk(tu, sel, f, g, box.scrollTop); } };
-    bindSort(p, () => bulkDiscard({ tu, sel, scroll: 0 }));
+    $('bulk-ok').onclick = () => { if (f.n) { p.close(true); confirmBulk(sel, f, box.scrollTop); } };
+    bindSort(p, () => bulkDiscard({ sel, scroll: 0 }));
   }
   const canMergeAny = o => copiesOf(o.id).length > 1 && exOf(o) < maxEx(o);
-  function confirmBulk(tu, sel, f, g, scroll) {
-    const tgt = byUid(tu), names = save.owned.filter(o => sel.has(o.uid)).map(o => `${esc(exName(o, card(o.id)?.name))} Lv.${o.level}`);
+  function confirmBulk(sel, f, scroll) {
+    const names = save.owned.filter(o => sel.has(o.uid)).map(o => `${esc(exName(o, card(o.id)?.name))} Lv.${o.level}`);
     const p = popup(`<div class="text-lg font-black mb-2">정말 분해할까요?</div>
-      <div class="text-sm"><b>${f.n}장</b>을 분해하고 <b>${esc(exName(tgt, card(tgt.id)?.name))}</b>에게 EXP <b class="text-sky-300">+${fmt(f.amt)}</b></div>
+      <div class="text-sm"><b>${f.n}장</b>을 분해하고 받아요: <span class="story-drops">${curTxt(f)}</span></div>
       <div class="text-[11px] text-zinc-400 mt-1 max-h-24 overflow-y-auto">${names.join(', ')}</div>
-      <div class="text-sm mt-1">Lv.${tgt.level} → <b class="text-emerald-300">Lv.${g.level}</b></div>
-      ${g.wasted ? `<div class="story-warn">⚠️ 최대 레벨(Lv.${lvCap(tgt)})을 넘는 EXP ${fmt(g.wasted)}은 사라져요.</div>` : ''}
+      ${f.refund ? `<div class="text-xs text-emerald-300 mt-1">공용 포인트 ${f.refund} 돌려받음</div>` : ''}
       <div class="text-[11px] text-red-300 mt-2">분해한 카드는 되돌릴 수 없어요.</div>
-      <div class="flex gap-2 mt-4"><button id="bulk-no" class="flex-1 py-2.5 rounded-xl bg-zinc-700 font-bold">취소</button><button id="bulk-yes" class="flex-1 py-2.5 rounded-xl bg-red-500 font-bold">${f.n}장 분해 → ${esc(card(tgt.id)?.name)}에게 EXP</button></div>`, renderCards);
-    $('bulk-no').onclick = () => { p.close(true); bulkDiscard({ tu, sel, scroll }); };
-    $('bulk-yes').onclick = async () => {
-      $('bulk-yes').disabled = true;
-      const res = await act('story_discard_many', { p_ids: f.ids, p_target: tu }, () => {
-        const from = tgt.level; Object.assign(tgt, { level: g.level, exp: g.exp, totalExp: g.totalExp });
-        save.owned = save.owned.filter(o => !f.ids.includes(o.uid));
-        save.points += f.refund;
-        return { count: f.n, exp: f.amt, from, level: g.level, refund: f.refund };
-      }, r => r.data);
-      p.close(true); renderCards();
-      if (res.ok) { const r = res.r || {}; toast(`🗑️ ${r.count}장 분해 · ${card(tgt.id)?.name} EXP +${fmt(r.exp)}`); if (r.level > r.from) levelUpFx(`LEVEL UP! Lv.${r.level}`); }
-    };
+      <div class="flex gap-2 mt-4"><button id="bulk-no" class="flex-1 py-2.5 rounded-xl bg-zinc-700 font-bold">취소</button><button id="bulk-yes" class="flex-1 py-2.5 rounded-xl bg-red-500 font-bold">${f.n}장 분해</button></div>`, renderCards);
+    $('bulk-no').onclick = () => { p.close(true); bulkDiscard({ sel, scroll }); };
+    $('bulk-yes').onclick = async () => { $('bulk-yes').disabled = true; p.close(true); await doDismantle(f.ids, f.n, renderCards); };
   }
-  // ----- 1장 분해: EXP를 받을 카드 고르기 -----
-  function pickTarget(su) {
-    const src = byUid(su), sc = card(src.id);
-    const targets = sortInst(save.owned.filter(o => o.uid !== su));
-    const p = popup(`<div class="text-lg font-black mb-1">${ic('discard', { alt: '' })} ${esc(exName(src, sc?.name))} Lv.${src.level} 분해</div><div class="text-xs text-zinc-400 mb-3">EXP를 받을 카드를 골라 주세요</div>${sortBar()}
-      <div class="story-target-list">${targets.map(o => { const c = card(o.id), f = feedCalc(src, o), g = gainCalc(o, f.amt);
-        return `<button data-t="${o.uid}" class="story-target"><img src="${IMG}${o.id}.webp" alt=""><div class="flex-1 min-w-0 text-left"><div class="text-sm font-bold truncate">${isLeader(o) ? ic('crown', { alt: '리더' }) + ' ' : ''}${esc(exName(o, c?.name))}${f.same ? ' <span class="text-amber-300 text-[10px]">같은 이름 ×1.5</span>' : ''}</div><div class="text-[11px] text-zinc-400">Lv.${o.level} → <b class="${g.level > o.level ? 'text-emerald-300' : ''}">Lv.${g.level}</b> · EXP +${fmt(f.amt)}${g.wasted ? ` <span class="text-red-300">(${fmt(g.wasted)} 낭비)</span>` : ''}</div></div></button>`; }).join('')}</div>
-      <button data-close-pop class="w-full mt-3 py-2.5 rounded-xl bg-zinc-700 font-bold">취소</button>`, renderCards);
-    p.el.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { p.close(true); confirmDiscard(su, b.dataset.t); });
-    bindSort(p, () => pickTarget(su));
-  }
-  function confirmDiscard(su, tu) {
-    const src = byUid(su), tgt = byUid(tu), sc = card(src.id), tc = card(tgt.id), f = feedCalc(src, tgt), g = gainCalc(tgt, f.amt);
+  // ----- 1장 분해 (대상 카드 없음) -----
+  function pickTarget(su) { confirmDiscard(su); }
+  function confirmDiscard(su) {
+    const src = byUid(su), sc = card(src.id), d = disCalc(src);
+    if (disLocked(src)) { toast(isLeader(src) ? '리더 카드는 분해할 수 없어요.' : '🔒 잠긴 카드는 분해할 수 없어요.'); return; }
     const p = popup(`<div class="text-lg font-black mb-2">정말 분해할까요?</div>
-      <div class="text-sm"><b>${esc(exName(src, sc?.name))}</b> Lv.${src.level} → <b>${esc(exName(tgt, tc?.name))}</b> EXP <b class="text-sky-300">+${fmt(f.amt)}</b></div>
-      <div class="text-sm mt-1">Lv.${tgt.level} → <b class="text-emerald-300">Lv.${g.level}</b>${g.level > tgt.level ? ` · 스탯 +${lvPct(tgt)}% → +${lvPct({ id: tgt.id, level: g.level })}%` : ''}</div>
-      ${g.wasted ? `<div class="story-warn">⚠️ 최대 레벨(Lv.${lvCap(tgt)})을 넘는 EXP ${fmt(g.wasted)}은 사라져요.</div>` : ''}
-      ${f.refund ? `<div class="text-xs text-emerald-300 mt-1">이 카드에 쓴 공용 포인트 ${f.refund}은 돌려받아요.</div>` : ''}
+      <div class="text-sm"><b>${esc(exName(src, sc?.name))}</b> Lv.${src.level} 분해 → <span class="story-drops">${curTxt(d)}</span></div>
+      ${d.refund ? `<div class="text-xs text-emerald-300 mt-1">이 카드에 쓴 공용 포인트 ${d.refund}은 돌려받아요.</div>` : ''}
       ${canMergeAny(src) ? '<div class="story-hint">💡 같은 카드가 여러 장이면 합성(EX) 재료로 쓸 수도 있어요.</div>' : ''}
       ${src.cpts || src.spentCard ? '<div class="text-[11px] text-zinc-400 mt-1">카드 전용 포인트와 그걸로 올린 스탯은 함께 사라져요.</div>' : ''}
+      <div class="text-[11px] text-red-300 mt-2">분해한 카드는 되돌릴 수 없어요.</div>
       <div class="flex gap-2 mt-4"><button data-close-pop class="flex-1 py-2.5 rounded-xl bg-zinc-700 font-bold">취소</button><button id="story-disc-ok" class="flex-1 py-2.5 rounded-xl bg-red-500 font-bold">분해</button></div>`, renderCards);
-    $('story-disc-ok').onclick = async () => {
-      $('story-disc-ok').disabled = true;
-      const res = await act('story_discard', { p_id: su, p_target: tu }, () => {
-        const from = tgt.level; Object.assign(tgt, { level: g.level, exp: g.exp, totalExp: g.totalExp });
-        save.owned.splice(idxOf(src), 1);
-        save.points += f.refund;
-        return { exp: f.amt, from, level: g.level, refund: f.refund };
-      }, r => r.data);
-      p.close(true); renderCards();
-      if (res.ok) { const r = res.r || {}; toast(`🗑️ ${sc?.name} 분해 · ${tc?.name} EXP +${r.exp}`); if (r.level > r.from) levelUpFx(`LEVEL UP! Lv.${r.level}`); }
-    };
+    $('story-disc-ok').onclick = async () => { $('story-disc-ok').disabled = true; p.close(true); await doDismantle([su], 1, renderCards); };
   }
 
   // ----- 일일 카드 뽑기 (하루 1회, KST 자정 초기화) -----
