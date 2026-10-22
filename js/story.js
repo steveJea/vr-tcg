@@ -882,10 +882,11 @@
     if (!serverMode) return '';
     const cap = lvCap(o); if ((o.level | 0) >= cap) return `<div class="story-lvup-box max">최대 레벨 Lv.${cap}${exOf(o) < maxEx(o) ? ' · 합성(EX)하면 최대 레벨 +5' : ''}</div>`;
     const w = W(), one = lvUpCost(o, 1), ten = lvUpCost(o, 10, w);
-    const btn = (c, id, label) => `<button id="${id}" class="story-lvup-btn ${afford(c) ? '' : 'short'}" ${afford(c) ? '' : 'disabled'}><b>${label}</b><small>${costTxt(c)}</small></button>`;
-    return `<div class="story-lvup-box"><div class="story-lvup-h" title="골드 + 순수한 피로 레벨업 · 전투 EXP 로도 올라요">${ic('level_up', { alt: '' }) || '⬆'} 레벨업</div>
-      <div class="flex gap-2">${btn(one, 'story-d-lv1', `Lv.${o.level} → ${one.to}`)}${ten.n > 1 ? btn(ten, 'story-d-lv10', `${ten.n < 10 && ten.to < lvCap(o) ? '최대 ' : ''}+${ten.n} (→ Lv.${ten.to})`) : ''}</div>
-      <div class="story-lvup-have">${w ? `보유 ${CI('gold')} ${fmt(w.gold)} · ${CI('blood')} ${fmt(w.blood)}` : '보유 재화 불러오는 중…'}</div></div>`;
+    const btn = (c, id, label, t) => `<button id="${id}" class="cd-lvbtn ${afford(c) ? '' : 'short'}" title="${t}" ${afford(c) ? '' : 'disabled'}><b>${label}</b><small>${costTxt(c)}</small></button>`;
+    // 한 줄: 레벨업 아이콘 · +1 · +N(최대 10) · 보유 재화
+    return `<div class="cd-lvup" title="골드 + 순수한 피로 레벨업 · 전투 EXP 로도 올라요"><span class="cd-lvup-ic">${ic('level_up', { alt: '레벨업' }) || '⬆'}</span>
+      ${btn(one, 'story-d-lv1', `Lv.${one.to}`, `레벨업 Lv.${o.level} → ${one.to}`)}${ten.n > 1 ? btn(ten, 'story-d-lv10', `+${ten.n}`, `레벨업 ${ten.n}번 (→ Lv.${ten.to})`) : ''}
+      <span class="cd-have">${w ? `${CI('gold')} ${fmt(w.gold)}<br>${CI('blood')} ${fmt(w.blood)}` : '…'}</span></div>`;
   }
   async function doLevelUp(o, n) {
     const c = lvUpCost(o, n, n > 1 ? W() : null); if (!c.n) return;
@@ -927,22 +928,20 @@
     const c = boosted(o), cap = lvCap(o), n = copiesOf(o.id).length, rep = repOf(o.id) === o;
     const p = popup(`<div class="flex gap-3"><div class="relative shrink-0 self-start"><img src="${IMG}${c.id}.webp" class="w-24 aspect-[3/4] object-cover rounded-lg" alt="">${window.rarityStars?.(c, exOf(o) ? 'ex' : 'base', 'rstars-over') || ''}</div><div class="flex-1 min-w-0">
         <div class="text-lg font-black truncate">${window.TCG?.cardTitle ? TCG.cardTitle(c, isLeader(o) ? ic('crown', { alt: '리더' }) + ' ' : '') : `${isLeader(o) ? ic('crown', { alt: '리더' }) + ' ' : ''}${esc(c.name)} <span class="text-xs text-zinc-400">${RAR[c.grade] || 'N'}</span>`}</div>${window.TCG?.cardTags?.(c, [n > 1 ? `×${n}${rep ? ' ⚔️' : ''}` : '']) || ''}
-        ${lvBar(o)}<div class="text-[11px] text-zinc-400 mt-1">최대 Lv.${cap} · 누적 EXP ${fmt(o.totalExp)}${n > 1 ? ` · 같은 카드 ${n}장 중 1장${rep ? ' (⚔️ 전투 출전)' : ''}` : ''}</div>
-        <div class="text-xs mt-2"><span class="story-lvpct">Lv.${o.level} +${lvPct(o)}%</span> <span class="text-zinc-500">기본 스탯에 레벨 보너스</span></div>
-        ${exOf(o) ? `<div class="text-xs mt-1"><span class="story-expct">EX${exOf(o)} +${exbOf(o)}%</span> <span class="text-zinc-500">합성 보너스 (기본 스탯) · ${exOf(o)}/${maxEx(o)}</span></div>` : ''}
-        <div class="story-statrows">${STATS.map(s => { const base = card(o.id)[s], exB = Math.round(base * (1 + exbOf(o) / 100)) - base, lvB = Math.round(base * (1 + exbOf(o) / 100) * (1 + lvPct(o) / 100)) - base - exB, pt = ptGain(s, o.boost?.[s]);
-          return `<div><span>${STAT_LABEL[s]}</span><b>${fmt(c[s])}</b><small>기본 ${fmt(base)}${exB ? ` <i class="text-red-300">+${fmt(exB)} EX</i>` : ''}${lvB ? ` <i class="text-amber-300">+${fmt(lvB)} 레벨</i>` : ''}${pt ? ` <i class="text-emerald-300">+${fmt(pt)} 포인트</i>` : ''}</small></div>`; }).join('')}</div>
+        ${lvBar(o)}
+        <div class="cd-stats" role="button" tabindex="0" title="눌러서 기본 + 레벨 보기">${STATS.map(s => { const base = card(o.id)[s], exB = Math.round(base * (1 + exbOf(o) / 100)) - base, lvB = Math.round(base * (1 + exbOf(o) / 100) * (1 + lvPct(o) / 100)) - base - exB, pt = ptGain(s, o.boost?.[s]);
+          return `<div><span>${STAT_LABEL[s]}</span><b>${fmt(c[s])}</b><small class="cd-brk">기본 ${fmt(base)}${exB ? ` <i class="text-red-300">+${fmt(exB)} EX</i>` : ''}${lvB ? ` <i class="text-amber-300">+${fmt(lvB)} 레벨</i>` : ''}${pt ? ` <i class="text-emerald-300">+${fmt(pt)} 포인트</i>` : ''}</small></div>`; }).join('')}
+          <div class="cd-brk cd-more">최대 Lv.${cap} · 누적 EXP ${fmt(o.totalExp)}${exOf(o) ? ` · <span class="text-red-300">EX${exOf(o)} +${exbOf(o)}%</span> (${exOf(o)}/${maxEx(o)})` : ''}${n > 1 ? `<br>같은 카드 ${n}장 중 1장${rep ? ' (⚔️ 전투 출전)' : ''} · 전투에는 1장만 나가요 (리더 · 없으면 레벨이 가장 높은 장)` : ''}</div></div>
         ${o.cpts ? `<div class="text-xs mt-1">남은 카드 전용 포인트 <b class="text-sky-300">${o.cpts}</b></div>` : ''}</div></div>
-      ${n > 1 ? '<div class="story-hint">💡 전투에는 같은 카드 중 1장만 나가요 (리더 · 없으면 레벨이 가장 높은 장). 남는 장은 합성 재료로 쓸 수 있어요.</div>' : ''}
       <div id="story-d-lvwrap">${lvUpBox(o)}</div>
       ${canMerge(o) ? `<button id="story-d-merge" class="story-merge-btn">${ic('merge', { alt: '' })} 합성 (EX${exOf(o)} → EX${exOf(o) + 1})${serverMode ? ` <small>💠 ${shardCost(o)}</small>` : ''}</button>` : exOf(o) >= maxEx(o) ? `<div class="text-[11px] text-red-300 mt-2 text-center">최대 합성 단계 (EX${maxEx(o)})</div>` : ''}
-      <div class="flex gap-2 mt-4"><button id="story-d-stats" class="flex-1 py-2.5 rounded-xl bg-emerald-500 text-black font-bold" ${save.points || o.cpts ? '' : 'disabled'}>📈 스탯 분배</button>
-      <button id="story-d-discard" class="flex-1 py-2.5 rounded-xl bg-red-500/80 font-bold" ${canDiscard(o) ? '' : 'disabled'}>${ic('discard', { alt: '' })} 분해</button></div>
-      ${(() => { const le = leaderEff(o.id); return le ? `<div class="story-leader-eff ${isLeader(o) ? 'on' : ''}">${ic('crown', { alt: '' })} <b>리더 스킬</b> <small>${esc(le.label)}</small><div>${esc(le.text)}</div>${isLeader(o) ? '' : '<small class="text-zinc-500">이 카드를 리더로 하면 적용돼요</small>'}</div>` : ''; })()}
-      <div class="flex gap-2 mt-2"><button id="story-d-lock" class="flex-1 py-2 rounded-xl bg-zinc-700 font-bold text-sm" ${isLeader(o) ? 'disabled' : ''}>${isLeader(o) ? '🔒 리더 자동 잠금' : o.locked ? '🔓 잠금 해제' : '🔒 분해 잠금'}</button>
-      ${isLeader(o) ? '' : `<button id="story-d-leader" class="flex-1 py-2 rounded-xl bg-amber-500/90 text-black font-bold text-sm" ${leaderUnlocked() ? '' : 'disabled'}>${ic('crown', { alt: '' })} ${leaderUnlocked() ? '리더로 지정' : '리더 변경: 챕터 1 클리어 후'}</button>`}</div>
-      ${isLocked(o) ? `<div class="text-[11px] text-zinc-500 mt-2 text-center">${isLeader(o) ? '리더 카드는 자동으로 잠겨 분해·합성 재료로 쓸 수 없어요' : '잠긴 카드는 분해·합성 재료로 쓸 수 없어요'}</div>` : ''}
-      ${skillsOf(o.id).length ? `<div class="story-detail-skills"><div class="text-sm font-black mt-4">${window.VRIcon?.or?.('skill_count', '📜') || '📜'} ${skillsOf(o.id).length}</div>${window.TCG?.skillListHTML?.(c, o.level, { skillLv: o.skillLv, up: serverMode }) || ''}</div>` : ''}`, renderCards);
+      ${(() => { const le = leaderEff(o.id); return le ? `<div class="cd-leader ${isLeader(o) ? 'on' : ''}" title="${isLeader(o) ? '리더 스킬 적용 중' : '이 카드를 리더로 하면 적용돼요'}">${ic('crown', { alt: '리더 스킬' })} <span>${esc(le.text)}</span></div>` : ''; })()}
+      <div class="cd-acts"><button id="story-d-stats" class="cd-ic stats" title="스탯 분배" aria-label="스탯 분배" ${save.points || o.cpts ? '' : 'disabled'}>📈</button>
+      <button id="story-d-discard" class="cd-ic discard" title="분해" aria-label="분해" ${canDiscard(o) ? '' : 'disabled'}>${ic('discard', { alt: '분해' }) || '분해'}</button>
+      <button id="story-d-lock" class="cd-sm" title="${isLeader(o) ? '리더 카드는 자동으로 잠겨 분해·합성 재료로 쓸 수 없어요' : '잠긴 카드는 분해·합성 재료로 쓸 수 없어요'}" ${isLeader(o) ? 'disabled' : ''}>${isLeader(o) ? '🔒 리더 잠금' : o.locked ? '🔓 잠금 해제' : '🔒 잠금'}</button>
+      ${isLeader(o) ? '' : `<button id="story-d-leader" class="cd-sm lead" title="${leaderUnlocked() ? '리더로 지정' : '리더 변경: 챕터 1 클리어 후'}" ${leaderUnlocked() ? '' : 'disabled'}>${ic('crown', { alt: '' })} 리더 지정</button>`}</div>
+      ${skillsOf(o.id).length ? `<div class="story-detail-skills"><div class="text-sm font-black mt-4">${window.VRIcon?.or?.('skill_count', '📜') || '📜'} ${skillsOf(o.id).length}</div>${window.TCG?.skillListHTML?.(c, o.level, { skillLv: o.skillLv, up: serverMode, compact: true }) || ''}</div>` : ''}`, renderCards);
+    { const st = p.el.querySelector('.cd-stats'); if (st) { const t = () => st.classList.toggle('open'); st.onclick = t; st.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); t(); } }; } }
     $('story-d-lock').onclick = () => { p.close(true); setLock(o.uid, !o.locked); };
     { const lb = $('story-d-leader'); if (lb) lb.onclick = () => { p.close(true); confirmLeader(o.uid, () => cardDetail(o.uid)); }; }
     $('story-d-stats').onclick = () => { p.close(true); openStats(renderCards, idxOf(o)); };
