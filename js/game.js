@@ -565,7 +565,7 @@ function renderVoiceBtn() {
 // ===== 효과음 (SE 시트: 코드 → audio/se/00코드_0n.mp3, 변형 중 무작위) =====
 // 1 맞는 소리 · 2 카드 소환 · 3 본진 타격 · 4 버튼 클릭 · 5 UR 소환 · 6 MR 소환 · 7 공격하는 소리
 const SE_FILES = { 1: 4, 2: 2, 3: 4, 4: 3, 5: 1, 6: 1, 7: 3 };
-const SE_ON_KEY = 'vrTcgSe', SE_VOL = { 1: 0.225, 2: 0.3, 3: 0.3, 4: 0.175, 5: 0.375, 6: 0.4, 7: 0.225 };   // 효과음 음량: 이전 값의 50% (2026-10-22). 보이스는 그대로
+const SE_ON_KEY = 'vrTcgSe', SE_VOL = { 1: 0.1125, 2: 0.15, 3: 0.15, 4: 0.0875, 5: 0.1875, 6: 0.2, 7: 0.1125 };   // 효과음 음량: 다시 50% (2026-10-22 2차, 처음 값의 25%). 보이스·BGM 은 그대로
 let seOn = localStorage.getItem(SE_ON_KEY) !== '0';
 const seCache = new Map(), seLast = {};
 function playSe(code) {
@@ -575,7 +575,7 @@ function playSe(code) {
     const k = `${String(code).padStart(3, '0')}_${String(1 + Math.floor(Math.random() * SE_FILES[code])).padStart(2, '0')}`;
     let base = seCache.get(k); if (!base) { base = new Audio(`audio/se/${k}.mp3`); base.preload = 'auto'; seCache.set(k, base); }
     const a = base.paused || base.ended ? base : base.cloneNode();   // 겹쳐 재생 허용
-    a.volume = (SE_VOL[code] || 0.25) * (voiceVol || 0.8); a.currentTime = 0;
+    a.volume = (SE_VOL[code] || 0.125) * (voiceVol || 0.8); a.currentTime = 0;
     const pr = a.play(); if (pr?.catch) pr.catch(() => {});
   } catch {}
 }
