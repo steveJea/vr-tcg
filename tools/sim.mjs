@@ -48,7 +48,7 @@ function play() {
     if (!noActions && aiWantAccel(me, true)) { doAction('accel', me); used.accel++; }
     if (!noActions) { const v = aiPickSacrifice(me, op); if (v) { sacrifice(v, me); used.sacrifice++; } }
     for (const c of aiSummonOrder(me.hand)) if (canSummon(c, me, op).ok) {
-      me.mana -= c.cost; me.hand.splice(me.hand.indexOf(c), 1); placeUnit(me, c, makeUnit); if (over()) return result(turn);
+      me.mana -= c.cost; me.hand.splice(me.hand.indexOf(c), 1); placeUnit(me, c, makeUnit, true); if (over()) return result(turn);
     }
     if (!noActions) { let it; while ((it = aiPickItem(me, op))) { equip(it[0], it[1], me); used.item++; } }
     if (!noActions && aiWantAccel(me)) { doAction('accel', me); used.accel++; }

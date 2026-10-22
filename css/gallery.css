@@ -90,3 +90,4 @@ body.gal-lock { overflow: hidden; }
 .gal-zcap { margin-top: 10px; color: #fff; text-align: center; font-size: .9rem; } .gal-zcap div { font-size: .75rem; color: #a1a1aa; }
 .gal-end-card .gal-crown { top: 0; right: 1px; font-size: .75rem; }
 .gal-promo { margin-top: 8px; font-size: .85rem; font-weight: 800; color: var(--vc); background: rgba(0,0,0,.4); border: 1px solid var(--vc); border-radius: 12px; padding: 6px 10px; }
+.gal-power{color:#fbbf24;font-weight:900}
