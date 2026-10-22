@@ -1,4 +1,5 @@
 // 치명타·속성 패시브 단위 테스트: node tools/test_crit.mjs
+import './seed_rng.mjs';   // 고정 시드 난수 (치명타·회피·속성 패시브 등 확률 결과 고정)
 import { readFileSync } from 'fs';
 import { setSkillData, initPlayers, placeUnit, refreshAll, setEmitter } from '../js/skills.js';
 import { RULES, makeUnit, resolveAttack, calcDamage } from '../js/rules.js';

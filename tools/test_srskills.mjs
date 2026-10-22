@@ -1,4 +1,5 @@
 // SR 스킬·임씨 스킬 엔진 검증: node tools/test_srskills.mjs
+import './seed_rng.mjs';   // 고정 시드 난수 (치명타·회피·속성 패시브 등 확률 결과 고정)
 import fs from 'fs';
 import { parseCSV, makeUnit, resolveAttack, calcDamage, RULES } from '../js/rules.js';
 // 스킬 수치 검증용: 성별 피해(7-1)·속성 회피(7-2)는 끄고 확인 (해당 규칙은 test_batchB.mjs에서 검증)

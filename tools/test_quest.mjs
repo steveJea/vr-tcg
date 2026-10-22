@@ -1,4 +1,5 @@
 // 퀘스트 모드 검증: node tools/test_quest.mjs
+import './seed_rng.mjs';   // 고정 시드 난수 (치명타·회피·속성 패시브 등 확률 결과 고정)
 import fs from 'fs';
 import { parseCSV, makeUnit, RULES } from '../js/rules.js';
 import { setSkillData, initPlayers, placeUnit, skillsOf, aiPickSkill, refreshAll, TURN } from '../js/skills.js';
