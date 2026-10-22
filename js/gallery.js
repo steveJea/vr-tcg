@@ -156,6 +156,7 @@
     $('gal-detail').addEventListener('click', e => {
       const zb = e.target.closest('[data-zsrc]'); if (zb) { zoom(zb.dataset.zsrc, zb.dataset.ztitle, zb.dataset.zsub, zb.dataset.zgrade); return; }
       const sb2 = e.target.closest('[data-share]'); if (sb2) { shareCard(sb2.dataset.share, sb2); return; }
+      const kb = e.target.closest('[data-kshare]'); if (kb) { kakaoCard(kb.dataset.kshare, kb); return; }
       const vb = e.target.closest('[data-voice]'); if (vb) { playVoice(vb.dataset.voice); return; }
       if (e.target.id === 'gal-detail' || e.target.closest('.gal-x')) $('gal-detail').classList.add('hidden'); });
     $('gal-grid').addEventListener('click', e => { const t = e.target.closest('[data-cid]'); if (t) detail(t.dataset.cid); });
@@ -224,7 +225,7 @@
     const nextTxt = t >= 4 ? '🔴 최종 등급 달성!' : `다음: ${TE(t + 1)} ${TIERS[t + 1].n} (MVP ${t + 1}회)`;
     const el = $('gal-detail');
     el.innerHTML = `<div class="gal-dbox rar-${s} ${deco}">
-      <button class="gal-x gal-dx" aria-label="닫기">✕</button><button class="gal-share" data-share="${c.id}" aria-label="이미지로 공유">📤 공유</button>
+      <button class="gal-x gal-dx" aria-label="닫기">✕</button><button class="gal-share" data-share="${c.id}" aria-label="이미지로 공유">📤 공유</button><button class="gal-share gal-kakao" data-kshare="${c.id}" aria-label="카카오톡으로 공유">💬 카카오톡</button>
       <div class="gal-dimg"><img src="${portrait}" alt="${esc(c.name)}" data-zsrc="${portrait}" data-ztitle="${esc(c.name)}" data-zsub="${LABEL[s]}" data-zgrade="${s}" onerror="this.style.visibility='hidden'">${window.rarityStars?.(s, 'base', 'rstars-over') || ''}${crownHtml(t, true)}
         <button class="gal-zbtn" data-zsrc="${portrait}" data-ztitle="${esc(c.name)}" data-zsub="${LABEL[s]}" data-zgrade="${s}" aria-label="크게 보기">🔍</button></div>
       <div class="gal-dname">${window.TCG?.cardTitle ? TCG.cardTitle(c) : esc(c.name)}</div>
@@ -256,6 +257,21 @@
       else if (r === 'shared' && copied) galToast('게임 링크도 복사해 뒀어요 · 링크가 빠졌다면 붙여넣기 하세요');
     } catch (e) { console.warn('[gallery] share failed', e); if (btn) btn.textContent = old; alert('이미지를 만들지 못했어요. 잠시 후 다시 시도해 주세요.'); }
     finally { if (btn) btn.disabled = false; }
+  }
+  // 카카오톡 공유 (js/kakao-share.js): 공유 이미지를 카카오에 올려 피드로. SDK·업로드 실패 시 기존 공유(파일 공유·저장)로
+  async function kakaoCard(id, btn) {
+    const info = shareInfo(id); if (!info || !window.VRShareCard) return;
+    const old = btn?.textContent; if (btn) { btn.disabled = true; btn.textContent = '준비 중...'; }
+    try {
+      if (!window.VRKakaoShare) throw new Error('no kakao');
+      const cv = await VRShareCard.render(info), file = await VRShareCard.toFile(cv, `vr-abyss-gate_${id}.png`);
+      await VRKakaoShare.share({ title: info.name, description: `${info.short} · VR: Abyss Gate`, file });
+    } catch (e) {
+      console.warn('[gallery] kakao share failed', e);
+      galToast('카카오톡 공유를 열지 못했어요 · 다른 방법으로 공유할게요');
+      if (btn) btn.textContent = old;
+      return shareCard(id, null);
+    } finally { if (btn) { btn.disabled = false; btn.textContent = old; } }
   }
   /** 마이페이지용 수집률 { have, total, logged } */
   async function collection() {
