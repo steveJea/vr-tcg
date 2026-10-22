@@ -1004,7 +1004,7 @@
   const msToReset = () => { const t = Date.now() + KST; return 86400e3 - (t % 86400e3); };
   const canDraw = () => !!save && save.gachaLast !== kstDay();
   const hms = ms => { const s = Math.max(0, Math.ceil(ms / 1000)); return [s / 3600 | 0, (s / 60 | 0) % 60, s % 60].map(n => String(n).padStart(2, '0')).join(':'); };
-  const GLOW = { 'NORMAL': 'n', 'RARE': 'r', 'HIGH RARE': 'hr', 'SUPER RARE': 'sr', 'ULTRA RARE': 'ur' };
+  const GLOW = { 'NORMAL': 'n', 'RARE': 'r', 'HIGH RARE': 'hr', 'SUPER RARE': 'sr', 'ULTRA RARE': 'ur', 'MYTHIC RARE': 'mr' };
   function addOwned(id, n = 1) {
     for (let k = 0; k < n; k++) save.owned.push(newCard(id));   // 뽑을 때마다 새 카드 1장
     return copiesOf(id).length;
@@ -1076,64 +1076,101 @@
     save.tickets -= n; tickets = save.tickets; await persist();
     return { ok: true, cards, tickets, local: true };
   }
-  const ticketBadge = n => `<span class="story-ticket" title="소환권">🎟️ <b>${n ?? '…'}</b></span>`;
+
+  let gachaTimer = 0, shopTab = 'daily';
+  // ----- 카드 뽑기방: 어비스 게이트 (배경 img/gacha/bg_*, 연출 fx_open → 등급 fx). 뽑기 로직·확률은 그대로 -----
+  const GFX = { 'NORMAL': 'fx_n_hr', 'RARE': 'fx_n_hr', 'HIGH RARE': 'fx_n_hr', 'SUPER RARE': 'fx_sr', 'ULTRA RARE': 'fx_ur', 'MYTHIC RARE': 'fx_mr' };
+  const GORDER = ['NORMAL', 'RARE', 'HIGH RARE', 'SUPER RARE', 'ULTRA RARE', 'MYTHIC RARE'];
+  const GDIR = 'img/gacha/';
+  // 균열 위치 (배경 원본 좌표) · fx 원본(1920x1080)의 균열 기준점 990,800. 세로 배경은 골목 균열에 맞춰 직접 지정
+  const GATE = { land: { w: 1920, h: 1080, x: 990, y: 800, fx: 1 }, port: { w: 1080, h: 1920, x: 550, y: 1250, fx: 0.95 } };
+  const portrait = () => matchMedia('(orientation: portrait), (max-aspect-ratio: 4/5)').matches;
+  const ICN = (n, fb, alt = '') => window.VRIcon?.icon(n, { alt }) || fb;
+  /** 균열(화면 좌표)과 fx 크기 계산 */
+  function gateGeom() {
+    const g = portrait() ? GATE.port : GATE.land, W = innerWidth, H = innerHeight, sc = Math.max(W / g.w, H / g.h);
+    const cx = (W - g.w * sc) / 2 + g.x * sc, cy = (H - g.h * sc) / 2 + g.y * sc, fw = 1920 * sc * g.fx;
+    return { cx, cy, fw, fh: fw * 1080 / 1920 };
+  }
+  function placeFx(img) { const q = gateGeom(); Object.assign(img.style, { width: `${q.fw}px`, height: `${q.fh}px`, left: `${q.cx - q.fw * 990 / 1920}px`, top: `${q.cy - q.fh * 800 / 1080}px`, transformOrigin: `${990 / 19.2}% ${800 / 10.8}%` }); }
+  function gateLayout() {
+    const room = $('gr-room'); if (!room) return;
+    room.querySelectorAll('.gr-fx-img').forEach(placeFx);
+    const q = gateGeom(); room.style.setProperty('--gate-x', `${q.cx}px`); room.style.setProperty('--gate-y', `${q.cy}px`);
+  }
+  addEventListener('resize', gateLayout);
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+  /** 게이트 열림 → 등급 연출. grade = 이번 뽑기 최고 등급 */
+  async function playGate(grade) {
+    const room = $('gr-room'); if (!room) return;
+    room.querySelectorAll('.gr-fx-img').forEach(x => x.remove());
+    const add = (name, cls) => { const im = new Image(); im.src = `${GDIR}${name}.webp`; im.alt = ''; im.className = `gr-fx-img ${cls}`; placeFx(im); room.appendChild(im); return im; };
+    room.classList.add('busy');
+    const op = add('fx_open', 'gr-open'); await wait(750);
+    const g = GLOW[grade] || 'n', fx = add(GFX[grade] || 'fx_n_hr', `gr-rar gr-rar-${g}`);
+    room.classList.add(`flash-${g}`); op.classList.add('out');
+    await wait(['ur', 'mr'].includes(g) ? 1300 : g === 'sr' ? 1050 : 800);
+    room.classList.remove('busy'); fx.classList.add('settle');
+  }
+  const ticketBadge = n => `<span class="story-ticket" title="소환권">${ICN('ticket', '🎟️', '소환권')} <b>${n ?? '…'}</b></span>`;
   const pct = p => `${+(p * 100).toFixed(1)}%`;
   function showRates() {
     const row = (t, rs, note) => `<div class="mb-3"><div class="font-bold mb-1">${t}</div><div class="story-rates">${rs.map(([g, p]) => `<span class="g-text-${GLOW[g]}">${RAR[g]}</span><b>${pct(p)}</b>`).join('')}</div>${note ? `<div class="text-[11px] text-zinc-400 mt-1">${note}</div>` : ''}</div>`;
     popup(`<div class="text-lg font-black mb-3">📊 뽑기 확률</div>${row('일반 뽑기 (하루 1회 무료)', G().rates, '매일 자정(KST, 한국 시간 00:00) 초기화')}${row('특수 뽑기 (소환권 1장 = 1회)', G().special, `10회 뽑기는 HR 이상 1장 보장 · 소환권은 챕터를 처음 다 깰 때마다 +${G().ticketsPerChapter}`)}<button data-close-pop class="w-full mt-1 py-2 rounded-xl bg-white/10">닫기</button>`);
   }
-
-  let gachaTimer = 0, shopTab = 'daily';
   // ----- 상점 (카드 뽑기) 화면: 일반 뽑기(하루 1회 무료) · 특수 뽑기(소환권) -----
   function renderShop(tab) {
     if (tab) shopTab = tab;
     clearInterval(gachaTimer);
     const avail = canDraw(), daily = shopTab === 'daily';
-    show(`${topBar('🎴 카드 뽑기', 'hub')}<div class="story-shop story-pop-panel">
-      <div class="story-shop-tabs"><button class="${daily ? 'on' : ''}" data-tab="daily">일반 뽑기${avail ? '<i class="story-badge">1</i>' : ''}</button><button class="${daily ? '' : 'on'}" data-tab="special">특수 뽑기 ${ticketBadge(tickets)}</button></div>
-      ${daily ? `<div class="text-lg font-black">🎴 오늘의 카드 뽑기</div><div class="text-[11px] text-zinc-400 mt-1">하루 1회 무료 · 매일 자정(KST) 초기화</div>
-      <div class="gacha-stage"><div class="gacha-card" id="gacha-card"><div class="gacha-face gacha-back">🎴</div><div class="gacha-face gacha-front" id="gacha-front"></div></div></div>
-      <div id="gacha-msg" class="text-sm min-h-[1.5rem]"></div>
-      ${avail ? '<button id="gacha-go" class="story-btn w-full mt-2">뽑기!</button>' : ''}
-      <div id="gacha-next" class="text-xs text-zinc-400 mt-2"></div>`
-      : `<div class="text-lg font-black">✨ 특수 뽑기</div><div class="text-[11px] text-zinc-400 mt-1">소환권 1장 = 1회 · 10회는 HR 이상 1장 보장<br>소환권은 챕터를 처음 다 깰 때마다 +${G().ticketsPerChapter}</div>
-      <div class="my-3 text-base">보유 ${ticketBadge(tickets)}</div>
-      <div id="tk-result" class="story-tk-result"></div><div id="gacha-msg" class="text-sm min-h-[1.5rem]"></div>
-      <div class="flex gap-2"><button class="story-btn flex-1" data-draw="1" ${(tickets | 0) >= 1 ? '' : 'disabled'}>1회 <small>🎟️1</small></button><button class="story-btn flex-1" data-draw="10" ${(tickets | 0) >= 10 ? '' : 'disabled'}>10회 <small>🎟️10</small></button></div>`}
-      <button id="gacha-rates" class="w-full mt-2 py-2 rounded-xl bg-white/10 text-sm">📊 확률 보기</button>
-      <button data-go="cards" class="w-full mt-2 py-2 rounded-xl bg-white/10">🃏 내 카드 보기</button></div>`);
+    const bg = `<picture class="gr-bg"><source media="(orientation: portrait), (max-aspect-ratio: 4/5)" srcset="${GDIR}bg_portrait_720.webp 720w, ${GDIR}bg_portrait.webp 1080w" sizes="100vw"><img src="${GDIR}bg_landscape.webp" srcset="${GDIR}bg_landscape_1280.webp 1280w, ${GDIR}bg_landscape.webp 1920w" sizes="100vw" alt=""></picture>`;
+    show(`<div class="gr-room" id="gr-room">${bg}</div>${topBar(`${ICN('gacha', '🎴')} 카드 뽑기`, 'hub')}<div class="story-shop gr-ui">
+      <div class="gr-tabs"><button class="${daily ? 'on' : ''}" data-tab="daily" title="일반 뽑기 · 하루 1회 무료 (KST 자정 초기화)">${ICN('gacha', '🎴')}<span>무료</span>${avail ? '<i class="story-badge">1</i>' : ''}</button><button class="${daily ? '' : 'on'}" data-tab="special" title="특수 뽑기 · 소환권 1장 = 1회 · 10회는 HR 이상 1장 보장">${ticketBadge(tickets)}</button>
+        <button class="gr-ic" id="gacha-rates" title="뽑기 확률" aria-label="뽑기 확률">${ICN('gacha_rates', '📊')}</button><button class="gr-ic" data-go="cards" title="내 카드" aria-label="내 카드">${ICN('my_cards', '🃏')}</button></div>
+      <div class="gr-stage">${daily
+        ? `<div class="gacha-stage gr-card" id="gacha-stage"><div class="gacha-card" id="gacha-card"><div class="gacha-face gacha-back"></div><div class="gacha-face gacha-front" id="gacha-front"></div></div></div>`
+        : `<div id="tk-result" class="story-tk-result"></div>`}</div>
+      <div id="gacha-msg" class="gr-msg"></div>
+      <div class="gr-actions">${daily
+        ? `${avail ? `<button id="gacha-go" class="gr-go">${ICN('gacha', '🎴')} 뽑기</button>` : ''}<div id="gacha-next" class="gr-next"></div>`
+        : `<button class="gr-go" data-draw="1" ${(tickets | 0) >= 1 ? '' : 'disabled'}>1회 <small>${ICN('ticket', '🎟️')}1</small></button><button class="gr-go gr-go10" data-draw="10" ${(tickets | 0) >= 10 ? '' : 'disabled'} title="HR 이상 1장 보장">10회 <small>${ICN('ticket', '🎟️')}10</small></button>`}</div></div>`);
+    gateLayout();
     bind();
     root().querySelectorAll('[data-tab]').forEach(b => b.onclick = () => renderShop(b.dataset.tab));
     $('gacha-rates').onclick = showRates;
     if (tickets == null) syncTickets().then(r => { if (root().querySelector('.story-shop')) { if (r.added) toast(`🎟️ 소환권 +${r.added} (챕터 클리어 보상)`); renderShop(); } });
     if (!daily) {
       root().querySelectorAll('[data-draw]').forEach(b => b.onclick = async () => {
-        root().querySelectorAll('[data-draw]').forEach(x => x.disabled = true); $('gacha-msg').textContent = '뽑는 중...';
+        root().querySelectorAll('[data-draw]').forEach(x => x.disabled = true); $('gacha-msg').textContent = ''; $('tk-result').innerHTML = '';
         const r = await drawTickets(+b.dataset.draw);
-        if (!r.ok) { $('gacha-msg').textContent = r.reason === 'tickets' ? '소환권이 부족해요.' : `뽑기에 실패했어요: ${r.msg || ''}`; return; }
-        const best = r.cards.reduce((a, c) => Math.max(a, Object.keys(GLOW).indexOf(c.grade)), 0);
+        if (!r.ok) { $('gacha-msg').textContent = r.reason === 'tickets' ? '소환권이 부족해요.' : `뽑기에 실패했어요: ${r.msg || ''}`; root().querySelectorAll('[data-draw]').forEach(x => x.disabled = (tickets | 0) < +x.dataset.draw); return; }
+        const bestG = r.cards.reduce((a, c) => GORDER.indexOf(c.grade) > GORDER.indexOf(a) ? c.grade : a, 'NORMAL');
         root().querySelectorAll('.story-ticket b').forEach(x => x.textContent = tickets);
+        await playGate(bestG);
+        if (!$('tk-result')) return;
         $('tk-result').innerHTML = r.cards.map((x, i) => { const c = card(x.card_id); return `<div class="story-tk-card g-${GLOW[x.grade]}" style="animation-delay:${i * 0.08}s"><img src="${IMG}${c.id}.webp" alt="${esc(c.name)}"><span class="story-rar">${RAR[x.grade]}</span><div>${esc(c.name)}</div></div>`; }).join('');
         $('tk-result').className = `story-tk-result n${r.cards.length}`;
-        $('gacha-msg').innerHTML = `${r.cards.length}장 획득! <span class="g-text-${Object.values(GLOW)[best]}">최고 ${RAR[Object.keys(GLOW)[best]]}</span><div class="text-[11px] text-zinc-400">보유 카드에 추가됐어요</div>`;
+        $('gacha-msg').innerHTML = `+${r.cards.length} · <span class="g-text-${GLOW[bestG]}">최고 ${RAR[bestG]}</span>`;
         root().querySelectorAll('[data-draw]').forEach(x => x.disabled = (tickets | 0) < +x.dataset.draw);
       });
       return;
     }
-    const tick = () => { const n = $('gacha-next'); if (!n) return clearInterval(gachaTimer); n.textContent = canDraw() ? '' : `다음 무료 뽑기까지 ${hms(msToReset())} (한국 시간 자정)`; };
+    const tick = () => { const n = $('gacha-next'); if (!n) return clearInterval(gachaTimer); n.innerHTML = canDraw() ? '' : `<span title="다음 무료 뽑기 (한국 시간 자정)">⏳ ${hms(msToReset())}</span>`; };
     tick(); gachaTimer = setInterval(tick, 1000);
-    const go = $('gacha-go'); if (!go) { $('gacha-msg').textContent = '오늘은 이미 뽑았어요.'; return; }
+    const go = $('gacha-go'); if (!go) return;
     go.onclick = async () => {
-      go.disabled = true; go.textContent = '뽑는 중...';
+      go.disabled = true;
       const r = await drawOnce();
       if (!r.ok) { go.remove(); $('gacha-msg').textContent = r.reason === 'already' ? '오늘은 이미 뽑았어요.' : `뽑기에 실패했어요: ${r.msg || ''}`; tick(); return; }
       const c = card(r.card_id), g = GLOW[r.grade] || 'n';
-      $('gacha-front').innerHTML = `<img src="${IMG}${c.id}.webp" alt="${esc(c.name)}"><span class="story-rar">${RAR[c.grade]}</span><div class="gacha-name">${esc(c.name)}</div>`;
-      const el = $('gacha-card'); el.parentElement.className = `gacha-stage g-${g}`;
-      setTimeout(() => el.classList.add('flip'), 350);
       go.remove();
       root().querySelectorAll('.story-gacha-btn .story-badge, [data-tab="daily"] .story-badge').forEach(x => x.remove());
-      setTimeout(() => { $('gacha-msg').innerHTML = `<b class="g-text-${g}">${RAR[c.grade]} · ${esc(c.name)}</b> 획득!${r.count > 1 ? ` <span class="story-dup-inline">x${r.count}</span>` : ''}<div class="text-[11px] text-zinc-400">보유 카드에 추가됐어요</div>`; tick(); }, 1300);
+      await playGate(r.grade);
+      if (!$('gacha-front')) return;
+      $('gacha-front').innerHTML = `<img src="${IMG}${c.id}.webp" alt="${esc(c.name)}"><span class="story-rar">${RAR[c.grade]}</span><div class="gacha-name">${esc(c.name)}</div>`;
+      const el = $('gacha-card'); $('gacha-stage').className = `gacha-stage gr-card g-${g}`;
+      requestAnimationFrame(() => el.classList.add('flip'));
+      setTimeout(() => { const m = $('gacha-msg'); if (m) m.innerHTML = `<b class="g-text-${g}">${RAR[c.grade]} · ${esc(c.name)}</b>${r.count > 1 ? ` <span class="story-dup-inline">x${r.count}</span>` : ''}`; tick(); }, 900);
     };
   }
 
