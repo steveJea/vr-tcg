@@ -70,10 +70,12 @@
         <div class="q-enemies">${g.enemies.map((c, i) => enemyTile(c, i === 0)).join('')}</div>
         <div class="q-reward">${rw ? (cleared ? `<span class="got">✔ 첫 클리어 보상 받음 (${rewardTxt(rw)})</span>` : `🎁 첫 클리어 보상: <b>${rewardTxt(rw)}</b>`) : '<span class="muted">이 층은 보상이 없어요 (10층마다 보상)</span>'}</div>
         <button class="story-btn q-go" id="q-go" ${open_ ? '' : 'disabled'}>${cleared ? '다시 도전' : '도전'} (${n}층)</button>
+        ${sweepBtn()}
       </div>
       <div class="q-list" id="q-list">${rows}</div></div>`, 'story');
     $('q-home').onclick = () => api.home();
     $('q-go').onclick = () => challenge(n);
+    const sw = $('q-sweep'); if (sw) sw.onclick = () => sweep();
     $('q-list').querySelectorAll('[data-floor]').forEach(b => b.onclick = () => { sel = +b.dataset.floor; render(); });
     const on = $('q-list').querySelector('.q-row.on'); if (on) on.scrollIntoView({ block: 'center' });
   }
@@ -90,7 +92,7 @@
     catch (e) { api.toast(/locked/.test(e?.message) ? '아직 열리지 않은 층이에요' : `⚠️ 시작 실패: ${e?.message || e}`); return render(); }
     $('story-screen').classList.add('hidden'); api.bgm('battle');
     const me = api.battleCards(list);
-    window.TCG.startStory({ me, ai: g.enemies.map(c => ({ ...c })), leader: api.leaderFor(me), win: 'wipe', aiName: `${n}층`,
+    window.TCG.startStory({ me, ai: g.enemies.map(c => ({ ...c })), leader: api.leaderFor(me), win: 'wipe', aiName: `${n}층`, quest: true,
       onEnd: (win, reason, st) => result(n, win, reason, st) });
     api.toast(`🗼 ${n}층: 적 카드 5장을 모두 쓰러뜨리세요!`);
   }
@@ -120,6 +122,55 @@
     $('q-back').onclick = () => { sel = next || n; render(); };
   }
 
+  // ----- 소탕: 다음 층부터 연속된 일반 층을 내 덱으로 자동 전투 (supabase/quest_sweep.sql). 보스 층(10의 배수)에서 멈춤. 행동력 없음 -----
+  const SWEEP_SECS = 1.1;   // 서버 최소 1초/층 + 여유
+  const isBoss = k => k % 10 === 0;
+  function sweepBtn() {
+    const f = best() + 1; if (f > maxF()) return '';
+    if (isBoss(f)) return `<div class="q-sweep-note">⚡ 소탕: ${f}층은 보스 층이라 직접 도전해야 해요</div>`;
+    const last = Math.min(Math.ceil(f / 10) * 10 - 1, maxF());
+    return `<button class="story-btn q-sweep" id="q-sweep">⚡ 소탕 (${f}~${last}층) <small>내 덱으로 자동 전투 · 패배 또는 보스 층에서 멈춤</small></button>`;
+  }
+  async function sweep() {
+    const api = A(), deck = api.lastDeck?.() || [];
+    if (!deck.length) { api.toast('출전 카드를 먼저 골라 주세요'); return api.pickDeck([], list => runSweep(list), () => render(), '⚡ 소탕에 쓸 덱'); }
+    runSweep(deck);
+  }
+  async function runSweep(list) {
+    const api = A();
+    let st; try { st = await rpc('quest_sweep_start'); }
+    catch (e) { const m = String(e?.message || ''); api.toast(/boss floor/.test(m) ? '보스 층은 직접 도전해야 해요' : /function|quest_sweep/.test(m) ? '소탕 서버가 아직 준비 중이에요' : `⚠️ 소탕 실패: ${m}`); return render(); }
+    let sim; try { sim = window.__QUEST_SIM || await import(new URL('js/quest-sim.js', document.baseURI).href); } catch (e) { api.toast('⚠️ 전투 엔진을 불러오지 못했어요'); return render(); }
+    const me = api.battleCards(list), from = st.from, lastF = Math.min(st.last, maxF());
+    const p = api.popup(`<div class="text-lg font-black text-center">⚡ 소탕 중…</div><div class="q-sw-prog" id="q-sw-prog"></div><div class="text-xs text-zinc-400 text-center mt-2">내 덱: ${list.map(o => esc(api.card(o.id)?.name || '')).join(' · ')}</div>`);
+    const prog = [], turns = []; let to = from - 1, stop = null; const t0 = Date.now();
+    for (let k = from; k <= lastF; k++) {
+      const r = await sim.simBattle(me.map(c => ({ ...c })), enemiesOf(k).enemies.map(c => ({ ...c })), cfg.maxTurns || 40);
+      prog.push(`<div class="q-sw-row ${r.win ? 'win' : 'lose'}"><b>${k}층</b><span>${r.win ? `✔ 승리 · ${r.turns}턴` : r.timeout ? `✕ ${cfg.maxTurns || 40}턴 초과` : '✕ 패배'}</span></div>`);
+      const el = $('q-sw-prog'); if (el) { el.innerHTML = prog.join(''); el.scrollTop = el.scrollHeight; }
+      const wait = t0 + (k - from + 1) * SWEEP_SECS * 1000 - Date.now(); if (wait > 0) await new Promise(res => setTimeout(res, wait));
+      if (!r.win) { stop = { floor: k, why: r.timeout ? 'timeout' : 'lose' }; break; }
+      to = k; turns.push(Math.max(1, Math.min(40, r.turns)));
+    }
+    if (!stop) stop = to >= maxF() ? { floor: to, why: 'top' } : { floor: to + 1, why: 'boss' };
+    let res; try { res = await rpc('quest_sweep_complete', { p_to: to, p_stats: { turns } }); }
+    catch (e) { p.close(true); api.toast(`⚠️ 소탕 기록 실패: ${e?.message || e}`); return render(); }
+    p.close(true);
+    status = { ...status, best_floor: res.best_floor ?? Math.max(best(), to) };
+    const tot = res.total || {}, tk = tot.tickets | 0, cur = { ...tot }; delete cur.tickets;
+    if (tk) { QUEST_HOOKS.onReward({ tickets: tk }); try { await api.syncTickets(); } catch {} }
+    window.VRPlayer?.wallet?.(true);
+    const why = stop.why === 'boss' ? `👑 ${stop.floor}층은 보스 층이에요. 직접 도전해 주세요.` : stop.why === 'top' ? '🏁 마지막 층까지 올라갔어요.' : stop.why === 'timeout' ? `✕ ${stop.floor}층에서 ${cfg.maxTurns || 40}턴 안에 이기지 못했어요.` : `✕ ${stop.floor}층에서 패배했어요.`;
+    sel = Math.min(best() + 1, maxF()); render();
+    const rp = api.popup(`<div class="text-lg font-black text-center">⚡ 소탕 결과</div>
+      <div class="text-center mt-2 text-2xl font-black ${res.cleared ? 'text-emerald-300' : 'text-zinc-300'}">${res.cleared ? `${from}~${to}층 · ${res.cleared}층 클리어` : '클리어한 층 없음'}</div>
+      ${res.cleared ? `<div class="mt-3 story-drops">🎁 첫 클리어 보상 ${window.VRPlayer?.curTxt?.(cur) || ''}${tk ? ` · 🎟️ 소환권 ${tk}` : ''}</div>` : ''}
+      <div class="q-sw-stop">${why}</div>
+      <div class="q-sw-prog small">${prog.join('')}</div>
+      <div class="flex gap-2 mt-4">${stop.why === 'boss' ? `<button class="story-btn flex-1" id="q-sw-boss">👑 ${stop.floor}층 도전</button>` : ''}<button class="story-back flex-1" data-close-pop>닫기</button></div>`);
+    const bb = $('q-sw-boss'); if (bb) bb.onclick = () => { rp.close(true); sel = stop.floor; challenge(stop.floor); };
+  }
+
   function mount() {
     const s = $('story-btn'); if (!s || $('quest-btn')) return !!$('quest-btn');
     const b = document.createElement('button'); b.id = 'quest-btn'; b.type = 'button'; b.className = 'main-btn quest-btn';
@@ -131,5 +182,5 @@
   if (!mount()) { const t = setInterval(() => { if (mount()) clearInterval(t); }, 300); setTimeout(() => clearInterval(t), 10000); }
   /** 마이페이지·관리자용 최고 층 */
   async function bestFloor() { try { const s = await rpc('quest_status'); return s?.best_floor | 0; } catch { return null; } }
-  window.VRQuest = { open, render, challenge, bestFloor, HOOKS: QUEST_HOOKS, _test: { result, enemiesOf, rewardOf, loadCfg, get status() { return status; }, set status(v) { status = v; } } };
+  window.VRQuest = { open, render, challenge, bestFloor, sweep, HOOKS: QUEST_HOOKS, _test: { result, enemiesOf, rewardOf, loadCfg, get status() { return status; }, set status(v) { status = v; } } };
 })();
