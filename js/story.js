@@ -401,6 +401,7 @@
         <button class="main-btn" data-go="gacha">🎴 카드 뽑기${canDraw() ? '<i class="story-badge">1</i>' : ''}<small class="story-hub-tk">${tickets ? `🎟️ ${tickets}` : ''}</small></button>
         <button class="main-btn" data-go="cards">🃏 내 카드/스탯${save.points ? ` <i class="story-badge">${save.points}</i>` : ''}</button>
         <button class="main-btn" data-go="bonds">🤝 인연${(() => { const b = bondStats(); return b.total ? ` <small>${b.done}/${b.total}</small>` : ''; })()}</button>
+        <button class="main-btn" id="story-mypage" type="button" onclick="window.VRMyPage&&VRMyPage.open()">👤 마이페이지</button>
         <button class="main-btn" disabled title="준비 중">📅 이벤트 스토리 <small>준비 중</small></button></div>
     </div>`);
     bind();
@@ -1065,5 +1066,20 @@
   }
   mountButton();
   const openGacha = renderShop;
-  window.VRStory = { enter, openGacha, renderHub, renderShop, drawOnce, kstDay, get save() { return save; }, renderMap, renderCards, openStats, renderSelect };
+  /** 마이페이지용 요약 (화면 없이 데이터만). 반환 { ok, serverMode, owned:[{uid,id,name,grade,level,ex,power,locked,leader}], leaderUid, deckUids, tickets, chapters:[{id,title,done,total}] } */
+  async function summary() {
+    if (!user()) return { ok: false, reason: 'login' };
+    await load(); if (!save) return { ok: false, reason: 'load' };
+    let tk = null; try { const r = await syncTickets(); tk = r?.tickets ?? tickets; } catch {}
+    const inst = deckInstances(), byUid = new Map(save.owned.map(o => [o.uid, o]));
+    let deck = []; try { deck = JSON.parse(localStorage.getItem(PICK_KEY()) || '[]').filter(u => byUid.has(u)); } catch {}
+    if (!deck.length) deck = inst.slice().sort((a, b) => (b.uid === save.leader) - (a.uid === save.leader) || (boosted(b)?.power || 0) - (boosted(a)?.power || 0)).slice(0, MAX_PICK()).map(o => o.uid);
+    const view = o => { const b = boosted(o) || {}; return { uid: o.uid, id: o.id, name: b.name || card(o.id)?.name || o.id, grade: b.grade || card(o.id)?.grade, level: o.level | 0, ex: o.ex | 0, power: b.power || 0, locked: !!o.locked, leader: o.uid === save.leader }; };
+    return {
+      ok: true, serverMode, leaderUid: save.leader || null, deckUids: deck, tickets: tk,
+      owned: save.owned.map(view), uniq: inst.length,
+      chapters: D.chapters.map(ch => ({ id: ch.id, title: ch.title, done: (save.cleared?.[ch.id] || []).filter(no => ch.phases.some(p => p.no === no)).length, total: ch.phases.length })),
+    };
+  }
+  window.VRStory = { summary, enter, openGacha, renderHub, renderShop, drawOnce, kstDay, get save() { return save; }, renderMap, renderCards, openStats, renderSelect };
 })();

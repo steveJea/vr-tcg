@@ -1,0 +1,40 @@
+/* ===== 마이페이지 ===== */
+.mp-modal{position:fixed;inset:0;z-index:120;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;padding:12px}
+.mp-modal.hidden{display:none}
+.mp-panel{width:100%;max-width:560px;max-height:calc(100vh - 24px);overflow-y:auto;background:#120f1d;border:1px solid rgba(245,201,106,.45);border-radius:18px;color:#fde68a;padding:14px}
+.mp-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.mp-title{font-weight:900;font-size:18px}
+.mp-x{background:none;border:0;color:#fde68a;font-size:20px;cursor:pointer}
+.mp-who{display:flex;align-items:center;gap:10px;margin-bottom:10px;color:#fff}
+.mp-av{width:40px;height:40px;border-radius:50%;object-fit:cover}
+.mp-sec{margin-top:14px}.mp-sec h3{font-weight:800;font-size:14px;margin-bottom:6px;color:#f5c96a}
+.mp-leader{position:relative;width:min(78%,300px);aspect-ratio:2/3;margin:0 auto;border-radius:16px;overflow:hidden;border:3px solid #9ca3af;background:#0b0b12}
+.mp-leader.empty{display:flex;align-items:center;justify-content:center;text-align:center;border-style:dashed}
+.mp-leader-img,.mp-movie{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.mp-movie{opacity:0;transition:opacity .45s ease}.mp-leader.playing .mp-movie{opacity:1}
+.mp-leader-cap{position:absolute;left:0;right:0;bottom:0;padding:24px 12px 10px;background:linear-gradient(transparent,rgba(0,0,0,.85));color:#fff;display:flex;flex-direction:column;gap:2px;z-index:2}
+.mp-leader-cap b{font-size:20px}.mp-leader-cap small{opacity:.85}
+.mp-play{display:none;position:absolute;top:10px;right:10px;z-index:2;background:rgba(0,0,0,.55);color:#fff;border-radius:999px;width:34px;height:34px;align-items:center;justify-content:center}
+.mp-leader.has-movie{cursor:pointer}.mp-leader.has-movie .mp-play{display:flex}.mp-leader.playing .mp-play{opacity:0}
+.mp-rar{display:inline-block;font-size:11px;font-weight:900;padding:1px 6px;border-radius:6px;background:#374151;color:#fff;align-self:flex-start}
+.rar-R .mp-rar{background:#3b82f6}.rar-HR .mp-rar{background:#22c55e}.rar-SR .mp-rar{background:#a855f7}.rar-UR .mp-rar{background:#f59e0b}.rar-MR .mp-rar{background:#ef4444}
+.mp-leader.rar-R{border-color:#3b82f6}.mp-leader.rar-HR{border-color:#22c55e}.mp-leader.rar-SR{border-color:#a855f7}.mp-leader.rar-UR{border-color:#f59e0b}.mp-leader.rar-MR{border-color:#ef4444}
+.mp-wallet{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px}
+.mp-cur{display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.06);border-radius:12px;padding:8px 10px;color:#fff}
+.mp-cur b{margin-left:auto}.mp-cur.soon{opacity:.5}.mp-cur-ic{font-size:18px}
+.mp-rec{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.mp-stat{background:rgba(255,255,255,.06);border-radius:12px;padding:8px;display:flex;flex-direction:column;gap:2px;color:#fff;min-width:0}
+.mp-stat span{font-size:12px;color:#f5c96a}.mp-stat b{font-size:17px}.mp-stat small{font-size:11px;opacity:.75;overflow-wrap:anywhere}
+.mp-row,.mp-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+@media (max-width:480px){.mp-grid{grid-template-columns:repeat(4,1fr)}.mp-rec{grid-template-columns:1fr}}
+.mp-card{position:relative;aspect-ratio:2/3;border-radius:8px;overflow:hidden;border:2px solid #9ca3af;background:#0b0b12}
+.mp-card.rar-R{border-color:#3b82f6}.mp-card.rar-HR{border-color:#22c55e}.mp-card.rar-SR{border-color:#a855f7}.mp-card.rar-UR{border-color:#f59e0b}.mp-card.rar-MR{border-color:#ef4444}
+.mp-card.in-deck{box-shadow:0 0 0 2px #fde68a}
+.mp-card img{width:100%;height:100%;object-fit:cover}
+.mp-card .mp-rar{position:absolute;top:3px;left:3px;font-size:9px}
+.mp-lead{position:absolute;top:2px;right:3px;font-size:12px}
+.mp-lv{position:absolute;right:3px;bottom:16px;font-size:9px;color:#fff;background:rgba(0,0,0,.6);padding:0 3px;border-radius:4px}
+.mp-nm{position:absolute;left:0;right:0;bottom:0;font-size:10px;color:#fff;background:rgba(0,0,0,.65);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:1px 2px}
+.mp-note,.mp-sub{font-size:12px;opacity:.75;margin:4px 0}
+.mp-guest{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;padding:24px 8px;color:#fff}
+.mp-login{margin-top:6px}
