@@ -105,7 +105,7 @@
   const play = () => { if (!soundOn || held || jingleA) return; const a = getAudio(); if (a) a.play().catch(() => {}); };
   const stop = () => { if (audio) audio.pause(); if (jingleA) { jingleA.pause(); jingleA = null; } };
   // 승리·패배 징글 (한 번만): 반복 BGM을 페이드아웃·일시정지 → 징글 → 끝나면 그때의 트랙을 페이드인. 음소거·덕킹·볼륨은 그대로
-  const JINGLE = { victory: 'audio/victory.mp3', defeat: 'audio/defeat.mp3' };
+  const JINGLE = { victory: 'audio/victory.mp3', defeat: 'audio/defeat.mp3', draw: 'audio/draw.mp3' };
   let jingleA = null;
   const jingle = (name) => {
     const url = JINGLE[name]; if (!url || !soundOn || held) return;

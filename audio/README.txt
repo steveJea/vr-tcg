@@ -6,3 +6,5 @@ tower.mp3          시련의 탑 화면·일반 층 (10층마다 보스층은 st
 gacha.mp3          카드 뽑기실
 mypage.mp3         마이페이지·카드 도감 (닫으면 이전 트랙)
 victory.mp3 / defeat.mp3  전투 종료 징글 1회 (VRSound.jingle) — 반복 BGM 페이드아웃 후 정지, 징글 끝나면 현재 트랙 페이드인
+draw.mp3           무승부 징글 1회 (VRSound.jingle('draw'))
+gacha_sr.mp3 / gacha_ur.mp3  뽑기 등급 연출 스팅어 (SR / UR·MR). 효과음 취급: 효과음 토글, 음량 0.25×보이스 음량, 재생 중 BGM 덕킹

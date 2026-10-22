@@ -413,7 +413,7 @@ function floatText(text, cls, side = 'me', html = false) {
 
 function finish(win, reason) {
   S.over = true; hideModal('detail');
-  try { if (win !== null) window.VRSound?.jingle?.(win ? 'victory' : 'defeat'); } catch {}   // 전투 종료 징글 (전 모드, 1회)
+  try { window.VRSound?.jingle?.(win === null ? 'draw' : win ? 'victory' : 'defeat'); } catch {}   // 전투 종료 징글 (전 모드, 1회)
   if (S.story) {   // 스토리 모드: 아케이드 전적·랭킹·갤러리에 기록하지 않고 스토리 화면으로 결과 전달
     render();
     const cb = S.story.onEnd;
@@ -580,6 +580,16 @@ function playSe(code) {
     a.volume = (SE_VOL[code] || 0.125) * (voiceVol || 0.8); a.currentTime = 0;
     const pr = a.play(); if (pr?.catch) pr.catch(() => {});
   } catch {}
+}
+/** 뽑기 등급 스팅어(gacha_sr/ur): 효과음 취급 — 효과음 토글·음량 규칙(원래 값의 25%) 적용, 재생 중 BGM 덕킹으로 들리게 */
+function playStinger(url) {
+  try {
+    if (!seOn || !url || window.TCG_FAST) return null;
+    const a = new Audio(url); a.volume = 0.25 * (voiceVol || 0.8);
+    const S2 = window.VRSound; S2?.duck?.(true);
+    const off = () => S2?.duck?.(false); a.addEventListener('ended', off); a.addEventListener('error', off);
+    a.play().catch(off); return a;
+  } catch { return null; }
 }
 function setSeOn(on) { seOn = !!on; localStorage.setItem(SE_ON_KEY, seOn ? '1' : '0'); renderSeBtn(); }
 function renderSeBtn() {
@@ -1310,4 +1320,4 @@ function zoomFromBtn(b) {
 document.addEventListener('click', e => { const b = e.target.closest?.('.zoom-btn'); if (!b) return; e.stopPropagation(); e.preventDefault(); zoomFromBtn(b); }, true);
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('zoom-view')?.classList.contains('open')) { e.stopPropagation(); closeZoom(); } }, true);
 
-window.TCG = { showCardInfo, skillsOf, combos, arcadeOpts: ArcadeOpts, openArcadeOpts, playSe, onEnter, checkEvents, showEvent, mvpVoice, get events() { return EVENTS; }, get seOn() { return seOn; }, skillListHTML: (c, lv) => skillListHTML(c, null, false, lv), voiceTest(k) { if (!voiceSet?.has(k)) return false; const a = voiceAudio(k); a.volume = voiceVol; a.currentTime = 0; voiceCur = a; a.play().catch(() => {}); return true; }, get voiceActive() { return voiceActive.size; }, get voice() { return { on: voiceOn, vol: voiceVol, cur: voiceCur && { src: voiceCur.src, paused: voiceCur.paused, t: voiceCur.currentTime }, set: voiceSet && voiceSet.size }; }, openZoom, closeZoom, dupCheck, get errors() { return window.TCG_ERRORS || []; }, cutIn, passiveCutIn, sortedHand, get handSort() { return handSort; }, put: debugPut, castSkill, skillState, get S() { return S; }, RULES, elementMultiplier, calcDamage, canSummon, buildDeck, summon, attack, recall, attackAll, endTurn, canRecall, recallCost, makeUnit, resolveAttack, useAction, canAction, startGame, startStory, cardHTML, get ready() { return POOL.length > 0; }, equipItem, doSacrifice, finish, attackTargets, get POOL() { return POOL; }, render, Stats };
+window.TCG = { playStinger, showCardInfo, skillsOf, combos, arcadeOpts: ArcadeOpts, openArcadeOpts, playSe, onEnter, checkEvents, showEvent, mvpVoice, get events() { return EVENTS; }, get seOn() { return seOn; }, skillListHTML: (c, lv) => skillListHTML(c, null, false, lv), voiceTest(k) { if (!voiceSet?.has(k)) return false; const a = voiceAudio(k); a.volume = voiceVol; a.currentTime = 0; voiceCur = a; a.play().catch(() => {}); return true; }, get voiceActive() { return voiceActive.size; }, get voice() { return { on: voiceOn, vol: voiceVol, cur: voiceCur && { src: voiceCur.src, paused: voiceCur.paused, t: voiceCur.currentTime }, set: voiceSet && voiceSet.size }; }, openZoom, closeZoom, dupCheck, get errors() { return window.TCG_ERRORS || []; }, cutIn, passiveCutIn, sortedHand, get handSort() { return handSort; }, put: debugPut, castSkill, skillState, get S() { return S; }, RULES, elementMultiplier, calcDamage, canSummon, buildDeck, summon, attack, recall, attackAll, endTurn, canRecall, recallCost, makeUnit, resolveAttack, useAction, canAction, startGame, startStory, cardHTML, get ready() { return POOL.length > 0; }, equipItem, doSacrifice, finish, attackTargets, get POOL() { return POOL; }, render, Stats };

@@ -1110,6 +1110,8 @@
     const op = add('fx_open', 'gr-open'); await wait(750);
     const g = GLOW[grade] || 'n', fx = add(GFX[grade] || 'fx_n_hr', `gr-rar gr-rar-${g}`);
     room.classList.add(`flash-${g}`); op.classList.add('out');
+    const sting = g === 'sr' ? 'gacha_sr' : ['ur', 'mr'].includes(g) ? 'gacha_ur' : null;   // 등급 연출과 동시에 (MR 도 UR 음)
+    if (sting) window.TCG?.playStinger?.(`audio/${sting}.mp3`);
     await wait(['ur', 'mr'].includes(g) ? 1300 : g === 'sr' ? 1050 : 800);
     room.classList.remove('busy'); fx.classList.add('settle');
   }
