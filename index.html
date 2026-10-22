@@ -158,6 +158,18 @@
       .cutin::after, .cutin .cutin-text::after { display: none; }
       .cutin-img .cutin-media, .cutin .cutin-text { animation: none !important; }
     }
+    /* 카드 정보 공통 (cardTitle·cardTags·cardStats) */
+    .ci-name { font-weight: 900; } .ci-sub { font-size: .72em; font-weight: 600; color: #a1a1aa; }
+    .ci-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 4px; font-size: 11px; justify-content: inherit; }
+    .ci-tag { display: inline-flex; align-items: center; gap: 2px; padding: 1px 6px; border-radius: 999px; background: rgba(255,255,255,.08); color: #d4d4d8; font-weight: 700; white-space: nowrap; }
+    .ci-tag img, .ci-el img, .ci-st img { width: 14px; height: 14px; }
+    .ci-el { font-size: 15px; line-height: 1; display: inline-flex; } .ci-el img { width: 18px; height: 18px; }
+    .ci-stats { display: flex; gap: 10px; margin-top: 6px; font-size: 14px; flex-wrap: wrap; justify-content: inherit; }
+    .ci-st { display: inline-flex; align-items: center; gap: 3px; font-weight: 900; } .ci-st img { width: 18px; height: 18px; }
+    .ci-st.atk b { color: #fb923c; } .ci-st.def b { color: #38bdf8; } .ci-st.hp b { color: #f87171; }
+    .ci-sk > summary { cursor: pointer; list-style: none; } .ci-sk > summary::-webkit-details-marker { display: none; }
+    .ci-sk > summary::after { content: '▾'; font-size: 10px; color: #71717a; margin-left: 2px; } .ci-sk[open] > summary::after { content: '▴'; }
+    .zoom-info .ci-tags, .zoom-info .ci-stats, .gal-dbox .ci-tags, .gal-dbox .ci-stats { justify-content: center; }
     @media (prefers-reduced-motion: reduce) { .fx-shake { animation-duration: .06s; } .fx-dmg { animation-duration: .22s; } }
     #my-turns{display:inline-flex;align-items:baseline;gap:2px;padding:1px 8px;border-radius:999px;font-weight:800;font-size:11px;border:1px solid;white-space:nowrap}
 #my-turns b{font-size:15px;line-height:1}#my-turns .of{opacity:.6;font-size:10px}

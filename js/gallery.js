@@ -109,7 +109,7 @@
         <div class="gal-end-row">${items.map(({ c, r }) => `<div class="gal-end-card rar-${SHORT[c.grade]}">
           <img src="${IMG}${c.id}.webp" alt="${esc(c.name)}" onerror="this.style.visibility='hidden'">
           ${r?.is_new ? '<span class="gal-new">NEW!</span>' : `<span class="gal-cnt">×${r?.count ?? ''}</span>`}
-          ${crownHtml(tierOf(r?.mvp_count))}
+          ${crownHtml(crownTier(r))}
           <div class="gal-end-name">${esc(c.name)}</div></div>`).join('')}</div>${promoNote(items, mvp)}`;
     } catch (err) {
       console.warn('[gallery] register failed', err);
@@ -192,7 +192,7 @@
     $('gal-grid').innerHTML = list.map(c => {
       const o = owned.get(c.id), s = SHORT[c.grade];
       if (!o) return `<div class="gal-card locked rar-${s}"><div class="gal-q">?</div><span class="gal-rar">${s}</span></div>`;
-      const t = tierOf(o.mvp_count);
+      const t = crownTier(o);
       return `<button class="gal-card rar-${s} ${t ? 'vip vip-' + TIERS[t].k : ''}" data-cid="${c.id}">
         <img loading="lazy" src="${IMG}${c.id}.webp" alt="${esc(c.name)}" onerror="this.style.visibility='hidden'">
         <span class="gal-rar">${s}</span>${crownHtml(t)}
@@ -200,10 +200,13 @@
     }).join('');
   }
 
+  // 왕관 등급 훅: 지금은 MVP 횟수 기준. 나중에 EX 합성 레벨 도입 시 exTier(o) 를 채워 max(MVP 등급, EX 등급) 으로 올림
+  const exTier = o => 0;   // TODO(EX): o.ex_level 등 → 0~4
+  const crownTier = o => Math.max(tierOf(o?.mvp_count || 0), exTier(o));
   function detail(id) {
     const c = cardById(id), o = owned.get(id); if (!c || !o) return;
-    const s = SHORT[c.grade], t = tierOf(o.mvp_count), sk = skillsOf(c.id);
-    const d = new Date(o.first_at), date = isNaN(d) ? '-' : d.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' });
+    const s = SHORT[c.grade], t = crownTier(o), sk = skillsOf(c.id);
+    const d = new Date(o.first_at), date = isNaN(d) ? '-' : d.toLocaleDateString('ko-KR');
     const row = (k, v) => `<div class="gal-row"><span>${k}</span><b>${v}</b></div>`;
     const deco = [t ? 'vip vip-' + TIERS[t].k : '', t >= 2 && sk.length < 2 ? 'deco-gold' : '', t >= 3 && sk.length < 3 ? 'deco-bg' : ''].join(' ');
     const portrait = `${IMG}${c.id}.webp`;
@@ -224,9 +227,10 @@
       <button class="gal-x gal-dx" aria-label="닫기">✕</button><button class="gal-share" data-share="${c.id}" aria-label="이미지로 공유">📤 공유</button>
       <div class="gal-dimg"><img src="${portrait}" alt="${esc(c.name)}" data-zsrc="${portrait}" data-ztitle="${esc(c.name)}" data-zsub="${LABEL[s]}" data-zgrade="${s}" onerror="this.style.visibility='hidden'">${window.rarityStars?.(s, 'base', 'rstars-over') || ''}${crownHtml(t, true)}
         <button class="gal-zbtn" data-zsrc="${portrait}" data-ztitle="${esc(c.name)}" data-zsub="${LABEL[s]}" data-zgrade="${s}" aria-label="크게 보기">🔍</button></div>
-      <div class="gal-dname">${esc(c.name)}</div>
-      <div class="gal-drar"><span class="gal-rar inline">${s}</span> ${LABEL[s]}${t ? ` · <span class="gal-tname vip-${TIERS[t].k}">${TE(t)} ${TIERS[t].n}</span>` : ''}</div>
-      <div class="gal-rows">${row('수집 횟수', `${o.count}회`)}${row('MVP', o.mvp_count > 0 ? `${IC('crown')} ${o.mvp_count}회` : '아직 없음')}${row('처음 수집', date)}${row('전투력', `<span class="gal-power">⚡ ${Number(c.power || 0).toLocaleString('ko-KR')}</span>`)}${row('HP · ATK · DEF', `${c.HP} · ${c.ATK} · ${c.DEF}`)}</div>
+      <div class="gal-dname">${window.TCG?.cardTitle ? TCG.cardTitle(c) : esc(c.name)}</div>
+      <div class="gal-drar">${window.TCG?.cardTags ? TCG.cardTags(c, t ? [`<span class="gal-tname vip-${TIERS[t].k}">${TE(t)}</span>`] : []) : `<span class="gal-rar inline">${s}</span>`}</div>
+      ${window.TCG?.cardStats?.(c) || ''}
+      <div class="ci-tags gal-minor"><span class="ci-tag" title="수집 횟수">🗂️${o.count}</span><span class="ci-tag" title="MVP">${IC('crown') || '👑'}${o.mvp_count}</span><span class="ci-tag" title="처음 수집">📅${esc(date)}</span><span class="ci-tag" title="전투력">⚡${Number(c.power || 0).toLocaleString('ko-KR')}</span></div>
       <div class="gal-vip"><div class="gal-vip-h">${IC('crown')} VIP 보상 <span>${nextTxt}</span></div>${skHtml}${extra.join('')}</div></div>`;
     el.classList.remove('hidden');
   }
@@ -234,7 +238,7 @@
   // --- 이미지 공유 (js/share-card.js). 스킬 이미지는 넣지 않음: 프로필 + 이름·등급·스탯만 ---
   function shareInfo(id) {
     const c = cardById(id), o = owned.get(id); if (!c || !o) return null;
-    const s = SHORT[c.grade], t = tierOf(o.mvp_count), d = new Date(o.first_at);
+    const s = SHORT[c.grade], t = crownTier(o), d = new Date(o.first_at);
     return { name: c.name, short: s, label: LABEL[s], portrait: `${IMG}${c.id}.webp`, hp: c.HP, atk: c.ATK, def: c.DEF, power: c.power,
       count: o.count, mvp: o.mvp_count, crown: t ? { e: TIERS[t].e, n: TIERS[t].n } : null,
       first: isNaN(d) ? '' : d.toLocaleDateString('ko-KR'), site: location.hostname || 'tcg.mbbs.kr' };

@@ -1,0 +1,33 @@
+// supabase/gallery_owned.sql 검증 (PGlite). NODE_PATH=<pglite> node tools/test_gallery_owned_sql.mjs
+import { readFileSync } from 'fs';
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+let PGlite; try { ({ PGlite } = require('@electric-sql/pglite')); } catch { console.log('SKIP: pglite 없음'); process.exit(0); }
+const db = new PGlite(), U = '00000000-0000-0000-0000-000000000002', V = '00000000-0000-0000-0000-000000000003';
+await db.exec(`create role anon nologin; create role authenticated nologin; create schema auth;
+create table auth.users (id uuid primary key, email text);
+create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claims', true)::jsonb->>'sub', '')::uuid $$;
+insert into auth.users values ('${U}','u@x'),('${V}','v@x');
+create table public.gallery (user_id uuid not null, card_id text not null, count int not null default 0, mvp_count int not null default 0, first_at timestamptz not null default now(), last_at timestamptz not null default now(), primary key (user_id, card_id));
+create table public.story_progress (user_id uuid primary key, data jsonb not null default '{}', updated_at timestamptz default now());
+insert into public.story_progress values ('${U}', '{"owned":[{"uid":"a","id":"100"},{"uid":"b","id":"100"},{"uid":"c","id":"200"}]}');
+insert into public.gallery (user_id, card_id, count, mvp_count) values ('${U}','100',5,3);`);
+let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++; };
+const sql = readFileSync(new URL('../supabase/gallery_owned.sql', import.meta.url), 'utf8');
+await db.exec(sql); await db.exec(sql);
+const g = async u => (await db.query(`select card_id, count, mvp_count, last_at < now() - interval '15 seconds' as old from public.gallery where user_id='${u}' order by card_id`)).rows;
+let r = await g(U);
+ok(r.length === 2 && r[0].count === 5 && r[0].mvp_count === 3, '백필: 기존 행(MVP 3) 유지');
+ok(r[1].card_id === '200' && r[1].count === 1 && r[1].mvp_count === 0 && r[1].old, '백필: 보유 카드 새 등록, 도배 방지 안 걸림');
+await db.exec(`update public.story_progress set data = jsonb_set(data, '{owned}', data->'owned' || '[{"uid":"d","id":"300"}]') where user_id='${U}'`);
+ok((await g(U)).some(x => x.card_id === '300'), '획득(업데이트) 시 자동 등록');
+await db.exec(`insert into public.story_progress values ('${V}', '{"owned":[{"uid":"x","id":"999"}]}')`);
+ok((await g(V)).length === 1, '새 유저 insert 시 등록');
+await db.exec(`update public.story_progress set data = jsonb_set(data, '{points}', '5') where user_id='${V}'`);
+ok((await g(V)).length === 1, 'owned 변화 없으면 그대로');
+await db.exec(`update public.story_progress set data = '{"owned":"bad"}' where user_id='${V}'`);
+ok(true, '잘못된 owned 형식도 오류 없음');
+await db.exec(`create role tst; grant authenticated to tst`).catch(() => {});
+const e = await db.exec(`set role authenticated; select public._gallery_sync_owned('${U}', '{}')`).then(() => null, x => x.message); await db.exec('reset role');
+ok(!!e, 'authenticated 는 내부 함수 직접 호출 불가');
+console.log(fails ? `${fails} FAIL` : 'ALL PASS'); process.exit(fails ? 1 : 0);
