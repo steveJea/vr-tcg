@@ -864,7 +864,7 @@ const regionShort = r => { r = String(r || '').trim(); return r === '중구' || 
 const escA = s => String(s ?? '').replace(/[&<>"']/g, ch => `&#${ch.charCodeAt(0)};`);
 /** 머리줄: 이름 (나이/지역) */
 function cardTitle(c, lead = '') { const a = [c.age, regionShort(c.region)].filter(Boolean).join('/'); return `<span class="ci-name">${lead}${escA(c.name)}</span>${a ? ` <span class="ci-sub">(${escA(a)})</span>` : ''}`; }
-/** 스킬 수 아이콘: 지금은 📜 임시. 그림순이 아이콘 img/ui/skill_count.webp 가 오면 icons.js 맵에 skill_count 만 추가하면 자동 교체 */
+/** 스킬 수 아이콘: 그림순이 img/ui/skill_count.webp (icons.js skill_count), 없으면 📜 */
 /** 태그줄: 등급 약자 · 속성 아이콘 · 스킬 수 · 클래스 + 작은 태그(추가) */
 function cardTags(c, extra = []) {
   const r = rarityOf(c), e = ELEMENTS[c.class] || ELEMENTS.WIND, n = skillsOf(c.id).length;

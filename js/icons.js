@@ -25,6 +25,7 @@
     el_light: { src: 'el_light.webp', alt: '빛' },
     el_death: { src: 'el_death.webp', alt: '심연' },
     skill:   { src: 'skill.webp',   alt: '스킬' },
+    skill_count: { src: 'skill_count.webp', alt: '스킬 수' },   // 그림순이 (카드 상세 스킬 수 태그)
     taunt:   { src: 'taunt.webp',   alt: '도발' },
     bleed:   { src: 'bleed.webp',   alt: '출혈' },
     immune:  { src: 'immune.webp',  alt: '면역' },
