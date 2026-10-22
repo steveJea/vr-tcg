@@ -568,7 +568,9 @@
     root().classList.add('hidden');
     const boss = ph.type === 'boss';
     bgm(boss || ph.bgm === 'boss' ? 'boss' : 'battle');
-    const me = (picked || deckInstances()).slice(0, MAX_PICK()).map(o => ({ ...boosted(o), uid: o.uid })).filter(x => x.id);
+    // party.statMul: { 카드id: { HP: 2, DEF: 2 } } → 이 페이즈에서만 해당 카드 스탯 배율 (최종 스탯 × 배율, 반올림)
+    const SM = ph.party?.statMul || {}, mul = c => { const m = SM[String(c.id)]; if (!m) return c; const o = { ...c }; for (const k of Object.keys(m)) if (o[k] != null) o[k] = Math.round(o[k] * m[k]); return o; };
+    const me = (picked || deckInstances()).slice(0, MAX_PICK()).map(o => mul({ ...boosted(o), uid: o.uid })).filter(x => x.id);
     deckUid = Object.fromEntries(me.map(c => [String(c.id), c.uid]));
     const bc = boss ? bossOf(ph, enemies) : null;
     // 보스 카드를 맨 앞에 (진영 안 표시), 나머지는 그대로

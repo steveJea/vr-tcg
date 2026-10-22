@@ -433,7 +433,7 @@ window.STORY_DATA.chapters.push({
    "enemies": {
     "ids": [
      "2000900236",
-     "2002000353",
+     "2000500110",
      "2000900214",
      "2000900203",
      "2000500114"
@@ -502,7 +502,10 @@ window.STORY_DATA.chapters.push({
     "exclude": [
      "2000500114"
     ],
-    "maxGrade": "HIGH RARE"
+    "maxGrade": "HIGH RARE",
+    "statMul": {
+     "2000500111": { "HP": 2, "DEF": 2 }
+    }
    },
    "hero": [
     "2000500111"
