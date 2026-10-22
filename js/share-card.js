@@ -53,16 +53,24 @@
     return cv;
   }
   const toBlob = cv => new Promise((res, rej) => cv.toBlob(b => b ? res(b) : rej(new Error('toBlob failed')), 'image/png'));
-  /** 공유 (가능하면 Web Share 파일, 아니면 다운로드). 반환 'shared' | 'downloaded' | 'cancelled' */
-  async function share(cv, fileName, text) {
+  const GAME_URL = 'https://tcg.mbbs.kr/';
+  /** 링크 복사 (실패해도 조용히 false) */
+  async function copyLink(t) { try { await navigator.clipboard.writeText(t); return true; } catch { return false; } }
+  /** 공유 (가능하면 Web Share 파일 + 문구 + 게임 링크, 아니면 다운로드).
+   *  일부 앱(카카오톡·인스타 등)은 파일과 함께 보낸 text/url 을 버리므로 문구 안에도 링크를 넣고, 링크는 클립보드에도 복사해 둠.
+   *  반환 { r: 'shared' | 'downloaded' | 'cancelled', copied } */
+  async function share(cv, fileName, text, url = GAME_URL) {
     const blob = await toBlob(cv), file = new File([blob], fileName, { type: 'image/png' });
+    const body = `${text}\n${url}`;
     if (navigator.canShare && navigator.share && navigator.canShare({ files: [file] })) {
-      try { await navigator.share({ files: [file], title: 'VR: Abyss Gate', text }); return 'shared'; }
-      catch (e) { if (e?.name === 'AbortError') return 'cancelled'; }
+      // url 은 파일과 함께 못 받는 브라우저가 있어 text 안에만 넣고, 지원하면 url 도 함께
+      const data = navigator.canShare({ files: [file], text: body, url }) ? { files: [file], title: 'VR: Abyss Gate', text: body, url } : { files: [file], title: 'VR: Abyss Gate', text: body };
+      try { await navigator.share(data); return { r: 'shared', copied: await copyLink(url) }; }
+      catch (e) { if (e?.name === 'AbortError') return { r: 'cancelled', copied: false }; }
     }
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = fileName;
     document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-    return 'downloaded';
+    return { r: 'downloaded', copied: await copyLink(body) };
   }
-  window.VRShareCard = { render, share, allowedSrc };
+  window.VRShareCard = { render, share, allowedSrc, GAME_URL };
 })();

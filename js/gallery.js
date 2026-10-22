@@ -243,14 +243,17 @@
       count: o.count, mvp: o.mvp_count, crown: t ? { e: TIERS[t].e, n: TIERS[t].n } : null,
       first: isNaN(d) ? '' : d.toLocaleDateString('ko-KR'), site: location.hostname || 'tcg.mbbs.kr' };
   }
+  function galToast(t) { const el = document.createElement('div'); el.className = 'story-toast'; el.style.zIndex = '120'; el.textContent = t; document.body.appendChild(el); setTimeout(() => el.remove(), 3200); }
   async function shareCard(id, btn) {
     const info = shareInfo(id); if (!info || !window.VRShareCard) return;
     const old = btn?.textContent; if (btn) { btn.disabled = true; btn.textContent = '만드는 중...'; }
     try {
       const cv = await VRShareCard.render(info);
-      const r = await VRShareCard.share(cv, `vr-abyss-gate_${id}.png`, `${info.name} (${info.short}) · VR: Abyss Gate`);
+      const { r, copied } = await VRShareCard.share(cv, `vr-abyss-gate_${id}.png`, `${info.name} (${info.short}) · VR: Abyss Gate`);
       if (btn && r === 'downloaded') { btn.textContent = '✅ 저장됨'; setTimeout(() => { btn.textContent = old; }, 1600); }
       else if (btn) btn.textContent = old;
+      if (r === 'downloaded') galToast(copied ? '이미지를 저장하고 게임 링크를 복사했어요' : `이미지를 저장했어요 · 게임 링크: ${VRShareCard.GAME_URL}`);
+      else if (r === 'shared' && copied) galToast('게임 링크도 복사해 뒀어요 · 링크가 빠졌다면 붙여넣기 하세요');
     } catch (e) { console.warn('[gallery] share failed', e); if (btn) btn.textContent = old; alert('이미지를 만들지 못했어요. 잠시 후 다시 시도해 주세요.'); }
     finally { if (btn) btn.disabled = false; }
   }
