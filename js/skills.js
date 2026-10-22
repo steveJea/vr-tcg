@@ -77,6 +77,7 @@ const MOD_IMG = (atk, def) => (atk > 0 || def > 0) ? 'buff_up' : 'buff_down';
 
 /** 상태 부여. turns: '자기 턴' 기준 지속. 대상 소유자의 턴 중에 걸리면 현재 턴은 세지 않음 */
 export function addStatus(u, key, turns, data = {}, kind = key) {
+  if (SKC && (typeof data.atk === 'number' || typeof data.def === 'number')) data = { ...data, ...(typeof data.atk === 'number' ? { atk: skScale(data.atk) } : {}), ...(typeof data.def === 'number' ? { def: skScale(data.def) } : {}) };   // 스킬 레벨
   const def = STATUS[kind] || {};
   const isDebuff = def.debuff || (data.atk < 0 || data.def < 0);
   if (isDebuff && (u.st.debuffImmune || hasPassive(u, '반야'))) { emit({ type: 'resist', unit: u, text: '디버프 면역' }); return false; }
@@ -153,8 +154,24 @@ export function skillDamage(src, target, pct, { ignoreDef = 0, extra = 1 } = {})
   return Math.max(1, Math.floor(src.card.ATK * pct * RULES.DAMAGE_MULT * mult * extra - def / 2 * pct));
 }
 /** 유닛에 피해 (면역·흡혈 처리). 반환: 실제 피해 */
+// ===== 스킬 레벨 (E-6): 스토리·탑·소탕의 내 카드만. card.skillLv = { "1": 3 } (스킬 순번 1부터). 아케이드·적 카드는 Lv1 =====
+export const SKILL_LV_MAX = 10, SKILL_LV_STEP = 0.03;
+export const skillLvMult = lv => 1 + SKILL_LV_STEP * (Math.min(SKILL_LV_MAX, Math.max(1, lv | 0 || 1)) - 1);
+export const skillCdAt = (cd, lv) => cd <= 0 ? cd : Math.max(1, cd - (lv >= 5 ? 1 : 0) - (lv >= 10 ? 1 : 0));
+/** 유닛의 스킬 레벨 (액티브만, 패시브는 항상 1) */
+export function skillLvOf(u, s) {
+  if (!s || s.mode !== 'active') return 1;
+  const i = (u.sk || []).indexOf(s), m = u.base?.skillLv || u.card?.skillLv;
+  return i < 0 || !m ? 1 : Math.min(SKILL_LV_MAX, Math.max(1, m[i + 1] | 0 || 1));
+}
+export const skillCd = (u, s) => skillCdAt(s.cooldown, skillLvOf(u, s));
+/** 스킬 실행 중 배율 ({ u: 시전자, m: 배율 }). 시전자가 주는 피해·자기 편 회복·ATK/DEF 버프/디버프 수치에만 적용 */
+let SKC = null;
+const skScale = v => SKC ? v * SKC.m : v;
+
 export function damageUnit(target, dmg, src = null, { silent = false } = {}) {
   if (!target.owner.field.includes(target)) return 0;
+  if (SKC && src === SKC.u && src.owner !== target.owner && dmg > 0) dmg = Math.max(1, Math.round(skScale(dmg)));   // 스킬 레벨
   if (target.st.immune) { emit({ type: 'immune', unit: target }); return 0; }
   // 성별 간 피해 (모든 모드·기본 공격·스킬·반격 공통): 남→여 85%, 여→남 105%
   if (src?.card && src.owner !== target.owner && dmg > 0) { const gm = genderMult(src.card, target.card); if (gm !== 1) dmg = Math.max(1, Math.round(dmg * gm)); }
@@ -176,10 +193,11 @@ export function damageUnit(target, dmg, src = null, { silent = false } = {}) {
 }
 export function heal(u, amt, why = '') {
   if (!u.owner.field.includes(u) || amt <= 0 || u.st.noheal) return 0;
+  if (SKC && u.owner === SKC.u.owner) amt = skScale(amt);   // 스킬 레벨
   const h = Math.min(u.maxHp - u.hp, Math.round(amt)); if (h <= 0) return 0;
   u.hp += h; emit({ type: 'heal', unit: u, amt: h, why }); return h;
 }
-export function healHero(p, amt) { const b = p.hp; p.hp = Math.min((p.maxHp || RULES.HERO_HP), p.hp + Math.round(amt)); if (p.hp > b) emit({ type: 'heroHeal', p, amt: p.hp - b }); return p.hp - b; }
+export function healHero(p, amt) { if (SKC && p === SKC.u.owner) amt = skScale(amt); const b = p.hp; p.hp = Math.min((p.maxHp || RULES.HERO_HP), p.hp + Math.round(amt)); if (p.hp > b) emit({ type: 'heroHeal', p, amt: p.hp - b }); return p.hp - b; }
 
 /** 본진 피해. srcOwner가 자기 첫 N턴이면 차단 (자기 본진 강제 공격은 예외) */
 export function damageHero(p, dmg, srcOwner, kind = 'hit', srcUnit = null) {
@@ -191,6 +209,7 @@ export function damageHero(p, dmg, srcOwner, kind = 'hit', srcUnit = null) {
   }
   if (srcOwner && srcOwner !== p && heroLocked(srcOwner)) return 0;
   if (p.st.heroInvuln) { emit({ type: 'heroImmune', p }); return 0; }
+  if (SKC && srcOwner === SKC.u.owner && srcOwner !== p && kind !== 'self' && dmg > 0) dmg = Math.max(1, Math.round(skScale(dmg)));   // 스킬 레벨 (보스 진영)
   if (srcUnit && srcOwner && srcOwner !== p && srcUnit.card?.grade === 'MYTHIC RARE') dmg = Math.max(1, Math.round(dmg * RULES.MR_HERO_DMG_RATIO));
   if (p.st.heroShield) dmg = Math.max(1, Math.round(dmg / (1 + p.st.heroShield.def)));
   p.hp -= dmg;
@@ -691,12 +710,13 @@ export function skillState(u, s) {
 export function useSkill(u, s) {
   const st = skillState(u, s); if (!st.ok) return st;
   const p = u.owner;
-  u.mp -= s.mp; u.cd[s.name] = s.cooldown; u.canAttack = false;
+  u.mp -= s.mp; u.cd[s.name] = skillCd(u, s); u.canAttack = false;
   if (/게임 당 1회/.test(s.note)) p.once['a:' + s.name] = 1;
   emit({ type: 'skill', unit: u, skill: s });
   stats.count(s.name);
   refreshAll(p);
-  ACTIVE[s.name](u, p, p.foe, s);
+  const prevSKC = SKC, slv = skillLvOf(u, s); SKC = slv > 1 ? { u, m: skillLvMult(slv) } : null;
+  try { ACTIVE[s.name](u, p, p.foe, s); } finally { SKC = prevSKC; }
   refreshAll(p);
   return { ok: true };
 }

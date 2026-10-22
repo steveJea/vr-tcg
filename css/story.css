@@ -424,3 +424,17 @@ span.story-lvpct { background: rgba(251,191,36,.12); border: 1px solid rgba(251,
 .g-mr .gacha-front,.story-tk-card.g-mr{border-color:#ef4444;box-shadow:0 0 30px #f87171}
 .g-mr::before{inset:-22px;background:radial-gradient(circle,#ef4444,transparent 70%);filter:blur(10px);animation:gachaPulse 1s infinite}
 .g-text-mr{color:#f87171}
+/* 스킬 레벨 (E-6) */
+.sk-lv{display:inline-block;padding:0 5px;border-radius:6px;font-size:10px;font-weight:900;background:rgba(168,85,247,.25);color:#e9d5ff;border:1px solid rgba(168,85,247,.5)}
+.sk-lv.max{background:rgba(245,158,11,.25);color:#fde68a;border-color:rgba(245,158,11,.6)}
+.sk-up{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:7px;background:rgba(245,158,11,.9);color:#000;font-weight:900;font-size:12px}
+.sk-up img{width:16px;height:16px}
+.sk-up.lock{background:rgba(63,63,70,.8);font-size:11px}
+.sk-up-pop{text-align:center;min-width:220px}
+.sk-up-img img{width:96px;height:96px;object-fit:cover;border-radius:16px;margin:0 auto;border:2px solid rgba(168,85,247,.6)}
+.sk-up-name{font-weight:900;margin-top:6px}
+.sk-up-lv{display:flex;gap:8px;justify-content:center;align-items:center;font-size:20px;font-weight:900;margin-top:4px}
+.sk-up-lv .to{color:#fbbf24}
+.sk-up-rows{font-size:13px;margin-top:4px;color:#d4d4d8}.sk-up-rows b{color:#86efac}
+.sk-up-cost{font-size:13px;margin-top:8px}.sk-up-cost img{width:18px;height:18px;display:inline;vertical-align:-4px}.sk-up-cost .short{color:#f87171}.sk-up-cost small{color:#71717a}
+.sk-up-go{margin-top:10px;width:100%;padding:10px;border-radius:12px;background:#f59e0b;color:#000;font-weight:900}.sk-up-go:disabled{opacity:.4}.sk-up-go img{width:18px;height:18px;display:inline;vertical-align:-4px}

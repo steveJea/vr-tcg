@@ -129,7 +129,7 @@
   const statCalc = (o, s) => { const c = card(o.id); return Math.round(c[s] * (1 + exbOf(o) / 100) * (1 + lvPct(o) / 100)) + ptGain(s, (o.boost || {})[s]); };
   function boosted(o) {
     const c = card(o.id); if (!c) return null;
-    return { ...c, name: exName(o, c.name), ex: exOf(o), ATK: statCalc(o, 'ATK'), HP: statCalc(o, 'HP'), DEF: statCalc(o, 'DEF') };
+    return { ...c, name: exName(o, c.name), ex: exOf(o), ATK: statCalc(o, 'ATK'), HP: statCalc(o, 'HP'), DEF: statCalc(o, 'DEF'), ...(o.skillLv && typeof o.skillLv === 'object' ? { skillLv: { ...o.skillLv } } : {}) };
   }
 
   // ----- 카드 레벨 (서버 story_levels.sql 과 같은 규칙. 브라우저 저장 대체 경로·미리보기용) -----
@@ -808,6 +808,33 @@
     cardDetail(o.uid); levelUpFx(`LEVEL UP! Lv.${r.from} → Lv.${r.level}`);
     toast(`⬆ ${card(o.id)?.name} Lv.${r.level} · 🪙 −${fmt(r.gold)} · 🩸 −${fmt(r.blood)}`);
   }
+  // ----- 스킬 레벨 (서버 phaseE_6.sql 과 같은 규칙) -----
+  const SK_MAX = 10, SK_STEP = 3, SK_SOUL = { 'NORMAL': 1, 'RARE': 2, 'HIGH RARE': 3, 'SUPER RARE': 5, 'ULTRA RARE': 8, 'MYTHIC RARE': 12 };
+  const skLv = (o, i) => Math.min(SK_MAX, Math.max(1, (o.skillLv || {})[i] | 0 || 1));
+  const skCost = (o, lv) => { const g = card(o.id)?.grade || 'NORMAL'; return { soul: (SK_SOUL[g] || 1) * Math.ceil(lv / 2), gold: Math.ceil((LV_G[g] || 1) * lv * 100) }; };
+  const skCd = (cd, lv) => cd <= 0 ? cd : Math.max(1, cd - (lv >= 5 ? 1 : 0) - (lv >= 10 ? 1 : 0));
+  function skillUp(u, i) {
+    const o = byUid(u), s = o && skillsOf(o.id)[i - 1]; if (!s || s.mode !== 'active') return;
+    const lv = skLv(o, i), back = () => cardDetail(u);
+    if ((o.level | 0) < s.unlock || lv >= SK_MAX) return back();
+    const c = skCost(o, lv), w = W(), ok = !w || ((w.soul | 0) >= c.soul && (w.gold | 0) >= c.gold);
+    const cd0 = skCd(s.cooldown, lv), cd1 = skCd(s.cooldown, lv + 1);
+    const p = popup(`<div class="sk-up-pop">
+      <div class="sk-up-img">${s.fx && !/\.(mp4|webm)$/i.test(s.fx) ? `<img src="data/fx/${esc(s.fx)}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('img'),{src:'${IMG}${o.id}.webp'}))">` : `<img src="${IMG}${o.id}.webp" alt="">`}</div>
+      <div class="sk-up-name">${esc(s.name)}</div>
+      <div class="sk-up-lv"><span>Lv${lv}</span><b>→</b><span class="to">Lv${lv + 1}</span></div>
+      <div class="sk-up-rows"><div>💥 <span>+${(lv - 1) * SK_STEP}%</span> → <b>+${lv * SK_STEP}%</b></div>${cd1 < cd0 ? `<div>⏱ <span>${cd0}</span> → <b>${cd1}</b></div>` : ''}</div>
+      <div class="sk-up-cost">${CI('soul')} <b class="${w && (w.soul | 0) < c.soul ? 'short' : ''}">${fmt(c.soul)}</b> <small>/ ${w ? fmt(w.soul | 0) : '…'}</small> · ${CI('gold')} <b class="${w && (w.gold | 0) < c.gold ? 'short' : ''}">${fmt(c.gold)}</b> <small>/ ${w ? fmt(w.gold | 0) : '…'}</small></div>
+      <button id="sk-up-go" class="sk-up-go" ${ok ? '' : 'disabled'}>${ic('level_up', { alt: '' }) || '⬆'} Lv${lv + 1}</button></div>`, back);
+    $('sk-up-go').onclick = async () => {
+      p.close(true);
+      const res = await act('story_skill_levelup', { p_uid: o.uid, p_skill: i, p_levels: 1 }, () => null, r => r.data);
+      if (!res.ok) { if (/not enough/.test(res.error?.message || '')) toast(`재화가 부족해요 (필요 ${CI('soul')} ${fmt(c.soul)} · ${CI('gold')} ${fmt(c.gold)})`.replace(/<[^>]+>/g, '')); window.VRPlayer?.wallet(true); return back(); }
+      const r = res.r || {}; window.VRPlayer?.setWallet(r.wallet);
+      back(); levelUpFx(`SKILL Lv${r.level}`);
+      toast(`⬆ ${s.name} Lv${r.level} · 🔥 −${fmt(r.soul)} · 🪙 −${fmt(r.gold)}`);
+    };
+  }
   function cardDetail(u) {
     const o = byUid(u); if (!o) return renderCards(); norm(o);
     const c = boosted(o), cap = lvCap(o), n = copiesOf(o.id).length, rep = repOf(o.id) === o;
@@ -828,12 +855,13 @@
       <div class="flex gap-2 mt-2"><button id="story-d-lock" class="flex-1 py-2 rounded-xl bg-zinc-700 font-bold text-sm" ${isLeader(o) ? 'disabled' : ''}>${isLeader(o) ? '🔒 리더 자동 잠금' : o.locked ? '🔓 잠금 해제' : '🔒 분해 잠금'}</button>
       ${isLeader(o) ? '' : `<button id="story-d-leader" class="flex-1 py-2 rounded-xl bg-amber-500/90 text-black font-bold text-sm" ${leaderUnlocked() ? '' : 'disabled'}>${ic('crown', { alt: '' })} ${leaderUnlocked() ? '리더로 지정' : '리더 변경: 챕터 1 클리어 후'}</button>`}</div>
       ${isLocked(o) ? `<div class="text-[11px] text-zinc-500 mt-2 text-center">${isLeader(o) ? '리더 카드는 자동으로 잠겨 분해·합성 재료로 쓸 수 없어요' : '잠긴 카드는 분해·합성 재료로 쓸 수 없어요'}</div>` : ''}
-      ${skillsOf(o.id).length ? `<div class="story-detail-skills"><div class="text-sm font-black mt-4">${window.VRIcon?.or?.('skill_count', '📜') || '📜'} ${skillsOf(o.id).length}</div>${window.TCG?.skillListHTML?.(c, o.level) || ''}</div>` : ''}`, renderCards);
+      ${skillsOf(o.id).length ? `<div class="story-detail-skills"><div class="text-sm font-black mt-4">${window.VRIcon?.or?.('skill_count', '📜') || '📜'} ${skillsOf(o.id).length}</div>${window.TCG?.skillListHTML?.(c, o.level, { skillLv: o.skillLv, up: serverMode }) || ''}</div>` : ''}`, renderCards);
     $('story-d-lock').onclick = () => { p.close(true); setLock(o.uid, !o.locked); };
     { const lb = $('story-d-leader'); if (lb) lb.onclick = () => { p.close(true); confirmLeader(o.uid, () => cardDetail(o.uid)); }; }
     $('story-d-stats').onclick = () => { p.close(true); openStats(renderCards, idxOf(o)); };
     $('story-d-discard').onclick = () => { p.close(true); pickTarget(o.uid); };
     const mb = $('story-d-merge'); if (mb) mb.onclick = () => { p.close(true); mergePreview(o.uid); };
+    document.querySelectorAll('#story-pop [data-skup]').forEach(b => b.onclick = e => { e.preventDefault(); e.stopPropagation(); p.close(true); skillUp(o.uid, +b.dataset.skup); });
     const bindLv = () => { const b1 = $('story-d-lv1'), b10 = $('story-d-lv10');
       if (b1) b1.onclick = () => { b1.disabled = true; doLevelUp(o, 1); };
       if (b10) b10.onclick = () => { b10.disabled = true; doLevelUp(o, 10); }; };
