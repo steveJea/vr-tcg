@@ -72,5 +72,7 @@
     document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
     return { r: 'downloaded', copied: await copyLink(body) };
   }
-  window.VRShareCard = { render, share, allowedSrc, GAME_URL };
+  /** 캔버스 → PNG File (카카오 업로드용) */
+  const toFile = async (cv, fileName) => new File([await toBlob(cv)], fileName, { type: 'image/png' });
+  window.VRShareCard = { render, share, allowedSrc, GAME_URL, toFile };
 })();
