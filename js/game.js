@@ -475,7 +475,7 @@ function storyTurnRules(who) {
     S.expired = true; S.ai.reviveQ = [];
     for (const u of [...S.ai.field]) {
       const isBoss = String(u.card.id) === String(R.invuln);
-      u.undying = false; u.noDamage = false; u.hp = 0; checkDeath(u);
+      u.undying = false; u.noDamage = false; delete u.st.endure; (u.fired ||= {})['나는 쓰러지지 않아:rev'] = 1; u.hp = 0; checkDeath(u);   // 불사·부활 효과 무시하고 강제 소멸
       if (isBoss) log(`🔥 ${R.expire}턴 경과: ${u.card.name}의 각성이 다 타 버렸다!`, 'text-amber-300');
     }
     render(); if (checkEnd()) return true;
