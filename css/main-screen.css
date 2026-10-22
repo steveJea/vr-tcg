@@ -160,3 +160,20 @@
 .main-menu > #start-btn{order:0}
 .main-menu > #arcade-opts-btn{order:1;margin:6px auto 10px}
 .main-menu > .main-medals{order:3}
+
+/* ===== 컴팩트 메인 (그림 위주, 글자 최소) ===== */
+.main-menu{display:grid!important;grid-template-columns:1fr 1fr;gap:.5rem;max-width:520px}
+.main-menu>#start-btn,.main-menu>#story-btn{order:0;aspect-ratio:16/9}
+.main-menu>#start-btn .main-banner-img,.main-menu>#story-btn .main-banner-img{object-position:70% center}
+.main-menu>#quest-btn{order:1;grid-column:1/-1}
+.main-menu>#arcade-opts-btn{order:0;grid-column:1/2;margin:-4px auto 0!important;padding:3px 10px;font-size:12px}
+.main-menu>.main-medals{order:3;grid-column:1/-1}
+.main-banner-text{left:0;right:0;top:auto;bottom:6%;transform:none;max-width:none;align-items:center}
+.main-banner-title{font-size:clamp(.95rem,4.2vw,1.25rem)}
+.main-banner small{display:none}
+.arcade-opts-btn .ui-ic{width:1.15em;height:1.15em;vertical-align:-.2em}
+.medal-disc{width:46px;height:46px}
+.medal-label{font-size:.62rem;opacity:.85}
+.main-medals{gap:.1rem;margin-top:.1rem}
+@media (min-width:768px){.medal-disc{width:54px;height:54px}.medal-label{font-size:.7rem}}
+#stats{font-size:.75rem;margin-top:.5rem}

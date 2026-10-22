@@ -581,7 +581,7 @@ function playSe(code) {
 }
 function setSeOn(on) { seOn = !!on; localStorage.setItem(SE_ON_KEY, seOn ? '1' : '0'); renderSeBtn(); }
 function renderSeBtn() {
-  const b = $('se-toggle'); if (b) { b.textContent = seOn ? '🔔' : '🔕'; b.title = seOn ? '효과음 끄기' : '효과음 켜기'; b.setAttribute('aria-pressed', String(seOn)); }
+  const b = $('se-toggle'); if (b) { b.innerHTML = ic(seOn ? 'se_on' : 'se_off', { alt: '' }) || (seOn ? '🔔' : '🔕'); b.title = seOn ? '효과음 끄기' : '효과음 켜기'; b.setAttribute('aria-pressed', String(seOn)); }
   const m = $('main-se'); if (m) { m.textContent = seOn ? 'ON' : 'OFF'; m.setAttribute('aria-checked', String(seOn)); m.classList.toggle('on', seOn); }
 }
 // 버튼 클릭음: 모든 화면의 버튼 (연타는 90ms 간격으로 묶음)
@@ -1197,6 +1197,11 @@ $('main-help').onclick = () => showModal('help');
 $('main-skip').onclick = () => { skipFx = !skipFx; localStorage.setItem(SKIP_KEY, skipFx ? '1' : '0'); renderSkipBtn(); };
 $('voice-toggle').onclick = e => { e.stopPropagation(); voiceOn = !voiceOn; localStorage.setItem(VOICE_ON_KEY, voiceOn ? '1' : '0'); if (!voiceOn && voiceCur) try { voiceCur.pause(); } catch {} renderVoiceBtn(); };
 $('se-toggle')?.addEventListener('click', e => { e.stopPropagation(); setSeOn(!seOn); });
+// 전투 기록: 기본 접힘, 📜 버튼으로 펼치기 (상태 저장)
+{ const LOG_KEY = 'vrTcgLogOpen', t = $('log-toggle'), lg = $('log');
+  const set = on => { lg?.classList.toggle('hidden', !on); t?.setAttribute('aria-expanded', String(on)); };
+  set(localStorage.getItem(LOG_KEY) === '1');
+  t?.addEventListener('click', e => { e.stopPropagation(); const on = lg.classList.contains('hidden'); set(on); try { localStorage.setItem(LOG_KEY, on ? '1' : '0'); } catch {} }); }
 $('main-se')?.addEventListener('click', e => { e.stopPropagation(); setSeOn(!seOn); });
 renderSeBtn();
 $('voice-vol').oninput = e => { voiceVol = (+e.target.value || 0) / 100; localStorage.setItem(VOICE_VOL_KEY, String(voiceVol)); if (voiceCur) voiceCur.volume = voiceVol; };

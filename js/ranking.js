@@ -56,7 +56,7 @@
     } finally { clearTimeout(t); }
   }
   const wdl = r => r.draws == null ? `${r.wins}승` : `${r.wins}/${r.draws}/${r.losses}`;
-  const row = r => `<tr class="${r.is_me ? 'me' : ''}"><td>${r.rank <= 3 ? ['🥇','🥈','🥉'][r.rank - 1] : r.rank}</td><td class="nm">${esc(r.nickname)}${r.is_me ? ' (나)' : ''}</td><td>${r.score}</td><td>${wdl(r)}</td></tr>`;
+  const row = r => `<tr class="${r.is_me ? 'me' : ''}"><td>${r.rank <= 3 ? (window.VRIcon?.icon(`rank_${r.rank}`, { alt: `${r.rank}위` }) || ['🥇','🥈','🥉'][r.rank - 1]) : r.rank}</td><td class="nm">${esc(r.nickname)}${r.is_me ? ' (나)' : ''}</td><td>${r.score}</td><td>${wdl(r)}</td></tr>`;
   const head = `<tr><th>순위</th><th style="text-align:left">닉네임</th><th>점수</th><th>승/무/패</th></tr>`;
 
   async function load() {

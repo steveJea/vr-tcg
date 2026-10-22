@@ -17,8 +17,9 @@
   const TIERS = [null,
     { k: 'blue', e: '🔵', n: '파란 왕관' }, { k: 'purple', e: '🟣', n: '보라 왕관' },
     { k: 'yellow', e: '🟡', n: '노란 왕관' }, { k: 'red', e: '🔴', n: '붉은 왕관' }];
+  const TE = t => (window.VRIcon?.icon(`crown_${TIERS[t].k}`, { alt: TIERS[t].n }) || TIERS[t].e);
   const tierOf = m => Math.min(4, Math.max(0, +m || 0));
-  const crownHtml = (t, big) => t ? `<span class="gal-crown vip-${TIERS[t].k}${big ? ' big' : ''}" title="${TIERS[t].n}">${IC('crown')}<i>${TIERS[t].e}</i></span>` : '';
+  const crownHtml = (t, big) => t ? `<span class="gal-crown vip-${TIERS[t].k}${big ? ' big' : ''}" title="${TIERS[t].n}">${TE(t)}</span>` : '';
   // 등급 t의 보상: 스킬 t가 있으면 스킬 개방, 없으면 꾸미기 보상 (2=금테, 3=특별 배경, 4=붉은 반짝 테두리는 항상)
   const rewardText = (t, nSkill) => t <= nSkill ? `스킬 ${t} 개방` : ({ 1: '', 2: '금테 프레임', 3: '특별 배경', 4: '붉은 반짝 테두리' }[t] || '') + (t === 4 && nSkill >= 4 ? ' + 붉은 반짝 테두리' : '');
   let skills = null, voices = null;
@@ -122,7 +123,7 @@
     const now = tierOf(it.r.mvp_count), before = tierOf(it.r.mvp_count - 1);
     if (now <= before) return '';
     const rw = rewardText(now, skillsOf(it.c.id).length);
-    return `<div class="gal-promo vip-${TIERS[now].k}">${IC('crown')} ${esc(it.c.name)} ${before ? TIERS[before].e : '✨'}→${TIERS[now].e} ${now === 1 ? 'VIP 등극!' : '승급!'}${rw ? ` ${rw}` : ''}${now === 4 ? ' (최종)' : ''}</div>`;
+    return `<div class="gal-promo vip-${TIERS[now].k}">${IC('crown')} ${esc(it.c.name)} ${before ? TE(before) : '✨'}→${TE(now)} ${now === 1 ? 'VIP 등극!' : '승급!'}${rw ? ` ${rw}` : ''}${now === 4 ? ' (최종)' : ''}</div>`;
   }
 
   // --- 크게 보기 (갤러리 전용) ---
@@ -207,22 +208,22 @@
     // 스킬 목록: 개방된 스킬만 이미지 경로를 HTML에 넣음 (잠긴 스킬 이미지는 절대 노출 안 함)
     const skHtml = sk.slice(0, 4).map((k, i) => {
       const n = i + 1, key = `${c.id}_${n}`;
-      if (t < n) return `<div class="gal-sk locked"><div class="gal-sk-lock">🔒</div><div class="gal-sk-txt"><b>${n}. ${esc(k.name)}</b><span>${TIERS[n].e} ${TIERS[n].n}에서 개방</span></div></div>`;
+      if (t < n) return `<div class="gal-sk locked"><div class="gal-sk-lock">🔒</div><div class="gal-sk-txt"><b>${n}. ${esc(k.name)}</b><span>${TE(n)} ${TIERS[n].n}에서 개방</span></div></div>`;
       const fx = k.fx ? `data/fx/${k.fx}` : '';
       const img = fx ? `<button class="gal-sk-img" data-zsrc="${fx}" data-ztitle="${esc(c.name)} · ${esc(k.name)}" data-zsub="스킬 ${n}" aria-label="스킬 이미지 크게 보기"><img src="${fx}" alt="${esc(k.name)}" loading="lazy" onerror="this.parentNode.remove()"></button>` : '';
       const vo = voices?.has(key) ? `<button class="gal-voice" data-voice="${key}" aria-label="음성 듣기">${IC('sound_on')} 듣기</button>` : '';
-      return `<div class="gal-sk open">${img}<div class="gal-sk-txt"><b>${n}. ${esc(k.name)}</b><span>${TIERS[n].e} 개방됨</span></div>${vo}</div>`;
+      return `<div class="gal-sk open">${img}<div class="gal-sk-txt"><b>${n}. ${esc(k.name)}</b><span>${TE(n)} 개방됨</span></div>${vo}</div>`;
     }).join('');
-    const extra = [2, 3, 4].filter(n => n > sk.length).map(n => `<div class="gal-perk ${t >= n ? 'on' : ''}">${t >= n ? TIERS[n].e : '🔒'} ${rewardText(n, sk.length)}${t >= n ? '' : ` · ${TIERS[n].n}`}</div>`);
+    const extra = [2, 3, 4].filter(n => n > sk.length).map(n => `<div class="gal-perk ${t >= n ? 'on' : ''}">${t >= n ? TE(n) : (IC('lock') || '🔒')} ${rewardText(n, sk.length)}${t >= n ? '' : ` · ${TIERS[n].n}`}</div>`);
     if (sk.length >= 4) extra.push(`<div class="gal-perk ${t >= 4 ? 'on' : ''}">${t >= 4 ? '🔴' : '🔒'} 붉은 반짝 테두리${t >= 4 ? '' : ' · 붉은 왕관'}</div>`);
-    const nextTxt = t >= 4 ? '🔴 최종 등급 달성!' : `다음: ${TIERS[t + 1].e} ${TIERS[t + 1].n} (MVP ${t + 1}회)`;
+    const nextTxt = t >= 4 ? '🔴 최종 등급 달성!' : `다음: ${TE(t + 1)} ${TIERS[t + 1].n} (MVP ${t + 1}회)`;
     const el = $('gal-detail');
     el.innerHTML = `<div class="gal-dbox rar-${s} ${deco}">
       <button class="gal-x gal-dx" aria-label="닫기">✕</button><button class="gal-share" data-share="${c.id}" aria-label="이미지로 공유">📤 공유</button>
       <div class="gal-dimg"><img src="${portrait}" alt="${esc(c.name)}" data-zsrc="${portrait}" data-ztitle="${esc(c.name)}" data-zsub="${LABEL[s]}" data-zgrade="${s}" onerror="this.style.visibility='hidden'">${window.rarityStars?.(s, 'base', 'rstars-over') || ''}${crownHtml(t, true)}
         <button class="gal-zbtn" data-zsrc="${portrait}" data-ztitle="${esc(c.name)}" data-zsub="${LABEL[s]}" data-zgrade="${s}" aria-label="크게 보기">🔍</button></div>
       <div class="gal-dname">${esc(c.name)}</div>
-      <div class="gal-drar"><span class="gal-rar inline">${s}</span> ${LABEL[s]}${t ? ` · <span class="gal-tname vip-${TIERS[t].k}">${TIERS[t].e} ${TIERS[t].n}</span>` : ''}</div>
+      <div class="gal-drar"><span class="gal-rar inline">${s}</span> ${LABEL[s]}${t ? ` · <span class="gal-tname vip-${TIERS[t].k}">${TE(t)} ${TIERS[t].n}</span>` : ''}</div>
       <div class="gal-rows">${row('수집 횟수', `${o.count}회`)}${row('MVP', o.mvp_count > 0 ? `${IC('crown')} ${o.mvp_count}회` : '아직 없음')}${row('처음 수집', date)}${row('전투력', `<span class="gal-power">⚡ ${Number(c.power || 0).toLocaleString('ko-KR')}</span>`)}${row('HP · ATK · DEF', `${c.HP} · ${c.ATK} · ${c.DEF}`)}</div>
       <div class="gal-vip"><div class="gal-vip-h">${IC('crown')} VIP 보상 <span>${nextTxt}</span></div>${skHtml}${extra.join('')}</div></div>`;
     el.classList.remove('hidden');

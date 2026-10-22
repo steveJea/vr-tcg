@@ -48,30 +48,31 @@ export function initUnit(u, p) {
 // ---- 상태이상 ----
 export const STATUS = {
   bleed:   { icon: '🩸', img: 'bleed', label: '출혈', debuff: true, desc: 'ATK·DEF -5%, 걸릴 때 최대 HP 5% 손실' },
-  para:    { icon: '⚡', label: '마비', debuff: true, desc: '행동 불가 (연속 2턴 마비 불가)' },
-  confuse: { icon: '💫', label: '혼란', debuff: true, desc: '자기 턴에 아군을 강제 공격' },
-  disrupt: { icon: '🌀', label: '교란', debuff: true, desc: '자기 턴에 자기 본진을 강제 공격' },
+  para:    { icon: '⚡', img: 'st_para', label: '마비', debuff: true, desc: '행동 불가 (연속 2턴 마비 불가)' },
+  confuse: { icon: '💫', img: 'st_confuse', label: '혼란', debuff: true, desc: '자기 턴에 아군을 강제 공격' },
+  disrupt: { icon: '🌀', img: 'st_disrupt', label: '교란', debuff: true, desc: '자기 턴에 자기 본진을 강제 공격' },
   immune:  { icon: '🔰', img: 'immune', label: '피해 면역', desc: '모든 피해 무효' },
-  debuffImmune: { icon: '✳️', label: '디버프 면역', desc: '디버프에 걸리지 않음' },
+  debuffImmune: { icon: '✳️', img: 'st_debuff_immune', label: '디버프 면역', desc: '디버프에 걸리지 않음' },
   taunt:   { icon: '🎯', img: 'taunt', label: '도발', desc: '상대는 이 카드부터 공격해야 함' },
-  esoteric:{ icon: '☠️', label: 'Esoteric', debuff: true, desc: '매 턴 HP -10%, ATK -3% 누적' },
-  dot:     { icon: '🩻', label: 'HP 고갈', debuff: true, desc: '매 턴 시작 시 HP 감소' },
+  esoteric:{ icon: '☠️', img: 'st_esoteric', label: 'Esoteric', debuff: true, desc: '매 턴 HP -10%, ATK -3% 누적' },
+  dot:     { icon: '🩻', img: 'st_dot', label: 'HP 고갈', debuff: true, desc: '매 턴 시작 시 HP 감소' },
   regen:   { icon: '💚', img: 'heal', label: '재생', desc: '매 턴 시작 시 HP 회복' },
-  noheal:  { icon: '🚫', label: '회복 불가', debuff: true, desc: 'HP가 회복되지 않음' },
-  decoy:   { icon: '🪞', label: '대신 맞기', desc: '이 카드를 향한 기본 공격을 상대 카드가 대신 맞음' },
-  pleading:{ icon: '🛡️', label: '꼭 이래야해?', desc: '피해 50% 감면, 반격 250%, 종료 시 HP 30% 회복' },
-  seed:    { icon: '🌱', label: '쾌락의 씨앗', desc: '종료 시 HP 5% 회복' },
+  noheal:  { icon: '🚫', img: 'st_noheal', label: '회복 불가', debuff: true, desc: 'HP가 회복되지 않음' },
+  decoy:   { icon: '🪞', img: 'st_decoy', label: '대신 맞기', desc: '이 카드를 향한 기본 공격을 상대 카드가 대신 맞음' },
+  pleading:{ icon: '🛡️', img: 'st_pleading', label: '꼭 이래야해?', desc: '피해 50% 감면, 반격 250%, 종료 시 HP 30% 회복' },
+  seed:    { icon: '🌱', img: 'st_seed', label: '쾌락의 씨앗', desc: '종료 시 HP 5% 회복' },
   provoked:{ icon: '🎯', img: 'taunt', label: '도발당함', debuff: true, desc: '도발한 카드만 공격할 수 있고 스킬을 쓸 수 없음' },
   notweak: { icon: '😤', img: 'taunt', label: '나는 약하지 않아', desc: '도발 효과가 끝나면 최대 HP 30% 회복' },
   vow:     { icon: '🛡️', img: 'def', label: '지킨다', desc: '이영아가 같은 필드에 있는 동안 매 턴 DEF +0.4% 누적, 최대 HP 2% 회복' },
-  thorns:  { icon: '🌵', label: '반격 강화', desc: '받는 피해 감소·반격 배율 증가 (반격으로는 공격자가 쓰러지지 않음)' },
-  evade:   { icon: '💨', label: '회피', desc: '기본 공격을 확률로 회피 (회피 시 피해·반격 없음, 스킬은 회피 불가)' },
-  endure:  { icon: '💢', label: '불사', desc: 'HP가 1 아래로 내려가지 않음 (즉사 포함)' },
+  thorns:  { icon: '🌵', img: 'st_thorns', label: '반격 강화', desc: '받는 피해 감소·반격 배율 증가 (반격으로는 공격자가 쓰러지지 않음)' },
+  evade:   { icon: '💨', img: 'st_evade', label: '회피', desc: '기본 공격을 확률로 회피 (회피 시 피해·반격 없음, 스킬은 회피 불가)' },
+  endure:  { icon: '💢', img: 'st_endure', label: '불사', desc: 'HP가 1 아래로 내려가지 않음 (즉사 포함)' },
   guard:   { icon: '🛡️', img: 'def', label: '대신 맞기', desc: '지정한 아군을 향한 기본 공격을 대신 맞음' },
-  soulsteal:{ icon: '👻', label: '영혼 강탈', desc: '이 카드를 기본 공격한 상대의 MP 20% 제거' },
+  soulsteal:{ icon: '👻', img: 'st_soulsteal', label: '영혼 강탈', desc: '이 카드를 기본 공격한 상대의 MP 20% 제거' },
   mod:     { icon: '', label: '' },
 };
 const MOD_ICON = (atk, def) => (atk > 0 || def > 0) ? '🔺' : '🔻';
+const MOD_IMG = (atk, def) => (atk > 0 || def > 0) ? 'buff_up' : 'buff_down';
 
 /** 상태 부여. turns: '자기 턴' 기준 지속. 대상 소유자의 턴 중에 걸리면 현재 턴은 세지 않음 */
 export function addStatus(u, key, turns, data = {}, kind = key) {
@@ -89,11 +90,11 @@ export const TURN = { p: null };   // 현재 턴 플레이어
 export function statusIcons(u) {
   const out = [];
   for (const [k, s] of Object.entries(u.st)) {
-    if (s.kind === 'mod') out.push({ icon: MOD_ICON(s.atk || 0, s.def || 0), title: `${s.label || k} (${s.t}턴)` });
+    if (s.kind === 'mod') out.push({ icon: MOD_ICON(s.atk || 0, s.def || 0), img: MOD_IMG(s.atk || 0, s.def || 0), title: `${s.label || k} (${s.t}턴)` });
     else if (STATUS[s.kind]) out.push({ icon: STATUS[s.kind].icon, img: STATUS[s.kind].img, title: s.kind === 'vow' ? `지킨다: DEF +${(s.def * 100).toFixed(1)}% (이영아와 함께)` : s.kind === 'provoked' ? `도발당함: ${s.by?.card?.name || ''}만 공격 · 스킬 불가 (${s.t}턴)` : `${STATUS[s.kind].label} (${s.t}턴)` });
   }
-  if (u.curse && foeHasPassive(u.owner, '자수정 눈물의 지옥 교향곡')) out.push({ icon: '🥀', title: `지옥 교향곡 ×${u.curse}` });
-  if (u.cry) out.push({ icon: '😇', title: `천사의 절규 ×${u.cry}` });
+  if (u.curse && foeHasPassive(u.owner, '자수정 눈물의 지옥 교향곡')) out.push({ icon: '🥀', img: 'st_curse', title: `지옥 교향곡 ×${u.curse}` });
+  if (u.cry) out.push({ icon: '😇', img: 'st_cry', title: `천사의 절규 ×${u.cry}` });
   return out;
 }
 
