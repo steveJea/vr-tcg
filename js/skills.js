@@ -817,7 +817,7 @@ export function aiPickSkill(u) {
     if (saving && s !== top) continue;
     const n = f.field.length, lowHp = p.field.filter(a => a.hp < a.maxHp * 0.7).length;
     let sc = 0;
-    const heroOk = !heroLocked(p);
+    const heroOk = !heroLocked(p) && !f.noBase;   // 진영 없는 전투(스토리 일반전·퀘스트): 진영 전용 스킬은 쓰지 않음
     // 기본 공격으로 처치 가능한 대상이 있으면 보조 스킬보다 공격 우선
     const canKill = f.field.some(t => calcDamage(u.card, t.card) >= t.hp);   // 처치하면 반격 없음
     switch (s.name) {

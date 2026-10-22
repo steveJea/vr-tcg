@@ -401,6 +401,7 @@
         <button class="main-btn" data-go="gacha">🎴 카드 뽑기${canDraw() ? '<i class="story-badge">1</i>' : ''}<small class="story-hub-tk">${tickets ? `🎟️ ${tickets}` : ''}</small></button>
         <button class="main-btn" data-go="cards">🃏 내 카드/스탯${save.points ? ` <i class="story-badge">${save.points}</i>` : ''}</button>
         <button class="main-btn" data-go="bonds">🤝 인연${(() => { const b = bondStats(); return b.total ? ` <small>${b.done}/${b.total}</small>` : ''; })()}</button>
+        <button class="main-btn" id="story-quest" type="button" onclick="window.VRQuest&&VRQuest.open()">🗼 시련의 탑</button>
         <button class="main-btn" id="story-mypage" type="button" onclick="window.VRMyPage&&VRMyPage.open()">👤 마이페이지</button>
         <button class="main-btn" disabled title="준비 중">📅 이벤트 스토리 <small>준비 중</small></button></div>
     </div>`);
@@ -474,10 +475,12 @@
     const forced = (pt?.forced || []).map(id => repOf(id) || guestOf(id)).filter(o => card(o.id));
     return { forced, exclude: new Set([...(pt?.exclude || []), ...(pt?.forced || [])].map(String)) };
   }
-  function pickDeck(ch, ph, enemies) {
+  /** opts (퀘스트 등 재사용): { onGo(list), onCancel(), note } — 없으면 스토리 페이즈 전투 */
+  function pickDeck(ch, ph, enemies, opts = null) {
     const { forced, exclude } = partyOf(ch, ph), slots = Math.max(0, MAX_PICK() - forced.length);
     const all = deckInstances().filter(o => !exclude.has(o.id));
-    if (all.length <= slots && !forced.length) return battle(ch, ph, enemies, all);
+    const go = opts?.onGo || (list => battle(ch, ph, enemies, list));
+    if (all.length <= slots && !forced.length) return go(all);
     let last = []; try { last = JSON.parse(localStorage.getItem(PICK_KEY()) || '[]'); } catch {}
     const valid = new Set(all.map(o => o.uid));
     let sel = last.filter(u => valid.has(u)).slice(0, slots);
@@ -490,13 +493,13 @@
     const fTile = o => { const c = boosted(o); return `<div class="story-pick-card on locked" title="이번 페이즈 필수 출전">${tile(c, `<div class="text-[10px] ${isGuest(o) ? 'text-sky-300' : 'text-zinc-400'}">Lv.${norm({ ...o }).level}${isGuest(o) ? ' · 게스트' : ''}</div>`)}<i class="story-pick-check">🔒</i></div>`; };
     const draw = () => {
       const p = popup(`<div class="story-pop-title">출전 카드 선택 <span class="text-emerald-300">${forced.length + sel.length}/${MAX_PICK()}</span></div>
-        <div class="text-xs text-zinc-400 mb-2">고른 카드가 모두 필드에서 시작해요. 손패·드로우는 없고, 내 카드가 모두 쓰러지면 패배예요.${boss ? '<br>👑 보스전: 보스는 진영 안에서 쓰러지지 않아요. 상대 진영 HP를 0으로!' : ''}</div>
+        <div class="text-xs text-zinc-400 mb-2">${opts?.note ? `${opts.note}<br>` : ''}고른 카드가 모두 필드에서 시작해요. 손패·드로우는 없고, 내 카드가 모두 쓰러지면 패배예요.${boss ? '<br>👑 보스전: 보스는 진영 안에서 쓰러지지 않아요. 상대 진영 HP를 0으로!' : ''}</div>
         ${forced.length ? `<div class="story-forced-h">${ic('crown', { alt: '' })} 필수 출전 ${forced.length}장 <small>(게스트는 리더 레벨로 함께 싸우고, 전투 EXP는 받지 않아요)</small></div><div class="story-grid story-deckpick story-forced">${forced.map(fTile).join('')}</div>
           <div class="story-forced-h">나머지 ${slots}장 고르기${[...exclude].filter(id => !forced.some(o => o.id === id)).map(id => card(id)).filter(Boolean).map(c => ` · <span class="text-red-300">${esc(c.name)} 출전 불가</span>`).join('')}</div>` : ''}
         ${sortBar()}<div class="story-grid story-deckpick">${list.map(o => { const on = sel.includes(o.uid);
           return `<button class="story-pick-card ${on ? 'on' : ''}" data-pick="${o.uid}">${pickTile(o)}${on ? '<i class="story-pick-check">✔</i>' : ''}</button>`; }).join('')}</div>
         ${(() => { const lo = byUid(save.leader); if (!lo) return ''; const inF = forced.some(f => f.uid === lo.uid), out = inF ? '' : exclude.has(lo.id) ? '이번 페이즈에는 리더가 출전할 수 없어 리더 스킬이 꺼져요' : !sel.includes(lo.uid) ? '리더를 출전시키지 않으면 리더 스킬이 꺼져요' : ''; return out ? `<div class="story-hint">${ic('crown', { alt: '' })} ${out}</div>` : `<div class="text-[11px] text-amber-200 mt-2">${ic('crown', { alt: '' })} 리더 스킬 켜짐: ${esc(leaderEff(lo.id)?.text || '')}</div>`; })()}
-        <div class="flex gap-2 mt-3 story-pop-actions"><button class="story-back flex-1" data-close-pop>취소</button><button class="story-btn flex-1" id="story-deck-ok" ${sel.length || forced.length ? '' : 'disabled'}>출전 (${forced.length + sel.length}장)</button></div>`, () => renderMap());
+        <div class="flex gap-2 mt-3 story-pop-actions"><button class="story-back flex-1" data-close-pop>취소</button><button class="story-btn flex-1" id="story-deck-ok" ${sel.length || forced.length ? '' : 'disabled'}>출전 (${forced.length + sel.length}장)</button></div>`, () => (opts?.onCancel || renderMap)());
       p.el.querySelectorAll('[data-pick]').forEach(b => b.onclick = () => {
         const u = b.dataset.pick;
         if (sel.includes(u)) sel = sel.filter(x => x !== u);
@@ -505,7 +508,7 @@
         p.close(true); draw();
       });
       p.el.querySelectorAll('[data-sort]').forEach(b => b.onclick = () => { setSort(b.dataset.sort); list = sortInst(all, deck0); p.close(true); draw(); });
-      $('story-deck-ok').onclick = () => { if (!sel.length && !forced.length) return; try { localStorage.setItem(PICK_KEY(), JSON.stringify(sel)); } catch {} p.close(true); battle(ch, ph, enemies, [...forced, ...list.filter(o => sel.includes(o.uid))]); };
+      $('story-deck-ok').onclick = () => { if (!sel.length && !forced.length) return; try { localStorage.setItem(PICK_KEY(), JSON.stringify(sel)); } catch {} p.close(true); go([...forced, ...list.filter(o => sel.includes(o.uid))]); };
     };
     draw();
   }
@@ -1081,5 +1084,13 @@
       chapters: D.chapters.map(ch => ({ id: ch.id, title: ch.title, done: (save.cleared?.[ch.id] || []).filter(no => ch.phases.some(p => p.no === no)).length, total: ch.phases.length })),
     };
   }
-  window.VRStory = { summary, enter, openGacha, renderHub, renderShop, drawOnce, kstDay, get save() { return save; }, renderMap, renderCards, openStats, renderSelect };
+  /** 다른 모드(퀘스트)용 내부 도구 */
+  const api = {
+    load: async () => { if (!user()) return false; await load(); return !!save; }, get save() { return save; }, user, show, home, popup, toast, bgm, tile, esc, IMG, card,
+    pickDeck: (enemies, onGo, onCancel, note) => pickDeck({}, {}, enemies, { onGo, onCancel, note }),
+    battleCards: list => list.slice(0, MAX_PICK()).map(o => ({ ...boosted(o), uid: o.uid })).filter(x => x.id),
+    leaderFor: me => { const lo = me.find(c => c.uid === save.leader), le = lo && leaderEff(lo.id); return le ? { ...le, uid: lo.uid } : undefined; },
+    ownedCount: () => deckInstances().length, syncTickets,
+  };
+  window.VRStory = { api, summary, enter, openGacha, renderHub, renderShop, drawOnce, kstDay, get save() { return save; }, renderMap, renderCards, openStats, renderSelect };
 })();
