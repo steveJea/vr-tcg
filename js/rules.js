@@ -46,14 +46,14 @@ export const RULES = {
   // 성별 간 피해 (모든 모드): 남→여 85%, 여→남 105%, 동성 100%. 스킬의 [여성에게]/[남성에게] 추가 %와 곱연산
   GENDER_ON: true, GENDER_M2F: 0.85, GENDER_F2M: 1.05,
   // 기본 공격 회피 (속성별 기본값, 스킬 회피와 합산, 상한)
-  EVADE_ON: true, EVADE_BASE: { WIND: 0.10 }, EVADE_DEFAULT: 0.04, EVADE_CAP: 0.6,
+  EVADE_ON: true, EVADE_BASE: { WIND: 0.07 }, EVADE_DEFAULT: 0.04, EVADE_CAP: 0.6,
   // 치명타 (카드 간 모든 피해: 기본 공격·스킬·반격). 등급별 확률, 피해 ×1.5
   CRIT_ON: true, CRIT_RATE: { 'NORMAL': 0.03, 'RARE': 0.04, 'HIGH RARE': 0.05, 'SUPER RARE': 0.06, 'ULTRA RARE': 0.08, 'MYTHIC RARE': 0.10 }, CRIT_MULT: 1.5,
   // 속성 패시브 (바람 = 회피 10%, 심연 = 없음)
   EL_PASSIVE_ON: true,
   FIRE_BURN_P: 0.25, BURN_TURNS: 2, BURN_DOWN: 0.05,     // 불: 기본 공격 적중 시 화상 (대상이 주는 피해 -5%, 갱신·중첩 없음)
-  ICE_GUARD_P: 0.10, ICE_GUARD_MULT: 0.5,                // 얼음: 피격 시 10% 방어 (받는 피해 절반, 반격은 그대로)
-  DARK_DRAIN_P: 0.10, DARK_DRAIN: 0.2, DARK_COUNTER_P: 0.10, DARK_COUNTER_MULT: 2,   // 어둠: 적중 시 흡혈 20% / 반격 2배
+  ICE_GUARD_P: 0.07, ICE_GUARD_MULT: 0.5,                // 얼음: 피격 시 7% 방어 (받는 피해 절반, 반격은 그대로)
+  DARK_DRAIN_P: 0.10, DARK_DRAIN: 0.2, DARK_COUNTER_P: 0.08, DARK_COUNTER_MULT: 2,   // 어둠: 적중 시 10% 흡혈 20% / 8% 반격 2배
   LIGHT_CLEANSE_P: 0.15, LIGHT_NULL_P: 0.10,             // 빛: 적중 시 자기 디버프 1개 해제 / 공격 시 받는 반격 무효
 };
 export const GRADES = ['NORMAL', 'RARE', 'HIGH RARE', 'SUPER RARE', 'ULTRA RARE', 'MYTHIC RARE'];

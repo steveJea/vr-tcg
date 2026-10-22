@@ -664,7 +664,7 @@ export const counterMult = (target, attacker) => (target.st.pleading ? 2.5 : 1) 
 export function evadeChance(target) {
   return Math.min(RULES.EVADE_CAP, baseEvade(target.card) + (target.st.evade?.p || 0));
 }
-/** 기본 공격 회피: 속성 기본 회피(바람 10%, 그 외 4%) + 스킬 회피(정치욱 [그렇게 느려도 되겠어?] 40%), 상한 60% */
+/** 기본 공격 회피: 속성 기본 회피(바람 7%, 그 외 4%) + 스킬 회피(정치욱 [그렇게 느려도 되겠어?] 40%), 상한 60% */
 export function rollEvade(target, attacker) {
   const p = evadeChance(target); if (!p || !chance(p)) return false;
   const sk = !!target.st.evade;

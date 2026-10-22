@@ -27,6 +27,6 @@ ok(JSON.stringify(base.CRIT_RATE) === JSON.stringify({ 'NORMAL': 0.03, 'RARE': 0
 { const n = setup(card('WIND'), card('DARK', 'SUPER RARE', 'b')).hit(); const h = setup(card('WIND'), card('DARK', 'SUPER RARE', 'b'), { DARK_COUNTER_P: 1 }).hit(); ok(h.d2 === Math.round(n.d2 * 2), `어둠: 반격 2배 (${n.d2} → ${h.d2})`); }
 { const s = setup(card('LIGHT'), card('WIND', 'SUPER RARE', 'b'), { LIGHT_NULL_P: 1 }); ok(s.hit().d2 === 0, '빛: 받는 반격 무효');
   const c = setup(card('LIGHT'), card('WIND', 'SUPER RARE', 'b'), { LIGHT_CLEANSE_P: 1 }); c.u.st.burn = { kind: 'burn', t: 2 }; c.hit(); ok(!c.u.st.burn, '빛: 디버프 1개 해제'); }
-{ const s = setup(card('WIND'), card('WIND', 'SUPER RARE', 'b'), { EVADE_ON: true }); ok(RULES.EVADE_BASE.WIND === 0.1, '바람 회피 10% 유지'); }
+{ const s = setup(card('WIND'), card('WIND', 'SUPER RARE', 'b'), { EVADE_ON: true }); ok(RULES.EVADE_BASE.WIND === 0.07, '바람 회피 7%'); }
 Object.assign(RULES, base);
 console.log(fail ? `${fail} FAIL` : 'ALL PASS'); process.exit(fail ? 1 : 0);
