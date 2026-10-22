@@ -9,6 +9,7 @@
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const SHORT = { 'NORMAL': 'N', 'RARE': 'R', 'HIGH RARE': 'HR', 'SUPER RARE': 'SR', 'ULTRA RARE': 'UR', 'MYTHIC RARE': 'MR' };
   const IMG = 'https://raw.githubusercontent.com/steveJea/vr-ideal-worldcup/main/img/bt_img/';
+  const SW = () => window.VRIcon?.icon('sweep', { alt: '소탕' }) || '⚡';
   const fmt = n => Number(n || 0).toLocaleString('ko-KR');
   /** 확장 훅: canChallenge(floor) → { ok, reason } (스태미나 등), onReward(reward) */
   const QUEST_HOOKS = { canChallenge: () => ({ ok: true }), onReward: () => {} };
@@ -63,12 +64,12 @@
       return `<button class="q-row ${st} ${k === n ? 'on' : ''}" data-floor="${k}" ${st === 'lock' ? 'disabled' : ''}><span class="q-no">${k}층</span><span class="q-g rar-${SHORT[x.grade]}">${SHORT[x.grade]}</span><span class="q-pw">⚡ ${fmt(x.power)}</span>${x.bond ? '<span class="q-bond" title="인연 조합">🤝</span>' : ''}${r ? `<span class="q-rw ${st === 'done' ? 'got' : ''}">${r.tickets ? `🎟️${r.tickets}` : ''}${r.gold ? `🪙` : ''}</span>` : '<span class="q-rw"></span>'}<span class="q-st">${st === 'done' ? '✔' : st === 'next' ? '▶' : '🔒'}</span></button>`;
     }).reverse().join('');
     api.show(`<div class="story-top"><button class="story-back" id="q-home">← 처음으로</button><div class="story-top-title">🗼 시련의 탑</div><span></span></div>
-      <div class="q-head"><div>최고 <b>${best()}</b>층 / ${maxF()}층</div><div class="q-sub">적 카드를 모두 쓰러뜨리면 승리 · 내 카드 전멸 또는 ${cfg.maxTurns || 40}턴 초과 시 패배 · 재도전 무제한</div></div>
+      <div class="q-head"><div>최고 <b>${best()}</b>층 / ${maxF()}층</div><div class="q-sub" title="적 카드를 모두 쓰러뜨리면 승리 · 내 카드 전멸 또는 ${cfg.maxTurns || 40}턴 초과 시 패배 · 재도전 무제한">적 전멸 = 승리 · ${cfg.maxTurns || 40}턴</div></div>
       <div class="q-wrap"><div class="q-cur">
         <div class="q-cur-h"><b>${n}층</b><span class="q-g rar-${SHORT[f.grade]}">${SHORT[f.grade]}</span><span>적 리더 ⚡ ${fmt(g.leader?.power)} <small>(목표 ${fmt(f.power)})</small></span></div>
-        <div class="q-cur-sub">${f.others === 'weak' ? '나머지: 리더보다 약함 (60~80%)' : '나머지: 리더와 비슷 (90~100%)'}${g.combo ? ` · 🤝 인연 「${esc(g.combo)}」` : ''}</div>
+        <div class="q-cur-sub" title="${f.others === 'weak' ? '나머지: 리더보다 약함 (60~80%)' : '나머지: 리더와 비슷 (90~100%)'}">${f.others === 'weak' ? '나머지 약함' : '나머지 비슷'}${g.combo ? ` · 🤝 인연 「${esc(g.combo)}」` : ''}</div>
         <div class="q-enemies">${g.enemies.map((c, i) => enemyTile(c, i === 0)).join('')}</div>
-        <div class="q-reward">${rw ? (cleared ? `<span class="got">✔ 첫 클리어 보상 받음 (${rewardTxt(rw)})</span>` : `🎁 첫 클리어 보상: <b>${rewardTxt(rw)}</b>`) : '<span class="muted">이 층은 보상이 없어요 (10층마다 보상)</span>'}</div>
+        <div class="q-reward">${rw ? (cleared ? `<span class="got">✔ 첫 클리어 보상 받음 (${rewardTxt(rw)})</span>` : `🎁 첫 클리어 보상: <b>${rewardTxt(rw)}</b>`) : '<span class="muted" title="10층마다 보상">보상 없음</span>'}</div>
         <button class="story-btn q-go" id="q-go" ${open_ ? '' : 'disabled'}>${cleared ? '다시 도전' : '도전'} (${n}층)</button>
         ${sweepBtn()}
       </div>
@@ -127,13 +128,13 @@
   const isBoss = k => k % 10 === 0;
   function sweepBtn() {
     const f = best() + 1; if (f > maxF()) return '';
-    if (isBoss(f)) return `<div class="q-sweep-note">⚡ 소탕: ${f}층은 보스 층이라 직접 도전해야 해요</div>`;
+    if (isBoss(f)) return `<div class="q-sweep-note">👑 ${f}층 보스는 직접 도전</div>`;
     const last = Math.min(Math.ceil(f / 10) * 10 - 1, maxF());
-    return `<button class="story-btn q-sweep" id="q-sweep">⚡ 소탕 (${f}~${last}층) <small>내 덱으로 자동 전투 · 패배 또는 보스 층에서 멈춤</small></button>`;
+    return `<button class="story-btn q-sweep" id="q-sweep" title="내 덱으로 자동 전투 · 패배 또는 보스 층에서 멈춤">${SW()} 소탕 ${f}~${last}층</button>`;
   }
   async function sweep() {
     const api = A(), deck = api.lastDeck?.() || [];
-    if (!deck.length) { api.toast('출전 카드를 먼저 골라 주세요'); return api.pickDeck([], list => runSweep(list), () => render(), '⚡ 소탕에 쓸 덱'); }
+    if (!deck.length) { api.toast('출전 카드를 먼저 골라 주세요'); return api.pickDeck([], list => runSweep(list), () => render(), `${SW()} 소탕에 쓸 덱`); }
     runSweep(deck);
   }
   async function runSweep(list) {
@@ -142,7 +143,7 @@
     catch (e) { const m = String(e?.message || ''); api.toast(/boss floor/.test(m) ? '보스 층은 직접 도전해야 해요' : /function|quest_sweep/.test(m) ? '소탕 서버가 아직 준비 중이에요' : `⚠️ 소탕 실패: ${m}`); return render(); }
     let sim; try { sim = window.__QUEST_SIM || await import(new URL('js/quest-sim.js', document.baseURI).href); } catch (e) { api.toast('⚠️ 전투 엔진을 불러오지 못했어요'); return render(); }
     const me = api.battleCards(list), lead = api.leaderFor(me), from = st.from, lastF = Math.min(st.last, maxF());
-    const p = api.popup(`<div class="text-lg font-black text-center">⚡ 소탕 중…</div><div class="q-sw-prog" id="q-sw-prog"></div><div class="text-xs text-zinc-400 text-center mt-2">내 덱: ${list.map(o => esc(api.card(o.id)?.name || '')).join(' · ')}</div>`);
+    const p = api.popup(`<div class="text-lg font-black text-center">${SW()} 소탕 중…</div><div class="q-sw-prog" id="q-sw-prog"></div><div class="text-xs text-zinc-400 text-center mt-2">내 덱: ${list.map(o => esc(api.card(o.id)?.name || '')).join(' · ')}</div>`);
     const prog = [], turns = []; let to = from - 1, stop = null; const t0 = Date.now();
     for (let k = from; k <= lastF; k++) {
       const r = await sim.simBattle(me.map(c => ({ ...c })), enemiesOf(k).enemies.map(c => ({ ...c })), cfg.maxTurns || 40, lead);
@@ -162,7 +163,7 @@
     window.VRPlayer?.wallet?.(true);
     const why = stop.why === 'boss' ? `👑 ${stop.floor}층은 보스 층이에요. 직접 도전해 주세요.` : stop.why === 'top' ? '🏁 마지막 층까지 올라갔어요.' : stop.why === 'timeout' ? `✕ ${stop.floor}층에서 ${cfg.maxTurns || 40}턴 안에 이기지 못했어요.` : `✕ ${stop.floor}층에서 패배했어요.`;
     sel = Math.min(best() + 1, maxF()); render();
-    const rp = api.popup(`<div class="text-lg font-black text-center">⚡ 소탕 결과</div>
+    const rp = api.popup(`<div class="text-lg font-black text-center">${SW()} 소탕 결과</div>
       <div class="text-center mt-2 text-2xl font-black ${res.cleared ? 'text-emerald-300' : 'text-zinc-300'}">${res.cleared ? `${from}~${to}층 · ${res.cleared}층 클리어` : '클리어한 층 없음'}</div>
       ${res.cleared ? `<div class="mt-3 story-drops">🎁 첫 클리어 보상 ${window.VRPlayer?.curTxt?.(cur) || ''}${tk ? ` · 🎟️ 소환권 ${tk}` : ''}</div>` : ''}
       <div class="q-sw-stop">${why}</div>
@@ -174,7 +175,7 @@
   function mount() {
     const s = $('story-btn'); if (!s || $('quest-btn')) return !!$('quest-btn');
     const b = document.createElement('button'); b.id = 'quest-btn'; b.type = 'button'; b.className = 'main-btn quest-btn';
-    b.innerHTML = '<span>🗼 시련의 탑</span><small>퀘스트 · 보유 카드로 도전</small>';
+    b.title = '시련의 탑 · 보유 카드로 한 층씩 도전'; b.innerHTML = `${window.VRIcon?.icon('tower', { alt: '' }) || '🗼'}<span>시련의 탑</span>`;
     b.disabled = !window.TCG?.ready; b.onclick = open; s.after(b);
     window.addEventListener('tcg:ready', () => { b.disabled = false; });
     return true;

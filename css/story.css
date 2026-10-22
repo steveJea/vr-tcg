@@ -357,3 +357,27 @@ span.story-lvpct { background: rgba(251,191,36,.12); border: 1px solid rgba(251,
 .q-sw-row{display:flex;justify-content:space-between;padding:4px 10px;border-radius:8px;background:rgba(255,255,255,.05)}
 .q-sw-row.win span{color:#34d399}.q-sw-row.lose span{color:#f87171}
 .q-sw-stop{margin-top:10px;text-align:center;font-weight:700;color:#fde68a}
+
+/* 컴팩트 탑 버튼 */
+.quest-btn{flex-direction:row!important;justify-content:center;gap:8px!important;padding:.45rem 1rem!important;margin:0 auto!important;font-size:.95rem}
+.quest-btn .ui-ic{width:1.6em;height:1.6em}
+/* ===== 컴팩트 UI: 그림 아이콘 위주 ===== */
+.story-hub-menu{grid-template-columns:repeat(3,1fr)!important;gap:.4rem!important}
+.story-hub-menu .main-btn{padding:.45rem .2rem!important;font-size:.72rem!important;gap:1px!important}
+.story-hub-menu .main-btn>.ui-ic:first-child{display:block;width:30px;height:30px;margin:0 auto 1px}
+.story-hub-menu .main-btn small{font-size:.62rem}
+.story-hub-go small{font-size:.7rem}
+.story-rule-ic{display:inline-flex;align-items:center;gap:4px;margin:4px auto;padding:3px 10px;border-radius:999px;font-size:11px;color:#a1a1aa;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12)}
+.story-rule-ic .ui-ic{width:1.1em;height:1.1em}
+.story-status{gap:2px!important}
+.story-sweep-h .ui-ic,.q-sweep .ui-ic{width:1.3em;height:1.3em}
+.story-lvup-h .ui-ic{width:1.3em;height:1.3em}
+.q-head{margin:.2rem 0 .4rem}
+.q-sub{font-size:.68rem}
+.q-sweep{flex-direction:row!important;justify-content:center;gap:6px}
+.mp-cur-ic .ui-ic{width:1.5em;height:1.5em}
+.vr-cur .ui-ic{width:1.15em;height:1.15em}
+.story-hub-menu .main-btn,.main-menu>#quest-btn{min-height:0!important;height:auto!important}
+.main-menu>#quest-btn{padding:.35rem 1rem!important}
+.main-menu>#quest-btn .ui-ic{width:1.9em;height:1.9em}
+.main-menu>#quest-btn{max-width:none!important;width:100%}

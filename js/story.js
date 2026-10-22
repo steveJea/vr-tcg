@@ -9,7 +9,11 @@
   const MAX_PICK = () => window.STORY_DATA?.battleCards || 5;   // 스토리 전투 출전 카드 최대 장수
   const RULES_TURNS = () => window.TCG?.RULES?.MAX_TURNS || 40;
   const STATS = ['ATK', 'HP', 'DEF'];
-  const ic = (n, o) => window.VRIcon?.icon(n, o) || '';   // js/icons.js
+  const ic = (n, o) => window.VRIcon?.icon(n, o) || '';
+  const CI = k => window.VRIcon?.cur?.(k) || ({ gold: '🪙', blood: '🩸', shard: '💠', soul: '🔥', tickets: '🎟️', stamina: '🔋' })[k] || '';
+  /** 고정 UI 문구의 이모지 → 그림 아이콘 (icons.js swap). 대사 화면엔 이모지가 없음 */
+  const UI = h => window.VRIcon?.swap ? window.VRIcon.swap(h) : h;
+  const SW = () => window.VRIcon?.icon('sweep', { alt: '소탕' }) || '⚡';   // js/icons.js
   const STAT_LABEL = { ATK: `${ic('atk')} ATK`, HP: `${ic('hp')} HP`, DEF: `${ic('def')} DEF` };
   const RAR = { 'NORMAL': 'N', 'RARE': 'R', 'HIGH RARE': 'HR', 'SUPER RARE': 'SR', 'ULTRA RARE': 'UR', 'MYTHIC RARE': 'MR' };
 
@@ -193,7 +197,7 @@
   const root = () => $('story-screen');
   function show(html, track = 'story') {
     bgm(track);
-    const r = root(); r.innerHTML = `<div class="story-wrap">${html}</div>`;
+    const r = root(); r.innerHTML = `<div class="story-wrap">${UI(html)}</div>`;
     r.classList.remove('hidden'); $('start-screen').classList.add('hidden'); $('game').classList.add('hidden');
     r.scrollTop = 0;
   }
@@ -209,7 +213,7 @@
   function popup(html, onClose) {
     let m = $('story-pop'); if (!m) { m = document.createElement('div'); m.id = 'story-pop'; document.body.appendChild(m); }
     m.className = 'fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-4';
-    m.innerHTML = `<div class="story-pop-panel">${html}</div>`;
+    m.innerHTML = `<div class="story-pop-panel">${UI(html)}</div>`;
     let down = false;
     m.onpointerdown = e => { down = e.target === m; };
     m.onclick = e => { if (down && e.target === m) close(); down = false; };
@@ -344,12 +348,13 @@
       ${rows.map(r => `<div class="story-map ${rows.length > 1 ? 'story-map-row' : ''}">${r.map(node).join('')}</div>`).join('')}
       <div id="story-sweep-wrap">${sweepRow(ch, done)}</div>
       <div class="story-status">${leader ? `<div>리더 <b class="text-amber-300">${esc(leader.name)}</b> · 보유 카드 <b>${save.owned.length}</b>장</div>` : ''}
-        <div class="story-rule">⚔️ 스토리 전투: 출전 카드 최대 ${MAX_PICK()}장이 모두 필드에서 시작해요 (손패·드로우·용병 없음, 내 진영 없음). 내 카드가 모두 쓰러지거나 ${RULES_TURNS()}턴이 지나면 패배 · 일반전은 상대 카드 전멸, 👑 보스전은 상대 진영 HP 0이면 승리</div>
+        <button class="story-rule-ic" type="button" data-go="rule" title="스토리 전투 규칙" aria-label="스토리 전투 규칙">⚔️ 규칙</button>
         <div>스탯 포인트 <b class="text-emerald-300">${save.points}</b> ${save.points ? '<button class="story-mini" data-go="stats">분배하기</button>' : ''}</div>
         ${!serverMode && !window.__STORY_MOCK_USER ? '<div class="text-[11px] text-amber-400">⚠️ 서버 저장 준비 중이라 이 브라우저에만 저장돼요</div>' : ''}</div>
       ${nextNo ? '' : `<div class="text-center text-emerald-300 font-bold mt-4">🎉 ${esc(ch.title)} 클리어! ${nextOpen ? `<button class="story-btn ml-1" data-ch="${curCh + 1}">${esc(nextCh.title)}로 →</button>` : '다음 챕터는 준비 중이에요.'}</div>`}
       <div class="text-center mt-5">${replayBtn}</div>`);
-    bind({ stats: () => openStats(renderMap), opening: () => playOpening(renderMap), route: () => renderRouteSelect(curCh) }); playerPaint();
+    bind({ stats: () => openStats(renderMap), opening: () => playOpening(renderMap), route: () => renderRouteSelect(curCh),
+      rule: () => popup(`<div class="text-lg font-black mb-2">⚔️ 스토리 전투</div><div class="text-sm text-zinc-300 leading-relaxed">출전 카드 최대 ${MAX_PICK()}장이 모두 필드에서 시작해요 (손패·드로우·용병 없음, 내 진영 없음).<br>내 카드가 모두 쓰러지거나 ${RULES_TURNS()}턴이 지나면 패배.<br>일반전은 상대 카드 전멸, 👑 보스전은 상대 진영 HP 0이면 승리.</div><button data-close-pop class="story-btn w-full mt-4">확인</button>`) }); playerPaint();
     root().querySelectorAll('[data-ch]').forEach(b => b.onclick = () => renderMap(+b.dataset.ch));
     root().querySelectorAll('[data-phase]').forEach(b => b.onclick = () => startPhase(ch, ch.phases.find(p => p.no === +b.dataset.phase)));
     const bindSw = () => root().querySelectorAll('[data-sweep]').forEach(b => b.onclick = () => sweepPop(ch, ch.phases.find(p => p.no === +b.dataset.sweep)));
@@ -362,12 +367,12 @@
   function sweepRow(ch, done) {
     if (!serverMode || !done.length) return '';
     const P = window.VRPlayer?.now?.(), lv = P?.level | 0, need = P?.unlocks?.sweep ?? SWEEP_LV;
-    if (P && lv < need) return `<div class="story-sweep locked">⚡ 소탕 · 플레이어 Lv.${need}부터 (현재 Lv.${lv})</div>`;
-    return `<div class="story-sweep"><span class="story-sweep-h">⚡ 소탕</span>${ch.phases.filter(p => done.includes(p.no)).map(p => `<button class="story-sweep-btn ${p.type}" data-sweep="${p.no}">${p.type === 'boss' ? '👑 ' : ''}${p.no}</button>`).join('')}</div>`;
+    if (P && lv < need) return `<div class="story-sweep locked">${SW()} 소탕 · 플레이어 Lv.${need}부터 (현재 Lv.${lv})</div>`;
+    return `<div class="story-sweep"><span class="story-sweep-h">${SW()} 소탕</span>${ch.phases.filter(p => done.includes(p.no)).map(p => `<button class="story-sweep-btn ${p.type}" data-sweep="${p.no}">${p.type === 'boss' ? '👑 ' : ''}${p.no}</button>`).join('')}</div>`;
   }
   function sweepPop(ch, ph) {
     const P = window.VRPlayer?.now?.(), cost = window.VRPlayer?.cost ?? 6, st = P?.stamina ?? 0;
-    const p = popup(`<div class="text-lg font-black">⚡ 소탕 · ${esc(ch.title)} Phase.${ph.no}${ph.type === 'boss' ? ' BOSS' : ''}</div>
+    const p = popup(`<div class="text-lg font-black">${SW()} 소탕 · ${esc(ch.title)} Phase.${ph.no}${ph.type === 'boss' ? ' BOSS' : ''}</div>
       <div class="text-xs text-zinc-400 mt-1">전투 없이 반복 클리어 보상을 바로 받아요 (골드 · 순수한 피 · 이상한 조각 확률 · 플레이어 경험치). 카드 경험치·첫 클리어 보상은 없어요.</div>
       <div class="story-sweep-runs">${SWEEP_RUNS.map(n => { const c = n * cost, okk = st >= c; return `<button class="story-btn ${okk ? '' : 'short'}" data-runs="${n}" ${okk ? '' : 'disabled'}>${n}회<small>🔋 ${c}</small></button>`; }).join('')}</div>
       <div class="text-xs text-center text-zinc-400 mt-2">보유 행동력 🔋 ${st}</div>
@@ -381,9 +386,9 @@
     if (error) { const m = error.message || ''; toast(/stamina/.test(m) ? '🔋 행동력이 부족해요' : /locked/.test(m) ? `⚡ 소탕은 플레이어 Lv.${SWEEP_LV}부터` : /not cleared/.test(m) ? '클리어한 페이즈만 소탕할 수 있어요' : `⚠️ 소탕 실패: ${m}`); window.VRPlayer?.status(true).then(() => window.VRPlayer.paint()); return; }
     if (r.player) window.VRPlayer?.set(r.player); window.VRPlayer?.setWallet(r.wallet);
     const d = r.drops || {}, line = (k, ic2, nm) => d[k] ? `<div class="story-sweep-get">${ic2} ${nm} <b>+${fmt(d[k])}</b></div>` : '';
-    const res = popup(`<div class="text-lg font-black text-center">⚡ 소탕 완료 ×${r.runs}</div>
+    const res = popup(`<div class="text-lg font-black text-center">${SW()} 소탕 완료 ×${r.runs}</div>
       <div class="text-xs text-center text-zinc-400">${esc(ch.title)} Phase.${ph.no} · 🔋 −${r.stamina}</div>
-      <div class="story-sweep-res">${line('gold', '🪙', '골드')}${line('blood', '🩸', '순수한 피')}${line('shard', '💠', '이상한 조각')}${line('soul', '👻', '영혼')}
+      <div class="story-sweep-res">${line('gold', CI('gold'), '골드')}${line('blood', CI('blood'), '순수한 피')}${line('shard', CI('shard'), '이상한 조각')}${line('soul', CI('soul'), '각성자의 혼')}
         <div class="story-sweep-get">⭐ 플레이어 경험치 <b>+${fmt(r.player?.gained_xp || 0)}</b></div></div>
       ${r.player?.levelups ? `<div class="text-center text-amber-300 font-bold mt-2">LEVEL UP! Lv.${r.player.level}${r.player.levelup_gold ? ` · 🪙 +${fmt(r.player.levelup_gold)}` : ''}</div>` : ''}
       <div class="text-[11px] text-zinc-500 text-center mt-2">회차별: ${(r.per_run || []).map(x => x.shard ? '💠' : '·').join(' ')}</div>
@@ -430,11 +435,11 @@
       <div class="story-hub-list">${rows}</div>
       <div class="story-hub-menu">
         <button class="main-btn" data-go="gacha">🎴 카드 뽑기${canDraw() ? '<i class="story-badge">1</i>' : ''}<small class="story-hub-tk">${tickets ? `🎟️ ${tickets}` : ''}</small></button>
-        <button class="main-btn" data-go="cards">🃏 내 카드/스탯${save.points ? ` <i class="story-badge">${save.points}</i>` : ''}</button>
-        <button class="main-btn" data-go="bonds">🤝 인연${(() => { const b = bondStats(); return b.total ? ` <small>${b.done}/${b.total}</small>` : ''; })()}</button>
+        <button class="main-btn" data-go="cards" title="내 카드 · 스탯 분배">🃏 내 카드${save.points ? ` <i class="story-badge">${save.points}</i>` : ''}</button>
+        <button class="main-btn" data-go="bonds" title="인연 조합">🤝 인연${(() => { const b = bondStats(); return b.total ? ` <small>${b.done}/${b.total}</small>` : ''; })()}</button>
         <button class="main-btn" id="story-quest" type="button" onclick="window.VRQuest&&VRQuest.open()">🗼 시련의 탑</button>
-        <button class="main-btn" id="story-mypage" type="button" onclick="window.VRMyPage&&VRMyPage.open()">👤 마이페이지</button>
-        <button class="main-btn" disabled title="준비 중">📅 이벤트 스토리 <small>준비 중</small></button></div>
+        <button class="main-btn" id="story-mypage" type="button" onclick="window.VRMyPage&&VRMyPage.open()">👤 마이</button>
+        <button class="main-btn" disabled title="이벤트 스토리 · 준비 중">📅 이벤트</button></div>
     </div>`);
     bind(); playerPaint();
     if (tickets == null) syncTickets().then(r => { if (r.added) toast(`🎟️ 소환권 +${r.added} (챕터 클리어 보상)`); const el = root().querySelector('.story-hub-tk'); if (el) el.textContent = tickets ? `🎟️ ${tickets}` : ''; });
@@ -776,15 +781,15 @@
   const shardCost = o => (SHARD_BASE[card(o.id)?.grade] || 1) * (exOf(o) + 1);
   const W = () => window.VRPlayer?.walletNow || null;
   const afford = (c, w = W()) => !w || ((w.gold | 0) >= (c.gold | 0) && (w.blood | 0) >= (c.blood | 0) && (w.shard | 0) >= (c.shard | 0));
-  const costTxt = c => `${c.gold ? `🪙 ${fmt(c.gold)}` : ''}${c.blood ? ` · 🩸 ${fmt(c.blood)}` : ''}${c.shard ? `💠 ${fmt(c.shard)}` : ''}`;
+  const costTxt = c => `${c.gold ? `${CI('gold')} ${fmt(c.gold)}` : ''}${c.blood ? ` · ${CI('blood')} ${fmt(c.blood)}` : ''}${c.shard ? `${CI('shard')} ${fmt(c.shard)}` : ''}`;
   function lvUpBox(o) {
     if (!serverMode) return '';
     const cap = lvCap(o); if ((o.level | 0) >= cap) return `<div class="story-lvup-box max">최대 레벨 Lv.${cap}${exOf(o) < maxEx(o) ? ' · 합성(EX)하면 최대 레벨 +5' : ''}</div>`;
     const w = W(), one = lvUpCost(o, 1), ten = lvUpCost(o, 10, w);
     const btn = (c, id, label) => `<button id="${id}" class="story-lvup-btn ${afford(c) ? '' : 'short'}" ${afford(c) ? '' : 'disabled'}><b>${label}</b><small>${costTxt(c)}</small></button>`;
-    return `<div class="story-lvup-box"><div class="story-lvup-h">⬆ 레벨업 <small>골드 + 순수한 피 · 전투 EXP 로도 올라요</small></div>
+    return `<div class="story-lvup-box"><div class="story-lvup-h" title="골드 + 순수한 피로 레벨업 · 전투 EXP 로도 올라요">${ic('level_up', { alt: '' }) || '⬆'} 레벨업</div>
       <div class="flex gap-2">${btn(one, 'story-d-lv1', `Lv.${o.level} → ${one.to}`)}${ten.n > 1 ? btn(ten, 'story-d-lv10', `${ten.n < 10 && ten.to < lvCap(o) ? '최대 ' : ''}+${ten.n} (→ Lv.${ten.to})`) : ''}</div>
-      <div class="story-lvup-have">${w ? `보유 🪙 ${fmt(w.gold)} · 🩸 ${fmt(w.blood)}` : '보유 재화 불러오는 중…'}</div></div>`;
+      <div class="story-lvup-have">${w ? `보유 ${CI('gold')} ${fmt(w.gold)} · ${CI('blood')} ${fmt(w.blood)}` : '보유 재화 불러오는 중…'}</div></div>`;
   }
   async function doLevelUp(o, n) {
     const c = lvUpCost(o, n, n > 1 ? W() : null); if (!c.n) return;
@@ -919,7 +924,7 @@
     for (const o of save.owned) { if (!sel.has(o.uid)) continue; const d = disCalc(o); f.gold += d.gold; f.blood += d.blood; f.soul += d.soul; f.refund += d.refund; f.n++; f.ids.push(o.uid); }
     return f;
   }
-  const curTxt = c => window.VRPlayer?.curTxt?.(c) || `🪙 +${fmt(c.gold | 0)} · 🩸 +${fmt(c.blood | 0)}${c.soul ? ` · 🔥 +${fmt(c.soul)}` : ''}`;
+  const curTxt = c => window.VRPlayer?.curTxt?.(c) || `${CI('gold')} +${fmt(c.gold | 0)} · ${CI('blood')} +${fmt(c.blood | 0)}${c.soul ? ` · ${CI('soul')} +${fmt(c.soul)}` : ''}`;
   const disLocked = o => isLeader(o) || isLocked(o);
   async function doDismantle(ids, n, back) {
     const res = await act('story_dismantle', { p_uids: ids }, () => {
@@ -936,7 +941,7 @@
     const p = popup(`<div class="text-center"><div class="text-lg font-black">🗑️ ${r.count | 0}장 분해 완료</div>
       <div class="story-drops mt-3">${curTxt(r)}</div>
       ${r.refund ? `<div class="text-xs text-emerald-300 mt-2">공용 포인트 ${r.refund} 돌려받음</div>` : ''}
-      ${r.wallet ? `<div class="text-[11px] text-zinc-400 mt-2">보유: 🪙 ${fmt(r.wallet.gold)} · 🩸 ${fmt(r.wallet.blood)} · 🔥 ${fmt(r.wallet.soul)}</div>` : ''}
+      ${r.wallet ? `<div class="text-[11px] text-zinc-400 mt-2">보유: ${CI('gold')} ${fmt(r.wallet.gold)} · ${CI('blood')} ${fmt(r.wallet.blood)} · ${CI('soul')} ${fmt(r.wallet.soul)}</div>` : ''}
       <button data-close-pop class="w-full mt-4 py-2.5 rounded-xl bg-zinc-700 font-bold">확인</button></div>`, renderCards);
     try { window.TCG?.playSe?.(5); } catch {}
     return p;
@@ -1134,8 +1139,8 @@
 
   function mountButton() {
     const start = $('start-btn'); if (!start || $('story-btn')) return;
-    const b = document.createElement('button'); b.id = 'story-btn'; b.type = 'button'; b.className = 'main-banner banner-story';
-    b.innerHTML = '<img src="img/ui/main/banner_story.webp" srcset="img/ui/main/banner_story_600.webp 600w, img/ui/main/banner_story.webp 1200w" sizes="(max-width: 520px) 92vw, 460px" alt="" class="main-banner-img" width="1200" height="360" decoding="async"><span class="main-banner-text"><b class="main-banner-title">스토리 모드</b><small>캐릭터별 챕터 · 카드 수집</small></span>';
+    const b = document.createElement('button'); b.id = 'story-btn'; b.type = 'button'; b.className = 'main-banner banner-story'; b.title = '스토리 모드 · 캐릭터별 챕터 · 카드 수집';
+    b.innerHTML = '<img src="img/ui/main/banner_story.webp" srcset="img/ui/main/banner_story_600.webp 600w, img/ui/main/banner_story.webp 1200w" sizes="(max-width: 520px) 92vw, 460px" alt="" class="main-banner-img" width="1200" height="360" decoding="async"><span class="main-banner-text"><b class="main-banner-title">스토리 모드</b></span>';
     b.disabled = !window.TCG?.ready; b.onclick = enter; start.after(b);
     window.addEventListener('tcg:ready', () => { b.disabled = false; });
   }
