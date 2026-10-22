@@ -72,8 +72,24 @@
 
   // ---- 기본 섹션 ----
   const pct = (a, b) => b ? Math.floor(a / b * 100) : 0;
-  const thumb = (o, cls = '') => `<div class="mp-card rar-${SHORT[o.grade] || 'N'} ${cls}" title="${esc(o.name)}"><img loading="lazy" src="${IMG}${o.id}.webp" alt="${esc(o.name)}" onerror="this.style.visibility='hidden'">
-    <span class="mp-rar">${SHORT[o.grade] || ''}</span>${o.leader ? '<span class="mp-lead">👑</span>' : ''}<span class="mp-lv">Lv.${o.level || 1}</span><span class="mp-nm">${esc(o.name)}</span></div>`;
+  const thumb = (o, cls = '', cnt = 1) => `<button type="button" class="mp-card rar-${SHORT[o.grade] || 'N'} ${cls}" data-uid="${esc(o.uid)}" data-id="${esc(o.id)}" title="${esc(o.name)}${cnt > 1 ? ` x${cnt}` : ''}" aria-label="${esc(o.name)} 카드 정보"><img loading="lazy" src="${IMG}${o.id}.webp" alt="${esc(o.name)}" onerror="this.style.visibility='hidden'">
+    <span class="mp-rar">${SHORT[o.grade] || ''}</span>${o.leader ? '<span class="mp-lead">👑</span>' : ''}${cnt > 1 ? `<span class="mp-cnt">x${cnt}</span>` : ''}<span class="mp-lv">Lv.${o.level || 1}</span><span class="mp-nm">${esc(o.name)}</span></button>`;
+  /** 같은 카드(id) 여러 장은 한 칸으로: 대표 = 리더 > 덱 > 레벨·EX 높은 것, 개수는 x<n> */
+  function groupOwned(owned, deck) {
+    const g = new Map();
+    for (const o of owned) { const k = String(o.id); if (!g.has(k)) g.set(k, []); g.get(k).push(o); }
+    return [...g.values()].map(list => {
+      const rep = list.slice().sort((a, b) => b.leader - a.leader || deck.has(b.uid) - deck.has(a.uid) || (b.ex | 0) - (a.ex | 0) || (b.level | 0) - (a.level | 0))[0];
+      return { rep, count: list.length };
+    });
+  }
+  /** 카드 정보 (전투·갤러리와 같은 상세 창, 바깥 클릭으로 닫힘). 스토리 레벨·EX·스탯 분배 반영 */
+  function openCard(uid, id) {
+    let c = null;
+    try { const inst = window.VRStory?.save?.owned?.find(o => o.uid === uid); if (inst) c = window.VRStory.api.battleCards([inst])[0] || null; } catch {}
+    if (!c) c = (window.TCG?.POOL || []).find(x => String(x.id) === String(id)) || null;
+    if (c && window.TCG?.showCardInfo) window.TCG.showCardInfo(c);
+  }
   addSection({ id: 'leader', order: 10, render: ctx => {
     const s = ctx.story, L = s?.owned.find(o => o.uid === s.leaderUid) || s?.owned.find(o => s.deckUids?.[0] === o.uid);
     if (!L) return `<div class="mp-leader empty"><div class="mp-empty">아직 리더 카드가 없어요<br><small>스토리 모드에서 카드를 고르고 리더로 정해 보세요</small></div></div>`;
@@ -101,8 +117,8 @@
   addSection({ id: 'owned', order: 50, title: '보유 카드', render: ctx => {
     const s = ctx.story; if (!s) return '';
     const deck = new Set(s.deckUids || []), order = ['MYTHIC RARE', 'ULTRA RARE', 'SUPER RARE', 'HIGH RARE', 'RARE', 'NORMAL'];
-    const list = s.owned.slice().sort((a, b) => b.leader - a.leader || order.indexOf(a.grade) - order.indexOf(b.grade) || b.level - a.level);
-    return `<div class="mp-sub">${s.owned.length}장 · 종류 ${s.uniq}</div><div class="mp-grid">${list.map(o => thumb(o, deck.has(o.uid) ? 'in-deck' : '')).join('') || '<div class="mp-note">보유 카드가 없어요</div>'}</div>`;
+    const list = groupOwned(s.owned, deck).sort((x, y) => { const a = x.rep, b = y.rep; return b.leader - a.leader || order.indexOf(a.grade) - order.indexOf(b.grade) || b.level - a.level; });
+    return `<div class="mp-sub">${s.owned.length}장 · 종류 ${list.length}</div><div class="mp-grid">${list.map(({ rep, count }) => thumb(rep, deck.has(rep.uid) ? 'in-deck' : '', count)).join('') || '<div class="mp-note">보유 카드가 없어요</div>'}</div>`;
   } });
 
   // ---- 화면 ----
@@ -111,7 +127,8 @@
     m = document.createElement('div'); m.id = 'mp-modal'; m.className = 'mp-modal hidden';
     m.innerHTML = `<div class="mp-panel" role="dialog" aria-label="마이페이지"><div class="mp-head"><div class="mp-title">👤 마이페이지</div><button class="mp-x" id="mp-close" aria-label="닫기">✕</button></div><div id="mp-body" class="mp-body"></div></div>`;
     document.body.appendChild(m);
-    m.addEventListener('click', e => { if (e.target === m || e.target.closest('#mp-close')) close(); });   // 바깥 클릭 = 닫기
+    m.addEventListener('click', e => { if (e.target === m || e.target.closest('#mp-close')) return close();
+      const t = e.target.closest('.mp-card[data-uid]'); if (t) openCard(t.dataset.uid, t.dataset.id); });   // 바깥 클릭 = 닫기
     document.addEventListener('keydown', e => { if (e.key === 'Escape' && !m.classList.contains('hidden')) close(); });
     return m;
   }
@@ -135,5 +152,5 @@
   }
   function mount() { const b = $('main-mypage'); if (b) b.onclick = open; }
   document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', mount) : mount();
-  window.VRMyPage = { open, close, addSection, CURRENCIES, _test: { gather, movieFor, sections } };
+  window.VRMyPage = { open, close, addSection, CURRENCIES, _test: { gather, movieFor, sections, groupOwned, openCard } };
 })();

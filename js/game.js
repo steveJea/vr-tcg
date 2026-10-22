@@ -896,7 +896,7 @@ function render() {
   renderTurnsLeft();
   if (!S) return;
   renderHero('me'); renderHero('ai');
-  const myTurn = S.turn === 'me' && !S.over && !S.busy;
+  const myTurn = !!S && S.turn === 'me' && !S.over && !S.busy;
   const tl = isFinite(maxTurns()) ? `${Math.min(S.totalTurns, maxTurns())}/${maxTurns()}턴` : `${S.totalTurns}턴 (무제한)`;
   $('turn-info').textContent = S.over ? '게임 종료' : (S.turn === 'me' ? `내 턴 · ${tl}` : `상대 턴 · ${tl}...`);
   $('end-turn').disabled = !myTurn;
@@ -1028,7 +1028,7 @@ function enableDrag(el, u) {
 }
 
 function onUnitClick(who, u) {
-  const myTurn = S.turn === 'me' && !S.over && !S.busy;
+  const myTurn = !!S && S.turn === 'me' && !S.over && !S.busy;
   if (who === 'me') {
     if (myTurn && u.canAttack && selected !== u.uid) { selected = u.uid; render(); return; }
     if (selected === u.uid) { selected = null; render(); }
@@ -1051,7 +1051,7 @@ function onHeroClick() {
 function showDetail(c, { fromHand = false, hp, unit = null, view = null } = {}) {
   const e = ELEMENTS[c.class] || ELEMENTS.WIND;
   const check = fromHand ? canSummon(c, S.me, S.ai) : null;
-  const myTurn = S.turn === 'me' && !S.over && !S.busy;
+  const myTurn = !!S && S.turn === 'me' && !S.over && !S.busy;
   $('detail-body').innerHTML = `
     <div class="flex gap-4">
       <div class="relative shrink-0"><img src="${IMG}${c.id}.webp" data-id="${c.id}" class="card-img w-32 md:w-40 aspect-[3/4] object-cover rounded-xl ring-2 ${e.ring}">${window.rarityStars?.(c, c.ex ? 'ex' : 'base', 'rstars-over') || ''}<button type="button" class="zoom-btn absolute bottom-1 right-1" data-zoom="${c.id}"${c.ex ? ` data-ex="${c.ex}" data-name="${String(c.name).replace(/[&"<>]/g, ch => `&#${ch.charCodeAt(0)};`)}"` : ''}${hp != null ? ` data-hp="${hp}"` : ''} title="크게 보기" aria-label="크게 보기">🔍</button></div>
@@ -1114,7 +1114,9 @@ function skillListHTML(c, unit, myTurn, lv = 1) {
 }
 
 function showModal(id) { $(id).classList.remove('hidden'); $(id).classList.add('flex'); }
-function hideModal(id) { $(id).classList.add('hidden'); $(id).classList.remove('flex'); resetHScroll(); }
+function hideModal(id) { $(id).classList.add('hidden'); $(id).classList.remove('flex'); $(id).style.zIndex = ''; resetHScroll(); }
+// 다른 화면(마이페이지 등) 위에서 카드 정보 보기: 전투 중이 아닌 보기 전용 상세
+function showCardInfo(c) { if (!c) return; showDetail(c); $('detail').style.zIndex = '130'; showModal('detail'); }
 // 모바일에서 페이지가 옆으로 밀린 채 남지 않게 (컷인·모달 뒤) 가로 스크롤을 0으로
 function resetHScroll() { if (window.scrollX || document.documentElement.scrollLeft || document.body.scrollLeft) { document.documentElement.scrollLeft = 0; document.body.scrollLeft = 0; window.scrollTo(0, window.scrollY); } }
 window.addEventListener('scroll', () => { if (window.scrollX) resetHScroll(); }, { passive: true });
@@ -1289,4 +1291,4 @@ function zoomFromBtn(b) {
 document.addEventListener('click', e => { const b = e.target.closest?.('.zoom-btn'); if (!b) return; e.stopPropagation(); e.preventDefault(); zoomFromBtn(b); }, true);
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('zoom-view')?.classList.contains('open')) { e.stopPropagation(); closeZoom(); } }, true);
 
-window.TCG = { skillsOf, combos, arcadeOpts: ArcadeOpts, openArcadeOpts, playSe, onEnter, checkEvents, showEvent, mvpVoice, get events() { return EVENTS; }, get seOn() { return seOn; }, skillListHTML: (c, lv) => skillListHTML(c, null, false, lv), voiceTest(k) { if (!voiceSet?.has(k)) return false; const a = voiceAudio(k); a.volume = voiceVol; a.currentTime = 0; voiceCur = a; a.play().catch(() => {}); return true; }, get voiceActive() { return voiceActive.size; }, get voice() { return { on: voiceOn, vol: voiceVol, cur: voiceCur && { src: voiceCur.src, paused: voiceCur.paused, t: voiceCur.currentTime }, set: voiceSet && voiceSet.size }; }, openZoom, closeZoom, dupCheck, get errors() { return window.TCG_ERRORS || []; }, cutIn, passiveCutIn, sortedHand, get handSort() { return handSort; }, put: debugPut, castSkill, skillState, get S() { return S; }, RULES, elementMultiplier, calcDamage, canSummon, buildDeck, summon, attack, recall, attackAll, endTurn, canRecall, recallCost, makeUnit, resolveAttack, useAction, canAction, startGame, startStory, cardHTML, get ready() { return POOL.length > 0; }, equipItem, doSacrifice, finish, attackTargets, get POOL() { return POOL; }, render, Stats };
+window.TCG = { showCardInfo, skillsOf, combos, arcadeOpts: ArcadeOpts, openArcadeOpts, playSe, onEnter, checkEvents, showEvent, mvpVoice, get events() { return EVENTS; }, get seOn() { return seOn; }, skillListHTML: (c, lv) => skillListHTML(c, null, false, lv), voiceTest(k) { if (!voiceSet?.has(k)) return false; const a = voiceAudio(k); a.volume = voiceVol; a.currentTime = 0; voiceCur = a; a.play().catch(() => {}); return true; }, get voiceActive() { return voiceActive.size; }, get voice() { return { on: voiceOn, vol: voiceVol, cur: voiceCur && { src: voiceCur.src, paused: voiceCur.paused, t: voiceCur.currentTime }, set: voiceSet && voiceSet.size }; }, openZoom, closeZoom, dupCheck, get errors() { return window.TCG_ERRORS || []; }, cutIn, passiveCutIn, sortedHand, get handSort() { return handSort; }, put: debugPut, castSkill, skillState, get S() { return S; }, RULES, elementMultiplier, calcDamage, canSummon, buildDeck, summon, attack, recall, attackAll, endTurn, canRecall, recallCost, makeUnit, resolveAttack, useAction, canAction, startGame, startStory, cardHTML, get ready() { return POOL.length > 0; }, equipItem, doSacrifice, finish, attackTargets, get POOL() { return POOL; }, render, Stats };
