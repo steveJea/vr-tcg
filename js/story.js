@@ -315,9 +315,9 @@
     });
   }
   // 루트 시작 스토리: 루트마다 1번 (본 표시는 이 브라우저에만 저장)
-  const RS_KEY = ch => `vrTcgStoryRouteStart:${user()?.id || 'guest'}:${ch.id}:${ch.route}`;
+  const RS_KEY = ch => `vrTcgStoryRouteStart:${user()?.id || 'guest'}:${ch.id}:${ch.route || 'main'}`;
   const routeStartSeen = ch => { try { return localStorage.getItem(RS_KEY(ch)) === '1'; } catch { return true; } };
-  function routeStart(ch) { playLines(ch.start, [], () => { try { localStorage.setItem(RS_KEY(ch), '1'); } catch {} renderMap(); }, 'story', ch.hero); }
+  function routeStart(ch) { playLines([...(ch.single && ch.tagline ? [{ speaker: '내레이션', text: ch.tagline.replace(/\n/g, ' ') }] : []), ...ch.start], [], () => { try { localStorage.setItem(RS_KEY(ch), '1'); } catch {} renderMap(); }, 'story', ch.hero); }
 
   // 시작 스토리: 캐릭터 선택 직후 1번
   function startStory(ch) {
@@ -332,7 +332,7 @@
     if (base.byRoute && !routeOf(base)) return renderRouteSelect(curCh);
     const ch = chapterFor(base), done = clearedOf(ch);
     if (curCh === 0 && ch.start?.length && !save.startSeen) return startStory(ch);
-    if (ch.route && ch.start?.length && !routeStartSeen(ch)) return routeStart(ch);
+    if ((ch.route || ch.single) && ch.start?.length && !routeStartSeen(ch)) return routeStart(ch);
     const nextNo = ch.phases.find(p => !done.includes(p.no))?.no;
     const leader = boosted(byUid(save.leader) || save.owned[0]);
     const hero = ch.hero && card(ch.hero);
@@ -344,7 +344,7 @@
     const nextCh = D.chapters[curCh + 1], nextOpen = nextCh && chapterOpen(curCh + 1);
     show(`${topBar(esc(ch.title), 'hub')}${tabs}
       <div class="text-center mt-2"><div class="story-chapter-big text-3xl md:text-5xl">${esc(ch.title)}</div><div class="story-chapter-name">${esc(ch.subtitle)}</div>
-        ${hero ? `<div class="story-route-tag">루트 <b>${esc(hero.name)}</b>${clearedOf(ch).length ? '' : ' <button class="story-mini" data-go="route">루트 바꾸기</button>'}</div>` : ''}</div>
+        ${hero && ch.route ? `<div class="story-route-tag">루트 <b>${esc(hero.name)}</b>${clearedOf(ch).length ? '' : ' <button class="story-mini" data-go="route">루트 바꾸기</button>'}</div>` : ''}</div>
       <div class="story-player-row" data-vr-player></div>
       ${rows.map(r => `<div class="story-map ${rows.length > 1 ? 'story-map-row' : ''}">${r.map(node).join('')}</div>`).join('')}
       <div id="story-sweep-wrap">${sweepRow(ch, done)}</div>
@@ -449,7 +449,7 @@
       if (!nx) return;
       curCh = nx.i;
       // 루트 선택·시작 대사가 남았으면 지도 쪽 흐름으로, 아니면 바로 다음 페이즈
-      if ((nx.base.byRoute && !routeOf(nx.base)) || (nx.i === 0 && nx.ch.start?.length && !save.startSeen) || (nx.ch.route && nx.ch.start?.length && !routeStartSeen(nx.ch))) return renderMap(nx.i);
+      if ((nx.base.byRoute && !routeOf(nx.base)) || (nx.i === 0 && nx.ch.start?.length && !save.startSeen) || ((nx.ch.route || nx.ch.single) && nx.ch.start?.length && !routeStartSeen(nx.ch))) return renderMap(nx.i);
       startPhase(nx.ch, nx.ph);
     };
   }
@@ -510,12 +510,19 @@
   function partyOf(ch, ph) {
     const pt = ph.party || (ch.hero ? { forced: [ch.hero] } : null);
     const forced = (pt?.forced || []).map(id => repOf(id) || guestOf(id)).filter(o => card(o.id));
-    return { forced, exclude: new Set([...(pt?.exclude || []), ...(pt?.forced || [])].map(String)) };
+    // 추가 조건 (챕터 3~): noMale · maxMor(필수 카드 제외) · maxGrade. 필수 카드는 조건 예외
+    const GO = ['NORMAL', 'RARE', 'HIGH RARE', 'SUPER RARE', 'ULTRA RARE', 'MYTHIC RARE'], gi = pt?.maxGrade ? GO.indexOf(pt.maxGrade) : -1;
+    const rules = [];
+    if (pt?.noMale) rules.push({ ok: c => c.gender !== 'MALE', note: '🚹 남성 출전 불가' });
+    if (pt?.maxMor != null) rules.push({ ok: c => (+c.MOR || 0) <= pt.maxMor, note: `MOR ${pt.maxMor + 1} 이상 출전 불가` });
+    if (gi >= 0) rules.push({ ok: c => GO.indexOf(c.grade) <= gi, note: `${RAR[GO[gi + 1]] || ''} 이상 출전 불가` });
+    const allow = o => { const c = card(o.id); return !!c && rules.every(r => r.ok(c)); };
+    return { forced, exclude: new Set([...(pt?.exclude || []), ...(pt?.forced || [])].map(String)), allow, notes: rules.map(r => r.note) };
   }
   /** opts (퀘스트 등 재사용): { onGo(list), onCancel(), note } — 없으면 스토리 페이즈 전투 */
   function pickDeck(ch, ph, enemies, opts = null) {
-    const { forced, exclude } = partyOf(ch, ph), slots = Math.max(0, MAX_PICK() - forced.length);
-    const all = deckInstances().filter(o => !exclude.has(o.id));
+    const { forced, exclude, allow, notes } = partyOf(ch, ph), slots = Math.max(0, MAX_PICK() - forced.length);
+    const all = deckInstances().filter(o => !exclude.has(o.id) && allow(o));
     const go = opts?.onGo || (list => battle(ch, ph, enemies, list));
     if (all.length <= slots && !forced.length) return go(all);
     let last = []; try { last = JSON.parse(localStorage.getItem(PICK_KEY()) || '[]'); } catch {}
@@ -532,10 +539,10 @@
       const p = popup(`<div class="story-pop-title">출전 카드 선택 <span class="text-emerald-300">${forced.length + sel.length}/${MAX_PICK()}</span></div>
         <div class="text-xs text-zinc-400 mb-2">${opts?.note ? `${opts.note}<br>` : ''}고른 카드가 모두 필드에서 시작해요. 손패·드로우는 없고, 내 카드가 모두 쓰러지면 패배예요.${boss ? '<br>👑 보스전: 보스는 진영 안에서 쓰러지지 않아요. 상대 진영 HP를 0으로!' : ''}</div>
         ${forced.length ? `<div class="story-forced-h">${ic('crown', { alt: '' })} 필수 출전 ${forced.length}장 <small>(게스트는 리더 레벨로 함께 싸우고, 전투 EXP는 받지 않아요)</small></div><div class="story-grid story-deckpick story-forced">${forced.map(fTile).join('')}</div>
-          <div class="story-forced-h">나머지 ${slots}장 고르기${[...exclude].filter(id => !forced.some(o => o.id === id)).map(id => card(id)).filter(Boolean).map(c => ` · <span class="text-red-300">${esc(c.name)} 출전 불가</span>`).join('')}</div>` : ''}
+          <div class="story-forced-h">나머지 ${slots}장 고르기${[...exclude].filter(id => !forced.some(o => o.id === id)).map(id => card(id)).filter(Boolean).map(c => ` · <span class="text-red-300">${esc(c.name)} 출전 불가</span>`).join('')}${notes.map(t => ` · <span class="text-red-300">${t}</span>`).join('')}</div>` : ''}${ph.enemyFirst ? '<div class="story-hint">⚡ 이번 페이즈는 적이 먼저 공격해요</div>' : ''}
         ${sortBar()}<div class="story-grid story-deckpick">${list.map(o => { const on = sel.includes(o.uid);
           return `<button class="story-pick-card ${on ? 'on' : ''}" data-pick="${o.uid}">${pickTile(o)}${on ? '<i class="story-pick-check">✔</i>' : ''}</button>`; }).join('')}</div>
-        ${(() => { const lo = byUid(save.leader); if (!lo) return ''; const inF = forced.some(f => f.uid === lo.uid), out = inF ? '' : exclude.has(lo.id) ? '이번 페이즈에는 리더가 출전할 수 없어 리더 스킬이 꺼져요' : !sel.includes(lo.uid) ? '리더를 출전시키지 않으면 리더 스킬이 꺼져요' : ''; return out ? `<div class="story-hint">${ic('crown', { alt: '' })} ${out}</div>` : `<div class="text-[11px] text-amber-200 mt-2">${ic('crown', { alt: '' })} 리더 스킬 켜짐: ${esc(leaderEff(lo.id)?.text || '')}</div>`; })()}
+        ${(() => { const lo = byUid(save.leader); if (!lo) return ''; const inF = forced.some(f => f.uid === lo.uid), out = inF ? '' : !all.some(x => x.uid === lo.uid) ? '이번 페이즈에는 리더가 출전할 수 없어 리더 스킬이 꺼져요' : !sel.includes(lo.uid) ? '리더를 출전시키지 않으면 리더 스킬이 꺼져요' : ''; return out ? `<div class="story-hint">${ic('crown', { alt: '' })} ${out}</div>` : `<div class="text-[11px] text-amber-200 mt-2">${ic('crown', { alt: '' })} 리더 스킬 켜짐: ${esc(leaderEff(lo.id)?.text || '')}</div>`; })()}
         <div class="flex gap-2 mt-3 story-pop-actions"><button class="story-back flex-1" data-close-pop>취소</button><button class="story-btn flex-1" id="story-deck-ok" ${sel.length || forced.length ? '' : 'disabled'}>출전 (${forced.length + sel.length}장)</button></div>`, () => (opts?.onCancel || renderMap)());
       p.el.querySelectorAll('[data-pick]').forEach(b => b.onclick = () => {
         const u = b.dataset.pick;
@@ -566,7 +573,8 @@
     // 보스 카드를 맨 앞에 (진영 안 표시), 나머지는 그대로
     const ai = bc ? [bc, ...enemies.filter(c => c !== bc)] : enemies;
     window.TCG.startStory({
-      me, ai, leader: (() => { const lo = me.find(c => c.uid === save.leader), le = lo && leaderEff(lo.id); return le ? { ...le, uid: lo.uid } : undefined; })(), win: boss ? 'ko' : 'wipe', aiHp: boss ? bossHp(ch, ph) : undefined, bossId: bc ? String(bc.id) : undefined, aiName: ph.enemyName || (boss ? '보스' : '적군'), first: 'me',
+      me, ai, leader: (() => { const lo = me.find(c => c.uid === save.leader), le = lo && leaderEff(lo.id); return le ? { ...le, uid: lo.uid } : undefined; })(), win: boss ? 'ko' : 'wipe', aiHp: boss ? bossHp(ch, ph) : undefined, bossId: bc ? String(bc.id) : undefined, aiName: ph.enemyName || (boss ? '보스' : '적군'), first: ph.enemyFirst ? 'ai' : 'me',   // 기본 내가 선공, 페이즈 enemyFirst 면 적 선공
+     
       onEnd: (win, reason, st) => result(ch, ph, win, reason, st),
     });
     if (ph.tip) setTimeout(() => toast(`💡 ${ph.tip}`), 3400);   // 규칙 안내 뒤에 이어서 (겹치지 않게)
