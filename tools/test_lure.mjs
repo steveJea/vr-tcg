@@ -1,3 +1,4 @@
+import './seed_rng.mjs';   // 고정 시드 난수 (치명타·회피·속성 패시브 등 확률 결과 고정)
 import fs from 'fs';
 import { parseCSV, makeUnit, resolveAttack, RULES } from '../js/rules.js';
 RULES.EVADE_ON = false;   // 유도 판정만 확인 (속성 회피 4~10%가 끼면 결과가 흔들림)

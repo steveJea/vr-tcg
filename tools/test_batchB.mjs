@@ -1,4 +1,5 @@
 // Batch B 검증: node tools/test_batchB.mjs
+import './seed_rng.mjs';   // 고정 시드 난수 (치명타·회피·속성 패시브 등 확률 결과 고정)
 import fs from 'fs';
 import { parseCSV, makeUnit, resolveAttack, calcDamage, RULES, buildDeck, genderMult, baseEvade, attackTargets, allowedGrades, GRADES, doAction, setCardPool } from '../js/rules.js';
 import { setSkillData, initPlayers, placeUnit, skillsOf, setRng, TURN, refreshAll, setEmitter, damageUnit, evadeChance, rollEvade, aiPickSkill, checkDeath } from '../js/skills.js';
@@ -44,9 +45,9 @@ ok('전체 선택 = 제한 없음(null)', allowedGrades({ grades: [...GRADES] })
 
 // ---- 7-1 성별 피해 ----
 ok('genderMult 남→여 0.85 / 여→남 1.05 / 동성 1', genderMult(M, F) === 0.85 && genderMult(F, M) === 1.05 && genderMult(M, M) === 1 && genderMult(F, F2) === 1 && genderMult(M, null) === 1);
-{ const { A, B } = sides([M.id], [F.id]); const t = B[0]; t.maxHp = t.hp = 99999; const h = t.hp; damageUnit(t, 1000, A[0]); ok('damageUnit 남→여 1000 → 850', h - t.hp === 850, String(h - t.hp)); }
-{ const { A, B } = sides([F.id], [M.id]); const t = B[0]; t.maxHp = t.hp = 99999; const h = t.hp; damageUnit(t, 1000, A[0]); ok('damageUnit 여→남 1000 → 1050', h - t.hp === 1050, String(h - t.hp)); }
-{ const { A, B } = sides([F.id], [F2.id]); const t = B[0]; t.maxHp = t.hp = 99999; const h = t.hp; damageUnit(t, 1000, A[0]); ok('damageUnit 여→여 그대로', h - t.hp === 1000); }
+{ const { A, B } = sides([M.id], [F.id]); setRng(() => 0.99); const t = B[0]; t.maxHp = t.hp = 99999; const h = t.hp; damageUnit(t, 1000, A[0]); ok('damageUnit 남→여 1000 → 850', h - t.hp === 850, String(h - t.hp)); }
+{ const { A, B } = sides([F.id], [M.id]); setRng(() => 0.99); const t = B[0]; t.maxHp = t.hp = 99999; const h = t.hp; damageUnit(t, 1000, A[0]); ok('damageUnit 여→남 1000 → 1050', h - t.hp === 1050, String(h - t.hp)); }
+{ const { A, B } = sides([F.id], [F2.id]); setRng(() => 0.99); const t = B[0]; t.maxHp = t.hp = 99999; const h = t.hp; damageUnit(t, 1000, A[0]); ok('damageUnit 여→여 그대로', h - t.hp === 1000); }
 { const { a, b, A, B } = sides([M.id], [F.id]); setRng(() => 0.99); const t = B[0]; t.maxHp = t.hp = 99999; const h = t.hp; resolveAttack(a, b, A[0], t);
   const exp = Math.round(calcDamage(A[0].card, t.card) * 0.85); ok('기본 공격 남→여 85%', h - t.hp === exp, `${h - t.hp} vs ${exp}`); }
 { const { a, b, A, B } = sides([M.id], [F.id]); setRng(() => 0.99); const u = A[0], t = B[0]; t.maxHp = t.hp = 99999; u.maxHp = u.hp = 99999; const h = u.hp; resolveAttack(a, b, u, t);

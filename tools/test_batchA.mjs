@@ -1,4 +1,5 @@
 // 2026-10-22 신규·변경 스킬 검증: node tools/test_batchA.mjs
+import './seed_rng.mjs';   // 고정 시드 난수 (치명타·회피·속성 패시브 등 확률 결과 고정)
 import fs from 'fs';
 import { parseCSV, makeUnit, resolveAttack, calcDamage, RULES } from '../js/rules.js';
 RULES.GENDER_ON = false; RULES.EVADE_ON = false;   // 스킬 수치 검증용 (성별·속성 회피는 test_batchB.mjs)

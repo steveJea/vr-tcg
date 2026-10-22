@@ -1,4 +1,5 @@
 // 스킬 레벨 (E-6) 엔진 테스트: node tools/test_skill_level.mjs
+import './seed_rng.mjs';   // 고정 시드 난수 (치명타·회피·속성 패시브 등 확률 결과 고정)
 import { readFileSync } from 'fs';
 import { setSkillData, initPlayers, placeUnit, refreshAll, setEmitter, useSkill, skillsOf, skillLvOf, skillCd, skillCdAt, skillLvMult, SKILL_LV_MAX } from '../js/skills.js';
 import { RULES, makeUnit } from '../js/rules.js';
