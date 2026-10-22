@@ -502,10 +502,7 @@ window.STORY_DATA.chapters.push({
     "exclude": [
      "2000500114"
     ],
-    "maxGrade": "HIGH RARE",
-    "statMul": {
-     "2000500111": { "HP": 2, "DEF": 2 }
-    }
+    "maxGrade": "HIGH RARE"
    },
    "hero": [
     "2000500111"
