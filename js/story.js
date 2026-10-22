@@ -727,9 +727,11 @@
   const LV_G = { 'NORMAL': 1, 'RARE': 1.5, 'HIGH RARE': 2, 'SUPER RARE': 3, 'ULTRA RARE': 4, 'MYTHIC RARE': 6 };
   const SHARD_BASE = { 'NORMAL': 1, 'RARE': 2, 'HIGH RARE': 4, 'SUPER RARE': 8, 'ULTRA RARE': 15, 'MYTHIC RARE': 30 };
   /** o 를 n 단계 올리는 비용 (최대 레벨까지만) */
-  function lvUpCost(o, n) {
+  function lvUpCost(o, n, w) {
     const g = card(o.id)?.grade || 'NORMAL', cap = lvCap(o); let lv = o.level | 0 || 1, k = 0, gold = 0, blood = 0;
-    while (k < n && lv < cap) { blood += Math.ceil(LV_B[g] * lv); gold += Math.ceil(LV_G[g] * lv * 10); lv++; k++; }
+    while (k < n && lv < cap) { const b = Math.ceil(LV_B[g] * lv), gg = Math.ceil(LV_G[g] * lv * 10);
+      if (w && k > 0 && (gold + gg > (w.gold | 0) || blood + b > (w.blood | 0))) break;
+      blood += b; gold += gg; lv++; k++; }
     return { n: k, to: lv, gold, blood };
   }
   const shardCost = o => (SHARD_BASE[card(o.id)?.grade] || 1) * (exOf(o) + 1);
@@ -739,15 +741,15 @@
   function lvUpBox(o) {
     if (!serverMode) return '';
     const cap = lvCap(o); if ((o.level | 0) >= cap) return `<div class="story-lvup-box max">최대 레벨 Lv.${cap}${exOf(o) < maxEx(o) ? ' · 합성(EX)하면 최대 레벨 +5' : ''}</div>`;
-    const w = W(), one = lvUpCost(o, 1), ten = lvUpCost(o, 10);
+    const w = W(), one = lvUpCost(o, 1), ten = lvUpCost(o, 10, w);
     const btn = (c, id, label) => `<button id="${id}" class="story-lvup-btn ${afford(c) ? '' : 'short'}" ${afford(c) ? '' : 'disabled'}><b>${label}</b><small>${costTxt(c)}</small></button>`;
     return `<div class="story-lvup-box"><div class="story-lvup-h">⬆ 레벨업 <small>골드 + 순수한 피 · 전투 EXP 로도 올라요</small></div>
-      <div class="flex gap-2">${btn(one, 'story-d-lv1', `Lv.${o.level} → ${one.to}`)}${ten.n > 1 ? btn(ten, 'story-d-lv10', `+${ten.n} (→ Lv.${ten.to})`) : ''}</div>
+      <div class="flex gap-2">${btn(one, 'story-d-lv1', `Lv.${o.level} → ${one.to}`)}${ten.n > 1 ? btn(ten, 'story-d-lv10', `${ten.n < 10 && ten.to < lvCap(o) ? '최대 ' : ''}+${ten.n} (→ Lv.${ten.to})`) : ''}</div>
       <div class="story-lvup-have">${w ? `보유 🪙 ${fmt(w.gold)} · 🩸 ${fmt(w.blood)}` : '보유 재화 불러오는 중…'}</div></div>`;
   }
   async function doLevelUp(o, n) {
-    const c = lvUpCost(o, n); if (!c.n) return;
-    const res = await act('story_card_levelup', { p_uid: o.uid, p_levels: c.n }, () => null, r => r.data);
+    const c = lvUpCost(o, n, n > 1 ? W() : null); if (!c.n) return;
+    const res = await act('story_card_levelup', { p_uid: o.uid, p_levels: n > 1 ? Math.min(n, lvCap(o) - (o.level | 0)) : 1 }, () => null, r => r.data);
     if (!res.ok) { if (/not enough/.test(res.error?.message || '')) toast(`재화가 부족해요 (필요 ${costTxt(c).replace(/<[^>]+>/g, '')})`); window.VRPlayer?.wallet(true); return cardDetail(o.uid); }
     const r = res.r || {}; window.VRPlayer?.setWallet(r.wallet);
     cardDetail(o.uid); levelUpFx(`LEVEL UP! Lv.${r.from} → Lv.${r.level}`);

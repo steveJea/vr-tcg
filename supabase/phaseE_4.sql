@@ -34,9 +34,9 @@ $$;
 revoke all on function public.card_cost_table() from public, anon;
 grant execute on function public.card_cost_table() to authenticated;
 
--- 2) 카드 레벨업: p_uid 카드를 p_levels 단계 (1~100, 최대 레벨까지만). 전부 성공 또는 전부 취소
+-- 2) 카드 레벨업: p_uid 카드를 최대 p_levels 단계 (1~100). 최대 레벨·보유 재화가 허락하는 만큼만 올리고 올린 만큼만 차감. 1단계도 못 올리면 'not enough ...'
 create or replace function public.story_card_levelup(p_uid text, p_levels int default 1) returns jsonb language plpgsql security definer set search_path = public as $$
-declare uid uuid := auth.uid(); d jsonb; owned jsonb; i int; e jsonb; g text; lv int; cap int; k int := 0; gold int := 0; blood int := 0; c jsonb; w jsonb; from_lv int;
+declare uid uuid := auth.uid(); d jsonb; owned jsonb; i int; e jsonb; g text; lv int; cap int; k int := 0; gold int := 0; blood int := 0; c jsonb; w jsonb; from_lv int; hg bigint := 0; hb bigint := 0;
 begin
   if uid is null then raise exception 'login required'; end if;
   if p_levels is null or p_levels < 1 or p_levels > 100 then raise exception 'invalid levels'; end if;
@@ -49,17 +49,23 @@ begin
   g := coalesce(g, 'NORMAL');
   lv := (e->>'level')::int; from_lv := lv; cap := _story_cap(g, (e->>'ex')::int);
   if lv >= cap then raise exception 'max level'; end if;
+  select coalesce(pw.gold, 0), coalesce(pw.blood, 0) into hg, hb from player_wallet pw where pw.user_id = uid;
+  hg := coalesce(hg, 0); hb := coalesce(hb, 0);
   while k < p_levels and lv < cap loop
     c := _lv_cost(g, lv);
+    if gold + (c->>'gold')::int > hg or blood + (c->>'blood')::int > hb then
+      if k = 0 then raise exception 'not enough %', case when gold + (c->>'gold')::int > hg then 'gold' else 'blood' end; end if;
+      exit;
+    end if;
     gold := gold + (c->>'gold')::int; blood := blood + (c->>'blood')::int;
     lv := lv + 1; k := k + 1;
   end loop;
-  w := _wallet_add(uid, jsonb_build_object('gold', -gold, 'blood', -blood), 'card_levelup');   -- 부족하면 'not enough ...' → 전체 롤백
+  w := _wallet_add(uid, jsonb_build_object('gold', -gold, 'blood', -blood), 'card_levelup');
   e := e || jsonb_build_object('level', lv, 'exp', least((e->>'exp')::int, greatest(0, lv * 100 - 1)), 'bloodSpent', coalesce((e->>'bloodSpent')::int, 0) + blood);
   if lv >= cap then e := e || jsonb_build_object('exp', 0); end if;
   owned := jsonb_set(owned, array[i::text], e);
   d := _story_save(uid, jsonb_set(d, '{owned}', owned));
-  return jsonb_build_object('data', d, 'from', from_lv, 'level', lv, 'cap', cap, 'gold', gold, 'blood', blood, 'wallet', w);
+  return jsonb_build_object('data', d, 'from', from_lv, 'level', lv, 'cap', cap, 'requested', p_levels, 'gained', k, 'gold', gold, 'blood', blood, 'wallet', w);
 end $$;
 revoke all on function public.story_card_levelup(text, int) from public, anon;
 grant execute on function public.story_card_levelup(text, int) to authenticated;

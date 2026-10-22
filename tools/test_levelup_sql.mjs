@@ -46,6 +46,9 @@ let r = await q(`select public.story_card_levelup('n1', 2) r`); const rr = r.row
 ok(rr && rr.from === 3 && rr.level === 5 && rr.blood === 14 && rr.gold === 70, `N Lv3→5: 피 6+8=14 · 골드 30+40=70 (${JSON.stringify({ l: rr?.level, b: rr?.blood, g: rr?.gold, e: r.err })})`);
 let w = await W(); ok(w.gold === 930 && w.blood === 86, '지갑 차감');
 let c = await card('n1'); ok(c.level === 5 && c.exp === 150 && c.bloodSpent === 14 && c.totalExp === 450, 'EXP 진행도·누적 유지, bloodSpent 기록');
+r = await q(`select public.story_card_levelup('n1', 10) r`); let pr = r.rows?.[0]?.r;
+ok(pr && pr.level === 10 && pr.gained === 5 && pr.blood === 70 && pr.gold === 350, `+10 → 감당 가능한 5단계만 (${JSON.stringify({ l: pr?.level, g: pr?.gained, e: r.err })})`);
+w = await W(); ok(w.gold === 580 && w.blood === 16, '올린 만큼만 차감');
 await give({ gold: 100000, blood: 10000 });
 r = await q(`select public.story_card_levelup('n1', 100) r`); ok(r.rows?.[0].r.level === 20 && r.rows[0].r.cap === 20, 'N 최대 Lv20 까지만');
 ok((await card('n1')).exp === 0, '최대 레벨이면 EXP 0');
