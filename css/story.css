@@ -381,3 +381,46 @@ span.story-lvpct { background: rgba(251,191,36,.12); border: 1px solid rgba(251,
 .main-menu>#quest-btn{padding:.35rem 1rem!important}
 .main-menu>#quest-btn .ui-ic{width:1.9em;height:1.9em}
 .main-menu>#quest-btn{max-width:none!important;width:100%}
+/* ===== 카드 뽑기방: 어비스 게이트 ===== */
+.gr-room{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none;background:#07060c}
+.gr-room .gr-bg img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center}
+.gr-room::after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at var(--gate-x,50%) var(--gate-y,75%),transparent 0,transparent 18%,rgba(0,0,0,.35) 70%);pointer-events:none}
+.gr-fx-img{position:absolute;max-width:none;pointer-events:none;opacity:0;mix-blend-mode:screen}
+.gr-open{animation:grOpen .75s ease-out forwards}
+.gr-open.out{animation:grOut .5s ease-in forwards}
+.gr-rar{animation:grRar .55s cubic-bezier(.2,1.4,.4,1) forwards}
+.gr-rar.settle{animation:none;opacity:.55;transition:opacity .8s}
+.gr-rar-ur.settle,.gr-rar-mr.settle{opacity:.75}
+@keyframes grOpen{0%{opacity:0;transform:scale(.35,.15)}60%{opacity:1}100%{opacity:1;transform:scale(1)}}
+@keyframes grOut{to{opacity:0;transform:scale(1.15)}}
+@keyframes grRar{0%{opacity:0;transform:scale(.6)}40%{opacity:1}100%{opacity:1;transform:scale(1)}}
+.gr-room.flash-ur,.gr-room.flash-mr{animation:grShake .5s}
+.gr-room.flash-sr{animation:grShake .35s}
+@keyframes grShake{20%{transform:translate(-6px,3px)}40%{transform:translate(5px,-4px)}60%{transform:translate(-3px,2px)}80%{transform:translate(2px,-1px)}}
+.story-wrap:has(.gr-room)>*:not(.gr-room){position:relative;z-index:1}
+.story-wrap:has(.gr-room) .story-top{background:linear-gradient(rgba(0,0,0,.55),transparent);border-radius:12px}
+.gr-ui{max-width:520px!important;display:flex;flex-direction:column;align-items:center;min-height:calc(100vh - 80px);margin-top:4px!important;background:none!important;border:0!important;box-shadow:none!important;padding:0!important}
+.gr-tabs{display:flex;gap:6px;align-items:center;justify-content:center}
+.gr-tabs button{position:relative;display:flex;align-items:center;gap:4px;padding:5px 12px;border-radius:999px;background:rgba(10,6,20,.6);border:1px solid rgba(168,85,247,.35);color:#e9d5ff;font-weight:800;font-size:13px;backdrop-filter:blur(3px)}
+.gr-tabs button.on{border-color:#c084fc;box-shadow:0 0 12px rgba(168,85,247,.6);color:#fff}
+.gr-tabs .ui-ic{width:1.5em;height:1.5em}
+.gr-tabs .gr-ic{padding:5px 8px}
+.gr-tabs .story-badge{position:absolute;top:-6px;right:-4px}
+.gr-stage{flex:1;display:flex;align-items:center;justify-content:center;width:100%;padding:8px 0}
+.gr-card{width:150px!important;height:200px!important;margin:0!important;filter:drop-shadow(0 0 18px rgba(168,85,247,.55));animation:grFloat 3.2s ease-in-out infinite}
+@keyframes grFloat{50%{transform:translateY(-8px)}}
+.gr-room.busy~* .gr-card,.story-wrap:has(.gr-room.busy) .gr-card{opacity:.15;transition:opacity .2s}
+.gr-card .gacha-back{background:radial-gradient(circle at 50% 60%,rgba(168,85,247,.55),transparent 60%),url(../img/ui/gacha.webp) center/48% no-repeat,linear-gradient(160deg,#1e1033,#07060c);border:2px solid rgba(192,132,252,.7);font-size:0}
+.gr-msg{min-height:1.6rem;font-size:14px;font-weight:800;text-shadow:0 1px 4px #000;text-align:center}
+.gr-actions{display:flex;gap:10px;justify-content:center;align-items:center;flex-wrap:wrap;width:100%;padding:6px 0 18px}
+.gr-go{display:flex;align-items:center;gap:6px;padding:12px 26px;border-radius:999px;font-weight:900;font-size:17px;color:#fff;background:linear-gradient(180deg,#7c3aed,#4c1d95);border:1px solid #c4b5fd;box-shadow:0 0 22px rgba(139,92,246,.75),inset 0 1px 0 rgba(255,255,255,.3);text-shadow:0 1px 2px #000}
+.gr-go small{display:inline-flex;align-items:center;gap:2px;font-size:12px;opacity:.9}
+.gr-go .ui-ic{width:1.4em;height:1.4em}
+.gr-go:disabled{filter:grayscale(.8) brightness(.6);box-shadow:none}
+.gr-go10{background:linear-gradient(180deg,#db2777,#7e22ce)}
+.gr-next{font-size:12px;color:#d8b4fe;text-shadow:0 1px 3px #000}
+.gr-stage .story-tk-result{width:100%;max-width:520px;background:rgba(5,3,12,.55);border-radius:14px;padding:6px;backdrop-filter:blur(2px)}
+.gr-stage .story-tk-result:empty{display:none}
+.g-mr .gacha-front,.story-tk-card.g-mr{border-color:#ef4444;box-shadow:0 0 30px #f87171}
+.g-mr::before{inset:-22px;background:radial-gradient(circle,#ef4444,transparent 70%);filter:blur(10px);animation:gachaPulse 1s infinite}
+.g-text-mr{color:#f87171}
