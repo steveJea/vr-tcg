@@ -54,14 +54,14 @@ ok('genderMult 남→여 0.85 / 여→남 1.05 / 동성 1', genderMult(M, F) ===
 { const { a, b, A } = sides([M.id], [F.id]); setRng(() => 0.99); const h = b.hp; b.field = []; resolveAttack(a, b, A[0], null); ok('진영 피해는 성별 영향 없음', h - b.hp === calcDamage(A[0].card, null), `${h - b.hp}`); }
 
 // ---- 7-2 회피 ----
-ok('속성 기본 회피 바람 10% / 그 외 4%', baseEvade(W) === 0.10 && baseEvade(I) === 0.04 && baseEvade(F) === 0.04);
+ok('속성 기본 회피 바람 7% / 그 외 4%', baseEvade(W) === 0.07 && baseEvade(I) === 0.04 && baseEvade(F) === 0.04);
 { const { a, b, A, B } = sides([M.id], [W.id]); const t = B[0]; t.maxHp = t.hp = 9999;
-  setRng(() => 0.095); let ev = resolveAttack(a, b, A[0], t); ok('바람: 0.095 < 10% → 회피', ev[0]?.type === 'evade');
+  setRng(() => 0.065); let ev = resolveAttack(a, b, A[0], t); ok('바람: 0.065 < 7% → 회피', ev[0]?.type === 'evade');
   A[0].canAttack = true; setRng(() => 0.105); ev = resolveAttack(a, b, A[0], t); ok('바람: 0.105 → 명중', ev[0]?.type === 'hit'); }
 { const { a, b, A, B } = sides([M.id], [I.id]); const t = B[0]; t.maxHp = t.hp = 9999;
   setRng(() => 0.035); let ev = resolveAttack(a, b, A[0], t); ok('얼음: 0.035 < 4% → 회피', ev[0]?.type === 'evade');
   A[0].canAttack = true; setRng(() => 0.045); ev = resolveAttack(a, b, A[0], t); ok('얼음: 0.045 → 명중', ev[0]?.type === 'hit'); }
-{ const { B } = sides([M.id], [W.id]); const t = B[0]; t.st.evade = { p: 0.4 }; ok('스킬 회피 40% + 바람 10% = 50%', Math.abs(evadeChance(t) - 0.5) < 1e-9);
+{ const { B } = sides([M.id], [W.id]); const t = B[0]; t.st.evade = { p: 0.4 }; ok('스킬 회피 40% + 바람 7% = 47%', Math.abs(evadeChance(t) - 0.47) < 1e-9);
   t.st.evade = { p: 0.9 }; ok('상한 60%', evadeChance(t) === 0.6); }
 
 // ---- 2-4 카드 먼저 제거 ----
