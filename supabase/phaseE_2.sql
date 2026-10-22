@@ -12,7 +12,7 @@
 --   패배·포기: 전부 반환 (story_abort_phase). 전투를 끝내지 않고 새 전투를 시작해도 이전 전투 분은 반환
 --   행동력 골드 충전 없음
 --   해금 레벨: 소탕 5 · 기술 레벨 10 · 장비 15 · 장비 합성 20 (_player_unlocked 로 이후 단계에서 확인)
---   기존 유저: 처음 조회할 때 이미 클리어한 페이즈만큼 경험치를 소급 (보상 없이 레벨만)
+--   기존 유저도 모두 Lv1 부터 시작 (클리어 기록 소급 없음)
 --
 -- 구조: 기존 story_start_phase / story_complete_phase(3인자) 를 _e0 이름으로 보관하고
 --       같은 이름의 감싸는 함수(행동력·경험치 처리)를 새로 만듦.
@@ -72,22 +72,12 @@ begin
   return jsonb_build_object('levelups', n, 'gold', gold);
 end $$;
 
--- 행 잠금 + 회복 반영. 없으면 만들고 이미 클리어한 페이즈만큼 경험치 소급
+-- 행 잠금 + 회복 반영. 없으면 Lv1 · 행동력 최대치로 생성
 create or replace function public._player_sync(p_uid uuid) returns player_state language plpgsql security definer set search_path = public as $$
-declare ps player_state; mx int; n int; retro int; secs int := _stamina_regen_secs();
+declare ps player_state; mx int; n int; secs int := _stamina_regen_secs();
 begin
   if p_uid is null then raise exception 'login required'; end if;
-  if not exists (select 1 from player_state where user_id = p_uid) then
-    insert into player_state (user_id, stamina) values (p_uid, _stamina_max(1)) on conflict (user_id) do nothing;
-    select coalesce(sum(_stamina_cost(c.chapter, c.phase) * _player_xp_per_stamina() + _player_first_bonus(c.type)), 0)::int into retro
-      from story_progress sp
-      cross join lateral jsonb_each(case when jsonb_typeof(sp.data->'cleared') = 'object' then sp.data->'cleared' else '{}'::jsonb end) ch(k, v)
-      cross join lateral jsonb_array_elements_text(case when jsonb_typeof(ch.v) = 'array' then ch.v else '[]'::jsonb end) p(no)
-      join story_phase_config c on c.chapter::text = ch.k and c.phase::text = p.no
-      where sp.user_id = p_uid;
-    perform _player_add_xp(p_uid, retro, false);
-    update player_state set stamina = _stamina_max(level) where user_id = p_uid;   -- 소급 레벨의 최대치로 시작
-  end if;
+  insert into player_state (user_id, stamina) values (p_uid, _stamina_max(1)) on conflict (user_id) do nothing;   -- 모두 Lv1 부터 (소급 없음)
   select * into ps from player_state where user_id = p_uid for update;
   mx := _stamina_max(ps.level);
   if ps.stamina >= mx then

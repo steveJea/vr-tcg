@@ -64,18 +64,18 @@ await db.exec(`update public.player_state set stamina = 5, stamina_at = now() - 
 s = await P(); ok(s.stamina === 7 && s.next_regen_secs > 290 && s.next_regen_secs <= 300, `13분 → +2 회복, 다음 ${s.next_regen_secs}초`);
 await db.exec(`update public.player_state set stamina = 5, stamina_at = now() - interval '30 days' where user_id='${U}'`);
 s = await P(); ok(s.stamina === s.stamina_max && s.next_regen_secs === 0, '오래 지나도 최대치까지만');
-// 기존 유저 소급: 챕터1 5페이즈 클리어 = 4×110 + 210 = 650 → Lv5 (100+120+140+160=520, 남은 130)
+// 기존 유저: 클리어 기록이 있어도 소급 없이 Lv1
 await db.exec(`insert into public.story_progress (user_id, data) values ('${V}', '{"starter":"2000600126","cleared":{"1":[1,2,3,4,5]}}')`);
 const sv = (await as('authenticated', { sub: V, email: 'v@x.com' }, 'select public.player_status() s')).rows[0].s;
-ok(sv.level === 5 && sv.xp === 130 && sv.stamina === 45 && sv.stamina_max === 45, `소급: Lv5 xp130 행동력 45/45 (${sv.level}/${sv.xp}/${sv.stamina})`);
-ok(!(await db.query(`select 1 from public.player_wallet where user_id='${V}'`)).rows.length, '소급 레벨업은 골드 보상 없음');
+ok(sv.level === 1 && sv.xp === 0 && sv.stamina === 40 && sv.stamina_max === 40, `소급 없음: Lv1 xp0 행동력 40/40 (${sv.level}/${sv.xp}/${sv.stamina})`);
+ok(!(await db.query(`select 1 from public.player_wallet where user_id='${V}'`)).rows.length, '기존 유저 골드 지급 없음');
 // 최대 레벨
 await db.exec(`update public.player_state set level = 99, xp = 0 where user_id='${U}'`);
 await db.query(`select public._player_add_xp('${U}', 999999, true)`); s = await P(); ok(s.level === 100 && s.xp === 0 && s.xp_next === 0, 'Lv100 상한');
-ok((await db.query(`select public._player_unlocked('${U}','sweep') a, public._player_unlocked('${V}','skill') b`)).rows.map(x => [x.a, x.b]).join() === 'true,false', '해금 확인 (Lv100 소탕 O, Lv5 기술 X)');
+ok((await db.query(`select public._player_unlocked('${U}','sweep') a, public._player_unlocked('${V}','skill') b`)).rows.map(x => [x.a, x.b]).join() === 'true,false', '해금 확인 (Lv100 소탕 O, Lv1 기술 X)');
 // 관리자
 ok(/forbidden/.test((await q(`select public.admin_user_player('${V}')`)).err || ''), '일반 유저 admin_user_player 거부');
-ok((await as('authenticated', { sub: ADMIN, email: 'stevejean77@gmail.com' }, `select public.admin_user_player('${V}') p`)).rows?.[0].p.level === 5, '관리자 조회');
+ok((await as('authenticated', { sub: ADMIN, email: 'stevejean77@gmail.com' }, `select public.admin_user_player('${V}') p`)).rows?.[0].p.level === 1, '관리자 조회');
 ok(/permission denied|policy/.test((await q(`update public.player_state set stamina = 999`)).err || 'x') , '행동력 직접 수정 불가');
 // 스토리 SQL 을 다시 실행해 원본이 덮였을 때 → phaseE_2 재실행으로 다시 감쌈
 await run('story_merge.sql'); await run('phaseE_2.sql');
