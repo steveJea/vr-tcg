@@ -638,7 +638,8 @@ async function runFxQueue() {
 function onEnter(who, u) {
   if (!S || !u) return;
   const id = String((u.base || u.card).id);
-  if (voiceSet?.has(`${id}_0`) && !S.fxSeen.has(`entry:${u.uid}`)) {
+  // 등장 컷인: 등장 보이스(<id>_0) 또는 전용 이미지(events.json entry.fx) 중 하나라도 있으면
+  if ((voiceSet?.has(`${id}_0`) || (EVENTS.entry.fx || []).map(String).includes(id)) && !S.fxSeen.has(`entry:${u.uid}`)) {
     S.fxSeen.add(`entry:${u.uid}`);
     fxQueue.push(() => entryCutIn(u, id)); runFxQueue();
   }

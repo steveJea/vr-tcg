@@ -86,6 +86,7 @@ ok('속성 기본 회피 바람 10% / 그 외 4%', baseEvade(W) === 0.10 && base
 { const ev = JSON.parse(fs.readFileSync('data/events.json'));
   ok('events.json: 이벤트 파일 존재', ev.events.every(e => (!e.image || fs.existsSync(e.image)) && (!e.voice || fs.existsSync(e.voice))));
   ok('유리x나리 카드 id 유효', ev.events[0].sides.flat().every(id => C(id)), ev.events[0].sides.flat().map(id => C(id)?.name).join(','));
+  ok('entry.fx에 이성호 1002400378 포함', ev.entry.fx.includes('1002400378'));
   ok('entry.fx 이미지 존재', ev.entry.fx.every(id => fs.existsSync(`data/fx/${id}_0.webp`))); }
 { const se = { 1: 4, 2: 2, 3: 4, 4: 3, 5: 1, 6: 1, 7: 3 }; const miss = [];
   for (const [c, n] of Object.entries(se)) for (let i = 1; i <= n; i++) { const f = `audio/se/00${c}_0${i}.mp3`; if (!fs.existsSync(f)) miss.push(f); }
