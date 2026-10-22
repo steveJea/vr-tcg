@@ -316,3 +316,12 @@ span.story-lvpct { background: rgba(251,191,36,.12); border: 1px solid rgba(251,
 .q-no{font-weight:800}.q-g{font-size:10px;font-weight:900;padding:0 4px;border-radius:4px;background:#374151;color:#fff;text-align:center}
 .q-g.rar-R{background:#3b82f6}.q-g.rar-HR{background:#22c55e}.q-g.rar-SR{background:#a855f7}.q-g.rar-UR{background:#f59e0b}.q-g.rar-MR{background:#ef4444}
 .q-rw{font-size:.72rem;color:#fde68a}.q-rw.got{opacity:.45;text-decoration:line-through}
+/* 플레이어 레벨 · 행동력 (js/player.js) */
+.vrp-chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#fff;white-space:nowrap}
+.vrp-lv{background:linear-gradient(135deg,#f59e0b,#b45309);color:#111;font-weight:900;border-radius:999px;padding:2px 8px}
+.vrp-st{background:rgba(0,0,0,.55);border:1px solid rgba(110,231,183,.5);border-radius:999px;padding:2px 9px}
+.vrp-st b{color:#6ee7b7}.vrp-st small{margin-left:5px;color:#a1a1aa;font-size:10px}
+.vrp-st.low{border-color:#f87171}.vrp-st.low b{color:#fca5a5}
+.story-player-row{display:flex;justify-content:center;margin:6px 0 2px}
+.story-pxp{margin-top:12px;font-size:13px;color:#e4e4e7}.story-pxp .bar{height:6px;background:rgba(255,255,255,.12);border-radius:999px;overflow:hidden;max-width:240px;margin:4px auto 0}.story-pxp .bar i{display:block;height:100%;background:#f59e0b}
+.story-plvup{margin-top:6px;color:#fde68a;font-weight:900}

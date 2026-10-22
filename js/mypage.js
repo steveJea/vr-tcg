@@ -34,15 +34,16 @@
   async function gather() {
     const m = window.__MYPAGE_MOCK;
     const safe = f => { try { return Promise.resolve(f()).catch(() => null); } catch { return Promise.resolve(null); } };
-    const [story, gal, quest, wallet] = await Promise.all([
+    const [story, gal, quest, wallet, player] = await Promise.all([
       safe(() => m?.story ? m.story() : window.VRStory?.summary?.()),
       safe(() => m?.gallery ? m.gallery() : window.VRGallery?.collection?.()),
       safe(() => m?.quest ? m.quest() : window.VRQuest?.bestFloor?.()),
       safe(() => m?.wallet ? m.wallet() : walletStatus()),
+      safe(() => m?.player ? m.player() : window.VRPlayer?.status?.(true)),
     ]);
     const pool = window.TCG?.POOL || [];
     const cardOf = id => pool.find(c => String(c.id) === String(id));
-    return { user: user(), story: story?.ok ? story : null, gallery: gal, questBest: quest, wallet: wallet?.ok ? wallet : null, arcade: m?.arcade ? m.arcade() : arcadeRecord(), cardOf };
+    return { user: user(), story: story?.ok ? story : null, gallery: gal, questBest: quest, wallet: wallet?.ok ? wallet : null, player: player?.ok ? player : null, arcade: m?.arcade ? m.arcade() : arcadeRecord(), cardOf };
   }
 
   // ---- 리더 영상 훅 ----
@@ -97,6 +98,12 @@
       <div class="mp-leader-cap"><span class="mp-rar">${SHORT[L.grade] || ''}</span><b>${esc(L.name)}</b><small>리더 · Lv.${L.level || 1}${L.power ? ` · ⚡ ${Number(L.power).toLocaleString('ko-KR')}` : ''}</small></div>
       <span class="mp-play" aria-hidden="true">▶</span></div>`;
   } });
+  addSection({ id: 'player', order: 15, title: '플레이어', render: ctx => { const p = ctx.player; if (!p) return '';
+    const pct = p.xp_next ? Math.min(100, Math.round(p.xp / p.xp_next * 100)) : 100, full = p.stamina >= p.stamina_max;
+    return `<div class="mp-player"><div class="mp-plv"><b>Lv.${p.level}</b><small>/ ${p.max_level}</small></div>
+      <div class="mp-pinfo"><div class="mp-pxp"><span>경험치</span><span>${p.xp_next ? `${p.xp.toLocaleString('ko-KR')} / ${p.xp_next.toLocaleString('ko-KR')}` : '최대 레벨'}</span></div><div class="mp-bar"><i style="width:${pct}%"></i></div>
+      <div class="mp-pxp"><span>🔋 행동력</span><span><b>${p.stamina}</b> / ${p.stamina_max}${full ? '' : ` · +1 ${window.VRPlayer?.mmss?.(p.next_regen_secs) || ''}`}</span></div><div class="mp-bar st"><i style="width:${Math.min(100, Math.round(p.stamina / p.stamina_max * 100))}%"></i></div>
+      <small class="mp-pnote">스토리 페이즈 1회 = 행동력 ${p.cost?.story ?? 6} (패배·포기 시 반환) · 6분에 1 회복 · 시련의 탑·아케이드는 무료</small></div></div>`; } });
   addSection({ id: 'wallet', order: 20, title: '재화', render: ctx => `<div class="mp-wallet">${CURRENCIES.map(c => { const v = c.value(ctx);
     return `<div class="mp-cur ${c.soon ? 'soon' : ''}" data-cur="${c.key}"><span class="mp-cur-ic">${c.icon}</span><span class="mp-cur-l">${c.label}</span><b>${v == null ? (c.soon ? '준비 중' : '-') : Number(v).toLocaleString('ko-KR')}</b></div>`; }).join('')}</div>` });
   addSection({ id: 'record', order: 30, title: '전적', render: ctx => {
