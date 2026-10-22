@@ -1,7 +1,7 @@
 // ===== 스킬 · 상태이상 · 시너지 엔진 (게임·시뮬레이션 공용) =====
 // 스킬 데이터: data/skills.json (카드 id → 스킬 목록), 조합: data/combos.json
 // 각 스킬 효과는 '효과 내용' 기준으로 아래 ACTIVE / PASSIVE 표에 스킬 이름별로 구현
-import { RULES, elementMultiplier, calcDamage, gainXp, heroLocked, killXp, levelDown, levelUpOnce, genderMult, baseEvade } from './rules.js';
+import { critRate, RULES, elementMultiplier, calcDamage, gainXp, heroLocked, killXp, levelDown, levelUpOnce, genderMult, baseEvade } from './rules.js';
 
 export const SK = {
   MP_BASE: 50, MP_PER_MEN: 1,           // 최대 MP = 50 + MEN (51~150)
@@ -19,7 +19,7 @@ export const combos = () => COMBOS;
 // ---- 이벤트 (UI 로그·연출, 시뮬 통계) ----
 let emitFn = () => {};
 export function setEmitter(fn) { emitFn = fn || (() => {}); }
-const emit = ev => emitFn(ev);
+export const emit = ev => emitFn(ev);
 let rng = Math.random;
 export function setRng(f) { rng = f; }
 
@@ -65,6 +65,7 @@ export const STATUS = {
   notweak: { icon: '😤', img: 'taunt', label: '나는 약하지 않아', desc: '도발 효과가 끝나면 최대 HP 30% 회복' },
   vow:     { icon: '🛡️', img: 'def', label: '지킨다', desc: '이영아가 같은 필드에 있는 동안 매 턴 DEF +0.4% 누적, 최대 HP 2% 회복' },
   thorns:  { icon: '🌵', img: 'st_thorns', label: '반격 강화', desc: '받는 피해 감소·반격 배율 증가 (반격으로는 공격자가 쓰러지지 않음)' },
+  burn:    { icon: '🔥', label: '화상', debuff: true, desc: '주는 피해 -5% (불 속성 기본 공격, 2턴)' },
   evade:   { icon: '💨', img: 'st_evade', label: '회피', desc: '기본 공격을 확률로 회피 (회피 시 피해·반격 없음, 스킬은 회피 불가)' },
   endure:  { icon: '💢', img: 'st_endure', label: '불사', desc: 'HP가 1 아래로 내려가지 않음 (즉사 포함)' },
   guard:   { icon: '🛡️', img: 'def', label: '대신 맞기', desc: '지정한 아군을 향한 기본 공격을 대신 맞음' },
@@ -157,6 +158,11 @@ export function damageUnit(target, dmg, src = null, { silent = false } = {}) {
   if (target.st.immune) { emit({ type: 'immune', unit: target }); return 0; }
   // 성별 간 피해 (모든 모드·기본 공격·스킬·반격 공통): 남→여 85%, 여→남 105%
   if (src?.card && src.owner !== target.owner && dmg > 0) { const gm = genderMult(src.card, target.card); if (gm !== 1) dmg = Math.max(1, Math.round(dmg * gm)); }
+  if (src?.card && src.owner !== target.owner && dmg > 0) {
+    if (chance(critRate(src.card))) { dmg = Math.round(dmg * RULES.CRIT_MULT); emit({ type: 'crit', unit: target, src }); stats.count('치명타'); }   // 치명타: 기본 공격·스킬·반격
+    if (src.st?.burn) dmg = Math.max(1, Math.round(dmg * (1 - RULES.BURN_DOWN)));   // 화상: 주는 피해 -5%
+    if (RULES.EL_PASSIVE_ON && target.card?.class === 'ICE' && chance(RULES.ICE_GUARD_P)) { dmg = Math.max(1, Math.round(dmg * RULES.ICE_GUARD_MULT)); emit({ type: 'elfx', unit: target, kind: 'guard' }); }   // 얼음 방어
+  }
   if (target.st.pleading) dmg = Math.round(dmg * 0.5);
   if (target.st.thorns?.red) dmg = Math.round(dmg * (1 - target.st.thorns.red));   // 이게 프로야·에메랄드 쇼크
   target.hp -= dmg;
@@ -318,7 +324,12 @@ const PASSIVE_ONCE = {
 // ===== 액티브 스킬 =====
 const live = p => [...p.field];
 const by = (arr, f, dir = 1) => arr.slice().sort((a, b) => dir * (f(a) - f(b)))[0];
-const chance = p => rng() < p;
+export const chance = p => rng() < p;
+/** 자기 디버프 1개 해제 (빛 정화). 해제했으면 true */
+export function cleanseOne(u) {
+  for (const [k, s] of Object.entries(u.st)) { const d = STATUS[s.kind]; if (d?.debuff || (s.kind === 'mod' && ((s.atk || 0) < 0 || (s.def || 0) < 0))) { delete u.st[k]; if (u.owner) refreshAll(u.owner); return true; } }
+  return false;
+}
 /** 다회 타격: 대상 하나에 n회. 반환: 죽였는지 */
 function multiHit(src, t, n, pct, opt = {}) {
   for (let i = 0; i < n; i++) { if (!t.owner.field.includes(t) || t.hp <= 0) break; damageUnit(t, skillDamage(src, t, pct, opt), src); }

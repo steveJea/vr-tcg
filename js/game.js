@@ -299,11 +299,24 @@ function shake(el) {
   setTimeout(() => el.classList.remove('fx-shake', 'fx-hitflash'), 165);
 }
 
-function dmgNumber(el, text, color, html = false) {
+/** 치명타 연출: 노란 섬광 + 방사선 링 (속성 유리 피 튀김과 별개, 짧게) */
+const critSet = new Set();
+function critFx(el) {
+  if (!el || FX_OFF() || !el.isConnected) return;
+  const r = el.getBoundingClientRect(); if (!r.width) return;
+  const d = document.createElement('div'); d.className = 'fx-crit'; d.setAttribute('aria-hidden', 'true');
+  const size = Math.round(Math.min(Math.max(r.width, r.height) * 1.5, 380));
+  d.style.width = d.style.height = size + 'px'; d.style.left = (r.left + r.width / 2) + 'px'; d.style.top = (r.top + r.height / 2) + 'px';
+  d.innerHTML = '<i></i><b>CRIT</b>';
+  document.body.appendChild(d); setTimeout(() => d.remove(), REDUCED() ? 250 : 520);
+}
+const critNum = (el, n, unit) => { const c = critSet.delete(unit); dmgNumber(el, `-${fmt(n)}`, c ? '#fde047' : undefined, false, c ? 'fx-dmg-crit' : ''); };
+const EL_FX = { guard: ['🛡️', '#7dd3fc', '얼음 방어: 피해 절반'], drain: ['🩸', '#f0abfc', '어둠 흡혈'], cleanse: ['✨', '#fef08a', '빛 정화: 디버프 해제'], darkCounter: ['🌑×2', '#c4b5fd', '어둠 반격 2배'], nullCounter: ['🚫', '#fef9c3', '빛: 반격 무효'] };
+function dmgNumber(el, text, color, html = false, extra = '') {
   if (!el || FX_OFF()) return;
   const r = el.getBoundingClientRect();
   const d = document.createElement('div');
-  d.className = 'fx-dmg'; if (html) d.innerHTML = text; else d.textContent = text;
+  d.className = 'fx-dmg' + (extra ? ' ' + extra : ''); if (html) d.innerHTML = text; else d.textContent = text;
   if (color) d.style.color = color;
   d.style.left = (r.left + r.width / 2 + (Math.random() - 0.5) * 16) + 'px';
   d.style.top = (r.top + r.height * 0.4) + 'px';
@@ -366,12 +379,13 @@ async function attack(who, unit, target, fromBatch = false) {
         const rEl = (real && (unitEl(oWho, real) || unitEl(who, real))) || tEl;
         const orig = shown || null;
         log(`${unit.card.name} → ${real?.card?.name ?? '?'}${orig && real !== orig ? ` (${orig.card.name} 대신)` : (!orig ? ' (진영 공격 유도)' : '')} ${fmt(e.d1)} 피해${e.mult !== 1 ? ` (속성 ×${e.mult})` : ''}${real?.card && genderMult(unit.card, real.card) !== 1 ? ` (성별 ×${genderMult(unit.card, real.card)})` : ''}${e.killed ? ', 처치 (반격 없음)' : `, 반격 ${fmt(e.d2)}${e.survived ? ' (HP 1로 버팀)' : ''}`}`, cls);
-        shake(rEl); hitFx(rEl, e.mult > 1 ? 'blood' : 'impact'); dmgNumber(rEl, `-${fmt(e.d1)}`);   // 속성 유리(크리티컬) = 피 튀김
-        if (e.d2) { shake(aEl); hitFx(aEl); dmgNumber(aEl, `-${fmt(e.d2)}`, '#fca5a5'); }
+        shake(rEl); hitFx(rEl, e.mult > 1 ? 'blood' : 'impact'); critNum(rEl, e.d1, real);   // 속성 유리 = 피 튀김, 치명타 = 노란 숫자
+        if (e.d2) { shake(aEl); hitFx(aEl); if (critSet.delete(unit)) dmgNumber(aEl, `-${fmt(e.d2)}`, '#fde047', false, 'fx-dmg-crit'); else dmgNumber(aEl, `-${fmt(e.d2)}`, '#fca5a5'); }
       }
       else if (e.type === 'evade') { const rEl = unitEl(oWho, e.target) || tEl; log(`${unit.card.name} → ${e.target.card.name} 공격 회피! (피해·반격 없음)`, cls); dmgNumber(rEl, 'MISS', '#e0f2fe'); }
       else if (e.type === 'overflow') { log(`초과 피해 ${fmt(e.dmg)} → ${o.name} 진영`, 'text-orange-300'); const h = heroEl(oWho); shake(h); hitFx(h); dmgNumber(h, `💥 -${fmt(e.dmg)}`, '#fdba74'); }
     }
+    critSet.clear();
     renderHero(oWho); renderHero(who);
     await withTimeout(hit?.back?.() ?? Promise.resolve(), 750);
     await withTimeout(fadeDying(), 750);
@@ -784,7 +798,7 @@ function onEngine(e) {
   switch (e.type) {
     case 'skill': log(`${e.unit.owner.name}: ${nm(e.unit)} ⚡[${e.skill.name}] (MP ${e.skill.mp})`, 'text-fuchsia-300'); break;
     case 'passive': log(`${e.unit.owner.name}: ${nm(e.unit)} ✨[${e.name}]${e.text ? ' — ' + e.text : ''}`, 'text-fuchsia-200'); if (!FX_OFF()) { dmgNumber(uEl(e.unit), `✨${e.name}`, '#f0abfc'); passiveCutIn(e.unit, e.name); } break;
-    case 'dmg': { playSe(1); const el = uEl(e.unit); shake(el); if (typeof e.dmg !== 'number' || e.dmg > 0) hitFx(el, 'blood'); dmgNumber(el, typeof e.dmg === 'number' ? `-${fmt(e.dmg)}` : e.dmg); break; }
+    case 'dmg': { playSe(1); const el = uEl(e.unit); shake(el); if (typeof e.dmg !== 'number' || e.dmg > 0) hitFx(el, 'blood'); if (typeof e.dmg === 'number') critNum(el, e.dmg, e.unit); else dmgNumber(el, e.dmg); break; }
     case 'hero': { if (e.dmg > 0) playSe(3); const el = heroEl(whoOf(e.p)); shake(el); if (e.dmg > 0) hitFx(el, 'blood'); dmgNumber(el, `-${fmt(e.dmg)}`, e.kind === 'self' ? '#fca5a5' : undefined); log(`${e.p.name} 본진 ${fmt(e.dmg)} 피해${e.kind === 'self' ? ' (자기 공격)' : ''}`, 'text-orange-300'); break; }
     case 'heal': dmgNumber(uEl(e.unit), `+${fmt(e.amt)}`, '#6ee7b7'); break;
     case 'heroHeal': dmgNumber(heroEl(whoOf(e.p)), `+${fmt(e.amt)}`, '#6ee7b7'); log(`${e.p.name} 본진 HP +${fmt(e.amt)}`, 'text-emerald-300'); break;
@@ -798,6 +812,8 @@ function onEngine(e) {
       log(`${nm(e.killer)} 처치 보상: 마나 +${e.refund}`, 'text-sky-300'); if (e.refund > 0 && !FX_OFF()) dmgNumber(heroEl(whoOf(e.owner)), `${ic('mana')} +${e.refund} 마나`, '#7dd3fc', true); renderHero(whoOf(e.owner)); break;
     case 'levelup': log(`${nm(e.unit)} Lv${e.level}`, 'text-amber-300'); dmgNumber(uEl(e.unit), `⬆ Lv${e.level}`, '#fcd34d'); break;
     case 'status': { const st = STATUS[e.kind]; const t = e.kind === 'mod' ? e.text : `${st?.icon || ''} ${st?.label || e.kind}`; dmgNumber(uEl(e.unit), e.kind === 'mod' ? escHtml(t) : `${icOf(st)} ${escHtml(st?.label || e.kind)}`, '#c4b5fd', true); log(`${nm(e.unit)}: ${t}`, 'text-purple-300'); break; }
+    case 'crit': critSet.add(e.unit); critFx(uEl(e.unit)); playSe(3); log(`💥 치명타! ${nm(e.src)} → ${nm(e.unit)}`, 'text-yellow-300'); break;
+    case 'elfx': { const f = EL_FX[e.kind]; if (f) { dmgNumber(uEl(e.unit), f[0], f[1], false, 'fx-dmg-mini'); log(`${nm(e.unit)}: ${f[2]}`, 'text-zinc-300'); } break; }
     case 'immune': dmgNumber(uEl(e.unit), `${ic('immune')} 면역`, '#93c5fd', true); break;
     case 'heroImmune': dmgNumber(heroEl(whoOf(e.p)), `${ic('immune')} 무효`, '#93c5fd', true); break;
     case 'resist': dmgNumber(uEl(e.unit), '✳️ 면역', '#93c5fd'); break;

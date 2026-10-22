@@ -1,5 +1,5 @@
 // ===== VR TCG 규칙 (순수 함수: UI와 분리, 테스트 가능) =====
-import { skillsOf, damageUnit, damageHero, checkDeath, afterBasicHit, refreshAll, onLevelChange, redirectAttack, counterMult, heal, maleLure, rollEvade } from './skills.js';
+import { chance, cleanseOne, addStatus, emit, skillsOf, damageUnit, damageHero, checkDeath, afterBasicHit, refreshAll, onLevelChange, redirectAttack, counterMult, heal, maleLure, rollEvade } from './skills.js';
 export const RULES = {
   HERO_HP: 3000,          // 영웅 HP
   DAMAGE_MULT: 1.5,       // ATK에 곱하는 전체 데미지 배율 (DEF 차감 전)
@@ -47,6 +47,14 @@ export const RULES = {
   GENDER_ON: true, GENDER_M2F: 0.85, GENDER_F2M: 1.05,
   // 기본 공격 회피 (속성별 기본값, 스킬 회피와 합산, 상한)
   EVADE_ON: true, EVADE_BASE: { WIND: 0.10 }, EVADE_DEFAULT: 0.04, EVADE_CAP: 0.6,
+  // 치명타 (카드 간 모든 피해: 기본 공격·스킬·반격). 등급별 확률, 피해 ×1.5
+  CRIT_ON: true, CRIT_RATE: { 'NORMAL': 0.03, 'RARE': 0.04, 'HIGH RARE': 0.05, 'SUPER RARE': 0.06, 'ULTRA RARE': 0.08, 'MYTHIC RARE': 0.10 }, CRIT_MULT: 1.5,
+  // 속성 패시브 (바람 = 회피 10%, 심연 = 없음)
+  EL_PASSIVE_ON: true,
+  FIRE_BURN_P: 0.25, BURN_TURNS: 2, BURN_DOWN: 0.05,     // 불: 기본 공격 적중 시 화상 (대상이 주는 피해 -5%, 갱신·중첩 없음)
+  ICE_GUARD_P: 0.10, ICE_GUARD_MULT: 0.5,                // 얼음: 피격 시 10% 방어 (받는 피해 절반, 반격은 그대로)
+  DARK_DRAIN_P: 0.10, DARK_DRAIN: 0.2, DARK_COUNTER_P: 0.10, DARK_COUNTER_MULT: 2,   // 어둠: 적중 시 흡혈 20% / 반격 2배
+  LIGHT_CLEANSE_P: 0.15, LIGHT_NULL_P: 0.10,             // 빛: 적중 시 자기 디버프 1개 해제 / 공격 시 받는 반격 무효
 };
 export const GRADES = ['NORMAL', 'RARE', 'HIGH RARE', 'SUPER RARE', 'ULTRA RARE', 'MYTHIC RARE'];
 export const GRADE_SHORT = { 'NORMAL': 'N', 'RARE': 'R', 'HIGH RARE': 'HR', 'SUPER RARE': 'SR', 'ULTRA RARE': 'UR', 'MYTHIC RARE': 'MR' };
@@ -57,6 +65,8 @@ export function genderMult(att, def) {
   if (att.gender === 'FEMALE' && def.gender === 'MALE') return RULES.GENDER_F2M;
   return 1;
 }
+/** 등급별 치명타 확률 */
+export const critRate = card => !RULES.CRIT_ON || !card ? 0 : (RULES.CRIT_RATE[card.grade] ?? 0);
 /** 속성 기본 회피율 */
 export const baseEvade = card => !RULES.EVADE_ON || !card ? 0 : (RULES.EVADE_BASE[card.class] ?? RULES.EVADE_DEFAULT);
 /** 아케이드 옵션 → 허용 등급 집합 (null = 전체) */
@@ -78,7 +88,7 @@ const BEATS = { FIRE: 'WIND', WIND: 'ICE', ICE: 'FIRE' };
 
 /** 공격 속성 att → 방어 속성 def 배율. def가 null이면(영웅) 1. */
 export function elementMultiplier(att, def) {
-  if (!def) return 1;
+  if (!def || RULES.ELEM_MULT_ON === false) return 1;   // ELEM_MULT_ON=false: 시뮬레이션 전용 (속성 상성 끄기)
   if (def === 'ABYSS') return att === 'LIGHT' ? 2 : (att === 'ABYSS' ? 1.25 : 1);
   if (att === 'ABYSS') return 1.25;
   if ((att === 'LIGHT' && def === 'DARK') || (att === 'DARK' && def === 'LIGHT')) return 2;
@@ -285,9 +295,19 @@ export function resolveAttack(me, opp, unit, target) {
   const d1 = Math.max(1, Math.round(calcDamage(unit.card, target.card) * ratio));
   const tHpBefore = target.hp;
   const r1 = damageUnit(target, d1, unit, { silent: true });
+  // 속성 패시브 (적중 시): 불 화상 · 어둠 흡혈 · 빛 정화
+  const EP = RULES.EL_PASSIVE_ON, ac = unit.card.class;
+  if (EP && r1 > 0) {
+    if (ac === 'FIRE' && target.hp > 0 && chance(RULES.FIRE_BURN_P)) addStatus(target, 'burn', RULES.BURN_TURNS, {}, 'burn');
+    if (ac === 'DARK' && chance(RULES.DARK_DRAIN_P) && heal(unit, Math.round(r1 * RULES.DARK_DRAIN), '흡혈')) emit({ type: 'elfx', unit, kind: 'drain' });
+    if (ac === 'LIGHT' && chance(RULES.LIGHT_CLEANSE_P) && cleanseOne(unit)) emit({ type: 'elfx', unit, kind: 'cleanse' });
+  }
   // 반격: 대상이 쓰러졌으면 없음. 살아 있으면 (피해 × 반격 배율 × 50%), 공격자는 반격으로 쓰러지지 않음(HP 1 남김)
   const killed = target.hp <= 0, d2 = killed ? 0 : Math.max(0, Math.round(calcDamage(target.card, unit.card) * counterMult(target, unit) * RULES.COUNTER_RATIO));
-  const r2 = counterHit(unit, d2, target);
+  let d2x = d2;
+  if (EP && d2x > 0 && target.card.class === 'DARK' && chance(RULES.DARK_COUNTER_P)) { d2x = Math.round(d2x * RULES.DARK_COUNTER_MULT); emit({ type: 'elfx', unit: target, kind: 'darkCounter' }); }   // 어둠: 반격 2배
+  if (EP && d2x > 0 && ac === 'LIGHT' && chance(RULES.LIGHT_NULL_P)) { d2x = 0; emit({ type: 'elfx', unit, kind: 'nullCounter' }); }   // 빛: 반격 무효
+  const r2 = counterHit(unit, d2x, target);
   if (r2 > 0 && target.st.thorns?.leech) heal(target, Math.round(r2 * target.st.thorns.leech), '반격 흡혈');   // 고정태 [불을 훔친 자]
   ev.push({ type: 'hit', unit, target, d1: r1, d2: r2, mult: elementMultiplier(unit.card.class, target.card.class), killed, survived: r2 > 0 && unit.hp === 1 });
   const tDead = target.hp <= 0, uDead = unit.hp <= 0;
