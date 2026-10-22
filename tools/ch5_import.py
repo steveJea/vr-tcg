@@ -38,7 +38,7 @@ def parse(path):
     return secs
 
 def main(src):
-    secs = parse(src); ch = {'id': 5, 'title': 'CHAPTER 5', 'subtitle': '멈추지 않는 비', 'rewardCard': None, 'hero': GW, 'single': True, 'phases': []}
+    secs = parse(src); ch = {'id': 5, 'title': 'CHAPTER 5', 'subtitle': '영원히 멈추지 않는 비', 'rewardCard': None, 'hero': GW, 'single': True, 'phases': []}
     missing = set()
     for s in secs:
         h = s['head']
@@ -66,7 +66,7 @@ def main(src):
         if L['speaker'] not in ['내레이션', *NO_CARD] and L['speaker'] not in ID: missing.add(L['speaker'])
     if missing: raise SystemExit(f'카드 없음: {sorted(missing)}')
     assert len(ch['phases']) == 10 and all(len(p['enemies']['ids']) == 5 for p in ch['phases'])
-    js = ('// ===== 스토리 챕터 5 「멈추지 않는 비」 (대본: vroyale/story/ch5_gyeoul.md, 글 문학순이 → python3 tools/ch5_import.py <파일> 로 생성. 직접 고쳐도 됨) =====\n'
+    js = ('// ===== 스토리 챕터 5 「영원히 멈추지 않는 비」 (대본: vroyale/story/ch5_gyeoul.md, 글 문학순이 → python3 tools/ch5_import.py <파일> 로 생성. 직접 고쳐도 됨) =====\n'
           '// 단일 루트(single): 주인공 한겨울 (페이즈 10 은 진하린). party: banClass(속성 출전 불가) · maxGrade. enemies.boost: 스토리 전용 적 능력치. rules.undying: 쓰러지지 않는 적\n'
           'window.STORY_DATA.chapters.push(' + json.dumps(ch, ensure_ascii=False, indent=1) + ');\n'
           f'window.STORY_DATA.noPortrait = [...new Set([...(window.STORY_DATA.noPortrait || []), ...{json.dumps(NO_CARD, ensure_ascii=False)}])];\n')

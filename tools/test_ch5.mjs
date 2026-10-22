@@ -25,7 +25,7 @@ const ch = window.STORY_DATA.chapters[0];
 const csv = f => Object.fromEntries(readFileSync(new URL('../data/' + f, import.meta.url), 'utf8').replace(/^\uFEFF/, '').trim().split(/\r?\n/).slice(1).map(l => l.split(',')).map(v => [v[0], v]));
 const cards = csv('cards.csv'), nm = id => cards[id]?.[1];
 const GW = '2000600116', HR = '2001900347', AY = '2000600129', SY = '2000600128';
-ok(ch.id === 5 && ch.subtitle === '멈추지 않는 비' && ch.phases.length === 10 && ch.single && ch.hero === GW, '챕터 5 · 10 페이즈 · 주인공 한겨울');
+ok(ch.id === 5 && ch.subtitle === '영원히 멈추지 않는 비' && ch.phases.length === 10 && ch.single && ch.hero === GW, '챕터 5 · 10 페이즈 · 주인공 한겨울');
 ok(ch.phases.every(p => p.enemies.ids.length === 5 && p.enemies.ids.every(id => nm(id))), '페이즈마다 적 5명, 모두 카드 있음');
 const P_ = n => ch.phases[n - 1];
 const F = ch.phases.map(p => p.party.forced.map(nm).join('+'));
@@ -37,7 +37,7 @@ ok(ch.phases.map(p => nm(p.bossId)).join() === '남다윤,허진서,정아영,�
 ok(window.STORY_DATA.noPortrait.includes('겨울 친구') && ch.phases.some(p => p.lines.default.some(l => l.speaker === '겨울 친구')), '겨울 친구: 이름만');
 ok([3, 9, 10].every(n => P_(n).after?.length) && ch.ending?.length && ch.start?.length && ch.tagline, '전투 후 대사 · 시작 · 엔딩');
 ok(ch.phases.flatMap(p => p.lines.default).filter(l => l.expr).length > 20 && ch.phases.flatMap(p => p.lines.default).every(l => !l.expr || ['화남', '웃음'].includes(l.expr)), '표정 태그');
-ok(!/story-data-ch5|5:\s*'/.test(readFileSync(new URL('../js/story.js', import.meta.url), 'utf8').match(/ENDING_VIDEO = \{[^}]*\}/)[0]), '엔딩 영상 없음 (아직 미제공)');
+ok(/5: 'J6NQMavYEi4'/.test(readFileSync(new URL('../js/story.js', import.meta.url), 'utf8').match(/ENDING_VIDEO = \{[^}]*\}/)[0]), '엔딩 영상 J6NQMavYEi4');
 // --- SQL ---
 async function as(role, claims, sql) {
   await db.exec(`reset role; select set_config('request.jwt.claims', '${JSON.stringify(claims || {})}', false); set role ${role};`);
