@@ -722,6 +722,39 @@
     root().querySelectorAll('[data-sort]').forEach(b => b.onclick = () => { setSort(b.dataset.sort); renderCards(); });
     root().querySelectorAll('[data-expand]').forEach(b => b.onclick = e => { e.stopPropagation(); const g = b.dataset.expand; openGroups.has(g) ? openGroups.delete(g) : openGroups.add(g); renderCards(); });
   }
+  // ----- 카드 레벨업 (단계 E-4, 서버 story_card_levelup): L → L+1 = 순수한 피 b×L, 골드 g×L×10 -----
+  const LV_B = { 'NORMAL': 2, 'RARE': 3, 'HIGH RARE': 5, 'SUPER RARE': 8, 'ULTRA RARE': 12, 'MYTHIC RARE': 18 };
+  const LV_G = { 'NORMAL': 1, 'RARE': 1.5, 'HIGH RARE': 2, 'SUPER RARE': 3, 'ULTRA RARE': 4, 'MYTHIC RARE': 6 };
+  const SHARD_BASE = { 'NORMAL': 1, 'RARE': 2, 'HIGH RARE': 4, 'SUPER RARE': 8, 'ULTRA RARE': 15, 'MYTHIC RARE': 30 };
+  /** o 를 n 단계 올리는 비용 (최대 레벨까지만) */
+  function lvUpCost(o, n, w) {
+    const g = card(o.id)?.grade || 'NORMAL', cap = lvCap(o); let lv = o.level | 0 || 1, k = 0, gold = 0, blood = 0;
+    while (k < n && lv < cap) { const b = Math.ceil(LV_B[g] * lv), gg = Math.ceil(LV_G[g] * lv * 10);
+      if (w && k > 0 && (gold + gg > (w.gold | 0) || blood + b > (w.blood | 0))) break;
+      blood += b; gold += gg; lv++; k++; }
+    return { n: k, to: lv, gold, blood };
+  }
+  const shardCost = o => (SHARD_BASE[card(o.id)?.grade] || 1) * (exOf(o) + 1);
+  const W = () => window.VRPlayer?.walletNow || null;
+  const afford = (c, w = W()) => !w || ((w.gold | 0) >= (c.gold | 0) && (w.blood | 0) >= (c.blood | 0) && (w.shard | 0) >= (c.shard | 0));
+  const costTxt = c => `${c.gold ? `🪙 ${fmt(c.gold)}` : ''}${c.blood ? ` · 🩸 ${fmt(c.blood)}` : ''}${c.shard ? `💠 ${fmt(c.shard)}` : ''}`;
+  function lvUpBox(o) {
+    if (!serverMode) return '';
+    const cap = lvCap(o); if ((o.level | 0) >= cap) return `<div class="story-lvup-box max">최대 레벨 Lv.${cap}${exOf(o) < maxEx(o) ? ' · 합성(EX)하면 최대 레벨 +5' : ''}</div>`;
+    const w = W(), one = lvUpCost(o, 1), ten = lvUpCost(o, 10, w);
+    const btn = (c, id, label) => `<button id="${id}" class="story-lvup-btn ${afford(c) ? '' : 'short'}" ${afford(c) ? '' : 'disabled'}><b>${label}</b><small>${costTxt(c)}</small></button>`;
+    return `<div class="story-lvup-box"><div class="story-lvup-h">⬆ 레벨업 <small>골드 + 순수한 피 · 전투 EXP 로도 올라요</small></div>
+      <div class="flex gap-2">${btn(one, 'story-d-lv1', `Lv.${o.level} → ${one.to}`)}${ten.n > 1 ? btn(ten, 'story-d-lv10', `${ten.n < 10 && ten.to < lvCap(o) ? '최대 ' : ''}+${ten.n} (→ Lv.${ten.to})`) : ''}</div>
+      <div class="story-lvup-have">${w ? `보유 🪙 ${fmt(w.gold)} · 🩸 ${fmt(w.blood)}` : '보유 재화 불러오는 중…'}</div></div>`;
+  }
+  async function doLevelUp(o, n) {
+    const c = lvUpCost(o, n, n > 1 ? W() : null); if (!c.n) return;
+    const res = await act('story_card_levelup', { p_uid: o.uid, p_levels: n > 1 ? Math.min(n, lvCap(o) - (o.level | 0)) : 1 }, () => null, r => r.data);
+    if (!res.ok) { if (/not enough/.test(res.error?.message || '')) toast(`재화가 부족해요 (필요 ${costTxt(c).replace(/<[^>]+>/g, '')})`); window.VRPlayer?.wallet(true); return cardDetail(o.uid); }
+    const r = res.r || {}; window.VRPlayer?.setWallet(r.wallet);
+    cardDetail(o.uid); levelUpFx(`LEVEL UP! Lv.${r.from} → Lv.${r.level}`);
+    toast(`⬆ ${card(o.id)?.name} Lv.${r.level} · 🪙 −${fmt(r.gold)} · 🩸 −${fmt(r.blood)}`);
+  }
   function cardDetail(u) {
     const o = byUid(u); if (!o) return renderCards(); norm(o);
     const c = boosted(o), cap = lvCap(o), n = copiesOf(o.id).length, rep = repOf(o.id) === o;
@@ -734,7 +767,8 @@
           return `<div><span>${STAT_LABEL[s]}</span><b>${fmt(c[s])}</b><small>기본 ${fmt(base)}${exB ? ` <i class="text-red-300">+${fmt(exB)} EX</i>` : ''}${lvB ? ` <i class="text-amber-300">+${fmt(lvB)} 레벨</i>` : ''}${pt ? ` <i class="text-emerald-300">+${fmt(pt)} 포인트</i>` : ''}</small></div>`; }).join('')}</div>
         ${o.cpts ? `<div class="text-xs mt-1">남은 카드 전용 포인트 <b class="text-sky-300">${o.cpts}</b></div>` : ''}</div></div>
       ${n > 1 ? '<div class="story-hint">💡 전투에는 같은 카드 중 1장만 나가요 (리더 · 없으면 레벨이 가장 높은 장). 남는 장은 합성 재료로 쓸 수 있어요.</div>' : ''}
-      ${canMerge(o) ? `<button id="story-d-merge" class="story-merge-btn">${ic('merge', { alt: '' })} 합성 (EX${exOf(o)} → EX${exOf(o) + 1})</button>` : exOf(o) >= maxEx(o) ? `<div class="text-[11px] text-red-300 mt-2 text-center">최대 합성 단계 (EX${maxEx(o)})</div>` : ''}
+      <div id="story-d-lvwrap">${lvUpBox(o)}</div>
+      ${canMerge(o) ? `<button id="story-d-merge" class="story-merge-btn">${ic('merge', { alt: '' })} 합성 (EX${exOf(o)} → EX${exOf(o) + 1})${serverMode ? ` <small>💠 ${shardCost(o)}</small>` : ''}</button>` : exOf(o) >= maxEx(o) ? `<div class="text-[11px] text-red-300 mt-2 text-center">최대 합성 단계 (EX${maxEx(o)})</div>` : ''}
       <div class="flex gap-2 mt-4"><button id="story-d-stats" class="flex-1 py-2.5 rounded-xl bg-emerald-500 text-black font-bold" ${save.points || o.cpts ? '' : 'disabled'}>📈 스탯 분배</button>
       <button id="story-d-discard" class="flex-1 py-2.5 rounded-xl bg-red-500/80 font-bold" ${canDiscard(o) ? '' : 'disabled'}>${ic('discard', { alt: '' })} 분해</button></div>
       ${(() => { const le = leaderEff(o.id); return le ? `<div class="story-leader-eff ${isLeader(o) ? 'on' : ''}">${ic('crown', { alt: '' })} <b>리더 스킬</b> <small>${esc(le.label)}</small><div>${esc(le.text)}</div>${isLeader(o) ? '' : '<small class="text-zinc-500">이 카드를 리더로 하면 적용돼요</small>'}</div>` : ''; })()}
@@ -747,10 +781,16 @@
     $('story-d-stats').onclick = () => { p.close(true); openStats(renderCards, idxOf(o)); };
     $('story-d-discard').onclick = () => { p.close(true); pickTarget(o.uid); };
     const mb = $('story-d-merge'); if (mb) mb.onclick = () => { p.close(true); mergePreview(o.uid); };
+    const bindLv = () => { const b1 = $('story-d-lv1'), b10 = $('story-d-lv10');
+      if (b1) b1.onclick = () => { b1.disabled = true; doLevelUp(o, 1); };
+      if (b10) b10.onclick = () => { b10.disabled = true; doLevelUp(o, 10); }; };
+    bindLv();
+    if (serverMode && window.VRPlayer) window.VRPlayer.wallet().then(() => { const el = $('story-d-lvwrap'); if (el && p.el.isConnected) { el.innerHTML = lvUpBox(o); bindLv(); } });
   }
   // ----- EX 합성: 대상 + 같은 카드의 다른 장(재료) → EX +1, 기본 스탯 보너스, 레벨 1로 초기화 (서버 story_merge) -----
   function mergePreview(tu, mu) {
     const o = byUid(tu); if (!o) return renderCards(); norm(o);
+    if (serverMode && window.VRPlayer && !W()) { window.VRPlayer.wallet().then(() => mergePreview(tu, mu)); return; }
     const mats = materialsOf(o); if (!mats.length) return cardDetail(tu);
     const mat = mats.find(x => x.uid === mu) || mats[0], c = card(o.id), m = mergeCalc(o, mat), after = { ...o, ex: m.ex, exb: m.exb, level: 1, exp: 0 };
     const p = popup(`<div class="text-lg font-black mb-1">${ic('merge', { alt: '' })} 합성 미리보기</div>
@@ -765,7 +805,8 @@
       ${m.ratio < 1 || m.mratio < 1 ? `<div class="story-hint">💡 대상과 재료 둘 다 최대 레벨이면 +10%예요. 레벨을 올린 뒤 합성하면 보너스가 커져요.</div>` : ''}
       ${mat.cpts || Object.values(mat.boost || {}).some(Boolean) ? '<div class="text-[11px] text-zinc-400 mt-1">재료 카드에 분배한 스탯 포인트는 함께 사라져요.</div>' : ''}
       <div class="story-warn">⚠️ 합성하면 대상 카드 레벨이 1로 초기화돼요. (EXP 0)</div>
-      <div class="flex gap-2 mt-4"><button data-close-pop class="flex-1 py-2.5 rounded-xl bg-zinc-700 font-bold">취소</button><button id="merge-next" class="flex-1 py-2.5 rounded-xl bg-red-500 font-bold">합성하기</button></div>`, renderCards);
+      ${serverMode ? (() => { const sc = shardCost(o), w = W(), ok = !w || (w.shard | 0) >= sc; return `<div class="story-merge-cost ${ok ? '' : 'short'}">💠 이상한 조각 <b>${sc}</b> 필요 <small>(${SHARD_BASE[c.grade] || 1} × EX${exOf(o) + 1})</small>${w ? ` · 보유 ${fmt(w.shard)}` : ''}${ok ? '' : ' · <b>부족해요</b>'}</div>`; })() : ''}
+      <div class="flex gap-2 mt-4"><button data-close-pop class="flex-1 py-2.5 rounded-xl bg-zinc-700 font-bold">취소</button><button id="merge-next" class="flex-1 py-2.5 rounded-xl bg-red-500 font-bold" ${serverMode && W() && (W().shard | 0) < shardCost(o) ? 'disabled' : ''}>합성하기</button></div>`, renderCards);
     p.el.querySelectorAll('[data-mat]').forEach(b => b.onclick = () => { p.close(true); mergePreview(tu, b.dataset.mat); });
     $('merge-next').onclick = () => { p.close(true); mergeConfirm(o.uid, mat.uid, m); };
   }
@@ -773,7 +814,7 @@
     const o = byUid(tu), mat = byUid(mu), c = card(o.id);
     const p = popup(`<div class="text-lg font-black mb-2">정말 합성할까요?</div>
       <div class="text-sm"><b>${esc(exName(o, c.name))}</b> Lv.${o.level} 이 <b class="text-red-300">${esc(exName({ ex: m.ex }, c.name))}</b> <b class="text-amber-300">Lv.1</b> 이 돼요. (+${m.bonus}%)</div>
-      <div class="text-xs text-zinc-400 mt-1">재료: ${esc(c.name)} Lv.${mat.level} 1장</div>
+      <div class="text-xs text-zinc-400 mt-1">재료: ${esc(c.name)} Lv.${mat.level} 1장${serverMode ? ` + 💠 이상한 조각 ${shardCost(o)}` : ''}</div>
       <div class="story-warn">⚠️ 레벨이 1로 초기화되고 재료 카드가 사라져요. 되돌릴 수 없어요.</div>
       <div class="flex gap-2 mt-4"><button data-close-pop class="flex-1 py-2.5 rounded-xl bg-zinc-700 font-bold">취소</button><button id="merge-yes" class="flex-1 py-2.5 rounded-xl bg-red-500 font-bold">합성</button></div>`, renderCards);
     $('merge-yes').onclick = async () => {
@@ -785,7 +826,9 @@
         return { ex: m.ex, bonus: m.bonus, exb: m.exb };
       }, r => r.data);
       p.close(true);
+      if (!res.ok && /not enough shard/.test(res.error?.message || '')) toast(`💠 이상한 조각이 부족해요 (필요 ${shardCost(o)})`);
       if (!res.ok || !res.r) return renderCards();
+      window.VRPlayer?.setWallet(res.r.wallet);
       cardDetail(tu);
       levelUpFx(`EX${res.r.ex} 합성! +${res.r.bonus}%`);
     };
