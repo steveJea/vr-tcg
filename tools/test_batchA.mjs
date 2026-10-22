@@ -20,9 +20,11 @@ const N = ['1000100012', '1000100013', '1000100014', '1000100016', '1000200020']
 const F = ['2002400383', '2002300373', '2002100365'];                             // 여성 N
 
 // 카드 데이터
-ok('하지혜 2000000012 = UR', C('2000000012')?.name === '하지혜' && C('2000000012').grade === 'ULTRA RARE');
+ok('하지혜 2000000017 = UR', C('2000000017')?.name === '하지혜' && C('2000000017').grade === 'ULTRA RARE');
+ok('허유희 2000000012 유지(HR)', C('2000000012')?.name === '허유희' && C('2000000012').grade === 'HIGH RARE');
+ok('황예영 = SR', C('2000200051')?.grade === 'SUPER RARE');
 ok('신규 4장 (박인영·하지은·정미선·정지선)', ['2000000013', '2000000014', '2000000015', '2000000016'].every(id => C(id) && C(id).power > 0 && C(id).cost > 0));
-ok('모든 신규 스킬 구현됨', ['2000200051', '2000000012', '2000000014', '2000000013', '2000100003'].every(id => skillsOf(id).every(s => s.mode === 'passive' || ACTIVE[s.name])));
+ok('모든 신규 스킬 구현됨', ['2000200051', '2000000017', '2000000014', '2000000013', '2000100003'].every(id => skillsOf(id).every(s => s.mode === 'passive' || ACTIVE[s.name])));
 
 // 지세강 아파하라: 코스트 최고
 { setRng(() => 0.99); const { A, B } = sides(['1000200018'], ['1000100012', '2002400374']); const h = B.map(t => t.hp);
@@ -54,7 +56,7 @@ ok('모든 신규 스킬 구현됨', ['2000200051', '2000000012', '2000000014', 
   ok('카르밀라...사랑해: 소환 시 불사', !!m.st.endure); m.hp = 1; damageUnit(m, 500); checkDeath(m); ok('카르밀라: 쓰러지지 않음', a.field.includes(m) && m.hp === 1);
   m.hp = 0; checkDeath(m); ok('카르밀라: 즉사도 버팀', a.field.includes(m)); }
 // 하지혜
-{ setRng(() => 0.99); const { a, b, A, B } = sides(['2000000012', '2002400383'], ['1000100007', '1000200024']); const jh = A[0], ally = A[1];
+{ setRng(() => 0.99); const { a, b, A, B } = sides(['2000000017', '2002400383'], ['1000100007', '1000200024']); const jh = A[0], ally = A[1];
   cast(jh, '죽이지 않으면 죽어'); ok('죽이지 않으면 죽어: 2턴 도발 + 반격 ×2.4', jh.st.taunt && jh.st.thorns?.cm === 2.4);
   const hs = B.map(t => t.hp); cast(jh, '죽지 않으려면 죽여'); ok('죽지 않으려면 죽여: 적 전체 타격', B.every((t, i) => !b.field.includes(t) || t.hp < hs[i]));
   B.forEach(t => { t.hp = t.maxHp; delete t.st.bleed; }); delete jh.st.taunt; TURN.p = b; const foe = B[0]; foe.canAttack = true; const fh = foe.hp, mp = jh.mp, other = B[1].hp;
