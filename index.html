@@ -158,6 +158,15 @@
       .cutin::after, .cutin .cutin-text::after { display: none; }
       .cutin-img .cutin-media, .cutin .cutin-text { animation: none !important; }
     }
+    .fx-dmg-crit { font-size: 2.3rem; color: #fde047; text-shadow: 0 0 6px #f59e0b, 0 2px 4px #000, 0 0 18px #facc15; animation: fxCritNum .55s cubic-bezier(.2,1.6,.4,1) forwards; z-index: 42; }
+    .fx-dmg-mini { font-size: 1.05rem; }
+    @keyframes fxCritNum { 0% { opacity: 0; transform: translate(-50%, -50%) scale(2.2); } 25% { opacity: 1; transform: translate(-50%, -60%) scale(1); } 100% { opacity: 0; transform: translate(-50%, -140%) scale(1.05); } }
+    .fx-crit { position: fixed; z-index: 41; pointer-events: none; transform: translate(-50%, -50%); }
+    .fx-crit i { position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(circle, rgba(255,251,200,.95) 0 12%, rgba(250,204,21,.65) 28%, rgba(245,158,11,0) 62%), repeating-conic-gradient(rgba(253,224,71,.85) 0 4deg, transparent 4deg 22deg); -webkit-mask: radial-gradient(circle, #000 30%, transparent 70%); mask: radial-gradient(circle, #000 30%, transparent 70%); animation: fxCrit .5s ease-out forwards; }
+    .fx-crit b { position: absolute; left: 50%; top: 18%; transform: translate(-50%, 0) rotate(-8deg); font: 900 1.5rem/1 system-ui, sans-serif; letter-spacing: .08em; color: #fff7ae; -webkit-text-stroke: 1px #b45309; text-shadow: 0 0 10px #f59e0b, 0 2px 3px #000; animation: fxCritTxt .5s ease-out forwards; }
+    @keyframes fxCrit { 0% { opacity: 0; transform: scale(.3) rotate(0); } 25% { opacity: 1; } 100% { opacity: 0; transform: scale(1.25) rotate(25deg); } }
+    @keyframes fxCritTxt { 0% { opacity: 0; transform: translate(-50%, 0) rotate(-8deg) scale(2); } 25% { opacity: 1; transform: translate(-50%, 0) rotate(-8deg) scale(1); } 80% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -20px) rotate(-8deg) scale(1); } }
+    @media (prefers-reduced-motion: reduce) { .fx-crit i { animation-duration: .2s; } .fx-dmg-crit { animation-duration: .3s; } }
     @media (prefers-reduced-motion: reduce) { .fx-shake { animation-duration: .06s; } .fx-dmg { animation-duration: .22s; } }
     #my-turns{display:inline-flex;align-items:baseline;gap:2px;padding:1px 8px;border-radius:999px;font-weight:800;font-size:11px;border:1px solid;white-space:nowrap}
 #my-turns b{font-size:15px;line-height:1}#my-turns .of{opacity:.6;font-size:10px}
