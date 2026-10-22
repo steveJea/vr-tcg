@@ -192,7 +192,7 @@ function summon(who, card) {
   p.hand.splice(p.hand.indexOf(card), 1);
   log(`${p.name}: ${card.name} 소환 (코스트 ${card.cost})`);
   if (who === 'me' && S.story) S.log.played.add(String(card.id));   // 스토리: 참전 카드 기록 (EXP 지급용)
-  const u = placeUnit(p, card, makeUnit);
+  const u = placeUnit(p, card, makeUnit, true);   // 새로 소환한 카드는 필드 맨 앞
   playSe(card.grade === 'MYTHIC RARE' ? 6 : card.grade === 'ULTRA RARE' ? 5 : 2);
   render();
   onEnter(who, u);

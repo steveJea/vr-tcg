@@ -29,10 +29,11 @@ export function initPlayers(a, b) {
   for (const [p, f] of [[a, b], [b, a]]) Object.assign(p, { foe: f, grave: [], once: {}, st: {}, actionLock: 0, activeSyn: [], activeCombos: [] });
 }
 /** 필드에 카드 배치 (소환). 게임·시뮬 공용 */
-export function placeUnit(p, card, makeUnit) {
+/** front=true: 새로 소환한 카드를 필드 맨 앞(왼쪽)에 놓음 (턴 중 소환). 스토리 시작 배치는 출전 순서 유지(false) */
+export function placeUnit(p, card, makeUnit, front = false) {
   const u = makeUnit(card, uidSeq++);
   initUnit(u, p);
-  p.field.push(u);
+  front ? p.field.unshift(u) : p.field.push(u);
   refreshAll(p);
   onUnlockCheck(u);
   return u;

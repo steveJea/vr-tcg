@@ -222,7 +222,7 @@
         <button class="gal-zbtn" data-zsrc="${portrait}" data-ztitle="${esc(c.name)}" data-zsub="${LABEL[s]}" data-zgrade="${s}" aria-label="크게 보기">🔍</button></div>
       <div class="gal-dname">${esc(c.name)}</div>
       <div class="gal-drar"><span class="gal-rar inline">${s}</span> ${LABEL[s]}${t ? ` · <span class="gal-tname vip-${TIERS[t].k}">${TIERS[t].e} ${TIERS[t].n}</span>` : ''}</div>
-      <div class="gal-rows">${row('수집 횟수', `${o.count}회`)}${row('MVP', o.mvp_count > 0 ? `${IC('crown')} ${o.mvp_count}회` : '아직 없음')}${row('처음 수집', date)}${row('HP · ATK · DEF', `${c.HP} · ${c.ATK} · ${c.DEF}`)}</div>
+      <div class="gal-rows">${row('수집 횟수', `${o.count}회`)}${row('MVP', o.mvp_count > 0 ? `${IC('crown')} ${o.mvp_count}회` : '아직 없음')}${row('처음 수집', date)}${row('전투력', `<span class="gal-power">⚡ ${Number(c.power || 0).toLocaleString('ko-KR')}</span>`)}${row('HP · ATK · DEF', `${c.HP} · ${c.ATK} · ${c.DEF}`)}</div>
       <div class="gal-vip"><div class="gal-vip-h">${IC('crown')} VIP 보상 <span>${nextTxt}</span></div>${skHtml}${extra.join('')}</div></div>`;
     el.classList.remove('hidden');
   }
