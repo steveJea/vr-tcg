@@ -65,7 +65,7 @@
     const step = (t) => { if (!audio) return; const k = Math.min(1, (t - t0) / FADE); audio.volume = Math.min(1, Math.max(0, from + (target - from) * k)); if (k < 1) fadeRaf = requestAnimationFrame(step); };
     fadeRaf = requestAnimationFrame(step);
   };
-  const duck = (on) => { on = !!on; if (on === ducked) return; ducked = on; fadeTo(baseVol * (ducked ? DUCK : 1)); };
+  const duck = (on) => { on = !!on; if (on === ducked) return; ducked = on; fadeTo(baseVol * (ducked ? DUCK : 1)); if (jingleA) jingleA.volume = baseVol * (ducked ? DUCK : 1); };
   const setVolume = (v) => { baseVol = Math.min(1, Math.max(0, +v || 0)); fadeTo(baseVol * (ducked ? DUCK : 1)); };
   const btn = document.getElementById('main-sound');
   const renderBtn = () => {
@@ -83,7 +83,9 @@
   // 트랙 전환(크로스페이드): 스토리 모드 장면별 BGM. 덕킹·음소거·볼륨 설정은 그대로 적용
   let src = 'audio/main.mp3', xfRaf = 0;
   const setTrack = (next, ms = 900) => {
-    if (!next || next === src) return;
+    if (!next) return;
+    if (jingleA) { if (next !== src) { src = next; const o = audio; audio = null; missing = false; if (o) { o.pause(); o.removeAttribute('src'); o.load(); } } return; }   // 징글 중: 끝나면 새 트랙 재생
+    if (next === src) return;
     src = next;
     const old = audio; audio = null; missing = false;
     cancelAnimationFrame(fadeRaf); cancelAnimationFrame(xfRaf);
@@ -100,15 +102,29 @@
   };
   // 일시 정지 유지(오프닝 영상 등): hold(true) 동안은 재생·트랙 전환 시 자동 재생을 막고, hold(false) 로 다시 재생
   let held = false;
-  const play = () => { if (!soundOn || held) return; const a = getAudio(); if (a) a.play().catch(() => {}); };
-  const stop = () => { if (audio) audio.pause(); };
+  const play = () => { if (!soundOn || held || jingleA) return; const a = getAudio(); if (a) a.play().catch(() => {}); };
+  const stop = () => { if (audio) audio.pause(); if (jingleA) { jingleA.pause(); jingleA = null; } };
+  // 승리·패배 징글 (한 번만): 반복 BGM을 페이드아웃·일시정지 → 징글 → 끝나면 그때의 트랙을 페이드인. 음소거·덕킹·볼륨은 그대로
+  const JINGLE = { victory: 'audio/victory.mp3', defeat: 'audio/defeat.mp3' };
+  let jingleA = null;
+  const jingle = (name) => {
+    const url = JINGLE[name]; if (!url || !soundOn || held) return;
+    if (jingleA) { jingleA.pause(); jingleA = null; }
+    cancelAnimationFrame(xfRaf);
+    const loop = audio, v0 = loop ? loop.volume : 0, t0 = performance.now();
+    if (loop) { const fo = t => { const k = Math.min(1, (t - t0) / 300); if (audio === loop && jingleA) loop.volume = v0 * (1 - k); if (k < 1) requestAnimationFrame(fo); else if (jingleA) loop.pause(); }; requestAnimationFrame(fo); }
+    const j = new Audio(url); j.loop = false; j.volume = baseVol * (ducked ? DUCK : 1); jingleA = j;
+    const done = () => { if (jingleA !== j) return; jingleA = null; const a = getAudio(); if (!a) return; a.volume = 0; if (soundOn && !held) { a.play().catch(() => {}); fadeTo(baseVol * (ducked ? DUCK : 1)); } };
+    j.addEventListener('ended', done); j.addEventListener('error', done);
+    j.play().catch(done);
+  };
   const hold = (on) => { held = !!on; held ? stop() : play(); };
   btn?.addEventListener('click', e => { e.stopPropagation(); soundOn = !soundOn; localStorage.setItem(KEY, soundOn ? '1' : '0'); soundOn ? play() : stop(); renderBtn(); });
   // 브라우저 자동재생 정책: 첫 사용자 입력 후 재생
   const first = () => { play(); removeEventListener('pointerdown', first); removeEventListener('keydown', first); };
   addEventListener('pointerdown', first); addEventListener('keydown', first);
   renderBtn();
-  window.VRSound = { play, stop, hold, duck, setVolume, setTrack, get track() { return src; }, get held() { return held; }, get paused() { return !audio || audio.paused; }, get on() { return soundOn; }, get ducked() { return ducked; }, get volume() { return audio ? audio.volume : null; }, get baseVolume() { return baseVol; } };
+  window.VRSound = { play, stop, hold, duck, setVolume, setTrack, jingle, get jingling() { return !!jingleA; }, get track() { return src; }, get held() { return held; }, get paused() { return !audio || audio.paused; }, get on() { return soundOn; }, get ducked() { return ducked; }, get volume() { return audio ? audio.volume : null; }, get baseVolume() { return baseVol; } };
 })();
 
 // ===== 메인 화면: 설정 팝업 (연출 스킵·배경음악). 바깥 클릭·Esc·닫기로 닫힘 =====

@@ -139,8 +139,10 @@
     document.addEventListener('keydown', e => { if (e.key === 'Escape' && !m.classList.contains('hidden')) close(); });
     return m;
   }
-  function close() { const m = $('mp-modal'); if (!m) return; m.classList.add('hidden'); document.body.classList.remove('gal-lock'); m.querySelectorAll('video').forEach(v => v.pause()); }
+  function close() { if (prevTrack !== null) { const t = prevTrack; prevTrack = null; if (t) try { window.VRSound?.setTrack?.(t); } catch {} } const m = $('mp-modal'); if (!m) return; m.classList.add('hidden'); document.body.classList.remove('gal-lock'); m.querySelectorAll('video').forEach(v => v.pause()); }
+  let prevTrack = null;   // 열 때 mypage BGM, 닫으면 이전 트랙 복귀
   async function open() {
+    if (prevTrack === null) { prevTrack = window.VRSound?.track || ''; try { window.VRSound?.setTrack?.('audio/mypage.mp3'); } catch {} }
     const m = ensure(), body = $('mp-body');
     m.classList.remove('hidden'); document.body.classList.add('gal-lock');
     if (!user()) {

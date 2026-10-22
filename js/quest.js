@@ -73,7 +73,7 @@
         <button class="story-btn q-go" id="q-go" ${open_ ? '' : 'disabled'}>${cleared ? '다시 도전' : '도전'} (${n}층)</button>
         ${sweepBtn()}
       </div>
-      <div class="q-list" id="q-list">${rows}</div></div>`, 'story');
+      <div class="q-list" id="q-list">${rows}</div></div>`, 'tower');
     $('q-home').onclick = () => api.home();
     $('q-go').onclick = () => challenge(n);
     const sw = $('q-sweep'); if (sw) sw.onclick = () => sweep();
@@ -91,7 +91,7 @@
     const api = A(), g = enemiesOf(n);
     try { await rpc('quest_start', { p_floor: n }); }
     catch (e) { api.toast(/locked/.test(e?.message) ? '아직 열리지 않은 층이에요' : `⚠️ 시작 실패: ${e?.message || e}`); return render(); }
-    $('story-screen').classList.add('hidden'); api.bgm('battle');
+    $('story-screen').classList.add('hidden'); api.bgm(n % 10 === 0 ? 'boss' : 'tower');
     const me = api.battleCards(list);
     window.TCG.startStory({ me, ai: g.enemies.map(c => ({ ...c })), leader: api.leaderFor(me), win: 'wipe', aiName: `${n}층`, quest: true,
       onEnd: (win, reason, st) => result(n, win, reason, st) });
@@ -101,14 +101,14 @@
     const api = A();
     if (!win) {
       api.show(`<div class="text-center py-10"><div class="story-chapter-big text-red-400">DEFEAT</div><div class="text-zinc-300 mt-2">${n}층 · ${reason === 'giveup' ? '도전을 포기했어요.' : reason === 'timeout' ? `${cfg.maxTurns || 40}턴 안에 적을 모두 쓰러뜨리지 못했어요.` : '내 카드가 모두 쓰러졌어요.'}</div>
-        <div class="flex flex-col gap-2 max-w-xs mx-auto mt-6"><button class="story-btn" id="q-retry">다시 도전</button><button class="story-back" id="q-back">탑으로</button></div></div>`);
+        <div class="flex flex-col gap-2 max-w-xs mx-auto mt-6"><button class="story-btn" id="q-retry">다시 도전</button><button class="story-back" id="q-back">탑으로</button></div></div>`, 'tower');
       $('q-retry').onclick = () => challenge(n); $('q-back').onclick = render; return;
     }
     let res;
     try { res = await rpc('quest_complete', { p_floor: n, p_stats: { turns: Math.max(1, Math.min(40, st.turns | 0 || 1)) } }); }
     catch (e) {
       const m = String(e?.message || ''), why = /too fast/.test(m) ? '전투가 너무 빨리 끝나서 기록이 인정되지 않았어요.' : /battle not started/.test(m) ? '전투 시작 기록이 없어요. (다른 기기에서 전투를 시작했을 수 있어요)' : `기록 실패: ${m}`;
-      api.show(`<div class="text-center py-10"><div class="story-chapter-big text-amber-300">!</div><div class="text-zinc-300 mt-2">${esc(why)}<br>다시 도전해 주세요.</div><div class="flex flex-col gap-2 max-w-xs mx-auto mt-6"><button class="story-btn" id="q-retry">다시 도전</button><button class="story-back" id="q-back">탑으로</button></div></div>`);
+      api.show(`<div class="text-center py-10"><div class="story-chapter-big text-amber-300">!</div><div class="text-zinc-300 mt-2">${esc(why)}<br>다시 도전해 주세요.</div><div class="flex flex-col gap-2 max-w-xs mx-auto mt-6"><button class="story-btn" id="q-retry">다시 도전</button><button class="story-back" id="q-back">탑으로</button></div></div>`, 'tower');
       $('q-retry').onclick = () => challenge(n); $('q-back').onclick = render; return;
     }
     status = { ...status, best_floor: res.best_floor ?? Math.max(best(), n) };
@@ -118,7 +118,7 @@
     api.show(`<div class="text-center py-6"><div class="story-chapter-sub">${n}층 CLEAR</div><div class="story-chapter-big text-emerald-300">VICTORY</div>
       ${res.first && res.currency ? `<div class="mt-4 story-drops">🎁 첫 클리어 ${window.VRPlayer?.curTxt?.(res.currency) || ''}</div>` : ''}${got ? `<div class="mt-2 text-amber-200 font-bold">🎁 첫 클리어 보상: ${rewardTxt(rw)}</div>` : `<div class="mt-4 text-zinc-400 text-sm">${res.first ? (res.currency ? '' : '이 층은 보상이 없어요. 10층마다 보상이 있어요.') : '이미 클리어한 층이라 보상은 없어요.'}</div>`}
       <div class="mt-2 text-sm text-zinc-300">최고 기록 ${best()}층</div>
-      <div class="flex flex-col gap-2 max-w-xs mx-auto mt-5">${next ? `<button class="story-btn" id="q-next">다음 층 (${next}층) 도전</button>` : ''}<button class="story-back" id="q-back">탑으로</button></div></div>`);
+      <div class="flex flex-col gap-2 max-w-xs mx-auto mt-5">${next ? `<button class="story-btn" id="q-next">다음 층 (${next}층) 도전</button>` : ''}<button class="story-back" id="q-back">탑으로</button></div></div>`, 'tower');
     if (next) $('q-next').onclick = () => { sel = next; challenge(next); };
     $('q-back').onclick = () => { sel = next || n; render(); };
   }

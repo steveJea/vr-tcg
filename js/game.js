@@ -102,6 +102,7 @@ const shuffleArr = a => { a = [...a]; for (let i = a.length - 1; i > 0; i--) { c
 function startGame(story = null) {
   if (story && typeof story.then === 'function' || story instanceof Event) story = null;
   const first = story?.first || (Math.random() < 0.5 ? 'me' : 'ai');   // 선공 동전 던지기
+  if (!story) { try { window.VRSound?.setTrack?.('audio/arcade_battle.mp3'); } catch {} }   // 아케이드 전용 BGM (나가면 메인으로)
   const fs = !!story;   // 스토리: 손패 없이 출전 카드 전부 필드에서 시작
   const ao = story ? ArcadeOpts.DEF : ArcadeOpts.load(), grades = story ? null : allowedGrades(ao);
   const gPool = grades ? POOL.filter(c => grades.has(c.grade)) : null;
@@ -412,6 +413,7 @@ function floatText(text, cls, side = 'me', html = false) {
 
 function finish(win, reason) {
   S.over = true; hideModal('detail');
+  try { if (win !== null) window.VRSound?.jingle?.(win ? 'victory' : 'defeat'); } catch {}   // 전투 종료 징글 (전 모드, 1회)
   if (S.story) {   // 스토리 모드: 아케이드 전적·랭킹·갤러리에 기록하지 않고 스토리 화면으로 결과 전달
     render();
     const cb = S.story.onEnd;
@@ -1225,7 +1227,7 @@ function giveUp() {
 }
 $('story-giveup')?.addEventListener('click', giveUp);
 function startStory(cfg) { hideModal('detail'); startGame(cfg); }
-$('home-btn').onclick = () => { $('end-screen').classList.add('hidden'); $('game').classList.add('hidden'); $('start-screen').classList.remove('hidden'); renderStats(); };
+$('home-btn').onclick = () => { try { window.VRSound?.setTrack?.('audio/main.mp3'); } catch {} $('end-screen').classList.add('hidden'); $('game').classList.add('hidden'); $('start-screen').classList.remove('hidden'); renderStats(); };
 renderStats();
 // ===== 아케이드 설정 팝업 =====
 function renderArcadeOptsBtn() {

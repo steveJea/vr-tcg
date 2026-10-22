@@ -163,9 +163,11 @@
     document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('gal-zoom') && !$('gal-zoom').classList.contains('hidden')) { $('gal-zoom').classList.add('hidden'); return; }
       if (e.key === 'Escape' && !m.classList.contains('hidden')) { $('gal-detail').classList.contains('hidden') ? close() : $('gal-detail').classList.add('hidden'); } });
   }
-  function close() { $('gal-modal').classList.add('hidden'); document.body.classList.remove('gal-lock'); }
+  function close() { if (prevTrack !== null) { const t = prevTrack; prevTrack = null; if (t) try { window.VRSound?.setTrack?.(t); } catch {} } $('gal-modal').classList.add('hidden'); document.body.classList.remove('gal-lock'); }
 
+  let prevTrack = null;   // 열 때 mypage BGM, 닫으면 이전 트랙 복귀
   async function open() {
+    if (prevTrack === null) { prevTrack = window.VRSound?.track || ''; try { window.VRSound?.setTrack?.('audio/mypage.mp3'); } catch {} }
     ensureModal();
     $('gal-modal').classList.remove('hidden'); document.body.classList.add('gal-lock');
     $('gal-detail').classList.add('hidden');
