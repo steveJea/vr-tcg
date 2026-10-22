@@ -820,7 +820,7 @@
       <div class="flex gap-2 mt-2"><button id="story-d-lock" class="flex-1 py-2 rounded-xl bg-zinc-700 font-bold text-sm" ${isLeader(o) ? 'disabled' : ''}>${isLeader(o) ? '🔒 리더 자동 잠금' : o.locked ? '🔓 잠금 해제' : '🔒 분해 잠금'}</button>
       ${isLeader(o) ? '' : `<button id="story-d-leader" class="flex-1 py-2 rounded-xl bg-amber-500/90 text-black font-bold text-sm" ${leaderUnlocked() ? '' : 'disabled'}>${ic('crown', { alt: '' })} ${leaderUnlocked() ? '리더로 지정' : '리더 변경: 챕터 1 클리어 후'}</button>`}</div>
       ${isLocked(o) ? `<div class="text-[11px] text-zinc-500 mt-2 text-center">${isLeader(o) ? '리더 카드는 자동으로 잠겨 분해·합성 재료로 쓸 수 없어요' : '잠긴 카드는 분해·합성 재료로 쓸 수 없어요'}</div>` : ''}
-      ${skillsOf(o.id).length ? `<div class="story-detail-skills"><div class="text-sm font-black mt-4">📜 ${skillsOf(o.id).length}</div>${window.TCG?.skillListHTML?.(c, o.level) || ''}</div>` : ''}`, renderCards);
+      ${skillsOf(o.id).length ? `<div class="story-detail-skills"><div class="text-sm font-black mt-4">${window.VRIcon?.or?.('skill_count', '📜') || '📜'} ${skillsOf(o.id).length}</div>${window.TCG?.skillListHTML?.(c, o.level) || ''}</div>` : ''}`, renderCards);
     $('story-d-lock').onclick = () => { p.close(true); setLock(o.uid, !o.locked); };
     { const lb = $('story-d-leader'); if (lb) lb.onclick = () => { p.close(true); confirmLeader(o.uid, () => cardDetail(o.uid)); }; }
     $('story-d-stats').onclick = () => { p.close(true); openStats(renderCards, idxOf(o)); };

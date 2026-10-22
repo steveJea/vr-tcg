@@ -230,7 +230,7 @@
       <div class="gal-dname">${window.TCG?.cardTitle ? TCG.cardTitle(c) : esc(c.name)}</div>
       <div class="gal-drar">${window.TCG?.cardTags ? TCG.cardTags(c, t ? [`<span class="gal-tname vip-${TIERS[t].k}">${TE(t)}</span>`] : []) : `<span class="gal-rar inline">${s}</span>`}</div>
       ${window.TCG?.cardStats?.(c) || ''}
-      <div class="ci-tags gal-minor"><span class="ci-tag" title="수집 횟수">🗂️${o.count}</span><span class="ci-tag" title="MVP">${IC('crown') || '👑'}${o.mvp_count}</span><span class="ci-tag" title="처음 수집">📅${esc(date)}</span><span class="ci-tag" title="전투력">⚡${Number(c.power || 0).toLocaleString('ko-KR')}</span></div>
+      <div class="ci-tags gal-minor"><span class="ci-tag" title="${o.count ? '수집 횟수' : '보유로 등록 (아케이드 수집 0회)'}">🗂️${o.count}</span><span class="ci-tag" title="MVP">${IC('crown') || '👑'}${o.mvp_count}</span><span class="ci-tag" title="처음 수집">📅${esc(date)}</span><span class="ci-tag" title="전투력">⚡${Number(c.power || 0).toLocaleString('ko-KR')}</span></div>
       <div class="gal-vip"><div class="gal-vip-h">${IC('crown')} VIP 보상 <span>${nextTxt}</span></div>${skHtml}${extra.join('')}</div></div>`;
     el.classList.remove('hidden');
   }

@@ -864,10 +864,11 @@ const regionShort = r => { r = String(r || '').trim(); return r === '중구' || 
 const escA = s => String(s ?? '').replace(/[&<>"']/g, ch => `&#${ch.charCodeAt(0)};`);
 /** 머리줄: 이름 (나이/지역) */
 function cardTitle(c, lead = '') { const a = [c.age, regionShort(c.region)].filter(Boolean).join('/'); return `<span class="ci-name">${lead}${escA(c.name)}</span>${a ? ` <span class="ci-sub">(${escA(a)})</span>` : ''}`; }
+/** 스킬 수 아이콘: 지금은 📜 임시. 그림순이 아이콘 img/ui/skill_count.webp 가 오면 icons.js 맵에 skill_count 만 추가하면 자동 교체 */
 /** 태그줄: 등급 약자 · 속성 아이콘 · 스킬 수 · 클래스 + 작은 태그(추가) */
 function cardTags(c, extra = []) {
   const r = rarityOf(c), e = ELEMENTS[c.class] || ELEMENTS.WIND, n = skillsOf(c.id).length;
-  return `<div class="ci-tags"><span class="rar-badge rar-inline ${r.cls}" title="${r.label}">${r.short}</span><span class="ci-el" title="${e.label}">${icOf(e)}</span>${n ? `<span class="ci-tag" title="스킬 ${n}개">📜${n}</span>` : ''}<span class="ci-tag ci-cls">${escA(c.attribute || '')}</span>${extra.filter(Boolean).map(t => `<span class="ci-tag">${t}</span>`).join('')}</div>`;
+  return `<div class="ci-tags"><span class="rar-badge rar-inline ${r.cls}" title="${r.label}">${r.short}</span><span class="ci-el" title="${e.label}">${icOf(e)}</span>${n ? `<span class="ci-tag" title="스킬 ${n}개">${window.VRIcon?.or?.('skill_count', '📜') || '📜'}${n}</span>` : ''}<span class="ci-tag ci-cls">${escA(c.attribute || '')}</span>${extra.filter(Boolean).map(t => `<span class="ci-tag">${t}</span>`).join('')}</div>`;
 }
 /** ATK/DEF/HP: 아이콘 + 숫자 */
 function cardStats(c, hp = null) {

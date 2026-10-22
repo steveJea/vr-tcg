@@ -2,7 +2,7 @@
 -- 1) 트리거: story_progress 저장(insert/update) 때 새로 생긴 보유 카드 id 를 gallery 에 추가 (이미 있으면 그대로)
 -- 2) 백필: 지금 보유 중인 카드 전부 1회 등록
 -- 여러 번 실행해도 안전. 왕관 등급(mvp_count)은 건드리지 않음.
--- 등록 행: count 1, mvp_count 0, first_at = now(). last_at 은 1분 전으로 둬서 gallery_register 의 15초 도배 방지에 걸리지 않게 함.
+-- 등록 행: count 0 (아케이드 수집 횟수 0 = 보유로만 등록), mvp_count 0, first_at = now(). last_at 은 1분 전으로 둬서 gallery_register 의 15초 도배 방지에 걸리지 않게 함.
 
 create or replace function public._gallery_sync_owned(p_uid uuid, p_data jsonb)
 returns int language plpgsql security definer set search_path = public as $$
@@ -14,7 +14,7 @@ begin
     where jsonb_typeof(o) = 'object' and char_length(coalesce(o->>'id', '')) between 1 and 40
   ), ins as (
     insert into public.gallery (user_id, card_id, count, mvp_count, first_at, last_at)
-    select p_uid, id, 1, 0, now(), now() - interval '1 minute' from ids
+    select p_uid, id, 0, 0, now(), now() - interval '1 minute' from ids
     on conflict (user_id, card_id) do nothing
     returning 1
   ) select count(*) into n from ins;
@@ -34,6 +34,9 @@ revoke all on function public._gallery_owned_trg() from public, anon, authentica
 drop trigger if exists story_progress_gallery on public.story_progress;
 create trigger story_progress_gallery after insert or update of data on public.story_progress
   for each row execute function public._gallery_owned_trg();
+
+-- 이전 버전(count 1)으로 자동 등록된 행 보정: 자동 등록 표시(last_at = first_at - 1분)이고 그 뒤 아케이드 수집이 없던 행만 0 으로
+update public.gallery set count = 0 where count = 1 and mvp_count = 0 and last_at = first_at - interval '1 minute';
 
 -- 백필 (기존 보유 카드)
 select public._gallery_sync_owned(user_id, data) from public.story_progress;
