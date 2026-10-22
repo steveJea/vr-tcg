@@ -1,5 +1,5 @@
 // ===== VR TCG 규칙 (순수 함수: UI와 분리, 테스트 가능) =====
-import { chance, cleanseOne, addStatus, emit, skillsOf, damageUnit, damageHero, checkDeath, afterBasicHit, refreshAll, onLevelChange, redirectAttack, counterMult, heal, maleLure, rollEvade } from './skills.js';
+import { chance, cleanseOne, addStatus, emit, skillsOf, damageUnit, damageHero, checkDeath, afterBasicHit, refreshAll, onLevelChange, redirectAttack, counterMult, heal, maleLure, rollEvade, spares } from './skills.js';
 export const RULES = {
   HERO_HP: 3000,          // 영웅 HP
   DAMAGE_MULT: 1.5,       // ATK에 곱하는 전체 데미지 배율 (DEF 차감 전)
@@ -201,9 +201,9 @@ export const heroLocked = me => (me.turnsTaken || 0) <= RULES.HERO_LOCK_TURNS;
 export function attackTargets(me, opp, attacker = null) {
   // 도발당함(김후 [나는 약하지 않아]): 그 카드는 도발한 카드만 공격 가능
   const pv = attacker?.st?.provoked?.by;
-  if (pv && pv.hp > 0 && opp.field.includes(pv) && !pv.undying) return { units: [pv], hero: false, reason: `도발당함: ${pv.card.name}만 공격할 수 있습니다` };
+  if (pv && pv.hp > 0 && opp.field.includes(pv) && !pv.undying && !spares(attacker, pv)) return { units: [pv], hero: false, reason: `도발당함: ${pv.card.name}만 공격할 수 있습니다` };
   // 스토리 보스(undying): 진영 안에 있어 공격 대상이 아니고, 진영 방어(HERO_GUARD_FIELD) 장수에도 세지 않음
-  const field = opp.field.filter(u => !u.undying);
+  const field = opp.field.filter(u => !u.undying && !spares(attacker, u));   // 스토리 보호 규칙(조윤이 → 조윤하)
   const taunts = field.filter(u => hasSkill(u, 'taunt'));
   if (taunts.length) return { units: taunts, hero: false, reason: '도발 카드부터 공격해야 합니다' };
   if (opp.noBase) return { units: field, hero: false, reason: '일반전: 상대 카드를 모두 쓰러뜨리세요' };
@@ -290,6 +290,7 @@ export function resolveAttack(me, opp, unit, target) {
     return ev;
   }
   const ratio = rd.ratio || 1; target = rd.target;
+  if (spares(unit, target)) return ev;   // 보호 대상으로 유도됐으면 공격 안 함
   // 회피(정치욱 [그렇게 느려도 되겠어?]): 피해·반격 없음
   if (rollEvade(target, unit)) { ev.push({ type: 'evade', unit, target }); gainXp(unit, RULES.ATTACK_XP); return ev; }
   const d1 = Math.max(1, Math.round(calcDamage(unit.card, target.card) * ratio));
@@ -303,7 +304,7 @@ export function resolveAttack(me, opp, unit, target) {
     if (ac === 'LIGHT' && chance(RULES.LIGHT_CLEANSE_P) && cleanseOne(unit)) emit({ type: 'elfx', unit, kind: 'cleanse' });
   }
   // 반격: 대상이 쓰러졌으면 없음. 살아 있으면 (피해 × 반격 배율 × 50%), 공격자는 반격으로 쓰러지지 않음(HP 1 남김)
-  const killed = target.hp <= 0, d2 = killed ? 0 : Math.max(0, Math.round(calcDamage(target.card, unit.card) * counterMult(target, unit) * RULES.COUNTER_RATIO));
+  const killed = target.hp <= 0, d2 = killed || spares(target, unit) ? 0 : Math.max(0, Math.round(calcDamage(target.card, unit.card) * counterMult(target, unit) * RULES.COUNTER_RATIO));
   let d2x = d2;
   if (EP && d2x > 0 && target.card.class === 'DARK' && chance(RULES.DARK_COUNTER_P)) { d2x = Math.round(d2x * RULES.DARK_COUNTER_MULT); emit({ type: 'elfx', unit: target, kind: 'darkCounter' }); }   // 어둠: 반격 2배
   if (EP && d2x > 0 && ac === 'LIGHT' && chance(RULES.LIGHT_NULL_P)) { d2x = 0; emit({ type: 'elfx', unit, kind: 'nullCounter' }); }   // 빛: 반격 무효

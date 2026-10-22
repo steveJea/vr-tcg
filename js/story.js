@@ -559,6 +559,8 @@
   }
 
   let deckUid = {};   // 이번 전투 출전 카드 id → 인스턴스 uid
+  /** 스토리 보호 규칙: 공격자 id → 공격하지 않는 카드 id (기본 공격·스킬·반격·광역 모두) */
+  const STORY_SPARE = { '2000500114': ['2000500111'] };   // 조윤이 → 조윤하
   async function battle(ch, ph, enemies, picked) {
     const P = window.VRPlayer, ps = serverMode && P ? await P.status(true) : null;
     if (ps && ps.stamina < P.cost) { staminaShort(ps); return renderMap(); }
@@ -578,6 +580,7 @@
     window.TCG.startStory({
       me, ai, leader: (() => { const lo = me.find(c => c.uid === save.leader), le = lo && leaderEff(lo.id); return le ? { ...le, uid: lo.uid } : undefined; })(), win: boss ? 'ko' : 'wipe', aiHp: boss ? bossHp(ch, ph) : undefined, bossId: bc ? String(bc.id) : undefined, aiName: ph.enemyName || (boss ? '보스' : '적군'), rules: battleRules(ch, ph), first: ph.enemyFirst ? 'ai' : 'me',   // 기본 내가 선공, 페이즈 enemyFirst 면 적 선공
      
+      spare: STORY_SPARE,   // 조윤이는 조윤하를 공격하지 않음
       onEnd: (win, reason, st) => result(ch, ph, win, reason, st),
     });
     showConditions(ch, ph);   // 승리·패배 조건 (닫을 수 있음)
