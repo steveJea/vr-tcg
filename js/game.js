@@ -138,6 +138,7 @@ function startGame(story = null) {
         if (who === 'me') S.log.played.add(String(c.id));
         if (who === 'me' && story.leader && c.uid && c.uid === story.leader.uid && !p.field.some(x => x.isLeader)) { u.isLeader = true; p.leaderSkill = story.leader; }
         if (who === 'ai' && story.bossId != null && String(c.id) === String(story.bossId) && !p.field.some(x => x.undying)) { u.undying = true; u.boss = true; }
+        if (who === 'ai' && (story.rules?.undying || []).map(String).includes(String(c.id))) u.undying = true;   // 불사 적 (피해는 받지만 쓰러지지 않음)
         if (who === 'ai' && story.rules?.invuln != null && String(c.id) === String(story.rules.invuln) && !p.field.some(x => x.noDamage)) { u.undying = true; u.noDamage = true; u.boss = true; }
       }
       p.deck = [];
