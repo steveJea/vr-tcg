@@ -13,13 +13,14 @@ async function init() {
   })();
   return ready;
 }
-/** me/ai: 카드 객체 배열 (battleCards / quest-gen enemies). 반환 { win, turns } */
-export async function simBattle(me, ai, maxTurns = 40) {
+/** me/ai: 카드 객체 배열 (battleCards / quest-gen enemies). leader: api.leaderFor(me) (실전과 같은 리더 스킬). 반환 { win, turns } */
+export async function simBattle(me, ai, maxTurns = 40, leader = null) {
   await init();
   const mk = name => ({ name, hp: 1, maxHp: 1, deck: [], hand: [], field: [], mana: 0, maxMana: 0, noBase: true });
   const P = [mk('나'), mk('적')];
   SK.initPlayers(P[0], P[1]);
-  me.forEach(c => SK.placeUnit(P[0], { ...c }, R.makeUnit)); ai.forEach(c => SK.placeUnit(P[1], { ...c }, R.makeUnit));
+  me.forEach(c => { const u = SK.placeUnit(P[0], { ...c }, R.makeUnit);   // game.js startGame 과 같은 방식으로 리더 지정
+    if (leader && c.uid && c.uid === leader.uid && !P[0].field.some(x => x.isLeader)) { u.isLeader = true; P[0].leaderSkill = leader; } }); ai.forEach(c => SK.placeUnit(P[1], { ...c }, R.makeUnit));
   SK.refreshAll(P[0]); SK.refreshAll(P[1]);
   const gone = p => !p.field.some(u => u.hp > 0);
   const firstMe = Math.random() < 0.5;
