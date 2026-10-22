@@ -47,5 +47,13 @@
   /** 재화 표시: { gold, blood, shard, soul } → "🪙 +120 · 🩸 +12 · 💠 +1" (0 은 생략) */
   const CUR_IC = [['gold', '🪙', '골드'], ['blood', '🩸', '순수한 피'], ['shard', '💠', '이상한 조각'], ['soul', '🔥', '각성자의 혼']];
   const curTxt = c => CUR_IC.filter(([k]) => (c?.[k] | 0) > 0).map(([k, i, n]) => `<span class="vr-cur" title="${n}">${i} +${Number(c[k]).toLocaleString('ko-KR')}</span>`).join(' · ') || '<span class="text-zinc-500">없음</span>';
-  window.VRPlayer = { curTxt, status, now, set, abort, chip, paint, unlocked, mmss, get cost() { return cache?.cost?.story ?? 6; }, _reset() { cache = null; at = 0; } };
+  // 지갑 (phaseE_1.sql wallet_status). 캐시 + 서버 응답의 wallet 으로 갱신
+  let wcache = null, wat = 0;
+  async function wallet(force = false) {
+    if (!force && wcache && Date.now() - wat < 30000) return wcache;
+    try { const w = await rpc('wallet_status'); if (w?.ok) { wcache = w; wat = Date.now(); } } catch (e) { console.warn('[wallet]', e?.message); }
+    return wcache;
+  }
+  const setWallet = w => { if (w && typeof w.gold !== 'undefined') { wcache = { ok: true, ...w }; wat = Date.now(); } return wcache; };
+  window.VRPlayer = { curTxt, wallet, setWallet, get walletNow() { return wcache; }, status, now, set, abort, chip, paint, unlocked, mmss, get cost() { return cache?.cost?.story ?? 6; }, _reset() { cache = null; at = 0; } };
 })();
