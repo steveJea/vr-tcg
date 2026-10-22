@@ -96,6 +96,7 @@ export function statusIcons(u) {
     else if (STATUS[s.kind]) out.push({ icon: STATUS[s.kind].icon, img: STATUS[s.kind].img, title: s.kind === 'vow' ? `지킨다: DEF +${(s.def * 100).toFixed(1)}% (이영아와 함께)` : s.kind === 'provoked' ? `도발당함: ${s.by?.card?.name || ''}만 공격 · 스킬 불가 (${s.t}턴)` : `${STATUS[s.kind].label} (${s.t}턴)` });
   }
   if (u.curse && foeHasPassive(u.owner, '자수정 눈물의 지옥 교향곡')) out.push({ icon: '🥀', img: 'st_curse', title: `지옥 교향곡 ×${u.curse}` });
+  if (u.pairShield) out.push({ icon: '🛡️', title: `자매의 가호: 피해 무효 (${u.pairShield}턴까지)` });
   if (u.cry) out.push({ icon: '😇', img: 'st_cry', title: `천사의 절규 ×${u.cry}` });
   return out;
 }
