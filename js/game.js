@@ -620,7 +620,7 @@ async function cutIn(u, name, fx, passive = false) {
   el.className = `cutin ${fx ? 'cutin-img' : ''} fixed left-0 right-0 z-40 pointer-events-none text-center ${whoOf(u.owner) === 'me' ? 'cutin-me' : 'cutin-ai'}`;
   slashImpact(ms);
   await sleep(ms);
-  el.className = 'hidden';
+  el.className = 'hidden'; resetHScroll();
 }
 // ===== 등장 컷인 (data/voice/<id>_0 보이스 + data/fx/<id>_0 이미지, 없으면 프로필) · 만남/인연 이벤트 (data/events.json) =====
 let EVENTS = { entry: { fx: [] }, events: [] };
@@ -658,11 +658,11 @@ async function entryCutIn(u, id) {
   el.innerHTML = `<img src="${img}" class="cutin-media ${img.startsWith('data/') ? '' : 'cutin-portrait'}" alt="" onerror="this.remove()"><div class="cutin-text"><div class="text-[11px] md:text-xs text-zinc-200">${u.owner.name} · 등장</div><div class="text-xl md:text-3xl font-black tracking-tight">${escHtml(u.card.name)}</div></div>`;
   const ms = cutinMs(1300);
   el.style.setProperty('--dur', `${ms}ms`);
-  el.className = 'hidden'; void el.offsetWidth;
+  el.className = 'hidden'; resetHScroll(); void el.offsetWidth;
   el.className = `cutin cutin-img cutin-entry fixed left-0 right-0 z-40 pointer-events-none text-center ${whoOf(u.owner) === 'me' ? 'cutin-me' : 'cutin-ai'}`;
   slashImpact(ms);
   await sleep(ms);
-  if (el.classList.contains('cutin-entry')) el.className = 'hidden';
+  if (el.classList.contains('cutin-entry')) el.className = 'hidden'; resetHScroll();
 }
 const fieldIds = p => new Set(p.field.map(x => String((x.base || x.card).id)));
 /** 이벤트 조건 확인 (게임당 이벤트별 1회) */
@@ -693,7 +693,7 @@ function showEvent(ev) {
     const lines = Array.isArray(ev.lines) ? ev.lines : [];
     let i = 0, done = false, timer = null, audio = null;
     if (ev.voice && voiceOn) { try { if (voiceCur) voiceCur.pause(); audio = new Audio(ev.voice); audio.volume = voiceVol; trackVoice(audio); voiceCur = audio; audio.play().catch(() => {}); } catch {} }
-    const close = () => { if (done) return; done = true; clearTimeout(timer); el.className = 'hidden'; el.innerHTML = ''; try { audio?.pause(); } catch {} resolve(); };
+    const close = () => { if (done) return; done = true; clearTimeout(timer); el.className = 'hidden'; resetHScroll(); el.innerHTML = ''; try { audio?.pause(); } catch {} resolve(); };
     const draw = () => {
       const L = lines[i];
       el.querySelector('.ev-line').innerHTML = L ? `${L.who && L.who !== 'NA' ? `<b>${escHtml(L.who)}</b>` : ''}<span class="${L.who === 'NA' ? 'ev-na' : ''}">${escHtml(L.text || '')}</span>` : '';
@@ -721,10 +721,10 @@ function passiveCutIn(u, name) {
   el.innerHTML = cutInHTML(u, name, s.fx, true);
   const ms = cutinMs(1100);
   el.style.setProperty('--dur', `${ms}ms`);
-  el.className = 'hidden'; void el.offsetWidth; // 애니메이션 재시작
+  el.className = 'hidden'; resetHScroll(); void el.offsetWidth; // 애니메이션 재시작
   el.className = `cutin cutin-img fixed left-0 right-0 z-40 pointer-events-none text-center ${whoOf(u.owner) === 'me' ? 'cutin-me' : 'cutin-ai'}`;
   slashImpact(ms);
-  clearTimeout(passiveTimer); passiveTimer = setTimeout(() => { el.className = 'hidden'; }, ms);
+  clearTimeout(passiveTimer); passiveTimer = setTimeout(() => { el.className = 'hidden'; resetHScroll(); }, ms);
 }
 
 async function castSkill(who, u, s) {
@@ -1114,7 +1114,10 @@ function skillListHTML(c, unit, myTurn, lv = 1) {
 }
 
 function showModal(id) { $(id).classList.remove('hidden'); $(id).classList.add('flex'); }
-function hideModal(id) { $(id).classList.add('hidden'); $(id).classList.remove('flex'); }
+function hideModal(id) { $(id).classList.add('hidden'); $(id).classList.remove('flex'); resetHScroll(); }
+// 모바일에서 페이지가 옆으로 밀린 채 남지 않게 (컷인·모달 뒤) 가로 스크롤을 0으로
+function resetHScroll() { if (window.scrollX || document.documentElement.scrollLeft || document.body.scrollLeft) { document.documentElement.scrollLeft = 0; document.body.scrollLeft = 0; window.scrollTo(0, window.scrollY); } }
+window.addEventListener('scroll', () => { if (window.scrollX) resetHScroll(); }, { passive: true });
 
 function renderStats() {
   const s = Stats.load();
