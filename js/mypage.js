@@ -1,5 +1,5 @@
 // ===== 마이페이지 =====
-// 로그인 유저: 리더 카드(크게) · 보유 카드 + 기본 덱 · 재화(소환권, 나중에 골드 등) · 전적(아케이드 승/패, 스토리 진행, 갤러리 수집률)
+// 로그인 유저: 리더 카드(크게) · 보유 카드 + 기본 덱 · 재화(소환권 · 골드 · 순수한 피 · 이상한 조각 · 각성자의 혼) · 전적(아케이드 승/패, 스토리 진행, 갤러리 수집률)
 // 게스트: 로그인 안내. 팝업은 바깥을 누르면 닫힘.
 // 확장: VRMyPage.addSection({ id, title, order, render(ctx) => html }) / CURRENCIES 에 재화 추가
 // 리더 영상 훅: data/movie/<id>.mp4 가 있으면 리더 카드를 탭할 때 음소거 인라인 재생
@@ -13,7 +13,10 @@
   /** 재화 목록: value(ctx) 가 null 이면 '준비 중' 으로 표시 */
   const CURRENCIES = [
     { key: 'tickets', icon: '🎟️', label: '소환권', value: ctx => ctx.story?.tickets ?? null },
-    { key: 'gold', icon: '🪙', label: '골드', soon: true, value: () => null },
+    { key: 'gold', icon: '🪙', label: '골드', value: ctx => ctx.wallet?.gold ?? null },
+    { key: 'blood', icon: '🩸', label: '순수한 피', value: ctx => ctx.wallet?.blood ?? null },
+    { key: 'shard', icon: '💠', label: '이상한 조각', value: ctx => ctx.wallet?.shard ?? null },
+    { key: 'soul', icon: '🔥', label: '각성자의 혼', value: ctx => ctx.wallet?.soul ?? null },
   ];
   const sections = [];
   const addSection = s => { sections.push(s); sections.sort((a, b) => (a.order || 0) - (b.order || 0)); };
@@ -23,17 +26,23 @@
     const u = user(); if (!u) return null;
     try { const v = JSON.parse(localStorage.getItem(`vrTcgStats.v1:${u.id}`) || 'null'); return v ? { wins: v.wins | 0, losses: v.losses | 0, draws: v.draws | 0 } : null; } catch { return null; }
   }
+  // 지갑: supabase/phaseE_1.sql 의 wallet_status (SQL 실행 전이면 null → '-' 표시)
+  async function walletStatus() {
+    const sb = cloud()?.sb; if (!sb || !user()) return null;
+    const { data, error } = await sb.rpc('wallet_status'); if (error) throw error; return data;
+  }
   async function gather() {
     const m = window.__MYPAGE_MOCK;
     const safe = f => { try { return Promise.resolve(f()).catch(() => null); } catch { return Promise.resolve(null); } };
-    const [story, gal, quest] = await Promise.all([
+    const [story, gal, quest, wallet] = await Promise.all([
       safe(() => m?.story ? m.story() : window.VRStory?.summary?.()),
       safe(() => m?.gallery ? m.gallery() : window.VRGallery?.collection?.()),
       safe(() => m?.quest ? m.quest() : window.VRQuest?.bestFloor?.()),
+      safe(() => m?.wallet ? m.wallet() : walletStatus()),
     ]);
     const pool = window.TCG?.POOL || [];
     const cardOf = id => pool.find(c => String(c.id) === String(id));
-    return { user: user(), story: story?.ok ? story : null, gallery: gal, questBest: quest, arcade: m?.arcade ? m.arcade() : arcadeRecord(), cardOf };
+    return { user: user(), story: story?.ok ? story : null, gallery: gal, questBest: quest, wallet: wallet?.ok ? wallet : null, arcade: m?.arcade ? m.arcade() : arcadeRecord(), cardOf };
   }
 
   // ---- 리더 영상 훅 ----
