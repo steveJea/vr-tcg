@@ -342,6 +342,7 @@
         ${hero ? `<div class="story-route-tag">루트 <b>${esc(hero.name)}</b>${clearedOf(ch).length ? '' : ' <button class="story-mini" data-go="route">루트 바꾸기</button>'}</div>` : ''}</div>
       <div class="story-player-row" data-vr-player></div>
       ${rows.map(r => `<div class="story-map ${rows.length > 1 ? 'story-map-row' : ''}">${r.map(node).join('')}</div>`).join('')}
+      <div id="story-sweep-wrap">${sweepRow(ch, done)}</div>
       <div class="story-status">${leader ? `<div>리더 <b class="text-amber-300">${esc(leader.name)}</b> · 보유 카드 <b>${save.owned.length}</b>장</div>` : ''}
         <div class="story-rule">⚔️ 스토리 전투: 출전 카드 최대 ${MAX_PICK()}장이 모두 필드에서 시작해요 (손패·드로우·용병 없음, 내 진영 없음). 내 카드가 모두 쓰러지거나 ${RULES_TURNS()}턴이 지나면 패배 · 일반전은 상대 카드 전멸, 👑 보스전은 상대 진영 HP 0이면 승리</div>
         <div>스탯 포인트 <b class="text-emerald-300">${save.points}</b> ${save.points ? '<button class="story-mini" data-go="stats">분배하기</button>' : ''}</div>
@@ -351,6 +352,44 @@
     bind({ stats: () => openStats(renderMap), opening: () => playOpening(renderMap), route: () => renderRouteSelect(curCh) }); playerPaint();
     root().querySelectorAll('[data-ch]').forEach(b => b.onclick = () => renderMap(+b.dataset.ch));
     root().querySelectorAll('[data-phase]').forEach(b => b.onclick = () => startPhase(ch, ch.phases.find(p => p.no === +b.dataset.phase)));
+    const bindSw = () => root().querySelectorAll('[data-sweep]').forEach(b => b.onclick = () => sweepPop(ch, ch.phases.find(p => p.no === +b.dataset.sweep)));
+    bindSw();
+    if (serverMode && done.length && window.VRPlayer) window.VRPlayer.status().then(() => { const el = $('story-sweep-wrap'); if (el) { el.innerHTML = sweepRow(ch, done); bindSw(); } });
+  }
+
+  // ----- 소탕 (phaseE_5.sql story_sweep): 클리어한 페이즈를 1/5/10회 자동 정산. 플레이어 Lv5+, 1회 행동력 6 -----
+  const SWEEP_LV = 5, SWEEP_RUNS = [1, 5, 10];
+  function sweepRow(ch, done) {
+    if (!serverMode || !done.length) return '';
+    const P = window.VRPlayer?.now?.(), lv = P?.level | 0, need = P?.unlocks?.sweep ?? SWEEP_LV;
+    if (P && lv < need) return `<div class="story-sweep locked">⚡ 소탕 · 플레이어 Lv.${need}부터 (현재 Lv.${lv})</div>`;
+    return `<div class="story-sweep"><span class="story-sweep-h">⚡ 소탕</span>${ch.phases.filter(p => done.includes(p.no)).map(p => `<button class="story-sweep-btn ${p.type}" data-sweep="${p.no}">${p.type === 'boss' ? '👑 ' : ''}${p.no}</button>`).join('')}</div>`;
+  }
+  function sweepPop(ch, ph) {
+    const P = window.VRPlayer?.now?.(), cost = window.VRPlayer?.cost ?? 6, st = P?.stamina ?? 0;
+    const p = popup(`<div class="text-lg font-black">⚡ 소탕 · ${esc(ch.title)} Phase.${ph.no}${ph.type === 'boss' ? ' BOSS' : ''}</div>
+      <div class="text-xs text-zinc-400 mt-1">전투 없이 반복 클리어 보상을 바로 받아요 (골드 · 순수한 피 · 이상한 조각 확률 · 플레이어 경험치). 카드 경험치·첫 클리어 보상은 없어요.</div>
+      <div class="story-sweep-runs">${SWEEP_RUNS.map(n => { const c = n * cost, okk = st >= c; return `<button class="story-btn ${okk ? '' : 'short'}" data-runs="${n}" ${okk ? '' : 'disabled'}>${n}회<small>🔋 ${c}</small></button>`; }).join('')}</div>
+      <div class="text-xs text-center text-zinc-400 mt-2">보유 행동력 🔋 ${st}</div>
+      <div class="text-center mt-3"><button class="story-btn ghost" data-x>닫기</button></div>`);
+    p.el.querySelector('[data-x]').onclick = () => p.close(true);
+    p.el.querySelectorAll('[data-runs]').forEach(b => b.onclick = () => { p.el.querySelectorAll('[data-runs]').forEach(x => x.disabled = true); doSweep(ch, ph, +b.dataset.runs, p); });
+  }
+  async function doSweep(ch, ph, n, pop) {
+    const { data: r, error } = await cloud().sb.rpc('story_sweep', { p_chapter: ch.id, p_phase: ph.no, p_runs: n });
+    pop.close(true);
+    if (error) { const m = error.message || ''; toast(/stamina/.test(m) ? '🔋 행동력이 부족해요' : /locked/.test(m) ? `⚡ 소탕은 플레이어 Lv.${SWEEP_LV}부터` : /not cleared/.test(m) ? '클리어한 페이즈만 소탕할 수 있어요' : `⚠️ 소탕 실패: ${m}`); window.VRPlayer?.status(true).then(() => window.VRPlayer.paint()); return; }
+    if (r.player) window.VRPlayer?.set(r.player); window.VRPlayer?.setWallet(r.wallet);
+    const d = r.drops || {}, line = (k, ic2, nm) => d[k] ? `<div class="story-sweep-get">${ic2} ${nm} <b>+${fmt(d[k])}</b></div>` : '';
+    const res = popup(`<div class="text-lg font-black text-center">⚡ 소탕 완료 ×${r.runs}</div>
+      <div class="text-xs text-center text-zinc-400">${esc(ch.title)} Phase.${ph.no} · 🔋 −${r.stamina}</div>
+      <div class="story-sweep-res">${line('gold', '🪙', '골드')}${line('blood', '🩸', '순수한 피')}${line('shard', '💠', '이상한 조각')}${line('soul', '👻', '영혼')}
+        <div class="story-sweep-get">⭐ 플레이어 경험치 <b>+${fmt(r.player?.gained_xp || 0)}</b></div></div>
+      ${r.player?.levelups ? `<div class="text-center text-amber-300 font-bold mt-2">LEVEL UP! Lv.${r.player.level}${r.player.levelup_gold ? ` · 🪙 +${fmt(r.player.levelup_gold)}` : ''}</div>` : ''}
+      <div class="text-[11px] text-zinc-500 text-center mt-2">회차별: ${(r.per_run || []).map(x => x.shard ? '💠' : '·').join(' ')}</div>
+      <div class="text-center mt-3"><button class="story-btn" data-x>확인</button></div>`, () => renderMap());
+    res.el.querySelector('[data-x]').onclick = () => res.close();
+    if (r.player?.levelups) levelUpFx(`PLAYER LEVEL UP! Lv.${r.player.level}`);
   }
 
   // ----- 스토리 메인 (허브): 이어하기 · 챕터 목록 · 메뉴. 배경 img/story/hub/bg_pc.webp / bg_m.webp (없으면 메인 배경) -----
