@@ -335,3 +335,16 @@ span.story-lvpct { background: rgba(251,191,36,.12); border: 1px solid rgba(251,
 .story-lvup-have{font-size:11px;color:#a1a1aa;margin-top:6px;text-align:right}
 .story-merge-cost{margin-top:8px;font-size:13px;color:#a5f3fc}.story-merge-cost.short{color:#fca5a5}
 .story-merge-btn small{margin-left:4px;font-weight:700}
+
+/* E-5 소탕 */
+.story-sweep{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:6px;margin:10px auto 0;max-width:560px;padding:8px 10px;border:1px solid rgba(250,204,21,.35);border-radius:12px;background:rgba(250,204,21,.06)}
+.story-sweep.locked{color:#a1a1aa;font-size:12px;border-color:rgba(161,161,170,.3);background:none}
+.story-sweep-h{font-weight:800;color:#fde047;font-size:13px;margin-right:2px}
+.story-sweep-btn{min-width:34px;padding:4px 8px;border-radius:999px;background:#27272a;border:1px solid #facc15;color:#fde047;font-weight:800;font-size:12px}
+.story-sweep-btn.boss{border-color:#f87171;color:#fca5a5}
+.story-sweep-runs{display:flex;gap:8px;justify-content:center;margin-top:14px}
+.story-sweep-runs .story-btn{display:flex;flex-direction:column;align-items:center;min-width:72px}
+.story-sweep-runs .story-btn small{font-size:11px;opacity:.8}
+.story-sweep-runs .story-btn.short{opacity:.4}
+.story-sweep-res{margin-top:12px;display:grid;gap:6px}
+.story-sweep-get{display:flex;justify-content:space-between;padding:6px 10px;border-radius:8px;background:rgba(255,255,255,.05)}
