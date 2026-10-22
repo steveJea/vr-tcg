@@ -423,26 +423,43 @@
           <div class="story-bond-eff">${esc(bondEff(b))}</div></div>`; }).join('') || '<div class="text-center text-zinc-500">인연 데이터가 없어요</div>'}</div>`);
     bind();
   }
+  // 허브 챕터 선택: 3칸 세로 (위 = 다음 챕터, 가운데 = 진행 중(크게), 아래 = 최근 클리어). ▲▼/스와이프로 이전 챕터 다시 하기
+  let hubC = null, hubCur = null;
+  const chCover = base => { const r = routeOf(base); return r || base.hero || base.rewardCard || base.routeOrder?.[0] || null; };
+  function hubCurIdx() { const nx = nextPlay(); if (nx) return nx.i; let k = 0; while (k + 1 < D.chapters.length && chapterOpen(k + 1)) k++; return k; }
+  function hubSlot(i, size) {
+    const base = D.chapters[i]; if (!base) return `<div class="hub-ch-slot ${size} empty"></div>`;
+    const open = chapterOpen(i), ch = chapterFor(base), n = clearedOf(ch).length, tot = ch.phases.length, done = open && n >= tot, cv = chCover(base);
+    const why = open ? '' : (i && !chapterDone(D.chapters[i - 1]) ? '이전 챕터 클리어 후' : '준비 중');
+    const st = !open ? `🔒 ${why}` : done ? '✔ 클리어 · 다시 하기' : n ? `진행 중 ${n}/${tot}` : '새 챕터';
+    return `<button class="hub-ch-slot ${size} ${open ? '' : 'locked'} ${done ? 'done' : ''}" data-hubch="${i}" ${open ? '' : 'disabled'}>
+      <span class="hub-ch-img" style="background-image:${cv ? `url(${IMG}${cv}.webp),` : ''}url(img/story/opening_poster.webp)"></span>
+      <span class="hub-ch-txt"><small>${esc(base.title)}</small><b>${esc(ch.subtitle || base.title)}</b><i>${st}</i></span>
+      ${done && videoOf(base) ? `<span class="story-hub-vid" role="button" data-hubvid="${i}" title="엔딩 영상 다시 보기">🎬</span>` : ''}</button>`;
+  }
   function renderHub() {
-    const nx = nextPlay();
-    const rows = D.chapters.map((base, i) => {
-      const open = chapterOpen(i), ch = chapterFor(base), n = clearedOf(ch).length, tot = ch.phases.length, r = routeOf(base), hero = r && card(r);
-      const why = open ? '' : (i && !chapterDone(D.chapters[i - 1]) ? `${esc(D.chapters[i - 1].title)} 클리어 후` : '준비 중');
-      return `<button class="story-hub-ch main-btn ${open ? '' : 'locked'}" data-hubch="${i}" ${open ? '' : 'disabled'}>
-        <span class="story-hub-ch-t">${open ? '' : '🔒 '}${esc(base.title)}${ch.subtitle ? ` 「${esc(ch.subtitle)}」` : ''}</span>
-        <span class="story-hub-ch-s">${open ? `${hero ? `${esc(hero.name)} 루트 · ` : base.byRoute ? '루트 선택 전 · ' : ''}${n}/${tot}${n >= tot ? ' ✔ 클리어' : ''}` : why}</span>${open && chapterDone(base) && videoOf(base) ? `<span class="story-hub-vid" role="button" data-hubvid="${i}" title="엔딩 영상 다시 보기">🎬</span>` : ''}</button>`; }).join('');
+    const nx = nextPlay(), cur = hubCurIdx();
+    if (hubC == null || hubC > cur || hubCur !== cur) { hubC = cur; hubCur = cur; }
+    const c = hubC;
+    const sel = `<div class="hub-ch" id="hub-ch">
+      <button class="hub-ch-arr" id="hub-up" ${c < cur ? '' : 'disabled'} aria-label="다음 챕터 쪽으로">▲</button>
+      ${hubSlot(c + 1, 'small')}${hubSlot(c, 'big')}${hubSlot(c - 1, 'small')}
+      <button class="hub-ch-arr" id="hub-down" ${c > 0 ? '' : 'disabled'} aria-label="이전 챕터 보기">▼</button></div>`;
     show(`<div class="story-hub-bg" aria-hidden="true"></div><div class="story-hub">
       <div class="story-top"><button class="story-back" data-go="home">← 처음으로</button><div class="story-top-title">스토리 모드</div><span data-vr-player></span></div>
-      <button class="story-hub-go main-btn" id="story-continue" ${nx ? '' : 'disabled'}><b>▶ 이어하기</b><small>${nx ? `${esc(nx.base.title)} · Phase.${nx.ph.no}${nx.ph.title ? ` 「${esc(nx.ph.title)}」` : ''}${nx.ph.type === 'boss' ? ' · BOSS' : ''}` : '열린 챕터를 모두 클리어했어요'}</small></button>
-      <div class="story-hub-list">${rows}</div>
-      <div class="story-hub-menu">
-        <button class="main-btn" data-go="gacha">🎴 카드 뽑기${canDraw() ? '<i class="story-badge">1</i>' : ''}<small class="story-hub-tk">${tickets ? `🎟️ ${tickets}` : ''}</small></button>
-        <button class="main-btn" data-go="cards" title="내 카드 · 스탯 분배">🃏 내 카드${save.points ? ` <i class="story-badge">${save.points}</i>` : ''}</button>
-        <button class="main-btn" data-go="bonds" title="인연 조합">🤝 인연${(() => { const b = bondStats(); return b.total ? ` <small>${b.done}/${b.total}</small>` : ''; })()}</button>
-        <button class="main-btn" id="story-quest" type="button" onclick="window.VRQuest&&VRQuest.open()">🗼 시련의 탑</button>
-        <button class="main-btn" id="story-mypage" type="button" onclick="window.VRMyPage&&VRMyPage.open()">👤 마이</button>
-        <button class="main-btn" disabled title="이벤트 스토리 · 준비 중">📅 이벤트</button></div>
+      ${sel}
+      <button class="story-hub-go main-btn" id="story-continue" ${nx ? '' : 'disabled'}><b>▶ 이어하기</b><small>${nx ? `${esc(nx.base.title)} · Phase.${nx.ph.no}${nx.ph.type === 'boss' ? ' · BOSS' : ''}` : '열린 챕터를 모두 클리어했어요'}</small></button>
+      <button class="hub-gacha" data-go="gacha"><span class="hub-gacha-t"><b>🎴 카드 뽑기</b><small>${canDraw() ? '오늘의 무료 뽑기 가능!' : '소환권으로 특수 뽑기'}</small></span><span class="story-hub-tk">${tickets ? `🎟️ ${tickets}` : ''}</span>${canDraw() ? '<i class="story-badge">1</i>' : ''}</button>
+      <div class="hub-menu">
+        <button data-go="cards" title="내 카드 · 스탯 분배"><span>🃏</span>내 카드${save.points ? `<i class="story-badge">${save.points}</i>` : ''}</button>
+        <button data-go="bonds" title="인연 조합"><span>🤝</span>인연</button>
+        <button id="story-quest" type="button" onclick="window.VRQuest&&VRQuest.open()"><span>🗼</span>시련의 탑</button>
+        <button id="story-mypage" type="button" onclick="window.VRMyPage&&VRMyPage.open()"><span>👤</span>마이</button></div>
     </div>`);
+    const mv = d => { const n = Math.max(0, Math.min(cur, hubC + d)); if (n !== hubC) { hubC = n; renderHub(); } };
+    $('hub-up').onclick = () => mv(1); $('hub-down').onclick = () => mv(-1);
+    { const el = $('hub-ch'); let y0 = null; el.addEventListener('touchstart', e => { y0 = e.touches[0].clientY; }, { passive: true });
+      el.addEventListener('touchend', e => { if (y0 == null) return; const dy = e.changedTouches[0].clientY - y0; y0 = null; if (Math.abs(dy) > 40) mv(dy < 0 ? -1 : 1); }); }
     bind(); playerPaint();
     if (tickets == null) syncTickets().then(r => { if (r.added) toast(`🎟️ 소환권 +${r.added} (챕터 클리어 보상)`); const el = root().querySelector('.story-hub-tk'); if (el) el.textContent = tickets ? `🎟️ ${tickets}` : ''; });
     root().querySelectorAll('[data-hubch]').forEach(b => b.onclick = () => renderMap(+b.dataset.hubch));
@@ -589,11 +606,13 @@
     showConditions(ch, ph);   // 승리·패배 조건 (닫을 수 있음)
   }
   // ----- 페이즈 전투 규칙: 데이터 rules + 단일 루트 챕터(3~)의 필수 출전 카드는 쓰러지면 패배 -----
+  const CH3_PAIR_SHIELD = { id: '2000500111', with: '2000500114', turns: 2 };   // 조윤하 + 조윤이 동시 출전 → 조윤하 2턴 피해 무효
   function battleRules(ch, ph) {
     const R = { ...(ph.rules || {}) };
     const forced = ch.single ? (ph.party?.forced || []).map(String) : [];
     const ml = [...new Set([...(R.mustLive || []).map(String), ...forced])];
     if (ml.length) R.mustLive = ml; else delete R.mustLive;
+    if (ch.id === 3) R.pairShield = CH3_PAIR_SHIELD;   // 챕터 3 밸런스 (코드 전용, SQL 불필요)
     return Object.keys(R).length ? R : undefined;
   }
   /** 승리·패배 조건 (페이즈 규칙에서 자동 생성) */
@@ -609,6 +628,7 @@
     if (R.invuln != null) info.push(['🛡️', `${nm(R.invuln)}: 피해를 입지 않음`]);
     for (const r of R.revive || []) info.push(['🩸', `${nm(r.id)}: 쓰러지면 <b>${Math.max(1, r.delay | 0 || 1)}턴 후</b> 부활 (${r.level === 'keep' ? '레벨 유지' : 'Lv1'})${r.times ? ` · ${r.times}회` : ''}`]);
     if ((R.revive || []).length && !(R.expire && R.invuln != null)) info.push(['✨', '부활 전에 적을 모두 쓰러뜨리면 승리']);
+    if (R.pairShield) info.push(['🛡️', `${nm(R.pairShield.id)} + ${nm(R.pairShield.with)} 함께 출전: ${nm(R.pairShield.id)} 처음 <b>${R.pairShield.turns}턴</b> 피해 무효`]);
     for (const id of R.undying || []) info.push(['♾️', `${nm(id)}: 쓰러지지 않음 (불사)`]);
     for (const t of partyOf(ch, ph).notes) info.push(['🚫', `출전 제한: <b>${t}</b>`, '필수 출전 카드는 예외']);
     if (ph.enemyFirst) info.push(['⚡', '적 선공']);

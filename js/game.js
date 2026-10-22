@@ -144,6 +144,9 @@ function startGame(story = null) {
       }
       p.deck = [];
     }
+    { const PS = story.rules?.pairShield;   // 챕터 3 밸런스: 조윤하·조윤이가 둘 다 내 필드에 있으면 조윤하 처음 N턴 피해 무효
+      const tgt = PS && S.me.field.find(u => String(u.card.id) === String(PS.id));
+      if (tgt && S.me.field.some(u => String(u.card.id) === String(PS.with))) { tgt.noDamage = true; tgt.pairShield = PS.turns; S.pairShield = { u: tgt, turns: PS.turns }; log(`🛡️ 자매의 가호: ${tgt.card.name}은(는) ${PS.turns}턴 동안 피해를 입지 않아요.`, 'text-sky-300'); } }
     refreshAll(S.me);
     setTimeout(() => { if (S && !S.over) for (const w of ['me', 'ai']) for (const u of S[w].field) onEnter(w, u); }, 400);   // 출전 카드 등장 컷인·이벤트
     if (S.me.leaderSkill) log(`👑 리더 스킬 [${S.me.leaderSkill.name} · ${S.me.leaderSkill.label}]: ${S.me.leaderSkill.text}. 리더가 쓰러지면 해제되고 아군 진영 HP −${Math.round((S.me.leaderSkill.deathPenalty ?? 0.3) * 100)}%`, 'text-amber-300');
@@ -160,6 +163,7 @@ function startGame(story = null) {
 function startTurn(who) {
   const p = S[who];
   S.turn = who; if (who === S.first) S.turnNo++; S.totalTurns++;
+  if (S.pairShield && S.turnNo > S.pairShield.turns) { const u = S.pairShield.u; S.pairShield = null; u.noDamage = false; delete u.pairShield; log(`🛡️ 자매의 가호가 사라졌다: ${u.card.name}`, 'text-zinc-400'); }
   if (S.story?.rules && storyTurnRules(who)) return true;
   if (who === 'me') { S.myTurns++; if (myTurnsLeft() === 1) lastTurnToast(); }
   clearBuff(opp(who));                   // 지난 턴 강화 해제

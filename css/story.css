@@ -477,3 +477,35 @@ span.story-lvpct { background: rgba(251,191,36,.12); border: 1px solid rgba(251,
 .cd-img img{box-shadow:0 0 0 1px rgba(255,255,255,.15)}
 .cd-sm.merge{background:linear-gradient(90deg,#dc2626,#f97316);color:#fff;flex:none;padding:0 10px}
 .cd-sm .ui-ic{width:1.2em;height:1.2em;vertical-align:-3px}
+/* ----- 허브 리디자인: 챕터 3칸 세로 선택 · 큰 카드 뽑기 배너 · 간단 메뉴 ----- */
+.story-hub{gap:12px;padding-bottom:16px}
+.story-hub-go{margin-top:0!important;padding:.7rem 1rem!important}
+.hub-ch{display:flex;flex-direction:column;gap:8px;align-items:stretch}
+.hub-ch-arr{align-self:center;width:44px;height:26px;border-radius:999px;background:rgba(15,15,25,.7);border:1px solid rgba(253,230,138,.35);color:#fde68a;font-size:12px}
+.hub-ch-arr:disabled{opacity:.25}
+.hub-ch-slot{position:relative;display:flex;align-items:flex-end;overflow:hidden;border-radius:16px;border:1px solid rgba(255,255,255,.14);background:#14121c;text-align:left;color:#fff;min-width:0}
+.hub-ch-slot.empty{border:none;background:none;height:0}
+.hub-ch-slot.small{height:64px;opacity:.8}
+.hub-ch-slot.big{height:min(42vh,300px);border-color:rgba(253,230,138,.6);box-shadow:0 0 24px rgba(251,191,36,.18)}
+.hub-ch-slot.locked{filter:grayscale(.85) brightness(.6)}
+.hub-ch-img{position:absolute;inset:0;background:center 22%/cover no-repeat}
+.hub-ch-slot::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0) 30%,rgba(0,0,0,.85))}
+.hub-ch-slot.small::after{background:linear-gradient(90deg,rgba(0,0,0,.85),rgba(0,0,0,.35))}
+.hub-ch-txt{position:relative;z-index:1;display:flex;flex-direction:column;padding:10px 14px;min-width:0;max-width:100%}
+.hub-ch-txt small{font-size:.62rem;letter-spacing:.18em;color:#fcd34d}
+.hub-ch-txt b{font-size:1rem;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hub-ch-slot.big .hub-ch-txt b{font-size:1.45rem}
+.hub-ch-txt em{font-style:normal;font-size:.85rem;color:#e7d3a8}
+.hub-ch-txt i{font-style:normal;font-size:.72rem;color:#d4d4d8}
+.hub-ch-slot.small .hub-ch-txt{padding:8px 14px;align-self:center}
+.hub-ch-slot .story-hub-vid{position:absolute;top:8px;right:8px;z-index:2}
+.hub-gacha{position:relative;display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:96px;padding:14px 16px;border-radius:16px;border:1px solid rgba(192,132,252,.6);color:#fff;text-align:left;overflow:hidden;
+  background:linear-gradient(90deg,rgba(10,5,20,.85),rgba(10,5,20,.2)),url(../img/gacha/bg_landscape_1280.webp) center/cover no-repeat,#1e1030;box-shadow:0 0 22px rgba(168,85,247,.25)}
+.hub-gacha-t{display:flex;flex-direction:column;gap:2px}
+.hub-gacha b{font-size:1.4rem;font-weight:900;color:#f5d0fe}
+.hub-gacha small{font-size:.78rem;color:#e9d5ff}
+.hub-gacha .story-badge{position:absolute;top:8px;right:8px}
+.hub-menu{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.hub-menu button{position:relative;display:flex;flex-direction:column;align-items:center;gap:2px;padding:10px 2px;border-radius:14px;background:rgba(15,15,25,.72);border:1px solid rgba(255,255,255,.12);color:#e4e4e7;font-size:.75rem;font-weight:700;word-break:keep-all}
+.hub-menu button span{font-size:1.35rem}
+.hub-menu .story-badge{position:absolute;top:4px;right:6px}
