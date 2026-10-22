@@ -161,7 +161,7 @@ end $$;
 -- 전투 완료(승리): 원래 처리 → 플레이어 경험치 (행동력 × 10 + 첫 클리어 보너스). 결과에 player 추가
 create or replace function public.story_complete_phase(p_chapter int, p_phase int, p_stats jsonb) returns jsonb language plpgsql security definer set search_path = public as $$
 -- phaseE_2 wrapper
-declare uid uuid := auth.uid(); b jsonb; spent int; r jsonb; cfg story_phase_config; xp int; up jsonb;
+declare uid uuid := auth.uid(); b jsonb; spent int; r jsonb; cfg story_phase_config; xp int; up jsonb; drops jsonb := null;
 begin
   if uid is null then raise exception 'login required'; end if;
   select data->'battle' into b from story_progress where user_id = uid;
@@ -171,7 +171,12 @@ begin
   xp := spent * _player_xp_per_stamina() + case when coalesce((r->>'first')::boolean, false) then _player_first_bonus(cfg.type) else 0 end;
   perform _player_sync(uid);
   up := _player_add_xp(uid, xp, true);
-  return r || jsonb_build_object('player', _player_json(uid) || jsonb_build_object('gained_xp', xp, 'levelups', up->'levelups', 'levelup_gold', up->'gold'));
+  -- 재화 드롭 (phaseE_3.sql 의 _story_drops 가 있으면)
+  if to_regprocedure('public._story_drops(uuid,integer,integer,boolean)') is not null then
+    execute 'select public._story_drops($1, $2, $3, $4)' into drops using uid, p_chapter, p_phase, coalesce((r->>'first')::boolean, false);
+  end if;
+  return r || jsonb_build_object('player', _player_json(uid) || jsonb_build_object('gained_xp', xp, 'levelups', up->'levelups', 'levelup_gold', up->'gold'))
+           || case when drops is null then '{}'::jsonb else jsonb_build_object('drops', drops) end;
 end $$;
 
 -- 패배·포기: 진행 중 전투 기록 지우고 행동력 전부 반환. 반환 player_status

@@ -325,3 +325,4 @@ span.story-lvpct { background: rgba(251,191,36,.12); border: 1px solid rgba(251,
 .story-player-row{display:flex;justify-content:center;margin:6px 0 2px}
 .story-pxp{margin-top:12px;font-size:13px;color:#e4e4e7}.story-pxp .bar{height:6px;background:rgba(255,255,255,.12);border-radius:999px;overflow:hidden;max-width:240px;margin:4px auto 0}.story-pxp .bar i{display:block;height:100%;background:#f59e0b}
 .story-plvup{margin-top:6px;color:#fde68a;font-weight:900}
+.story-drops{font-weight:800;color:#fde68a;font-size:14px}.story-drops .vr-cur{white-space:nowrap}

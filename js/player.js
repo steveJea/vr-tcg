@@ -44,5 +44,8 @@
   }
   /** 이후 단계 해금 확인용 (서버가 최종 판단) */
   const unlocked = key => { const s = now(); return !!s && s.level >= (s.unlocks?.[key] ?? Infinity); };
-  window.VRPlayer = { status, now, set, abort, chip, paint, unlocked, mmss, get cost() { return cache?.cost?.story ?? 6; }, _reset() { cache = null; at = 0; } };
+  /** 재화 표시: { gold, blood, shard, soul } → "🪙 +120 · 🩸 +12 · 💠 +1" (0 은 생략) */
+  const CUR_IC = [['gold', '🪙', '골드'], ['blood', '🩸', '순수한 피'], ['shard', '💠', '이상한 조각'], ['soul', '🔥', '각성자의 혼']];
+  const curTxt = c => CUR_IC.filter(([k]) => (c?.[k] | 0) > 0).map(([k, i, n]) => `<span class="vr-cur" title="${n}">${i} +${Number(c[k]).toLocaleString('ko-KR')}</span>`).join(' · ') || '<span class="text-zinc-500">없음</span>';
+  window.VRPlayer = { curTxt, status, now, set, abort, chip, paint, unlocked, mmss, get cost() { return cache?.cost?.story ?? 6; }, _reset() { cache = null; at = 0; } };
 })();
