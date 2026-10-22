@@ -1,0 +1,32 @@
+// supabase/gallery_register_new.sql 검증 (PGlite): NEW 는 갤러리 행이 없던 카드만
+import { readFileSync } from 'fs';
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+let PGlite; try { ({ PGlite } = require('@electric-sql/pglite')); } catch { console.log('SKIP: pglite 없음'); process.exit(0); }
+const db = new PGlite(), U = '00000000-0000-0000-0000-000000000002';
+await db.exec(`create role anon nologin; create role authenticated nologin; create schema auth;
+create table auth.users (id uuid primary key);
+create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claims', true)::jsonb->>'sub', '')::uuid $$;
+grant usage on schema auth to anon, authenticated; grant execute on all functions in schema auth to anon, authenticated; grant usage on schema public to anon, authenticated;
+insert into auth.users values ('${U}');
+create table public.gallery (user_id uuid not null, card_id text not null, count int not null default 0, mvp_count int not null default 0, first_at timestamptz not null default now(), last_at timestamptz not null default now(), primary key (user_id, card_id));
+create table public.story_progress (user_id uuid primary key, data jsonb not null default '{}');
+insert into public.story_progress values ('${U}', '{"owned":[{"uid":"a","id":"100"}]}');`);
+let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++; };
+const f = n => readFileSync(new URL('../supabase/' + n, import.meta.url), 'utf8');
+await db.exec(f('gallery_owned.sql')); await db.exec(f('gallery_register_new.sql')); await db.exec(f('gallery_register_new.sql'));
+const call = async (role, sql) => { await db.exec(`select set_config('request.jwt.claims', '{"sub":"${U}"}', false); set role ${role}`); try { return { rows: (await db.query(sql)).rows }; } catch (e) { return { err: e.message, code: e.code }; } finally { await db.exec('reset role'); } };
+let r = await call('authenticated', `select * from public.gallery_register(array['100','200'], '200') order by card_id`);
+const m = Object.fromEntries(r.rows.map(x => [x.card_id, x]));
+ok(m['100'].is_new === false && m['100'].count === 1, '보유 자동 등록(count 0) 카드: 아케이드 첫 수집 count 1, NEW 아님');
+ok(m['200'].is_new === true && m['200'].count === 1 && m['200'].mvp_count === 1, '행 없던 카드: NEW, MVP +1');
+r = await call('authenticated', `select * from public.gallery_register(array['300'])`);
+ok(/too fast/.test(r.err || ''), '15초 도배 방지 유지');
+await db.exec(`update public.gallery set last_at = now() - interval '1 minute'`);
+r = await call('authenticated', `select * from public.gallery_register(array['200','300'])`);
+if (r.err) console.log('ERR', r.err);
+const m2 = Object.fromEntries(r.rows.map(x => [x.card_id, x]));
+ok(m2['200'].is_new === false && m2['200'].count === 2 && m2['300'].is_new === true, '두 번째 수집 NEW 아님 / 새 카드 NEW');
+r = await call('anon', `select * from public.gallery_register(array['1'])`);
+ok(r.code === '42501', `anon 호출 거부 (${r.code})`);
+console.log(fails ? `${fails} FAIL` : 'ALL PASS'); process.exit(fails ? 1 : 0);

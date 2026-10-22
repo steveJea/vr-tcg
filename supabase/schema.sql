@@ -174,10 +174,10 @@ begin
   end if;
   return query
   insert into public.gallery as g (user_id, card_id, count, mvp_count, first_at, last_at)
-  select uid, x, 1, (x = p_mvp)::int, now(), now() from unnest(ids) x
+  select uid, x, 1, coalesce((x = p_mvp)::int, 0), now(), now() from unnest(ids) x
   on conflict (user_id, card_id) do update
     set count = g.count + 1, mvp_count = g.mvp_count + excluded.mvp_count, last_at = now()
-  returning g.card_id, g.count, g.mvp_count, (g.count = 1);
+  returning g.card_id, g.count, g.mvp_count, (g.xmax = 0);   -- 새로 insert 된 행만 NEW (gallery_register_new.sql)
 end $$;
 
 revoke all on function public.gallery_register(text[], text) from public, anon;

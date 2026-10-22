@@ -158,6 +158,19 @@
       .cutin::after, .cutin .cutin-text::after { display: none; }
       .cutin-img .cutin-media, .cutin .cutin-text { animation: none !important; }
     }
+    /* 카드 정보 공통 (cardTitle·cardTags·cardStats) */
+    .ci-name { font-weight: 900; } .ci-sub { font-size: .72em; font-weight: 600; color: #a1a1aa; }
+    .ci-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 4px; font-size: 11px; justify-content: inherit; }
+    .ci-tag { display: inline-flex; align-items: center; gap: 2px; padding: 1px 6px; border-radius: 999px; background: rgba(255,255,255,.08); color: #d4d4d8; font-weight: 700; white-space: nowrap; }
+    .ci-tag img, .ci-el img, .ci-st img { width: 14px; height: 14px; }
+    .ci-tag img.ui-ic-skill_count, .story-detail-skills img.ui-ic-skill_count { width: 20px; height: 20px; margin: -3px 0; }   /* 16px 이하는 흐림 */
+    .ci-el { font-size: 15px; line-height: 1; display: inline-flex; } .ci-el img { width: 18px; height: 18px; }
+    .ci-stats { display: flex; gap: 10px; margin-top: 6px; font-size: 14px; flex-wrap: wrap; justify-content: inherit; }
+    .ci-st { display: inline-flex; align-items: center; gap: 3px; font-weight: 900; } .ci-st img { width: 18px; height: 18px; }
+    .ci-st.atk b { color: #fb923c; } .ci-st.def b { color: #38bdf8; } .ci-st.hp b { color: #f87171; }
+    .ci-sk > summary { cursor: pointer; list-style: none; } .ci-sk > summary::-webkit-details-marker { display: none; }
+    .ci-sk > summary::after { content: '▾'; font-size: 10px; color: #71717a; margin-left: 2px; } .ci-sk[open] > summary::after { content: '▴'; }
+    .zoom-info .ci-tags, .zoom-info .ci-stats, .gal-dbox .ci-tags, .gal-dbox .ci-stats { justify-content: center; }
     .fx-dmg-crit { font-size: 2.3rem; color: #fde047; text-shadow: 0 0 6px #f59e0b, 0 2px 4px #000, 0 0 18px #facc15; animation: fxCritNum .55s cubic-bezier(.2,1.6,.4,1) forwards; z-index: 42; }
     .fx-dmg-mini { font-size: 1.05rem; }
     @keyframes fxCritNum { 0% { opacity: 0; transform: translate(-50%, -50%) scale(2.2); } 25% { opacity: 1; transform: translate(-50%, -60%) scale(1); } 100% { opacity: 0; transform: translate(-50%, -140%) scale(1.05); } }

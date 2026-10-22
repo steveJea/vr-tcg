@@ -874,6 +874,22 @@ const RARITY = {
   'MYTHIC RARE': { short: 'MR', label: '미식 레어',  cls: 'rar-mr' },
 };
 const rarityOf = c => RARITY[c.grade] || RARITY.NORMAL;
+// ===== 카드 정보 공통 (전투 상세·확대·마이페이지·내 카드·갤러리): 그림 위주, 글자 최소 =====
+/** 지역: 끝의 '구' 제거 (강남구 → 강남), 단 '중구'는 그대로 */
+const regionShort = r => { r = String(r || '').trim(); return r === '중구' || r.length < 2 ? r : r.replace(/구$/, ''); };
+const escA = s => String(s ?? '').replace(/[&<>"']/g, ch => `&#${ch.charCodeAt(0)};`);
+/** 머리줄: 이름 (나이/지역) */
+function cardTitle(c, lead = '') { const a = [c.age, regionShort(c.region)].filter(Boolean).join('/'); return `<span class="ci-name">${lead}${escA(c.name)}</span>${a ? ` <span class="ci-sub">(${escA(a)})</span>` : ''}`; }
+/** 스킬 수 아이콘: 그림순이 img/ui/skill_count.webp (icons.js skill_count), 없으면 📜 */
+/** 태그줄: 등급 약자 · 속성 아이콘 · 스킬 수 · 클래스 + 작은 태그(추가) */
+function cardTags(c, extra = []) {
+  const r = rarityOf(c), e = ELEMENTS[c.class] || ELEMENTS.WIND, n = skillsOf(c.id).length;
+  return `<div class="ci-tags"><span class="rar-badge rar-inline ${r.cls}" title="${r.label}">${r.short}</span><span class="ci-el" title="${e.label}">${icOf(e)}</span>${n ? `<span class="ci-tag" title="스킬 ${n}개">${window.VRIcon?.or?.('skill_count', '📜') || '📜'}${n}</span>` : ''}<span class="ci-tag ci-cls">${escA(c.attribute || '')}</span>${extra.filter(Boolean).map(t => `<span class="ci-tag">${t}</span>`).join('')}</div>`;
+}
+/** ATK/DEF/HP: 아이콘 + 숫자 */
+function cardStats(c, hp = null) {
+  return `<div class="ci-stats"><span class="ci-st atk" title="ATK">${ic('atk', { alt: 'ATK' })}<b>${fmt(c.ATK)}</b></span><span class="ci-st def" title="DEF">${ic('def', { alt: 'DEF' })}<b>${fmt(c.DEF)}</b></span><span class="ci-st hp" title="HP">${ic('hp', { alt: 'HP' })}<b>${hp != null ? fmt(+hp) + '/' : ''}${fmt(c.HP)}</b></span></div>`;
+}
 function cardHTML(c, { hp, size = 'md', dim = false } = {}) {
   const e = ELEMENTS[c.class] || ELEMENTS.WIND;
   const small = size === 'sm';
@@ -1096,18 +1112,10 @@ function showDetail(c, { fromHand = false, hp, unit = null, view = null } = {}) 
     <div class="flex gap-4">
       <div class="relative shrink-0"><img src="${IMG}${c.id}.webp" data-id="${c.id}" class="card-img w-32 md:w-40 aspect-[3/4] object-cover rounded-xl ring-2 ${e.ring}">${window.rarityStars?.(c, c.ex ? 'ex' : 'base', 'rstars-over') || ''}<button type="button" class="zoom-btn absolute bottom-1 right-1" data-zoom="${c.id}"${c.ex ? ` data-ex="${c.ex}" data-name="${String(c.name).replace(/[&"<>]/g, ch => `&#${ch.charCodeAt(0)};`)}"` : ''}${hp != null ? ` data-hp="${hp}"` : ''} title="크게 보기" aria-label="크게 보기">🔍</button></div>
       <div class="flex-1 min-w-0">
-        <div class="text-2xl font-black">${c.name}</div>
-        <div class="text-zinc-400 text-sm"><span class="rar-badge rar-inline ${rarityOf(c).cls}">${rarityOf(c).short}</span> ${c.grade} · 스킬 ${skillsOf(c.id).length}개 · ${c.region} · ${c.age}세</div>
-        <div class="mt-2 ${e.color} font-bold">${icOf(e)} ${e.label} (${c.class})</div>
-        <div class="text-zinc-300 text-sm">타입: ${c.attribute}</div>
-        <div class="mt-2 text-amber-400 font-black text-xl">⚡ ${fmt(c.power)}</div>
-        <div class="text-sky-400 font-bold">코스트 ${c.cost}</div>
+        <div class="text-xl font-black leading-tight">${cardTitle(c)}</div>
+        ${cardTags(c, [`⚡${fmt(c.power)}`, `${ic('mana', { alt: '코스트' })}${c.cost}`])}
+        ${cardStats(c, hp)}
       </div>
-    </div>
-    <div class="grid grid-cols-3 gap-2 mt-4 text-center">
-      <div class="bg-zinc-800 rounded-xl p-2"><div class="text-[10px] text-zinc-400">ATK</div><div class="font-bold text-orange-400">${fmt(c.ATK)}</div></div>
-      <div class="bg-zinc-800 rounded-xl p-2"><div class="text-[10px] text-zinc-400">HP</div><div class="font-bold text-red-400">${hp != null ? fmt(hp) + ' / ' : ''}${fmt(c.HP)}</div></div>
-      <div class="bg-zinc-800 rounded-xl p-2"><div class="text-[10px] text-zinc-400">DEF</div><div class="font-bold text-sky-400">${fmt(c.DEF)}</div></div>
     </div>
     ${skillListHTML(c, unit || view, myTurn)}
     ${fromHand ? `
@@ -1144,10 +1152,10 @@ function skillListHTML(c, unit, myTurn, lv = 1) {
   return head + `<div class="mt-3 space-y-2 max-h-64 overflow-y-auto pr-1">${list.map((s, i) => {
     const st = unit ? skillState(unit, s) : { ok: false, reason: `Lv${s.unlock} 해금` };
     const locked = (unit ? unit.level : lv) < s.unlock;
-    return `<div class="rounded-xl p-2 ${locked ? 'bg-zinc-800/50 opacity-60' : 'bg-zinc-800'}">
-      <div class="flex items-center gap-1.5 flex-wrap"><span class="px-1.5 rounded text-[10px] font-bold ${TYPE_COLOR[s.type] || 'bg-zinc-600'}">${s.type}</span><span class="text-[10px] text-zinc-400">${s.mode === 'active' ? '액티브' : '패시브'}</span><span class="font-bold text-sm">${s.name}</span>
-        <span class="ml-auto text-[10px] text-zinc-400">${locked ? '🔒' : ''}Lv${s.unlock}${s.mode === 'active' ? ` · MP ${s.mp} · 쿨 ${s.cooldown}` : ''}</span></div>
-      <div class="text-[11px] text-zinc-300 mt-0.5">${hpText(s.desc)}${s.note ? ` <span class="text-zinc-500">(${hpText(s.note)})</span>` : ''}</div>
+    return `<div class="rounded-xl p-2 ${locked ? 'bg-zinc-800/50 opacity-60' : 'bg-zinc-800'}"><details class="ci-sk">
+      <summary class="flex items-center gap-1.5 flex-wrap"><span class="px-1.5 rounded text-[10px] font-bold ${TYPE_COLOR[s.type] || 'bg-zinc-600'}">${s.type}</span><span class="text-[10px] text-zinc-400">${s.mode === 'active' ? '액티브' : '패시브'}</span><span class="font-bold text-sm">${s.name}</span>
+        <span class="ml-auto text-[10px] text-zinc-400">${locked ? '🔒' : ''}Lv${s.unlock}${s.mode === 'active' ? ` · MP ${s.mp} · 쿨 ${s.cooldown}` : ''}</span></summary>
+      <div class="text-[11px] text-zinc-300 mt-0.5">${hpText(s.desc)}${s.note ? ` <span class="text-zinc-500">(${hpText(s.note)})</span>` : ''}</div></details>
       ${s.mode === 'active' && mine ? `<button data-skill="${i}" ${st.ok && myTurn ? '' : 'disabled'} class="mt-1 w-full py-1.5 rounded-lg bg-fuchsia-600 hover:bg-fuchsia-500 disabled:opacity-40 text-xs font-bold">${st.ok ? '사용 (공격 대신)' : st.reason}</button>` : ''}
       ${s.mode === 'passive' && unit ? `<div class="text-[10px] mt-0.5 ${locked ? 'text-zinc-500' : 'text-emerald-400'}">${locked ? `Lv${s.unlock}에 해금` : (unit.fired[s.name] ? '발동됨' : '활성')}</div>` : ''}
     </div>`; }).join('')}</div>`;
@@ -1319,7 +1327,7 @@ function openZoom({ src, title, sub = '', stats = '', stars = '' }) {
   if (!ov) { ov = document.createElement('div'); ov.id = 'zoom-view'; document.body.appendChild(ov);
     ov.addEventListener('click', e => { if (!e.target.closest('.zoom-img, .zoom-info') || e.target.closest('.zoom-close')) closeZoom(); }); }
   ov.innerHTML = `<button type="button" class="zoom-close" aria-label="닫기">✕</button>
-    ${stars}<img class="zoom-img" src="${src}" alt="${title}">
+    ${stars}<img class="zoom-img" src="${src}" alt="${String(title).replace(/<[^>]*>/g, '').replace(/"/g, '')}">
     <div class="zoom-info"><div class="text-xl font-black">${title}</div>${sub ? `<div class="text-sm text-zinc-300 mt-0.5">${sub}</div>` : ''}${stats ? `<div class="mt-1 font-bold text-sm flex gap-3 justify-center flex-wrap">${stats}</div>` : ''}</div>`;
   ov.classList.add('open');
 }
@@ -1327,13 +1335,14 @@ function closeZoom() { const ov = $('zoom-view'); if (ov) ov.classList.remove('o
 function zoomFromBtn(b) {
   const c = POOL.find(x => String(x.id) === b.dataset.zoom); if (!c) return;
   const r = rarityOf(c), e = ELEMENTS[c.class] || ELEMENTS.WIND, hp = b.dataset.hp;
-  openZoom({ src: `${IMG}${c.id}.webp`, title: b.dataset.name || c.name, stars: window.rarityStars?.(c, b.dataset.ex ? 'ex' : 'base', 'rstars-lg') || '',   // 스토리 EX 카드: 빨간 별
-    sub: `<span class="rar-badge rar-inline ${r.cls}">${r.short}</span> ${r.label} · ${icOf(e)} ${e.label} · 코스트 ${c.cost}`,
-    stats: `<span class="text-amber-400">⚡${fmt(c.power)}</span><span class="text-orange-400">${ic('atk')} ATK ${fmt(c.ATK)}</span><span class="text-red-400">${ic('hp')} HP ${hp != null ? fmt(+hp) + ' / ' : ''}${fmt(c.HP)}</span><span class="text-sky-400">${ic('def')} DEF ${fmt(c.DEF)}</span>` });
+  openZoom({ src: `${IMG}${c.id}.webp`, stars: window.rarityStars?.(c, b.dataset.ex ? 'ex' : 'base', 'rstars-lg') || '',   // 스토리 EX 카드: 빨간 별
+    title: cardTitle({ ...c, name: b.dataset.name || c.name }),
+    sub: cardTags(c, [`⚡${fmt(c.power)}`, `${ic('mana', { alt: '코스트' })}${c.cost}`]),
+    stats: cardStats(c, hp != null ? +hp : null) });
 }
 // 캡처 단계에서 가로채서 카드 선택/드래그/상세창이 같이 동작하지 않게 함
 ['pointerdown', 'mousedown', 'touchstart'].forEach(t => document.addEventListener(t, e => { if (e.target.closest?.('.zoom-btn')) e.stopPropagation(); }, { capture: true, passive: true }));
 document.addEventListener('click', e => { const b = e.target.closest?.('.zoom-btn'); if (!b) return; e.stopPropagation(); e.preventDefault(); zoomFromBtn(b); }, true);
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('zoom-view')?.classList.contains('open')) { e.stopPropagation(); closeZoom(); } }, true);
 
-window.TCG = { playStinger, showCardInfo, skillsOf, combos, arcadeOpts: ArcadeOpts, openArcadeOpts, playSe, onEnter, checkEvents, showEvent, mvpVoice, get events() { return EVENTS; }, get seOn() { return seOn; }, skillListHTML: (c, lv) => skillListHTML(c, null, false, lv), voiceTest(k) { if (!voiceSet?.has(k)) return false; const a = voiceAudio(k); a.volume = voiceVol; a.currentTime = 0; voiceCur = a; a.play().catch(() => {}); return true; }, get voiceActive() { return voiceActive.size; }, get voice() { return { on: voiceOn, vol: voiceVol, cur: voiceCur && { src: voiceCur.src, paused: voiceCur.paused, t: voiceCur.currentTime }, set: voiceSet && voiceSet.size }; }, openZoom, closeZoom, dupCheck, get errors() { return window.TCG_ERRORS || []; }, cutIn, passiveCutIn, sortedHand, get handSort() { return handSort; }, put: debugPut, castSkill, skillState, get S() { return S; }, RULES, elementMultiplier, calcDamage, canSummon, buildDeck, summon, attack, recall, attackAll, endTurn, canRecall, recallCost, makeUnit, resolveAttack, useAction, canAction, startGame, startStory, cardHTML, get ready() { return POOL.length > 0; }, equipItem, doSacrifice, finish, attackTargets, get POOL() { return POOL; }, render, Stats };
+window.TCG = { cardTitle, cardTags, cardStats, regionShort, playStinger, showCardInfo, skillsOf, combos, arcadeOpts: ArcadeOpts, openArcadeOpts, playSe, onEnter, checkEvents, showEvent, mvpVoice, get events() { return EVENTS; }, get seOn() { return seOn; }, skillListHTML: (c, lv) => skillListHTML(c, null, false, lv), voiceTest(k) { if (!voiceSet?.has(k)) return false; const a = voiceAudio(k); a.volume = voiceVol; a.currentTime = 0; voiceCur = a; a.play().catch(() => {}); return true; }, get voiceActive() { return voiceActive.size; }, get voice() { return { on: voiceOn, vol: voiceVol, cur: voiceCur && { src: voiceCur.src, paused: voiceCur.paused, t: voiceCur.currentTime }, set: voiceSet && voiceSet.size }; }, openZoom, closeZoom, dupCheck, get errors() { return window.TCG_ERRORS || []; }, cutIn, passiveCutIn, sortedHand, get handSort() { return handSort; }, put: debugPut, castSkill, skillState, get S() { return S; }, RULES, elementMultiplier, calcDamage, canSummon, buildDeck, summon, attack, recall, attackAll, endTurn, canRecall, recallCost, makeUnit, resolveAttack, useAction, canAction, startGame, startStory, cardHTML, get ready() { return POOL.length > 0; }, equipItem, doSacrifice, finish, attackTargets, get POOL() { return POOL; }, render, Stats };
