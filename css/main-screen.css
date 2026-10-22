@@ -61,7 +61,7 @@
 .main-banner:disabled { filter: grayscale(.75) brightness(.65); cursor: progress; }
 
 /* 메달 아이콘 줄 */
-.main-medals { display: grid; grid-template-columns: repeat(4, 1fr); gap: .25rem; margin-top: .35rem; }
+.main-medals { display: grid; grid-template-columns: repeat(5, 1fr); gap: .25rem; margin-top: .35rem; }
 .main-medal { display: flex; flex-direction: column; align-items: center; gap: .3rem; background: none; border: 0; padding: .1rem 0; cursor: pointer; color: #fde7b0; transition: transform .12s, filter .15s; }
 .medal-disc { position: relative; width: 60px; height: 60px; border-radius: 50%; display: grid; place-items: center;
   background: radial-gradient(circle at 50% 38%, #1c2c55, #0a1228 72%); box-shadow: 0 4px 10px rgba(0,0,0,.7); }

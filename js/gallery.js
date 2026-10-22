@@ -154,6 +154,7 @@
     $('gal-close').onclick = close;
     $('gal-detail').addEventListener('click', e => {
       const zb = e.target.closest('[data-zsrc]'); if (zb) { zoom(zb.dataset.zsrc, zb.dataset.ztitle, zb.dataset.zsub, zb.dataset.zgrade); return; }
+      const sb2 = e.target.closest('[data-share]'); if (sb2) { shareCard(sb2.dataset.share, sb2); return; }
       const vb = e.target.closest('[data-voice]'); if (vb) { playVoice(vb.dataset.voice); return; }
       if (e.target.id === 'gal-detail' || e.target.closest('.gal-x')) $('gal-detail').classList.add('hidden'); });
     $('gal-grid').addEventListener('click', e => { const t = e.target.closest('[data-cid]'); if (t) detail(t.dataset.cid); });
@@ -217,7 +218,7 @@
     const nextTxt = t >= 4 ? '🔴 최종 등급 달성!' : `다음: ${TIERS[t + 1].e} ${TIERS[t + 1].n} (MVP ${t + 1}회)`;
     const el = $('gal-detail');
     el.innerHTML = `<div class="gal-dbox rar-${s} ${deco}">
-      <button class="gal-x gal-dx" aria-label="닫기">✕</button>
+      <button class="gal-x gal-dx" aria-label="닫기">✕</button><button class="gal-share" data-share="${c.id}" aria-label="이미지로 공유">📤 공유</button>
       <div class="gal-dimg"><img src="${portrait}" alt="${esc(c.name)}" data-zsrc="${portrait}" data-ztitle="${esc(c.name)}" data-zsub="${LABEL[s]}" data-zgrade="${s}" onerror="this.style.visibility='hidden'">${window.rarityStars?.(s, 'base', 'rstars-over') || ''}${crownHtml(t, true)}
         <button class="gal-zbtn" data-zsrc="${portrait}" data-ztitle="${esc(c.name)}" data-zsub="${LABEL[s]}" data-zgrade="${s}" aria-label="크게 보기">🔍</button></div>
       <div class="gal-dname">${esc(c.name)}</div>
@@ -225,6 +226,33 @@
       <div class="gal-rows">${row('수집 횟수', `${o.count}회`)}${row('MVP', o.mvp_count > 0 ? `${IC('crown')} ${o.mvp_count}회` : '아직 없음')}${row('처음 수집', date)}${row('전투력', `<span class="gal-power">⚡ ${Number(c.power || 0).toLocaleString('ko-KR')}</span>`)}${row('HP · ATK · DEF', `${c.HP} · ${c.ATK} · ${c.DEF}`)}</div>
       <div class="gal-vip"><div class="gal-vip-h">${IC('crown')} VIP 보상 <span>${nextTxt}</span></div>${skHtml}${extra.join('')}</div></div>`;
     el.classList.remove('hidden');
+  }
+
+  // --- 이미지 공유 (js/share-card.js). 스킬 이미지는 넣지 않음: 프로필 + 이름·등급·스탯만 ---
+  function shareInfo(id) {
+    const c = cardById(id), o = owned.get(id); if (!c || !o) return null;
+    const s = SHORT[c.grade], t = tierOf(o.mvp_count), d = new Date(o.first_at);
+    return { name: c.name, short: s, label: LABEL[s], portrait: `${IMG}${c.id}.webp`, hp: c.HP, atk: c.ATK, def: c.DEF, power: c.power,
+      count: o.count, mvp: o.mvp_count, crown: t ? { e: TIERS[t].e, n: TIERS[t].n } : null,
+      first: isNaN(d) ? '' : d.toLocaleDateString('ko-KR'), site: location.hostname || 'tcg.mbbs.kr' };
+  }
+  async function shareCard(id, btn) {
+    const info = shareInfo(id); if (!info || !window.VRShareCard) return;
+    const old = btn?.textContent; if (btn) { btn.disabled = true; btn.textContent = '만드는 중...'; }
+    try {
+      const cv = await VRShareCard.render(info);
+      const r = await VRShareCard.share(cv, `vr-abyss-gate_${id}.png`, `${info.name} (${info.short}) · VR: Abyss Gate`);
+      if (btn && r === 'downloaded') { btn.textContent = '✅ 저장됨'; setTimeout(() => { btn.textContent = old; }, 1600); }
+      else if (btn) btn.textContent = old;
+    } catch (e) { console.warn('[gallery] share failed', e); if (btn) btn.textContent = old; alert('이미지를 만들지 못했어요. 잠시 후 다시 시도해 주세요.'); }
+    finally { if (btn) btn.disabled = false; }
+  }
+  /** 마이페이지용 수집률 { have, total, logged } */
+  async function collection() {
+    await loadCards();
+    if (logged()) { try { await fetchOwned(); } catch {} }
+    const have = logged() ? cards.filter(c => owned.has(c.id)).length : 0;
+    return { have, total: cards.length, logged: logged() };
   }
 
   // --- 타이틀 버튼 ---
@@ -238,5 +266,5 @@
   }
   document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', addButton) : addButton();
   setTimeout(flushPending, 4000);
-  window.VRGallery = { open, close, _test: { setOwned: m => { owned = m; }, detail, draw, promoNote, loadCards, loadSkills, cardById } };
+  window.VRGallery = { open, close, collection, shareCard, _test: { shareInfo, setOwned: m => { owned = m; }, detail, draw, promoNote, loadCards, loadSkills, cardById } };
 })();

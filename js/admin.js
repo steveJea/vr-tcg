@@ -1,0 +1,104 @@
+// ===== 관리자 페이지 (admin.html) =====
+// 권한 판정은 서버(supabase/admin.sql 의 security definer RPC)가 함. 이 화면은 결과만 보여 줌:
+// admin_check() 가 admin:false 면 '접근 거부'. 다른 RPC 도 관리자가 아니면 서버가 'forbidden' 으로 거부.
+// anon 키 + 로그인 세션만 사용 (js/cloud.js). service_role 키 없음.
+(() => {
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const M = () => window.__ADMIN_MOCK;
+  const cloud = () => M()?.cloud || window.VRCloud;
+  const rpc = async (name, args) => {
+    if (M()?.rpc) return M().rpc(name, args);
+    const { data, error } = await cloud().sb.rpc(name, args);
+    if (error) throw error; return data;
+  };
+  const fmt = t => t ? new Date(t).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', hour12: false }) + ' KST' : '-';
+  const root = () => $('ad-root');
+  let names = new Map(), users = [], tab = 'users';
+
+  async function loadNames() {
+    try { const t = await (await fetch('data/cards.csv')).text(); const [h, ...r] = t.trim().split(/\r?\n/); const H = h.split(',');
+      const iI = H.indexOf('id'), iN = H.indexOf('name'), iG = H.indexOf('grade');
+      names = new Map(r.map(x => { const v = x.split(','); return [v[iI], { name: v[iN], grade: v[iG] }]; })); } catch {}
+  }
+  const SHORT = { 'NORMAL': 'N', 'RARE': 'R', 'HIGH RARE': 'HR', 'SUPER RARE': 'SR', 'ULTRA RARE': 'UR', 'MYTHIC RARE': 'MR' };
+  const cname = id => names.get(String(id))?.name || id;
+
+  async function waitCloud() {
+    for (let i = 0; i < 100; i++) { const c = cloud(); if (c && (c.ready || c.sb === null && i > 60)) return c; await new Promise(r => setTimeout(r, 100)); }
+    return cloud();
+  }
+  function denied(msg) { root().innerHTML = `<div class="ad-denied" id="ad-denied"><b>접근 거부 (Access denied)</b>${esc(msg || '이 페이지는 관리자만 볼 수 있어요.')}</div>`; }
+
+  async function boot() {
+    const c = await waitCloud();
+    if (!c?.sb && !M()) return denied('로그인 서버에 연결할 수 없어요.');
+    const u = c.user;
+    if (!u) {
+      root().innerHTML = `<div class="ad-denied" id="ad-denied"><b>접근 거부 (Access denied)</b>관리자 계정으로 로그인해 주세요.<br><br><button class="ad-btn" id="ad-login">구글 로그인</button><br><small>로그인 후 메인 화면으로 이동하면 이 주소(admin.html)로 다시 들어오세요.</small></div>`;
+      $('ad-login').onclick = () => c.login(); return;
+    }
+    $('ad-who').textContent = u.email || '';
+    let chk = null; try { chk = await rpc('admin_check'); } catch (e) { return denied(/admin_check/.test(e?.message || '') ? '서버에 관리자 함수(supabase/admin.sql)가 아직 없어요.' : '권한을 확인하지 못했어요.'); }
+    if (!chk?.admin) return denied();
+    await loadNames();
+    render();
+  }
+
+  function render() {
+    root().innerHTML = `<div class="ad-tabs"><button class="ad-btn sub ${tab === 'users' ? 'on' : ''}" data-tab="users">가입 유저</button><button class="ad-btn sub ${tab === 'logs' ? 'on' : ''}" data-tab="logs">관리자 기록</button></div><div id="ad-view"></div>`;
+    root().querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { tab = b.dataset.tab; render(); });
+    tab === 'users' ? renderUsers() : renderLogs();
+  }
+  async function renderUsers(q = '') {
+    const v = $('ad-view');
+    v.innerHTML = `<div class="ad-bar"><input id="ad-q" placeholder="이메일 · 이름 · 닉네임 검색" value="${esc(q)}"><button class="ad-btn" id="ad-search">검색</button></div><div id="ad-list" class="ad-msg">불러오는 중...</div>`;
+    $('ad-search').onclick = () => renderUsers($('ad-q').value.trim());
+    $('ad-q').onkeydown = e => { if (e.key === 'Enter') renderUsers($('ad-q').value.trim()); };
+    try { users = await rpc('admin_list_users', { p_search: q || null, p_limit: 200, p_offset: 0 }) || []; }
+    catch (e) { $('ad-list').innerHTML = `<span class="ad-err">${/forbidden/.test(e?.message) ? '접근 거부 (Access denied)' : esc(e?.message || '불러오기 실패')}</span>`; return; }
+    $('ad-list').className = 'ad-wrap';
+    $('ad-list').innerHTML = `<div style="margin-bottom:6px;opacity:.75">${users.length}명</div><table class="ad-table"><thead><tr><th>이메일</th><th>이름</th><th>닉네임</th><th>가입</th><th>마지막 로그인</th><th>🎟️</th><th>카드</th><th>아케이드</th></tr></thead><tbody>
+      ${users.map(u => `<tr data-uid="${esc(u.id)}"><td>${esc(u.email)}</td><td>${esc(u.name)}</td><td>${esc(u.nickname)}</td><td>${fmt(u.created_at)}</td><td>${fmt(u.last_sign_in_at)}</td><td>${u.tickets}</td><td>${u.cards}</td><td>${u.wins}승 ${u.losses}패${u.draws ? ` ${u.draws}무` : ''}</td></tr>`).join('')}</tbody></table>`;
+    $('ad-list').querySelectorAll('[data-uid]').forEach(tr => tr.onclick = () => openUser(tr.dataset.uid));
+  }
+  async function renderLogs() {
+    const v = $('ad-view'); v.innerHTML = '<div class="ad-msg">불러오는 중...</div>';
+    try {
+      const rows = await rpc('admin_logs', { p_limit: 200 }) || [];
+      v.innerHTML = `<div class="ad-wrap"><table class="ad-table"><thead><tr><th>시각</th><th>관리자</th><th>작업</th><th>대상</th><th>수량</th><th>전→후</th><th>사유</th></tr></thead><tbody>
+        ${rows.map(r => `<tr><td>${fmt(r.created_at)}</td><td>${esc(r.admin_email)}</td><td>${r.action === 'grant_tickets' ? '소환권 지급' : esc(r.action)}</td><td>${esc(r.target_email || r.target_user)}</td><td>${r.amount ?? ''}</td><td>${r.before_val ?? ''} → ${r.after_val ?? ''}</td><td>${esc(r.reason)}</td></tr>`).join('') || '<tr><td colspan="7">기록 없음</td></tr>'}</tbody></table></div>`;
+    } catch (e) { v.innerHTML = `<div class="ad-err">${esc(e?.message)}</div>`; }
+  }
+
+  async function openUser(id) {
+    const m = $('ad-modal'), box = $('ad-detail'); m.classList.remove('hidden'); box.innerHTML = '<div class="ad-msg">불러오는 중...</div>';
+    let d, log;
+    try { [d, log] = await Promise.all([rpc('admin_user_detail', { p_user: id }), rpc('admin_gacha_log', { p_user: id, p_limit: 200 })]); }
+    catch (e) { box.innerHTML = `<div class="ad-err">${esc(e?.message)}</div>`; return; }
+    const owned = d.owned || [], cleared = d.cleared || {}, r = d.record || {};
+    const kv = (k, v) => `<div><span>${k}</span>${v}</div>`;
+    const ownedSorted = owned.slice().sort((a, b) => (b.uid === d.leader) - (a.uid === d.leader) || (b.level | 0) - (a.level | 0));
+    box.innerHTML = `<h2 style="margin:0 0 4px;font-size:17px">${esc(d.name || d.nickname || d.email)}</h2><div style="opacity:.75">${esc(d.email)}</div>
+      <div class="ad-sec"><div class="ad-kv">${kv('가입', fmt(d.created_at))}${kv('마지막 로그인', fmt(d.last_sign_in_at))}${kv('소환권', `<b id="ad-tk">${d.tickets}</b>장`)}${kv('아케이드', `${r.wins | 0}승 ${r.losses | 0}패 ${r.draws | 0}무`)}${kv('스토리', Object.entries(cleared).map(([c, l]) => `챕터${esc(c)} ${(l || []).length}`).join(' · ') || '-')}${kv('갤러리', `${d.gallery?.cards | 0}종 · MVP ${d.gallery?.mvp | 0}`)}${kv('스탯 포인트', esc(d.points))}</div></div>
+      <div class="ad-sec"><h3>🎟️ 소환권 지급</h3><div class="ad-grant"><input type="number" id="ad-amt" min="1" max="1000" value="10"><input type="text" id="ad-reason" maxlength="200" placeholder="사유 (필수, 기록됨)"><button class="ad-btn" id="ad-give">지급</button></div><div id="ad-gmsg" style="margin-top:4px"></div></div>
+      <div class="ad-sec"><h3>보유 카드 (${owned.length}장)</h3><div class="ad-cards">${ownedSorted.map(o => `<span class="ad-chip ${o.uid === d.leader ? 'lead' : ''}">${o.uid === d.leader ? '👑 ' : ''}${esc(SHORT[names.get(String(o.id))?.grade] || '')} ${esc(cname(o.id))} Lv.${o.level | 0}${o.ex ? ` EX${o.ex}` : ''}</span>`).join('') || '없음'}</div></div>
+      <div class="ad-sec"><h3>최근 아케이드 판</h3><div class="ad-wrap"><table class="ad-table"><thead><tr><th>시각</th><th>결과</th><th>턴</th><th>피해</th><th>MVP</th></tr></thead><tbody>${(d.recent || []).map(x => `<tr><td>${fmt(x.created_at)}</td><td>${({ win: '승', lose: '패', draw: '무' })[x.result] || esc(x.result)}</td><td>${x.turns ?? ''}</td><td>${x.damage ?? ''}</td><td>${esc(x.mvp_name)}</td></tr>`).join('') || '<tr><td colspan="5">기록 없음</td></tr>'}</tbody></table></div></div>
+      <div class="ad-sec"><h3>뽑기 기록 (${(log || []).length})</h3><div class="ad-wrap"><table class="ad-table"><thead><tr><th>시각</th><th>종류</th><th>등급</th><th>카드</th></tr></thead><tbody>${(log || []).map(x => `<tr><td>${fmt(x.created_at)}</td><td>${x.kind === 'ticket' ? '소환권' : x.kind === 'daily' ? '매일 뽑기' : esc(x.kind)}</td><td>${esc(SHORT[x.grade] || x.grade)}</td><td>${esc(cname(x.card_id))}</td></tr>`).join('') || '<tr><td colspan="4">기록 없음</td></tr>'}</tbody></table></div></div>`;
+    $('ad-give').onclick = async () => {
+      const amt = +$('ad-amt').value | 0, reason = $('ad-reason').value.trim(), msg = $('ad-gmsg');
+      if (amt < 1 || amt > 1000) { msg.innerHTML = '<span class="ad-err">1~1000장만 지급할 수 있어요</span>'; return; }
+      if (!reason) { msg.innerHTML = '<span class="ad-err">사유를 적어 주세요</span>'; return; }
+      if (!confirm(`${d.email} 에게 소환권 ${amt}장을 지급할까요?`)) return;
+      $('ad-give').disabled = true;
+      try { const res = await rpc('admin_grant_tickets', { p_user: id, p_amount: amt, p_reason: reason }); $('ad-tk').textContent = res.tickets; msg.innerHTML = `<span class="ad-ok">지급 완료: ${res.before} → ${res.tickets}장</span>`; $('ad-reason').value = ''; }
+      catch (e) { msg.innerHTML = `<span class="ad-err">${esc(e?.message)}</span>`; }
+      finally { $('ad-give').disabled = false; }
+    };
+  }
+  function closeModal() { $('ad-modal').classList.add('hidden'); if (tab === 'users') renderUsers($('ad-q')?.value.trim() || ''); }
+  $('ad-modal').addEventListener('click', e => { if (e.target.id === 'ad-modal' || e.target.closest('#ad-close')) closeModal(); });   // 바깥 클릭 = 닫기
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('ad-modal').classList.contains('hidden')) closeModal(); });
+  window.VRAdmin = { boot, openUser };
+  if (!window.__ADMIN_NO_BOOT) boot();
+})();
