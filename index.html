@@ -211,6 +211,7 @@
         <img src="img/ui/main/banner_arcade.webp" srcset="img/ui/main/banner_arcade_600.webp 600w, img/ui/main/banner_arcade.webp 1200w" sizes="(max-width: 520px) 92vw, 460px" alt="" class="main-banner-img" width="1200" height="360" decoding="async">
         <span class="main-banner-text"><b class="main-banner-title">불러오는 중...</b><small>바로 붙는 랜덤 카드 대전</small></span>
       </button>
+      <button id="arcade-opts-btn" class="arcade-opts-btn" type="button" aria-haspopup="dialog">🎛️ 아케이드 설정 <small id="arcade-opts-sum">기본</small></button>
       <div class="main-medals" role="group" aria-label="메뉴">
         <button id="main-rank" class="main-medal" type="button"><span class="medal-disc"><img src="img/ui/rank.webp" alt="" width="64" height="64"></span><span class="medal-label">랭킹</span></button>
         <button id="main-gallery" class="main-medal" type="button"><span class="medal-disc"><img src="img/ui/gallery.webp" alt="" width="64" height="64"></span><span class="medal-label">갤러리</span></button>
@@ -225,10 +226,21 @@
       <div class="flex items-center justify-between mb-3"><h2 id="main-settings-title" class="main-pop-title">설정</h2><button class="main-pop-x" type="button" data-close-settings aria-label="닫기">✕</button></div>
       <div class="set-row"><span class="set-label"><img src="img/ui/opening.webp" alt="" class="ui-ic"> 공격 연출 스킵<small>전투 애니메이션을 빠르게 넘겨요</small></span><button id="main-skip" class="set-toggle" type="button" role="switch" aria-checked="false" aria-label="공격 연출 스킵">OFF</button></div>
       <div class="set-row"><span class="set-label"><img src="img/ui/sound_on.webp" alt="" class="ui-ic" id="main-sound-ic"> 배경음악<small id="main-sound-note">메인·스토리 BGM</small></span><button id="main-sound" class="set-toggle" type="button" role="switch" aria-checked="true" aria-label="배경음악">ON</button></div>
+      <div class="set-row"><span class="set-label">🔔 효과음<small>타격·소환·버튼 소리</small></span><button id="main-se" class="set-toggle" type="button" role="switch" aria-checked="true" aria-label="효과음">ON</button></div>
       <button class="main-btn w-full mt-4" type="button" data-close-settings>닫기</button>
     </div>
   </div>
 </section>
+
+<div id="arcade-opts" class="hidden fixed inset-0 bg-black/80 items-center justify-center z-50 p-4" role="dialog" aria-modal="true" aria-labelledby="arcade-opts-title">
+  <div class="ao-card modal-panel">
+    <div class="flex items-center justify-between mb-2"><h2 id="arcade-opts-title" class="text-lg font-black">🎛️ 아케이드 설정</h2><button class="modal-x w-8 h-8 rounded-full bg-zinc-800 hover:bg-zinc-700" data-ao-close aria-label="닫기">✕</button></div>
+    <div class="ao-sec"><div class="ao-h">등급 룰 <small>양쪽 덱 모두 허용 등급에서만 뽑아요</small></div><div id="ao-presets" class="ao-chips"></div><div id="ao-grades" class="ao-chips mt-1.5"></div><div id="ao-rates" class="ao-note"></div></div>
+    <div class="ao-sec"><div class="ao-h">턴 제한 <small>도달하면 진영 HP·카드 수로 판정</small></div><div id="ao-turns" class="ao-chips"></div></div>
+    <div class="ao-sec"><div class="ao-h flex items-center justify-between">카드 먼저 제거<button id="ao-clear" class="set-toggle" type="button" role="switch" aria-checked="false">OFF</button></div><div class="ao-note">켜면 양쪽 모두 상대 필드 카드를 전부 쓰러뜨린 뒤에만 진영을 공격할 수 있어요 (기본: 상대 필드 3장 이하면 진영 공격 가능)</div></div>
+    <div class="flex gap-2 mt-3"><button id="ao-reset" class="flex-1 py-2.5 rounded-xl bg-zinc-700 hover:bg-zinc-600 font-bold" type="button">기본값</button><button id="ao-start" class="flex-1 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold" type="button">이 설정으로 시작</button></div>
+  </div>
+</div>
 
 <!-- 게임 화면 -->
 <div id="battle-bg" aria-hidden="true"></div>
@@ -243,7 +255,7 @@
       <div id="ai-boss" class="hidden mt-1"></div>
       <div id="ai-syn" class="flex flex-wrap gap-1 mt-1 empty:hidden"></div>
     </div>
-    <div class="flex items-center gap-1 shrink-0 h-10 px-2 rounded-full bg-zinc-800 border border-white/20"><button id="voice-toggle" class="text-base leading-none" title="스킬 보이스"><img src="img/ui/sound_on.webp" alt="소리 켜짐" class="ui-ic ui-ic-sound_on" width="64" height="64"></button><input id="voice-vol" type="range" min="0" max="100" step="5" class="w-14 md:w-20 accent-emerald-400" title="보이스 볼륨" aria-label="보이스 볼륨"></div>
+    <div class="flex items-center gap-1 shrink-0 h-10 px-2 rounded-full bg-zinc-800 border border-white/20"><button id="se-toggle" class="text-base leading-none" title="효과음" aria-label="효과음">🔔</button><button id="voice-toggle" class="text-base leading-none" title="스킬 보이스"><img src="img/ui/sound_on.webp" alt="소리 켜짐" class="ui-ic ui-ic-sound_on" width="64" height="64"></button><input id="voice-vol" type="range" min="0" max="100" step="5" class="w-14 md:w-20 accent-emerald-400" title="보이스 볼륨" aria-label="보이스 볼륨"></div>
     <button id="fx-skip" class="h-10 shrink-0 px-2 rounded-full bg-zinc-800 border border-white/20 hover:border-emerald-400 text-xs font-bold whitespace-nowrap" title="공격 연출을 생략합니다 (연출 중 화면을 누르면 빨리 감기)"><img src="img/ui/opening.webp" alt="연출" class="ui-ic ui-ic-opening" width="64" height="64"> 연출</button>
     <button id="help-btn" class="w-10 h-10 shrink-0 rounded-full bg-zinc-800 border border-white/20 hover:border-emerald-400 font-bold" title="속성 상성">?</button>
   </div>
@@ -340,7 +352,11 @@
       <div class="text-xl font-black pt-3 border-t border-white/10">전투 규칙</div>
       <ul class="list-disc pl-5 text-zinc-300 space-y-1">
         <li>자기 <b>첫 2턴</b>에는 진영을 공격할 수 없어요 (초과 피해도 진영에게 가지 않음)</li>
-        <li>상대 필드에 카드가 <b>4장 이상</b>이면 카드만 공격할 수 있어요. 3장 이하면 진영 직접 공격 가능</li>
+        <li>상대 필드에 카드가 <b>4장 이상</b>이면 카드만 공격할 수 있어요. 3장 이하면 진영 직접 공격 가능 (아케이드 설정 [카드 먼저 제거]를 켜면 상대 카드가 0장일 때만)</li>
+        <li>🚻 <b>성별 피해</b>: 남성 카드가 여성 카드를 공격하면 피해 <b>85%</b>, 여성 카드가 남성 카드를 공격하면 <b>105%</b>, 같은 성별은 100%. 기본 공격·스킬·반격 모두 적용되며, 스킬의 [여성에게]·[남성에게] 추가 피해와 곱해져요 (진영 피해는 그대로)</li>
+        <li>💨 <b>회피</b>: 기본 공격을 받을 때 속성별로 회피해요 — <img src="img/ui/el_wind.webp" alt="바람" class="ui-ic ui-ic-el_wind" width="64" height="64"> 바람 <b>10%</b>, 그 외 속성 <b>4%</b>. 스킬 회피(정치욱 40% 등)와 더해지고 최대 <b>60%</b>. 회피하면 피해·반격 없음 (스킬 공격은 회피 불가)</li>
+        <li>🩸 <b>처치 MP 흡수</b>: 상대 카드를 쓰러뜨린 카드는 상대가 가진 MP의 20%(최소 3)를 흡수해요</li>
+        <li>🎛️ <b>아케이드 설정</b>: 메인 화면에서 등급 룰(N만·HR 이하 등)·턴 제한(10/40/무제한)·카드 먼저 제거를 고를 수 있어요. 카드 등급 확률 N 50% · R 30% · HR 11% · SR 5% · UR 3% · MR 1%</li>
         <li>⚔️ <b>반격</b>: 카드를 공격하면 살아남은 대상이 피해의 <b>50%</b>로 반격해요. 대상을 <b>처치하면 반격 없음</b>, 반격으로는 쓰러지지 않아요 (HP 1 남음)</li>
         <li><img src="img/ui/taunt.webp" alt="도발" class="ui-ic ui-ic-taunt" width="64" height="64"> 도발 카드가 있으면 그 카드부터 공격해야 해요</li>
         <li>XP: 처치 시 처치한 카드 코스트 × (1 + 그 카드 레벨 × 0.2) + 공격할 때마다 5 + 내 턴 종료 시 살아있는 카드마다 4. 최대 <b>Lv10</b> (<img src="img/ui/leader_crown.webp" alt="왕관" class="ui-ic ui-ic-crown" width="64" height="64"> 영웅 카드), 레벨이 오를수록 필요 XP 증가<br><span class="text-zinc-400">Lv2~5: 원본 ATK·HP +10% / Lv6~10: +5%</span></li>

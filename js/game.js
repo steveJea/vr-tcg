@@ -1,4 +1,4 @@
-import { RULES, ELEMENTS, elementMultiplier, calcDamage, canSummon, buildDeck, parseCSV, aiSummonOrder, aiPickTarget, recallCost, canRecall, aiShouldRecall, makeUnit, resolveAttack, refillMana, ACTIONS, canAction, doAction, clearBuff, aiWantShuffle, aiWantBuff, aiWantHeal, aiWantFieldHeal, aiPickItem, endTurnXp, ITEMS, canEquip, equip, attackTargets, canTarget, autoTarget, heroLocked, xpToNext, SKILLS, gainXp, setCardPool, canSacrifice, sacrifice, aiPickSacrifice, aiWantAccel, judgeTimeout, JUDGE_LABEL } from './rules.js';
+import { RULES, ELEMENTS, elementMultiplier, calcDamage, canSummon, buildDeck, parseCSV, aiSummonOrder, aiPickTarget, recallCost, canRecall, aiShouldRecall, makeUnit, resolveAttack, refillMana, ACTIONS, canAction, doAction, clearBuff, aiWantShuffle, aiWantBuff, aiWantHeal, aiWantFieldHeal, aiPickItem, endTurnXp, ITEMS, canEquip, equip, attackTargets, canTarget, autoTarget, heroLocked, xpToNext, SKILLS, gainXp, setCardPool, canSacrifice, sacrifice, aiPickSacrifice, aiWantAccel, judgeTimeout, JUDGE_LABEL, genderMult, GRADES, GRADE_SHORT, allowedGrades, baseEvade } from './rules.js';
 import { setSkillData, setEmitter, initPlayers, placeUnit, turnStart, turnEnd, useSkill, skillState, aiPickSkill, refreshAll, statusIcons, skillsOf, combos, STATUS, SK, maleLure } from './skills.js';
 
 const IMG = 'https://raw.githubusercontent.com/steveJea/vr-ideal-worldcup/main/img/bt_img/';
@@ -54,6 +54,27 @@ const Merc = {
   },
 };
 Merc.clearLegacy();
+// ===== 아케이드 게임 설정 (등급 룰 · 라운드 리미트 · 카드 먼저 제거) =====
+// 기본값은 기존과 동일: 전 등급, 40턴, 카드 먼저 제거 OFF
+const ArcadeOpts = {
+  KEY: 'vrTcgArcadeOpts.v1',
+  DEF: { grades: null, turns: 40, clearFirst: false },
+  TURNS: [10, 40, 0],   // 0 = 무제한
+  PRESETS: [
+    { k: 'all', label: '전체 등급', grades: null },
+    { k: 'n', label: 'N만', grades: ['NORMAL'] },
+    { k: 'lehr', label: 'HR 이하', grades: ['NORMAL', 'RARE', 'HIGH RARE'] },
+    { k: 'gesr', label: 'SR 이상', grades: ['SUPER RARE', 'ULTRA RARE', 'MYTHIC RARE'] },
+    { k: 'nomr', label: 'MR 제외', grades: ['NORMAL', 'RARE', 'HIGH RARE', 'SUPER RARE', 'ULTRA RARE'] },
+  ],
+  load() { try { const o = { ...this.DEF, ...JSON.parse(localStorage.getItem(this.KEY) || '{}') }; if (!this.TURNS.includes(o.turns)) o.turns = 40; if (o.grades && !o.grades.length) o.grades = null; return o; } catch { return { ...this.DEF }; } },
+  save(o) { localStorage.setItem(this.KEY, JSON.stringify(o)); renderArcadeOptsBtn(); },
+  isDefault(o) { return !o.grades && o.turns === 40 && !o.clearFirst; },
+  gradeLabel(o) { if (!o.grades) return '전체 등급'; const p = this.PRESETS.find(x => x.grades && x.grades.length === o.grades.length && x.grades.every(g => o.grades.includes(g))); return p ? p.label : o.grades.map(g => GRADE_SHORT[g]).join('·'); },
+  summary(o) { return `${this.gradeLabel(o)} · ${o.turns ? o.turns + '턴' : '턴 무제한'}${o.clearFirst ? ' · 카드 먼저 제거' : ''}`; },
+};
+/** 현재 판의 턴 제한 (스토리는 기존 규칙, 아케이드는 설정. Infinity = 무제한) */
+const maxTurns = () => S?.maxTurns ?? RULES.MAX_TURNS;
 let S = null;          // 게임 상태
 let selected = null;   // 선택된 공격 유닛 uid
 let uidSeq = 1;
@@ -64,8 +85,8 @@ let fastForward = false;
 const FX_OFF = () => !!(window.TCG_FAST || skipFx || fastForward);
 const AI_DELAY = () => (window.TCG_FAST ? 0 : (skipFx || fastForward) ? 60 : 325);
 
-function newPlayer(name, second, deckOverride = null, hp = RULES.HERO_HP, fieldStart = false) {
-  const deck = deckOverride ? (fieldStart ? [...deckOverride] : shuffleArr(deckOverride)) : buildDeck(POOL);
+function newPlayer(name, second, deckOverride = null, hp = RULES.HERO_HP, fieldStart = false, grades = null) {
+  const deck = deckOverride ? (fieldStart ? [...deckOverride] : shuffleArr(deckOverride)) : buildDeck(POOL, Math.random, grades);
   const n = fieldStart ? 0 : RULES.OPENING_HAND + (second ? RULES.SECOND_PLAYER_BONUS_CARDS : 0);
   return { name, hp, maxHp: hp, deck, hand: deck.splice(0, n), field: [], mana: 0, maxMana: 0, second };
 }
@@ -82,8 +103,12 @@ function startGame(story = null) {
   if (story && typeof story.then === 'function' || story instanceof Event) story = null;
   const first = story?.first || (Math.random() < 0.5 ? 'me' : 'ai');   // 선공 동전 던지기
   const fs = !!story;   // 스토리: 손패 없이 출전 카드 전부 필드에서 시작
-  S = { me: newPlayer('나', first !== 'me', story?.me, story?.meHp, fs), ai: newPlayer(story?.aiName || '적군', first !== 'ai', story?.ai, story?.aiHp, fs), first, story, turn: first, turnNo: 0, totalTurns: 0, myTurns: 0, over: false, busy: false, fxSeen: new Set(), mercBought: 0, mercHired: null, mercOffer: [], log: { dmg: new Map(), total: 0, skills: 0, merc: null, played: new Set(), kills: {} } };
-  S.mercOffer = story ? [] : Merc.roll(POOL, S.me);
+  const ao = story ? ArcadeOpts.DEF : ArcadeOpts.load(), grades = story ? null : allowedGrades(ao);
+  const gPool = grades ? POOL.filter(c => grades.has(c.grade)) : null;
+  S = { me: newPlayer('나', first !== 'me', story?.me, story?.meHp, fs, grades), ai: newPlayer(story?.aiName || '적군', first !== 'ai', story?.ai, story?.aiHp, fs, grades), opts: ao, maxTurns: story ? RULES.MAX_TURNS : (ao.turns || Infinity), first, story, turn: first, turnNo: 0, totalTurns: 0, myTurns: 0, over: false, busy: false, fxSeen: new Set(), mercBought: 0, mercHired: null, mercOffer: [], log: { dmg: new Map(), total: 0, skills: 0, merc: null, played: new Set(), kills: {} } };
+  S.mercOffer = story ? [] : Merc.roll(gPool || POOL, S.me);
+  if (gPool) S.me.pool = S.ai.pool = gPool;   // 패 섞기도 허용 등급에서만
+  S.me.clearFirst = S.ai.clearFirst = !story && !!ao.clearFirst;   // 카드 먼저 제거: 양측 공통 규칙
   // 스토리: 내 진영 없음(일반·보스 공통). 상대 진영은 보스전에만 존재
   S.me.noBase = !!story; S.ai.noBase = story?.win === 'wipe';
   S.me.noActs = S.ai.noActs = !!story;   // 스토리: 마나 가속기·공격력 강화·필드 회복 없음
@@ -94,7 +119,7 @@ function startGame(story = null) {
   setBattleBg(story?.win === 'ko' ? 'boss' : 'normal'); preloadHit();
   { const lbl = $('ai-order').parentElement.firstChild; if (lbl?.nodeType === 3) lbl.textContent = story ? `${story.aiName || '적군'} ` : '🤖 컴퓨터 '; }
   preloadFx([...S.me.deck, ...S.me.hand, ...S.ai.deck, ...S.ai.hand]);
-  selected = null; $('log').innerHTML = '';
+  selected = null; $('log').innerHTML = ''; fxQueue.length = 0;
   $('end-screen').classList.add('hidden'); $('start-screen').classList.add('hidden'); $('game').classList.remove('hidden');
   initPlayers(S.me, S.ai);
   if (fs) {   // 스토리: 양측 카드 전부 필드에 배치 (최대 FIELD_MAX)
@@ -109,11 +134,13 @@ function startGame(story = null) {
       p.deck = [];
     }
     refreshAll(S.me);
+    setTimeout(() => { if (S && !S.over) for (const w of ['me', 'ai']) for (const u of S[w].field) onEnter(w, u); }, 400);   // 출전 카드 등장 컷인·이벤트
     if (S.me.leaderSkill) log(`👑 리더 스킬 [${S.me.leaderSkill.name} · ${S.me.leaderSkill.label}]: ${S.me.leaderSkill.text}. 리더가 쓰러지면 해제되고 아군 진영 HP −${Math.round((S.me.leaderSkill.deathPenalty ?? 0.3) * 100)}%`, 'text-amber-300');
     log(story.win === 'ko' ? '👑 보스전: 보스는 진영 안에서 쓰러지지 않아요. 상대 진영 HP를 0으로!' : '⚔️ 일반전: 상대 카드를 모두 쓰러뜨리세요!', 'text-amber-300');
   }
   if (fs) log('⚔️ 출전 카드가 모두 필드에서 시작합니다 (손패·드로우 없음).', 'text-emerald-400');
-  else log(first === 'me' ? '🪙 동전 던지기: 내가 선공!' : `🪙 동전 던지기: 컴퓨터가 선공! (나는 후공, 시작 손패 +${RULES.SECOND_PLAYER_BONUS_CARDS})`, 'text-emerald-400');
+  if (!story && !ArcadeOpts.isDefault(ao)) log(`🎛️ 게임 설정: ${ArcadeOpts.summary(ao)}`, 'text-amber-300');
+  if (!fs) log(first === 'me' ? '🪙 동전 던지기: 내가 선공!' : `🪙 동전 던지기: 컴퓨터가 선공! (나는 후공, 시작 손패 +${RULES.SECOND_PLAYER_BONUS_CARDS})`, 'text-emerald-400');
   $('me-order').textContent = first === 'me' ? '선공' : '후공';
   $('ai-order').textContent = first === 'ai' ? '선공' : '후공';
   startTurn(first);
@@ -165,8 +192,10 @@ function summon(who, card) {
   p.hand.splice(p.hand.indexOf(card), 1);
   log(`${p.name}: ${card.name} 소환 (코스트 ${card.cost})`);
   if (who === 'me' && S.story) S.log.played.add(String(card.id));   // 스토리: 참전 카드 기록 (EXP 지급용)
-  placeUnit(p, card, makeUnit);
+  const u = placeUnit(p, card, makeUnit);
+  playSe(card.grade === 'MYTHIC RARE' ? 6 : card.grade === 'ULTRA RARE' ? 5 : 2);
   render();
+  onEnter(who, u);
   return { ok: true };
 }
 
@@ -319,17 +348,19 @@ async function attack(who, unit, target, fromBatch = false) {
     const lure = maleLure(unit, o);
     const shown = lure && lure !== target ? lure : target;
     const tEl = shown ? (unitEl(oWho, shown) || heroEl(oWho)) : heroEl(oWho);
+    playSe(7);
     const hit = await withTimeout(lunge(aEl, tEl), 750);
 
     const cls = who === 'me' ? 'text-emerald-300' : 'text-red-300';
     pendingDying = [];
     for (const e of resolveAttack(p, o, unit, target)) {
+      playSe(e.type === 'hit' ? 1 : (e.type === 'hero' || e.type === 'overflow') ? 3 : 0);
       if (e.type === 'hero') { log(`${unit.card.name} → ${o.name} 진영 ${fmt(e.dmg)} 피해`, cls); shake(tEl); hitFx(tEl); dmgNumber(tEl, `-${fmt(e.dmg)}`); }
       else if (e.type === 'hit') {
         const real = e.target || shown;
         const rEl = (real && (unitEl(oWho, real) || unitEl(who, real))) || tEl;
         const orig = shown || null;
-        log(`${unit.card.name} → ${real?.card?.name ?? '?'}${orig && real !== orig ? ` (${orig.card.name} 대신)` : (!orig ? ' (진영 공격 유도)' : '')} ${fmt(e.d1)} 피해${e.mult !== 1 ? ` (속성 ×${e.mult})` : ''}${e.killed ? ', 처치 (반격 없음)' : `, 반격 ${fmt(e.d2)}${e.survived ? ' (HP 1로 버팀)' : ''}`}`, cls);
+        log(`${unit.card.name} → ${real?.card?.name ?? '?'}${orig && real !== orig ? ` (${orig.card.name} 대신)` : (!orig ? ' (진영 공격 유도)' : '')} ${fmt(e.d1)} 피해${e.mult !== 1 ? ` (속성 ×${e.mult})` : ''}${real?.card && genderMult(unit.card, real.card) !== 1 ? ` (성별 ×${genderMult(unit.card, real.card)})` : ''}${e.killed ? ', 처치 (반격 없음)' : `, 반격 ${fmt(e.d2)}${e.survived ? ' (HP 1로 버팀)' : ''}`}`, cls);
         shake(rEl); hitFx(rEl, e.mult > 1 ? 'blood' : 'impact'); dmgNumber(rEl, `-${fmt(e.d1)}`);   // 속성 유리(크리티컬) = 피 튀김
         if (e.d2) { shake(aEl); hitFx(aEl); dmgNumber(aEl, `-${fmt(e.d2)}`, '#fca5a5'); }
       }
@@ -385,7 +416,7 @@ function finish(win, reason) {
   }
   const st = Stats.record(win);
   $('end-title').innerHTML = win === null ? '<span class="text-zinc-200">무승부</span>' : win ? '<span class="text-emerald-400">승리!</span>' : '<span class="text-red-400">패배...</span>';
-  const why = reason === 'ko' ? '진영 붕괴 (KO)' : `${RULES.MAX_TURNS}턴 종료 판정 · ${JUDGE_LABEL[reason]}`;
+  const why = reason === 'ko' ? '진영 붕괴 (KO)' : `${maxTurns()}턴 종료 판정 · ${JUDGE_LABEL[reason]}`;
   const detail = reason === 'ko' ? '' : `<div class="text-sm text-zinc-400 mt-1">진영 HP 나 ${fmt(S.me.hp)} : ${fmt(S.ai.hp)} 상대 · 필드 카드 ${S.me.field.length} : ${S.ai.field.length}</div>`;
   $('end-text').innerHTML = `<div id="end-reason" class="font-bold text-amber-300">${why}</div>${detail}<div class="mt-2">${S.turnNo}라운드 · 아케이드 전적 ${st.wins}승 ${st.losses}패${st.draws ? ` ${st.draws}무` : ''}</div>`;
   try { showEnding(win, reason); } catch (err) { reportError('ending', err); }
@@ -407,7 +438,7 @@ function checkEnd() {
 }
 /** 턴 종료 후: 전체 턴 제한 도달 시 판정 */
 function checkTimeout() {
-  if (S.over || S.totalTurns < RULES.MAX_TURNS) return S.over;
+  if (S.over || S.totalTurns < Math.min(maxTurns(), 400)) return S.over;   // 무제한도 400턴에서 안전 판정
   if (S.story) return finish(false, 'timeout');   // 스토리(일반·보스): 턴 제한 도달 = 패배
   const j = judgeTimeout(S.me, S.ai);
   return finish(j.winner === null ? null : j.winner === S.me, j.reason);
@@ -434,6 +465,8 @@ function pickMvp() {
 function mvpVoice(card) {
   try {
     if (!voiceOn || !voiceSet || !card) return;
+    // 승리 보이스: <id>_9 가 있으면 우선, 없으면 기존처럼 스킬 보이스
+    if (voiceSet.has(`${card.id}_9`)) return playVoiceKey(`${card.id}_9`) ? `${card.id}_9` : undefined;
     const n = skillsOf(card.id).length;
     for (let i = 1; i <= Math.max(n, 3); i++) { const k = `${card.id}_${i}`; if (voiceSet.has(k)) {
       if (voiceCur) { try { voiceCur.pause(); } catch {} }
@@ -525,6 +558,30 @@ function renderVoiceBtn() {
   if (b) { b.innerHTML = ic(voiceOn ? 'sound_on' : 'sound_off'); b.title = voiceOn ? '스킬 보이스 끄기' : '스킬 보이스 켜기'; }
   if (r) { r.value = String(Math.round(voiceVol * 100)); r.disabled = !voiceOn; }
 }
+// ===== 효과음 (SE 시트: 코드 → audio/se/00코드_0n.mp3, 변형 중 무작위) =====
+// 1 맞는 소리 · 2 카드 소환 · 3 본진 타격 · 4 버튼 클릭 · 5 UR 소환 · 6 MR 소환 · 7 공격하는 소리
+const SE_FILES = { 1: 4, 2: 2, 3: 4, 4: 3, 5: 1, 6: 1, 7: 3 };
+const SE_ON_KEY = 'vrTcgSe', SE_VOL = { 1: 0.45, 2: 0.6, 3: 0.6, 4: 0.35, 5: 0.75, 6: 0.8, 7: 0.45 };
+let seOn = localStorage.getItem(SE_ON_KEY) !== '0';
+const seCache = new Map(), seLast = {};
+function playSe(code) {
+  try {
+    if (!seOn || !code || !SE_FILES[code] || window.TCG_FAST) return;
+    const now = performance.now(); if (now - (seLast[code] || 0) < 90) return; seLast[code] = now;
+    const k = `${String(code).padStart(3, '0')}_${String(1 + Math.floor(Math.random() * SE_FILES[code])).padStart(2, '0')}`;
+    let base = seCache.get(k); if (!base) { base = new Audio(`audio/se/${k}.mp3`); base.preload = 'auto'; seCache.set(k, base); }
+    const a = base.paused || base.ended ? base : base.cloneNode();   // 겹쳐 재생 허용
+    a.volume = (SE_VOL[code] || 0.5) * (voiceVol || 0.8); a.currentTime = 0;
+    const pr = a.play(); if (pr?.catch) pr.catch(() => {});
+  } catch {}
+}
+function setSeOn(on) { seOn = !!on; localStorage.setItem(SE_ON_KEY, seOn ? '1' : '0'); renderSeBtn(); }
+function renderSeBtn() {
+  const b = $('se-toggle'); if (b) { b.textContent = seOn ? '🔔' : '🔕'; b.title = seOn ? '효과음 끄기' : '효과음 켜기'; b.setAttribute('aria-pressed', String(seOn)); }
+  const m = $('main-se'); if (m) { m.textContent = seOn ? 'ON' : 'OFF'; m.setAttribute('aria-checked', String(seOn)); m.classList.toggle('on', seOn); }
+}
+// 버튼 클릭음: 모든 화면의 버튼 (연타는 90ms 간격으로 묶음)
+document.addEventListener('pointerdown', e => { const b = e.target.closest?.('button'); if (b && !b.disabled && b.id !== 'se-toggle' && b.id !== 'main-se') playSe(4); }, true);
 /** 스킬 컷인: 스킬 이름 배너 + 연출 이미지(data/fx/<파일>, 16:9, 모바일 세로는 가운데 기준으로 양옆 잘림) */
 const fxLoaded = new Set();
 function preloadFx(cards) {
@@ -560,6 +617,90 @@ async function cutIn(u, name, fx, passive = false) {
   slashImpact(ms);
   await sleep(ms);
   el.className = 'hidden';
+}
+// ===== 등장 컷인 (data/voice/<id>_0 보이스 + data/fx/<id>_0 이미지, 없으면 프로필) · 만남/인연 이벤트 (data/events.json) =====
+let EVENTS = { entry: { fx: [] }, events: [] };
+fetch('data/events.json').then(r => r.ok ? r.json() : null).then(d => { if (d) EVENTS = { entry: { fx: [], ...(d.entry || {}) }, events: Array.isArray(d.events) ? d.events : [] }; }).catch(() => {});
+function playVoiceKey(k) {
+  try {
+    if (!voiceOn || !voiceSet?.has(k)) return null;
+    if (voiceCur) { try { voiceCur.pause(); voiceCur.currentTime = 0; } catch {} }
+    const a = voiceAudio(k); a.volume = voiceVol; a.currentTime = 0; voiceCur = a;
+    const pr = a.play(); if (pr?.catch) pr.catch(() => {}); return a;
+  } catch { return null; }
+}
+const fxQueue = []; let fxQueueRun = false;
+async function runFxQueue() {
+  if (fxQueueRun) return; fxQueueRun = true;
+  try { while (fxQueue.length) { const job = fxQueue.shift(); try { await job(); } catch (err) { reportError('fxQueue', err); } } } finally { fxQueueRun = false; }
+}
+/** 카드가 필드에 나왔을 때: 등장 컷인(있으면) → 이벤트 확인 */
+function onEnter(who, u) {
+  if (!S || !u) return;
+  const id = String((u.base || u.card).id);
+  if (voiceSet?.has(`${id}_0`) && !S.fxSeen.has(`entry:${u.uid}`)) {
+    S.fxSeen.add(`entry:${u.uid}`);
+    fxQueue.push(() => entryCutIn(u, id)); runFxQueue();
+  }
+  checkEvents();
+}
+async function entryCutIn(u, id) {
+  if (!S || S.over) return;
+  playVoiceKey(`${id}_0`);
+  if (FX_OFF()) return;
+  const el = $('cutin');
+  const img = (EVENTS.entry.fx || []).map(String).includes(id) ? `data/fx/${id}_0.webp` : `${IMG}${id}.webp`;
+  el.innerHTML = `<img src="${img}" class="cutin-media ${img.startsWith('data/') ? '' : 'cutin-portrait'}" alt="" onerror="this.remove()"><div class="cutin-text"><div class="text-[11px] md:text-xs text-zinc-200">${u.owner.name} · 등장</div><div class="text-xl md:text-3xl font-black tracking-tight">${escHtml(u.card.name)}</div></div>`;
+  const ms = cutinMs(1300);
+  el.style.setProperty('--dur', `${ms}ms`);
+  el.className = 'hidden'; void el.offsetWidth;
+  el.className = `cutin cutin-img cutin-entry fixed left-0 right-0 z-40 pointer-events-none text-center ${whoOf(u.owner) === 'me' ? 'cutin-me' : 'cutin-ai'}`;
+  slashImpact(ms);
+  await sleep(ms);
+  if (el.classList.contains('cutin-entry')) el.className = 'hidden';
+}
+const fieldIds = p => new Set(p.field.map(x => String((x.base || x.card).id)));
+/** 이벤트 조건 확인 (게임당 이벤트별 1회) */
+function checkEvents() {
+  if (!S || S.over) return;
+  S.evSeen ||= new Set();
+  const A = fieldIds(S.me), B = fieldIds(S.ai);
+  const has = (set, ids) => ids.some(x => set.has(String(x)));
+  for (const ev of EVENTS.events) {
+    if (!ev?.id || S.evSeen.has(ev.id)) continue;
+    let ok = false;
+    if (ev.type === 'encounter' && Array.isArray(ev.sides) && ev.sides.length === 2) {
+      const [x, y] = ev.sides; ok = (has(A, x) && has(B, y)) || (has(A, y) && has(B, x));
+    } else if (ev.type === 'combo') {
+      const c = combos().find(c => c.name === ev.combo); if (c) ok = c.cards.every(id => A.has(String(id))) || c.cards.every(id => B.has(String(id)));
+    }
+    if (!ok) continue;
+    S.evSeen.add(ev.id);
+    log(`🎬 이벤트: ${ev.title || ev.id}`, 'text-pink-300 font-bold');
+    fxQueue.push(() => showEvent(ev)); runFxQueue();
+  }
+}
+/** 이벤트 연출: 이미지 + 음성 + 짧은 대화. 탭하면 다음 대사, 마지막 대사 뒤 탭/자동으로 닫힘 */
+function showEvent(ev) {
+  if (window.TCG_FAST) return Promise.resolve();
+  return new Promise(resolve => {
+    let el = $('event-layer'); if (!el) { el = document.createElement('div'); el.id = 'event-layer'; document.body.appendChild(el); }
+    const lines = Array.isArray(ev.lines) ? ev.lines : [];
+    let i = 0, done = false, timer = null, audio = null;
+    if (ev.voice && voiceOn) { try { if (voiceCur) voiceCur.pause(); audio = new Audio(ev.voice); audio.volume = voiceVol; trackVoice(audio); voiceCur = audio; audio.play().catch(() => {}); } catch {} }
+    const close = () => { if (done) return; done = true; clearTimeout(timer); el.className = 'hidden'; el.innerHTML = ''; try { audio?.pause(); } catch {} resolve(); };
+    const draw = () => {
+      const L = lines[i];
+      el.querySelector('.ev-line').innerHTML = L ? `${L.who && L.who !== 'NA' ? `<b>${escHtml(L.who)}</b>` : ''}<span class="${L.who === 'NA' ? 'ev-na' : ''}">${escHtml(L.text || '')}</span>` : '';
+      el.querySelector('.ev-step').textContent = lines.length ? `${i + 1}/${lines.length} · 탭하여 계속` : '탭하여 닫기';
+      clearTimeout(timer); timer = setTimeout(next, FX_OFF() ? 1600 : 2600);
+    };
+    const next = () => { if (++i >= lines.length) close(); else draw(); };
+    el.className = 'ev-layer';
+    el.innerHTML = `<div class="ev-panel"><div class="ev-title">🎬 ${escHtml(ev.title || '')}</div>${ev.image ? `<img class="ev-img" src="${ev.image}" alt="" onerror="this.remove()">` : ''}<div class="ev-line"></div><div class="ev-step"></div><button type="button" class="ev-skip">건너뛰기 ⏭</button></div>`;
+    el.onclick = e => { e.stopPropagation(); if (e.target.closest('.ev-skip')) close(); else next(); };
+    if (!lines.length) { timer = setTimeout(close, 4000); el.querySelector('.ev-step').textContent = '탭하여 닫기'; } else draw();
+  });
 }
 /** 패시브 발동 연출: 카드별·스킬별 게임당 첫 발동만 큰 이미지(비동기, 턴 진행을 막지 않음), 이후는 작은 글자만 */
 let passiveTimer = null;
@@ -614,8 +755,8 @@ function onEngine(e) {
   switch (e.type) {
     case 'skill': log(`${e.unit.owner.name}: ${nm(e.unit)} ⚡[${e.skill.name}] (MP ${e.skill.mp})`, 'text-fuchsia-300'); break;
     case 'passive': log(`${e.unit.owner.name}: ${nm(e.unit)} ✨[${e.name}]${e.text ? ' — ' + e.text : ''}`, 'text-fuchsia-200'); if (!FX_OFF()) { dmgNumber(uEl(e.unit), `✨${e.name}`, '#f0abfc'); passiveCutIn(e.unit, e.name); } break;
-    case 'dmg': { const el = uEl(e.unit); shake(el); if (typeof e.dmg !== 'number' || e.dmg > 0) hitFx(el, 'blood'); dmgNumber(el, typeof e.dmg === 'number' ? `-${fmt(e.dmg)}` : e.dmg); break; }
-    case 'hero': { const el = heroEl(whoOf(e.p)); shake(el); if (e.dmg > 0) hitFx(el, 'blood'); dmgNumber(el, `-${fmt(e.dmg)}`, e.kind === 'self' ? '#fca5a5' : undefined); log(`${e.p.name} 본진 ${fmt(e.dmg)} 피해${e.kind === 'self' ? ' (자기 공격)' : ''}`, 'text-orange-300'); break; }
+    case 'dmg': { playSe(1); const el = uEl(e.unit); shake(el); if (typeof e.dmg !== 'number' || e.dmg > 0) hitFx(el, 'blood'); dmgNumber(el, typeof e.dmg === 'number' ? `-${fmt(e.dmg)}` : e.dmg); break; }
+    case 'hero': { if (e.dmg > 0) playSe(3); const el = heroEl(whoOf(e.p)); shake(el); if (e.dmg > 0) hitFx(el, 'blood'); dmgNumber(el, `-${fmt(e.dmg)}`, e.kind === 'self' ? '#fca5a5' : undefined); log(`${e.p.name} 본진 ${fmt(e.dmg)} 피해${e.kind === 'self' ? ' (자기 공격)' : ''}`, 'text-orange-300'); break; }
     case 'heal': dmgNumber(uEl(e.unit), `+${fmt(e.amt)}`, '#6ee7b7'); break;
     case 'heroHeal': dmgNumber(heroEl(whoOf(e.p)), `+${fmt(e.amt)}`, '#6ee7b7'); log(`${e.p.name} 본진 HP +${fmt(e.amt)}`, 'text-emerald-300'); break;
     case 'leaderDown': {
@@ -726,15 +867,16 @@ function renderHero(who) {
 }
 
 // ===== 내 남은 턴 표시 =====
-const MY_MAX = RULES.MAX_TURNS / 2;
-function myTurnsLeft() { return Math.max(0, MY_MAX - S.myTurns + (S.turn === 'me' && !S.over ? 1 : 0)); }
+const myMax = () => maxTurns() / 2;
+function myTurnsLeft() { return Math.max(0, myMax() - S.myTurns + (S.turn === 'me' && !S.over ? 1 : 0)); }
 function renderTurnsLeft() {
   const el = $('my-turns'); if (!el) return;
+  if (!isFinite(myMax())) { el.className = 'turns-ok'; $('my-turns-n').textContent = '∞'; $('my-turns-max').textContent = ''; $('my-turns-pips').innerHTML = ''; return; }
   const n = myTurnsLeft(), lvl = n <= 2 ? 'crit' : n <= 5 ? 'warn' : 'ok';
   el.className = `turns-${lvl}`;
-  $('my-turns-n').textContent = n; $('my-turns-max').textContent = '/' + MY_MAX;
+  $('my-turns-n').textContent = n; $('my-turns-max').textContent = '/' + myMax();
   $('my-turns-pips').className = `mt-1 turns-${lvl}-p`;
-  $('my-turns-pips').innerHTML = Array.from({ length: MY_MAX }, (_, i) => `<i class="${i < n ? 'on' : ''}"></i>`).join('');
+  $('my-turns-pips').innerHTML = Array.from({ length: myMax() }, (_, i) => `<i class="${i < n ? 'on' : ''}"></i>`).join('');
 }
 function lastTurnToast() {
   const t = document.createElement('div');
@@ -750,7 +892,7 @@ function render() {
   if (!S) return;
   renderHero('me'); renderHero('ai');
   const myTurn = S.turn === 'me' && !S.over && !S.busy;
-  const tl = `${Math.min(S.totalTurns, RULES.MAX_TURNS)}/${RULES.MAX_TURNS}턴`;
+  const tl = isFinite(maxTurns()) ? `${Math.min(S.totalTurns, maxTurns())}/${maxTurns()}턴` : `${S.totalTurns}턴 (무제한)`;
   $('turn-info').textContent = S.over ? '게임 종료' : (S.turn === 'me' ? `내 턴 · ${tl}` : `상대 턴 · ${tl}...`);
   $('end-turn').disabled = !myTurn;
   for (const type of Object.keys(ACTIONS)) {
@@ -1032,6 +1174,9 @@ $('help-btn').onclick = () => showModal('help');
 $('main-help').onclick = () => showModal('help');
 $('main-skip').onclick = () => { skipFx = !skipFx; localStorage.setItem(SKIP_KEY, skipFx ? '1' : '0'); renderSkipBtn(); };
 $('voice-toggle').onclick = e => { e.stopPropagation(); voiceOn = !voiceOn; localStorage.setItem(VOICE_ON_KEY, voiceOn ? '1' : '0'); if (!voiceOn && voiceCur) try { voiceCur.pause(); } catch {} renderVoiceBtn(); };
+$('se-toggle')?.addEventListener('click', e => { e.stopPropagation(); setSeOn(!seOn); });
+$('main-se')?.addEventListener('click', e => { e.stopPropagation(); setSeOn(!seOn); });
+renderSeBtn();
 $('voice-vol').oninput = e => { voiceVol = (+e.target.value || 0) / 100; localStorage.setItem(VOICE_VOL_KEY, String(voiceVol)); if (voiceCur) voiceCur.volume = voiceVol; };
 $('voice-vol').onclick = e => e.stopPropagation();
 renderVoiceBtn();
@@ -1055,6 +1200,42 @@ $('story-giveup')?.addEventListener('click', giveUp);
 function startStory(cfg) { hideModal('detail'); startGame(cfg); }
 $('home-btn').onclick = () => { $('end-screen').classList.add('hidden'); $('game').classList.add('hidden'); $('start-screen').classList.remove('hidden'); renderStats(); };
 renderStats();
+// ===== 아케이드 설정 팝업 =====
+function renderArcadeOptsBtn() {
+  const o = ArcadeOpts.load(), el = $('arcade-opts-sum'); if (!el) return;
+  el.textContent = ArcadeOpts.isDefault(o) ? '기본' : ArcadeOpts.summary(o);
+  $('arcade-opts-btn')?.classList.toggle('on', !ArcadeOpts.isDefault(o));
+}
+function openArcadeOpts() {
+  let o = ArcadeOpts.load();
+  const draw = () => {
+    const sel = o.grades ? new Set(o.grades) : new Set(GRADES);
+    $('ao-presets').innerHTML = ArcadeOpts.PRESETS.map(p => `<button type="button" class="ao-chip ${ArcadeOpts.gradeLabel(o) === p.label ? 'on' : ''}" data-pre="${p.k}">${p.label}</button>`).join('');
+    $('ao-grades').innerHTML = GRADES.map(g => `<button type="button" class="ao-chip ao-g rar-${GRADE_SHORT[g].toLowerCase()} ${sel.has(g) ? 'on' : 'off'}" data-g="${g}" aria-pressed="${sel.has(g)}">${GRADE_SHORT[g]}</button>`).join('');
+    const tot = [...sel].reduce((t, g) => t + RULES.DRAW_RATES[g], 0);
+    $('ao-rates').textContent = '뽑기 확률: ' + GRADES.filter(g => sel.has(g)).map(g => `${GRADE_SHORT[g]} ${(RULES.DRAW_RATES[g] / tot * 100).toFixed(tot < 1 ? 1 : 0)}%`).join(' · ') + (sel.has('MYTHIC RARE') ? ' (MR은 덱당 최대 1장)' : '');
+    $('ao-turns').innerHTML = ArcadeOpts.TURNS.map(t => `<button type="button" class="ao-chip ${o.turns === t ? 'on' : ''}" data-t="${t}">${t ? t + '턴' : '무제한'}${t === 40 ? ' (기본)' : ''}</button>`).join('');
+    const c = $('ao-clear'); c.textContent = o.clearFirst ? 'ON' : 'OFF'; c.setAttribute('aria-checked', String(!!o.clearFirst)); c.classList.toggle('on', !!o.clearFirst);
+    ArcadeOpts.save(o);
+  };
+  const m = $('arcade-opts');
+  m.onclick = e => {
+    const b = e.target.closest('button');
+    if (e.target === m || e.target.closest('[data-ao-close]')) { hideModal('arcade-opts'); return; }
+    if (!b) return;
+    if (b.dataset.pre) { const p = ArcadeOpts.PRESETS.find(x => x.k === b.dataset.pre); o.grades = p.grades ? [...p.grades] : null; }
+    else if (b.dataset.g) { const cur = new Set(o.grades || GRADES); cur.has(b.dataset.g) ? cur.delete(b.dataset.g) : cur.add(b.dataset.g); if (!cur.size) return; o.grades = cur.size === GRADES.length ? null : GRADES.filter(g => cur.has(g)); }
+    else if (b.dataset.t != null) o.turns = Number(b.dataset.t);
+    else if (b.id === 'ao-clear') o.clearFirst = !o.clearFirst;
+    else if (b.id === 'ao-reset') o = { ...ArcadeOpts.DEF };
+    else if (b.id === 'ao-start') { hideModal('arcade-opts'); startGame(); return; }
+    else return;
+    draw();
+  };
+  draw(); showModal('arcade-opts');
+}
+$('arcade-opts-btn')?.addEventListener('click', e => { e.stopPropagation(); playSe(4); openArcadeOpts(); });
+renderArcadeOptsBtn();
 window.addEventListener('vr:user', renderStats);   // 로그인·로그아웃·계정 변경 시 바로 갱신
 
 (async () => {
@@ -1100,4 +1281,4 @@ function zoomFromBtn(b) {
 document.addEventListener('click', e => { const b = e.target.closest?.('.zoom-btn'); if (!b) return; e.stopPropagation(); e.preventDefault(); zoomFromBtn(b); }, true);
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('zoom-view')?.classList.contains('open')) { e.stopPropagation(); closeZoom(); } }, true);
 
-window.TCG = { skillsOf, combos, skillListHTML: (c, lv) => skillListHTML(c, null, false, lv), voiceTest(k) { if (!voiceSet?.has(k)) return false; const a = voiceAudio(k); a.volume = voiceVol; a.currentTime = 0; voiceCur = a; a.play().catch(() => {}); return true; }, get voiceActive() { return voiceActive.size; }, get voice() { return { on: voiceOn, vol: voiceVol, cur: voiceCur && { src: voiceCur.src, paused: voiceCur.paused, t: voiceCur.currentTime }, set: voiceSet && voiceSet.size }; }, openZoom, closeZoom, dupCheck, get errors() { return window.TCG_ERRORS || []; }, cutIn, passiveCutIn, sortedHand, get handSort() { return handSort; }, put: debugPut, castSkill, skillState, get S() { return S; }, RULES, elementMultiplier, calcDamage, canSummon, buildDeck, summon, attack, recall, attackAll, endTurn, canRecall, recallCost, makeUnit, resolveAttack, useAction, canAction, startGame, startStory, cardHTML, get ready() { return POOL.length > 0; }, equipItem, doSacrifice, finish, attackTargets, get POOL() { return POOL; }, render, Stats };
+window.TCG = { skillsOf, combos, arcadeOpts: ArcadeOpts, openArcadeOpts, playSe, onEnter, checkEvents, showEvent, mvpVoice, get events() { return EVENTS; }, get seOn() { return seOn; }, skillListHTML: (c, lv) => skillListHTML(c, null, false, lv), voiceTest(k) { if (!voiceSet?.has(k)) return false; const a = voiceAudio(k); a.volume = voiceVol; a.currentTime = 0; voiceCur = a; a.play().catch(() => {}); return true; }, get voiceActive() { return voiceActive.size; }, get voice() { return { on: voiceOn, vol: voiceVol, cur: voiceCur && { src: voiceCur.src, paused: voiceCur.paused, t: voiceCur.currentTime }, set: voiceSet && voiceSet.size }; }, openZoom, closeZoom, dupCheck, get errors() { return window.TCG_ERRORS || []; }, cutIn, passiveCutIn, sortedHand, get handSort() { return handSort; }, put: debugPut, castSkill, skillState, get S() { return S; }, RULES, elementMultiplier, calcDamage, canSummon, buildDeck, summon, attack, recall, attackAll, endTurn, canRecall, recallCost, makeUnit, resolveAttack, useAction, canAction, startGame, startStory, cardHTML, get ready() { return POOL.length > 0; }, equipItem, doSacrifice, finish, attackTargets, get POOL() { return POOL; }, render, Stats };

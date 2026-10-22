@@ -40,7 +40,30 @@ export const RULES = {
   HEAL_AMOUNT: 200,
   BUFF_COST: 30,          // 공격력 강화: 내 필드 카드 이번 턴 ATK +20%
   BUFF_RATIO: 0.2,
+  // 아케이드 등급별 뽑기 확률 (덱 30장 슬롯마다 등급 추첨, 등급 제한 시 남은 등급끼리 재정규화)
+  DRAW_RATES: { 'NORMAL': 0.50, 'RARE': 0.30, 'HIGH RARE': 0.11, 'SUPER RARE': 0.05, 'ULTRA RARE': 0.03, 'MYTHIC RARE': 0.01 },
+  MAX_MYTHIC_PER_DECK: 1,
+  // 성별 간 피해 (모든 모드): 남→여 85%, 여→남 105%, 동성 100%. 스킬의 [여성에게]/[남성에게] 추가 %와 곱연산
+  GENDER_ON: true, GENDER_M2F: 0.85, GENDER_F2M: 1.05,
+  // 기본 공격 회피 (속성별 기본값, 스킬 회피와 합산, 상한)
+  EVADE_ON: true, EVADE_BASE: { WIND: 0.10 }, EVADE_DEFAULT: 0.04, EVADE_CAP: 0.6,
 };
+export const GRADES = ['NORMAL', 'RARE', 'HIGH RARE', 'SUPER RARE', 'ULTRA RARE', 'MYTHIC RARE'];
+export const GRADE_SHORT = { 'NORMAL': 'N', 'RARE': 'R', 'HIGH RARE': 'HR', 'SUPER RARE': 'SR', 'ULTRA RARE': 'UR', 'MYTHIC RARE': 'MR' };
+/** 성별 피해 배율 (공격 카드 → 대상 카드). 영웅·성별 미상은 1 */
+export function genderMult(att, def) {
+  if (!RULES.GENDER_ON || !att || !def) return 1;
+  if (att.gender === 'MALE' && def.gender === 'FEMALE') return RULES.GENDER_M2F;
+  if (att.gender === 'FEMALE' && def.gender === 'MALE') return RULES.GENDER_F2M;
+  return 1;
+}
+/** 속성 기본 회피율 */
+export const baseEvade = card => !RULES.EVADE_ON || !card ? 0 : (RULES.EVADE_BASE[card.class] ?? RULES.EVADE_DEFAULT);
+/** 아케이드 옵션 → 허용 등급 집합 (null = 전체) */
+export function allowedGrades(opts) {
+  const g = opts?.grades; if (!g || !g.length || g.length >= GRADES.length) return null;
+  return new Set(g);
+}
 
 export const ELEMENTS = {
   FIRE:  { label: '불',   icon: '🔥', img: 'el_fire', color: 'text-orange-400', ring: 'ring-orange-500' },
@@ -64,11 +87,16 @@ export function elementMultiplier(att, def) {
   return 1;
 }
 
-/** 데미지 = max(1, floor(ATK × DAMAGE_MULT × 속성배율 − 대상DEF/2)). 영웅은 DEF 0, 속성 없음. */
+/** 데미지 = max(1, floor(ATK × DAMAGE_MULT × 속성배율 − 대상DEF/2)). 영웅은 DEF 0, 속성 없음.
+ *  성별 배율은 여기서 곱하지 않고 damageUnit(실제 적용 지점)에서 모든 카드 간 피해에 곱함. 예측용은 calcDamageG */
 export function calcDamage(attacker, target) {
   const mult = target ? elementMultiplier(attacker.class, target.class) : 1;
   const def = target ? target.DEF : 0;
   return Math.max(1, Math.floor(attacker.ATK * RULES.DAMAGE_MULT * mult - def / 2));
+}
+/** 성별 배율까지 반영한 예상 피해 (AI·일괄공격 처치 예측용) */
+export function calcDamageG(attacker, target) {
+  return Math.max(1, Math.round(calcDamage(attacker, target) * (target ? genderMult(attacker, target) : 1)));
 }
 
 /** 소환 가능 여부와 사유 */
@@ -169,6 +197,7 @@ export function attackTargets(me, opp, attacker = null) {
   const taunts = field.filter(u => hasSkill(u, 'taunt'));
   if (taunts.length) return { units: taunts, hero: false, reason: '도발 카드부터 공격해야 합니다' };
   if (opp.noBase) return { units: field, hero: false, reason: '일반전: 상대 카드를 모두 쓰러뜨리세요' };
+  if (me.clearFirst && field.length) return { units: field, hero: false, reason: '카드 먼저 제거: 상대 카드를 모두 쓰러뜨린 뒤 진영을 공격할 수 있어요' };
   if (heroLocked(me)) return { units: field, hero: false, reason: `첫 ${RULES.HERO_LOCK_TURNS}턴에는 진영을 공격할 수 없습니다` };
   if (field.length >= RULES.HERO_GUARD_FIELD) return { units: field, hero: false, reason: `상대 필드에 ${RULES.HERO_GUARD_FIELD}장 이상 있으면 카드만 공격할 수 있습니다` };
   return { units: field, hero: true, reason: '' };
@@ -182,7 +211,7 @@ export function canTarget(me, opp, target, attacker = null) {
 export function pickFieldTarget(u, units) {
   let best, bestScore = -Infinity;
   for (const t of units) {
-    const kill = calcDamage(u.card, t.card) >= t.hp, die = false;   // 반격으로는 쓰러지지 않음
+    const kill = calcDamageG(u.card, t.card) >= t.hp, die = false;   // 반격으로는 쓰러지지 않음
     const score = (kill ? 2e6 : 0) + (kill && !die ? 1e6 : 0) + (kill ? t.card.cost * 1000 : 0) - t.hp;
     if (score > bestScore) { bestScore = score; best = t; }
   }
@@ -376,12 +405,13 @@ export function doAction(type, p) {
     const own = new Set([...p.deck, ...p.hand, ...p.field.map(u => u.base), ...(p.grave || [])].map(c => c.id));
     let abyss = [...p.deck, ...p.field.map(u => u.base)].filter(c => c.class === 'ABYSS').length;
     const fresh = [];
-    for (const c of shuffle(CARD_POOL.length ? CARD_POOL : [...p.deck, ...p.hand])) {
+    for (const c of shuffle(p.pool?.length ? p.pool : CARD_POOL.length ? CARD_POOL : [...p.deck, ...p.hand])) {   // p.pool: 아케이드 등급 제한 시 허용 카드만
       if (fresh.length >= n) break;
       if (own.has(c.id) || c.grade === 'MYTHIC RARE') continue;
       if (c.class === 'ABYSS') { if (abyss >= RULES.MAX_ABYSS_PER_DECK) continue; abyss++; }
       fresh.push(c); own.add(c.id);
     }
+    for (const c of p.hand) { if (fresh.length >= n) break; if (!fresh.includes(c)) fresh.push(c); }   // 허용 카드가 부족하면(등급 제한) 기존 손패로 채움
     p.hand = fresh;
     return { ok: true, n };
   }
@@ -433,29 +463,29 @@ export function aiWantHeal(me) { return canAction('heal', me).ok && me.hp <= (me
 
 export function shuffle(a) { a = [...a]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
 
-/** 등급 가중 30장 덱: DECK_COMPOSITION대로 뽑고, MYTHIC_CHANCE 확률로 NORMAL 1장을 MYTHIC 1장으로 교체 (심연 최대 1장) */
-export function buildDeck(pool, rng = Math.random) {
-  const comp = { ...RULES.DECK_COMPOSITION };
-  const deck = [];
-  if (rng() < RULES.MYTHIC_CHANCE) {
-    const myth = pool.filter(c => c.grade === 'MYTHIC RARE');
-    if (myth.length) { deck.push(myth[Math.floor(rng() * myth.length)]); comp['NORMAL']--; }
+/** 등급 확률 30장 덱: 슬롯마다 DRAW_RATES로 등급 추첨 → 그 등급에서 중복 없이 1장. 심연 최대 1장, MR 최대 1장.
+ *  grades(Set|null): 허용 등급(양측 공통). 제외 등급은 확률 0 → 남은 등급끼리 재정규화. 허용 카드가 30장보다 적으면 중복 허용 */
+export function buildDeck(pool, rng = Math.random, grades = null) {
+  const allowed = pool.filter(c => !grades || grades.has(c.grade));
+  if (!allowed.length) return [];
+  const by = {}; for (const c of allowed) (by[c.grade] ||= []).push(c);
+  const deck = [], used = new Set(); let abyss = 0, myth = 0;
+  const ok = c => !(c.class === 'ABYSS' && abyss >= RULES.MAX_ABYSS_PER_DECK) && !(c.grade === 'MYTHIC RARE' && myth >= RULES.MAX_MYTHIC_PER_DECK);
+  const take = c => { deck.push(c); used.add(c); if (c.class === 'ABYSS') abyss++; if (c.grade === 'MYTHIC RARE') myth++; };
+  for (let guard = 0; deck.length < RULES.DECK_SIZE && guard < 2000; guard++) {
+    const gs = Object.keys(by).filter(g => by[g].some(c => !used.has(c) && ok(c)));
+    if (!gs.length) break;
+    const tot = gs.reduce((t, g) => t + (RULES.DRAW_RATES[g] || 0), 0);
+    let r = rng() * tot, g = gs[gs.length - 1];
+    if (tot > 0) for (const x of gs) { if ((r -= RULES.DRAW_RATES[x] || 0) < 0) { g = x; break; } }
+    else g = gs[Math.floor(rng() * gs.length)];
+    const cand = by[g].filter(c => !used.has(c) && ok(c));
+    take(cand[Math.floor(rng() * cand.length)]);
   }
-  let abyss = deck.filter(c => c.class === 'ABYSS').length;
-  for (const [grade, n] of Object.entries(comp)) {
-    let got = 0;
-    for (const c of shuffle(pool.filter(c => c.grade === grade))) {
-      if (got >= n) break;
-      if (c.class === 'ABYSS') { if (abyss >= RULES.MAX_ABYSS_PER_DECK) continue; abyss++; }
-      deck.push(c); got++;
-    }
-  }
-  // 부족분은 아무 카드로 채움
-  for (const c of shuffle(pool)) {
-    if (deck.length >= RULES.DECK_SIZE) break;
-    if (deck.includes(c) || c.grade === 'MYTHIC RARE' || c.class === 'ABYSS') continue;
-    deck.push(c);
-  }
+  // 허용 카드가 부족하면(예: UR만) 중복으로 채움
+  const filler = allowed.filter(c => c.class !== 'ABYSS' && c.grade !== 'MYTHIC RARE');
+  const fill = filler.length ? filler : allowed;
+  while (deck.length < RULES.DECK_SIZE) deck.push(fill[Math.floor(rng() * fill.length)]);
   return shuffle(deck);
 }
 
@@ -467,7 +497,7 @@ export function aiPickTarget(u, me, opp) {
   const allowed = attackTargets(me, opp, u);
   let best = null, bestScore = 0;
   for (const t of allowed.units) {
-    const kill = calcDamage(u.card, t.card) >= t.hp;
+    const kill = calcDamageG(u.card, t.card) >= t.hp;
     const die = false;   // 처치하면 반격 없음 · 반격으로는 쓰러지지 않음
     let score = 0;
     if (kill && !die) score = 100 + t.card.power;

@@ -1,6 +1,7 @@
 // 2026-10-22 신규·변경 스킬 검증: node tools/test_batchA.mjs
 import fs from 'fs';
 import { parseCSV, makeUnit, resolveAttack, calcDamage, RULES } from '../js/rules.js';
+RULES.GENDER_ON = false; RULES.EVADE_ON = false;   // 스킬 수치 검증용 (성별·속성 회피는 test_batchB.mjs)
 import { setSkillData, initPlayers, placeUnit, skillsOf, ACTIVE, useSkill, skillState, turnStart, turnEnd, setRng, TURN, checkDeath, refreshAll, setEmitter, damageUnit } from '../js/skills.js';
 const evs = []; setEmitter(e => { evs.push(e); if (process.env.DBG) console.log('  ev', e.type, e.unit?.card?.name || '', e.text || e.name || e.dmg || ''); });
 setSkillData(JSON.parse(fs.readFileSync('data/skills.json')), JSON.parse(fs.readFileSync('data/combos.json')));
