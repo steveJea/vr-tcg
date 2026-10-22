@@ -452,7 +452,8 @@ function finish(win, reason) {
 }
 
 // ===== 스토리 페이즈 규칙 (story.rules) =====
-// mustLive: [카드 id] 내 카드가 쓰러지면 패배 · revive: [{ id, level: 1|'keep', times }] 적 카드가 쓰러지면 상대(적) 다음 턴 시작에 부활
+// mustLive: [카드 id] 내 카드가 쓰러지면 패배 · revive: [{ id, level: 1|'keep', times, delay }] 적 카드가 쓰러지면 적의 delay 번째 턴 시작에 부활 (times 없으면 무제한)
+// 승리 판정: 그 순간 적 카드가 모두 쓰러져 있으면 승리 (부활 대기는 막지 않음)
 // invuln: 적 카드 id (피해 없음·쓰러지지 않음) · expire: invuln 카드가 이 라운드 수가 지나면 자동 사망 (부활 대기·부활 카드도 함께 소멸)
 function storyOnDeath(u) {
   const R = S.story.rules, id = String(u.card.id);
@@ -462,8 +463,9 @@ function storyOnDeath(u) {
     const used = (S.reviveUsed ||= {}), k = id + ':' + (u.reviveSlot ?? u.uid);
     if (r.times && (used[k] | 0) >= r.times) return;
     used[k] = (used[k] | 0) + 1;
-    (S.ai.reviveQ ||= []).push({ card: u.base, level: r.level === 'keep' ? u.level : 1, slot: u.reviveSlot ?? u.uid, key: k });
-    log(`🩸 ${u.card.name}: 1턴 후 부활해요`, 'text-fuchsia-300');
+    const delay = Math.max(1, r.delay | 0 || 1);
+    (S.ai.reviveQ ||= []).push({ card: u.base, level: r.level === 'keep' ? u.level : 1, slot: u.reviveSlot ?? u.uid, key: k, wait: delay });
+    log(`🩸 ${u.card.name}: ${delay}턴 후 부활해요 (그 전에 적을 모두 쓰러뜨리면 승리)`, 'text-fuchsia-300');
   }
 }
 /** 턴 시작 규칙. true 를 돌려주면 전투가 끝남 */
@@ -481,7 +483,7 @@ function storyTurnRules(who) {
   if (p.reviveQ?.length) {
     const q = p.reviveQ.splice(0);
     for (const r of q) {
-      if (p.field.length >= RULES.FIELD_MAX) { p.reviveQ.push(r); continue; }
+      if (--r.wait > 0 || p.field.length >= RULES.FIELD_MAX) { p.reviveQ.push(r); continue; }
       const u = placeUnit(p, { ...r.card }, makeUnit); u.reviveSlot = r.slot;
       while (u.level < r.level) { const need = xpToNext(u.level) - (u.xp | 0); if (!isFinite(need) || !gainXp(u, Math.max(1, need))) break; }
       log(`🩸 ${u.card.name} 부활! (Lv${u.level})`, 'text-fuchsia-300');
@@ -496,7 +498,7 @@ function checkEnd() {
   if (S.story) {   // 스토리: 내 필드 카드 전멸 시 패배 / 일반전은 상대 카드 전멸 시 승리 (보스전은 진영 HP 0)
     const gone = p => !p.field.length && !p.hand.length && !p.deck.length;
     if (S.mustLiveDown) return finish(false, 'mustlive');
-    if (S.story.win === 'wipe' && gone(S.ai) && !(S.ai.reviveQ || []).length) return finish(true, 'wipe');
+    if (S.story.win === 'wipe' && gone(S.ai)) return finish(true, 'wipe');   // 그 순간 적 카드가 모두 쓰러져 있으면 승리 (부활 대기 중이어도)
     if (gone(S.me)) return finish(false, 'wipe');
   }
   return false;

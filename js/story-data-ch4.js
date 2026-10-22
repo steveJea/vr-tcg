@@ -685,11 +685,11 @@ window.STORY_DATA.chapters.push({
      {
       "id": "2000100005",
       "level": 1,
-      "times": 1
+      "delay": 2
      }
     ]
    },
-   "tip": "🩸 김지수는 쓰러지면 1턴 후 Lv1 로 부활 (1회)"
+   "tip": "🩸 김지수는 쓰러지면 2턴 후 Lv1 로 부활 · 그 전에 적을 모두 쓰러뜨리면 승리"
   },
   {
    "no": 9,
@@ -767,16 +767,16 @@ window.STORY_DATA.chapters.push({
      {
       "id": "2000100005",
       "level": "keep",
-      "times": 1
+      "delay": 2
      },
      {
       "id": "2000100006",
       "level": "keep",
-      "times": 1
+      "delay": 2
      }
     ]
    },
-   "tip": "🩸 김지수·오유나는 쓰러지면 1턴 후 레벨 그대로 부활 (1회)",
+   "tip": "🩸 김지수·오유나는 쓰러지면 2턴 후 레벨 그대로 부활 · 그 전에 적을 모두 쓰러뜨리면 승리",
    "after": [
     {
      "speaker": "내레이션",
@@ -866,7 +866,8 @@ window.STORY_DATA.chapters.push({
     "revive": [
      {
       "id": "2000100003",
-      "level": 1
+      "level": 1,
+      "delay": 1
      }
     ]
    },
