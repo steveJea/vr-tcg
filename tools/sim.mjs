@@ -17,15 +17,19 @@ let recalls = 0, forcedWins = 0; const acts = { shuffle: 0, heal: 0, buff: 0, fi
 if (hp) RULES.HERO_HP = hp;
 if (mult) RULES.DAMAGE_MULT = mult;
 
-function player(second, force) { const deck = buildDeck(pool); if (force) { deck.splice(deck.findIndex(c => c.grade === 'NORMAL'), 1); deck.splice(Math.floor(Math.random() * deck.length), 0, force); } const d0 = [...deck]; return { d0, hp: RULES.HERO_HP, deck, hand: deck.splice(0, RULES.OPENING_HAND + (second ? RULES.SECOND_PLAYER_BONUS_CARDS : 0)), field: [], mana: 0, maxMana: 0 }; }
+// SIM_SPLIT=gender|wind → 한쪽은 여성(바람) 카드만, 다른 쪽은 남성(비바람) 카드만으로 덱 구성 (게임마다 무작위 배정), splitWin = 여성(바람) 덱 승률
+const SPLIT = process.env.SIM_SPLIT; let splitSide = 0, splitWins = 0, splitGames = 0;
+const SPLIT_POOL = SPLIT === 'gender' ? [pool.filter(c => c.gender === 'FEMALE'), pool.filter(c => c.gender === 'MALE')] : SPLIT === 'wind' ? [pool.filter(c => c.class === 'WIND'), pool.filter(c => c.class !== 'WIND')] : null;
+let playerIdx = 0;
+function player(second, force) { const myPool = SPLIT_POOL ? SPLIT_POOL[(playerIdx++ % 2) === splitSide ? 0 : 1] : pool; const deck = buildDeck(myPool); if (force) { deck.splice(deck.findIndex(c => c.grade === 'NORMAL'), 1); deck.splice(Math.floor(Math.random() * deck.length), 0, force); } const d0 = [...deck]; return { d0, hp: RULES.HERO_HP, deck, hand: deck.splice(0, RULES.OPENING_HAND + (second ? RULES.SECOND_PLAYER_BONUS_CARDS : 0)), field: [], mana: 0, maxMana: 0 }; }
 
 function play() {
-  const forcedFirst = Math.random() < 0.5;
+  const forcedFirst = Math.random() < 0.5; splitSide = Math.random() < 0.5 ? 0 : 1; playerIdx = 0;
   const P = [player(false, FORCE && forcedFirst ? FORCE : null), player(true, FORCE && !forcedFirst ? FORCE : null)];
-  P[0].name = 'A'; P[1].name = 'B';
+  P[0].name = 'A'; P[1].name = 'B'; if (process.env.SIM_CLEAR) P[0].clearFirst = P[1].clearFirst = true;   // 아케이드 [카드 먼저 제거]
   initPlayers(P[0], P[1]);
   const over = () => P[0].hp <= 0 || P[1].hp <= 0;
-  const result = (turn, w = P[1].hp <= 0 ? 0 : 1, reason = 'ko') => { reasons[reason]++; if (w >= 0) for (let i = 0; i < 2; i++) for (const id of new Set(P[i].d0.map(c => c.id))) { const st = cardStat[id] ||= { games: 0, wins: 0 }; st.games++; if (w === i) st.wins++; } if (FORCE) forcedWins += (forcedFirst ? 0 : 1) === w ? 1 : 0; return done({ winner: w, rounds: Math.floor(turn / 2) + 1, turns: turn + 1 }); };
+  const result = (turn, w = P[1].hp <= 0 ? 0 : 1, reason = 'ko') => { reasons[reason]++; if (w >= 0) for (let i = 0; i < 2; i++) for (const id of new Set(P[i].d0.map(c => c.id))) { const st = cardStat[id] ||= { games: 0, wins: 0 }; st.games++; if (w === i) st.wins++; } if (FORCE) forcedWins += (forcedFirst ? 0 : 1) === w ? 1 : 0; if (SPLIT_POOL && w >= 0) { splitGames++; if (w === splitSide) splitWins++; } return done({ winner: w, rounds: Math.floor(turn / 2) + 1, turns: turn + 1 }); };
   const used = { shuffle: 0, heal: 0, buff: 0, fieldheal: 0, item: 0, sacrifice: 0, accel: 0 };
   let gotLv10 = 0;
   const done = r => { if (gotLv10) gamesLv10++; for (const k in used) { acts[k] += used[k]; if (used[k]) gamesWith[k]++; } return r; };
@@ -79,6 +83,13 @@ console.log(JSON.stringify({ heroHP: RULES.HERO_HP, mult: RULES.DAMAGE_MULT, gam
 
 // ---- 스킬 / 카드 통계 ----
 if (process.env.SIM_FORCE) console.log(JSON.stringify({ force: FORCE?.name, forcedWinRate: +(forcedWins / games).toFixed(3) }));
+// SIM_GROUPS=1 → 성별·속성 그룹별 승률 (덱에 든 카드 기준, 카드별 판수 가중)
+if (SPLIT_POOL) console.log('split', SPLIT, JSON.stringify({ splitWin: +(splitWins / splitGames).toFixed(4), games: splitGames }));
+if (process.env.SIM_GROUPS) {
+  const by = {}; const add = (k, v) => { const g = by[k] ||= { games: 0, wins: 0 }; g.games += v.games; g.wins += v.wins; };
+  for (const [id, v] of Object.entries(cardStat)) { const c = pool.find(x => String(x.id) === id); if (!c) continue; add('gender:' + c.gender, v); add('class:' + c.class, v); add('grade:' + c.grade, v); }
+  console.log('groups', JSON.stringify(Object.fromEntries(Object.entries(by).sort().map(([k, v]) => [k, +(v.wins / v.games).toFixed(4)]))));
+}
 if (process.env.SIM_DETAIL) {
   const names = Object.fromEntries(pool.map(c => [c.id, c.name]));
   const allSkills = Object.values(SKILLS).flat().map(s => s.name);

@@ -1,0 +1,50 @@
+{
+  "_doc": "등장 컷인·만남 이벤트 데이터. entry.fx: 등장 컷인 전용 이미지(data/fx/<id>_0.webp)가 있는 카드. 등장 보이스는 data/voice/<id>_0.mp3 가 있으면 자동 사용. events: type 'encounter' = 한쪽 필드에 sides[0] 카드, 반대쪽 필드에 sides[1] 카드가 함께 있을 때(양방향). type 'combo' = 한쪽 필드에 combo(data/combos.json 이름)의 카드가 모두 모였을 때. lines.who 는 카드 이름 또는 'NA'(내레이션).",
+  "entry": {
+    "fx": [
+      "2000000017"
+    ]
+  },
+  "events": [
+    {
+      "id": "yuri_nari",
+      "type": "encounter",
+      "sides": [
+        [
+          "2000300083"
+        ],
+        [
+          "2000100001",
+          "2000000008"
+        ]
+      ],
+      "title": "임유리 × 임나리",
+      "image": "data/event/yuri_nari.webp",
+      "voice": "data/event/yuri_nari.mp3",
+      "lines": [
+        {
+          "who": "NA",
+          "text": "임유리와 임나리가 전장에서 마주쳤다."
+        },
+        {
+          "who": "임나리",
+          "text": "……!"
+        },
+        {
+          "who": "임유리",
+          "text": "……"
+        }
+      ],
+      "_todo": "대사는 임시(샘플)입니다. 사용자가 정리한 대사로 lines를 교체하세요."
+    }
+  ],
+  "comboEvents_example": {
+    "id": "예시",
+    "type": "combo",
+    "combo": "사라지지 않는 약속",
+    "title": "…",
+    "image": "data/event/…webp",
+    "voice": "data/event/…mp3",
+    "lines": []
+  }
+}

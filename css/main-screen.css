@@ -124,3 +124,34 @@
 /* 세로(모바일) 배경 영상 */
 .main-video { animation: none; }
 .main-video.hidden { display: none; }
+
+/* ===== 아케이드 설정 (batch B) ===== */
+.arcade-opts-btn{align-self:center;margin:-4px auto 8px;padding:6px 14px;border-radius:999px;background:rgba(0,0,0,.55);border:1px solid rgba(251,191,36,.45);color:#fde68a;font-weight:800;font-size:13px;max-width:92vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.arcade-opts-btn small{color:#d4d4d8;font-weight:600;margin-left:4px}
+.arcade-opts-btn.on{background:rgba(120,53,15,.75);border-color:#fbbf24}
+.arcade-opts-btn.on small{color:#fde68a}
+.ao-card{background:#18181b;border:1px solid rgba(251,191,36,.4);border-radius:24px;padding:18px;width:100%;max-width:26rem;text-align:left;max-height:92vh;overflow-y:auto}
+.ao-sec{padding:10px 0;border-top:1px solid rgba(255,255,255,.08)}
+.ao-h{font-weight:900;font-size:14px;margin-bottom:6px}
+.ao-h small{font-weight:500;color:#a1a1aa;font-size:11px;margin-left:4px}
+.ao-chips{display:flex;flex-wrap:wrap;gap:6px}
+.ao-chip{padding:5px 11px;border-radius:999px;background:#27272a;border:1px solid #3f3f46;font-size:12px;font-weight:800;color:#d4d4d8}
+.ao-chip.on{background:#065f46;border-color:#10b981;color:#ecfdf5}
+.ao-g{min-width:42px;border:2px solid var(--rc,#52525b)}
+.ao-g.on{background:color-mix(in srgb,var(--rc,#10b981) 35%,#18181b);color:#fff}
+.ao-g.off{opacity:.4;text-decoration:line-through}
+.ao-note{font-size:11px;color:#a1a1aa;margin-top:6px;line-height:1.45}
+
+/* 등장 컷인: 프로필(세로) 이미지는 얼굴 쪽 기준으로 자르기 */
+.cutin-img .cutin-media.cutin-portrait{object-position:50% 18%}
+/* 만남·인연 이벤트 */
+.ev-layer{position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;padding:14px;animation:evIn .35s ease-out}
+@keyframes evIn{from{opacity:0}to{opacity:1}}
+.ev-panel{position:relative;width:100%;max-width:760px;background:#0c0a09;border:1px solid rgba(244,114,182,.5);border-radius:22px;overflow:hidden;box-shadow:0 0 40px rgba(244,114,182,.25);text-align:left}
+.ev-title{position:absolute;top:10px;left:14px;z-index:2;font-weight:900;font-size:13px;color:#fbcfe8;text-shadow:0 1px 4px #000;background:rgba(0,0,0,.45);padding:3px 10px;border-radius:999px}
+.ev-img{display:block;width:100%;aspect-ratio:16/9;object-fit:cover}
+.ev-line{min-height:64px;padding:12px 16px 4px;font-size:15px;line-height:1.5;color:#f4f4f5}
+.ev-line b{display:block;font-size:12px;color:#f9a8d4;margin-bottom:2px}
+.ev-line .ev-na{color:#d4d4d8;font-style:italic}
+.ev-step{padding:0 16px 12px;font-size:11px;color:#a1a1aa}
+.ev-skip{position:absolute;top:10px;right:12px;z-index:2;font-size:12px;font-weight:800;color:#fff;background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.3);border-radius:999px;padding:3px 10px}

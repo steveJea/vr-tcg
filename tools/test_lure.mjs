@@ -1,5 +1,6 @@
 import fs from 'fs';
-import { parseCSV, makeUnit, resolveAttack } from '../js/rules.js';
+import { parseCSV, makeUnit, resolveAttack, RULES } from '../js/rules.js';
+RULES.EVADE_ON = false;   // 유도 판정만 확인 (속성 회피 4~10%가 끼면 결과가 흔들림)
 import { setSkillData, initPlayers, placeUnit, skillsOf, ACTIVE } from '../js/skills.js';
 setSkillData(JSON.parse(fs.readFileSync('data/skills.json')), JSON.parse(fs.readFileSync('data/combos.json')));
 const cards = parseCSV(fs.readFileSync('data/cards.csv','utf8')); const C = id => cards.find(c=>String(c.id)===id);

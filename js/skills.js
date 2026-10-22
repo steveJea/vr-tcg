@@ -1,7 +1,7 @@
 // ===== 스킬 · 상태이상 · 시너지 엔진 (게임·시뮬레이션 공용) =====
 // 스킬 데이터: data/skills.json (카드 id → 스킬 목록), 조합: data/combos.json
 // 각 스킬 효과는 '효과 내용' 기준으로 아래 ACTIVE / PASSIVE 표에 스킬 이름별로 구현
-import { RULES, elementMultiplier, calcDamage, gainXp, heroLocked, killXp, levelDown, levelUpOnce } from './rules.js';
+import { RULES, elementMultiplier, calcDamage, gainXp, heroLocked, killXp, levelDown, levelUpOnce, genderMult, baseEvade } from './rules.js';
 
 export const SK = {
   MP_BASE: 50, MP_PER_MEN: 1,           // 최대 MP = 50 + MEN (51~150)
@@ -153,6 +153,8 @@ export function skillDamage(src, target, pct, { ignoreDef = 0, extra = 1 } = {})
 export function damageUnit(target, dmg, src = null, { silent = false } = {}) {
   if (!target.owner.field.includes(target)) return 0;
   if (target.st.immune) { emit({ type: 'immune', unit: target }); return 0; }
+  // 성별 간 피해 (모든 모드·기본 공격·스킬·반격 공통): 남→여 85%, 여→남 105%
+  if (src?.card && src.owner !== target.owner && dmg > 0) { const gm = genderMult(src.card, target.card); if (gm !== 1) dmg = Math.max(1, Math.round(dmg * gm)); }
   if (target.st.pleading) dmg = Math.round(dmg * 0.5);
   if (target.st.thorns?.red) dmg = Math.round(dmg * (1 - target.st.thorns.red));   // 이게 프로야·에메랄드 쇼크
   target.hp -= dmg;
@@ -646,9 +648,16 @@ export function redirectAttack(attacker, target) {
 export const roseCounter = (target, attacker) => !!attacker?.st?.['장미가시의 세레나데'] && String(attacker.st['장미가시의 세레나데'].rose?.base?.id) === String(target.base.id);
 export const counterMult = (target, attacker) => (target.st.pleading ? 2.5 : 1) * (hasPassive(target, '이게 반격이야') ? 1.5 : 1) * (target.st.thorns?.cm || 1) * (roseCounter(target, attacker) ? 2 : 1);
 /** 정치욱 [그렇게 느려도 되겠어?]: 기본 공격 회피 판정 */
+export function evadeChance(target) {
+  return Math.min(RULES.EVADE_CAP, baseEvade(target.card) + (target.st.evade?.p || 0));
+}
+/** 기본 공격 회피: 속성 기본 회피(바람 10%, 그 외 4%) + 스킬 회피(정치욱 [그렇게 느려도 되겠어?] 40%), 상한 60% */
 export function rollEvade(target, attacker) {
-  const e = target.st.evade; if (!e || !chance(e.p || 0)) return false;
-  emit({ type: 'passive', unit: target, name: '회피', text: `${attacker.card.name}의 공격을 회피!` }); stats.count('회피');
+  const p = evadeChance(target); if (!p || !chance(p)) return false;
+  const sk = !!target.st.evade;
+  if (sk) emit({ type: 'passive', unit: target, name: '회피', text: `${attacker.card.name}의 공격을 회피!` });
+  else emit({ type: 'evade', unit: target, attacker, p });
+  stats.count(sk ? '회피' : '속성 회피');
   return true;
 }
 
@@ -840,6 +849,8 @@ export function aiPickSkill(u) {
         if (s.type === '디버프') sc = n >= 3 && !canKill ? 80 + n * 3 : 0;
         else if (s.type === '공격') sc = n || (/본진/.test(s.desc) && heroOk) ? (/적 전체|전체/.test(s.target + s.desc) ? 95 + n * 6 : 100) : 0;
     }
+    // 상대 카드가 없으면 적 카드 대상 스킬은 무의미 (진영을 치는 스킬은 예외)
+    if (sc && !n && /적/.test(s.target || '') && !/본진|진영/.test(s.desc || '')) sc = 0;
     if (sc && canKill && s.type !== '공격' && s.type !== '회복' && !/眞|Cum amicis/.test(s.name)) sc -= 30;
     if (sc) sc += s.unlock * 6;
     if (sc > 0) cands.push([s, sc]);

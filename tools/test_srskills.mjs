@@ -1,6 +1,8 @@
 // SR 스킬·임씨 스킬 엔진 검증: node tools/test_srskills.mjs
 import fs from 'fs';
 import { parseCSV, makeUnit, resolveAttack, calcDamage, RULES } from '../js/rules.js';
+// 스킬 수치 검증용: 성별 피해(7-1)·속성 회피(7-2)는 끄고 확인 (해당 규칙은 test_batchB.mjs에서 검증)
+RULES.GENDER_ON = false; RULES.EVADE_ON = false;
 import { setSkillData, initPlayers, placeUnit, skillsOf, ACTIVE, useSkill, skillState, turnStart, turnEnd, setRng, TURN, checkDeath, refreshAll, setEmitter } from '../js/skills.js';
 if (process.env.DBG) setEmitter(e => console.log('  ev', e.type, e.unit?.card?.name || '', e.text || e.name || e.dmg || ''));
 setSkillData(JSON.parse(fs.readFileSync('data/skills.json')), JSON.parse(fs.readFileSync('data/combos.json')));
