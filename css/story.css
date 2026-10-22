@@ -348,3 +348,12 @@ span.story-lvpct { background: rgba(251,191,36,.12); border: 1px solid rgba(251,
 .story-sweep-runs .story-btn.short{opacity:.4}
 .story-sweep-res{margin-top:12px;display:grid;gap:6px}
 .story-sweep-get{display:flex;justify-content:space-between;padding:6px 10px;border-radius:8px;background:rgba(255,255,255,.05)}
+/* 시련의 탑 소탕 */
+.q-sweep{display:flex;flex-direction:column;align-items:center;width:100%;margin-top:8px;background:linear-gradient(180deg,#facc15,#d97706)!important;color:#1c1917!important}
+.q-sweep small{font-size:.68rem;font-weight:600;opacity:.8}
+.q-sweep-note{margin-top:8px;font-size:.75rem;color:#fca5a5;text-align:center}
+.q-sw-prog{margin-top:10px;max-height:220px;overflow:auto;display:grid;gap:4px}
+.q-sw-prog.small{max-height:150px;font-size:.78rem}
+.q-sw-row{display:flex;justify-content:space-between;padding:4px 10px;border-radius:8px;background:rgba(255,255,255,.05)}
+.q-sw-row.win span{color:#34d399}.q-sw-row.lose span{color:#f87171}
+.q-sw-stop{margin-top:10px;text-align:center;font-weight:700;color:#fde68a}

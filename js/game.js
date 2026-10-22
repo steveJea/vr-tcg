@@ -645,9 +645,21 @@ function onEnter(who, u) {
   // 등장 컷인: 등장 보이스(<id>_0) 또는 전용 이미지(events.json entry.fx) 중 하나라도 있으면
   if ((voiceSet?.has(`${id}_0`) || (EVENTS.entry.fx || []).map(String).includes(id)) && !S.fxSeen.has(`entry:${u.uid}`)) {
     S.fxSeen.add(`entry:${u.uid}`);
+    if (S.story?.quest && questEntrySeenToday(u, id)) { checkEvents(); return; }
     fxQueue.push(() => entryCutIn(u, id)); runFxQueue();
   }
   checkEvents();
+}
+// 시련의 탑: UR·MR 등장 컷인은 카드마다 하루 1번 (00:00 KST 초기화, 이 브라우저 기준). 스토리·아케이드는 그대로
+const Q_ENTRY_KEY = 'vrTcgQuestEntryCutin';
+function questEntrySeenToday(u, id) {
+  const g = (u.base || u.card).grade; if (g !== 'ULTRA RARE' && g !== 'MYTHIC RARE') return false;
+  const day = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
+  let d; try { d = JSON.parse(localStorage.getItem(Q_ENTRY_KEY) || '{}'); } catch { d = {}; }
+  if (d.day !== day) d = { day, ids: [] };
+  if (d.ids.includes(id)) return true;
+  d.ids.push(id); try { localStorage.setItem(Q_ENTRY_KEY, JSON.stringify(d)); } catch {}
+  return false;
 }
 async function entryCutIn(u, id) {
   if (!S || S.over) return;
@@ -655,7 +667,7 @@ async function entryCutIn(u, id) {
   if (FX_OFF()) return;
   const el = $('cutin');
   const img = (EVENTS.entry.fx || []).map(String).includes(id) ? `data/fx/${id}_0.webp` : `${IMG}${id}.webp`;
-  el.innerHTML = `<img src="${img}" class="cutin-media ${img.startsWith('data/') ? '' : 'cutin-portrait'}" alt="" onerror="this.remove()"><div class="cutin-text"><div class="text-[11px] md:text-xs text-zinc-200">${u.owner.name} · 등장</div><div class="text-xl md:text-3xl font-black tracking-tight">${escHtml(u.card.name)}</div></div>`;
+  el.innerHTML = `<img src="${img}" class="cutin-media ${img.startsWith('data/') ? '' : 'cutin-portrait'}" alt="" onerror="this.remove()"><div class="cutin-text"><div class="text-xl md:text-3xl font-black tracking-tight">${escHtml(u.card.name)}</div></div>`;
   const ms = cutinMs(1300);
   el.style.setProperty('--dur', `${ms}ms`);
   el.className = 'hidden'; resetHScroll(); void el.offsetWidth;
