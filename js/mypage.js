@@ -26,13 +26,14 @@
   async function gather() {
     const m = window.__MYPAGE_MOCK;
     const safe = f => { try { return Promise.resolve(f()).catch(() => null); } catch { return Promise.resolve(null); } };
-    const [story, gal] = await Promise.all([
+    const [story, gal, quest] = await Promise.all([
       safe(() => m?.story ? m.story() : window.VRStory?.summary?.()),
       safe(() => m?.gallery ? m.gallery() : window.VRGallery?.collection?.()),
+      safe(() => m?.quest ? m.quest() : window.VRQuest?.bestFloor?.()),
     ]);
     const pool = window.TCG?.POOL || [];
     const cardOf = id => pool.find(c => String(c.id) === String(id));
-    return { user: user(), story: story?.ok ? story : null, gallery: gal, arcade: m?.arcade ? m.arcade() : arcadeRecord(), cardOf };
+    return { user: user(), story: story?.ok ? story : null, gallery: gal, questBest: quest, arcade: m?.arcade ? m.arcade() : arcadeRecord(), cardOf };
   }
 
   // ---- 리더 영상 훅 ----
@@ -80,6 +81,7 @@
     return `<div class="mp-rec">
       <div class="mp-stat"><span>아케이드</span><b>${a ? `${a.wins}승 ${a.losses}패${a.draws ? ` ${a.draws}무` : ''}` : '-'}</b><small>${a && games ? `승률 ${pct(a.wins, games)}%` : '기록 없음'}</small></div>
       <div class="mp-stat"><span>스토리</span><b>${tot ? `${done}/${tot}` : '-'}</b><small>${chs.map(c => `${esc(c.title)} ${c.done}/${c.total}`).join(' · ') || '진행 없음'}</small></div>
+      <div class="mp-stat"><span>시련의 탑</span><b>${ctx.questBest != null ? `${ctx.questBest}층` : '-'}</b><small>최고 기록</small></div>
       <div class="mp-stat"><span>갤러리</span><b>${g ? `${pct(g.have, g.total)}%` : '-'}</b><small>${g ? `${g.have}/${g.total} 수집` : ''}</small></div></div>`;
   } });
   addSection({ id: 'deck', order: 40, title: '기본 덱', render: ctx => {

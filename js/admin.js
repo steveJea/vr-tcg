@@ -73,14 +73,14 @@
 
   async function openUser(id) {
     const m = $('ad-modal'), box = $('ad-detail'); m.classList.remove('hidden'); box.innerHTML = '<div class="ad-msg">불러오는 중...</div>';
-    let d, log;
-    try { [d, log] = await Promise.all([rpc('admin_user_detail', { p_user: id }), rpc('admin_gacha_log', { p_user: id, p_limit: 200 })]); }
+    let d, log, qd = null;
+    try { [d, log, qd] = await Promise.all([rpc('admin_user_detail', { p_user: id }), rpc('admin_gacha_log', { p_user: id, p_limit: 200 }), rpc('admin_user_quest', { p_user: id }).catch(() => null)]); }
     catch (e) { box.innerHTML = `<div class="ad-err">${esc(e?.message)}</div>`; return; }
     const owned = d.owned || [], cleared = d.cleared || {}, r = d.record || {};
     const kv = (k, v) => `<div><span>${k}</span>${v}</div>`;
     const ownedSorted = owned.slice().sort((a, b) => (b.uid === d.leader) - (a.uid === d.leader) || (b.level | 0) - (a.level | 0));
     box.innerHTML = `<h2 style="margin:0 0 4px;font-size:17px">${esc(d.name || d.nickname || d.email)}</h2><div style="opacity:.75">${esc(d.email)}</div>
-      <div class="ad-sec"><div class="ad-kv">${kv('가입', fmt(d.created_at))}${kv('마지막 로그인', fmt(d.last_sign_in_at))}${kv('소환권', `<b id="ad-tk">${d.tickets}</b>장`)}${kv('아케이드', `${r.wins | 0}승 ${r.losses | 0}패 ${r.draws | 0}무`)}${kv('스토리', Object.entries(cleared).map(([c, l]) => `챕터${esc(c)} ${(l || []).length}`).join(' · ') || '-')}${kv('갤러리', `${d.gallery?.cards | 0}종 · MVP ${d.gallery?.mvp | 0}`)}${kv('스탯 포인트', esc(d.points))}</div></div>
+      <div class="ad-sec"><div class="ad-kv">${kv('가입', fmt(d.created_at))}${kv('마지막 로그인', fmt(d.last_sign_in_at))}${kv('소환권', `<b id="ad-tk">${d.tickets}</b>장`)}${kv('아케이드', `${r.wins | 0}승 ${r.losses | 0}패 ${r.draws | 0}무`)}${kv('스토리', Object.entries(cleared).map(([c, l]) => `챕터${esc(c)} ${(l || []).length}`).join(' · ') || '-')}${kv('갤러리', `${d.gallery?.cards | 0}종 · MVP ${d.gallery?.mvp | 0}`)}${kv('스탯 포인트', esc(d.points))}${kv('시련의 탑', qd ? `최고 ${qd.best_floor | 0}층 · 승리 ${qd.clears | 0}회` : '-')}</div></div>
       <div class="ad-sec"><h3>🎟️ 소환권 지급</h3><div class="ad-grant"><input type="number" id="ad-amt" min="1" max="1000" value="10"><input type="text" id="ad-reason" maxlength="200" placeholder="사유 (필수, 기록됨)"><button class="ad-btn" id="ad-give">지급</button></div><div id="ad-gmsg" style="margin-top:4px"></div></div>
       <div class="ad-sec"><h3>보유 카드 (${owned.length}장)</h3><div class="ad-cards">${ownedSorted.map(o => `<span class="ad-chip ${o.uid === d.leader ? 'lead' : ''}">${o.uid === d.leader ? '👑 ' : ''}${esc(SHORT[names.get(String(o.id))?.grade] || '')} ${esc(cname(o.id))} Lv.${o.level | 0}${o.ex ? ` EX${o.ex}` : ''}</span>`).join('') || '없음'}</div></div>
       <div class="ad-sec"><h3>최근 아케이드 판</h3><div class="ad-wrap"><table class="ad-table"><thead><tr><th>시각</th><th>결과</th><th>턴</th><th>피해</th><th>MVP</th></tr></thead><tbody>${(d.recent || []).map(x => `<tr><td>${fmt(x.created_at)}</td><td>${({ win: '승', lose: '패', draw: '무' })[x.result] || esc(x.result)}</td><td>${x.turns ?? ''}</td><td>${x.damage ?? ''}</td><td>${esc(x.mvp_name)}</td></tr>`).join('') || '<tr><td colspan="5">기록 없음</td></tr>'}</tbody></table></div></div>
