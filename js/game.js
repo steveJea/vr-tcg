@@ -1,5 +1,5 @@
 import { RULES, ELEMENTS, elementMultiplier, calcDamage, canSummon, buildDeck, parseCSV, aiSummonOrder, aiPickTarget, recallCost, canRecall, aiShouldRecall, makeUnit, resolveAttack, refillMana, ACTIONS, canAction, doAction, clearBuff, aiWantShuffle, aiWantBuff, aiWantHeal, aiWantFieldHeal, aiPickItem, endTurnXp, ITEMS, canEquip, equip, attackTargets, canTarget, autoTarget, heroLocked, xpToNext, SKILLS, gainXp, setCardPool, canSacrifice, sacrifice, aiPickSacrifice, aiWantAccel, judgeTimeout, JUDGE_LABEL, genderMult, GRADES, GRADE_SHORT, allowedGrades, baseEvade } from './rules.js';
-import { setSkillData, setEmitter, initPlayers, placeUnit, turnStart, turnEnd, useSkill, skillState, aiPickSkill, refreshAll, statusIcons, skillsOf, combos, STATUS, SK, maleLure } from './skills.js';
+import { setSkillData, setEmitter, initPlayers, placeUnit, turnStart, turnEnd, useSkill, skillState, aiPickSkill, skillLvOf, skillCdAt, skillLvMult, SKILL_LV_MAX, refreshAll, statusIcons, skillsOf, combos, STATUS, SK, maleLure } from './skills.js';
 
 const IMG = 'https://raw.githubusercontent.com/steveJea/vr-ideal-worldcup/main/img/bt_img/';
 const NF = new Intl.NumberFormat('ko-KR');
@@ -1143,7 +1143,8 @@ function showDetail(c, { fromHand = false, hp, unit = null, view = null } = {}) 
   showModal('detail');
 }
 
-function skillListHTML(c, unit, myTurn, lv = 1) {
+/** opt.skillLv: 보유 카드의 스킬 레벨 { "1": 3 } · opt.up: 레벨업 버튼(⬆) 표시 (스토리 내 카드 상세) */
+function skillListHTML(c, unit, myTurn, lv = 1, opt = {}) {
   const list = unit ? unit.sk : skillsOf(c.id);
   const mine = unit && unit.owner === S.me;
   const head = unit ? `<div class="mt-3 flex items-center gap-2 text-xs"><span class="text-blue-300 font-bold">MP ${unit.mp}/${unit.maxMp}</span><div class="flex-1 h-2 bg-white/10 rounded-full overflow-hidden"><div class="h-full bg-blue-500" style="width:${unit.mp / unit.maxMp * 100}%"></div></div><span class="text-zinc-400">턴당 +${unit.mpRegen}</span></div>` +
@@ -1152,9 +1153,13 @@ function skillListHTML(c, unit, myTurn, lv = 1) {
   return head + `<div class="mt-3 space-y-2 max-h-64 overflow-y-auto pr-1">${list.map((s, i) => {
     const st = unit ? skillState(unit, s) : { ok: false, reason: `Lv${s.unlock} 해금` };
     const locked = (unit ? unit.level : lv) < s.unlock;
+    const act = s.mode === 'active', slv = !act ? 1 : unit ? skillLvOf(unit, s) : Math.min(SKILL_LV_MAX, Math.max(1, (opt.skillLv || {})[i + 1] | 0 || 1));
+    const showLv = act && (opt.up || slv > 1), cdNow = act ? skillCdAt(s.cooldown, slv) : 0;
+    const lvBadge = showLv ? `<span class="sk-lv ${slv >= SKILL_LV_MAX ? 'max' : ''}" title="스킬 레벨 · 효과 +${Math.round((skillLvMult(slv) - 1) * 100)}%">Lv${slv}</span>` : '';
+    const upBtn = act && opt.up ? (locked ? `<span class="sk-up lock" title="카드 Lv${s.unlock}에 해금">🔒</span>` : slv >= SKILL_LV_MAX ? '' : `<button type="button" class="sk-up" data-skup="${i + 1}" title="스킬 레벨업">${ic('level_up', { alt: '⬆' }) || '⬆'}</button>`) : '';
     return `<div class="rounded-xl p-2 ${locked ? 'bg-zinc-800/50 opacity-60' : 'bg-zinc-800'}"><details class="ci-sk">
-      <summary class="flex items-center gap-1.5 flex-wrap"><span class="px-1.5 rounded text-[10px] font-bold ${TYPE_COLOR[s.type] || 'bg-zinc-600'}">${s.type}</span><span class="text-[10px] text-zinc-400">${s.mode === 'active' ? '액티브' : '패시브'}</span><span class="font-bold text-sm">${s.name}</span>
-        <span class="ml-auto text-[10px] text-zinc-400">${locked ? '🔒' : ''}Lv${s.unlock}${s.mode === 'active' ? ` · MP ${s.mp} · 쿨 ${s.cooldown}` : ''}</span></summary>
+      <summary class="flex items-center gap-1.5 flex-wrap"><span class="px-1.5 rounded text-[10px] font-bold ${TYPE_COLOR[s.type] || 'bg-zinc-600'}">${s.type}</span><span class="text-[10px] text-zinc-400">${s.mode === 'active' ? '액티브' : '패시브'}</span><span class="font-bold text-sm">${s.name}</span>${lvBadge}${upBtn}
+        <span class="ml-auto text-[10px] text-zinc-400">${locked ? '🔒' : ''}Lv${s.unlock}${s.mode === 'active' ? ` · MP ${s.mp} · 쿨 ${cdNow}` : ''}</span></summary>
       <div class="text-[11px] text-zinc-300 mt-0.5">${hpText(s.desc)}${s.note ? ` <span class="text-zinc-500">(${hpText(s.note)})</span>` : ''}</div></details>
       ${s.mode === 'active' && mine ? `<button data-skill="${i}" ${st.ok && myTurn ? '' : 'disabled'} class="mt-1 w-full py-1.5 rounded-lg bg-fuchsia-600 hover:bg-fuchsia-500 disabled:opacity-40 text-xs font-bold">${st.ok ? '사용 (공격 대신)' : st.reason}</button>` : ''}
       ${s.mode === 'passive' && unit ? `<div class="text-[10px] mt-0.5 ${locked ? 'text-zinc-500' : 'text-emerald-400'}">${locked ? `Lv${s.unlock}에 해금` : (unit.fired[s.name] ? '발동됨' : '활성')}</div>` : ''}
@@ -1345,4 +1350,4 @@ function zoomFromBtn(b) {
 document.addEventListener('click', e => { const b = e.target.closest?.('.zoom-btn'); if (!b) return; e.stopPropagation(); e.preventDefault(); zoomFromBtn(b); }, true);
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('zoom-view')?.classList.contains('open')) { e.stopPropagation(); closeZoom(); } }, true);
 
-window.TCG = { cardTitle, cardTags, cardStats, regionShort, playStinger, showCardInfo, skillsOf, combos, arcadeOpts: ArcadeOpts, openArcadeOpts, playSe, onEnter, checkEvents, showEvent, mvpVoice, get events() { return EVENTS; }, get seOn() { return seOn; }, skillListHTML: (c, lv) => skillListHTML(c, null, false, lv), voiceTest(k) { if (!voiceSet?.has(k)) return false; const a = voiceAudio(k); a.volume = voiceVol; a.currentTime = 0; voiceCur = a; a.play().catch(() => {}); return true; }, get voiceActive() { return voiceActive.size; }, get voice() { return { on: voiceOn, vol: voiceVol, cur: voiceCur && { src: voiceCur.src, paused: voiceCur.paused, t: voiceCur.currentTime }, set: voiceSet && voiceSet.size }; }, openZoom, closeZoom, dupCheck, get errors() { return window.TCG_ERRORS || []; }, cutIn, passiveCutIn, sortedHand, get handSort() { return handSort; }, put: debugPut, castSkill, skillState, get S() { return S; }, RULES, elementMultiplier, calcDamage, canSummon, buildDeck, summon, attack, recall, attackAll, endTurn, canRecall, recallCost, makeUnit, resolveAttack, useAction, canAction, startGame, startStory, cardHTML, get ready() { return POOL.length > 0; }, equipItem, doSacrifice, finish, attackTargets, get POOL() { return POOL; }, render, Stats };
+window.TCG = { cardTitle, cardTags, cardStats, regionShort, playStinger, showCardInfo, skillsOf, combos, arcadeOpts: ArcadeOpts, openArcadeOpts, playSe, onEnter, checkEvents, showEvent, mvpVoice, get events() { return EVENTS; }, get seOn() { return seOn; }, skillListHTML: (c, lv, opt) => skillListHTML(c, null, false, lv, opt), voiceTest(k) { if (!voiceSet?.has(k)) return false; const a = voiceAudio(k); a.volume = voiceVol; a.currentTime = 0; voiceCur = a; a.play().catch(() => {}); return true; }, get voiceActive() { return voiceActive.size; }, get voice() { return { on: voiceOn, vol: voiceVol, cur: voiceCur && { src: voiceCur.src, paused: voiceCur.paused, t: voiceCur.currentTime }, set: voiceSet && voiceSet.size }; }, openZoom, closeZoom, dupCheck, get errors() { return window.TCG_ERRORS || []; }, cutIn, passiveCutIn, sortedHand, get handSort() { return handSort; }, put: debugPut, castSkill, skillState, get S() { return S; }, RULES, elementMultiplier, calcDamage, canSummon, buildDeck, summon, attack, recall, attackAll, endTurn, canRecall, recallCost, makeUnit, resolveAttack, useAction, canAction, startGame, startStory, cardHTML, get ready() { return POOL.length > 0; }, equipItem, doSacrifice, finish, attackTargets, get POOL() { return POOL; }, render, Stats };
