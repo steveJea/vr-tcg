@@ -85,7 +85,8 @@ let uidSeq = 1;
 const SKIP_KEY = 'vrTcgSkipFx';
 let skipFx = localStorage.getItem(SKIP_KEY) === '1';
 let fastForward = false;
-const FX_OFF = () => !!(window.TCG_FAST || skipFx || fastForward);
+const SWEEPING = () => !!window.VR_SWEEPING;   // 탑 소탕 중: 스킬 컷인·보이스·영상 없음
+const FX_OFF = () => !!(window.TCG_FAST || skipFx || fastForward || SWEEPING());
 const AI_DELAY = () => (window.TCG_FAST ? 0 : (skipFx || fastForward) ? 60 : 325);
 
 function newPlayer(name, second, deckOverride = null, hp = RULES.HERO_HP, fieldStart = false, grades = null) {
@@ -613,7 +614,7 @@ function preloadVoice(cards) {
 }
 function playVoice(u, name) {
   try {
-    if (!voiceOn || !voiceSet || !u) return;
+    if (!voiceOn || !voiceSet || !u || SWEEPING()) return;
     const k = voiceKey(u, name); if (!k || !voiceSet.has(k)) return;
     if (voiceCur) { try { voiceCur.pause(); voiceCur.currentTime = 0; } catch {} }
     const a = voiceAudio(k); a.volume = voiceVol; a.currentTime = 0; voiceCur = a;
@@ -801,7 +802,7 @@ function showEvent(ev) {
 /** 패시브 발동 연출: 카드별·스킬별 게임당 첫 발동만 큰 이미지(비동기, 턴 진행을 막지 않음), 이후는 작은 글자만 */
 let passiveTimer = null;
 function passiveCutIn(u, name) {
-  if (!S) return;
+  if (!S || SWEEPING()) return;
   S.fxSeen ||= new Set(); const key = `${u.uid}:${name}`;
   if (S.fxSeen.has(key)) return;
   const s = u.sk?.find(x => x.name === name);
@@ -868,6 +869,8 @@ async function castSkill(who, u, s) {
 /** 엔진 이벤트 → 로그·연출 */
 function onEngine(e) {
   if (!S) return;
+  // 소탕 시뮬(quest-sim)의 유닛 이벤트는 화면 전투와 무관 → 무시 (rules.js 가 공용 skills.js 의 emit 을 거침)
+  if (e.unit && e.unit.owner && e.unit.owner !== S.me && e.unit.owner !== S.ai) return;
   const uEl = u => u && unitEl(whoOf(u.owner), u);
   const nm = u => u.card.name;
   if (e.type === 'dealt') { if (e.src.owner === S.me) { const L = S.log, k = e.src.card.id, r = L.dmg.get(k) || { card: e.src.card, dmg: 0 }; r.dmg += e.dmg; L.dmg.set(k, r); L.total += e.dmg; } return; }

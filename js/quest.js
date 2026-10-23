@@ -145,6 +145,8 @@
     const me = api.battleCards(list), lead = api.leaderFor(me), from = st.from, lastF = Math.min(st.last, maxF());
     const p = api.popup(`<div class="text-lg font-black text-center">${SW()} 소탕 중…</div><div class="q-sw-prog" id="q-sw-prog"></div><div class="text-xs text-zinc-400 text-center mt-2">내 덱: ${list.map(o => esc(api.card(o.id)?.name || '')).join(' · ')}</div>`);
     const prog = [], turns = []; let to = from - 1, stop = null; const t0 = Date.now();
+    window.VR_SWEEPING = true;   // 소탕 중 스킬 컷인·보이스·MR 영상 끔 (game.js)
+    try {
     for (let k = from; k <= lastF; k++) {
       const r = await sim.simBattle(me.map(c => ({ ...c })), enemiesOf(k).enemies.map(c => ({ ...c })), cfg.maxTurns || 40, lead);
       prog.push(`<div class="q-sw-row ${r.win ? 'win' : 'lose'}"><b>${k}층</b><span>${r.win ? `✔ 승리 · ${r.turns}턴` : r.timeout ? `✕ ${cfg.maxTurns || 40}턴 초과` : '✕ 패배'}</span></div>`);
@@ -153,6 +155,7 @@
       if (!r.win) { stop = { floor: k, why: r.timeout ? 'timeout' : 'lose' }; break; }
       to = k; turns.push(Math.max(1, Math.min(40, r.turns)));
     }
+    } finally { window.VR_SWEEPING = false; }
     if (!stop) stop = to >= maxF() ? { floor: to, why: 'top' } : { floor: to + 1, why: 'boss' };
     let res; try { res = await rpc('quest_sweep_complete', { p_to: to, p_stats: { turns } }); }
     catch (e) { p.close(true); api.toast(`⚠️ 소탕 기록 실패: ${e?.message || e}`); return render(); }
