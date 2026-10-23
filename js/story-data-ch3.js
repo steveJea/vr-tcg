@@ -668,7 +668,7 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "박성관",
-      "text": "ㅋㅋㅋ 정성을 보여봐"
+      "text": "그 있잖아...너만 할 수 있는 정성을 보이는 방식?"
      }
     ]
    },
