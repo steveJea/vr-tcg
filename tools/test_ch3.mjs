@@ -23,11 +23,12 @@ globalThis.window = { STORY_DATA: { chapters: [] } };
 eval(readFileSync(new URL('../js/story-data-ch3.js', import.meta.url), 'utf8'));
 const ch = window.STORY_DATA.chapters[0];
 const cards = Object.fromEntries(readFileSync(new URL('../data/cards.csv', import.meta.url), 'utf8').trim().split(/\r?\n/).slice(1).map(l => l.split(',')).map(v => [v[0], v[1]]));
+for (const l of readFileSync(new URL('../data/npc_cards.csv', import.meta.url), 'utf8').trim().split(/\r?\n/).slice(1)) { const v = l.split(','); cards[v[0]] ??= v[1]; }
 const nm = id => cards[id];
 ok(ch.id === 3 && ch.subtitle === 'Just For YOU' && ch.phases.length === 10 && ch.single && nm(ch.hero) === '조윤하', '챕터 3 · 10 페이즈 · 주인공 조윤하');
 ok(ch.phases.every(p => p.enemies.ids.length === 5 && p.enemies.ids.every(id => cards[id])), '페이즈마다 적 5명, 모두 카드 있음');
-ok(JSON.stringify(ch.phases[9].enemies.ids.map(nm)) === JSON.stringify(['송지은', '송지아', '박성관', '고정태', '소민섭']) && nm(ch.phases[9].bossId) === '소민섭' && ch.phases[9].type === 'boss', '10페이즈 적·보스(L) 소민섭');
-ok(ch.phases[6].bossId === undefined && ch.phases[6].enemyName === '적군', '7페이즈 리더 없음');
+ok(JSON.stringify(ch.phases[9].enemies.ids.map(nm)) === JSON.stringify(['소민섭', '불량배-S', '불량배-R', '박성관', '고정태']) && nm(ch.phases[9].bossId) === '소민섭' && ch.phases[9].type === 'boss', '10페이즈 적·보스(L) 소민섭');
+ok(nm(ch.phases[2].bossId) === '하장미' && ch.phases[9].party.exclude.map(nm).includes('조윤이') && ch.phases[9].noPairShield && ch.phases[5].spare?.['2002000353'], '3페이즈 하장미 · 10페이즈 조윤이 금지·보호 해제 · 6페이즈 안지수 spare');
 const F = ch.phases.map(p => p.party.forced.map(nm).join('+'));
 ok(JSON.stringify(F) === JSON.stringify(['조윤하', '조윤하', '조윤이', '조윤하', '조윤하', '조윤하', '조윤하+조윤이', '조윤하', '조윤이', '조윤하']), `강제 배정 ${F}`);
 const P_ = n => ch.phases[n - 1];

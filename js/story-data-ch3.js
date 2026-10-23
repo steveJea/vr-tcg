@@ -98,7 +98,8 @@ window.STORY_DATA.chapters.push({
    "lines": {
     "default": [
      {
-      "speaker": "동지선(화남)",
+      "speaker": "동지선",
+      "expr": "화남",
       "text": "야, 거기 깡패들! 뭐 하는 거야?"
      },
      {
@@ -122,7 +123,8 @@ window.STORY_DATA.chapters.push({
       "text": "윤하… 괜찮아?"
      },
      {
-      "speaker": "표지아(웃음)",
+      "speaker": "표지아",
+      "expr": "웃음",
       "text": "아, 얘가 윤이 동생이구나!"
      },
      {
@@ -191,7 +193,8 @@ window.STORY_DATA.chapters.push({
       "text": "하장미!! 너 내 동생 건드렸어?"
      },
      {
-      "speaker": "하장미(화남)",
+      "speaker": "하장미",
+      "expr": "화남",
       "text": "저… 저X이 미쳤나?"
      },
      {
@@ -251,7 +254,8 @@ window.STORY_DATA.chapters.push({
       "text": "전교 부회장 진아를 밀친 1학년 꼬맹이는 주눅 들어 있다."
      },
      {
-      "speaker": "윤진아(웃음)",
+      "speaker": "윤진아",
+      "expr": "웃음",
       "text": "하하하, 괜찮아 윤하야. 표정 풀고 이거 마셔."
      },
      {
@@ -291,11 +295,13 @@ window.STORY_DATA.chapters.push({
       "text": "윤하야. 혹시 도움 필요해? 톡으로 해도 돼."
      },
      {
-      "speaker": "이영아(웃음)",
+      "speaker": "이영아",
+      "expr": "웃음",
       "text": "맞아! 윤이 언니 동생이면 우리 동생이지!"
      },
      {
-      "speaker": "주예서(웃음)",
+      "speaker": "주예서",
+      "expr": "웃음",
       "text": "지선아, 윤하네 언니가 윤이라고! 그 천사 조윤이!!"
      },
      {
@@ -378,11 +384,13 @@ window.STORY_DATA.chapters.push({
       "text": "윤하는 윤이를 힘껏 밀쳤다. 윤이가 바닥에 넘어졌다."
      },
      {
-      "speaker": "최겨울(화남)",
+      "speaker": "최겨울",
+      "expr": "화남",
       "text": "야! 지금 뭐 하는 거야!"
      },
      {
-      "speaker": "안주연(화남)",
+      "speaker": "안주연",
+      "expr": "화남",
       "text": "언니가 어떻게 해 왔는데, 너 진짜!"
      },
      {
@@ -425,11 +433,13 @@ window.STORY_DATA.chapters.push({
       "text": "윤하야, 왜 그러는 거야?"
      },
      {
-      "speaker": "조윤하(웃음)",
+      "speaker": "조윤하",
+      "expr": "웃음",
       "text": "하… 너 진짜 몰라?"
      },
      {
-      "speaker": "동지선(화남)",
+      "speaker": "동지선",
+      "expr": "화남",
       "text": "야! 너 언니한테… 왜 그래?"
      },
      {
@@ -441,11 +451,13 @@ window.STORY_DATA.chapters.push({
       "text": "윤하야, 언니가 뭘 잘못했는지 말해 줘. 응?"
      },
      {
-      "speaker": "조윤하(화남)",
+      "speaker": "조윤하",
+      "expr": "화남",
       "text": "넌… 너만 잘났지? 진짜 재수 없어."
      },
      {
-      "speaker": "조윤하(화남)",
+      "speaker": "조윤하",
+      "expr": "화남",
       "text": "그리고 너 때문에 엄빠 죽은 거잖아!"
      },
      {
@@ -510,11 +522,13 @@ window.STORY_DATA.chapters.push({
       "text": "윤하야… 진짜 왜 그러는 거야?"
      },
      {
-      "speaker": "조윤하(웃음)",
+      "speaker": "조윤하",
+      "expr": "웃음",
       "text": "이거 봐… 지 친구 믿고…"
      },
      {
-      "speaker": "동지선(화남)",
+      "speaker": "동지선",
+      "expr": "화남",
       "text": "너 진짜 혼나고 싶어!?"
      },
      {
@@ -522,11 +536,13 @@ window.STORY_DATA.chapters.push({
       "text": "지선아… 괜찮아. 미안해."
      },
      {
-      "speaker": "황예은(화남)",
+      "speaker": "황예은",
+      "expr": "화남",
       "text": "조윤이! 네가 뭐가 미안한데??"
      },
      {
-      "speaker": "황예은(화남)",
+      "speaker": "황예은",
+      "expr": "화남",
       "text": "윤하가 이상하잖아!"
      },
      {
@@ -538,7 +554,8 @@ window.STORY_DATA.chapters.push({
       "text": "언니, 이건 좀 아니지 않아?"
      },
      {
-      "speaker": "동지선(화남)",
+      "speaker": "동지선",
+      "expr": "화남",
       "text": "안 되겠다. 우리 윤하 오늘 좀 혼나야겠다."
      },
      {
@@ -597,7 +614,8 @@ window.STORY_DATA.chapters.push({
       "text": "…"
      },
      {
-      "speaker": "조윤이(웃음)",
+      "speaker": "조윤이",
+      "expr": "웃음",
       "text": "내일 언니랑 놀러 가지 않을래?"
      },
      {
@@ -705,11 +723,13 @@ window.STORY_DATA.chapters.push({
       "text": "어디선가 노랫소리가 들린다."
      },
      {
-      "speaker": "박성관(웃음)",
+      "speaker": "박성관",
+      "expr": "웃음",
       "text": "우리 윤하는~ 우리 윤하는~ 우리랑 신나는 시간을~~"
      },
      {
-      "speaker": "박성관(웃음)",
+      "speaker": "박성관",
+      "expr": "웃음",
       "text": "그 대가는 뭘까요~ 우리 윤하 병X년~ 정신병자~"
      },
      {
@@ -721,7 +741,8 @@ window.STORY_DATA.chapters.push({
       "text": "\"윤하\"라는 이름이 들리자 윤이는 그곳으로 달려갔다."
      },
      {
-      "speaker": "조윤이(화남)",
+      "speaker": "조윤이",
+      "expr": "화남",
       "text": "너희들 뭐야!"
      },
      {
@@ -729,11 +750,13 @@ window.STORY_DATA.chapters.push({
       "text": "응? 넌 뭐야? ㅋㅋㅋ"
      },
      {
-      "speaker": "조윤이(화남)",
+      "speaker": "조윤이",
+      "expr": "화남",
       "text": "너네가 뭔데 내 동생 이름을 함부로 불러!!"
      },
      {
-      "speaker": "박성관(웃음)",
+      "speaker": "박성관",
+      "expr": "웃음",
       "text": "아… 그 나이스한 애가 니 동생 윤하냐? ㅋㅋㅋㅋ"
      },
      {
@@ -741,7 +764,8 @@ window.STORY_DATA.chapters.push({
       "text": "형님, 얘 맞죠? 그 언니."
      },
      {
-      "speaker": "조윤이(화남)",
+      "speaker": "조윤이",
+      "expr": "화남",
       "text": "너희들!!!!!!!!!!!!!!!"
      }
     ]
@@ -762,7 +786,8 @@ window.STORY_DATA.chapters.push({
      "text": "하아…. 하아…"
     },
     {
-     "speaker": "박성관(웃음)",
+     "speaker": "박성관",
+      "expr": "웃음",
      "text": "ㅋㅋㅋ 그래도 너 오래 버텼다."
     },
     {
@@ -825,7 +850,8 @@ window.STORY_DATA.chapters.push({
       "text": "허름한 골목 안. 윤하의 손엔 껌 상자가 들려 있다."
      },
      {
-      "speaker": "박성관(화남)",
+      "speaker": "박성관",
+      "expr": "화남",
       "text": "야, 일 안 하냐?"
      },
      {
@@ -845,7 +871,8 @@ window.STORY_DATA.chapters.push({
       "text": "앗, 민섭 형님! 오셨습니까?"
      },
      {
-      "speaker": "소민섭(화남)",
+      "speaker": "소민섭",
+      "expr": "화남",
       "text": "야… 너네 매출이 왜 이래? 죽고 싶냐?"
      },
      {
@@ -865,7 +892,8 @@ window.STORY_DATA.chapters.push({
       "text": "….."
      },
      {
-      "speaker": "소민섭(화남)",
+      "speaker": "소민섭",
+      "expr": "화남",
       "text": "얘 말 못 하냐? 뭐 이런 병X 같은 걸 데려왔어?"
      },
      {
@@ -877,7 +905,8 @@ window.STORY_DATA.chapters.push({
       "text": "...!(눈물을 머금는다)"
      },
      {
-      "speaker": "소민섭(웃음)",
+      "speaker": "소민섭",
+      "expr": "웃음",
       "text": "이거 뭐냐? 찐따냐? ㅋㅋㅋㅋ"
      },
      {
@@ -900,7 +929,8 @@ window.STORY_DATA.chapters.push({
    "bossId": "1002400375",
    "after": [
     {
-     "speaker": "소민섭(웃음)",
+     "speaker": "소민섭",
+      "expr": "웃음",
      "text": "너 뭔 상상하냐? 빨리 일하러 안 가냐?"
     },
     {
@@ -908,7 +938,8 @@ window.STORY_DATA.chapters.push({
      "text": "….네…. 죄송합니다."
     },
     {
-     "speaker": "소민섭(화남)",
+     "speaker": "소민섭",
+      "expr": "화남",
      "text": "할당량 못 채우면 오늘 밥은 없다. 알지?"
     }
    ],
