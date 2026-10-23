@@ -176,6 +176,17 @@
     return { ...base, route: base.byRoute ? key : undefined, hero: o.hero, subtitle: o.subtitle ?? base.subtitle, start: base.byRoute ? o.start ?? base.start : o.start, ending: base.byRoute ? o.ending ?? base.ending : o.ending,
       phases: base.phases.map(p => { const x = o.phases?.[p.no]; return x ? { ...p, ...x, lines: x.lines ? { default: x.lines } : p.lines } : p; }) };
   }
+  /** 스토리 컷인 이미지 (스킬 컷인처럼): 어두운 배경 위 가운데에 비율 유지(contain)로 페이드 인 → 약 2.2초 또는 탭 → 페이드 아웃 → done */
+  function storyCutin(src, done) {
+    const el = document.createElement('div'); el.className = 'story-cutin';
+    el.innerHTML = `<div class="story-cutin-bg" style="background-image:url('${esc(src)}')"></div><img class="story-cutin-img" src="${esc(src)}" alt="">`;
+    document.body.appendChild(el);
+    let out = false, t;
+    const close = () => { if (out) return; out = true; clearTimeout(t); el.classList.remove('on'); setTimeout(() => { el.remove(); done(); }, 450); };
+    el.onclick = e => { e.stopPropagation(); close(); };
+    const img = el.querySelector('img'), go = () => { requestAnimationFrame(() => el.classList.add('on')); t = setTimeout(close, 2600); };
+    img.complete ? go() : (img.onload = go, img.onerror = () => { out = true; el.remove(); done(); });
+  }
   // ----- 챕터 선택 -----
   let curCh = null;          // 보고 있는 챕터 위치 (D.chapters 기준)
   let chReady = {};          // 서버에 페이즈 설정이 있는 챕터 (서버 모드에서만 확인)
@@ -490,6 +501,7 @@
     let i = 0;
     const step = () => {
       if (i >= lines.length) return next();
+      if (lines[i].image && step.cut !== i) { step.cut = i; return storyCutin(lines[i].image, step); }   // 대사 줄의 image: 컷인 이미지 먼저 보여주고 그 줄 진행
       const L0 = lines[i], tag = /^(.+?)\s*\((기본|화남|웃음)\)$/.exec(L0.speaker || ''), L = tag ? { ...L0, speaker: tag[1], expr: L0.expr || tag[2] } : L0;
       const pc = who(L), sp = L.speaker === 'starter' ? starter?.name : L.speaker === 'enemy' ? enemy?.name : (L.speaker === '내레이션' ? null : L.speaker);
       const left = pc ? heroes.includes(pc) : true;

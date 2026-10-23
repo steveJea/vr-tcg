@@ -526,3 +526,10 @@ span.story-lvpct { background: rgba(251,191,36,.12); border: 1px solid rgba(251,
 .story-ic-btn.pts b{font-size:14px}
 .story-clear{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:14px;font-weight:900;letter-spacing:.12em;color:#6ee7b7}
 .story-clear small{letter-spacing:0;font-weight:600;color:#a1a1aa}
+
+/* 스토리 컷인 이미지 (대사 줄 image). 세로 2:3 등 어떤 비율이든 화면 안에 통째로(contain), 뒤는 같은 그림을 흐리게 깔고 어둡게 */
+.story-cutin{position:fixed;inset:0;z-index:9000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.88);opacity:0;transition:opacity .45s ease;cursor:pointer}
+.story-cutin.on{opacity:1}
+.story-cutin-bg{position:absolute;inset:-40px;background-size:cover;background-position:center;filter:blur(28px) brightness(.35);transform:scale(1.1)}
+.story-cutin-img{position:relative;max-width:min(92vw,640px);max-height:88vh;max-height:88dvh;width:auto;height:auto;object-fit:contain;border-radius:14px;box-shadow:0 0 0 1px rgba(255,255,255,.12),0 20px 60px rgba(0,0,0,.8);transform:scale(.94);transition:transform .6s cubic-bezier(.2,.8,.2,1)}
+.story-cutin.on .story-cutin-img{transform:scale(1)}

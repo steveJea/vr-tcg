@@ -10,7 +10,7 @@
     return new Promise(res => {
       if (!allowedSrc(src)) return res(null);
       const im = new Image(); im.crossOrigin = 'anonymous';
-      im.onload = () => res(im); im.onerror = () => res(null); im.src = src;
+      im.onload = () => res(im); im.onerror = () => res(null); im.src = window.cardImgOverride ? window.cardImgOverride(src) : src;   // 프로필 교체 id 는 img/npc
     });
   }
   function rr(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
