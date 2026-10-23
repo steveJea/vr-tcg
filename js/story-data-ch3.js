@@ -847,7 +847,7 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "내레이션",
-      "text": "허름한 골목 안. 윤하의 손엔 껌 상자가 들려 있다."
+      "text": "허름한 아지트. 윤하는 부들부들 떨고 있다."
      },
      {
       "speaker": "박성관",
@@ -989,7 +989,7 @@ window.STORY_DATA.chapters.push({
  "ending": [
   {
    "speaker": "내레이션",
-   "text": "그날 밤. 윤하는 빈 껌 상자를 안고 빌라로 돌아왔다."
+   "text": "그날 밤. 윤하는 만신창이가 된 몸으로 집에 돌아왔다."
   },
   {
    "speaker": "내레이션",
