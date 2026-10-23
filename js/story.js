@@ -329,7 +329,17 @@
   // 루트 시작 스토리: 루트마다 1번 (본 표시는 이 브라우저에만 저장)
   const RS_KEY = ch => `vrTcgStoryRouteStart:${user()?.id || 'guest'}:${ch.id}:${ch.route || 'main'}`;
   const routeStartSeen = ch => { try { return localStorage.getItem(RS_KEY(ch)) === '1'; } catch { return true; } };
-  function routeStart(ch) { playLines([...(ch.single && ch.tagline ? [{ speaker: '내레이션', text: ch.tagline.replace(/\n/g, ' ') }] : []), ...ch.start], [], () => { try { localStorage.setItem(RS_KEY(ch), '1'); } catch {} renderMap(); }, 'story', ch.hero); }
+  function contentWarn(ch, next) {
+    const k = `vr-story-warn-${ch.id}`; let seen = false; try { seen = !!localStorage.getItem(k); } catch {}
+    if (!ch.warning || seen) return next();
+    const el = document.createElement('div'); el.className = 'story-warn';
+    el.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.72)';
+    el.innerHTML = `<div style="max-width:20rem;margin:1rem;padding:1.25rem 1.5rem;border-radius:14px;background:#18181b;border:1px solid #f87171;text-align:center;color:#f4f4f5"><div style="font-size:1.6rem">⚠️</div><div style="font-weight:700;margin:.35rem 0 .5rem;color:#fca5a5">콘텐츠 주의</div><div style="font-size:.9rem;line-height:1.5">${esc(ch.warning)}</div><div style="font-size:.75rem;color:#a1a1aa;margin-top:.75rem">탭하면 계속</div></div>`;
+    el.addEventListener('click', () => { try { localStorage.setItem(k, '1'); } catch {} el.remove(); next(); });
+    document.body.appendChild(el);
+  }
+  function routeStart(ch) { contentWarn(ch, () => routeStart0(ch)); }
+  function routeStart0(ch) { playLines([...(ch.single && ch.tagline ? [{ speaker: '내레이션', text: ch.tagline.replace(/\n/g, ' ') }] : []), ...ch.start], [], () => { try { localStorage.setItem(RS_KEY(ch), '1'); } catch {} renderMap(); }, 'story', ch.hero); }
 
   // 시작 스토리: 캐릭터 선택 직후 1번
   function startStory(ch) {
