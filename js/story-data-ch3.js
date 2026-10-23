@@ -11,15 +11,15 @@ window.STORY_DATA.chapters.push({
   {
    "no": 1,
    "type": "normal",
-   "enemyName": "배승규",
+   "enemyName": "불량배-O",
    "title": "괴롭다",
    "enemies": {
     "ids": [
-     "2001400253",
-     "2000800191",
-     "1000500113",
-     "1001800344",
-     "1000300070"
+     "2000000027",
+     "2000000026",
+     "2000000025",
+     "2000000024",
+     "2000000023"
     ]
    },
    "lines": {
@@ -33,9 +33,8 @@ window.STORY_DATA.chapters.push({
       "text": "불량하기로 소문난 5인조가 담배를 피우고 있었다."
      },
      {
-      "speaker": "하장미",
-      "text": "야! 벙어리! 뭘 봐?",
-      "expr": "화남"
+      "speaker": "불량배-K",
+      "text": "야! 벙어리! 뭘 봐?"
      },
      {
       "speaker": "조윤하",
@@ -46,22 +45,19 @@ window.STORY_DATA.chapters.push({
       "text": "윤하의 어깨가 잘게 떨렸다."
      },
      {
-      "speaker": "김샛별",
-      "text": "말을 해! 말을!!",
-      "expr": "화남"
+      "speaker": "불량배-L",
+      "text": "말을 해! 말을!!"
      },
      {
-      "speaker": "선영운",
-      "text": "저거, 저거… 멀쩡하게 생겨서 말을 못 해…",
-      "expr": "웃음"
+      "speaker": "불량배-M",
+      "text": "저거, 저거… 멀쩡하게 생겨서 말을 못 해…"
      },
      {
-      "speaker": "안재수",
-      "text": "벙어리 놀리는 맛이 쏠쏠하네. ㅋㅋ",
-      "expr": "웃음"
+      "speaker": "불량배-N",
+      "text": "벙어리 놀리는 맛이 쏠쏠하네. ㅋㅋ"
      },
      {
-      "speaker": "하장미",
+      "speaker": "불량배-L",
       "text": "야 벙어리. 이리 와 봐!"
      },
      {
@@ -69,7 +65,7 @@ window.STORY_DATA.chapters.push({
       "text": "윤하는 겁먹은 듯 도망치기 시작했다."
      },
      {
-      "speaker": "배승규",
+      "speaker": "불량배-O",
       "text": "야… 저거 잡아 와."
      }
     ]
@@ -83,7 +79,7 @@ window.STORY_DATA.chapters.push({
    "hero": [
     "2000500111"
    ],
-   "bossId": "1000300070"
+   "bossId": "2000000027"
   },
   {
    "no": 2,
@@ -92,24 +88,23 @@ window.STORY_DATA.chapters.push({
    "title": "너희가 뭘 알아?",
    "enemies": {
     "ids": [
-     "2000500110",
+     "2000900236",
      "2000400096",
-     "2000800196",
+     "2000500110",
      "2000200031",
-     "2000900236"
+     "2000800196"
     ]
    },
    "lines": {
     "default": [
      {
       "speaker": "동지선",
-      "text": "야, 거기 깡패들! 뭐 하는 거야?",
-      "expr": "화남"
+      "expr": "화남",
+      "text": "야, 거기 깡패들! 뭐 하는 거야?"
      },
      {
-      "speaker": "배승규",
-      "text": "야, 하늘머리. 깝치면 뒤진다.",
-      "expr": "화남"
+      "speaker": "불량배-O",
+      "text": "야, 하늘머리. 깝치면 뒤진다."
      },
      {
       "speaker": "이로하",
@@ -120,7 +115,7 @@ window.STORY_DATA.chapters.push({
       "text": "자꾸 여학생 괴롭히면 신부님 모시고 올 거예요."
      },
      {
-      "speaker": "배승규",
+      "speaker": "불량배-O",
       "text": "아오, 깡패 신부… 쳇. 가자."
      },
      {
@@ -129,8 +124,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "표지아",
-      "text": "아, 얘가 윤이 동생이구나!",
-      "expr": "웃음"
+      "expr": "웃음",
+      "text": "아, 얘가 윤이 동생이구나!"
      },
      {
       "speaker": "내레이션",
@@ -168,15 +163,15 @@ window.STORY_DATA.chapters.push({
   {
    "no": 3,
    "type": "normal",
-   "enemyName": "이재덕",
+   "enemyName": "하장미",
    "title": "내 동생 건드리지 마!",
    "enemies": {
     "ids": [
      "2001400253",
-     "1000500113",
-     "1000000002",
-     "1000000001",
-     "1002100364"
+     "2000000030",
+     "2000000029",
+     "2000000028",
+     "2000000027"
     ]
    },
    "lines": {
@@ -195,37 +190,32 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "조윤이",
-      "text": "하장미!! 너 내 동생 건드렸어?",
-      "expr": "화남"
+      "text": "하장미!! 너 내 동생 건드렸어?"
      },
      {
       "speaker": "하장미",
-      "text": "저… 저X이 미쳤나?",
-      "expr": "화남"
+      "expr": "화남",
+      "text": "저… 저X이 미쳤나?"
      },
      {
-      "speaker": "정치성",
-      "text": "와, 쟤 누구냐? 겁대가리 상실했네!!",
-      "expr": "웃음"
+      "speaker": "불량배-O",
+      "text": "와, 쟤 누구냐? 겁대가리 상실했네!!"
      },
      {
-      "speaker": "정치환",
-      "text": "치성아, 형이 먼저다! 어이, 영웅 납셨네!",
-      "expr": "웃음"
+      "speaker": "불량배-P",
+      "text": "오..쟤 알바 5개 하는 예쁘니잖아. 쟤 레이싱모델도 한다. ㅋㅋㅋ"
      },
      {
-      "speaker": "정치환",
-      "text": "일루 와. 동생 대신 네가 맞아 줄래?"
+      "speaker": "불량배-Q",
+      "text": "오...저거 팔면 돈 좀 되겠는데? 언니~ 우리랑 일 좀 할래?"
      },
      {
       "speaker": "조윤이",
-      "text": "이 양아치들… 다 가만 안 둬!",
-      "expr": "화남"
+      "text": "이 양아치들… 다 가만 안 둬!"
      },
      {
-      "speaker": "이재덕",
-      "text": "으흐흐흐. 기대할게, 언니야.",
-      "expr": "웃음"
+      "speaker": "불량배-R",
+      "text": "으흐흐흐. 기대할게, 언니야."
      }
     ]
    },
@@ -237,19 +227,19 @@ window.STORY_DATA.chapters.push({
    "hero": [
     "2000500114"
    ],
-   "bossId": "1002100364"
+   "bossId": "2001400253"
   },
   {
    "no": 4,
    "type": "normal",
-   "enemyName": "권예리",
+   "enemyName": "주예서",
    "title": "나 좀 그만 괴롭힐래?",
    "enemies": {
     "ids": [
-     "2000500110",
-     "2000600132",
-     "2000900236",
      "2001500308",
+     "2000500110",
+     "2000900236",
+     "2000600132",
      "2000900214"
     ]
    },
@@ -265,8 +255,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "윤진아",
-      "text": "하하하, 괜찮아 윤하야. 표정 풀고 이거 마셔.",
-      "expr": "웃음"
+      "expr": "웃음",
+      "text": "하하하, 괜찮아 윤하야. 표정 풀고 이거 마셔."
      },
      {
       "speaker": "내레이션",
@@ -306,18 +296,17 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "이영아",
-      "text": "맞아! 윤이 언니 동생이면 우리 동생이지!",
-      "expr": "웃음"
+      "expr": "웃음",
+      "text": "맞아! 윤이 언니 동생이면 우리 동생이지!"
      },
      {
       "speaker": "주예서",
-      "text": "지선아, 윤하네 언니가 윤이라고! 그 천사 조윤이!!",
-      "expr": "웃음"
+      "expr": "웃음",
+      "text": "지선아, 윤하네 언니가 윤이라고! 그 천사 조윤이!!"
      },
      {
       "speaker": "조윤하",
-      "text": "…그만!!!!!!!!!!!!",
-      "expr": "화남"
+      "text": "…그만!!!!!!!!!!!!"
      },
      {
       "speaker": "내레이션",
@@ -340,20 +329,20 @@ window.STORY_DATA.chapters.push({
    "hero": [
     "2000500111"
    ],
-   "bossId": "2000900214"
+   "bossId": "2001500308"
   },
   {
    "no": 5,
    "type": "normal",
-   "enemyName": "조윤이",
+   "enemyName": "윤진아",
    "title": "착한 척하지 마!!",
    "enemies": {
     "ids": [
      "2000500110",
-     "2000400096",
+     "2000600132",
+     "2000900236",
      "2000000011",
-     "2001400277",
-     "2000500114"
+     "2001400277"
     ]
    },
    "lines": {
@@ -376,8 +365,7 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "조윤이",
-      "text": "응, 윤하야…!!!",
-      "expr": "웃음"
+      "text": "응, 윤하야…!!!"
      },
      {
       "speaker": "조윤하",
@@ -389,8 +377,7 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "조윤하",
-      "text": "너… 진짜… 지겨워… 꺼져.",
-      "expr": "화남"
+      "text": "너… 진짜… 지겨워… 꺼져."
      },
      {
       "speaker": "내레이션",
@@ -398,13 +385,13 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "최겨울",
-      "text": "야! 지금 뭐 하는 거야!",
-      "expr": "화남"
+      "expr": "화남",
+      "text": "야! 지금 뭐 하는 거야!"
      },
      {
       "speaker": "안주연",
-      "text": "언니가 어떻게 해 왔는데, 너 진짜!",
-      "expr": "화남"
+      "expr": "화남",
+      "text": "언니가 어떻게 해 왔는데, 너 진짜!"
      },
      {
       "speaker": "조윤이",
@@ -423,20 +410,20 @@ window.STORY_DATA.chapters.push({
    "hero": [
     "2000500111"
    ],
-   "bossId": "2000500114"
+   "bossId": "2000500110"
   },
   {
    "no": 6,
    "type": "normal",
-   "enemyName": "조윤이",
+   "enemyName": "윤진아",
    "title": "너를 증오해",
    "enemies": {
     "ids": [
-     "2000900236",
      "2000500110",
-     "2000900214",
-     "2000900203",
-     "2000500114"
+     "2000600132",
+     "2000900236",
+     "2000000011",
+     "2002000353"
     ]
    },
    "lines": {
@@ -447,13 +434,13 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "조윤하",
-      "text": "하… 너 진짜 몰라?",
-      "expr": "웃음"
+      "expr": "웃음",
+      "text": "하… 너 진짜 몰라?"
      },
      {
       "speaker": "동지선",
-      "text": "야! 너 언니한테… 왜 그래?",
-      "expr": "화남"
+      "expr": "화남",
+      "text": "야! 너 언니한테… 왜 그래?"
      },
      {
       "speaker": "조윤이",
@@ -465,13 +452,13 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "조윤하",
-      "text": "넌… 너만 잘났지? 진짜 재수 없어.",
-      "expr": "화남"
+      "expr": "화남",
+      "text": "넌… 너만 잘났지? 진짜 재수 없어."
      },
      {
       "speaker": "조윤하",
-      "text": "그리고 너 때문에 엄빠 죽은 거잖아!",
-      "expr": "화남"
+      "expr": "화남",
+      "text": "그리고 너 때문에 엄빠 죽은 거잖아!"
      },
      {
       "speaker": "조윤이",
@@ -507,20 +494,25 @@ window.STORY_DATA.chapters.push({
    "hero": [
     "2000500111"
    ],
-   "bossId": "2000500114"
+   "bossId": "2000500110",
+   "spare": {
+    "2002000353": [
+     "2000500111"
+    ]
+   }
   },
   {
    "no": 7,
    "type": "normal",
-   "enemyName": "적군",
+   "enemyName": "안지수",
    "title": "다 괜찮아?",
    "enemies": {
     "ids": [
+     "2002000353",
+     "2000900203",
      "2000900236",
      "2000200053",
-     "2000900214",
-     "2000900203",
-     "2001500308"
+     "2000500110"
     ]
    },
    "lines": {
@@ -531,13 +523,13 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "조윤하",
-      "text": "이거 봐… 지 친구 믿고…",
-      "expr": "웃음"
+      "expr": "웃음",
+      "text": "이거 봐… 지 친구 믿고…"
      },
      {
       "speaker": "동지선",
-      "text": "너 진짜 혼나고 싶어!?",
-      "expr": "화남"
+      "expr": "화남",
+      "text": "너 진짜 혼나고 싶어!?"
      },
      {
       "speaker": "조윤이",
@@ -545,13 +537,13 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "황예은",
-      "text": "조윤이! 네가 뭐가 미안한데??",
-      "expr": "화남"
+      "expr": "화남",
+      "text": "조윤이! 네가 뭐가 미안한데??"
      },
      {
       "speaker": "황예은",
-      "text": "윤하가 이상하잖아!",
-      "expr": "화남"
+      "expr": "화남",
+      "text": "윤하가 이상하잖아!"
      },
      {
       "speaker": "조윤하",
@@ -563,8 +555,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "동지선",
-      "text": "안 되겠다. 우리 윤하 오늘 좀 혼나야겠다.",
-      "expr": "화남"
+      "expr": "화남",
+      "text": "안 되겠다. 우리 윤하 오늘 좀 혼나야겠다."
      },
      {
       "speaker": "조윤이",
@@ -590,20 +582,21 @@ window.STORY_DATA.chapters.push({
     "2000500111",
     "2000500114"
    ],
-   "enemyFirst": true
+   "enemyFirst": true,
+   "bossId": "2002000353"
   },
   {
    "no": 8,
    "type": "normal",
-   "enemyName": "송지은",
+   "enemyName": "박성관",
    "title": "위험한 거래",
    "enemies": {
     "ids": [
-     "2001400253",
-     "1000500113",
      "1002400377",
-     "2000900206",
-     "2000900207"
+     "2000000031",
+     "2000000030",
+     "2000000029",
+     "2000000028"
     ]
    },
    "lines": {
@@ -622,8 +615,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "조윤이",
-      "text": "내일 언니랑 놀러 가지 않을래?",
-      "expr": "웃음"
+      "expr": "웃음",
+      "text": "내일 언니랑 놀러 가지 않을래?"
      },
      {
       "speaker": "조윤하",
@@ -643,33 +636,39 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "내레이션",
-      "text": "잠시 뒤, 윤하도 밖으로 나갔다. 어두운 뒷골목."
+      "text": "잠시 뒤, 윤하가 어딘가로 전화를 했다."
      },
      {
       "speaker": "조윤하",
-      "text": "야… 여기 돈. 모아 둔 거 다야."
+      "text": "...내가 부탁한 거 들어줄 수 있어?"
+     },
+     {
+      "speaker": "불량배-R",
+      "text": "정성을 보여 이년아. 여기 우리 아지트니까 일루 와서 직접 말해"
+     },
+     {
+      "speaker": "내레이션",
+      "text": "윤하는 그들의 아지트로 향했다. 담배냄새와 술냄새로 가득한 축축하고 기분 나쁜 곳."
+     },
+     {
+      "speaker": "불량배-R",
+      "text": "어머, 친언니를? 진심이야?"
+     },
+     {
+      "speaker": "불량배-S",
+      "text": "이히히히히. 그럼 네가 진심인지 함 보자."
      },
      {
       "speaker": "조윤하",
-      "text": "이거 줄 테니까, 걔 좀 치워 줘."
+      "text": "...어떻게? 그걸 증명해?"
      },
      {
-      "speaker": "송지은",
-      "text": "어머, 친언니를? 진심이야?",
-      "expr": "웃음"
+      "speaker": "불량배-S",
+      "text": "아..더러워..ㅋㅋ 성관아. 니 입으로 말해라."
      },
      {
-      "speaker": "송지아",
-      "text": "이히히히히. 그럼 네가 진심인지 함 보자.",
-      "expr": "웃음"
-     },
-     {
-      "speaker": "송지아",
-      "text": "우리 이기면 믿어 줄게."
-     },
-     {
-      "speaker": "조윤하",
-      "text": "하아…"
+      "speaker": "박성관",
+      "text": "그 있잖아...너만 할 수 있는 정성을 보이는 방식?"
      }
     ]
    },
@@ -681,21 +680,20 @@ window.STORY_DATA.chapters.push({
    "hero": [
     "2000500111"
    ],
-   "bossId": "2000900207",
+   "bossId": "1002400377",
    "enemyFirst": true,
    "after": [
     {
-     "speaker": "조윤하",
-     "text": "이 정도면 됐지?"
-    },
-    {
      "speaker": "박성관",
-     "text": "나이스한데? ㅋㅋㅋ",
-     "expr": "웃음"
+     "text": "오...나이스. 이 정도면 합격!"
     },
     {
-     "speaker": "송지은",
+     "speaker": "불량배-S",
      "text": "좋아. 거래 성립."
+    },
+    {
+     "speaker": "조윤하",
+     "text": "하아....."
     }
    ],
    "afterTitle": "전투 후"
@@ -703,15 +701,15 @@ window.STORY_DATA.chapters.push({
   {
    "no": 9,
    "type": "normal",
-   "enemyName": "고정태",
+   "enemyName": "박성관",
    "title": "다 괜찮아",
    "enemies": {
     "ids": [
-     "2000900207",
-     "2000900206",
      "1002400377",
      "1000300056",
-     "1000600125"
+     "2000000031",
+     "2000000030",
+     "2000000029"
     ]
    },
    "lines": {
@@ -726,18 +724,17 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "박성관",
-      "text": "우리 윤하는 벙어리~ 말도 못 하는 바보~",
-      "expr": "웃음"
+      "expr": "웃음",
+      "text": "우리 윤하는~ 우리 윤하는~ 우리랑 신나는 시간을~~"
      },
      {
       "speaker": "박성관",
-      "text": "언니 팔아 넘긴 바보~ 랄랄라~",
-      "expr": "웃음"
+      "expr": "웃음",
+      "text": "그 대가는 뭘까요~ 우리 윤하 병X년~ 정신병자~"
      },
      {
-      "speaker": "송지은",
-      "text": "어우, 유치해… ㅋㅋㅋㅋ",
-      "expr": "웃음"
+      "speaker": "불량배-S",
+      "text": "어우, 유치해… ㅋㅋㅋㅋ"
      },
      {
       "speaker": "내레이션",
@@ -745,8 +742,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "조윤이",
-      "text": "너희들 뭐야!",
-      "expr": "화남"
+      "expr": "화남",
+      "text": "너희들 뭐야!"
      },
      {
       "speaker": "박성관",
@@ -754,13 +751,13 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "조윤이",
-      "text": "너네가 뭔데 내 동생 이름을 함부로 불러!!",
-      "expr": "화남"
+      "expr": "화남",
+      "text": "너네가 뭔데 내 동생 이름을 함부로 불러!!"
      },
      {
       "speaker": "박성관",
-      "text": "아… 그 나이스한 애가 니 동생 윤하냐? ㅋㅋㅋㅋ",
-      "expr": "웃음"
+      "expr": "웃음",
+      "text": "아… 그 나이스한 애가 니 동생 윤하냐? ㅋㅋㅋㅋ"
      },
      {
       "speaker": "서태우",
@@ -768,8 +765,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "조윤이",
-      "text": "너희들!!!!!!!!!!!!!!!",
-      "expr": "화남"
+      "expr": "화남",
+      "text": "너희들!!!!!!!!!!!!!!!"
      }
     ]
    },
@@ -782,7 +779,7 @@ window.STORY_DATA.chapters.push({
    "hero": [
     "2000500114"
    ],
-   "bossId": "1000600125",
+   "bossId": "1002400377",
    "after": [
     {
      "speaker": "조윤이",
@@ -790,20 +787,20 @@ window.STORY_DATA.chapters.push({
     },
     {
      "speaker": "박성관",
-     "text": "ㅋㅋㅋ 그래도 너 오래 버텼다.",
-     "expr": "웃음"
+      "expr": "웃음",
+     "text": "ㅋㅋㅋ 그래도 너 오래 버텼다."
     },
     {
      "speaker": "조윤이",
      "text": "윤하… 괜찮아… 다… 괜찮아…"
     },
     {
-     "speaker": "고정태",
+     "speaker": "불량배-S",
      "text": "야, 빨리 치우고 가자."
     },
     {
      "speaker": "박성관",
-     "text": "네, 형님~"
+     "text": "네, 누님~~~"
     },
     {
      "speaker": "내레이션",
@@ -815,8 +812,7 @@ window.STORY_DATA.chapters.push({
     },
     {
      "speaker": "조윤하",
-     "text": "…이제 좀 조용하네.",
-     "expr": "웃음"
+     "text": "....내가....무슨..짓을.....한거야????????????????????????"
     }
    ],
    "afterTitle": "전투 후"
@@ -828,11 +824,11 @@ window.STORY_DATA.chapters.push({
    "title": "속죄",
    "enemies": {
     "ids": [
-     "2000900207",
-     "2000900206",
+     "1002400375",
+     "2000000031",
+     "2000000030",
      "1002400377",
-     "1000600125",
-     "1002400375"
+     "1000600125"
     ]
    },
    "lines": {
@@ -855,13 +851,12 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "박성관",
-      "text": "야, 일 안 하냐?",
-      "expr": "화남"
+      "expr": "화남",
+      "text": "야, 일 안 하냐?"
      },
      {
-      "speaker": "송지은",
-      "text": "아… 너 이거밖에 못 팔아? 좀 더 뛰어~",
-      "expr": "화남"
+      "speaker": "불량배-S",
+      "text": "너 내가 어떻게 하는지 매일 알려줘야해? 진짜 빠가년이냐?"
      },
      {
       "speaker": "조윤하",
@@ -877,8 +872,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "소민섭",
-      "text": "야… 너네 매출이 왜 이래? 죽고 싶냐?",
-      "expr": "화남"
+      "expr": "화남",
+      "text": "야… 너네 매출이 왜 이래? 죽고 싶냐?"
      },
      {
       "speaker": "고정태",
@@ -890,7 +885,7 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "소민섭",
-      "text": "얘가 신입이야? 눈깔에 독기가 없네."
+      "text": "얘가 신입이야? 몸은 예쁘네."
      },
      {
       "speaker": "조윤하",
@@ -898,8 +893,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "소민섭",
-      "text": "얘 말 못 하냐? 뭐 이런 병X 같은 걸 데려왔어?",
-      "expr": "화남"
+      "expr": "화남",
+      "text": "얘 말 못 하냐? 뭐 이런 병X 같은 걸 데려왔어?"
      },
      {
       "speaker": "내레이션",
@@ -907,12 +902,12 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "조윤하",
-      "text": "…..으앙…."
+      "text": "...!(눈물을 머금는다)"
      },
      {
       "speaker": "소민섭",
-      "text": "이거 뭐냐? 찐따냐? ㅋㅋㅋㅋ",
-      "expr": "웃음"
+      "expr": "웃음",
+      "text": "이거 뭐냐? 찐따냐? ㅋㅋㅋㅋ"
      },
      {
       "speaker": "내레이션",
@@ -923,6 +918,9 @@ window.STORY_DATA.chapters.push({
    "party": {
     "forced": [
      "2000500111"
+    ],
+    "exclude": [
+     "2000500114"
     ]
    },
    "hero": [
@@ -932,8 +930,8 @@ window.STORY_DATA.chapters.push({
    "after": [
     {
      "speaker": "소민섭",
-     "text": "너 뭔 상상하냐? 빨리 일하러 안 가냐?",
-     "expr": "웃음"
+      "expr": "웃음",
+     "text": "너 뭔 상상하냐? 빨리 일하러 안 가냐?"
     },
     {
      "speaker": "조윤하",
@@ -941,11 +939,12 @@ window.STORY_DATA.chapters.push({
     },
     {
      "speaker": "소민섭",
-     "text": "할당량 못 채우면 오늘 밥은 없다. 알지?",
-     "expr": "화남"
+      "expr": "화남",
+     "text": "할당량 못 채우면 오늘 밥은 없다. 알지?"
     }
    ],
-   "afterTitle": "전투 후"
+   "afterTitle": "전투 후",
+   "noPairShield": true
   }
  ],
  "tagline": "어린 시절 끔찍한 경험.\n윤하는 말을 잃었다. 그리고 어디에서나 빛나는\n저 언니를… 증오한다.",
