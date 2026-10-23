@@ -598,7 +598,7 @@
     // 보스 카드를 맨 앞에 (진영 안 표시), 나머지는 그대로
     const ai = bc ? [bc, ...enemies.filter(c => c !== bc)] : enemies;
     window.TCG.startStory({
-      me, ai, leader: (() => { const lo = me.find(c => c.uid === save.leader), le = lo && leaderEff(lo.id); return le ? { ...le, uid: lo.uid } : undefined; })(), win: boss ? 'ko' : 'wipe', aiHp: boss ? bossHp(ch, ph) : undefined, bossId: bc ? String(bc.id) : undefined, aiName: ph.enemyName || (boss ? '보스' : '적군'), rules: battleRules(ch, ph), first: ph.enemyFirst ? 'ai' : 'me',   // 기본 내가 선공, 페이즈 enemyFirst 면 적 선공
+      me, ai, leader: (() => { const lo = me.find(c => c.uid === save.leader), le = lo && leaderEff(lo.id); return le ? { ...le, uid: lo.uid } : undefined; })(), win: boss ? 'ko' : 'wipe', aiHp: boss ? bossHp(ch, ph) : undefined, bossId: bc ? String(bc.id) : undefined, enemyLevels: ph.enemies?.levels, aiName: ph.enemyName || (boss ? '보스' : '적군'), rules: battleRules(ch, ph), first: ph.enemyFirst ? 'ai' : 'me',   // 기본 내가 선공, 페이즈 enemyFirst 면 적 선공
      
       spare: STORY_SPARE,   // 조윤이는 조윤하를 공격하지 않음
       onEnd: (win, reason, st) => result(ch, ph, win, reason, st),

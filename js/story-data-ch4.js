@@ -801,7 +801,8 @@ window.STORY_DATA.chapters.push({
      "2000100003",
      "2000100003",
      "2000100003"
-    ]
+    ],
+    "levels": { "2000000022": 5 }
    },
    "lines": {
     "default": [

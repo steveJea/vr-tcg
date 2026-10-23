@@ -1,4 +1,4 @@
-import { RULES, ELEMENTS, elementMultiplier, calcDamage, canSummon, buildDeck, parseCSV, aiSummonOrder, aiPickTarget, recallCost, canRecall, aiShouldRecall, makeUnit, resolveAttack, refillMana, ACTIONS, canAction, doAction, clearBuff, aiWantShuffle, aiWantBuff, aiWantHeal, aiWantFieldHeal, aiPickItem, endTurnXp, ITEMS, canEquip, equip, attackTargets, canTarget, autoTarget, heroLocked, xpToNext, SKILLS, gainXp, setCardPool, canSacrifice, sacrifice, aiPickSacrifice, aiWantAccel, judgeTimeout, JUDGE_LABEL, genderMult, GRADES, GRADE_SHORT, allowedGrades, baseEvade } from './rules.js';
+import { levelUpOnce, RULES, ELEMENTS, elementMultiplier, calcDamage, canSummon, buildDeck, parseCSV, aiSummonOrder, aiPickTarget, recallCost, canRecall, aiShouldRecall, makeUnit, resolveAttack, refillMana, ACTIONS, canAction, doAction, clearBuff, aiWantShuffle, aiWantBuff, aiWantHeal, aiWantFieldHeal, aiPickItem, endTurnXp, ITEMS, canEquip, equip, attackTargets, canTarget, autoTarget, heroLocked, xpToNext, SKILLS, gainXp, setCardPool, canSacrifice, sacrifice, aiPickSacrifice, aiWantAccel, judgeTimeout, JUDGE_LABEL, genderMult, GRADES, GRADE_SHORT, allowedGrades, baseEvade } from './rules.js';
 import { setSpare, spareBlocked, setSkillData, setEmitter, initPlayers, placeUnit, turnStart, turnEnd, useSkill, skillState, aiPickSkill, skillLvOf, skillCdAt, skillLvMult, SKILL_LV_MAX, refreshAll, statusIcons, skillsOf, combos, STATUS, SK, maleLure, checkDeath } from './skills.js';
 
 const IMG = 'https://raw.githubusercontent.com/steveJea/vr-ideal-worldcup/main/img/bt_img/';
@@ -140,6 +140,7 @@ function startGame(story = null) {
         if (who === 'me') S.log.played.add(String(c.id));
         if (who === 'me' && story.leader && c.uid && c.uid === story.leader.uid && !p.field.some(x => x.isLeader)) { u.isLeader = true; p.leaderSkill = story.leader; }
         if (who === 'ai' && story.bossId != null && String(c.id) === String(story.bossId) && !p.field.some(x => x.undying)) { u.undying = true; u.boss = true; }
+        if (who === 'ai') { const lv = +(story.enemyLevels?.[String(c.id)] || 0); while (u.level < Math.min(lv, RULES.LEVEL_MAX)) levelUpOnce(u); }   // 페이즈 적 시작 레벨 (enemies.levels)
         if (who === 'ai' && (story.rules?.undying || []).map(String).includes(String(c.id))) u.undying = true;   // 불사 적 (피해는 받지만 쓰러지지 않음)
         if (who === 'ai' && story.rules?.invuln != null && String(c.id) === String(story.rules.invuln) && !p.field.some(x => x.noDamage)) { u.undying = true; u.noDamage = true; u.boss = true; }
       }
@@ -148,7 +149,7 @@ function startGame(story = null) {
     { const PS = story.rules?.pairShield;   // 챕터 3 밸런스: 조윤하·조윤이가 둘 다 내 필드에 있으면 조윤하 처음 N턴 피해 무효
       const tgt = PS && S.me.field.find(u => String(u.card.id) === String(PS.id));
       if (tgt && S.me.field.some(u => String(u.card.id) === String(PS.with))) { tgt.noDamage = true; tgt.pairShield = PS.turns; S.pairShield = { u: tgt, turns: PS.turns }; log(`🛡️ 자매의 가호: ${tgt.card.name}은(는) ${PS.turns}턴 동안 피해를 입지 않아요.`, 'text-sky-300'); } }
-    refreshAll(S.me);
+    refreshAll(S.me); refreshAll(S.ai);
     setTimeout(() => { if (S && !S.over) for (const w of ['me', 'ai']) for (const u of S[w].field) onEnter(w, u); }, 400);   // 출전 카드 등장 컷인·이벤트
     if (S.me.leaderSkill) log(`👑 리더 스킬 [${S.me.leaderSkill.name} · ${S.me.leaderSkill.label}]: ${S.me.leaderSkill.text}. 리더가 쓰러지면 해제되고 아군 진영 HP −${Math.round((S.me.leaderSkill.deathPenalty ?? 0.3) * 100)}%`, 'text-amber-300');
     log(story.win === 'ko' ? '👑 보스전: 보스는 진영 안에서 쓰러지지 않아요. 상대 진영 HP를 0으로!' : '⚔️ 일반전: 상대 카드를 모두 쓰러뜨리세요!', 'text-amber-300');
