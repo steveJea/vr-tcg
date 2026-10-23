@@ -818,13 +818,36 @@ function passiveCutIn(u, name) {
   clearTimeout(passiveTimer); passiveTimer = setTimeout(() => { el.className = 'hidden'; resetHScroll(); }, ms);
 }
 
+/** MR 스킬 영상: data/fx/mr/<카드id>_<스킬번호>.mp4 (영상은 항상 음소거, 소리는 기존 스킬 보이스).
+ *  카드 인스턴스별 전투 중 스킬마다 첫 사용 때만. 탭하면 넘김. 파일 없음·로드 실패 → false (기존 컷인으로) */
+function mrVideo(u, s) {
+  if (FX_OFF() || (u.base || u.card).grade !== 'MYTHIC RARE') return Promise.resolve(false);
+  const i = skillsOf(u.card.id).findIndex(x => x.name === s.name); if (i < 0) return Promise.resolve(false);
+  const seen = (u.mrVid ||= new Set()); if (seen.has(i)) return Promise.resolve(false);
+  seen.add(i);
+  return new Promise(res => {
+    const ov = document.createElement('div'); ov.className = 'mr-vid'; ov.setAttribute('role', 'button'); ov.setAttribute('aria-label', '탭하여 넘기기');
+    const v = document.createElement('video'); v.muted = true; v.defaultMuted = true; v.playsInline = true; v.setAttribute('playsinline', ''); v.setAttribute('muted', ''); v.preload = 'auto';
+    ov.innerHTML = `<div class="mr-vid-cap"><small>${escHtml(u.card.name)}</small><b>${escHtml(s.name)}</b></div><div class="mr-vid-skip">탭하여 넘기기</div>`; ov.prepend(v);
+    let done = false, shown = false, t0, t1;
+    const end = ok => { if (done) return; done = true; clearTimeout(t0); clearTimeout(t1); try { v.pause(); } catch {} ov.remove(); res(ok); };
+    v.onerror = () => end(shown);
+    v.onended = () => end(true);
+    v.oncanplay = () => { if (shown || done) return; shown = true; clearTimeout(t0); document.body.appendChild(ov); playVoice(u, s.name);
+      v.play().catch(() => end(true)); t1 = setTimeout(() => end(true), Math.min(15000, ((v.duration || 8) + 1.5) * 1000)); };
+    ov.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); end(true); });
+    t0 = setTimeout(() => end(false), 2500);   // 로드가 늦거나 파일 없음 → 기존 컷인
+    v.src = `data/fx/mr/${u.card.id}_${i + 1}.mp4`; v.load();
+  });
+}
+
 async function castSkill(who, u, s) {
   const p = S[who];
   if (S.over || !p.field.includes(u) || !skillState(u, s).ok) return;
   const prevBusy = S.busy; S.busy = true; selected = null;
   try {
     render();
-    await withTimeout(cutIn(u, s.name, s.fx), 3000);
+    if (!(await mrVideo(u, s))) await withTimeout(cutIn(u, s.name, s.fx), 3000);
     pendingDying = [];
     useSkill(u, s);
     if (who === 'me') S.log.skills++;

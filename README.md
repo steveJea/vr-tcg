@@ -18,4 +18,5 @@ VR 캐릭터 카드로 즐기는 1:1 카드 배틀 (컴퓨터 AI 상대). 정적
 - 데이터: `data/skills.json`, `data/combos.json` ← 엑셀에서 `python3 tools/import_skills.py <xlsx>`로 생성
 - 엔진: `js/skills.js` (스킬별 효과는 스킬 이름으로 연결, 상태이상·MP·시너지·조합·AI 스킬 선택)
 - 연출 파일: 엑셀 '연출 파일' 칸에 파일명을 쓰고 `data/fx/`에 넣으면 컷인에 표시 (이미지 또는 mp4/webm)
+- MR 스킬 영상: `data/fx/mr/<카드id>_<스킬번호>.mp4` (H.264 720p 이하, 오디오 없음, faststart). MR 카드가 전투에서 그 스킬을 처음 쓸 때 1회 재생, 이후·파일 없음은 기존 컷인
 - 시뮬: `SIM_DETAIL=1 node tools/sim.mjs 3000` (스킬 사용 횟수·카드별 승률), `SIM_FORCE=<카드id> node tools/sim.mjs 300` (그 카드를 덱에 넣었을 때 승률)
