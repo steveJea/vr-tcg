@@ -337,8 +337,10 @@
     const nextNo = ch.phases.find(p => !done.includes(p.no))?.no;
     const leader = boosted(byUid(save.leader) || save.owned[0]);
     const hero = ch.hero && card(ch.hero);
-    const node = (p, i) => { const st = done.includes(p.no) ? 'done' : p.no === nextNo ? 'next' : 'lock';
-      return `${i ? `<div class="story-path ${st !== 'lock' ? 'on' : ''}"></div>` : ''}<button class="story-node ${st} ${p.type}" data-phase="${p.no}" ${st === 'lock' ? 'disabled' : ''}><span class="story-node-dot">${st === 'done' ? '✔' : p.type === 'boss' ? ic('crown', { alt: '보스', cls: 'story-node-ic' }) : st === 'lock' ? '🔒' : p.no}</span><span class="story-node-label">Phase.${p.no}${p.type === 'boss' ? ' BOSS' : ''}</span></button>`; };
+    const swOn = serverMode && done.length, swP = window.VRPlayer?.now?.(), swNeed = swP?.unlocks?.sweep ?? SWEEP_LV, swLock = !!swP && (swP.level | 0) < swNeed;
+    const node = (p, i) => { const st = done.includes(p.no) ? 'done' : p.no === nextNo ? 'next' : 'lock', boss = p.type === 'boss';
+      const dot = boss ? ic('crown', { alt: '보스', cls: 'story-node-ic' }) : st === 'done' ? '✔' : st === 'lock' ? '🔒' : p.no;
+      return `${i ? `<div class="story-path ${st !== 'lock' ? 'on' : ''}"></div>` : ''}<span class="story-node-wrap"><button class="story-node ${st} ${p.type}" data-phase="${p.no}" ${st === 'lock' ? 'disabled' : ''} aria-label="Phase ${p.no}${boss ? ' 보스' : ''}${st === 'done' ? ' 다시 하기' : ''}"><span class="story-node-dot">${dot}${boss && st === 'done' ? '<i class="story-node-ok">✔</i>' : ''}</span><span class="story-node-label">${boss ? 'BOSS' : p.no}</span></button>${swOn && st === 'done' ? `<button class="story-node-sw ${swLock ? 'off' : ''}" data-sweep="${p.no}" title="소탕" aria-label="Phase ${p.no} 소탕">${SW()}</button>` : ''}</span>`; };
     const rows = []; for (let k = 0; k < ch.phases.length; k += 5) rows.push(ch.phases.slice(k, k + 5));   // 5칸씩 한 줄
     const tabs = D.chapters.length > 1 ? `<div class="story-chtabs">${D.chapters.map((c, i) => { const open = chapterOpen(i), why = !open ? (i && !chapterDone(D.chapters[i - 1]) ? `${esc(D.chapters[i - 1].title)} 클리어 후` : '준비 중') : '';
       return `<button class="story-chtab ${i === curCh ? 'on' : ''}" data-ch="${i}" ${open ? '' : 'disabled'}>${open ? '' : '🔒 '}${esc(c.title)}${why ? `<small>${why}</small>` : ''}</button>`; }).join('')}</div>` : '';
@@ -348,30 +350,25 @@
         ${hero && ch.route ? `<div class="story-route-tag">루트 <b>${esc(hero.name)}</b>${clearedOf(ch).length ? '' : ' <button class="story-mini" data-go="route">루트 바꾸기</button>'}</div>` : ''}</div>
       <div class="story-player-row" data-vr-player></div>
       ${rows.map(r => `<div class="story-map ${rows.length > 1 ? 'story-map-row' : ''}">${r.map(node).join('')}</div>`).join('')}
-      <div id="story-sweep-wrap">${sweepRow(ch, done)}</div>
-      <div class="story-status">${leader ? `<div>리더 <b class="text-amber-300">${esc(leader.name)}</b> · 보유 카드 <b>${save.owned.length}</b>장</div>` : ''}
-        <button class="story-rule-ic" type="button" data-go="rule" title="스토리 전투 규칙" aria-label="스토리 전투 규칙">⚔️ 규칙</button>
-        <div>스탯 포인트 <b class="text-emerald-300">${save.points}</b> ${save.points ? '<button class="story-mini" data-go="stats">분배하기</button>' : ''}</div>
+      <div class="story-status story-status-row">${leader ? `<button class="story-leader" data-go="cards" title="리더 · ${esc(leader.name)}" aria-label="리더 ${esc(leader.name)}"><img src="${IMG}${leader.id}.webp" alt="" onerror="this.style.visibility='hidden'">${window.rarityStars ? window.rarityStars(leader, 'base', 'story-leader-st') : ''}<i class="story-leader-tag">${ic('crown', { alt: '리더', cls: 'ui-ic-sm' }) || '👑'}</i></button>` : ''}
+        <button class="story-ic-btn" type="button" data-go="rule" title="스토리 전투 규칙" aria-label="스토리 전투 규칙">⚔️</button>
+        ${save.points ? `<button class="story-ic-btn pts" type="button" data-go="stats" title="스탯 포인트 분배" aria-label="스탯 포인트 ${save.points} 분배">⭐<b>${save.points}</b></button>` : ''}
         ${!serverMode && !window.__STORY_MOCK_USER ? '<div class="text-[11px] text-amber-400">⚠️ 서버 저장 준비 중이라 이 브라우저에만 저장돼요</div>' : ''}</div>
-      ${nextNo ? '' : `<div class="text-center text-emerald-300 font-bold mt-4">🎉 ${esc(ch.title)} 클리어! ${nextOpen ? `<button class="story-btn ml-1" data-ch="${curCh + 1}">${esc(nextCh.title)}로 →</button>` : '다음 챕터는 준비 중이에요.'}</div>`}
-      <div class="text-center mt-5 flex flex-wrap gap-2 justify-center">${replayBtn}${chapterDone(base) && videoOf(base) ? `<button class="story-back story-vid-btn" data-go="endvideo" title="엔딩 영상 다시 보기">${ic('opening', { alt: '' }) || '🎬'} 🎬 엔딩 영상</button>` : ''}</div>`);
+      ${nextNo ? '' : `<div class="story-clear">✔ CLEAR ${nextOpen ? `<button class="story-btn" data-ch="${curCh + 1}">${esc(nextCh.title)} →</button>` : '<small>다음 챕터 준비 중</small>'}</div>`}
+      <div class="text-center mt-4 flex flex-wrap gap-2 justify-center">${chapterDone(base) && videoOf(base) ? `<button class="story-back story-vid-btn" data-go="endvideo" title="엔딩 영상 다시 보기">🎬 엔딩</button>` : ''}${curCh === 0 ? `<button class="story-back" data-go="opening" title="오프닝 다시 보기">${ic('opening', { alt: '' }) || '🎬'} 오프닝</button>` : ''}</div>`);
     bind({ stats: () => openStats(renderMap), opening: () => playOpening(renderMap), endvideo: () => endingVideo(base), route: () => renderRouteSelect(curCh),
       rule: () => popup(`<div class="text-lg font-black mb-2">⚔️ 스토리 전투</div><div class="text-sm text-zinc-300 leading-relaxed">출전 카드 최대 ${MAX_PICK()}장이 모두 필드에서 시작해요 (손패·드로우·용병 없음, 내 진영 없음).<br>내 카드가 모두 쓰러지거나 ${RULES_TURNS()}턴이 지나면 패배.<br>일반전은 상대 카드 전멸, 👑 보스전은 상대 진영 HP 0이면 승리.</div><button data-close-pop class="story-btn w-full mt-4">확인</button>`) }); playerPaint();
     root().querySelectorAll('[data-ch]').forEach(b => b.onclick = () => renderMap(+b.dataset.ch));
     root().querySelectorAll('[data-phase]').forEach(b => b.onclick = () => startPhase(ch, ch.phases.find(p => p.no === +b.dataset.phase)));
-    const bindSw = () => root().querySelectorAll('[data-sweep]').forEach(b => b.onclick = () => sweepPop(ch, ch.phases.find(p => p.no === +b.dataset.sweep)));
-    bindSw();
-    if (serverMode && done.length && window.VRPlayer) window.VRPlayer.status().then(() => { const el = $('story-sweep-wrap'); if (el) { el.innerHTML = sweepRow(ch, done); bindSw(); } });
+    root().querySelectorAll('[data-sweep]').forEach(b => b.onclick = e => { e.stopPropagation();
+      const P = window.VRPlayer?.now?.(), need = P?.unlocks?.sweep ?? SWEEP_LV;
+      if (P && (P.level | 0) < need) return toast(`${SW()} 소탕은 플레이어 Lv.${need}부터 (현재 Lv.${P.level | 0})`);
+      sweepPop(ch, ch.phases.find(p => p.no === +b.dataset.sweep)); });
+    if (swOn && !swP && window.VRPlayer) window.VRPlayer.status().then(() => root().querySelectorAll('.story-node-sw').forEach(b => { const P = window.VRPlayer.now?.(); b.classList.toggle('off', !!P && (P.level | 0) < (P.unlocks?.sweep ?? SWEEP_LV)); })).catch(() => {});
   }
 
   // ----- 소탕 (phaseE_5.sql story_sweep): 클리어한 페이즈를 1/5/10회 자동 정산. 플레이어 Lv5+, 1회 행동력 6 -----
   const SWEEP_LV = 5, SWEEP_RUNS = [1, 5, 10];
-  function sweepRow(ch, done) {
-    if (!serverMode || !done.length) return '';
-    const P = window.VRPlayer?.now?.(), lv = P?.level | 0, need = P?.unlocks?.sweep ?? SWEEP_LV;
-    if (P && lv < need) return `<div class="story-sweep locked">${SW()} 소탕 · 플레이어 Lv.${need}부터 (현재 Lv.${lv})</div>`;
-    return `<div class="story-sweep"><span class="story-sweep-h">${SW()} 소탕</span>${ch.phases.filter(p => done.includes(p.no)).map(p => `<button class="story-sweep-btn ${p.type}" data-sweep="${p.no}">${p.type === 'boss' ? '👑 ' : ''}${p.no}</button>`).join('')}</div>`;
-  }
   function sweepPop(ch, ph) {
     const P = window.VRPlayer?.now?.(), cost = window.VRPlayer?.cost ?? 6, st = P?.stamina ?? 0;
     const p = popup(`<div class="text-lg font-black">${SW()} 소탕 · ${esc(ch.title)} Phase.${ph.no}${ph.type === 'boss' ? ' BOSS' : ''}</div>
