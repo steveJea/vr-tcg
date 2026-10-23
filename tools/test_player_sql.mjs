@@ -31,7 +31,7 @@ ok(/permission denied/.test((await q(`select public._story_start_phase_e0(1,1)`)
 ok(/permission denied/.test((await as('anon', {}, 'select public.player_status()')).err || ''), 'anon 은 player_status 불가');
 await q(`select public.story_choose_starter('2000600126')`);
 let s = await P();
-ok(s.level === 1 && s.stamina === 40 && s.stamina_max === 40 && s.xp_next === 100 && s.cost.story === 6 && s.cost.quest === 0, `처음: Lv1 행동력 40/40 (${JSON.stringify(s).slice(0, 120)})`);
+ok(s.level === 1 && s.stamina === 40 && s.stamina_max === 40 && s.xp_next === 300 && s.cost.story === 6 && s.cost.quest === 0, `처음: Lv1 행동력 40/40 (${JSON.stringify(s).slice(0, 120)})`);
 // 시작 → 6 차감
 let r = await q('select public.story_start_phase(1,1) d');
 ok(r.rows?.[0].d.battle.stamina === 6, 'battle.stamina = 6 기록');
@@ -43,6 +43,7 @@ ok((await q('select public.story_abort_phase() a')).rows[0].a.refunded === 0, '�
 await q('select public.story_start_phase(1,1)'); await q('select public.story_start_phase(1,1)');
 ok((await P()).stamina === 34, '끝내지 않고 다시 시작해도 이중 차감 없음');
 // 승리 → 경험치 60 + 첫 클리어 50
+await db.exec(`update public.player_state set xp = 200 where user_id='${U}'`);   // 필요 경험치 3배(300): 200 + 110 = 310 → Lv2, 10 남음
 await age(); r = await q(`select public.story_complete_phase(1,1,'[]'::jsonb) r`);
 const pl = r.rows?.[0]?.r?.player; ok(pl && pl.gained_xp === 110 && pl.level === 2 && pl.xp === 10 && pl.levelups === 1, `첫 클리어 경험치 110 → Lv2 (${JSON.stringify(pl)?.slice(0, 160)})`);
 ok(pl.stamina === 34 + 40 && pl.levelup_gold === 200, `레벨업: 행동력 +최대치(40) 초과 보관 = 74, 골드 +200`);
