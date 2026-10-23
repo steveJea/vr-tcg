@@ -161,7 +161,7 @@
   const rand = a => a[Math.floor(Math.random() * a.length)];
   function pickEnemies(ph) {
     // enemies.boost: { 카드 id: { HP, ATK, DEF, power } } 이 페이즈에서만 쓰는 적 능력치 (카드 원본은 그대로)
-    if (ph.enemies.ids) return ph.enemies.ids.map(card).filter(Boolean).map(c => { const b = ph.enemies.boost?.[String(c.id)]; return b ? { ...c, ...b, storyBoost: true } : c; });
+    if (ph.enemies.ids) return ph.enemies.ids.map(card).filter(Boolean).map(c => { const b = ph.enemies.boost?.[String(c.id)]; return b ? { ...c, ...b, storyBoost: true } : { ...c }; });   // 같은 id 적 여러 명(CH6 J×5 등)도 서로 다른 객체로
     const [a, b] = ph.enemies.rank, list = normals().slice(a, b), out = [];
     while (out.length < ph.enemies.count && list.length) out.push(list.splice(Math.floor(Math.random() * list.length), 1)[0]);
     return out;
@@ -688,7 +688,7 @@
   function toast(t) { const el = document.createElement('div'); el.className = 'story-toast'; el.textContent = t; document.body.appendChild(el); setTimeout(() => el.remove(), 3200); }
 
   // ----- 챕터 엔딩 영상 (YouTube). 챕터별 설정: ENDING_VIDEO[챕터 id] 또는 챕터 데이터 endingVideo. 비어 있으면 영상 없음 -----
-  const ENDING_VIDEO = { 2: 'EwJcOHqGFck', 3: 'l5oe0IaFjV4', 4: 'sOI2OJzhQSo', 5: 'J6NQMavYEi4' };
+  const ENDING_VIDEO = { 2: 'EwJcOHqGFck', 3: 'l5oe0IaFjV4', 4: 'sOI2OJzhQSo', 5: 'J6NQMavYEi4', 6: '5UXd2Yv5p3E' };
   const videoOf = ch => String(ch?.endingVideo ?? ENDING_VIDEO[ch?.id] ?? '').trim();
   /** 유튜브 오버레이: 소리 켜고 자동 재생 시도 → 막히면 음소거 자동 재생 + 큰 '소리 켜고 보기' 버튼. 재생 중 BGM 멈춤, 닫으면 다시 재생. 닫을 때 resolve */
   function endingVideo(ch) {
