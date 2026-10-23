@@ -87,6 +87,9 @@ let skipFx = localStorage.getItem(SKIP_KEY) === '1';
 let fastForward = false;
 const SWEEPING = () => !!window.VR_SWEEPING;   // 탑 소탕 중: 스킬 컷인·보이스·영상 없음
 const FX_OFF = () => !!(window.TCG_FAST || skipFx || fastForward || SWEEPING());
+// 스킬 컷인 이미지는 '공격 연출 스킵'·탭 빨리감기 중에도 짧게(600ms) 보여 줌. 테스트·탑 소탕에서만 완전히 끔
+const CUT_OFF = () => !!(window.TCG_FAST || SWEEPING());
+const CUT_QUICK = 600;
 const AI_DELAY = () => (window.TCG_FAST ? 0 : (skipFx || fastForward) ? 60 : 325);
 
 function newPlayer(name, second, deckOverride = null, hp = RULES.HERO_HP, fieldStart = false, grades = null) {
@@ -694,10 +697,10 @@ function slashImpact(ms) {
 }
 async function cutIn(u, name, fx, passive = false) {
   playVoice(u, name);
-  if (FX_OFF()) return;
+  if (CUT_OFF() || (FX_OFF() && !fx)) return;   // 연출 스킵 중엔 이미지 있는 스킬만 짧게
   const el = $('cutin');
   el.innerHTML = cutInHTML(u, name, fx, passive);
-  const ms = cutinMs(fx ? 1300 : passive ? 500 : 750);
+  const ms = FX_OFF() ? CUT_QUICK : cutinMs(fx ? 1300 : passive ? 500 : 750);
   el.style.setProperty('--dur', `${ms}ms`);
   el.className = `cutin ${fx ? 'cutin-img' : ''} fixed left-0 right-0 z-40 pointer-events-none text-center ${whoOf(u.owner) === 'me' ? 'cutin-me' : 'cutin-ai'}`;
   slashImpact(ms);
@@ -821,11 +824,11 @@ function passiveCutIn(u, name) {
 }
 function passiveCutInPlain(u, name, s, key = null) {
   if (s?.fx || FX_OFF()) playVoice(u, name);
-  if (FX_OFF() || !s?.fx) { if (key && voiceKey(u, name)) S.fxSeen.add(key); return; }
+  if (CUT_OFF() || !s?.fx) { if (key && voiceKey(u, name)) S.fxSeen.add(key); return; }
   if (key) S.fxSeen.add(key);
   const el = $('cutin');
   el.innerHTML = cutInHTML(u, name, s.fx, true);
-  const ms = cutinMs(1100);
+  const ms = FX_OFF() ? CUT_QUICK : cutinMs(1100);
   el.style.setProperty('--dur', `${ms}ms`);
   el.className = 'hidden'; resetHScroll(); void el.offsetWidth; // 애니메이션 재시작
   el.className = `cutin cutin-img fixed left-0 right-0 z-40 pointer-events-none text-center ${whoOf(u.owner) === 'me' ? 'cutin-me' : 'cutin-ai'}`;
@@ -891,7 +894,7 @@ function onEngine(e) {
   if (e.type === 'dealt') { if (e.src.owner === S.me) { const L = S.log, k = e.src.card.id, r = L.dmg.get(k) || { card: e.src.card, dmg: 0 }; r.dmg += e.dmg; L.dmg.set(k, r); L.total += e.dmg; } return; }
   switch (e.type) {
     case 'skill': log(`${e.unit.owner.name}: ${nm(e.unit)} ⚡[${e.skill.name}] (MP ${e.skill.mp})`, 'text-fuchsia-300'); break;
-    case 'passive': log(`${e.unit.owner.name}: ${nm(e.unit)} ✨[${e.name}]${e.text ? ' — ' + e.text : ''}`, 'text-fuchsia-200'); if (!FX_OFF()) { dmgNumber(uEl(e.unit), `✨${e.name}`, '#f0abfc'); passiveCutIn(e.unit, e.name); } break;
+    case 'passive': log(`${e.unit.owner.name}: ${nm(e.unit)} ✨[${e.name}]${e.text ? ' — ' + e.text : ''}`, 'text-fuchsia-200'); if (!FX_OFF()) dmgNumber(uEl(e.unit), `✨${e.name}`, '#f0abfc'); if (!CUT_OFF()) passiveCutIn(e.unit, e.name); break;
     case 'dmg': { playSe(1); const el = uEl(e.unit); shake(el); if (typeof e.dmg !== 'number' || e.dmg > 0) hitFx(el, 'blood'); if (typeof e.dmg === 'number') critNum(el, e.dmg, e.unit); else dmgNumber(el, e.dmg); break; }
     case 'hero': { if (e.dmg > 0) playSe(3); const el = heroEl(whoOf(e.p)); shake(el); if (e.dmg > 0) hitFx(el, 'blood'); dmgNumber(el, `-${fmt(e.dmg)}`, e.kind === 'self' ? '#fca5a5' : undefined); log(`${e.p.name} 본진 ${fmt(e.dmg)} 피해${e.kind === 'self' ? ' (자기 공격)' : ''}`, 'text-orange-300'); break; }
     case 'heal': dmgNumber(uEl(e.unit), `+${fmt(e.amt)}`, '#6ee7b7'); break;
