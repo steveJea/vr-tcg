@@ -1,5 +1,6 @@
 // ===== 카카오톡 공유 (갤러리). Kakao JS SDK 는 처음 누를 때만 불러옴 =====
-// 카카오 개발자 콘솔: [앱] → 플랫폼 → Web 사이트 도메인에 https://tcg.mbbs.kr 등록 필요 (JavaScript 키는 공개 키)
+// 카카오 개발자 콘솔: [앱] → [플랫폼 키] → [JavaScript 키] → [JavaScript SDK 도메인]에 https://tcg.mbbs.kr 등록 필수
+// (안 되어 있으면 uploadImage·sendDefault 가 {code:-401, msg:'domain mismatched! ...'} 로 실패). JavaScript 키는 공개 키
 (function () {
   const SDK = 'https://t1.kakaocdn.net/kakao_js_sdk/2.7.6/kakao.min.js';
   const KEY = '839f298caef8022398724020f36bd2d8';
@@ -31,5 +32,14 @@
     });
     return true;
   }
-  window.VRKakaoShare = { ready, share, GAME_URL };
+  /** 실패 원인을 사람이 읽을 수 있게 (토스트용). 전체 오류는 콘솔에 */
+  function describe(e) {
+    const code = e?.code, msg = String(e?.msg || e?.message || e || '');
+    if (/domain mismatch/i.test(msg)) return `카카오 콘솔에 도메인 미등록 (${code ?? -401})`;
+    if (code === -401 || /app ?key|appkey/i.test(msg)) return `카카오 앱 키 오류 (${code ?? -401})`;
+    if (/시간 초과/.test(msg)) return msg;
+    if (/SDK/.test(msg)) return msg;
+    return code != null ? `오류 ${code}` : (msg.slice(0, 40) || '알 수 없는 오류');
+  }
+  window.VRKakaoShare = { ready, share, describe, GAME_URL };
 })();

@@ -267,8 +267,9 @@
       const cv = await VRShareCard.render(info), file = await VRShareCard.toFile(cv, `vr-abyss-gate_${id}.png`);
       await VRKakaoShare.share({ title: info.name, description: `${info.short} · VR: Abyss Gate`, file });
     } catch (e) {
-      console.warn('[gallery] kakao share failed', e);
-      galToast('카카오톡 공유를 열지 못했어요 · 다른 방법으로 공유할게요');
+      console.warn('[gallery] kakao share failed', e, (() => { try { return JSON.stringify(e); } catch { return ''; } })());
+      const why = window.VRKakaoShare?.describe?.(e);
+      galToast(`카카오톡 공유를 열지 못했어요${why ? ` (${why})` : ''} · 다른 방법으로 공유할게요`);
       if (btn) btn.textContent = old;
       return shareCard(id, null);
     } finally { if (btn) { btn.disabled = false; btn.textContent = old; } }
