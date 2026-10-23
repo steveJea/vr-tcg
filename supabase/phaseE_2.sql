@@ -37,7 +37,7 @@ create policy "player_read_own" on public.player_state for select using (auth.ui
 
 -- 2) 수치 (한 곳에서 조정)
 create or replace function public._player_max_level() returns int language sql immutable as $$ select 100 $$;
-create or replace function public._player_xp_need(p_level int) returns int language sql immutable as $$ select 100 + 20 * (greatest(p_level, 1) - 1) $$;
+create or replace function public._player_xp_need(p_level int) returns int language sql immutable as $$ select 3 * (100 + 20 * (greatest(p_level, 1) - 1)) $$;   -- 2026-10: 3배 (player_xp_x3.sql)
 create or replace function public._stamina_max(p_level int) returns int language sql immutable as $$ select 40 + 5 * (greatest(p_level, 1) / 5) $$;
 create or replace function public._stamina_regen_secs() returns int language sql immutable as $$ select 360 $$;
 create or replace function public._stamina_cost(p_chapter int, p_phase int) returns int language sql immutable as $$ select 6 $$;

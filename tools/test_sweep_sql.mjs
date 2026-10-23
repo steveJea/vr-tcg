@@ -32,7 +32,7 @@ await db.exec(`update public.story_progress set data = jsonb_set(data, '{cleared
 const sw = (c, p, n) => q(`select public.story_sweep(${c}, ${p}, ${n}) r`);
 const P = async () => (await db.query(`select level, xp, stamina from public.player_state where user_id='${U}'`)).rows[0];
 ok(/sweep locked/.test((await sw(1, 1, 1)).err || ''), 'Lv1 소탕 불가');
-await db.exec(`update public.player_state set level = 5, xp = 0, stamina = 50 where user_id='${U}'`);
+await db.exec(`update public.player_state set level = 5, xp = 300, stamina = 50 where user_id='${U}'`);
 ok(/not cleared/.test((await sw(1, 2, 1)).err || ''), '미클리어 페이즈 거부');
 ok(/invalid runs/.test((await sw(1, 1, 3)).err || ''), '1/5/10 외 거부');
 ok(/not enough stamina/.test((await sw(1, 1, 10)).err || ''), '행동력 60 > 50 거부');

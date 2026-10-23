@@ -41,6 +41,7 @@ d = await C(5, 'normal', true); ok(d.soul === 2, 'ch5 첫 클리어 혼 2');
 await q(`select public.story_choose_starter('2000600126')`);
 await q('select public.story_start_phase(1,1)');
 await db.exec(`update public.story_progress set data = jsonb_set(data, '{battle,at}', to_jsonb((extract(epoch from now()) - 10)::bigint)) where user_id='${U}'`);
+await db.exec(`update public.player_state set xp = 200 where user_id='${U}'`);   // 필요 경험치 3배(300): 200 + 110 → 레벨업
 let r = await q(`select public.story_complete_phase(1,1,'[]'::jsonb) r`);
 const dr = r.rows?.[0]?.r?.drops; ok(dr && dr.gold === 360 && dr.blood === 36 && dr.shard === 1, `첫 클리어 드롭 응답: ${JSON.stringify(dr)}`);
 let w = await W(); ok(+w.gold === 360 + 200 && +w.blood === 36 && +w.shard === 1, `지갑 반영 (드롭 360 + 레벨업 200): ${JSON.stringify(w)}`);
