@@ -23,7 +23,7 @@ globalThis.window = { STORY_DATA: { chapters: [] } };
 eval(readFileSync(new URL('../js/story-data-ch5.js', import.meta.url), 'utf8'));
 const ch = window.STORY_DATA.chapters[0];
 const csv = f => Object.fromEntries(readFileSync(new URL('../data/' + f, import.meta.url), 'utf8').replace(/^\uFEFF/, '').trim().split(/\r?\n/).slice(1).map(l => l.split(',')).map(v => [v[0], v]));
-const cards = csv('cards.csv'), nm = id => cards[id]?.[1];
+const cards = { ...csv('npc_cards.csv'), ...csv('cards.csv') }, nm = id => cards[id]?.[1];
 const GW = '2000600116', HR = '2001900347', AY = '2000600129', SY = '2000600128';
 ok(ch.id === 5 && ch.subtitle === '영원히 멈추지 않는 비' && ch.phases.length === 10 && ch.single && ch.hero === GW, '챕터 5 · 10 페이즈 · 주인공 한겨울');
 ok(ch.phases.every(p => p.enemies.ids.length === 5 && p.enemies.ids.every(id => nm(id))), '페이즈마다 적 5명, 모두 카드 있음');
@@ -33,7 +33,8 @@ ok(JSON.stringify(F) === JSON.stringify([...Array(9).fill('한겨울'), '진하�
 ok(P_(7).party.banClass?.join() === 'DARK' && P_(8).party.banClass?.join() === 'LIGHT' && [9, 10].every(n => P_(n).party.maxGrade === 'SUPER RARE') && [1, 2, 3, 4, 5, 6].every(n => !P_(n).party.banClass && !P_(n).party.maxGrade), '7 어둠 불가 · 8 빛 불가 · 9~10 UR 불가');
 ok(P_(10).type === 'boss' && P_(10).final && P_(10).bossId === AY && P_(10).rules.undying[0] === SY && ch.phases.slice(0, 9).every(p => p.type === 'normal'), '10 보스전(본진 파괴) 리더 정아영 · 정서영 불사');
 ok(P_(3).bossId === AY && P_(3).enemies.boost[AY].HP > 89 && P_(10).enemies.boost[AY].ATK > 12, '정아영 스토리 전용 능력치');
-ok(ch.phases.map(p => nm(p.bossId)).join() === '남다윤,허진서,정아영,노정아,오채원,황보재규,정다윤,김재섭,서오성,정아영', '리더(L)');
+ok(ch.phases.map(p => nm(p.bossId)).join() === '남다윤,허진서,정아영,노정아,오채원,황보재규,불량배-H,불량배-H,서오성,정아영', '리더(L)');
+ok(P_(10).party.exclude?.includes(GW) && ch.warning && !ch.start.some(l => l.text === ch.tagline) && ch.phases.flatMap(p => [...p.lines.default, ...(p.after || [])]).every(l => l.speaker !== 'NA' && !/환락가|몸으로 떼|떼우/.test(l.text)), '10 한겨울 출전 불가 · 경고 문구 · NA→내레이션 · 수위 조정');
 ok(window.STORY_DATA.noPortrait.includes('겨울 친구') && ch.phases.some(p => p.lines.default.some(l => l.speaker === '겨울 친구')), '겨울 친구: 이름만');
 ok([3, 9, 10].every(n => P_(n).after?.length) && ch.ending?.length && ch.start?.length && ch.tagline, '전투 후 대사 · 시작 · 엔딩');
 ok(ch.phases.flatMap(p => p.lines.default).filter(l => l.expr).length > 20 && ch.phases.flatMap(p => p.lines.default).every(l => !l.expr || ['화남', '웃음'].includes(l.expr)), '표정 태그');
