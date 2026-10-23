@@ -129,7 +129,7 @@ function startGame(story = null) {
   setBattleBg(story?.win === 'ko' ? 'boss' : 'normal'); preloadHit();
   { const lbl = $('ai-order').parentElement.firstChild; if (lbl?.nodeType === 3) lbl.textContent = story ? `${story.aiName || '적군'} ` : '🤖 컴퓨터 '; }
   preloadFx([...S.me.deck, ...S.me.hand, ...S.ai.deck, ...S.ai.hand]);
-  selected = null; $('log').innerHTML = ''; fxQueue.length = 0;
+  selected = null; $('log').innerHTML = ''; fxQueue.length = 0; vidGate = Promise.resolve();
   $('end-screen').classList.add('hidden'); $('start-screen').classList.add('hidden'); $('game').classList.remove('hidden');
   initPlayers(S.me, S.ai);
   if (fs) {   // 스토리: 양측 카드 전부 필드에 배치 (최대 FIELD_MAX)
@@ -401,6 +401,7 @@ async function attack(who, unit, target, fromBatch = false) {
     critSet.clear();
     renderHero(oWho); renderHero(who);
     await withTimeout(hit?.back?.() ?? Promise.resolve(), 750);
+    await vidWait();
     await withTimeout(fadeDying(), 750);
   } catch (err) {
     reportError('attack', err);
@@ -802,14 +803,26 @@ function showEvent(ev) {
 }
 /** 패시브 발동 연출: 카드별·스킬별 게임당 첫 발동만 큰 이미지(비동기, 턴 진행을 막지 않음), 이후는 작은 글자만 */
 let passiveTimer = null;
+// 패시브 MR 영상 대기열: 영상이 끝날 때까지 다음 행동(공격·스킬·AI 행동)이 vidWait() 로 기다림
+let vidGate = Promise.resolve();
+const vidWait = () => withTimeout(vidGate, 30000);
 function passiveCutIn(u, name) {
   if (!S || SWEEPING()) return;
   S.fxSeen ||= new Set(); const key = `${u.uid}:${name}`;
   if (S.fxSeen.has(key)) return;
   const s = u.sk?.find(x => x.name === name);
+  // MR 카드 패시브: 첫 발동 때 영상 (data/fx/mr/<id>_<n>.mp4). 없거나 실패하면 기존 패시브 컷인
+  if (!FX_OFF() && (u.base || u.card).grade === 'MYTHIC RARE' && s) {
+    S.fxSeen.add(key); const st = S;
+    vidGate = vidGate.then(() => (S === st && !SWEEPING() ? mrVideo(u, s) : true)).then(ok => { if (!ok && S === st) passiveCutInPlain(u, name, s); }).catch(() => {});
+    return;
+  }
+  passiveCutInPlain(u, name, s, key);
+}
+function passiveCutInPlain(u, name, s, key = null) {
   if (s?.fx || FX_OFF()) playVoice(u, name);
-  if (FX_OFF() || !s?.fx) { if (voiceKey(u, name)) S.fxSeen.add(key); return; }
-  S.fxSeen.add(key);
+  if (FX_OFF() || !s?.fx) { if (key && voiceKey(u, name)) S.fxSeen.add(key); return; }
+  if (key) S.fxSeen.add(key);
   const el = $('cutin');
   el.innerHTML = cutInHTML(u, name, s.fx, true);
   const ms = cutinMs(1100);
@@ -852,6 +865,7 @@ async function castSkill(who, u, s) {
     if (!(await mrVideo(u, s))) await withTimeout(cutIn(u, s.name, s.fx), 3000);
     pendingDying = [];
     useSkill(u, s);
+    await vidWait();
     if (who === 'me') S.log.skills++;
     renderHero('me'); renderHero('ai');
     await sleep(fxMs(450));
@@ -925,7 +939,9 @@ async function aiTurn() {
   if (aiWantFieldHeal(ai)) { useAction('ai', 'fieldheal'); await sleep(AI_DELAY()); }
   if (aiWantBuff(ai)) { useAction('ai', 'buff'); await sleep(AI_DELAY()); }
   // 2) 스킬 또는 공격: 쓸 만한 스킬이 있으면 스킬(공격 대신), 아니면 유리한 교환 우선 공격
+  await vidWait();
   for (const u of [...ai.field]) {
+    await vidWait();
     if (S.over) break;
     if (!ai.field.includes(u) || !u.canAttack) continue;
     if (spareBlocked(u)) { u.canAttack = false; log(`${u.card.name}: 공격할 대상이 없어 턴을 넘깁니다`, 'text-zinc-400'); floatText(`${u.card.name} 행동 안 함`, 'text-zinc-300 text-sm', 'ai'); await sleep(AI_DELAY()); continue; }
