@@ -611,7 +611,7 @@
     window.TCG.startStory({
       me, ai, leader: (() => { const lo = me.find(c => c.uid === save.leader), le = lo && leaderEff(lo.id); return le ? { ...le, uid: lo.uid } : undefined; })(), win: boss ? 'ko' : 'wipe', aiHp: boss ? bossHp(ch, ph) : undefined, bossId: bc ? String(bc.id) : undefined, enemyLevels: ph.enemies?.levels, aiName: ph.enemyName || (boss ? '보스' : '적군'), rules: battleRules(ch, ph), first: ph.enemyFirst ? 'ai' : 'me',   // 기본 내가 선공, 페이즈 enemyFirst 면 적 선공
      
-      spare: STORY_SPARE,   // 조윤이는 조윤하를 공격하지 않음
+      spare: { ...STORY_SPARE, ...(ph.spare || {}) },   // 조윤이는 조윤하를 공격하지 않음 + 페이즈 spare (예: CH3 P6 안지수 → 조윤하)
       onEnd: (win, reason, st) => result(ch, ph, win, reason, st),
     });
     showConditions(ch, ph);   // 승리·패배 조건 (닫을 수 있음)
@@ -623,7 +623,7 @@
     const forced = ch.single ? (ph.party?.forced || []).map(String) : [];
     const ml = [...new Set([...(R.mustLive || []).map(String), ...forced])];
     if (ml.length) R.mustLive = ml; else delete R.mustLive;
-    if (ch.id === 3) R.pairShield = CH3_PAIR_SHIELD;   // 챕터 3 밸런스 (코드 전용, SQL 불필요)
+    if (ch.id === 3 && !ph.noPairShield) R.pairShield = CH3_PAIR_SHIELD;   // 챕터 3 밸런스 (코드 전용, SQL 불필요)
     return Object.keys(R).length ? R : undefined;
   }
   /** 승리·패배 조건 (페이즈 규칙에서 자동 생성) */
@@ -640,6 +640,7 @@
     for (const r of R.revive || []) info.push(['🩸', `${nm(r.id)}: 쓰러지면 <b>${Math.max(1, r.delay | 0 || 1)}턴 후</b> 부활 (${r.level === 'keep' ? '레벨 유지' : 'Lv1'})${r.times ? ` · ${r.times}회` : ''}`]);
     if ((R.revive || []).length && !(R.expire && R.invuln != null)) info.push(['✨', '부활 전에 적을 모두 쓰러뜨리면 승리']);
     if (R.pairShield) info.push(['🛡️', `${nm(R.pairShield.id)} + ${nm(R.pairShield.with)} 함께 출전: ${nm(R.pairShield.id)} 처음 <b>${R.pairShield.turns}턴</b> 피해 무효`]);
+    for (const [a, ts] of Object.entries(ph.spare || {})) info.push(['🕊️', `${nm(a)}는 ${ts.map(nm).join('·')}를 공격하지 않음`, `${ts.map(nm).join('·')}만 남으면 행동하지 않아요`]);
     for (const id of R.undying || []) info.push(['♾️', `${nm(id)}: 쓰러지지 않음 (불사)`]);
     for (const t of partyOf(ch, ph).notes) info.push(['🚫', `출전 제한: <b>${t}</b>`, '필수 출전 카드는 예외']);
     if (ph.enemyFirst) info.push(['⚡', '적 선공']);
