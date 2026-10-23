@@ -173,7 +173,7 @@
   function chapterFor(base) {
     const key = base.byStarter ? save?.starter : routeOf(base);
     const o = (base.byStarter || base.byRoute)?.[key]; if (!o) return base;
-    return { ...base, route: base.byRoute ? key : undefined, hero: o.hero, subtitle: o.subtitle ?? base.subtitle, start: base.byRoute ? o.start ?? base.start : o.start, ending: base.byRoute ? o.ending ?? base.ending : o.ending,
+    return { ...base, route: base.byRoute ? key : undefined, hero: o.hero, subtitle: o.subtitle ?? base.subtitle, start: base.byRoute ? o.start ?? base.start : o.start, ending: base.byRoute ? o.ending ?? base.ending : o.ending, endingVideo: o.endingVideo ?? base.endingVideo,
       phases: base.phases.map(p => { const x = o.phases?.[p.no]; return x ? { ...p, ...x, lines: x.lines ? { default: x.lines } : p.lines } : p; }) };
   }
   /** 스토리 컷인 이미지 (스킬 컷인처럼): 어두운 배경 위 가운데에 비율 유지(contain)로 페이드 인 → 약 2.2초 또는 탭 → 페이드 아웃 → done */
