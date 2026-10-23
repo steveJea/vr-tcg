@@ -1,5 +1,5 @@
 {
-  "_doc": "등장 컷인·만남 이벤트 데이터. entry.fx: 등장 컷인 전용 이미지(data/fx/<id>_0.webp)가 있는 카드. 등장 보이스는 data/voice/<id>_0.mp3 가 있으면 자동 사용. events: type 'encounter' = 한쪽 필드에 sides[0] 카드, 반대쪽 필드에 sides[1] 카드가 함께 있을 때(양방향). type 'combo' = 한쪽 필드에 combo(data/combos.json 이름)의 카드가 모두 모였을 때. lines.who 는 카드 이름 또는 'NA'(내레이션).",
+  "_doc": "등장 컷인·만남 이벤트 데이터. entry.fx: 등장 컷인 전용 이미지(data/fx/<id>_0.webp)가 있는 카드. 등장 보이스는 data/voice/<id>_0.mp3 가 있으면 자동 사용. events: type 'encounter' = 한쪽 필드에 sides[0] 카드, 반대쪽 필드에 sides[1] 카드가 함께 있을 때(양방향). type 'combo' = 한쪽 필드에 combo(data/combos.json 이름)의 카드가 모두 모였을 때. lines.who 는 카드 이름 또는 'NA'(내레이션). 만남 이벤트 id = 배틀 이벤트 시트 파일명(m0001…), 이미지 data/event/<id>.webp, 음성 data/event/<id>.mp3(있을 때만).",
   "entry": {
     "fx": [
       "2000000017",
@@ -26,35 +26,158 @@
   },
   "events": [
     {
-      "id": "yuri_nari",
+      "id": "m0001",
       "type": "encounter",
       "sides": [
         [
-          "2000300083"
-        ],
-        [
           "2000100001",
           "2000000008"
+        ],
+        [
+          "2000300083"
         ]
       ],
       "title": "임유리 × 임나리",
-      "image": "data/event/yuri_nari.webp",
-      "voice": "data/event/yuri_nari.mp3",
+      "image": "data/event/m0001.webp",
       "lines": [
         {
-          "who": "NA",
-          "text": "임유리와 임나리가 전장에서 마주쳤다."
+          "who": "임유리",
+          "text": "우리 나리 오랜만이네?"
         },
         {
           "who": "임나리",
-          "text": "……!"
+          "text": "...꺼져"
         },
         {
           "who": "임유리",
-          "text": "……"
+          "text": "언니한테 말버릇은..."
+        },
+        {
+          "who": "임나리",
+          "text": "언니 같은 소리 한다..."
         }
       ],
-      "_todo": "대사는 임시(샘플)입니다. 사용자가 정리한 대사로 lines를 교체하세요."
+      "voice": "data/event/m0001.mp3"
+    },
+    {
+      "id": "m0002",
+      "type": "encounter",
+      "sides": [
+        [
+          "2000600116"
+        ],
+        [
+          "2001900347"
+        ]
+      ],
+      "title": "한겨울 × 진하린",
+      "image": "data/event/m0002.webp",
+      "lines": [
+        {
+          "who": "진하린",
+          "text": "겨울이 오늘 뭐할거야?"
+        },
+        {
+          "who": "한겨울",
+          "text": "언니 저랑 뮤지컬 보러 갈래요?"
+        }
+      ]
+    },
+    {
+      "id": "m0003",
+      "type": "encounter",
+      "sides": [
+        [
+          "2001500316"
+        ],
+        [
+          "1000200030"
+        ]
+      ],
+      "title": "이지영 × 김성진",
+      "image": "data/event/m0003.webp",
+      "lines": [
+        {
+          "who": "이지영",
+          "text": "하...이런데서 만나네?"
+        },
+        {
+          "who": "김성진",
+          "text": "후후...이번엔 끝을 보자."
+        }
+      ]
+    },
+    {
+      "id": "m0004",
+      "type": "encounter",
+      "sides": [
+        [
+          "2000400088"
+        ],
+        [
+          "2000400087"
+        ]
+      ],
+      "title": "최윤희 × 최윤아",
+      "image": "data/event/m0004.webp",
+      "lines": [
+        {
+          "who": "최윤희",
+          "text": "언니~ 하이~~"
+        },
+        {
+          "who": "최윤아",
+          "text": "아휴..저 철부지.."
+        }
+      ]
+    },
+    {
+      "id": "m0005",
+      "type": "encounter",
+      "sides": [
+        [
+          "2000400088"
+        ],
+        [
+          "2000400089"
+        ]
+      ],
+      "title": "최윤희 × 최윤정",
+      "image": "data/event/m0005.webp",
+      "lines": [
+        {
+          "who": "최윤희",
+          "text": "언니~ 하이~~"
+        },
+        {
+          "who": "최윤정",
+          "text": "우리 윤희 다치면 안 되는데..."
+        }
+      ]
+    },
+    {
+      "id": "m0006",
+      "type": "encounter",
+      "sides": [
+        [
+          "2000800197"
+        ],
+        [
+          "2000800186"
+        ]
+      ],
+      "title": "정아람 × 정다윤",
+      "image": "data/event/m0006.webp",
+      "lines": [
+        {
+          "who": "정다윤",
+          "text": "너...진짜 죽여버릴거야!"
+        },
+        {
+          "who": "정아람",
+          "text": "네가...할 수 있을까?"
+        }
+      ]
     }
   ],
   "comboEvents_example": {
