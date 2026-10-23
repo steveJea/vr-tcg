@@ -87,6 +87,9 @@ let skipFx = localStorage.getItem(SKIP_KEY) === '1';
 let fastForward = false;
 const SWEEPING = () => !!window.VR_SWEEPING;   // 탑 소탕 중: 스킬 컷인·보이스·영상 없음
 const FX_OFF = () => !!(window.TCG_FAST || skipFx || fastForward || SWEEPING());
+// 스킬 컷인 이미지는 '공격 연출 스킵'·탭 빨리감기 중에도 짧게(600ms) 보여 줌. 테스트·탑 소탕에서만 완전히 끔
+const CUT_OFF = () => !!(window.TCG_FAST || SWEEPING());
+const CUT_QUICK = 600;
 const AI_DELAY = () => (window.TCG_FAST ? 0 : (skipFx || fastForward) ? 60 : 325);
 
 function newPlayer(name, second, deckOverride = null, hp = RULES.HERO_HP, fieldStart = false, grades = null) {
@@ -129,7 +132,7 @@ function startGame(story = null) {
   setBattleBg(story?.win === 'ko' ? 'boss' : 'normal'); preloadHit();
   { const lbl = $('ai-order').parentElement.firstChild; if (lbl?.nodeType === 3) lbl.textContent = story ? `${story.aiName || '적군'} ` : '🤖 컴퓨터 '; }
   preloadFx([...S.me.deck, ...S.me.hand, ...S.ai.deck, ...S.ai.hand]);
-  selected = null; $('log').innerHTML = ''; fxQueue.length = 0;
+  selected = null; $('log').innerHTML = ''; fxQueue.length = 0; vidGate = Promise.resolve();
   $('end-screen').classList.add('hidden'); $('start-screen').classList.add('hidden'); $('game').classList.remove('hidden');
   initPlayers(S.me, S.ai);
   if (fs) {   // 스토리: 양측 카드 전부 필드에 배치 (최대 FIELD_MAX)
@@ -401,6 +404,7 @@ async function attack(who, unit, target, fromBatch = false) {
     critSet.clear();
     renderHero(oWho); renderHero(who);
     await withTimeout(hit?.back?.() ?? Promise.resolve(), 750);
+    await vidWait();
     await withTimeout(fadeDying(), 750);
   } catch (err) {
     reportError('attack', err);
@@ -693,10 +697,10 @@ function slashImpact(ms) {
 }
 async function cutIn(u, name, fx, passive = false) {
   playVoice(u, name);
-  if (FX_OFF()) return;
+  if (CUT_OFF() || (FX_OFF() && !fx)) return;   // 연출 스킵 중엔 이미지 있는 스킬만 짧게
   const el = $('cutin');
   el.innerHTML = cutInHTML(u, name, fx, passive);
-  const ms = cutinMs(fx ? 1300 : passive ? 500 : 750);
+  const ms = FX_OFF() ? CUT_QUICK : cutinMs(fx ? 1300 : passive ? 500 : 750);
   el.style.setProperty('--dur', `${ms}ms`);
   el.className = `cutin ${fx ? 'cutin-img' : ''} fixed left-0 right-0 z-40 pointer-events-none text-center ${whoOf(u.owner) === 'me' ? 'cutin-me' : 'cutin-ai'}`;
   slashImpact(ms);
@@ -802,17 +806,29 @@ function showEvent(ev) {
 }
 /** 패시브 발동 연출: 카드별·스킬별 게임당 첫 발동만 큰 이미지(비동기, 턴 진행을 막지 않음), 이후는 작은 글자만 */
 let passiveTimer = null;
+// 패시브 MR 영상 대기열: 영상이 끝날 때까지 다음 행동(공격·스킬·AI 행동)이 vidWait() 로 기다림
+let vidGate = Promise.resolve();
+const vidWait = () => withTimeout(vidGate, 30000);
 function passiveCutIn(u, name) {
   if (!S || SWEEPING()) return;
   S.fxSeen ||= new Set(); const key = `${u.uid}:${name}`;
   if (S.fxSeen.has(key)) return;
   const s = u.sk?.find(x => x.name === name);
+  // MR 카드 패시브: 첫 발동 때 영상 (data/fx/mr/<id>_<n>.mp4). 없거나 실패하면 기존 패시브 컷인
+  if (!FX_OFF() && (u.base || u.card).grade === 'MYTHIC RARE' && s) {
+    S.fxSeen.add(key); const st = S;
+    vidGate = vidGate.then(() => (S === st && !SWEEPING() ? mrVideo(u, s) : true)).then(ok => { if (!ok && S === st) passiveCutInPlain(u, name, s); }).catch(() => {});
+    return;
+  }
+  passiveCutInPlain(u, name, s, key);
+}
+function passiveCutInPlain(u, name, s, key = null) {
   if (s?.fx || FX_OFF()) playVoice(u, name);
-  if (FX_OFF() || !s?.fx) { if (voiceKey(u, name)) S.fxSeen.add(key); return; }
-  S.fxSeen.add(key);
+  if (CUT_OFF() || !s?.fx) { if (key && voiceKey(u, name)) S.fxSeen.add(key); return; }
+  if (key) S.fxSeen.add(key);
   const el = $('cutin');
   el.innerHTML = cutInHTML(u, name, s.fx, true);
-  const ms = cutinMs(1100);
+  const ms = FX_OFF() ? CUT_QUICK : cutinMs(1100);
   el.style.setProperty('--dur', `${ms}ms`);
   el.className = 'hidden'; resetHScroll(); void el.offsetWidth; // 애니메이션 재시작
   el.className = `cutin cutin-img fixed left-0 right-0 z-40 pointer-events-none text-center ${whoOf(u.owner) === 'me' ? 'cutin-me' : 'cutin-ai'}`;
@@ -852,6 +868,7 @@ async function castSkill(who, u, s) {
     if (!(await mrVideo(u, s))) await withTimeout(cutIn(u, s.name, s.fx), 3000);
     pendingDying = [];
     useSkill(u, s);
+    await vidWait();
     if (who === 'me') S.log.skills++;
     renderHero('me'); renderHero('ai');
     await sleep(fxMs(450));
@@ -877,7 +894,7 @@ function onEngine(e) {
   if (e.type === 'dealt') { if (e.src.owner === S.me) { const L = S.log, k = e.src.card.id, r = L.dmg.get(k) || { card: e.src.card, dmg: 0 }; r.dmg += e.dmg; L.dmg.set(k, r); L.total += e.dmg; } return; }
   switch (e.type) {
     case 'skill': log(`${e.unit.owner.name}: ${nm(e.unit)} ⚡[${e.skill.name}] (MP ${e.skill.mp})`, 'text-fuchsia-300'); break;
-    case 'passive': log(`${e.unit.owner.name}: ${nm(e.unit)} ✨[${e.name}]${e.text ? ' — ' + e.text : ''}`, 'text-fuchsia-200'); if (!FX_OFF()) { dmgNumber(uEl(e.unit), `✨${e.name}`, '#f0abfc'); passiveCutIn(e.unit, e.name); } break;
+    case 'passive': log(`${e.unit.owner.name}: ${nm(e.unit)} ✨[${e.name}]${e.text ? ' — ' + e.text : ''}`, 'text-fuchsia-200'); if (!FX_OFF()) dmgNumber(uEl(e.unit), `✨${e.name}`, '#f0abfc'); if (!CUT_OFF()) passiveCutIn(e.unit, e.name); break;
     case 'dmg': { playSe(1); const el = uEl(e.unit); shake(el); if (typeof e.dmg !== 'number' || e.dmg > 0) hitFx(el, 'blood'); if (typeof e.dmg === 'number') critNum(el, e.dmg, e.unit); else dmgNumber(el, e.dmg); break; }
     case 'hero': { if (e.dmg > 0) playSe(3); const el = heroEl(whoOf(e.p)); shake(el); if (e.dmg > 0) hitFx(el, 'blood'); dmgNumber(el, `-${fmt(e.dmg)}`, e.kind === 'self' ? '#fca5a5' : undefined); log(`${e.p.name} 본진 ${fmt(e.dmg)} 피해${e.kind === 'self' ? ' (자기 공격)' : ''}`, 'text-orange-300'); break; }
     case 'heal': dmgNumber(uEl(e.unit), `+${fmt(e.amt)}`, '#6ee7b7'); break;
@@ -925,7 +942,9 @@ async function aiTurn() {
   if (aiWantFieldHeal(ai)) { useAction('ai', 'fieldheal'); await sleep(AI_DELAY()); }
   if (aiWantBuff(ai)) { useAction('ai', 'buff'); await sleep(AI_DELAY()); }
   // 2) 스킬 또는 공격: 쓸 만한 스킬이 있으면 스킬(공격 대신), 아니면 유리한 교환 우선 공격
+  await vidWait();
   for (const u of [...ai.field]) {
+    await vidWait();
     if (S.over) break;
     if (!ai.field.includes(u) || !u.canAttack) continue;
     if (spareBlocked(u)) { u.canAttack = false; log(`${u.card.name}: 공격할 대상이 없어 턴을 넘깁니다`, 'text-zinc-400'); floatText(`${u.card.name} 행동 안 함`, 'text-zinc-300 text-sm', 'ai'); await sleep(AI_DELAY()); continue; }
