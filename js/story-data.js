@@ -864,7 +864,8 @@ window.STORY_DATA.chapters[0].byStarter['2000200044'] = {
         },
         {
           "speaker": "내레이션",
-          "text": "지효의 두 눈은 스르르 감겼고, 양 손은 힘 없이 쳐졌다."
+          "text": "지효의 두 눈은 스르르 감겼고, 양 손은 힘 없이 쳐졌다.",
+          "image": "img/story/ch1-5.webp"
         },
         {
           "speaker": "용지혜",
