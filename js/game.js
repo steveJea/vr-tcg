@@ -134,7 +134,7 @@ function startGame(story = null) {
   preloadFx([...S.me.deck, ...S.me.hand, ...S.ai.deck, ...S.ai.hand]);
   selected = null; $('log').innerHTML = ''; fxQueue.length = 0; vidGate = Promise.resolve();
   $('end-screen').classList.add('hidden'); $('start-screen').classList.add('hidden'); $('game').classList.remove('hidden');
-  initPlayers(S.me, S.ai);
+  initPlayers(S.me, S.ai, S[first]);   // 0턴 배치 상태(불사·회피 등) 지속 턴 기준 = 선공
   if (fs) {   // 스토리: 양측 카드 전부 필드에 배치 (최대 FIELD_MAX)
     S.holdPassive = [];   // 0턴 패시브 컷인은 UR 등장 컷인 뒤로 미룸 (아래 onEnter 뒤에 재생)
     for (const who of ['me', 'ai']) {
