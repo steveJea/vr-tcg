@@ -18,12 +18,12 @@ export async function simBattle(me, ai, maxTurns = 40, leader = null) {
   await init();
   const mk = name => ({ name, hp: 1, maxHp: 1, deck: [], hand: [], field: [], mana: 0, maxMana: 0, noBase: true });
   const P = [mk('나'), mk('적')];
-  SK.initPlayers(P[0], P[1]);
+  const firstMe = Math.random() < 0.5;
+  SK.initPlayers(P[0], P[1], firstMe ? P[0] : P[1]);   // 0턴 배치 상태 지속 기준 = 선공 (game.js 와 동일)
   me.forEach(c => { const u = SK.placeUnit(P[0], { ...c }, R.makeUnit);   // game.js startGame 과 같은 방식으로 리더 지정
     if (leader && c.uid && c.uid === leader.uid && !P[0].field.some(x => x.isLeader)) { u.isLeader = true; P[0].leaderSkill = leader; } }); ai.forEach(c => SK.placeUnit(P[1], { ...c }, R.makeUnit));
   SK.refreshAll(P[0]); SK.refreshAll(P[1]);
   const gone = p => !p.field.some(u => u.hp > 0);
-  const firstMe = Math.random() < 0.5;
   const end = () => gone(P[1]) ? 1 : gone(P[0]) ? 0 : -1;
   for (let t = 0; t < maxTurns; t++) {
     const cur = P[(t + (firstMe ? 0 : 1)) % 2], op = cur.foe;

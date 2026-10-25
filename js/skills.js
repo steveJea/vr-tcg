@@ -26,8 +26,10 @@ export function setRng(f) { rng = f; }
 
 // ---- 플레이어 / 유닛 초기화 ----
 let uidSeq = 1;
-export function initPlayers(a, b) {
+/** first: 선공 플레이어. 시작 배치(0턴) 때 생기는 상태는 선공 쪽이면 '자기 턴 진행 중'으로 보고 +1턴 (자기 턴 종료에 바로 꺼져 상대 턴을 못 막던 문제) */
+export function initPlayers(a, b, first) {
   for (const [p, f] of [[a, b], [b, a]]) Object.assign(p, { foe: f, grave: [], once: {}, st: {}, actionLock: 0, activeSyn: [], activeCombos: [] });
+  if (first !== undefined) TURN.p = first;
 }
 /** 필드에 카드 배치 (소환). 게임·시뮬 공용 */
 /** front=true: 새로 소환한 카드를 필드 맨 앞(왼쪽)에 놓음 (턴 중 소환). 스토리 시작 배치는 출전 순서 유지(false) */
