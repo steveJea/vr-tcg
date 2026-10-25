@@ -2,6 +2,7 @@
 // 스킬 데이터: data/skills.json (카드 id → 스킬 목록), 조합: data/combos.json
 // 각 스킬 효과는 '효과 내용' 기준으로 아래 ACTIVE / PASSIVE 표에 스킬 이름별로 구현
 import { critRate, RULES, elementMultiplier, calcDamage, gainXp, heroLocked, killXp, levelDown, levelUpOnce, genderMult, baseEvade } from './rules.js';
+import { poolCard } from './rules.js';
 
 export const SK = {
   MP_BASE: 50, MP_PER_MEN: 1,           // 최대 MP = 50 + MEN (51~150)
@@ -66,6 +67,7 @@ export const STATUS = {
   vow:     { icon: '🛡️', img: 'def', label: '지킨다', desc: '이영아가 같은 필드에 있는 동안 매 턴 DEF +0.4% 누적, 최대 HP 2% 회복' },
   thorns:  { icon: '🌵', img: 'st_thorns', label: '반격 강화', desc: '받는 피해 감소·반격 배율 증가 (반격으로는 공격자가 쓰러지지 않음)' },
   burn:    { icon: '🔥', label: '화상', debuff: true, desc: '주는 피해 -5% (불 속성 기본 공격, 2턴)' },
+  sisterSwap: { icon: '🔄', label: '선미영 교체', desc: '선나영 대신 선미영이 전투 (끝나면 선나영 HP 100% 회복, 선미영이 쓰러지면 선나영도 쓰러짐)' },
   evade:   { icon: '💨', img: 'st_evade', label: '회피', desc: '기본 공격을 확률로 회피 (회피 시 피해·반격 없음, 스킬은 회피 불가)' },
   endure:  { icon: '💢', img: 'st_endure', label: '불사', desc: 'HP가 1 아래로 내려가지 않음 (즉사 포함)' },
   guard:   { icon: '🛡️', img: 'def', label: '대신 맞기', desc: '지정한 아군을 향한 기본 공격을 대신 맞음' },
@@ -119,7 +121,7 @@ function refreshSide(p) {
   const male = foeHasPassive(p, 'Maledictio vel benedictio');
   const lvAura = (side, name, base) => side.field.filter(x => hasPassive(x, name)).reduce((t, x) => t + base + 0.002 * (x.level - 1), 0);
   const auraA = lvAura(p, '비오는 밤', 0.03) - (p.foe ? lvAura(p.foe, '응? 어쩌라고?', 0.02) : 0);
-  const auraD = lvAura(p, '잔상', 0.02) - (p.foe ? lvAura(p.foe, '마지막 바람', 0.02) : 0) - (foeHasPassive(p, '넌 안 된다니까?') ? 0.05 : 0);
+  const auraD = (p.foe ? lvAura(p.foe, '마지막 바람', 0.02) : 0) - (foeHasPassive(p, '넌 안 된다니까?') ? 0.05 : 0);
   // 스토리 리더 스킬: 리더가 내 필드에 있는 동안 아군 ATK·DEF·HP %, 상대 리더의 적 전체 감소(eAtk·eDef)는 여기서 뺌
   const lsOn = side => side && side.leaderSkill && side.field.some(x => x.isLeader) ? side.leaderSkill : null;
   const ls = lsOn(p), fls = lsOn(p.foe);
@@ -254,6 +256,7 @@ export function checkDeath(u, killer = null) {
     emit({ type: 'heal', unit: u, amt: u.maxHp, why: '제발…그만' }); refreshAll(p);
     return false;
   }
+  if (u.swap) unswap(u, false);   // 선미영이 쓰러지면 선나영이 쓰러진 것으로 처리
   p.field.splice(p.field.indexOf(u), 1);
   p.grave.push(u.base);
   // 문지철 너..는..데리고..갈게: 사망 시 품성 최저 적 250 고정 피해, 처치하면 양 옆 80
@@ -267,6 +270,7 @@ export function checkDeath(u, killer = null) {
     }
   }
   p.lastDead = u.base;
+  if (p.foe && hasPassive(u, '지아는 약하지 않아!')) { emit({ type: 'passive', unit: u, name: '지아는 약하지 않아!' }); stats.count('지아는 약하지 않아!'); live(p.foe).forEach(t => addStatus(t, '지아는 약하지 않아!', 1, { atk: -0.7, label: 'ATK -70%' }, 'mod')); }
   if (p.foe && hasPassive(u, '나는 멈춘다')) { emit({ type: 'passive', unit: u, name: '나는 멈춘다' }); stats.count('나는 멈춘다'); live(p.foe).forEach(t => addStatus(t, 'para', 1, {}, 'para')); }
   if (p.foe && hasPassive(u, '더는 나를 밀지마')) { emit({ type: 'passive', unit: u, name: '더는 나를 밀지마' }); stats.count('더는 나를 밀지마'); live(p.foe).forEach(t => bleedOn(t, u, 2)); }
   emit({ type: 'destroy', unit: u });
@@ -309,7 +313,7 @@ export function gainMp(u, amt, why = '') { const b = u.mp; u.mp = Math.min(u.max
 // ---- 레벨 변화 → 해금 패시브 발동 ----
 export function onLevelChange(u) { if (u.owner) { emit({ type: 'levelup', unit: u, level: u.level }); refreshAll(u.owner); onUnlockCheck(u); } }
 /** 효과가 계속 켜져 있어 따로 발동 이벤트가 없는 패시브: 해금(또는 해금된 채 소환)될 때 한 번 연출 */
-export const AURA_PASSIVES = new Set(['Nullus Deus est', '우습네요', 'Maledictio vel benedictio', '넌 안 된다니까?', '검은 늪', '비오는 밤', '잔상', '응? 어쩌라고?', '마지막 바람', '이게 반격이야', '마르쉐', '플레쉬', '부덕의 괴력', '내가 지켜준다', '너도 언젠간 죽어', '나는 쓰러지지 않아']);
+export const AURA_PASSIVES = new Set(['Nullus Deus est', '우습네요', 'Maledictio vel benedictio', '넌 안 된다니까?', '검은 늪', '비오는 밤', '응? 어쩌라고?', '마지막 바람', '이게 반격이야', '마르쉐', '플레쉬', '부덕의 괴력', '내가 지켜준다', '너도 언젠간 죽어', '나는 쓰러지지 않아']);
 function onUnlockCheck(u) {
   for (const s of u.sk || []) {
     if (s.mode === 'passive' && u.level >= s.unlock && AURA_PASSIVES.has(s.name) && !u.fired['aura:' + s.name]) {
@@ -338,6 +342,11 @@ const PASSIVE_ONCE = {
   '진멸의 여제': (u, p) => { p.st.heroShield = { def: 3, t: 2 + (TURN.p === p ? 1 : 0) }; for (const a of p.field) addStatus(a, 'immune', 2, {}, 'immune'); },
   // 이민채: 해금(소환) 후 2턴 간 쓰러지지 않음
   '카르밀라...사랑해': u => addStatus(u, 'endure', 2, { label: '불사 2턴' }, 'endure'),
+  // 10/25 신규·변경 패시브 (출전·해금 시 1회)
+  '미쳐간다': u => addStatus(u, 'evade', 2, { p: 0.2, label: '회피 +20%' }, 'evade'),   // 조윤하
+  '잔상': (u, p) => { for (const a of p.field) addStatus(a, 'endure', 2, { label: '잔상: 사망하지 않음 (즉사 포함)' }, 'endure'); },   // 이영아
+  '언니는 강해요!': (u, p) => immuneAllies(p, a => a !== u && a.base.gender === 'FEMALE' && a.card.cost < u.card.cost, 2, '언니는 강해요!'),   // 정지선
+  '몸은 약해요. 하지만 정신은 그렇지 않아!': u => { addStatus(u, 'taunt', 1, {}, 'taunt'); addStatus(u, 'endure', 1, { label: '최소 HP 1 유지' }, 'endure'); },   // 예유진
   '반야': u => { for (const [k, s] of Object.entries(u.st)) if (STATUS[s.kind]?.debuff || s.atk < 0 || s.def < 0) delete u.st[k]; u.curse = 0; },
   '존재의 증명': (u, p) => { for (const a of [...p.field]) for (let i = 0; i < 2 && a.level < RULES.LEVEL_MAX; i++) { levelUpOnce(a); onLevelChange(a); } healHero(p, (p.maxHp || RULES.HERO_HP) * 0.5); },
 };
@@ -351,6 +360,28 @@ export function spares(a, t) { if (!SPARE || !a || !t || a.owner === t.owner) re
 export function spareBlocked(u) { if (!SPARE || !SPARE[String(u?.card?.id)] || !u.owner?.foe) return false; const fs = u.owner.foe.field.filter(x => x.hp > 0); return fs.length > 0 && fs.every(x => spares(u, x)); }
 const live = p => ACTOR ? p.field.filter(x => !spares(ACTOR, x)) : [...p.field];
 const by = (arr, f, dir = 1) => arr.slice().sort((a, b) => dir * (f(a) - f(b)))[0];
+const GRADE_ORDER = ['NORMAL', 'RARE', 'HIGH RARE', 'SUPER RARE', 'ULTRA RARE', 'MYTHIC RARE'];
+const gradeIdx = x => GRADE_ORDER.indexOf(typeof x === 'string' ? x : x.base.grade);
+const immuneAllies = (p, pred, turns) => { for (const a of live(p)) if (pred(a)) addStatus(a, 'immune', turns, {}, 'immune'); };
+// 선나영 [언니...도와줘요.]: 2턴 간 선미영(같은 레벨)으로 교체. 끝나면 선나영으로 돌아와 HP 100%. 선미영이 쓰러지면 선나영도 쓰러짐
+export const MIYOUNG_ID = '2000400094';
+const LV_RATE = { 'NORMAL': 0.01, 'RARE': 0.02, 'HIGH RARE': 0.03, 'SUPER RARE': 0.04, 'ULTRA RARE': 0.05, 'MYTHIC RARE': 0.06 };
+function swapSister(u) {
+  const mc = poolCard(MIYOUNG_ID); if (!mc || u.swap) return;
+  const L = Math.max(1, u.base.slv || u.base.qLevel || 1), m = 1 + (LV_RATE[mc.grade] || 0.01) * (L - 1);
+  const nb = { ...mc, HP: Math.round(+mc.HP * m), ATK: Math.round(+mc.ATK * m), DEF: Math.round(+mc.DEF * m), slv: L };
+  u.swap = { base: u.base, card: u.card, raw: u.raw, sk: u.sk, maxHp: u.maxHp, hp: u.hp, comboHp: u.comboHp };
+  Object.assign(u, { base: nb, card: { ...nb }, raw: { ATK: nb.ATK, DEF: nb.DEF }, sk: skillsOf(MIYOUNG_ID), maxHp: nb.HP, hp: nb.HP, comboHp: 0 });
+  addStatus(u, 'sisterSwap', 2, {}, 'sisterSwap');
+  emit({ type: 'log', text: `${u.swap.base.name} → ${nb.name} 교체 (Lv.${L}, 2턴)` });
+  refreshAll(u.owner); onUnlockCheck(u);
+}
+function unswap(u, healFull = true) {
+  const o = u.swap; if (!o) return; u.swap = null; delete u.st.sisterSwap;
+  Object.assign(u, { base: o.base, card: o.card, raw: o.raw, sk: o.sk, maxHp: o.maxHp, comboHp: o.comboHp });
+  u.hp = healFull ? u.maxHp : Math.min(u.hp, 0);
+  if (healFull) { emit({ type: 'heal', unit: u, amt: u.maxHp, why: '언니...도와줘요.' }); refreshAll(u.owner); }
+}
 export const chance = p => rng() < p;
 /** 자기 디버프 1개 해제 (빛 정화). 해제했으면 true */
 export function cleanseOne(u) {
@@ -418,7 +449,19 @@ export const ACTIVE = {
   'Tempus est discerpi': (u, p, f) => { live(f).forEach(t => addStatus(t, 'disrupt', 1, {}, 'disrupt')); p.actionLock = Math.max(p.actionLock, 2); },
   // 최창민
   '잘린다': (u, p, f) => { const ts = live(f); hitAll(u, f, 3, 0.2); ts.forEach(t => f.field.includes(t) && chance(0.2) && bleedOn(t, u)); },
-  '러시안룰렛': (u, p, f) => { const t = by(live(f), x => x.card.cost); if (t) { t.hp = 0; emit({ type: 'dmg', unit: t, dmg: '즉사' }); checkDeath(t, u); } },
+  '러시안룰렛': (u, p, f) => { const t = by(live(f), x => x.card.cost); if (t) { t.hp = 0; emit({ type: 'dmg', unit: t, dmg: '즉사' }); checkDeath(t, u); }
+    if (u.hp > 1) damageUnit(u, Math.floor(u.hp * 0.99), null); },   // 대가: 자신의 현재 HP 99% 하락 (피해 면역·불사는 뚫지 않음, 최소 1 남음)
+  // 10/25 신규 액티브
+  '핑핑 돌지?': (u, p) => { for (const a of live(p)) addStatus(a, 'evade', 1, { p: 0.1, label: '회피 +10%' }, 'evade'); },   // 서진성
+  '무시하지 마세요.': (u, p) => immuneAllies(p, a => a.base.gender === 'FEMALE' && gradeIdx(a) <= gradeIdx('RARE'), 2),   // 류하예
+  '약육강식? 웃기지 마세요.': (u, p) => immuneAllies(p, a => a.base.gender === 'FEMALE' && gradeIdx(a) <= gradeIdx('HIGH RARE'), 2),   // 지세련
+  '부드러움은 강함을 이깁니다': (u, p) => immuneAllies(p, a => a.base.gender === 'FEMALE' && gradeIdx(a) <= gradeIdx('HIGH RARE'), 2),   // 홍다영
+  '당하고만 살진 않아요': (u, p) => immuneAllies(p, a => a.base.gender === 'FEMALE' && gradeIdx(a) <= gradeIdx('HIGH RARE'), 2),   // 신아린
+  '더 이상의 비극은 없어!': (u, p) => immuneAllies(p, a => a.base.gender === 'FEMALE' && gradeIdx(a) <= gradeIdx('HIGH RARE'), 2),   // 이윤이
+  '귀족이...전부 악인은 아니랍니다.': (u, p) => immuneAllies(p, a => a.base.gender === 'FEMALE' && (a.base.MOR || 0) >= 50, 2),   // 허유희
+  '약해 보인다고 무시하지 마!': (u, p) => immuneAllies(p, a => a.base.gender === 'FEMALE' && a.card.cost < 35, 1),   // 남태은
+  '내가 누군지 아냐?': u => addStatus(u, 'immune', 2, {}, 'immune'),   // 최국선
+  '언니...도와줘요.': u => swapSister(u),   // 선나영 → 선미영 2턴
   // 최창원
   '웃자!': (u, p, f) => { const t = by(live(f), x => x.card.DEF); if (t) multiHit(u, t, 10, t.base.gender === 'FEMALE' ? 0.25 : 0.2); },
   '나약하네..': (u, p, f) => debuffAll(f, '나약하네..', 2, { def: -0.2, label: 'DEF -20%' }),
@@ -780,8 +823,6 @@ export function turnStart(p) {
   }
   // 윤진아 검은 늪: 가장 많이 다친 아군 20% 회복
   if (findPassiveUnit(p, '검은 늪') && p.field.length) { const a = by(p.field, x => x.hp / x.maxHp); if (heal(a, a.maxHp * 0.2, '검은 늪')) stats.count('검은 늪'); }
-  // 조윤하 미쳐간다: 상대 턴 시작 시 확률 혼란 (5% + 활성 후 매 턴 1%)
-  for (const y of f.field) if (hasPassive(y, '미쳐간다')) { y.madTurns = (y.madTurns || 0) + 1; if (chance(0.05 + 0.01 * (y.madTurns - 1))) { emit({ type: 'passive', unit: y, name: '미쳐간다' }); stats.count('미쳐간다'); p.field.forEach(t => addStatus(t, 'confuse', 1, {}, 'confuse')); } }
   // 임예리 지옥 교향곡 (상대 필드): 매 턴 ATK·DEF -2% 누적, HP -5%
   const yeri = findPassiveUnit(f, '자수정 눈물의 지옥 교향곡');
   if (yeri) { emit({ type: 'passive', unit: yeri, name: '자수정 눈물의 지옥 교향곡' }); stats.count('자수정 눈물의 지옥 교향곡'); for (const u of [...p.field]) { if (u.st.debuffImmune) continue; u.curse++; damageUnit(u, Math.max(1, Math.round(u.maxHp * 0.05)), null); checkDeath(u, yeri); } }
@@ -820,6 +861,7 @@ export function turnStart(p) {
 }
 /** 상태 종료 시 효과: 종료 회복, MP 하락(저기…나랑 갈래?), 고세린 [아..기분좋아~] */
 function onExpire(u, k, s) {
+  if (k === 'sisterSwap') unswap(u, true);
   if (s.endHeal) heal(u, u.maxHp * s.endHeal, k);
   if (s.mpDrainEnd && u.mp > 0) { const m = Math.round(u.mp * s.mpDrainEnd); if (m > 0) { u.mp -= m; emit({ type: 'mp', unit: u, amt: -m }); emit({ type: 'log', text: `${u.card.name} [${s.label || k}] 종료 · MP -${m}` }); } }
   if (k === '때리지 말라니까!' && hasPassive(u, '아..기분좋아~')) { u.st.regen = { kind: 'regen', pct: 0.07, t: 3 }; emit({ type: 'passive', unit: u, name: '아..기분좋아~', text: '3턴 간 매 턴 HP 7% 회복' }); stats.count('아..기분좋아~'); }
@@ -890,6 +932,12 @@ export function aiPickSkill(u) {
       case '내 동생 건드리지마!': sc = n ? 84 : 0; break;
       case '언니니까!': case '이게 프로야.': case '에메랄드 쇼크': case '불을 훔친 자': case '그렇게 느려도 되겠어?': sc = n >= 2 && !canKill ? 82 + n * 3 : 0; break;
       case '이거…마셔볼래?': case '저기…나랑 갈래?': sc = n >= 2 ? 82 + n * 4 : 0; break;
+      case '핑핑 돌지?': sc = n && p.field.length >= 2 ? 80 + p.field.length * 3 : 0; break;
+      case '무시하지 마세요.': case '약육강식? 웃기지 마세요.': case '부드러움은 강함을 이깁니다': case '당하고만 살진 않아요': case '더 이상의 비극은 없어!': case '귀족이...전부 악인은 아니랍니다.': case '약해 보인다고 무시하지 마!': {
+        const k = { '무시하지 마세요.': a => gradeIdx(a) <= 1, '귀족이...전부 악인은 아니랍니다.': a => (a.base.MOR || 0) >= 50, '약해 보인다고 무시하지 마!': a => a.card.cost < 35 }[s.name] || (a => gradeIdx(a) <= 2);
+        const c = p.field.filter(a => a.base.gender === 'FEMALE' && !a.st.immune && k(a)).length; sc = n && c >= 2 && !canKill ? 80 + c * 4 : 0; break; }
+      case '내가 누군지 아냐?': sc = n && !u.st.immune && u.hp < u.maxHp * 0.7 ? 88 : 0; break;
+      case '언니...도와줘요.': sc = n && !u.swap && poolCard(MIYOUNG_ID) ? 92 : 0; break;
       case '러시안룰렛': sc = n ? 90 + by(f.field, x => x.card.cost).card.cost : 0; break;
       default:
         if (s.type === '디버프') sc = n >= 3 && !canKill ? 80 + n * 3 : 0;

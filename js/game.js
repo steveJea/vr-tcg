@@ -905,7 +905,7 @@ function onEngine(e) {
       log(`👑 ${e.p.name}: 리더 ${nm(e.unit)} 쓰러짐! 리더 스킬 해제 · ${e.base ? `진영 HP −${fmt(e.dmg)} (최대의 ${pc}%)` : `아군 진영 HP −${pc}% (남은 아군 ${e.n}장, 총 ${fmt(e.dmg)} 피해)`}`, 'text-red-400 font-bold');
       break; }
     case 'destroy': log(`${nm(e.unit)} 파괴!`, 'text-zinc-400'); pendingDying.push(uEl(e.unit)); if (S.story?.rules) storyOnDeath(e.unit); break;
-    case 'refund': if (S.story && e.owner === S.me && e.killer?.card) { const k = String(e.killer.card.id); S.log.kills[k] = (S.log.kills[k] || 0) + 1; }
+    case 'refund': if (S.story && e.owner === S.me && e.killer?.card) { const k = String(e.killer.swap?.base.id || e.killer.card.id); S.log.kills[k] = (S.log.kills[k] || 0) + 1; }
       log(`${nm(e.killer)} 처치 보상: 마나 +${e.refund}`, 'text-sky-300'); if (e.refund > 0 && !FX_OFF()) dmgNumber(heroEl(whoOf(e.owner)), `${ic('mana')} +${e.refund} 마나`, '#7dd3fc', true); renderHero(whoOf(e.owner)); break;
     case 'levelup': log(`${nm(e.unit)} Lv${e.level}`, 'text-amber-300'); dmgNumber(uEl(e.unit), `⬆ Lv${e.level}`, '#fcd34d'); break;
     case 'status': { const st = STATUS[e.kind]; const t = e.kind === 'mod' ? e.text : `${st?.icon || ''} ${st?.label || e.kind}`; dmgNumber(uEl(e.unit), e.kind === 'mod' ? escHtml(t) : `${icOf(st)} ${escHtml(st?.label || e.kind)}`, '#c4b5fd', true); log(`${nm(e.unit)}: ${t}`, 'text-purple-300'); break; }
