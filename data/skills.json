@@ -1677,12 +1677,12 @@
    "type": "버프",
    "mode": "passive",
    "target": "자신",
-   "desc": "출전 후 2턴 간 회피율이 20% 상승한다.",
+   "desc": "기술 발동 시 2턴 간 회피율이 20% 상승한다.",
    "value": "20%",
    "duration": 2,
    "mp": 0,
    "cooldown": 0,
-   "unlock": 3,
+   "unlock": 2,
    "fx": "2000500111_1.webp",
    "note": ""
   }
@@ -3042,7 +3042,7 @@
    "duration": 1,
    "mp": 0,
    "cooldown": 0,
-   "unlock": 2,
+   "unlock": 1,
    "fx": "2000800171_1.webp",
    "note": ""
   }
