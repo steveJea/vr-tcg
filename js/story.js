@@ -745,7 +745,8 @@
       }
       if (!first) return { exp };
       const have = new Set(save.owned.map(o => o.id));
-      const rc = ch.rewardCard ? rand(pool().filter(c => c.grade === ch.rewardCard && !have.has(String(c.id)))) : null;
+      const fixed = ch.rewardCards?.[ph.no] || D.chapters.find(c => c.id === ch.id)?.rewardCards?.[ph.no];   // 페이즈 고정 보상 (보유해도 한 장 더)
+      const rc = fixed ? card(fixed) : ch.rewardCard ? rand(pool().filter(c => c.grade === ch.rewardCard && !have.has(String(c.id)))) : null;
       if (rc) save.owned.push(newCard(rc.id));
       save.cleared[ch.id] = [...clearedOf(ch), ph.no];
       save.points += D.statPoints[ph.type];   // 스탯 포인트는 페이즈 첫 클리어 때만
