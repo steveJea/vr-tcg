@@ -349,6 +349,7 @@ export const ACTIONS = {
 /** 셔플용 전체 카드 풀 */
 let CARD_POOL = [];
 export function setCardPool(pool) { CARD_POOL = pool; }
+export const poolCard = id => CARD_POOL.find(c => String(c.id) === String(id)) || null;
 
 /** 희생: 필드 카드 제거 → 코스트 × 비율 마나. 턴당 1회 */
 export const sacrificeGain = card => Math.ceil(card.cost * RULES.SACRIFICE_RATIO);
