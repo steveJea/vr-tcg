@@ -193,13 +193,10 @@ span.story-lvpct { background: rgba(251,191,36,.12); border: 1px solid rgba(251,
 
 /* ===== 스토리 필드 전투: 손패·드로우·용병 없음, 보스는 진영 안 ===== */
 #game.story-field #me-hand, #game.story-field #hand-sort, #game.story-field #act-merc, #game.story-field #act-shuffle, #game.story-field #act-heal, #game.story-field .deck-info, #game.story-field #ai-handcards { display: none !important; }
-/* 스토리 전투 모바일: 손패가 없어 아래 절반이 비고 필드 카드가 작게 떠 보이던 문제 → 필드가 남는 높이를 채우고, 카드 수가 적으면 카드를 키움 */
+/* 스토리 전투 모바일: 손패가 없어 아래 절반이 비고 필드 카드가 작게 떠 보이던 문제 → 필드가 남는 높이를 채움 (카드 크기는 장수와 관계없이 고정, 가운데 정렬) */
 #game.story-field { min-height: 100dvh; }
 #game.story-field #field-box { flex: 1 1 auto; justify-content: space-evenly; }
 #game.story-field #ai-field, #game.story-field #me-field { align-items: center; }
-@media (max-width: 767px) {
-  #game.story-field #ai-field:not(:has(> .unit:nth-child(4))) .unit .card-frame,
-  #game.story-field #me-field:not(:has(> .unit:nth-child(4))) .unit .card-frame { width: 112px; }
 }
 #ai-boss .boss-unit { position: relative; }
 #ai-boss .boss-unit .card-frame { box-shadow: 0 0 0 2px #fbbf24, 0 0 14px rgba(251,191,36,.55); }
