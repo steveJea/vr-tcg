@@ -533,3 +533,21 @@ span.story-lvpct { background: rgba(251,191,36,.12); border: 1px solid rgba(251,
 .story-cutin-bg{position:absolute;inset:-40px;background-size:cover;background-position:center;filter:blur(28px) brightness(.35);transform:scale(1.1)}
 .story-cutin-img{position:relative;max-width:min(92vw,640px);max-height:88vh;max-height:88dvh;width:auto;height:auto;object-fit:contain;border-radius:14px;box-shadow:0 0 0 1px rgba(255,255,255,.12),0 20px 60px rgba(0,0,0,.8);transform:scale(.94);transition:transform .6s cubic-bezier(.2,.8,.2,1)}
 .story-cutin.on .story-cutin-img{transform:scale(1)}
+
+/* ===== 탑 허브 (6종) ===== */
+.th-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;max-width:640px;margin:.5rem auto 0;padding:0 10px}
+@media(min-width:900px){.th-grid{grid-template-columns:repeat(3,minmax(0,1fr));max-width:900px}}
+.th-card{position:relative;aspect-ratio:2/3;border-radius:16px;overflow:hidden;background-color:#0b0b12;background-position:center;background-size:cover;background-repeat:no-repeat;border:1px solid rgba(196,181,253,.22);box-shadow:0 8px 24px rgba(0,0,0,.55),inset 0 0 0 1px rgba(255,255,255,.04);text-align:left;transition:transform .15s,box-shadow .15s}
+.th-card:not(.locked):hover,.th-card:not(.locked):focus-visible{transform:translateY(-2px);box-shadow:0 12px 30px rgba(124,58,237,.35),0 0 0 1px rgba(196,181,253,.5)}
+.th-card:active{transform:scale(.98)}
+.th-shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0) 45%,rgba(5,5,12,.88) 100%)}
+.th-card.locked{filter:grayscale(.75) brightness(.55)}
+.th-lock{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:#e4e4e7;text-shadow:0 2px 6px #000}
+.th-lock span{font-size:1.6rem}.th-lock small{font-size:.68rem;color:#d4d4d8}.th-lock b{font-size:.8rem;padding:2px 10px;border-radius:999px;background:rgba(0,0,0,.6);border:1px solid rgba(255,255,255,.18)}
+.th-info{position:absolute;left:0;right:0;bottom:0;padding:10px 10px 9px}
+.th-name{font-weight:900;font-size:1.02rem;color:#fff;letter-spacing:.02em;text-shadow:0 2px 8px #000}
+.th-meta{display:flex;gap:8px;margin-top:4px;font-size:.7rem;color:#ddd6fe}
+.th-meta span{padding:1px 7px;border-radius:999px;background:rgba(0,0,0,.45);border:1px solid rgba(196,181,253,.25)}
+.th-card.full .th-meta span:last-child{color:#fca5a5;border-color:rgba(248,113,113,.45)}
+.th-lv{font-size:.75rem;color:#c4b5fd;justify-self:end}
+.th-foot{text-align:center;font-size:.68rem;color:#71717a;margin:10px 0 18px}

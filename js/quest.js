@@ -19,12 +19,18 @@
 
   const M = () => window.__QUEST_MOCK;
   // 탑 v2 (supabase/tower_v2.sql): tower_* RPC + p_tower. 서버에 아직 없으면 예전 quest_* 로 (legacy)
-  const TOWER = 'normal'; let legacy = false;
+  let TOWER = 'normal', legacy = false, hub = null;   // hub = tower_status 전체 응답
+  // 탑 6종 (허브). ready=false: 적 생성·속성 출전 제한(PR-D) 전이라 입장 불가 '준비중'
+  const TOWERS = [
+    { id: 'normal', name: '시련의 탑', ready: true }, { id: 'wind', name: '바람의 계곡', cls: 'WIND' }, { id: 'ice', name: '얼음의 숲', cls: 'ICE' },
+    { id: 'fire', name: '불의 절벽', cls: 'FIRE' }, { id: 'light', name: '빛의 섬', cls: 'LIGHT' }, { id: 'dark', name: '어둠의 늪', cls: 'DARK' }];
+  const DOW = ['', '월', '화', '수', '목', '금', '토', '일'];
+  const tName = () => TOWERS.find(t => t.id === TOWER)?.name || '시련의 탑';
   const NEW = { quest_status: 'tower_status', quest_start: 'tower_start', quest_complete: 'tower_complete', quest_sweep_start: 'tower_sweep_start', quest_sweep_complete: 'tower_sweep_complete', quest_sweep_info: 'tower_sweep_info' };
   async function trpc(name, args = {}) {
     if (M()?.rpc && !M().tower) legacy = true;   // 예전 목업(quest_* 만 응답)
     if (!legacy) {
-      try { const d = await rpc(NEW[name], name === 'quest_status' ? {} : { p_tower: TOWER, ...args }); return name === 'quest_status' ? { ...(d?.towers?.[TOWER] || {}), level: d?.level } : d; }
+      try { const d = await rpc(NEW[name], name === 'quest_status' ? {} : { p_tower: TOWER, ...args }); if (name === 'quest_status') { hub = d; return { ...(d?.towers?.[TOWER] || {}), level: d?.level }; } return d; }
       catch (e) { if (!/tower_|function|schema cache/.test(String(e?.message || ''))) throw e; legacy = true; }
     }
     return rpc(name, Object.keys(args).length ? args : undefined);
@@ -61,9 +67,40 @@
     if (!api.ownedCount()) { api.popup(`<div class="text-lg font-black mb-2">🗼 시련의 탑</div><div class="text-sm text-zinc-300 mb-4">보유 카드가 없어요. 스토리 모드에서 먼저 카드를 골라 주세요.</div><button data-close-pop class="w-full py-2 rounded-xl bg-zinc-700">닫기</button>`); return; }
     try { status = await trpc('quest_status'); }
     catch (e) { status = null; api.popup(`<div class="text-lg font-black mb-2">🗼 시련의 탑</div><div class="text-sm text-zinc-300 mb-4">${/quest_status|function/.test(e?.message || '') ? '퀘스트 서버가 아직 준비 중이에요.' : '진행 상황을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.'}</div><button data-close-pop class="w-full py-2 rounded-xl bg-zinc-700">닫기</button>`); return; }
-    sel = Math.min(best() + 1, maxF());
-    render();
+    if (legacy || !hub?.towers) { TOWER = 'normal'; sel = Math.min(best() + 1, maxF()); return render(); }
+    renderHub();
   }
+  /** 잠김 이유: 준비중 · 유저 레벨 · 요일 (KST). 없으면 null */
+  function lockOf(t) {
+    const s = hub?.towers?.[t.id]; if (!s) return '준비중';
+    const why = [];
+    if (!s.unlocked) why.push(`Lv.${s.min_level} 필요`);
+    if (!s.open_today) why.push(`${(s.days || []).map(d => DOW[d]).join('·')} 오픈`);
+    if (!t.ready) why.unshift('준비중');
+    return why.length ? why.join(' · ') : null;
+  }
+  function renderHub() {
+    const api = A();
+    const cards = TOWERS.map(t => { const s = hub?.towers?.[t.id] || {}, lock = lockOf(t), full = !lock && (s.today | 0) >= (s.daily | 0);
+      return `<button class="th-card ${lock ? 'locked' : ''} ${full ? 'full' : ''}" data-tower="${t.id}" style="background-image:url('img/tower/${t.id}.webp')">
+        <div class="th-shade"></div>
+        ${lock ? `<div class="th-lock"><span>🔒</span>${lock.split(' · ').map((x, i) => i ? `<small>${esc(x)}</small>` : `<b>${esc(x)}</b>`).join('')}</div>` : ''}
+        <div class="th-info"><div class="th-name">${esc(t.name)}</div>
+          <div class="th-meta"><span title="최고 층">🏔 ${s.best_floor | 0}층</span><span title="오늘 이긴 층 / 하루 제한">⏳ ${s.today | 0}/${s.daily | 0}</span></div></div></button>`; }).join('');
+    api.show(`<div class="story-top"><button class="story-back" id="q-home">← 처음으로</button><div class="story-top-title">🗼 탑</div><span class="th-lv">Lv.${hub?.level | 0}</span></div>
+      <div class="th-grid">${cards}</div><div class="th-foot">하루 제한·요일은 한국 시간 자정 기준</div>`, 'tower');
+    $('q-home').onclick = () => api.home();
+    document.querySelectorAll('.th-card').forEach(b => b.onclick = () => enterTower(b.dataset.tower));
+  }
+  async function enterTower(id) {
+    const api = A(), t = TOWERS.find(x => x.id === id), lock = t && lockOf(t);
+    if (!t) return;
+    if (lock) { api.toast(/준비중/.test(lock) ? `${t.name}은(는) 준비 중이에요` : `${t.name}: ${lock}${/Lv\./.test(lock) ? ` (지금 Lv.${hub?.level | 0})` : ''}${/오픈/.test(lock) ? ' (한국 시간)' : ''}`); return; }
+    TOWER = id; genCache.clear();
+    status = { ...(hub.towers[id] || {}), level: hub.level };
+    sel = Math.min(best() + 1, maxF()); render();
+  }
+  async function backToHub() { try { status = await trpc('quest_status'); } catch {} renderHub(); }
 
   function enemyTile(c, lead) {
     return `<div class="q-enemy rar-${SHORT[c.grade]}" title="${esc(c.name)}"><img src="${IMG}${c.id}.webp" alt="${esc(c.name)}" loading="lazy" onerror="this.style.visibility='hidden'">
@@ -76,7 +113,7 @@
       const k = x.floor, r = rewardOf(k), st = k <= best() ? 'done' : unlocked(k) ? 'next' : 'lock';
       return `<button class="q-row ${st} ${k === n ? 'on' : ''}" data-floor="${k}" ${st === 'lock' ? 'disabled' : ''}><span class="q-no">${k}층</span><span class="q-g rar-${SHORT[x.grade]}">${SHORT[x.grade]}</span><span class="q-pw">⚡ ${fmt(x.power)}</span>${x.bond ? '<span class="q-bond" title="인연 조합">🤝</span>' : ''}${r ? `<span class="q-rw ${st === 'done' ? 'got' : ''}">${r.tickets ? `🎟️${r.tickets}` : ''}${r.gold ? `🪙` : ''}</span>` : '<span class="q-rw"></span>'}<span class="q-st">${st === 'done' ? '✔' : st === 'next' ? '▶' : '🔒'}</span></button>`;
     }).reverse().join('');
-    api.show(`<div class="story-top"><button class="story-back" id="q-home">← 처음으로</button><div class="story-top-title">🗼 시련의 탑</div><span></span></div>
+    api.show(`<div class="story-top"><button class="story-back" id="q-home">${hub?.towers && !legacy ? '← 탑 목록' : '← 처음으로'}</button><div class="story-top-title">🗼 ${esc(tName())}</div><span></span></div>
       <div class="q-head"><div>최고 <b>${best()}</b>층 / ${maxF()}층${status?.daily ? ` · 오늘 ${status.today | 0}/${status.daily}` : ''}</div><div class="q-sub" title="적 카드를 모두 쓰러뜨리면 승리 · 내 카드 전멸 또는 ${cfg.maxTurns || 40}턴 초과 시 패배 · 재도전 무제한">적 전멸 = 승리 · ${cfg.maxTurns || 40}턴</div></div>
       <div class="q-wrap"><div class="q-cur">
         <div class="q-cur-h"><b>${n}층</b><span class="q-g rar-${SHORT[f.grade]}">${SHORT[f.grade]}</span><span>적 Lv.${g.level ?? g.leader?.qLevel} · 리더 ⚡ ${fmt(g.leader?.power)}</span></div>
@@ -87,7 +124,7 @@
         ${sweepBtn()}
       </div>
       <div class="q-list" id="q-list">${rows}</div></div>`, 'tower');
-    $('q-home').onclick = () => api.home();
+    $('q-home').onclick = () => hub?.towers && !legacy ? backToHub() : api.home();
     $('q-go').onclick = () => challenge(n);
     const sw = $('q-sweep'); if (sw) sw.onclick = () => sweep();
     $('q-list').querySelectorAll('[data-floor]').forEach(b => b.onclick = () => { sel = +b.dataset.floor; render(); });
@@ -142,8 +179,10 @@
   function sweepBtn() {
     const f = best() + 1; if (f > maxF()) return '';
     if (isBoss(f)) return `<div class="q-sweep-note">👑 ${f}층 보스는 직접 도전</div>`;
-    const last = Math.min(Math.ceil(f / 10) * 10 - 1, maxF());
-    return `<button class="story-btn q-sweep" id="q-sweep" title="내 덱으로 자동 전투 · 패배 또는 보스 층에서 멈춤">${SW()} 소탕 ${f}~${last}층</button>`;
+    const left = status?.daily ? Math.max(0, status.daily - (status.today | 0)) : Infinity;
+    if (!left) return `<div class="q-sweep-note">⏳ 오늘 도전 가능한 층을 다 썼어요 (${status.today | 0}/${status.daily})</div>`;
+    const last = Math.min(Math.ceil(f / 10) * 10 - 1, maxF(), f - 1 + left);
+    return `<button class="story-btn q-sweep" id="q-sweep" title="내 덱으로 자동 전투 · 패배 또는 보스 층에서 멈춤">${SW()} 소탕 ${f}~${last}층${Number.isFinite(left) ? ` <small>· 오늘 ${left}층 남음</small>` : ''}</button>`;
   }
   async function sweep() {
     const api = A(), deck = api.lastDeck?.() || [];
