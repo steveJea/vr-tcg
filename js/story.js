@@ -177,6 +177,27 @@
       phases: base.phases.map(p => { const x = o.phases?.[p.no]; return x ? { ...p, ...x, lines: x.lines ? { default: x.lines } : p.lines } : p; }) };
   }
   /** 스토리 컷인 이미지 (스킬 컷인처럼): 어두운 배경 위 가운데에 비율 유지(contain)로 페이드 인 → 약 2.2초 또는 탭 → 페이드 아웃 → done */
+  // 대사 줄의 video: 전체화면 영상 컷인 (소리 켜고 재생 · 건너뛰기 · 영상 바깥 클릭 시 닫힘 · 끝나면 대사 진행). 다시 볼 때도 매번 재생
+  function storyVideo(src, done) {
+    const snd = window.VRSound; snd?.hold?.(true);
+    const el = document.createElement('div'); el.className = 'story-vcut';
+    el.innerHTML = `<video playsinline preload="auto" src="${esc(src)}"></video>
+      <button class="story-vcut-skip" type="button">건너뛰기 ▶▶</button>
+      <div class="story-ovp-tap hidden"><button type="button">▶<span>눌러서 영상 보기</span></button></div>`;
+    document.body.appendChild(el);
+    const v = el.querySelector('video'), tap = el.querySelector('.story-ovp-tap');
+    let out = false;
+    const close = () => { if (out) return; out = true; removeEventListener('keydown', key); try { v.pause(); v.removeAttribute('src'); v.load(); } catch {} el.remove(); snd?.hold?.(false); done(); };
+    const key = e => { if (e.key === 'Escape') close(); };
+    el.querySelector('.story-vcut-skip').onclick = e => { e.stopPropagation(); close(); };
+    v.onclick = e => e.stopPropagation();
+    el.onclick = close;   // 영상 바깥 클릭
+    tap.querySelector('button').onclick = e => { e.stopPropagation(); v.muted = false; v.play().then(() => tap.classList.add('hidden')).catch(() => { v.muted = true; v.play().then(() => tap.classList.add('hidden')).catch(() => {}); }); };
+    v.onended = close; v.onerror = () => { if (v.getAttribute('src')) close(); };
+    addEventListener('keydown', key);
+    v.play().catch(() => tap.classList.remove('hidden'));
+    window.__storyVideo = { el, v, close };
+  }
   function storyCutin(src, done) {
     const el = document.createElement('div'); el.className = 'story-cutin';
     el.innerHTML = `<div class="story-cutin-bg" style="background-image:url('${esc(src)}')"></div><img class="story-cutin-img" src="${esc(src)}" alt="">`;
@@ -184,7 +205,9 @@
     let out = false, t;
     const close = () => { if (out) return; out = true; clearTimeout(t); el.classList.remove('on'); setTimeout(() => { el.remove(); done(); }, 450); };
     el.onclick = e => { e.stopPropagation(); close(); };
-    const img = el.querySelector('img'), go = () => { requestAnimationFrame(() => el.classList.add('on')); t = setTimeout(close, 2600); };
+    const img = el.querySelector('img'); img.addEventListener('load', () => { if (img.naturalWidth > img.naturalHeight) img.classList.add('wide'); });
+    const go = () => { requestAnimationFrame(() => el.classList.add('on')); t = setTimeout(close, 2600); };
+    if (img.complete && img.naturalWidth > img.naturalHeight) img.classList.add('wide');
     img.complete ? go() : (img.onload = go, img.onerror = () => { out = true; el.remove(); done(); });
   }
   // ----- 챕터 선택 -----
@@ -511,6 +534,7 @@
     let i = 0;
     const step = () => {
       if (i >= lines.length) return next();
+      if (lines[i].video && step.vid !== i) { step.vid = i; return storyVideo(lines[i].video, step); }   // 대사 줄의 video: 영상 먼저 재생하고 그 줄 진행
       if (lines[i].image && step.cut !== i) { step.cut = i; return storyCutin(lines[i].image, step); }   // 대사 줄의 image: 컷인 이미지 먼저 보여주고 그 줄 진행
       const L0 = lines[i], tag = /^(.+?)\s*\((기본|화남|웃음)\)$/.exec(L0.speaker || ''), L = tag ? { ...L0, speaker: tag[1], expr: L0.expr || tag[2] } : L0;
       const pc = who(L), sp = L.speaker === 'starter' ? starter?.name : L.speaker === 'enemy' ? enemy?.name : (L.speaker === '내레이션' ? null : L.speaker);

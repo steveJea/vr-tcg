@@ -359,7 +359,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "내레이션",
-      "text": "그리고 휴대폰 한 통. 영상이 와 있었다."
+      "text": "그리고 휴대폰 한 통. 영상이 와 있었다.",
+      "video": "video/story/ch5-01.mp4"
      },
      {
       "speaker": "정아영",
@@ -432,7 +433,8 @@ window.STORY_DATA.chapters.push({
     "default": [
      {
       "speaker": "내레이션",
-      "text": "그날 이후, 겨울의 하루는 자매의 것이 되었다."
+      "text": "그날 이후, 겨울의 하루는 자매의 것이 되었다.",
+      "image": "img/story/ch5-02.webp"
      },
      {
       "speaker": "내레이션",
@@ -509,7 +511,8 @@ window.STORY_DATA.chapters.push({
     "default": [
      {
       "speaker": "내레이션",
-      "text": "만신창이가 된 몸. 멍이 가시질 않았다."
+      "text": "만신창이가 된 몸. 멍이 가시질 않았다.",
+      "image": "img/story/ch5-03.webp"
      },
      {
       "speaker": "정아영",
@@ -607,7 +610,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "내레이션",
-      "text": "거역할 수 없었다. 겨울은 폐교로 향했다."
+      "text": "거역할 수 없었다. 겨울은 폐교로 향했다.",
+      "video": "video/story/ch5-04.mp4"
      },
      {
       "speaker": "내레이션",
@@ -667,7 +671,8 @@ window.STORY_DATA.chapters.push({
     "default": [
      {
       "speaker": "내레이션",
-      "text": "더는 버틸 수 없었다. 걷는 것조차 힘들었다."
+      "text": "더는 버틸 수 없었다. 걷는 것조차 힘들었다.",
+      "video": "video/story/ch5-05.mp4"
      },
      {
       "speaker": "내레이션",
@@ -675,7 +680,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "내레이션",
-      "text": "그때, 휴대폰이 울렸다. '진하린'."
+      "text": "그때, 휴대폰이 울렸다. '진하린'.",
+      "video": "video/story/ch5-07.mp4"
      },
      {
       "speaker": "진하린",
@@ -727,7 +733,8 @@ window.STORY_DATA.chapters.push({
     },
     {
      "speaker": "내레이션",
-     "text": "하린의 눈빛...그녀는 봤다. 나의 비밀을..."
+     "text": "하린의 눈빛...그녀는 봤다. 나의 비밀을...",
+     "video": "video/story/ch5-08.mp4"
     },
     {
      "speaker": "한겨울",
@@ -792,7 +799,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "내레이션",
-      "text": "장례식장...아름다운 겨울의 영정 사진만이 쓸쓸히 놓여있다."
+      "text": "장례식장...아름다운 겨울의 영정 사진만이 쓸쓸히 놓여있다.",
+      "image": "img/story/ch5-09.webp"
      },
      {
       "speaker": "진하린",
@@ -817,7 +825,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "내레이션",
-      "text": "펜싱 선수로서 모든 부와 명예를 가질 수 있었던 하린은 급하게 겨울의 학교로 전학을 갔다."
+      "text": "펜싱 선수로서 모든 부와 명예를 가질 수 있었던 하린은 급하게 겨울의 학교로 전학을 갔다.",
+      "image": "img/story/ch5-10.webp"
      },
      {
       "speaker": "진하린",
@@ -875,7 +884,8 @@ window.STORY_DATA.chapters.push({
     },
     {
      "speaker": "내레이션",
-     "text": "빗소리가 모든 소리를 덮었다."
+     "text": "빗소리가 모든 소리를 덮었다.",
+     "image": "img/story/ch5-11.webp"
     },
     {
      "speaker": "내레이션",
