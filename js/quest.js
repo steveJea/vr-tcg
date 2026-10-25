@@ -2,7 +2,7 @@
 // 스토리 보유 카드 5장으로 층마다 적 5장(data/quest.json + js/quest-gen.js, 층 번호 시드로 고정)과 싸움.
 // 진영 없음: 적 카드를 모두 쓰러뜨리면 승리 · 내 카드 전멸 또는 40턴 초과면 패배. 재도전 무제한.
 // 진행·보상은 서버(supabase/tower_v2.sql: tower_status / tower_start / tower_complete / tower_sweep_*, p_tower='normal'). 첫 클리어만 보상 (10층마다 소환권 5, 50층마다 10)
-// 하루 30층(소탕 포함, KST 자정 초기화)·유저 레벨 5 이상. 리셋 전 최고 층(paid_floor)까지는 다시 깨도 보상 없음
+// 하루 30층(소탕 포함, KST 자정 초기화)·유저 레벨 5 이상. tower_v2 리셋 후 1층부터 첫 클리어 보상 다시
 // 확장 훅: 층 rewards(골드 등), 층 enemies/boss 고정, stamina(도전 비용) — QUEST_HOOKS
 (() => {
   const $ = id => document.getElementById(id);
@@ -130,7 +130,7 @@
     const next = n + 1 <= maxF() ? n + 1 : null;
     api.show(`<div class="text-center py-6"><div class="story-chapter-sub">${n}층 CLEAR</div><div class="story-chapter-big text-emerald-300">VICTORY</div>
       ${res.first && res.currency ? `<div class="mt-4 story-drops">🎁 첫 클리어 ${window.VRPlayer?.curTxt?.(res.currency) || ''}</div>` : ''}${got ? `<div class="mt-2 text-amber-200 font-bold">🎁 첫 클리어 보상: ${rewardTxt(rw)}</div>` : `<div class="mt-4 text-zinc-400 text-sm">${res.first ? (res.currency ? '' : '이 층은 보상이 없어요. 10층마다 보상이 있어요.') : '이미 클리어한 층이라 보상은 없어요.'}</div>`}
-      ${res.first && res.paid === false ? '<div class="mt-2 text-xs text-zinc-400">이 층 보상은 탑 리셋 전에 이미 받았어요</div>' : ''}<div class="mt-2 text-sm text-zinc-300">최고 기록 ${best()}층${status?.daily ? ` · 오늘 ${status.today | 0}/${status.daily}층` : ''}</div>
+      <div class="mt-2 text-sm text-zinc-300">최고 기록 ${best()}층${status?.daily ? ` · 오늘 ${status.today | 0}/${status.daily}층` : ''}</div>
       <div class="flex flex-col gap-2 max-w-xs mx-auto mt-5">${next ? `<button class="story-btn" id="q-next">다음 층 (${next}층) 도전</button>` : ''}<button class="story-back" id="q-back">탑으로</button></div></div>`, 'tower');
     if (next) $('q-next').onclick = () => { sel = next; challenge(next); };
     $('q-back').onclick = () => { sel = next || n; render(); };

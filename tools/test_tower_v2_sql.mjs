@@ -40,7 +40,7 @@ const win = async (t, f) => { const s = await q(`select public.tower_start('${t}
 const tk = async () => (await db.query(`select tickets from public.story_gacha where user_id='${U}'`)).rows[0]?.tickets | 0;
 
 // 리셋·이전
-let p = await TP('normal'); ok(p && p.best_floor === 0 && p.paid_floor === 25 && p.clears === 30 && p.rewards.tickets === 10, `리셋: 0층, paid 25 유지 (재실행해도 1회) ${JSON.stringify(p)}`);
+let p = await TP('normal'); ok(p && p.best_floor === 0 && p.paid_floor === 0 && p.clears === 30 && p.rewards.tickets === 10, `리셋: 0층, 보상 1층부터 다시, 받은 보상 기록 유지 (재실행해도 1회) ${JSON.stringify(p)}`);
 ok(/permission denied/.test((await as('anon', {}, 'select public.tower_status()')).err || ''), 'anon 불가');
 // 레벨 제한
 await DOW(1); await LV(4);
@@ -54,9 +54,11 @@ await DOW(5); ok(!(await q(`select public.tower_start('dark', 1)`)).err && /clos
 await DOW(7); ok((await Promise.all(['normal','wind','ice','fire','light','dark'].map(t => q(`select public.tower_start('${t}', 1)`)))).every(r => !r.err), '일요일: 6종 모두 열림');
 ok(/invalid tower/.test((await q(`select public.tower_start('water', 1)`)).err || ''), '없는 탑 거부');
 ok(/invalid floor/.test((await q(`select public.tower_start('normal', 351)`)).err || ''), '351층 거부');
-// 첫 클리어: paid_floor 이하는 보상 없음 (이중 지급 방지)
+// 첫 클리어: 리셋 후 1층부터 보상 다시, 층마다 한 번만
 let t0 = await tk(), w0 = await W();
-let r = (await win('normal', 1)).rows?.[0].r; ok(r?.first && !r.paid && (await W()).gold === w0.gold, `normal 1층: 진행은 오르지만 보상 없음 (이미 받음) ${JSON.stringify(r)}`);
+let r = (await win('normal', 1)).rows?.[0].r; ok(r?.first && r.paid && (await W()).gold - w0.gold === 55, `normal 1층: 리셋 후 첫 클리어 보상 다시 (골드 55) ${JSON.stringify(r)}`);
+w0 = await W(); r = (await win('normal', 1)).rows?.[0].r; ok(r && !r.first && !r.paid && (await W()).gold === w0.gold, '같은 층 재클리어는 보상 없음');
+await run('tower_v2.sql'); p = await TP('normal'); ok(p.best_floor === 1 && p.paid_floor === 1, 'SQL 재실행: 다시 리셋 안 됨');
 ok(/floor locked/.test((await q(`select public.tower_start('normal', 3)`)).err || ''), '건너뛰기 불가');
 // 속성 탑: 골드·피·조각만, 소환권 없음
 await DOW(6);
@@ -76,10 +78,10 @@ let s = (await q(`select public.tower_sweep_start('normal') s`)).rows?.[0].s; ok
 await back('normal', 30);
 ok(/invalid range/.test((await q(`select public.tower_sweep_complete('normal', 8, '${T(6)}')`)).err || ''), '일일 제한 넘는 소탕 거부');
 r = (await q(`select public.tower_sweep_complete('normal', 7, '${T(5)}') r`)).rows?.[0].r; p = await TP('normal');
-ok(r?.cleared === 5 && p.best_floor === 7 && p.day_floors === 30 && p.paid_floor === 25 && Object.keys(r.total).length === 0, `소탕 5층 · paid 25 이하라 보상 없음 ${JSON.stringify(r?.total)}`);
+ok(r?.cleared === 5 && p.best_floor === 7 && p.day_floors === 30 && p.paid_floor === 7 && r.total.gold === [3,4,5,6,7].reduce((a, f) => a + 50 + 5 * f, 0), `소탕 3~7층 첫 클리어 보상 ${JSON.stringify(r?.total)}`);
 ok(/daily limit/.test((await q(`select public.tower_sweep_start('normal')`)).err || ''), '오늘 30층 다 쓰면 소탕 불가');
 // 보상 이어서: paid 초과부터 지급
-await db.exec(`update public.tower_progress set day_floors = 0, best_floor = 25 where user_id='${U}' and tower='normal'`);
+await db.exec(`update public.tower_progress set day_floors = 0, best_floor = 25, paid_floor = 25 where user_id='${U}' and tower='normal'`);
 w0 = await W(); s = (await q(`select public.tower_sweep_start('normal') s`)).rows?.[0].s; await back('normal', 30);
 r = (await q(`select public.tower_sweep_complete('normal', 29, '${T(4)}') r`)).rows?.[0].r;
 ok(r?.cleared === 4 && r.total.gold === (50+5*26)+(50+5*27)+(50+5*28)+(50+5*29) && (await TP('normal')).paid_floor === 29, `26~29층 보상 지급 ${JSON.stringify(r?.total)}`);

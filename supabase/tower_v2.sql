@@ -9,8 +9,8 @@
 --   요일 (KST): normal 매일 · wind 월토일 · ice 화토일 · fire 수토일 · light 목토일 · dark 금토일
 --   입장 유저 레벨 (player_state.level): normal 5 · wind/ice/fire 30 · light/dark 50
 --   첫 클리어 보상: normal = 기존과 같음 (소환권 10층 5 / 50층 10 + 골드·피·조각·혼) · 속성 탑 = 골드·피·조각만
---   리셋: 기존 시련의 탑 진행(quest_progress.best_floor)은 0층으로. 이미 받은 보상은 그대로 두고,
---         paid_floor(= 리셋 전 최고 층) 이하 층은 다시 깨도 첫 클리어 보상을 주지 않음 (이중 지급 방지)
+--   리셋: 기존 시련의 탑 진행(quest_progress.best_floor)은 0층으로 (처음 1회). 이미 받은 보상은 그대로 두고, 1층부터 첫 클리어 보상을 다시 줌
+--         paid_floor = 첫 클리어 보상을 받은 최고 층. 층마다 한 번만 지급 (재실행해도 리셋·재지급 없음)
 -- 새 RPC: tower_status() · tower_start(tower, floor) · tower_complete(tower, floor, stats) · tower_sweep_info(tower) · tower_sweep_start(tower) · tower_sweep_complete(tower, to, stats)
 -- 기존 quest_* RPC 는 normal 탑으로 이어지는 래퍼 (예전 클라이언트 호환)
 -- =====================================================================
@@ -20,7 +20,7 @@ create table if not exists public.tower_progress (
   user_id     uuid not null references auth.users(id) on delete cascade,
   tower       text not null check (tower in ('normal', 'wind', 'ice', 'fire', 'light', 'dark')),
   best_floor  int not null default 0 check (best_floor >= 0),
-  paid_floor  int not null default 0 check (paid_floor >= 0),   -- 첫 클리어 보상을 이미 받은 최고 층 (리셋해도 유지)
+  paid_floor  int not null default 0 check (paid_floor >= 0),   -- 첫 클리어 보상을 받은 최고 층 (층마다 한 번만)
   battle      jsonb,
   clears      int not null default 0,
   rewards     jsonb not null default '{}'::jsonb,
@@ -35,9 +35,9 @@ create policy "tower_select_own" on public.tower_progress for select using (user
 revoke insert, update, delete on public.tower_progress from anon, authenticated;
 grant select on public.tower_progress to authenticated;
 
--- 2) 기존 진행 이전 + 리셋 (처음 1회: 이미 tower_progress 에 normal 줄이 있으면 건드리지 않음)
+-- 2) 기존 진행 이전 + 리셋 (처음 1회: 이미 tower_progress 에 normal 줄이 있으면 건드리지 않음). 보상은 1층부터 다시
 insert into public.tower_progress (user_id, tower, best_floor, paid_floor, clears, rewards)
-select user_id, 'normal', 0, best_floor, clears, rewards from public.quest_progress
+select user_id, 'normal', 0, 0, clears, rewards from public.quest_progress
 on conflict (user_id, tower) do nothing;
 
 -- 3) 규칙 함수
