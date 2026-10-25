@@ -304,7 +304,7 @@ export function resolveAttack(me, opp, unit, target) {
     if (ac === 'LIGHT' && chance(RULES.LIGHT_CLEANSE_P) && cleanseOne(unit)) emit({ type: 'elfx', unit, kind: 'cleanse' });
   }
   // 반격: 대상이 쓰러졌으면 없음. 살아 있으면 (피해 × 반격 배율 × 50%), 공격자는 반격으로 쓰러지지 않음(HP 1 남김)
-  const killed = target.hp <= 0, d2 = killed || spares(target, unit) ? 0 : Math.max(0, Math.round(calcDamage(target.card, unit.card) * counterMult(target, unit) * RULES.COUNTER_RATIO));
+  const killed = target.hp <= 0, d2 = killed || rd.noCounter || spares(target, unit) ? 0 : Math.max(0, Math.round(calcDamage(target.card, unit.card) * counterMult(target, unit) * RULES.COUNTER_RATIO));
   let d2x = d2;
   if (EP && d2x > 0 && target.card.class === 'DARK' && chance(RULES.DARK_COUNTER_P)) { d2x = Math.round(d2x * RULES.DARK_COUNTER_MULT); emit({ type: 'elfx', unit: target, kind: 'darkCounter' }); }   // 어둠: 반격 2배
   if (EP && d2x > 0 && ac === 'LIGHT' && chance(RULES.LIGHT_NULL_P)) { d2x = 0; emit({ type: 'elfx', unit, kind: 'nullCounter' }); }   // 빛: 반격 무효

@@ -270,6 +270,11 @@ export function checkDeath(u, killer = null) {
     }
   }
   p.lastDead = u.base;
+  // 유가을 [도저히 용서 못해!]: 민유연이 쓰러지면 (전투당 1회, 유가을이 필드에 있을 때) 상대 전체 2턴 DEF -20% + 1턴 출혈
+  if (p.foe && String(u.base.id) === '2000100008' && !p.gaeulRage) {
+    const g = p.field.find(x => x !== u && x.hp > 0 && hasPassive(x, '도저히 용서 못해!'));
+    if (g) { p.gaeulRage = true; emit({ type: 'passive', unit: g, name: '도저히 용서 못해!' }); stats.count('도저히 용서 못해!'); debuffAll(p.foe, '도저히 용서 못해!', 2, { def: -0.2, label: 'DEF -20%' }); live(p.foe).forEach(t => bleedOn(t, g, 1)); }
+  }
   if (p.foe && hasPassive(u, '지아는 약하지 않아!')) { emit({ type: 'passive', unit: u, name: '지아는 약하지 않아!' }); stats.count('지아는 약하지 않아!'); live(p.foe).forEach(t => addStatus(t, '지아는 약하지 않아!', 1, { atk: -0.7, label: 'ATK -70%' }, 'mod')); }
   if (p.foe && hasPassive(u, '나는 멈춘다')) { emit({ type: 'passive', unit: u, name: '나는 멈춘다' }); stats.count('나는 멈춘다'); live(p.foe).forEach(t => addStatus(t, 'para', 1, {}, 'para')); }
   if (p.foe && hasPassive(u, '더는 나를 밀지마')) { emit({ type: 'passive', unit: u, name: '더는 나를 밀지마' }); stats.count('더는 나를 밀지마'); live(p.foe).forEach(t => bleedOn(t, u, 2)); }
@@ -521,6 +526,8 @@ export const ACTIVE = {
   '결합한다': (u, p, f) => live(f).forEach(t => addStatus(t, 'disrupt', 2, { mixed: true }, 'disrupt')),
   '파괴한다': (u, p, f) => live(f).forEach(t => { for (let i = 0; i < 2 && t.level > 1; i++) levelDown(t); const m = Math.round(t.mp * 0.4); t.mp -= m; emit({ type: 'mp', unit: t, amt: -m }); onLevelChange(t); }),
   // ===== v2 신규 =====
+  // 민홍기 [용서는 없다]: 적 전체 20%×2, 각 30% 확률 1턴 출혈
+  '용서는 없다': (u, p, f) => { const ts = live(f); hitAll(u, f, 2, 0.2); ts.forEach(t => { if (f.field.includes(t) && t.hp > 0 && chance(0.3)) bleedOn(t, u, 1); }); },
   '무답무용': (u, p, f) => { const t = by(live(f), x => x.card.ATK, -1); if (t && !multiHit(u, t, 5, 0.3) && chance(0.3)) bleedOn(t, u); },
   '껌밟기': (u, p, f) => { const t = by(females(f), x => x.card.cost); if (t) multiHit(u, t, 5, 0.3); },
   '되겠냐?': (u, p, f) => { const t = by(females(f), x => x.card.cost, -1); if (t && multiHit(u, t, 5, 0.4)) gainMp(u, u.maxMp * 0.2, '처치'); },
@@ -704,8 +711,8 @@ export function maleLure(attacker, side) {
   const c = side.field.filter(x => x.st.decoy?.male && !x.st.para && !x.st.confuse);
   return c.length ? by(c, x => x.card.cost, -1) : null;
 }
-/** 기본 공격 대상 재지정: 대신 맞기(decoy) → 수호(아기토끼·튀 므 망크). 반환 { target, ratio, proxyOf } */
-const GUARD = { '아기토끼': '2000100008', '튀 므 망크': '2000600116', '내가 오빠잖아.': '2002000354' };   // 내가 오빠잖아: 강준철 → 강재아
+/** 기본 공격 대상 재지정: 대신 맞기(decoy) → 수호(사랑하는 친구거든!·튀 므 망크). 반환 { target, ratio, proxyOf } */
+const GUARD = { '사랑하는 친구거든!': '2000100008', '튀 므 망크': '2000600116', '내가 오빠잖아.': '2002000354' };   // 내가 오빠잖아: 강준철 → 강재아
 export function redirectAttack(attacker, target) {
   const tp = target.owner;
   const dc = target.st.decoy;
@@ -727,7 +734,8 @@ export function redirectAttack(attacker, target) {
   for (const [name, protectId] of Object.entries(GUARD)) {
     if (String(target.base.id) !== protectId) continue;
     const g = tp.field.find(x => x !== target && hasPassive(x, name) && !x.st.para && !x.st.confuse);
-    if (g) { emit({ type: 'passive', unit: g, name, text: `${target.card.name} 대신 피격 후 반격` }); stats.count(name); return { target: g, ratio: 0.7 }; }
+    const nc = name === '사랑하는 친구거든!';   // 유가을: 반격 없음
+    if (g) { emit({ type: 'passive', unit: g, name, text: `${target.card.name} 대신 피격${nc ? '' : ' 후 반격'}` }); stats.count(name); return { target: g, ratio: 0.7, noCounter: nc }; }
   }
   return { target };
 }
@@ -924,6 +932,7 @@ export function aiPickSkill(u) {
       case '나 좀 내버려둬': case '소녀의 거래': case '영원한 유혹의 굴레': case '배신의 향연': sc = n >= 2 ? 80 : 0; break;
       case '제발 그냥 가줘': sc = 110; break;
       case '이건 사랑이야': sc = n ? 90 + n * 5 : 0; break;
+      case '용서는 없다': sc = n >= 2 ? 92 + n * 4 : n ? 70 : 0; break;
       case '사랑해!!!': sc = n ? 105 + Math.min(n, 2) * 5 : 0; break;
       case '지킨다': sc = 88; break;   // 조건(이영아 필드·맹세 전)은 skillState에서 확인
       case '나는 약하지 않아': sc = n >= 2 ? 92 + n * 4 : n ? 70 : 0; break;
