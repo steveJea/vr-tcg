@@ -198,7 +198,6 @@ span.story-lvpct { background: rgba(251,191,36,.12); border: 1px solid rgba(251,
 #game.story-field #field-box { flex: 1 1 auto; justify-content: space-evenly; }
 #game.story-field #ai-field, #game.story-field #me-field { align-items: center; }
 @media (max-width: 767px) {
-  #game.story-field #field-box .unit .card-frame { width: 92px; }
   #game.story-field #ai-field:not(:has(> .unit:nth-child(4))) .unit .card-frame,
   #game.story-field #me-field:not(:has(> .unit:nth-child(4))) .unit .card-frame { width: 112px; }
 }
