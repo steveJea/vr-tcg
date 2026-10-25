@@ -557,6 +557,7 @@
     if (pt?.maxMor != null) rules.push({ ok: c => (+c.MOR || 0) <= pt.maxMor, note: `MOR ${pt.maxMor + 1} 이상 출전 불가` });
     const EL = { DARK: '🌑 어둠', LIGHT: '☀️ 빛', FIRE: '🔥 불', ICE: '❄️ 얼음', WIND: '🍃 바람', ABYSS: '🕳️ 심연' };
     for (const el of pt?.banClass || []) rules.push({ ok: c => c.class !== el, note: `${EL[el] || el} 속성 출전 불가` });
+    if (pt?.onlyClass) rules.push({ ok: c => c.class === pt.onlyClass, note: `${EL[pt.onlyClass] || pt.onlyClass} 속성만 출전 가능` });   // 속성 탑
     if (gi >= 0) rules.push({ ok: c => GO.indexOf(c.grade) <= gi, note: `${RAR[GO[gi + 1]] || ''} 이상 출전 불가` });
     const allow = o => { const c = card(o.id); return !!c && rules.every(r => r.ok(c)); };
     return { forced, exclude: new Set([...(pt?.exclude || []), ...(pt?.forced || [])].map(String)), allow, notes: rules.map(r => r.note) };
@@ -1368,7 +1369,8 @@
   /** 다른 모드(퀘스트)용 내부 도구 */
   const api = {
     load: async () => { if (!user()) return false; await load(); return !!save; }, get save() { return save; }, user, show, home, popup, toast, bgm, tile, esc, IMG, card,
-    pickDeck: (enemies, onGo, onCancel, note) => pickDeck({}, {}, enemies, { onGo, onCancel, note }),
+    pickDeck: (enemies, onGo, onCancel, note, party) => pickDeck({}, party ? { party } : {}, enemies, { onGo, onCancel, note }),
+    instances: () => deckInstances(),
     battleCards: list => list.slice(0, MAX_PICK()).map(o => ({ ...boosted(o), uid: o.uid })).filter(x => x.id),
     leaderFor: me => { const lo = me.find(c => c.uid === save.leader), le = lo && leaderEff(lo.id); return le ? { ...le, uid: lo.uid } : undefined; },
     ownedCount: () => deckInstances().length, syncTickets,
