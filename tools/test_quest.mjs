@@ -47,6 +47,7 @@ ok('수동 고정 적 (덮어쓰기)', (() => { const g = G.generate(cfg, { floo
   const w = cfg.floors.slice(0, 50).map(f => G.generateAttr(cfg, f, pool, { tower: 'wind', cls: 'WIND', npc }));
   ok('속성 탑마다 적이 다름 (wind vs fire 1층)', JSON.stringify(w[0].enemies.map(c => c.id)) !== JSON.stringify(G.generateAttr(cfg, cfg.floors[0], pool, { tower: 'fire', cls: 'FIRE', npc }).enemies.map(c => c.id)));
   ok('중복 카드·NPC 허용 (wind 1~50층 중 등장)', w.some(g => new Set(g.enemies.map(c => c.id)).size < 5) && w.some(g => g.enemies.some(c => npc.some(x => x.id === c.id))));
+  ok('후보 3종 미만이면 등급 확장 (light·dark 1층 3종 이상 후보, 같은 카드 5장 아님)', ['light','dark'].every(t => { const g = G.generateAttr(cfg, cfg.floors[0], pool, { tower: t, cls: t.toUpperCase(), npc }); return new Set(g.enemies.map(c => c.id)).size > 1; }));
   ok('LIGHT NPC 없음 → 카드만', !npc.some(c => c.class === 'LIGHT') && cfg.floors.every(f => G.generateAttr(cfg, f, pool, { tower: 'light', cls: 'LIGHT', npc }).enemies.every(c => pool.some(x => x.id === c.id))));
 }
 // 4) AI: 진영 없는 전투에서 진영 전용 스킬 안 씀

@@ -119,9 +119,13 @@
     if (!cands.length) return { floor: f.floor, enemies: [], leader: null, combo: null, level: L, cls: opts.cls };
     let gi = ORDER.indexOf(f.grade); while (gi > 0 && !cands.some(c => ORDER.indexOf(c.grade) === gi)) gi--;
     if (!cands.some(c => ORDER.indexOf(c.grade) === gi)) gi = Math.min(...cands.map(c => ORDER.indexOf(c.grade)));
-    const ok = cands.filter(c => ORDER.indexOf(c.grade) <= gi), top = ok.filter(c => ORDER.indexOf(c.grade) === gi);
-    const w = ok.map(c => ORDER.indexOf(c.grade) === gi ? 3 : 1), sum = w.reduce((a, b) => a + b, 0);
+    // 후보 종류가 3 미만이면 한 등급씩 위로 넓힘 (리더는 원래 등급에서)
+    let hi = gi; const kinds = h => new Set(cands.filter(c => ORDER.indexOf(c.grade) <= h).map(c => String(c.id))).size;
+    while (kinds(hi) < 3 && hi < ORDER.length - 1) hi++;
+    const ok = cands.filter(c => ORDER.indexOf(c.grade) <= hi), top = ok.filter(c => ORDER.indexOf(c.grade) === gi);
+    const w = ok.map(c => hi > gi ? 1 : ORDER.indexOf(c.grade) === gi ? 3 : 1), sum = w.reduce((a, b) => a + b, 0);
     const out = [pick(r, top)];
+    if (hi > gi) { const rest = ok.filter(c => c !== out[0]); while (out.length < 3 && rest.length) out.push(rest.splice(Math.floor(r() * rest.length), 1)[0]); } // 넓힌 경우 최소 3종
     while (out.length < n) { let t = r() * sum, i = 0; for (; i < ok.length - 1; i++) { t -= w[i]; if (t <= 0) break; } out.push(ok[i]); }
     const enemies = out.map(c => leveled(c, L)).sort((a, b) => b.power - a.power);
     return { floor: f.floor, enemies, leader: enemies[0], combo: null, boss: f.floor % 10 === 0 ? String(enemies[0].id) : null, level: L, cls: opts.cls, grade: ORDER[gi] };
