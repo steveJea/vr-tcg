@@ -136,6 +136,7 @@ function startGame(story = null) {
   $('end-screen').classList.add('hidden'); $('start-screen').classList.add('hidden'); $('game').classList.remove('hidden');
   initPlayers(S.me, S.ai);
   if (fs) {   // 스토리: 양측 카드 전부 필드에 배치 (최대 FIELD_MAX)
+    S.holdPassive = [];   // 0턴 패시브 컷인은 UR 등장 컷인 뒤로 미룸 (아래 onEnter 뒤에 재생)
     for (const who of ['me', 'ai']) {
       const p = S[who];
       for (const c of p.deck.splice(0, RULES.FIELD_MAX)) {
@@ -153,7 +154,7 @@ function startGame(story = null) {
       const tgt = PS && S.me.field.find(u => String(u.card.id) === String(PS.id));
       if (tgt && S.me.field.some(u => String(u.card.id) === String(PS.with))) { tgt.noDamage = true; tgt.pairShield = PS.turns; S.pairShield = { u: tgt, turns: PS.turns }; log(`🛡️ 자매의 가호: ${tgt.card.name}은(는) ${PS.turns}턴 동안 피해를 입지 않아요.`, 'text-sky-300'); } }
     refreshAll(S.me); refreshAll(S.ai);
-    setTimeout(() => { if (S && !S.over) for (const w of ['me', 'ai']) for (const u of S[w].field) onEnter(w, u); }, 400);   // 출전 카드 등장 컷인·이벤트
+    setTimeout(() => { if (S && !S.over) { for (const w of ['me', 'ai']) for (const u of S[w].field) onEnter(w, u); flushHeldPassives(); } }, 400);   // 출전 카드 등장 컷인·이벤트
     if (S.me.leaderSkill) log(`👑 리더 스킬 [${S.me.leaderSkill.name} · ${S.me.leaderSkill.label}]: ${S.me.leaderSkill.text}. 리더가 쓰러지면 해제되고 아군 진영 HP −${Math.round((S.me.leaderSkill.deathPenalty ?? 0.3) * 100)}%`, 'text-amber-300');
     log(story.win === 'ko' ? '👑 보스전: 보스는 진영 안에서 쓰러지지 않아요. 상대 진영 HP를 0으로!' : '⚔️ 일반전: 상대 카드를 모두 쓰러뜨리세요!', 'text-amber-300');
   }
@@ -804,6 +805,12 @@ function showEvent(ev) {
     if (!lines.length) { timer = setTimeout(close, 4000); el.querySelector('.ev-step').textContent = '탭하여 닫기'; } else draw();
   });
 }
+/** 전투 시작 때 미뤄 둔 0턴 패시브 컷인: 등장 컷인 대기열 뒤에 차례로 (연출 스킵이면 각 0.6초) */
+function flushHeldPassives() {
+  const held = S?.holdPassive || []; if (S) S.holdPassive = null;
+  for (const [u, n] of held) fxQueue.push(() => new Promise(r => { if (!S || S.over) return r(); passiveCutIn(u, n); setTimeout(r, FX_OFF() ? CUT_QUICK : cutinMs(1100)); }));
+  if (held.length) runFxQueue();
+}
 /** 패시브 발동 연출: 카드별·스킬별 게임당 첫 발동만 큰 이미지(비동기, 턴 진행을 막지 않음), 이후는 작은 글자만 */
 let passiveTimer = null;
 // 패시브 MR 영상 대기열: 영상이 끝날 때까지 다음 행동(공격·스킬·AI 행동)이 vidWait() 로 기다림
@@ -811,6 +818,7 @@ let vidGate = Promise.resolve();
 const vidWait = () => withTimeout(vidGate, 30000);
 function passiveCutIn(u, name) {
   if (!S || SWEEPING()) return;
+  if (S.holdPassive) { S.holdPassive.push([u, name]); return; }   // 전투 시작: 등장 컷인이 먼저
   S.fxSeen ||= new Set(); const key = `${u.uid}:${name}`;
   if (S.fxSeen.has(key)) return;
   const s = u.sk?.find(x => x.name === name);
@@ -1444,7 +1452,7 @@ function openZoom({ src, title, sub = '', stats = '', stars = '' }) {
 }
 function closeZoom() { const ov = $('zoom-view'); if (ov) ov.classList.remove('open'); }
 function zoomFromBtn(b) {
-  const c = POOL.find(x => String(x.id) === b.dataset.zoom); if (!c) return;
+  const c = POOL.find(x => String(x.id) === b.dataset.zoom) || NPC.find(x => String(x.id) === b.dataset.zoom); if (!c) return;   // 스토리 NPC(불량배 등)도 같은 정보창
   const r = rarityOf(c), e = ELEMENTS[c.class] || ELEMENTS.WIND, hp = b.dataset.hp;
   openZoom({ src: `${IMG}${c.id}.webp`, stars: window.rarityStars?.(c, b.dataset.ex ? 'ex' : 'base', 'rstars-lg') || '',   // 스토리 EX 카드: 빨간 별
     title: cardTitle({ ...c, name: b.dataset.name || c.name }),
