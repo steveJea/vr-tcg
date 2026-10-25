@@ -89,7 +89,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "내레이션",
-      "text": "하지만 이 사실을 언니나 오빠에게 말할 수 없었다."
+      "text": "하지만 이 사실을 언니나 오빠에게 말할 수 없었다.",
+      "image": "img/story/ch6-03.webp"
      },
      {
       "speaker": "내레이션",
@@ -165,7 +166,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "내레이션",
-      "text": "안전지대로 가는 으슥한 골목길."
+      "text": "안전지대로 가는 으슥한 골목길.",
+      "image": "img/story/ch6-04.webp"
      },
      {
       "speaker": "불량배-J",
@@ -319,7 +321,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "내레이션",
-      "text": "하수도...작은 몸뚱아리가 쓰러져 있다."
+      "text": "하수도...작은 몸뚱아리가 쓰러져 있다.",
+      "image": "img/story/ch6-05.webp"
      },
      {
       "speaker": "문지아",
@@ -469,7 +472,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "내레이션",
-      "text": "지아는 울다가 지쳐 잠든 지철을 바라봤다."
+      "text": "지아는 울다가 지쳐 잠든 지철을 바라봤다.",
+      "image": "img/story/ch6-06.webp"
      },
      {
       "speaker": "문지아",
@@ -534,7 +538,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "곽진영",
-      "text": "하하하..누님...대단한데? 진규형을 저렇게..ㅋㅋㅋ"
+      "text": "하하하..누님...대단한데? 진규형을 저렇게..ㅋㅋㅋ",
+      "image": "img/story/ch6-07.webp"
      },
      {
       "speaker": "문지아",
@@ -636,7 +641,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "내레이션",
-      "text": "마침내 그녀가 있는 곳까지 왔다. 그녀는 공허한 눈빛으로 와인을 마시고 있었다."
+      "text": "마침내 그녀가 있는 곳까지 왔다. 그녀는 공허한 눈빛으로 와인을 마시고 있었다.",
+      "image": "img/story/ch6-08.webp"
      },
      {
       "speaker": "임유리",
@@ -678,7 +684,8 @@ window.STORY_DATA.chapters.push({
     },
     {
      "speaker": "내레이션",
-     "text": "지아는 입에서 피를 왈칵 토했다."
+     "text": "지아는 입에서 피를 왈칵 토했다.",
+     "image": "img/story/ch6-09.webp"
     },
     {
      "speaker": "문지아",
@@ -698,7 +705,8 @@ window.STORY_DATA.chapters.push({
     },
     {
      "speaker": "내레이션",
-     "text": "임나리...그녀가 있었기에 지아는 배척지에서 살아남을 수 있었고, 많은 힘을 키울 수 있었다."
+     "text": "임나리...그녀가 있었기에 지아는 배척지에서 살아남을 수 있었고, 많은 힘을 키울 수 있었다.",
+     "image": "img/story/ch6-10.webp"
     },
     {
      "speaker": "내레이션",
@@ -741,7 +749,8 @@ window.STORY_DATA.chapters.push({
   },
   {
    "speaker": "내레이션",
-   "text": "그곳의 주인은 3명, 문지아, 문지철, 문지예 남매다."
+   "text": "그곳의 주인은 3명, 문지아, 문지철, 문지예 남매다.",
+   "image": "img/story/ch6-01.webp"
   },
   {
    "speaker": "내레이션",
@@ -753,7 +762,8 @@ window.STORY_DATA.chapters.push({
   },
   {
    "speaker": "내레이션",
-   "text": "그리고 똑똑한 협상가 문지예. 이 남매는 배척지 008을 사람 살 수 있는 곳으로 만들었다."
+   "text": "그리고 똑똑한 협상가 문지예. 이 남매는 배척지 008을 사람 살 수 있는 곳으로 만들었다.",
+   "image": "img/story/ch6-02.webp"
   },
   {
    "speaker": "문지아",
