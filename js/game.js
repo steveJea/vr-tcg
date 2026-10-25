@@ -1103,7 +1103,8 @@ function render() {
         (sts.length ? `<div class="status-icons absolute top-7 left-0.5 flex flex-col text-[11px] md:text-sm leading-tight drop-shadow">${sts.map(x => `<span title="${x.title}">${icOf(x)}</span>`).join('')}</div>` : '') + `</div>` +
         `<div class="hp-bar h-1.5 bg-white/10 rounded-full mt-0.5 overflow-hidden" title="HP ${u.hp}/${u.maxHp}"><div class="hp-fill h-full bg-red-500" data-to="${u.maxHp ? Math.max(0, Math.min(100, u.hp / u.maxHp * 100)) : 0}" style="width:${hpPrev.get(String(u.uid)) ?? (u.maxHp ? Math.max(0, Math.min(100, u.hp / u.maxHp * 100)) : 0)}%"></div></div>` +
         `<div class="mp-bar h-1.5 bg-white/10 rounded-full mt-0.5 overflow-hidden" title="MP ${u.mp}/${u.maxMp} (+${u.mpRegen}/턴)"><div class="h-full bg-blue-500" style="width:${u.maxMp ? Math.min(100, u.mp / u.maxMp * 100) : 0}%"></div></div>` +
-        `<div class="flex justify-center gap-1 h-4">${ready ? '<span class="text-[10px] text-emerald-400 font-bold">공격 가능</span>' : ''}${skReady ? '<button class="skill-btn text-[10px] px-1 rounded bg-fuchsia-600 hover:bg-fuchsia-500 font-bold">✦스킬</button>' : ''}</div>`;
+        // 상태 줄: 카드 너비를 넘지 않게 (width:0 + min-width:100% → 이 줄이 유닛 너비를 늘리지 않음). 둘 다면 '공격 가능'을 ⚔ 로 줄여 한 줄 유지
+        `<div class="unit-tags flex justify-center items-center gap-1 h-4 whitespace-nowrap overflow-hidden" style="width:0;min-width:100%">${ready ? `<span class="text-[10px] text-emerald-400 font-bold" title="공격 가능">${skReady ? '⚔' : '공격 가능'}</span>` : ''}${skReady ? '<button class="skill-btn text-[10px] px-1 rounded bg-fuchsia-600 hover:bg-fuchsia-500 font-bold leading-4">✦스킬</button>' : ''}</div>`;
       w.onclick = ev => { if (dragJustEnded) { ev.stopPropagation(); return; } onUnitClick(who, u); };
       if (who === 'me' && myTurn) enableDrag(w, u);
       const sb = w.querySelector('.skill-btn'); if (sb) sb.onclick = ev => { ev.stopPropagation(); showDetail(u.card, { hp: u.hp, unit: u }); };
