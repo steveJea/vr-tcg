@@ -23,7 +23,7 @@ eval(readFileSync(new URL('../js/story-data-ch4.js', import.meta.url), 'utf8'));
 const ch = window.STORY_DATA.chapters[0];
 const csv = f => Object.fromEntries(readFileSync(new URL('../data/' + f, import.meta.url), 'utf8').replace(/^\uFEFF/, '').trim().split(/\r?\n/).slice(1).map(l => l.split(',')).map(v => [v[0], v]));
 const cards = csv('cards.csv'), npc = csv('npc_cards.csv'), nm = id => (cards[id] || npc[id])?.[1];
-const AW = '2000000022', MC = '2000100003', YR = '2000100001';
+const AW = '2000000022', MC = '2000100003', YW = '2000000039', YR = '2000100001';
 ok(npc[AW] && npc[AW][1] === '[각성] 이민채' && npc[AW][16] === '1' && !cards[AW], 'NPC 카드는 npc_cards.csv 에만 (일반 카드 목록·뽑기·갤러리 제외)');
 const SK = JSON.parse(readFileSync(new URL('../data/skills.json', import.meta.url), 'utf8'));
 ok(SK[AW]?.length === 2 && SK[AW][0].name === '사랑해!!!' && SK[AW][1].mode === 'passive', 'NPC 스킬 2개');
@@ -31,12 +31,12 @@ ok(ch.id === 4 && ch.subtitle === '카르밀라' && ch.phases.length === 10 && c
 ok(ch.phases.every(p => p.enemies.ids.length === 5 && p.enemies.ids.every(id => nm(id))), '페이즈마다 적 5명, 모두 카드 있음');
 const P_ = n => ch.phases[n - 1];
 ok(JSON.stringify(P_(8).enemies.ids.map(nm)) === JSON.stringify(['윤은별', '황보예', '김지우', '오유나', '김지수']) && nm(P_(8).bossId) === '김지수', '8페이즈 적·리더 김지수');
-ok(P_(10).enemies.ids[0] === AW && P_(10).enemies.ids.slice(1).every(id => id === MC) && P_(10).bossId === AW, '10페이즈: 각성 이민채(L) + 분신 이민채 4');
+ok(P_(10).enemies.ids[0] === AW && P_(10).enemies.ids.slice(1).every(id => id === YW) && P_(10).bossId === AW && P_(10).enemies.boost[YW].HP === 317, '10페이즈: 각성 이민채(L) + 염원 이민채 4 (스토리 Lv20 능력치)');
 const F = ch.phases.map(p => p.party.forced.map(nm).join('+'));
 ok(JSON.stringify(F) === JSON.stringify(['이민채', '이민채', '이민채', '이민채+임유리', '이민채+임유리', '이민채', '이민채', '이민채', '이민채', '임유리']), `강제 배정 ${F}`);
 ok([4, 5, 6, 7].every(n => P_(n).rules.mustLive[0] === MC) && [1, 2, 3, 8, 9, 10].every(n => !P_(n).rules?.mustLive), '4~7 이민채 사망 시 패배');
 ok(P_(8).rules.revive[0].id === '2000100005' && P_(8).rules.revive[0].level === 1 && P_(8).rules.revive[0].delay === 2 && !P_(8).rules.revive[0].times && P_(9).rules.revive.every(r => r.delay === 2 && !r.times) && P_(9).rules.revive.map(r => nm(r.id) + r.level).join() === '김지수keep,오유나keep', '8 김지수 Lv1 · 9 김지수·오유나 레벨 승계: 2턴 후 부활(무제한)');
-ok(P_(10).rules.invuln === AW && P_(10).rules.expire === 10 && P_(10).rules.revive[0].id === MC && !P_(10).rules.revive[0].times && P_(10).final && P_(10).party.forced[0] === YR, '10 각성 무적·10턴 자동 사망·분신 부활 · 임유리 조작');
+ok(P_(10).rules.invuln === AW && P_(10).rules.expire === 10 && P_(10).rules.revive[0].id === YW && P_(10).rules.revive[0].level === 1 && !P_(10).rules.revive[0].times && P_(10).final && P_(10).party.forced[0] === YR, '10 각성 무적·10턴 자동 사망·염원 부활 · 임유리 조작');
 ok([2, 4, 6, 9, 10].every(n => P_(n).after?.length) && ch.ending?.length && ch.start?.length && ch.tagline, '전투 후 대사 · 시작 · 엔딩');
 ok(ch.phases.flatMap(p => p.lines.default).filter(l => l.expr).length > 20 && ch.phases.flatMap(p => p.lines.default).every(l => !l.expr || ['화남', '웃음'].includes(l.expr)), '표정 태그');
 // --- SQL ---
