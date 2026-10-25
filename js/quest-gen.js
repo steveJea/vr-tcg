@@ -107,11 +107,34 @@
     }
     return { floor: f.floor, enemies: out, leader, combo: comboOk ? combo.name : null, boss: f.boss || null, range: [lo, hi] };
   }
+
+  /** 속성 탑 적: 시드 = 탑+층. 그 속성 카드(+ 그 속성 NPC)만, 같은 카드 중복 가능.
+   *  등급: 그 층 시련의 탑 리더 등급(f.grade) 이하 (그 속성에 그 등급이 없으면 가장 가까운 아래 등급, 없으면 가장 낮은 등급)
+   *  레벨: 시련의 탑 공식 + levelOffset(기본 10). 첫 장 = 리더(가장 센 카드). opts: { tower, cls, npc:[카드], levelOffset } */
+  const strSeed = t => { let h = 2166136261; for (const ch of String(t)) h = Math.imul(h ^ ch.charCodeAt(0), 16777619) >>> 0; return h; };
+  function generateAttr(cfg, f, pool, opts = {}) {
+    const r = rngOf((strSeed(opts.tower || opts.cls) ^ Math.imul(f.floor, 2654435761)) >>> 0), n = cfg.enemyCount || 5;
+    const L = levelOf(cfg, f.floor, opts.levelOffset ?? 10) ?? Math.max(1, 15 + 5 * Math.floor(f.floor / 10));
+    const cands = [...pool, ...(opts.npc || [])].filter(c => c.class === opts.cls && ORDER.indexOf(c.grade) >= 0);
+    if (!cands.length) return { floor: f.floor, enemies: [], leader: null, combo: null, level: L, cls: opts.cls };
+    let gi = ORDER.indexOf(f.grade); while (gi > 0 && !cands.some(c => ORDER.indexOf(c.grade) === gi)) gi--;
+    if (!cands.some(c => ORDER.indexOf(c.grade) === gi)) gi = Math.min(...cands.map(c => ORDER.indexOf(c.grade)));
+    // 후보 종류가 3 미만이면 한 등급씩 위로 넓힘 (리더는 원래 등급에서)
+    let hi = gi; const kinds = h => new Set(cands.filter(c => ORDER.indexOf(c.grade) <= h).map(c => String(c.id))).size;
+    while (kinds(hi) < 3 && hi < ORDER.length - 1) hi++;
+    const ok = cands.filter(c => ORDER.indexOf(c.grade) <= hi), top = ok.filter(c => ORDER.indexOf(c.grade) === gi);
+    const w = ok.map(c => hi > gi ? 1 : ORDER.indexOf(c.grade) === gi ? 3 : 1), sum = w.reduce((a, b) => a + b, 0);
+    const out = [pick(r, top)];
+    if (hi > gi) { const rest = ok.filter(c => c !== out[0]); while (out.length < 3 && rest.length) out.push(rest.splice(Math.floor(r() * rest.length), 1)[0]); } // 넓힌 경우 최소 3종
+    while (out.length < n) { let t = r() * sum, i = 0; for (; i < ok.length - 1; i++) { t -= w[i]; if (t <= 0) break; } out.push(ok[i]); }
+    const enemies = out.map(c => leveled(c, L)).sort((a, b) => b.power - a.power);
+    return { floor: f.floor, enemies, leader: enemies[0], combo: null, boss: f.floor % 10 === 0 ? String(enemies[0].id) : null, level: L, cls: opts.cls, grade: ORDER[gi] };
+  }
   /** 첫 클리어 보상: 층 rewards 덮어쓰기 → every 규칙(먼저 맞는 것). 반환 { tickets, gold } (없으면 null) */
   function rewardOf(cfg, f) {
     if (f.rewards) return { tickets: f.rewards.tickets | 0, gold: f.rewards.gold | 0 };
     for (const [k, rw] of (cfg.rewards?.every || [])) if (f.floor % k === 0) return { tickets: rw.tickets | 0, gold: rw.gold | 0 };
     return null;
   }
-  globalThis.VRQuestGen = { generate, levelOf, rewardOf, powerAt, leveled, lvPct, capOf, LV_CAP, LV_RATE };
+  globalThis.VRQuestGen = { generate, generateAttr, levelOf, rewardOf, powerAt, leveled, lvPct, capOf, LV_CAP, LV_RATE };
 })();

@@ -20,10 +20,12 @@
   const M = () => window.__QUEST_MOCK;
   // 탑 v2 (supabase/tower_v2.sql): tower_* RPC + p_tower. 서버에 아직 없으면 예전 quest_* 로 (legacy)
   let TOWER = 'normal', legacy = false, hub = null;   // hub = tower_status 전체 응답
-  // 탑 6종 (허브). ready=false: 적 생성·속성 출전 제한(PR-D) 전이라 입장 불가 '준비중'
+  // 탑 6종 (허브). 속성 탑: 적 = 그 속성 카드·NPC (시드 탑+층, 중복 가능, Lv = 시련의 탑 공식 + 10), 내 출전도 그 속성만
   const TOWERS = [
-    { id: 'normal', name: '시련의 탑', ready: true }, { id: 'wind', name: '바람의 계곡', cls: 'WIND' }, { id: 'ice', name: '얼음의 숲', cls: 'ICE' },
-    { id: 'fire', name: '불의 절벽', cls: 'FIRE' }, { id: 'light', name: '빛의 섬', cls: 'LIGHT' }, { id: 'dark', name: '어둠의 늪', cls: 'DARK' }];
+    { id: 'normal', name: '시련의 탑', ready: true }, { id: 'wind', name: '바람의 계곡', cls: 'WIND', ready: true }, { id: 'ice', name: '얼음의 숲', cls: 'ICE', ready: true },
+    { id: 'fire', name: '불의 절벽', cls: 'FIRE', ready: true }, { id: 'light', name: '빛의 섬', cls: 'LIGHT', ready: true }, { id: 'dark', name: '어둠의 늪', cls: 'DARK', ready: true }];
+  const EL = { WIND: '🍃 바람', ICE: '❄️ 얼음', FIRE: '🔥 불', LIGHT: '☀️ 빛', DARK: '🌑 어둠' };
+  const tCls = () => TOWERS.find(t => t.id === TOWER)?.cls || null;
   const DOW = ['', '월', '화', '수', '목', '금', '토', '일'];
   const tName = () => TOWERS.find(t => t.id === TOWER)?.name || '시련의 탑';
   const NEW = { quest_status: 'tower_status', quest_start: 'tower_start', quest_complete: 'tower_complete', quest_sweep_start: 'tower_sweep_start', quest_sweep_complete: 'tower_sweep_complete', quest_sweep_info: 'tower_sweep_info' };
@@ -44,11 +46,13 @@
   async function loadCfg() { if (!cfg) cfg = await (await fetch('data/quest.json')).json(); return cfg; }
   const floorOf = n => cfg.floors[n - 1];
   function enemiesOf(n) {
-    if (genCache.has(n)) return genCache.get(n);
-    const g = window.VRQuestGen.generate(cfg, floorOf(n), window.TCG?.POOL || [], window.TCG?.combos?.() || []);
-    genCache.set(n, g); return g;
+    const key = TOWER + ':' + n; if (genCache.has(key)) return genCache.get(key);
+    const cls = tCls(), G = window.VRQuestGen;
+    const g = cls ? G.generateAttr(cfg, floorOf(n), window.TCG?.POOL || [], { tower: TOWER, cls, npc: window.TCG?.NPC || [], levelOffset: 10 })
+                  : G.generate(cfg, floorOf(n), window.TCG?.POOL || [], window.TCG?.combos?.() || []);
+    genCache.set(key, g); return g;
   }
-  const rewardOf = n => window.VRQuestGen.rewardOf(cfg, floorOf(n));
+  const rewardOf = n => { const r = window.VRQuestGen.rewardOf(cfg, floorOf(n)); return tCls() ? null : r; };   // 속성 탑: 소환권 없음 (골드·피·조각은 서버 재화)
   const rewardTxt = r => r ? [r.tickets ? `🎟️ 소환권 ${r.tickets}` : '', r.gold ? `🪙 골드 ${fmt(r.gold)}` : ''].filter(Boolean).join(' · ') : '';
   const best = () => status?.best_floor | 0;
   const maxF = () => Math.min(cfg.floors.length, status?.max_floor || cfg.floors.length);
@@ -111,13 +115,13 @@
     const api = A(), n = sel, f = floorOf(n), g = enemiesOf(n), rw = rewardOf(n), cleared = n <= best(), open_ = unlocked(n);
     const rows = cfg.floors.slice(0, maxF()).map(x => {
       const k = x.floor, r = rewardOf(k), st = k <= best() ? 'done' : unlocked(k) ? 'next' : 'lock';
-      return `<button class="q-row ${st} ${k === n ? 'on' : ''}" data-floor="${k}" ${st === 'lock' ? 'disabled' : ''}><span class="q-no">${k}층</span><span class="q-g rar-${SHORT[x.grade]}">${SHORT[x.grade]}</span><span class="q-pw">⚡ ${fmt(x.power)}</span>${x.bond ? '<span class="q-bond" title="인연 조합">🤝</span>' : ''}${r ? `<span class="q-rw ${st === 'done' ? 'got' : ''}">${r.tickets ? `🎟️${r.tickets}` : ''}${r.gold ? `🪙` : ''}</span>` : '<span class="q-rw"></span>'}<span class="q-st">${st === 'done' ? '✔' : st === 'next' ? '▶' : '🔒'}</span></button>`;
+      return `<button class="q-row ${st} ${k === n ? 'on' : ''}" data-floor="${k}" ${st === 'lock' ? 'disabled' : ''}><span class="q-no">${k}층</span>${tCls() ? `<span class="q-g">${k % 10 === 0 ? '👑' : ''}</span><span class="q-pw">Lv.${window.VRQuestGen.levelOf(cfg, k, 10)}</span>` : `<span class="q-g rar-${SHORT[x.grade]}">${SHORT[x.grade]}</span><span class="q-pw">⚡ ${fmt(x.power)}</span>`}${!tCls() && x.bond ? '<span class="q-bond" title="인연 조합">🤝</span>' : ''}${r ? `<span class="q-rw ${st === 'done' ? 'got' : ''}">${r.tickets ? `🎟️${r.tickets}` : ''}${r.gold ? `🪙` : ''}</span>` : '<span class="q-rw"></span>'}<span class="q-st">${st === 'done' ? '✔' : st === 'next' ? '▶' : '🔒'}</span></button>`;
     }).reverse().join('');
     api.show(`<div class="story-top"><button class="story-back" id="q-home">${hub?.towers && !legacy ? '← 탑 목록' : '← 처음으로'}</button><div class="story-top-title">🗼 ${esc(tName())}</div><span></span></div>
       <div class="q-head"><div>최고 <b>${best()}</b>층 / ${maxF()}층${status?.daily ? ` · 오늘 ${status.today | 0}/${status.daily}` : ''}</div><div class="q-sub" title="적 카드를 모두 쓰러뜨리면 승리 · 내 카드 전멸 또는 ${cfg.maxTurns || 40}턴 초과 시 패배 · 재도전 무제한">적 전멸 = 승리 · ${cfg.maxTurns || 40}턴</div></div>
       <div class="q-wrap"><div class="q-cur">
-        <div class="q-cur-h"><b>${n}층</b><span class="q-g rar-${SHORT[f.grade]}">${SHORT[f.grade]}</span><span>적 Lv.${g.level ?? g.leader?.qLevel} · 리더 ⚡ ${fmt(g.leader?.power)}</span></div>
-        <div class="q-cur-sub" title="${f.others === 'weak' ? '나머지: 리더보다 약함 (60~80%)' : '나머지: 리더와 비슷 (90~100%)'}">${f.others === 'weak' ? '나머지 약함' : '나머지 비슷'}${g.combo ? ` · 🤝 인연 「${esc(g.combo)}」` : ''}</div>
+        <div class="q-cur-h"><b>${n}층</b>${n % 10 === 0 ? '<span title="보스 층">👑</span>' : ''}<span class="q-g rar-${SHORT[g.grade || f.grade]}">${SHORT[g.grade || f.grade]}</span><span>적 Lv.${g.level ?? g.leader?.qLevel} · 리더 ⚡ ${fmt(g.leader?.power)}</span></div>
+        <div class="q-cur-sub">${tCls() ? `${EL[tCls()]} 속성 적 · 내 출전도 ${EL[tCls()]} 속성만` : `<span title="${f.others === 'weak' ? '나머지: 리더보다 약함 (60~80%)' : '나머지: 리더와 비슷 (90~100%)'}">${f.others === 'weak' ? '나머지 약함' : '나머지 비슷'}</span>${g.combo ? ` · 🤝 인연 「${esc(g.combo)}」` : ''}`}</div>
         <div class="q-enemies">${g.enemies.map((c, i) => enemyTile(c, i === 0)).join('')}</div>
         <div class="q-reward">${rw ? (cleared ? `<span class="got">✔ 첫 클리어 보상 받음 (${rewardTxt(rw)})</span>` : `🎁 첫 클리어 보상: <b>${rewardTxt(rw)}</b>`) : '<span class="muted" title="10층마다 보상">보상 없음</span>'}</div>
         <button class="story-btn q-go" id="q-go" ${open_ ? '' : 'disabled'}>${cleared ? '다시 도전' : '도전'} (${n}층)</button>
@@ -131,11 +135,22 @@
     const on = $('q-list').querySelector('.q-row.on'); if (on) on.scrollIntoView({ block: 'center' });
   }
 
+  /** 속성 탑 출전 제한: 그 속성 카드만 */
+  const party = () => tCls() ? { onlyClass: tCls() } : null;
+  const myCls = () => { const api = A(), c = tCls(); return (api.instances?.() || []).filter(o => !c || api.card(o.id)?.class === c); };
+  function deckOk() {
+    const c = tCls(); if (!c) return true;
+    const n = myCls().length;
+    if (!n) { A().popup(`<div class="text-lg font-black mb-2">${EL[c]} 속성 카드가 없어요</div><div class="text-sm text-zinc-300 mb-4">${esc(tName())}에는 ${EL[c]} 속성 카드만 출전할 수 있어요.<br>뽑기·스토리로 ${EL[c]} 카드를 모아 주세요.</div><button data-close-pop class="w-full py-2 rounded-xl bg-zinc-700">닫기</button>`); return false; }
+    if (n <= 5) A().toast(`${EL[c]} 속성 카드 ${n}장이 모두 출전해요 (${esc(tName())}은 ${EL[c]} 속성만)`);
+    return true;
+  }
   function challenge(n) {
     const api = A(), g = enemiesOf(n);
     if (!unlocked(n)) return;
     const can = QUEST_HOOKS.canChallenge(n); if (!can.ok) { api.toast(can.reason || '지금은 도전할 수 없어요'); return; }
-    api.pickDeck(g.enemies, list => battle(n, list), () => render(), `🗼 ${n}층 · 적 5장 (리더 ⚡ ${fmt(g.leader?.power)})`);
+    if (!deckOk()) return;
+    api.pickDeck(g.enemies, list => battle(n, list), () => render(), `🗼 ${esc(tName())} ${n}층 · 적 5장 (리더 ⚡ ${fmt(g.leader?.power)})${tCls() ? `<br><b class="text-amber-300">${EL[tCls()]} 속성 카드만 출전할 수 있어요</b>` : ''}`, party());
   }
   async function battle(n, list) {
     const api = A(), g = enemiesOf(n);
@@ -185,8 +200,9 @@
     return `<button class="story-btn q-sweep" id="q-sweep" title="내 덱으로 자동 전투 · 패배 또는 보스 층에서 멈춤">${SW()} 소탕 ${f}~${last}층${Number.isFinite(left) ? ` <small>· 오늘 ${left}층 남음</small>` : ''}</button>`;
   }
   async function sweep() {
-    const api = A(), deck = api.lastDeck?.() || [];
-    if (!deck.length) { api.toast('출전 카드를 먼저 골라 주세요'); return api.pickDeck([], list => runSweep(list), () => render(), `${SW()} 소탕에 쓸 덱`); }
+    if (!deckOk()) return;
+    const api = A(), c = tCls(), deck = (api.lastDeck?.() || []).filter(o => !c || api.card(o.id)?.class === c);
+    if (!deck.length) { api.toast('출전 카드를 먼저 골라 주세요'); return api.pickDeck([], list => runSweep(list), () => render(), `${SW()} 소탕에 쓸 덱${tCls() ? ` · ${EL[tCls()]} 속성만` : ''}`, party()); }
     runSweep(deck);
   }
   async function runSweep(list) {

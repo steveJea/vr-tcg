@@ -34,6 +34,22 @@ ok('인연 층은 조합 포함', withCombo.length === bond.length, `${withCombo
 ok('조합 멤버가 실제로 다 들어감', withCombo.every(([, g]) => combos.find(c => c.name === g.combo).cards.every(id => g.enemies.some(e => String(e.id) === String(id)))));
 ok('인연 x 층은 조합 표시 없음', all.filter(([f]) => !f.bond).every(([, g]) => !g.combo));
 ok('수동 고정 적 (덮어쓰기)', (() => { const g = G.generate(cfg, { floor: 3, grade: 'NORMAL', power: 800, others: 'same', enemies: [{ id: '1000000001', level: 5 }, { id: '1000000002' }] }, pool, combos); return g.manual && g.enemies.length === 2 && g.enemies[0].qLevel === 5; })());
+// 3b) 속성 탑 적 (PR-D)
+{
+  const npc = parseCSV(fs.readFileSync('data/npc_cards.csv', 'utf8')), T = { wind: 'WIND', ice: 'ICE', fire: 'FIRE', light: 'LIGHT', dark: 'DARK' };
+  for (const [tower, cls] of Object.entries(T)) {
+    const gs = cfg.floors.map(f => G.generateAttr(cfg, f, pool, { tower, cls, npc, levelOffset: 10 }));
+    ok(`${tower}: 350층 · 적 5장 · 모두 ${cls}`, gs.length === 350 && gs.every(g => g.enemies.length === 5 && g.enemies.every(c => c.class === cls)));
+    ok(`${tower}: Lv = 시련의 탑 + 10 (1층 15 · 10층 20 · 350층 190)`, gs.every((g, i) => g.level === 15 + 5 * Math.floor((i + 1) / 10) && g.enemies.every(c => c.qLevel === g.level)) && gs[349].level === 190);
+    ok(`${tower}: 같은 층 같은 적 (시드 탑+층) · 리더 = 가장 센 카드 · 10층마다 보스`, JSON.stringify(G.generateAttr(cfg, cfg.floors[41], pool, { tower, cls, npc }).enemies.map(c => c.id)) === JSON.stringify(gs[41].enemies.map(c => c.id))
+      && gs.every(g => g.leader.power === Math.max(...g.enemies.map(c => c.power))) && gs.every((g, i) => !!g.boss === ((i + 1) % 10 === 0)));
+  }
+  const w = cfg.floors.slice(0, 50).map(f => G.generateAttr(cfg, f, pool, { tower: 'wind', cls: 'WIND', npc }));
+  ok('속성 탑마다 적이 다름 (wind vs fire 1층)', JSON.stringify(w[0].enemies.map(c => c.id)) !== JSON.stringify(G.generateAttr(cfg, cfg.floors[0], pool, { tower: 'fire', cls: 'FIRE', npc }).enemies.map(c => c.id)));
+  ok('중복 카드·NPC 허용 (wind 1~50층 중 등장)', w.some(g => new Set(g.enemies.map(c => c.id)).size < 5) && w.some(g => g.enemies.some(c => npc.some(x => x.id === c.id))));
+  ok('후보 3종 미만이면 등급 확장 (light·dark 1층 3종 이상 후보, 같은 카드 5장 아님)', ['light','dark'].every(t => { const g = G.generateAttr(cfg, cfg.floors[0], pool, { tower: t, cls: t.toUpperCase(), npc }); return new Set(g.enemies.map(c => c.id)).size > 1; }));
+  ok('LIGHT NPC 없음 → 카드만', !npc.some(c => c.class === 'LIGHT') && cfg.floors.every(f => G.generateAttr(cfg, f, pool, { tower: 'light', cls: 'LIGHT', npc }).enemies.every(c => pool.some(x => x.id === c.id))));
+}
 // 4) AI: 진영 없는 전투에서 진영 전용 스킬 안 씀
 {
   const C = id => pool.find(c => String(c.id) === id), mk = (c, uid) => { const u = makeUnit(c, uid); u.sk = skillsOf(c.id); return u; };
