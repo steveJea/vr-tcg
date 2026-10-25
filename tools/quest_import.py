@@ -34,7 +34,7 @@ def main():
     data = {
         '_doc': '퀘스트(시련의 탑). tools/quest_import.py 로 생성. power=적 리더 목표 전투력(레벨 포함), grade=적 리더 등급, others=same(리더의 90~100%)/weak(60~80%), bond=인연 조합 포함. '
                 '층별 선택 필드: enemies=[{id,level}] 고정 적(5장, 첫 장이 리더), boss=카드id(보스 표시), rewards={tickets,gold} 보상 덮어쓰기',
-        'sheet': SHEET, 'enemyCount': 5, 'maxTurns': 40,
+        'sheet': SHEET, 'level': {'base': 5, 'step': 5, 'every': 10}, 'enemyCount': 5, 'maxTurns': 40,
         'ranges': {'same': [0.9, 1.0], 'weak': [0.6, 0.8]},
         'rewards': {'every': [[50, {'tickets': 10}], [10, {'tickets': 5}]]},
         'floors': floors,
