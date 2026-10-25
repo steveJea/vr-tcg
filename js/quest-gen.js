@@ -3,6 +3,7 @@
 // 나머지 4장: same = 리더 전투력의 90~100%, weak = 60~80% (리더와 같은 등급 이하에서 레벨로 맞춤). bond = combos.json 조합을 넣어 구성.
 // 레벨 규칙(스토리와 같음): 스탯 배율 = 1 + 등급 비율 × (레벨 − 1), 비율 N1% R2% HR3% SR4% UR5% MR6%, 최대 레벨 N20 R30 HR40 SR50 UR60 MR70
 // 전투력은 스탯 배율만큼 비례해서 오른다고 봄 (power × 배율)
+// 2026-10 개편: quest.json level { base 5, step 5, every 10 } → 적 5명 모두 Lv = 5 + 5 × ⌊층/10⌋ (+ opts.levelOffset), 상한 없음. 카드 선택은 예전 시드 방식 그대로
 (() => {
   const ORDER = ['NORMAL', 'RARE', 'HIGH RARE', 'SUPER RARE', 'ULTRA RARE', 'MYTHIC RARE'];
   const LV_RATE = { 'NORMAL': 0.01, 'RARE': 0.02, 'HIGH RARE': 0.03, 'SUPER RARE': 0.04, 'ULTRA RARE': 0.05, 'MYTHIC RARE': 0.06 };
@@ -41,8 +42,22 @@
     const x = pick(r, good);
     return { c: x.c, L: x.L };
   }
-  /** cfg: quest.json, f: 층, pool: 카드 목록(cards.csv), combos: combos.json → { floor, enemies:[카드(레벨 반영)], leader, combo, range } */
-  function generate(cfg, f, pool, combos = []) {
+  /** 고정 레벨 (cfg.level = { base, step, every }): 5명 모두 base + step × ⌊층 / every⌋ + offset. 최대 레벨 상한 무시. 없으면 null (예전 전투력 목표 방식) */
+  function levelOf(cfg, floor, offset = 0) {
+    const lv = cfg?.level; if (!lv) return null;
+    return Math.max(1, (lv.base ?? 5) + (lv.step ?? 5) * Math.floor(floor / (lv.every || 10)) + (offset | 0));
+  }
+  /** cfg: quest.json, f: 층, pool: 카드 목록(cards.csv), combos: combos.json, opts: { levelOffset }(속성 탑 +10 등)
+   *  → { floor, enemies:[카드(레벨 반영)], leader, combo, range, level }
+   *  카드 고르기는 층 번호 시드 그대로 (전투력 목표로 후보를 고름). cfg.level 이 있으면 고른 뒤 5명 모두 고정 레벨로 다시 맞춤 */
+  function generate(cfg, f, pool, combos = [], opts = {}) {
+    const g = generate0(cfg, f, pool, combos), L = levelOf(cfg, f.floor, opts.levelOffset);
+    if (L == null || !g.enemies.length) return g;
+    const byId = new Map(pool.map(c => [String(c.id), c])), man = g.manual ? f.enemies : null;
+    const enemies = g.enemies.map((c, i) => leveled(byId.get(String(c.id)) || c, man?.[i]?.level || L));
+    return { ...g, enemies, leader: enemies[0], range: undefined, level: L };
+  }
+  function generate0(cfg, f, pool, combos = []) {
     const r = rngOf(f.floor), n = cfg.enemyCount || 5;
     const byId = new Map(pool.map(c => [String(c.id), c]));
     if (Array.isArray(f.enemies) && f.enemies.length) {   // 수동 지정(덮어쓰기)
@@ -98,5 +113,5 @@
     for (const [k, rw] of (cfg.rewards?.every || [])) if (f.floor % k === 0) return { tickets: rw.tickets | 0, gold: rw.gold | 0 };
     return null;
   }
-  globalThis.VRQuestGen = { generate, rewardOf, powerAt, leveled, lvPct, capOf, LV_CAP, LV_RATE };
+  globalThis.VRQuestGen = { generate, levelOf, rewardOf, powerAt, leveled, lvPct, capOf, LV_CAP, LV_RATE };
 })();

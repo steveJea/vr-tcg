@@ -20,14 +20,15 @@ ok('층 rewards 덮어쓰기 (골드 훅)', G.rewardOf(cfg, { floor: 7, rewards:
 const all = cfg.floors.map(f => [f, G.generate(cfg, f, pool, combos)]);
 ok('같은 층은 항상 같은 적', JSON.stringify(G.generate(cfg, cfg.floors[122], pool, combos).enemies.map(c => [c.id, c.qLevel])) === JSON.stringify(all[122][1].enemies.map(c => [c.id, c.qLevel])));
 ok('모든 층 적 5장, 중복 없음', all.every(([, g]) => g.enemies.length === 5 && new Set(g.enemies.map(c => c.id)).size === 5));
-ok('리더 = 시트 등급, 목표 이하', all.every(([f, g]) => g.leader.grade === f.grade && g.leader.power <= f.power));
-const near = all.filter(([f, g]) => g.leader.power >= f.power * 0.9).length;
-ok('리더가 목표의 90% 이상인 층 ≥ 95%', near >= 333, `${near}/350`);
+ok('리더 = 시트 등급', all.every(([f, g]) => g.leader.grade === f.grade));
 ok('나머지 등급 ≤ 리더 등급', all.every(([f, g]) => g.enemies.every(c => ORDER.indexOf(c.grade) <= ORDER.indexOf(f.grade))));
-const inR = all.filter(([f, g]) => g.enemies.slice(1).every(c => c.power >= g.range[0] && c.power <= g.range[1])).length;
-ok('나머지 4장이 범위(90~100% / 60~80%) 안인 층 ≥ 85%', inR >= 298, `${inR}/350`);
 ok('레벨 반영 스탯', (() => { const e = all[100][1].leader, b = pool.find(c => c.id === e.id), m = 1 + G.lvPct(b.grade, e.qLevel) / 100; return e.HP === Math.round(b.HP * m) && e.ATK === Math.round(b.ATK * m); })());
-ok('적 레벨 ≤ 최대 레벨 + EX', all.every(([, g]) => g.enemies.every(c => c.qLevel >= 1 && c.qLevel <= G.capOf(c.grade))));
+ok('고정 레벨: 5명 모두 5 + 5×⌊층/10⌋ (상한 무시)', all.every(([f, g]) => g.level === 5 + 5 * Math.floor(f.floor / 10) && g.enemies.every(c => c.qLevel === g.level)) && all[0][1].level === 5 && all[9][1].level === 10 && all[349][1].level === 180);
+ok('levelOffset +10 (속성 탑용)', G.generate(cfg, cfg.floors[349], pool, combos, { levelOffset: 10 }).enemies.every(c => c.qLevel === 190));
+{ const old = { ...cfg }; delete old.level;
+  ok('카드 선택은 예전(전투력 목표 시드)과 같음', cfg.floors.every(f => JSON.stringify(G.generate(old, f, pool, combos).enemies.map(c => c.id)) === JSON.stringify(G.generate(cfg, f, pool, combos).enemies.map(c => c.id))));
+  ok('level 없으면 예전 방식 (상한 이내)', cfg.floors.every(f => G.generate(old, f, pool, combos).enemies.every(c => c.qLevel >= 1 && c.qLevel <= G.capOf(c.grade)))); }
+ok('Lv.180 MR 스탯 = 기본 × (1 + 6% × 179)', (() => { const e = all[349][1].leader, b = pool.find(c => c.id === e.id); return e.HP === Math.round(b.HP * (1 + G.lvPct(b.grade, 180) / 100)); })());
 const bond = all.filter(([f]) => f.bond), withCombo = bond.filter(([, g]) => g.combo);
 ok('인연 층은 조합 포함', withCombo.length === bond.length, `${withCombo.length}/${bond.length}`);
 ok('조합 멤버가 실제로 다 들어감', withCombo.every(([, g]) => combos.find(c => c.name === g.combo).cards.every(id => g.enemies.some(e => String(e.id) === String(id)))));

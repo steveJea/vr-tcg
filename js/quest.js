@@ -66,7 +66,7 @@
     api.show(`<div class="story-top"><button class="story-back" id="q-home">← 처음으로</button><div class="story-top-title">🗼 시련의 탑</div><span></span></div>
       <div class="q-head"><div>최고 <b>${best()}</b>층 / ${maxF()}층</div><div class="q-sub" title="적 카드를 모두 쓰러뜨리면 승리 · 내 카드 전멸 또는 ${cfg.maxTurns || 40}턴 초과 시 패배 · 재도전 무제한">적 전멸 = 승리 · ${cfg.maxTurns || 40}턴</div></div>
       <div class="q-wrap"><div class="q-cur">
-        <div class="q-cur-h"><b>${n}층</b><span class="q-g rar-${SHORT[f.grade]}">${SHORT[f.grade]}</span><span>적 리더 ⚡ ${fmt(g.leader?.power)} <small>(목표 ${fmt(f.power)})</small></span></div>
+        <div class="q-cur-h"><b>${n}층</b><span class="q-g rar-${SHORT[f.grade]}">${SHORT[f.grade]}</span><span>적 Lv.${g.level ?? g.leader?.qLevel} · 리더 ⚡ ${fmt(g.leader?.power)}</span></div>
         <div class="q-cur-sub" title="${f.others === 'weak' ? '나머지: 리더보다 약함 (60~80%)' : '나머지: 리더와 비슷 (90~100%)'}">${f.others === 'weak' ? '나머지 약함' : '나머지 비슷'}${g.combo ? ` · 🤝 인연 「${esc(g.combo)}」` : ''}</div>
         <div class="q-enemies">${g.enemies.map((c, i) => enemyTile(c, i === 0)).join('')}</div>
         <div class="q-reward">${rw ? (cleared ? `<span class="got">✔ 첫 클리어 보상 받음 (${rewardTxt(rw)})</span>` : `🎁 첫 클리어 보상: <b>${rewardTxt(rw)}</b>`) : '<span class="muted" title="10층마다 보상">보상 없음</span>'}</div>
