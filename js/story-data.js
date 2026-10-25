@@ -41,6 +41,8 @@ window.STORY_DATA = {
     {
       id: 1, title: 'CHAPTER 1', subtitle: '(챕터 제목 준비 중)',
       rewardCard: 'NORMAL',   // 페이즈 첫 클리어 시 무료 카드 등급. 없으면(챕터 2~) 스탯 포인트만
+      // 페이즈 첫 클리어 고정 보상 카드 (모든 루트 동일, 이미 있으면 한 장 더). 서버: supabase/story_ch1_reward.sql
+      rewardCards: { 1: '2000800171', 2: '2001700341', 3: '2000400085', 4: '2001100231', 5: '2000400086' },   // 예유진·남태은·선나영·반지아·이윤이
       phases: [
         // enemyName: 전투 화면 상대 이름 / enemies: 노멀 카드 power 순위 구간 [from, to) 에서 count 장 / 또는 ids: ['카드id', ...] 로 직접 지정
         { no: 1, type: 'normal', enemyName: '적군', title: '(페이즈 1 제목)', tip: '출전 카드가 모두 필드에서 시작해요. 내 카드를 누르고 상대 카드를 눌러 공격해 보세요.', enemies: { count: 1, rank: [0, 30] },
