@@ -593,3 +593,5 @@ span.story-lvpct { background: rgba(251,191,36,.12); border: 1px solid rgba(251,
 /* 카드 타일 글자 최소화: 합성·펼치기 아이콘 칩 */
 .story-merge-mini,.story-expand{display:inline-flex;align-items:center;justify-content:center;width:auto;min-width:26px;height:20px;margin:3px 2px 0;padding:0 6px;font-size:11px;vertical-align:middle}
 .story-merge-mini .ui-ic,.story-merge-mini img{width:14px;height:14px}
+/* 자동 전투 버튼 (스토리·탑 전투) */
+#auto-btn.on{border-color:#34d399;color:#6ee7b7;background:#064e3b;box-shadow:0 0 10px rgba(52,211,153,.45)}

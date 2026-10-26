@@ -1,4 +1,5 @@
 import { levelUpOnce, RULES, ELEMENTS, elementMultiplier, calcDamage, canSummon, buildDeck, parseCSV, aiSummonOrder, aiPickTarget, recallCost, canRecall, aiShouldRecall, makeUnit, resolveAttack, refillMana, ACTIONS, canAction, doAction, clearBuff, aiWantShuffle, aiWantBuff, aiWantHeal, aiWantFieldHeal, aiPickItem, endTurnXp, ITEMS, canEquip, equip, attackTargets, canTarget, autoTarget, heroLocked, xpToNext, SKILLS, gainXp, setCardPool, canSacrifice, sacrifice, aiPickSacrifice, aiWantAccel, judgeTimeout, JUDGE_LABEL, genderMult, GRADES, GRADE_SHORT, allowedGrades, baseEvade } from './rules.js';
+import { autoNext, noteUsed } from './auto-ai.js';
 import { setSpare, spareBlocked, setSkillData, setEmitter, initPlayers, placeUnit, turnStart, turnEnd, useSkill, skillState, aiPickSkill, skillLvOf, skillCdAt, skillLvMult, SKILL_LV_MAX, refreshAll, statusIcons, skillsOf, combos, STATUS, SK, maleLure, checkDeath } from './skills.js';
 
 const IMG = 'https://raw.githubusercontent.com/steveJea/vr-ideal-worldcup/main/img/bt_img/';
@@ -90,6 +91,36 @@ const FX_OFF = () => !!(window.TCG_FAST || skipFx || fastForward || SWEEPING());
 // 스킬 컷인 이미지는 '공격 연출 스킵'·탭 빨리감기 중에도 짧게(600ms) 보여 줌. 테스트·탑 소탕에서만 완전히 끔
 const CUT_OFF = () => !!(window.TCG_FAST || SWEEPING());
 const CUT_QUICK = 600;
+// 자동 전투: 스토리·탑(S.story)에서만. 사용자별 localStorage. 전투 중 언제든 끄면 다음 행동부터 수동
+const AUTO_KEY = () => `vrTcgAuto:${window.VRCloud?.user?.id || 'guest'}`;
+let autoOn = localStorage.getItem(AUTO_KEY()) === '1', autoRunning = false;
+const autoActive = () => autoOn && !!S?.story && !S.over;
+function renderAutoBtn() {
+  const b = $('auto-btn'); if (!b) return;
+  b.classList.toggle('hidden', !S?.story); b.classList.toggle('on', autoOn);
+  b.setAttribute('aria-pressed', String(autoOn)); b.textContent = autoOn ? '⏸ AUTO' : '▶ AUTO';
+}
+/** 조건 안내·스토리 대사 등 화면 위 창이 떠 있으면 자동 진행 대기 */
+const autoBlocked = () => [...document.querySelectorAll('#story-cond, #story-dlg, .story-pop')].some(e => e.getClientRects().length && getComputedStyle(e).visibility !== 'hidden');
+async function autoTurn() {
+  if (autoRunning) return; autoRunning = true;
+  const turn = { used: new Set(), scopes: new Set() };
+  try {
+    for (let guard = 0; guard < 40; guard++) {
+      await vidWait();
+      while ((S.busy || autoBlocked()) && !S.over) await sleep(80);
+      if (!autoActive() || S.turn !== 'me') return;
+      const a = autoNext(S.me, S.ai, turn);
+      if (!a) break;
+      if (a.kind === 'skill') { noteUsed(turn, a.s); await castSkill('me', a.u, a.s); }
+      else { const before = a.u.canAttack; await attack('me', a.u, a.t); if (before && a.u.canAttack) a.u.canAttack = false; }
+      await sleep(AI_DELAY());
+    }
+    while (S.busy && !S.over) await sleep(50);
+    if (autoActive() && S.turn === 'me') endTurn();
+  } catch (err) { reportError('autoTurn', err); }
+  finally { autoRunning = false; }
+}
 const AI_DELAY = () => (window.TCG_FAST ? 0 : (skipFx || fastForward) ? 60 : 325);
 
 function newPlayer(name, second, deckOverride = null, hp = RULES.HERO_HP, fieldStart = false, grades = null) {
@@ -107,6 +138,7 @@ function log(msg, cls = '') {
 const shuffleArr = a => { a = [...a]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 /** story: 스토리 모드 전투 설정 { me:[카드], ai:[카드], win:'wipe'|'ko', meHp, aiHp, aiName, first, onEnd(win, reason) }. 없으면 아케이드 */
 function startGame(story = null) {
+  autoOn = localStorage.getItem(AUTO_KEY()) === '1';
   if (story && typeof story.then === 'function' || story instanceof Event) story = null;
   setSpare(story?.spare);   // 스토리 보호 규칙 (없으면 해제)
   const first = story?.first || (Math.random() < 0.5 ? 'me' : 'ai');   // 선공 동전 던지기
@@ -181,6 +213,7 @@ function startTurn(who) {
   render();
   if (checkEnd()) return;
   if (who === 'ai') aiTurn();
+  else if (autoActive()) setTimeout(autoTurn, AI_DELAY());
 }
 
 function useAction(who, type) {
@@ -1056,6 +1089,7 @@ function lastTurnToast() {
 const hpPrev = new Map();
 const hpText = t => String(t || '').replace(/체력/g, 'HP');
 function render() {
+  renderAutoBtn();
   if (S) preloadFx([...S.me.field, ...S.ai.field].map(u => u.base || u.card));
   renderTurnsLeft();
   if (!S) return;
@@ -1363,6 +1397,8 @@ $('fx-skip').onclick = e => { e.stopPropagation(); skipFx = !skipFx; localStorag
 // 연출 중 화면을 누르면 현재 연출 빨리 감기
 $('game').addEventListener('click', () => { if (S?.busy && !S.over) fastForward = true; }, true);
 renderSkipBtn();
+$('auto-btn').onclick = e => { e.stopPropagation(); autoOn = !autoOn; localStorage.setItem(AUTO_KEY(), autoOn ? '1' : '0'); renderAutoBtn(); if (autoActive() && S.turn === 'me' && !S.busy) autoTurn(); };
+renderAutoBtn();
 $('share-btn').onclick = shareResult;
 $('restart-btn').onclick = () => { renderStats(); startGame(); };
 /** 스토리 모드 전투 시작 (js/story.js에서 호출) */
