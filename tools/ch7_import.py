@@ -24,7 +24,7 @@ def fx(t):
     for a, b in FIX: t = t.replace(a, b)
     return t.strip()
 YY, GE, HK = IDS['민유연'], IDS['유가을'], IDS['민홍기']
-def party_of(cond, forced, defeat):
+def party_of(cond, forced, defeat, n_=None):
     p = {'forced': forced}
     c = cond.replace(' ', '')
     if '남성출전금지' in c: p['noMale'] = True
@@ -36,6 +36,8 @@ def party_of(cond, forced, defeat):
     if m: p['max'] = int(m.group(1))
     if 'UR출전금지' in c: p['maxGrade'] = 'SUPER RARE'   # UR 이상 출전 불가로 처리 (CH5 와 같은 방식)
     if '추가편성금지' in c: p['noExtra'] = True; p['max'] = len(forced)
+    if n_ == 7:   # 사용자 결정(10/26): 4장 출전, 쓰레기 4인방(게스트) 또는 품성(MOR) 40 미만 남성 중 선택
+        p.pop('noExtra', None); p['guests'] = p['forced']; p['forced'] = []; p['noFemale'] = True; p['maxMor'] = 39; p['max'] = 4   # 4인방은 고를 수 있는 게스트
     live = [IDS[nm(k)] for k in re.findall(r'([A-Z]{2})\s*사망', defeat)]
     p['mustLive'] = live
     return p
@@ -48,7 +50,7 @@ for i, r in enumerate(rows):
         forced = [cid(x) for x in r[2].split(',') if x.strip()]
         flv = [x.strip() for x in nxt[2].split(',') if x.strip()]
         elv = [x.strip() for x in nxt[8:13]]
-        party = party_of(r[13], forced, r[15])
+        party = party_of(r[13], forced, r[15], n)
         if n == 6: party['mustLive'] = []   # 사용자 결정(10/26): 6페이즈는 민유연이 쓰러져도 패배 아님 (아군 전멸만)
         if flv: party['levels'] = {f: int(l) for f, l in zip(forced, flv)}
         lv = {}

@@ -588,12 +588,14 @@
     if (gi >= 0) rules.push({ ok: c => GO.indexOf(c.grade) <= gi, note: `${RAR[GO[gi + 1]] || ''} 이상 출전 불가` });
     const allow = o => { const c = card(o.id); return !!c && rules.every(r => r.ok(c)); };
     if (pt?.noExtra) rules.push({ ok: () => false, note: '추가 편성 불가' });
-    return { forced, exclude: new Set([...(pt?.exclude || []), ...(pt?.forced || [])].map(String)), allow, notes: rules.map(r => r.note), max: pt?.max };
+    // party.guests: 고를 수 있는 게스트(보유 안 해도 출전 후보, 필수 아님). 보유 중이면 내 카드로
+    const guests = (pt?.guests || []).map(id => repOf(id) || guestOf(id)).filter(o => card(o.id));
+    return { forced, guests, exclude: new Set([...(pt?.exclude || []), ...(pt?.forced || [])].map(String)), allow, notes: rules.map(r => r.note), max: pt?.max };
   }
   /** opts (퀘스트 등 재사용): { onGo(list), onCancel(), note } — 없으면 스토리 페이즈 전투 */
   function pickDeck(ch, ph, enemies, opts = null) {
-    const { forced, exclude, allow, notes, max } = partyOf(ch, ph), slots = Math.max(0, Math.min(MAX_PICK(), max || MAX_PICK()) - forced.length);   // party.max: 필수 포함 최대 장수
-    const all = deckInstances().filter(o => !exclude.has(o.id) && allow(o));
+    const { forced, guests = [], exclude, allow, notes, max } = partyOf(ch, ph), slots = Math.max(0, Math.min(MAX_PICK(), max || MAX_PICK()) - forced.length);   // party.max: 필수 포함 최대 장수
+    const all = [...new Map([...guests.filter(o => !exclude.has(o.id)), ...deckInstances().filter(o => !exclude.has(o.id) && allow(o))].map(o => [o.uid, o])).values()];
     const go = opts?.onGo || (list => battle(ch, ph, enemies, list));
     if (all.length <= slots && !forced.length) return go(all);
     let last = []; try { last = JSON.parse(localStorage.getItem(PICK_KEY()) || '[]'); } catch {}
@@ -682,7 +684,9 @@
     if (R.pairShield) info.push(['🛡️', `${nm(R.pairShield.id)} + ${nm(R.pairShield.with)} 함께 출전: ${nm(R.pairShield.id)} 처음 <b>${R.pairShield.turns}턴</b> 피해 무효`]);
     for (const [a, ts] of Object.entries(ph.spare || {})) info.push(['🕊️', `${nm(a)}는 ${ts.map(nm).join('·')}를 공격하지 않음`, `${ts.map(nm).join('·')}만 남으면 행동하지 않아요`]);
     for (const id of R.undying || []) info.push(['♾️', `${nm(id)}: 쓰러지지 않음 (불사)`]);
-    for (const t of partyOf(ch, ph).notes) info.push(['🚫', `출전 제한: <b>${t}</b>`, '필수 출전 카드는 예외']);
+    { const pp = partyOf(ch, ph);
+      for (const t of pp.notes) info.push(['🚫', `출전 제한: <b>${t}</b>`, pp.forced.length ? '필수 출전 카드는 예외' : '']);
+      if (pp.guests?.length) info.push(['🤝', `게스트 <b>${pp.guests.map(o => esc(card(o.id)?.name || '')).join('·')}</b> 중에서도 고를 수 있어요`, pp.max ? `최대 ${pp.max}장` : '']); }
     if (ph.enemyFirst) info.push(['⚡', '적 선공']);
     if (ph.tip && !(ph.rules)) info.push(['💡', esc(ph.tip)]);
     return { win, lose, info };

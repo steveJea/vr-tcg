@@ -996,13 +996,15 @@ window.STORY_DATA.chapters.push({
     ]
    },
    "party": {
-    "forced": [
+    "forced": [],
+    "guests": [
      "1000100010",
      "1000100009",
      "1000100011",
      "1000100012"
     ],
-    "noExtra": true,
+    "noFemale": true,
+    "maxMor": 39,
     "max": 4,
     "mustLive": []
    },
