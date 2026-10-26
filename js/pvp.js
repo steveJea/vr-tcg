@@ -8,7 +8,7 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};
 const GS = { 'NORMAL': 'N', 'RARE': 'R', 'HIGH RARE': 'HR', 'SUPER RARE': 'SR', 'ULTRA RARE': 'UR', 'MYTHIC RARE': 'MR' };
 const LS = 'vrTcgPvp.view';
 let view = (() => { try { return { league: 'open', mode: '1v1', ...JSON.parse(localStorage.getItem(LS) || '{}') }; } catch { return { league: 'open', mode: '1v1' }; } })();
-let st = null, owned = [], myDecks = [];
+let st = null, top = null, owned = [], myDecks = [];
 const card = id => window.TCG?.cardById?.(id);
 async function rpc(name, args) {
   if (window.__PVP_MOCK) return window.__PVP_MOCK(name, args);
@@ -38,7 +38,7 @@ export async function open() {
   try {
     const S = window.VRStory; const s = S?.summary ? await S.summary() : null;
     owned = s?.ok ? s.owned : []; myDecks = s?.ok ? (s.decks || []).filter(d => d.uids.length) : [];
-    st = await rpc('pvp_status', { p_league: view.league, p_mode: view.mode });
+    [st, top] = await Promise.all([rpc('pvp_status', { p_league: view.league, p_mode: view.mode }), rpc('pvp_rankings', { p_league: view.league, p_mode: view.mode, p_season: null }).catch(() => null)]);
   } catch (e) { m.querySelector('.pvp-panel').innerHTML = `<button class="pvp-x" data-x>✕</button><div class="pvp-empty">${esc(errText(e))}</div>`; return; }
   paint();
 }
@@ -56,7 +56,8 @@ function paint() {
     <div class="pvp-decks">${decks.map((d, i) => `<button class="pvp-deck ${d ? '' : 'empty'}" data-edit="${i}">
       <span class="pvp-deck-no">${n > 1 ? i + 1 : '🛡'}</span><span class="pvp-deck-row">${d ? d.uids.map(u => thumb(byUid.get(u) && { ...card(byUid.get(u).id), level: byUid.get(u).level })).join('') : '<span class="pvp-plus">＋</span>'}</span>
       ${view.league === 'hr' && d ? `<small class="pvp-cost">${d.cost}/150</small>` : ''}</button>`).join('')}</div>
-    <div class="pvp-acts"><button class="pvp-rank" data-rank title="랭킹">🏅</button><button class="pvp-go" data-go ${ready ? '' : 'disabled'}>⚔️ 매칭</button></div>`;
+    <div class="pvp-acts"><button class="pvp-rank" data-rank title="랭킹">🏅</button><button class="pvp-go" data-go ${ready ? '' : 'disabled'}>⚔️ 매칭</button></div>
+    <div class="pvp-top"><div class="pvp-top-h">🏅 TOP 10</div><div class="pvp-rk">${rkRows(top)}</div></div>`;
   m.querySelectorAll('[data-league]').forEach(b => b.onclick = () => { view.league = b.dataset.league; save(); open(); });
   m.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => { view.mode = b.dataset.mode; save(); open(); });
   m.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => editDeck(+b.dataset.edit));
@@ -170,6 +171,8 @@ function playback(s, res) {
 }
 
 // ---- 랭킹 ----
+const rkRow = (x, nm) => `<div class="pvp-rk-row ${x.me ? 'me' : ''}"><b>${x.rank <= 3 ? ['🥇', '🥈', '🥉'][x.rank - 1] : x.rank}</b><span>${esc(nm ?? x.name)}</span><small>${x.wins}W ${x.losses}L</small><em>${x.rating}</em></div>`;
+const rkRows = r => ((r?.top || []).slice(0, 10).map(x => rkRow(x)).join('') || '<div class="pvp-empty">—</div>') + (r?.me && !(r.top || []).slice(0, 10).some(x => x.me) ? rkRow(r.me, '나') : '');
 async function rankings() {
   const m = modal('pvp-ranking', `<div class="pvp-empty">…</div>`, 'pvp-sub');
   let r; try { r = await rpc('pvp_rankings', { p_league: view.league, p_mode: view.mode, p_season: null }); } catch (e) { m.querySelector('.pvp-panel').innerHTML = `<div class="pvp-empty">${esc(errText(e))}</div>`; return; }
