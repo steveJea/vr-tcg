@@ -580,3 +580,13 @@ span.story-lvpct { background: rgba(251,191,36,.12); border: 1px solid rgba(251,
 .story-deck-plus{font-size:26px;color:#71717a;margin:auto}
 .story-deck-name{background:transparent;border:0;border-bottom:1px solid #52525b;color:#fde68a;font-weight:900;width:9em;font-size:inherit}
 .story-deckchips{flex-wrap:wrap}
+/* 모바일: 카드 그리드 한 줄 4장 */
+@media (max-width:600px){
+  .story-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}
+  .story-grid .story-card{border-radius:9px;padding-bottom:3px}
+  .story-grid .story-card .font-bold,.story-grid .story-card b{font-size:11px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .story-grid .story-card .text-xs,.story-grid .story-card small{font-size:9px}
+  .story-grid .story-card .stars,.story-grid .story-card [class*="star"]{font-size:9px;transform-origin:top center}
+  .story-grid .story-lockbadge,.story-grid .story-favbadge{font-size:10px}
+  .story-grid .story-card button{font-size:9px;padding:2px 3px}
+}
