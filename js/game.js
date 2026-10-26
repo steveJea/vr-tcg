@@ -106,11 +106,16 @@ const CUT_QUICK = 600;
 // 자동 전투: 스토리·탑(S.story)에서만. 사용자별 localStorage. 전투 중 언제든 끄면 다음 행동부터 수동
 const AUTO_KEY = () => `vrTcgAuto:${window.VRCloud?.user?.id || 'guest'}`;
 let autoOn = localStorage.getItem(AUTO_KEY()) === '1', autoRunning = false;
-const autoActive = () => autoOn && !!S?.story && !S.over;
+// 자동 전투 해금: 계정 레벨(플레이어 레벨, player_status.level) 5 이상
+const AUTO_LV = 5;
+const autoLocked = () => (window.VRPlayer?.now?.()?.level ?? 0) < AUTO_LV;
+const autoActive = () => autoOn && !autoLocked() && !!S?.story && !S.over;
 function renderAutoBtn() {
   const b = $('auto-btn'); if (!b) return;
   b.classList.toggle('hidden', !S?.story); b.classList.toggle('on', autoOn);
-  b.setAttribute('aria-pressed', String(autoOn)); b.textContent = autoOn ? '⏸ AUTO' : '▶ AUTO';
+  const lk = autoLocked(); b.classList.toggle('locked', lk); b.title = lk ? `자동 전투 · 계정 Lv${AUTO_LV}부터` : '자동 전투';
+  b.setAttribute('aria-pressed', String(autoOn && !lk)); b.textContent = lk ? '🔒 AUTO' : autoOn ? '⏸ AUTO' : '▶ AUTO';
+  if (lk && S?.story && !b.dataset.lvReq) { b.dataset.lvReq = '1'; window.VRPlayer?.status?.().then(() => { delete b.dataset.lvReq; if (!autoLocked()) renderAutoBtn(); }); }
 }
 /** 조건 안내·스토리 대사 등 화면 위 창이 떠 있으면 자동 진행 대기 */
 const autoBlocked = () => [...document.querySelectorAll('#story-cond, #story-dlg, .story-pop')].some(e => e.getClientRects().length && getComputedStyle(e).visibility !== 'hidden');
@@ -1413,7 +1418,12 @@ $('fx-skip').onclick = e => { e.stopPropagation(); skipFx = !skipFx; localStorag
 // 연출 중 화면을 누르면 현재 연출 빨리 감기
 $('game').addEventListener('click', () => { if (S?.busy && !S.over) fastForward = true; }, true);
 renderSkipBtn();
-$('auto-btn').onclick = e => { e.stopPropagation(); autoOn = !autoOn; localStorage.setItem(AUTO_KEY(), autoOn ? '1' : '0'); renderAutoBtn(); if (autoActive() && S.turn === 'me' && !S.busy) autoTurn(); };
+$('auto-btn').onclick = e => { e.stopPropagation(); if (autoLocked()) return autoHint(); autoOn = !autoOn; localStorage.setItem(AUTO_KEY(), autoOn ? '1' : '0'); renderAutoBtn(); if (autoActive() && S.turn === 'me' && !S.busy) autoTurn(); };
+function autoHint() {
+  document.getElementById('auto-hint')?.remove();
+  const t = document.createElement('div'); t.id = 'auto-hint'; t.className = 'auto-hint'; t.textContent = `🔒 계정 Lv${AUTO_LV}부터 AUTO`;
+  document.body.appendChild(t); setTimeout(() => t.remove(), 1600);
+}
 renderAutoBtn();
 $('share-btn').onclick = shareResult;
 $('restart-btn').onclick = () => { renderStats(); startGame(); };
@@ -1477,7 +1487,7 @@ window.addEventListener('vr:user', renderStats);   // 로그인·로그아웃·�
     setCardPool(POOL);
     const [sk, co] = await Promise.all(['data/skills.json', 'data/combos.json'].map(u => fetch(u).then(r => r.json())));
     setSkillData(sk, co); setEmitter(onEngine);
-    $('start-btn').disabled = false; setStartLabel('아케이드 모드');
+    $('start-btn').disabled = false; setStartLabel('아케이드');
     $('start-btn').onclick = () => startGame();
     window.dispatchEvent(new CustomEvent('tcg:ready'));
   } catch (e) { setStartLabel('카드 데이터를 불러오지 못했어요'); }

@@ -1447,6 +1447,7 @@
   }
 
   function mountButton() {
+    const ex = $('story-btn'); if (ex) { ex.disabled = !window.TCG?.ready; ex.onclick = enter; window.addEventListener('tcg:ready', () => { ex.disabled = false; }); return; }   // 메인 4버튼(index.html)
     const start = $('start-btn'); if (!start || $('story-btn')) return;
     const b = document.createElement('button'); b.id = 'story-btn'; b.type = 'button'; b.className = 'main-banner banner-story'; b.title = '스토리 모드 · 캐릭터별 챕터 · 카드 수집';
     b.innerHTML = '<img src="img/ui/main/banner_story.webp" srcset="img/ui/main/banner_story_600.webp 600w, img/ui/main/banner_story.webp 1200w" sizes="(max-width: 520px) 92vw, 460px" alt="" class="main-banner-img" width="1200" height="360" decoding="async"><span class="main-banner-text"><b class="main-banner-title">스토리 모드</b></span>';
