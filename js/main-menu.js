@@ -34,7 +34,7 @@
   const hideIntro = () => { localStorage.setItem(INTRO_KEY, '1'); intro.classList.add('hidden'); const v = $('intro-video'); v.pause(); };
   $('intro-login').onclick = () => { localStorage.setItem(INTRO_KEY, '1'); login(); };
   $('intro-guest').onclick = async () => {
-    if (await confirmYN('<b>게스트는 아케이드만</b> 플레이할 수 있어요.<br>카드 수집·소환은 할 수 없어요.<div class="vc-q">그래도 게스트 할래?</div>')) hideIntro();
+    if (await confirmYN('<b>게스트는 아케이드만</b> 플레이할 수 있어요.<br>카드 수집·소환은 할 수 없어요.<div class="vc-q">그래도 게스트로 하시겠어요?</div>')) hideIntro();
   };
   if (localStorage.getItem(INTRO_KEY) !== '1' && !/[?&]code=|access_token=/.test(location.search + location.hash)) {
     // 이미 로그인된 세션이면 바로 메인
@@ -50,9 +50,16 @@
   document.querySelectorAll('.main-tile[data-auth]').forEach(b => b.addEventListener('click', async e => {
     if (user()) return;
     e.stopImmediatePropagation(); e.preventDefault();
-    if (await confirmYN('로그인 하시겠습니까?')) login();
+    if (await confirmYN('로그인하시겠어요?')) login();
   }, true));
-  window.addEventListener('vr:user', () => { paintLocks(); paintTut(); });
+  // 로그아웃하면 인트로(로그인/게스트 선택)를 다시 보여 줌
+  let hadUser = !!user();
+  window.addEventListener('vr:user', () => {
+    paintLocks(); paintTut();
+    const now = !!user();
+    if (hadUser && !now) { localStorage.removeItem(INTRO_KEY); showIntro(); }
+    hadUser = now;
+  });
 
   // --- 게임설정 메뉴 ---
   const gear = $('main-settings'), pop = $('main-menu-pop');
