@@ -1,5 +1,5 @@
 // ===== 마이페이지 =====
-// 로그인 유저: 리더 카드(크게) · 보유 카드 + 기본 덱 · 재화(소환권 · 골드 · 순수한 피 · 이상한 조각 · 각성자의 혼) · 전적(아케이드 승/패, 스토리 진행, 갤러리 수집률)
+// 로그인 유저: 리더 카드(크게) · [보유 카드]/[덱 설정] 이동 · 마이 덱(최대 10) · 즐겨찾기 · 재화(소환권 · 골드 · 순수한 피 · 이상한 조각 · 각성자의 혼) · 전적(아케이드 승/패, 스토리 진행, 갤러리 수집률)
 // 게스트: 로그인 안내. 팝업은 바깥을 누르면 닫힘.
 // 확장: VRMyPage.addSection({ id, title, order, render(ctx) => html }) / CURRENCIES 에 재화 추가
 // 리더 영상 훅: data/movie/<id>.mp4 가 있으면 리더 카드를 탭할 때 음소거 인라인 재생
@@ -74,7 +74,7 @@
   // ---- 기본 섹션 ----
   const pct = (a, b) => b ? Math.floor(a / b * 100) : 0;
   const thumb = (o, cls = '', cnt = 1) => `<button type="button" class="mp-card rar-${SHORT[o.grade] || 'N'} ${cls}" data-uid="${esc(o.uid)}" data-id="${esc(o.id)}" title="${esc(o.name)}${cnt > 1 ? ` x${cnt}` : ''}" aria-label="${esc(o.name)} 카드 정보"><img loading="lazy" src="${IMG}${o.id}.webp" alt="${esc(o.name)}" onerror="this.style.visibility='hidden'">
-    <span class="mp-rar">${SHORT[o.grade] || ''}</span>${o.leader ? '<span class="mp-lead">👑</span>' : ''}${cnt > 1 ? `<span class="mp-cnt">x${cnt}</span>` : ''}<span class="mp-lv">Lv.${o.level || 1}</span><span class="mp-nm">${esc(o.name)}</span></button>`;
+    <span class="mp-rar">${SHORT[o.grade] || ''}</span>${o.leader ? '<span class="mp-lead">👑</span>' : ''}${o.fav ? '<span class="mp-fav">★</span>' : ''}${cnt > 1 ? `<span class="mp-cnt">x${cnt}</span>` : ''}<span class="mp-lv">Lv.${o.level || 1}</span><span class="mp-nm">${esc(o.name)}</span></button>`;
   /** 같은 카드(id) 여러 장은 한 칸으로: 대표 = 리더 > 덱 > 레벨·EX 높은 것, 개수는 x<n> */
   function groupOwned(owned, deck) {
     const g = new Map();
@@ -93,7 +93,7 @@
   }
   addSection({ id: 'leader', order: 10, render: ctx => {
     const s = ctx.story, L = s?.owned.find(o => o.uid === s.leaderUid) || s?.owned.find(o => s.deckUids?.[0] === o.uid);
-    if (!L) return `<div class="mp-leader empty"><div class="mp-empty">아직 리더 카드가 없어요<br><small>스토리 모드에서 카드를 고르고 리더로 정해 보세요</small></div></div>`;
+    if (!L) return `<div class="mp-leader empty"><div class="mp-empty">—</div></div>`;
     return `<div class="mp-leader rar-${SHORT[L.grade] || 'N'}" id="mp-leader" data-id="${esc(L.id)}"><img src="${IMG}${L.id}.webp" alt="${esc(L.name)}" class="mp-leader-img" onerror="this.style.visibility='hidden'">
       <div class="mp-leader-cap"><span class="mp-rar">${SHORT[L.grade] || ''}</span><b>${esc(L.name)}</b><small>리더 · Lv.${L.level || 1}${L.power ? ` · ⚡ ${Number(L.power).toLocaleString('ko-KR')}` : ''}</small></div>
       <span class="mp-play" aria-hidden="true">▶</span></div>`;
@@ -116,16 +116,17 @@
       <div class="mp-stat"><span>시련의 탑</span><b>${ctx.questBest != null ? `${ctx.questBest}층` : '-'}</b><small>최고 기록</small></div>
       <div class="mp-stat"><span>갤러리</span><b>${g ? `${pct(g.have, g.total)}%` : '-'}</b><small>${g ? `${g.have}/${g.total} 수집` : ''}</small></div></div>`;
   } });
-  addSection({ id: 'deck', order: 40, title: '기본 덱', render: ctx => {
-    const s = ctx.story; if (!s) return '<div class="mp-note">스토리 카드를 불러오지 못했어요</div>';
-    const by = new Map(s.owned.map(o => [o.uid, o])), deck = (s.deckUids || []).map(u => by.get(u)).filter(Boolean);
-    return deck.length ? `<div class="mp-row">${deck.map(o => thumb(o)).join('')}</div>` : '<div class="mp-note">아직 덱이 없어요</div>';
-  } });
-  addSection({ id: 'owned', order: 50, title: '보유 카드', render: ctx => {
+  addSection({ id: 'nav', order: 12, render: ctx => ctx.story ? `<div class="mp-nav"><button type="button" class="mp-navbtn" data-nav="cards"><span>🃏</span>보유 카드<small>${ctx.story.owned.length}</small></button><button type="button" class="mp-navbtn" data-nav="decks"><span>🗂</span>덱 설정<small>${(ctx.story.decks || []).filter(d => d.uids.length).length}/10</small></button></div>` : '' });
+  addSection({ id: 'deck', order: 40, title: '마이 덱', render: ctx => {
     const s = ctx.story; if (!s) return '';
-    const deck = new Set(s.deckUids || []), order = ['MYTHIC RARE', 'ULTRA RARE', 'SUPER RARE', 'HIGH RARE', 'RARE', 'NORMAL'];
-    const list = groupOwned(s.owned, deck).sort((x, y) => { const a = x.rep, b = y.rep; return b.leader - a.leader || order.indexOf(a.grade) - order.indexOf(b.grade) || b.level - a.level; });
-    return `<div class="mp-sub">${s.owned.length}장 · 종류 ${list.length}</div><div class="mp-grid">${list.map(({ rep, count }) => thumb(rep, deck.has(rep.uid) ? 'in-deck' : '', count)).join('') || '<div class="mp-note">보유 카드가 없어요</div>'}</div>`;
+    const by = new Map(s.owned.map(o => [o.uid, o])), ds = (s.decks || []).filter(d => d.uids.length);
+    if (!ds.length) return `<button type="button" class="mp-note mp-navlink" data-nav="decks">＋</button>`;
+    return ds.map(d => `<div class="mp-deck"><div class="mp-deck-h">${esc(d.name)}</div><div class="mp-row">${d.uids.map(u => by.get(u)).filter(Boolean).map(o => thumb(o, o.fav ? 'fav' : '')).join('')}</div></div>`).join('');
+  } });
+  addSection({ id: 'fav', order: 45, title: '즐겨찾기', render: ctx => {
+    const s = ctx.story; if (!s) return '';
+    const list = groupOwned(s.owned.filter(o => o.fav), new Set());
+    return list.length ? `<div class="mp-row">${list.map(({ rep, count }) => thumb(rep, 'fav', count)).join('')}</div>` : '';
   } });
 
   // ---- 화면 ----
@@ -135,6 +136,7 @@
     m.innerHTML = `<div class="mp-panel" role="dialog" aria-label="마이페이지"><div class="mp-head"><div class="mp-title">${window.VRIcon?.icon('mypage_btn', { alt: '' }) || '👤'} 마이페이지</div><button class="mp-x" id="mp-close" aria-label="닫기">✕</button></div><div id="mp-body" class="mp-body"></div></div>`;
     document.body.appendChild(m);
     m.addEventListener('click', e => { if (e.target === m || e.target.closest('#mp-close')) return close();
+      const nv = e.target.closest('[data-nav]'); if (nv) { close(); const S = window.VRStory; return nv.dataset.nav === 'decks' ? S?.openDecks?.() : S?.openCards?.(); }
       const t = e.target.closest('.mp-card[data-uid]'); if (t) openCard(t.dataset.uid, t.dataset.id); });   // 바깥 클릭 = 닫기
     document.addEventListener('keydown', e => { if (e.key === 'Escape' && !m.classList.contains('hidden')) close(); });
     return m;
@@ -146,11 +148,11 @@
     const m = ensure(), body = $('mp-body');
     m.classList.remove('hidden'); document.body.classList.add('gal-lock');
     if (!user()) {
-      body.innerHTML = `<div class="mp-guest"><img src="img/ui/profile.webp" alt="" width="72" height="72"><b>로그인하면 마이페이지를 볼 수 있어요</b><small>리더 카드 · 보유 카드 · 소환권 · 전적이 계정에 저장돼요</small>${cloud()?.sb ? '<button id="mp-login" class="main-btn mp-login">구글 로그인</button>' : '<small>지금은 로그인 서버에 연결할 수 없어요</small>'}</div>`;
+      body.innerHTML = `<div class="mp-guest"><img src="img/ui/profile.webp" alt="" width="72" height="72"><b>로그인 필요</b>${cloud()?.sb ? '<button id="mp-login" class="main-btn mp-login">구글 로그인</button>' : '<small>오프라인</small>'}</div>`;
       if ($('mp-login')) $('mp-login').onclick = () => cloud().login();
       return;
     }
-    body.innerHTML = '<div class="mp-note">불러오는 중...</div>';
+    body.innerHTML = '<div class="mp-note">…</div>';
     const ctx = await gather();
     const meta = ctx.user.user_metadata || {};
     body.innerHTML = `<div class="mp-who">${meta.avatar_url ? `<img src="${esc(meta.avatar_url)}" referrerpolicy="no-referrer" alt="" class="mp-av" onerror="this.src='img/ui/profile.webp'">` : '<img src="img/ui/profile.webp" alt="" class="mp-av">'}<b>${esc(meta.name || meta.full_name || (ctx.user.email || '').split('@')[0] || '플레이어')}</b></div>`

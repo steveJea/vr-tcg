@@ -48,3 +48,11 @@
 .mp-pxp{display:flex;justify-content:space-between;font-size:12px}.mp-pxp span:first-child{color:#f5c96a}.mp-pxp b{color:#6ee7b7}
 .mp-bar{height:6px;border-radius:999px;background:rgba(255,255,255,.12);overflow:hidden}.mp-bar i{display:block;height:100%;background:#f59e0b}.mp-bar.st i{background:#34d399}
 .mp-pnote{font-size:10px;opacity:.65;margin-top:2px}
+/* 보유 카드 · 덱 설정 이동 / 마이 덱 / 즐겨찾기 */
+.mp-nav{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}
+.mp-navbtn{display:flex;align-items:center;gap:8px;padding:12px;border-radius:14px;background:linear-gradient(180deg,#1f1a30,#14111f);border:1px solid rgba(245,201,106,.35);color:#fde68a;font-weight:900;font-size:14px}
+.mp-navbtn span{font-size:20px}.mp-navbtn small{margin-left:auto;color:#a1a1aa;font-weight:700}
+.mp-navbtn:hover{border-color:#f5c96a}
+.mp-navlink{width:100%;cursor:pointer;font-size:22px}
+.mp-deck{margin-bottom:8px}.mp-deck-h{font-size:12px;font-weight:800;color:#e4e4e7;margin:0 0 4px}
+.mp-fav{position:absolute;right:3px;top:18px;color:#facc15;font-size:12px;text-shadow:0 0 3px #000}
