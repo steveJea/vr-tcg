@@ -2,7 +2,7 @@
 // 루트(byRoute[카드 id]): 챕터 2 처음 들어갈 때 이명진 / 김후 중 고름. hero = 루트 주인공(출전 카드 필수, 없으면 게스트) · 대사에서 왼쪽 자리
 // 페이즈 party: { forced: [필수 카드 id], exclude: [출전 불가 카드 id] } 가 있으면 루트 기본(주인공 필수) 대신 사용. 페이즈 hero: 대사 왼쪽 자리(여러 명 가능)
 // 페이즈 after: 그 페이즈를 처음 이겼을 때 나오는 대사 (막간·루트 엔딩). 챕터 ending: 보스(Phase.10) 첫 클리어 후
-// 대사 한 줄: { "speaker": "이름" | "내레이션", "text": "...", "expr": "화남" | "웃음" (선택, 초상화 있는 인물만 표정 변화) }
+// 대사 한 줄: { "speaker": "이름" | "내레이션", "text": "...", "expr": 기본/화남/웃음/슬픔/놀람/장난 (선택, 초상화 있는 인물만 · story-data.js exprSlug) }
 window.STORY_DATA.chapters.push({
  "id": 2,
  "title": "CHAPTER 2",
