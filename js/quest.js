@@ -251,7 +251,7 @@
     window.addEventListener('tcg:ready', () => { b.disabled = false; });
     return true;
   }
-  if (!mount()) { const t = setInterval(() => { if (mount()) clearInterval(t); }, 300); setTimeout(() => clearInterval(t), 10000); }
+  // 메인 화면 탑 배너는 없앰: 시련의 탑은 스토리 허브 하단 메뉴에서 (메인은 4버튼)
   /** 마이페이지·관리자용 최고 층 */
   async function bestFloor() { try { const s = await trpc('quest_status'); return s?.best_floor | 0; } catch { return null; } }
   window.VRQuest = { open, render, challenge, bestFloor, sweep, HOOKS: QUEST_HOOKS, _test: { result, enemiesOf, rewardOf, loadCfg, get status() { return status; }, set status(v) { status = v; } } };

@@ -133,8 +133,8 @@
   if (!gear || !pop) return;
   const isOpen = () => !pop.classList.contains('hidden');
   const open = () => { pop.classList.remove('hidden'); gear.setAttribute('aria-expanded', 'true'); setTimeout(() => document.getElementById('main-skip')?.focus(), 0); };
-  const close = (refocus = true) => { if (!isOpen()) return; pop.classList.add('hidden'); gear.setAttribute('aria-expanded', 'false'); if (refocus) gear.focus(); };
-  gear.addEventListener('click', e => { e.stopPropagation(); isOpen() ? close() : open(); });
+  const close = (refocus = true) => { if (!isOpen()) return; pop.classList.add('hidden'); gear.setAttribute('aria-expanded', 'false'); if (refocus) gear?.focus(); };
+  // 톱니바퀴는 게임설정 메뉴(js/main-menu.js)를 열고, 거기서 [설정]으로 이 창을 연다
   pop.addEventListener('click', e => { if (e.target === pop || e.target.closest('[data-close-settings]')) close(); });
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && isOpen()) close(); });
   // 게임 화면으로 넘어가면 닫기

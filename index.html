@@ -219,6 +219,23 @@
 <body class="bg-zinc-950 text-white min-h-screen select-none">
 
 <!-- 시작 화면 -->
+<section id="intro" class="intro hidden" aria-label="VR: Abyss Gate">
+  <picture class="intro-bg">
+    <source media="(orientation: portrait), (max-aspect-ratio: 4/5)" srcset="img/main-portrait.webp" type="image/webp">
+    <img src="img/main-landscape.webp" alt="" class="w-full h-full object-cover">
+  </picture>
+  <video id="intro-video" class="intro-video hidden" muted loop playsinline preload="none" aria-hidden="true"></video>
+  <div class="intro-shade"></div>
+  <div class="intro-body">
+    <img src="img/ui/main/logo.webp" alt="VR: Abyss Gate" class="intro-logo">
+    <div class="intro-acts">
+      <button id="intro-login" class="main-btn intro-btn" type="button"><img src="img/ui/login.webp" alt="" class="ui-ic"> 구글 로그인</button>
+      <button id="intro-guest" class="intro-guest" type="button">게스트로 시작</button>
+    </div>
+  </div>
+</section>
+<div id="vr-confirm" class="main-pop hidden" role="dialog" aria-modal="true"><div class="main-pop-card vc-card"><div id="vr-confirm-msg" class="vc-msg"></div><div class="vc-row"><button class="main-btn vc-y" type="button" data-yn="y">Y</button><button class="vc-n" type="button" data-yn="n">N</button></div></div></div>
+
 <section id="start-screen" class="main-screen fixed inset-0 overflow-hidden text-center">
   <picture class="main-bg">
     <source media="(orientation: portrait), (max-aspect-ratio: 4/5)" srcset="img/main-portrait.webp" type="image/webp">
@@ -231,7 +248,7 @@
   <div class="main-vignette absolute inset-0 pointer-events-none"></div>
   <div class="main-top absolute top-0 inset-x-0 z-20 flex items-start justify-between gap-2 p-3 md:p-4">
     <div id="acct-box" class="acct-box min-w-0"></div>
-    <button id="main-settings" class="main-gear" type="button" aria-label="설정" aria-haspopup="dialog" aria-controls="main-settings-pop" aria-expanded="false" title="설정"><img src="img/ui/gear.webp" alt="" width="64" height="64"></button>
+    <button id="main-settings" class="main-gear" type="button" aria-label="게임설정" aria-haspopup="dialog" aria-controls="main-menu-pop" aria-expanded="false" title="게임설정"><img src="img/ui/gear.webp" alt="" width="64" height="64"></button>
   </div>
   <div class="relative z-10 h-full flex flex-col items-center justify-end md:justify-center px-6 pb-14 md:pb-0">
     <h1 class="main-logo-wrap">
@@ -239,22 +256,32 @@
       <span class="main-logo-fallback" aria-hidden="true"><span class="main-sub block tracking-[0.4em] text-[11px] md:text-sm text-amber-200/80 mb-2">VR CARD BATTLE</span><span class="main-logo">VR<span class="colon">:</span> Abyss Gate</span></span>
     </h1>
     <div class="main-line my-3 md:my-5"></div>
-    <div class="main-menu flex flex-col w-full">
-      <button id="start-btn" disabled class="main-banner banner-arcade" type="button" title="아케이드 모드 · 바로 붙는 랜덤 카드 대전">
-        <img src="img/ui/main/banner_arcade.webp" srcset="img/ui/main/banner_arcade_600.webp 600w, img/ui/main/banner_arcade.webp 1200w" sizes="(max-width: 520px) 92vw, 460px" alt="" class="main-banner-img" width="1200" height="360" decoding="async">
-        <span class="main-banner-text"><b class="main-banner-title">불러오는 중...</b></span>
-      </button>
-      <button id="arcade-opts-btn" class="arcade-opts-btn" type="button" aria-haspopup="dialog" aria-label="아케이드 설정" title="아케이드 설정"><img src="img/ui/arcade_opts.webp" alt="" class="ui-ic" width="64" height="64"> <small id="arcade-opts-sum">기본</small></button>
-      <div class="main-medals" role="group" aria-label="메뉴">
-        <button id="main-rank" class="main-medal" type="button"><span class="medal-disc"><img src="img/ui/rank.webp" alt="" width="64" height="64"></span><span class="medal-label">랭킹</span></button>
-        <button id="main-pvp" class="main-medal" type="button"><span class="medal-disc pvp-disc">⚔️</span><span class="medal-label">PvP</span></button>
-        <button id="main-mypage" class="main-medal" type="button"><span class="medal-disc"><img src="img/ui/profile.webp" alt="" width="64" height="64"></span><span class="medal-label">마이페이지</span></button>
-        <button id="main-gallery" class="main-medal" type="button"><span class="medal-disc"><img src="img/ui/gallery.webp" alt="" width="64" height="64"></span><span class="medal-label">갤러리</span></button>
-        <button id="main-howto" class="main-medal" type="button"><span class="medal-disc"><img src="img/ui/howto.webp" alt="" width="64" height="64"></span><span class="medal-label">How to Play</span></button>
-        <button id="main-help" class="main-medal" type="button"><span class="medal-disc"><img src="img/ui/help.webp" alt="" width="64" height="64" class="medal-full"></span><span class="medal-label">도움말</span></button>
-      </div>
+    <div id="notice-line" class="notice-line hidden" role="marquee" aria-live="off"><span class="notice-ic">📢</span><div class="notice-track"><span id="notice-text"></span></div></div>
+    <div class="main-menu main-grid w-full" role="group" aria-label="메뉴">
+      <button id="start-btn" disabled class="main-tile tile-arcade" type="button" data-mode="arcade" title="아케이드 · 바로 붙는 랜덤 카드 대전">
+        <img src="img/ui/main/banner_arcade_600.webp" alt="" class="main-tile-img" decoding="async"><b class="main-tile-t main-banner-title">불러오는 중...</b></button>
+      <button id="story-btn" disabled class="main-tile tile-story" type="button" data-mode="story" data-auth title="스토리 · 챕터 · 카드 수집">
+        <img src="img/ui/main/banner_story_600.webp" alt="" class="main-tile-img" decoding="async"><b class="main-tile-t">스토리</b><i class="main-tile-lock">🔒</i></button>
+      <button id="main-pvp" class="main-tile tile-pvp" type="button" data-mode="pvp" data-auth title="PvP">
+        <img src="img/ui/battle.webp" alt="" class="main-tile-img main-tile-ic" decoding="async"><b class="main-tile-t">PVP</b><i class="main-tile-lock">🔒</i></button>
+      <button id="main-mypage" class="main-tile tile-my" type="button" data-mode="mypage" data-auth title="마이페이지">
+        <img src="img/ui/mypage_btn.webp" alt="" class="main-tile-img main-tile-ic" decoding="async" onerror="this.src='img/ui/profile.webp'"><b class="main-tile-t">마이페이지</b><i class="main-tile-lock">🔒</i></button>
     </div>
     <div id="stats" class="mt-3 md:mt-5 text-amber-100/70 text-sm drop-shadow"></div>
+  </div>
+  <div id="main-menu-pop" class="main-pop hidden" role="dialog" aria-modal="true" aria-label="게임설정">
+    <div class="main-pop-card gm-card">
+      <div class="flex items-center justify-between mb-3"><h2 class="main-pop-title">게임설정</h2><button class="main-pop-x" type="button" data-close-menu aria-label="닫기">✕</button></div>
+      <div class="gm-grid">
+        <button id="main-settings-open" class="gm-btn" type="button"><img src="img/ui/gear.webp" alt=""><span>설정</span></button>
+        <button id="main-help" class="gm-btn" type="button"><img src="img/ui/help.webp" alt=""><span>도움말</span></button>
+        <button id="main-howto" class="gm-btn" type="button"><img src="img/ui/howto.webp" alt=""><span>HOW TO PLAY</span></button>
+        <button id="main-tutorial" class="gm-btn hidden" type="button"><img src="img/ui/tutorial.webp" alt="" onerror="this.replaceWith('🎓')"><span>튜토리얼</span></button>
+        <button id="arcade-opts-btn" class="gm-btn" type="button" aria-haspopup="dialog"><img src="img/ui/arcade_opts.webp" alt=""><span>아케이드 설정 <small id="arcade-opts-sum"></small></span></button>
+        <button id="main-rank" class="gm-btn" type="button"><img src="img/ui/rank.webp" alt=""><span>랭킹</span></button>
+        <button id="main-gallery" class="gm-btn" type="button"><img src="img/ui/gallery.webp" alt=""><span>갤러리</span></button>
+      </div>
+    </div>
   </div>
   <div id="main-settings-pop" class="main-pop hidden" role="dialog" aria-modal="true" aria-labelledby="main-settings-title">
     <div class="main-pop-card">
@@ -459,6 +486,7 @@
 <script src="js/share-card.js"></script>
 <script src="js/kakao-share.js"></script>
 <script src="js/mypage.js"></script>
+<script src="js/main-menu.js"></script>
 <script src="js/footer.js" data-current="tcg" data-mode="fixed" data-show="#start-screen" data-css="#start-screen>.relative.z-10{padding-bottom:84px}@media(min-width:768px){#start-screen>.relative.z-10{padding-bottom:40px}}"></script>
 </body>
 </html>

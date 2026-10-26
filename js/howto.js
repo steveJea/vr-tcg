@@ -210,6 +210,6 @@
   function waitReady(fn, n = 0) { if (window.TCG?.POOL?.length) fn(); else if (n < 50) setTimeout(() => waitReady(fn, n + 1), 200); }
   $('main-howto')?.addEventListener('click', () => open());
   $('help-howto')?.addEventListener('click', () => { $('help').classList.add('hidden'); $('help').classList.remove('flex'); open(); });
-  offer();
+  // 첫 방문 튜토리얼 제안은 인트로(js/main-menu.js)로 대체 · 튜토리얼은 게임설정 메뉴(계정 Lv5 미만)
   window.HowTo = { open, close, go, get index() { return idx; }, SLIDES, STEPS, Tutorial };
 })();
