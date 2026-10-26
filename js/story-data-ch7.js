@@ -711,11 +711,11 @@ window.STORY_DATA.chapters.push({
     ],
     "boost": {
      "2000000040": {
-      "HP": 637,
-      "ATK": 97,
-      "DEF": 208,
-      "power": 54624,
-      "storyLv": 60
+      "HP": 430,
+      "ATK": 65,
+      "DEF": 140,
+      "power": 36876,
+      "storyLv": 30
      }
     }
    },

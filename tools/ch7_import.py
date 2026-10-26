@@ -75,6 +75,7 @@ last = 1
 for p in phases:
     lv = p['enemies'].pop('storyLv') or {k: last for k in p['enemies']['ids']}
     last = max(lv.values())
+    if p['no'] == 6: lv = {k: 30 for k in lv}   # 사용자 결정(10/26): 6페이즈 유가을 Lv30 (다음 페이즈 기본 레벨 60 은 그대로)
     b = {}
     for k, l in lv.items():
         c = CARD[k]; m = 1 + round(RATE[c['grade']] * (l - 1) * 100) / 100
