@@ -1,0 +1,25 @@
+// js/pvp-core.js 테스트 (고정 시드): 같은 seed = 같은 결과, 3v3 2선승, 덱 규칙, 전역 난수 복구
+import './seed_rng.mjs';
+import { readFileSync } from 'fs';
+import { setSkillData } from '../js/skills.js';
+import { parseCSV, setCardPool } from '../js/rules.js';
+import { runMatch, runSeries, snapCard, deckCheck } from '../js/pvp-core.js';
+const rd = p => readFileSync(new URL(p, import.meta.url), 'utf8');
+const pool = parseCSV(rd('../data/cards.csv')); setCardPool(pool); setSkillData(JSON.parse(rd('../data/skills.json')), JSON.parse(rd('../data/combos.json')));
+const byId = id => pool.find(c => String(c.id) === String(id));
+let fails = 0; const ok = (c, m) => { if (!c) { fails++; console.log('FAIL', m); } else console.log('ok  ', m); };
+const pick = g => pool.filter(c => c.grade === g).slice(0, 15);
+const deck = (g, k, lv) => pick(g).slice(k * 5, k * 5 + 5).map(c => snapCard({ id: c.id, level: lv }, byId));
+const A = [deck('HIGH RARE', 0, 20), deck('HIGH RARE', 1, 20), deck('HIGH RARE', 2, 20)], B = [deck('HIGH RARE', 1, 22), deck('HIGH RARE', 2, 18), deck('HIGH RARE', 0, 20)];
+const r1 = runMatch(A[0], B[0], 12345), r2 = runMatch(A[0], B[0], 12345);
+ok(JSON.stringify(r1) === JSON.stringify(r2), `같은 seed 같은 결과 (${JSON.stringify(r1)})`);
+const many = new Set(Array.from({ length: 20 }, (_, i) => JSON.stringify(runMatch(A[0], B[0], i + 1)))); ok(many.size > 1, `seed 마다 결과 다양 (${many.size}/20)`);
+const s = runSeries('3v3', A, B, 777); ok((s.wins === 2 || s.losses === 2) && s.rounds.length >= 2 && s.rounds.length <= 3, `3v3 2선승 (${s.wins}-${s.losses}, ${s.rounds.length}판)`);
+ok(JSON.stringify(runSeries('3v3', A, B, 777)) === JSON.stringify(s), '시리즈 재현');
+const mr = Math.random; runMatch(A[0], B[0], 1); ok(Math.random === mr, '전역 난수 복구');
+const lv1 = snapCard({ id: A[0][0].id, level: 1 }, byId), lv20 = snapCard({ id: A[0][0].id, level: 20 }, byId); ok(lv20.ATK > lv1.ATK && lv20.HP > lv1.HP, '레벨 스탯 반영');
+ok(deckCheck(pick('SUPER RARE').slice(0, 1), 'hr') === 'HR 이하만', 'HR 리그 등급');
+const heavy = pool.filter(c => ['NORMAL', 'RARE', 'HIGH RARE'].includes(c.grade)).sort((a, b) => b.cost - a.cost).slice(0, 5);
+ok(heavy.reduce((a, c) => a + c.cost, 0) <= 150 || deckCheck(heavy, 'hr').includes('150'), 'HR 코스트 150');
+ok(deckCheck([A[0][0], A[0][0]], 'open') === '중복', '중복 카드');
+console.log(fails ? `${fails} FAIL` : 'ALL PASS'); process.exit(fails ? 1 : 0);

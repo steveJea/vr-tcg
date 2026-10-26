@@ -20,6 +20,7 @@ export const combos = () => COMBOS;
 // ---- 이벤트 (UI 로그·연출, 시뮬 통계) ----
 let emitFn = () => {};
 export function setEmitter(fn) { emitFn = fn || (() => {}); }
+export function getEmitter() { return emitFn; }
 export const emit = ev => emitFn(ev);
 let rng = Math.random;
 export function setRng(f) { rng = f; }

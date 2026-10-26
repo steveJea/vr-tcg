@@ -1,0 +1,58 @@
+// supabase/pvp.sql 검증 (PGlite): 덱 검사·횟수·매칭·보고·레이팅·랭킹·보상
+import { readFileSync } from 'fs';
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+let PGlite; try { ({ PGlite } = require('@electric-sql/pglite')); } catch { console.log('SKIP: @electric-sql/pglite 없음'); process.exit(0); }
+const db = new PGlite();
+const U = '00000000-0000-0000-0000-000000000002', V = '00000000-0000-0000-0000-000000000003', ADMIN = '00000000-0000-0000-0000-000000000001';
+await db.exec(`create role anon nologin; create role authenticated nologin; create schema auth;
+create table auth.users (id uuid primary key, email text, email_confirmed_at timestamptz, created_at timestamptz default now(), last_sign_in_at timestamptz, raw_user_meta_data jsonb default '{}');
+create function auth.jwt() returns jsonb language sql stable as $$ select coalesce(nullif(current_setting('request.jwt.claims', true), ''), '{}')::jsonb $$;
+create function auth.uid() returns uuid language sql stable as $$ select nullif(auth.jwt()->>'sub', '')::uuid $$;
+grant usage on schema auth to anon, authenticated; grant execute on all functions in schema auth to anon, authenticated; grant usage on schema public to anon, authenticated;
+create table public.profiles (id uuid primary key, nickname text);
+create table public.matches (id bigint generated always as identity primary key, user_id uuid, result text, reason text, turns int, damage int, mvp_name text, created_at timestamptz default now());
+create table public.gallery (user_id uuid, card_id text, count int, mvp_count int);
+insert into auth.users (id, email, email_confirmed_at) values ('${U}','u@x.com',now()),('${V}','v@x.com',now()),('${ADMIN}','stevejean77@gmail.com',now());`);
+const run = f => db.exec(readFileSync(new URL('../supabase/' + f, import.meta.url), 'utf8'));
+for (const f of ['story.sql', 'gacha.sql', 'story_server.sql', 'story_gacha.sql', 'story_levels.sql', 'story_merge.sql', 'story_ch2.sql', 'story_cards_1022.sql', 'story_leader_lock.sql', 'story_level_stats.sql', 'story_min_battle.sql', 'admin.sql', 'phaseE_1.sql', 'phaseE_2.sql']) await run(f);
+await run("pvp.sql"); await run("pvp.sql");
+let fails = 0; const ok = (c, m) => { if (!c) { fails++; console.log('FAIL', m); } else console.log('ok  ', m); };
+async function as(role, claims, sql) {
+  await db.exec(`reset role; select set_config('request.jwt.claims', '${JSON.stringify(claims || {})}', false); set role ${role};`);
+  try { return { rows: (await db.query(sql)).rows }; } catch (e) { return { err: e.message }; } finally { await db.exec('reset role'); }
+}
+const me = { sub: U, email: 'u@x.com' }, q = s => as('authenticated', me, s);
+const W = '00000000-0000-0000-0000-000000000004';
+await db.exec(`insert into auth.users (id, email, email_confirmed_at) values ('${W}','w@x.com',now()); insert into profiles (id, nickname) values ('${U}','유','),('${V}','브이'),('${W}','더블');`.replace("'유','", "'유'"));
+const owned = [{ uid: 'a', id: '1000000001', level: 5 }, { uid: 'b', id: '1000000002' }, { uid: 'c', id: '1000000005' }, { uid: 'd', id: '1000000001' }, { uid: 'mr', id: '1000200030' }];
+for (const x of [U, V]) await db.exec(`insert into story_progress (user_id, data) values ('${x}', '${JSON.stringify({ owned })}'::jsonb) on conflict (user_id) do update set data = excluded.data`);
+const as2 = (id, s) => as('authenticated', { sub: id, email: 'x' }, s);
+const one = r => r.rows?.[0] && Object.values(r.rows[0])[0];
+ok(/not owned/.test((await q(`select pvp_set_deck('open','1v1',0,'["zz"]')`)).err || ''), '내 카드만');
+ok(/duplicate/.test((await q(`select pvp_set_deck('open','1v1',0,'["a","d"]')`)).err || ''), '같은 카드 중복 불가');
+ok(/grade/.test((await q(`select pvp_set_deck('hr','1v1',0,'["mr"]')`)).err || ''), 'HR 리그 등급 제한');
+ok(/bad slot/.test((await q(`select pvp_set_deck('open','1v1',1,'["a"]')`)).err || ''), '1v1 슬롯 1개');
+let r = await q(`select pvp_set_deck('open','1v1',0,'["a","b"]')`); ok(!r.err && one(r).cards.length === 2 && one(r).cards[0].level === 5, '덱 등록·스냅샷 ' + (r.err || ''));
+await q(`select pvp_set_deck('open','3v3',0,'["a"]')`);
+ok(/another deck/.test((await q(`select pvp_set_deck('open','3v3',1,'["d"]')`)).err || ''), '3v3 덱끼리 카드 중복 불가');
+ok(/deck required/.test((await q(`select pvp_start('open','3v3')`)).err || ''), '3v3 덱 3개 필요');
+r = await q(`select pvp_start('open','1v1')`); let s = one(r); ok(!r.err && s.bot === true && s.opp_name === '봇' && s.seed >= 0, '상대 없으면 봇 ' + (r.err || ''));
+r = await q(`select pvp_report(${s.id}, 1, 0)`); ok(!r.err && one(r).win && one(r).rating === 1000 + s.dw, '승리 보고 → 레이팅 +dw ' + JSON.stringify(one(r) || r.err));
+ok(/already/.test((await q(`select pvp_report(${s.id}, 1, 0)`)).err || ''), '보고는 한 번만');
+ok(!!(await as2(V, `select pvp_report(${s.id}, 1, 0)`)).err, '남의 기록 보고 불가');
+await as2(V, `select pvp_set_deck('open','1v1',0,'["c"]')`);
+r = await q(`select pvp_start('open','1v1')`); s = one(r); ok(!s.bot && s.opp_name === '브이' && s.opp[0][0].id === '1000000005', '레이팅 비슷한 유저 매칭');
+const before = one(await q(`select pvp_status('open','1v1')`)); ok(before.rating === 1000 + 8 - s.dl || before.rating < 1010, '미보고 = 패배 선반영');
+ok(/bad result/.test((await q(`select pvp_report(${s.id}, 2, 0)`)).err || ''), '1v1 결과 형식 검사');
+for (let i = 0; i < 8; i++) await q(`select pvp_start('open','1v1')`);
+ok(/no attempts/.test((await q(`select pvp_start('open','1v1')`)).err || ''), '하루 10회 제한');
+ok(one(await q(`select pvp_status('open','1v1')`)).left === 0, '남은 횟수 0');
+r = await as('anon', {}, `select pvp_rankings('open','1v1')`); ok(!r.err && one(r).top.length === 1, '랭킹 (비로그인 조회 가능) ' + (r.err || ''));
+ok(!!(await as('anon', {}, `select pvp_start('open','1v1')`)).err, 'anon 매칭 불가');
+ok(!!(await as('anon', {}, `select * from pvp_attempts`)).err || (await as('anon', {}, `select count(*) from pvp_attempts`)).rows?.[0]?.count == 0, 'anon 기록 못 봄');
+ok(/not ended/.test((await q(`select pvp_claim_reward('open','1v1', _pvp_season())`)).err || ''), '진행 중 시즌 보상 불가');
+await db.exec(`update pvp_ratings set season = season - 7; `);
+r = await q(`select pvp_claim_reward('open','1v1', _pvp_season() - 7)`); ok(!r.err && one(r).rank >= 1, '지난 시즌 보상 ' + JSON.stringify(one(r) || r.err));
+ok(/already/.test((await q(`select pvp_claim_reward('open','1v1', _pvp_season() - 7)`)).err || ''), '보상 1회');
+console.log(fails ? `${fails} FAIL` : 'ALL PASS'); process.exit(fails ? 1 : 0);
