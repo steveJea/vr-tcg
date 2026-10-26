@@ -904,12 +904,22 @@ export function turnEnd(p) {
 
 // ===== AI: 스킬 선택 =====
 export function aiPickSkill(u) {
+  const cands = aiSkillScores(u);
+  if (!cands.length) return null;
+  // 점수 비례(제곱) 확률 선택: 대체로 최선이지만 다양한 스킬을 섞어 씀
+  const tot = cands.reduce((t, [, sc]) => t + sc * sc, 0);
+  let r = rng() * tot;
+  for (const [s, sc] of cands) if ((r -= sc * sc) <= 0) return s;
+  return cands[cands.length - 1][0];
+}
+/** 스킬 후보 점수 [[skill, score]] — 적 AI(aiPickSkill)·자동 전투(auto-ai.js) 공용. noSave: MP 저축(무작위) 생략 */
+export function aiSkillScores(u, { noSave = false } = {}) {
   const p = u.owner, f = p.foe;
-  if (spareBlocked(u)) return null;
+  if (spareBlocked(u)) return [];
   const cands = [];
   // MP 저축: 해금된 최상위 액티브가 MP 부족이면 50% 확률로 하위 스킬을 아끼고 기본 공격
   const top = (u.sk || []).filter(s => s.mode === 'active' && u.level >= s.unlock && ACTIVE[s.name]).sort((a, b) => b.unlock - a.unlock)[0];
-  const saving = top && u.mp < top.mp && !(u.cd[top.name] > 0) && rng() < 0.5;
+  const saving = !noSave && top && u.mp < top.mp && !(u.cd[top.name] > 0) && rng() < 0.5;
   for (const s of u.sk || []) {
     if (!skillState(u, s).ok) continue;
     if (saving && s !== top) continue;
@@ -963,10 +973,7 @@ export function aiPickSkill(u) {
     if (sc) sc += s.unlock * 6;
     if (sc > 0) cands.push([s, sc]);
   }
-  if (!cands.length) return null;
-  // 점수 비례(제곱) 확률 선택: 대체로 최선이지만 다양한 스킬을 섞어 씀
-  const tot = cands.reduce((t, [, sc]) => t + sc * sc, 0);
-  let r = rng() * tot;
-  for (const [s, sc] of cands) if ((r -= sc * sc) <= 0) return s;
-  return cands[cands.length - 1][0];
+  return cands;
 }
+/** 자신(또는 아군)에게 도발 상태를 거는 액티브 스킬인지 (자동 전투: 도발은 한 명만) */
+export function isTauntSkill(s) { const f = ACTIVE[s?.name]; return !!f && /'taunt'|tauntSelf/.test(String(f)); }
