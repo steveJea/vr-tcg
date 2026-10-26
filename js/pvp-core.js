@@ -32,7 +32,7 @@ export function deckCheck(cards, league) {
 /** 32비트 시드 난수 (mulberry32) */
 export function rngOf(seed) { let a = (Number(seed) >>> 0) || 1; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 /** 한 판: A(공격) vs B(방어), 둘 다 자동 AI. 반환 { win: A 승리?, turns, aLeft, bLeft } */
-export function runMatch(deckA, deckB, seed) {
+export function runMatch(deckA, deckB, seed, rec = null) {
   const r = rngOf(seed), oldR = Math.random, oldE = getEmitter();
   Math.random = r; setRng(r); setEmitter(() => {});
   try {
@@ -41,17 +41,23 @@ export function runMatch(deckA, deckB, seed) {
     initPlayers(A, B, aFirst ? A : B);
     deckA.forEach(c => placeUnit(A, { ...c }, makeUnit)); deckB.forEach(c => placeUnit(B, { ...c }, makeUnit));
     refreshAll(A); refreshAll(B);
+    // 재생용 기록 (읽기만 함 · 난수/결과에 영향 없음)
+    const hpOf = p => Object.fromEntries(p.field.map(u => [u.uid, u.hp]));
+    const push = rec ? (x = {}) => rec.push({ ...x, A: hpOf(A), B: hpOf(B) }) : () => {};
+    if (rec) { rec.roster = { A: A.field.map(u => ({ uid: u.uid, id: u.base.id, max: u.maxHp })), B: B.field.map(u => ({ uid: u.uid, id: u.base.id, max: u.maxHp })) }; rec.aFirst = aFirst; push({ k: 'start' }); }
     const live = p => p.field.filter(u => u.hp > 0).length;
     const end = () => !live(B) ? 1 : !live(A) ? 0 : -1;
     const out = (w, t) => ({ win: !!w, turns: t, aLeft: live(A), bLeft: live(B), aFirst });
     for (let t = 0; t < MAX_TURNS; t++) {
       const cur = (t % 2 === 0) === aFirst ? A : B, op = cur.foe;
       clearBuff(op); refillMana(cur); cur.field.forEach(u => u.canAttack = true); turnStart(cur);
+      push({ k: 'turn', side: cur === A ? 'A' : 'B', t: t + 1 });
       let e = end(); if (e >= 0) return out(e, t + 1);
       const turn = { used: new Set(), scopes: new Set() };
       for (let k = 0; k < 40; k++) {
         const a = autoNext(cur, op, turn); if (!a) break;
         if (a.kind === 'skill') { noteUsed(turn, a.s); useSkill(a.u, a.s); } else if (a.t) resolveAttack(cur, op, a.u, a.t);
+        push({ k: a.kind === 'skill' ? 'skill' : 'atk', side: cur === A ? 'A' : 'B', u: a.u.uid, to: a.t?.uid, s: a.kind === 'skill' ? (a.s?.label || a.s?.name || '') : '' });
         a.u.canAttack = false;
         e = end(); if (e >= 0) return out(e, t + 1);
       }
@@ -62,10 +68,11 @@ export function runMatch(deckA, deckB, seed) {
   } finally { Math.random = oldR; setRng(oldR); setEmitter(oldE); }
 }
 /** 시리즈: 1v1 = 1판, 3v3 = 덱 i vs 덱 i 로 최대 3판 (2선승). 판마다 seed + i */
-export function runSeries(mode, decksA, decksB, seed) {
+export function runSeries(mode, decksA, decksB, seed, withLog = false) {
   const M = MODES[mode], rounds = []; let w = 0, l = 0;
   for (let i = 0; i < M.decks; i++) {
-    const m = runMatch(decksA[i], decksB[i], (Number(seed) + i * 7919) >>> 0); rounds.push(m); m.win ? w++ : l++;
+    const log = withLog ? [] : null;
+    const m = runMatch(decksA[i], decksB[i], (Number(seed) + i * 7919) >>> 0, log); if (log) m.log = log; rounds.push(m); m.win ? w++ : l++;
     if (w >= M.need || l >= M.need) break;
   }
   return { win: w >= M.need, wins: w, losses: l, rounds };

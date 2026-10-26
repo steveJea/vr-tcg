@@ -37,3 +37,26 @@
 .pvp-empty{text-align:center;color:#a1a1aa;padding:24px 0}
 .pvp-toast{position:fixed;left:50%;bottom:80px;transform:translateX(-50%);z-index:200;background:#18181b;border:1px solid #f5c96a;color:#fde68a;padding:8px 14px;border-radius:999px;font-size:13px}
 @media (max-width:480px){.pvp-th{width:40px}.pvp-stat{font-size:12px;gap:6px}}
+/* 카드 정보 · 저장 확인 · 전투 재생 */
+.pvp-modal.pvp-top{z-index:140}
+.pvp-ci{width:62%;max-width:240px;margin:4px auto 8px;border-radius:12px;overflow:hidden;aspect-ratio:3/4}
+.pvp-ci img{width:100%;height:100%;object-fit:cover;display:block}
+.pvp-ci-name{text-align:center;font-weight:800}.pvp-ci-name small{opacity:.7;font-weight:400}
+.pvp-ci-st{display:flex;justify-content:center;gap:14px;margin:6px 0;font-size:14px}
+.pvp-ci-sk{font-size:12px;max-height:30vh;overflow:auto;color:#f5f5f4}
+#pvp-ask .pvp-panel{max-width:280px;text-align:center}
+.pvp-pb-top{display:flex;align-items:center;gap:8px;margin-bottom:8px}.pvp-pb-top span{flex:1;font-weight:700}
+.pvp-skip{background:#f5c96a;color:#1a1426;border-radius:999px;padding:4px 12px;font-weight:800}
+.pvp-pb-side{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.pvp-pb-u{position:relative;border-radius:8px;overflow:hidden;aspect-ratio:3/4;transition:transform .15s,filter .3s;border:2px solid transparent}
+.pvp-pb-u img{width:100%;height:100%;object-fit:cover;display:block}
+.pvp-pb-u i{position:absolute;left:3px;right:3px;bottom:3px;height:5px;background:rgba(0,0,0,.6);border-radius:3px}
+.pvp-pb-u b{display:block;height:100%;background:#4ade80;border-radius:3px;transition:width .3s}
+.pvp-pb-side.foe .pvp-pb-u b{background:#f87171}
+.pvp-pb-u.act{border-color:#fde68a;transform:scale(1.08)}
+.pvp-pb-u.hit{border-color:#ef4444;animation:pvpHit .3s}
+.pvp-pb-u.dead{filter:grayscale(1) brightness(.4)}
+@keyframes pvpHit{0%,100%{transform:translateX(0)}30%{transform:translateX(-4px)}60%{transform:translateX(4px)}}
+.pvp-pb-fx{height:44px;display:flex;align-items:center;justify-content:center;font-weight:800;color:#fde68a}
+.pvp-pb-fx.big{font-size:28px}.pvp-pb-fx.win{color:#4ade80}.pvp-pb-fx.lose{color:#f87171}
+.pvp-spd{border:1px solid rgba(245,201,106,.5);border-radius:999px;padding:3px 9px;font-weight:800;font-size:12px}.pvp-spd.on{background:#78350f;color:#fde68a}
