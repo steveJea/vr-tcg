@@ -596,3 +596,7 @@ span.story-lvpct { background: rgba(251,191,36,.12); border: 1px solid rgba(251,
 /* 자동 전투 버튼 (스토리·탑 전투) */
 #auto-btn.on{border-color:#34d399;color:#6ee7b7;background:#064e3b;box-shadow:0 0 10px rgba(52,211,153,.45)}
 #spd-btn.on{border-color:#fbbf24;color:#fde68a;background:#78350f;box-shadow:0 0 10px rgba(251,191,36,.45)}
+/* 승리 화면: 스탯업 | 다음 챕터로 (반반) */
+.story-split{display:flex;gap:.5rem}
+.story-split>.story-btn{flex:1;min-width:0;padding-left:.4rem;padding-right:.4rem;white-space:nowrap}
+.story-split>.story-btn:disabled{opacity:.45;filter:grayscale(.6);cursor:not-allowed}

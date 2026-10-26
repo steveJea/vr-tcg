@@ -97,7 +97,7 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "민유연",
-      "text": "지영아..그만해..무서워",
+      "text": "가을아..그만해..무서워",
       "expr": "놀람"
      },
      {
@@ -190,7 +190,7 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "민유연",
-      "text": "아..지영쓰. 미안 괜히 나 때문에...",
+      "text": "아..가을쓰. 미안 괜히 나 때문에...",
       "expr": "우울"
      },
      {
