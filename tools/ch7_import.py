@@ -49,6 +49,7 @@ for i, r in enumerate(rows):
         flv = [x.strip() for x in nxt[2].split(',') if x.strip()]
         elv = [x.strip() for x in nxt[8:13]]
         party = party_of(r[13], forced, r[15])
+        if n == 6: party['mustLive'] = []   # 사용자 결정(10/26): 6페이즈는 민유연이 쓰러져도 패배 아님 (아군 전멸만)
         if flv: party['levels'] = {f: int(l) for f, l in zip(forced, flv)}
         lv = {}
         for k, x in zip(ids, elv):
@@ -74,6 +75,7 @@ last = 1
 for p in phases:
     lv = p['enemies'].pop('storyLv') or {k: last for k in p['enemies']['ids']}
     last = max(lv.values())
+    if p['no'] == 6: lv = {k: 30 for k in lv}   # 사용자 결정(10/26): 6페이즈 유가을 Lv30 (다음 페이즈 기본 레벨 60 은 그대로)
     b = {}
     for k, l in lv.items():
         c = CARD[k]; m = 1 + round(RATE[c['grade']] * (l - 1) * 100) / 100

@@ -711,11 +711,11 @@ window.STORY_DATA.chapters.push({
     ],
     "boost": {
      "2000000040": {
-      "HP": 637,
-      "ATK": 97,
-      "DEF": 208,
-      "power": 54624,
-      "storyLv": 60
+      "HP": 430,
+      "ATK": 65,
+      "DEF": 140,
+      "power": 36876,
+      "storyLv": 30
      }
     }
    },
@@ -869,9 +869,7 @@ window.STORY_DATA.chapters.push({
     ],
     "max": 3,
     "maxGrade": "SUPER RARE",
-    "mustLive": [
-     "2000100008"
-    ]
+    "mustLive": []
    },
    "hero": [
     "2000100008"
