@@ -293,7 +293,7 @@ window.STORY_DATA.chapters.push({
      {
       "speaker": "임유리",
       "text": "어머, 못생긴 애들이 성격도 더럽네~",
-      "expr": "웃음"
+      "expr": "싸늘"
      },
      {
       "speaker": "유나리",
@@ -301,16 +301,18 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "임유리",
-      "text": "이민채, 맞지? 너 영상 봤어. 춤 예쁘더라."
+      "text": "이민채, 맞지? 너 영상 봤어. 춤 예쁘더라.",
+      "expr": "장난"
      },
      {
       "speaker": "이민채",
-      "text": "나를… 알아?"
+      "text": "나를… 알아?",
+      "expr": "놀람"
      },
      {
       "speaker": "임유리",
       "text": "당연하지. 자, 일어나. 같이 혼내 주자.",
-      "expr": "웃음"
+      "expr": "장난"
      },
      {
       "speaker": "내레이션",
@@ -343,7 +345,7 @@ window.STORY_DATA.chapters.push({
     {
      "speaker": "임유리",
      "text": "장난? 나도 장난이었어. 꺼져~",
-     "expr": "웃음"
+     "expr": "싸늘"
     },
     {
      "speaker": "내레이션",
@@ -374,12 +376,13 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "이민채",
-      "text": "나는 유리, 너만 있으면 돼. 사랑해!"
+      "text": "나는 유리, 너만 있으면 돼. 사랑해!",
+      "expr": "장난"
      },
      {
       "speaker": "임유리",
       "text": "알아~ 너 표정에 다 써 있어.",
-      "expr": "웃음"
+      "expr": "장난"
      },
      {
       "speaker": "내레이션",
@@ -400,7 +403,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "임유리",
-      "text": "모르게? 다 들리는데."
+      "text": "모르게? 다 들리는데.",
+      "expr": "싸늘"
      },
      {
       "speaker": "김나현",
@@ -409,7 +413,7 @@ window.STORY_DATA.chapters.push({
      {
       "speaker": "임유리",
       "text": "김나현. 내 거 건드리는 거 싫어해, 나.",
-      "expr": "화남"
+      "expr": "분노"
      },
      {
       "speaker": "이민채",
@@ -458,11 +462,13 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "이민채",
-      "text": "오늘도 답장이 없네… 바쁜가 봐."
+      "text": "오늘도 답장이 없네… 바쁜가 봐.",
+      "expr": "슬픔"
      },
      {
       "speaker": "이민채",
-      "text": "내가 유리를 위해 해 줄 수 있는 건 없을까."
+      "text": "내가 유리를 위해 해 줄 수 있는 건 없을까.",
+      "expr": "슬픔"
      },
      {
       "speaker": "내레이션",
@@ -480,7 +486,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "이민채",
-      "text": "거짓말… 유리는 그런 애 아니야."
+      "text": "거짓말… 유리는 그런 애 아니야.",
+      "expr": "슬픔"
      },
      {
       "speaker": "오유나",
@@ -516,7 +523,8 @@ window.STORY_DATA.chapters.push({
    "after": [
     {
      "speaker": "이민채",
-     "text": "유리야… 보고 싶어. 사랑해…"
+     "text": "유리야… 보고 싶어. 사랑해…",
+     "expr": "슬픔"
     }
    ],
    "afterTitle": "전투 후"
@@ -552,7 +560,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "이민채",
-      "text": "연인…? 유리의… 연인?"
+      "text": "연인…? 유리의… 연인?",
+      "expr": "놀람"
      },
      {
       "speaker": "김지수",
@@ -560,7 +569,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "이민채",
-      "text": "…데리고… 놀아?"
+      "text": "…데리고… 놀아?",
+      "expr": "놀람"
      },
      {
       "speaker": "김지수",
@@ -644,7 +654,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "이민채",
-      "text": "거짓말… 거짓말이야…"
+      "text": "거짓말… 거짓말이야…",
+      "expr": "슬픔"
      },
      {
       "speaker": "오유나",
@@ -657,7 +668,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "이민채",
-      "text": "나는 유리 없으면 못 사는데… 이제 어떡해…"
+      "text": "나는 유리 없으면 못 사는데… 이제 어떡해…",
+      "expr": "슬픔"
      },
      {
       "speaker": "김지수",
@@ -713,7 +725,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "이민채",
-      "text": "유리야… 제발. 우리 정말 행복했잖아."
+      "text": "유리야… 제발. 우리 정말 행복했잖아.",
+      "expr": "슬픔"
      },
      {
       "speaker": "임유리",
@@ -721,12 +734,13 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "이민채",
-      "text": "네가 원하는 거 다 할게. 제발 나 버리지 마!!"
+      "text": "네가 원하는 거 다 할게. 제발 나 버리지 마!!",
+      "expr": "슬픔"
      },
      {
       "speaker": "임유리",
       "text": "그게 문제야. 너무 쉽잖아. 재미없어.",
-      "expr": "웃음"
+      "expr": "장난"
      },
      {
       "speaker": "김지수",
@@ -735,7 +749,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "이민채",
-      "text": "유리야… 나 봐 줘. 한 번만…"
+      "text": "유리야… 나 봐 줘. 한 번만…",
+      "expr": "슬픔"
      },
      {
       "speaker": "임유리",
@@ -744,7 +759,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "임유리",
-      "text": "다들 정리해. 나도 직접 할게."
+      "text": "다들 정리해. 나도 직접 할게.",
+      "expr": "화남"
      },
      {
       "speaker": "이민채",
@@ -784,7 +800,8 @@ window.STORY_DATA.chapters.push({
     },
     {
      "speaker": "이민채",
-     "text": "…그래. 방법은… 하나뿐이야."
+     "text": "…그래. 방법은… 하나뿐이야.",
+     "expr": "슬픔"
     }
    ],
    "afterTitle": "전투 후"
@@ -802,8 +819,17 @@ window.STORY_DATA.chapters.push({
      "2000000039",
      "2000000039"
     ],
-    "levels": { "2000000022": 5 },
-    "boost": { "2000000039": { "HP": 317, "ATK": 62, "DEF": 62, "power": 26468 } }
+    "levels": {
+     "2000000022": 5
+    },
+    "boost": {
+     "2000000039": {
+      "HP": 317,
+      "ATK": 62,
+      "DEF": 62,
+      "power": 26468
+     }
+    }
    },
    "lines": {
     "default": [
@@ -813,17 +839,18 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "이민채",
-      "text": "나의 사랑을 증명하는 방법은 이것뿐이야."
+      "text": "나의 사랑을 증명하는 방법은 이것뿐이야.",
+      "expr": "미침"
      },
      {
       "speaker": "이민채",
       "text": "그래, 유리야. 나를 가져가.",
-      "expr": "웃음"
+      "expr": "미침"
      },
      {
       "speaker": "이민채",
       "text": "내 모든 걸 너라는 호수에 바칠게.",
-      "expr": "웃음"
+      "expr": "미침"
      },
      {
       "speaker": "내레이션",
@@ -831,7 +858,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "이민채",
-      "text": "사랑해. 사랑해. 사랑해. 영원히."
+      "text": "사랑해. 사랑해. 사랑해. 영원히.",
+      "expr": "미침"
      },
      {
       "speaker": "김지수",
@@ -839,17 +867,18 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "임유리",
-      "text": "아 별 게 다 귀찮게 하네...짜증나"
+      "text": "아 별 게 다 귀찮게 하네...짜증나",
+      "expr": "화남"
      },
      {
       "speaker": "임유리",
       "text": "알아서 지쳐 쓰러지겠지. 시간이나 끌자.",
-      "expr": "웃음"
+      "expr": "싸늘"
      },
      {
       "speaker": "이민채",
       "text": "유리야!!!!!!!! 나만 봐!!!!!!!!",
-      "expr": "화남"
+      "expr": "미침"
      }
     ]
    },
@@ -891,7 +920,8 @@ window.STORY_DATA.chapters.push({
     },
     {
      "speaker": "임유리",
-     "text": "…"
+     "text": "…",
+     "expr": "싸늘"
     },
     {
      "speaker": "내레이션",
@@ -946,11 +976,12 @@ window.STORY_DATA.chapters.push({
   {
    "speaker": "임유리",
    "text": "누구? 아, 걔. 몰라.",
-   "expr": "웃음"
+   "expr": "싸늘"
   },
   {
    "speaker": "임유리",
-   "text": "그보다 지수야, 오늘은 뭐 하고 놀까?"
+   "text": "그보다 지수야, 오늘은 뭐 하고 놀까?",
+   "expr": "장난"
   },
   {
    "speaker": "내레이션",
