@@ -10,13 +10,13 @@
     ov = document.createElement('div'); ov.id = 'arcade-hub'; ov.className = 'hub-ov';
     ov.innerHTML = `<div class="hub-page" role="dialog" aria-label="아케이드">
       <button class="hub-x" data-x aria-label="닫기">✕</button>
-      <div class="hub-hero"><img src="img/ui/main/banner_arcade_600.webp" alt=""><b>아케이드</b></div>
+      <div class="hub-hero"><img src="img/ui/v2/arcade_banner.webp" alt=""><b>아케이드</b></div>
       <div class="hub-rec" title="아케이드 전적${window.VRCloud?.user ? ' · 클라우드 저장' : ''}">
         <div><b>${s.wins | 0}</b><small>승</small></div><div><b>${s.losses | 0}</b><small>패</small></div><div><b>${s.draws | 0}</b><small>무</small></div><div><b>${rate}%</b><small>승률</small></div></div>
       <div class="hub-acts">
         <button class="hub-big" data-a="play"><img src="img/ui/battle.webp" alt=""><span>게임플레이</span></button>
-        <button class="hub-big" data-a="rank"><img src="img/ui/rank.webp" alt=""><span>아케이드 랭킹</span></button></div>
-      <button class="hub-sub" data-a="opts"><img src="img/ui/arcade_opts.webp" alt="" class="ui-ic"> 아케이드 설정</button>
+        <button class="hub-big" data-a="rank"><img src="img/ui/v2/icon_ranking.webp" alt=""><span>아케이드 랭킹</span></button></div>
+      <button class="hub-sub" data-a="opts"><img src="img/ui/v2/icon_arcade_settings.webp" alt="" class="ui-ic"> 아케이드 설정</button>
     </div>`;
     ov.addEventListener('click', e => {
       if (e.target === ov || e.target.closest('[data-x]')) return close();
