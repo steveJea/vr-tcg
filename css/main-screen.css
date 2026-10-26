@@ -213,7 +213,7 @@
 .notice-line { display: flex; align-items: center; gap: .4rem; width: min(92vw, 520px); margin: 0 auto .6rem; padding: .3rem .6rem; border-radius: 999px;
   background: rgba(0,0,0,.55); border: 1px solid rgba(245,201,106,.3); color: #fde7b0; font-size: .78rem; font-weight: 700; overflow: hidden; }
 .notice-line.hidden { display: none; }
-.notice-ic { flex: none; }
+.notice-ic { flex: none; width: 20px; height: 20px; object-fit: contain; }
 .notice-track { flex: 1; overflow: hidden; white-space: nowrap; mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent); }
 #notice-text { display: inline-block; padding-left: 100%; animation: noticeRun 18s linear infinite; }
 @keyframes noticeRun { to { transform: translateX(-100%); } }
