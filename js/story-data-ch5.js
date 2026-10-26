@@ -30,13 +30,11 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "남다윤",
-      "text": "야, 부회장. 넌 암 것도 안 하면서 부회장이냐?",
-      "expr": "웃음"
+      "text": "야, 부회장. 넌 암 것도 안 하면서 부회장이냐?"
      },
      {
       "speaker": "주예나",
-      "text": "얼굴로 뽑혔잖아. 다 알아~",
-      "expr": "웃음"
+      "text": "얼굴로 뽑혔잖아. 다 알아~"
      },
      {
       "speaker": "한겨울",
@@ -52,8 +50,7 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "남소연",
-      "text": "봐봐. 대답도 못 하잖아 ㅋㅋ",
-      "expr": "웃음"
+      "text": "봐봐. 대답도 못 하잖아 ㅋㅋ"
      },
      {
       "speaker": "겨울 친구",
@@ -61,13 +58,11 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "윤세정",
-      "text": "넌 또 뭔데 끼어들어?",
-      "expr": "화남"
+      "text": "넌 또 뭔데 끼어들어?"
      },
      {
       "speaker": "남다윤",
-      "text": "둘 다 따라 나와. 오늘 끝장 보자.",
-      "expr": "화남"
+      "text": "둘 다 따라 나와. 오늘 끝장 보자."
      },
      {
       "speaker": "한겨울",
@@ -75,7 +70,7 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "한겨울",
-      "text": "…내 친구 건드리지 마. 남다윤!",
+      "text": "진짜 너희 왜 그러는 거야!!?",
       "expr": "화남"
      }
     ]
@@ -116,8 +111,7 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "허진서",
-      "text": "뭐야, 부회장이 사고 쳤다며?",
-      "expr": "웃음"
+      "text": "뭐야, 부회장이 사고 쳤다며?"
      },
      {
       "speaker": "유진산",
@@ -125,12 +119,12 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "한겨울",
-      "text": "아니야… 먼저 시비 건 건 그쪽이…"
+      "text": "아니야… 먼저 시비 건 건 그쪽이…",
+      "expr": "우울"
      },
      {
       "speaker": "남다연",
-      "text": "시끄러. 같이 손봐 줄게.",
-      "expr": "화남"
+      "text": "시끄러. 같이 손봐 줄게."
      },
      {
       "speaker": "내레이션",
@@ -146,7 +140,7 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "한겨울",
-      "text": "허진서! 이제 그만해!",
+      "text": "내 친구들이 뭘 잘못했다고 그래!!!",
       "expr": "화남"
      }
     ]
@@ -205,7 +199,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "한겨울",
-      "text": "정… 아영… 정서영…"
+      "text": "정… 아영… 정서영…",
+      "expr": "우울"
      },
      {
       "speaker": "정아영",
@@ -226,11 +221,12 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "한겨울",
-      "text": "무서워… 무서워 죽겠어. 그래도…"
+      "text": "무서워… 무서워 죽겠어. 그래도…",
+      "expr": "우울"
      },
      {
       "speaker": "한겨울",
-      "text": "가만히 있을 순 없어. 정아영!!!",
+      "text": "우리는 잘못한 게 없어! 야!!",
       "expr": "화남"
      }
     ]
@@ -283,7 +279,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "한겨울",
-      "text": "어…? 그건 좀… 안 될 것 같은데…"
+      "text": "어…? 그건 좀… 안 될 것 같은데…",
+      "expr": "우울"
      },
      {
       "speaker": "겨울 친구",
@@ -300,7 +297,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "한겨울",
-      "text": "…딱 몇 개만이야."
+      "text": "…딱 몇 개만이야.",
+      "expr": "우울"
      },
      {
       "speaker": "내레이션",
@@ -318,7 +316,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "한겨울",
-      "text": "아, 아니야… 이건…"
+      "text": "아, 아니야… 이건…",
+      "expr": "놀람"
      },
      {
       "speaker": "노정아",
@@ -369,7 +368,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "한겨울",
-      "text": "그, 그거… 어떻게…"
+      "text": "그, 그거… 어떻게…",
+      "expr": "놀람"
      },
      {
       "speaker": "정서영",
@@ -383,7 +383,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "한겨울",
-      "text": "안 돼… 하지 마… 제발…"
+      "text": "안 돼… 하지 마… 제발…",
+      "expr": "우울"
      },
      {
       "speaker": "정아영",
@@ -401,7 +402,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "한겨울",
-      "text": "…알았어. 하면 되잖아."
+      "text": "…알았어. 하면 되잖아.",
+      "expr": "우울"
      }
     ]
    },
@@ -442,7 +444,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "한겨울",
-      "text": "아...내가..왜....진짜… 죽고 싶어…"
+      "text": "아...내가..왜....진짜… 죽고 싶어…",
+      "expr": "우울"
      },
      {
       "speaker": "정서영",
@@ -469,7 +472,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "한겨울",
-      "text": "안 돼요… 이거 없으면 저 진짜…"
+      "text": "안 돼요… 이거 없으면 저 진짜…",
+      "expr": "놀람"
      },
      {
       "speaker": "황보재규",
@@ -478,7 +482,7 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "한겨울",
-      "text": "…제발...하지 마세요!!!!",
+      "text": "…제발...그만 좀 해!!!",
       "expr": "화남"
      }
     ]
@@ -520,7 +524,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "한겨울",
-      "text": "..도..도대체..오늘은...뭐길래 그래?"
+      "text": "..도..도대체..오늘은...뭐길래 그래?",
+      "expr": "우울"
      },
      {
       "speaker": "정아영",
@@ -529,19 +534,21 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "한겨울",
-      "text": "(정말 너무 너무 힘들어. 죽을 것 같아…)"
+      "text": "(정말 너무 너무 힘들어. 죽을 것 같아…)",
+      "expr": "우울"
      },
      {
       "speaker": "한겨울",
-      "text": "(그래도…엄마 아빠는...아무것도 아셔서는 안 돼...)"
+      "text": "(그래도…엄마 아빠는...아무것도 아셔서는 안 돼...)",
+      "expr": "우울"
      },
      {
       "speaker": "내레이션",
-      "text": "B급 안전지대의 어두운 골목, 공기가 축축하고 무거웠다."
+      "text": "B급 안전지대의 환락가, 공기가 축축하고 무거웠다."
      },
      {
       "speaker": "불량배-H",
-      "text": "정아영이 이런 꼬맹이를 보냈어? 얘 버티겠나?"
+      "text": "정아영이 이런 꼬맹이를 보냈어? 얘 일 할 수 있나?"
      },
      {
       "speaker": "불량배-I",
@@ -549,7 +556,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "한겨울",
-      "text": "제..제발...흑....."
+      "text": "제..제발...흑.....",
+      "expr": "우울"
      },
      {
       "speaker": "불량배-H",
@@ -557,7 +565,7 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "한겨울",
-      "text": "하아..제발..",
+      "text": "제발...나한테 왜 이러는 거야!!!!!!",
       "expr": "화남"
      }
     ]
@@ -601,7 +609,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "한겨울",
-      "text": "몸이 너무 아파… 오늘만 쉬면 안 될까…?"
+      "text": "몸이 너무 아파… 오늘만 쉬면 안 될까…?",
+      "expr": "우울"
      },
      {
       "speaker": "정서영",
@@ -623,7 +632,7 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "불량배-H",
-      "text": "근데 아영이 빚 다 갚으려면..어후..끔찍한데?"
+      "text": "근데 아영이 빚 다 때우려면..어후..끔찍한데?"
      },
      {
       "speaker": "불량배-J",
@@ -631,11 +640,12 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "한겨울",
-      "text": "…나, 여기서 쓰러지면 안 돼."
+      "text": "…나, 여기서 쓰러지면 안 돼.",
+      "expr": "우울"
      },
      {
       "speaker": "한겨울",
-      "text": "제발...제발...버텨줘...내 몸아...",
+      "text": "제발...제발...버텨줘...내 몸아...제발!!!!!",
       "expr": "화남"
      }
     ]
@@ -690,11 +700,13 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "한겨울",
-      "text": "어… 언니? 집에…? 지금?"
+      "text": "어… 언니? 집에…? 지금?",
+      "expr": "놀람"
      },
      {
       "speaker": "한겨울",
-      "text": "(안 돼! 내 일기를 보면… 안 돼!!)"
+      "text": "(안 돼! 내 일기를 보면… 안 돼!!)",
+      "expr": "놀람"
      },
      {
       "speaker": "서오성",
@@ -703,11 +715,12 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "서진성",
-      "text": "오늘 돈 안 가져왔지? 대신 우리랑 놀고 가~"
+      "text": "오늘 돈 안 가져왔지? 대신 몸으로 때우고 가~"
      },
      {
       "speaker": "한겨울",
-      "text": "비켜… 제발… 집에 가야 돼…"
+      "text": "비켜… 제발… 집에 가야 돼…",
+      "expr": "우울"
      },
      {
       "speaker": "한겨울",
@@ -729,7 +742,7 @@ window.STORY_DATA.chapters.push({
    "after": [
     {
      "speaker": "내레이션",
-     "text": "집에 돌아온 겨울. 온몸은 만신창이다. 하린이 일기를 봤을까 봐 겁이 난다."
+     "text": "집에 돌아온 겨울. 온몸은 만신창이다. 그녀는 하린이 일기를 봤을까 봐 겁난다."
     },
     {
      "speaker": "내레이션",
@@ -738,7 +751,8 @@ window.STORY_DATA.chapters.push({
     },
     {
      "speaker": "한겨울",
-     "text": "어..언니...."
+     "text": "어..언니....",
+     "expr": "우울"
     },
     {
      "speaker": "진하린",
@@ -754,7 +768,8 @@ window.STORY_DATA.chapters.push({
     },
     {
      "speaker": "한겨울",
-     "text": "언니..제발...모른 척해 줘요...제발..."
+     "text": "언니..제발...모른 척해 줘요...제발...",
+     "expr": "우울"
     },
     {
      "speaker": "내레이션",
@@ -804,7 +819,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "진하린",
-      "text": "…믿을 수 없어. 그 천사 같던...."
+      "text": "…믿을 수 없어. 그 천사 같던....",
+      "expr": "우울"
      },
      {
       "speaker": "내레이션",
@@ -816,7 +832,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "진하린",
-      "text": "정아영. 정서영."
+      "text": "정아영. 정서영.",
+      "expr": "화남"
      },
      {
       "speaker": "진하린",
@@ -830,7 +847,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "진하린",
-      "text": "다....죽여버릴 거야..."
+      "text": "다....죽여버릴 거야...",
+      "expr": "화남"
      },
      {
       "speaker": "정아영",
@@ -911,7 +929,8 @@ window.STORY_DATA.chapters.push({
   },
   {
    "speaker": "한겨울",
-   "text": "여기가 편해. 새 학교는… 무서워."
+   "text": "여기가 편해. 새 학교는… 무서워.",
+   "expr": "웃음"
   },
   {
    "speaker": "엄마",
