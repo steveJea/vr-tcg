@@ -1,5 +1,7 @@
 {
-  "_note": "인트로 배경 영상 슬롯. 파일을 넣고 경로를 적으면 재생, 비우면 배경 이미지. PC=16:9, 모바일=9:16 mp4 (무음·반복·cover)",
-  "pc": "",
-  "mobile": ""
+  "_note": "인트로 배경 영상. PC=16:9, 모바일=9:16 mp4 (무음·반복·playsinline·cover). 비우면 배경 이미지(img/ui/v2/intro_bg_*.webp)",
+  "pc": "video/intro_pc.mp4",
+  "mobile": "video/intro_mobile.mp4",
+  "pcPoster": "img/ui/v2/intro_pc_poster.webp",
+  "mobilePoster": "img/ui/v2/intro_mobile_poster.webp"
 }

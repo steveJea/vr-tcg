@@ -22,8 +22,12 @@
       const cfg = await (await fetch('data/intro.json', { cache: 'no-cache' })).json();
       const mq = matchMedia('(orientation: portrait), (max-aspect-ratio: 4/5)');
       const v = $('intro-video');
-      const pick = () => { const src = mq.matches ? cfg.mobile : cfg.pc; if (!src) { v.classList.add('hidden'); v.removeAttribute('src'); return; }
-        if (v.getAttribute('src') !== src) { v.src = src; v.onerror = () => v.classList.add('hidden'); v.oncanplay = () => v.classList.remove('hidden'); v.play().catch(() => {}); } };
+      v.muted = true; v.loop = true; v.playsInline = true;
+      const pick = () => { const src = mq.matches ? cfg.mobile : cfg.pc, poster = mq.matches ? cfg.mobilePoster : cfg.pcPoster;
+        if (!src) { v.classList.add('hidden'); v.removeAttribute('src'); return; }
+        if (v.getAttribute('src') !== src) {
+          if (poster) { v.poster = poster; v.classList.remove('hidden'); }   // 포스터 먼저 → 영상. 실패하면 배경 이미지
+          v.preload = 'auto'; v.src = src; v.onerror = () => v.classList.add('hidden'); v.oncanplay = () => v.classList.remove('hidden'); v.play().catch(() => {}); } };
       pick(); mq.addEventListener?.('change', pick);
     } catch {}
   }
