@@ -115,7 +115,7 @@ function renderAutoBtn() {
   b.classList.toggle('hidden', !S?.story); b.classList.toggle('on', autoOn);
   const lk = autoLocked(); b.classList.toggle('locked', lk); b.title = lk ? `자동 전투 · 계정 Lv${AUTO_LV}부터` : '자동 전투';
   b.setAttribute('aria-pressed', String(autoOn && !lk)); b.textContent = lk ? '🔒 AUTO' : autoOn ? '⏸ AUTO' : '▶ AUTO';
-  if (lk && S?.story && !b.dataset.lvReq) { b.dataset.lvReq = '1'; window.VRPlayer?.status?.().then(() => { delete b.dataset.lvReq; if (!autoLocked()) renderAutoBtn(); }); }
+  if (lk && S?.story && !b.dataset.lvReq) { b.dataset.lvReq = '1'; window.VRPlayer?.status?.().then(() => { delete b.dataset.lvReq; if (!autoLocked()) { renderAutoBtn(); if (autoActive() && S.turn === 'me' && !S.busy) autoTurn(); } }); }
 }
 /** 조건 안내·스토리 대사 등 화면 위 창이 떠 있으면 자동 진행 대기 */
 const autoBlocked = () => [...document.querySelectorAll('#story-cond, #story-dlg, .story-pop')].some(e => e.getClientRects().length && getComputedStyle(e).visibility !== 'hidden');
@@ -1145,8 +1145,14 @@ function render() {
       p.st?.heroShield ? `<span class="px-1.5 rounded-full bg-sky-800 text-[10px] font-bold" title="본진 방어력 +300% (피해 1/4)">${ic('def')}본진 방어</span>` : '',
       p.st?.heroInvuln ? `<span class="px-1.5 rounded-full bg-sky-800 text-[10px] font-bold" title="본진 공격 무효">${ic('immune')}본진 무적</span>` : '',
     ].join('');
-    const box = $(`${who}-field`); box.innerHTML = '';
-    const bossBox = $(`${who}-boss`); if (bossBox) { bossBox.innerHTML = ''; bossBox.classList.toggle('hidden', !S[who].field.some(u => u.undying)); }
+    const box = $(`${who}-field`);
+    const bossBox = $(`${who}-boss`);
+    // 깜빡임 방지: 다시 그릴 때 이미 디코딩된 카드 그림(<img>)을 재사용 (새 <img> 는 모바일에서 한 프레임 비어 보임)
+    const oldImgs = new Map();
+    for (const r of [box, bossBox]) r?.querySelectorAll('[data-uid] img').forEach(im => { const k = `${im.closest('[data-uid]').dataset.uid}|${im.getAttribute('src')}`; if (!oldImgs.has(k)) oldImgs.set(k, im); });
+    const reuseImgs = w => w.querySelectorAll('img').forEach(im => { const k = `${w.dataset.uid}|${im.getAttribute('src')}`, o = oldImgs.get(k); if (o && o !== im) { oldImgs.delete(k); o.className = im.className; if (im.getAttribute('style') != null) o.setAttribute('style', im.getAttribute('style')); else o.removeAttribute('style'); im.replaceWith(o); } });
+    box.innerHTML = '';
+    if (bossBox) { bossBox.innerHTML = ''; bossBox.classList.toggle('hidden', !S[who].field.some(u => u.undying)); }
     if (!S[who].field.some(u => !u.undying)) box.innerHTML = '<div class="text-zinc-600 text-xs self-center">빈 필드</div>';
     S[who].field.forEach(u => {
       const w = document.createElement('div');
@@ -1169,6 +1175,7 @@ function render() {
       w.onclick = ev => { if (dragJustEnded) { ev.stopPropagation(); return; } onUnitClick(who, u); };
       if (who === 'me' && myTurn) enableDrag(w, u);
       const sb = w.querySelector('.skill-btn'); if (sb) sb.onclick = ev => { ev.stopPropagation(); showDetail(u.card, { hp: u.hp, unit: u }); };
+      reuseImgs(w);
       if (u.undying && bossBox) {   // 스토리 보스: 진영 안에 표시 (공격 대상 아님, 쓰러지지 않음)
         w.insertAdjacentHTML('afterbegin', `<div class="boss-crown" title="보스: 진영 안에 있어 공격할 수 없고 쓰러지지 않아요">${ic('crown', { alt: '보스' })}</div>`);
         const wrap = document.createElement('div'); wrap.className = 'flex items-center gap-2';
