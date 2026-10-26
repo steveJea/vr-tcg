@@ -80,12 +80,36 @@ function editDeck(slot) {
       ${myDecks.length ? `<div class="pvp-chips">${myDecks.map((d, i) => `<button data-load="${i}">🗂 ${esc(d.name)}</button>`).join('')}</div>` : ''}
       <div class="pvp-pick">${pool.map(o => { const c = card(o.id), on = sel.includes(o.uid), dis = usedElsewhere.has(o.id); return c ? `<button data-u="${o.uid}" class="${on ? 'on' : ''}" ${dis ? 'disabled' : ''}>${thumb({ ...c, level: o.level }, on ? `<b class="pvp-n">${sel.indexOf(o.uid) + 1}</b>` : '')}</button>` : ''; }).join('') || '<div class="pvp-empty">없음</div>'}</div>
       <div class="pvp-acts">${cur ? '<button data-del class="pvp-ghost">🗑</button>' : ''}<button data-ok class="pvp-go" ${bad ? 'disabled' : ''}>${bad ? esc(bad) : '저장'}</button></div>`;
-    m.querySelectorAll('[data-u]').forEach(b => b.onclick = () => { const u = b.dataset.u; sel = sel.includes(u) ? sel.filter(x => x !== u) : sel.length < 5 ? [...sel, u] : sel; draw(); });
-    m.querySelectorAll('[data-load]').forEach(b => b.onclick = () => { const d = myDecks[+b.dataset.load]; const ok = new Set(pool.map(o => o.uid)); sel = d.uids.filter(u => ok.has(u)).slice(0, 5); if (sel.length < d.uids.length) toast('일부 제외'); draw(); });
-    m.querySelector('[data-ok]').onclick = async () => { try { await rpc('pvp_set_deck', { p_league: view.league, p_mode: view.mode, p_slot: slot, p_uids: sel }); m.remove(); open(); } catch (e) { toast(errText(e)); } };
+    m.querySelectorAll('[data-u]').forEach(b => b.onclick = () => cardInfo(b.dataset.u));
+    m.querySelectorAll('[data-load]').forEach(b => b.onclick = () => { const d = myDecks[+b.dataset.load]; const ok = new Set(pool.map(o => o.uid)); sel = d.uids.filter(u => ok.has(u)).slice(0, 5); if (sel.length < d.uids.length) toast('일부 제외'); drawAll(); });
+    m.querySelector('[data-ok]').onclick = () => commit();
+  };
+  const commit = async () => { try { await rpc('pvp_set_deck', { p_league: view.league, p_mode: view.mode, p_slot: slot, p_uids: sel }); m.remove(); open(); } catch (e) { toast(errText(e)); } };
+  const redraw = () => {
     const del = m.querySelector('[data-del]'); if (del) del.onclick = async () => { try { await rpc('pvp_set_deck', { p_league: view.league, p_mode: view.mode, p_slot: slot, p_uids: [] }); m.remove(); open(); } catch (e) { toast(errText(e)); } };
   };
-  draw();
+  const draw0 = draw;
+  const drawAll = () => { draw0(); redraw(); };
+  // 카드 정보 (확대) → 선택 / 빼기 / 취소. 5장이 되면 저장 여부를 묻는다
+  const cardInfo = uid => {
+    const o = owned.find(x => x.uid === uid), c = o && card(o.id); if (!c) return;
+    const on = sel.includes(uid), full = !on && sel.length >= 5, sc = snapCard(o, card) || c;
+    const sk = window.TCG?.skillListHTML ? window.TCG.skillListHTML(c, o.level) : '';
+    const z = modal('pvp-card', `<div class="pvp-ci g-${GS[c.grade] || 'N'}"><img src="${IMG}${c.id}.webp" alt="${esc(c.name)}"></div>
+      <div class="pvp-ci-name">${esc(c.name)} <small>${GS[c.grade] || ''} · Lv${o.level || 1}${L.costCap ? ` · 💰${c.cost}` : ''}</small></div>
+      <div class="pvp-ci-st"><span>⚔️ ${sc.ATK}</span><span>❤️ ${sc.HP}</span><span>🛡 ${sc.DEF}</span></div>
+      ${sk ? `<div class="pvp-ci-sk">${sk}</div>` : ''}
+      <div class="pvp-acts"><button class="pvp-ghost" data-x>취소</button><button class="pvp-go" data-pick ${full ? 'disabled' : ''}>${on ? '빼기' : full ? '5/5' : '선택'}</button></div>`, 'pvp-sub pvp-top');
+    z.querySelector('[data-pick]').onclick = () => {
+      sel = on ? sel.filter(x => x !== uid) : [...sel, uid]; z.remove(); drawAll();
+      if (!on && sel.length === 5 && !deckCheck(sel.map(u => card(owned.find(x => x.uid === u)?.id)).filter(Boolean), view.league)) askSave();
+    };
+  };
+  const askSave = () => {
+    const q = modal('pvp-ask', `<div class="pvp-h">저장할까요?</div><div class="pvp-acts"><button class="pvp-ghost" data-x>아니오</button><button class="pvp-go" data-yes>예</button></div>`, 'pvp-sub pvp-top');
+    q.querySelector('[data-yes]').onclick = () => { q.remove(); commit(); };
+  };
+  drawAll();
 }
 
 // ---- 매칭 → 계산 → 보고 → 결과 ----
@@ -93,8 +117,10 @@ async function fight() {
   const go = document.querySelector('#pvp-modal [data-go]'); if (go) go.disabled = true;
   let s; try { s = await rpc('pvp_start', { p_league: view.league, p_mode: view.mode }); } catch (e) { toast(errText(e)); if (go) go.disabled = false; return; }
   const toCards = d => d.map(o => snapCard(o, card)).filter(Boolean);
-  const res = runSeries(view.mode, s.me.map(toCards), s.opp.map(toCards), s.seed);
+  const res = runSeries(view.mode, s.me.map(toCards), s.opp.map(toCards), s.seed, true);
+  // 결과는 재생 전에 먼저 1회 보고 (재생 중 이탈해도 결과 동일 · 중복 보고 없음)
   let rep = null; try { rep = await rpc('pvp_report', { p_id: s.id, p_wins: res.wins, p_losses: res.losses }); } catch (e) { toast(errText(e)); }
+  await playback(s, res);
   const delta = rep ? rep.delta : -s.dl;
   const m = modal('pvp-result', `<button class="pvp-x" data-x>✕</button>
     <div class="pvp-res ${res.win ? 'win' : 'lose'}">${res.win ? 'WIN' : 'LOSE'}</div>
@@ -103,6 +129,42 @@ async function fight() {
     <div class="pvp-delta ${delta >= 0 ? 'up' : 'down'}">🏆 ${(rep?.rating ?? s.rating - s.dl)} <b>${delta >= 0 ? '+' : ''}${delta}</b></div>
     <div class="pvp-acts"><button class="pvp-go" data-x>확인</button></div>`, 'pvp-sub');
   m.addEventListener('click', e => { if (e.target === m || e.target.closest('[data-x]')) open(); });
+}
+
+// ---- 전투 재생 (계산된 전투 기록 그대로 · SKIP = 결과로) ----
+const STEP = 420;
+function playback(s, res) {
+  return new Promise(done => {
+    let stop = false, timer = 0;
+    const m = modal('pvp-play', '', 'pvp-sub pvp-top');
+    const end = () => { if (stop) return; stop = true; clearTimeout(timer); m.remove(); done(); };
+    m.addEventListener('click', e => { if (e.target === m) end(); });
+    const side = (ros, cls) => `<div class="pvp-pb-side ${cls}">${ros.map(r => `<div class="pvp-pb-u" data-uid="${r.uid}"><img src="${IMG}${r.id}.webp" alt=""><i><b></b></i></div>`).join('')}</div>`;
+    const play = (ri) => {
+      if (stop) return;
+      if (ri >= res.rounds.length) return end();
+      const R = res.rounds[ri], log = R.log || [];
+      const n = res.rounds.length > 1 || view.mode === '3v3' ? `${ri + 1}판` : '';
+      m.querySelector('.pvp-panel').innerHTML = `<div class="pvp-pb-top"><span>${esc(s.opp_name)}${s.bot ? ' 🤖' : ''}</span><small class="pvp-pb-t">${n}</small><button class="pvp-skip" data-skip>SKIP ⏭</button></div>
+        ${side(log.roster?.B || [], 'foe')}<div class="pvp-pb-fx"></div>${side(log.roster?.A || [], 'me')}`;
+      m.querySelector('[data-skip]').onclick = end;
+      const U = (sd, uid) => m.querySelector(`.pvp-pb-side.${sd === 'A' ? 'me' : 'foe'} [data-uid="${uid}"]`);
+      const maxOf = {}; ['A', 'B'].forEach(k => (log.roster?.[k] || []).forEach(r => maxOf[k + r.uid] = r.max));
+      const paintHp = f => ['A', 'B'].forEach(k => (log.roster?.[k] || []).forEach(r => { const el = U(k, r.uid); if (!el) return; const hp = f[k][r.uid] ?? 0; el.querySelector('b').style.width = `${Math.max(0, Math.min(100, hp / r.max * 100))}%`; el.classList.toggle('dead', hp <= 0); }));
+      let i = 0;
+      const tick = () => {
+        if (stop) return;
+        if (i >= log.length) { const fx = m.querySelector('.pvp-pb-fx'); fx.textContent = R.win ? 'WIN' : 'LOSE'; fx.className = `pvp-pb-fx big ${R.win ? 'win' : 'lose'}`; timer = setTimeout(() => play(ri + 1), 1100); return; }
+        const f = log[i++]; m.querySelectorAll('.act,.hit').forEach(x => x.classList.remove('act', 'hit'));
+        if (f.k === 'turn') { m.querySelector('.pvp-pb-t').textContent = `${n ? n + ' · ' : ''}T${f.t}`; }
+        if (f.u != null) { U(f.side, f.u)?.classList.add('act'); if (f.to != null) U(f.side === 'A' ? 'B' : 'A', f.to)?.classList.add('hit'); }
+        const fx = m.querySelector('.pvp-pb-fx'); fx.className = 'pvp-pb-fx'; fx.textContent = f.k === 'skill' && f.s ? `✨ ${f.s}` : '';
+        paintHp(f); timer = setTimeout(tick, f.k === 'turn' ? STEP / 2 : STEP);
+      };
+      tick();
+    };
+    play(0);
+  });
 }
 
 // ---- 랭킹 ----

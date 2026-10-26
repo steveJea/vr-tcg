@@ -22,4 +22,10 @@ ok(deckCheck(pick('SUPER RARE').slice(0, 1), 'hr') === 'HR 이하만', 'HR 리�
 const heavy = pool.filter(c => ['NORMAL', 'RARE', 'HIGH RARE'].includes(c.grade)).sort((a, b) => b.cost - a.cost).slice(0, 5);
 ok(heavy.reduce((a, c) => a + c.cost, 0) <= 150 || deckCheck(heavy, 'hr').includes('150'), 'HR 코스트 150');
 ok(deckCheck([A[0][0], A[0][0]], 'open') === '중복', '중복 카드');
+// 재생 기록: 기록해도 결과가 같고, 마지막 프레임 = 승패와 일치
+{ let same = 0, match = 0; const N = 30;
+  for (let i = 1; i <= N; i++) { const a = runSeries('3v3', A, B, i * 101), b = runSeries('3v3', A, B, i * 101, true);
+    if (JSON.stringify(a) === JSON.stringify({ ...b, rounds: b.rounds.map(({ log, ...r }) => r) })) same++;
+    if (b.rounds.every(r => { const f = r.log[r.log.length - 1], al = Object.values(f.A).filter(h => h > 0).length, bl = Object.values(f.B).filter(h => h > 0).length; return r.log.roster && al === r.aLeft && bl === r.bLeft; })) match++; }
+  ok(same === N, `기록 켜도 결과 동일 (${same}/${N})`); ok(match === N, `마지막 프레임 = 결과 (${match}/${N})`); }
 console.log(fails ? `${fails} FAIL` : 'ALL PASS'); process.exit(fails ? 1 : 0);
