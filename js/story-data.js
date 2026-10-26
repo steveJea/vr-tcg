@@ -954,7 +954,7 @@ window.STORY_DATA.chapters[0].byStarter['2000200044'] = {
 // 표정 파일: base(기본) · angry(화남/분노) · smile(웃음) · sad(슬픔) · surprised(놀람) · playful(장난)
 // 대사 표정: "expr" 또는 "face" 키 (한글·영문 모두), 또는 speaker를 '문지예(화남)'처럼. 비우면 기본.
 // 그 표정 파일이 없으면 비슷한 표정(exprAlt: 웃음↔장난) → <slug>_base → 카드 그림 순으로 대체.
-window.STORY_DATA.portraits = { '문지예': 'mun_jiye', '문지아': 'mun_jia', '용지혜': 'yong_jihye', '안리': 'an_ri', '이민채': 'lee_minchae', '홍가영': 'gayoung', '오명준': 'myungjun', '송철순': 'cheolsun', '문희찬': 'heechan', '곽재준': 'kwak_jaejun', '한겨울': 'han_gyeoul', '임유리': 'im_yuri' };
+window.STORY_DATA.portraits = { '문지예': 'mun_jiye', '문지아': 'mun_jia', '용지혜': 'yong_jihye', '안리': 'an_ri', '이민채': 'lee_minchae', '홍가영': 'gayoung', '오명준': 'myungjun', '송철순': 'cheolsun', '문희찬': 'heechan', '곽재준': 'kwak_jaejun', '한겨울': 'han_gyeoul', '임유리': 'im_yuri', '진하린': 'jin_harin' };
 window.STORY_DATA.exprSlug = { '기본': 'base', '보통': 'base', '화남': 'angry', '분노': 'angry', '웃음': 'smile', '슬픔': 'sad', '놀람': 'surprised', '장난': 'playful',
   base: 'base', normal: 'base', angry: 'angry', smile: 'smile', sad: 'sad', surprised: 'surprised', playful: 'playful' };
 window.STORY_DATA.exprAlt = { smile: 'playful', playful: 'smile' };
