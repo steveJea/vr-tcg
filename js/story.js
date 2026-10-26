@@ -619,7 +619,7 @@
         const u = b.dataset.pick;
         if (sel.includes(u)) sel = sel.filter(x => x !== u);
         else if (sel.length < slots) sel.push(u);
-        else { toast(`최대 ${MAX_PICK()}장까지 출전할 수 있어요.`); return; }
+        else { toast(`최대 ${forced.length + slots}장까지 출전할 수 있어요.`); return; }
         p.close(true); draw();
       });
       p.el.querySelectorAll('[data-sort]').forEach(b => b.onclick = () => { setSort(b.dataset.sort); list = sortInst(all, deck0); p.close(true); draw(); });
