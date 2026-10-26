@@ -869,9 +869,7 @@ window.STORY_DATA.chapters.push({
     ],
     "max": 3,
     "maxGrade": "SUPER RARE",
-    "mustLive": [
-     "2000100008"
-    ]
+    "mustLive": []
    },
    "hero": [
     "2000100008"

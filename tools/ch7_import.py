@@ -49,6 +49,7 @@ for i, r in enumerate(rows):
         flv = [x.strip() for x in nxt[2].split(',') if x.strip()]
         elv = [x.strip() for x in nxt[8:13]]
         party = party_of(r[13], forced, r[15])
+        if n == 6: party['mustLive'] = []   # 사용자 결정(10/26): 6페이즈는 민유연이 쓰러져도 패배 아님 (아군 전멸만)
         if flv: party['levels'] = {f: int(l) for f, l in zip(forced, flv)}
         lv = {}
         for k, x in zip(ids, elv):

@@ -31,7 +31,7 @@ ok(ch.phases.every(p => p.enemies.ids.every(id => nm(id))) && P_(6).enemies.ids.
 ok(ch.phases.every(p => Object.keys(p.enemies.boost).length && Object.values(p.enemies.boost).every(b => b.HP > 0 && b.storyLv >= 40)), '적 스토리 레벨 boost (40~60)');
 ok(P_(1).party.noMale && P_(8).party.noFemale && P_(6).party.max === 3 && P_(6).party.maxGrade === 'SUPER RARE' && P_(7).party.noExtra && P_(7).party.max === 4, '출전 조건 (남/여 금지 · 최대 3명 · UR↑ 금지 · 추가 편성 금지)');
 ok(P_(5).party.forced.join() === GE && P_(5).party.exclude.includes(YY) && P_(9).party.exclude.sort().join() === [GE, HK].sort().join() && P_(10).party.exclude.includes(HK), '필수·출전 금지');
-ok(P_(1).party.mustLive.join() === YY && P_(5).party.mustLive.join() === GE && P_(7).party.mustLive.length === 0, '패배 조건 (YY/GE 사망 · 7페이즈 전멸만)');
+ok(P_(1).party.mustLive.join() === YY && P_(5).party.mustLive.join() === GE && P_(6).party.mustLive.length === 0 && P_(7).party.mustLive.length === 0, '패배 조건 (YY/GE 사망 · 6·7페이즈 전멸만)');
 const all = [...ch.start, ...ch.phases.flatMap(p => [...p.lines.default, ...(p.after || [])])];
 ok(all.every(l => l.speaker && !/^(NA|YY2?|GE|HK|TA|TJ|MS|CM|[A-Z])$/.test(l.speaker)), '화자 실명 (약어 없음)');
 ok(all.filter(l => l.image || l.video).length === 16 && all.some(l => l.video === 'video/story/ch7-15.mp4'), '멀티미디어 16개 (영상 1)');
