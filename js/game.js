@@ -1072,6 +1072,26 @@ function cardHTML(c, { hp, size = 'md', dim = false } = {}) {
   </div>`;
 }
 
+// ===== DOM 차이 반영 (깜빡임 방지): 같은 자리의 같은 태그면 속성·글자만 고치고, 카드는 data-uid 로 짝을 맞춤 =====
+function morphNode(o, n) {
+  if (o.nodeType !== n.nodeType || o.nodeName !== n.nodeName || (o.nodeType === 1 && (o.dataset.uid || '') !== (n.dataset.uid || ''))) { o.replaceWith(n); return n; }
+  if (o.nodeType === 3 || o.nodeType === 8) { if (o.nodeValue !== n.nodeValue) o.nodeValue = n.nodeValue; return o; }
+  for (const a of [...o.attributes]) if (!n.hasAttribute(a.name)) o.removeAttribute(a.name);
+  for (const a of n.attributes) if (o.getAttribute(a.name) !== a.value) o.setAttribute(a.name, a.value);
+  morphChildren(o, n); return o;
+}
+function morphChildren(o, n) {
+  const keyed = new Map(); for (const c of o.children) if (c.dataset?.uid) keyed.set(c.dataset.uid, c);
+  const want = [...n.childNodes];
+  want.forEach((nc, i) => {
+    let cur = o.childNodes[i];
+    const k = nc.nodeType === 1 && nc.dataset.uid;
+    if (k && keyed.has(k) && keyed.get(k) !== cur) { const m = keyed.get(k); o.insertBefore(m, cur || null); cur = m; }   // 카드 순서가 바뀌어도 같은 노드 재사용
+    if (!cur) o.appendChild(nc); else morphNode(cur, nc);
+  });
+  while (o.childNodes.length > want.length) o.lastChild.remove();
+}
+function patchHTML(el, html) { if (!el) return; const t = document.createElement('div'); t.innerHTML = html; morphChildren(el, t); }
 function fixImages(root) {
   root.querySelectorAll('img.card-img').forEach(img => {
     img.onerror = () => { img.onerror = null; img.src = `${IMG}${img.dataset.id}.webp`; };
@@ -1137,23 +1157,20 @@ function render() {
   for (const who of ['ai', 'me']) {
     const p = S[who];
     const lsk = p.leaderSkill, lAlive = lsk && p.field.some(x => x.isLeader);
-    $(`${who}-syn`).innerHTML = [
+    patchHTML($(`${who}-syn`), [
       lsk ? `<span class="px-1.5 rounded-full text-[10px] font-bold ${lAlive ? 'bg-amber-600/70 text-amber-50' : 'bg-zinc-700 text-zinc-400 line-through'}" title="리더 스킬 (${escHtml(lsk.name)} · ${escHtml(lsk.label)}): ${escHtml(lsk.text)}${lAlive ? '' : ' — 리더가 쓰러져 해제됨'}">${ic('crown', { alt: '' })}${escHtml(lsk.label)} ${escHtml(lsk.short)}</span>` : '',
       ...p.activeSyn.map(x => { const el = ELEMENTS[x.cls] || {}; return `<span class="px-1.5 rounded-full bg-white/10 text-[10px] font-bold" title="속성 시너지: ${el.label || x.cls} ${x.n}장 → ATK·DEF +${Math.round(x.pct * 100)}%">${icOf(el)}×${x.n} +${Math.round(x.pct * 100)}%</span>`; }),
       ...p.activeCombos.map(c => `<span class="px-1.5 rounded-full bg-fuchsia-700/60 text-[10px] font-bold" title="조합 [${c.name}]: ${c.scope === 'all' ? '아군 전체' : '조합 카드'} ${hpText(c.desc)} +${Math.round(c.value * 100)}%">🔗${c.name}</span>`),
       p.actionLock > 0 ? '<span class="px-1.5 rounded-full bg-red-800 text-[10px] font-bold" title="셔플·보강·강화·필드 회복 사용 불가">🔒고유기술 봉인</span>' : '',
       p.st?.heroShield ? `<span class="px-1.5 rounded-full bg-sky-800 text-[10px] font-bold" title="본진 방어력 +300% (피해 1/4)">${ic('def')}본진 방어</span>` : '',
       p.st?.heroInvuln ? `<span class="px-1.5 rounded-full bg-sky-800 text-[10px] font-bold" title="본진 공격 무효">${ic('immune')}본진 무적</span>` : '',
-    ].join('');
+    ].join(''));
     const box = $(`${who}-field`);
     const bossBox = $(`${who}-boss`);
-    // 깜빡임 방지: 다시 그릴 때 이미 디코딩된 카드 그림(<img>)을 재사용 (새 <img> 는 모바일에서 한 프레임 비어 보임)
-    const oldImgs = new Map();
-    for (const r of [box, bossBox]) r?.querySelectorAll('[data-uid] img').forEach(im => { const k = `${im.closest('[data-uid]').dataset.uid}|${im.getAttribute('src')}`; if (!oldImgs.has(k)) oldImgs.set(k, im); });
-    const reuseImgs = w => w.querySelectorAll('img').forEach(im => { const k = `${w.dataset.uid}|${im.getAttribute('src')}`, o = oldImgs.get(k); if (o && o !== im) { oldImgs.delete(k); o.className = im.className; if (im.getAttribute('style') != null) o.setAttribute('style', im.getAttribute('style')); else o.removeAttribute('style'); im.replaceWith(o); } });
-    box.innerHTML = '';
-    if (bossBox) { bossBox.innerHTML = ''; bossBox.classList.toggle('hidden', !S[who].field.some(u => u.undying)); }
-    if (!S[who].field.some(u => !u.undying)) box.innerHTML = '<div class="text-zinc-600 text-xs self-center">빈 필드</div>';
+    // 깜빡임 방지: 새로 만든 뒤 기존 DOM 에 차이만 반영(morph, 카드 uid 기준). 바뀌지 않은 노드·그림·애니메이션은 그대로 유지
+    const nb = document.createElement('div'), nbb = document.createElement('div'), binds = [];
+    if (bossBox) bossBox.classList.toggle('hidden', !S[who].field.some(u => u.undying));
+    if (!S[who].field.some(u => !u.undying)) nb.innerHTML = '<div class="text-zinc-600 text-xs self-center">빈 필드</div>';
     S[who].field.forEach(u => {
       const w = document.createElement('div');
       const isSel = selected === u.uid;
@@ -1172,18 +1189,21 @@ function render() {
         `<div class="mp-bar h-1.5 bg-white/10 rounded-full mt-0.5 overflow-hidden" title="MP ${u.mp}/${u.maxMp} (+${u.mpRegen}/턴)"><div class="h-full bg-blue-500" style="width:${u.maxMp ? Math.min(100, u.mp / u.maxMp * 100) : 0}%"></div></div>` +
         // 상태 줄: 카드 너비를 넘지 않게 (width:0 + min-width:100% → 이 줄이 유닛 너비를 늘리지 않음). 둘 다면 '공격 가능'을 ⚔ 로 줄여 한 줄 유지
         `<div class="unit-tags flex justify-center items-center gap-1 h-4 whitespace-nowrap overflow-hidden" style="width:0;min-width:100%">${ready ? `<span class="text-[10px] text-emerald-400 font-bold" title="공격 가능">${skReady ? '⚔' : '공격 가능'}</span>` : ''}${skReady ? '<button class="skill-btn text-[10px] px-1 rounded bg-fuchsia-600 hover:bg-fuchsia-500 font-bold leading-4">✦스킬</button>' : ''}</div>`;
-      w.onclick = ev => { if (dragJustEnded) { ev.stopPropagation(); return; } onUnitClick(who, u); };
-      if (who === 'me' && myTurn) enableDrag(w, u);
-      const sb = w.querySelector('.skill-btn'); if (sb) sb.onclick = ev => { ev.stopPropagation(); showDetail(u.card, { hp: u.hp, unit: u }); };
-      reuseImgs(w);
+      binds.push([u.uid, el => {
+        el.onclick = ev => { if (dragJustEnded) { ev.stopPropagation(); return; } onUnitClick(who, u); };
+        if (who === 'me' && myTurn && el.__dragU !== u) { el.__dragU = u; enableDrag(el, u); }
+        const sb = el.querySelector('.skill-btn'); if (sb) sb.onclick = ev => { ev.stopPropagation(); showDetail(u.card, { hp: u.hp, unit: u }); };
+      }]);
       if (u.undying && bossBox) {   // 스토리 보스: 진영 안에 표시 (공격 대상 아님, 쓰러지지 않음)
         w.insertAdjacentHTML('afterbegin', `<div class="boss-crown" title="보스: 진영 안에 있어 공격할 수 없고 쓰러지지 않아요">${ic('crown', { alt: '보스' })}</div>`);
         const wrap = document.createElement('div'); wrap.className = 'flex items-center gap-2';
         wrap.appendChild(w);
         wrap.insertAdjacentHTML('beforeend', `<div class="text-[10px] md:text-xs leading-snug"><div class="font-black text-amber-300">${ic('crown', { alt: '' })} 보스</div><div class="text-zinc-300 font-bold truncate max-w-[64px] md:max-w-[120px]">${u.card.name}</div><div class="text-zinc-400">진영 안 · 불사</div><div class="text-zinc-500 hidden md:block">매 턴 공격·스킬 사용</div></div>`);
-        bossBox.appendChild(wrap);
-      } else box.appendChild(w);
+        nbb.appendChild(wrap);
+      } else nb.appendChild(w);
     });
+    morphChildren(box, nb); if (bossBox) morphChildren(bossBox, nbb);
+    for (const [uid, fn] of binds) { const el = (box.querySelector(`[data-uid="${uid}"]`) || bossBox?.querySelector(`[data-uid="${uid}"]`)); if (el) fn(el); }
     fixImages(box); if (bossBox) fixImages(bossBox);
     requestAnimationFrame(() => [...box.querySelectorAll('.hp-fill'), ...(bossBox ? bossBox.querySelectorAll('.hp-fill') : [])].forEach(f => { f.style.width = f.dataset.to + '%'; hpPrev.set(f.closest('[data-uid]').dataset.uid, +f.dataset.to); }));
   }
@@ -1200,7 +1220,7 @@ function render() {
     hand.appendChild(w);
   });
   fixImages(hand);
-  $('ai-handcards').innerHTML = S.ai.hand.map(() => '<div class="flex-1 min-w-[3px] max-w-4 md:max-w-5 h-6 md:h-7 rounded bg-gradient-to-br from-zinc-700 to-zinc-900 border border-white/20"></div>').join('');
+  patchHTML($('ai-handcards'), S.ai.hand.map(() => '<div class="flex-1 min-w-[3px] max-w-4 md:max-w-5 h-6 md:h-7 rounded bg-gradient-to-br from-zinc-700 to-zinc-900 border border-white/20"></div>').join(''));
 }
 
 // ===== 손패 정렬 =====
