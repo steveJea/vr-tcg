@@ -6,6 +6,18 @@ const IMG = 'https://raw.githubusercontent.com/steveJea/vr-ideal-worldcup/main/i
 const NF = new Intl.NumberFormat('ko-KR');
 const fmt = n => NF.format(n);
 const $ = id => document.getElementById(id);
+// 2배속: 전투 화면의 대기·연출 타이머와 CSS 애니메이션만 빠르게 (게임 규칙·난수 무관). PvP 재생과 같은 저장 키
+const SPD_KEY = 'vrTcgSpd2';
+let spd2 = localStorage.getItem(SPD_KEY) === '1';
+const spdOn = () => spd2 && !!S && !S.over;
+const setTimeout = (f, ms = 0, ...a) => window.setTimeout(f, spdOn() ? ms / 2 : ms, ...a);   // 이 모듈 안의 타이머만 영향
+let spdTick = 0;
+function spdSync() {
+  window.clearInterval(spdTick); spdTick = 0;
+  const rate = () => { const r = spdOn() ? 2 : 1; for (const a of document.getAnimations()) if (a.playbackRate !== r) a.playbackRate = r; };
+  rate(); if (spd2) spdTick = window.setInterval(rate, 80);
+}
+function renderSpdBtn() { const b = $('spd-btn'); if (!b) return; b.classList.toggle('on', spd2); b.setAttribute('aria-pressed', String(spd2)); b.textContent = 'X2'; }
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 // ===== 전적 저장 (나중에 서버 저장으로 교체 가능하도록 분리) =====
@@ -829,13 +841,13 @@ function showEvent(ev) {
       const L = lines[i];
       el.querySelector('.ev-line').innerHTML = L ? `${L.who && L.who !== 'NA' ? `<b>${escHtml(L.who)}</b>` : ''}<span class="${L.who === 'NA' ? 'ev-na' : ''}">${escHtml(L.text || '')}</span>` : '';
       el.querySelector('.ev-step').textContent = lines.length ? `${i + 1}/${lines.length} · 탭하여 계속` : '탭하여 닫기';
-      clearTimeout(timer); timer = setTimeout(next, FX_OFF() ? 1600 : 2600);
+      clearTimeout(timer); timer = window.setTimeout(next, FX_OFF() ? 1600 : 2600);
     };
     const next = () => { if (++i >= lines.length) close(); else draw(); };
     el.className = 'ev-layer';
     el.innerHTML = `<div class="ev-panel"><div class="ev-title">🎬 ${escHtml(ev.title || '')}</div>${ev.image ? `<img class="ev-img" src="${ev.image}" alt="" onerror="this.remove()">` : ''}<div class="ev-line"></div><div class="ev-step"></div><button type="button" class="ev-skip">건너뛰기 ⏭</button></div>`;
     el.onclick = e => { e.stopPropagation(); if (e.target.closest('.ev-skip')) close(); else next(); };
-    if (!lines.length) { timer = setTimeout(close, 4000); el.querySelector('.ev-step').textContent = '탭하여 닫기'; } else draw();
+    if (!lines.length) { timer = window.setTimeout(close, 4000); el.querySelector('.ev-step').textContent = '탭하여 닫기'; } else draw();
   });
 }
 /** 전투 시작 때 미뤄 둔 0턴 패시브 컷인: 등장 컷인 대기열 뒤에 차례로 (연출 스킵이면 각 0.6초) */
@@ -893,9 +905,9 @@ function mrVideo(u, s) {
     v.onerror = () => end(shown);
     v.onended = () => end(true);
     v.oncanplay = () => { if (shown || done) return; shown = true; clearTimeout(t0); document.body.appendChild(ov); playVoice(u, s.name);
-      v.play().catch(() => end(true)); t1 = setTimeout(() => end(true), Math.min(15000, ((v.duration || 8) + 1.5) * 1000)); };
+      v.play().catch(() => end(true)); t1 = window.setTimeout(() => end(true), Math.min(15000, ((v.duration || 8) + 1.5) * 1000)); };
     ov.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); end(true); });
-    t0 = setTimeout(() => end(false), 2500);   // 로드가 늦거나 파일 없음 → 기존 컷인
+    t0 = window.setTimeout(() => end(false), 2500);   // 로드가 늦거나 파일 없음 → 기존 컷인
     v.src = `data/fx/mr/${u.card.id}_${i + 1}.mp4`; v.load();
   });
 }
@@ -1393,6 +1405,8 @@ renderSeBtn();
 $('voice-vol').oninput = e => { voiceVol = (+e.target.value || 0) / 100; localStorage.setItem(VOICE_VOL_KEY, String(voiceVol)); if (voiceCur) voiceCur.volume = voiceVol; };
 $('voice-vol').onclick = e => e.stopPropagation();
 renderVoiceBtn();
+$('spd-btn').onclick = e => { e.stopPropagation(); spd2 = !spd2; localStorage.setItem(SPD_KEY, spd2 ? '1' : '0'); renderSpdBtn(); spdSync(); };
+renderSpdBtn(); spdSync();
 $('fx-skip').onclick = e => { e.stopPropagation(); skipFx = !skipFx; localStorage.setItem(SKIP_KEY, skipFx ? '1' : '0'); if (S?.busy) fastForward = true; renderSkipBtn(); };
 // 연출 중 화면을 누르면 현재 연출 빨리 감기
 $('game').addEventListener('click', () => { if (S?.busy && !S.over) fastForward = true; }, true);

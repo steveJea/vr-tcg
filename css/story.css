@@ -595,3 +595,4 @@ span.story-lvpct { background: rgba(251,191,36,.12); border: 1px solid rgba(251,
 .story-merge-mini .ui-ic,.story-merge-mini img{width:14px;height:14px}
 /* 자동 전투 버튼 (스토리·탑 전투) */
 #auto-btn.on{border-color:#34d399;color:#6ee7b7;background:#064e3b;box-shadow:0 0 10px rgba(52,211,153,.45)}
+#spd-btn.on{border-color:#fbbf24;color:#fde68a;background:#78350f;box-shadow:0 0 10px rgba(251,191,36,.45)}

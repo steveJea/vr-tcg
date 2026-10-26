@@ -132,7 +132,8 @@ async function fight() {
 }
 
 // ---- 전투 재생 (계산된 전투 기록 그대로 · SKIP = 결과로) ----
-const STEP = 420;
+const STEP = 420, SPD_KEY = 'vrTcgSpd2';
+const spd = () => localStorage.getItem(SPD_KEY) === '1' ? 2 : 1;
 function playback(s, res) {
   return new Promise(done => {
     let stop = false, timer = 0;
@@ -145,21 +146,22 @@ function playback(s, res) {
       if (ri >= res.rounds.length) return end();
       const R = res.rounds[ri], log = R.log || [];
       const n = res.rounds.length > 1 || view.mode === '3v3' ? `${ri + 1}판` : '';
-      m.querySelector('.pvp-panel').innerHTML = `<div class="pvp-pb-top"><span>${esc(s.opp_name)}${s.bot ? ' 🤖' : ''}</span><small class="pvp-pb-t">${n}</small><button class="pvp-skip" data-skip>SKIP ⏭</button></div>
+      m.querySelector('.pvp-panel').innerHTML = `<div class="pvp-pb-top"><span>${esc(s.opp_name)}${s.bot ? ' 🤖' : ''}</span><small class="pvp-pb-t">${n}</small><button class="pvp-spd ${spd() > 1 ? 'on' : ''}" data-spd aria-label="2배속">X2</button><button class="pvp-skip" data-skip>SKIP ⏭</button></div>
         ${side(log.roster?.B || [], 'foe')}<div class="pvp-pb-fx"></div>${side(log.roster?.A || [], 'me')}`;
       m.querySelector('[data-skip]').onclick = end;
+      m.querySelector('[data-spd]').onclick = e => { const on = spd() < 2; localStorage.setItem(SPD_KEY, on ? '1' : '0'); e.currentTarget.classList.toggle('on', on); };
       const U = (sd, uid) => m.querySelector(`.pvp-pb-side.${sd === 'A' ? 'me' : 'foe'} [data-uid="${uid}"]`);
       const maxOf = {}; ['A', 'B'].forEach(k => (log.roster?.[k] || []).forEach(r => maxOf[k + r.uid] = r.max));
       const paintHp = f => ['A', 'B'].forEach(k => (log.roster?.[k] || []).forEach(r => { const el = U(k, r.uid); if (!el) return; const hp = f[k][r.uid] ?? 0; el.querySelector('b').style.width = `${Math.max(0, Math.min(100, hp / r.max * 100))}%`; el.classList.toggle('dead', hp <= 0); }));
       let i = 0;
       const tick = () => {
         if (stop) return;
-        if (i >= log.length) { const fx = m.querySelector('.pvp-pb-fx'); fx.textContent = R.win ? 'WIN' : 'LOSE'; fx.className = `pvp-pb-fx big ${R.win ? 'win' : 'lose'}`; timer = setTimeout(() => play(ri + 1), 1100); return; }
+        if (i >= log.length) { const fx = m.querySelector('.pvp-pb-fx'); fx.textContent = R.win ? 'WIN' : 'LOSE'; fx.className = `pvp-pb-fx big ${R.win ? 'win' : 'lose'}`; timer = setTimeout(() => play(ri + 1), 1100 / spd()); return; }
         const f = log[i++]; m.querySelectorAll('.act,.hit').forEach(x => x.classList.remove('act', 'hit'));
         if (f.k === 'turn') { m.querySelector('.pvp-pb-t').textContent = `${n ? n + ' · ' : ''}T${f.t}`; }
         if (f.u != null) { U(f.side, f.u)?.classList.add('act'); if (f.to != null) U(f.side === 'A' ? 'B' : 'A', f.to)?.classList.add('hit'); }
         const fx = m.querySelector('.pvp-pb-fx'); fx.className = 'pvp-pb-fx'; fx.textContent = f.k === 'skill' && f.s ? `✨ ${f.s}` : '';
-        paintHp(f); timer = setTimeout(tick, f.k === 'turn' ? STEP / 2 : STEP);
+        paintHp(f); timer = setTimeout(tick, (f.k === 'turn' ? STEP / 2 : STEP) / spd());
       };
       tick();
     };

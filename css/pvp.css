@@ -59,3 +59,4 @@
 @keyframes pvpHit{0%,100%{transform:translateX(0)}30%{transform:translateX(-4px)}60%{transform:translateX(4px)}}
 .pvp-pb-fx{height:44px;display:flex;align-items:center;justify-content:center;font-weight:800;color:#fde68a}
 .pvp-pb-fx.big{font-size:28px}.pvp-pb-fx.win{color:#4ade80}.pvp-pb-fx.lose{color:#f87171}
+.pvp-spd{border:1px solid rgba(245,201,106,.5);border-radius:999px;padding:3px 9px;font-weight:800;font-size:12px}.pvp-spd.on{background:#78350f;color:#fde68a}
