@@ -1002,8 +1002,9 @@ window.STORY_DATA.chapters.push({
      "1000100011",
      "1000100012"
     ],
-    "noExtra": true,
-    "max": 4,
+    "noFemale": true,
+    "maxMor": 39,
+    "max": 5,
     "mustLive": []
    },
    "hero": [

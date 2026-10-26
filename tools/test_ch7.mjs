@@ -29,7 +29,7 @@ ok(ch.id === 7 && ch.subtitle === 'THE BELL JAR' && ch.phases.length === 10 && c
 ok(['2000000041', '2000000042', '2000000043', '2000000044', YW].every(id => npc[id] && npc[id][16] === '1' && +npc[id][8] > 0 && +npc[id][15] > 0), '신규 NPC 5장 (소녀1~4 · [염원] 민유연) power/cost');
 ok(ch.phases.every(p => p.enemies.ids.every(id => nm(id))) && P_(6).enemies.ids.length === 1 && P_(7).enemies.ids.length === 4 && P_(10).enemies.ids.every(id => id === YW), '적: 모두 카드/NPC · 6페이즈 유가을 1명 · 10페이즈 [염원] 민유연×5');
 ok(ch.phases.every(p => Object.keys(p.enemies.boost).length && Object.values(p.enemies.boost).every(b => b.HP > 0 && b.storyLv >= (p.no === 6 ? 30 : 40))) && P_(6).enemies.boost['2000000040'].storyLv === 30, '적 스토리 레벨 boost (40~60 · 6페이즈 유가을 30)');
-ok(P_(1).party.noMale && P_(8).party.noFemale && P_(6).party.max === 3 && P_(6).party.maxGrade === 'SUPER RARE' && P_(7).party.noExtra && P_(7).party.max === 4, '출전 조건 (남/여 금지 · 최대 3명 · UR↑ 금지 · 추가 편성 금지)');
+ok(P_(1).party.noMale && P_(8).party.noFemale && P_(6).party.max === 3 && P_(6).party.maxGrade === 'SUPER RARE' && P_(7).party.noFemale && P_(7).party.maxMor === 39 && !P_(7).party.noExtra && P_(7).party.max === 5 && P_(7).party.forced.length === 4, '출전 조건 (남/여 금지 · 최대 3명 · UR↑ 금지 · 7페이즈 4인방 필수 + MOR 40 미만 남성 1장)');
 ok(P_(5).party.forced.join() === GE && P_(5).party.exclude.includes(YY) && P_(9).party.exclude.sort().join() === [GE, HK].sort().join() && P_(10).party.exclude.includes(HK), '필수·출전 금지');
 ok(P_(1).party.mustLive.join() === YY && P_(5).party.mustLive.join() === GE && P_(6).party.mustLive.length === 0 && P_(7).party.mustLive.length === 0, '패배 조건 (YY/GE 사망 · 6·7페이즈 전멸만)');
 const all = [...ch.start, ...ch.phases.flatMap(p => [...p.lines.default, ...(p.after || [])])];

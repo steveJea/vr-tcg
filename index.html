@@ -195,6 +195,12 @@
 .last-turn-toast{position:fixed;left:50%;top:40%;transform:translate(-50%,-50%);z-index:60;padding:14px 28px;border-radius:18px;background:linear-gradient(135deg,#dc2626,#f97316);color:#fff;font-weight:900;font-size:clamp(22px,6vw,40px);box-shadow:0 0 40px #ef4444;pointer-events:none;animation:toastIn 2.2s ease forwards}
 @keyframes toastIn{0%{opacity:0;transform:translate(-50%,-50%) scale(.6)}12%{opacity:1;transform:translate(-50%,-50%) scale(1.1)}20%{transform:translate(-50%,-50%) scale(1)}80%{opacity:1}100%{opacity:0;transform:translate(-50%,-60%) scale(1)}}
 #me-field .unit.dragging { opacity: .9; filter: drop-shadow(0 0 12px #a78bfa); cursor: grabbing; } #me-hand::-webkit-scrollbar { height: 6px; } #me-hand::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 3px; }
+    /* 모바일: 상단 버튼이 상대 진영 칸을 좁히지 않게 버튼 줄 → 상대 진영(전체 폭) 두 줄 배치 (내 진영과 같은 모양) */
+    @media (max-width: 640px) {
+      #top-bar { flex-wrap: wrap; justify-content: flex-end; row-gap: .4rem; }
+      #top-bar > #ai-hero { order: 2; flex-basis: 100%; }
+      #ai-hero .font-bold.text-red-400 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+    }
   </style>
 <style>
   .modal-panel{max-height:calc(100dvh - 2rem);overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;max-width:min(28rem,calc(100vw - 2rem));min-width:0}
@@ -309,7 +315,7 @@
 <div id="battle-bg" aria-hidden="true"></div>
 <section id="game" class="hidden max-w-5xl mx-auto px-2 py-2 flex flex-col gap-2 min-h-screen">
   <!-- 상대 진영 -->
-  <div class="flex items-center gap-2">
+  <div id="top-bar" class="flex items-center gap-2">
     <div id="ai-hero" class="flex-1 min-w-0 bg-black/60 border border-red-500/40 rounded-2xl px-3 py-2 cursor-pointer">
       <div class="flex justify-between text-xs md:text-sm"><span class="font-bold text-red-400">🤖 컴퓨터 <span id="ai-order" class="ml-1 px-1.5 py-0.5 rounded bg-white/10 text-[10px] text-zinc-300"></span></span><span id="ai-hp" class="font-bold"></span></div>
       <div class="h-2 bg-white/10 rounded-full mt-1 overflow-hidden"><div id="ai-hpbar" class="h-full bg-red-500 transition-all"></div></div>
