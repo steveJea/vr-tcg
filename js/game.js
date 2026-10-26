@@ -777,11 +777,13 @@ function onEnter(who, u) {
   if ((voiceSet?.has(`${id}_0`) || (EVENTS.entry.fx || []).map(String).includes(id)) && !S.fxSeen.has(`entry:${u.uid}`)) {
     S.fxSeen.add(`entry:${u.uid}`);
     if (S.story?.quest && questEntrySeenToday(u, id)) { checkEvents(); return; }
+    if (S.story && !S.story.quest && who === 'me' && isUrMr(u)) { checkEvents(); return; }   // 스토리: 아군 UR·MR 등장 컷인(이미지·보이스) 생략, 적군은 그대로
     fxQueue.push(() => entryCutIn(u, id)); runFxQueue();
   }
   checkEvents();
 }
 // 시련의 탑: UR·MR 등장 컷인은 카드마다 하루 1번 (00:00 KST 초기화, 이 브라우저 기준). 스토리·아케이드는 그대로
+const isUrMr = u => ['ULTRA RARE', 'MYTHIC RARE'].includes((u.base || u.card).grade);
 const Q_ENTRY_KEY = 'vrTcgQuestEntryCutin';
 function questEntrySeenToday(u, id) {
   const g = (u.base || u.card).grade; if (g !== 'ULTRA RARE' && g !== 'MYTHIC RARE') return false;
