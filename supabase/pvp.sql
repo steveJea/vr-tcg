@@ -496,12 +496,12 @@ drop policy if exists pvp_reward_read on public.pvp_reward_table;  create policy
 drop policy if exists pvp_claims_own on public.pvp_reward_claims;  create policy pvp_claims_own on public.pvp_reward_claims for select using (auth.uid() = user_id);
 revoke insert, update, delete on public.pvp_decks, public.pvp_ratings, public.pvp_attempts, public.pvp_reward_table, public.pvp_reward_claims, public.pvp_card_meta from anon, authenticated;
 
--- 시즌 보상표 (임시안 · 확인 필요): 양 리그·모드 동일. 재화 = gold / blood / shard / soul
+-- 시즌 보상표 (양 리그·모드 동일): gold / blood / shard(이상한 조각) / soul = player_wallet, tickets = 소환권(story_gacha.tickets)
 insert into public.pvp_reward_table (league, mode, rank_from, rank_to, reward)
 select l, m, f, t, r::jsonb from (values ('open'), ('hr')) a(l), (values ('1v1'), ('3v3')) b(m),
-  (values (1, 1, '{"gold":3000,"soul":50}'), (2, 3, '{"gold":2000,"soul":30}'), (4, 10, '{"gold":1200,"soul":15}'),
-          (11, 50, '{"gold":600,"shard":20}'), (51, 100, '{"gold":300,"shard":10}'), (101, 1000000, '{"gold":100}')) c(f, t, r)
-on conflict (league, mode, rank_from) do nothing;
+  (values (1, 1, '{"gold":3000,"soul":50,"tickets":50}'), (2, 3, '{"gold":2000,"soul":30,"tickets":30}'), (4, 10, '{"gold":1200,"soul":15,"tickets":20}'),
+          (11, 50, '{"gold":600,"shard":20,"tickets":10}'), (51, 100, '{"gold":300,"shard":10,"tickets":10}'), (101, 1000000, '{"gold":100,"tickets":5}')) c(f, t, r)
+on conflict (league, mode, rank_from) do update set rank_to = excluded.rank_to, reward = excluded.reward;
 
 -- 2) 공통
 create or replace function public._pvp_day() returns date language sql stable as $$ select (now() at time zone 'Asia/Seoul')::date $$;
@@ -565,13 +565,13 @@ begin
   return jsonb_build_object('ok', true, 'slot', p_slot, 'cards', s->'cards', 'cost', (s->>'cost')::int);
 end $$;
 
--- 4) 상태: 오늘 남은 횟수 · 내 레이팅 · 내 덱 · 시즌
+-- 4) 상태: 오늘 남은 횟수(리그·모드별 10회) · 내 레이팅 · 내 덱 · 시즌
 create or replace function public.pvp_status(p_league text, p_mode text) returns jsonb
 language plpgsql security definer set search_path = public as $$
 declare uid uuid := auth.uid(); n int := _pvp_ok(p_league, p_mode); used int; r pvp_ratings; decks jsonb;
 begin
   if uid is null then raise exception 'login required'; end if;
-  select count(*) into used from pvp_attempts where user_id = uid and day = _pvp_day();
+  select count(*) into used from pvp_attempts where user_id = uid and league = p_league and mode = p_mode and day = _pvp_day();
   r := _pvp_rating(uid, p_league, p_mode);
   select coalesce(jsonb_agg(jsonb_build_object('slot', slot, 'uids', uids, 'cost', cost) order by slot), '[]'::jsonb) into decks
     from pvp_decks where user_id = uid and league = p_league and mode = p_mode;
@@ -589,7 +589,7 @@ declare uid uuid := auth.uid(); n int := _pvp_ok(p_league, p_mode); used int; me
 begin
   if uid is null then raise exception 'login required'; end if;
   perform pg_advisory_xact_lock(hashtext('pvp:' || uid::text));
-  select count(*) into used from pvp_attempts where user_id = uid and day = _pvp_day();
+  select count(*) into used from pvp_attempts where user_id = uid and league = p_league and mode = p_mode and day = _pvp_day();
   if used >= 10 then raise exception 'no attempts left'; end if;
   if (select count(*) from pvp_decks where user_id = uid and league = p_league and mode = p_mode) < n then raise exception 'deck required'; end if;
   for d in select * from pvp_decks where user_id = uid and league = p_league and mode = p_mode order by slot loop
@@ -681,7 +681,11 @@ begin
   select reward into rw from pvp_reward_table where league = p_league and mode = p_mode and rk between rank_from and rank_to order by rank_from limit 1;
   if rw is null then raise exception 'no reward'; end if;
   insert into pvp_reward_claims (user_id, league, mode, season, rank, reward) values (uid, p_league, p_mode, p_season, rk, rw);
-  perform _wallet_add(uid, rw, 'pvp_season');
+  if rw - 'tickets' <> '{}'::jsonb then perform _wallet_add(uid, rw - 'tickets', 'pvp_season'); end if;
+  if coalesce((rw->>'tickets')::int, 0) > 0 then
+    insert into story_gacha (user_id, last_draw) values (uid, _pvp_day() - 1) on conflict (user_id) do nothing;
+    update story_gacha set tickets = tickets + (rw->>'tickets')::int, updated_at = now() where user_id = uid;
+  end if;
   return jsonb_build_object('ok', true, 'rank', rk, 'reward', rw);
 end $$;
 

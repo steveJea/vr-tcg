@@ -48,11 +48,14 @@ ok(/bad result/.test((await q(`select pvp_report(${s.id}, 2, 0)`)).err || ''), '
 for (let i = 0; i < 8; i++) await q(`select pvp_start('open','1v1')`);
 ok(/no attempts/.test((await q(`select pvp_start('open','1v1')`)).err || ''), '하루 10회 제한');
 ok(one(await q(`select pvp_status('open','1v1')`)).left === 0, '남은 횟수 0');
+ok(one(await q(`select pvp_status('hr','1v1')`)).left === 10 && one(await q(`select pvp_status('open','3v3')`)).left === 10, '횟수는 리그·모드별 따로');
 r = await as('anon', {}, `select pvp_rankings('open','1v1')`); ok(!r.err && one(r).top.length === 1, '랭킹 (비로그인 조회 가능) ' + (r.err || ''));
 ok(!!(await as('anon', {}, `select pvp_start('open','1v1')`)).err, 'anon 매칭 불가');
 ok(!!(await as('anon', {}, `select * from pvp_attempts`)).err || (await as('anon', {}, `select count(*) from pvp_attempts`)).rows?.[0]?.count == 0, 'anon 기록 못 봄');
 ok(/not ended/.test((await q(`select pvp_claim_reward('open','1v1', _pvp_season())`)).err || ''), '진행 중 시즌 보상 불가');
 await db.exec(`update pvp_ratings set season = season - 7; `);
-r = await q(`select pvp_claim_reward('open','1v1', _pvp_season() - 7)`); ok(!r.err && one(r).rank >= 1, '지난 시즌 보상 ' + JSON.stringify(one(r) || r.err));
+r = await q(`select pvp_claim_reward('open','1v1', _pvp_season() - 7)`); ok(!r.err && one(r).rank === 1 && one(r).reward.tickets === 50, '지난 시즌 보상 ' + JSON.stringify(one(r) || r.err));
+ok((await db.query(`select tickets from story_gacha where user_id='${U}'`)).rows[0]?.tickets === 50, '소환권 50장 지급');
+ok((await db.query(`select gold, soul from player_wallet where user_id='${U}'`)).rows[0]?.gold == 3000, '골드 3000 지급');
 ok(/already/.test((await q(`select pvp_claim_reward('open','1v1', _pvp_season() - 7)`)).err || ''), '보상 1회');
 console.log(fails ? `${fails} FAIL` : 'ALL PASS'); process.exit(fails ? 1 : 0);
