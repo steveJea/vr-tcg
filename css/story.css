@@ -590,3 +590,6 @@ span.story-lvpct { background: rgba(251,191,36,.12); border: 1px solid rgba(251,
   .story-grid .story-lockbadge,.story-grid .story-favbadge{font-size:10px}
   .story-grid .story-card button{font-size:9px;padding:2px 3px}
 }
+/* 카드 타일 글자 최소화: 합성·펼치기 아이콘 칩 */
+.story-merge-mini,.story-expand{display:inline-flex;align-items:center;justify-content:center;width:auto;min-width:26px;height:20px;margin:3px 2px 0;padding:0 6px;font-size:11px;vertical-align:middle}
+.story-merge-mini .ui-ic,.story-merge-mini img{width:14px;height:14px}
