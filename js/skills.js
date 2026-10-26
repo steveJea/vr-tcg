@@ -450,6 +450,7 @@ export const ACTIVE = {
   // [각성] 이민채 (NPC, 챕터 4 보스): 랜덤 2인을 공격력 15%로 5회씩 타격
   // [염원] 이민채 (NPC, 챕터 4 보스 분신): 적 전체 공격력 30%
   '이건 사랑이야': (u, p, f) => { hitAll(u, f, 1, 0.3); },
+  '제발...살려줘...': (u, p, f) => { const ts = live(f); hitAll(u, f, 1, 0.15); ts.forEach(t => f.field.includes(t) && chance(0.2) && addStatus(t, 'para', 1, {}, 'para')); },   // [염원] 민유연 (CH7 NPC)
   '사랑해!!!': (u, p, f) => { const pool = [...live(f)]; for (let k = 0; k < 2 && pool.length; k++) { const t = pool.splice(Math.floor(rng() * pool.length), 1)[0]; multiHit(u, t, 5, 0.15); } },
   // 지세강
   '절망하라': (u, p, f, s) => { const t = by(live(f), x => x.card.cost); if (t && multiHit(u, t, 5, 0.3)) u.cd[s.name] = 0; },
@@ -945,6 +946,7 @@ export function aiSkillScores(u, { noSave = false } = {}) {
       case '나 좀 내버려둬': case '소녀의 거래': case '영원한 유혹의 굴레': case '배신의 향연': sc = n >= 2 ? 80 : 0; break;
       case '제발 그냥 가줘': sc = 110; break;
       case '이건 사랑이야': sc = n ? 90 + n * 5 : 0; break;
+      case '제발...살려줘...': sc = n ? 88 + n * 5 : 0; break;
       case '용서는 없다': sc = n >= 2 ? 92 + n * 4 : n ? 70 : 0; break;
       case '사랑해!!!': sc = n ? 105 + Math.min(n, 2) * 5 : 0; break;
       case '지킨다': sc = 88; break;   // 조건(이영아 필드·맹세 전)은 skillState에서 확인

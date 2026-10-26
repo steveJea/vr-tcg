@@ -538,10 +538,11 @@
       if (lines[i].image && step.cut !== i) { step.cut = i; return storyCutin(lines[i].image, step); }   // 대사 줄의 image: 컷인 이미지 먼저 보여주고 그 줄 진행
       const L0 = lines[i], tag = /^(.+?)\s*\(([^()]+)\)$/.exec(L0.speaker || ''), tagOk = tag && D.exprSlug?.[tag[2].trim()], L = tagOk ? { ...L0, speaker: tag[1], expr: L0.expr || L0.face || tag[2].trim() } : { ...L0, expr: L0.expr || L0.face };
       const pc = who(L), sp = L.speaker === 'starter' ? starter?.name : L.speaker === 'enemy' ? enemy?.name : (L.speaker === '내레이션' ? null : L.speaker);
-      const left = pc ? heroes.includes(pc) : true;
-      const slug = pc && D.portraits?.[pc.name], ex = D.exprSlug?.[String(L.expr || '').trim().toLowerCase()] || D.exprSlug?.[String(L.expr || '').trim()] || 'base';
+      const slug = pc ? D.portraits?.[pc.name] : sp && D.portraits?.[sp];   // 카드 없는 화자(CH7 유연 아버지·어머니)도 초상화 지정 가능
+      const left = pc ? heroes.includes(pc) : !slug;
+      const ex = D.exprSlug?.[String(L.expr || '').trim().toLowerCase()] || D.exprSlug?.[String(L.expr || '').trim()] || 'base';
       show(`<div class="story-dlg" id="story-dlg">
-        <div class="story-dlg-stage">${pc ? (slug ? `<img class="story-portrait sp ${left ? 'left' : 'right'}" src="img/story/portraits/${slug}_${ex}.webp" alt="${esc(pc.name)}" data-fb="${[D.exprAlt?.[ex], ex !== 'base' && 'base'].filter(Boolean).map(x => `img/story/portraits/${slug}_${x}.webp`).join('|')}" onerror="const q=(this.dataset.fb||'').split('|').filter(Boolean);if(q.length){this.dataset.fb=q.slice(1).join('|');this.src=q[0]}else{this.onerror=null;this.classList.remove('sp');this.src='${picOf(pc)}'}">` : `<img class="story-portrait ${left ? 'left' : 'right'}" src="${picOf(pc)}" alt="${esc(pc.name)}">`) : ''}</div>
+        <div class="story-dlg-stage">${pc || slug ? (slug ? `<img class="story-portrait sp ${left ? 'left' : 'right'}" src="img/story/portraits/${slug}_${ex}.webp" alt="${esc(pc?.name || sp)}" data-fb="${[D.exprAlt?.[ex], ex !== 'base' && 'base'].filter(Boolean).map(x => `img/story/portraits/${slug}_${x}.webp`).join('|')}" onerror="const q=(this.dataset.fb||'').split('|').filter(Boolean);if(q.length){this.dataset.fb=q.slice(1).join('|');this.src=q[0]}else{this.onerror=null;this.classList.remove('sp');${pc ? `this.src='${picOf(pc)}'` : `this.remove()`}}">` : `<img class="story-portrait ${left ? 'left' : 'right'}" src="${picOf(pc)}" alt="${esc(pc?.name || sp)}">`) : ''}</div>
         <div class="story-dlg-box">${sp ? `<div class="story-dlg-name">${esc(sp)}</div>` : ''}<div class="story-dlg-text">${esc(L.text)}</div><div class="story-dlg-next">▼ ${i + 1}/${lines.length}</div></div>
         <button class="story-dlg-skip" id="story-dlg-skip">건너뛰기 ⏭</button></div>`, track);
       $('story-dlg').onclick = e => { if (e.target.id === 'story-dlg-skip') { i = lines.length; } else i++; step(); };
@@ -573,22 +574,25 @@
   }
   function partyOf(ch, ph) {
     const pt = ph.party || (ch.hero ? { forced: [ch.hero] } : null);
-    const forced = (pt?.forced || []).map(id => repOf(id) || guestOf(id)).filter(o => card(o.id));
+    // party.levels { id: Lv }: 보유하지 않은 필수 카드(게스트)의 레벨 (CH7: 시트 강제배정 레벨)
+    const forced = (pt?.forced || []).map(id => repOf(id) || (g => (pt?.levels?.[id] ? { ...g, level: Math.max(1, Math.min(lvCap(g), pt.levels[id] | 0)) } : g))(guestOf(id))).filter(o => card(o.id));
     // 추가 조건 (챕터 3~): noMale · maxMor(필수 카드 제외) · maxGrade. 필수 카드는 조건 예외
     const GO = ['NORMAL', 'RARE', 'HIGH RARE', 'SUPER RARE', 'ULTRA RARE', 'MYTHIC RARE'], gi = pt?.maxGrade ? GO.indexOf(pt.maxGrade) : -1;
     const rules = [];
     if (pt?.noMale) rules.push({ ok: c => c.gender !== 'MALE', note: '🚹 남성 출전 불가' });
+    if (pt?.noFemale) rules.push({ ok: c => c.gender !== 'FEMALE', note: '🚺 여성 출전 불가' });
     if (pt?.maxMor != null) rules.push({ ok: c => (+c.MOR || 0) <= pt.maxMor, note: `MOR ${pt.maxMor + 1} 이상 출전 불가` });
     const EL = { DARK: '🌑 어둠', LIGHT: '☀️ 빛', FIRE: '🔥 불', ICE: '❄️ 얼음', WIND: '🍃 바람', ABYSS: '🕳️ 심연' };
     for (const el of pt?.banClass || []) rules.push({ ok: c => c.class !== el, note: `${EL[el] || el} 속성 출전 불가` });
     if (pt?.onlyClass) rules.push({ ok: c => c.class === pt.onlyClass, note: `${EL[pt.onlyClass] || pt.onlyClass} 속성만 출전 가능` });   // 속성 탑
     if (gi >= 0) rules.push({ ok: c => GO.indexOf(c.grade) <= gi, note: `${RAR[GO[gi + 1]] || ''} 이상 출전 불가` });
     const allow = o => { const c = card(o.id); return !!c && rules.every(r => r.ok(c)); };
-    return { forced, exclude: new Set([...(pt?.exclude || []), ...(pt?.forced || [])].map(String)), allow, notes: rules.map(r => r.note) };
+    if (pt?.noExtra) rules.push({ ok: () => false, note: '추가 편성 불가' });
+    return { forced, exclude: new Set([...(pt?.exclude || []), ...(pt?.forced || [])].map(String)), allow, notes: rules.map(r => r.note), max: pt?.max };
   }
   /** opts (퀘스트 등 재사용): { onGo(list), onCancel(), note } — 없으면 스토리 페이즈 전투 */
   function pickDeck(ch, ph, enemies, opts = null) {
-    const { forced, exclude, allow, notes } = partyOf(ch, ph), slots = Math.max(0, MAX_PICK() - forced.length);
+    const { forced, exclude, allow, notes, max } = partyOf(ch, ph), slots = Math.max(0, Math.min(MAX_PICK(), max || MAX_PICK()) - forced.length);   // party.max: 필수 포함 최대 장수
     const all = deckInstances().filter(o => !exclude.has(o.id) && allow(o));
     const go = opts?.onGo || (list => battle(ch, ph, enemies, list));
     if (all.length <= slots && !forced.length) return go(all);
@@ -603,7 +607,7 @@
     const boss = ph.type === 'boss';
     const fTile = o => { const c = boosted(o); return `<div class="story-pick-card on locked" title="이번 페이즈 필수 출전">${tile(c, `<div class="text-[10px] ${isGuest(o) ? 'text-sky-300' : 'text-zinc-400'}">Lv.${norm({ ...o }).level}${isGuest(o) ? ' · 게스트' : ''}</div>`)}<i class="story-pick-check">🔒</i></div>`; };
     const draw = () => {
-      const p = popup(`<div class="story-pop-title">출전 카드 선택 <span class="text-emerald-300">${forced.length + sel.length}/${MAX_PICK()}</span></div>
+      const p = popup(`<div class="story-pop-title">출전 카드 선택 <span class="text-emerald-300">${forced.length + sel.length}/${forced.length + slots}</span></div>
         <div class="text-xs text-zinc-400 mb-2">${opts?.note ? `${opts.note}<br>` : ''}고른 카드가 모두 필드에서 시작해요. 손패·드로우는 없고, 내 카드가 모두 쓰러지면 패배예요.${boss ? '<br>👑 보스전: 보스는 진영 안에서 쓰러지지 않아요. 상대 진영 HP를 0으로!' : ''}</div>
         ${forced.length ? `<div class="story-forced-h">${ic('crown', { alt: '' })} 필수 출전 ${forced.length}장 <small>(게스트는 리더 레벨로 함께 싸우고, 전투 EXP는 받지 않아요)</small></div><div class="story-grid story-deckpick story-forced">${forced.map(fTile).join('')}</div>
           <div class="story-forced-h">나머지 ${slots}장 고르기${[...exclude].filter(id => !forced.some(o => o.id === id)).map(id => card(id)).filter(Boolean).map(c => ` · <span class="text-red-300">${esc(c.name)} 출전 불가</span>`).join('')}${notes.map(t => ` · <span class="text-red-300">${t}</span>`).join('')}</div>` : ''}${ph.enemyFirst ? '<div class="story-hint">⚡ 이번 페이즈는 적이 먼저 공격해요</div>' : ''}
@@ -656,7 +660,7 @@
   const CH3_PAIR_SHIELD = { id: '2000500111', with: '2000500114', turns: 2 };   // 조윤하 + 조윤이 동시 출전 → 조윤하 2턴 피해 무효
   function battleRules(ch, ph) {
     const R = { ...(ph.rules || {}) };
-    const forced = ch.single ? (ph.party?.forced || []).map(String) : [];
+    const forced = ch.single ? (ph.party?.mustLive || ph.party?.forced || []).map(String) : [];   // party.mustLive: 쓰러지면 패배할 카드 (없으면 필수 카드 전원)
     const ml = [...new Set([...(R.mustLive || []).map(String), ...forced])];
     if (ml.length) R.mustLive = ml; else delete R.mustLive;
     if (ch.id === 3 && !ph.noPairShield) R.pairShield = CH3_PAIR_SHIELD;   // 챕터 3 밸런스 (코드 전용, SQL 불필요)
@@ -714,7 +718,7 @@
   function toast(t) { const el = document.createElement('div'); el.className = 'story-toast'; el.textContent = t; document.body.appendChild(el); setTimeout(() => el.remove(), 3200); }
 
   // ----- 챕터 엔딩 영상 (YouTube). 챕터별 설정: ENDING_VIDEO[챕터 id] 또는 챕터 데이터 endingVideo. 비어 있으면 영상 없음 -----
-  const ENDING_VIDEO = { 2: 'EwJcOHqGFck', 3: 'l5oe0IaFjV4', 4: 'sOI2OJzhQSo', 5: 'J6NQMavYEi4', 6: '5UXd2Yv5p3E' };
+  const ENDING_VIDEO = { 2: 'EwJcOHqGFck', 3: 'l5oe0IaFjV4', 4: 'sOI2OJzhQSo', 5: 'US-L-am2Tws', 6: '5UXd2Yv5p3E', 7: '0aHko1s4-tA' };
   const videoOf = ch => String(ch?.endingVideo ?? ENDING_VIDEO[ch?.id] ?? '').trim();
   /** 유튜브 오버레이: 소리 켜고 자동 재생 시도 → 막히면 음소거 자동 재생 + 큰 '소리 켜고 보기' 버튼. 재생 중 BGM 멈춤, 닫으면 다시 재생. 닫을 때 resolve */
   function endingVideo(ch) {

@@ -38,7 +38,7 @@ ok(P_(10).party.exclude?.includes(GW) && ch.warning && !ch.start.some(l => l.tex
 ok(window.STORY_DATA.noPortrait.includes('겨울 친구') && ch.phases.some(p => p.lines.default.some(l => l.speaker === '겨울 친구')), '겨울 친구: 이름만');
 ok([3, 9, 10].every(n => P_(n).after?.length) && ch.ending?.length && ch.start?.length && ch.tagline, '전투 후 대사 · 시작 · 엔딩');
 ok(ch.phases.flatMap(p => p.lines.default).filter(l => l.expr).length > 20 && ch.phases.flatMap(p => p.lines.default).every(l => !l.expr || ['화남', '웃음'].includes(l.expr)), '표정 태그');
-ok(/5: 'J6NQMavYEi4'/.test(readFileSync(new URL('../js/story.js', import.meta.url), 'utf8').match(/ENDING_VIDEO = \{[^}]*\}/)[0]), '엔딩 영상 J6NQMavYEi4');
+ok(/5: 'US-L-am2Tws'/.test(readFileSync(new URL('../js/story.js', import.meta.url), 'utf8').match(/ENDING_VIDEO = \{[^}]*\}/)[0]), '엔딩 영상 US-L-am2Tws');
 // --- SQL ---
 async function as(role, claims, sql) {
   await db.exec(`reset role; select set_config('request.jwt.claims', '${JSON.stringify(claims || {})}', false); set role ${role};`);
