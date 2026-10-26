@@ -686,6 +686,7 @@
     for (const id of R.undying || []) info.push(['♾️', `${nm(id)}: 쓰러지지 않음 (불사)`]);
     { const pp = partyOf(ch, ph);
       for (const t of pp.notes) info.push(['🚫', `출전 제한: <b>${t}</b>`, pp.forced.length ? '필수 출전 카드는 예외' : '']);
+      if (pp.forced.length && pp.max > pp.forced.length && (ph.party?.maxMor != null)) info.push(['🤝', `필수 <b>${pp.forced.map(o => esc(card(o.id)?.name || '')).join('·')}</b> + 품성 ${ph.party.maxMor + 1} 미만 남성 <b>${pp.max - pp.forced.length}장</b>`, `최대 ${pp.max}장`]);
       if (pp.guests?.length) info.push(['🤝', `게스트 <b>${pp.guests.map(o => esc(card(o.id)?.name || '')).join('·')}</b> 중에서도 고를 수 있어요`, pp.max ? `최대 ${pp.max}장` : '']); }
     if (ph.enemyFirst) info.push(['⚡', '적 선공']);
     if (ph.tip && !(ph.rules)) info.push(['💡', esc(ph.tip)]);

@@ -996,8 +996,7 @@ window.STORY_DATA.chapters.push({
     ]
    },
    "party": {
-    "forced": [],
-    "guests": [
+    "forced": [
      "1000100010",
      "1000100009",
      "1000100011",
@@ -1005,7 +1004,7 @@ window.STORY_DATA.chapters.push({
     ],
     "noFemale": true,
     "maxMor": 39,
-    "max": 4,
+    "max": 5,
     "mustLive": []
    },
    "hero": [
