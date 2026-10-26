@@ -450,6 +450,11 @@ export const ACTIVE = {
   // [각성] 이민채 (NPC, 챕터 4 보스): 랜덤 2인을 공격력 15%로 5회씩 타격
   // [염원] 이민채 (NPC, 챕터 4 보스 분신): 적 전체 공격력 30%
   '이건 사랑이야': (u, p, f) => { hitAll(u, f, 1, 0.3); },
+  // CH7 빌런 (2026-10-26): 여성 대상 스킬 · 김철민 아군 남성 방어
+  '나? 폭격기야~': (u, p, f) => bomberTargets(f).forEach(t => addStatus(t, '나? 폭격기야~', 1, { atk: -0.4, label: '폭격기: ATK -40%' }, 'mod')),   // 이민수: HR 미만 여성 ATK -40% 1턴
+  '약해보이냐? 진짜?': (u, p) => lowMorMales(p).forEach(a => addStatus(a, '약해보이냐? 진짜?', 1, { def: 0.3, label: 'DEF +30%' }, 'mod')),   // 김철민: 품성 30 미만 남성 DEF +30% 1턴
+  '너한테만 통하는 기술이야': (u, p, f) => { const ts = females(f); ts.forEach(t => damageUnit(t, skillDamage(u, t, 0.4), u)); ts.forEach(t => { if (!checkDeath(t, u) && f.field.includes(t) && t.hp > 0 && chance(0.2)) addStatus(t, 'para', 1, {}, 'para'); }); },   // 강태안
+  '에이스의 힘이다': (u, p, f) => { const ts = females(f); ts.forEach(t => damageUnit(t, skillDamage(u, t, 0.3), u)); ts.forEach(t => { if (!checkDeath(t, u) && f.field.includes(t) && t.hp > 0 && chance(0.3)) bleedOn(t, u, 1); }); },   // 강태준
   '제발...살려줘...': (u, p, f) => { const ts = live(f); hitAll(u, f, 1, 0.15); ts.forEach(t => f.field.includes(t) && chance(0.2) && addStatus(t, 'para', 1, {}, 'para')); },   // [염원] 민유연 (CH7 NPC)
   '사랑해!!!': (u, p, f) => { const pool = [...live(f)]; for (let k = 0; k < 2 && pool.length; k++) { const t = pool.splice(Math.floor(rng() * pool.length), 1)[0]; multiHit(u, t, 5, 0.15); } },
   // 지세강
@@ -677,6 +682,8 @@ export const YEEUN_ID = '2000200053', JUNTAE_ID = '1000200052', JIEUN_REVIVE_HP 
 const owns = (p, c) => [...p.deck, ...p.hand, ...p.field.map(u => u.base)].some(x => String(x.id) === String(c.id));
 const females = side => live(side).filter(x => x.base.gender === 'FEMALE');
 const males = side => live(side).filter(x => x.base.gender === 'MALE');
+const bomberTargets = side => females(side).filter(x => gradeIdx(x) < gradeIdx('HIGH RARE'));
+const lowMorMales = side => males(side).filter(x => (+x.base.MOR || 0) < 30);
 function cleanse(a) { for (const [k, s] of Object.entries(a.st)) if (STATUS[s.kind]?.debuff || s.atk < 0 || s.def < 0) delete a.st[k]; a.curse = 0; }
 // ---- 이명진 [지킨다] · 김후 [나는 약하지 않아] ----
 export const YOUNGA_ID = '2000600132';
@@ -703,7 +710,8 @@ export function provoker(u) {
   return b && b.hp > 0 && u.owner?.foe?.field.includes(b) && !b.undying ? b : null;
 }
 /** 대상 조건이 있는 스킬 (상대 필드에 해당 성별이 없으면 비활성) */
-const REQ = { '껌밟기': f => females(f).length, '나쁜 남자': f => females(f).length, '진짜 악당': f => females(f).length,
+const REQ = { '나? 폭격기야~': f => bomberTargets(f).length, '약해보이냐? 진짜?': (f, u) => lowMorMales(u.owner).length, '너한테만 통하는 기술이야': f => females(f).length, '에이스의 힘이다': f => females(f).length,
+  '껌밟기': f => females(f).length, '나쁜 남자': f => females(f).length, '진짜 악당': f => females(f).length,
   '너는 내가 끝낸다!': f => f.field.some(x => String(x.base.id) === CHANGWON_ID), '되겠냐?': f => females(f).length, '귀여운 고문자': f => females(f).length,
   '지킨다': (f, u) => younga(u.owner) && !u.st.vow,
   '내 동생 건드리지마!': (f, u) => u.owner.field.some(x => [YEEUN_ID, JUNTAE_ID].includes(String(x.base.id))),
@@ -946,6 +954,9 @@ export function aiSkillScores(u, { noSave = false } = {}) {
       case '나 좀 내버려둬': case '소녀의 거래': case '영원한 유혹의 굴레': case '배신의 향연': sc = n >= 2 ? 80 : 0; break;
       case '제발 그냥 가줘': sc = 110; break;
       case '이건 사랑이야': sc = n ? 90 + n * 5 : 0; break;
+      case '너한테만 통하는 기술이야': case '에이스의 힘이다': { const k = females(f).length; sc = k ? 86 + k * 5 : 0; break; }
+      case '나? 폭격기야~': { const k = bomberTargets(f).length; sc = k >= 2 ? 80 + k * 3 : k ? 60 : 0; break; }
+      case '약해보이냐? 진짜?': { const k = lowMorMales(p).length; sc = k >= 2 ? 78 + k * 3 : 0; break; }
       case '제발...살려줘...': sc = n ? 88 + n * 5 : 0; break;
       case '용서는 없다': sc = n >= 2 ? 92 + n * 4 : n ? 70 : 0; break;
       case '사랑해!!!': sc = n ? 105 + Math.min(n, 2) * 5 : 0; break;

@@ -33,7 +33,7 @@ ok(/permission denied/.test((await as('anon', {}, `select public.skill_cost_tabl
 ok(/permission denied/.test((await as('anon', {}, `select public.story_skill_levelup('a',1,1)`)).err || ''), 'anon 레벨업 거부');
 ok(/permission denied/.test((await q(`select * from public.story_skill_meta`)).err || ''), '메타 테이블 직접 읽기 불가');
 const t = (await q('select public.skill_cost_table() t')).rows?.[0].t;
-ok(t?.max === 10 && t.skills === 138 && t.grades['SUPER RARE'].lv1.soul === 5 && t.grades['SUPER RARE'].lv1.gold === 300, `비용표 탐침 SR ${JSON.stringify(t?.grades['SUPER RARE'])}`);
+ok(t?.max === 10 && t.skills === 142 && t.grades['SUPER RARE'].lv1.soul === 5 && t.grades['SUPER RARE'].lv1.gold === 300, `비용표 탐침 SR ${JSON.stringify(t?.grades['SUPER RARE'])}`);
 const tot = g => t.grades[g].total;
 ok(tot('NORMAL').soul === 25 && tot('NORMAL').gold === 4500 && tot('SUPER RARE').soul === 125 && tot('SUPER RARE').gold === 13500 && tot('ULTRA RARE').soul === 200 && tot('ULTRA RARE').gold === 18000 && tot('MYTHIC RARE').soul === 300 && tot('MYTHIC RARE').gold === 27000 && tot('RARE').gold === 6750 && tot('HIGH RARE').soul === 75, '등급별 Lv1→10 합계 = 초안 표');
 // 카드 준비: SR 카드 중 해금 Lv 가 1보다 큰 액티브가 있는 것
