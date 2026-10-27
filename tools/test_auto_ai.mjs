@@ -40,7 +40,7 @@ const BIG = ['1000200030', '2000900234', '2001500316'];
   if (a?.kind === 'skill') { noteUsed(t, a.s); a.u.canAttack = false; const b = autoNext(A, B, t); ok(!(b?.kind === 'skill' && b.s.name === a.s.name), `같은 스킬 중복 금지 (${a.s.name})`); }
   else ok(false, '스킬 후보 없음'); }
 
-// 4) 디버프 먼저, 공격 스킬은 그 다음: 임유리(디버프) + 지세강(공격)
+// 4) 디버프 먼저, 공격 스킬은 그 다음: 임유리(디버프) + 김기림(공격)
 { const [A, B] = setup(['1000200018', '2000100001'], BIG, { lv: 5, mp: 200 });
   const a = autoNext(A, B, T()); ok(a?.kind === 'skill' && a.s.type === '디버프', `첫 수 디버프 (${a?.s?.name || a?.kind})`); }
 console.log(fails ? `${fails} FAIL` : 'ALL OK'); process.exit(fails ? 1 : 0);
