@@ -2,7 +2,8 @@
 // 서버: supabase/guild3.sql (raid_status / raid_set_difficulty / raid_start / raid_finish / raid_sweep / raid_claim). 전투: js/raid-core.js (자동 전투, 서버 seed)
 // 그림: img/ui/guild/raid_banner.webp · raid_bg.webp · raid_icon.webp · raid_diff_<normal|hard|abyss>.webp (없으면 이모지). 보스는 카드 그림(IMG)
 import { snapCard } from './pvp-core.js';
-import { runRaid, RAID_DIFF, RAID_BOSSES, RAID_TURNS } from './raid-core.js';
+import { runRaid, manualRaid, RAID_DIFF, RAID_BOSSES, RAID_TURNS } from './raid-core.js';
+import { modeToggle, bindMode, battleMode, playManual } from './manual-ui.js';
 
 const IMG = 'https://raw.githubusercontent.com/steveJea/vr-ideal-worldcup/main/img/bt_img/';
 const UI = 'img/ui/guild/';
@@ -66,6 +67,7 @@ function paint() {
     <div class="rd-hp"><i style="width:${pct}%"></i><span>${big(s.hp_left)} / ${big(s.hp_max)}</span></div>
     <div class="rd-next">다음: ${esc(s.next_boss.name)} · 이번 주 누적 ${big(s.total_damage)}</div>
     <button class="rd-deck" data-deck>${dk ? `<b>${esc(dk.name)}</b><span class="rd-ths">${thumbs(dk.cards)}</span>` : '<b>덱 없음</b>'}<em>바꾸기 ›</em></button>
+    <div class="rd-mode">${modeToggle()}</div>
     <div class="rd-acts"><button class="gd-big rd-go" data-go ${s.attempts_left && !s.ended && dk ? '' : 'disabled'}>⚔️ 토벌 <small>${s.attempts_left}/3</small></button>
       <button class="rd-sw" data-sweep ${s.can_sweep && s.attempts_left && !s.ended ? '' : 'disabled'}>⏩ 소탕<small>${s.can_sweep ? big(s.sweep_damage) : '직접 1회 후'}</small></button></div>
     <button class="rd-claim ${s.claimable ? 'on' : ''}" data-claim ${s.claimable ? '' : 'disabled'}>🎁 보상 받기${s.claimable ? ` <i>${s.claimable}</i>` : ''}</button>
@@ -74,7 +76,7 @@ function paint() {
     <div class="rd-h">이번 주 피해 순위</div>
     <div class="rd-rk">${s.ranking.length ? s.ranking.map((x, i) => `<div class="${x.me ? 'me' : ''}"><b>${['🥇', '🥈', '🥉'][i] || i + 1}</b><span>${esc(x.name)}</span><small>${x.attempts}회</small><em>${big(x.damage)}</em></div>`).join('') : '<div class="rd-empty">아직 아무도 토벌하지 않았어요</div>'}</div>`;
   const q = sel => M.querySelector(sel);
-  q('[data-go]').onclick = fight;
+  q('[data-go]').onclick = fight; bindMode(M);
   q('[data-sweep]').onclick = sweep;
   q('[data-claim]').onclick = claim;
   q('[data-deck]').onclick = deckPop;
@@ -116,8 +118,15 @@ async function fight(e) {
   e.currentTarget.disabled = true;
   let st; try { st = await rpc('raid_start', { p_uids: dk.cards.map(o => o.uid) }); } catch (er) { toast(errText(er)); paint(); return; }
   const deck = st.deck.map(o => snapCard(o, card)).filter(Boolean), log = [], t0 = Date.now();
-  const res = runRaid(deck, st.stage, st.difficulty, st.seed, card, log);
-  await playback(st, res, log, t0);
+  let res;
+  if (battleMode() === 'manual') {   // 수동: 같은 seed·스냅샷으로 내가 조작. 행동 기록을 서버에 남겨 tools/raid_verify.mjs 로 재생 검증
+    const ses = manualRaid(deck, st.stage, st.difficulty, st.seed, card, log);
+    res = await playManual({ session: ses, rec: log, title: `${st.boss.name} · ${st.stage}단계`, maxTurns: RAID_TURNS, raid: true });
+    try { await rpc('raid_log', { p_id: st.id, p_actions: ses.acts }); } catch (er) { toast(errText(er)); }
+  } else {
+    res = runRaid(deck, st.stage, st.difficulty, st.seed, card, log);
+    await playback(st, res, log, t0);
+  }
   let fin = null;
   for (let i = 0; i < 3 && !fin; i++) { try { fin = await rpc('raid_finish', { p_id: st.id, p_damage: res.damage }); } catch (er) { if (/too fast/.test(er.message)) await new Promise(r => setTimeout(r, 1500)); else { toast(errText(er)); break; } } }
   if (fin) { S = fin; result(fin.result); } else { try { S = await rpc('raid_status'); } catch {} }

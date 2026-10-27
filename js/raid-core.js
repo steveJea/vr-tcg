@@ -1,10 +1,10 @@
 // ===== 조직 토벌 「균열 토벌」 전투 코어 (화면 없음 · 브라우저/노드 공용) =====
 // 서버(raid_start)가 준 seed + 내 덱 스냅샷 + 보스 정보로 자동 전투(auto-ai.js). 같은 입력이면 결과가 항상 같아 tools/raid_verify.mjs 로 재검증.
 // 보스는 쓰러지지 않음(즉사 시 되돌림). 매 행동 뒤 입힌 피해를 세고(행동 1번당 상한) HP 를 다시 채운다 → 즉사·%피해 스킬도 상한까지만.
-import { initPlayers, placeUnit, turnStart, turnEnd, useSkill, refreshAll, setRng, setEmitter, getEmitter } from './skills.js';
+import { initPlayers, placeUnit, turnStart, turnEnd, useSkill, refreshAll } from './skills.js';
 import { makeUnit, resolveAttack, refillMana, clearBuff, endTurnXp } from './rules.js';
 import { autoNext, noteUsed } from './auto-ai.js';
-import { rngOf } from './pvp-core.js';
+import { rngOf, stepper, replay, resolveAct } from './pvp-core.js';
 
 export const RAID_TURNS = 15;              // 내 턴 15번 (보스 턴 포함 30)
 export const BOSS_BAR = 1e7;               // 보스 HP 막대 (실제 공유 HP 는 서버)
@@ -27,17 +27,15 @@ export function bossCard(stage, diff, cardById) {
   const D = RAID_DIFF[diff] || RAID_DIFF.normal, up = 1 + 0.12 * (Math.max(1, stage) - 1);
   return { ...c, id: c.id, name: b.name, HP: BOSS_BAR, ATK: Math.round(c.ATK * 0.8 * D.atk * up), DEF: Math.round(c.DEF * 0.2 * D.def * up) };
 }
-/** 한 판. 반환 { damage, hits, turns, alive } */
-export function runRaid(deck, stage, diff, seed, cardById, rec = null) {
-  const r = rngOf(seed), oldR = Math.random, oldE = getEmitter();
-  Math.random = r; setRng(r); setEmitter(() => {});
-  try {
+/** 한 판 (제너레이터). manual=true 면 내 턴마다 yield { ask:true, A, B, A0, B0, t, damage } (pvp-core 의 수동 입력과 같은 형식) */
+export function* raidGen(deck, stage, diff, r, cardById, rec = null, manual = false, acts = null) {
     const mk = name => ({ name, hp: 1, maxHp: 1, deck: [], hand: [], field: [], mana: 0, maxMana: 0, noBase: true, once: {}, grave: [] });
     const A = mk('A'), B = mk('B');
     initPlayers(A, B, A);
     deck.forEach(c => placeUnit(A, { ...c }, makeUnit));
     const bc = bossCard(stage, diff, cardById), boss = placeUnit(B, bc, makeUnit);
     refreshAll(A); refreshAll(B);
+    const A0 = [...A.field], B0 = [boss];
     const weak = bossOf(stage).weak, cap = hitCap(stage);
     let damage = 0, hits = 0;
     const settle = () => {
@@ -58,7 +56,15 @@ export function runRaid(deck, stage, diff, seed, cardById, rec = null) {
       if (!live()) break;
       const turn = { used: new Set(), scopes: new Set() };
       for (let k = 0; k < 40; k++) {
-        const a = autoNext(cur, op, turn); if (!a) break;
+        let a;
+        if (manual && cur === A) {
+          if (!A.field.some(u => u.hp > 0 && u.canAttack)) break;
+          const inp = yield { ask: true, A, B, A0, B0, t: t / 2 + 1, damage, last: rec?.[rec.length - 1] };
+          a = resolveAct(inp, A, B, A0, B0, turn, autoNext);
+          if (a === null || a?.none) { acts?.push({ k: 'end' }); break; }
+          if (a === false) { k--; continue; }
+          acts?.push(a.rec);
+        } else { a = autoNext(cur, op, turn); if (!a) break; }
         // 약점 속성: 내 카드 공격력 +25% (행동하는 동안만)
         const wk = cur === A && a.u.card.attribute === weak, atk0 = a.u.card.ATK;
         if (wk) a.u.card.ATK = Math.round(atk0 * WEAK_MULT);
@@ -73,5 +79,13 @@ export function runRaid(deck, stage, diff, seed, cardById, rec = null) {
       if (!live()) break;
     }
     return { damage, hits, turns: Math.min(RAID_TURNS, Math.ceil((t + 1) / 2)), alive: live() };
-  } finally { Math.random = oldR; setRng(oldR); setEmitter(oldE); }
+}
+/** 한 판. actions 없으면 자동, 있으면 그 기록대로(수동 판 재검증). 반환 { damage, hits, turns, alive } */
+export function runRaid(deck, stage, diff, seed, cardById, rec = null, actions = null) {
+  const r = rngOf(seed), st = stepper(raidGen(deck, stage, diff, r, cardById, rec, !!actions), r);
+  return actions ? replay(st, actions) : st.next().value;
+}
+/** 수동 한 판 세션: s.next(입력) 으로 진행, s.acts 가 기록 */
+export function manualRaid(deck, stage, diff, seed, cardById, rec = null) {
+  const r = rngOf(seed), acts = [], st = stepper(raidGen(deck, stage, diff, r, cardById, rec, true, acts), r); st.acts = acts; return st;
 }

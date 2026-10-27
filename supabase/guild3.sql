@@ -37,7 +37,7 @@ end $$;
 
 -- 2) 숫자 (여기만 고치면 됨)
 create or replace function public._raid_numbers() returns jsonb language sql immutable as $$ select '{
-  "attempts_per_day": 3, "sweep_pct": 90, "min_secs": 3, "open_minutes": 10,
+  "attempts_per_day": 3, "sweep_pct": 90, "min_secs": 3, "open_minutes": 20,
   "hp_per_member": {"normal": 500000, "hard": 1250000, "abyss": 3000000}, "hp_min_members": 5, "hp_growth": 1.35,
   "diff_level": {"normal": 1, "hard": 3, "abyss": 5}, "diff_mult": {"normal": 1, "hard": 1.6, "abyss": 2.5},
   "hit_cap": 6000, "hit_cap_growth": 1.1, "attempt_hits": 200,
