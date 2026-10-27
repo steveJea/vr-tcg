@@ -60,3 +60,40 @@
 .pvp-pb-fx{height:44px;display:flex;align-items:center;justify-content:center;font-weight:800;color:#fde68a}
 .pvp-pb-fx.big{font-size:28px}.pvp-pb-fx.win{color:#4ade80}.pvp-pb-fx.lose{color:#f87171}
 .pvp-spd{border:1px solid rgba(245,201,106,.5);border-radius:999px;padding:3px 9px;font-weight:800;font-size:12px}.pvp-spd.on{background:#78350f;color:#fde68a}
+/* ===== 티어 · 내 랭크 카드 · 연승 · VS (엠블럼은 img/ui/tier/<티어>.webp 가 오면 그림, 없으면 CSS+이모지) ===== */
+.pvp-emb{--tc:#a16207;position:relative;display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;flex:none;border-radius:50%;background:radial-gradient(circle at 35% 30%,color-mix(in srgb,var(--tc) 70%,#fff),var(--tc) 55%,#0b0b0f);box-shadow:0 0 0 1px rgba(255,255,255,.25),0 0 8px color-mix(in srgb,var(--tc) 60%,transparent);font-size:14px}
+.pvp-emb i{font-style:normal;filter:drop-shadow(0 1px 1px #000)}.pvp-emb img{position:absolute;inset:-12%;width:124%;height:124%;object-fit:contain}
+.pvp-emb.sm{width:20px;height:20px;font-size:11px}.pvp-emb.big{width:58px;height:58px;font-size:30px}.pvp-emb.huge{width:110px;height:110px;font-size:58px}
+.t-bronze{--tc:#b45309}.t-silver{--tc:#94a3b8}.t-gold{--tc:#eab308}.t-platinum{--tc:#2dd4bf}.t-diamond{--tc:#60a5fa}.t-abyss{--tc:#c026d3}
+.pvp-emb.t-abyss,.pvp-me.t-abyss,.pvp-claim.t-abyss{background-image:linear-gradient(90deg,#f87171,#fbbf24,#a3e635,#22d3ee,#818cf8,#e879f9,#f87171);background-size:300% 100%;animation:pvpRain 6s linear infinite}
+@keyframes pvpRain{to{background-position:300% 0}}
+.pvp-me{display:flex;gap:12px;align-items:center;width:100%;text-align:left;padding:10px 12px;margin-bottom:10px;border-radius:16px;border:1px solid color-mix(in srgb,var(--tc) 60%,transparent);background:linear-gradient(120deg,color-mix(in srgb,var(--tc) 28%,#120e1a),#120e1a 70%);box-shadow:inset 0 0 24px color-mix(in srgb,var(--tc) 18%,transparent)}
+.pvp-me.t-abyss{position:relative;border-color:transparent;isolation:isolate}.pvp-me.t-abyss::after{content:'';position:absolute;inset:2px;border-radius:14px;background:rgba(12,8,20,.82);z-index:-1}
+.pvp-me-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+.pvp-me-top{display:flex;align-items:baseline;gap:8px}.pvp-me-tier{font-weight:900;font-size:16px;color:color-mix(in srgb,var(--tc) 55%,#fff)}.pvp-me-rt{font:900 22px/1 Cinzel,serif;color:#fde68a}
+.pvp-bar{height:7px;border-radius:999px;background:rgba(255,255,255,.1);overflow:hidden}.pvp-bar i{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--tc),color-mix(in srgb,var(--tc) 40%,#fff))}
+.pvp-me-sub{display:flex;gap:10px;font-size:11px;color:#d4d4d8;flex-wrap:wrap}.pvp-dd{margin-left:auto;color:#a1a1aa}
+.pvp-streak{display:inline-flex;align-items:center;padding:1px 8px;border-radius:999px;background:linear-gradient(180deg,#f97316,#b91c1c);color:#fff;font-weight:900;font-size:12px;box-shadow:0 0 10px rgba(249,115,22,.6);animation:pvpFire 1.2s ease-in-out infinite alternate}
+.pvp-streak.big{font-size:18px;padding:3px 14px}@keyframes pvpFire{to{box-shadow:0 0 18px rgba(249,115,22,.9)}}
+.pvp-res-streak{display:flex;gap:8px;align-items:center;justify-content:center;margin:4px 0 8px}
+.pvp-rw{display:flex;gap:8px;flex-wrap:wrap;font-weight:800;font-size:13px}.pvp-rw.big{justify-content:center;font-size:18px;margin-top:10px}.pvp-ttl{color:#f0abfc}
+.pvp-tt{display:flex;flex-direction:column;gap:5px}.pvp-tt-row{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:10px;background:rgba(255,255,255,.04)}
+.pvp-tt-row b{width:62px}.pvp-tt-row small{width:44px;color:#a1a1aa}.pvp-tt-row .pvp-rw{margin-left:auto}.pvp-tt-row.on{box-shadow:0 0 0 1px var(--tc);background:color-mix(in srgb,var(--tc) 18%,transparent)}.pvp-tt-row.got{opacity:.55}
+.pvp-h2{margin-top:12px}
+.pvp-rk-row .pvp-emb{margin-right:2px}.pvp-abyss-name{background:linear-gradient(90deg,#f87171,#fbbf24,#a3e635,#22d3ee,#818cf8,#e879f9,#f87171) 0 0/300% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:pvpRain 6s linear infinite;font-weight:900}
+.pvp-claim{display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px;border-radius:16px}.pvp-claim-t{font-weight:900;font-size:22px}
+.pvp-vs{display:flex;align-items:center;justify-content:center;gap:6px}
+.pvp-vsx{position:fixed;inset:0;z-index:140;background:#07050b;overflow:hidden;cursor:pointer}
+.pvp-vsx-side{position:absolute;top:0;bottom:0;width:62%;overflow:hidden}
+.pvp-vsx-side img{width:100%;height:100%;object-fit:cover;object-position:top;filter:saturate(1.1)}
+.pvp-vsx-side.me{left:0;clip-path:polygon(0 0,100% 0,62% 100%,0 100%);animation:vsL .35s cubic-bezier(.2,.9,.2,1) both}
+.pvp-vsx-side.op{right:0;clip-path:polygon(38% 0,100% 0,100% 100%,0 100%);animation:vsR .35s cubic-bezier(.2,.9,.2,1) both}
+.pvp-vsx-side.me::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,rgba(59,130,246,.35),transparent 60%)}
+.pvp-vsx-side.op::after{content:'';position:absolute;inset:0;background:linear-gradient(270deg,rgba(239,68,68,.4),transparent 60%)}
+.pvp-vsx-tag{position:absolute;bottom:9%;z-index:2;display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:12px;background:rgba(0,0,0,.65);color:#fff}
+.pvp-vsx-side.me .pvp-vsx-tag{left:5%}.pvp-vsx-side.op .pvp-vsx-tag{right:5%}.pvp-vsx-tag b{font-weight:900}.pvp-vsx-tag small{color:#fde68a;font-weight:800}
+.pvp-vsx-vs{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font:900 clamp(56px,14vw,140px)/1 Cinzel,serif;color:#fff;text-shadow:0 0 24px #f59e0b,0 0 4px #000,0 4px 0 #7c2d12;animation:vsPop .45s .2s cubic-bezier(.2,1.6,.4,1) both;z-index:3}
+.pvp-vsx.out{opacity:0;transition:opacity .18s}
+@keyframes vsL{from{transform:translateX(-100%)}}@keyframes vsR{from{transform:translateX(100%)}}@keyframes vsPop{from{transform:translate(-50%,-50%) scale(2.6);opacity:0}}
+@media (prefers-reduced-motion:reduce){.pvp-emb.t-abyss,.pvp-me.t-abyss,.pvp-claim.t-abyss,.pvp-abyss-name,.pvp-streak{animation:none}}
+.pvp-rk-nm{display:flex;align-items:center;gap:6px;min-width:0}.pvp-rk-nm>span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
