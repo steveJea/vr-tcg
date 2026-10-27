@@ -1581,6 +1581,7 @@ async function viewBattle({ session, aiName = '상대', bg = 'normal', manual = 
   const LAYERS = '.pvp-modal, .pvp-vsx, .gd-ov, .gd-pop, .mp-modal, .gal-modal, .ad-modal, #start-screen, #story-screen';
   const hid = [...document.querySelectorAll(LAYERS)].filter(e => !e.classList.contains('hidden') && e.style.display !== 'none');
   hid.forEach(e => { e.dataset.vbHide = e.style.display; e.style.display = 'none'; });
+  const hubWasOn = !$('start-screen').classList.contains('hidden');   // 메인 허브: 전투 후 class 'hidden' 도 원래대로 (조직 닫으면 검은 화면 방지)
   let x = session.next();
   const V = { auto: !manual, A0: x.value.A0, B0: x.value.B0, ask: null };
   S = { me: x.value.A, ai: x.value.B, view: V, story: { win: 'wipe', view: true, aiName }, maxTurns: mt, first: 'me', turn: 'me', turnNo: 0, totalTurns: 0, myTurns: 0, over: false, busy: true, fxSeen: new Set(), mercBought: 0, mercHired: null, mercOffer: [], limitedAids: true,
@@ -1663,6 +1664,7 @@ async function viewBattle({ session, aiName = '상대', bg = 'normal', manual = 
     clearInterval(tick); RB?.remove();
     $('game').classList.remove('view-battle', 'view-raid', 'story-field'); $('game').classList.add('hidden');
     hid.forEach(e => { e.style.display = e.dataset.vbHide || ''; delete e.dataset.vbHide; });
+    if (hubWasOn) $('start-screen').classList.remove('hidden');
     S = null; selected = null;
   }
 }
