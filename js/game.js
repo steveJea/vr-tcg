@@ -1618,7 +1618,8 @@ async function viewBattle({ session, aiName = '상대', bg = 'normal', manual = 
   const drain = () => { const ev = session.events || []; const out = ev.splice(0, ev.length); return out; };
   // 마나 없음: 처치 마나(refund) 연출 생략. 같은 카드에 숫자가 겹치지 않게 조금씩 띄워 보여 줌
   const bossNum = (d, weak) => { if (!raid || !(d > 0)) return; const el = unitEl('ai', V.B0[0]); shake(el); hitFx(el, 'blood'); dmgNumber(el, `-${fmt(d)}`, d >= raid.cap ? '#f97316' : '#fde047', false, 'fx-dmg-crit fx-dmg-raid'); if (weak) dmgNumber(el, '약점!', '#fca5a5', false, 'fx-dmg-mini'); if (d >= raid.cap) dmgNumber(el, 'MAX', '#fb923c', false, 'fx-dmg-mini'); };
-  const play = async (evs, gap = 0) => { const seen = new Map(); for (const e of evs) { if (e.type === 'refund') continue; if (raid && e.type === 'dmg' && e.unit === V.B0[0]) continue;   // 보스 원래 피해 숫자 대신 상한 적용 피해(bossNum) try { onEngine(e); } catch (err) { reportError('view', err); }
+  const play = async (evs, gap = 0) => { const seen = new Map(); for (const e of evs) { if (e.type === 'refund') continue; if (raid && e.type === 'dmg' && e.unit === V.B0[0]) continue;   /* 보스 원래 피해 숫자 대신 상한 적용 피해(bossNum) */
+    try { onEngine(e); } catch (err) { reportError('view', err); }   // ⚠️ 주석 뒤에 붙이면 통째로 꺼짐 (#190~#195 스킬 타격·상태·레벨업 연출 누락 원인)
     if (gap && e.unit && ['levelup', 'mp', 'status', 'heal', 'immune', 'miss', 'resist', 'elfx'].includes(e.type)) { const n = (seen.get(e.unit) || 0) + 1; seen.set(e.unit, n); if (n > 0) await sleep(fxMs(gap)); } } };
   try {
     for (let g = 0; !x.done && g < 20000; g++) {
@@ -1628,7 +1629,7 @@ async function viewBattle({ session, aiName = '상대', bg = 'normal', manual = 
         fastForward = false;   // 탭 빨리감기는 그 행동 하나만 (스토리처럼) — 안 풀면 한 번 탭 뒤 전투 전체가 연출 없이 순식간에 끝남
         if (a.k === 'turn' && !S.totalTurns) { $('me-order').textContent = who === 'me' ? '선공' : '후공'; $('ai-order').textContent = who === 'ai' ? '선공' : '후공'; }
         if (a.k === 'turn') { S.turn = who; S.totalTurns++; if (who === 'me') S.myTurns++; S.busy = true; render(); if (raid && who === 'me') floatText(`T${a.t}/${mt / 2}`, 'text-amber-200 text-2xl', 'me'); await play(evs, 160); if (raid) { bossNum(v.damage - (S.vDmg || 0)); S.vDmg = v.damage; raidPaint(v.damage, 1); } await sleep(AI_DELAY()); }
-        else if (a.k === 'skill') { S.busy = true; render(); if (!(await mrVideo(a.u, a.s))) await withTimeout(cutIn(a.u, a.s.name, a.s.fx), 3000); pendingDying = []; await play(evs, 160); if (raid) { bossNum(a.d, a.weak); S.vDmg = v.damage; raidPaint(v.damage, a.d); } if (who === 'me') S.log.skills++; render(); await sleep(fxMs(450)); await withTimeout(fadeDying(), 750); }
+        else if (a.k === 'skill') { S.busy = true; selected = null;   /* 컷인 전엔 다시 그리지 않음: 엔진은 이미 스킬 결과(처치 포함)를 반영 → 그리면 맞을 카드가 먼저 사라짐 */ if (!(await mrVideo(a.u, a.s))) await withTimeout(cutIn(a.u, a.s.name, a.s.fx), 3000); pendingDying = []; await play(evs, 160); if (raid) { bossNum(a.d, a.weak); S.vDmg = v.damage; raidPaint(v.damage, a.d); } if (who === 'me') S.log.skills++; render(); await sleep(fxMs(450)); await withTimeout(fadeDying(), 750); }
         else if (a.k === 'atk') {
           S.busy = true; const oWho = who === 'me' ? 'ai' : 'me', aEl = unitEl(who, a.u), tEl = a.t ? unitEl(oWho, a.t) : null;
           playSe(7); const hit = await withTimeout(lunge(aEl, tEl), 750); pendingDying = [];
