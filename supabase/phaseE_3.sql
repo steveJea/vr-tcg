@@ -84,6 +84,11 @@ begin
   xp := spent * _player_xp_per_stamina() + case when coalesce((r->>'first')::boolean, false) then _player_first_bonus(cfg.type) else 0 end;
   perform _player_sync(uid);
   up := _player_add_xp(uid, xp, true);
+  -- 조직 의뢰 진행 (guild2.sql): 페이즈 클리어 · 행동력 · 보스
+  if to_regprocedure('public._guild_event(uuid,text,integer)') is not null then
+    perform _guild_event(uid, 'phase', 1); perform _guild_event(uid, 'stamina', spent);
+    if cfg.type = 'boss' then perform _guild_event(uid, 'boss', 1); end if;
+  end if;
   -- 재화 드롭 (phaseE_3.sql 의 _story_drops 가 있으면)
   if to_regprocedure('public._story_drops(uuid,integer,integer,boolean)') is not null then
     execute 'select public._story_drops($1, $2, $3, $4)' into drops using uid, p_chapter, p_phase, coalesce((r->>'first')::boolean, false);

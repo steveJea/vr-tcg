@@ -28,6 +28,11 @@ begin
   w := _wallet_add(uid, tot, 'story_sweep');
   xp := cost * p_runs * _player_xp_per_stamina();
   up := _player_add_xp(uid, xp, true);
+  -- 조직 의뢰 진행 (guild2.sql): 소탕 1회 = 페이즈 1 · 행동력 · 보스
+  if to_regprocedure('public._guild_event(uuid,text,integer)') is not null then
+    perform _guild_event(uid, 'phase', p_runs); perform _guild_event(uid, 'stamina', cost * p_runs);
+    if cfg.type = 'boss' then perform _guild_event(uid, 'boss', p_runs); end if;
+  end if;
   return jsonb_build_object('ok', true, 'chapter', p_chapter, 'phase', p_phase, 'runs', p_runs, 'stamina', cost * p_runs,
     'drops', tot, 'per_run', runs, 'wallet', w,
     'player', _player_json(uid) || jsonb_build_object('gained_xp', xp, 'levelups', up->'levelups', 'levelup_gold', up->'gold'));
