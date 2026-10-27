@@ -395,7 +395,7 @@ function dmgNumber(el, text, color, html = false, extra = '') {
   d.style.left = (r.left + r.width / 2 + (Math.random() - 0.5) * 16) + 'px';
   d.style.top = (r.top + r.height * 0.4) + 'px';
   document.body.appendChild(d);
-  setTimeout(() => d.remove(), 475);
+  d.addEventListener('animationend', () => d.remove(), { once: true }); setTimeout(() => d.remove(), 1800);   // 천천히 사라짐 (CSS fxDmg 1.3s · 크리 1.5s)
 }
 
 /** 공격자를 대상 쪽으로 돌진(getBoundingClientRect 차이 → transform). back()으로 제자리 복귀 */
@@ -1462,7 +1462,7 @@ $('spd-btn').onclick = e => { e.stopPropagation(); spd2 = !spd2; localStorage.se
 renderSpdBtn(); spdSync();
 $('fx-skip').onclick = e => { e.stopPropagation(); skipFx = !skipFx; localStorage.setItem(SKIP_KEY, skipFx ? '1' : '0'); if (S?.busy) fastForward = true; renderSkipBtn(); };
 // 연출 중 화면을 누르면 현재 연출 빨리 감기
-$('game').addEventListener('click', () => { if (S?.busy && !S.over) fastForward = true; }, true);
+$('game').addEventListener('click', e => { if (S?.view && e.target.closest('button')) return; if (S?.busy && !S.over) fastForward = true; }, true);   // 화면 전투: AUTO·X2 등 버튼 탭은 빨리감기 아님
 renderSkipBtn();
 $('auto-btn').onclick = e => { e.stopPropagation(); if (S?.view) { S.view.auto = !S.view.auto; renderAutoBtn(); if (S.view.auto) S.view.ask?.({ k: 'auto' }); return; } if (autoLocked()) return autoHint(); autoOn = !autoOn; localStorage.setItem(AUTO_KEY(), autoOn ? '1' : '0'); renderAutoBtn(); if (autoActive() && S.turn === 'me' && !S.busy) autoTurn(); };
 function autoHint() {
@@ -1583,7 +1583,7 @@ async function viewBattle({ session, aiName = '상대', bg = 'normal', manual = 
   hid.forEach(e => { e.dataset.vbHide = e.style.display; e.style.display = 'none'; });
   const hubWasOn = !$('start-screen').classList.contains('hidden');   // 메인 허브: 전투 후 class 'hidden' 도 원래대로 (조직 닫으면 검은 화면 방지)
   let x = session.next();
-  const V = { auto: !manual, A0: x.value.A0, B0: x.value.B0, ask: null };
+  const V = { auto: !manual, A0: x.value.A0, B0: x.value.B0, ask: null }; fastForward = false;
   S = { me: x.value.A, ai: x.value.B, view: V, story: { win: 'wipe', view: true, aiName }, maxTurns: mt, first: 'me', turn: 'me', turnNo: 0, totalTurns: 0, myTurns: 0, over: false, busy: true, fxSeen: new Set(), mercBought: 0, mercHired: null, mercOffer: [], limitedAids: true,
     log: { dmg: new Map(), total: 0, skills: 0, merc: null, played: new Set(), kills: {} } };
   S.me.name = '나'; S.ai.name = aiName;
@@ -1625,6 +1625,7 @@ async function viewBattle({ session, aiName = '상대', bg = 'normal', manual = 
       const v = x.value;
       if (v.anim) {
         const a = v.anim, who = a.side === 'A' ? 'me' : 'ai', evs = drain();
+        fastForward = false;   // 탭 빨리감기는 그 행동 하나만 (스토리처럼) — 안 풀면 한 번 탭 뒤 전투 전체가 연출 없이 순식간에 끝남
         if (a.k === 'turn' && !S.totalTurns) { $('me-order').textContent = who === 'me' ? '선공' : '후공'; $('ai-order').textContent = who === 'ai' ? '선공' : '후공'; }
         if (a.k === 'turn') { S.turn = who; S.totalTurns++; if (who === 'me') S.myTurns++; S.busy = true; render(); if (raid && who === 'me') floatText(`T${a.t}/${mt / 2}`, 'text-amber-200 text-2xl', 'me'); await play(evs, 160); if (raid) { bossNum(v.damage - (S.vDmg || 0)); S.vDmg = v.damage; raidPaint(v.damage, 1); } await sleep(AI_DELAY()); }
         else if (a.k === 'skill') { S.busy = true; render(); if (!(await mrVideo(a.u, a.s))) await withTimeout(cutIn(a.u, a.s.name, a.s.fx), 3000); pendingDying = []; await play(evs, 160); if (raid) { bossNum(a.d, a.weak); S.vDmg = v.damage; raidPaint(v.damage, a.d); } if (who === 'me') S.log.skills++; render(); await sleep(fxMs(450)); await withTimeout(fadeDying(), 750); }
