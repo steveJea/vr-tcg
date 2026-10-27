@@ -827,7 +827,7 @@ window.STORY_DATA.chapters.push({
       "HP": 317,
       "ATK": 62,
       "DEF": 62,
-      "power": 12766
+      "power": 13277
      }
     }
    },

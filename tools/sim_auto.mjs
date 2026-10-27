@@ -2,14 +2,15 @@
 // 같은 덱·같은 적·같은 시드로 내 쪽 정책만 바꿔 비교 (적 쪽은 항상 기존 AI). 시련의 탑 실제 층 구성(quest-gen) 사용.
 import './seed_rng.mjs';
 import { readFileSync } from 'fs';
-import { setSkillData, initPlayers, placeUnit, turnStart, turnEnd, useSkill, aiPickSkill, refreshAll, setRng } from '../js/skills.js';
-import { parseCSV, aiPickTarget, makeUnit, resolveAttack, refillMana, clearBuff, endTurnXp, setCardPool } from '../js/rules.js';
+import { skillsOf, setSkillData, initPlayers, placeUnit, turnStart, turnEnd, useSkill, aiPickSkill, refreshAll, setRng } from '../js/skills.js';
+import { skillCountMult, parseCSV, aiPickTarget, makeUnit, resolveAttack, refillMana, clearBuff, endTurnXp, setCardPool } from '../js/rules.js';
 import { autoNext, noteUsed } from '../js/auto-ai.js';
 await import('../js/quest-gen.js');
 const G = globalThis.VRQuestGen;
 const rd = p => readFileSync(new URL(p, import.meta.url), 'utf8');
 const pool = parseCSV(rd('../data/cards.csv')), combos = JSON.parse(rd('../data/combos.json')), cfg = JSON.parse(rd('../data/quest.json'));
 setCardPool(pool); setSkillData(JSON.parse(rd('../data/skills.json')), combos);
+globalThis.VRQuestSkillMult = c => skillCountMult(skillsOf(c?.id));   // 탑 목표 맞춤: 스킬 보정 제외
 const games = +(process.argv[2] || 200);
 const RATIO = +(process.env.RATIO || 1.0);
 const FLOORS = (process.argv[3] || '1,10,30,60,100,146,210,250,300,350').split(',').map(Number);

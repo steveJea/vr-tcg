@@ -1,8 +1,8 @@
 // ===== 비동기 PvP 전투 코어 (화면 없음 · 브라우저/노드 공용) =====
 // 서버(pvp_start)가 준 seed + 양쪽 덱 스냅샷(서버가 story_progress 에서 읽은 id·level·ex·exb·boost·skillLv)으로
 // 양쪽 모두 자동 전투 AI(auto-ai.js)로 싸운다. 같은 seed·같은 스냅샷이면 결과가 항상 같아 tools/pvp_verify.mjs 로 재검증 가능.
-import { initPlayers, placeUnit, turnStart, turnEnd, useSkill, refreshAll, setRng, setEmitter, getEmitter } from './skills.js';
-import { makeUnit, resolveAttack, refillMana, clearBuff, endTurnXp } from './rules.js';
+import { initPlayers, placeUnit, turnStart, turnEnd, useSkill, refreshAll, setRng, setEmitter, getEmitter, skillsOf } from './skills.js';
+import { makeUnit, resolveAttack, refillMana, clearBuff, endTurnXp, skillLvPowerMult } from './rules.js';
 import { autoNext, noteUsed } from './auto-ai.js';
 
 export const MAX_TURNS = 40;
@@ -17,7 +17,7 @@ export function snapCard(o, cardById) {
   const c = cardById(o.id); if (!c) return null;
   const lv = Math.max(1, o.level | 0 || 1), lp = Math.round((LV_RATE[c.grade] || 0.01) * (lv - 1) * 100), exb = Math.max(0, +o.exb || 0), ex = Math.max(0, o.ex | 0);
   const st = s => Math.round(c[s] * (1 + exb / 100) * (1 + lp / 100)) + ptGain(s, (o.boost || {})[s]);
-  return { ...c, name: ex ? `[EX${ex}] ${c.name}` : c.name, ex, slv: lv, ATK: st('ATK'), HP: st('HP'), DEF: st('DEF'), power: Math.round((+c.power || 0) * (1 + exb / 100) * (1 + lp / 100)),
+  return { ...c, name: ex ? `[EX${ex}] ${c.name}` : c.name, ex, slv: lv, ATK: st('ATK'), HP: st('HP'), DEF: st('DEF'), power: Math.round((+c.power || 0) * (1 + exb / 100) * (1 + lp / 100) * skillLvPowerMult(skillsOf(o.id), o.skillLv)),
     ...(o.skillLv && typeof o.skillLv === 'object' ? { skillLv: { ...o.skillLv } } : {}) };
 }
 /** 덱 규칙 검사 (서버 _pvp_check 와 같은 규칙, 화면 안내용) */

@@ -1,12 +1,13 @@
 // 퀘스트 모드 검증: node tools/test_quest.mjs
 import './seed_rng.mjs';   // 고정 시드 난수 (치명타·회피·속성 패시브 등 확률 결과 고정)
 import fs from 'fs';
-import { parseCSV, makeUnit, RULES } from '../js/rules.js';
+import { skillCountMult, parseCSV, makeUnit, RULES } from '../js/rules.js';
 import { setSkillData, initPlayers, placeUnit, skillsOf, aiPickSkill, refreshAll, TURN } from '../js/skills.js';
 await import('../js/quest-gen.js');
 const G = globalThis.VRQuestGen;
 const pool = parseCSV(fs.readFileSync('data/cards.csv', 'utf8')), combos = JSON.parse(fs.readFileSync('data/combos.json')), cfg = JSON.parse(fs.readFileSync('data/quest.json'));
 setSkillData(JSON.parse(fs.readFileSync('data/skills.json')), combos);
+globalThis.VRQuestSkillMult = c => skillCountMult(skillsOf(c?.id));   // 탑 목표 맞춤: 스킬 보정 제외
 let fails = 0; const ok = (n, c, extra = '') => { console.log((c ? 'PASS ' : 'FAIL ') + n + (extra ? ' — ' + extra : '')); if (!c) fails++; };
 const ORDER = ['NORMAL', 'RARE', 'HIGH RARE', 'SUPER RARE', 'ULTRA RARE', 'MYTHIC RARE'];
 
