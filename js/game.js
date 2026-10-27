@@ -1586,39 +1586,41 @@ async function viewBattle({ session, aiName = '상대', bg = 'normal', manual = 
   log('⚔️ 마나 없음 · 상대를 모두 쓰러뜨리면 승리', 'text-amber-300');
   render();
   const drain = () => { const ev = session.events || []; const out = ev.splice(0, ev.length); return out; };
-  const play = evs => { for (const e of evs) { try { onEngine(e); } catch (err) { reportError('view', err); } } };
+  // 마나 없음: 처치 마나(refund) 연출 생략. 같은 카드에 숫자가 겹치지 않게 조금씩 띄워 보여 줌
+  const play = async (evs, gap = 0) => { const seen = new Map(); for (const e of evs) { if (e.type === 'refund') continue; try { onEngine(e); } catch (err) { reportError('view', err); }
+    if (gap && e.unit && ['levelup', 'mp', 'status', 'heal', 'immune', 'miss', 'resist', 'elfx'].includes(e.type)) { const n = (seen.get(e.unit) || 0) + 1; seen.set(e.unit, n); if (n > 0) await sleep(fxMs(gap)); } } };
   try {
     for (let g = 0; !x.done && g < 20000; g++) {
       const v = x.value;
       if (v.anim) {
         const a = v.anim, who = a.side === 'A' ? 'me' : 'ai', evs = drain();
         if (a.k === 'turn' && !S.totalTurns) { $('me-order').textContent = who === 'me' ? '선공' : '후공'; $('ai-order').textContent = who === 'ai' ? '선공' : '후공'; }
-        if (a.k === 'turn') { S.turn = who; S.totalTurns++; if (who === 'me') S.myTurns++; S.busy = true; render(); play(evs); await sleep(AI_DELAY()); }
-        else if (a.k === 'skill') { S.busy = true; render(); if (!(await mrVideo(a.u, a.s))) await withTimeout(cutIn(a.u, a.s.name, a.s.fx), 3000); pendingDying = []; play(evs); if (who === 'me') S.log.skills++; render(); await sleep(fxMs(450)); await withTimeout(fadeDying(), 750); }
+        if (a.k === 'turn') { S.turn = who; S.totalTurns++; if (who === 'me') S.myTurns++; S.busy = true; render(); await play(evs, 160); await sleep(AI_DELAY()); }
+        else if (a.k === 'skill') { S.busy = true; render(); if (!(await mrVideo(a.u, a.s))) await withTimeout(cutIn(a.u, a.s.name, a.s.fx), 3000); pendingDying = []; await play(evs, 160); if (who === 'me') S.log.skills++; render(); await sleep(fxMs(450)); await withTimeout(fadeDying(), 750); }
         else if (a.k === 'atk') {
           S.busy = true; const oWho = who === 'me' ? 'ai' : 'me', aEl = unitEl(who, a.u), tEl = a.t ? unitEl(oWho, a.t) : null;
           playSe(7); const hit = await withTimeout(lunge(aEl, tEl), 750); pendingDying = [];
           { const h = (a.hits || []).find(e => e.type === 'hit'); log(`${a.u.card.name} → ${a.t?.card?.name || '?'}${h ? ` ${fmt(h.d1)} 피해${h.mult !== 1 ? ` (속성 ×${h.mult})` : ''}${h.killed ? ', 처치' : h.d2 ? `, 반격 ${fmt(h.d2)}` : ''}` : ' 회피'}`, who === 'me' ? 'text-emerald-300' : 'text-red-300'); }
-          play(evs);
+          const late = evs.filter(e => !['dmg', 'crit', 'dealt', 'destroy', 'hero'].includes(e.type)); await play(evs.filter(e => !late.includes(e)));
           for (const e of a.hits || []) {
             playSe(e.type === 'hit' ? 1 : 0);
             if (e.type === 'hit') { const real = e.target || a.t, rEl = (real && unitEl(oWho, real)) || tEl; shake(rEl); hitFx(rEl, e.mult > 1 ? 'blood' : 'impact'); critNum(rEl, e.d1, real); if (e.d2) { shake(aEl); hitFx(aEl); dmgNumber(aEl, `-${fmt(e.d2)}`, '#fca5a5'); } }
             else if (e.type === 'evade') dmgNumber(unitEl(oWho, e.target) || tEl, 'MISS', '#e0f2fe');
           }
           critSet.clear();
-          await withTimeout(hit?.back?.() ?? Promise.resolve(), 750); resetAnim(aEl); render(); await withTimeout(fadeDying(), 750); await sleep(AI_DELAY());
-        } else { play(evs); render(); }
+          await withTimeout(hit?.back?.() ?? Promise.resolve(), 750); resetAnim(aEl); await play(late, 220); render(); await withTimeout(fadeDying(), 750); await sleep(AI_DELAY());
+        } else { await play(evs, 160); render(); }
         x = session.next(); continue;
       }
       if (v.ask) {
-        play(drain()); S.turn = 'me'; S.busy = false; render();
+        await play(drain()); S.turn = 'me'; S.busy = false; render();
         const inp = V.auto ? { k: 'auto' } : await new Promise(res => { V.ask = i => { V.ask = null; res(i); }; });
         V.ask = null; selected = null; S.busy = true;
         x = session.next(inp); continue;
       }
       x = session.next();
     }
-    play(drain());
+    await play(drain());
     S.over = true; render();
     try { window.VRSound?.jingle?.(x.value?.win ? 'victory' : 'defeat'); } catch {}
     floatText(x.value?.win ? 'WIN' : 'LOSE', x.value?.win ? 'text-emerald-300 text-5xl' : 'text-red-400 text-5xl', 'ai');
