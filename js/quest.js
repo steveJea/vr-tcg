@@ -152,10 +152,13 @@
     if (!deckOk()) return;
     api.pickDeck(g.enemies, list => battle(n, list), () => render(), `🗼 ${esc(tName())} ${n}층 · 적 5장 (리더 ⚡ ${fmt(g.leader?.power)})${tCls() ? `<br><b class="text-amber-300">${EL[tCls()]} 속성 카드만 출전할 수 있어요</b>` : ''}`, party());
   }
+// AUTO·X2 로 빨리 끝나도 서버 최소 전투 시간(_quest_min_secs 5초)을 채운 뒤 기록 → 'too fast' 방지. 서버 검사는 그대로
+  const MIN_BATTLE_MS = 5600; let startedAt = 0;
   async function battle(n, list) {
     const api = A(), g = enemiesOf(n);
     try { await trpc('quest_start', { p_floor: n }); }
     catch (e) { const m = String(e?.message || ''); api.toast(ERR(m) || (/locked/.test(m) ? '아직 열리지 않은 층이에요' : `⚠️ 시작 실패: ${m}`)); return render(); }
+    startedAt = Date.now();
     $('story-screen').classList.add('hidden'); api.bgm(n % 10 === 0 ? 'boss' : 'tower');
     const me = api.battleCards(list);
     window.TCG.startStory({ me, ai: g.enemies.map(c => ({ ...c })), leader: api.leaderFor(me), win: 'wipe', aiName: `${n}층`, quest: true,
@@ -169,6 +172,7 @@
         <div class="flex flex-col gap-2 max-w-xs mx-auto mt-6"><button class="story-btn" id="q-retry">다시 도전</button><button class="story-back" id="q-back">탑으로</button></div></div>`, 'tower');
       $('q-retry').onclick = () => challenge(n); $('q-back').onclick = render; return;
     }
+    { const wait = startedAt + MIN_BATTLE_MS - Date.now(); if (wait > 0) await new Promise(r => setTimeout(r, wait)); }
     let res;
     try { res = await trpc('quest_complete', { p_floor: n, p_stats: { turns: Math.max(1, Math.min(40, st.turns | 0 || 1)) } }); }
     catch (e) {
@@ -180,11 +184,13 @@
     const rw = res.first ? res.reward : null, got = rw && (rw.tickets || rw.gold);
     if (got) { QUEST_HOOKS.onReward(rw); try { await api.syncTickets(); } catch {} }
     const next = n + 1 <= maxF() ? n + 1 : null;
+    const bossSw = !!next && isBoss(n) && best() === n;   // 보스 층 클리어 직후: 바로 소탕 (기존 소탕과 같은 규칙·서버)
     api.show(`<div class="text-center py-6"><div class="story-chapter-sub">${n}층 CLEAR</div><div class="story-chapter-big text-emerald-300">VICTORY</div>
       ${res.first && res.currency ? `<div class="mt-4 story-drops">🎁 첫 클리어 ${window.VRPlayer?.curTxt?.(res.currency) || ''}</div>` : ''}${got ? `<div class="mt-2 text-amber-200 font-bold">🎁 첫 클리어 보상: ${rewardTxt(rw)}</div>` : `<div class="mt-4 text-zinc-400 text-sm">${res.first ? (res.currency ? '' : '이 층은 보상이 없어요. 10층마다 보상이 있어요.') : '이미 클리어한 층이라 보상은 없어요.'}</div>`}
       <div class="mt-2 text-sm text-zinc-300">최고 기록 ${best()}층${status?.daily ? ` · 오늘 ${status.today | 0}/${status.daily}층` : ''}</div>
-      <div class="flex flex-col gap-2 max-w-xs mx-auto mt-5">${next ? `<button class="story-btn" id="q-next">다음 층 (${next}층) 도전</button>` : ''}<button class="story-back" id="q-back">탑으로</button></div></div>`, 'tower');
+      <div class="flex flex-col gap-2 max-w-xs mx-auto mt-5">${next ? `<div class="flex gap-2"><button class="story-btn flex-1" id="q-next">다음 층 (${next}층) 도전</button>${bossSw ? `<button class="story-btn q-sweep whitespace-nowrap" id="q-win-sweep" title="내 덱으로 자동 전투 · 패배 또는 보스 층에서 멈춤">${SW()} 소탕하기</button>` : ''}</div>` : ''}<button class="story-back" id="q-back">탑으로</button></div></div>`, 'tower');
     if (next) $('q-next').onclick = () => { sel = next; challenge(next); };
+    if (bossSw) $('q-win-sweep').onclick = () => { sel = next; sweep(); };
     $('q-back').onclick = () => { sel = next || n; render(); };
   }
 
