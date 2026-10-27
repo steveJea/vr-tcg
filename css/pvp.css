@@ -97,3 +97,8 @@
 @keyframes vsL{from{transform:translateX(-100%)}}@keyframes vsR{from{transform:translateX(100%)}}@keyframes vsPop{from{transform:translate(-50%,-50%) scale(2.6);opacity:0}}
 @media (prefers-reduced-motion:reduce){.pvp-emb.t-abyss,.pvp-me.t-abyss,.pvp-claim.t-abyss,.pvp-abyss-name,.pvp-streak{animation:none}}
 .pvp-rk-nm{display:flex;align-items:center;gap:6px;min-width:0}.pvp-rk-nm>span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* 티어 엠블럼 그림 (img/ui/tier/*.webp, 그림순이): 그림이 있으면 원형 대체 배경·이모지 숨김 */
+.pvp-emb:has(img){background:none!important;box-shadow:none;animation:none}
+.pvp-emb:has(img) i{display:none}
+.pvp-emb img{inset:-8%;width:116%;height:116%;object-fit:contain;filter:drop-shadow(0 2px 3px rgba(0,0,0,.7))}
+.pvp-emb.t-abyss img{filter:drop-shadow(0 0 6px rgba(232,121,249,.7)) drop-shadow(0 2px 3px rgba(0,0,0,.7))}
