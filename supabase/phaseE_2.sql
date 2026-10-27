@@ -69,6 +69,8 @@ begin
   if gold > 0 and to_regprocedure('public._wallet_add(uuid,jsonb,text)') is not null then
     perform public._wallet_add(p_uid, jsonb_build_object('gold', gold), 'player_levelup');
   end if;
+  -- 조직 세력 (guild.sql): 스토리 경험치 60 = 행동력 6 → 세력 1 (하루 상한은 _guild_feed 가 처리)
+  if to_regprocedure('public._guild_feed(uuid,text,integer)') is not null then perform public._guild_feed(p_uid, 'story', greatest(1, p_xp / 60)); end if;
   return jsonb_build_object('levelups', n, 'gold', gold);
 end $$;
 
