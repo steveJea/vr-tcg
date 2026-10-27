@@ -127,9 +127,11 @@
   const ptSum = b => STATS.reduce((a, s) => a + (b?.[s] | 0), 0);
   const ptOk = b => { const cap = ptCap(ptSum(b)); return STATS.every(s => (b?.[s] | 0) <= cap); };
   const statCalc = (o, s) => { const c = card(o.id); return Math.round(c[s] * (1 + exbOf(o) / 100) * (1 + lvPct(o) / 100)) + ptGain(s, (o.boost || {})[s]); };
+  /** 레벨·EX 반영 power: 카드 power × (1+EX%) × (1+레벨%) (스탯과 같은 배율, js/pvp-core.js snapCard 와 같음) */
+  const powerCalc = o => { const c = card(o.id); return Math.round((+c?.power || 0) * (1 + exbOf(o) / 100) * (1 + lvPct(o) / 100)); };
   function boosted(o) {
     const c = card(o.id); if (!c) return null;
-    return { ...c, name: exName(o, c.name), ex: exOf(o), slv: Math.max(1, o.level | 0 || 1), ATK: statCalc(o, 'ATK'), HP: statCalc(o, 'HP'), DEF: statCalc(o, 'DEF'), ...(o.skillLv && typeof o.skillLv === 'object' ? { skillLv: { ...o.skillLv } } : {}) };
+    return { ...c, name: exName(o, c.name), ex: exOf(o), slv: Math.max(1, o.level | 0 || 1), ATK: statCalc(o, 'ATK'), HP: statCalc(o, 'HP'), DEF: statCalc(o, 'DEF'), power: powerCalc(o), ...(o.skillLv && typeof o.skillLv === 'object' ? { skillLv: { ...o.skillLv } } : {}) };
   }
 
   // ----- 카드 레벨 (서버 story_levels.sql 과 같은 규칙. 브라우저 저장 대체 경로·미리보기용) -----
@@ -161,7 +163,7 @@
   const rand = a => a[Math.floor(Math.random() * a.length)];
   function pickEnemies(ph) {
     // enemies.boost: { 카드 id: { HP, ATK, DEF, power } } 이 페이즈에서만 쓰는 적 능력치 (카드 원본은 그대로)
-    if (ph.enemies.ids) return ph.enemies.ids.map(card).filter(Boolean).map(c => { const b = ph.enemies.boost?.[String(c.id)]; return b ? { ...c, ...b, storyBoost: true } : { ...c }; });   // 같은 id 적 여러 명(CH6 J×5 등)도 서로 다른 객체로
+    if (ph.enemies.ids) return ph.enemies.ids.map(card).filter(Boolean).map(c => { const b = ph.enemies.boost?.[String(c.id)]; if (!b) return { ...c }; const e = { ...c, ...b, storyBoost: true }; e.power = window.TCG?.calcPower ? TCG.calcPower(e) : (b.power ?? c.power); return e; });   // boost power = 옵션 B 공식(boost 스탯)   // 같은 id 적 여러 명(CH6 J×5 등)도 서로 다른 객체로
     const [a, b] = ph.enemies.rank, list = normals().slice(a, b), out = [];
     while (out.length < ph.enemies.count && list.length) out.push(list.splice(Math.floor(Math.random() * list.length), 1)[0]);
     return out;
@@ -963,7 +965,7 @@
         const up = STATS.filter(s => b[s]).map(s => `${s} +${ptGain(s, b[s])}`).join(' · ');
         const mergeable = gr.list.some(canMerge);
         return `<div class="story-group ${open ? 'open' : ''}"><div data-uid="${o.uid}" class="story-owned">${ownTile(o, c, `${n > 1 ? `<div class="story-dup">x${n}</div>` : ''}${gr.list.some(x => (x.locked || inDeck(x)) && !isLeader(x)) ? '<div class="story-lockbadge" title="잠금">🔒</div>' : ''}${gr.list.some(isFav) ? '<div class="story-favbadge">★</div>' : ''}`, `${mergeable ? `<button class="story-merge-mini" data-merge="${(gr.list.find(canMerge)).uid}" title="합성" aria-label="합성">${ic('merge', { alt: '합성' }) || '✦'}</button>` : ''}${n > 1 ? `<button class="story-expand" data-expand="${gr.id}" title="${open ? '접기' : `${n}장 보기`}">${open ? '▴' : `▾${n}`}</button>` : ''}`)}</div>
-          ${open ? `<div class="story-copies">${gr.list.map(x => `<button class="story-copy" data-uid="${x.uid}"><span class="font-bold">${isLeader(x) ? ic('crown', { alt: '리더' }) + ' ' : x === o ? '⚔️ ' : ''}${(x.locked || inDeck(x)) && !isLeader(x) ? '🔒 ' : ''}${isFav(x) ? '★ ' : ''}Lv.${x.level}${exOf(x) ? ` <i class="text-red-300 not-italic">EX${exOf(x)}</i>` : ''}</span><span class="text-[10px] text-zinc-400">${ic('atk', { cls: 'ui-ic-sm' })}${fmt(statCalc(x, 'ATK'))} ${ic('hp', { cls: 'ui-ic-sm' })}${fmt(statCalc(x, 'HP'))} ${ic('def', { cls: 'ui-ic-sm' })}${fmt(statCalc(x, 'DEF'))}</span></button>`).join('')}</div>` : ''}</div>`; }).join('')}</div>
+          ${open ? `<div class="story-copies">${gr.list.map(x => `<button class="story-copy" data-uid="${x.uid}"><span class="font-bold">${isLeader(x) ? ic('crown', { alt: '리더' }) + ' ' : x === o ? '⚔️ ' : ''}${(x.locked || inDeck(x)) && !isLeader(x) ? '🔒 ' : ''}${isFav(x) ? '★ ' : ''}Lv.${x.level}${exOf(x) ? ` <i class="text-red-300 not-italic">EX${exOf(x)}</i>` : ''}</span><span class="text-[10px] text-zinc-400"><b class="text-amber-300">⚡${fmt(powerCalc(x))}</b> ${ic('atk', { cls: 'ui-ic-sm' })}${fmt(statCalc(x, 'ATK'))} ${ic('hp', { cls: 'ui-ic-sm' })}${fmt(statCalc(x, 'HP'))} ${ic('def', { cls: 'ui-ic-sm' })}${fmt(statCalc(x, 'DEF'))}</span></button>`).join('')}</div>` : ''}</div>`; }).join('')}</div>
       ${anyPts ? '<div class="text-center mt-4"><button class="story-btn" data-go="stats">📈 스탯 분배하기</button></div>' : ''}`);
     bind({ stats: () => openStats(renderCards), bulk: () => bulkDiscard(), leader: () => pickLeader(), decks: () => renderDecks() });
     bindFilter(renderCards);
@@ -1039,7 +1041,7 @@
     const p = popup(`<div class="flex gap-3"><div class="cd-img relative shrink-0 self-start"><img src="${IMG}${c.id}.webp" class="w-full aspect-[3/4] object-cover rounded-xl" alt="">${window.rarityStars?.(c, exOf(o) ? 'ex' : 'base', 'rstars-over') || ''}</div><div class="flex-1 min-w-0">
         <div class="text-lg font-black truncate">${window.TCG?.cardTitle ? TCG.cardTitle(c, isLeader(o) ? ic('crown', { alt: '리더' }) + ' ' : '') : `${isLeader(o) ? ic('crown', { alt: '리더' }) + ' ' : ''}${esc(c.name)} <span class="text-xs text-zinc-400">${RAR[c.grade] || 'N'}</span>`}</div>${window.TCG?.cardTags?.(c, [n > 1 ? `×${n}${rep ? ' ⚔️' : ''}` : '']) || ''}
         ${lvBar(o)}
-        <div class="cd-stats" role="button" tabindex="0" title="눌러서 기본 + 레벨 보기">${STATS.map(s => { const base = card(o.id)[s], exB = Math.round(base * (1 + exbOf(o) / 100)) - base, lvB = Math.round(base * (1 + exbOf(o) / 100) * (1 + lvPct(o) / 100)) - base - exB, pt = ptGain(s, o.boost?.[s]);
+        <div class="cd-stats" role="button" tabindex="0" title="눌러서 기본 + 레벨 보기"><div class="cd-power"><span>⚡ POWER</span><b>${fmt(c.power)}</b><small class="cd-brk">기본 ${fmt(card(o.id).power)}</small></div>${STATS.map(s => { const base = card(o.id)[s], exB = Math.round(base * (1 + exbOf(o) / 100)) - base, lvB = Math.round(base * (1 + exbOf(o) / 100) * (1 + lvPct(o) / 100)) - base - exB, pt = ptGain(s, o.boost?.[s]);
           return `<div><span>${STAT_LABEL[s]}</span><b>${fmt(c[s])}</b><small class="cd-brk">기본 ${fmt(base)}${exB ? ` <i class="text-red-300">+${fmt(exB)} EX</i>` : ''}${lvB ? ` <i class="text-amber-300">+${fmt(lvB)} 레벨</i>` : ''}${pt ? ` <i class="text-emerald-300">+${fmt(pt)} 포인트</i>` : ''}</small></div>`; }).join('')}
           <div class="cd-brk cd-more">최대 Lv.${cap} · 누적 EXP ${fmt(o.totalExp)}${exOf(o) ? ` · <span class="text-red-300">EX${exOf(o)} +${exbOf(o)}%</span> (${exOf(o)}/${maxEx(o)}${exOf(o) >= maxEx(o) ? ' 최대 합성' : ''})` : ''}${n > 1 ? `<br>같은 카드 ${n}장 중 1장${rep ? ' (⚔️ 전투 출전)' : ''} · 전투에는 1장만 나가요 (리더 · 없으면 레벨이 가장 높은 장)` : ''}</div></div>
         ${o.cpts ? `<div class="text-xs mt-1">남은 카드 전용 포인트 <b class="text-sky-300">${o.cpts}</b></div>` : ''}</div></div>

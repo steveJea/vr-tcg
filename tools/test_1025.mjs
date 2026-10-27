@@ -23,7 +23,7 @@ const F = ['2002400383', '2002300373', '2002100365'];                           
 
 // 카드 데이터
 const MH = '1000100007', YU = '2000100008', GA = '2000000040', EN = ['2000400089', '2000600115', '2000400087'];
-ok('유가을 카드 (HR·ICE·DEFENSE·19720·35)', C(GA)?.name === '유가을' && C(GA).grade === 'HIGH RARE' && C(GA).power === 19720 && C(GA).cost === 35);
+ok('유가을 카드 (HR·ICE·DEFENSE·21426·35)', C(GA)?.name === '유가을' && C(GA).grade === 'HIGH RARE' && C(GA).power === 21426 && C(GA).cost === 35);
 ok('민홍기 2번 = 용서는 없다 (액티브, 해금 5, MP50, 쿨4) · 아기토끼 제거', (() => { const s = skillsOf(MH)[1]; return s.name === '용서는 없다' && s.mode === 'active' && s.unlock === 5 && s.mp === 50 && s.cooldown === 4 && ACTIVE['용서는 없다'] && !skillsOf(MH).some(x => x.name === '아기토끼'); })());
 { const { B, A } = sides([MH], EN); const hp0 = B.map(u => u.hp); const r = cast(A[0], '용서는 없다');
   const exp = B.map(u => 2 * Math.max(1, Math.round(calcDamage(A[0].card, u.card) * 0.2)));

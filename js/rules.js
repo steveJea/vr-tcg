@@ -534,6 +534,15 @@ export function aiPickTarget(u, me, opp) {
   return allowed.units.length ? pickFieldTarget(u, allowed.units) : undefined;
 }
 
+/** 카드 power(전투력) 「옵션 B」 (tools/power.py 와 같은 식). c: { grade, HP, ATK, DEF, PHY, MEN, MOR } */
+export const POWER_GRADE_MULT = { 'NORMAL': 1, 'RARE': 2.5, 'HIGH RARE': 4, 'SUPER RARE': 6, 'ULTRA RARE': 8, 'MYTHIC RARE': 8 };
+export const POWER_SCALE = 11.4527618;
+export function calcPower(c) {
+  const n = k => +c?.[k] || 0;
+  const b = (n('ATK') * 1.2 + n('DEF') + n('HP') * 0.5) * (1 + (n('PHY') + n('MEN')) / 200) * (0.8 + n('MOR') / 250);
+  return Math.trunc(b * (POWER_GRADE_MULT[String(c?.grade || '').trim()] || 1) * POWER_SCALE);
+}
+
 export function parseCSV(text) {
   const lines = text.replace(/^\uFEFF/, '').trim().split(/\r?\n/);
   const headers = lines[0].split(',').map(h => h.trim());

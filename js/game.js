@@ -1,4 +1,4 @@
-import { levelUpOnce, RULES, ELEMENTS, elementMultiplier, calcDamage, canSummon, buildDeck, parseCSV, aiSummonOrder, aiPickTarget, recallCost, canRecall, aiShouldRecall, makeUnit, resolveAttack, refillMana, ACTIONS, canAction, doAction, clearBuff, aiWantShuffle, aiWantBuff, aiWantHeal, aiWantFieldHeal, aiPickItem, endTurnXp, ITEMS, canEquip, equip, attackTargets, canTarget, autoTarget, heroLocked, xpToNext, SKILLS, gainXp, setCardPool, canSacrifice, sacrifice, aiPickSacrifice, aiWantAccel, judgeTimeout, JUDGE_LABEL, genderMult, GRADES, GRADE_SHORT, allowedGrades, baseEvade } from './rules.js';
+import { levelUpOnce, RULES, calcPower, ELEMENTS, elementMultiplier, calcDamage, canSummon, buildDeck, parseCSV, aiSummonOrder, aiPickTarget, recallCost, canRecall, aiShouldRecall, makeUnit, resolveAttack, refillMana, ACTIONS, canAction, doAction, clearBuff, aiWantShuffle, aiWantBuff, aiWantHeal, aiWantFieldHeal, aiPickItem, endTurnXp, ITEMS, canEquip, equip, attackTargets, canTarget, autoTarget, heroLocked, xpToNext, SKILLS, gainXp, setCardPool, canSacrifice, sacrifice, aiPickSacrifice, aiWantAccel, judgeTimeout, JUDGE_LABEL, genderMult, GRADES, GRADE_SHORT, allowedGrades, baseEvade } from './rules.js';
 import { autoNext, noteUsed } from './auto-ai.js';
 import { setSpare, spareBlocked, setSkillData, setEmitter, initPlayers, placeUnit, turnStart, turnEnd, useSkill, skillState, aiPickSkill, skillLvOf, skillCdAt, skillLvMult, SKILL_LV_MAX, refreshAll, statusIcons, skillsOf, combos, STATUS, SK, maleLure, checkDeath } from './skills.js';
 
@@ -1047,8 +1047,8 @@ function cardTags(c, extra = []) {
   return `<div class="ci-tags"><span class="rar-badge rar-inline ${r.cls}" title="${r.label}">${r.short}</span><span class="ci-el" title="${e.label}">${icOf(e)}</span>${n ? `<span class="ci-tag" title="스킬 ${n}개">${window.VRIcon?.or?.('skill_count', '📜') || '📜'}${n}</span>` : ''}<span class="ci-tag ci-cls">${escA(c.attribute || '')}</span>${extra.filter(Boolean).map(t => `<span class="ci-tag">${t}</span>`).join('')}</div>`;
 }
 /** ATK/DEF/HP: 아이콘 + 숫자 */
-function cardStats(c, hp = null) {
-  return `<div class="ci-stats"><span class="ci-st atk" title="ATK">${ic('atk', { alt: 'ATK' })}<b>${fmt(c.ATK)}</b></span><span class="ci-st def" title="DEF">${ic('def', { alt: 'DEF' })}<b>${fmt(c.DEF)}</b></span><span class="ci-st hp" title="HP">${ic('hp', { alt: 'HP' })}<b>${hp != null ? fmt(+hp) + '/' : ''}${fmt(c.HP)}</b></span></div>`;
+function cardStats(c, hp = null, power = false) {
+  return `${power ? `<div class="ci-power" title="전투력 (레벨 반영)">⚡ <span>POWER</span> <b>${fmt(c.power)}</b></div>` : ''}<div class="ci-stats"><span class="ci-st atk" title="ATK">${ic('atk', { alt: 'ATK' })}<b>${fmt(c.ATK)}</b></span><span class="ci-st def" title="DEF">${ic('def', { alt: 'DEF' })}<b>${fmt(c.DEF)}</b></span><span class="ci-st hp" title="HP">${ic('hp', { alt: 'HP' })}<b>${hp != null ? fmt(+hp) + '/' : ''}${fmt(c.HP)}</b></span></div>`;
 }
 function cardHTML(c, { hp, size = 'md', dim = false } = {}) {
   const e = ELEMENTS[c.class] || ELEMENTS.WIND;
@@ -1293,7 +1293,7 @@ function onHeroClick() {
   if (a) attack('me', a, null); // 규칙 위반이면 attack()이 사유를 보여줌
 }
 
-function showDetail(c, { fromHand = false, hp, unit = null, view = null } = {}) {
+function showDetail(c, { fromHand = false, hp, unit = null, view = null, power = false } = {}) {
   const e = ELEMENTS[c.class] || ELEMENTS.WIND;
   const check = fromHand ? canSummon(c, S.me, S.ai) : null;
   const myTurn = !!S && S.turn === 'me' && !S.over && !S.busy;
@@ -1302,8 +1302,8 @@ function showDetail(c, { fromHand = false, hp, unit = null, view = null } = {}) 
       <div class="relative shrink-0"><img src="${IMG}${c.id}.webp" data-id="${c.id}" class="card-img w-32 md:w-40 aspect-[3/4] object-cover rounded-xl ring-2 ${e.ring}">${window.rarityStars?.(c, c.ex ? 'ex' : 'base', 'rstars-over') || ''}<button type="button" class="zoom-btn absolute bottom-1 right-1" data-zoom="${c.id}"${c.ex ? ` data-ex="${c.ex}" data-name="${String(c.name).replace(/[&"<>]/g, ch => `&#${ch.charCodeAt(0)};`)}"` : ''}${hp != null ? ` data-hp="${hp}"` : ''} title="크게 보기" aria-label="크게 보기">🔍</button></div>
       <div class="flex-1 min-w-0">
         <div class="text-xl font-black leading-tight">${cardTitle(c)}</div>
-        ${cardTags(c, [`⚡${fmt(c.power)}`, `${ic('mana', { alt: '코스트' })}${c.cost}`])}
-        ${cardStats(c, hp)}
+        ${cardTags(c, [power ? '' : `⚡${fmt(c.power)}`, `${ic('mana', { alt: '코스트' })}${c.cost}`])}
+        ${cardStats(c, hp, power)}
       </div>
     </div>
     ${skillListHTML(c, unit || view, myTurn)}
@@ -1360,7 +1360,7 @@ function skillListHTML(c, unit, myTurn, lv = 1, opt = {}) {
 function showModal(id) { $(id).classList.remove('hidden'); $(id).classList.add('flex'); }
 function hideModal(id) { $(id).classList.add('hidden'); $(id).classList.remove('flex'); $(id).style.zIndex = ''; resetHScroll(); }
 // 다른 화면(마이페이지 등) 위에서 카드 정보 보기: 전투 중이 아닌 보기 전용 상세
-function showCardInfo(c) { if (!c) return; showDetail(c); $('detail').style.zIndex = '130'; showModal('detail'); }
+function showCardInfo(c, opt = {}) { if (!c) return; showDetail(c, { power: !!opt.power }); $('detail').style.zIndex = '130'; showModal('detail'); }
 // 모바일에서 페이지가 옆으로 밀린 채 남지 않게 (컷인·모달 뒤) 가로 스크롤을 0으로
 function resetHScroll() { if (window.scrollX || document.documentElement.scrollLeft || document.body.scrollLeft) { document.documentElement.scrollLeft = 0; document.body.scrollLeft = 0; window.scrollTo(0, window.scrollY); } }
 window.addEventListener('scroll', () => { if (window.scrollX) resetHScroll(); }, { passive: true });
@@ -1553,4 +1553,4 @@ function zoomFromBtn(b) {
 document.addEventListener('click', e => { const b = e.target.closest?.('.zoom-btn'); if (!b) return; e.stopPropagation(); e.preventDefault(); zoomFromBtn(b); }, true);
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('zoom-view')?.classList.contains('open')) { e.stopPropagation(); closeZoom(); } }, true);
 
-window.TCG = { get NPC() { return NPC; }, cardById: id => POOL.find(c => String(c.id) === String(id)) || NPC.find(c => String(c.id) === String(id)), isNpc, cardTitle, cardTags, cardStats, regionShort, playStinger, showCardInfo, skillsOf, combos, arcadeOpts: ArcadeOpts, openArcadeOpts, playSe, onEnter, checkEvents, showEvent, mvpVoice, get events() { return EVENTS; }, get seOn() { return seOn; }, skillListHTML: (c, lv, opt) => skillListHTML(c, null, false, lv, opt), voiceTest(k) { if (!voiceSet?.has(k)) return false; const a = voiceAudio(k); a.volume = voiceVol; a.currentTime = 0; voiceCur = a; a.play().catch(() => {}); return true; }, get voiceActive() { return voiceActive.size; }, get voice() { return { on: voiceOn, vol: voiceVol, cur: voiceCur && { src: voiceCur.src, paused: voiceCur.paused, t: voiceCur.currentTime }, set: voiceSet && voiceSet.size }; }, openZoom, closeZoom, dupCheck, get errors() { return window.TCG_ERRORS || []; }, cutIn, passiveCutIn, sortedHand, get handSort() { return handSort; }, put: debugPut, castSkill, skillState, get S() { return S; }, RULES, elementMultiplier, calcDamage, canSummon, buildDeck, summon, attack, recall, attackAll, endTurn, canRecall, recallCost, makeUnit, resolveAttack, useAction, canAction, startGame, startStory, cardHTML, get ready() { return POOL.length > 0; }, equipItem, doSacrifice, finish, attackTargets, get POOL() { return POOL; }, render, Stats };
+window.TCG = { get NPC() { return NPC; }, cardById: id => POOL.find(c => String(c.id) === String(id)) || NPC.find(c => String(c.id) === String(id)), isNpc, cardTitle, cardTags, cardStats, regionShort, playStinger, showCardInfo, skillsOf, combos, arcadeOpts: ArcadeOpts, openArcadeOpts, playSe, onEnter, checkEvents, showEvent, mvpVoice, get events() { return EVENTS; }, get seOn() { return seOn; }, skillListHTML: (c, lv, opt) => skillListHTML(c, null, false, lv, opt), voiceTest(k) { if (!voiceSet?.has(k)) return false; const a = voiceAudio(k); a.volume = voiceVol; a.currentTime = 0; voiceCur = a; a.play().catch(() => {}); return true; }, get voiceActive() { return voiceActive.size; }, get voice() { return { on: voiceOn, vol: voiceVol, cur: voiceCur && { src: voiceCur.src, paused: voiceCur.paused, t: voiceCur.currentTime }, set: voiceSet && voiceSet.size }; }, openZoom, closeZoom, dupCheck, get errors() { return window.TCG_ERRORS || []; }, cutIn, passiveCutIn, sortedHand, get handSort() { return handSort; }, put: debugPut, castSkill, skillState, get S() { return S; }, RULES, calcPower, elementMultiplier, calcDamage, canSummon, buildDeck, summon, attack, recall, attackAll, endTurn, canRecall, recallCost, makeUnit, resolveAttack, useAction, canAction, startGame, startStory, cardHTML, get ready() { return POOL.length > 0; }, equipItem, doSacrifice, finish, attackTargets, get POOL() { return POOL; }, render, Stats };

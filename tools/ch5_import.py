@@ -17,8 +17,13 @@ RULES = {n: ([GW], {}, None) for n in range(1, 7)}
 RULES.update({7: ([GW], {'banClass': ['DARK']}, None), 8: ([GW], {'banClass': ['LIGHT']}, None), 9: ([GW], NO_UR, None),
               10: ([HR], NO_UR, {'undying': [SY]})})
 # 정아영은 N 등급이지만 3·10페이즈 리더: 스토리 전용 능력치 (해당 페이즈에서만, 카드 원본은 그대로)
-BOOST = {3: {AY: {'HP': 150, 'ATK': 30, 'DEF': 26, 'power': 6000}},
-         10: {AY: {'HP': 360, 'ATK': 62, 'DEF': 44, 'power': 30000}, SY: {'HP': 240, 'ATK': 40, 'DEF': 30, 'power': 15000}}}
+BOOST = {3: {AY: {'HP': 150, 'ATK': 30, 'DEF': 26}},
+         10: {AY: {'HP': 360, 'ATK': 62, 'DEF': 44}, SY: {'HP': 240, 'ATK': 40, 'DEF': 30}}}
+# power 는 boost 스탯으로 옵션 B 공식 계산 (tools/power.py)
+sys.path.insert(0, os.path.dirname(__file__)); from power import card_power
+BYID = {r['id']: r for r in rows}
+for _b in BOOST.values():
+    for _k, _v in _b.items(): _v['power'] = card_power(BYID[_k], **_v)
 LINE = re.compile(r'^\[([^:\]]+?)\s*(?:\((기본|화남|웃음)\))?:\s*(.*)\]$')
 
 def parse(path):

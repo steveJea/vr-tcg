@@ -89,7 +89,7 @@
     let c = null;
     try { const inst = window.VRStory?.save?.owned?.find(o => o.uid === uid); if (inst) c = window.VRStory.api.battleCards([inst])[0] || null; } catch {}
     if (!c) c = (window.TCG?.POOL || []).find(x => String(x.id) === String(id)) || null;
-    if (c && window.TCG?.showCardInfo) window.TCG.showCardInfo(c);
+    if (c && window.TCG?.showCardInfo) window.TCG.showCardInfo(c, { power: true });   // ATK 위에 전투력(레벨 반영)
   }
   addSection({ id: 'leader', order: 10, render: ctx => {
     const s = ctx.story, L = s?.owned.find(o => o.uid === s.leaderUid) || s?.owned.find(o => s.deckUids?.[0] === o.uid);
