@@ -462,8 +462,8 @@ span.story-lvpct { background: rgba(251,191,36,.12); border: 1px solid rgba(251,
 .story-hub-vid{flex:none;font-size:18px;padding:2px 6px;border-radius:10px;background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.15)}
 /* 내 카드 상세 (간단) */
 .cd-stats{margin-top:6px;display:flex;flex-direction:column;gap:2px;cursor:pointer;text-align:left;border-radius:8px}
-.cd-stats>div:not(.cd-more){display:flex;align-items:baseline;gap:8px;font-size:13px}
-.cd-stats span{width:4.2rem;font-weight:700}.cd-stats b{font-weight:900}.cd-stats i{font-style:normal}
+.cd-stats>div:not(.cd-more){display:flex;align-items:baseline;gap:8px;font-size:13px;white-space:nowrap}
+.cd-stats span{flex:none;width:4.9rem;font-weight:700;white-space:nowrap}.cd-stats b{font-weight:900}.cd-stats i{font-style:normal}
 .cd-stats .cd-brk{display:none;font-size:10px;color:#a1a1aa}
 .cd-stats.open .cd-brk{display:inline}.cd-stats.open .cd-more{display:block;margin-top:2px;line-height:1.4}
 .cd-lvup{margin-top:10px;display:flex;align-items:center;gap:6px;padding:6px;border-radius:12px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.35)}
