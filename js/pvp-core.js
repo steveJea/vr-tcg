@@ -9,7 +9,7 @@ export const MAX_TURNS = 40;
 export const LEAGUES = { open: { label: '무제한', grades: null, costCap: null }, hr: { label: 'HR↓', grades: ['NORMAL', 'RARE', 'HIGH RARE'], costCap: 150 } };
 export const MODES = { '1v1': { decks: 1, need: 1 }, '3v3': { decks: 3, need: 2 } };
 // 스토리 카드 스탯 규칙 (js/story.js boosted 와 같음)
-const LV_RATE = { 'NORMAL': 0.01, 'RARE': 0.02, 'HIGH RARE': 0.03, 'SUPER RARE': 0.04, 'ULTRA RARE': 0.05, 'MYTHIC RARE': 0.06 };
+const LV_RATE = { 'NORMAL': 0.01, 'RARE': 0.02, 'HIGH RARE': 0.03, 'SUPER RARE': 0.04, 'ULTRA RARE': 0.05, 'MYTHIC RARE': 0.06, 'LEGENDARY RARE': 0.05 };
 const PER_PT = { ATK: 1, HP: 5, DEF: 1 }, PT_FULL = 5;
 const ptGain = (s, n) => { n = Math.max(0, n | 0); const k = PER_PT[s]; return k * Math.min(n, PT_FULL) + Math.floor(k * Math.max(0, n - PT_FULL) / 2); };
 /** 스냅샷 한 장 → 전투 카드 */

@@ -265,7 +265,7 @@ function summon(who, card) {
   log(`${p.name}: ${card.name} 소환 (코스트 ${card.cost})`);
   if (who === 'me' && S.story) S.log.played.add(String(card.id));   // 스토리: 참전 카드 기록 (EXP 지급용)
   const u = placeUnit(p, card, makeUnit, true);   // 새로 소환한 카드는 필드 맨 앞
-  playSe(card.grade === 'MYTHIC RARE' ? 6 : card.grade === 'ULTRA RARE' ? 5 : 2);
+  playSe(card.grade === 'MYTHIC RARE' || card.grade === 'LEGENDARY RARE' ? 6 : card.grade === 'ULTRA RARE' ? 5 : 2);
   render();
   onEnter(who, u);
   return { ok: true };
@@ -788,10 +788,10 @@ function onEnter(who, u) {
   checkEvents();
 }
 // 시련의 탑: UR·MR 등장 컷인은 카드마다 하루 1번 (00:00 KST 초기화, 이 브라우저 기준). 스토리·아케이드는 그대로
-const isUrMr = u => ['ULTRA RARE', 'MYTHIC RARE'].includes((u.base || u.card).grade);
+const isUrMr = u => ['ULTRA RARE', 'MYTHIC RARE', 'LEGENDARY RARE'].includes((u.base || u.card).grade);
 const Q_ENTRY_KEY = 'vrTcgQuestEntryCutin';
 function questEntrySeenToday(u, id) {
-  const g = (u.base || u.card).grade; if (g !== 'ULTRA RARE' && g !== 'MYTHIC RARE') return false;
+  const g = (u.base || u.card).grade; if (g !== 'ULTRA RARE' && g !== 'MYTHIC RARE' && g !== 'LEGENDARY RARE') return false;
   const day = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
   let d; try { d = JSON.parse(localStorage.getItem(Q_ENTRY_KEY) || '{}'); } catch { d = {}; }
   if (d.day !== day) d = { day, ids: [] };
@@ -1032,6 +1032,7 @@ const RARITY = {
   'SUPER RARE':  { short: 'SR', label: '슈퍼 레어',  cls: 'rar-sr' },
   'ULTRA RARE':  { short: 'UR', label: '울트라 레어', cls: 'rar-ur' },
   'MYTHIC RARE': { short: 'MR', label: '미식 레어',  cls: 'rar-mr' },
+  'LEGENDARY RARE': { short: 'LR', label: '레전더리 레어', cls: 'rar-lr' },
 };
 const rarityOf = c => RARITY[c.grade] || RARITY.NORMAL;
 // ===== 카드 정보 공통 (전투 상세·확대·마이페이지·내 카드·갤러리): 그림 위주, 글자 최소 =====
@@ -1225,7 +1226,7 @@ function render() {
 
 // ===== 손패 정렬 =====
 const SORT_KEY = 'tcg_hand_sort';
-const GRADE_RANK = { 'NORMAL': 0, 'RARE': 1, 'HIGH RARE': 2, 'SUPER RARE': 3, 'ULTRA RARE': 4, 'MYTHIC RARE': 5 };
+const GRADE_RANK = { 'NORMAL': 0, 'RARE': 1, 'HIGH RARE': 2, 'SUPER RARE': 3, 'ULTRA RARE': 4, 'MYTHIC RARE': 5, 'LEGENDARY RARE': 6 };
 const SORTS = { none: '획득순', grade: '등급순', cost: '코스트순', atk: '공격력순', def: '방어력순', hp: 'HP순' };
 const sortVal = { grade: c => GRADE_RANK[c.grade] ?? 0, cost: c => c.cost, atk: c => c.ATK, def: c => c.DEF, hp: c => c.HP };
 let handSort = localStorage.getItem(SORT_KEY) || 'none';

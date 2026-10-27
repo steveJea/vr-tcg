@@ -16,7 +16,7 @@ function setup(a, b, over = {}) {
   const u = placeUnit(P[0], a, makeUnit), t = placeUnit(P[1], b, makeUnit); refreshAll(P[0]); refreshAll(P[1]); evs.length = 0;
   u.canAttack = true; return { P, u, t, hit: () => resolveAttack(P[0], P[1], u, t).find(e => e.type === 'hit') };
 }
-ok(JSON.stringify(base.CRIT_RATE) === JSON.stringify({ 'NORMAL': 0.03, 'RARE': 0.04, 'HIGH RARE': 0.05, 'SUPER RARE': 0.06, 'ULTRA RARE': 0.08, 'MYTHIC RARE': 0.10 }) && base.CRIT_MULT === 1.5, '등급별 치명 확률·150%');
+ok(JSON.stringify(base.CRIT_RATE) === JSON.stringify({ 'NORMAL': 0.03, 'RARE': 0.04, 'HIGH RARE': 0.05, 'SUPER RARE': 0.06, 'ULTRA RARE': 0.08, 'MYTHIC RARE': 0.10, 'LEGENDARY RARE': 0.12 }) && base.CRIT_MULT === 1.5, '등급별 치명 확률·150%');
 { const s = setup(card('WIND'), card('WIND', 'SUPER RARE', 'b')); const n = s.hit(); const s2 = setup(card('WIND'), card('WIND', 'SUPER RARE', 'b'), { CRIT_RATE: { 'SUPER RARE': 1 } }); const c = s2.hit();
   ok(c.d1 === Math.round(n.d1 * 1.5) && evs.some(e => e.type === 'crit'), `기본 공격 치명 ×1.5 (${n.d1} → ${c.d1})`); ok(c.d2 === Math.round(n.d2 * 1.5), `반격 치명 ×1.5 (${n.d2} → ${c.d2})`); }
 { const s = setup(card('FIRE'), card('ICE', 'SUPER RARE', 'b'), { FIRE_BURN_P: 1 }); s.hit(); ok(s.t.st.burn?.t >= 2, '불: 적중 시 화상 2턴');

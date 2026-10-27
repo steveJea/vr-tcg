@@ -1,5 +1,5 @@
 // ===== VR TCG 규칙 (순수 함수: UI와 분리, 테스트 가능) =====
-import { chance, cleanseOne, addStatus, emit, skillsOf, damageUnit, damageHero, checkDeath, afterBasicHit, refreshAll, onLevelChange, redirectAttack, counterMult, heal, maleLure, rollEvade, spares } from './skills.js';
+import { chance, cleanseOne, addStatus, emit, skillsOf, damageUnit, damageHero, checkDeath, afterBasicHit, refreshAll, onLevelChange, redirectAttack, counterMult, heal, maleLure, rollEvade, spares, bleedOn } from './skills.js';
 export const RULES = {
   HERO_HP: 3000,          // 영웅 HP
   DAMAGE_MULT: 1.5,       // ATK에 곱하는 전체 데미지 배율 (DEF 차감 전)
@@ -42,13 +42,13 @@ export const RULES = {
   BUFF_RATIO: 0.2,
   // 아케이드 등급별 뽑기 확률 (덱 30장 슬롯마다 등급 추첨, 등급 제한 시 남은 등급끼리 재정규화)
   DRAW_RATES: { 'NORMAL': 0.50, 'RARE': 0.30, 'HIGH RARE': 0.11, 'SUPER RARE': 0.05, 'ULTRA RARE': 0.03, 'MYTHIC RARE': 0.01 },
-  MAX_MYTHIC_PER_DECK: 1,
+  MAX_MYTHIC_PER_DECK: 1, MAX_VOID_PER_DECK: 1,   // 공허(VOID): 덱당 1장, 심연(ABYSS)과 같은 덱 불가
   // 성별 간 피해 (모든 모드): 남→여 85%, 여→남 105%, 동성 100%. 스킬의 [여성에게]/[남성에게] 추가 %와 곱연산
   GENDER_ON: true, GENDER_M2F: 0.85, GENDER_F2M: 1.05,
   // 기본 공격 회피 (속성별 기본값, 스킬 회피와 합산, 상한)
   EVADE_ON: true, EVADE_BASE: { WIND: 0.07 }, EVADE_DEFAULT: 0.04, EVADE_CAP: 0.6,
   // 치명타 (카드 간 모든 피해: 기본 공격·스킬·반격). 등급별 확률, 피해 ×1.5
-  CRIT_ON: true, CRIT_RATE: { 'NORMAL': 0.03, 'RARE': 0.04, 'HIGH RARE': 0.05, 'SUPER RARE': 0.06, 'ULTRA RARE': 0.08, 'MYTHIC RARE': 0.10 }, CRIT_MULT: 1.5,
+  CRIT_ON: true, CRIT_RATE: { 'NORMAL': 0.03, 'RARE': 0.04, 'HIGH RARE': 0.05, 'SUPER RARE': 0.06, 'ULTRA RARE': 0.08, 'MYTHIC RARE': 0.10, 'LEGENDARY RARE': 0.12 }, CRIT_MULT: 1.5,
   // 속성 패시브 (바람 = 회피 10%, 심연 = 없음)
   EL_PASSIVE_ON: true,
   FIRE_BURN_P: 0.25, BURN_TURNS: 2, BURN_DOWN: 0.05,     // 불: 기본 공격 적중 시 화상 (대상이 주는 피해 -5%, 갱신·중첩 없음)
@@ -57,7 +57,8 @@ export const RULES = {
   LIGHT_CLEANSE_P: 0.15, LIGHT_NULL_P: 0.10,             // 빛: 적중 시 자기 디버프 1개 해제 / 공격 시 받는 반격 무효
 };
 export const GRADES = ['NORMAL', 'RARE', 'HIGH RARE', 'SUPER RARE', 'ULTRA RARE', 'MYTHIC RARE'];
-export const GRADE_SHORT = { 'NORMAL': 'N', 'RARE': 'R', 'HIGH RARE': 'HR', 'SUPER RARE': 'SR', 'ULTRA RARE': 'UR', 'MYTHIC RARE': 'MR' };
+export const GRADE_SHORT = { 'NORMAL': 'N', 'RARE': 'R', 'HIGH RARE': 'HR', 'SUPER RARE': 'SR', 'ULTRA RARE': 'UR', 'MYTHIC RARE': 'MR', 'LEGENDARY RARE': 'LR' };
+// GRADES(아케이드 등급 선택·뽑기 확률)에는 LR 없음: LEGENDARY RARE 는 NPC 전용 (뽑기 확률 없음)
 /** 성별 피해 배율 (공격 카드 → 대상 카드). 영웅·성별 미상은 1 */
 export function genderMult(att, def) {
   if (!RULES.GENDER_ON || !att || !def) return 1;
@@ -82,6 +83,7 @@ export const ELEMENTS = {
   DARK:  { label: '어둠', icon: '🌑', img: 'el_dark', color: 'text-purple-400', ring: 'ring-purple-500' },
   LIGHT: { label: '빛',   icon: '✨', img: 'el_light', color: 'text-yellow-300', ring: 'ring-yellow-400' },
   ABYSS: { label: '심연', icon: '💀', img: 'el_death', color: 'text-rose-500',   ring: 'ring-rose-600' },
+  VOID:  { label: '공허', icon: '🌌', color: 'text-fuchsia-300', ring: 'ring-fuchsia-400' },
 };
 
 const BEATS = { FIRE: 'WIND', WIND: 'ICE', ICE: 'FIRE' };
@@ -89,6 +91,9 @@ const BEATS = { FIRE: 'WIND', WIND: 'ICE', ICE: 'FIRE' };
 /** 공격 속성 att → 방어 속성 def 배율. def가 null이면(영웅) 1. */
 export function elementMultiplier(att, def) {
   if (!def || RULES.ELEM_MULT_ON === false) return 1;   // ELEM_MULT_ON=false: 시뮬레이션 전용 (속성 상성 끄기)
+  // 공허(VOID): 심연 위. 공격 시 모든 속성에 ×1.5, 방어 시 상성 약점 없음 (공허끼리 ×1.25)
+  if (att === 'VOID') return def === 'VOID' ? 1.25 : 1.5;
+  if (def === 'VOID') return 1;
   if (def === 'ABYSS') return att === 'LIGHT' ? 2 : (att === 'ABYSS' ? 1.25 : 1);
   if (att === 'ABYSS') return 1.25;
   if ((att === 'LIGHT' && def === 'DARK') || (att === 'DARK' && def === 'LIGHT')) return 2;
@@ -97,10 +102,28 @@ export function elementMultiplier(att, def) {
   return 1;
 }
 
+/** 클래스(attribute) 특수: BALANCE = 속성 불리 없음 + 받는 피해 −15% · UNLIMITED = 항상 속성 유리(최소 ×1.5) + 주는 피해 +25% (UNLIMITED끼리는 보정 없음)
+ *  att·def: 카드 객체. 반환: 속성 배율에 이것까지 곱한 최종 배율 */
+export const ATTR_SPECIAL = { BALANCE: { label: '균형', icon: '⚖️', taken: 0.85 }, UNLIMITED: { label: '무한', icon: '♾️', dealt: 1.25 } };
+export function cardElemMult(att, def) {
+  if (!def) return 1;
+  let m = elementMultiplier(att.class, def.class);
+  if (RULES.ELEM_MULT_ON === false) return m;
+  const a = att.attribute, d = def.attribute, uu = a === 'UNLIMITED' && d === 'UNLIMITED';
+  if (a === 'UNLIMITED' && !uu) m = Math.max(m, 1.5);
+  if (a === 'BALANCE') m = Math.max(m, 1);
+  if (d === 'BALANCE') m = Math.min(m, 1);
+  if (a === 'UNLIMITED' && !uu) m *= ATTR_SPECIAL.UNLIMITED.dealt;
+  if (d === 'BALANCE') m *= ATTR_SPECIAL.BALANCE.taken;
+  return m;
+}
+/** 상태이상 저항: BALANCE·UNLIMITED 카드는 디버프 발동 확률 절반 */
+export const statusResistHalf = c => c?.attribute === 'BALANCE' || c?.attribute === 'UNLIMITED';
+
 /** 데미지 = max(1, floor(ATK × DAMAGE_MULT × 속성배율 − 대상DEF/2)). 영웅은 DEF 0, 속성 없음.
  *  성별 배율은 여기서 곱하지 않고 damageUnit(실제 적용 지점)에서 모든 카드 간 피해에 곱함. 예측용은 calcDamageG */
 export function calcDamage(attacker, target) {
-  const mult = target ? elementMultiplier(attacker.class, target.class) : 1;
+  const mult = target ? cardElemMult(attacker, target) : 1;
   const def = target ? target.DEF : 0;
   return Math.max(1, Math.floor(attacker.ATK * RULES.DAMAGE_MULT * mult - def / 2));
 }
@@ -309,6 +332,7 @@ export function resolveAttack(me, opp, unit, target) {
   if (EP && d2x > 0 && target.card.class === 'DARK' && chance(RULES.DARK_COUNTER_P)) { d2x = Math.round(d2x * RULES.DARK_COUNTER_MULT); emit({ type: 'elfx', unit: target, kind: 'darkCounter' }); }   // 어둠: 반격 2배
   if (EP && d2x > 0 && ac === 'LIGHT' && chance(RULES.LIGHT_NULL_P)) { d2x = 0; emit({ type: 'elfx', unit, kind: 'nullCounter' }); }   // 빛: 반격 무효
   const r2 = counterHit(unit, d2x, target);
+  if (r2 > 0 && target.st.bleedCounter && unit.hp > 0) bleedOn(unit, target);   // 장서현 [왜 그러는 건디...]: 반격 후 출혈 100%
   if (r2 > 0 && target.st.thorns?.leech) heal(target, Math.round(r2 * target.st.thorns.leech), '반격 흡혈');   // 고정태 [불을 훔친 자]
   ev.push({ type: 'hit', unit, target, d1: r1, d2: r2, mult: elementMultiplier(unit.card.class, target.card.class), killed, survived: r2 > 0 && unit.hp === 1 });
   const tDead = target.hp <= 0, uDead = unit.hp <= 0;
@@ -428,12 +452,12 @@ export function doAction(type, p) {
     const n = p.hand.length;
     // 중복 금지: 덱·손패·필드·무덤(부활 가능)에 있는 카드는 제외
     const own = new Set([...p.deck, ...p.hand, ...p.field.map(u => u.base), ...(p.grave || [])].map(c => c.id));
-    let abyss = [...p.deck, ...p.field.map(u => u.base)].filter(c => c.class === 'ABYSS').length;
+    let abyss = [...p.deck, ...p.field.map(u => u.base)].filter(c => c.class === 'ABYSS' || c.class === 'VOID').length;
     const fresh = [];
     for (const c of shuffle(p.pool?.length ? p.pool : CARD_POOL.length ? CARD_POOL : [...p.deck, ...p.hand])) {   // p.pool: 아케이드 등급 제한 시 허용 카드만
       if (fresh.length >= n) break;
-      if (own.has(c.id) || c.grade === 'MYTHIC RARE') continue;
-      if (c.class === 'ABYSS') { if (abyss >= RULES.MAX_ABYSS_PER_DECK) continue; abyss++; }
+      if (own.has(c.id) || c.grade === 'MYTHIC RARE' || c.grade === 'LEGENDARY RARE') continue;
+      if (c.class === 'ABYSS' || c.class === 'VOID') { if (abyss >= RULES.MAX_ABYSS_PER_DECK) continue; abyss++; }
       fresh.push(c); own.add(c.id);
     }
     for (const c of p.hand) { if (fresh.length >= n) break; if (!fresh.includes(c)) fresh.push(c); }   // 허용 카드가 부족하면(등급 제한) 기존 손패로 채움
@@ -494,9 +518,9 @@ export function buildDeck(pool, rng = Math.random, grades = null) {
   const allowed = pool.filter(c => !grades || grades.has(c.grade));
   if (!allowed.length) return [];
   const by = {}; for (const c of allowed) (by[c.grade] ||= []).push(c);
-  const deck = [], used = new Set(); let abyss = 0, myth = 0;
-  const ok = c => !(c.class === 'ABYSS' && abyss >= RULES.MAX_ABYSS_PER_DECK) && !(c.grade === 'MYTHIC RARE' && myth >= RULES.MAX_MYTHIC_PER_DECK);
-  const take = c => { deck.push(c); used.add(c); if (c.class === 'ABYSS') abyss++; if (c.grade === 'MYTHIC RARE') myth++; };
+  const deck = [], used = new Set(); let abyss = 0, myth = 0, voidN = 0;
+  const ok = c => !(c.class === 'ABYSS' && (abyss >= RULES.MAX_ABYSS_PER_DECK || voidN)) && !(c.class === 'VOID' && (voidN >= RULES.MAX_VOID_PER_DECK || abyss)) && !(c.grade === 'MYTHIC RARE' && myth >= RULES.MAX_MYTHIC_PER_DECK);
+  const take = c => { deck.push(c); used.add(c); if (c.class === 'ABYSS') abyss++; if (c.class === 'VOID') voidN++; if (c.grade === 'MYTHIC RARE') myth++; };
   for (let guard = 0; deck.length < RULES.DECK_SIZE && guard < 2000; guard++) {
     const gs = Object.keys(by).filter(g => by[g].some(c => !used.has(c) && ok(c)));
     if (!gs.length) break;
@@ -508,7 +532,7 @@ export function buildDeck(pool, rng = Math.random, grades = null) {
     take(cand[Math.floor(rng() * cand.length)]);
   }
   // 허용 카드가 부족하면(예: UR만) 중복으로 채움
-  const filler = allowed.filter(c => c.class !== 'ABYSS' && c.grade !== 'MYTHIC RARE');
+  const filler = allowed.filter(c => c.class !== 'ABYSS' && c.class !== 'VOID' && c.grade !== 'MYTHIC RARE');
   const fill = filler.length ? filler : allowed;
   while (deck.length < RULES.DECK_SIZE) deck.push(fill[Math.floor(rng() * fill.length)]);
   return shuffle(deck);
@@ -535,7 +559,7 @@ export function aiPickTarget(u, me, opp) {
 }
 
 /** 카드 power(전투력) 「옵션 B」 (tools/power.py 와 같은 식). c: { grade, HP, ATK, DEF, PHY, MEN, MOR } */
-export const POWER_GRADE_MULT = { 'NORMAL': 1, 'RARE': 2.5, 'HIGH RARE': 4, 'SUPER RARE': 6, 'ULTRA RARE': 8, 'MYTHIC RARE': 8 };
+export const POWER_GRADE_MULT = { 'NORMAL': 1, 'RARE': 2.5, 'HIGH RARE': 4, 'SUPER RARE': 6, 'ULTRA RARE': 8, 'MYTHIC RARE': 8, 'LEGENDARY RARE': 10 };
 export const POWER_SCALE = 11.4527618;
 // 스킬 반영: 기본 power × (1 + 0.04×액티브 수 + 0.02×패시브 수). 보유 카드 표시는 여기에 × (1 + 0.005×Σ(액티브 스킬Lv−1))
 export const SKILL_POWER = { active: 0.04, passive: 0.02, lv: 0.005 };
@@ -558,4 +582,13 @@ export function parseCSV(text) {
     headers.forEach((h, i) => { const s = (v[i] || '').trim(); o[h] = NUM.includes(h) ? Number(s) : h === 'skills' ? s.split('|').filter(Boolean) : s; });
     return o;
   });
+}
+
+/** 덱 규칙 검사 (공허·심연): 위반 사유 문자열 또는 null */
+export function deckClassError(cards) {
+  const n = k => cards.filter(c => c?.class === k).length, a = n('ABYSS'), v = n('VOID');
+  if (v > RULES.MAX_VOID_PER_DECK) return `공허(VOID) 카드는 덱당 ${RULES.MAX_VOID_PER_DECK}장까지`;
+  if (v && a) return '공허(VOID) 카드는 심연(ABYSS) 카드와 같은 덱에 넣을 수 없어요';
+  if (a > RULES.MAX_ABYSS_PER_DECK) return `심연(ABYSS) 카드는 덱당 ${RULES.MAX_ABYSS_PER_DECK}장까지`;
+  return null;
 }
