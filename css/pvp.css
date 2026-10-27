@@ -102,3 +102,4 @@
 .pvp-emb:has(img) i{display:none}
 .pvp-emb img{inset:-8%;width:116%;height:116%;object-fit:contain;filter:drop-shadow(0 2px 3px rgba(0,0,0,.7))}
 .pvp-emb.t-abyss img{filter:drop-shadow(0 0 6px rgba(232,121,249,.7)) drop-shadow(0 2px 3px rgba(0,0,0,.7))}
+.pvp-acts.yn>button{flex:1;width:auto;padding:12px;font-size:16px;font-weight:900}

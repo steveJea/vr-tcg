@@ -1,0 +1,23 @@
+/* 수동 전투 (js/manual-ui.js) */
+.mb-mode{display:inline-flex;border:1px solid #ffffff30;border-radius:999px;overflow:hidden;margin:0 auto 8px}
+.mb-mode button{padding:5px 14px;font-weight:800;font-size:12px;color:#a1a1aa;background:#18181b}
+.mb-mode button.on{background:#f59e0b;color:#111}
+.mb-ov{position:fixed;inset:0;z-index:190;background:radial-gradient(ellipse at 50% 30%,#3b0d1a,#09090b 70%);display:flex;flex-direction:column;padding:10px 8px calc(10px + env(safe-area-inset-bottom));gap:8px;color:#fff;user-select:none}
+.mb-top{display:flex;align-items:center;gap:8px;font-size:13px}.mb-top b{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mb-top small{color:#a1a1aa}.mb-top em{font-style:normal;font-weight:900;color:#fca5a5}
+.mb-auto{padding:4px 10px;border-radius:999px;background:#27272a;border:1px solid #ffffff30;font-weight:800;font-size:12px}
+.mb-side{display:flex;justify-content:center;gap:6px;flex-wrap:nowrap}
+.mb-u{position:relative;width:min(18vw,96px);border-radius:10px;padding:0;background:#18181b;border:2px solid transparent;transition:transform .15s}
+.mb-u img{width:100%;aspect-ratio:2/3;object-fit:cover;border-radius:8px;display:block}
+.mb-u i{display:block;height:5px;background:#ffffff1a;border-radius:3px;margin-top:2px;overflow:hidden}.mb-u i b{display:block;height:100%;background:#ef4444}.mb-u i.mp b{background:#3b82f6}
+.mb-u.ready{border-color:#34d39966}.mb-u.sel{border-color:#34d399;transform:translateY(-6px);box-shadow:0 0 14px #34d399}
+.mb-u.tg{border-color:#ef4444;box-shadow:0 0 12px #ef4444}.mb-u.dead{opacity:.25;filter:grayscale(1)}
+.mb-side.boss .mb-u{width:min(42vw,200px)}
+.mb-fx{flex:1;display:flex;align-items:center;justify-content:center;text-align:center;font-size:13px;line-height:1.6;color:#e4e4e7;min-height:60px}
+.mb-fx b{color:#fca5a5}.mb-fx b.win,.mb-fx>b{font-size:40px;font-weight:900}.mb-fx b.win{color:#6ee7b7}.mb-fx b.lose{color:#f87171}
+.mb-bar{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;align-items:center;min-height:44px}
+.mb-sk{padding:8px 10px;border-radius:10px;background:#a21caf;font-weight:800;font-size:12px}.mb-sk small{margin-left:4px;color:#bfdbfe}
+.mb-sk.atk{background:#b91c1c}.mb-sk:disabled{opacity:.35}
+.mb-end{padding:8px 16px;border-radius:10px;background:#10b981;color:#052e16;font-weight:900}.mb-end:disabled{opacity:.4}
+.mb-hint{font-size:12px;color:#a1a1aa}
+.rd-mode,.pvp-bmode{text-align:center}

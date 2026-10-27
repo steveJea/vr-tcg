@@ -1,7 +1,8 @@
 // ===== 비동기 PvP 화면 =====
 // 서버: supabase/pvp.sql (pvp_status / pvp_set_deck / pvp_start / pvp_report / pvp_rankings). 전투 계산: js/pvp-core.js (양쪽 자동 AI)
 // 리그: 무제한(open) · HR 이하(hr, 코스트 150) / 모드: 1v1 · 3v3(3덱 2선승) / 하루 10회 · 주간 시즌(월 00:00 KST)
-import { LEAGUES, MODES, snapCard, deckCheck, runSeries } from './pvp-core.js';
+import { LEAGUES, MODES, snapCard, deckCheck, runSeries, manualMatch, roundSeed } from './pvp-core.js';
+import { modeToggle, bindMode, battleMode, playManual } from './manual-ui.js';
 const IMG = 'https://raw.githubusercontent.com/steveJea/vr-ideal-worldcup/main/img/bt_img/';
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`);
@@ -66,6 +67,7 @@ function paint() {
     <div class="pvp-decks">${decks.map((d, i) => `<button class="pvp-deck ${d ? '' : 'empty'}" data-edit="${i}">
       <span class="pvp-deck-no">${n > 1 ? i + 1 : '🛡'}</span><span class="pvp-deck-row">${d ? d.uids.map(u => thumb(byUid.get(u) && { ...card(byUid.get(u).id), level: byUid.get(u).level })).join('') : '<span class="pvp-plus">＋</span>'}</span>
       ${view.league === 'hr' && d ? `<small class="pvp-cost">${d.cost}/150</small>` : ''}</button>`).join('')}</div>
+    <div class="pvp-bmode">${modeToggle()}</div>
     <div class="pvp-acts"><button class="pvp-rank" data-rank title="랭킹">🏅</button>${st.left <= 0 && window.VRGem?.item?.('pvp_try') ? `<button class="pvp-gemtry" data-gemtry ${window.VRGem.item('pvp_try').left === 0 ? 'disabled' : ''} title="추가 도전 (하루 3회)">🎫+1 <small>🔮${window.VRGem.item('pvp_try').price}</small></button>` : ''}<button class="pvp-go" data-go ${ready ? '' : 'disabled'}>⚔️ 매칭</button></div>
     <div class="pvp-top"><div class="pvp-top-h">🏅 TOP 10</div><div class="pvp-rk">${rkRows(top)}</div></div>`;
   m.querySelectorAll('[data-league]').forEach(b => b.onclick = () => { view.league = b.dataset.league; save(); open(); });
@@ -74,7 +76,7 @@ function paint() {
   m.querySelector('[data-rank]').onclick = rankings;
   m.querySelector('[data-tiers]').onclick = tierTable;
   if (st.pending) claimTier();
-  m.querySelector('[data-go]').onclick = fight;
+  m.querySelector('[data-go]').onclick = fight; bindMode(m);
   const gt = m.querySelector('[data-gemtry]'); if (gt) gt.onclick = async () => { gt.disabled = true; if (await window.VRGem.buy('pvp_try', view.league, view.mode)) open(); else gt.disabled = false; };
   if (st.left <= 0 && window.VRGem && !window.VRGem.now) window.VRGem.status().then(g => { if (g && $('pvp-modal')) paint(); });
 }
@@ -161,7 +163,7 @@ function editDeck(slot) {
     };
   };
   const askSave = () => {
-    const q = modal('pvp-ask', `<div class="pvp-h">저장할까요?</div><div class="pvp-acts"><button class="pvp-ghost" data-x>아니오</button><button class="pvp-go" data-yes>예</button></div>`, 'pvp-sub pvp-top');
+    const q = modal('pvp-ask', `<div class="pvp-h">저장할까요?</div><div class="pvp-acts yn"><button class="pvp-ghost" data-x>N</button><button class="pvp-go" data-yes>Y</button></div>`, 'pvp-sub pvp-top');
     q.querySelector('[data-yes]').onclick = () => { q.remove(); commit(); };
   };
   drawAll();
@@ -173,10 +175,12 @@ async function fight() {
   let s; try { s = await rpc('pvp_start', { p_league: view.league, p_mode: view.mode }); } catch (e) { toast(errText(e)); if (go) go.disabled = false; return; }
   await vsScreen(s);
   const toCards = d => d.map(o => snapCard(o, card)).filter(Boolean);
-  const res = runSeries(view.mode, s.me.map(toCards), s.opp.map(toCards), s.seed, true);
-  // 결과는 재생 전에 먼저 1회 보고 (재생 중 이탈해도 결과 동일 · 중복 보고 없음)
+  const manual = battleMode() === 'manual';
+  const res = manual ? await manualSeries(s, toCards) : runSeries(view.mode, s.me.map(toCards), s.opp.map(toCards), s.seed, true);
+  // 결과는 재생 전에 먼저 1회 보고 (재생 중 이탈해도 결과 동일 · 중복 보고 없음). 수동은 행동 기록을 먼저 남김 (tools/pvp_verify.mjs 재생 검증)
+  if (manual) { try { await rpc('pvp_log', { p_id: s.id, p_actions: res.acts }); } catch (e) { toast(errText(e)); } }
   let rep = null; try { rep = await rpc('pvp_report', { p_id: s.id, p_wins: res.wins, p_losses: res.losses }); } catch (e) { toast(errText(e)); }
-  await playback(s, res);
+  if (!manual) await playback(s, res);
   const delta = rep ? rep.delta : -s.dl;
   const m = modal('pvp-result', `<button class="pvp-x" data-x>✕</button>
     <div class="pvp-res ${res.win ? 'win' : 'lose'}">${res.win ? 'WIN' : 'LOSE'}</div>
@@ -189,6 +193,17 @@ async function fight() {
   if (rep?.streak_reward) window.VRPlayer?.wallet?.(true);
 }
 
+// ---- 수동: 판마다 내가 조작 (상대는 AI). 같은 seed·스냅샷 · 2선승 ----
+async function manualSeries(s, toCards) {
+  const M = MODES[view.mode], rounds = [], acts = []; let w = 0, l = 0;
+  for (let i = 0; i < M.decks; i++) {
+    const log = [], ses = manualMatch(toCards(s.me[i]), toCards(s.opp[i]), roundSeed(s.seed, i), log);
+    const r = await playManual({ session: ses, rec: log, title: `${s.opp_name}${s.bot ? ' 🤖' : ''}`, maxTurns: 40, round: M.decks > 1 ? `${i + 1}판` : '' });
+    r.log = log; rounds.push(r); acts.push(ses.acts); r.win ? w++ : l++;
+    if (w >= M.need || l >= M.need) break;
+  }
+  return { win: w >= M.need, wins: w, losses: l, rounds, acts };
+}
 // ---- 전투 재생 (계산된 전투 기록 그대로 · SKIP = 결과로) ----
 const STEP = 420, SPD_KEY = 'vrTcgSpd2';
 const spd = () => localStorage.getItem(SPD_KEY) === '1' ? 2 : 1;
