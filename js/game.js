@@ -1,4 +1,4 @@
-import { levelUpOnce, RULES, calcPower, skillLvPowerMult, skillCountMult, ELEMENTS, elementMultiplier, calcDamage, canSummon, buildDeck, parseCSV, aiSummonOrder, aiPickTarget, recallCost, canRecall, aiShouldRecall, makeUnit, resolveAttack, refillMana, ACTIONS, canAction, doAction, clearBuff, aiWantShuffle, aiWantBuff, aiWantHeal, aiWantFieldHeal, aiPickItem, endTurnXp, ITEMS, canEquip, equip, attackTargets, canTarget, autoTarget, heroLocked, xpToNext, SKILLS, gainXp, setCardPool, canSacrifice, sacrifice, aiPickSacrifice, aiWantAccel, judgeTimeout, JUDGE_LABEL, genderMult, GRADES, GRADE_SHORT, allowedGrades, baseEvade } from './rules.js';
+import { levelUpOnce, RULES, calcPower, skillLvPowerMult, skillCountMult, ELEMENTS, elementMultiplier, calcDamage, canSummon, buildDeck, parseCSV, aiSummonOrder, aiPickTarget, recallCost, canRecall, aiShouldRecall, makeUnit, resolveAttack, refillMana, ACTIONS, canAction, doAction, clearBuff, aiWantShuffle, aiWantBuff, aiWantHeal, aiWantFieldHeal, aiPickItem, endTurnXp, ITEMS, canEquip, equip, attackTargets, canTarget, autoTarget, heroLocked, xpToNext, SKILLS, gainXp, setCardPool, canSacrifice, sacrifice, aiPickSacrifice, aiWantAccel, judgeTimeout, JUDGE_LABEL, genderMult, GRADES, GRADE_SHORT, allowedGrades, baseEvade, swapField } from './rules.js';
 import { autoNext, noteUsed } from './auto-ai.js';
 import { setSpare, spareBlocked, setSkillData, setEmitter, initPlayers, placeUnit, turnStart, turnEnd, useSkill, skillState, aiPickSkill, skillLvOf, skillCdAt, skillLvMult, skillLvProb, SKILL_LV_MAX, refreshAll, statusIcons, skillsOf, combos, STATUS, SK, maleLure, checkDeath } from './skills.js';
 
@@ -1148,9 +1148,12 @@ function render() {
     btn.querySelector('.reason').textContent = S.limitedAids ? '일반대전 전용' : myTurn && done ? '이번 판 고용 완료' : ''; }
   if (S.story) { const b = $('act-shuffle'); b.disabled = true; b.querySelector('.reason').textContent = '스토리 불가'; }
   $('attack-all').disabled = !myTurn || !S.me.field.some(u => u.canAttack);
-  const tg = attackTargets(S.me, S.ai, selected != null ? S.me.field.find(x => x.uid === selected) : null);
-  $('ai-hero').classList.toggle('ring-4', selected != null && tg.hero);
-  $('ai-hero').classList.toggle('ring-red-500', selected != null && tg.hero);
+  const selU = selected != null ? S.me.field.find(x => x.uid === selected) : null;
+  if (selected != null && (!selU || !myTurn)) selected = null;
+  const atkSel = selU?.canAttack ? selU : null;
+  const tg = attackTargets(S.me, S.ai, atkSel);
+  $('ai-hero').classList.toggle('ring-4', !!atkSel && tg.hero);
+  $('ai-hero').classList.toggle('ring-red-500', !!atkSel && tg.hero);
   $('ai-hero').classList.toggle('opacity-70', S.turn === 'me' && !tg.hero);
   $('hero-hint').innerHTML = S.story && S.over ? '' : S.ai.noBase ? (S.over ? '' : '⚔️ 일반전: 상대 카드를 모두 쓰러뜨리면 승리') : S.turn === 'me' && !S.over ? (tg.hero ? `${ic('taunt', { alt: '' })} 상대 진영 공격 가능` : `${ic('def', { alt: '' })} ${escHtml(tg.reason)}`) : '';
   $('hero-hint').className = `text-center text-[11px] md:text-xs font-bold ${tg.hero ? 'text-emerald-400' : 'text-amber-300'}`;
@@ -1176,7 +1179,7 @@ function render() {
       const w = document.createElement('div');
       const isSel = selected === u.uid;
       const ready = who === 'me' && u.canAttack && myTurn;
-      w.className = `unit ${u.undying ? 'boss-unit' : ''} cursor-pointer transition ${isSel ? '-translate-y-2 drop-shadow-[0_0_10px_#34d399]' : ''} ${ready ? 'ready' : ''} ${selected != null && who === 'ai' && tg.units.includes(u) ? 'target' : ''}`;
+      w.className = `unit ${u.undying ? 'boss-unit' : ''} cursor-pointer transition ${isSel ? '-translate-y-2 drop-shadow-[0_0_10px_#34d399]' : ''} ${ready ? 'ready' : ''} ${atkSel && who === 'ai' && tg.units.includes(u) ? 'target' : ''} ${isSel && !atkSel ? 'swap-sel' : ''}`;
       w.dataset.uid = u.uid;
       const hero = u.level >= RULES.LEVEL_MAX;
       const sts = statusIcons(u);
@@ -1276,13 +1279,17 @@ function enableDrag(el, u) {
 function onUnitClick(who, u) {
   const myTurn = !!S && S.turn === 'me' && !S.over && !S.busy;
   if (who === 'me') {
-    if (myTurn && u.canAttack && selected !== u.uid) { selected = u.uid; render(); return; }
+    // 탭 → 다른 내 카드 탭: 자리 바꾸기 (턴 소모 없음). 같은 카드 다시 탭: 선택 해제 + 정보
+    const cur = selected != null ? S.me.field.find(x => x.uid === selected) : null;
+    if (myTurn && cur && cur !== u && !u.undying) { if (swapField(S.me, cur, u)) { selected = null; playSe(4); render(); return; } }
+    if (myTurn && !u.undying && selected !== u.uid) { selected = u.uid; render(); return; }
     if (selected === u.uid) { selected = null; render(); }
     showDetail(u.card, { hp: u.hp, unit: u });
   } else {
     if (myTurn && selected != null) {
       const a = S.me.field.find(x => x.uid === selected);
-      if (a) { attack('me', a, u); return; }
+      if (a?.canAttack) { attack('me', a, u); return; }
+      if (a) { selected = null; render(); }
     }
     showDetail(u.card, { hp: u.hp, view: u });
   }
@@ -1291,7 +1298,7 @@ function onUnitClick(who, u) {
 function onHeroClick() {
   if (selected == null || S.turn !== 'me' || S.busy) return;
   const a = S.me.field.find(x => x.uid === selected);
-  if (a) attack('me', a, null); // 규칙 위반이면 attack()이 사유를 보여줌
+  if (a?.canAttack) attack('me', a, null); // 규칙 위반이면 attack()이 사유를 보여줌
 }
 
 function showDetail(c, { fromHand = false, hp, unit = null, view = null, power = false } = {}) {

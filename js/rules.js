@@ -592,3 +592,10 @@ export function deckClassError(cards) {
   if (a > RULES.MAX_ABYSS_PER_DECK) return `심연(ABYSS) 카드는 덱당 ${RULES.MAX_ABYSS_PER_DECK}장까지`;
   return null;
 }
+
+/** 필드 두 카드 자리 바꾸기 (탭 → 탭). 보스(undying)·다른 진영 카드는 불가. 턴 소모 없음 */
+export function swapField(p, a, b) {
+  const f = p?.field || [], i = f.indexOf(a), j = f.indexOf(b);
+  if (i < 0 || j < 0 || i === j || a.undying || b.undying) return false;
+  f[i] = b; f[j] = a; return true;
+}
