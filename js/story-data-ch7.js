@@ -26,14 +26,14 @@ window.STORY_DATA.chapters.push({
       "HP": 267,
       "ATK": 53,
       "DEF": 46,
-      "power": 13261,
+      "power": 9939,
       "storyLv": 40
      },
      "2000000031": {
       "HP": 231,
       "ATK": 48,
       "DEF": 41,
-      "power": 10182,
+      "power": 8753,
       "storyLv": 40
      }
     }
@@ -152,28 +152,28 @@ window.STORY_DATA.chapters.push({
       "HP": 391,
       "ATK": 65,
       "DEF": 56,
-      "power": 19270,
+      "power": 21555,
       "storyLv": 40
      },
      "1000000029": {
       "HP": 196,
       "ATK": 36,
       "DEF": 27,
-      "power": 5767,
+      "power": 6877,
       "storyLv": 40
      },
      "1000000028": {
       "HP": 160,
       "ATK": 27,
       "DEF": 18,
-      "power": 3222,
+      "power": 5017,
       "storyLv": 40
      },
      "1000000026": {
       "HP": 97,
       "ATK": 19,
       "DEF": 15,
-      "power": 2016,
+      "power": 1328,
       "storyLv": 40
      }
     }
@@ -284,14 +284,14 @@ window.STORY_DATA.chapters.push({
       "HP": 494,
       "ATK": 74,
       "DEF": 74,
-      "power": 26454,
+      "power": 26808,
       "storyLv": 50
      },
      "1000000028": {
       "HP": 160,
       "ATK": 27,
       "DEF": 18,
-      "power": 3222,
+      "power": 5017,
       "storyLv": 40
      }
     }
@@ -428,14 +428,14 @@ window.STORY_DATA.chapters.push({
       "HP": 494,
       "ATK": 74,
       "DEF": 74,
-      "power": 26454,
+      "power": 26808,
       "storyLv": 50
      },
      "2000000034": {
       "HP": 469,
       "ATK": 74,
       "DEF": 64,
-      "power": 23094,
+      "power": 25336,
       "storyLv": 50
      }
     }
@@ -574,14 +574,14 @@ window.STORY_DATA.chapters.push({
       "HP": 526,
       "ATK": 83,
       "DEF": 72,
-      "power": 25900,
+      "power": 28430,
       "storyLv": 60
      },
      "2000000033": {
       "HP": 445,
       "ATK": 74,
       "DEF": 64,
-      "power": 21934,
+      "power": 24551,
       "storyLv": 50
      }
     }
@@ -714,7 +714,7 @@ window.STORY_DATA.chapters.push({
       "HP": 430,
       "ATK": 65,
       "DEF": 140,
-      "power": 36876,
+      "power": 39989,
       "storyLv": 30
      }
     }
@@ -910,28 +910,28 @@ window.STORY_DATA.chapters.push({
       "HP": 127,
       "ATK": 16,
       "DEF": 16,
-      "power": 1746,
+      "power": 1709,
       "storyLv": 60
      },
      "2000000041": {
       "HP": 127,
       "ATK": 16,
       "DEF": 16,
-      "power": 1746,
+      "power": 1709,
       "storyLv": 60
      },
      "2000000042": {
       "HP": 127,
       "ATK": 16,
       "DEF": 16,
-      "power": 1746,
+      "power": 1709,
       "storyLv": 60
      },
      "2000000044": {
       "HP": 240,
       "ATK": 33,
       "DEF": 33,
-      "power": 8097,
+      "power": 8337,
       "storyLv": 60
      }
     }
@@ -1042,14 +1042,14 @@ window.STORY_DATA.chapters.push({
       "HP": 80,
       "ATK": 19,
       "DEF": 14,
-      "power": 1367,
+      "power": 1126,
       "storyLv": 60
      },
      "1000000023": {
       "HP": 80,
       "ATK": 17,
       "DEF": 13,
-      "power": 1224,
+      "power": 1076,
       "storyLv": 60
      }
     }
@@ -1171,28 +1171,28 @@ window.STORY_DATA.chapters.push({
       "HP": 554,
       "ATK": 97,
       "DEF": 69,
-      "power": 27257,
+      "power": 27245,
       "storyLv": 60
      },
      "1000100009": {
       "HP": 240,
       "ATK": 44,
       "DEF": 33,
-      "power": 8711,
+      "power": 8750,
       "storyLv": 60
      },
      "1000100010": {
       "HP": 251,
       "ATK": 46,
       "DEF": 31,
-      "power": 8764,
+      "power": 8801,
       "storyLv": 60
      },
      "1000100012": {
       "HP": 48,
       "ATK": 8,
       "DEF": 10,
-      "power": 494,
+      "power": 503,
       "storyLv": 60
      }
     }
@@ -1392,7 +1392,7 @@ window.STORY_DATA.chapters.push({
       "HP": 1008,
       "ATK": 50,
       "DEF": 151,
-      "power": 79350,
+      "power": 77039,
       "storyLv": 60
      }
     }

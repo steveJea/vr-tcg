@@ -173,7 +173,7 @@ window.STORY_DATA.chapters.push({
       "HP": 150,
       "ATK": 30,
       "DEF": 26,
-      "power": 6000
+      "power": 2241
      }
     }
    },
@@ -796,13 +796,13 @@ window.STORY_DATA.chapters.push({
       "HP": 360,
       "ATK": 62,
       "DEF": 44,
-      "power": 30000
+      "power": 4883
      },
      "2000600128": {
       "HP": 240,
       "ATK": 40,
       "DEF": 30,
-      "power": 15000
+      "power": 7800
      }
     }
    },

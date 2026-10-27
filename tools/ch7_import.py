@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """CH7 시트(csv export gid=1405852543) → js/story-data-ch7.js.  사용: python3 tools/ch7_import.py ch7.csv
 열: 0 phase · 1 제목 · 2 강제배정(다음 줄: 레벨) · 3 대상 · 4 표정 · 5 대화 · 6 진행시점 · 7 멀티미디어 · 8~12 적(다음 줄: 레벨) · 13 전투조건 · 14 승리 · 15 패배 · 17/18 이니셜 범례 · 19 부제"""
-import csv, json, re, sys
+import csv, json, os, re, sys
 R = list(csv.reader(open(sys.argv[1], encoding='utf8')))
 R = [r + [''] * 22 for r in R]
 LEG = {r[17].strip(): r[18].strip() for r in R[1:] if r[17].strip() and r[18].strip()}
@@ -69,6 +69,7 @@ for i, r in enumerate(rows):
     if mm: L['video' if mm.group(1) == '15' else 'image'] = f"video/story/ch7-{mm.group(1)}.mp4" if mm.group(1) == '15' else f"img/story/ch7-{mm.group(1)}.webp"
     (start if cur is None else cur['after'] if after else cur['lines']['default']).append(L)
 # 적 스토리 레벨 → boost (스토리 레벨 규칙: 등급별 레벨당 기본 스탯 +%, js/pvp-core.js snapCard 와 같음). 레벨 없는 페이즈(6~10)는 직전 페이즈의 최고 레벨
+sys.path.insert(0, os.path.dirname(__file__)); from power import card_power
 RATE = {'NORMAL': 0.01, 'RARE': 0.02, 'HIGH RARE': 0.03, 'SUPER RARE': 0.04, 'ULTRA RARE': 0.05, 'MYTHIC RARE': 0.06}
 CARD = {}
 for f in ('data/cards.csv', 'data/npc_cards.csv'):
@@ -81,7 +82,8 @@ for p in phases:
     b = {}
     for k, l in lv.items():
         c = CARD[k]; m = 1 + round(RATE[c['grade']] * (l - 1) * 100) / 100
-        b[k] = {'HP': round(int(c['HP']) * m), 'ATK': round(int(c['ATK']) * m), 'DEF': round(int(c['DEF']) * m), 'power': round(int(c['power']) * m), 'storyLv': l}
+        b[k] = {'HP': round(int(c['HP']) * m), 'ATK': round(int(c['ATK']) * m), 'DEF': round(int(c['DEF']) * m), 'storyLv': l}
+        b[k]['power'] = card_power(c, **b[k])   # 레벨 스탯으로 옵션 B 공식 (tools/power.py)
     p['enemies']['boost'] = b
 sub = R[1][19].strip() or 'THE BELL JAR'
 ch = {'id': 7, 'title': 'CHAPTER 7', 'subtitle': sub, 'rewardCard': None, 'hero': YY, 'single': True, 'phases': phases,

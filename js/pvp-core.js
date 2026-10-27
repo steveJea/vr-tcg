@@ -17,7 +17,7 @@ export function snapCard(o, cardById) {
   const c = cardById(o.id); if (!c) return null;
   const lv = Math.max(1, o.level | 0 || 1), lp = Math.round((LV_RATE[c.grade] || 0.01) * (lv - 1) * 100), exb = Math.max(0, +o.exb || 0), ex = Math.max(0, o.ex | 0);
   const st = s => Math.round(c[s] * (1 + exb / 100) * (1 + lp / 100)) + ptGain(s, (o.boost || {})[s]);
-  return { ...c, name: ex ? `[EX${ex}] ${c.name}` : c.name, ex, slv: lv, ATK: st('ATK'), HP: st('HP'), DEF: st('DEF'), power: Math.round((+c.power || 0) * (1 + lp / 100)),
+  return { ...c, name: ex ? `[EX${ex}] ${c.name}` : c.name, ex, slv: lv, ATK: st('ATK'), HP: st('HP'), DEF: st('DEF'), power: Math.round((+c.power || 0) * (1 + exb / 100) * (1 + lp / 100)),
     ...(o.skillLv && typeof o.skillLv === 'object' ? { skillLv: { ...o.skillLv } } : {}) };
 }
 /** 덱 규칙 검사 (서버 _pvp_check 와 같은 규칙, 화면 안내용) */
