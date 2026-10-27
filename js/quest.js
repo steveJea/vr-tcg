@@ -157,8 +157,8 @@
   async function battle(n, list) {
     const api = A(), g = enemiesOf(n);
     try { await trpc('quest_start', { p_floor: n }); }
-    startedAt = Date.now();
     catch (e) { const m = String(e?.message || ''); api.toast(ERR(m) || (/locked/.test(m) ? '아직 열리지 않은 층이에요' : `⚠️ 시작 실패: ${m}`)); return render(); }
+    startedAt = Date.now();
     $('story-screen').classList.add('hidden'); api.bgm(n % 10 === 0 ? 'boss' : 'tower');
     const me = api.battleCards(list);
     window.TCG.startStory({ me, ai: g.enemies.map(c => ({ ...c })), leader: api.leaderFor(me), win: 'wipe', aiName: `${n}층`, quest: true,
