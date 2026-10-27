@@ -238,3 +238,9 @@
 #auto-btn.locked { opacity: .55; }
 .auto-hint { position: fixed; left: 50%; top: 64px; transform: translateX(-50%); z-index: 80; padding: .45rem .9rem; border-radius: 999px; background: rgba(0,0,0,.85);
   border: 1px solid rgba(245,201,106,.5); color: #fde7b0; font-size: .8rem; font-weight: 800; }
+
+/* 메인 타일 높이 줄이기: 화면 높이에 맞춰 그리드 폭 제한 + 낮은 비율 (조직 글자·푸터 겹침 방지) */
+.main-grid { max-width: min(520px, 100%, calc((100svh - 300px) * 1.08)); margin-left: auto; margin-right: auto; }
+.main-tile { aspect-ratio: 16 / 10; }
+.main-tile-img { object-position: 50% 40%; }
+.tile-arcade .main-tile-img { object-position: 45% 40%; }
