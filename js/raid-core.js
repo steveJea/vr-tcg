@@ -14,7 +14,7 @@ export const RAID_BOSSES = [
   { id: '2000000008', name: '[각성] 임유리', weak: 'DEFENSE', icon: '🌑' },
   { id: '2000900234', name: '김신현', weak: 'CRUSH', icon: '⛓️' },
   { id: '1000200030', name: '김성진', weak: 'SUPPORT', icon: '🔥' },
-  { id: null, name: '이지용', weak: 'DISTURB', icon: '👁️', stand: '1000200030' },   // 카드 없음 → 임시로 김성진 능력치·그림 없음
+  { id: '2001500316', name: '이지영', weak: 'DISTURB', icon: '👁️' },
 ];
 export const RAID_DIFF = { normal: { label: '일반', atk: 1, def: 1 }, hard: { label: '어려움', atk: 1.6, def: 1.3 }, abyss: { label: '심연', atk: 2.4, def: 1.7 } };
 export const WEAK_MULT = 1.25;

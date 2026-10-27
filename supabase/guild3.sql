@@ -2,7 +2,7 @@
 -- 선행: guild.sql · guild2.sql · pvp.sql(_pvp_snap · pvp_card_meta) · gem.sql
 -- 주기: 매주 월 00:00 ~ 일 22:00 (KST) 토벌, 일 22:00 부터 순위 보상 수령. 하루 3회(행동력 없음) · 소탕 = 오늘 최고 기록 90% (그날 1회 이상 직접 싸운 뒤)
 -- 전투: 브라우저 js/raid-core.js (서버 seed + 서버가 만든 덱 스냅샷, 자동 전투). 서버는 한 판 상한·최소 시간 검사 + seed·스냅샷 보관 → tools/raid_verify.mjs 로 재검증
--- 보스: 단계별 1 임유리 · 2 [각성] 임유리 · 3 김신현 · 4 김성진 · 5 이지용(카드 없음, 임시) → 6단계부터 다시 1번, HP 는 단계마다 ×1.35
+-- 보스: 단계별 1 임유리 · 2 [각성] 임유리 · 3 김신현 · 4 김성진 · 5 이지영 → 6단계부터 다시 1번, HP 는 단계마다 ×1.35
 -- 보상 숫자는 전부 _raid_numbers() 하나에 있음
 
 -- 1) 테이블
@@ -52,7 +52,7 @@ create or replace function public._raid_numbers() returns jsonb language sql imm
 create or replace function public._raid_boss(p_stage int) returns jsonb language sql immutable as $$
   select (array['{"id":"2000100001","name":"임유리","weak":"CHARGE"}', '{"id":"2000000008","name":"[각성] 임유리","weak":"DEFENSE"}',
                 '{"id":"2000900234","name":"김신현","weak":"CRUSH"}', '{"id":"1000200030","name":"김성진","weak":"SUPPORT"}',
-                '{"id":null,"name":"이지용","weak":"DISTURB"}'])[((greatest(p_stage, 1) - 1) % 5) + 1]::jsonb $$;
+                '{"id":"2001500316","name":"이지영","weak":"DISTURB"}'])[((greatest(p_stage, 1) - 1) % 5) + 1]::jsonb $$;
 create or replace function public._raid_now() returns timestamptz language sql stable as $$ select now() $$;   -- 테스트에서 바꿔 끼움
 create or replace function public._raid_end(p_week date) returns timestamptz language sql stable as $$ select ((p_week + 6)::timestamp + interval '22 hours') at time zone 'Asia/Seoul' $$;
 create or replace function public._raid_hp(p_diff text, p_members int, p_stage int) returns bigint language sql immutable as $$

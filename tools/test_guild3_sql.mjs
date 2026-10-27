@@ -69,7 +69,7 @@ st = await v(C, `select raid_start('["c1"]')`); ok(st.stage === 1, 'C 시작');
 await back(); f = await v(C, `select raid_finish(${st.id}, 1000)`);
 ok(f.stage === 2 && +f.hp_left === Math.round(2500000 * 1.35) - 990 && f.boss.name === '[각성] 임유리', '처치 → 2단계 (넘친 피해 이월) · 보스 교대');
 ok((await q1(`select last_hit from guild_raid_stages where guild_id=${gid} and stage=1`)) === C, '막타 기록');
-ok((await q1(`select _raid_boss(6)->>'name'`)) === '임유리' && (await q1(`select _raid_boss(5)->>'name'`)) === '이지용', '6단계 = 다시 임유리');
+ok((await q1(`select _raid_boss(6)->>'name'`)) === '임유리' && (await q1(`select _raid_boss(5)->>'name'`)) === '이지영', '6단계 = 다시 임유리');
 ok(/raid started/.test((await as(A, `select raid_set_difficulty('hard')`)).err || ''), '피해 들어간 뒤 난이도 고정');
 // 단계 보상: 시도 안 한 A 도 받음 · D(나중 가입)는 처치 이후 가입이면 못 받음
 const g0 = await gem(A);
