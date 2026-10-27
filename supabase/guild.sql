@@ -181,6 +181,7 @@ declare m guild_members; used int; n int;
 begin
   select * into m from guild_members where user_id = p_uid;
   if m.user_id is null or coalesce(p_n, 0) <= 0 then return 0; end if;
+  if p_src = 'pvp' and to_regprocedure('public._guild_event(uuid,text,integer)') is not null then perform _guild_event(p_uid, 'pvp_win', 1); end if;   -- 조직 의뢰 (guild2.sql)
   select coalesce(sum(amount), 0) into used from guild_exp_log where user_id = p_uid and day = _guild_day() and src = p_src;
   n := least(p_n, _guild_feed_cap(p_src) - used);
   if n <= 0 then return 0; end if;
