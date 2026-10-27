@@ -2,6 +2,7 @@
 // 진입: 메인 [조직] 타일 · 마이페이지 조직 카드. 팝업은 모두 바깥을 누르면 닫힘
 // 엠블럼: img/ui/guild/e01..e12.webp 가 있으면 자동 사용, 없으면 이모지
 // 역할: 보스 👑 · 간부 ⚔️ · 조직원. 개인 재화 충성 🩸 (세력에 기여한 만큼 + , 조직 상점에서 사용)
+// 2단계 (guild2.sql): 집결(출석) · 의뢰(일일/주간). 그림: img/ui/guild/rally_banner.webp · img/ui/guild/quest_<이벤트>.webp (없으면 이모지)
 (() => {
   const IMG = 'https://raw.githubusercontent.com/steveJea/vr-ideal-worldcup/main/img/bt_img/';
   const EMB = ['💀', '🌹', '🐦‍⬛', '🦷', '⛓️', '👁️', '🗡️', '🐍', '🕷️', '🔥', '🌙', '🃏'];
@@ -105,12 +106,16 @@
         <button data-t="shop"><span>🛒</span>상점</button>
         ${staff ? `<button data-t="req"><span>📨</span>신청${st.requests.length ? `<i class="gd-badge">${st.requests.length}</i>` : ''}</button><button data-t="set"><span>⚙️</span>설정</button>` : ''}
         <button data-t="log"><span>📜</span>기록</button>
-        ${[['🕯️', '집결'], ['📜', '의뢰'], ['🐉', '토벌'], ['🏴', '전쟁']].map(([ic, l]) => `<button class="soon" disabled><span>${ic}</span>${l}<small>준비 중</small></button>`).join('')}</div>
+        <button data-t="rally"><span>🕯️</span>집결<i class="gd-dot" data-dot="rally" hidden></i></button><button data-t="quest"><span>📜</span>의뢰<i class="gd-dot" data-dot="quest" hidden></i></button>
+        ${[['🐉', '토벌'], ['🏴', '전쟁']].map(([ic, l]) => `<button class="soon" disabled><span>${ic}</span>${l}<small>준비 중</small></button>`).join('')}</div>
       <div class="gd-h">👥 조직원</div>
       <div class="gd-mem">${st.members.map(x => `<button class="gd-m r-${x.role}" data-u="${x.user_id}">${x.card ? `<img src="${IMG}${x.card}.webp" alt="" loading="lazy" onerror="this.remove()">` : '<span class="gd-m-no">👤</span>'}
         ${x.role !== 'member' ? `<i class="gd-m-role">${ROLE[x.role][0]}</i>` : ''}<span class="gd-m-n">${esc(x.name)}</span><small>${LOY}${n(x.loyalty_total)}</small></button>`).join('')}</div>
       <div class="gd-foot">${me.can_claim ? '<button data-claim>👑 보스 승계</button>' : ''}<button data-leave>${me.role === 'boss' && g.members <= 1 ? '조직 해산' : '조직 나가기'}</button></div>`;
     p.querySelector('[data-t="shop"]').onclick = shopPop;
+    p.querySelector('[data-t="rally"]').onclick = rallyPop;
+    p.querySelector('[data-t="quest"]').onclick = questPop;
+    rpc('guild_dots').then(d => { if (!d) return; for (const k of ['rally', 'quest']) { const el = p.querySelector(`[data-dot="${k}"]`); if (el) el.hidden = !d[k]; } }).catch(() => {});
     p.querySelector('[data-t="log"]').onclick = logPop;
     p.querySelector('[data-t="req"]')?.addEventListener('click', reqPop);
     p.querySelector('[data-t="set"]')?.addEventListener('click', setPop);
@@ -124,8 +129,13 @@
     const canKick = (me.role === 'boss' && x.role !== 'boss') || (me.role === 'officer' && x.role === 'member');
     const boss = me.role === 'boss' && x.role !== 'boss';
     const m = pop(`<div class="gd-mp">${x.card ? `<img class="gd-mp-img" src="${IMG}${x.card}.webp" alt="" onerror="this.remove()">` : '<div class="gd-mp-no">👤</div>'}
-      <div class="gd-mp-n">${ROLE[x.role][0]} ${esc(x.name)}</div><div class="gd-mp-s">${ROLE[x.role][1]} · ${LOY} ${n(x.loyalty_total)} · ${new Date(x.joined_at).toLocaleDateString('ko-KR')} 가입</div>
+      <div class="gd-mp-n">${ROLE[x.role][0]} ${esc(x.name)}</div><div class="gd-mp-s">${ROLE[x.role][1]} · ${new Date(x.joined_at).toLocaleDateString('ko-KR')} 가입</div><div class="gd-mp-d">…</div>
       <div class="gd-mp-a">${boss ? `<button data-role="${x.role === 'officer' ? 'member' : 'officer'}">${x.role === 'officer' ? '간부 해제' : '⚔️ 간부 임명'}</button><button data-tr>👑 보스 넘기기</button>` : ''}${canKick ? '<button class="bad" data-kick>추방</button>' : ''}</div></div>`);
+    const ago = t => { const h = (Date.now() - new Date(t)) / 36e5; return h < 1 ? '방금' : h < 24 ? `${Math.floor(h)}시간 전` : `${Math.floor(h / 24)}일 전`; };
+    rpc('guild_member_info', { p_user: x.user_id }).then(d => { const el = m.querySelector('.gd-mp-d'); if (!el || !d) return;
+      el.innerHTML = `<div class="gd-mp-g"><span><small>레벨</small><b>Lv.${d.level}</b></span><span><small>충성 누적</small><b>${LOY}${n(d.loyalty_total)}</b></span><span><small>이번 주</small><b>${LOY}${n(d.loyalty_week)}</b></span>
+        <span><small>PvP</small><b>${d.pvp ? `${esc(d.pvp.tier)} ${n(d.pvp.rating)}` : '-'}</b></span><span><small>접속</small><b>${ago(d.seen_at)}</b></span></div>
+        ${d.top?.length ? `<div class="gd-mp-top">${d.top.map(c => `<span><img src="${IMG}${c.id}.webp" alt="" loading="lazy" onerror="this.remove()"><small>Lv.${c.level}</small></span>`).join('')}</div>` : ''}`; }).catch(() => { const el = m.querySelector('.gd-mp-d'); if (el) el.remove(); });
     m.querySelector('[data-role]')?.addEventListener('click', async e => { if (await act('guild_set_role', { p_user: x.user_id, p_role: e.currentTarget.dataset.role }, '역할을 바꿨어요')) m.remove(); });
     m.querySelector('[data-tr]')?.addEventListener('click', async () => { if (confirm(`${x.name} 에게 보스를 넘길까요?`) && await act('guild_transfer', { p_user: x.user_id }, '👑 보스를 넘겼어요')) m.remove(); });
     m.querySelector('[data-kick]')?.addEventListener('click', async () => { if (confirm(`${x.name} 을(를) 추방할까요? 72시간 동안 다시 들어올 수 없어요`) && await act('guild_kick', { p_user: x.user_id }, '추방했어요')) m.remove(); });
@@ -163,6 +173,60 @@
   function logPop() {
     const A = { create: '창설', join: '가입', leave: '탈퇴', kick: '추방', role: '역할 변경', transfer: '보스 넘김', claim_boss: '보스 승계', invite: '초대', update: '설정 변경', level_up: '레벨 업', disband: '해산' };
     pop(`<div class="gd-h big">📜 기록</div><div class="gd-log">${st.log.map(l => `<div><span>${esc(A[l.action] || l.action)}${l.action === 'level_up' ? ` Lv.${l.meta?.level}` : ''}</span><b>${esc(l.actor || '')}${l.target && l.target !== l.actor ? ` → ${esc(l.target)}` : ''}</b><small>${new Date(l.at).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' })}</small></div>`).join('') || '<div class="gd-empty">기록 없음</div>'}</div>`);
+  }
+  // ---- 2단계: 집결 · 의뢰 (guild2.sql) ----
+  const QIC = { phase: '🗡️', stamina: '🔋', pvp_win: '⚔️', tower: '🗼', draw: '🎴', boss: '💀', levelup: '⬆️', checkin: '🕯️' };
+  const QIMG = { pvp_win: 'pvp', draw: 'gacha', checkin: 'gold' };   // boss 는 그림 없음 → 💀
+  const qic = (ev, fb) => `<span class="gd-qic"><i>${QIC[ev] || fb || '📜'}</i><img src="img/ui/guild/quest_${QIMG[ev] || ev}.webp" alt="" onerror="this.remove()"></span>`;
+  const RW = { loyalty: LOY, gold: '🪙', gem: '🔮', tickets: '🎟️', exp: '⚜️' };
+  const rwTxt = rw => Object.entries(rw || {}).filter(([k, v]) => RW[k] && v).map(([k, v]) => `<span>${RW[k]}${n(v)}</span>`).join('');
+  const ERR2 = { 'already checked in': '오늘은 이미 집결했어요', 'already claimed': '이미 받았어요', 'not reached': '아직 조건이 안 됐어요', 'check in first': '먼저 집결하세요',
+    'reroll used': '교체는 하루 1번', 'contribution too low': '기여도가 부족해요 (목표의 1% 이상)' };
+  const err2 = e => { const m = String(e?.message || e); const k = Object.keys(ERR2).find(x => m.includes(x)); return k ? ERR2[k] : errText(e); };
+  async function act2(m, name, args, draw) {
+    try { const r = await rpc(name, args); if (r?.got) toast(`받음 ${Object.entries(r.got).filter(([k]) => RW[k]).map(([k, v]) => `${RW[k]}${n(v)}`).join(' ')}`); window.VRPlayer?.wallet?.(true); if (r?.got?.gem) window.VRGem?.status?.(true); if (m.isConnected) draw(r); refresh(); return r; }
+    catch (e) { toast(err2(e)); return null; }
+  }
+  async function rallyPop() {
+    const m = pop('<div class="gd-loading">…</div>', 'wide rally');
+    const draw = R => {
+      const W = ['월', '화', '수', '목', '금', '토', '일'];
+      m.querySelector('.gd-pop-panel').innerHTML = `<button class="gd-x" data-x aria-label="닫기">✕</button>
+        <div class="gd-rb"><img src="img/ui/guild/rally_banner.webp" alt="" onerror="this.remove()"><span class="gd-rb-fb">🕯️</span><b>집결</b></div>
+        <button class="gd-big gd-checkin" data-in ${R.checked ? 'disabled' : ''}>${R.checked ? '✔ 오늘 집결 완료' : `🕯️ 집결 <small>${rwTxt(R.reward)}</small>`}</button>
+        <div class="gd-rp"><div class="gd-rp-h"><b>${R.count}/${R.total}</b><small>${R.pct}%</small></div>
+          <div class="gd-rp-bar"><i style="width:${Math.min(100, R.pct)}%"></i>${R.tiers.map(t => `<em style="left:${t.tier}%" class="${t.reached ? 'on' : ''}"></em>`).join('')}</div>
+          <div class="gd-rt">${R.tiers.map(t => `<button data-tier="${t.tier}" class="${t.claimed ? 'done' : t.reached ? 'ready' : ''}" ${t.reached && !t.claimed && R.checked ? '' : 'disabled'}><b>${t.tier}%</b><span>${rwTxt(t.reward)}</span><small>${t.claimed ? '✔' : `⚜️${t.exp}`}</small></button>`).join('')}</div></div>
+        <div class="gd-wk">${R.week.map((on, i) => `<span class="${on ? 'on' : ''}">${on ? '🕯️' : '·'}<small>${W[i]}</small></span>`).join('')}
+          <button data-tier="7" class="${R.week_claimed ? 'done' : R.week_claimable ? 'ready' : ''}" ${R.week_claimable && !R.week_claimed ? '' : 'disabled'}>7/7 ${rwTxt(R.week_reward)}</button></div>
+        <div class="gd-rm">${(st?.members || []).map(x => `<span class="${R.checked_users.includes(x.user_id) ? 'on' : ''}" title="${esc(x.name)}">${x.card ? `<img src="${IMG}${x.card}.webp" alt="" onerror="this.remove()">` : '👤'}</span>`).join('')}</div>
+        ${R.checked_other ? '<small class="gd-hint">오늘은 다른 조직에서 집결했어요</small>' : ''}`;
+      m.querySelector('[data-in]').onclick = e => { e.currentTarget.disabled = true; act2(m, 'guild_checkin', {}, draw); };
+      m.querySelectorAll('[data-tier]').forEach(b => b.onclick = () => { b.disabled = true; act2(m, 'guild_rally_claim', { p_tier: +b.dataset.tier }, draw); });
+    };
+    try { draw(await rpc('guild_rally')); } catch (e) { toast(err2(e)); m.remove(); }
+  }
+  async function questPop() {
+    let tab = 'daily';
+    const m = pop('<div class="gd-loading">…</div>', 'wide quest');
+    const draw = Q => {
+      const bar = (p, g) => `<div class="gd-qbar"><i style="width:${Math.min(100, p / g * 100).toFixed(1)}%"></i></div>`;
+      const left = Math.max(0, Math.ceil((new Date(Q.week_end) - Date.now()) / 864e5));
+      m.querySelector('.gd-pop-panel').innerHTML = `<button class="gd-x" data-x aria-label="닫기">✕</button>
+        <div class="gd-qtabs"><button data-tab="daily" class="${tab === 'daily' ? 'on' : ''}">📜 일일</button><button data-tab="weekly" class="${tab === 'weekly' ? 'on' : ''}"><img class="gd-tabic" src="img/ui/guild/quest_weekly.webp" alt="">주간 <small>D-${left}</small></button></div>
+        ${tab === 'daily' ? `<div class="gd-ql">${Q.daily.map(q => `<div class="gd-q ${q.claimed ? 'done' : ''}">${qic(q.event, q.icon)}<div class="gd-q-m"><b>${esc(q.label)}</b><small>${q.progress}/${q.goal}</small>${bar(q.progress, q.goal)}<span class="gd-rw">${rwTxt(q.reward)}</span></div>
+            <div class="gd-q-a">${q.claimed ? '✔' : q.progress >= q.goal ? `<button class="gd-ok" data-claim="${q.slot}">받기</button>` : Q.reroll_left ? `<button class="gd-rr" data-rr="${q.slot}" title="교체 (하루 1번)">🔄</button>` : ''}</div></div>`).join('')}</div>
+          <button class="gd-big gd-all" data-claim="0" ${Q.daily.every(q => q.claimed) && !Q.all_claimed ? '' : 'disabled'}>${Q.all_claimed ? '✔ 3개 완료 보너스' : `3개 완료 보너스 ${rwTxt(Q.all_reward)}`}</button>`
+        : `<div class="gd-ql">${Q.weekly.map(q => `<div class="gd-wq">${qic(q.event, q.icon)}<div class="gd-q-m"><b>${esc(q.label)}</b><small>${n(q.progress)}/${n(q.goal)} · 내 기여 ${n(q.mine)}${q.mine < q.min ? ` <em>(최소 ${q.min})</em>` : ''}</small>
+            <div class="gd-qbar w">${'<i style="width:' + Math.min(100, q.progress / q.goal / 1.5 * 100).toFixed(1) + '%"></i>'}${q.tiers.map(t => `<em style="left:${t.tier / 1.5}%" class="${t.reached ? 'on' : ''}"></em>`).join('')}</div>
+            <div class="gd-wt">${q.tiers.map(t => `<button data-w="${q.slot}:${t.tier}" class="${t.claimed ? 'done' : t.reached ? 'ready' : ''}" ${t.reached && !t.claimed && q.mine >= q.min ? '' : 'disabled'}><b>${t.tier}%</b>${rwTxt(t.reward)}</button>`).join('')}</div>
+            <div class="gd-top">${q.top.map((x, i) => `<span>${['🥇', '🥈', '🥉', '4', '5'][i]} ${esc(x.name)} <b>${n(x.amount)}</b></span>`).join('')}</div></div></div>`).join('')}</div>`}`;
+      m.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { tab = b.dataset.tab; draw(Q); });
+      m.querySelectorAll('[data-claim]').forEach(b => b.onclick = () => { b.disabled = true; act2(m, 'guild_quest_claim', { p_slot: +b.dataset.claim }, r => draw(r || Q)); });
+      m.querySelectorAll('[data-rr]').forEach(b => b.onclick = () => { b.disabled = true; act2(m, 'guild_quest_reroll', { p_slot: +b.dataset.rr }, r => draw(r || Q)); });
+      m.querySelectorAll('[data-w]').forEach(b => b.onclick = () => { const [sl, t] = b.dataset.w.split(':'); b.disabled = true; act2(m, 'guild_weekly_claim', { p_slot: +sl, p_tier: +t }, r => draw(r || Q)); });
+    };
+    try { draw(await rpc('guild_quests')); } catch (e) { toast(err2(e)); m.remove(); }
   }
   /** 마이페이지 카드 (엠블럼 · 이름 · 레벨) */
   function myCard(s) {
