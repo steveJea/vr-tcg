@@ -15,7 +15,7 @@ async function rpc(name, args) {
   const sb = window.VRCloud?.sb; if (!sb) throw new Error('offline');
   const { data, error } = await sb.rpc(name, args); if (error) throw new Error(error.message); return data;
 }
-const ERR = { 'no attempts left': '오늘 횟수 끝', 'deck required': '덱 필요', 'card not owned': '없는 카드', 'duplicate card': '중복', 'grade not allowed': 'HR 이하만', 'cost over 150': '코스트 150 초과', 'card used in another deck': '다른 덱에 있음', 'login required': '로그인 필요' };
+const ERR = { 'no attempts left': '오늘 횟수 끝', 'not enough gem': '🔮 부족', 'deck required': '덱 필요', 'card not owned': '없는 카드', 'duplicate card': '중복', 'grade not allowed': 'HR 이하만', 'cost over 150': '코스트 150 초과', 'card used in another deck': '다른 덱에 있음', 'login required': '로그인 필요' };
 const errText = e => { const m = String(e?.message || e); const k = Object.keys(ERR).find(x => m.includes(x)); return k ? ERR[k] : m.slice(0, 40); };
 function toast(t) { const el = document.createElement('div'); el.className = 'pvp-toast'; el.textContent = t; document.body.appendChild(el); setTimeout(() => el.remove(), 1800); }
 
@@ -36,7 +36,7 @@ export const TIERS = [
 export const tierOf = r => [...TIERS].reverse().find(t => (r ?? 1000) >= t.min) || TIERS[0];
 const tierBy = k => TIERS.find(t => t.k === k) || null;
 const emb = (t, cls = '') => `<span class="pvp-emb t-${t.k} ${cls}" title="${t.label}"><i>${t.ic}</i><img src="img/ui/tier/${t.k}.webp" alt="" onerror="this.remove()"></span>`;
-const CUR = { gold: '🪙', soul: '🔥', shard: '💠', blood: '🩸', tickets: '🎟️' };
+const CUR = { gold: '🪙', soul: '🔥', shard: '💠', blood: '🩸', tickets: '🎟️', gem: '🔮' };
 const rwHtml = rw => Object.entries(rw || {}).filter(([k]) => CUR[k]).map(([k, v]) => `<span>${CUR[k]}${v}</span>`).join('') + (rw?.title === 'abyss' ? '<span class="pvp-ttl">🌌 칭호</span>' : '');
 const fxOff = () => localStorage.getItem('vrTcgSkipFx') === '1' || !!window.TCG_FAST;
 const dleft = () => { const e = st?.season_end ? new Date(st.season_end) : null; if (!e) return ''; const d = Math.max(0, Math.ceil((e - Date.now()) / 864e5)); return `D-${d}`; };
@@ -66,7 +66,7 @@ function paint() {
     <div class="pvp-decks">${decks.map((d, i) => `<button class="pvp-deck ${d ? '' : 'empty'}" data-edit="${i}">
       <span class="pvp-deck-no">${n > 1 ? i + 1 : '🛡'}</span><span class="pvp-deck-row">${d ? d.uids.map(u => thumb(byUid.get(u) && { ...card(byUid.get(u).id), level: byUid.get(u).level })).join('') : '<span class="pvp-plus">＋</span>'}</span>
       ${view.league === 'hr' && d ? `<small class="pvp-cost">${d.cost}/150</small>` : ''}</button>`).join('')}</div>
-    <div class="pvp-acts"><button class="pvp-rank" data-rank title="랭킹">🏅</button><button class="pvp-go" data-go ${ready ? '' : 'disabled'}>⚔️ 매칭</button></div>
+    <div class="pvp-acts"><button class="pvp-rank" data-rank title="랭킹">🏅</button>${st.left <= 0 && window.VRGem?.item?.('pvp_try') ? `<button class="pvp-gemtry" data-gemtry ${window.VRGem.item('pvp_try').left === 0 ? 'disabled' : ''} title="추가 도전 (하루 3회)">🎫+1 <small>🔮${window.VRGem.item('pvp_try').price}</small></button>` : ''}<button class="pvp-go" data-go ${ready ? '' : 'disabled'}>⚔️ 매칭</button></div>
     <div class="pvp-top"><div class="pvp-top-h">🏅 TOP 10</div><div class="pvp-rk">${rkRows(top)}</div></div>`;
   m.querySelectorAll('[data-league]').forEach(b => b.onclick = () => { view.league = b.dataset.league; save(); open(); });
   m.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => { view.mode = b.dataset.mode; save(); open(); });
@@ -75,6 +75,8 @@ function paint() {
   m.querySelector('[data-tiers]').onclick = tierTable;
   if (st.pending) claimTier();
   m.querySelector('[data-go]').onclick = fight;
+  const gt = m.querySelector('[data-gemtry]'); if (gt) gt.onclick = async () => { gt.disabled = true; if (await window.VRGem.buy('pvp_try', view.league, view.mode)) open(); else gt.disabled = false; };
+  if (st.left <= 0 && window.VRGem && !window.VRGem.now) window.VRGem.status().then(g => { if (g && $('pvp-modal')) paint(); });
 }
 const save = () => localStorage.setItem(LS, JSON.stringify(view));
 /** 내 랭크 카드: 엠블럼 · 레이팅 · 다음 티어까지 바 · 승패 · D-day · 연승 */

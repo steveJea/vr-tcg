@@ -583,6 +583,16 @@ end $$;
 
 -- 5) 매칭 시작: 횟수 차감 · 내 덱 재검사(지금 가진 카드로) · 비슷한 레이팅 상대(방어 덱 스냅샷) · seed 발급
 --    패배 처리를 먼저 반영(미보고 = 패배). 승리 보고 시 되돌리고 승리 반영
+-- 추가 도전권 (gem.sql 의 심연석 구매로 늘어남). 오늘(KST) 리그·모드별 추가 횟수
+create table if not exists public.pvp_bonus_tries (
+  user_id uuid not null references auth.users(id) on delete cascade, league text not null, mode text not null, day date not null,
+  n int not null default 0 check (n >= 0), primary key (user_id, league, mode, day));
+alter table public.pvp_bonus_tries enable row level security;
+revoke all on public.pvp_bonus_tries from public, anon, authenticated;
+create or replace function public._pvp_extra(p_uid uuid, p_league text, p_mode text) returns int language sql stable security definer set search_path = public as $$
+  select coalesce((select n from pvp_bonus_tries where user_id = p_uid and league = p_league and mode = p_mode and day = (now() at time zone 'Asia/Seoul')::date), 0) $$;
+revoke all on function public._pvp_extra(uuid, text, text) from public, anon, authenticated;
+
 create or replace function public.pvp_start(p_league text, p_mode text) returns jsonb
 language plpgsql security definer set search_path = public as $$
 declare uid uuid := auth.uid(); n int := _pvp_ok(p_league, p_mode); used int; me pvp_ratings; mine jsonb := '[]'::jsonb; d record;
@@ -591,7 +601,7 @@ begin
   if uid is null then raise exception 'login required'; end if;
   perform pg_advisory_xact_lock(hashtext('pvp:' || uid::text));
   select count(*) into used from pvp_attempts where user_id = uid and league = p_league and mode = p_mode and day = _pvp_day();
-  if used >= 10 then raise exception 'no attempts left'; end if;
+  if used >= 10 + _pvp_extra(uid, p_league, p_mode) then raise exception 'no attempts left'; end if;
   if (select count(*) from pvp_decks where user_id = uid and league = p_league and mode = p_mode) < n then raise exception 'deck required'; end if;
   for d in select * from pvp_decks where user_id = uid and league = p_league and mode = p_mode order by slot loop
     mine := mine || jsonb_build_array(_pvp_snap(uid, d.uids, p_league)->'cards');
@@ -621,7 +631,7 @@ begin
   update pvp_ratings set rating = rating - dl, losses = losses + 1, updated_at = now() where user_id = uid and league = p_league and mode = p_mode and season = _pvp_season();
   if opp is not null then perform _pvp_rating(opp, p_league, p_mode);
     update pvp_ratings set rating = rating + dl / 2, def_wins = def_wins + 1, updated_at = now() where user_id = opp and league = p_league and mode = p_mode and season = _pvp_season(); end if;
-  return jsonb_build_object('id', aid, 'seed', seed, 'me', mine, 'opp', osnap, 'opp_name', oname, 'opp_rating', orat, 'rating', me.rating, 'dw', dw, 'dl', dl, 'left', 9 - used, 'bot', opp is null);
+  return jsonb_build_object('id', aid, 'seed', seed, 'me', mine, 'opp', osnap, 'opp_name', oname, 'opp_rating', orat, 'rating', me.rating, 'dw', dw, 'dl', dl, 'left', 9 + _pvp_extra(uid, p_league, p_mode) - used, 'bot', opp is null);
 end $$;
 
 -- 6) 결과 보고: 시작 후 1시간 안, 한 번만. 승리면 선반영한 패배를 되돌리고 승리 반영

@@ -34,16 +34,17 @@
   async function gather() {
     const m = window.__MYPAGE_MOCK;
     const safe = f => { try { return Promise.resolve(f()).catch(() => null); } catch { return Promise.resolve(null); } };
-    const [story, gal, quest, wallet, player] = await Promise.all([
+    const [story, gal, quest, wallet, player, gem] = await Promise.all([
       safe(() => m?.story ? m.story() : window.VRStory?.summary?.()),
       safe(() => m?.gallery ? m.gallery() : window.VRGallery?.collection?.()),
       safe(() => m?.quest ? m.quest() : window.VRQuest?.bestFloor?.()),
       safe(() => m?.wallet ? m.wallet() : walletStatus()),
       safe(() => m?.player ? m.player() : window.VRPlayer?.status?.(true)),
+      safe(() => m?.gem ? m.gem() : window.VRGem?.status?.(true)),
     ]);
     const pool = window.TCG?.POOL || [];
     const cardOf = id => pool.find(c => String(c.id) === String(id));
-    return { user: user(), story: story?.ok ? story : null, gallery: gal, questBest: quest, wallet: wallet?.ok ? wallet : null, player: player?.ok ? player : null, arcade: m?.arcade ? m.arcade() : arcadeRecord(), cardOf };
+    return { user: user(), story: story?.ok ? story : null, gallery: gal, questBest: quest, wallet: wallet?.ok ? wallet : null, player: player?.ok ? player : null, gem: gem?.ok ? gem : null, arcade: m?.arcade ? m.arcade() : arcadeRecord(), cardOf };
   }
 
   // ---- 리더 영상 훅 ----
@@ -106,6 +107,8 @@
       <small class="mp-pnote" title="스토리 페이즈 1회 = 행동력 ${p.cost?.story ?? 6} (패배·포기 시 반환) · 6분에 1 회복 · 시련의 탑·아케이드는 무료">${window.VRIcon?.cur?.('stamina') || '🔋'} ${p.cost?.story ?? 6}/스토리 · 6분 +1</small></div></div>`; } });
   addSection({ id: 'wallet', order: 20, title: '재화', render: ctx => `<div class="mp-wallet">${CURRENCIES.map(c => { const v = c.value(ctx);
     return `<div class="mp-cur ${c.soon ? 'soon' : ''}" data-cur="${c.key}"><span class="mp-cur-ic">${window.VRIcon?.cur?.(c.key, { alt: c.label }) || c.icon}</span><span class="mp-cur-l">${c.label}</span><b>${v == null ? (c.soon ? '준비 중' : '-') : Number(v).toLocaleString('ko-KR')}</b></div>`; }).join('')}</div>` });
+  // 심연석 (gem.sql · js/gem.js): 잔액 + 최근 20건
+  addSection({ id: 'gem', order: 21, title: '🔮 심연석', render: ctx => ctx.gem ? window.VRGem?.section?.(ctx.gem) || '' : '' });
   addSection({ id: 'record', order: 30, title: '전적', render: ctx => {
     const a = ctx.arcade, s = ctx.story, g = ctx.gallery;
     const chs = s?.chapters || [], done = chs.reduce((x, c) => x + c.done, 0), tot = chs.reduce((x, c) => x + c.total, 0);
