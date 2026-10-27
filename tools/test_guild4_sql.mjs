@@ -37,6 +37,8 @@ for (const u of U) {
   await db.exec(`insert into story_progress (user_id, data) values ('${u}', '${JSON.stringify({ owned: ids.map((x, i) => ({ uid: 'c' + i, id: x, level: 10 })) })}') on conflict (user_id) do update set data = excluded.data`);
   await db.exec(`select _wallet_add('${u}', '{"gold":50000}', 'test')`);
 }
+await at('2026-11-14 12:00');
+ok((await q1(`select _war_phase('2026-11-18')`)) === 'soon', '토요일 = 신청 전');
 await at('2026-11-16 12:00');
 ok((await q1(`select _war_season()`)).toISOString?.().slice(0, 10) === '2026-11-18' || String(await q1(`select _war_season()::text`)) === '2026-11-18', '시즌 = 셋째 수요일 (11/18)');
 ok((await q1(`select _war_third_wed('2026-12-05')::text`)) === '2026-12-16' && (await q1(`select _war_phase('2026-11-18')`)) === 'signup', '12월 셋째 수 · 신청 기간');
@@ -72,12 +74,13 @@ const m1 = await q1(`select id from war_matches where day=1 and guild_a=${G[0]}`
 ok(+(await q1(`select guild_b from war_matches where id=${m1}`)) === G[1], '1일차: 세력 비슷한 조직끼리');
 ok((await q1(`select guild_b from war_matches where day=1 and guild_a=${G[2]}`)) == null, '남는 조직 = 동네 불량배파');
 ok(+(await q1(`select count(*) from war_ajits where match_id=${m1} and npc`)) === 20, '빈 10칸 × 2쪽 = 동네 불량배');
-const npc = await q1(`select _war_npc_deck('x:1', 1.6)`);
+const npc = await q1(`select _war_npc_deck('x:1', _war_scale('2026-11-18', 0))`);
 const HR = ['1000000031', '1000000032', '2000000033', '2000000034', '2000000035', '2000000036', '2000000037', '2000000038'];
 let mixed = true, shape = true;
 for (let k = 0; k < 40; k++) { const d = await q1(`select _war_npc_deck('t${k}', 1)`); const g = new Set(d.map(c => c.id[0])); if (g.size < 2) mixed = false; if (d.filter(c => HR.includes(c.id)).length !== 2 || d.length !== 5) shape = false; }
-ok(mixed && shape && npc[0].scale === 1.6, '불량배 덱: HR 2 + R 3 · 남녀 섞임 · 배율');
-ok(JSON.stringify(npc) === JSON.stringify(await q1(`select _war_npc_deck('x:1', 1.6)`)), '불량배 덱 seed 고정');
+ok(mixed && shape && npc[0].scale === 1 && npc[0].level === 10, '불량배 덱: HR 2 + R 3 · 남녀 섞임 · 레벨 10 고정');
+ok(JSON.stringify(npc) === JSON.stringify(await q1(`select _war_npc_deck('x:1', 1)`)), '불량배 덱 seed 고정');
+ok((await q1(`select _war_numbers()->'standings'->>'draw'`)) === '2', '무승부 = 2점');
 // 공격
 s = await v(U[3], `select war_status()`); ok(s.match && s.match.opponent.name === '조직1' && s.match.me.attacks_left === 5 && !s.match.gate_open, '상태: 상대 · 5회 · 방어조 먼저');
 ok(/defense first/.test(await err(U[3], `select war_start(6, 1)`)), '방어조 5곳 먼저');
@@ -125,7 +128,7 @@ ok(s.phase === 'rest' && s.standings[0].guild_id === G[0] && s.standings[0].poin
 ok(/not battle time/.test(await err(U[0], `select war_start(1, 1)`)), '23시 뒤 전투 불가');
 const g0 = await q1(`select balance from loyalty_wallet where user_id='${U[5]}'`);
 let c = await v(U[5], `select war_claim()`); ok(+c.got.loyalty === 80 && +c.got.gold === 7000, '승리 보상 + 보스 파괴 보너스 (전원)');
-ok(/nothing to claim/.test(await err(U[12], `select war_claim()`)), '진 조직 보상 없음');
+c = await v(U[12], `select war_claim()`); ok(+c.got.loyalty === 10 && !c.got.gold, '진 조직: 충성 10');
 ok(/nothing to claim/.test(await err(U[5], `select war_claim()`)), '두 번 못 받음');
 // 2일차: 승점 가까운 상대 · 같은 상대 피함
 await at('2026-11-19 10:00');
@@ -142,7 +145,10 @@ ok(c.got.rank === 1 && (await gem(topU)) - gg === 1100, '시즌 1위: 심연석 
 const lastG = rk[rk.length - 1].guild_id, lu = U[G.indexOf(lastG) * 11 + 7], lg = await gem(lu); await as(lu, `select war_claim()`);
 ok((await gem(lu)) - lg === 600, '시즌 3위: 500 + 100');
 await at('2026-11-23 12:00');
-ok(String(await q1(`select _war_season()::text`)) === '2026-12-16' && (await v(U[0], `select war_status()`)).phase === 'signup', '다음 날 = 다음 시즌 신청');
+ok(String(await q1(`select _war_season()::text`)) === '2026-12-16' && (await v(U[0], `select war_status()`)).phase === 'soon', '다음 날 = 다음 시즌 신청 전');
+ok(/signup closed/.test(await err(U[0], `select war_enter()`)), '셋째 주 일요일 전 신청 불가');
+await at('2026-12-13 00:30');
+ok((await v(U[0], `select war_status()`)).phase === 'signup', '셋째 주 일요일 = 신청 시작');
 // 보안
 ok(!!(await as(U[0], `select * from war_ajits`)).err && !!(await as(U[0], `select * from war_decks`)).err, '테이블 직접 읽기 불가');
 ok(!!(await as(U[0], `select _war_settle(1)`)).err && !!(await as(U[0], `select _war_tick()`)).err, '내부 함수 불가');

@@ -56,9 +56,9 @@ create or replace function public._war_numbers() returns jsonb language sql immu
   "layout": {"def": [1,2,3,4,5], "atk": [6,7,8,9,10], "mid": [11,12,13], "boss": [14], "etc": [15,16,17,18,19,20,21]},
   "roles": {"def": {"atk": 1, "def": 1.2}, "atk": {"atk": 1.2, "def": 1}, "mid": {"atk": 1.15, "def": 1.15}, "boss": {"atk": 1.25, "def": 1.25}, "etc": {"atk": 1, "def": 1}},
   "points": {"def": 200, "atk": 150, "etc": 150, "mid": 250, "boss": 400},
-  "standings": {"win": 3, "draw": 1, "loss": 0, "boss_bonus": 1},
-  "npc_scale": {"NORMAL": 0.6, "RARE": 1, "HIGH RARE": 1.6, "SUPER RARE": 2.8, "ULTRA RARE": 4.5, "MYTHIC RARE": 12, "LEGENDARY RARE": 14},
-  "match_win": {"loyalty": 60, "gold": 5000}, "match_boss_kill": {"loyalty": 20, "gold": 2000}, "match_draw": {"loyalty": 20, "gold": 1500}, "match_exp_win": 300,
+  "standings": {"win": 3, "draw": 2, "loss": 0, "boss_bonus": 1},
+  "npc_level": 10, "npc_scale": 1, "signup_days_before": 3,
+  "match_win": {"loyalty": 60, "gold": 5000}, "match_boss_kill": {"loyalty": 20, "gold": 2000}, "match_draw": {"loyalty": 20, "gold": 1500}, "match_loss": {"loyalty": 10}, "match_exp_win": 300,
   "season_rank": [{"from": 1, "to": 1, "reward": {"gem": 1000, "loyalty": 300}}, {"from": 2, "to": 2, "reward": {"gem": 700, "loyalty": 200}}, {"from": 3, "to": 3, "reward": {"gem": 500, "loyalty": 150}},
                   {"from": 4, "to": 10, "reward": {"gem": 300, "loyalty": 100}}, {"from": 11, "to": 30, "reward": {"gem": 150, "loyalty": 50}}],
   "season_member": {"gem": 100, "loyalty": 30}
@@ -81,13 +81,14 @@ create or replace function public._war_at(p_season date, p_day int, p_hour int) 
 create or replace function public._war_day(p_season date) returns int language sql stable as $$
   select case when _war_kst()::date between p_season and p_season + 4 then (_war_kst()::date - p_season) + 1 end $$;
 create or replace function public._war_phase(p_season date) returns text language sql stable as $$
-  select case when _war_now() < _war_at(p_season, 1, (_war_numbers()->>'open_hour')::int) then 'signup'
+  select case when _war_now() < _war_at(p_season, 1 - (_war_numbers()->>'signup_days_before')::int, 0) then 'soon'
+              when _war_now() < _war_at(p_season, 1, (_war_numbers()->>'open_hour')::int) then 'signup'
               when _war_now() >= _war_at(p_season, 5, (_war_numbers()->>'close_hour')::int) then 'ended'
               when extract(hour from _war_kst()) >= (_war_numbers()->>'open_hour')::int and extract(hour from _war_kst()) < (_war_numbers()->>'close_hour')::int then 'live'
               else 'rest' end $$;
 
 -- 4) 동네 불량배 (NPC): HR 2 + R 3, 남녀 섞임, seed 로 고정
-create or replace function public._war_npc_deck(p_seed text, p_scale numeric) returns jsonb language plpgsql immutable as $$
+create or replace function public._war_npc_deck(p_seed text, p_scale numeric) returns jsonb language plpgsql stable as $$
 declare hr text[] := array['1000000031','1000000032','2000000033','2000000034','2000000035','2000000036','2000000037','2000000038'];
         r text[] := array['1000000028','1000000029','1000000030','2000000029','2000000030','2000000031','2000000032'];
         a text[]; b text[]; ids text[]; alt text; out jsonb := '[]'::jsonb; i int;
@@ -99,15 +100,12 @@ begin
     select x into alt from unnest(b[4:7]) x where left(x, 1) <> left(ids[1], 1) limit 1;
     ids[5] := alt;
   end if;
-  for i in 1..5 loop out := out || jsonb_build_object('uid', 'n' || i, 'id', ids[i], 'level', 1, 'scale', p_scale); end loop;
+  for i in 1..5 loop out := out || jsonb_build_object('uid', 'n' || i, 'id', ids[i], 'level', (_war_numbers()->>'npc_level')::int, 'scale', p_scale); end loop;
   return out;
 end $$;
--- 조직 방어 덱 평균 등급 → NPC 배율
+-- 동네 불량배 = 고정 약체 (레벨 10 · 배율 1, 조직 덱과 무관)
 create or replace function public._war_scale(p_season date, p_gid bigint) returns numeric language sql stable security definer set search_path = public as $$
-  with g as (select array['NORMAL','RARE','HIGH RARE','SUPER RARE','ULTRA RARE','MYTHIC RARE','LEGENDARY RARE'] a),
-  x as (select array_position((select a from g), m.grade) gi from war_roster r, jsonb_array_elements(coalesce(r.def_snap->0, '[]'::jsonb)) c join pvp_card_meta m on m.id = c->>'id'
-        where r.season = p_season and r.guild_id = p_gid and r.user_id is not null)
-  select coalesce((_war_numbers()->'npc_scale'->>((select a from g)[greatest(1, least(7, round((select avg(gi) from x))::int))]))::numeric, 1) $$;
+  select coalesce((_war_numbers()->>'npc_scale')::numeric, 1) $$;
 
 -- 5) 진행 (모든 공개 RPC 가 먼저 부름): 시즌 잠금 · 매일 대진 · 23시 정산
 create or replace function public._war_lock(p_season date) returns void language plpgsql security definer set search_path = public as $$
@@ -215,7 +213,7 @@ begin
   if uid is null then raise exception 'login required'; end if;
   if p_kind not in ('def1', 'def2', 'atk1', 'atk2') then raise exception 'bad deck'; end if;
   s := _war_tick();
-  if p_kind like 'def%' and _war_phase(s) <> 'signup' and _war_phase(s) <> 'ended' and exists (select 1 from war_roster where season = s and user_id = uid) then raise exception 'defense locked'; end if;
+  if p_kind like 'def%' and _war_phase(s) not in ('soon', 'signup', 'ended') and exists (select 1 from war_roster where season = s and user_id = uid) then raise exception 'defense locked'; end if;
   if jsonb_array_length(coalesce(p_uids, '[]'::jsonb)) > 0 then sn := _pvp_snap(uid, p_uids, 'open')->'cards'; end if;
   insert into war_decks (user_id) values (uid) on conflict do nothing;
   select case p_kind when 'def1' then def2 when 'def2' then def1 when 'atk1' then atk2 else atk1 end into other from war_decks where user_id = uid;
@@ -404,9 +402,9 @@ create or replace function public._war_pending(p_uid uuid) returns jsonb languag
 declare out jsonb := '[]'::jsonb; r record; N jsonb := _war_numbers(); rk int;
 begin
   for r in select mt.*, wr.guild_id gid from war_roster wr join war_matches mt on mt.season = wr.season and (mt.guild_a = wr.guild_id or mt.guild_b = wr.guild_id)
-            where wr.user_id = p_uid and mt.settled and (mt.winner = wr.guild_id or mt.draw) and wr.season >= _war_season() - 62 loop
+            where wr.user_id = p_uid and mt.settled and wr.season >= _war_season() - 62 loop
     continue when exists (select 1 from guild_claims where user_id = p_uid and ref = 'warm:' || r.id);
-    out := out || jsonb_build_object('ref', 'warm:' || r.id, 'gid', r.gid, 'reward', case when r.draw then N->'match_draw' else (N->'match_win') ||
+    out := out || jsonb_build_object('ref', 'warm:' || r.id, 'gid', r.gid, 'reward', case when r.draw then N->'match_draw' when r.winner is distinct from r.gid then N->'match_loss' else (N->'match_win') ||
       case when r.boss_kill then _war_sum(N->'match_win', N->'match_boss_kill') else '{}'::jsonb end end);
   end loop;
   for r in select wr.season, wr.guild_id from war_roster wr join war_entries e on e.season = wr.season and e.guild_id = wr.guild_id and e.status = 'in'
