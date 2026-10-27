@@ -533,6 +533,18 @@
     const byName = n => enemies.find(c => c.name === n) || pool().filter(c => c.name === n).sort((a, b) => (a.region === starter?.region ? -1 : 0) - (b.region === starter?.region ? -1 : 0))[0] || (window.TCG?.NPC || []).find(c => c.name === n) || null;   // NPC(불량배·수상한 남자 등)는 적에 없어도 이름으로 찾기
     const who = L => L.portrait !== undefined ? (L.portrait === 'starter' ? starter : L.portrait === 'enemy' ? enemy : L.portrait ? card(L.portrait) : null)
       : (D.noPortrait || []).includes(L.speaker) ? null : (heroes.find(h => h.name === L.speaker) || byName(L.speaker));
+    // 페이즈 시작 때 이 대사에 나올 초상화를 미리 받아 디코드 → 줄 넘길 때 버벅임 방지
+    { const seen = new Set();
+      for (const L0 of lines) { try {
+        const tag = /^(.+?)\s*\(([^()]+)\)$/.exec(L0.speaker || ''), tagOk = tag && D.exprSlug?.[tag[2].trim()], L = tagOk ? { ...L0, speaker: tag[1], expr: L0.expr || L0.face || tag[2].trim() } : { ...L0, expr: L0.expr || L0.face };
+        const pc = who(L), sp = L.speaker === 'starter' ? starter?.name : L.speaker === 'enemy' ? enemy?.name : L.speaker;
+        const slug = pc ? D.portraits?.[pc.name] : sp && D.portraits?.[sp];
+        const ex = D.exprSlug?.[String(L.expr || '').trim().toLowerCase()] || D.exprSlug?.[String(L.expr || '').trim()] || 'base';
+        const src = slug ? `img/story/portraits/${slug}_${ex}.webp` : pc ? picOf(pc) : null;
+        if (!src || seen.has(src)) continue; seen.add(src);
+        const im = new Image(); im.decoding = 'async'; im.src = window.cardImgOverride ? window.cardImgOverride(src) : src; im.decode?.().catch(() => {});
+        (playLines.cache ||= []).push(im); if (playLines.cache.length > 40) playLines.cache.shift();
+      } catch {} } }
     let i = 0;
     const step = () => {
       if (i >= lines.length) return next();
