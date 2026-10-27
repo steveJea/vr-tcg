@@ -174,3 +174,14 @@
 .wr-dkrow b{display:flex;flex-direction:column}.wr-dkrow b small{font-size:9px;opacity:.6;font-weight:400}
 .wr-pb{position:relative;display:flex;flex-direction:column;gap:10px;padding:10px 4px;border-radius:14px;overflow:hidden;background:radial-gradient(circle at 50% 50%,#3b0a0a,#0b0207 75%);min-height:260px;justify-content:space-between}
 .wr-pb .rd-pb-fx{position:relative;top:auto}.wr-pb-side{position:relative;display:flex;gap:4px;justify-content:center}.rd-res b.lose{color:#9ca3af;text-shadow:none}
+
+/* ===== 조직 아이콘 그림 (img/ui/guild/*.webp, 실패 시 이모지) ===== */
+img.gi{position:static!important;inset:auto!important;display:inline-block;width:1.25em!important;height:1.25em!important;object-fit:contain!important;vertical-align:-.28em;filter:none!important;margin:0 .05em;pointer-events:none}
+.gd-tiles button span img.gi{width:40px!important;height:40px!important}
+.gd-tiles button span:has(img.gi){font-size:0;line-height:0}
+.gd-x img.gi{width:22px!important;height:22px!important}
+.gd-m-no img.gi,.gd-mp-no img.gi{width:70%!important;height:70%!important}.gd-m-no:has(img.gi),.gd-mp-no:has(img.gi){opacity:.6}
+.gd-si-ic img.gi{width:44px!important;height:44px!important}
+.rd-bfb img.gi{width:1.2em!important;height:1.2em!important}
+.wr-x img.gi{width:34px!important;height:34px!important}.wr-npc img.gi{width:18px!important;height:18px!important}
+.gd-h.big img.gi{width:1.4em!important;height:1.4em!important}
