@@ -63,4 +63,16 @@ ok(capOk && turnsOk, '토벌 수동도 행동당 피해 상한 · 15턴');
     okW += JSON.stringify(runWar(wa, wb, seed, null, w.acts)) === JSON.stringify(y.value);
   }
   ok(okV === 10, `화면 모드 수동 PvP 재생 일치 (${okV}/10)`); ok(okM, 'PvP·전쟁 마나 항상 0'); ok(okW === 10, `구역 전쟁 수동 재생 일치 (${okW}/10)`); }
+// 토벌 화면 모드: 멈춤(anim)은 결과에 영향 없음 · 일괄 공격(카드마다 보스 공격) 기록도 재생 일치
+{ let okR = 0, okB = 0;
+  for (let k = 1; k <= 10; k++) {
+    const A = deck(k * 41), stg = 1 + k % 5, df = ['normal', 'hard', 'abyss'][k % 3], seed = k * 313;
+    const v = manualRaid(A, stg, df, seed, by, null, { view: true }); let x = v.next(); const h = human(k + 7);
+    while (!x.done) x = v.next(x.value.ask ? h(x.value) : undefined);
+    okR += JSON.stringify(runRaid(A, stg, df, seed, by, null, v.acts)) === JSON.stringify(x.value);
+    const b = manualRaid(A, stg, df, seed, by, null, { view: true }); let y = b.next();
+    while (!y.done) { if (!y.value.ask) { y = b.next(); continue; } const i = y.value.A0.findIndex(u => u.hp > 0 && y.value.A.field.includes(u) && u.canAttack); y = b.next(i < 0 ? { k: 'end' } : { k: 'atk', i, t: 0 }); }
+    okB += JSON.stringify(runRaid(A, stg, df, seed, by, null, b.acts)) === JSON.stringify(y.value) && b.acts.some(a => a.k === 'atk');
+  }
+  ok(okR === 10, `토벌 화면 모드 수동 재생 일치 (${okR}/10)`); ok(okB === 10, `토벌 일괄 공격 기록 재생 일치 (${okB}/10)`); }
 console.log(fails ? `FAIL ${fails}` : 'ALL PASS');

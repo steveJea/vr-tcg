@@ -2,7 +2,7 @@
 // 서버: supabase/guild3.sql (raid_status / raid_set_difficulty / raid_start / raid_finish / raid_sweep / raid_claim). 전투: js/raid-core.js (자동 전투, 서버 seed)
 // 그림: img/ui/guild/raid_banner.webp · raid_bg.webp · raid_icon.webp · raid_diff_<normal|hard|abyss>.webp (없으면 이모지). 보스는 카드 그림(IMG)
 import { snapCard } from './pvp-core.js';
-import { runRaid, manualRaid, RAID_DIFF, RAID_BOSSES, RAID_TURNS } from './raid-core.js';
+import { runRaid, manualRaid, hitCap, RAID_DIFF, RAID_BOSSES, RAID_TURNS } from './raid-core.js';
 import { modeToggle, bindMode, battleMode, playManual } from './manual-ui.js';
 
 const IMG = 'https://raw.githubusercontent.com/steveJea/vr-ideal-worldcup/main/img/bt_img/';
@@ -120,7 +120,18 @@ async function fight(e) {
   let st; try { st = await rpc('raid_start', { p_uids: dk.cards.map(o => o.uid) }); } catch (er) { toast(errText(er)); paint(); return; }
   const deck = st.deck.map(o => snapCard(o, card)).filter(Boolean), log = [], t0 = Date.now();
   let res;
-  if (battleMode() === 'manual') {   // 수동: 같은 seed·스냅샷으로 내가 조작. 행동 기록을 서버에 남겨 tools/raid_verify.mjs 로 재생 검증
+  const V = window.TCG?.viewBattle;
+  if (V) {   // 스토리·탑과 같은 전투 화면 (js/game.js). 수동이면 행동 기록을 raid_log 로 (tools/raid_verify.mjs 재생 검증)
+    const manual = battleMode() === 'manual', ses = manualRaid(deck, st.stage, st.difficulty, st.seed, card, log, { view: true });
+    const feed = manual ? ses : { events: ses.events, next: inp => { let x = ses.next(inp); while (!x.done && x.value.ask) x = ses.next({ k: 'auto' }); return x; } };
+    const started = st.started_at ? new Date(st.started_at).getTime() : t0;
+    M?.style && (M.style.display = 'none');
+    try {
+      res = await V({ session: feed, aiName: st.boss.name, manual, maxTurns: RAID_TURNS * 2, bg: 'raid', title: `🐉 균열 토벌 · ${st.stage}단계 ${st.boss.name}`,
+        raid: { stage: st.stage, bossId: st.boss.id, bossName: st.boss.name, hpLeft: +S?.hp_left || 0, hpMax: +S?.hp_max || 0, cap: hitCap(st.stage), weakLabel: ATTR[st.boss.weak] || st.boss.weak || '', deadline: started + 20 * 60000 } });
+    } finally { if (M?.style) M.style.display = ''; }
+    if (manual) { try { await rpc('raid_log', { p_id: st.id, p_actions: ses.acts }); } catch (er) { toast(errText(er)); } }
+  } else if (battleMode() === 'manual') {   // 수동: 같은 seed·스냅샷으로 내가 조작. 행동 기록을 서버에 남겨 tools/raid_verify.mjs 로 재생 검증
     const ses = manualRaid(deck, st.stage, st.difficulty, st.seed, card, log);
     res = await playManual({ session: ses, rec: log, title: `${st.boss.name} · ${st.stage}단계`, maxTurns: RAID_TURNS, raid: true });
     try { await rpc('raid_log', { p_id: st.id, p_actions: ses.acts }); } catch (er) { toast(errText(er)); }

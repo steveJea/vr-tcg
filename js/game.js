@@ -296,6 +296,12 @@ function recall(who, unit) {
 }
 
 async function attackAll() {
+  if (S?.view) {   // 화면 전투(토벌): 공격 가능한 내 카드가 차례로 공격 → 행동마다 기록(raid_log 재생 검증)
+    if (!S.view.ask || S.turn !== 'me') return;
+    S.view.batch = S.me.field.filter(u => u.canAttack && u.hp > 0).map(u => u);
+    log(`일괄 공격! (${S.view.batch.length}장)`, 'text-emerald-400');
+    S.view.nextBatch?.(); return;
+  }
   if (S.turn !== 'me' || S.over || S.busy) return;
   const ready = S.me.field.filter(u => u.canAttack);
   if (!ready.length) return;
@@ -1159,7 +1165,7 @@ function render() {
   $('ai-hero').classList.toggle('ring-4', !!atkSel && tg.hero);
   $('ai-hero').classList.toggle('ring-red-500', !!atkSel && tg.hero);
   $('ai-hero').classList.toggle('opacity-70', S.turn === 'me' && !tg.hero);
-  $('hero-hint').innerHTML = S.story && S.over ? '' : S.ai.noBase ? (S.over ? '' : '⚔️ 일반전: 상대 카드를 모두 쓰러뜨리면 승리') : S.turn === 'me' && !S.over ? (tg.hero ? `${ic('taunt', { alt: '' })} 상대 진영 공격 가능` : `${ic('def', { alt: '' })} ${escHtml(tg.reason)}`) : '';
+  $('hero-hint').innerHTML = S.story && S.over ? '' : S.ai.noBase ? (S.over ? '' : $('game').classList.contains('view-raid') ? '🐉 균열 토벌: 15턴 동안 보스에게 최대한 큰 피해를!' : '⚔️ 일반전: 상대 카드를 모두 쓰러뜨리면 승리') : S.turn === 'me' && !S.over ? (tg.hero ? `${ic('taunt', { alt: '' })} 상대 진영 공격 가능` : `${ic('def', { alt: '' })} ${escHtml(tg.reason)}`) : '';
   $('hero-hint').className = `text-center text-[11px] md:text-xs font-bold ${tg.hero ? 'text-emerald-400' : 'text-amber-300'}`;
 
   for (const who of ['ai', 'me']) {
@@ -1568,7 +1574,8 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('zoom-vi
 
 // ===== PvP·구역 전쟁 전투 화면: 스토리·탑과 같은 화면/연출, 전투 계산은 서버 seed 엔진(pvp-core matchGen) 그대로 =====
 // session = manualMatch/warSession(view:true). 화면은 엔진이 한 행동씩 멈출 때(anim) 연출하고, 내 차례(ask)면 입력을 기다림. 결과·행동 기록은 엔진 것 그대로
-async function viewBattle({ session, aiName = '상대', bg = 'normal', manual = false, maxTurns: mt = 40, title = '' } = {}) {
+/** raid: { stage, bossId, bossName, hpLeft, hpMax, cap, weakLabel, deadline(ms) } → 균열 토벌 화면 (큰 보스 HP 바 · 누적 피해 · 남은 시간) */
+async function viewBattle({ session, aiName = '상대', bg = 'normal', manual = false, maxTurns: mt = 40, title = '', raid = null } = {}) {
   const hid = [...document.querySelectorAll('.pvp-modal, .gd-pop, #start-screen, #story-screen')].filter(e => !e.classList.contains('hidden') && e.style.display !== 'none');
   hid.forEach(e => { e.dataset.vbHide = e.style.display; e.style.display = 'none'; });
   let x = session.next();
@@ -1578,16 +1585,36 @@ async function viewBattle({ session, aiName = '상대', bg = 'normal', manual = 
   S.me.name = '나'; S.ai.name = aiName;
   selected = null; $('log').innerHTML = ''; fxQueue.length = 0; vidGate = Promise.resolve(); hpPrev.clear();
   $('end-screen').classList.add('hidden'); $('start-screen').classList.add('hidden'); $('game').classList.remove('hidden');
-  $('game').classList.add('story-field', 'view-battle');
+  $('game').classList.add('story-field', 'view-battle'); $('game').classList.toggle('view-raid', !!raid);
+  // ---- 균열 토벌: 보스 배너 (그림 · 단계 · 공유 HP 바 · 이번 판 피해 · 남은 시간) ----
+  let RB = null, tick = 0;
+  const raidPaint = (dmg, d = 0) => {
+    if (!RB) return; const left = Math.max(0, raid.hpLeft - dmg), pct = raid.hpMax ? left / raid.hpMax * 100 : 0;
+    RB.querySelector('.vbr-fill').style.width = pct + '%'; RB.querySelector('.vbr-lag').style.width = pct + '%';
+    RB.querySelector('.vbr-hp').textContent = `${fmt(left)} / ${fmt(raid.hpMax)}`;
+    const n = RB.querySelector('.vbr-dmg b'); n.textContent = fmt(dmg);
+    if (d > 0 && !FX_OFF()) { n.classList.remove('pop'); void n.offsetWidth; n.classList.add('pop'); RB.classList.remove('hit'); void RB.offsetWidth; RB.classList.add('hit'); }
+  };
+  if (raid) {
+    RB = document.createElement('div'); RB.id = 'vb-raid';
+    RB.innerHTML = `<img class="vbr-pic" src="${IMG}${raid.bossId}.webp" alt=""><div class="vbr-main"><div class="vbr-top"><b>${escHtml(raid.bossName)}</b><span class="vbr-st">${raid.stage}단계</span>${raid.weakLabel ? `<span class="vbr-weak">약점 ${escHtml(raid.weakLabel)}</span>` : ''}<span class="vbr-time"></span></div>
+      <div class="vbr-bar"><i class="vbr-lag"></i><i class="vbr-fill"></i><span class="vbr-hp"></span></div>
+      <div class="vbr-dmg">이번 판 피해 <b>0</b><small>· 1회 상한 ${fmt(raid.cap)}</small></div></div>`;
+    $('top-bar').before(RB);
+    const t = () => { const ms = Math.max(0, (raid.deadline || 0) - Date.now()), m = Math.floor(ms / 60000), sec = Math.floor(ms / 1000) % 60, el = RB.querySelector('.vbr-time'); if (!el) return; el.textContent = `⏱ ${m}:${String(sec).padStart(2, '0')}`; el.classList.toggle('low', ms < 120000); };
+    if (raid.deadline) { t(); tick = setInterval(t, 1000); }
+    raidPaint(0);
+  }
   for (const w of ['me', 'ai']) { $(`${w}-hp`).classList.add('hidden'); $(`${w}-hpbar`).parentElement.classList.add('hidden'); }
   { const lbl = $('ai-order').parentElement.firstChild; if (lbl?.nodeType === 3) lbl.textContent = `${aiName} `; }
   setBattleBg(bg); preloadHit(); preloadFx([...S.me.field, ...S.ai.field].map(u => u.base || u.card));
   if (title) log(title, 'text-amber-300');
-  log('⚔️ 마나 없음 · 상대를 모두 쓰러뜨리면 승리', 'text-amber-300');
+  log(raid ? `🐉 균열 토벌 · 내 턴 ${mt / 2}번 동안 최대한 큰 피해를 (행동 1번 상한 ${fmt(raid.cap)})` : '⚔️ 마나 없음 · 상대를 모두 쓰러뜨리면 승리', 'text-amber-300');
   render();
   const drain = () => { const ev = session.events || []; const out = ev.splice(0, ev.length); return out; };
   // 마나 없음: 처치 마나(refund) 연출 생략. 같은 카드에 숫자가 겹치지 않게 조금씩 띄워 보여 줌
-  const play = async (evs, gap = 0) => { const seen = new Map(); for (const e of evs) { if (e.type === 'refund') continue; try { onEngine(e); } catch (err) { reportError('view', err); }
+  const bossNum = (d, weak) => { if (!raid || !(d > 0)) return; const el = unitEl('ai', V.B0[0]); shake(el); hitFx(el, 'blood'); dmgNumber(el, `-${fmt(d)}`, d >= raid.cap ? '#f97316' : '#fde047', false, 'fx-dmg-crit fx-dmg-raid'); if (weak) dmgNumber(el, '약점!', '#fca5a5', false, 'fx-dmg-mini'); if (d >= raid.cap) dmgNumber(el, 'MAX', '#fb923c', false, 'fx-dmg-mini'); };
+  const play = async (evs, gap = 0) => { const seen = new Map(); for (const e of evs) { if (e.type === 'refund') continue; if (raid && e.type === 'dmg' && e.unit === V.B0[0]) continue;   // 보스 원래 피해 숫자 대신 상한 적용 피해(bossNum) try { onEngine(e); } catch (err) { reportError('view', err); }
     if (gap && e.unit && ['levelup', 'mp', 'status', 'heal', 'immune', 'miss', 'resist', 'elfx'].includes(e.type)) { const n = (seen.get(e.unit) || 0) + 1; seen.set(e.unit, n); if (n > 0) await sleep(fxMs(gap)); } } };
   try {
     for (let g = 0; !x.done && g < 20000; g++) {
@@ -1595,8 +1622,8 @@ async function viewBattle({ session, aiName = '상대', bg = 'normal', manual = 
       if (v.anim) {
         const a = v.anim, who = a.side === 'A' ? 'me' : 'ai', evs = drain();
         if (a.k === 'turn' && !S.totalTurns) { $('me-order').textContent = who === 'me' ? '선공' : '후공'; $('ai-order').textContent = who === 'ai' ? '선공' : '후공'; }
-        if (a.k === 'turn') { S.turn = who; S.totalTurns++; if (who === 'me') S.myTurns++; S.busy = true; render(); await play(evs, 160); await sleep(AI_DELAY()); }
-        else if (a.k === 'skill') { S.busy = true; render(); if (!(await mrVideo(a.u, a.s))) await withTimeout(cutIn(a.u, a.s.name, a.s.fx), 3000); pendingDying = []; await play(evs, 160); if (who === 'me') S.log.skills++; render(); await sleep(fxMs(450)); await withTimeout(fadeDying(), 750); }
+        if (a.k === 'turn') { S.turn = who; S.totalTurns++; if (who === 'me') S.myTurns++; S.busy = true; render(); if (raid && who === 'me') floatText(`T${a.t}/${mt / 2}`, 'text-amber-200 text-2xl', 'me'); await play(evs, 160); if (raid) { bossNum(v.damage - (S.vDmg || 0)); S.vDmg = v.damage; raidPaint(v.damage, 1); } await sleep(AI_DELAY()); }
+        else if (a.k === 'skill') { S.busy = true; render(); if (!(await mrVideo(a.u, a.s))) await withTimeout(cutIn(a.u, a.s.name, a.s.fx), 3000); pendingDying = []; await play(evs, 160); if (raid) { bossNum(a.d, a.weak); S.vDmg = v.damage; raidPaint(v.damage, a.d); } if (who === 'me') S.log.skills++; render(); await sleep(fxMs(450)); await withTimeout(fadeDying(), 750); }
         else if (a.k === 'atk') {
           S.busy = true; const oWho = who === 'me' ? 'ai' : 'me', aEl = unitEl(who, a.u), tEl = a.t ? unitEl(oWho, a.t) : null;
           playSe(7); const hit = await withTimeout(lunge(aEl, tEl), 750); pendingDying = [];
@@ -1604,17 +1631,19 @@ async function viewBattle({ session, aiName = '상대', bg = 'normal', manual = 
           const late = evs.filter(e => !['dmg', 'crit', 'dealt', 'destroy', 'hero'].includes(e.type)); await play(evs.filter(e => !late.includes(e)));
           for (const e of a.hits || []) {
             playSe(e.type === 'hit' ? 1 : 0);
-            if (e.type === 'hit') { const real = e.target || a.t, rEl = (real && unitEl(oWho, real)) || tEl; shake(rEl); hitFx(rEl, e.mult > 1 ? 'blood' : 'impact'); critNum(rEl, e.d1, real); if (e.d2) { shake(aEl); hitFx(aEl); dmgNumber(aEl, `-${fmt(e.d2)}`, '#fca5a5'); } }
+            if (e.type === 'hit') { const real = e.target || a.t, rEl = (real && unitEl(oWho, real)) || tEl; shake(rEl); hitFx(rEl, e.mult > 1 ? 'blood' : 'impact'); if (raid && real === V.B0[0]) critSet.delete(real); else critNum(rEl, e.d1, real); if (e.d2) { shake(aEl); hitFx(aEl); dmgNumber(aEl, `-${fmt(e.d2)}`, '#fca5a5'); } }
             else if (e.type === 'evade') dmgNumber(unitEl(oWho, e.target) || tEl, 'MISS', '#e0f2fe');
           }
-          critSet.clear();
+          critSet.clear(); if (raid) { bossNum(a.d, a.weak); S.vDmg = v.damage; raidPaint(v.damage, a.d); }
           await withTimeout(hit?.back?.() ?? Promise.resolve(), 750); resetAnim(aEl); await play(late, 220); render(); await withTimeout(fadeDying(), 750); await sleep(AI_DELAY());
-        } else { await play(evs, 160); render(); }
+        } else { await play(evs, 160); if (raid && a.d) { bossNum(a.d); S.vDmg = v.damage; raidPaint(v.damage, a.d); } render(); }
         x = session.next(); continue;
       }
       if (v.ask) {
         await play(drain()); S.turn = 'me'; S.busy = false; render();
-        const inp = V.auto ? { k: 'auto' } : await new Promise(res => { V.ask = i => { V.ask = null; res(i); }; });
+        // 일괄 공격 대기열: 아직 행동 가능한 카드부터 차례로 (대상 = 공격 가능한 첫 적, 토벌은 보스)
+        const fromBatch = () => { while (V.batch?.length) { const u = V.batch.shift(); if (!u.canAttack || u.hp <= 0 || !S.me.field.includes(u)) continue; const t = autoTarget(u, S.me, S.ai); if (t == null) continue; return { k: 'atk', i: V.A0.indexOf(u), t: V.B0.indexOf(t) }; } V.batch = null; return null; };
+        const inp = V.auto ? { k: 'auto' } : fromBatch() || await new Promise(res => { V.ask = i => { V.ask = null; V.nextBatch = null; res(i); }; V.nextBatch = () => { const b = fromBatch(); if (b) V.ask(b); }; });
         V.ask = null; selected = null; S.busy = true;
         x = session.next(inp); continue;
       }
@@ -1622,12 +1651,14 @@ async function viewBattle({ session, aiName = '상대', bg = 'normal', manual = 
     }
     await play(drain());
     S.over = true; render();
-    try { window.VRSound?.jingle?.(x.value?.win ? 'victory' : 'defeat'); } catch {}
-    floatText(x.value?.win ? 'WIN' : 'LOSE', x.value?.win ? 'text-emerald-300 text-5xl' : 'text-red-400 text-5xl', 'ai');
+    if (raid) { raidPaint(x.value?.damage || 0, 1); try { window.VRSound?.jingle?.('victory'); } catch {} floatText(`총 피해 ${fmt(x.value?.damage || 0)}`, 'text-amber-300 text-3xl', 'ai'); }
+    else { try { window.VRSound?.jingle?.(x.value?.win ? 'victory' : 'defeat'); } catch {}
+      floatText(x.value?.win ? 'WIN' : 'LOSE', x.value?.win ? 'text-emerald-300 text-5xl' : 'text-red-400 text-5xl', 'ai'); }
     await sleep(window.TCG_FAST ? 0 : 1200);
     return x.value;
   } finally {
-    $('game').classList.remove('view-battle', 'story-field'); $('game').classList.add('hidden');
+    clearInterval(tick); RB?.remove();
+    $('game').classList.remove('view-battle', 'view-raid', 'story-field'); $('game').classList.add('hidden');
     hid.forEach(e => { e.style.display = e.dataset.vbHide || ''; delete e.dataset.vbHide; });
     S = null; selected = null;
   }

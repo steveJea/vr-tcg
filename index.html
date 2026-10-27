@@ -79,8 +79,36 @@
     #battle-bg[data-bg="normal"] { background-image: url(img/ui/bg_normal.webp); }
     #battle-bg[data-bg="boss"] { background-image: url(img/ui/bg_boss.webp); }
     #battle-bg[data-bg="war"] { background-image: url(img/ui/guild/war_bg.webp); }
+    #battle-bg[data-bg="raid"] { background-image: url(img/ui/guild/raid_bg.webp); }
+    /* 균열 토벌 화면: 보스 배너 + 큰 보스 카드 (보스 카드 자체 HP 바는 숨김 = 공유 HP 는 배너) */
+    #vb-raid { display:flex; gap:10px; align-items:center; padding:8px 10px; border-radius:16px; background:linear-gradient(180deg,rgba(60,6,14,.92),rgba(12,4,8,.92)); border:1px solid rgba(239,68,68,.55); box-shadow:0 0 18px rgba(220,38,38,.35); }
+    #vb-raid.hit { animation: vbrHit .28s ease-out; }
+    @keyframes vbrHit { 0% { transform: translateX(0); box-shadow:0 0 30px rgba(250,204,21,.8); } 30% { transform: translateX(-4px); } 60% { transform: translateX(3px); } 100% { transform: none; } }
+    #vb-raid .vbr-pic { width:54px; height:72px; object-fit:cover; border-radius:10px; border:2px solid #f87171; flex:none; }
+    #vb-raid .vbr-main { flex:1; min-width:0; }
+    #vb-raid .vbr-top { display:flex; align-items:center; gap:6px; font-size:13px; white-space:nowrap; }
+    #vb-raid .vbr-top b { overflow:hidden; text-overflow:ellipsis; font-weight:900; color:#fecaca; }
+    #vb-raid .vbr-st { padding:0 6px; border-radius:999px; background:#7f1d1d; font-size:11px; font-weight:800; }
+    #vb-raid .vbr-weak { padding:0 6px; border-radius:999px; background:#78350f; color:#fde68a; font-size:11px; font-weight:800; }
+    #vb-raid .vbr-time { margin-left:auto; font-weight:900; font-variant-numeric:tabular-nums; color:#e4e4e7; }
+    #vb-raid .vbr-time.low { color:#f87171; animation: vbrBlink 1s steps(2) infinite; }
+    @keyframes vbrBlink { 50% { opacity:.4; } }
+    #vb-raid .vbr-bar { position:relative; height:16px; margin-top:5px; border-radius:999px; background:#27272a; overflow:hidden; border:1px solid rgba(255,255,255,.15); }
+    #vb-raid .vbr-bar i { position:absolute; inset:0 auto 0 0; border-radius:999px; }
+    #vb-raid .vbr-lag { background:#fde68a; transition: width .9s ease-out .25s; }
+    #vb-raid .vbr-fill { background:linear-gradient(90deg,#991b1b,#ef4444); transition: width .2s ease-out; }
+    #vb-raid .vbr-hp { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:900; text-shadow:0 1px 2px #000; font-variant-numeric:tabular-nums; }
+    #vb-raid .vbr-dmg { margin-top:3px; font-size:11px; color:#d4d4d8; }
+    #vb-raid .vbr-dmg b { display:inline-block; font-size:17px; font-weight:900; color:#fde047; font-variant-numeric:tabular-nums; }
+    #vb-raid .vbr-dmg b.pop { animation: vbrPop .35s cubic-bezier(.2,1.8,.4,1); }
+    @keyframes vbrPop { 0% { transform: scale(1.6); color:#fff; } 100% { transform: none; } }
+    #vb-raid .vbr-dmg small { margin-left:4px; color:#a1a1aa; }
+    #game.view-raid #ai-hero { display:none; }
+    #game.view-raid #ai-field .card-frame { width:132px !important; }
+    #game.view-raid #ai-field .unit .hp-bar, #game.view-raid #ai-field .unit .mp-bar { display:none; }
+    .fx-dmg.fx-dmg-raid { font-size:34px !important; }
     /* PvP·구역 전쟁 화면(TCG.viewBattle): 마나 없음 → 마나 액션·손패·마나 표시 숨김 */
-    #game.view-battle #action-bar, #game.view-battle #me-hand, #game.view-battle #hand-sort, #game.view-battle #attack-all, #game.view-battle #story-giveup, #game.view-battle .mana-line, #game.view-battle #act-merc { display: none !important; }
+    #game.view-battle:not(.view-raid) #attack-all, #game.view-battle #action-bar, #game.view-battle #me-hand, #game.view-battle #hand-sort, #game.view-battle #story-giveup, #game.view-battle .mana-line, #game.view-battle #act-merc { display: none !important; }
     @media (min-aspect-ratio: 1/1) {
       #battle-bg[data-bg="normal"] { background-image: url(img/ui/bg_normal_wide.webp); }
       #battle-bg[data-bg="boss"] { background-image: url(img/ui/bg_boss_wide.webp); }
