@@ -126,6 +126,8 @@ begin
     select reward into srw from pvp_streak_table where pvp_streak_table.n = sk;
     if srw is not null then perform _pvp_grant(uid, srw, 'pvp_streak', a.league, a.mode, a.season); end if;
     update pvp_attempts set streak = sk, streak_reward = srw where id = p_id;
+    -- 조직 세력 (guild.sql): 승리당 +10 (하루 상한은 _guild_feed 가 처리)
+    if to_regprocedure('public._guild_feed(uuid,text,integer)') is not null then perform _guild_feed(uid, 'pvp', 10); end if;
   end if;
   select rating into r from pvp_ratings where user_id = uid and league = a.league and mode = a.mode and season = a.season;
   return jsonb_build_object('ok', true, 'win', v_win, 'rating', r, 'delta', case when v_win then a.dw else -a.dl end,
