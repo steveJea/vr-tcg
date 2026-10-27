@@ -50,7 +50,7 @@ function paint() {
   const top = `<button class="gd-x" data-x aria-label="닫기">${gi('ic_close', '✕')}</button>
     <div class="wr-hero"><img class="rd-bg" src="${UI}war_banner.webp" alt="" onerror="this.remove()"><span class="wr-hfb">🏴</span>
       <div class="wr-hero-t"><b>구역 전쟁</b><small>${D(s.season)} ~ ${D(s.season_end)} · ${PH[s.phase]}${s.day ? ` · ${s.day}일차` : ''}</small></div>
-      <button class="wr-mydeck" data-decks>🃏 내 덱</button></div>
+      <button class="wr-mydeck" data-decks>${gi('war_deck', '🃏')} 내 덱</button></div>
     ${s.claimable ? `<button class="rd-claim on" data-claim>${gi('ic_gift', '🎁')} 보상 받기 <i>${s.claimable}</i></button>` : ''}`;
   let body = '';
   if (!s.guild) body = '<div class="rd-empty">조직에 들어가야 참가할 수 있어요</div>';
@@ -144,7 +144,7 @@ async function deckPop() {
   const draw = () => {
     const dk = S.decks || {}, locked = S.entry?.locked && !['soon', 'signup', 'ended'].includes(S.phase);
     const th = sn => (sn || []).map(o => `<span class="rd-th"><img src="${IMG}${o.id}.webp" alt="" onerror="this.remove()"><small>Lv.${o.level}</small></span>`).join('') || '<small class="rd-empty">비어 있음</small>';
-    m.querySelector('.gd-pop-panel').innerHTML = `<button class="gd-x" data-x aria-label="닫기">${gi('ic_close', '✕')}</button><div class="rd-pt">🃏 전쟁 덱</div>
+    m.querySelector('.gd-pop-panel').innerHTML = `<button class="gd-x" data-x aria-label="닫기">${gi('ic_close', '✕')}</button><div class="rd-pt">${gi('war_deck', '🃏')} 전쟁 덱</div>
       ${['def1', 'def2', 'atk1', 'atk2'].map(k => `<button class="rd-dk wr-dkrow ${pick === k ? 'on' : ''}" data-k="${k}"><b>${k.startsWith('def') ? (gi('war_role_def', '🛡️') + ' 방어') : (gi('war_role_atk', '⚔️') + ' 공격')} ${k.slice(-1)}${k === 'def2' ? '<small>목숨 +1</small>' : ''}</b><span class="rd-ths">${th(dk[k])}</span>${k.startsWith('def') && locked ? '<small>🔒</small>' : ''}</button>`).join('')}
       <div class="rd-h">${pick.startsWith('def') ? (gi('war_role_def', '🛡️') + ' 방어') : (gi('war_role_atk', '⚔️') + ' 공격')} ${pick.slice(-1)} 에 넣을 덱</div>
       ${list.map(d => `<button class="rd-dk" data-use="${d.key}" ${pick.startsWith('def') && locked ? 'disabled' : ''}><b>${esc(d.name)}</b><span class="rd-ths">${th(d.cards)}</span></button>`).join('')}
