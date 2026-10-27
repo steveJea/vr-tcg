@@ -152,9 +152,12 @@
     if (!deckOk()) return;
     api.pickDeck(g.enemies, list => battle(n, list), () => render(), `🗼 ${esc(tName())} ${n}층 · 적 5장 (리더 ⚡ ${fmt(g.leader?.power)})${tCls() ? `<br><b class="text-amber-300">${EL[tCls()]} 속성 카드만 출전할 수 있어요</b>` : ''}`, party());
   }
+// AUTO·X2 로 빨리 끝나도 서버 최소 전투 시간(_quest_min_secs 5초)을 채운 뒤 기록 → 'too fast' 방지. 서버 검사는 그대로
+  const MIN_BATTLE_MS = 5600; let startedAt = 0;
   async function battle(n, list) {
     const api = A(), g = enemiesOf(n);
     try { await trpc('quest_start', { p_floor: n }); }
+    startedAt = Date.now();
     catch (e) { const m = String(e?.message || ''); api.toast(ERR(m) || (/locked/.test(m) ? '아직 열리지 않은 층이에요' : `⚠️ 시작 실패: ${m}`)); return render(); }
     $('story-screen').classList.add('hidden'); api.bgm(n % 10 === 0 ? 'boss' : 'tower');
     const me = api.battleCards(list);
@@ -169,6 +172,7 @@
         <div class="flex flex-col gap-2 max-w-xs mx-auto mt-6"><button class="story-btn" id="q-retry">다시 도전</button><button class="story-back" id="q-back">탑으로</button></div></div>`, 'tower');
       $('q-retry').onclick = () => challenge(n); $('q-back').onclick = render; return;
     }
+    { const wait = startedAt + MIN_BATTLE_MS - Date.now(); if (wait > 0) await new Promise(r => setTimeout(r, wait)); }
     let res;
     try { res = await trpc('quest_complete', { p_floor: n, p_stats: { turns: Math.max(1, Math.min(40, st.turns | 0 || 1)) } }); }
     catch (e) {
