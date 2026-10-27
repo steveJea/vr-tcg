@@ -1,6 +1,6 @@
 // 수동 전투 코어: 토벌·PvP — 기록 재생 = 같은 결과 · 전부 AUTO 입력 = 자동 전투와 같음 · 잘못된 입력 무시 · 15턴 · 피해 상한
 import fs from 'fs';
-import { parseCSV, setCardPool, attackTargets } from '../js/rules.js';
+import { parseCSV, setCardPool, attackTargets, autoTarget } from '../js/rules.js';
 import { setSkillData, skillState } from '../js/skills.js';
 import { snapCard, runMatch, runSeries, manualMatch, roundSeed } from '../js/pvp-core.js';
 import { runRaid, manualRaid, hitCap, RAID_TURNS } from '../js/raid-core.js';
@@ -63,6 +63,21 @@ ok(capOk && turnsOk, '토벌 수동도 행동당 피해 상한 · 15턴');
     okW += JSON.stringify(runWar(wa, wb, seed, null, w.acts)) === JSON.stringify(y.value);
   }
   ok(okV === 10, `화면 모드 수동 PvP 재생 일치 (${okV}/10)`); ok(okM, 'PvP·전쟁 마나 항상 0'); ok(okW === 10, `구역 전쟁 수동 재생 일치 (${okW}/10)`); }
+// PvP·구역 전쟁 일괄 공격: 화면(game.js fromBatch)과 같은 규칙(공격 가능한 내 카드 차례로 · autoTarget) → 재생 일치 · 서버 길이 제한 안
+{ const { warSession, runWar, warDeck, WAR_ROLES } = await import('../js/war-core.js');
+  const batch = v => { const A = v.A, B = v.B; for (const u of v.A0) { if (!(u.canAttack && u.hp > 0 && A.field.includes(u))) continue; const t = autoTarget(u, A, B); if (t == null) continue; const ti = v.B0.indexOf(t); if (ti >= 0) return { k: 'atk', i: v.A0.indexOf(u), t: ti }; } return { k: 'end' }; };
+  const drv = s => { let x = s.next(), g = 0; while (!x.done && g++ < 20000) x = s.next(x.value.ask ? batch(x.value) : undefined); return x.value; };
+  let okP = 0, okW = 0, maxP = 0, maxW = 0, mana = true;
+  for (let k = 1; k <= 10; k++) {
+    const A = deck(k * 53), B = deck(k * 59), seed = k * 911;
+    const v = manualMatch(A, B, seed, null, { view: true, manual: true }), r = drv(v);
+    okP += JSON.stringify(runMatch(A, B, seed, null, v.acts)) === JSON.stringify(r) && v.acts.some(a => a.k === 'atk'); maxP = Math.max(maxP, v.acts.length);
+    const wa = warDeck(A.map((c, i) => ({ uid: 'a' + i, id: c.id, level: 20 })), by, WAR_ROLES.atk), wb = warDeck(B.map((c, i) => ({ uid: 'b' + i, id: c.id, level: 20 })), by, WAR_ROLES.def);
+    const w = warSession(wa, wb, seed, null, { view: true }), rw = drv(w);
+    okW += JSON.stringify(runWar(wa, wb, seed, null, w.acts)) === JSON.stringify(rw) && w.acts.some(a => a.k === 'atk'); maxW = Math.max(maxW, w.acts.length);
+  }
+  ok(okP === 10, `PvP 일괄 공격 기록 재생 일치 (${okP}/10)`); ok(okW === 10, `구역 전쟁 일괄 공격 기록 재생 일치 (${okW}/10)`);
+  ok(maxP <= 20 * 6 + 5 && maxW <= 20 * 6 + 5, `행동 수 서버 제한 이내 (PvP 최대 ${maxP}, 전쟁 최대 ${maxW} ≤ 125)`); }
 // 토벌 화면 모드: 멈춤(anim)은 결과에 영향 없음 · 일괄 공격(카드마다 보스 공격) 기록도 재생 일치
 { let okR = 0, okB = 0;
   for (let k = 1; k <= 10; k++) {
