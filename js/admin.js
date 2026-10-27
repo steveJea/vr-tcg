@@ -21,7 +21,7 @@
       const iI = H.indexOf('id'), iN = H.indexOf('name'), iG = H.indexOf('grade');
       names = new Map(r.map(x => { const v = x.split(','); return [v[iI], { name: v[iN], grade: v[iG] }]; })); } catch {}
   }
-  const SHORT = { 'NORMAL': 'N', 'RARE': 'R', 'HIGH RARE': 'HR', 'SUPER RARE': 'SR', 'ULTRA RARE': 'UR', 'MYTHIC RARE': 'MR' };
+  const SHORT = { 'NORMAL': 'N', 'RARE': 'R', 'HIGH RARE': 'HR', 'SUPER RARE': 'SR', 'ULTRA RARE': 'UR', 'MYTHIC RARE': 'MR', 'LEGENDARY RARE': 'LR' };
   const CUR = [['gold', '🪙', '골드'], ['blood', '🩸', '순수한 피'], ['shard', '💠', '이상한 조각'], ['soul', '🔥', '각성자의 혼']];
   const ACT = { grant_tickets: '소환권 지급', grant_gold: '골드 지급', grant_blood: '순수한 피 지급', grant_shard: '이상한 조각 지급', grant_soul: '각성자의 혼 지급' };
   const cname = id => names.get(String(id))?.name || id;

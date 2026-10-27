@@ -883,7 +883,7 @@ update public.story_progress sp set data = jsonb_set(sp.data, '{points}', to_jso
 alter table public.story_card_pool add column if not exists name text;
 alter table public.story_card_pool add column if not exists gacha boolean not null default true;
 alter table public.story_card_pool drop constraint if exists story_card_pool_grade_check;
-alter table public.story_card_pool add constraint story_card_pool_grade_check check (grade in ('NORMAL','RARE','HIGH RARE','SUPER RARE','ULTRA RARE','MYTHIC RARE'));
+alter table public.story_card_pool add constraint story_card_pool_grade_check check (grade in ('NORMAL','RARE','HIGH RARE','SUPER RARE','ULTRA RARE','MYTHIC RARE','LEGENDARY RARE'));
 insert into public.story_card_pool (id, grade, name, gacha) values
   ('1000100007','SUPER RARE','민홍기',true),
   ('1000100009','RARE','강태준',true),

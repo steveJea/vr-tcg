@@ -601,3 +601,9 @@ span.story-lvpct { background: rgba(251,191,36,.12); border: 1px solid rgba(251,
 .story-split>.story-btn{flex:1;min-width:0;padding-left:.4rem;padding-right:.4rem;white-space:nowrap}
 .story-split>.story-btn:disabled{opacity:.45;filter:grayscale(.6);cursor:not-allowed}
 .cd-stats .cd-power b{color:#fcd34d}
+
+/* LR(레전더리 레어): 흐르는 무지개 홀로그램 */
+.g-lr .gacha-front,.story-tk-card.g-lr{border-color:#e879f9;box-shadow:0 0 30px #e879f9,0 0 50px rgba(34,211,238,.4)}
+.g-lr::before{inset:-22px;background:conic-gradient(#f87171,#fbbf24,#a3e635,#22d3ee,#818cf8,#e879f9,#f87171);filter:blur(14px);opacity:.8;animation:gachaPulse 1.6s infinite}
+.g-text-lr{background:linear-gradient(90deg,#f87171,#fbbf24,#a3e635,#22d3ee,#818cf8,#e879f9,#f87171) 0 0/300% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:lrFlow1 6s linear infinite}
+.gr-rar-lr.settle{opacity:.75}.gr-room.flash-lr{animation:grShake .5s}

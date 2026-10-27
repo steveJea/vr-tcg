@@ -23,13 +23,14 @@ window.STORY_DATA = {
     deathPenalty: 0.3,
     el: {
       FIRE: { name: '불', atk: 0.05 }, ICE: { name: '얼음', def: 0.05 }, WIND: { name: '바람', hp: 0.05 },
-      DARK: { name: '어둠', atk: 0.03, hp: 0.03 }, LIGHT: { name: '빛', def: 0.03, hp: 0.03 }, ABYSS: { name: '심연', atk: 0.04, def: 0.02 },
+      DARK: { name: '어둠', atk: 0.03, hp: 0.03 }, LIGHT: { name: '빛', def: 0.03, hp: 0.03 }, ABYSS: { name: '심연', atk: 0.04, def: 0.02 }, VOID: { name: '공허', atk: 0.05, def: 0.03 },
     },
     cls: {
       CHARGE: { name: '돌격', atk: 0.03 }, DEFENSE: { name: '방어', def: 0.04 }, CRUSH: { name: '분쇄', atk: 0.02, def: 0.02 }, SUPPORT: { name: '지원', hp: 0.04 },
       DISTURB: { name: '교란', eAtk: 0.03 }, FASCINATION: { name: '매혹', eDef: 0.03 },
       OVERWHELMING: { name: '압도', atk: 0.05, def: 0.05 }, FURIOUS: { name: '격노', atk: 0.05, eDef: 0.05 },
       PHENOMENAL: { name: '경이', atk: 0.03, def: 0.03, hp: 0.04 }, EXTERMINATE: { name: '섬멸', atk: 0.04, eDef: 0.03, eAtk: 0.02 },
+      BALANCE: { name: '균형', def: 0.04, hp: 0.04 }, UNLIMITED: { name: '무한', atk: 0.06, eDef: 0.03 },
     },
   },
   // 스토리 전투: 출전 카드 최대 장수 (전부 필드에서 시작, 손패·드로우 없음)

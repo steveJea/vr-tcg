@@ -5,10 +5,10 @@
 // 전투력은 스탯 배율만큼 비례해서 오른다고 봄 (power × 배율)
 // 2026-10 개편: quest.json level { base 5, step 5, every 10 } → 적 5명 모두 Lv = 5 + 5 × ⌊층/10⌋ (+ opts.levelOffset), 상한 없음. 카드 선택은 예전 시드 방식 그대로
 (() => {
-  const ORDER = ['NORMAL', 'RARE', 'HIGH RARE', 'SUPER RARE', 'ULTRA RARE', 'MYTHIC RARE'];
-  const LV_RATE = { 'NORMAL': 0.01, 'RARE': 0.02, 'HIGH RARE': 0.03, 'SUPER RARE': 0.04, 'ULTRA RARE': 0.05, 'MYTHIC RARE': 0.06 };
-  const LV_CAP = { 'NORMAL': 20, 'RARE': 30, 'HIGH RARE': 40, 'SUPER RARE': 50, 'ULTRA RARE': 60, 'MYTHIC RARE': 70 };
-  const MAX_EX = { 'NORMAL': 1, 'RARE': 2, 'HIGH RARE': 3, 'SUPER RARE': 4, 'ULTRA RARE': 5, 'MYTHIC RARE': 6 };
+  const ORDER = ['NORMAL', 'RARE', 'HIGH RARE', 'SUPER RARE', 'ULTRA RARE', 'MYTHIC RARE', 'LEGENDARY RARE'];
+  const LV_RATE = { 'NORMAL': 0.01, 'RARE': 0.02, 'HIGH RARE': 0.03, 'SUPER RARE': 0.04, 'ULTRA RARE': 0.05, 'MYTHIC RARE': 0.06, 'LEGENDARY RARE': 0.05 };
+  const LV_CAP = { 'NORMAL': 20, 'RARE': 30, 'HIGH RARE': 40, 'SUPER RARE': 50, 'ULTRA RARE': 60, 'MYTHIC RARE': 70, 'LEGENDARY RARE': 100 };
+  const MAX_EX = { 'NORMAL': 1, 'RARE': 2, 'HIGH RARE': 3, 'SUPER RARE': 4, 'ULTRA RARE': 5, 'MYTHIC RARE': 6, 'LEGENDARY RARE': 7 };
   /** 적 최대 레벨 = 최대 레벨 + EX 최대 단계 × 5 (플레이어가 EX 합성으로 올릴 수 있는 끝까지) */
   const capOf = g => (LV_CAP[g] || 20) + 5 * (MAX_EX[g] || 1);
   const lvPct = (g, L) => Math.round((LV_RATE[g] || 0.01) * (Math.max(1, L) - 1) * 100);

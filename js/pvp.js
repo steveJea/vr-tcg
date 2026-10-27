@@ -5,7 +5,7 @@ import { LEAGUES, MODES, snapCard, deckCheck, runSeries } from './pvp-core.js';
 const IMG = 'https://raw.githubusercontent.com/steveJea/vr-ideal-worldcup/main/img/bt_img/';
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`);
-const GS = { 'NORMAL': 'N', 'RARE': 'R', 'HIGH RARE': 'HR', 'SUPER RARE': 'SR', 'ULTRA RARE': 'UR', 'MYTHIC RARE': 'MR' };
+const GS = { 'NORMAL': 'N', 'RARE': 'R', 'HIGH RARE': 'HR', 'SUPER RARE': 'SR', 'ULTRA RARE': 'UR', 'MYTHIC RARE': 'MR', 'LEGENDARY RARE': 'LR' };
 const LS = 'vrTcgPvp.view';
 let view = (() => { try { return { league: 'open', mode: '1v1', ...JSON.parse(localStorage.getItem(LS) || '{}') }; } catch { return { league: 'open', mode: '1v1' }; } })();
 let st = null, top = null, owned = [], myDecks = [];

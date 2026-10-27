@@ -1,11 +1,11 @@
 // ===== 등급 별 표시 (카드 확대/상세 보기 전용, 모바일 필드 작은 카드에는 안 붙임) =====
 // N=1 · R=2 · HR=3 · SR=4 · UR=5 · MR=6
-// LR(레전드리 레어) 추가 시 STARS에 'LEGENDARY RARE': 7, LR: 7 만 넣으면 됨
+// LR(레전더리 레어) = 7
 // 별 색은 variant로 결정: 기본 'base'(흰색) → .rstars-base
 // EX(합성) 카드: rarityStars(card, 'ex') → 빨간 별 (.rstars-ex, EX 전용 색)
 (function () {
-  const STARS = { 'NORMAL': 1, 'RARE': 2, 'HIGH RARE': 3, 'SUPER RARE': 4, 'ULTRA RARE': 5, 'MYTHIC RARE': 6,
-                  N: 1, R: 2, HR: 3, SR: 4, UR: 5, MR: 6 };
+  const STARS = { 'NORMAL': 1, 'RARE': 2, 'HIGH RARE': 3, 'SUPER RARE': 4, 'ULTRA RARE': 5, 'MYTHIC RARE': 6, 'LEGENDARY RARE': 7,
+                  N: 1, R: 2, HR: 3, SR: 4, UR: 5, MR: 6, LR: 7 };
   const count = g => STARS[String(g || '').toUpperCase()] || 0;
   // card: 카드 객체(grade 필드) 또는 등급 문자열('SUPER RARE' / 'SR')
   function rarityStars(card, variant = 'base', extraCls = '') {

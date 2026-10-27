@@ -15,7 +15,7 @@
   const UI = h => window.VRIcon?.swap ? window.VRIcon.swap(h) : h;
   const SW = () => window.VRIcon?.icon('sweep', { alt: '소탕' }) || '⚡';   // js/icons.js
   const STAT_LABEL = { ATK: `${ic('atk')} ATK`, HP: `${ic('hp')} HP`, DEF: `${ic('def')} DEF` };
-  const RAR = { 'NORMAL': 'N', 'RARE': 'R', 'HIGH RARE': 'HR', 'SUPER RARE': 'SR', 'ULTRA RARE': 'UR', 'MYTHIC RARE': 'MR' };
+  const RAR = { 'NORMAL': 'N', 'RARE': 'R', 'HIGH RARE': 'HR', 'SUPER RARE': 'SR', 'ULTRA RARE': 'UR', 'MYTHIC RARE': 'MR', 'LEGENDARY RARE': 'LR' };
 
   const user = () => (window.__STORY_MOCK_CLOUD || window.VRCloud)?.user || window.__STORY_MOCK_USER || null;
   const pool = () => window.TCG?.POOL || [];
@@ -112,7 +112,7 @@
 
   // ----- 카드 계산 -----
   // 최종 스탯 = 기본 스탯 × 레벨 배율(반올림) + 스탯 포인트 강화. 레벨 배율 = 1 + 등급별 비율 × (레벨 − 1)
-  const LV_RATE = { 'NORMAL': 0.01, 'RARE': 0.02, 'HIGH RARE': 0.03, 'SUPER RARE': 0.04, 'ULTRA RARE': 0.05, 'MYTHIC RARE': 0.06 };
+  const LV_RATE = { 'NORMAL': 0.01, 'RARE': 0.02, 'HIGH RARE': 0.03, 'SUPER RARE': 0.04, 'ULTRA RARE': 0.05, 'MYTHIC RARE': 0.06, 'LEGENDARY RARE': 0.05 };
   const lvPct = o => { const c = card(o.id); return c ? Math.round((LV_RATE[c.grade] || 0.01) * (Math.max(1, o.level | 0 || 1) - 1) * 100) : 0; };
   // EX 합성: 기본 스탯 × (1 + EX 보너스 합계%) 가 새 기본 스탯 → 그 위에 레벨 % → 반올림 → 포인트 강화 더하기
   const exOf = o => Math.max(0, o?.ex | 0), exbOf = o => Math.max(0, +o?.exb || 0);
@@ -136,10 +136,10 @@
 
   // ----- 카드 레벨 (서버 story_levels.sql 과 같은 규칙. 브라우저 저장 대체 경로·미리보기용) -----
   // 다음 레벨 EXP = 레벨×100 · 최대 레벨 N20 R30 HR40 SR50 UR60 MR70 (+ex 합성 1회당 +10, 추후 EX 합성용) · 레벨당 기본 스탯 +N1% R2% HR3% SR4% UR5% MR6% (레벨업 포인트 지급은 없음, 예전에 받은 카드 전용 포인트는 그대로 사용 가능)
-  const LV_CAP = { 'NORMAL': 20, 'RARE': 30, 'HIGH RARE': 40, 'SUPER RARE': 50, 'ULTRA RARE': 60, 'MYTHIC RARE': 70 };
-  const FEED_EXP = { 'NORMAL': 50, 'RARE': 150, 'HIGH RARE': 400, 'SUPER RARE': 1000, 'ULTRA RARE': 3000, 'MYTHIC RARE': 6000 };
+  const LV_CAP = { 'NORMAL': 20, 'RARE': 30, 'HIGH RARE': 40, 'SUPER RARE': 50, 'ULTRA RARE': 60, 'MYTHIC RARE': 70, 'LEGENDARY RARE': 100 };
+  const FEED_EXP = { 'NORMAL': 50, 'RARE': 150, 'HIGH RARE': 400, 'SUPER RARE': 1000, 'ULTRA RARE': 3000, 'MYTHIC RARE': 6000, 'LEGENDARY RARE': 12000 };
   const lvCap = o => (LV_CAP[card(o.id)?.grade] || 20) + 5 * exOf(o);   // EX 단계마다 최대 레벨 +5
-  const MAX_EX = { 'NORMAL': 1, 'RARE': 2, 'HIGH RARE': 3, 'SUPER RARE': 4, 'ULTRA RARE': 5, 'MYTHIC RARE': 6 };
+  const MAX_EX = { 'NORMAL': 1, 'RARE': 2, 'HIGH RARE': 3, 'SUPER RARE': 4, 'ULTRA RARE': 5, 'MYTHIC RARE': 6, 'LEGENDARY RARE': 7 };
   const maxEx = o => MAX_EX[card(o.id)?.grade] || 1;
   /** 합성 미리보기 (서버 story_merge 와 같은 계산): 10% × (대상 Lv/최대) × (재료 Lv/최대) */
   const mergeCalc = (o, m) => { const cap = lvCap(o), ratio = Math.min(1, o.level / cap), mcap = lvCap(m), mratio = Math.min(1, m.level / mcap), bonus = Math.round(10 * ratio * mratio * 100) / 100;
@@ -579,12 +579,12 @@
     // party.levels { id: Lv }: 보유하지 않은 필수 카드(게스트)의 레벨 (CH7: 시트 강제배정 레벨)
     const forced = (pt?.forced || []).map(id => repOf(id) || (g => (pt?.levels?.[id] ? { ...g, level: Math.max(1, Math.min(lvCap(g), pt.levels[id] | 0)) } : g))(guestOf(id))).filter(o => card(o.id));
     // 추가 조건 (챕터 3~): noMale · maxMor(필수 카드 제외) · maxGrade. 필수 카드는 조건 예외
-    const GO = ['NORMAL', 'RARE', 'HIGH RARE', 'SUPER RARE', 'ULTRA RARE', 'MYTHIC RARE'], gi = pt?.maxGrade ? GO.indexOf(pt.maxGrade) : -1;
+    const GO = ['NORMAL', 'RARE', 'HIGH RARE', 'SUPER RARE', 'ULTRA RARE', 'MYTHIC RARE', 'LEGENDARY RARE'], gi = pt?.maxGrade ? GO.indexOf(pt.maxGrade) : -1;
     const rules = [];
     if (pt?.noMale) rules.push({ ok: c => c.gender !== 'MALE', note: '🚹 남성 출전 불가' });
     if (pt?.noFemale) rules.push({ ok: c => c.gender !== 'FEMALE', note: '🚺 여성 출전 불가' });
     if (pt?.maxMor != null) rules.push({ ok: c => (+c.MOR || 0) <= pt.maxMor, note: `MOR ${pt.maxMor + 1} 이상 출전 불가` });
-    const EL = { DARK: '🌑 어둠', LIGHT: '☀️ 빛', FIRE: '🔥 불', ICE: '❄️ 얼음', WIND: '🍃 바람', ABYSS: '🕳️ 심연' };
+    const EL = { DARK: '🌑 어둠', LIGHT: '☀️ 빛', FIRE: '🔥 불', ICE: '❄️ 얼음', WIND: '🍃 바람', ABYSS: '🕳️ 심연', VOID: '🌌 공허' };
     for (const el of pt?.banClass || []) rules.push({ ok: c => c.class !== el, note: `${EL[el] || el} 속성 출전 불가` });
     if (pt?.onlyClass) rules.push({ ok: c => c.class === pt.onlyClass, note: `${EL[pt.onlyClass] || pt.onlyClass} 속성만 출전 가능` });   // 속성 탑
     if (gi >= 0) rules.push({ ok: c => GO.indexOf(c.grade) <= gi, note: `${RAR[GO[gi + 1]] || ''} 이상 출전 불가` });
@@ -975,9 +975,9 @@
     root().querySelectorAll('[data-expand]').forEach(b => b.onclick = e => { e.stopPropagation(); const g = b.dataset.expand; openGroups.has(g) ? openGroups.delete(g) : openGroups.add(g); renderCards(); });
   }
   // ----- 카드 레벨업 (단계 E-4, 서버 story_card_levelup): L → L+1 = 순수한 피 b×L, 골드 g×L×10 -----
-  const LV_B = { 'NORMAL': 2, 'RARE': 3, 'HIGH RARE': 5, 'SUPER RARE': 8, 'ULTRA RARE': 12, 'MYTHIC RARE': 18 };
-  const LV_G = { 'NORMAL': 1, 'RARE': 1.5, 'HIGH RARE': 2, 'SUPER RARE': 3, 'ULTRA RARE': 4, 'MYTHIC RARE': 6 };
-  const SHARD_BASE = { 'NORMAL': 1, 'RARE': 2, 'HIGH RARE': 4, 'SUPER RARE': 8, 'ULTRA RARE': 15, 'MYTHIC RARE': 30 };
+  const LV_B = { 'NORMAL': 2, 'RARE': 3, 'HIGH RARE': 5, 'SUPER RARE': 8, 'ULTRA RARE': 12, 'MYTHIC RARE': 18, 'LEGENDARY RARE': 27 };
+  const LV_G = { 'NORMAL': 1, 'RARE': 1.5, 'HIGH RARE': 2, 'SUPER RARE': 3, 'ULTRA RARE': 4, 'MYTHIC RARE': 6, 'LEGENDARY RARE': 9 };
+  const SHARD_BASE = { 'NORMAL': 1, 'RARE': 2, 'HIGH RARE': 4, 'SUPER RARE': 8, 'ULTRA RARE': 15, 'MYTHIC RARE': 30, 'LEGENDARY RARE': 60 };
   /** o 를 n 단계 올리는 비용 (최대 레벨까지만) */
   function lvUpCost(o, n, w) {
     const g = card(o.id)?.grade || 'NORMAL', cap = lvCap(o); let lv = o.level | 0 || 1, k = 0, gold = 0, blood = 0;
@@ -1009,7 +1009,7 @@
     toast(`⬆ ${card(o.id)?.name} Lv.${r.level} · 🪙 −${fmt(r.gold)} · 🩸 −${fmt(r.blood)}`);
   }
   // ----- 스킬 레벨 (서버 phaseE_6.sql 과 같은 규칙) -----
-  const SK_MAX = 10, SK_STEP = 3, SK_SOUL = { 'NORMAL': 1, 'RARE': 2, 'HIGH RARE': 3, 'SUPER RARE': 5, 'ULTRA RARE': 8, 'MYTHIC RARE': 12 };
+  const SK_MAX = 10, SK_STEP = 3, SK_SOUL = { 'NORMAL': 1, 'RARE': 2, 'HIGH RARE': 3, 'SUPER RARE': 5, 'ULTRA RARE': 8, 'MYTHIC RARE': 12, 'LEGENDARY RARE': 18 };
   const skLv = (o, i) => Math.min(SK_MAX, Math.max(1, (o.skillLv || {})[i] | 0 || 1));
   const skCost = (o, lv) => { const g = card(o.id)?.grade || 'NORMAL'; return { soul: (SK_SOUL[g] || 1) * Math.ceil(lv / 2), gold: Math.ceil((LV_G[g] || 1) * lv * 100) }; };
   const skCd = (cd, lv) => cd <= 0 ? cd : Math.max(1, cd - (lv >= 5 ? 1 : 0) - (lv >= 10 ? 1 : 0));
@@ -1194,7 +1194,7 @@
   }
   // ----- 분해 (단계 E-3): 카드를 재화로 바꿈 (서버 story_dismantle, 전부 성공 또는 전부 취소). EXP 는 주지 않음 -----
   // 등급별 수익 (서버 _dismantle_yield 와 같음) + 누적 EXP 50% 를 순수한 피로 (EXP 10 = 피 1). 공용 포인트로 올린 강화는 환급
-  const DIS_YIELD = { 'NORMAL': [20, 10, 0], 'RARE': [50, 30, 1], 'HIGH RARE': [120, 80, 3], 'SUPER RARE': [300, 200, 10], 'ULTRA RARE': [800, 500, 30], 'MYTHIC RARE': [2000, 1200, 80] };
+  const DIS_YIELD = { 'NORMAL': [20, 10, 0], 'RARE': [50, 30, 1], 'HIGH RARE': [120, 80, 3], 'SUPER RARE': [300, 200, 10], 'ULTRA RARE': [800, 500, 30], 'MYTHIC RARE': [2000, 1200, 80], 'LEGENDARY RARE': [5000, 3000, 200] };
   function disCalc(o) {
     const y = DIS_YIELD[card(o.id)?.grade] || DIS_YIELD.NORMAL;
     const refund = Math.max(0, Object.values(o.boost || {}).reduce((x, v) => x + (+v || 0), 0) - (o.spentCard | 0));
@@ -1285,7 +1285,7 @@
   const msToReset = () => { const t = Date.now() + KST; return 86400e3 - (t % 86400e3); };
   const canDraw = () => !!save && save.gachaLast !== kstDay();
   const hms = ms => { const s = Math.max(0, Math.ceil(ms / 1000)); return [s / 3600 | 0, (s / 60 | 0) % 60, s % 60].map(n => String(n).padStart(2, '0')).join(':'); };
-  const GLOW = { 'NORMAL': 'n', 'RARE': 'r', 'HIGH RARE': 'hr', 'SUPER RARE': 'sr', 'ULTRA RARE': 'ur', 'MYTHIC RARE': 'mr' };
+  const GLOW = { 'NORMAL': 'n', 'RARE': 'r', 'HIGH RARE': 'hr', 'SUPER RARE': 'sr', 'ULTRA RARE': 'ur', 'MYTHIC RARE': 'mr', 'LEGENDARY RARE': 'lr' };
   function addOwned(id, n = 1) {
     for (let k = 0; k < n; k++) save.owned.push(newCard(id));   // 뽑을 때마다 새 카드 1장
     return copiesOf(id).length;
@@ -1360,8 +1360,8 @@
 
   let gachaTimer = 0, shopTab = 'daily';
   // ----- 카드 뽑기방: 어비스 게이트 (배경 img/gacha/bg_*, 연출 fx_open → 등급 fx). 뽑기 로직·확률은 그대로 -----
-  const GFX = { 'NORMAL': 'fx_n_hr', 'RARE': 'fx_n_hr', 'HIGH RARE': 'fx_n_hr', 'SUPER RARE': 'fx_sr', 'ULTRA RARE': 'fx_ur', 'MYTHIC RARE': 'fx_mr' };
-  const GORDER = ['NORMAL', 'RARE', 'HIGH RARE', 'SUPER RARE', 'ULTRA RARE', 'MYTHIC RARE'];
+  const GFX = { 'NORMAL': 'fx_n_hr', 'RARE': 'fx_n_hr', 'HIGH RARE': 'fx_n_hr', 'SUPER RARE': 'fx_sr', 'ULTRA RARE': 'fx_ur', 'MYTHIC RARE': 'fx_mr', 'LEGENDARY RARE': 'fx_mr' };
+  const GORDER = ['NORMAL', 'RARE', 'HIGH RARE', 'SUPER RARE', 'ULTRA RARE', 'MYTHIC RARE', 'LEGENDARY RARE'];
   const GDIR = 'img/gacha/';
   // 균열 위치 (배경 원본 좌표) · fx 원본(1920x1080)의 균열 기준점 990,800. 세로 배경은 골목 균열에 맞춰 직접 지정
   const GATE = { land: { w: 1920, h: 1080, x: 990, y: 800, fx: 1 }, port: { w: 1080, h: 1920, x: 550, y: 1250, fx: 0.95 } };

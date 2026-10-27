@@ -3,7 +3,7 @@
 power  = 버림(전투값 × 등급배율 × SCALE × 스킬배율)   스킬배율 = 1 + 0.04×액티브 수 + 0.02×패시브 수 (data/skills.json)
 사용법: python3 tools/power.py          → 두 CSV 에서 공식과 다른 행 출력 (--fix 로 power 덮어씀)"""
 import csv, math, os, sys
-GRADE_MULT = {'NORMAL': 1, 'RARE': 2.5, 'HIGH RARE': 4, 'SUPER RARE': 6, 'ULTRA RARE': 8, 'MYTHIC RARE': 8}
+GRADE_MULT = {'NORMAL': 1, 'RARE': 2.5, 'HIGH RARE': 4, 'SUPER RARE': 6, 'ULTRA RARE': 8, 'MYTHIC RARE': 8, 'LEGENDARY RARE': 10}
 SCALE = 11.4527618
 SKILL_A, SKILL_P = 0.04, 0.02
 import json as _json
