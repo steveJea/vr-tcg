@@ -28,7 +28,8 @@ export function bossCard(stage, diff, cardById) {
   return { ...c, id: c.id, name: b.name, HP: BOSS_BAR, ATK: Math.round(c.ATK * 0.8 * D.atk * up), DEF: Math.round(c.DEF * 0.2 * D.def * up) };
 }
 /** 한 판 (제너레이터). manual=true 면 내 턴마다 yield { ask:true, A, B, A0, B0, t, damage } (pvp-core 의 수동 입력과 같은 형식) */
-export function* raidGen(deck, stage, diff, r, cardById, rec = null, manual = false, acts = null) {
+export function* raidGen(deck, stage, diff, r, cardById, rec = null, manual = false, acts = null, opt = {}) {
+    const view = !!opt.view;
     const mk = name => ({ name, hp: 1, maxHp: 1, deck: [], hand: [], field: [], mana: 0, maxMana: 0, noBase: true, once: {}, grave: [] });
     const A = mk('A'), B = mk('B');
     initPlayers(A, B, A);
@@ -53,6 +54,7 @@ export function* raidGen(deck, stage, diff, r, cardById, rec = null, manual = fa
       const cur = t % 2 === 0 ? A : B, op = cur.foe;
       clearBuff(op); refillMana(cur); cur.field.forEach(u => u.canAttack = true); turnStart(cur); settle();
       if (cur === A) push({ k: 'turn', t: t / 2 + 1 });
+      if (view) yield { anim: { k: 'turn', side: cur === A ? 'A' : 'B', t: Math.floor(t / 2) + 1 }, A, B, A0, B0, damage };
       if (!live()) break;
       const turn = { used: new Set(), scopes: new Set() };
       for (let k = 0; k < 40; k++) {
@@ -68,14 +70,16 @@ export function* raidGen(deck, stage, diff, r, cardById, rec = null, manual = fa
         // 약점 속성: 내 카드 공격력 +25% (행동하는 동안만)
         const wk = cur === A && a.u.card.attribute === weak, atk0 = a.u.card.ATK;
         if (wk) a.u.card.ATK = Math.round(atk0 * WEAK_MULT);
-        if (a.kind === 'skill') { noteUsed(turn, a.s); useSkill(a.u, a.s); } else if (a.t) resolveAttack(cur, op, a.u, a.t);
+        let hits = null;
+        if (a.kind === 'skill') { noteUsed(turn, a.s); useSkill(a.u, a.s); } else if (a.t) hits = resolveAttack(cur, op, a.u, a.t);
         if (wk && a.u.card) a.u.card.ATK = atk0;
         a.u.canAttack = false;
         const d = settle();
         push({ k: a.kind === 'skill' ? 'skill' : 'atk', side: cur === A ? 'A' : 'B', u: a.u.uid, to: a.t?.uid, d, s: a.kind === 'skill' ? (a.s?.label || a.s?.name || '') : '' });
+        if (view) yield { anim: { k: a.kind === 'skill' ? 'skill' : 'atk', side: cur === A ? 'A' : 'B', u: a.u, t: a.t || null, s: a.s || null, hits, d, weak: wk }, A, B, A0, B0, damage };
         if (!live()) break;
       }
-      endTurnXp(cur); turnEnd(cur); settle();
+      endTurnXp(cur); turnEnd(cur); { const d = settle(); if (view) yield { anim: { k: 'end', side: cur === A ? 'A' : 'B', d }, A, B, A0, B0, damage }; }
       if (!live()) break;
     }
     return { damage, hits, turns: Math.min(RAID_TURNS, Math.ceil((t + 1) / 2)), alive: live() };
@@ -86,6 +90,6 @@ export function runRaid(deck, stage, diff, seed, cardById, rec = null, actions =
   return actions ? replay(st, actions) : st.next().value;
 }
 /** 수동 한 판 세션: s.next(입력) 으로 진행, s.acts 가 기록 */
-export function manualRaid(deck, stage, diff, seed, cardById, rec = null) {
-  const r = rngOf(seed), acts = [], st = stepper(raidGen(deck, stage, diff, r, cardById, rec, true, acts), r); st.acts = acts; return st;
+export function manualRaid(deck, stage, diff, seed, cardById, rec = null, opt = {}) {
+  const r = rngOf(seed), acts = [], st = stepper(raidGen(deck, stage, diff, r, cardById, rec, true, acts, opt), r, opt.view ? [] : null); st.acts = acts; return st;
 }
