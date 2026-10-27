@@ -74,7 +74,7 @@ function paint() {
 }
 function signupView() {
   const s = S, e = s.entry, boss = s.guild.role === 'boss', can = ['boss', 'officer'].includes(s.guild.role);
-  if (!e) return `<div class="wr-sign"><div>🏴 이번 시즌 참가 신청 <small>(조직원 ${s.guild.members}/10명 이상)</small></div>
+  if (!e) return `<div class="wr-sign"><div>${gi('war_icon', '🏴')} 이번 시즌 참가 신청 <small>(조직원 ${s.guild.members}/10명 이상)</small></div>
     ${s.phase === 'signup' ? (can ? '<button class="gd-big" data-enter>참가 신청</button>' : '<small>보스·간부가 신청할 수 있어요</small>') : (s.phase === 'soon' ? '<small>신청은 셋째 주 일~화 (수 09시 마감)</small>' : '<small>다음 시즌을 기다려 주세요</small>')}</div>${rankView()}`;
   const groups = ROLE_ORDER.map(r => `<div class="wr-grp"><div class="wr-grp-h">${roleIc(r)}${WAR_ROLES[r].label} <small>${roleBuff(r)}</small></div><div class="wr-slots">${s.roster.filter(x => x.role === r).map(x =>
     `<button class="wr-slot ${x.user_id ? '' : 'empty'}" data-slot="${x.slot}" ${boss && s.phase === 'signup' ? '' : 'disabled'}><b>${x.user_id ? esc(x.name || '조직원') : (gi('war_npc', '🤡') + ' 불량배')}</b>${x.user_id ? (x.ready ? '<small>🛡️✔</small>' : '<small class="bad">덱 없음</small>') : ''}</button>`).join('')}</div></div>`).join('');
@@ -137,8 +137,8 @@ async function deckPop() {
     const dk = S.decks || {}, locked = S.entry?.locked && !['soon', 'signup', 'ended'].includes(S.phase);
     const th = sn => (sn || []).map(o => `<span class="rd-th"><img src="${IMG}${o.id}.webp" alt="" onerror="this.remove()"><small>Lv.${o.level}</small></span>`).join('') || '<small class="rd-empty">비어 있음</small>';
     m.querySelector('.gd-pop-panel').innerHTML = `<button class="gd-x" data-x aria-label="닫기">${gi('ic_close', '✕')}</button><div class="rd-pt">🃏 전쟁 덱</div>
-      ${['def1', 'def2', 'atk1', 'atk2'].map(k => `<button class="rd-dk wr-dkrow ${pick === k ? 'on' : ''}" data-k="${k}"><b>${k.startsWith('def') ? '🛡️ 방어' : (gi('role_officer', '⚔️') + ' 공격')} ${k.slice(-1)}${k === 'def2' ? '<small>목숨 +1</small>' : ''}</b><span class="rd-ths">${th(dk[k])}</span>${k.startsWith('def') && locked ? '<small>🔒</small>' : ''}</button>`).join('')}
-      <div class="rd-h">${pick.startsWith('def') ? '🛡️ 방어' : (gi('role_officer', '⚔️') + ' 공격')} ${pick.slice(-1)} 에 넣을 덱</div>
+      ${['def1', 'def2', 'atk1', 'atk2'].map(k => `<button class="rd-dk wr-dkrow ${pick === k ? 'on' : ''}" data-k="${k}"><b>${k.startsWith('def') ? (gi('war_role_def', '🛡️') + ' 방어') : (gi('war_role_atk', '⚔️') + ' 공격')} ${k.slice(-1)}${k === 'def2' ? '<small>목숨 +1</small>' : ''}</b><span class="rd-ths">${th(dk[k])}</span>${k.startsWith('def') && locked ? '<small>🔒</small>' : ''}</button>`).join('')}
+      <div class="rd-h">${pick.startsWith('def') ? (gi('war_role_def', '🛡️') + ' 방어') : (gi('war_role_atk', '⚔️') + ' 공격')} ${pick.slice(-1)} 에 넣을 덱</div>
       ${list.map(d => `<button class="rd-dk" data-use="${d.key}" ${pick.startsWith('def') && locked ? 'disabled' : ''}><b>${esc(d.name)}</b><span class="rd-ths">${th(d.cards)}</span></button>`).join('')}
       <button class="rd-dk" data-use="" ${pick.startsWith('def') && locked ? 'disabled' : ''}><b>비우기</b></button>
       <small class="rd-note">방어 덱은 시즌 시작(셋째 수 09:00)에 잠겨요 · 1·2번 덱에 같은 카드는 못 넣어요</small>`;
