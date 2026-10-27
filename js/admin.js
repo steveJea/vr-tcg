@@ -75,8 +75,8 @@
 
   async function openUser(id) {
     const m = $('ad-modal'), box = $('ad-detail'); m.classList.remove('hidden'); box.innerHTML = '<div class="ad-msg">불러오는 중...</div>';
-    let d, log, qd = null, wl = null, pl = null;
-    try { [d, log, qd, wl, pl] = await Promise.all([rpc('admin_user_detail', { p_user: id }), rpc('admin_gacha_log', { p_user: id, p_limit: 200 }), rpc('admin_user_quest', { p_user: id }).catch(() => null), rpc('admin_user_wallet', { p_user: id }).catch(() => null), rpc('admin_user_player', { p_user: id }).catch(() => null)]); }
+    let d, log, qd = null, wl = null, pl = null, gm = null;
+    try { [d, log, qd, wl, pl, gm] = await Promise.all([rpc('admin_user_detail', { p_user: id }), rpc('admin_gacha_log', { p_user: id, p_limit: 200 }), rpc('admin_user_quest', { p_user: id }).catch(() => null), rpc('admin_user_wallet', { p_user: id }).catch(() => null), rpc('admin_user_player', { p_user: id }).catch(() => null), rpc('admin_gem_ledger', { p_user: id, p_limit: 50 }).catch(() => null)]); }
     catch (e) { box.innerHTML = `<div class="ad-err">${esc(e?.message)}</div>`; return; }
     const owned = d.owned || [], cleared = d.cleared || {}, r = d.record || {};
     const kv = (k, v) => `<div><span>${k}</span>${v}</div>`;
@@ -85,6 +85,8 @@
       <div class="ad-sec"><div class="ad-kv">${kv('가입', fmt(d.created_at))}${kv('마지막 로그인', fmt(d.last_sign_in_at))}${kv('소환권', `<b id="ad-tk">${d.tickets}</b>장`)}${kv('아케이드', `${r.wins | 0}승 ${r.losses | 0}패 ${r.draws | 0}무`)}${kv('스토리', Object.entries(cleared).map(([c, l]) => `챕터${esc(c)} ${(l || []).length}`).join(' · ') || '-')}${kv('갤러리', `${d.gallery?.cards | 0}종 · MVP ${d.gallery?.mvp | 0}`)}${kv('스탯 포인트', esc(d.points))}${CUR.map(([k, ic, nm]) => kv(`${ic} ${nm}`, wl ? `<b id="ad-w-${k}">${Number(wl[k] || 0).toLocaleString('ko-KR')}</b>` : '-')).join('')}${kv('플레이어', pl ? `Lv.${pl.level} · 경험치 ${pl.xp}/${pl.xp_next || '-'}` : '-')}${kv('🔋 행동력', pl ? `${pl.stamina}/${pl.stamina_max}` : '-')}${kv('시련의 탑', qd ? `최고 ${qd.best_floor | 0}층 · 승리 ${qd.clears | 0}회` : '-')}</div></div>
       <div class="ad-sec"><h3>🎟️ 소환권 지급</h3><div class="ad-grant"><input type="number" id="ad-amt" min="1" max="1000" value="10"><input type="text" id="ad-reason" maxlength="200" placeholder="사유 (필수, 기록됨)"><button class="ad-btn" id="ad-give">지급</button></div><div id="ad-gmsg" style="margin-top:4px"></div></div>
       <div class="ad-sec"><h3>💰 재화 지급 / 회수</h3>${wl ? `<div class="ad-grant"><select id="ad-ck">${CUR.map(([k, ic, nm]) => `<option value="${k}">${ic} ${nm}</option>`).join('')}</select><input type="number" id="ad-camt" min="-1000000" max="1000000" value="100"><input type="text" id="ad-creason" maxlength="200" placeholder="사유 (필수, 기록됨 · 음수 = 회수)"><button class="ad-btn" id="ad-cgive">적용</button></div><div id="ad-cmsg" style="margin-top:4px"></div>` : '<div class="ad-msg">supabase/phaseE_1.sql 을 실행하면 사용할 수 있어요</div>'}</div>
+      <div class="ad-sec"><h3>🔮 심연석 <b id="ad-gem">${gm ? Number(gm.gem).toLocaleString('ko-KR') : '-'}</b> <small>${gm ? `무료 ${gm.free} · 유료 ${gm.paid}` : ''}</small></h3>${gm ? `<div class="ad-grant"><input type="number" id="ad-gamt" min="-1000000" max="1000000" value="100"><input type="text" id="ad-greason" maxlength="200" placeholder="사유 (필수, 기록됨 · 음수 = 회수 · 무료분)"><button class="ad-btn" id="ad-ggive">적용</button></div><div id="ad-gmsg2" style="margin-top:4px"></div>
+        <div class="ad-cards" style="max-height:180px;overflow:auto;display:block">${gm.log.map(x => `<div style="font-size:12px">${esc(fmt(x.at))} · ${esc(x.reason)} · <b>${x.d_free + x.d_paid > 0 ? '+' : ''}${x.d_free + x.d_paid}</b>${x.d_paid ? ` (유료 ${x.d_paid})` : ''} → ${x.free_after + x.paid_after} <small style="opacity:.6">${esc(x.ref)}</small></div>`).join('') || '기록 없음'}</div>` : '<div class="ad-msg">supabase/gem.sql 을 실행하면 사용할 수 있어요</div>'}</div>
       <div class="ad-sec"><h3>보유 카드 (${owned.length}장)</h3><div class="ad-cards">${ownedSorted.map(o => `<span class="ad-chip ${o.uid === d.leader ? 'lead' : ''}">${o.uid === d.leader ? '👑 ' : ''}${esc(SHORT[names.get(String(o.id))?.grade] || '')} ${esc(cname(o.id))} Lv.${o.level | 0}${o.ex ? ` EX${o.ex}` : ''}</span>`).join('') || '없음'}</div></div>
       <div class="ad-sec"><h3>최근 아케이드 판</h3><div class="ad-wrap"><table class="ad-table"><thead><tr><th>시각</th><th>결과</th><th>턴</th><th>피해</th><th>MVP</th></tr></thead><tbody>${(d.recent || []).map(x => `<tr><td>${fmt(x.created_at)}</td><td>${({ win: '승', lose: '패', draw: '무' })[x.result] || esc(x.result)}</td><td>${x.turns ?? ''}</td><td>${x.damage ?? ''}</td><td>${esc(x.mvp_name)}</td></tr>`).join('') || '<tr><td colspan="5">기록 없음</td></tr>'}</tbody></table></div></div>
       <div class="ad-sec"><h3>뽑기 기록 (${(log || []).length})</h3><div class="ad-wrap"><table class="ad-table"><thead><tr><th>시각</th><th>종류</th><th>등급</th><th>카드</th></tr></thead><tbody>${(log || []).map(x => `<tr><td>${fmt(x.created_at)}</td><td>${x.kind === 'ticket' ? '소환권' : x.kind === 'daily' ? '매일 뽑기' : esc(x.kind)}</td><td>${esc(SHORT[x.grade] || x.grade)}</td><td>${esc(cname(x.card_id))}</td></tr>`).join('') || '<tr><td colspan="4">기록 없음</td></tr>'}</tbody></table></div></div>`;
@@ -98,7 +100,20 @@
       catch (e) { msg.innerHTML = `<span class="ad-err">${esc(e?.message)}</span>`; }
       finally { $('ad-give').disabled = false; }
     };
-    bindCurrency(id, d);
+    bindCurrency(id, d); bindGem(id, d);
+  }
+  function bindGem(id, d) {
+    const btn = $('ad-ggive'); if (!btn) return;
+    btn.onclick = async () => {
+      const amt = Math.trunc(+$('ad-gamt').value || 0), reason = $('ad-greason').value.trim(), msg = $('ad-gmsg2');
+      if (!amt || Math.abs(amt) > 1000000) { msg.innerHTML = '<span class="ad-err">±1~1,000,000 사이로 적어 주세요</span>'; return; }
+      if (!reason) { msg.innerHTML = '<span class="ad-err">사유를 적어 주세요</span>'; return; }
+      if (!confirm(`${d.email} 에게 심연석 ${amt > 0 ? `${amt} 지급` : `${-amt} 회수`}할까요?`)) return;
+      btn.disabled = true;
+      try { const res = await rpc('admin_grant_gem', { p_user: id, p_amount: amt, p_reason: reason }); $('ad-gem').textContent = Number(res.after).toLocaleString('ko-KR'); msg.innerHTML = `<span class="ad-ok">완료: ${res.before} → ${res.after}</span>`; $('ad-greason').value = ''; }
+      catch (e) { msg.innerHTML = `<span class="ad-err">${esc(/not enough/.test(e?.message) ? '무료 잔액보다 많이 회수할 수 없어요' : e?.message)}</span>`; }
+      finally { btn.disabled = false; }
+    };
   }
   function bindCurrency(id, d) {
     const btn = $('ad-cgive'); if (!btn) return;

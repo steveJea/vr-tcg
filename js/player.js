@@ -35,7 +35,7 @@
   function chip(s = now()) {
     if (!s) return '';
     const full = s.stamina >= s.stamina_max;
-    return `<span class="vrp-lv" title="플레이어 레벨">Lv.${s.level}</span><span class="vrp-st ${s.stamina < (s.cost?.story || 6) ? 'low' : ''}" title="행동력 · 6분에 1 회복">🔋 <b>${s.stamina}</b>/${s.stamina_max}${full ? '' : `<small>+1 ${mmss(s.next_regen_secs)}</small>`}</span>`;
+    return `<span class="vrp-lv" title="플레이어 레벨">Lv.${s.level}</span><span class="vrp-st ${s.stamina < (s.cost?.story || 6) ? 'low' : ''}" title="행동력 · 6분에 1 회복">🔋 <b>${s.stamina}</b>/${s.stamina_max}${full ? '' : `<small>+1 ${mmss(s.next_regen_secs)}</small>`}</span>${window.VRGem?.chip?.() || ''}`;
   }
   function paint() {
     const els = document.querySelectorAll('[data-vr-player]'); if (!els.length) return;

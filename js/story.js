@@ -715,6 +715,9 @@
   function staminaShort(s) {
     const P = window.VRPlayer, t = s && !s.stamina_max ? '' : s ? ` (보유 ${s.stamina}/${P.cost}${s.next_regen_secs ? ` · 다음 회복 ${P.mmss(s.next_regen_secs)}` : ''})` : '';
     toast(`🔋 행동력이 부족해요${t} · 6분에 1씩 회복돼요`);
+    if (window.VRGem) window.VRGem.status().then(g => { const it = window.VRGem.item('stamina'); if (!g || !it || it.left === 0) return;   // 심연석으로 충전 (하루 5회, 100부터 +50)
+      popup(`<div class="text-center"><div class="text-4xl mb-1">🔋</div><div class="text-lg font-black mb-3">행동력 충전</div><div class="gem-shop one">${window.VRGem.priceBtn('stamina')}</div><button data-close-pop class="w-full mt-3 py-2 rounded-xl bg-white/10">닫기</button></div>`);
+      document.querySelectorAll('[data-gem-buy="stamina"]').forEach(b => b.onclick = async () => { b.disabled = true; const r = await window.VRGem.buy('stamina'); if (r) { toast(`🔋 행동력 ${r.stamina} · ${window.VRGem.ICON} −${r.price}`); document.querySelector('[data-close-pop]')?.click(); window.VRPlayer?.status(true).then(() => window.VRPlayer.paint()); } else b.disabled = false; }); });
   }
   function playerResult(p) {
     if (!p) return '';
@@ -1401,6 +1404,19 @@
     const row = (t, rs, note) => `<div class="mb-3"><div class="font-bold mb-1">${t}</div><div class="story-rates">${rs.map(([g, p]) => `<span class="g-text-${GLOW[g]}">${RAR[g]}</span><b>${pct(p)}</b>`).join('')}</div>${note ? `<div class="text-[11px] text-zinc-400 mt-1">${note}</div>` : ''}</div>`;
     popup(`<div class="text-lg font-black mb-3">📊 뽑기 확률</div>${row('일반 뽑기 (하루 1회 무료)', G().rates, '매일 자정(KST, 한국 시간 00:00) 초기화')}${row('특수 뽑기 (소환권 1장 = 1회)', G().special, `10회 뽑기는 HR 이상 1장 보장 · 소환권은 챕터를 처음 다 깰 때마다 +${G().ticketsPerChapter}`)}<button data-close-pop class="w-full mt-1 py-2 rounded-xl bg-white/10">닫기</button>`);
   }
+  // ----- 심연석 🔮 으로 소환권 사기 (js/gem.js · gem.sql): 1장 150 · 10회 1500 (사서 바로 10회 뽑기 → 기존 HR 이상 보장) -----
+  const gemRow = () => window.VRGem?.now ? `${window.VRGem.priceBtn('ticket')}${window.VRGem.priceBtn('pull10', 'gem-buy10', `<b>10회</b>`)}` : '';
+  function bindGem() {
+    root().querySelectorAll('#gr-gem [data-gem-buy]').forEach(b => b.onclick = async () => {
+      const k = b.dataset.gemBuy, it = window.VRGem.item(k);
+      if (!it || !confirm(`${window.VRGem.ICON} ${it.price.toLocaleString('ko-KR')} 을 써서 ${k === 'pull10' ? '10회 뽑을까요?' : '소환권 1장을 살까요?'}`)) return;
+      b.disabled = true;
+      const r = await window.VRGem.buy(k); if (!r) { b.disabled = false; return; }
+      tickets = r.tickets | 0;
+      renderShop('special');
+      if (k === 'pull10') root().querySelector('[data-draw="10"]')?.click();
+    });
+  }
   // ----- 상점 (카드 뽑기) 화면: 일반 뽑기(하루 1회 무료) · 특수 뽑기(소환권) -----
   function renderShop(tab) {
     if (tab) shopTab = tab;
@@ -1416,13 +1432,16 @@
       <div id="gacha-msg" class="gr-msg"></div>
       <div class="gr-actions">${daily
         ? `${avail ? `<button id="gacha-go" class="gr-go">${ICN('gacha', '🎴')} 뽑기</button>` : ''}<div id="gacha-next" class="gr-next"></div>`
-        : `<button class="gr-go" data-draw="1" ${(tickets | 0) >= 1 ? '' : 'disabled'}>1회 <small>${ICN('ticket', '🎟️')}1</small></button><button class="gr-go gr-go10" data-draw="10" ${(tickets | 0) >= 10 ? '' : 'disabled'} title="HR 이상 1장 보장">10회 <small>${ICN('ticket', '🎟️')}10</small></button>`}</div></div>`, 'gacha');
+        : `<button class="gr-go" data-draw="1" ${(tickets | 0) >= 1 ? '' : 'disabled'}>1회 <small>${ICN('ticket', '🎟️')}1</small></button><button class="gr-go gr-go10" data-draw="10" ${(tickets | 0) >= 10 ? '' : 'disabled'} title="HR 이상 1장 보장">10회 <small>${ICN('ticket', '🎟️')}10</small></button>`}</div>
+      ${daily ? '' : `<div class="gr-gem" id="gr-gem">${gemRow()}</div>`}</div>`, 'gacha');
     gateLayout();
     bind();
     root().querySelectorAll('[data-tab]').forEach(b => b.onclick = () => renderShop(b.dataset.tab));
     $('gacha-rates').onclick = showRates;
     if (tickets == null) syncTickets().then(r => { if (root().querySelector('.story-shop')) { if (r.added) toast(`🎟️ 소환권 +${r.added} (챕터 클리어 보상)`); renderShop(); } });
     if (!daily) {
+      bindGem();
+      if (window.VRGem && !window.VRGem.now) window.VRGem.status().then(() => { const g = $('gr-gem'); if (g) { g.innerHTML = gemRow(); bindGem(); } });
       root().querySelectorAll('[data-draw]').forEach(b => b.onclick = async () => {
         root().querySelectorAll('[data-draw]').forEach(x => x.disabled = true); $('gacha-msg').textContent = ''; $('tk-result').innerHTML = '';
         const r = await drawTickets(+b.dataset.draw);

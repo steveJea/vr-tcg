@@ -11,16 +11,16 @@ create table if not exists public.pvp_tier_table (
   tier text primary key, ord int not null, min_rating int not null, reward jsonb not null);
 insert into public.pvp_tier_table (tier, ord, min_rating, reward) values
   ('bronze',   0,    0, '{"gold":200}'),
-  ('silver',   1,  950, '{"gold":400,"shard":5}'),
-  ('gold',     2, 1050, '{"gold":800,"soul":5,"tickets":3}'),
-  ('platinum', 3, 1150, '{"gold":1500,"soul":10,"tickets":5}'),
-  ('diamond',  4, 1250, '{"gold":2500,"soul":20,"tickets":10}'),
-  ('abyss',    5, 1400, '{"gold":4000,"soul":35,"tickets":20,"title":"abyss"}')
+  ('silver',   1,  950, '{"gold":400,"shard":5,"gem":50}'),
+  ('gold',     2, 1050, '{"gold":800,"soul":5,"tickets":3,"gem":100}'),
+  ('platinum', 3, 1150, '{"gold":1500,"soul":10,"tickets":5,"gem":200}'),
+  ('diamond',  4, 1250, '{"gold":2500,"soul":20,"tickets":10,"gem":400}'),
+  ('abyss',    5, 1400, '{"gold":4000,"soul":35,"tickets":20,"gem":1000,"title":"abyss"}')
 on conflict (tier) do update set ord = excluded.ord, min_rating = excluded.min_rating, reward = excluded.reward;
 
 create table if not exists public.pvp_streak_table (n int primary key, reward jsonb not null);
 insert into public.pvp_streak_table (n, reward) values
-  (3, '{"gold":300}'), (5, '{"gold":600,"soul":5}'), (10, '{"gold":1500,"soul":15,"tickets":3}')
+  (3, '{"gold":300}'), (5, '{"gold":600,"soul":5}'), (10, '{"gold":1500,"soul":15,"tickets":3,"gem":30}')
 on conflict (n) do update set reward = excluded.reward;
 
 create table if not exists public.pvp_tier_claims (
@@ -50,12 +50,15 @@ create or replace function public._pvp_tier(p_rating int) returns text language 
 -- 보상 지급: gold/blood/shard/soul → 지갑, tickets → 소환권, title → pvp_titles
 create or replace function public._pvp_grant(p_uid uuid, p_rw jsonb, p_reason text, p_league text, p_mode text, p_season date) returns void
 language plpgsql security definer set search_path = public as $$
-declare w jsonb := p_rw - 'tickets' - 'title';
+declare w jsonb := p_rw - 'tickets' - 'title' - 'gem';
 begin
   if w <> '{}'::jsonb then perform _wallet_add(p_uid, w, p_reason); end if;
   if coalesce((p_rw->>'tickets')::int, 0) > 0 then
     insert into story_gacha (user_id, last_draw) values (p_uid, _pvp_day() - 1) on conflict (user_id) do nothing;
     update story_gacha set tickets = tickets + (p_rw->>'tickets')::int, updated_at = now() where user_id = p_uid;
+  end if;
+  if coalesce((p_rw->>'gem')::int, 0) > 0 and to_regprocedure('public._gem_add(uuid,integer,integer,text,text,jsonb)') is not null then   -- 심연석 (gem.sql)
+    perform _gem_add(p_uid, (p_rw->>'gem')::int, 0, p_reason, case when p_reason = 'pvp_tier' then 'pvp_tier:' || p_league || ':' || p_mode || ':' || p_season end, jsonb_build_object('league', p_league, 'mode', p_mode, 'season', p_season));
   end if;
   if p_rw ? 'title' then
     insert into pvp_titles (user_id, title, league, mode, season) values (p_uid, p_rw->>'title', p_league, p_mode, p_season) on conflict do nothing;
@@ -87,7 +90,7 @@ begin
      and not exists (select 1 from pvp_tier_claims where user_id = uid and league = p_league and mode = p_mode and season = prev.season) then
     pend := jsonb_build_object('season', prev.season, 'rating', prev.rating, 'tier', _pvp_tier(prev.rating));
   end if;
-  return jsonb_build_object('left', greatest(0, 10 - used), 'max', 10, 'rating', r.rating, 'wins', r.wins, 'losses', r.losses,
+  return jsonb_build_object('left', greatest(0, 10 + _pvp_extra(uid, p_league, p_mode) - used), 'max', 10 + _pvp_extra(uid, p_league, p_mode), 'rating', r.rating, 'wins', r.wins, 'losses', r.losses,
     'def_wins', r.def_wins, 'def_losses', r.def_losses, 'decks', decks, 'need', n,
     'season', _pvp_season(), 'season_end', ((_pvp_season() + 7)::timestamp at time zone 'Asia/Seoul'),
     'tier', _pvp_tier(r.rating), 'streak', _pvp_streak(uid, p_league, p_mode, _pvp_season()),
