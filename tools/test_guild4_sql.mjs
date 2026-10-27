@@ -20,6 +20,7 @@ const src = f => readFileSync(new URL('../supabase/' + f, import.meta.url), 'utf
 const run = f => db.exec(src(f));
 for (const f of ['story.sql', 'gacha.sql', 'story_server.sql', 'story_gacha.sql', 'story_levels.sql', 'story_merge.sql', 'story_ch2.sql', 'story_cards_1022.sql', 'story_leader_lock.sql', 'story_level_stats.sql', 'story_min_battle.sql', 'admin.sql', 'phaseE_1.sql', 'phaseE_2.sql', 'quest.sql', 'quest_sweep.sql', 'phaseE_3.sql', 'phaseE_4.sql', 'phaseE_5.sql', 'pvp.sql', 'pvp_tier.sql', 'gem.sql', 'guild.sql', 'guild2.sql', 'guild3.sql']) await run(f);
 await run('guild4.sql'); await run('guild4.sql');   // 두 번 실행해도 안전
+await run('manual_battle.sql'); await run('war_manual.sql'); await run('war_manual.sql');   // 수동 전투 기록 (war_log)
 let fails = 0; const ok = (c, m) => { if (!c) { fails++; console.log('FAIL', m); } else console.log('ok  ', m); };
 async function as(uid, sql, role = 'authenticated') {
   await db.exec(`reset role; select set_config('request.jwt.claims', '${JSON.stringify(uid ? { sub: uid, email: uid === ADMIN ? 'stevejean77@gmail.com' : 'x@x' } : {})}', false); set role ${role};`);
@@ -89,6 +90,10 @@ let st = await v(U[3], `select war_start(1, 1)`);
 ok(st.id && st.atk.length === 3 && st.def.length === 2 && +st.def_buff.def === 1.2 && st.target.deck === 1, '시작: 스냅샷 · 방어조 방어 +20%');
 ok(/target busy/.test(await err(U[4], `select war_start(1, 1)`)), '전투 중인 아지트 잠금');
 ok(/too fast/.test(await err(U[3], `select war_finish(${st.id}, true, '{}', '{}')`)), '최소 시간');
+ok(/no battle/.test(await err(U[4], `select war_log(${st.id}, '[]')`)), '수동 기록: 남의 공격 불가');
+ok(/bad actions/.test(await err(U[3], `select war_log(${st.id}, '{"k":1}')`)), '수동 기록: 배열만');
+ok(!(await as(U[3], `select war_log(${st.id}, '[{"k":"end"}]')`)).err, '수동 기록 저장');
+ok(/already logged/.test(await err(U[3], `select war_log(${st.id}, '[]')`)), '수동 기록은 한 번만');
 const back = () => db.exec(`update war_attacks set started_at = started_at - interval '5 seconds' where finished_at is null`);
 await back();
 let f = await v(U[3], `select war_finish(${st.id}, true, '{"c2":5,"c3":999999}', '{}')`);
@@ -152,6 +157,7 @@ ok((await v(U[0], `select war_status()`)).phase === 'signup', '셋째 주 일요
 // 보안
 ok(!!(await as(U[0], `select * from war_ajits`)).err && !!(await as(U[0], `select * from war_decks`)).err, '테이블 직접 읽기 불가');
 ok(!!(await as(U[0], `select _war_settle(1)`)).err && !!(await as(U[0], `select _war_tick()`)).err, '내부 함수 불가');
-ok(!!(await as(null, `select war_status()`, 'anon')).err, 'anon 불가');
+ok(!!(await as(null, `select war_status()`, 'anon')).err && !!(await as(null, `select war_log(1, '[]')`, 'anon')).err, 'anon 불가');
+ok(+(await q1(`select (_war_numbers()->>'open_minutes')::int`)) === 20, '공격 제한 시간 20분 (수동)');
 ok(!!(await as(U[0], `select admin_war(null)`)).err, '일반 유저 관리자 불가');
 console.log(fails ? `${fails} FAIL` : 'ALL PASS'); process.exit(fails ? 1 : 0);

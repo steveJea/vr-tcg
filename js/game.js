@@ -109,10 +109,11 @@ let autoOn = localStorage.getItem(AUTO_KEY()) === '1', autoRunning = false;
 // 자동 전투 해금: 계정 레벨(플레이어 레벨, player_status.level) 5 이상
 const AUTO_LV = 5;
 const autoLocked = () => (window.VRPlayer?.now?.()?.level ?? 0) < AUTO_LV;
-const autoActive = () => autoOn && !autoLocked() && !!S?.story && !S.over;
+const autoActive = () => autoOn && !autoLocked() && !!S?.story && !S.over && !S.view;
 function renderAutoBtn() {
   const b = $('auto-btn'); if (!b) return;
   b.classList.toggle('hidden', !S?.story); b.classList.toggle('on', autoOn);
+  if (S?.view) { const on = S.view.auto; b.classList.toggle('on', on); b.classList.remove('locked'); b.title = '자동 전투'; b.setAttribute('aria-pressed', String(on)); b.textContent = on ? '⏸ AUTO' : '▶ AUTO'; return; }
   const lk = autoLocked(); b.classList.toggle('locked', lk); b.title = lk ? `자동 전투 · 계정 Lv${AUTO_LV}부터` : '자동 전투';
   b.setAttribute('aria-pressed', String(autoOn && !lk)); b.textContent = lk ? '🔒 AUTO' : autoOn ? '⏸ AUTO' : '▶ AUTO';
   if (lk && S?.story && !b.dataset.lvReq) { b.dataset.lvReq = '1'; window.VRPlayer?.status?.().then(() => { delete b.dataset.lvReq; if (!autoLocked()) { renderAutoBtn(); if (autoActive() && S.turn === 'me' && !S.busy) autoTurn(); } }); }
@@ -418,6 +419,7 @@ async function lunge(el, targetEl) {
 /** 연출(돌진→충돌→복귀) 후 상태 반영. 전투 결과는 resolveAttack 그대로라 로직은 동일.
  *  예외가 나도 finally에서 연출·busy를 되돌려 게임이 멈추지 않게 함 */
 async function attack(who, unit, target, fromBatch = false) {
+  if (S?.view) { if (who === 'me' && S.view.ask && target) S.view.ask({ k: 'atk', i: S.view.A0.indexOf(unit), t: S.view.B0.indexOf(target) }); return; }
   const o = opp(who), p = S[who];
   if (!unit.canAttack || S.over) return;
   if (!fromBatch && who === 'me' && S.busy) return;
@@ -575,6 +577,7 @@ function checkTimeout() {
 }
 
 function endTurn() {
+  if (S?.view) { S.view.ask?.({ k: 'end' }); return; }
   if (S.turn !== 'me' || S.over || S.busy) return;
   selected = null;
   endTurnXp(S.me); turnEnd(S.me);
@@ -920,6 +923,7 @@ function mrVideo(u, s) {
 }
 
 async function castSkill(who, u, s) {
+  if (S?.view) { if (who === 'me' && S.view.ask && skillState(u, s).ok) S.view.ask({ k: 'skill', i: S.view.A0.indexOf(u), s: s.name }); return; }   // PvP·전쟁 화면: 엔진에 입력만 넘김
   const p = S[who];
   if (S.over || !p.field.includes(u) || !skillState(u, s).ok) return;
   const prevBusy = S.busy; S.busy = true; selected = null;
@@ -1453,7 +1457,7 @@ $('fx-skip').onclick = e => { e.stopPropagation(); skipFx = !skipFx; localStorag
 // 연출 중 화면을 누르면 현재 연출 빨리 감기
 $('game').addEventListener('click', () => { if (S?.busy && !S.over) fastForward = true; }, true);
 renderSkipBtn();
-$('auto-btn').onclick = e => { e.stopPropagation(); if (autoLocked()) return autoHint(); autoOn = !autoOn; localStorage.setItem(AUTO_KEY(), autoOn ? '1' : '0'); renderAutoBtn(); if (autoActive() && S.turn === 'me' && !S.busy) autoTurn(); };
+$('auto-btn').onclick = e => { e.stopPropagation(); if (S?.view) { S.view.auto = !S.view.auto; renderAutoBtn(); if (S.view.auto) S.view.ask?.({ k: 'auto' }); return; } if (autoLocked()) return autoHint(); autoOn = !autoOn; localStorage.setItem(AUTO_KEY(), autoOn ? '1' : '0'); renderAutoBtn(); if (autoActive() && S.turn === 'me' && !S.busy) autoTurn(); };
 function autoHint() {
   document.getElementById('auto-hint')?.remove();
   const t = document.createElement('div'); t.id = 'auto-hint'; t.className = 'auto-hint'; t.textContent = `🔒 계정 Lv${AUTO_LV}부터 AUTO`;
@@ -1561,4 +1565,69 @@ function zoomFromBtn(b) {
 document.addEventListener('click', e => { const b = e.target.closest?.('.zoom-btn'); if (!b) return; e.stopPropagation(); e.preventDefault(); zoomFromBtn(b); }, true);
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('zoom-view')?.classList.contains('open')) { e.stopPropagation(); closeZoom(); } }, true);
 
-window.TCG = { get NPC() { return NPC; }, cardById: id => POOL.find(c => String(c.id) === String(id)) || NPC.find(c => String(c.id) === String(id)), isNpc, cardTitle, cardTags, cardStats, regionShort, playStinger, showCardInfo, skillsOf, combos, arcadeOpts: ArcadeOpts, openArcadeOpts, playSe, onEnter, checkEvents, showEvent, mvpVoice, get events() { return EVENTS; }, get seOn() { return seOn; }, skillListHTML: (c, lv, opt) => skillListHTML(c, null, false, lv, opt), voiceTest(k) { if (!voiceSet?.has(k)) return false; const a = voiceAudio(k); a.volume = voiceVol; a.currentTime = 0; voiceCur = a; a.play().catch(() => {}); return true; }, get voiceActive() { return voiceActive.size; }, get voice() { return { on: voiceOn, vol: voiceVol, cur: voiceCur && { src: voiceCur.src, paused: voiceCur.paused, t: voiceCur.currentTime }, set: voiceSet && voiceSet.size }; }, openZoom, closeZoom, dupCheck, get errors() { return window.TCG_ERRORS || []; }, cutIn, passiveCutIn, sortedHand, get handSort() { return handSort; }, put: debugPut, castSkill, skillState, get S() { return S; }, RULES, calcPower: c => calcPower(c, skillsOf(c?.id)), skillLvPowerMult: (id, lvMap) => skillLvPowerMult(skillsOf(id), lvMap), elementMultiplier, calcDamage, canSummon, buildDeck, summon, attack, recall, attackAll, endTurn, canRecall, recallCost, makeUnit, resolveAttack, useAction, canAction, startGame, startStory, cardHTML, get ready() { return POOL.length > 0; }, equipItem, doSacrifice, finish, attackTargets, get POOL() { return POOL; }, render, Stats };
+
+// ===== PvP·구역 전쟁 전투 화면: 스토리·탑과 같은 화면/연출, 전투 계산은 서버 seed 엔진(pvp-core matchGen) 그대로 =====
+// session = manualMatch/warSession(view:true). 화면은 엔진이 한 행동씩 멈출 때(anim) 연출하고, 내 차례(ask)면 입력을 기다림. 결과·행동 기록은 엔진 것 그대로
+async function viewBattle({ session, aiName = '상대', bg = 'normal', manual = false, maxTurns: mt = 40, title = '' } = {}) {
+  const hid = [...document.querySelectorAll('.pvp-modal, .gd-pop, #start-screen, #story-screen')].filter(e => !e.classList.contains('hidden') && e.style.display !== 'none');
+  hid.forEach(e => { e.dataset.vbHide = e.style.display; e.style.display = 'none'; });
+  let x = session.next();
+  const V = { auto: !manual, A0: x.value.A0, B0: x.value.B0, ask: null };
+  S = { me: x.value.A, ai: x.value.B, view: V, story: { win: 'wipe', view: true, aiName }, maxTurns: mt, first: 'me', turn: 'me', turnNo: 0, totalTurns: 0, myTurns: 0, over: false, busy: true, fxSeen: new Set(), mercBought: 0, mercHired: null, mercOffer: [], limitedAids: true,
+    log: { dmg: new Map(), total: 0, skills: 0, merc: null, played: new Set(), kills: {} } };
+  S.me.name = '나'; S.ai.name = aiName;
+  selected = null; $('log').innerHTML = ''; fxQueue.length = 0; vidGate = Promise.resolve(); hpPrev.clear();
+  $('end-screen').classList.add('hidden'); $('start-screen').classList.add('hidden'); $('game').classList.remove('hidden');
+  $('game').classList.add('story-field', 'view-battle');
+  for (const w of ['me', 'ai']) { $(`${w}-hp`).classList.add('hidden'); $(`${w}-hpbar`).parentElement.classList.add('hidden'); }
+  { const lbl = $('ai-order').parentElement.firstChild; if (lbl?.nodeType === 3) lbl.textContent = `${aiName} `; }
+  setBattleBg(bg); preloadHit(); preloadFx([...S.me.field, ...S.ai.field].map(u => u.base || u.card));
+  if (title) log(title, 'text-amber-300');
+  log('⚔️ 마나 없음 · 상대를 모두 쓰러뜨리면 승리', 'text-amber-300');
+  render();
+  const drain = () => { const ev = session.events || []; const out = ev.splice(0, ev.length); return out; };
+  const play = evs => { for (const e of evs) { try { onEngine(e); } catch (err) { reportError('view', err); } } };
+  try {
+    for (let g = 0; !x.done && g < 20000; g++) {
+      const v = x.value;
+      if (v.anim) {
+        const a = v.anim, who = a.side === 'A' ? 'me' : 'ai', evs = drain();
+        if (a.k === 'turn' && !S.totalTurns) { $('me-order').textContent = who === 'me' ? '선공' : '후공'; $('ai-order').textContent = who === 'ai' ? '선공' : '후공'; }
+        if (a.k === 'turn') { S.turn = who; S.totalTurns++; if (who === 'me') S.myTurns++; S.busy = true; render(); play(evs); await sleep(AI_DELAY()); }
+        else if (a.k === 'skill') { S.busy = true; render(); if (!(await mrVideo(a.u, a.s))) await withTimeout(cutIn(a.u, a.s.name, a.s.fx), 3000); pendingDying = []; play(evs); if (who === 'me') S.log.skills++; render(); await sleep(fxMs(450)); await withTimeout(fadeDying(), 750); }
+        else if (a.k === 'atk') {
+          S.busy = true; const oWho = who === 'me' ? 'ai' : 'me', aEl = unitEl(who, a.u), tEl = a.t ? unitEl(oWho, a.t) : null;
+          playSe(7); const hit = await withTimeout(lunge(aEl, tEl), 750); pendingDying = [];
+          { const h = (a.hits || []).find(e => e.type === 'hit'); log(`${a.u.card.name} → ${a.t?.card?.name || '?'}${h ? ` ${fmt(h.d1)} 피해${h.mult !== 1 ? ` (속성 ×${h.mult})` : ''}${h.killed ? ', 처치' : h.d2 ? `, 반격 ${fmt(h.d2)}` : ''}` : ' 회피'}`, who === 'me' ? 'text-emerald-300' : 'text-red-300'); }
+          play(evs);
+          for (const e of a.hits || []) {
+            playSe(e.type === 'hit' ? 1 : 0);
+            if (e.type === 'hit') { const real = e.target || a.t, rEl = (real && unitEl(oWho, real)) || tEl; shake(rEl); hitFx(rEl, e.mult > 1 ? 'blood' : 'impact'); critNum(rEl, e.d1, real); if (e.d2) { shake(aEl); hitFx(aEl); dmgNumber(aEl, `-${fmt(e.d2)}`, '#fca5a5'); } }
+            else if (e.type === 'evade') dmgNumber(unitEl(oWho, e.target) || tEl, 'MISS', '#e0f2fe');
+          }
+          critSet.clear();
+          await withTimeout(hit?.back?.() ?? Promise.resolve(), 750); resetAnim(aEl); render(); await withTimeout(fadeDying(), 750); await sleep(AI_DELAY());
+        } else { play(evs); render(); }
+        x = session.next(); continue;
+      }
+      if (v.ask) {
+        play(drain()); S.turn = 'me'; S.busy = false; render();
+        const inp = V.auto ? { k: 'auto' } : await new Promise(res => { V.ask = i => { V.ask = null; res(i); }; });
+        V.ask = null; selected = null; S.busy = true;
+        x = session.next(inp); continue;
+      }
+      x = session.next();
+    }
+    play(drain());
+    S.over = true; render();
+    try { window.VRSound?.jingle?.(x.value?.win ? 'victory' : 'defeat'); } catch {}
+    floatText(x.value?.win ? 'WIN' : 'LOSE', x.value?.win ? 'text-emerald-300 text-5xl' : 'text-red-400 text-5xl', 'ai');
+    await sleep(window.TCG_FAST ? 0 : 1200);
+    return x.value;
+  } finally {
+    $('game').classList.remove('view-battle', 'story-field'); $('game').classList.add('hidden');
+    hid.forEach(e => { e.style.display = e.dataset.vbHide || ''; delete e.dataset.vbHide; });
+    S = null; selected = null;
+  }
+}
+window.TCG = { viewBattle, get NPC() { return NPC; }, cardById: id => POOL.find(c => String(c.id) === String(id)) || NPC.find(c => String(c.id) === String(id)), isNpc, cardTitle, cardTags, cardStats, regionShort, playStinger, showCardInfo, skillsOf, combos, arcadeOpts: ArcadeOpts, openArcadeOpts, playSe, onEnter, checkEvents, showEvent, mvpVoice, get events() { return EVENTS; }, get seOn() { return seOn; }, skillListHTML: (c, lv, opt) => skillListHTML(c, null, false, lv, opt), voiceTest(k) { if (!voiceSet?.has(k)) return false; const a = voiceAudio(k); a.volume = voiceVol; a.currentTime = 0; voiceCur = a; a.play().catch(() => {}); return true; }, get voiceActive() { return voiceActive.size; }, get voice() { return { on: voiceOn, vol: voiceVol, cur: voiceCur && { src: voiceCur.src, paused: voiceCur.paused, t: voiceCur.currentTime }, set: voiceSet && voiceSet.size }; }, openZoom, closeZoom, dupCheck, get errors() { return window.TCG_ERRORS || []; }, cutIn, passiveCutIn, sortedHand, get handSort() { return handSort; }, put: debugPut, castSkill, skillState, get S() { return S; }, RULES, calcPower: c => calcPower(c, skillsOf(c?.id)), skillLvPowerMult: (id, lvMap) => skillLvPowerMult(skillsOf(id), lvMap), elementMultiplier, calcDamage, canSummon, buildDeck, summon, attack, recall, attackAll, endTurn, canRecall, recallCost, makeUnit, resolveAttack, useAction, canAction, startGame, startStory, cardHTML, get ready() { return POOL.length > 0; }, equipItem, doSacrifice, finish, attackTargets, get POOL() { return POOL; }, render, Stats };

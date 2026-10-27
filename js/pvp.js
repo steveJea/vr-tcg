@@ -2,6 +2,7 @@
 // 서버: supabase/pvp.sql (pvp_status / pvp_set_deck / pvp_start / pvp_report / pvp_rankings). 전투 계산: js/pvp-core.js (양쪽 자동 AI)
 // 리그: 무제한(open) · HR 이하(hr, 코스트 150) / 모드: 1v1 · 3v3(3덱 2선승) / 하루 10회 · 주간 시즌(월 00:00 KST)
 import { LEAGUES, MODES, snapCard, deckCheck, runSeries, manualMatch, roundSeed } from './pvp-core.js';
+const VIEW = () => window.TCG?.viewBattle;   // 스토리·탑과 같은 전투 화면 (js/game.js)
 import { modeToggle, bindMode, battleMode, playManual } from './manual-ui.js';
 const IMG = 'https://raw.githubusercontent.com/steveJea/vr-ideal-worldcup/main/img/bt_img/';
 const $ = id => document.getElementById(id);
@@ -180,7 +181,7 @@ async function fight() {
   // 결과는 재생 전에 먼저 1회 보고 (재생 중 이탈해도 결과 동일 · 중복 보고 없음). 수동은 행동 기록을 먼저 남김 (tools/pvp_verify.mjs 재생 검증)
   if (manual) { try { await rpc('pvp_log', { p_id: s.id, p_actions: res.acts }); } catch (e) { toast(errText(e)); } }
   let rep = null; try { rep = await rpc('pvp_report', { p_id: s.id, p_wins: res.wins, p_losses: res.losses }); } catch (e) { toast(errText(e)); }
-  if (!manual) await playback(s, res);
+  if (!manual) { if (VIEW()) await viewSeries(s, toCards, false); else await playback(s, res); }
   const delta = rep ? rep.delta : -s.dl;
   const m = modal('pvp-result', `<button class="pvp-x" data-x>✕</button>
     <div class="pvp-res ${res.win ? 'win' : 'lose'}">${res.win ? 'WIN' : 'LOSE'}</div>
@@ -194,16 +195,24 @@ async function fight() {
 }
 
 // ---- 수동: 판마다 내가 조작 (상대는 AI). 같은 seed·스냅샷 · 2선승 ----
-async function manualSeries(s, toCards) {
+async function manualSeries(s, toCards) { return viewSeries(s, toCards, true); }
+/** 판마다 전투 화면. manual=false 면 AUTO 로 보여 주기만 (결과는 runSeries 와 같음) */
+async function viewSeries(s, toCards, manual) {
   const M = MODES[view.mode], rounds = [], acts = []; let w = 0, l = 0;
   for (let i = 0; i < M.decks; i++) {
-    const log = [], ses = manualMatch(toCards(s.me[i]), toCards(s.opp[i]), roundSeed(s.seed, i), log);
-    const r = await playManual({ session: ses, rec: log, title: `${s.opp_name}${s.bot ? ' 🤖' : ''}`, maxTurns: 40, round: M.decks > 1 ? `${i + 1}판` : '' });
+    const log = [], ttl = `${M.decks > 1 ? `${i + 1}판 · ` : ''}⚔️ PvP vs ${s.opp_name}${s.bot ? ' 🤖' : ''}`;
+    let r, ses;
+    if (VIEW()) { ses = manualMatch(toCards(s.me[i]), toCards(s.opp[i]), roundSeed(s.seed, i), log, { view: true, manual: true });
+      if (!manual) ses = autoFeed(ses);
+      r = await VIEW()({ session: ses, aiName: `${s.opp_name}${s.bot ? ' 🤖' : ''}`, manual, maxTurns: 40, title: ttl, bg: 'normal' }); }
+    else { ses = manualMatch(toCards(s.me[i]), toCards(s.opp[i]), roundSeed(s.seed, i), log); r = await playManual({ session: ses, rec: log, title: `${s.opp_name}${s.bot ? ' 🤖' : ''}`, maxTurns: 40, round: M.decks > 1 ? `${i + 1}판` : '' }); }
     r.log = log; rounds.push(r); acts.push(ses.acts); r.win ? w++ : l++;
     if (w >= M.need || l >= M.need) break;
   }
   return { win: w >= M.need, wins: w, losses: l, rounds, acts };
 }
+/** AUTO 보기: 내 차례 입력을 항상 AUTO 로 (화면의 AUTO 버튼으로 수동 전환 불가 · 이미 보고한 결과와 같아야 함) */
+const autoFeed = ses => ({ events: ses.events, acts: ses.acts, next: inp => { let x = ses.next(inp); while (!x.done && x.value.ask) x = ses.next({ k: 'auto' }); return x; } });
 // ---- 전투 재생 (계산된 전투 기록 그대로 · SKIP = 결과로) ----
 const STEP = 420, SPD_KEY = 'vrTcgSpd2';
 const spd = () => localStorage.getItem(SPD_KEY) === '1' ? 2 : 1;

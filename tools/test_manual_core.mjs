@@ -49,4 +49,18 @@ ok(capOk && turnsOk, '토벌 수동도 행동당 피해 상한 · 15턴');
   for (let i = 0; i < 3; i++) { const s = manualMatch(As[i], Bs[i], roundSeed(seed, i)); res.push(drive(s, human(i + 5)).win); acts.push(s.acts); }
   const want = (() => { let w = 0, l = 0; for (const x of res) { x ? w++ : l++; if (w >= 2 || l >= 2) break; } return [w, l]; })();
   const r = runSeries('3v3', As, Bs, seed, false, acts); ok(r.wins === want[0] && r.losses === want[1], `3v3 수동 기록 재생 ${r.wins}-${r.losses}`); }
+// 전투 화면(view) 멈춤은 결과에 영향 없음 · 마나 0 · 구역 전쟁 수동 재생
+{ const { warSession, runWar, warDeck, WAR_ROLES } = await import('../js/war-core.js');
+  let okV = 0, okM = true, okW = 0;
+  for (let k = 1; k <= 10; k++) {
+    const A = deck(k * 31), B = deck(k * 37), seed = k * 777;
+    const v = manualMatch(A, B, seed, null, { view: true, manual: true }); let x = v.next(), g = 0;
+    while (!x.done && g++ < 20000) { if (x.value.A && (x.value.A.mana || x.value.B.mana)) okM = false; x = v.next(x.value.ask ? human(k)(x.value) : undefined); }
+    okV += JSON.stringify(runMatch(A, B, seed, null, v.acts)) === JSON.stringify(x.value);
+    const wa = warDeck(A.map((c, i) => ({ uid: 'a' + i, id: c.id, level: 20 })), by, WAR_ROLES.atk), wb = warDeck(B.map((c, i) => ({ uid: 'b' + i, id: c.id, level: 20 })), by, WAR_ROLES.def);
+    const w = warSession(wa, wb, seed, null, { view: true }); let y = w.next(); const h = human(k + 3);
+    while (!y.done) y = w.next(y.value.ask ? h(y.value) : undefined);
+    okW += JSON.stringify(runWar(wa, wb, seed, null, w.acts)) === JSON.stringify(y.value);
+  }
+  ok(okV === 10, `화면 모드 수동 PvP 재생 일치 (${okV}/10)`); ok(okM, 'PvP·전쟁 마나 항상 0'); ok(okW === 10, `구역 전쟁 수동 재생 일치 (${okW}/10)`); }
 console.log(fails ? `FAIL ${fails}` : 'ALL PASS');
