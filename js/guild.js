@@ -108,7 +108,7 @@
         <button data-t="log"><span>📜</span>기록</button>
         <button data-t="rally"><span>🕯️</span>집결<i class="gd-dot" data-dot="rally" hidden></i></button><button data-t="quest"><span>📜</span>의뢰<i class="gd-dot" data-dot="quest" hidden></i></button>
         <button data-t="raid"><span class="gd-tic"><img src="img/ui/guild/raid_icon.webp" alt="" onerror="this.remove()"><i>🐉</i></span>토벌<i class="gd-dot" data-dot="raid" hidden></i></button>
-        ${[['🏴', '전쟁']].map(([ic, l]) => `<button class="soon" disabled><span>${ic}</span>${l}<small>준비 중</small></button>`).join('')}</div>
+        <button data-t="war"><span class="gd-tic"><img src="img/ui/guild/war_icon.webp" alt="" onerror="this.remove()"><i>🏴</i></span>전쟁<i class="gd-dot" data-dot="war" hidden></i></button></div>
       <div class="gd-h">👥 조직원</div>
       <div class="gd-mem">${st.members.map(x => `<button class="gd-m r-${x.role}" data-u="${x.user_id}">${x.card ? `<img src="${IMG}${x.card}.webp" alt="" loading="lazy" onerror="this.remove()">` : '<span class="gd-m-no">👤</span>'}
         ${x.role !== 'member' ? `<i class="gd-m-role">${ROLE[x.role][0]}</i>` : ''}<span class="gd-m-n">${esc(x.name)}</span><small>${LOY}${n(x.loyalty_total)}</small></button>`).join('')}</div>
@@ -117,6 +117,8 @@
     p.querySelector('[data-t="rally"]').onclick = rallyPop;
     p.querySelector('[data-t="quest"]').onclick = questPop;
     p.querySelector('[data-t="raid"]').onclick = () => window.VRRaid?.open();
+    p.querySelector('[data-t="war"]').onclick = () => window.VRWar?.open();
+    window.VRWar?.claimable().then(c => { const el = p.querySelector('[data-dot="war"]'); if (el) el.hidden = !c; });
     window.VRRaid?.claimable().then(c => { const el = p.querySelector('[data-dot="raid"]'); if (el) el.hidden = !c; });
     rpc('guild_dots').then(d => { if (!d) return; for (const k of ['rally', 'quest']) { const el = p.querySelector(`[data-dot="${k}"]`); if (el) el.hidden = !d[k]; } }).catch(() => {});
     p.querySelector('[data-t="log"]').onclick = logPop;
