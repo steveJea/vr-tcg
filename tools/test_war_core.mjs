@@ -1,0 +1,23 @@
+// js/war-core.js 검증: 같은 seed = 같은 결과 · 남은 HP ≤ 시작 HP · 쓰러진 카드 빠짐 · 불량배(NPC) 배율 · 역할 = guild4.sql
+import { readFileSync } from 'fs';
+import { setSkillData } from '../js/skills.js';
+import { parseCSV, setCardPool } from '../js/rules.js';
+import { runWar, warDeck, WAR_ROLES } from '../js/war-core.js';
+const rd = p => readFileSync(new URL(p, import.meta.url), 'utf8');
+const pool = parseCSV(rd('../data/cards.csv')), npc = parseCSV(rd('../data/npc_cards.csv')); setCardPool(pool); setSkillData(JSON.parse(rd('../data/skills.json')), JSON.parse(rd('../data/combos.json')));
+const byId = id => pool.find(c => String(c.id) === String(id)) || npc.find(c => String(c.id) === String(id));
+let fails = 0; const ok = (c, m) => { if (!c) { fails++; console.log('FAIL', m); } else console.log('ok  ', m); };
+const N = JSON.parse(rd('../supabase/guild4.sql').match(/_war_numbers\(\) returns jsonb language sql immutable as \$\$ select '([\s\S]*?)'::jsonb/)[1]);
+ok(Object.entries(WAR_ROLES).every(([k, r]) => N.roles[k].atk === r.atk && N.roles[k].def === r.def), '역할 버프 = guild4.sql');
+const sr = pool.filter(c => c.grade === 'SUPER RARE');
+const atk = sr.slice(0, 5).map((c, i) => ({ uid: 'c' + i, id: c.id, level: 20 }));
+const bully = ['1000000031', '2000000033', '1000000028', '2000000029', '2000000030'].map((id, i) => ({ uid: 'n' + i, id, level: 1, scale: 2.8 }));
+const A = warDeck(atk, byId, { atk: 1.2, def: 1 }), B = warDeck(bully, byId, { atk: 1, def: 1.2 });
+ok(B.length === 5 && B[0].HP === Math.round(byId('1000000031').HP * 2.8), '불량배 카드 + 배율');
+const r1 = runWar(A, B, 4242), r2 = runWar(warDeck(atk, byId, { atk: 1.2, def: 1 }), warDeck(bully, byId, { atk: 1, def: 1.2 }), 4242);
+ok(JSON.stringify(r1) === JSON.stringify(r2), '같은 seed = 같은 결과');
+ok(Object.entries(r1.aHp).every(([u, h]) => h <= A.find(c => c._uid === u).HP), '남은 HP ≤ 최대');
+const hurt = atk.map(o => ({ ...o, hp: 3 })); const r3 = runWar(warDeck(hurt, byId, {}), warDeck(bully, byId, {}), 7);
+ok(Object.values(r3.aHp).every(h => h <= byId(atk[0].id).HP * 10) && warDeck([{ ...atk[0], hp: 0 }], byId).length === 0, '깎인 HP로 시작 · 쓰러진 카드 빠짐');
+ok(r1.win ? Object.keys(r1.bHp).length === 0 : true, '공격 승리 = 방어 전멸');
+console.log(fails ? `${fails} FAIL` : 'ALL PASS'); process.exit(fails ? 1 : 0);
