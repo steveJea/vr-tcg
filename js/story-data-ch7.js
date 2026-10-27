@@ -26,15 +26,15 @@ window.STORY_DATA.chapters.push({
       "HP": 267,
       "ATK": 53,
       "DEF": 46,
-      "power": 9939,
-      "storyLv": 40
+      "storyLv": 40,
+      "power": 9939
      },
      "2000000031": {
       "HP": 231,
       "ATK": 48,
       "DEF": 41,
-      "power": 8753,
-      "storyLv": 40
+      "storyLv": 40,
+      "power": 8753
      }
     }
    },
@@ -152,29 +152,29 @@ window.STORY_DATA.chapters.push({
       "HP": 391,
       "ATK": 65,
       "DEF": 56,
-      "power": 21555,
-      "storyLv": 40
+      "storyLv": 40,
+      "power": 21555
      },
      "1000000029": {
       "HP": 196,
       "ATK": 36,
       "DEF": 27,
-      "power": 6877,
-      "storyLv": 40
+      "storyLv": 40,
+      "power": 6877
      },
      "1000000028": {
       "HP": 160,
       "ATK": 27,
       "DEF": 18,
-      "power": 5017,
-      "storyLv": 40
+      "storyLv": 40,
+      "power": 5017
      },
      "1000000026": {
       "HP": 97,
       "ATK": 19,
       "DEF": 15,
-      "power": 1328,
-      "storyLv": 40
+      "storyLv": 40,
+      "power": 1328
      }
     }
    },
@@ -284,15 +284,15 @@ window.STORY_DATA.chapters.push({
       "HP": 494,
       "ATK": 74,
       "DEF": 74,
-      "power": 26808,
-      "storyLv": 50
+      "storyLv": 50,
+      "power": 26808
      },
      "1000000028": {
       "HP": 160,
       "ATK": 27,
       "DEF": 18,
-      "power": 5017,
-      "storyLv": 40
+      "storyLv": 40,
+      "power": 5017
      }
     }
    },
@@ -428,15 +428,15 @@ window.STORY_DATA.chapters.push({
       "HP": 494,
       "ATK": 74,
       "DEF": 74,
-      "power": 26808,
-      "storyLv": 50
+      "storyLv": 50,
+      "power": 26808
      },
      "2000000034": {
       "HP": 469,
       "ATK": 74,
       "DEF": 64,
-      "power": 25336,
-      "storyLv": 50
+      "storyLv": 50,
+      "power": 25336
      }
     }
    },
@@ -574,15 +574,15 @@ window.STORY_DATA.chapters.push({
       "HP": 526,
       "ATK": 83,
       "DEF": 72,
-      "power": 28430,
-      "storyLv": 60
+      "storyLv": 60,
+      "power": 28430
      },
      "2000000033": {
       "HP": 445,
       "ATK": 74,
       "DEF": 64,
-      "power": 24551,
-      "storyLv": 50
+      "storyLv": 50,
+      "power": 24551
      }
     }
    },
@@ -714,8 +714,8 @@ window.STORY_DATA.chapters.push({
       "HP": 430,
       "ATK": 65,
       "DEF": 140,
-      "power": 39989,
-      "storyLv": 30
+      "storyLv": 30,
+      "power": 39989
      }
     }
    },
@@ -910,29 +910,29 @@ window.STORY_DATA.chapters.push({
       "HP": 127,
       "ATK": 16,
       "DEF": 16,
-      "power": 1709,
-      "storyLv": 60
+      "storyLv": 60,
+      "power": 1709
      },
      "2000000041": {
       "HP": 127,
       "ATK": 16,
       "DEF": 16,
-      "power": 1709,
-      "storyLv": 60
+      "storyLv": 60,
+      "power": 1709
      },
      "2000000042": {
       "HP": 127,
       "ATK": 16,
       "DEF": 16,
-      "power": 1709,
-      "storyLv": 60
+      "storyLv": 60,
+      "power": 1709
      },
      "2000000044": {
       "HP": 240,
       "ATK": 33,
       "DEF": 33,
-      "power": 8337,
-      "storyLv": 60
+      "storyLv": 60,
+      "power": 8337
      }
     }
    },
@@ -1002,9 +1002,9 @@ window.STORY_DATA.chapters.push({
      "1000100011",
      "1000100012"
     ],
+    "max": 5,
     "noFemale": true,
     "maxMor": 39,
-    "max": 5,
     "mustLive": []
    },
    "hero": [
@@ -1042,15 +1042,15 @@ window.STORY_DATA.chapters.push({
       "HP": 80,
       "ATK": 19,
       "DEF": 14,
-      "power": 1126,
-      "storyLv": 60
+      "storyLv": 60,
+      "power": 1126
      },
      "1000000023": {
       "HP": 80,
       "ATK": 17,
       "DEF": 13,
-      "power": 1076,
-      "storyLv": 60
+      "storyLv": 60,
+      "power": 1076
      }
     }
    },
@@ -1116,23 +1116,6 @@ window.STORY_DATA.chapters.push({
       "speaker": "강태안",
       "text": "피식..",
       "expr": "장난"
-     },
-     {
-      "speaker": "내레이션",
-      "text": "태안은 쉽게 불량배들을 물리치고 유연과 헤어졌다."
-     },
-     {
-      "speaker": "불량배-A",
-      "text": "형님. 오늘 저희 연기 어땠습니까?"
-     },
-     {
-      "speaker": "강태안",
-      "text": "ㅋㅋㅋ 잘했어. 내가 입금은 따로 해 줄게",
-      "expr": "장난"
-     },
-     {
-      "speaker": "불량배-B",
-      "text": "감사합니다. 형님!"
      }
     ]
    },
@@ -1152,7 +1135,27 @@ window.STORY_DATA.chapters.push({
    "hero": [
     "2000100008"
    ],
-   "bossId": "1000000024"
+   "bossId": "1000000024",
+   "after": [
+    {
+     "speaker": "내레이션",
+     "text": "태안은 쉽게 불량배들을 물리치고 유연과 헤어졌다."
+    },
+    {
+     "speaker": "불량배-A",
+     "text": "형님. 오늘 저희 연기 어땠습니까?"
+    },
+    {
+     "speaker": "강태안",
+     "text": "ㅋㅋㅋ 잘했어. 내가 입금은 따로 해 줄게",
+     "expr": "장난"
+    },
+    {
+     "speaker": "불량배-B",
+     "text": "감사합니다. 형님!"
+    }
+   ],
+   "afterTitle": "전투 후"
   },
   {
    "no": 9,
@@ -1171,29 +1174,29 @@ window.STORY_DATA.chapters.push({
       "HP": 554,
       "ATK": 97,
       "DEF": 69,
-      "power": 27245,
-      "storyLv": 60
+      "storyLv": 60,
+      "power": 27245
      },
      "1000100009": {
       "HP": 240,
       "ATK": 44,
       "DEF": 33,
-      "power": 8750,
-      "storyLv": 60
+      "storyLv": 60,
+      "power": 8750
      },
      "1000100010": {
       "HP": 251,
       "ATK": 46,
       "DEF": 31,
-      "power": 8801,
-      "storyLv": 60
+      "storyLv": 60,
+      "power": 8801
      },
      "1000100012": {
       "HP": 48,
       "ATK": 8,
       "DEF": 10,
-      "power": 503,
-      "storyLv": 60
+      "storyLv": 60,
+      "power": 503
      }
     }
    },
@@ -1392,8 +1395,8 @@ window.STORY_DATA.chapters.push({
       "HP": 1008,
       "ATK": 50,
       "DEF": 151,
-      "power": 77039,
-      "storyLv": 60
+      "storyLv": 60,
+      "power": 77039
      }
     }
    },
