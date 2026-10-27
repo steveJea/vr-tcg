@@ -188,6 +188,7 @@ insert into public.story_card_pool (id, grade) values
   ('1002400376','RARE'),
   ('1002400377','HIGH RARE'),
   ('1002400378','ULTRA RARE'),
+  ('1100000001','ULTRA RARE'),
   ('1002400380','NORMAL'),
   ('1002400381','NORMAL'),
   ('1002400384','NORMAL'),

@@ -460,16 +460,20 @@ export const ACTIVE = {
   '에이스의 힘이다': (u, p, f) => { const ts = females(f); ts.forEach(t => damageUnit(t, skillDamage(u, t, 0.3), u)); ts.forEach(t => { if (!checkDeath(t, u) && f.field.includes(t) && t.hp > 0 && sChance(0.3)) bleedOn(t, u, 1); }); },   // 강태준
   '제발...살려줘...': (u, p, f) => { const ts = live(f); hitAll(u, f, 1, 0.15); ts.forEach(t => f.field.includes(t) && sChance(0.2) && addStatus(t, 'para', 1, {}, 'para')); },   // [염원] 민유연 (CH7 NPC)
   '사랑해!!!': (u, p, f) => { const pool = [...live(f)]; for (let k = 0; k < 2 && pool.length; k++) { const t = pool.splice(Math.floor(rng() * pool.length), 1)[0]; multiHit(u, t, 5, 0.15); } },
-  // 지세강
+  // 김기림
   '절망하라': (u, p, f, s) => { const t = by(live(f), x => x.card.cost); if (t && multiHit(u, t, 5, 0.3)) u.cd[s.name] = 0; },
   '아파하라': (u, p, f, s) => { const t = by(live(f), x => x.card.cost, -1); if (t && multiHit(u, t, 5, 0.4)) u.cd[s.name] = 0; },
   // 김성진
   'Da nunc': (u, p, f, s) => { const d = hitAll(u, f, 10, 0.2); u.cd[s.name] = Math.max(0, u.cd[s.name] - d); },
   'Tempus est discerpi': (u, p, f) => { live(f).forEach(t => addStatus(t, 'disrupt', 1, {}, 'disrupt')); p.actionLock = Math.max(p.actionLock, 2); },
-  // 최창민
+  // 김동욱
   '잘린다': (u, p, f) => { const ts = live(f); hitAll(u, f, 3, 0.2); ts.forEach(t => f.field.includes(t) && sChance(0.2) && bleedOn(t, u)); },
   '러시안룰렛': (u, p, f) => { const t = by(live(f), x => x.card.cost); if (t) { t.hp = 0; emit({ type: 'dmg', unit: t, dmg: '즉사' }); checkDeath(t, u); }
-    if (u.hp > 1) damageUnit(u, Math.floor(u.hp * 0.99), null); },   // 대가: 자신의 현재 HP 99% 하락 (피해 면역·불사는 뚫지 않음, 최소 1 남음)
+    if (u.hp > 1) damageUnit(u, Math.floor(u.hp * 0.99), null); },
+  // 하승진
+  '처음부터...다시.': (u, p, f) => live(f).forEach(t => { const m = Math.round(t.mp * 0.5); if (m > 0) { t.mp -= m; emit({ type: 'mp', unit: t, amt: -m }); } if (sChance(0.4)) addStatus(t, 'para', 1, {}, 'para'); }),
+  '그게...최선인가?': (u, p, f) => live(f).forEach(t => { t.cd = t.cd || {}; for (const sk of t.sk || []) if (sk.mode === 'active') t.cd[sk.name] = (t.cd[sk.name] || 0) + 2; emit({ type: 'log', text: `${t.card.name} 쿨타임 +2` }); if (sChance(0.4)) addStatus(t, 'para', 1, {}, 'para'); }),
+  '힘들면...죽어': (u, p, f) => { const t = by(live(f), x => x.mp); if (t) { t.hp = 0; emit({ type: 'dmg', unit: t, dmg: '즉사' }); checkDeath(t, u); } },   // 대가: 자신의 현재 HP 99% 하락 (피해 면역·불사는 뚫지 않음, 최소 1 남음)
   // 10/25 신규 액티브
   '핑핑 돌지?': (u, p) => { for (const a of live(p)) addStatus(a, 'evade', 1, { p: 0.1, label: '회피 +10%' }, 'evade'); },   // 서진성
   '무시하지 마세요.': (u, p) => immuneAllies(p, a => a.base.gender === 'FEMALE' && gradeIdx(a) <= gradeIdx('RARE'), 2),   // 류하예
@@ -481,7 +485,7 @@ export const ACTIVE = {
   '약해 보인다고 무시하지 마!': (u, p) => immuneAllies(p, a => a.base.gender === 'FEMALE' && a.card.cost < 35, 1),   // 남태은
   '내가 누군지 아냐?': u => addStatus(u, 'immune', 2, {}, 'immune'),   // 최국선
   '언니...도와줘요.': u => swapSister(u),   // 선나영 → 선미영 2턴
-  // 최창원
+  // 김대욱
   '웃자!': (u, p, f) => { const t = by(live(f), x => x.card.DEF); if (t) multiHit(u, t, 10, t.base.gender === 'FEMALE' ? 0.25 : 0.2); },
   '나약하네..': (u, p, f) => debuffAll(f, '나약하네..', 2, { def: -0.2, label: 'DEF -20%' }),
   '울자!': (u, p, f) => { const t = by(live(f), x => x.card.ATK, -1); if (t) multiHit(u, t, 5, t.base.gender === 'FEMALE' ? 0.35 : 0.3); },
@@ -596,7 +600,7 @@ export const ACTIVE = {
   // ===== SR 스킬 =====
   // 금어진
   '건드리지마!': (u, p, f) => { const t = by(live(f), x => x.base.MOR || 0); if (t) multiHit(u, t, 3, 0.4); },
-  '너는 내가 끝낸다!': (u, p, f) => { const t = live(f).find(x => String(x.base.id) === CHANGWON_ID); if (t && multiHit(u, t, 1, 2.0)) gainMp(u, u.maxMp * 0.5, '최창원 처치'); },
+  '너는 내가 끝낸다!': (u, p, f) => { const t = live(f).find(x => String(x.base.id) === CHANGWON_ID); if (t && multiHit(u, t, 1, 2.0)) gainMp(u, u.maxMp * 0.5, '김대욱 처치'); },
   // 선우민철
   '한 번 들어와봐': u => tauntSelf(u, '한 번 들어와봐', 1, 0.05, 0.1),
   '이게 프로야.': u => addStatus(u, 'thorns', 2, { red: 0.5, cm: 1.2, label: '이게 프로야: 피해 -50%, 반격 +20%' }, 'thorns'),
@@ -781,7 +785,7 @@ export function skillState(u, s) {
   if (u.mp < s.mp) return { ok: false, reason: `MP 부족 (${u.mp}/${s.mp})` };
   if (!u.canAttack) return { ok: false, reason: '이번 턴 행동함' };
   if (!ACTIVE[s.name]) return { ok: false, reason: '미구현' };
-  if (REQ[s.name] && !REQ[s.name](u.owner.foe, u)) return { ok: false, reason: s.name === '지킨다' ? (u.st.vow ? '맹세 유지 중' : '이영아가 필드에 없음') : s.name === '너는 내가 끝낸다!' ? '상대 필드에 최창원 없음' : '대상 없음' };
+  if (REQ[s.name] && !REQ[s.name](u.owner.foe, u)) return { ok: false, reason: s.name === '지킨다' ? (u.st.vow ? '맹세 유지 중' : '이영아가 필드에 없음') : s.name === '너는 내가 끝낸다!' ? '상대 필드에 김대욱 없음' : '대상 없음' };
   return { ok: true };
 }
 /** 액티브 스킬 사용 (그 턴 공격 대신) */
@@ -980,6 +984,9 @@ export function aiSkillScores(u, { noSave = false } = {}) {
       case '내가 누군지 아냐?': sc = n && !u.st.immune && u.hp < u.maxHp * 0.7 ? 88 : 0; break;
       case '언니...도와줘요.': sc = n && !u.swap && poolCard(MIYOUNG_ID) ? 92 : 0; break;
       case '러시안룰렛': sc = n ? 90 + by(f.field, x => x.card.cost).card.cost : 0; break;
+      case '힘들면...죽어': sc = n ? 90 + by(f.field, x => x.mp).card.cost : 0; break;
+      case '처음부터...다시.': sc = n && !canKill ? 70 + Math.round(f.field.reduce((a, t) => a + t.mp, 0) / 20) : 0; break;
+      case '그게...최선인가?': sc = n >= 2 && !canKill ? 78 + n * 3 : 0; break;
       default:
         if (s.type === '디버프') sc = n >= 3 && !canKill ? 80 + n * 3 : 0;
         else if (s.type === '공격') sc = n || (/본진/.test(s.desc) && heroOk) ? (/적 전체|전체/.test(s.target + s.desc) ? 95 + n * 6 : 100) : 0;

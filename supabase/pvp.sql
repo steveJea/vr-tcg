@@ -185,6 +185,7 @@ insert into public.pvp_card_meta (id, grade, cost) values
 ('1002400376','RARE',16),
 ('1002400377','HIGH RARE',29),
 ('1002400378','ULTRA RARE',51),
+('1100000001','ULTRA RARE',50),
 ('1002400380','NORMAL',9),
 ('1002400381','NORMAL',9),
 ('1002400384','NORMAL',14),

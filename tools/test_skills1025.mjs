@@ -20,11 +20,11 @@ const sides = (aIds, bIds, lv = 10) => {
 };
 const sk = (u, name) => u.sk.find(s => s.name === name);
 const cast = (u, name) => { u.canAttack = true; u.mp = u.maxMp; u.cd = {}; return useSkill(u, sk(u, name)); };
-const ID = { 최창민: '1001500315', 조윤하: '2000500111', 이영아: '2000600132', 서진성: '1001500285', 정지선: '2000000016', 류하예: '2000200031', 지세련: '2000200019', 홍다영: '2001500292', 신아린: '2001400261', 최국선: '1000500107', 허유희: '2000000012', 이윤이: '2000400086', 예유진: '2000800171', 남태은: '2001700341', 선나영: '2000400085', 반지아: '2001100231', 선미영: '2000400094' };
+const ID = { 김동욱: '1001500315', 조윤하: '2000500111', 이영아: '2000600132', 서진성: '1001500285', 정지선: '2000000016', 류하예: '2000200031', 지세련: '2000200019', 홍다영: '2001500292', 신아린: '2001400261', 최국선: '1000500107', 허유희: '2000000012', 이윤이: '2000400086', 예유진: '2000800171', 남태은: '2001700341', 선나영: '2000400085', 반지아: '2001100231', 선미영: '2000400094' };
 const N = ['1000100012', '1000100013', '1000100014'];
 setRng(() => 0.99);
-// 최창민: 즉사 + 자신 현재 HP 99% 하락, 면역·불사 중엔 하락 없음
-{ const { A, B } = sides([ID.최창민], N); const c = A[0]; delete c.st.immune; c.hp = 300; const low = B.slice().sort((x, y) => x.card.cost - y.card.cost)[0];
+// 김동욱: 즉사 + 자신 현재 HP 99% 하락, 면역·불사 중엔 하락 없음
+{ const { A, B } = sides([ID.김동욱], N); const c = A[0]; delete c.st.immune; c.hp = 300; const low = B.slice().sort((x, y) => x.card.cost - y.card.cost)[0];
   cast(c, '러시안룰렛'); ok('러시안룰렛: 최저 코스트 적 즉사', !B[0].owner.field.includes(low));
   ok('러시안룰렛: 현재 HP 300 → 3 (99% 하락)', c.hp === 3, c.hp);
   c.hp = 300; c.st.immune = { kind: 'immune', t: 2 }; cast(c, '러시안룰렛'); ok('피해 면역 중엔 HP 그대로', c.hp === 300, c.hp);
@@ -32,7 +32,7 @@ setRng(() => 0.99);
 // 조윤하: 출전 시 회피 +20% 2턴
 { const { A } = sides([ID.조윤하], N); ok('조윤하 미쳐간다: 회피 +20%', A[0].st.evade?.p === 0.2); }
 // 이영아: 출전 즉시 아군 전체 불사 2턴, 즉사도 막음
-{ const { a, A, B } = sides([ID.최창민, ID.이영아], [ID.최창민]); const [c] = A;
+{ const { a, A, B } = sides([ID.김동욱, ID.이영아], [ID.김동욱]); const [c] = A;
   ok('이영아 잔상: 아군 전체 불사', A.every(x => x.st.endure));
   const cheap = A.slice().sort((x, y) => x.card.cost - y.card.cost)[0]; TURN.p = B[0].owner; cast(B[0], '러시안룰렛');
   ok('잔상: 즉사도 막음 (HP 1)', a.field.includes(cheap) && cheap.hp === 1); }

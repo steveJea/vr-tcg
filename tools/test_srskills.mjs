@@ -72,11 +72,11 @@ const N = ['1000100012', '1000100013', '1000100014', '1000100016', '1000200020']
 { setRng(() => 0.99); const { a, b, A, B } = sides(['1002000355', '2002000354'], ['1000100012']); const kj = A[0], ja = A[1], foe = B[0]; TURN.p = b;
   const h = ja.hp, hk = kj.hp; const ev = resolveAttack(b, a, foe, ja); ok('강재아 피격 → 강준철이 대신 맞고 반격', ja.hp === h && kj.hp < hk && ev[0].target === kj && ev[0].d2 > 0);
 }
-// 9) 금어진 조건 (최창원), 서오성 조건 (여성)
-{ let { A, B } = sides(['1000400092', '1001500311'], ['1000100012']); ok('금어진: 최창원 없으면 비활성', !skillState(A[0], sk(A[0], '너는 내가 끝낸다!')).ok, skillState(A[0], sk(A[0], '너는 내가 끝낸다!')).reason);
+// 9) 금어진 조건 (김대욱), 서오성 조건 (여성)
+{ let { A, B } = sides(['1000400092', '1001500311'], ['1000100012']); ok('금어진: 김대욱 없으면 비활성', !skillState(A[0], sk(A[0], '너는 내가 끝낸다!')).ok, skillState(A[0], sk(A[0], '너는 내가 끝낸다!')).reason);
   ok('서오성: 여성 없으면 비활성', !skillState(A[1], sk(A[1], '진짜 악당')).ok);
   ({ A, B } = sides(['1000400092'], ['1002100371', '1000100007'])); B[0].hp = 10; const mp0 = 0; A[0].mp = A[0].maxMp; const r = cast(A[0], '너는 내가 끝낸다!');
-  ok('금어진: 최창원 처치 시 MP 50% 회복', r.ok && !B[0].owner.field.includes(B[0]) && A[0].mp >= Math.round(A[0].maxMp * 0.5) - 1, `mp=${A[0].mp}/${A[0].maxMp}`);
+  ok('금어진: 김대욱 처치 시 MP 50% 회복', r.ok && !B[0].owner.field.includes(B[0]) && A[0].mp >= Math.round(A[0].maxMp * 0.5) - 1, `mp=${A[0].mp}/${A[0].maxMp}`);
 }
 // 10) 문지철 사망 패시브, 고세린 후속 재생, 패시브 턴 시작 피해, 스탯 패시브
 { setRng(() => 0.99); let { a, b, A, B } = sides(['1000600130'], N.slice(0, 3)); const low = B.slice().sort((x, y) => (x.base.MOR || 0) - (y.base.MOR || 0))[0]; const h = low.hp;

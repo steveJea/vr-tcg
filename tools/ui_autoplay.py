@@ -7,7 +7,7 @@ N = int(sys.argv[1]) if len(sys.argv) > 1 else 10
 FX = len(sys.argv) > 2 and sys.argv[2] == 'fx'
 port = sys.argv[3] if len(sys.argv) > 3 else '8765'
 # 의심 카드(유도·수호·부활·회수 관련)를 양쪽 덱 맨 위에 강제 배치
-NAMES = ['최윤희', '강철하', '이혜경', '오채원', '최창원', '최창민', '최지연', '임유리', '신아은', '이윤이', '서성민', '민홍기', '민유연', '한겨울', '진하린']
+NAMES = ['최윤희', '강철하', '이혜경', '오채원', '김대욱', '김동욱', '최지연', '임유리', '신아은', '이윤이', '서성민', '민홍기', '민유연', '한겨울', '진하린']
 STEP = """()=>{const S=TCG.S;if(S.over)return 'over';if(S.turn==='me'&&!S.busy){
   if(Math.random()<0.15&&TCG.canAction('shuffle',S.me).ok){TCG.useAction('me','shuffle');return 'shuffle'}
   for(const c of S.me.hand.slice()) if(TCG.canSummon(c,S.me,S.ai).ok) TCG.summon('me',c);
