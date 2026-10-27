@@ -296,7 +296,7 @@ function recall(who, unit) {
 }
 
 async function attackAll() {
-  if (S?.view) {   // 화면 전투(토벌): 공격 가능한 내 카드가 차례로 공격 → 행동마다 기록(raid_log 재생 검증)
+  if (S?.view) {   // 화면 전투(토벌·PvP·구역 전쟁): 공격 가능한 내 카드가 차례로 공격 → 행동마다 기록(raid_log 재생 검증)
     if (!S.view.ask || S.turn !== 'me') return;
     S.view.batch = S.me.field.filter(u => u.canAttack && u.hp > 0).map(u => u);
     log(`일괄 공격! (${S.view.batch.length}장)`, 'text-emerald-400');
