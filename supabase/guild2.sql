@@ -300,6 +300,28 @@ revoke all on function public.guild_rally(), public.guild_checkin(), public.guil
 grant execute on function public.guild_rally(), public.guild_checkin(), public.guild_rally_claim(int), public.guild_quests(), public.guild_quest_claim(int),
   public.guild_quest_reroll(int), public.guild_weekly_claim(int, int), public.guild_dots() to authenticated;
 
+-- 조직원 상세 (같은 조직만, 공개 정보만)
+create or replace function public.guild_member_info(p_user uuid) returns jsonb language plpgsql stable security definer set search_path = public as $$
+declare me guild_members; x guild_members; pr record;
+begin
+  me := _guild_me(auth.uid());
+  if me.user_id is null then raise exception 'not in guild'; end if;
+  select * into x from guild_members where user_id = p_user and guild_id = me.guild_id;
+  if x.user_id is null then raise exception 'not member'; end if;
+  select rating, wins, losses into pr from pvp_ratings where user_id = p_user and season = _pvp_season() order by rating desc limit 1;
+  return jsonb_build_object('ok', true, 'user_id', x.user_id, 'name', coalesce((select nickname from profiles where id = p_user), '조직원'),
+    'level', coalesce((select level from player_state where user_id = p_user), 1), 'role', x.role, 'joined_at', x.joined_at, 'seen_at', x.seen_at,
+    'loyalty_total', x.loyalty_total,
+    'loyalty_week', coalesce((select sum(delta) from loyalty_ledger where user_id = p_user and delta > 0 and created_at >= (_guild_week()::timestamp at time zone 'Asia/Seoul')), 0),
+    'pvp', case when pr.rating is null then null else jsonb_build_object('rating', pr.rating, 'tier', _pvp_tier(pr.rating), 'wins', pr.wins, 'losses', pr.losses) end,
+    'card', (select o->>'id' from story_progress sp, jsonb_array_elements(coalesce(sp.data->'owned', '[]'::jsonb)) o where sp.user_id = p_user and o->>'uid' = sp.data->>'leader' limit 1),
+    'top', (select coalesce(jsonb_agg(jsonb_build_object('id', t.id, 'level', t.lv) order by t.lv desc), '[]'::jsonb) from (
+              select o->>'id' id, max(coalesce((o->>'level')::int, 1)) lv from story_progress sp, jsonb_array_elements(coalesce(sp.data->'owned', '[]'::jsonb)) o
+              where sp.user_id = p_user and o ? 'id' group by o->>'id' order by 2 desc limit 3) t));
+end $$;
+revoke all on function public.guild_member_info(uuid) from public, anon;
+grant execute on function public.guild_member_info(uuid) to authenticated;
+
 -- 6) 관리자: 조직 출석·의뢰 보기 · 주간 의뢰 다시 뽑기
 create or replace function public.admin_guild_activity(p_gid bigint) returns jsonb language plpgsql stable security definer set search_path = public, auth as $$
 begin

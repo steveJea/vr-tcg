@@ -109,6 +109,8 @@ r = await as(B, `select guild_weekly_claim(1, 100)`); ok(!r.err && +(await q1(`s
 ok(/not reached/.test((await as(B, `select guild_weekly_claim(1, 150)`)).err || ''), '150% 미달');
 // 빨간 점
 x = await v(C, `select guild_dots()`); ok(x.ok && typeof x.rally === 'boolean' && typeof x.quest === 'boolean', '빨간 점');
+x = await v(C, `select guild_member_info('${A}')`); ok(x.ok && x.user_id === A && 'loyalty_week' in x && Array.isArray(x.top) && !('email' in x), '조직원 상세 (공개 정보만)');
+ok(!!(await as(C, `select guild_member_info('${id(9)}')`)).err, '다른 조직/무소속 상세 불가');
 // 보안
 ok(!!(await as(A, `select * from guild_attendance`)).err && !!(await as(A, `select * from guild_claims`)).err, '테이블 직접 읽기 불가');
 ok(!!(await as(A, `select _guild_event('${A}', 'draw', 99)`)).err && !!(await as(A, `select _guild_reward('${A}', ${gid}, '{"gem":999}', 'x', 'y')`)).err, '내부 함수 호출 불가');

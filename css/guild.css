@@ -102,3 +102,7 @@
 .gd-rw{font-size:11px}.gd-rw span{margin-right:5px}.gd-q-a button{padding:7px 10px;border-radius:10px;font-weight:800;background:rgba(255,255,255,.08)}
 .gd-top{display:flex;flex-wrap:wrap;gap:3px 8px;font-size:10px;opacity:.75}
 .gd-all{margin-top:2px}
+.gd-mp-g{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;margin-top:6px}.gd-mp-g span{display:flex;flex-direction:column;align-items:center;padding:5px 2px;border-radius:9px;background:rgba(255,255,255,.05);font-size:12px}.gd-mp-g small{font-size:9.5px;opacity:.65}
+.gd-mp-top{display:flex;gap:6px;justify-content:center;margin-top:6px}.gd-mp-top span{position:relative;width:62px;height:84px;border-radius:9px;overflow:hidden;background:#222}.gd-mp-top img{width:100%;height:100%;object-fit:cover;object-position:top}.gd-mp-top small{position:absolute;bottom:0;inset-inline:0;text-align:center;font-size:10px;background:rgba(0,0,0,.6)}
+.gd-tabic{width:20px;height:20px;vertical-align:middle;margin-right:3px}
+.gd-qtabs button{display:flex;align-items:center;justify-content:center;gap:4px;white-space:nowrap}

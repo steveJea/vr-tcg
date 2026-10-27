@@ -129,8 +129,13 @@
     const canKick = (me.role === 'boss' && x.role !== 'boss') || (me.role === 'officer' && x.role === 'member');
     const boss = me.role === 'boss' && x.role !== 'boss';
     const m = pop(`<div class="gd-mp">${x.card ? `<img class="gd-mp-img" src="${IMG}${x.card}.webp" alt="" onerror="this.remove()">` : '<div class="gd-mp-no">👤</div>'}
-      <div class="gd-mp-n">${ROLE[x.role][0]} ${esc(x.name)}</div><div class="gd-mp-s">${ROLE[x.role][1]} · ${LOY} ${n(x.loyalty_total)} · ${new Date(x.joined_at).toLocaleDateString('ko-KR')} 가입</div>
+      <div class="gd-mp-n">${ROLE[x.role][0]} ${esc(x.name)}</div><div class="gd-mp-s">${ROLE[x.role][1]} · ${new Date(x.joined_at).toLocaleDateString('ko-KR')} 가입</div><div class="gd-mp-d">…</div>
       <div class="gd-mp-a">${boss ? `<button data-role="${x.role === 'officer' ? 'member' : 'officer'}">${x.role === 'officer' ? '간부 해제' : '⚔️ 간부 임명'}</button><button data-tr>👑 보스 넘기기</button>` : ''}${canKick ? '<button class="bad" data-kick>추방</button>' : ''}</div></div>`);
+    const ago = t => { const h = (Date.now() - new Date(t)) / 36e5; return h < 1 ? '방금' : h < 24 ? `${Math.floor(h)}시간 전` : `${Math.floor(h / 24)}일 전`; };
+    rpc('guild_member_info', { p_user: x.user_id }).then(d => { const el = m.querySelector('.gd-mp-d'); if (!el || !d) return;
+      el.innerHTML = `<div class="gd-mp-g"><span><small>레벨</small><b>Lv.${d.level}</b></span><span><small>충성 누적</small><b>${LOY}${n(d.loyalty_total)}</b></span><span><small>이번 주</small><b>${LOY}${n(d.loyalty_week)}</b></span>
+        <span><small>PvP</small><b>${d.pvp ? `${esc(d.pvp.tier)} ${n(d.pvp.rating)}` : '-'}</b></span><span><small>접속</small><b>${ago(d.seen_at)}</b></span></div>
+        ${d.top?.length ? `<div class="gd-mp-top">${d.top.map(c => `<span><img src="${IMG}${c.id}.webp" alt="" loading="lazy" onerror="this.remove()"><small>Lv.${c.level}</small></span>`).join('')}</div>` : ''}`; }).catch(() => { const el = m.querySelector('.gd-mp-d'); if (el) el.remove(); });
     m.querySelector('[data-role]')?.addEventListener('click', async e => { if (await act('guild_set_role', { p_user: x.user_id, p_role: e.currentTarget.dataset.role }, '역할을 바꿨어요')) m.remove(); });
     m.querySelector('[data-tr]')?.addEventListener('click', async () => { if (confirm(`${x.name} 에게 보스를 넘길까요?`) && await act('guild_transfer', { p_user: x.user_id }, '👑 보스를 넘겼어요')) m.remove(); });
     m.querySelector('[data-kick]')?.addEventListener('click', async () => { if (confirm(`${x.name} 을(를) 추방할까요? 72시간 동안 다시 들어올 수 없어요`) && await act('guild_kick', { p_user: x.user_id }, '추방했어요')) m.remove(); });
@@ -171,7 +176,8 @@
   }
   // ---- 2단계: 집결 · 의뢰 (guild2.sql) ----
   const QIC = { phase: '🗡️', stamina: '🔋', pvp_win: '⚔️', tower: '🗼', draw: '🎴', boss: '💀', levelup: '⬆️', checkin: '🕯️' };
-  const qic = (ev, fb) => `<span class="gd-qic"><i>${QIC[ev] || fb || '📜'}</i><img src="img/ui/guild/quest_${ev}.webp" alt="" onerror="this.remove()"></span>`;
+  const QIMG = { pvp_win: 'pvp', draw: 'gacha', checkin: 'gold' };   // boss 는 그림 없음 → 💀
+  const qic = (ev, fb) => `<span class="gd-qic"><i>${QIC[ev] || fb || '📜'}</i><img src="img/ui/guild/quest_${QIMG[ev] || ev}.webp" alt="" onerror="this.remove()"></span>`;
   const RW = { loyalty: LOY, gold: '🪙', gem: '🔮', tickets: '🎟️', exp: '⚜️' };
   const rwTxt = rw => Object.entries(rw || {}).filter(([k, v]) => RW[k] && v).map(([k, v]) => `<span>${RW[k]}${n(v)}</span>`).join('');
   const ERR2 = { 'already checked in': '오늘은 이미 집결했어요', 'already claimed': '이미 받았어요', 'not reached': '아직 조건이 안 됐어요', 'check in first': '먼저 집결하세요',
@@ -207,7 +213,7 @@
       const bar = (p, g) => `<div class="gd-qbar"><i style="width:${Math.min(100, p / g * 100).toFixed(1)}%"></i></div>`;
       const left = Math.max(0, Math.ceil((new Date(Q.week_end) - Date.now()) / 864e5));
       m.querySelector('.gd-pop-panel').innerHTML = `<button class="gd-x" data-x aria-label="닫기">✕</button>
-        <div class="gd-qtabs"><button data-tab="daily" class="${tab === 'daily' ? 'on' : ''}">📜 일일</button><button data-tab="weekly" class="${tab === 'weekly' ? 'on' : ''}">🏴 주간 <small>D-${left}</small></button></div>
+        <div class="gd-qtabs"><button data-tab="daily" class="${tab === 'daily' ? 'on' : ''}">📜 일일</button><button data-tab="weekly" class="${tab === 'weekly' ? 'on' : ''}"><img class="gd-tabic" src="img/ui/guild/quest_weekly.webp" alt="">주간 <small>D-${left}</small></button></div>
         ${tab === 'daily' ? `<div class="gd-ql">${Q.daily.map(q => `<div class="gd-q ${q.claimed ? 'done' : ''}">${qic(q.event, q.icon)}<div class="gd-q-m"><b>${esc(q.label)}</b><small>${q.progress}/${q.goal}</small>${bar(q.progress, q.goal)}<span class="gd-rw">${rwTxt(q.reward)}</span></div>
             <div class="gd-q-a">${q.claimed ? '✔' : q.progress >= q.goal ? `<button class="gd-ok" data-claim="${q.slot}">받기</button>` : Q.reroll_left ? `<button class="gd-rr" data-rr="${q.slot}" title="교체 (하루 1번)">🔄</button>` : ''}</div></div>`).join('')}</div>
           <button class="gd-big gd-all" data-claim="0" ${Q.daily.every(q => q.claimed) && !Q.all_claimed ? '' : 'disabled'}>${Q.all_claimed ? '✔ 3개 완료 보너스' : `3개 완료 보너스 ${rwTxt(Q.all_reward)}`}</button>`
