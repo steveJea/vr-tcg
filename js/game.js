@@ -1312,6 +1312,7 @@ function onHeroClick() {
 }
 
 function showDetail(c, { fromHand = false, hp, unit = null, view = null, power = false } = {}) {
+  const arcadeUi = !S?.story;   // 아케이드만: 아이템 장착·회수·희생 (스토리·탑·PvP·전쟁·토벌은 숨김)
   const e = ELEMENTS[c.class] || ELEMENTS.WIND;
   const check = fromHand ? canSummon(c, S.me, S.ai) : null;
   const myTurn = !!S && S.turn === 'me' && !S.over && !S.busy;
@@ -1332,13 +1333,13 @@ function showDetail(c, { fromHand = false, hp, unit = null, view = null, power =
       <div class="mt-3 flex items-center gap-2 text-sm"><span class="font-black ${unit.level >= RULES.LEVEL_MAX ? 'text-amber-300' : ''}">${unit.level >= RULES.LEVEL_MAX ? ic('crown') + ' 영웅 ' : ''}Lv${unit.level}</span>
         ${unit.level < RULES.LEVEL_MAX ? `<div class="flex-1 h-2 bg-white/10 rounded-full overflow-hidden"><div class="h-full bg-amber-400" style="width:${Math.min(100, unit.xp / xpToNext(unit.level) * 100)}%"></div></div><span class="text-[11px] text-zinc-400">XP ${unit.xp}/${xpToNext(unit.level)}</span>` : '<span class="text-[11px] text-zinc-400">최대 레벨</span>'}</div>
       ${unit.skills.length ? `<div class="mt-1 text-xs text-zinc-300">${unit.skills.map(k => `${icOf(SKILLS[k])} ${SKILLS[k]?.label || k}`).join(' · ')}</div>` : ''}
-      <div class="grid grid-cols-2 gap-2 mt-3">${Object.entries(ITEMS).map(([type, it]) => { const ce = canEquip(type, unit, S.me); return `
-        <button data-equip="${type}" ${ce.ok && myTurn ? '' : 'disabled'} class="py-2 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-black text-sm font-bold">${icOf(it)} ${it.label} ${it.desc()} <span class="text-sky-900">${ic('mana')}${it.cost()}</span><div class="text-[10px] font-normal h-3">${unit.items?.[type] ? '장착됨' : (!myTurn || ce.ok ? '' : ce.reason)}</div></button>`; }).join('')}</div>` : ''}
-    ${unit ? (() => { const rc = canRecall(unit, S.me); return `
+      ${arcadeUi ? `<div class="grid grid-cols-2 gap-2 mt-3">${Object.entries(ITEMS).map(([type, it]) => { const ce = canEquip(type, unit, S.me); return `
+        <button data-equip="${type}" ${ce.ok && myTurn ? '' : 'disabled'} class="py-2 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-black text-sm font-bold">${icOf(it)} ${it.label} ${it.desc()} <span class="text-sky-900">${ic('mana')}${it.cost()}</span><div class="text-[10px] font-normal h-3">${unit.items?.[type] ? '장착됨' : (!myTurn || ce.ok ? '' : ce.reason)}</div></button>`; }).join('')}</div>` : ''}` : ''}
+    ${unit && arcadeUi ? (() => { const rc = canRecall(unit, S.me); return `
       ${rc.ok || !myTurn ? '' : `<div id="recall-reason" class="mt-3 text-sm text-red-400">${rc.reason}</div>`}
       <button id="recall-btn" ${rc.ok && myTurn ? '' : 'disabled'} class="mt-4 w-full py-3 rounded-2xl bg-sky-500 hover:bg-sky-400 disabled:opacity-40 text-black font-bold">회수 (마나 ${rc.cost})</button>
       <div class="text-[11px] text-zinc-500 mt-1 text-center">손패로 돌아가며 HP가 회복되고, 레벨·XP·아이템은 초기화됩니다</div>`; })() : ''}
-    ${unit ? (() => { const sc = canSacrifice(unit, S.me); return `
+    ${unit && arcadeUi ? (() => { const sc = canSacrifice(unit, S.me); return `
       <button id="sacrifice-btn" ${sc.ok && myTurn ? '' : 'disabled'} class="mt-2 w-full py-2.5 rounded-2xl bg-rose-600 hover:bg-rose-500 disabled:opacity-40 text-white font-bold">${ic('bleed', { alt: '' })} 희생 (마나 +${sc.gain})${sc.ok || !myTurn ? '' : ` — ${sc.reason}`}</button>
       <div class="text-[11px] text-zinc-500 mt-1 text-center">카드를 없애고 코스트의 ${Math.round(RULES.SACRIFICE_RATIO * 100)}%를 마나로 (턴당 1회)</div>`; })() : ''}`;
   fixImages($('detail-body'));
@@ -1576,7 +1577,9 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('zoom-vi
 // session = manualMatch/warSession(view:true). 화면은 엔진이 한 행동씩 멈출 때(anim) 연출하고, 내 차례(ask)면 입력을 기다림. 결과·행동 기록은 엔진 것 그대로
 /** raid: { stage, bossId, bossName, hpLeft, hpMax, cap, weakLabel, deadline(ms) } → 균열 토벌 화면 (큰 보스 HP 바 · 누적 피해 · 남은 시간) */
 async function viewBattle({ session, aiName = '상대', bg = 'normal', manual = false, maxTurns: mt = 40, title = '', raid = null } = {}) {
-  const hid = [...document.querySelectorAll('.pvp-modal, .gd-pop, #start-screen, #story-screen')].filter(e => !e.classList.contains('hidden') && e.style.display !== 'none');
+  // 전투 화면을 띄운 팝업 층(조직 .gd-ov · 토벌/전쟁 .gd-pop · PvP · 마이페이지 등)은 전투 동안 숨겼다가 끝나면 그대로 복원
+  const LAYERS = '.pvp-modal, .pvp-vsx, .gd-ov, .gd-pop, .mp-modal, .gal-modal, .ad-modal, #start-screen, #story-screen';
+  const hid = [...document.querySelectorAll(LAYERS)].filter(e => !e.classList.contains('hidden') && e.style.display !== 'none');
   hid.forEach(e => { e.dataset.vbHide = e.style.display; e.style.display = 'none'; });
   let x = session.next();
   const V = { auto: !manual, A0: x.value.A0, B0: x.value.B0, ask: null };
