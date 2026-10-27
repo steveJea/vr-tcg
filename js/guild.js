@@ -108,7 +108,7 @@
         <button data-t="shop"><span>${gi('tile_shop', '🛒')}</span>상점</button>
         ${staff ? `<button data-t="req"><span>${gi('ic_invite', '📨')}</span>신청${st.requests.length ? `<i class="gd-badge">${st.requests.length}</i>` : ''}</button><button data-t="set"><span>${gi('tile_settings', '⚙️')}</span>설정</button>` : ''}
         <button data-t="log"><span>${gi('tile_log', '📜')}</span>기록</button>
-        <button data-t="rally"><span>${gi('tile_rally', '🕯️')}</span>집결<i class="gd-dot" data-dot="rally" hidden></i></button><button data-t="quest"><span>${gi('tile_log', '📜')}</span>의뢰<i class="gd-dot" data-dot="quest" hidden></i></button>
+        <button data-t="rally"><span>${gi('tile_rally', '🕯️')}</span>집결<i class="gd-dot" data-dot="rally" hidden></i></button><button data-t="quest"><span>${gi('tile_quest', '📜')}</span>의뢰<i class="gd-dot" data-dot="quest" hidden></i></button>
         <button data-t="raid"><span class="gd-tic"><img src="img/ui/guild/raid_icon.webp" alt="" onerror="this.remove()"><i>🐉</i></span>토벌<i class="gd-dot" data-dot="raid" hidden></i></button>
         <button data-t="war"><span class="gd-tic"><img src="img/ui/guild/war_icon.webp" alt="" onerror="this.remove()"><i>🏴</i></span>전쟁<i class="gd-dot" data-dot="war" hidden></i></button></div>
       <div class="gd-h">${gi('ic_members', '👥')} 조직원</div>
