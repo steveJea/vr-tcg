@@ -52,7 +52,7 @@ end $$;
 
 -- 2) 숫자 (여기만 고치면 됨)
 create or replace function public._war_numbers() returns jsonb language sql immutable as $$ select '{
-  "min_members": 10, "attacks_per_day": 5, "open_hour": 9, "close_hour": 23, "min_secs": 3, "open_minutes": 10, "lock_minutes": 3, "hp_cap": 60000,
+  "min_members": 10, "attacks_per_day": 5, "open_hour": 9, "close_hour": 23, "min_secs": 3, "open_minutes": 20, "lock_minutes": 3, "hp_cap": 60000,
   "layout": {"def": [1,2,3,4,5], "atk": [6,7,8,9,10], "mid": [11,12,13], "boss": [14], "etc": [15,16,17,18,19,20,21]},
   "roles": {"def": {"atk": 1, "def": 1.2}, "atk": {"atk": 1.2, "def": 1}, "mid": {"atk": 1.15, "def": 1.15}, "boss": {"atk": 1.25, "def": 1.25}, "etc": {"atk": 1, "def": 1}},
   "points": {"def": 200, "atk": 150, "etc": 150, "mid": 250, "boss": 400},

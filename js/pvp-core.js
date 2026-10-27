@@ -35,14 +35,14 @@ export function rngOf(seed) { let a = (Number(seed) >>> 0) || 1; return () => { 
 // 전투를 제너레이터로 돌린다. 내(A) 턴에 행동이 필요하면 yield 로 화면에 묻고, 받은 입력을 acts 에 기록한다.
 // 입력: { k:'skill', i, s } · { k:'atk', i, t } · { k:'auto' }(AI 가 하나 고름) · { k:'end' }. i·t = 처음 배치 순서(번호). 기록(acts)은 그대로 다시 넣으면 같은 결과.
 // 난수는 한 걸음(next)마다만 seed 난수로 바꿔 끼움 → 화면이 Math.random 을 써도 전투 결과는 안 바뀜.
-export function stepper(gen, r) {
-  return { next(input) { const oldR = Math.random, oldE = getEmitter(); Math.random = r; setRng(r); setEmitter(() => {});
+export function stepper(gen, r, sink = null) {
+  return { events: sink, next(input) { const oldR = Math.random, oldE = getEmitter(); Math.random = r; setRng(r); setEmitter(sink ? e => sink.push(e) : () => {});
     try { return gen.next(input); } finally { Math.random = oldR; setRng(oldR); setEmitter(oldE); } } };
 }
 /** 기록(acts)을 순서대로 넣어 끝까지 (다 쓰면 턴 종료). 수동 판 재검증용 */
 export function replay(st, acts) {
   let i = 0, x = st.next();
-  for (let g = 0; !x.done && g < 5000; g++) x = st.next(i < (acts || []).length ? acts[i++] : { k: 'end' });
+  for (let g = 0; !x.done && g < 20000; g++) x = st.next(!x.value?.ask ? undefined : i < (acts || []).length ? acts[i++] : { k: 'end' });   // anim 멈춤(화면용)은 입력 없이 넘김
   return x.value;
 }
 /** 내 턴 입력 하나 → 실제 행동 (안 되는 입력이면 null) */
@@ -54,25 +54,31 @@ export function resolveAct(inp, me, op, A0, B0, turn, autoPick) {
   if (inp.k === 'atk') { const t = B0[inp.t | 0]; if (!t || t.hp <= 0 || !attackTargets(me, op, u).units.includes(t)) return false; return { kind: 'attack', u, t, rec: { k: 'atk', i: inp.i | 0, t: inp.t | 0 } }; }
   return false;
 }
-/** 한 판 (제너레이터). manual=true 면 A 턴마다 yield { ask:true, A, B, A0, B0, t } */
-export function* matchGen(deckA, deckB, r, rec = null, manual = false, acts = null) {
-    const mk = name => ({ name, hp: 1, maxHp: 1, deck: [], hand: [], field: [], mana: 0, maxMana: 0, noBase: true, once: {}, grave: [] });
-    const A = mk('A'), B = mk('B'), aFirst = r() < 0.5;
+/** 한 판 (제너레이터). manual=true 면 A 턴마다 yield { ask:true, A, B, A0, B0, t }
+ *  opt.view: 행동마다 yield { anim:{ k, side, u, t, s, hits } } (전투 화면 연출용 · 결과에 영향 없음)
+ *  opt.put(p, c): 카드 배치 (구역 전쟁: 현재 HP) · opt.maxTurns · opt.out(A, B, win, turns, aFirst)
+ *  PvP·구역 전쟁은 마나 없음: 플레이어 마나는 항상 0 (소환·패 섞기·강화·아이템·용병 등 마나 행동 없음, 처치 마나도 0) */
+export function* matchGen(deckA, deckB, r, rec = null, manual = false, acts = null, opt = {}) {
+    const mk = name => ({ name, hp: 1, maxHp: 1, deck: [], hand: [], field: [], mana: 0, maxMana: 0, noBase: true, once: {}, grave: [], noMana: true });
+    const A = mk('A'), B = mk('B'), aFirst = r() < 0.5, view = !!opt.view, MAXT = opt.maxTurns || MAX_TURNS;
     initPlayers(A, B, aFirst ? A : B);
-    deckA.forEach(c => placeUnit(A, { ...c }, makeUnit)); deckB.forEach(c => placeUnit(B, { ...c }, makeUnit));
+    const put = opt.put || ((p, c) => placeUnit(p, { ...c }, makeUnit));
+    deckA.forEach(c => put(A, c)); deckB.forEach(c => put(B, c));
     refreshAll(A); refreshAll(B);
     const A0 = [...A.field], B0 = [...B.field];
+    const noMana = () => { A.mana = B.mana = 0; A.maxMana = B.maxMana = 0; A.bonusMana = B.bonusMana = 0; };
     // 재생용 기록 (읽기만 함 · 난수/결과에 영향 없음)
     const hpOf = p => Object.fromEntries(p.field.map(u => [u.uid, u.hp]));
     const push = rec ? (x = {}) => rec.push({ ...x, A: hpOf(A), B: hpOf(B) }) : () => {};
     if (rec) { rec.roster = { A: A.field.map(u => ({ uid: u.uid, id: u.base.id, max: u.maxHp })), B: B.field.map(u => ({ uid: u.uid, id: u.base.id, max: u.maxHp })) }; rec.aFirst = aFirst; push({ k: 'start' }); }
     const live = p => p.field.filter(u => u.hp > 0).length;
     const end = () => !live(B) ? 1 : !live(A) ? 0 : -1;
-    const out = (w, t) => ({ win: !!w, turns: t, aLeft: live(A), bLeft: live(B), aFirst });
-    for (let t = 0; t < MAX_TURNS; t++) {
+    const out = (w, t) => opt.out ? opt.out(A, B, !!w, t, aFirst) : ({ win: !!w, turns: t, aLeft: live(A), bLeft: live(B), aFirst });
+    for (let t = 0; t < MAXT; t++) {
       const cur = (t % 2 === 0) === aFirst ? A : B, op = cur.foe;
-      clearBuff(op); refillMana(cur); cur.field.forEach(u => u.canAttack = true); turnStart(cur);
+      clearBuff(op); refillMana(cur); noMana(); cur.field.forEach(u => u.canAttack = true); turnStart(cur);
       push({ k: 'turn', side: cur === A ? 'A' : 'B', t: t + 1 });
+      if (view) yield { anim: { k: 'turn', side: cur === A ? 'A' : 'B', t: t + 1 }, A, B, A0, B0 };
       let e = end(); if (e >= 0) return out(e, t + 1);
       const turn = { used: new Set(), scopes: new Set() };
       for (let k = 0; k < 40; k++) {
@@ -86,15 +92,19 @@ export function* matchGen(deckA, deckB, r, rec = null, manual = false, acts = nu
           if (a.none) { acts?.push({ k: 'end' }); break; }
           acts?.push(a.rec);
         } else { a = autoNext(cur, op, turn); if (!a) break; }
-        if (a.kind === 'skill') { noteUsed(turn, a.s); useSkill(a.u, a.s); } else if (a.t) resolveAttack(cur, op, a.u, a.t);
+        let hits = null;
+        if (a.kind === 'skill') { noteUsed(turn, a.s); useSkill(a.u, a.s); } else if (a.t) hits = resolveAttack(cur, op, a.u, a.t);
+        noMana();
         push({ k: a.kind === 'skill' ? 'skill' : 'atk', side: cur === A ? 'A' : 'B', u: a.u.uid, to: a.t?.uid, s: a.kind === 'skill' ? (a.s?.label || a.s?.name || '') : '' });
         a.u.canAttack = false;
+        if (view) yield { anim: { k: a.kind === 'skill' ? 'skill' : 'atk', side: cur === A ? 'A' : 'B', u: a.u, t: a.t || null, s: a.s || null, hits }, A, B, A0, B0 };
         e = end(); if (e >= 0) return out(e, t + 1);
       }
-      endTurnXp(cur); turnEnd(cur);
+      endTurnXp(cur); turnEnd(cur); noMana();
+      if (view) yield { anim: { k: 'end', side: cur === A ? 'A' : 'B' }, A, B, A0, B0 };
       e = end(); if (e >= 0) return out(e, t + 1);
     }
-    return out(0, MAX_TURNS);   // 시간 초과 = 공격 측 패배 (방어 유리)
+    return out(0, MAXT);   // 시간 초과 = 공격 측 패배 (방어 유리)
 }
 /** 한 판: A(공격) vs B(방어). actions 없으면 둘 다 자동 AI, 있으면 A 는 그 기록대로(수동 판 재검증). 반환 { win: A 승리?, turns, aLeft, bLeft } */
 export function runMatch(deckA, deckB, seed, rec = null, actions = null) {
@@ -102,8 +112,8 @@ export function runMatch(deckA, deckB, seed, rec = null, actions = null) {
   return actions ? replay(st, actions) : st.next().value;
 }
 /** 수동 한 판 세션: s.next(입력) 으로 진행, s.acts 가 기록 */
-export function manualMatch(deckA, deckB, seed, rec = null) {
-  const r = rngOf(seed), acts = [], st = stepper(matchGen(deckA, deckB, r, rec, true, acts), r); st.acts = acts; return st;
+export function manualMatch(deckA, deckB, seed, rec = null, opt = {}) {
+  const r = rngOf(seed), acts = [], st = stepper(matchGen(deckA, deckB, r, rec, opt.manual !== false, acts, opt), r, opt.view ? [] : null); st.acts = acts; return st;
 }
 export const roundSeed = (seed, i) => (Number(seed) + i * 7919) >>> 0;
 /** 시리즈: 1v1 = 1판, 3v3 = 덱 i vs 덱 i 로 최대 3판 (2선승). 판마다 seed + i */

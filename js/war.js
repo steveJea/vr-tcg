@@ -1,7 +1,8 @@
 // ===== 조직 전쟁 「구역 전쟁」 화면 =====
 // 서버: supabase/guild4.sql (war_status / war_enter / war_withdraw / war_set_slot / war_set_deck / war_start / war_finish / war_claim). 전투: js/war-core.js (양쪽 자동, 서버 seed)
 // 그림: img/ui/guild/war_banner.webp · war_bg.webp · war_icon.webp · war_role_<def|atk|mid|boss|etc>.webp · war_ajit.webp · war_npc.webp (없으면 이모지). 카드는 IMG
-import { runWar, warDeck, warCard, WAR_ROLES } from './war-core.js';
+import { runWar, warSession, warDeck, warCard, WAR_ROLES } from './war-core.js';
+import { modeToggle, bindMode, battleMode } from './manual-ui.js';
 
 const IMG = 'https://raw.githubusercontent.com/steveJea/vr-ideal-worldcup/main/img/bt_img/';
 const UI = 'img/ui/guild/';
@@ -104,15 +105,22 @@ function ajitPop(slot, foe) {
     <div class="wr-cards">${a.cards.map(o => { const c = warCard({ uid: 'x', ...o, hp: null }, card), p = !c ? 0 : o.hp == null ? 100 : Math.min(100, o.hp / c.HP * 100);
       return `<span class="rd-th ${p <= 0 ? 'dead' : ''}"><img src="${IMG}${o.id}.webp" alt="" onerror="this.remove()"><i class="wr-hpb"><b style="width:${p}%"></b></i></span>`; }).join('')}</div>
     ${a.decks > 1 ? `<small class="rd-note">방어 덱 ${a.deck}/${a.decks}${a.deck === 1 ? ' · 쓰러뜨리면 2번 덱 등장' : ''}</small>` : ''}
-    ${foe ? `<div class="wr-pick">${[1, 2].map(k => `<button data-go="${k}" ${can && has(k) && atk[k]?.alive !== 0 ? '' : 'disabled'}>${gi('role_officer', '⚔️')} 공격 덱 ${k}<small>${!has(k) ? '없음' : atk[k] ? `${atk[k].alive}장 생존` : '처음'}</small></button>`).join('')}</div>` : ''}
+    ${foe ? `<div class="rd-mode">${modeToggle()}</div><div class="wr-pick">${[1, 2].map(k => `<button data-go="${k}" ${can && has(k) && atk[k]?.alive !== 0 ? '' : 'disabled'}>${gi('role_officer', '⚔️')} 공격 덱 ${k}<small>${!has(k) ? '없음' : atk[k] ? `${atk[k].alive}장 생존` : '처음'}</small></button>`).join('')}</div>` : ''}
     ${foe && !can && !a.destroyed ? `<small class="rd-note">${mt.ended ? '경기 끝' : S.phase !== 'live' ? '전투 시간 09:00~23:00' : !mt.me.alive ? '내 아지트가 무너졌어요' : !mt.me.attacks_left ? '오늘 공격 5회 끝' : '방어조 5곳을 먼저 무너뜨리세요'}</small>` : ''}`);
-  m.querySelectorAll('[data-go]').forEach(b => b.onclick = () => { m.remove(); attack(slot, +b.dataset.go); });
+  bindMode(m); m.querySelectorAll('[data-go]').forEach(b => b.onclick = () => { m.remove(); attack(slot, +b.dataset.go); });
 }
 async function attack(slot, deck) {
   let st; try { st = await rpc('war_start', { p_slot: slot, p_deck: deck }); } catch (er) { toast(errText(er)); return reload(); }
   const A = warDeck(st.atk, card, st.atk_buff), B = warDeck(st.def, card, st.def_buff), log = [], t0 = Date.now();
-  const res = runWar(A, B, st.seed, log);
-  await playback(res, log, t0);
+  // 전투 화면 = 스토리·탑과 같은 화면 (js/game.js TCG.viewBattle). 배경 war_bg. 수동이면 행동 기록을 war_log 로 남김 (tools/war_verify.mjs 재생 검증)
+  const V = window.TCG?.viewBattle, manual = battleMode() === 'manual' && !!V, aiName = `${S.match?.enemy?.find(x => x.slot === slot)?.name || '아지트'}`;
+  let res;
+  if (V) {
+    const ses = warSession(A, B, st.seed, log, { view: true, manual: true });
+    const feed = manual ? ses : { events: ses.events, next: inp => { let x = ses.next(inp); while (!x.done && x.value.ask) x = ses.next({ k: 'auto' }); return x; } };
+    res = await V({ session: feed, aiName, manual, maxTurns: 40, bg: 'war', title: `🏴 구역 전쟁 · ${aiName}` });
+    if (manual) { try { await rpc('war_log', { p_id: st.id, p_actions: ses.acts }); } catch (er) { toast(errText(er)); } }
+  } else { res = runWar(A, B, st.seed, log); await playback(res, log, t0); }
   let fin = null;
   for (let i = 0; i < 3 && !fin; i++) { try { fin = await rpc('war_finish', { p_id: st.id, p_win: res.win, p_atk_hp: res.aHp, p_def_hp: res.bHp }); } catch (er) { if (/too fast/.test(er.message)) await new Promise(r => setTimeout(r, 1500)); else { toast(errText(er)); break; } } }
   if (fin) { S = fin; const r = fin.result || {};
