@@ -179,7 +179,7 @@
   }
   // ---- 2단계: 집결 · 의뢰 (guild2.sql) ----
   const QIC = { phase: '🗡️', stamina: '🔋', pvp_win: '⚔️', tower: '🗼', draw: '🎴', boss: '💀', levelup: '⬆️', checkin: '🕯️' };
-  const QIMG = { pvp_win: 'pvp', draw: 'gacha', checkin: 'gold' };   // boss 는 그림 없음 → 💀
+  const QIMG = { pvp_win: 'pvp', draw: 'gacha', checkin: 'gold' };
   const qic = (ev, fb) => `<span class="gd-qic"><i>${QIC[ev] || fb || '📜'}</i><img src="img/ui/guild/quest_${QIMG[ev] || ev}.webp" alt="" onerror="this.remove()"></span>`;
   const RW = { loyalty: LOY, gold: '🪙', gem: '🔮', tickets: '🎟️', exp: '⚜️' };
   const rwTxt = rw => Object.entries(rw || {}).filter(([k, v]) => RW[k] && v).map(([k, v]) => `<span>${RW[k]}${n(v)}</span>`).join('');
