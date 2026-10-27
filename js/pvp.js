@@ -29,6 +29,16 @@ function modal(id, html, cls = '') {
 }
 const thumb = (c, extra = '') => c ? `<div class="pvp-th g-${GS[c.grade] || 'N'}" title="${esc(c.name)}"><img src="${IMG}${c.id}.webp" alt="${esc(c.name)}" loading="lazy" onerror="this.style.visibility='hidden'"><i>${c.level ? 'Lv' + c.level : GS[c.grade] || ''}</i>${extra}</div>` : '';
 const snapThumbs = list => (list || []).map(o => { const c = card(o.id); return thumb(c && { ...c, level: o.level }); }).join('');
+// ---- 티어 (서버 pvp_tier_table 과 같은 경계) · 엠블럼은 그림순이 그림 전까지 CSS+이모지 (img/ui/tier/<key>.webp 가 생기면 자동 사용) ----
+export const TIERS = [
+  { k: 'bronze', label: '브론즈', min: 0, ic: '🥉' }, { k: 'silver', label: '실버', min: 950, ic: '🥈' }, { k: 'gold', label: '골드', min: 1050, ic: '🥇' },
+  { k: 'platinum', label: '플래티넘', min: 1150, ic: '💠' }, { k: 'diamond', label: '다이아', min: 1250, ic: '💎' }, { k: 'abyss', label: '심연', min: 1400, ic: '🌌' }];
+export const tierOf = r => [...TIERS].reverse().find(t => (r ?? 1000) >= t.min) || TIERS[0];
+const tierBy = k => TIERS.find(t => t.k === k) || null;
+const emb = (t, cls = '') => `<span class="pvp-emb t-${t.k} ${cls}" title="${t.label}"><i>${t.ic}</i><img src="img/ui/tier/${t.k}.webp" alt="" onerror="this.remove()"></span>`;
+const CUR = { gold: '🪙', soul: '🔥', shard: '💠', blood: '🩸', tickets: '🎟️' };
+const rwHtml = rw => Object.entries(rw || {}).filter(([k]) => CUR[k]).map(([k, v]) => `<span>${CUR[k]}${v}</span>`).join('') + (rw?.title === 'abyss' ? '<span class="pvp-ttl">🌌 칭호</span>' : '');
+const fxOff = () => localStorage.getItem('vrTcgSkipFx') === '1' || !!window.TCG_FAST;
 const dleft = () => { const e = st?.season_end ? new Date(st.season_end) : null; if (!e) return ''; const d = Math.max(0, Math.ceil((e - Date.now()) / 864e5)); return `D-${d}`; };
 
 // ---- 메인 ----
@@ -52,7 +62,7 @@ function paint() {
     <div class="pvp-h">⚔️ PvP <small>${dleft()}</small></div>
     <div class="pvp-tabs">${Object.entries(LEAGUES).map(([k, L]) => `<button data-league="${k}" class="${view.league === k ? 'on' : ''}">${L.label}</button>`).join('')}
       <span class="pvp-sep"></span>${Object.keys(MODES).map(k => `<button data-mode="${k}" class="${view.mode === k ? 'on' : ''}">${k}</button>`).join('')}</div>
-    <div class="pvp-stat"><span title="레이팅">🏆 <b>${st.rating}</b></span><span title="승/패">${st.wins}W ${st.losses}L</span><span title="방어">🛡 ${st.def_wins}/${st.def_losses}</span><span title="오늘 남은 횟수">🎫 ${st.left}/${st.max}</span></div>
+    ${myRank()}
     <div class="pvp-decks">${decks.map((d, i) => `<button class="pvp-deck ${d ? '' : 'empty'}" data-edit="${i}">
       <span class="pvp-deck-no">${n > 1 ? i + 1 : '🛡'}</span><span class="pvp-deck-row">${d ? d.uids.map(u => thumb(byUid.get(u) && { ...card(byUid.get(u).id), level: byUid.get(u).level })).join('') : '<span class="pvp-plus">＋</span>'}</span>
       ${view.league === 'hr' && d ? `<small class="pvp-cost">${d.cost}/150</small>` : ''}</button>`).join('')}</div>
@@ -62,9 +72,51 @@ function paint() {
   m.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => { view.mode = b.dataset.mode; save(); open(); });
   m.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => editDeck(+b.dataset.edit));
   m.querySelector('[data-rank]').onclick = rankings;
+  m.querySelector('[data-tiers]').onclick = tierTable;
+  if (st.pending) claimTier();
   m.querySelector('[data-go]').onclick = fight;
 }
 const save = () => localStorage.setItem(LS, JSON.stringify(view));
+/** 내 랭크 카드: 엠블럼 · 레이팅 · 다음 티어까지 바 · 승패 · D-day · 연승 */
+function myRank() {
+  const t = tierOf(st.rating), i = TIERS.indexOf(t), nx = TIERS[i + 1];
+  const pct = nx ? Math.max(0, Math.min(100, (st.rating - t.min) / (nx.min - t.min) * 100)) : 100;
+  return `<button class="pvp-me t-${t.k} ${st.abyss ? 'has-abyss' : ''}" data-tiers aria-label="티어 보상">
+    ${emb(t, 'big')}
+    <span class="pvp-me-main"><span class="pvp-me-top"><b class="pvp-me-tier">${t.label}</b><b class="pvp-me-rt">${st.rating}</b>${st.streak >= 2 ? `<span class="pvp-streak">🔥${st.streak}</span>` : ''}</span>
+      <span class="pvp-bar"><i style="width:${pct.toFixed(1)}%"></i></span>
+      <span class="pvp-me-sub"><span>${st.wins}W ${st.losses}L</span><span>🛡${st.def_wins}/${st.def_losses}</span><span>🎫${st.left}/${st.max}</span><span>${nx ? `${nx.ic} ${nx.min - st.rating}` : 'MAX'}</span><span class="pvp-dd">${dleft()}</span></span></span></button>`;
+}
+/** 티어·연승 보상표 (바깥 누르면 닫힘) */
+function tierTable() {
+  const cur = tierOf(st.rating).k, tiers = st.tiers || TIERS.map(t => ({ tier: t.k, min: t.min, reward: {} }));
+  modal('pvp-tiers', `<button class="pvp-x" data-x>✕</button><div class="pvp-h">🏆 시즌 보상 <small>${dleft()}</small></div>
+    <div class="pvp-tt">${[...tiers].reverse().map(x => { const t = tierBy(x.tier) || TIERS[0]; return `<div class="pvp-tt-row t-${t.k} ${t.k === cur ? 'on' : ''}">${emb(t)}<b>${t.label}</b><small>${x.min}+</small><span class="pvp-rw">${rwHtml(x.reward)}</span></div>`; }).join('')}</div>
+    <div class="pvp-h pvp-h2">🔥 연승</div>
+    <div class="pvp-tt">${(st.streaks || []).map(x => `<div class="pvp-tt-row ${st.streak >= x.n ? 'got' : ''}"><span class="pvp-streak">🔥${x.n}</span><span class="pvp-rw">${rwHtml(x.reward)}</span></div>`).join('')}</div>`, 'pvp-sub');
+}
+/** 지난 시즌 티어 보상 자동 수령 (서버가 1회만 지급) */
+async function claimTier() {
+  const p = st.pending; st.pending = null;
+  let r; try { r = await rpc('pvp_claim_tier', { p_league: view.league, p_mode: view.mode }); } catch (e) { return; }
+  const t = tierBy(r.tier) || TIERS[0];
+  window.VRPlayer?.wallet?.(true);
+  modal('pvp-claim', `<div class="pvp-claim t-${t.k}">${emb(t, 'huge')}<div class="pvp-claim-t">${t.label}</div><small>지난 시즌 · 🏆 ${r.rating}</small><div class="pvp-rw big">${rwHtml(r.reward)}</div></div>
+    <div class="pvp-acts"><button class="pvp-go" data-x>받기</button></div>`, 'pvp-sub');
+}
+/** VS 연출 (~1.5초 · 탭하면 넘김 · 연출 끄기면 생략) */
+function vsScreen(s) {
+  if (fxOff()) return Promise.resolve();
+  const lead = d => d?.[0]?.[0]?.id, me = lead(s.me), op = lead(s.opp), ot = tierOf(s.opp_rating), mt = tierOf(s.rating);
+  return new Promise(done => {
+    const el = document.createElement('div'); el.className = 'pvp-vsx'; el.setAttribute('role', 'button'); el.setAttribute('aria-label', '탭하여 넘기기');
+    el.innerHTML = `<div class="pvp-vsx-side me">${me ? `<img src="${IMG}${me}.webp" alt="">` : ''}<div class="pvp-vsx-tag">${emb(mt)}<b>${esc((document.querySelector('.acct-name')?.textContent || '나').replace(/님$/, ''))}</b><small>${s.rating}</small></div></div>
+      <div class="pvp-vsx-side op">${op ? `<img src="${IMG}${op}.webp" alt="">` : ''}<div class="pvp-vsx-tag">${emb(ot)}<b>${esc(s.opp_name)}${s.bot ? ' 🤖' : ''}</b><small>${s.opp_rating}</small></div></div>
+      <div class="pvp-vsx-vs">VS</div>`;
+    let t = 0; const end = () => { clearTimeout(t); el.classList.add('out'); setTimeout(() => { el.remove(); done(); }, 180); };
+    el.addEventListener('click', end, { once: true }); document.body.appendChild(el); t = setTimeout(end, 1500);
+  });
+}
 
 // ---- 덱 편집 (PvP 전용 · 마이 덱에서 불러오기) ----
 function editDeck(slot) {
@@ -117,6 +169,7 @@ function editDeck(slot) {
 async function fight() {
   const go = document.querySelector('#pvp-modal [data-go]'); if (go) go.disabled = true;
   let s; try { s = await rpc('pvp_start', { p_league: view.league, p_mode: view.mode }); } catch (e) { toast(errText(e)); if (go) go.disabled = false; return; }
+  await vsScreen(s);
   const toCards = d => d.map(o => snapCard(o, card)).filter(Boolean);
   const res = runSeries(view.mode, s.me.map(toCards), s.opp.map(toCards), s.seed, true);
   // 결과는 재생 전에 먼저 1회 보고 (재생 중 이탈해도 결과 동일 · 중복 보고 없음)
@@ -125,11 +178,13 @@ async function fight() {
   const delta = rep ? rep.delta : -s.dl;
   const m = modal('pvp-result', `<button class="pvp-x" data-x>✕</button>
     <div class="pvp-res ${res.win ? 'win' : 'lose'}">${res.win ? 'WIN' : 'LOSE'}</div>
-    <div class="pvp-vs"><span>${esc(s.opp_name)}${s.bot ? ' 🤖' : ''}</span><small>🏆 ${s.opp_rating}</small></div>
+    <div class="pvp-vs">${emb(tierOf(s.opp_rating))}<span>${esc(s.opp_name)}${s.bot ? ' 🤖' : ''}</span><small>🏆 ${s.opp_rating}</small></div>
+    ${rep?.streak >= 2 ? `<div class="pvp-res-streak"><span class="pvp-streak big">🔥${rep.streak}</span>${rep.streak_reward ? `<span class="pvp-rw">${rwHtml(rep.streak_reward)}</span>` : ''}</div>` : ''}
     ${res.rounds.map((r, i) => `<div class="pvp-round ${r.win ? 'win' : 'lose'}"><div class="pvp-side">${snapThumbs(s.me[i])}</div><b>${r.win ? '○' : '✕'}</b><div class="pvp-side foe">${snapThumbs(s.opp[i])}</div></div>`).join('')}
-    <div class="pvp-delta ${delta >= 0 ? 'up' : 'down'}">🏆 ${(rep?.rating ?? s.rating - s.dl)} <b>${delta >= 0 ? '+' : ''}${delta}</b></div>
+    <div class="pvp-delta ${delta >= 0 ? 'up' : 'down'}">${emb(tierOf(rep?.rating ?? s.rating - s.dl))} ${(rep?.rating ?? s.rating - s.dl)} <b>${delta >= 0 ? '+' : ''}${delta}</b></div>
     <div class="pvp-acts"><button class="pvp-go" data-x>확인</button></div>`, 'pvp-sub');
   m.addEventListener('click', e => { if (e.target === m || e.target.closest('[data-x]')) open(); });
+  if (rep?.streak_reward) window.VRPlayer?.wallet?.(true);
 }
 
 // ---- 전투 재생 (계산된 전투 기록 그대로 · SKIP = 결과로) ----
@@ -171,16 +226,16 @@ function playback(s, res) {
 }
 
 // ---- 랭킹 ----
-const rkRow = (x, nm) => `<div class="pvp-rk-row ${x.me ? 'me' : ''}"><b>${x.rank <= 3 ? ['🥇', '🥈', '🥉'][x.rank - 1] : x.rank}</b><span>${esc(nm ?? x.name)}</span><small>${x.wins}W ${x.losses}L</small><em>${x.rating}</em></div>`;
+const rkRow = (x, nm) => `<div class="pvp-rk-row ${x.me ? 'me' : ''}"><b>${x.rank <= 3 ? ['🥇', '🥈', '🥉'][x.rank - 1] : x.rank}</b><span class="pvp-rk-nm">${emb(tierBy(x.tier) || tierOf(x.rating), 'sm')}<span class="${x.abyss ? 'pvp-abyss-name' : ''}">${esc(nm ?? x.name)}</span></span><small>${x.wins}W ${x.losses}L</small><em>${x.rating}</em></div>`;
 const rkRows = r => ((r?.top || []).slice(0, 10).map(x => rkRow(x)).join('') || '<div class="pvp-empty">—</div>') + (r?.me && !(r.top || []).slice(0, 10).some(x => x.me) ? rkRow(r.me, '나') : '');
 async function rankings() {
   const m = modal('pvp-ranking', `<div class="pvp-empty">…</div>`, 'pvp-sub');
   let r; try { r = await rpc('pvp_rankings', { p_league: view.league, p_mode: view.mode, p_season: null }); } catch (e) { m.querySelector('.pvp-panel').innerHTML = `<div class="pvp-empty">${esc(errText(e))}</div>`; return; }
   m.querySelector('.pvp-panel').innerHTML = `<button class="pvp-x" data-x>✕</button><div class="pvp-h">🏅 ${LEAGUES[view.league].label} · ${view.mode}</div>
-    <div class="pvp-rk">${(r.top || []).map(x => `<div class="pvp-rk-row ${x.me ? 'me' : ''}"><b>${x.rank <= 3 ? ['🥇', '🥈', '🥉'][x.rank - 1] : x.rank}</b><span>${esc(x.name)}</span><small>${x.wins}W ${x.losses}L</small><em>${x.rating}</em></div>`).join('') || '<div class="pvp-empty">—</div>'}</div>
+    <div class="pvp-rk">${(r.top || []).map(x => rkRow(x)).join('') || '<div class="pvp-empty">—</div>'}</div>
     ${r.me && !(r.top || []).some(x => x.me) ? `<div class="pvp-rk-row me"><b>${r.me.rank}</b><span>나</span><small>${r.me.wins}W ${r.me.losses}L</small><em>${r.me.rating}</em></div>` : ''}`;
 }
 
 const bind = () => { const b = $('main-pvp'); if (b) b.onclick = open; };
 bind(); document.addEventListener('DOMContentLoaded', bind);
-window.VRPvp = { open };
+window.VRPvp = { open, tierOf };
