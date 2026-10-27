@@ -20,3 +20,5 @@
 .pvp-top{margin-top:10px}
 .pvp-top-h{font-size:.75rem;font-weight:800;opacity:.75;margin:0 2px 4px}
 .pvp-top .pvp-rk-row{padding:5px 8px}
+/* 아케이드 허브(z 55) 위에 아케이드 설정 레이어 */
+#arcade-opts{z-index:60}
