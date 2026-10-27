@@ -2,13 +2,14 @@
 // 양측 AI. 실제 퀘스트 규칙: 양측 5장 전부 필드 시작, 손패·드로우 없음, 진영 없음(양측 noBase), 적 전멸 = 승리, 40턴 초과 = 패배
 // 내 덱 모델: 층 리더 등급 카드 5장(같은 등급 우선, 모자라면 한 단계 아래), 각 카드 전투력 ≈ 목표 × ratio (레벨로 맞춤). ratio 0.8 / 1.0 / 1.2
 import { readFileSync } from 'fs';
-import { setSkillData, initPlayers, placeUnit, turnStart, turnEnd, useSkill, aiPickSkill, refreshAll } from '../js/skills.js';
-import { RULES, parseCSV, aiPickTarget, makeUnit, resolveAttack, refillMana, clearBuff, endTurnXp, setCardPool } from '../js/rules.js';
+import { skillsOf, setSkillData, initPlayers, placeUnit, turnStart, turnEnd, useSkill, aiPickSkill, refreshAll } from '../js/skills.js';
+import { skillCountMult, RULES, parseCSV, aiPickTarget, makeUnit, resolveAttack, refillMana, clearBuff, endTurnXp, setCardPool } from '../js/rules.js';
 await import('../js/quest-gen.js');
 const G = globalThis.VRQuestGen;
 const rd = p => readFileSync(new URL(p, import.meta.url), 'utf8');
 const pool = parseCSV(rd('../data/cards.csv')), combos = JSON.parse(rd('../data/combos.json')), cfg = JSON.parse(rd('../data/quest.json'));
 setCardPool(pool); setSkillData(JSON.parse(rd('../data/skills.json')), combos);
+globalThis.VRQuestSkillMult = c => skillCountMult(skillsOf(c?.id));   // 탑 목표 맞춤: 스킬 보정 제외
 const games = +(process.argv[2] || 200);
 const FLOORS = (process.argv[3] || '1,10,30,59,60,79,80,100,130,145,146,180,209,210,221,222,250,289,299,300,320,330,349,350').split(',').map(Number);
 const RATIOS = (process.env.Q_RATIOS || '0.8,1.0,1.2').split(',').map(Number);

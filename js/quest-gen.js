@@ -13,6 +13,8 @@
   const capOf = g => (LV_CAP[g] || 20) + 5 * (MAX_EX[g] || 1);
   const lvPct = (g, L) => Math.round((LV_RATE[g] || 0.01) * (Math.max(1, L) - 1) * 100);
   const powerAt = (c, L) => Math.round((+c.power || 0) * (1 + lvPct(c.grade, L) / 100));
+  /** 층 목표 맞춤용 전투력: 스킬 수 보정(skillMult)을 뺀 값 → 스킬 전투력 반영 전과 같은 적 선택 유지. 표시 전투력은 powerAt(스킬 포함) */
+  const matchAt = (c, L) => Math.round((+c.power || 0) / (globalThis.VRQuestSkillMult?.(c) || 1) * (1 + lvPct(c.grade, L) / 100));
   function rngOf(seed) { let a = (seed * 2654435761 + 0x9e3779b9) >>> 0; return () => { a = (a + 0x6d2b79f5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
   const pick = (r, list) => list[Math.floor(r() * list.length)];
   /** 레벨 L 적 카드 (전투용 카드 객체): 스탯·전투력 반영 */
@@ -21,16 +23,16 @@
     return { ...c, HP: Math.round(+c.HP * m), ATK: Math.round(+c.ATK * m), DEF: Math.round(+c.DEF * m), power: powerAt(c, L), qLevel: L };
   }
   /** 목표 이하로 가장 큰 레벨 */
-  function bestLevel(c, T) { let L = 0; for (let l = 1; l <= capOf(c.grade); l++) if (powerAt(c, l) <= T) L = l; return L; }
+  function bestLevel(c, T) { let L = 0; for (let l = 1; l <= capOf(c.grade); l++) if (matchAt(c, l) <= T) L = l; return L; }
   /** [lo, hi] 안에 드는 레벨 목록 */
-  function levelsIn(c, lo, hi) { const out = []; for (let l = 1; l <= capOf(c.grade); l++) { const p = powerAt(c, l); if (p >= lo && p <= hi) out.push(l); } return out; }
+  function levelsIn(c, lo, hi) { const out = []; for (let l = 1; l <= capOf(c.grade); l++) { const p = matchAt(c, l); if (p >= lo && p <= hi) out.push(l); } return out; }
 
   function pickLeader(r, pool, f, prefer) {
     const T = f.power, cands = [];
     for (const c of pool) {
       if (c.grade !== f.grade) continue;
       const L = bestLevel(c, T); if (!L) continue;
-      cands.push({ c, L, ratio: powerAt(c, L) / T });
+      cands.push({ c, L, ratio: matchAt(c, L) / T });
     }
     if (prefer) { const pc = cands.filter(x => prefer.has(String(x.c.id)) && x.ratio >= 0.9); if (pc.length) { const x = pick(r, pc); return { c: x.c, L: x.L }; } }
     if (!cands.length) {   // 목표가 그 등급 최저보다 낮음 → 가장 약한 카드 Lv.1
@@ -70,9 +72,9 @@
     let combo = null, prefer = null;
     if (f.bond) {
       // 조합 고르기: 멤버가 리더(목표의 90% 이상) 또는 나머지 범위에 들어갈 수 있는 비율이 높은 조합 우선
-      const canLead = c => c.grade === f.grade && bestLevel(c, f.power) && powerAt(c, bestLevel(c, f.power)) >= f.power * 0.9;
+      const canLead = c => c.grade === f.grade && bestLevel(c, f.power) && matchAt(c, bestLevel(c, f.power)) >= f.power * 0.9;
       const fit = cb => { const ms = cb.cards.map(id => byId.get(String(id))), L = ms.find(canLead); if (!L) return -1;
-        const lp = powerAt(L, bestLevel(L, f.power)); return ms.filter(c => c === L || levelsIn(c, lp * rlo, lp * rhi).length).length / ms.length; };
+        const lp = matchAt(L, bestLevel(L, f.power)); return ms.filter(c => c === L || levelsIn(c, lp * rlo, lp * rhi).length).length / ms.length; };
       const cs = combos.filter(cb => cb.cards.length <= n && cb.cards.every(id => byId.has(String(id)) && allowed(byId.get(String(id))))).map(cb => ({ cb, s: fit(cb) })).filter(x => x.s > 0);
       const best = cs.length ? Math.max(...cs.map(x => x.s)) : 0;
       const top = cs.filter(x => x.s >= best - 1e-9).map(x => x.cb);
@@ -102,7 +104,7 @@
     }
     // 범위에 맞는 카드가 모자라면 범위 밖 가장 가까운 카드로 채움
     if (out.length < n) {
-      const rest = pool.filter(c => !used.has(String(c.id)) && allowed(c)).map(c => { const L = bestLevel(c, hi) || 1; return { c, L, d: Math.abs(powerAt(c, L) - (lo + hi) / 2) }; }).sort((a, b) => a.d - b.d);
+      const rest = pool.filter(c => !used.has(String(c.id)) && allowed(c)).map(c => { const L = bestLevel(c, hi) || 1; return { c, L, d: Math.abs(matchAt(c, L) - (lo + hi) / 2) }; }).sort((a, b) => a.d - b.d);
       for (const x of rest) { if (out.length >= n) break; out.push(leveled(x.c, x.L)); used.add(String(x.c.id)); }
     }
     return { floor: f.floor, enemies: out, leader, combo: comboOk ? combo.name : null, boss: f.boss || null, range: [lo, hi] };

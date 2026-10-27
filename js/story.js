@@ -128,7 +128,7 @@
   const ptOk = b => { const cap = ptCap(ptSum(b)); return STATS.every(s => (b?.[s] | 0) <= cap); };
   const statCalc = (o, s) => { const c = card(o.id); return Math.round(c[s] * (1 + exbOf(o) / 100) * (1 + lvPct(o) / 100)) + ptGain(s, (o.boost || {})[s]); };
   /** 레벨·EX 반영 power: 카드 power × (1+EX%) × (1+레벨%) (스탯과 같은 배율, js/pvp-core.js snapCard 와 같음) */
-  const powerCalc = o => { const c = card(o.id); return Math.round((+c?.power || 0) * (1 + exbOf(o) / 100) * (1 + lvPct(o) / 100)); };
+  const powerCalc = o => { const c = card(o.id); return Math.round((+c?.power || 0) * (1 + exbOf(o) / 100) * (1 + lvPct(o) / 100) * (window.TCG?.skillLvPowerMult?.(o.id, o.skillLv) || 1)); };   // + 스킬 레벨
   function boosted(o) {
     const c = card(o.id); if (!c) return null;
     return { ...c, name: exName(o, c.name), ex: exOf(o), slv: Math.max(1, o.level | 0 || 1), ATK: statCalc(o, 'ATK'), HP: statCalc(o, 'HP'), DEF: statCalc(o, 'DEF'), power: powerCalc(o), ...(o.skillLv && typeof o.skillLv === 'object' ? { skillLv: { ...o.skillLv } } : {}) };
