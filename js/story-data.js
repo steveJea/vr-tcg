@@ -959,7 +959,9 @@ window.STORY_DATA.portraits = { '문지예': 'mun_jiye', '문지아': 'mun_jia',
 window.STORY_DATA.exprSlug = { '기본': 'base', '보통': 'base', '화남': 'angry', '분노': 'angry', '웃음': 'smile', '슬픔': 'sad', '놀람': 'surprised', '장난': 'playful',
   base: 'base', normal: 'base', angry: 'angry', smile: 'smile', sad: 'sad', surprised: 'surprised', playful: 'playful',
   '미침': 'crazy', '싸늘': 'cold', '우울': 'sad', crazy: 'crazy', cold: 'cold',
-  '하품': 'yawn', '야비': 'sneer', '야비한미소': 'sneer', '짜증': 'angry', '당황': 'surprised', yawn: 'yawn', sneer: 'sneer' };   // 챕터 0 시트 표정 (하품·야비한미소 전용 그림: im_yuri_yawn / im_yuri_sneer)
+  '하품': 'yawn', '야비': 'sneer', '야비한미소': 'sneer', '짜증': 'angry', '당황': 'surprised', yawn: 'yawn', sneer: 'sneer' };   // 챕터 0 시트 표정 (하품·야비한미소 전용 그림: im_yuri_c0_yawn / im_yuri_c0_sneer)
+// 챕터 0 전용: 새 임유리 초상화 (im_yuri_c0_*). 챕터 4·6 은 기존 im_yuri_* 그대로
+window.STORY_DATA.chapterPortraits = { 0: { '임유리': 'im_yuri_c0' } };
 window.STORY_DATA.exprAlt = { smile: 'playful', playful: 'smile', crazy: 'playful', cold: 'angry', sneer: 'playful', yawn: 'base' };
 
 // ===== 일일 카드 뽑기 확률 (서버 supabase/gacha.sql 과 동일하게 유지) =====
