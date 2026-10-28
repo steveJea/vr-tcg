@@ -37,7 +37,7 @@
     }
     return rpc(name, Object.keys(args).length ? args : undefined);
   }
-  const ERR = m => /daily limit/.test(m) ? `오늘 도전 가능한 층을 다 썼어요 (하루 ${status?.daily ?? 30}층, 한국 시간 자정에 초기화)` : /level too low/.test(m) ? `유저 레벨 ${status?.min_level ?? 5} 이상부터 도전할 수 있어요` : /closed today/.test(m) ? '오늘은 열리지 않는 탑이에요' : null;
+  const ERR = m => /bag full/.test(m) ? '🎒 장비 가방이 꽉 찼어요. 가방을 정리하거나 칸을 늘린 뒤 도전해 주세요' : /daily limit/.test(m) ? `오늘 도전 가능한 층을 다 썼어요 (하루 ${status?.daily ?? 30}층, 한국 시간 자정에 초기화)` : /level too low/.test(m) ? `유저 레벨 ${status?.min_level ?? 5} 이상부터 도전할 수 있어요` : /closed today/.test(m) ? '오늘은 열리지 않는 탑이에요' : null;
   async function rpc(name, args) {
     if (M()?.rpc) return M().rpc(name, args);
     const sb = window.VRCloud?.sb; if (!sb) throw new Error('서버에 연결할 수 없어요');
@@ -192,6 +192,7 @@
     if (next) $('q-next').onclick = () => { sel = next; challenge(next); };
     if (bossSw) $('q-win-sweep').onclick = () => { sel = next; sweep(); };
     $('q-back').onclick = () => { sel = next || n; render(); };
+    window.VRGear?.showDrops?.();   // 장비 PR4: 층 드롭
   }
 
   // ----- 소탕: 다음 층부터 연속된 일반 층을 내 덱으로 자동 전투 (supabase/quest_sweep.sql). 보스 층(10의 배수)에서 멈춤. 행동력 없음 -----
@@ -246,6 +247,7 @@
       <div class="q-sw-stop">${why}</div>
       <div class="q-sw-prog small">${prog.join('')}</div>
       <div class="flex gap-2 mt-4">${stop.why === 'boss' ? `<button class="story-btn flex-1" id="q-sw-boss">👑 ${stop.floor}층 도전</button>` : ''}<button class="story-back flex-1" data-close-pop>닫기</button></div>`);
+    window.VRGear?.showDrops?.();   // 장비 PR4: 소탕 드롭
     const bb = $('q-sw-boss'); if (bb) bb.onclick = () => { rp.close(true); sel = stop.floor; challenge(stop.floor); };
   }
 
