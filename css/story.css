@@ -637,3 +637,5 @@ span.story-lvpct { background: rgba(251,191,36,.12); border: 1px solid rgba(251,
 .awaken-toast b { font-size: 26px; letter-spacing: .1em; } .awaken-toast span { font-size: 14px; }
 @keyframes awakenIn { 0% { opacity: 0; transform: translate(-50%,-50%) scale(1.6); } 12% { opacity: 1; transform: translate(-50%,-50%) scale(1); } 80% { opacity: 1; } 100% { opacity: 0; } }
 .awaken-toast[style*="url("] { width: 92vw; max-width: 420px; aspect-ratio: 16/9; justify-content: flex-end; background-size: cover; background-position: center 30%; }
+/* 챕터 0 강제 10회 프리미엄 영입: 나가기·탭·1회·젬 숨김 */
+.gr-forced ~ * .story-back, body:has(.gr-forced) .story-back, body:has(.gr-forced) .story-nav, .gr-forced .gr-banners, .gr-forced [data-draw="1"], .gr-forced .gr-gem { display: none !important; }
