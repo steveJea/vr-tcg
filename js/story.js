@@ -281,7 +281,8 @@
     await load();
     await checkChapters(); curCh = null; tickets = null;
     if (!save.openingSeen) return renderOpening();
-    if (ch0Pending()) return autoCh0();   // 챕터 0 미클리어(새·기존 사용자 모두): 목록 대신 바로 시작 (클리어 기록 = 서버 진행, 비로그인 모의는 localStorage)
+    if (ch0Pending()) return autoCh0();
+    if (pullPending()) return forcedPull();   // 챕터 0 클리어 후 강제 10회 프리미엄 영입 (끝낼 때까지 매번)   // 챕터 0 미클리어(새·기존 사용자 모두): 목록 대신 바로 시작 (클리어 기록 = 서버 진행, 비로그인 모의는 localStorage)
     if (!save.starter) return renderSelect();
     renderHub();
     // 스탯 규칙 변경 안내 (한 번만)
@@ -330,6 +331,7 @@
   const replayBtn = `<button class="story-back" data-go="opening">${ic('opening', { alt: '' })} 오프닝 다시 보기</button>`;
 
   function renderSelect() {
+    if (pullPending()) return forcedPull();
     show(`<div class="text-center"><div class="story-chapter-sub">MAIN STORY</div><div class="text-2xl md:text-3xl font-black mt-1">함께할 캐릭터를 골라 주세요</div>
       <div class="text-sm text-zinc-400 mt-1">고른 인재는 내 인재로 영구 귀속되고, 리더가 돼요. (나중에 바꿀 수 없어요)</div></div>
       <div class="story-select">${D.starters.map(s => { const c = card(s.id); return c ? `<button class="story-pick" data-pick="${s.id}">${tile(c)}<div class="text-xs text-zinc-400 mt-1 story-intro-text">${esc(introOf(s))}</div></button>` : ''; }).join('')}</div>
@@ -374,6 +376,26 @@
     el.addEventListener('click', () => { try { localStorage.setItem(k, '1'); } catch {} el.remove(); next(); });
     document.body.appendChild(el);
   }
+  // ----- 챕터 0 클리어 보상: 소환권 10장(기존 '챕터 클리어 +10' 그대로) → 10회 프리미엄 영입 강제 -----
+  // 끝 표시: 서버 save.ch0Pull (story_mark_seen('ch0Pull'), supabase/story_ch0_pull.sql) · 서버 함수가 아직 없으면 이 브라우저 localStorage
+  const PULL_KEY = () => `vrCh0Pull:${user()?.id || 'guest'}`;
+  let forcedPullOn = false;
+  const pullPending = () => { const c = D.chapters.find(x => x.id === 0); if (!c || !chapterDone(c) || save?.ch0Pull) return false; try { if (localStorage.getItem(PULL_KEY())) return false; } catch {} return true; };
+  async function markPullDone() {
+    save.ch0Pull = true; try { localStorage.setItem(PULL_KEY(), '1'); } catch {}
+    if (serverMode) { try { await cloud().sb.rpc('story_mark_seen', { p_key: 'ch0Pull' }); } catch {} }   // SQL 전이면 'invalid key' → localStorage 만으로 동작
+    else await persist();
+  }
+  async function forcedPull() {
+    const r = await syncTickets();
+    if ((tickets | 0) < 10) { await markPullDone(); return enter(); }   // 소환권이 이미 쓰였으면(예: 다른 기기) 막히지 않게 건너뜀
+    forcedPullOn = true;
+    renderShop('special');
+    if (r?.added) toast(`🎟️ 챕터 0 클리어 보상: 프리미엄 소환권 +${r.added}`);
+    window.VRTutorial?.start('ch0_pull', { force: true, def: { noSkip: true, steps: [
+      { text: '챕터 0 클리어 보상으로 프리미엄 소환권 10장을 받았어. 바로 써 봐.', speaker: '임유리', face: 'card:2000100001', wait: 'tap' },
+      { target: '.gr-go10', text: '10회 프리미엄 영입! (HR 이상 1명 보장)', speaker: '임유리', face: 'card:2000100001', wait: 'tap_target' }] } });
+  }
   /** 챕터 0 자동 시작: 도입 내레이션(처음 한 번) → 아직 안 깬 첫 페이즈 */
   function autoCh0() {
     const i = D.chapters.findIndex(c => c.id === 0), ch = chapterFor(D.chapters[i]); curCh = i; hubC = i;
@@ -392,6 +414,7 @@
   }
   const clearedOf = ch => save.cleared[ch.id] || [];
   function renderMap(idx) {
+    if (pullPending()) return forcedPull();
     if (typeof idx === 'number') curCh = idx;
     if (curCh == null || !chapterOpen(curCh)) curCh = latestOpen();
     const base = D.chapters[curCh];
@@ -508,6 +531,7 @@
       ${done && videoOf(base) ? `<span class="story-hub-vid" role="button" data-hubvid="${i}" title="엔딩 영상 다시 보기">🎬</span>` : ''}</button>`;
   }
   function renderHub() {
+    if (pullPending()) return forcedPull();
     const nx = nextPlay(), cur = hubCurIdx();
     if (hubC == null || hubC > cur || hubCur !== cur) { hubC = cur; hubCur = cur; }
     const c = hubC;
@@ -1488,6 +1512,7 @@
         : `<button class="gr-go" data-draw="1" ${(tickets | 0) >= 1 ? '' : 'disabled'}>1회 <small>${ICN('ticket', '🎟️')}1</small></button><button class="gr-go gr-go10" data-draw="10" ${(tickets | 0) >= 10 ? '' : 'disabled'} title="HR 이상 1장 보장">10회 <small>${ICN('ticket', '🎟️')}10</small></button>`}</div>
       ${daily ? '' : `<div class="gr-gem" id="gr-gem">${gemRow()}</div>`}</div>`, 'gacha');
     gateLayout();
+    if (forcedPullOn) root().querySelector('.story-shop')?.classList.add('gr-forced');   // 강제 영입: 나가기·탭·1회·젬 숨김
     bind();
     root().querySelectorAll('[data-tab]').forEach(b => b.onclick = () => renderShop(b.dataset.tab));
     $('gacha-rates').onclick = showRates;
@@ -1506,6 +1531,9 @@
         $('tk-result').innerHTML = r.cards.map((x, i) => { const c = card(x.card_id); return `<div class="story-tk-card g-${GLOW[x.grade]}" style="animation-delay:${i * 0.08}s"><img src="${IMG}${c.id}.webp" alt="${esc(c.name)}"><span class="story-rar">${RAR[x.grade]}</span><div>${esc(c.name)}</div></div>`; }).join('');
         $('tk-result').className = `story-tk-result n${r.cards.length}`;
         $('gacha-msg').innerHTML = `+${r.cards.length} · <span class="g-text-${GLOW[bestG]}">최고 ${RAR[bestG]}</span>`;
+        if (forcedPullOn && r.cards.length === 10) { forcedPullOn = false; await markPullDone();
+          const nb = document.createElement('button'); nb.className = 'gr-go gr-forced-next'; nb.id = 'forced-pull-next'; nb.textContent = save.starter ? '계속 ▶' : '함께할 캐릭터 고르기 ▶';
+          nb.onclick = () => enter(); root().querySelector('.gr-actions')?.replaceChildren(nb); return; }
         root().querySelectorAll('[data-draw]').forEach(x => x.disabled = (tickets | 0) < +x.dataset.draw);
       });
       return;

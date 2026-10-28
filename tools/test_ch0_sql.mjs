@@ -39,4 +39,10 @@ await db.exec(`update public.story_progress set data = jsonb_set(data, '{cleared
 ok(!(await qa(V, `select public.story_start_phase(2,1)`)).err, '기존 사용자: 챕터 1 클리어 → 2-1 (챕터 0 무관)');
 ok(!(await qa(V, `select public.story_start_phase(0,1)`)).err, '기존 사용자도 0-1 가능');
 await age(V); const r = await qa(V, `select public.story_complete_phase(0,1,'[]'::jsonb) r`); ok(r.rows?.[0]?.r?.reward_id === W[0], '기존 사용자 0-1 첫 클리어 보상 오유나');
+await run('story_ch0_pull.sql'); await run('story_ch0_pull.sql');
+const tk = await qa(U, `select public.story_tickets() t`); ok(tk.rows?.[0]?.t?.tickets >= 10, `챕터 0 클리어 → 소환권 10 (${JSON.stringify(tk.rows?.[0]?.t)})`);
+ok((await qa(U, `select public.story_tickets() t`)).rows[0].t.added === 0, '소환권은 한 번만');
+const ms = await qa(U, `select public.story_mark_seen('ch0Pull') d`); ok(ms.rows?.[0]?.d?.ch0Pull === true, 'ch0Pull 표시 저장');
+ok(/invalid key/.test((await qa(U, `select public.story_mark_seen('foo')`)).err || ''), '다른 키는 거부');
+const dr = await qa(U, `select public.story_ticket_draw(10) r`); ok(dr.rows?.[0]?.r?.ok && dr.rows[0].r.cards.length === 10, `스타터 없이 10회 영입 ${dr.err || ''}`);
 console.log(fails ? `${fails} FAILED` : 'ALL PASS'); process.exit(fails ? 1 : 0);
