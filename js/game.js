@@ -838,12 +838,11 @@ async function runFxQueue() {
 /** 카드가 필드에 나왔을 때: 등장 컷인(있으면) → 이벤트 확인 */
 function onEnter(who, u) {
   if (!S || !u) return;
+  if (S.story) return;   // 등장 컷인·이벤트 매칭씬은 아케이드 전용 (스토리·탑·PvP·토벌·전쟁·튜토리얼은 생략)
   const id = String((u.base || u.card).id);
   // 등장 컷인: 등장 보이스(<id>_0) 또는 전용 이미지(events.json entry.fx) 중 하나라도 있으면
   if ((voiceSet?.has(`${id}_0`) || (EVENTS.entry.fx || []).map(String).includes(id)) && !S.fxSeen.has(`entry:${u.uid}`)) {
     S.fxSeen.add(`entry:${u.uid}`);
-    if (S.story?.quest && questEntrySeenToday(u, id)) { checkEvents(); return; }
-    if (S.story && !S.story.quest && who === 'me' && isUrMr(u)) { checkEvents(); return; }   // 스토리: 아군 UR·MR 등장 컷인(이미지·보이스) 생략, 적군은 그대로
     fxQueue.push(() => entryCutIn(u, id)); runFxQueue();
   }
   checkEvents();
@@ -878,7 +877,7 @@ async function entryCutIn(u, id) {
 const fieldIds = p => new Set(p.field.map(x => String((x.base || x.card).id)));
 /** 이벤트 조건 확인 (게임당 이벤트별 1회) */
 function checkEvents() {
-  if (!S || S.over) return;
+  if (!S || S.over || S.story) return;   // 아케이드 전용
   S.evSeen ||= new Set();
   const A = fieldIds(S.me), B = fieldIds(S.ai);
   const has = (set, ids) => ids.some(x => set.has(String(x)));
