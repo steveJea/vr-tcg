@@ -5,13 +5,14 @@
 -- 남기는 것: auth.users 행 · profiles 행(가입 때 값으로 되돌림) · 관리자 기록(admin_log) · 조직 기록(guild_log)
 --          · 다른 유저의 PvP 기록 중 이 계정이 상대였던 줄(pvp_attempts.opp_user)
 -- =====================================================================
-begin;
-
-create temp table _wipe_counts (tbl text, action text, n bigint) on commit drop;
-
-do $$
+-- 실행 방식: 아래 전체를 SQL Editor 에 붙여 넣고 Run.
+--   1) 잠긴 일회용 함수 생성  2) 마지막 SELECT 가 함수를 실행 → 결과 표(tbl · action · n)로 보여 줌
+--   함수 호출 하나 = 한 트랜잭션: 중간 오류면 아무것도 안 바뀜. 다시 실행해도 안전(이미 지운 건 0).
+--   끝나면 (선택) drop function public._oneoff_wipe_mbbs_art();
+create or replace function public._oneoff_wipe_mbbs_art() returns table (tbl text, action text, n bigint)
+language plpgsql security definer set search_path = public, auth as $fn$
 declare
-  uid uuid; g record; heir uuid; n bigint; t text;
+  uid uuid; g record; heir uuid; c bigint; t text;
   -- 이 계정 user_id 행을 지우는 테이블 (scan: supabase/*.sql 의 user_id uuid 컬럼)
   tabs text[] := array[
     'story_progress','story_gacha','story_gacha_log','saves','matches','gallery',
@@ -23,9 +24,11 @@ declare
     'guild_raid_attempts','guild_raid_damage',
     'war_signups','war_roster','war_decks','war_attacks','war_atk_state','war_ajits'];
 begin
+  drop table if exists _wipe_counts;
+  create temp table _wipe_counts (ord serial, tbl text, action text, n bigint);
   select id into uid from auth.users where lower(email) = 'mbbs.art@gmail.com';
   if uid is null then raise exception 'mbbs.art@gmail.com 계정을 찾지 못함'; end if;
-  insert into _wipe_counts values ('auth.users', 'found (kept) ' || uid::text, 1);
+  insert into _wipe_counts (tbl, action, n) values ('auth.users', 'found (kept) ' || uid::text, 1);
 
   -- 1) 조직: 보스라면 → 다른 조직원이 있으면 보스 넘김(간부 중 가장 오래된 사람, 없으면 충성 높은 조직원), 혼자면 조직 해체
   select gm.guild_id, gm.role into g from guild_members gm where gm.user_id = uid;
@@ -34,45 +37,46 @@ begin
       order by (role = 'officer') desc, case when role = 'officer' then extract(epoch from joined_at) else -loyalty_total end, joined_at limit 1;
     if heir is null then
       delete from guilds where id = g.guild_id;   -- 조직원·가입 신청은 cascade 로 같이 삭제
-      insert into _wipe_counts values ('guilds', 'disbanded (solo boss) id ' || g.guild_id, 1);
+      insert into _wipe_counts (tbl, action, n) values ('guilds', 'disbanded (solo boss) id ' || g.guild_id, 1);
     else
       update guild_members set role = 'boss' where user_id = heir;
       update guilds set boss = heir where id = g.guild_id;
-      insert into _wipe_counts values ('guilds', 'boss transferred to ' || heir::text || ' (guild ' || g.guild_id || ')', 1);
+      insert into _wipe_counts (tbl, action, n) values ('guilds', 'boss transferred to ' || heir::text || ' (guild ' || g.guild_id || ')', 1);
     end if;
   end if;
-  delete from guild_members where user_id = uid; get diagnostics n = row_count;
-  insert into _wipe_counts values ('guild_members', 'delete', n);
+  delete from guild_members where user_id = uid; get diagnostics c = row_count;
+  insert into _wipe_counts (tbl, action, n) values ('guild_members', 'delete', c);
   -- 혹시 남은 보스 표시 (다른 조직 boss 칸) 확인용
   if exists (select 1 from guilds where boss = uid) then raise exception '아직 이 계정이 보스인 조직이 있음 — 중단'; end if;
 
   -- 2) 이 계정 행 삭제 (테이블이 없으면 건너뜀)
   foreach t in array tabs loop
-    if to_regclass('public.' || t) is null then insert into _wipe_counts values (t, 'skip (no table)', 0); continue; end if;
-    execute format('delete from public.%I where user_id = $1', t) using uid; get diagnostics n = row_count;
-    insert into _wipe_counts values (t, 'delete', n);
+    if to_regclass('public.' || t) is null then insert into _wipe_counts (tbl, action, n) values (t, 'skip (no table)', 0); continue; end if;
+    execute format('delete from public.%I where user_id = $1', t) using uid; get diagnostics c = row_count;
+    insert into _wipe_counts (tbl, action, n) values (t, 'delete', c);
   end loop;
   if to_regclass('public.guild_requests') is not null then
-    delete from guild_requests where by_user = uid; get diagnostics n = row_count; insert into _wipe_counts values ('guild_requests (by_user)', 'delete', n);
+    delete from guild_requests where by_user = uid; get diagnostics c = row_count; insert into _wipe_counts (tbl, action, n) values ('guild_requests (by_user)', 'delete', c);
   end if;
   -- 다른 사람 기록에 남은 참조는 비움 (행은 유지)
   if to_regclass('public.guild_raid_stages') is not null then
-    update guild_raid_stages set last_hit = null where last_hit = uid; get diagnostics n = row_count; insert into _wipe_counts values ('guild_raid_stages.last_hit', 'set null', n);
+    update guild_raid_stages set last_hit = null where last_hit = uid; get diagnostics c = row_count; insert into _wipe_counts (tbl, action, n) values ('guild_raid_stages.last_hit', 'set null', c);
   end if;
   if to_regclass('public.war_ajits') is not null then
-    update war_ajits set destroyed_by = null where destroyed_by = uid; get diagnostics n = row_count; insert into _wipe_counts values ('war_ajits.destroyed_by', 'set null', n);
-    update war_ajits set locked_by = null where locked_by = uid; get diagnostics n = row_count; insert into _wipe_counts values ('war_ajits.locked_by', 'set null', n);
+    update war_ajits set destroyed_by = null where destroyed_by = uid; get diagnostics c = row_count; insert into _wipe_counts (tbl, action, n) values ('war_ajits.destroyed_by', 'set null', c);
+    update war_ajits set locked_by = null where locked_by = uid; get diagnostics c = row_count; insert into _wipe_counts (tbl, action, n) values ('war_ajits.locked_by', 'set null', c);
   end if;
 
   -- 3) 프로필: 앱이 로그인 때 읽고 upsert 하므로 행은 두고 가입 때 값으로 되돌림
   update profiles p set nickname = left(coalesce(u.raw_user_meta_data->>'name', u.raw_user_meta_data->>'full_name', split_part(u.email, '@', 1), '플레이어'), 20),
          avatar_url = u.raw_user_meta_data->>'avatar_url', updated_at = now()
     from auth.users u where u.id = uid and p.id = uid;
-  get diagnostics n = row_count; insert into _wipe_counts values ('profiles', 'reset to signup defaults', n);
-end $$;
+  get diagnostics c = row_count; insert into _wipe_counts (tbl, action, n) values ('profiles', 'reset to signup defaults', c);
+  return query select w.tbl, w.action, w.n from _wipe_counts w order by w.ord;
+end $fn$;
+revoke all on function public._oneoff_wipe_mbbs_art() from public, anon, authenticated;
 
-select * from _wipe_counts;
-commit;
+select * from public._oneoff_wipe_mbbs_art();
 
 -- 브라우저: tcg.mbbs.kr 에서 그 계정으로 쓰던 브라우저의 사이트 데이터(localStorage)도 지울 것
 --   (크롬: 주소창 자물쇠 → 사이트 설정 → 데이터 삭제, 또는 개발자도구 Console 에서 localStorage.clear(); 후 새로고침)
