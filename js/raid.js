@@ -18,7 +18,7 @@ const rwTxt = rw => Object.entries(rw || {}).filter(([k, v]) => RW[k] && v).map(
 const DIFF_IC = { normal: gi('diff_normal', '🟢'), hard: gi('diff_hard', '🟠'), abyss: gi('diff_abyss', '🟣') };
 const ATTR = { CHARGE: '돌격', DEFENSE: '방어', CRUSH: '분쇄', SUPPORT: '지원', DISTURB: '교란', FASCINATION: '매혹' };
 const ERR = { 'not in guild': '조직에 들어가야 해요', 'no attempts': '오늘 토벌 횟수를 다 썼어요', 'fight first': '오늘 한 번 직접 싸워야 소탕할 수 있어요', 'raid ended': '이번 주 토벌이 끝났어요 (일 22시 정산)',
-  'card not owned': '덱 카드를 다시 골라 주세요', 'duplicate card': '같은 카드는 한 장만', 'deck size': '덱은 1~5장', 'too fast': '잠시 후 다시', 'battle expired': '시간이 지나 무효가 됐어요',
+  'card not owned': '덱 인재를 다시 골라 주세요', 'duplicate card': '같은 인재는 한 명만', 'deck size': '덱은 1~5장', 'too fast': '잠시 후 다시', 'battle expired': '시간이 지나 무효가 됐어요',
   'guild level': '조직 레벨이 부족해요', 'raid started': '이번 주 토벌이 이미 시작됐어요', 'not allowed': '보스·간부만 바꿀 수 있어요', 'nothing to claim': '받을 보상이 없어요', 'login required': '로그인이 필요해요' };
 const errText = e => { const m = String(e?.message || e); const k = Object.keys(ERR).find(x => m.includes(x)); return k ? ERR[k] : m.slice(0, 60); };
 async function rpc(name, args) {
@@ -85,7 +85,7 @@ function paint() {
   q('[data-diff]').onclick = diffPop;
 }
 function deckPop() {
-  const m = pop(`<div class="rd-pt">덱 고르기</div>${DL.map(d => `<button class="rd-dk ${pickDeck(DL)?.key === d.key ? 'on' : ''}" data-k="${d.key}"><b>${esc(d.name)}</b><span class="rd-ths">${thumbs(d.cards)}</span></button>`).join('') || '<div class="rd-empty">스토리 카드가 필요해요</div>'}`);
+  const m = pop(`<div class="rd-pt">덱 고르기</div>${DL.map(d => `<button class="rd-dk ${pickDeck(DL)?.key === d.key ? 'on' : ''}" data-k="${d.key}"><b>${esc(d.name)}</b><span class="rd-ths">${thumbs(d.cards)}</span></button>`).join('') || '<div class="rd-empty">스토리 인재가 필요해요</div>'}`);
   m.querySelectorAll('[data-k]').forEach(b => b.onclick = () => { localStorage.setItem(DECK_KEY, b.dataset.k); m.remove(); paint(); });
 }
 function infoPop() {
@@ -94,13 +94,12 @@ function infoPop() {
     <table class="rd-tb"><tr><th>주간 순위</th><td>${s.rank_rewards.map(r => `<div><b>${r.from === r.to ? `${r.from}위` : `${r.from}~${r.to}위`}</b> ${rwTxt(r.reward)}</div>`).join('')}</td></tr>
     <tr><th>조직원 전원</th><td>${rwTxt(s.member_reward)} <small>(순위 보상에 더해서)</small></td></tr>
     <tr><th>단계 처치<br><small>전원 · ×${mult}</small></th><td><div>매 단계 ${rwTxt({ loyalty: Math.round(20 * mult), gold: Math.round(2000 * mult), gem: Math.round(30 * mult) })}</div><div>3·6·9…단계 ${gi('cur_gem', '🔮')}+${Math.round(150 * mult)}</div><div>5·10…단계 ${gi('cur_ticket', '🎟️')}1</div></td></tr>
-    <tr><th>1회 토벌</th><td>${gi('cur_loyalty', '🩸')}5 · ${gi('cur_gold', '🪙')}200~2,000</td></tr></table>
-    <small class="rd-note">하루 3회 · 일 22:00 정산 · 순위/참여 보상은 정산 24시간 전 가입자만</small>`);
+    <tr><th>1회 토벌</th><td>${gi('cur_loyalty', '🩸')}5 · ${gi('cur_gold', '🪙')}200~2,000</td></tr></table>`);
 }
 function diffPop() {
   const s = S;
   const m = pop(`<div class="rd-pt">난이도</div>${Object.keys(RAID_DIFF).map(d => { const lock = s.guild_level < s.diff_level[d];
-    return `<button class="rd-dk ${s.difficulty === d ? 'on' : ''}" data-d="${d}" ${lock ? 'disabled' : ''}>${diffIc(d)}<span>보상 ×${s.diff_mult[d]}</span>${lock ? `<small>${gi('ic_lock', '🔒')} 조직 Lv.${s.diff_level[d]}</small>` : ''}</button>`; }).join('')}<small class="rd-note">이번 주 첫 토벌 전까지만 바꿀 수 있어요</small>`);
+    return `<button class="rd-dk ${s.difficulty === d ? 'on' : ''}" data-d="${d}" ${lock ? 'disabled' : ''}>${diffIc(d)}<span>보상 ×${s.diff_mult[d]}</span>${lock ? `<small>${gi('ic_lock', '🔒')} 조직 Lv.${s.diff_level[d]}</small>` : ''}</button>`; }).join('')}`);
   m.querySelectorAll('[data-d]').forEach(b => b.onclick = async () => { try { S = await rpc('raid_set_difficulty', { p_diff: b.dataset.d }); m.remove(); paint(); } catch (e) { toast(errText(e)); } });
 }
 async function claim(e) {

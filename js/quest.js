@@ -62,13 +62,13 @@
     const api = A();
     if (!api || !window.TCG?.ready) return;
     if (!api.user()) {
-      const p = api.popup(`<div class="text-xl font-black mb-2">🗼 시련의 탑</div><div class="text-sm text-zinc-300 mb-4">퀘스트 모드는 로그인한 플레이어만 할 수 있어요.<br>스토리 모드에서 모은 카드로 한 층씩 올라가요.</div>
+      const p = api.popup(`<div class="text-xl font-black mb-2">🗼 시련의 탑</div><div class="text-sm text-zinc-300 mb-4">퀘스트 모드는 로그인한 플레이어만 할 수 있어요.<br>스토리 모드에서 모은 인재로 한 층씩 올라가요.</div>
         <button id="quest-login" class="w-full py-3 rounded-xl bg-amber-400 text-black font-bold">구글로 로그인</button><button data-close-pop class="w-full mt-2 py-2 rounded-xl bg-zinc-700">닫기</button>`);
       $('quest-login').onclick = () => { p.close(true); window.VRCloud?.login?.(); };
       return;
     }
     await api.load(); await loadCfg();
-    if (!api.ownedCount()) { api.popup(`<div class="text-lg font-black mb-2">🗼 시련의 탑</div><div class="text-sm text-zinc-300 mb-4">보유 카드가 없어요. 스토리 모드에서 먼저 카드를 골라 주세요.</div><button data-close-pop class="w-full py-2 rounded-xl bg-zinc-700">닫기</button>`); return; }
+    if (!api.ownedCount()) { api.popup(`<div class="text-lg font-black mb-2">🗼 시련의 탑</div><div class="text-sm text-zinc-300 mb-4">보유 인재가 없어요. 스토리 모드에서 먼저 인재를 골라 주세요.</div><button data-close-pop class="w-full py-2 rounded-xl bg-zinc-700">닫기</button>`); return; }
     try { status = await trpc('quest_status'); }
     catch (e) { status = null; api.popup(`<div class="text-lg font-black mb-2">🗼 시련의 탑</div><div class="text-sm text-zinc-300 mb-4">${/quest_status|function/.test(e?.message || '') ? '퀘스트 서버가 아직 준비 중이에요.' : '진행 상황을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.'}</div><button data-close-pop class="w-full py-2 rounded-xl bg-zinc-700">닫기</button>`); return; }
     if (legacy || !hub?.towers) { TOWER = 'normal'; sel = Math.min(best() + 1, maxF()); return render(); }
@@ -118,7 +118,7 @@
       return `<button class="q-row ${st} ${k === n ? 'on' : ''}" data-floor="${k}" ${st === 'lock' ? 'disabled' : ''}><span class="q-no">${k}층</span>${tCls() ? `<span class="q-g">${k % 10 === 0 ? '👑' : ''}</span><span class="q-pw">Lv.${window.VRQuestGen.levelOf(cfg, k, 10)}</span>` : `<span class="q-g rar-${SHORT[x.grade]}">${SHORT[x.grade]}</span><span class="q-pw">⚡ ${fmt(x.power)}</span>`}${!tCls() && x.bond ? '<span class="q-bond" title="인연 조합">🤝</span>' : ''}${r ? `<span class="q-rw ${st === 'done' ? 'got' : ''}">${r.tickets ? `🎟️${r.tickets}` : ''}${r.gold ? `🪙` : ''}</span>` : '<span class="q-rw"></span>'}<span class="q-st">${st === 'done' ? '✔' : st === 'next' ? '▶' : '🔒'}</span></button>`;
     }).reverse().join('');
     api.show(`<div class="story-top"><button class="story-back" id="q-home">${hub?.towers && !legacy ? '← 탑 목록' : '← 처음으로'}</button><div class="story-top-title">🗼 ${esc(tName())}</div><span></span></div>
-      <div class="q-head"><div>최고 <b>${best()}</b>층 / ${maxF()}층${status?.daily ? ` · 오늘 ${status.today | 0}/${status.daily}` : ''}</div><div class="q-sub" title="적 카드를 모두 쓰러뜨리면 승리 · 내 카드 전멸 또는 ${cfg.maxTurns || 40}턴 초과 시 패배 · 재도전 무제한">적 전멸 = 승리 · ${cfg.maxTurns || 40}턴</div></div>
+      <div class="q-head"><div>최고 <b>${best()}</b>층 / ${maxF()}층${status?.daily ? ` · 오늘 ${status.today | 0}/${status.daily}` : ''}</div><div class="q-sub" title="적 인재를 모두 쓰러뜨리면 승리 · 내 인재 전멸 또는 ${cfg.maxTurns || 40}턴 초과 시 패배 · 재도전 무제한">적 전멸 = 승리 · ${cfg.maxTurns || 40}턴</div></div>
       <div class="q-wrap"><div class="q-cur">
         <div class="q-cur-h"><b>${n}층</b>${n % 10 === 0 ? '<span title="보스 층">👑</span>' : ''}<span class="q-g rar-${SHORT[g.grade || f.grade]}">${SHORT[g.grade || f.grade]}</span><span>적 Lv.${g.level ?? g.leader?.qLevel} · 리더 ⚡ ${fmt(g.leader?.power)}</span></div>
         <div class="q-cur-sub">${tCls() ? `${EL[tCls()]} 속성 적 · 내 출전도 ${EL[tCls()]} 속성만` : `<span title="${f.others === 'weak' ? '나머지: 리더보다 약함 (60~80%)' : '나머지: 리더와 비슷 (90~100%)'}">${f.others === 'weak' ? '나머지 약함' : '나머지 비슷'}</span>${g.combo ? ` · 🤝 인연 「${esc(g.combo)}」` : ''}`}</div>
@@ -141,8 +141,8 @@
   function deckOk() {
     const c = tCls(); if (!c) return true;
     const n = myCls().length;
-    if (!n) { A().popup(`<div class="text-lg font-black mb-2">${EL[c]} 속성 카드가 없어요</div><div class="text-sm text-zinc-300 mb-4">${esc(tName())}에는 ${EL[c]} 속성 카드만 출전할 수 있어요.<br>뽑기·스토리로 ${EL[c]} 카드를 모아 주세요.</div><button data-close-pop class="w-full py-2 rounded-xl bg-zinc-700">닫기</button>`); return false; }
-    if (n <= 5) A().toast(`${EL[c]} 속성 카드 ${n}장이 모두 출전해요 (${esc(tName())}은 ${EL[c]} 속성만)`);
+    if (!n) { A().popup(`<div class="text-lg font-black mb-2">${EL[c]} 속성 인재가 없어요</div><div class="text-sm text-zinc-300 mb-4">${esc(tName())}에는 ${EL[c]} 속성 인재만 출전할 수 있어요.<br>뽑기·스토리로 ${EL[c]} 인재를 모아 주세요.</div><button data-close-pop class="w-full py-2 rounded-xl bg-zinc-700">닫기</button>`); return false; }
+    if (n <= 5) A().toast(`${EL[c]} 속성 인재 ${n}명이 모두 출전해요 (${esc(tName())}은 ${EL[c]} 속성만)`);
     return true;
   }
   function challenge(n) {
@@ -150,7 +150,7 @@
     if (!unlocked(n)) return;
     const can = QUEST_HOOKS.canChallenge(n); if (!can.ok) { api.toast(can.reason || '지금은 도전할 수 없어요'); return; }
     if (!deckOk()) return;
-    api.pickDeck(g.enemies, list => battle(n, list), () => render(), `🗼 ${esc(tName())} ${n}층 · 적 5장 (리더 ⚡ ${fmt(g.leader?.power)})${tCls() ? `<br><b class="text-amber-300">${EL[tCls()]} 속성 카드만 출전할 수 있어요</b>` : ''}`, party());
+    api.pickDeck(g.enemies, list => battle(n, list), () => render(), `🗼 ${esc(tName())} ${n}층 · 적 5장 (리더 ⚡ ${fmt(g.leader?.power)})${tCls() ? `<br><b class="text-amber-300">${EL[tCls()]} 속성 인재만 출전할 수 있어요</b>` : ''}`, party());
   }
 // AUTO·X2 로 빨리 끝나도 서버 최소 전투 시간(_quest_min_secs 5초)을 채운 뒤 기록 → 'too fast' 방지. 서버 검사는 그대로
   const MIN_BATTLE_MS = 5600; let startedAt = 0;
@@ -163,12 +163,12 @@
     const me = api.battleCards(list);
     window.TCG.startStory({ me, ai: g.enemies.map(c => ({ ...c })), leader: api.leaderFor(me), win: 'wipe', aiName: `${n}층`, quest: true,
       onEnd: (win, reason, st) => result(n, win, reason, st) });
-    api.toast(`🗼 ${n}층: 적 카드 5장을 모두 쓰러뜨리세요!`);
+    api.toast(`🗼 ${n}층: 적 인재 5명을 모두 쓰러뜨리세요!`);
   }
   async function result(n, win, reason, st = {}) {
     const api = A();
     if (!win) {
-      api.show(`<div class="text-center py-10"><div class="story-chapter-big text-red-400">DEFEAT</div><div class="text-zinc-300 mt-2">${n}층 · ${reason === 'giveup' ? '도전을 포기했어요.' : reason === 'timeout' ? `${cfg.maxTurns || 40}턴 안에 적을 모두 쓰러뜨리지 못했어요.` : '내 카드가 모두 쓰러졌어요.'}</div>
+      api.show(`<div class="text-center py-10"><div class="story-chapter-big text-red-400">DEFEAT</div><div class="text-zinc-300 mt-2">${n}층 · ${reason === 'giveup' ? '도전을 포기했어요.' : reason === 'timeout' ? `${cfg.maxTurns || 40}턴 안에 적을 모두 쓰러뜨리지 못했어요.` : '내 인재가 모두 쓰러졌어요.'}</div>
         <div class="flex flex-col gap-2 max-w-xs mx-auto mt-6"><button class="story-btn" id="q-retry">다시 도전</button><button class="story-back" id="q-back">탑으로</button></div></div>`, 'tower');
       $('q-retry').onclick = () => challenge(n); $('q-back').onclick = render; return;
     }
@@ -208,7 +208,7 @@
   async function sweep() {
     if (!deckOk()) return;
     const api = A(), c = tCls(), deck = (api.lastDeck?.() || []).filter(o => !c || api.card(o.id)?.class === c);
-    if (!deck.length) { api.toast('출전 카드를 먼저 골라 주세요'); return api.pickDeck([], list => runSweep(list), () => render(), `${SW()} 소탕에 쓸 덱${tCls() ? ` · ${EL[tCls()]} 속성만` : ''}`, party()); }
+    if (!deck.length) { api.toast('출전 인재를 먼저 골라 주세요'); return api.pickDeck([], list => runSweep(list), () => render(), `${SW()} 소탕에 쓸 덱${tCls() ? ` · ${EL[tCls()]} 속성만` : ''}`, party()); }
     runSweep(deck);
   }
   async function runSweep(list) {
@@ -252,7 +252,7 @@
   function mount() {
     const s = $('story-btn'); if (!s || $('quest-btn')) return !!$('quest-btn');
     const b = document.createElement('button'); b.id = 'quest-btn'; b.type = 'button'; b.className = 'main-btn quest-btn';
-    b.title = '시련의 탑 · 보유 카드로 한 층씩 도전'; b.innerHTML = `${window.VRIcon?.icon('tower', { alt: '' }) || '🗼'}<span>시련의 탑</span>`;
+    b.title = '시련의 탑 · 보유 인재로 한 층씩 도전'; b.innerHTML = `${window.VRIcon?.icon('tower', { alt: '' }) || '🗼'}<span>시련의 탑</span>`;
     b.disabled = !window.TCG?.ready; b.onclick = open; s.after(b);
     window.addEventListener('tcg:ready', () => { b.disabled = false; });
     return true;
