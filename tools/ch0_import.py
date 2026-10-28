@@ -16,7 +16,7 @@ PHASE = {
   2: dict(enemyName='불량배L', tutorial='ch0_p2',
           party=dict(forced=[YURI], mustLive=[YURI], noExtra=True, auto=True), reserve=[YUNA]),
   3: dict(enemyName='임나리', tutorial='ch0_p3',
-          party=dict(forced=[YURI], mustLive=[], fixedLevel={YURI: 1}),   # 강제는 임유리만 · 나머지(오유나·황보예 등)는 고르기
+          party=dict(forced=[YURI], mustLive=[], fixedLevel={YURI: 1}, only=[YUNA, YEBO], guests=[YUNA, YEBO]),   # 강제 임유리 + 오유나·황보예만 고르기
           enemies=dict(storyLevels={NARI: 30, '2000000038': 30}, levels={NARI: 5, '2000000038': 3}),
           awaken=dict(on=YURI, id=AWAKE, storyLevel=100, battleLevel=10, line='....약해...', image='img/story/ch0-05.webp')),
 }

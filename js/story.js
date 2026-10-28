@@ -649,6 +649,7 @@
     if (pt?.maxMor != null) rules.push({ ok: c => (+c.MOR || 0) <= pt.maxMor, note: `MOR ${pt.maxMor + 1} 이상 출전 불가` });
     const EL = { DARK: '🌑 어둠', LIGHT: '☀️ 빛', FIRE: '🔥 불', ICE: '❄️ 얼음', WIND: '🍃 바람', ABYSS: '🕳️ 심연', VOID: '🌌 공허' };
     for (const el of pt?.banClass || []) rules.push({ ok: c => c.class !== el, note: `${EL[el] || el} 속성 출전 불가` });
+    if (pt?.only) { const only = new Set(pt.only.map(String)); rules.push({ ok: c => only.has(String(c.id)), note: '정해진 인재만 출전 가능' }); }   // party.only: 이 카드들만 (챕터 0 P3: 오유나·황보예)
     if (pt?.onlyClass) rules.push({ ok: c => c.class === pt.onlyClass, note: `${EL[pt.onlyClass] || pt.onlyClass} 속성만 출전 가능` });   // 속성 탑
     if (gi >= 0) rules.push({ ok: c => GO.indexOf(c.grade) <= gi, note: `${RAR[GO[gi + 1]] || ''} 이상 출전 불가` });
     const allow = o => { const c = card(o.id); return !!c && rules.every(r => r.ok(c)); };
@@ -726,6 +727,7 @@
       tutorial: ph.tutorial,
       // 챕터 0: reserve = 소환 대기 카드(소환 버튼으로 필드에) · fullMp = 시작 MP 가득 · meLevels = 내 카드 전투 시작 레벨 · awaken = 쓰러지면 난입
       reserve: (ph.reserve || []).map(id => repOf(id) || guestOf(id)).filter(o => card(o.id)).map(o => mul({ ...boosted(o), uid: o.uid })),
+      kickoff: !!ch.tutorial,   // 챕터 0: [시작하기] 눌러야 시작 (다른 챕터는 그대로 자동 시작)
       fullMp: !!ph.fullMp, meLevels: ph.party?.battleLevels,
       awaken: ph.awaken ? { ...ph.awaken, card: lvScaled(card(ph.awaken.id), ph.awaken.storyLevel || 1) } : undefined,   // 튜토리얼 가이드 id (data/tutorials/<id>.json · README 참고) — 처음 한 번만   // 조윤이는 조윤하를 공격하지 않음 + 페이즈 spare (예: CH3 P6 안지수 → 조윤하)
       onEnd: (win, reason, st) => result(ch, ph, win, reason, st),
