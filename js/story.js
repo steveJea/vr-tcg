@@ -1176,7 +1176,16 @@
       ${serverMode ? (() => { const sc = shardCost(o), w = W(), ok = !w || (w.shard | 0) >= sc; return `<div class="story-merge-cost ${ok ? '' : 'short'}">💠 이상한 조각 <b>${sc}</b> 필요 <small>(${SHARD_BASE[c.grade] || 1} × EX${exOf(o) + 1})</small>${w ? ` · 보유 ${fmt(w.shard)}` : ''}${ok ? '' : ' · <b>부족해요</b>'}</div>`; })() : ''}
       <div class="flex gap-2 mt-4"><button data-close-pop class="flex-1 py-2.5 rounded-xl bg-zinc-700 font-bold">취소</button><button id="merge-next" class="flex-1 py-2.5 rounded-xl bg-red-500 font-bold" ${serverMode && W() && (W().shard | 0) < shardCost(o) ? 'disabled' : ''}>합성하기</button></div>`, renderCards);
     p.el.querySelectorAll('[data-mat]').forEach(b => b.onclick = () => { p.close(true); mergePreview(tu, b.dataset.mat); });
-    $('merge-next').onclick = () => { p.close(true); mergeConfirm(o.uid, mat.uid, m); };
+    $('merge-next').onclick = () => { p.close(true); if (m.ratio < 1 || m.mratio < 1) mergeScold(o, mat, m); else mergeConfirm(o.uid, mat.uid, m); };
+  }
+  /** 합성 전 레벨 경고 (임유리): 보너스 = 10% × 대상 Lv 비율 × 재료 Lv 비율 → 둘 다 MAX 여야 최대(+10%). 바깥 누르면 취소(미리보기로) */
+  function mergeScold(o, mat, m) {
+    const low = [m.ratio < 1 ? `대상 Lv.${o.level}/${m.cap}` : '', m.mratio < 1 ? `재료 Lv.${mat.level}/${m.mcap}` : ''].filter(Boolean).join(' · ');
+    const p = popup(`<div class="merge-scold"><img src="img/story/portraits/im_yuri_angry.webp" alt="임유리" class="merge-scold-img">
+      <div class="merge-scold-bub"><b>임유리</b><p>레벨을 MAX해야 최고로 강해진다고! 그래도 할래?</p><small>${low} → 보너스 +${m.bonus}% (MAX면 +10%)</small></div></div>
+      <div class="flex gap-2 mt-3"><button id="scold-go" class="flex-1 py-2.5 rounded-xl bg-zinc-700 font-bold">그래도 합성</button><button id="scold-lv" class="flex-1 py-2.5 rounded-xl bg-amber-400 text-black font-bold">레벨업 하러 갈래</button></div>`, () => mergePreview(o.uid, mat.uid));
+    $('scold-go').onclick = () => { p.close(true); mergeConfirm(o.uid, mat.uid, m); };
+    $('scold-lv').onclick = () => { p.close(true); cardDetail(m.ratio < 1 ? o.uid : mat.uid); };
   }
   function mergeConfirm(tu, mu, m) {
     const o = byUid(tu), mat = byUid(mu), c = card(o.id);
