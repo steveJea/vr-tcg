@@ -230,7 +230,7 @@ function startTurn(who) {
   S.turn = who; if (who === S.first) S.turnNo++; S.totalTurns++;
   if (S.pairShield && S.turnNo > S.pairShield.turns) { const u = S.pairShield.u; S.pairShield = null; u.noDamage = false; delete u.pairShield; log(`🛡️ 자매의 가호가 사라졌다: ${u.card.name}`, 'text-zinc-400'); }
   if (S.story?.rules && storyTurnRules(who)) return true;
-  if (who === 'me') { S.myTurns++; setTimeout(() => TUT('turn_start', { turn: S.turnNo }), 50); if (myTurnsLeft() === 1) lastTurnToast(); }
+  if (who === 'me') { S.meActed = false; S.myTurns++; setTimeout(() => TUT('turn_start', { turn: S.turnNo }), 50); if (myTurnsLeft() === 1) lastTurnToast(); }
   clearBuff(opp(who));                   // 지난 턴 강화 해제
   const bonus = refillMana(p);
   if (bonus) { log(`${p.name}: 처치 보너스 마나 +${bonus}`, 'text-sky-300'); if (who === 'me') floatText(`${ic('mana')} +${bonus}`, 'text-sky-300', 'me', true); }
@@ -441,6 +441,7 @@ async function attack(who, unit, target, fromBatch = false) {
   if (!fromBatch && who === 'me' && S.busy) return;
   if (!canTarget(p, o, target, unit)) { if (who === 'me') { const r = attackTargets(p, o, unit).reason; log(r, 'text-red-400'); floatText(r, 'text-red-400 text-sm', 'ai'); } return; }
   const prevBusy = S.busy;
+  if (who === 'me') S.meActed = true;
   S.busy = true; selected = null;
   const oWho = who === 'me' ? 'ai' : 'me';
   let aEl = null;
@@ -1208,6 +1209,7 @@ function skillInfoPop(unit, s) {
 }
 function render() {
   renderAutoBtn();
+  maybeAutoEndTurn();
   if (S) preloadFx([...S.me.field, ...S.ai.field].map(u => u.base || u.card));
   renderTurnsLeft();
   if (!S) return;
@@ -1505,6 +1507,21 @@ function idleUnits() {
   const tg = attackTargets(S.me, S.ai);
   if (!tg.hero && !tg.units.length) return [];
   return S.me.field.filter(u => u.canAttack && !u.st?.para && !u.st?.confuse && !u.st?.stun);
+}
+// 아케이드 외 전투: 이번 턴에 공격한 뒤 행동 가능한 아군이 없으면 자동 턴 종료
+let autoEndTimer = null;
+function autoEndReady() {
+  return S && S.story && !S.view && S.turn === 'me' && !S.over && !S.busy && S.meActed && !autoActive() && !idleUnits().length;
+}
+function maybeAutoEndTurn() {
+  if (autoEndTimer || !autoEndReady()) return;
+  const turn = S.totalTurns;
+  autoEndTimer = setTimeout(() => {
+    autoEndTimer = null;
+    if (S.totalTurns !== turn) return;            // 그 사이 직접 턴종료함
+    if (S.busy) return maybeAutoEndTurn();        // 연출 중이면 끝난 뒤 다시
+    if (autoEndReady()) { hideModal('endturn-confirm'); endTurn(); }
+  }, window.TCG_FAST ? 0 : 500);
 }
 function requestEndTurn() {
   if (S.turn !== 'me' || S.over || S.busy) return;
