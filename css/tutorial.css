@@ -1,0 +1,21 @@
+/* 튜토리얼 가이드 (js/tutorial.js) — 보이기만, 탭 막기는 JS(capture) */
+.tut-ov{position:fixed;inset:0;z-index:9000;pointer-events:none}
+.tut-ov.dim.info{background:rgba(0,0,0,.62)}
+.tut-ring{position:fixed;border-radius:14px;box-shadow:0 0 0 9999px rgba(0,0,0,.62),0 0 0 3px #facc15,0 0 22px 6px rgba(250,204,21,.65);transition:left .2s,top .2s,width .2s,height .2s;animation:tutPulse 1.2s ease-in-out infinite}
+@keyframes tutPulse{50%{box-shadow:0 0 0 9999px rgba(0,0,0,.62),0 0 0 3px #fde047,0 0 34px 12px rgba(250,204,21,.85)}}
+.tut-hand{position:fixed;width:44px;height:44px;margin:-6px 0 0 -10px;font-size:40px;line-height:1;filter:drop-shadow(0 3px 4px #000);animation:tutTap 1s ease-in-out infinite}
+.tut-hand::before{content:'👆'}
+@keyframes tutTap{50%{transform:translateY(10px) scale(.92)}}
+.tut-bub{position:fixed;left:12px;right:12px;max-width:440px;margin:0 auto;display:flex;gap:10px;align-items:flex-end;padding:10px 12px;border-radius:18px;background:linear-gradient(180deg,#1f1220,#0c0a10);border:2px solid #f5c96a;box-shadow:0 8px 30px rgba(0,0,0,.7);color:#fff}
+.tut-bub.pop{animation:tutPop .25s cubic-bezier(.2,1.6,.4,1)}
+@keyframes tutPop{from{transform:scale(.85);opacity:0}}
+.tut-face{width:64px;height:64px;flex:none;object-fit:cover;object-position:top;border-radius:14px;border:2px solid #f5c96a;margin-top:-28px;background:#000}
+.tut-txt{flex:1;min-width:0}
+.tut-who{display:block;font-size:12px;color:#fde68a;font-weight:900}
+.tut-txt p{margin:2px 0 0;font-size:15px;font-weight:700;line-height:1.35}
+.tut-tap{display:block;margin-top:4px;font-size:11px;color:#a1a1aa;animation:tutBlink 1.2s steps(2) infinite}
+@keyframes tutBlink{50%{opacity:.3}}
+.tut-skip{position:fixed;top:calc(env(safe-area-inset-top) + 8px);right:10px;pointer-events:auto;padding:5px 10px;border-radius:999px;background:rgba(0,0,0,.6);border:1px solid rgba(255,255,255,.3);color:#d4d4d8;font-size:12px}
+/* 잠금 */
+body.tut-lock-auto #auto-btn,body.tut-lock-speed #spd-btn,body.tut-lock-skip #fx-skip,body.tut-lock-attack_all #attack-all,body.tut-lock-end_turn #end-turn,body.tut-lock-giveup #story-giveup{opacity:.3;pointer-events:none;filter:grayscale(1)}
+body.tut-lock-auto #auto-btn::after,body.tut-lock-speed #spd-btn::after{content:'🔒';font-size:10px;margin-left:2px}
