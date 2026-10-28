@@ -230,7 +230,7 @@ function startTurn(who) {
   S.turn = who; if (who === S.first) S.turnNo++; S.totalTurns++;
   if (S.pairShield && S.turnNo > S.pairShield.turns) { const u = S.pairShield.u; S.pairShield = null; u.noDamage = false; delete u.pairShield; log(`🛡️ 자매의 가호가 사라졌다: ${u.card.name}`, 'text-zinc-400'); }
   if (S.story?.rules && storyTurnRules(who)) return true;
-  if (who === 'me') { S.myTurns++; setTimeout(() => TUT('turn_start', { turn: S.turnNo }), 50); if (myTurnsLeft() === 1) lastTurnToast(); }
+  if (who === 'me') { S.meActed = false; S.myTurns++; setTimeout(() => TUT('turn_start', { turn: S.turnNo }), 50); if (myTurnsLeft() === 1) lastTurnToast(); }
   clearBuff(opp(who));                   // 지난 턴 강화 해제
   const bonus = refillMana(p);
   if (bonus) { log(`${p.name}: 처치 보너스 마나 +${bonus}`, 'text-sky-300'); if (who === 'me') floatText(`${ic('mana')} +${bonus}`, 'text-sky-300', 'me', true); }
@@ -270,6 +270,7 @@ function opp(who) { return who === 'me' ? S.ai : S.me; }
 function summon(who, card) {
   const p = S[who], check = canSummon(card, p, opp(who));
   if (!check.ok) return check;
+  if (who === 'me') S.meActed = true;
   p.mana -= card.cost;
   p.hand.splice(p.hand.indexOf(card), 1);
   log(`${p.name}: ${card.name} 소환 (코스트 ${card.cost})`);
@@ -467,6 +468,7 @@ async function attack(who, unit, target, fromBatch = false) {
   if (!fromBatch && who === 'me' && S.busy) return;
   if (!canTarget(p, o, target, unit)) { if (who === 'me') { const r = attackTargets(p, o, unit).reason; log(r, 'text-red-400'); floatText(r, 'text-red-400 text-sm', 'ai'); } return; }
   const prevBusy = S.busy;
+  if (who === 'me') S.meActed = true;
   S.busy = true; selected = null;
   const oWho = who === 'me' ? 'ai' : 'me';
   let aEl = null;
@@ -1011,7 +1013,7 @@ async function castSkill(who, u, s) {
   if (S?.view) { if (who === 'me' && S.view.ask && skillState(u, s).ok) S.view.ask({ k: 'skill', i: S.view.A0.indexOf(u), s: s.name }); return; }   // PvP·전쟁 화면: 엔진에 입력만 넘김
   const p = S[who];
   if (S.over || !p.field.includes(u) || !skillState(u, s).ok) return;
-  const prevBusy = S.busy; S.busy = true; selected = null;
+  const prevBusy = S.busy; S.busy = true; selected = null; if (who === 'me') S.meActed = true;
   try {
     render();
     if (!(await mrVideo(u, s))) await withTimeout(cutIn(u, s.name, s.fx), 3000);
@@ -1234,6 +1236,7 @@ function skillInfoPop(unit, s) {
 }
 function render() {
   renderAutoBtn();
+  maybeAutoEndTurn();
   if (S) preloadFx([...S.me.field, ...S.ai.field].map(u => u.base || u.card));
   renderTurnsLeft();
   if (!S) return;
@@ -1532,6 +1535,33 @@ function idleUnits() {
   if (!tg.hero && !tg.units.length) return [];
   return S.me.field.filter(u => u.canAttack && !u.st?.para && !u.st?.confuse && !u.st?.stun);
 }
+// 아케이드 외 전투(스토리·탑·튜토리얼·PvP·구역 전쟁·토벌): 이번 턴에 한 번이라도 행동한 뒤
+// 더 할 수 있는 게 없으면 자동 턴 종료. 아케이드는 S.story 가 없음 → 제외
+let autoEndTimer = null;
+/** 아직 할 수 있는 행동이 남았나? 새 규칙(제한 마나 소환 등)은 여기에만 추가하면 됨 */
+function canStillAct() {
+  if (!S) return false;
+  const me = S.me, ai = S.ai;
+  if (idleUnits().length) return true;                                                    // 공격 가능한 아군
+  if ((me.hand || []).some(c => { try { return canSummon(c, me, ai).ok; } catch { return false; } })) return true;   // 지금 낼 수 있는 손패 (마나·필드 칸·조건)
+  if (me.field.some(u => (u.sk || []).some(s => { try { return skillState(u, s).ok; } catch { return false; } }))) return true;   // 쓸 수 있는 스킬 (쿨·MP)
+  return false;
+}
+function autoEndReady() {
+  if (!S || !S.story || S.turn !== 'me' || S.over || S.busy || !S.meActed) return false;
+  if (S.view ? (S.view.auto || !S.view.ask) : autoActive()) return false;                 // 자동전투 중엔 엔진/자동이 처리
+  return !canStillAct();
+}
+function maybeAutoEndTurn() {
+  if (autoEndTimer || !autoEndReady()) return;
+  const turn = S.totalTurns;
+  autoEndTimer = setTimeout(() => {
+    autoEndTimer = null;
+    if (S.totalTurns !== turn) return;            // 그 사이 직접 턴종료함
+    if (S.busy) return maybeAutoEndTurn();        // 연출 중이면 끝난 뒤 다시
+    if (autoEndReady()) { hideModal('endturn-confirm'); endTurn(); }
+  }, window.TCG_FAST ? 0 : 500);
+}
 function requestEndTurn() {
   if (S.turn !== 'me' || S.over || S.busy) return;
   const n = idleUnits().length;
@@ -1736,7 +1766,7 @@ async function viewBattle({ session, aiName = '상대', bg = 'normal', manual = 
         const a = v.anim, who = a.side === 'A' ? 'me' : 'ai', evs = drain();
         fastForward = false;   // 탭 빨리감기는 그 행동 하나만 (스토리처럼) — 안 풀면 한 번 탭 뒤 전투 전체가 연출 없이 순식간에 끝남
         if (a.k === 'turn' && !S.totalTurns) { $('me-order').textContent = who === 'me' ? '선공' : '후공'; $('ai-order').textContent = who === 'ai' ? '선공' : '후공'; }
-        if (a.k === 'turn') { S.turn = who; S.totalTurns++; if (who === 'me') S.myTurns++; S.busy = true; render(); if (raid && who === 'me') floatText(`T${a.t}/${mt / 2}`, 'text-amber-200 text-2xl', 'me'); await play(evs, 160); if (raid) { bossNum(v.damage - (S.vDmg || 0)); S.vDmg = v.damage; raidPaint(v.damage, 1); } await sleep(AI_DELAY()); }
+        if (a.k === 'turn') { S.turn = who; S.totalTurns++; if (who === 'me') { S.myTurns++; S.meActed = false; } S.busy = true; render(); if (raid && who === 'me') floatText(`T${a.t}/${mt / 2}`, 'text-amber-200 text-2xl', 'me'); await play(evs, 160); if (raid) { bossNum(v.damage - (S.vDmg || 0)); S.vDmg = v.damage; raidPaint(v.damage, 1); } await sleep(AI_DELAY()); }
         else if (a.k === 'skill') { S.busy = true; selected = null;   /* 컷인 전엔 다시 그리지 않음: 엔진은 이미 스킬 결과(처치 포함)를 반영 → 그리면 맞을 카드가 먼저 사라짐 */ if (!(await mrVideo(a.u, a.s))) await withTimeout(cutIn(a.u, a.s.name, a.s.fx), 3000); pendingDying = []; await play(evs, 160); if (raid) { bossNum(a.d, a.weak); S.vDmg = v.damage; raidPaint(v.damage, a.d); } if (who === 'me') S.log.skills++; render(); await sleep(fxMs(450)); await withTimeout(fadeDying(), 750); if (who === 'me') TUT('skill_used', { skill: a.s?.name }); }
         else if (a.k === 'atk') {
           S.busy = true; const oWho = who === 'me' ? 'ai' : 'me', aEl = unitEl(who, a.u), tEl = a.t ? unitEl(oWho, a.t) : null;
@@ -1758,7 +1788,7 @@ async function viewBattle({ session, aiName = '상대', bg = 'normal', manual = 
         // 일괄 공격 대기열: 아직 행동 가능한 카드부터 차례로 (대상 = 공격 가능한 첫 적, 토벌은 보스)
         const fromBatch = () => { while (V.batch?.length) { const u = V.batch.shift(); if (!u.canAttack || u.hp <= 0 || !S.me.field.includes(u)) continue; const t = autoTarget(u, S.me, S.ai); if (t == null) continue; return { k: 'atk', i: V.A0.indexOf(u), t: V.B0.indexOf(t) }; } V.batch = null; return null; };
         const inp = V.auto ? { k: 'auto' } : fromBatch() || await new Promise(res => { V.ask = i => { V.ask = null; V.nextBatch = null; res(i); }; V.nextBatch = () => { const b = fromBatch(); if (b) V.ask(b); }; });
-        V.ask = null; selected = null; S.busy = true;
+        V.ask = null; selected = null; S.busy = true; if (inp && inp.k !== 'end' && inp.k !== 'auto') S.meActed = true;
         x = session.next(inp); continue;
       }
       x = session.next();
