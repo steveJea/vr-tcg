@@ -206,7 +206,8 @@ window.STORY_DATA.chapters.unshift({
     },
     {
      "speaker": "황보예",
-     "text": "저… 저도 데려가 주세요!"
+     "text": "저… 저도 데려가 주세요!",
+     "expr": "기쁨"
     },
     {
      "speaker": "임유리",
