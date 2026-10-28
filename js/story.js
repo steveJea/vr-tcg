@@ -553,7 +553,8 @@
         <button data-go="cards" title="내 인재 · 스탯 분배"><span>🃏</span>내 인재${save.points ? `<i class="story-badge">${save.points}</i>` : ''}</button>
         <button data-go="bonds" title="인연 조합"><span>🤝</span>인연</button>
         <button id="story-quest" type="button" onclick="window.VRQuest&&VRQuest.open()"><span>🗼</span>시련의 탑</button>
-        <button id="story-mypage" type="button" onclick="window.VRMyPage&&VRMyPage.open()"><span>👤</span>마이</button></div>
+        <button id="story-mypage" type="button" onclick="window.VRMyPage&&VRMyPage.open()"><span>👤</span>마이</button>
+        <button id="story-trade" type="button" onclick="window.VRTrade&&VRTrade.open()" title="인재·장비 거래"><span>💱</span>거래</button></div>
     </div>`);
     const mv = d => { const n = Math.max(0, Math.min(cur, hubC + d)); if (n !== hubC) { hubC = n; renderHub(); } };
     $('hub-up').onclick = () => mv(1); $('hub-down').onclick = () => mv(-1);
