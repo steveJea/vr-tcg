@@ -48,9 +48,9 @@
   }
 
   function render() {
-    root().innerHTML = `<div class="ad-tabs"><button class="ad-btn sub ${tab === 'users' ? 'on' : ''}" data-tab="users">가입 유저</button><button class="ad-btn sub ${tab === 'logs' ? 'on' : ''}" data-tab="logs">관리자 기록</button></div><div id="ad-view"></div>`;
+    root().innerHTML = `<div class="ad-tabs"><button class="ad-btn sub ${tab === 'users' ? 'on' : ''}" data-tab="users">가입 유저</button><button class="ad-btn sub ${tab === 'logs' ? 'on' : ''}" data-tab="logs">관리자 기록</button><button class="ad-btn sub ${tab === 'notices' ? 'on' : ''}" data-tab="notices">공지</button></div><div id="ad-view"></div>`;
     root().querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { tab = b.dataset.tab; render(); });
-    tab === 'users' ? renderUsers() : renderLogs();
+    tab === 'users' ? renderUsers() : tab === 'notices' ? renderNotices() : renderLogs();
   }
   async function renderUsers(q = '') {
     const v = $('ad-view');
@@ -73,6 +73,35 @@
     } catch (e) { v.innerHTML = `<div class="ad-err">${esc(e?.message)}</div>`; }
   }
 
+  // --- 공지 게시판: 쓰기·수정·삭제·고정 (서버 admin_notice_save / admin_notice_delete, 관리자만). 게임 메인의 흐르는 공지에 표시 ---
+  const listNotices = async () => {
+    if (M()?.notices) return M().notices();
+    const { data, error } = await cloud().sb.from('notices').select('*').order('pinned', { ascending: false }).order('created_at', { ascending: false });
+    if (error) throw error; return data || [];
+  };
+  async function renderNotices(edit = null) {
+    const v = $('ad-view'); v.innerHTML = '<div class="ad-msg">불러오는 중...</div>';
+    let rows; try { rows = await listNotices(); } catch (e) { v.innerHTML = `<div class="ad-msg ad-err">불러오기 실패: ${esc(e.message)} (supabase/pvp_info_notices.sql 실행 필요)</div>`; return; }
+    const cur = rows.find(r => r.id === edit);
+    v.innerHTML = `<div class="ad-sec ad-nform"><h3>${cur ? '공지 수정' : '새 공지'}</h3>
+      <textarea id="ad-nbody" maxlength="200" rows="3" placeholder="게임 메인에 흐르는 공지 (200자)">${esc(cur?.body || '')}</textarea>
+      <div class="ad-nrow"><label><input type="checkbox" id="ad-npin" ${cur?.pinned ? 'checked' : ''}> 📌 맨 앞 고정</label><span id="ad-ncnt">${(cur?.body || '').length}/200</span>
+      ${cur ? '<button class="ad-btn sub" id="ad-ncancel">취소</button>' : ''}<button class="ad-btn" id="ad-nsave">${cur ? '수정 저장' : '올리기'}</button></div><div id="ad-nmsg"></div></div>
+      <div class="ad-nlist">${rows.map(r => `<div class="ad-nitem ${r.pinned ? 'pin' : ''}"><div class="ad-ntext">${r.pinned ? '📌 ' : ''}${esc(r.body)}<small>${fmt(r.created_at)}</small></div>
+        <button class="ad-btn sub" data-nedit="${r.id}">수정</button><button class="ad-btn sub ad-del" data-ndel="${r.id}">삭제</button></div>`).join('') || '<div class="ad-msg">공지 없음</div>'}</div>`;
+    const body = $('ad-nbody'); body.oninput = () => { $('ad-ncnt').textContent = `${body.value.length}/200`; };
+    if ($('ad-ncancel')) $('ad-ncancel').onclick = () => renderNotices();
+    $('ad-nsave').onclick = async () => {
+      const t = body.value.trim(); if (!t) { $('ad-nmsg').innerHTML = '<span class="ad-err">내용을 써 주세요</span>'; return; }
+      try { await rpc('admin_notice_save', { p_id: cur?.id ?? null, p_body: t, p_pinned: $('ad-npin').checked }); renderNotices(); }
+      catch (e) { $('ad-nmsg').innerHTML = `<span class="ad-err">실패: ${esc(e.message)}</span>`; }
+    };
+    v.querySelectorAll('[data-nedit]').forEach(b => b.onclick = () => renderNotices(+b.dataset.nedit));
+    v.querySelectorAll('[data-ndel]').forEach(b => b.onclick = async () => {
+      if (!confirm('이 공지를 삭제할까요?')) return;
+      try { await rpc('admin_notice_delete', { p_id: +b.dataset.ndel }); renderNotices(); } catch (e) { alert('삭제 실패: ' + e.message); }
+    });
+  }
   async function openUser(id) {
     const m = $('ad-modal'), box = $('ad-detail'); m.classList.remove('hidden'); box.innerHTML = '<div class="ad-msg">불러오는 중...</div>';
     let d, log, qd = null, wl = null, pl = null, gm = null;

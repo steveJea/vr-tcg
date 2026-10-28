@@ -19,3 +19,10 @@
 .ad-cards{display:flex;flex-wrap:wrap;gap:4px}.ad-chip{background:#0f0c18;border:1px solid #3b2f63;border-radius:6px;padding:2px 6px;font-size:12px}.ad-chip.lead{border-color:#f5c96a}
 .ad-grant{display:flex;gap:6px;flex-wrap:wrap}.ad-grant input,.ad-grant select{padding:6px 8px;border-radius:8px;border:1px solid #3b2f63;background:#0f0c18;color:#fff}.ad-grant input[type=number]{width:90px}.ad-grant input[type=text]{flex:1;min-width:140px}
 .ad-ok{color:#4ade80}.ad-err{color:#f87171}
+
+/* 공지 게시판 */
+.ad-nform textarea{width:100%;box-sizing:border-box;background:#111;color:#eee;border:1px solid #444;border-radius:8px;padding:8px;font:inherit;resize:vertical}
+.ad-nrow{display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap}.ad-nrow label{flex:1;min-width:120px}#ad-ncnt{opacity:.6;font-size:12px}
+.ad-nlist{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+.ad-nitem{display:flex;gap:6px;align-items:center;padding:8px;border-radius:8px;background:rgba(255,255,255,.05)}.ad-nitem.pin{background:rgba(245,201,106,.14)}
+.ad-ntext{flex:1;min-width:0;word-break:break-all}.ad-ntext small{display:block;opacity:.55;font-size:11px;margin-top:2px}

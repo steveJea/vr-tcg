@@ -74,7 +74,7 @@ function paint() {
   m.querySelectorAll('[data-league]').forEach(b => b.onclick = () => { view.league = b.dataset.league; save(); open(); });
   m.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => { view.mode = b.dataset.mode; save(); open(); });
   m.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => editDeck(+b.dataset.edit));
-  m.querySelector('[data-rank]').onclick = rankings;
+  m.querySelector('[data-rank]').onclick = rankings; bindWho(m);
   m.querySelector('[data-tiers]').onclick = tierTable;
   if (st.pending) claimTier();
   m.querySelector('[data-go]').onclick = fight; bindMode(m);
@@ -252,14 +252,28 @@ function playback(s, res) {
 }
 
 // ---- 랭킹 ----
-const rkRow = (x, nm) => `<div class="pvp-rk-row ${x.me ? 'me' : ''}"><b>${x.rank <= 3 ? ['🥇', '🥈', '🥉'][x.rank - 1] : x.rank}</b><span class="pvp-rk-nm">${emb(tierBy(x.tier) || tierOf(x.rating), 'sm')}<span class="${x.abyss ? 'pvp-abyss-name' : ''}">${esc(nm ?? x.name)}</span></span><small>${x.wins}W ${x.losses}L</small><em>${x.rating}</em></div>`;
-const rkRows = r => ((r?.top || []).slice(0, 10).map(x => rkRow(x)).join('') || '<div class="pvp-empty">—</div>') + (r?.me && !(r.top || []).slice(0, 10).some(x => x.me) ? rkRow(r.me, '나') : '');
+const rkRow = (x, nm, pos) => `<div class="pvp-rk-row ${x.me ? 'me' : ''} ${pos ? 'tap' : ''}"${pos ? ` data-who="${pos}"` : ''}><b>${x.rank <= 3 ? ['🥇', '🥈', '🥉'][x.rank - 1] : x.rank}</b><span class="pvp-rk-nm">${emb(tierBy(x.tier) || tierOf(x.rating), 'sm')}<span class="${x.abyss ? 'pvp-abyss-name' : ''}">${esc(nm ?? x.name)}</span></span><small>${x.wins}W ${x.losses}L</small><em>${x.rating}</em></div>`;
+const rkRows = r => ((r?.top || []).slice(0, 10).map((x, i) => rkRow(x, undefined, i + 1)).join('') || '<div class="pvp-empty">—</div>') + (r?.me && !(r.top || []).slice(0, 10).some(x => x.me) ? rkRow(r.me, '나') : '');
 async function rankings() {
   const m = modal('pvp-ranking', `<div class="pvp-empty">…</div>`, 'pvp-sub');
   let r; try { r = await rpc('pvp_rankings', { p_league: view.league, p_mode: view.mode, p_season: null }); } catch (e) { m.querySelector('.pvp-panel').innerHTML = `<div class="pvp-empty">${esc(errText(e))}</div>`; return; }
   m.querySelector('.pvp-panel').innerHTML = `<button class="pvp-x" data-x>✕</button><div class="pvp-h">🏅 ${LEAGUES[view.league].label} · ${view.mode}</div>
-    <div class="pvp-rk">${(r.top || []).map(x => rkRow(x)).join('') || '<div class="pvp-empty">—</div>'}</div>
+    <div class="pvp-rk">${(r.top || []).map((x, i) => rkRow(x, undefined, i + 1)).join('') || '<div class="pvp-empty">—</div>'}</div>
     ${r.me && !(r.top || []).some(x => x.me) ? `<div class="pvp-rk-row me"><b>${r.me.rank}</b><span>나</span><small>${r.me.wins}W ${r.me.losses}L</small><em>${r.me.rating}</em></div>` : ''}`;
+  bindWho(m);
+}
+// ---- 랭커 정보 팝업 (계정 레벨 · 리더 · PvP 덱 · 소속 조직) — 서버 pvp_user_info 는 공개 필드만 줌 ----
+const bindWho = m => m.querySelectorAll('[data-who]').forEach(b => b.onclick = () => who(+b.dataset.who));
+async function who(pos) {
+  const m = modal('pvp-who', `<div class="pvp-empty">…</div>`, 'pvp-sub');
+  let r; try { r = await rpc('pvp_user_info', { p_league: view.league, p_mode: view.mode, p_rank: pos }); } catch (e) { m.querySelector('.pvp-panel').innerHTML = `<button class="pvp-x" data-x>✕</button><div class="pvp-empty">${esc(errText(e))}</div>`; return; }
+  const lc = r.leader && card(r.leader);
+  const face = `<div class="pvp-who-face">${r.leader ? `<img src="${IMG}${esc(r.leader)}.webp" alt="${esc(lc?.name || '')}" onerror="this.style.visibility='hidden'">` : '<i>👤</i>'}</div>`;
+  const guild = r.guild ? `<span class="pvp-who-g"><img src="img/ui/guild/e${String(r.guild.emblem || 1).padStart(2, '0')}.webp" alt="" onerror="this.remove()">${esc(r.guild.name)}</span>` : '<span class="pvp-who-g none">소속 조직 없음</span>';
+  const decks = (r.decks || []).map(d => `<div class="pvp-who-deck">${d.cards.map(c => thumb(card(c.id) && { ...card(c.id), level: c.level })).join('')}</div>`).join('') || '<div class="pvp-empty">덱 없음</div>';
+  m.querySelector('.pvp-panel').innerHTML = `<button class="pvp-x" data-x>✕</button>
+    <div class="pvp-who-top">${face}<div class="pvp-who-m"><b>${esc(r.name)}</b><small>Lv.${r.level} · ${pos}위</small>${guild}</div></div>
+    <div class="pvp-who-h">🛡 PvP 덱 · ${LEAGUES[view.league].label} ${view.mode}</div>${decks}`;
 }
 
 const bind = () => { const b = $('main-pvp'); if (b) b.onclick = open; };
