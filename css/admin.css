@@ -26,3 +26,4 @@
 .ad-nlist{display:flex;flex-direction:column;gap:6px;margin-top:10px}
 .ad-nitem{display:flex;gap:6px;align-items:center;padding:8px;border-radius:8px;background:rgba(255,255,255,.05)}.ad-nitem.pin{background:rgba(245,201,106,.14)}
 .ad-ntext{flex:1;min-width:0;word-break:break-all}.ad-ntext small{display:block;opacity:.55;font-size:11px;margin-top:2px}
+.ad-btn.ad-del,.ad-danger .ad-btn{background:#b3261e;color:#fff}.ad-danger{border:1px solid #b3261e55;border-radius:8px;padding:8px}.ad-btn:disabled{opacity:.45;cursor:not-allowed}

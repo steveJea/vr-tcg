@@ -23,7 +23,7 @@
   }
   const SHORT = { 'NORMAL': 'N', 'RARE': 'R', 'HIGH RARE': 'HR', 'SUPER RARE': 'SR', 'ULTRA RARE': 'UR', 'MYTHIC RARE': 'MR', 'LEGENDARY RARE': 'LR' };
   const CUR = [['gold', '🪙', '골드'], ['blood', '🩸', '순수한 피'], ['shard', '💠', '이상한 조각'], ['soul', '🔥', '각성자의 혼']];
-  const ACT = { trade_void_listing: '거래 글 강제 내림', trade_refund_offer: '거래 제안 강제 환불', grant_drink: '드링크 지급', grant_tickets: '소환권 지급', grant_gold: '골드 지급', grant_blood: '순수한 피 지급', grant_shard: '이상한 조각 지급', grant_soul: '각성자의 혼 지급' };
+  const ACT = { reset_account: '계정 초기화', trade_void_listing: '거래 글 강제 내림', trade_refund_offer: '거래 제안 강제 환불', grant_drink: '드링크 지급', grant_tickets: '소환권 지급', grant_gold: '골드 지급', grant_blood: '순수한 피 지급', grant_shard: '이상한 조각 지급', grant_soul: '각성자의 혼 지급' };
   const cname = id => names.get(String(id))?.name || id;
 
   async function waitCloud() {
@@ -169,6 +169,7 @@
       <div class="ad-sec"><h3>💰 재화 지급 / 회수</h3>${wl ? `<div class="ad-grant"><select id="ad-ck">${CUR.map(([k, ic, nm]) => `<option value="${k}">${ic} ${nm}</option>`).join('')}</select><input type="number" id="ad-camt" min="-1000000" max="1000000" value="100"><input type="text" id="ad-creason" maxlength="200" placeholder="사유 (필수, 기록됨 · 음수 = 회수)"><button class="ad-btn" id="ad-cgive">적용</button></div><div id="ad-cmsg" style="margin-top:4px"></div>` : '<div class="ad-msg">supabase/phaseE_1.sql 을 실행하면 사용할 수 있어요</div>'}</div>
       <div class="ad-sec"><h3>🔮 심연석 <b id="ad-gem">${gm ? Number(gm.gem).toLocaleString('ko-KR') : '-'}</b> <small>${gm ? `무료 ${gm.free} · 유료 ${gm.paid}` : ''}</small></h3>${gm ? `<div class="ad-grant"><input type="number" id="ad-gamt" min="-1000000" max="1000000" value="100"><input type="text" id="ad-greason" maxlength="200" placeholder="사유 (필수, 기록됨 · 음수 = 회수 · 무료분)"><button class="ad-btn" id="ad-ggive">적용</button></div><div id="ad-gmsg2" style="margin-top:4px"></div>
         <div class="ad-cards" style="max-height:180px;overflow:auto;display:block">${gm.log.map(x => `<div style="font-size:12px">${esc(fmt(x.at))} · ${esc(x.reason)} · <b>${x.d_free + x.d_paid > 0 ? '+' : ''}${x.d_free + x.d_paid}</b>${x.d_paid ? ` (유료 ${x.d_paid})` : ''} → ${x.free_after + x.paid_after} <small style="opacity:.6">${esc(x.ref)}</small></div>`).join('') || '기록 없음'}</div>` : '<div class="ad-msg">supabase/gem.sql 을 실행하면 사용할 수 있어요</div>'}</div>
+      <div class="ad-sec ad-danger"><h3>⚠️ 계정 초기화</h3><div style="font-size:13px;opacity:.8;margin-bottom:6px">인재·스토리 진행·재화·장비·퀘스트·PvP·탑 기록을 새 계정 상태로 되돌려요. 아케이드 기록·도감도 지워지고, 닉네임·프로필 사진은 가입 때(구글 이름·사진)로 돌아가요. 로그인, 유료 심연석·유료 드링크, 소환권은 유지돼요. 열린 거래는 취소·환불되고 조직은 탈퇴(보스면 승계/해산)돼요.</div><button class="ad-btn ad-del" id="ad-reset">계정 초기화</button><div id="ad-rmsg"></div></div>
       <div class="ad-sec"><h3>보유 카드 (${owned.length}장)</h3><div class="ad-cards">${ownedSorted.map(o => `<span class="ad-chip ${o.uid === d.leader ? 'lead' : ''}">${o.uid === d.leader ? '👑 ' : ''}${esc(SHORT[names.get(String(o.id))?.grade] || '')} ${esc(cname(o.id))} Lv.${o.level | 0}${o.ex ? ` EX${o.ex}` : ''}</span>`).join('') || '없음'}</div></div>
       <div class="ad-sec"><h3>최근 아케이드 판</h3><div class="ad-wrap"><table class="ad-table"><thead><tr><th>시각</th><th>결과</th><th>턴</th><th>피해</th><th>MVP</th></tr></thead><tbody>${(d.recent || []).map(x => `<tr><td>${fmt(x.created_at)}</td><td>${({ win: '승', lose: '패', draw: '무' })[x.result] || esc(x.result)}</td><td>${x.turns ?? ''}</td><td>${x.damage ?? ''}</td><td>${esc(x.mvp_name)}</td></tr>`).join('') || '<tr><td colspan="5">기록 없음</td></tr>'}</tbody></table></div></div>
       <div class="ad-sec"><h3>뽑기 기록 (${(log || []).length})</h3><div class="ad-wrap"><table class="ad-table"><thead><tr><th>시각</th><th>종류</th><th>등급</th><th>카드</th></tr></thead><tbody>${(log || []).map(x => `<tr><td>${fmt(x.created_at)}</td><td>${x.kind === 'ticket' ? '소환권' : x.kind === 'daily' ? '매일 뽑기' : esc(x.kind)}</td><td>${esc(SHORT[x.grade] || x.grade)}</td><td>${esc(cname(x.card_id))}</td></tr>`).join('') || '<tr><td colspan="4">기록 없음</td></tr>'}</tbody></table></div></div>`;
@@ -182,7 +183,7 @@
       catch (e) { msg.innerHTML = `<span class="ad-err">${esc(e?.message)}</span>`; }
       finally { $('ad-give').disabled = false; }
     };
-    bindCurrency(id, d); bindGem(id, d);
+    bindCurrency(id, d); bindGem(id, d); bindReset(id, d);
   }
   function bindGem(id, d) {
     const btn = $('ad-ggive'); if (!btn) return;
@@ -209,6 +210,40 @@
       try { const res = await rpc('admin_grant_currency', { p_user: id, p_key: key, p_amount: amt, p_reason: reason }); $(`ad-w-${key}`).textContent = Number(res.after).toLocaleString('ko-KR'); msg.innerHTML = `<span class="ad-ok">완료: ${nm} ${res.before} → ${res.after}</span>`; $('ad-creason').value = ''; }
       catch (e) { msg.innerHTML = `<span class="ad-err">${esc(/not enough/.test(e?.message) ? '잔액보다 많이 회수할 수 없어요' : e?.message)}</span>`; }
       finally { btn.disabled = false; }
+    };
+  }
+  // --- 계정 초기화 (supabase/admin_reset.sql). 닉네임을 그대로 입력해야 실행. 바깥 클릭 = 닫기 ---
+  const RK = { gem_paid_kept: '유료 심연석 유지', drink_paid_kept: '유료 드링크 유지', trade_listings_cancelled: '거래 글 취소', trade_offers_refunded: '거래 제안 환불', war_roster_cleared: '구역 전쟁 명단 제외', story_progress: '스토리·보유 인재', player_gear: '장비', story_gacha_log: '뽑기 기록', tickets_kept: '소환권 유지', old_nickname: '이전 닉네임', profile_reset: '닉네임·아바타 초기화', player_state: '레벨·행동력' };
+  function bindReset(id, d) {
+    const btn = $('ad-reset'); if (!btn) return;
+    btn.onclick = () => {
+      const key = d.nickname || d.email;
+      const ov = document.createElement('div'); ov.className = 'ad-modal'; ov.style.zIndex = 1001;
+      ov.innerHTML = `<div class="ad-panel" style="max-width:420px" role="dialog" aria-label="계정 초기화 확인"><h3 style="margin:0 0 8px">⚠️ 정말 초기화할까요?</h3>
+        <div style="font-size:13px;margin-bottom:8px"><b>${esc(key)}</b> (${esc(d.email)}) 계정의 인재·진행·재화가 전부 지워지고 되돌릴 수 없어요.</div>
+        <div style="font-size:13px;margin-bottom:4px">확인을 위해 <b>${esc(key)}</b> 를 그대로 입력하세요</div>
+        <input id="ad-rc" class="ad-in" style="width:100%;box-sizing:border-box" autocomplete="off" placeholder="${esc(key)}">
+        <input id="ad-rr" class="ad-in" style="width:100%;box-sizing:border-box;margin-top:6px" maxlength="200" placeholder="사유 (필수, 기록됨)">
+        <div style="display:flex;gap:6px;justify-content:flex-end;margin-top:10px"><button class="ad-btn sub" id="ad-rno">취소</button><button class="ad-btn ad-del" id="ad-rgo" disabled>초기화</button></div><div id="ad-rem"></div></div>`;
+      document.body.appendChild(ov);
+      const close = () => ov.remove();
+      ov.addEventListener('click', e => { if (e.target === ov) close(); });
+      $('ad-rno').onclick = close;
+      const chk = () => { $('ad-rgo').disabled = !($('ad-rc').value.trim() === key && $('ad-rr').value.trim()); };
+      $('ad-rc').oninput = chk; $('ad-rr').oninput = chk; $('ad-rc').focus();
+      $('ad-rgo').onclick = async () => {
+        $('ad-rgo').disabled = true; $('ad-rem').innerHTML = '<div class="ad-msg">초기화 중...</div>';
+        try {
+          const res = await rpc('admin_reset_account', { p_user: id, p_confirm: $('ad-rc').value.trim(), p_reason: $('ad-rr').value.trim() });
+          close();
+          const sm = res?.summary || {}, g = sm.guild ? { left: '조직 탈퇴', boss_transferred: '보스 승계 후 탈퇴', disbanded: '조직 해산' }[sm.guild] : '';
+          $('ad-rmsg').innerHTML = `<div class="ad-ok" style="margin-top:6px">초기화 완료 · ${esc(res?.nickname || key)}</div><div style="font-size:12px">${[g, ...Object.entries(sm).filter(([k]) => !['guild', 'guild_id', 'heir'].includes(k)).map(([k, v]) => `${esc(RK[k] || k)} ${esc(v)}`)].filter(Boolean).join(' · ')}</div>`;
+          $('ad-reset').disabled = true;
+        } catch (e) {
+          const m = e?.message || '';
+          $('ad-rem').innerHTML = `<span class="ad-err">${esc(/confirm mismatch/.test(m) ? '닉네임이 맞지 않아요' : /reset self/.test(m) ? '내 계정은 초기화할 수 없어요' : /admin_reset_account|Could not find/.test(m) ? '서버에 초기화 함수(supabase/admin_reset.sql)가 아직 없어요' : m)}</span>`; chk();
+        }
+      };
     };
   }
   function closeModal() { $('ad-modal').classList.add('hidden'); if (tab === 'users') renderUsers($('ad-q')?.value.trim() || ''); }
