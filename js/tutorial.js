@@ -39,6 +39,7 @@ function build() {
 
 function place() {
   if (!T) return;
+  if (T.def.anchor && !document.querySelector(T.def.anchor)) { if (!T.anchorMiss) T.anchorMiss = performance.now(); else if (performance.now() - T.anchorMiss > 600) return abort(); } else T.anchorMiss = 0;   // anchor: 그 화면이 사라지면 가이드 종료 (막힘 방지)
   const st = T.def.steps[T.i], { ring, bub, hand, ov } = T.el;
   const tgt = st && resolve(st.target);
   ov.classList.toggle('dim', !!st);
@@ -84,6 +85,7 @@ function guard(e) {
   // 상세 창(스킬 사용)은 대상이 그 안에 있으면 그 창 안 탭은 허용
   if (tgt && tgt.contains(e.target)) { if (e.type === 'click' && st.wait === 'tap_target') setTimeout(next, 0); return; }
   if (!tgt && !st.target) return;   // 대상 없는 행동 대기: 막지 않음
+  if (!tgt) { T.missSince = T.missSince || performance.now(); if (performance.now() - T.missSince > 3000) return; } else T.missSince = 0;   // 대상이 3초 넘게 없으면 막지 않음 (막힘 방지)
   e.stopPropagation(); if (hard) e.preventDefault();
 }
 
@@ -91,6 +93,12 @@ function applyLocks(on) {
   for (const k of LOCKS) document.body.classList.toggle(`tut-lock-${k}`, !!(on && T?.locks.has(k)));
 }
 
+/** 가이드 화면이 사라짐: 기록 없이 조용히 끝냄 (다음에 다시 시작 가능) */
+function abort() {
+  if (!T) return; const t = T; T = null;
+  cancelAnimationFrame(t.raf); t.el.ov.remove(); applyLocks(false);
+  for (const ev of ['click', 'pointerdown', 'pointerup', 'mousedown']) document.removeEventListener(ev, guard, true);
+}
 function finish(skipped) {
   if (!T) return;
   const t = T; T = null;
@@ -108,7 +116,7 @@ async function start(id, opt = {}) {
   if (!def) { try { const r = await fetch(`data/tutorials/${id}.json`, { cache: 'no-cache' }); if (!r.ok) return false; def = await r.json(); } catch { return false; } }
   if (!Array.isArray(def.steps) || !def.steps.length) return false;
   // 내 차례·연출 끝날 때까지 기다렸다가 시작 (최대 20초)
-  for (let k = 0; k < 100 && window.TCG?.S && (window.TCG.S.turn !== 'me' || window.TCG.S.busy) && !window.TCG.S.over; k++) await new Promise(r => setTimeout(r, 200));
+  for (let k = 0; k < 100 && !def.anchor && window.TCG?.S && (window.TCG.S.turn !== 'me' || window.TCG.S.busy) && !window.TCG.S.over; k++) await new Promise(r => setTimeout(r, 200));
   if (T) return false;
   const S = window.TCG?.S;
   if (def.prep?.fullMp && S?.me) { for (const u of S.me.field) u.mp = u.maxMp; window.TCG.render?.(); }   // 연습용: 첫 턴부터 기술 사용 가능
@@ -147,5 +155,5 @@ async function demo(id = 'ch0_battle1') {
   tryStart(); return true;
 }
 
-window.VRTutorial = { start, emit, locked, done, reset, demo, get active() { return T ? { id: T.id, step: T.i, wait: T.def.steps[T.i]?.wait } : null; } };
+window.VRTutorial = { finishIf: id => { if (T && (!id || T.id === id)) abort(); }, start, emit, locked, done, reset, demo, get active() { return T ? { id: T.id, step: T.i, wait: T.def.steps[T.i]?.wait } : null; } };
 try { const q = new URLSearchParams(location.search); if (q.get('tut_reset') != null) reset(q.get('tut_reset') || undefined); if (q.get('tut')) demo(q.get('tut')); } catch {}
