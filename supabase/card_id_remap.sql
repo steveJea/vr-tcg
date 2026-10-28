@@ -6,6 +6,8 @@
 --   2) public 스키마의 모든 테이블·글자/JSON/글자배열 열을 자동으로 찾아, 그 안의 옛 ID 를 새 ID 로 (JSON 은 키·값 모두)
 --   3) 옛 ID 가 들어 있는 함수 본문(보상·보스·인장·세력전 NPC 등)도 새 ID 로 다시 만들기
 --   4) 세력전 NPC 덱: 성별을 ID 첫 자리 대신 남성 목록으로 확인 (ID 앞자리에 성별이 없어짐)
+--   0) 글자 열에 걸린 외래키(예: sigil_sources → sigil_defs)는 잠시 지우고 끝에 원래 정의 그대로 다시 만듦 (다시 만들 때 전체 검사)
+--      바꾸는 동안 사용자 트리거(보상·도감 동기화 등)는 꺼서 부작용 없음, 끝나면 다시 켬
 --   5) 열·함수별 변경 전/후 개수 표 출력 · 변경 후 옛 ID 가 0 이 아니면 취소
 -- 순서: 점검(서비스 잠시 멈춤) → 이 파일 실행 → 두 저장소 PR 동시에 머지 (README: tools/idmap/README.md)
 -- =====================================================================
@@ -521,7 +523,29 @@ begin
   end case;
 end $$;
 
-create temp table idremap_report (kind text, name text, before_n bigint, after_n bigint);
+create temp table idremap_report (kind text, name text, before_n bigint, after_n bigint) on commit drop;
+
+-- 외래키: 글자형(text·varchar) 키 열이 있는 public 외래키 전부 (참조하는 쪽·참조되는 쪽 어느 쪽이든) → 정의 저장 후 삭제
+-- (부모·자식 ID 를 차례로 바꾸는 중간에 어긋나 실패하던 문제. 다시 만들 때 PostgreSQL 이 모든 줄을 다시 검사)
+create temp table idremap_fk on commit drop as
+  select c.conrelid::regclass::text tbl, c.conname, pg_get_constraintdef(c.oid) def
+  from pg_constraint c
+  where c.contype = 'f'
+    and (c.conrelid in (select oid from pg_class where relnamespace = 'public'::regnamespace)
+      or c.confrelid in (select oid from pg_class where relnamespace = 'public'::regnamespace))
+    and (exists (select 1 from pg_attribute a where a.attrelid = c.conrelid and a.attnum = any(c.conkey) and a.atttypid in ('text'::regtype, 'varchar'::regtype))
+      or exists (select 1 from pg_attribute a where a.attrelid = c.confrelid and a.attnum = any(c.confkey) and a.atttypid in ('text'::regtype, 'varchar'::regtype)));
+do $$ declare f record; begin
+  for f in select * from idremap_fk loop execute format('alter table %s drop constraint %I', f.tbl, f.conname); end loop;
+end $$;
+
+-- 사용자 트리거: 켜져 있던 것만 기록 → 바꾸는 동안 끄고 끝에 다시 켬
+create temp table idremap_trg on commit drop as
+  select t.tgrelid::regclass::text tbl, t.tgname from pg_trigger t join pg_class c on c.oid = t.tgrelid
+  where c.relnamespace = 'public'::regnamespace and not t.tgisinternal and t.tgenabled <> 'D';
+do $$ declare f record; begin
+  for f in select * from idremap_trg loop execute format('alter table %s disable trigger %I', f.tbl, f.tgname); end loop;
+end $$;
 do $$
 declare c record; nb bigint; na bigint; expr text; fx text;
 begin
@@ -577,6 +601,15 @@ end $$;
 -- 동네 불량배 = 고정 약체 (레벨 10 · 배율 1, 조직 덱과 무관)
 
 
+-- 외래키 원래 정의 그대로 다시 만들기 (모든 줄 검사 — 어긋나면 여기서 실패하고 전부 취소) · 트리거 다시 켜기
+do $$ declare f record; begin
+  for f in select * from idremap_fk loop
+    execute format('alter table %s add constraint %I %s', f.tbl, f.conname, f.def);
+    insert into idremap_report values ('foreign key(다시 만듦)', f.tbl || '.' || f.conname, 0, 0);
+  end loop;
+  for f in select * from idremap_trg loop execute format('alter table %s enable trigger %I', f.tbl, f.tgname); end loop;
+end $$;
+
 -- 참고: 뷰·기본값에 옛 ID 가 있으면 표시만 (자동 변경 안 함)
 insert into idremap_report select 'view(확인 필요)', viewname, 1, 1 from pg_views where schemaname = 'public' and pg_temp.idold(definition);
 insert into idremap_report select 'default(확인 필요)', c.relname || '.' || a.attname, 1, 1
@@ -590,7 +623,9 @@ do $$ begin
   end if;
 end $$;
 
+-- 결과 표 (SQL Editor 는 마지막 결과를 보여 주므로 커밋 직전 표 + 커밋 뒤 같은 표를 남김)
+drop table if exists idremap_result;
+create temp table idremap_result as select * from idremap_report;
 commit;
 
--- 결과 표 (커밋 뒤에도 이 세션에서 보임)
-select kind, name, before_n as "변경 전", after_n as "변경 후" from idremap_report order by kind, name;
+select kind, name, before_n as "변경 전", after_n as "변경 후" from idremap_result order by kind, name;
