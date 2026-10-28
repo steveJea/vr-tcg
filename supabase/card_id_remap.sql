@@ -527,14 +527,20 @@ create temp table idremap_report (kind text, name text, before_n bigint, after_n
 
 -- 외래키: 글자형(text·varchar) 키 열이 있는 public 외래키 전부 (참조하는 쪽·참조되는 쪽 어느 쪽이든) → 정의 저장 후 삭제
 -- (부모·자식 ID 를 차례로 바꾸는 중간에 어긋나 실패하던 문제. 다시 만들 때 PostgreSQL 이 모든 줄을 다시 검사)
-create temp table idremap_fk on commit drop as
+create temp table idremap_fk on commit drop as      -- public 표가 한쪽이라도 걸린 외래키 전부 (열 종류 무관: text·int·bigint·uuid …)
   select c.conrelid::regclass::text tbl, c.conname, pg_get_constraintdef(c.oid) def
   from pg_constraint c
   where c.contype = 'f'
     and (c.conrelid in (select oid from pg_class where relnamespace = 'public'::regnamespace)
-      or c.confrelid in (select oid from pg_class where relnamespace = 'public'::regnamespace))
-    and (exists (select 1 from pg_attribute a where a.attrelid = c.conrelid and a.attnum = any(c.conkey) and a.atttypid in ('text'::regtype, 'varchar'::regtype))
-      or exists (select 1 from pg_attribute a where a.attrelid = c.confrelid and a.attnum = any(c.confkey) and a.atttypid in ('text'::regtype, 'varchar'::regtype)));
+      or c.confrelid in (select oid from pg_class where relnamespace = 'public'::regnamespace));
+do $$ begin   -- 실행 화면(Messages)에 판·찾은 외래키 표시
+  raise notice 'card_id_remap v3 (외래키 전부 지웠다 다시 만듦) · 외래키 %개: %', (select count(*) from idremap_fk),
+    coalesce((select string_agg(tbl || '.' || conname, ', ' order by tbl) from idremap_fk), '-');
+  if not exists (select 1 from idremap_fk where conname = 'sigil_sources_card_id_fkey')
+     and exists (select 1 from pg_constraint where conname = 'sigil_sources_card_id_fkey') then
+    raise exception 'sigil_sources_card_id_fkey 가 목록에 없음 — 중단';
+  end if;
+end $$;
 do $$ declare f record; begin
   for f in select * from idremap_fk loop execute format('alter table %s drop constraint %I', f.tbl, f.conname); end loop;
 end $$;
@@ -553,7 +559,7 @@ begin
     select col.table_name t, col.column_name cn, col.data_type dt, col.udt_name ut
     from information_schema.columns col join information_schema.tables tb on tb.table_schema = col.table_schema and tb.table_name = col.table_name
     where col.table_schema = 'public' and tb.table_type = 'BASE TABLE' and col.table_name <> 'card_id_alias'
-      and (col.data_type in ('text', 'character varying', 'jsonb', 'json') or col.udt_name in ('_text', '_varchar'))
+      and (col.data_type in ('text', 'character varying', 'jsonb', 'json', 'integer', 'bigint', 'numeric') or col.udt_name in ('_text', '_varchar', '_int4', '_int8'))
   loop
     expr := format('%I::text', c.cn);
     execute format('select count(*) from public.%I where pg_temp.idold(%s)', c.t, expr) into nb;
@@ -561,6 +567,8 @@ begin
       fx := case when c.dt = 'jsonb' then format('pg_temp.idfixj(%I)', c.cn)
                  when c.dt = 'json' then format('pg_temp.idfixj(%I::jsonb)::json', c.cn)
                  when c.ut in ('_text', '_varchar') then format('(select array_agg(pg_temp.idfix(x) order by i) from unnest(%I) with ordinality u(x, i))', c.cn)
+                 when c.ut in ('_int4', '_int8') then format('(select array_agg(pg_temp.idfix(x::text)::%s order by i) from unnest(%I) with ordinality u(x, i))', substr(c.ut, 2), c.cn)
+                 when c.dt in ('integer', 'bigint', 'numeric') then format('pg_temp.idfix(%I::text)::%s', c.cn, c.dt)   -- 숫자 열: 글자로 바꿔 고친 뒤 원래 종류로
                  else format('pg_temp.idfix(%I)', c.cn) end;
       execute format('update public.%I set %I = %s where pg_temp.idold(%s)', c.t, c.cn, fx, expr);
       execute format('select count(*) from public.%I where pg_temp.idold(%s)', c.t, expr) into na;

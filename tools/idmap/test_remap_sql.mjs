@@ -42,6 +42,14 @@ begin
   return out;
 end $f$;
 create or replace function public._war_numbers() returns jsonb language sql as $f$ select '{"npc_level":10}'::jsonb $f$;`);
+// 실제 DB 가 다를 경우 대비: 증표 카드 ID 를 bigint 로 바꾼 상태로도 확인 (외래키·열 종류 무관하게 처리되는지)
+if (process.env.SIGIL_BIGINT !== '0') await db.exec(`
+  alter table public.sigil_sources drop constraint sigil_sources_card_id_fkey; alter table public.player_sigils drop constraint player_sigils_card_id_fkey; alter table public.sigil_story_boss drop constraint sigil_story_boss_card_id_fkey;
+  alter table public.sigil_defs alter column card_id type bigint using card_id::bigint; alter table public.sigil_sources alter column card_id type bigint using card_id::bigint;
+  alter table public.player_sigils alter column card_id type bigint using card_id::bigint; alter table public.sigil_story_boss alter column card_id type bigint using card_id::bigint;
+  alter table public.sigil_sources add constraint sigil_sources_card_id_fkey foreign key (card_id) references public.sigil_defs(card_id);
+  alter table public.player_sigils add constraint player_sigils_card_id_fkey foreign key (card_id) references public.sigil_defs(card_id);
+  alter table public.sigil_story_boss add constraint sigil_story_boss_card_id_fkey foreign key (card_id) references public.sigil_defs(card_id);`);
 const fks = (await db.query(`select conname from pg_constraint where contype = 'f' and confrelid = 'public.sigil_defs'::regclass`)).rows.map(r => r.conname);
 ok(fks.length > 0, `sigil_defs 를 가리키는 외래키 ${fks.length}개 (${fks})`);
 const sig0 = (await db.query(`select count(*)::int n from public.sigil_sources`)).rows[0].n;
@@ -56,7 +64,7 @@ await db.exec(readFileSync(new URL('../../supabase/card_id_remap.sql', import.me
 const MIG = readFileSync(new URL('../../supabase/card_id_remap.sql', import.meta.url), 'utf8');
 ok((await fkAll()) === fk0, '외래키 전부 원래 정의 그대로 다시 생김');
 ok((await trgOn()) === trg0 && trg0 > 0, `사용자 트리거 ${trg0}개 다시 켜짐`);
-const sig = (await db.query(`select count(*)::int n, count(*) filter (where card_id ~ '^1[0-9]{4}$')::int ok from public.sigil_sources`)).rows[0];
+const sig = (await db.query(`select count(*)::int n, count(*) filter (where card_id::text ~ '^1[0-9]{4}$')::int ok from public.sigil_sources`)).rows[0];
 ok(sig.n === sig0 && sig.ok === sig0, `sigil_sources ${sig.ok}/${sig.n} 새 ID`);
 const d = (await db.query(`select data from public.story_progress where user_id='${U}'`)).rows[0].data;
 ok(d.starter === '10426' || /^1\d{4}$/.test(d.starter), `starter → ${d.starter}`);
