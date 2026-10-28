@@ -1,0 +1,90 @@
+/* 상태이상 연출 (js/status-fx.js) */
+#stfx-layer { position: fixed; inset: 0; pointer-events: none; z-index: 80; overflow: hidden; }
+#stfx-layer > div { position: fixed; pointer-events: none; animation-duration: var(--d, 600ms); animation-fill-mode: forwards; }
+#stfx-layer .has-img { background-size: contain; background-repeat: no-repeat; background-position: center; }
+#stfx-layer .has-img::before, #stfx-layer .has-img::after { display: none !important; }
+
+/* 공통: 상태 이름 팝 */
+.stfx-text { transform: translate(-50%, -50%); font-weight: 900; font-size: clamp(22px, 5vw, 44px); letter-spacing: .04em; white-space: nowrap;
+  -webkit-text-stroke: 1.5px #000; paint-order: stroke fill; animation-name: stfx-text; z-index: 2; }
+.stfx-text-para { color: #fde047; text-shadow: 0 0 12px #facc15, 0 0 24px #eab308; }
+.stfx-text-confuse { color: #e9d5ff; text-shadow: 0 0 12px #a855f7, 0 0 24px #7c3aed; }
+.stfx-text-bleed { color: #fecaca; text-shadow: 0 0 12px #dc2626, 0 0 24px #991b1b; }
+@keyframes stfx-text { 0% { transform: translate(-50%, -50%) scale(.3); opacity: 0; } 15% { transform: translate(-50%, -60%) scale(1.5); opacity: 1; }
+  35% { transform: translate(-50%, -60%) scale(1.1); } 75% { opacity: 1; } 100% { transform: translate(-50%, -90%) scale(.6); opacity: 0; } }
+.unit.stfx-pop { animation: stfx-pop .5s ease-out; }
+@keyframes stfx-pop { 30% { transform: scale(1.12); filter: brightness(1.6); } }
+
+/* 마비: 번개 */
+.stfx-bolt { width: calc(var(--w) * 1.2); height: calc(var(--h) * 2.2); transform: translate(-50%, -80%); animation-name: stfx-bolt; }
+.stfx-bolt:not(.has-img)::before { content: ''; position: absolute; inset: 0;
+  background: #fef08a; clip-path: polygon(55% 0, 30% 48%, 50% 48%, 35% 100%, 72% 40%, 52% 40%, 70% 0);
+  filter: drop-shadow(0 0 10px #facc15) drop-shadow(0 0 20px #fde047); }
+@keyframes stfx-bolt { 0% { opacity: 0; transform: translate(-50%, -140%) scaleY(.4); } 15% { opacity: 1; transform: translate(-50%, -80%) scaleY(1); }
+  30% { opacity: .4; } 40% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -80%); } }
+.stfx-screen { inset: 0; }
+.stfx-flash-yellow { background: radial-gradient(circle, rgba(254,240,138,.55), rgba(250,204,21,.15) 70%); animation-name: stfx-fade; }
+@keyframes stfx-fade { 0% { opacity: 0; } 20% { opacity: 1; } 100% { opacity: 0; } }
+.stfx-spark { width: var(--w); height: var(--h); transform: translate(-50%, -50%); animation-name: stfx-fade;
+  background: radial-gradient(circle at 30% 30%, #fef08a 0 3px, transparent 4px), radial-gradient(circle at 70% 60%, #fde047 0 2px, transparent 3px), radial-gradient(circle at 50% 85%, #fff 0 2px, transparent 3px); }
+
+/* 혼란: 소용돌이 */
+.stfx-swirl { width: calc(var(--w) * 1.6); height: calc(var(--w) * 1.6); transform: translate(-50%, -50%); animation-name: stfx-swirl; border-radius: 50%; }
+.stfx-swirl.small { width: var(--w); height: var(--w); }
+.stfx-swirl:not(.has-img) { background: conic-gradient(from 0deg, transparent, rgba(192,132,252,.85), transparent 30%, rgba(244,114,182,.7), transparent 60%, rgba(129,140,248,.8), transparent 90%);
+  -webkit-mask: radial-gradient(circle, transparent 18%, #000 22%, #000 60%, transparent 70%); mask: radial-gradient(circle, transparent 18%, #000 22%, #000 60%, transparent 70%); }
+@keyframes stfx-swirl { 0% { opacity: 0; transform: translate(-50%, -50%) rotate(0) scale(.3); } 25% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -50%) rotate(720deg) scale(1.2); } }
+.stfx-screen-swirl { background: radial-gradient(circle, transparent 40%, rgba(124,58,237,.35)); animation-name: stfx-screen-swirl; }
+@keyframes stfx-screen-swirl { 0% { opacity: 0; transform: rotate(0) scale(1); } 30% { opacity: 1; } 100% { opacity: 0; transform: rotate(25deg) scale(1.15); } }
+#game.stfx-twist { animation: none; }
+
+/* 출혈: 베기 + 핏방울 */
+.stfx-slash { width: calc(var(--w) * 1.3); height: calc(var(--h) * 1.1); transform: translate(-50%, -50%); animation-name: stfx-slash; }
+.stfx-slash:not(.has-img)::before, .stfx-slash:not(.has-img)::after { content: ''; position: absolute; left: -10%; right: -10%; top: 50%; height: 6px; border-radius: 50%;
+  background: linear-gradient(90deg, transparent, #ef4444 20%, #fecaca 50%, #b91c1c 80%, transparent); box-shadow: 0 0 10px #dc2626; transform: rotate(-35deg); }
+.stfx-slash:not(.has-img)::after { top: 38%; transform: rotate(-28deg); height: 4px; }
+@keyframes stfx-slash { 0% { opacity: 0; clip-path: inset(0 100% 0 0); } 25% { opacity: 1; clip-path: inset(0 0 0 0); } 70% { opacity: 1; } 100% { opacity: 0; } }
+.stfx-blood { width: 9px; height: 9px; border-radius: 50% 50% 50% 0; background: #b91c1c; box-shadow: 0 0 4px #7f1d1d; animation-name: stfx-blood; animation-timing-function: cubic-bezier(.2,.8,.4,1); }
+@keyframes stfx-blood { 0% { transform: translate(-50%, -50%) scale(.4); opacity: 1; } 100% { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy) + 30px)) scale(1); opacity: 0; } }
+.stfx-edge-red { box-shadow: inset 0 0 80px 20px rgba(220,38,38,.6); animation-name: stfx-fade; }
+.stfx-drip { width: 6px; height: 10px; border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%; background: #dc2626; margin-top: calc(var(--h) * .45); margin-left: var(--dx);
+  animation-name: stfx-drip; animation-timing-function: ease-in; opacity: 0; }
+@keyframes stfx-drip { 0% { opacity: 1; transform: translateY(0) scaleY(.5); } 100% { opacity: 0; transform: translateY(40px) scaleY(1.3); } }
+
+/* ===== 지속 연출 ===== */
+.unit .stfx-decor { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+.unit.st-para > .relative > div:first-child, .unit.st-para img { filter: grayscale(.7) brightness(.85); }
+.unit.st-para > .relative { animation: stfx-tremor 2.4s infinite; }
+@keyframes stfx-tremor { 0%, 90%, 100% { transform: none; } 92% { transform: translate(1px, 0); } 94% { transform: translate(-1px, 1px); } 96% { transform: translate(1px, -1px); } }
+.stfx-p-spark { position: absolute; top: 20%; left: 15%; width: 10px; height: 10px; background: #fde047; clip-path: polygon(50% 0, 60% 40%, 100% 50%, 60% 60%, 50% 100%, 40% 60%, 0 50%, 40% 40%);
+  filter: drop-shadow(0 0 4px #facc15); opacity: 0; animation: stfx-p-spark 2.2s infinite; }
+.stfx-p-spark.b { top: 65%; left: 75%; animation-delay: 1.1s; }
+@keyframes stfx-p-spark { 0%, 80%, 100% { opacity: 0; transform: scale(.4); } 85% { opacity: 1; transform: scale(1.3); } 90% { opacity: .3; } 95% { opacity: 1; } }
+.unit.stfx-jitter > .relative { animation: stfx-jitter .6s linear; }
+@keyframes stfx-jitter { 0%, 100% { transform: none; } 10%, 50%, 90% { transform: translate(-3px, 1px) rotate(-1deg); } 30%, 70% { transform: translate(3px, -1px) rotate(1deg); } }
+
+.unit.st-confuse > .relative { animation: stfx-hue 3s ease-in-out infinite; transform: rotate(-3deg); }
+@keyframes stfx-hue { 0%, 100% { filter: hue-rotate(0) drop-shadow(0 0 4px #a855f7); transform: rotate(-3deg); } 50% { filter: hue-rotate(60deg) saturate(1.3) drop-shadow(0 0 8px #c084fc); transform: rotate(3deg); } }
+.stfx-stars { position: absolute; left: 50%; top: -6px; width: 0; height: 0; animation: stfx-orbit 1.6s linear infinite; }
+.stfx-stars i { position: absolute; font-style: normal; font-size: 11px; color: #fde68a; text-shadow: 0 0 4px #a855f7; transform: translate(-50%, -50%); }
+.stfx-stars i:nth-child(1) { transform: translate(-50%, -50%) translateX(16px); }
+.stfx-stars i:nth-child(2) { transform: translate(-50%, -50%) rotate(120deg) translateX(16px); }
+.stfx-stars i:nth-child(3) { transform: translate(-50%, -50%) rotate(240deg) translateX(16px); }
+@keyframes stfx-orbit { from { transform: scaleY(.45) rotate(0); } to { transform: scaleY(.45) rotate(360deg); } }
+
+.unit.st-bleed > .relative { box-shadow: 0 0 0 1px rgba(220,38,38,.5), 0 4px 10px -2px rgba(220,38,38,.6); border-radius: 8px; }
+.stfx-b-drip { position: absolute; bottom: 4px; left: 30%; width: 4px; height: 7px; border-radius: 50%; background: #dc2626; animation: stfx-bdrip 1.8s ease-in infinite; }
+.stfx-b-drip.b { left: 65%; animation-delay: .9s; }
+@keyframes stfx-bdrip { 0% { opacity: 0; transform: translateY(0); } 20% { opacity: 1; } 100% { opacity: 0; transform: translateY(14px); } }
+
+/* 디버프 아이콘 크게·맥박 */
+.status-icons .st-big { display: inline-block; transform-origin: left center; animation: stfx-ipulse 1.4s ease-in-out infinite; }
+.status-icons .st-big img, .status-icons img.st-asset { width: 1.4em; height: 1.4em; }
+.status-icons .st-big.para { filter: drop-shadow(0 0 3px #facc15); }
+.status-icons .st-big.confuse { filter: drop-shadow(0 0 3px #a855f7); }
+.status-icons .st-big.bleed { filter: drop-shadow(0 0 3px #dc2626); }
+@keyframes stfx-ipulse { 0%, 100% { transform: scale(1.25); } 50% { transform: scale(1.5); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .unit.st-para > .relative, .unit.st-confuse > .relative, .stfx-stars, .stfx-p-spark, .stfx-b-drip, .status-icons .st-big { animation: none !important; }
+}

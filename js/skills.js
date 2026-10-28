@@ -122,7 +122,7 @@ export function statusIcons(u) {
   const out = [];
   for (const [k, s] of Object.entries(u.st)) {
     if (s.kind === 'mod') out.push({ icon: MOD_ICON(s.atk || 0, s.def || 0), img: MOD_IMG(s.atk || 0, s.def || 0), title: `${s.label || k} (${s.t}턴)` });
-    else if (STATUS[s.kind]) out.push({ icon: STATUS[s.kind].icon, img: STATUS[s.kind].img, title: s.kind === 'vow' ? `지킨다: DEF +${(s.def * 100).toFixed(1)}% (이영아와 함께)` : s.kind === 'provoked' ? `도발당함: ${s.by?.card?.name || ''}만 공격 · 스킬 불가 (${s.t}턴)` : `${STATUS[s.kind].label} (${s.t}턴)` });
+    else if (STATUS[s.kind]) out.push({ kind: s.kind, icon: STATUS[s.kind].icon, img: STATUS[s.kind].img, title: s.kind === 'vow' ? `지킨다: DEF +${(s.def * 100).toFixed(1)}% (이영아와 함께)` : s.kind === 'provoked' ? `도발당함: ${s.by?.card?.name || ''}만 공격 · 스킬 불가 (${s.t}턴)` : `${STATUS[s.kind].label} (${s.t}턴)` });
   }
   if (u.curse && foeHasPassive(u.owner, '자수정 눈물의 지옥 교향곡')) out.push({ icon: '🥀', img: 'st_curse', title: `지옥 교향곡 ×${u.curse}` });
   if (u.pairShield) out.push({ icon: '🛡️', title: `자매의 가호: 피해 무효 (${u.pairShield}턴까지)` });
@@ -933,7 +933,7 @@ export function turnStart(p) {
   // 마비 / 혼란 / 교란 → 강제 행동
   for (const u of [...p.field]) {
     if (!p.field.includes(u)) continue;
-    if (u.st.para) { u.canAttack = false; emit({ type: 'log', text: `${u.card.name} 마비! 행동 불가` }); continue; }
+    if (u.st.para) { u.canAttack = false; emit({ type: 'log', text: `${u.card.name} 마비! 행동 불가` }); emit({ type: 'paraSkip', unit: u }); continue; }
     if (u.st.confuse || u.st.disrupt) {
       u.canAttack = false;
       const allies = p.field.filter(a => a !== u);
