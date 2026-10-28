@@ -23,7 +23,7 @@
   }
   const SHORT = { 'NORMAL': 'N', 'RARE': 'R', 'HIGH RARE': 'HR', 'SUPER RARE': 'SR', 'ULTRA RARE': 'UR', 'MYTHIC RARE': 'MR', 'LEGENDARY RARE': 'LR' };
   const CUR = [['gold', '🪙', '골드'], ['blood', '🩸', '순수한 피'], ['shard', '💠', '이상한 조각'], ['soul', '🔥', '각성자의 혼']];
-  const ACT = { grant_tickets: '소환권 지급', grant_gold: '골드 지급', grant_blood: '순수한 피 지급', grant_shard: '이상한 조각 지급', grant_soul: '각성자의 혼 지급' };
+  const ACT = { trade_void_listing: '거래 글 강제 내림', trade_refund_offer: '거래 제안 강제 환불', grant_drink: '드링크 지급', grant_tickets: '소환권 지급', grant_gold: '골드 지급', grant_blood: '순수한 피 지급', grant_shard: '이상한 조각 지급', grant_soul: '각성자의 혼 지급' };
   const cname = id => names.get(String(id))?.name || id;
 
   async function waitCloud() {
@@ -48,9 +48,9 @@
   }
 
   function render() {
-    root().innerHTML = `<div class="ad-tabs"><button class="ad-btn sub ${tab === 'users' ? 'on' : ''}" data-tab="users">가입 유저</button><button class="ad-btn sub ${tab === 'logs' ? 'on' : ''}" data-tab="logs">관리자 기록</button><button class="ad-btn sub ${tab === 'notices' ? 'on' : ''}" data-tab="notices">공지</button></div><div id="ad-view"></div>`;
+    root().innerHTML = `<div class="ad-tabs"><button class="ad-btn sub ${tab === 'users' ? 'on' : ''}" data-tab="users">가입 유저</button><button class="ad-btn sub ${tab === 'logs' ? 'on' : ''}" data-tab="logs">관리자 기록</button><button class="ad-btn sub ${tab === 'notices' ? 'on' : ''}" data-tab="notices">공지</button><button class="ad-btn sub ${tab === 'trade' ? 'on' : ''}" data-tab="trade">거래</button></div><div id="ad-view"></div>`;
     root().querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { tab = b.dataset.tab; render(); });
-    tab === 'users' ? renderUsers() : tab === 'notices' ? renderNotices() : renderLogs();
+    tab === 'users' ? renderUsers() : tab === 'notices' ? renderNotices() : tab === 'trade' ? renderTrade() : renderLogs();
   }
   async function renderUsers(q = '') {
     const v = $('ad-view');
@@ -71,6 +71,59 @@
       v.innerHTML = `<div class="ad-wrap"><table class="ad-table"><thead><tr><th>시각</th><th>관리자</th><th>작업</th><th>대상</th><th>수량</th><th>전→후</th><th>사유</th></tr></thead><tbody>
         ${rows.map(r => `<tr><td>${fmt(r.created_at)}</td><td>${esc(r.admin_email)}</td><td>${(ACT[r.action] || esc(r.action))}</td><td>${esc(r.target_email || r.target_user)}</td><td>${r.amount ?? ''}</td><td>${r.before_val ?? ''} → ${r.after_val ?? ''}</td><td>${esc(r.reason)}</td></tr>`).join('') || '<tr><td colspan="7">기록 없음</td></tr>'}</tbody></table></div>`;
     } catch (e) { v.innerHTML = `<div class="ad-err">${esc(e?.message)}</div>`; }
+  }
+
+  // --- 거래 (supabase/trade_admin.sql): 의심 거래 · 같은 상대 반복 · 거래 기록 · 열린 글(강제 내림·제안 환불) · 조절표 ---
+  const FLAG = { repeat_pair: '같은 상대 반복', band_edge: '가격 범위 끝', new_account: '새 계정', lopsided: '한쪽으로 기운 거래' };
+  const tItems = x => [...(x?.cards || []).map(c => { const id = (c.card || c).id; return `${esc(cname(id))}(${SHORT[names.get(String(id))?.grade] || '?'})`; }), ...(x?.gear || []).map(g => `🛡${esc((g.row || g).def_id)}${(g.row || g).plus ? '+' + (g.row || g).plus : ''}`),
+    x?.drinks ? `🥤${x.drinks}` : '', x?.gold ? `🪙${Number(x.gold).toLocaleString('ko-KR')}` : ''].filter(Boolean).join(', ') || '-';
+  const askReason = t => { const r = prompt(`${t}\n사유 (필수):`); return r && r.trim() ? r.trim() : null; };
+  let tsub = 'flags';
+  async function renderTrade() {
+    const v = $('ad-view');
+    const SUB = [['flags', '의심 거래'], ['pairs', '같은 상대 반복'], ['log', '거래 기록'], ['open', '열린 글'], ['cfg', '조절표']];
+    v.innerHTML = `<div class="ad-tabs">${SUB.map(([k, l]) => `<button class="ad-btn sub ${tsub === k ? 'on' : ''}" data-ts="${k}">${l}</button>`).join('')}</div><div id="ad-tv"><div class="ad-msg">불러오는 중...</div></div>`;
+    v.querySelectorAll('[data-ts]').forEach(b => b.onclick = () => { tsub = b.dataset.ts; renderTrade(); });
+    const w = $('ad-tv'), fail = e => { w.innerHTML = `<div class="ad-err">${/admin_trade|Could not find/.test(e?.message || '') ? '서버에 거래 관리자 함수(supabase/trade_admin.sql)가 아직 없어요.' : esc(e?.message)}</div>`; };
+    try {
+      if (tsub === 'flags') {
+        const rows = await rpc('admin_trade_flags', { p_open_only: true, p_limit: 200 }) || [];
+        w.innerHTML = `<div class="ad-wrap"><table class="ad-table"><thead><tr><th>시각</th><th>종류</th><th>판매자</th><th>제안자</th><th>판매자가 줌</th><th>제안자가 줌</th><th>내용</th><th></th></tr></thead><tbody>
+          ${rows.map(r => `<tr><td>${fmt(r.at)}</td><td>${FLAG[r.kind] || esc(r.kind)}</td><td>${esc(r.seller_email)}</td><td>${esc(r.buyer_email)}</td><td>${tItems(r.seller_gave)}</td><td>${tItems(r.buyer_gave)}</td><td><small>${esc(JSON.stringify(r.detail))}</small></td>
+            <td><button class="ad-btn sub" data-rv="${r.id}">확인</button></td></tr>`).join('') || '<tr><td colspan="8">확인할 의심 거래가 없어요</td></tr>'}</tbody></table></div>`;
+        w.querySelectorAll('[data-rv]').forEach(b => b.onclick = async () => { const note = prompt('메모 (선택):') ?? null; if (note === null) return; try { await rpc('admin_trade_flag_review', { p_id: +b.dataset.rv, p_note: note }); renderTrade(); } catch (e) { alert(e.message); } });
+      } else if (tsub === 'pairs') {
+        const rows = await rpc('admin_trade_pairs', { p_days: 7, p_limit: 50 }) || [];
+        w.innerHTML = `<div class="ad-msg">최근 7일, 2번 이상 거래한 상대</div><div class="ad-wrap"><table class="ad-table"><thead><tr><th>A</th><th>B</th><th>거래</th><th>🥤 드링크</th><th>🪙 골드</th><th>마지막</th></tr></thead><tbody>
+          ${rows.map(r => `<tr><td>${esc(r.a_email)}</td><td>${esc(r.b_email)}</td><td>${r.trades}</td><td>${r.drinks}</td><td>${Number(r.gold).toLocaleString('ko-KR')}</td><td>${fmt(r.last)}</td></tr>`).join('') || '<tr><td colspan="6">없음</td></tr>'}</tbody></table></div>`;
+      } else if (tsub === 'log') {
+        w.innerHTML = `<div class="ad-msg"><input id="ad-tu" class="ad-in" placeholder="유저 id (비우면 전체)" style="width:320px"> <button class="ad-btn" id="ad-tgo">조회</button></div><div id="ad-tl"></div>`;
+        const go = async () => { const u = $('ad-tu').value.trim() || null; const rows = await rpc('admin_trade_log', { p_user: u, p_limit: 200 }) || [];
+          $('ad-tl').innerHTML = `<div class="ad-wrap"><table class="ad-table"><thead><tr><th>시각</th><th>판매자</th><th>판매자가 줌</th><th>제안자</th><th>제안자가 줌</th><th>소각</th><th>의심</th></tr></thead><tbody>
+            ${rows.map(r => `<tr><td>${fmt(r.at)}</td><td>${esc(r.seller_email)}</td><td>${tItems(r.seller_gave)}</td><td>${esc(r.buyer_email)}</td><td>${tItems(r.buyer_gave)}</td>
+              <td>🥤${r.fees?.drinks || 0} 🪙${(+r.fees?.gold || 0) + (+r.fees?.fix_buyer || 0) + (+r.fees?.fix_seller || 0)}</td><td>${(r.flags || []).map(f => FLAG[f] || f).join(', ')}</td></tr>`).join('') || '<tr><td colspan="7">기록 없음</td></tr>'}</tbody></table></div>`; };
+        $('ad-tgo').onclick = () => go().catch(fail); await go();
+      } else if (tsub === 'open') {
+        const rows = await rpc('admin_trade_listings', { p_user: null, p_status: 'open', p_limit: 200 }) || [];
+        w.innerHTML = `<div class="ad-wrap"><table class="ad-table"><thead><tr><th>글</th><th>판매자</th><th>물건</th><th>만료</th><th>대기 제안</th><th></th></tr></thead><tbody>
+          ${rows.map(l => `<tr><td>#${l.id}</td><td>${esc(l.seller_email)}</td><td>${tItems(l)}</td><td>${fmt(l.expires_at)}</td>
+            <td>${l.offers.filter(o => o.status === 'pending').map(o => `<div>${esc(o.email)}: ${tItems(o)} <button class="ad-btn sub" data-rf="${o.id}">환불</button></div>`).join('') || '-'}</td>
+            <td><button class="ad-btn" data-vd="${l.id}">강제 내림</button></td></tr>`).join('') || '<tr><td colspan="6">열린 글 없음</td></tr>'}</tbody></table></div>`;
+        w.querySelectorAll('[data-vd]').forEach(b => b.onclick = async () => { const r = askReason(`글 #${b.dataset.vd} 를 내리고 모두 환불할까요?`); if (!r) return; try { const x = await rpc('admin_trade_void_listing', { p_listing: +b.dataset.vd, p_reason: r }); alert(`내림 완료 · 제안 ${x.refunded}개 환불`); renderTrade(); } catch (e) { alert(e.message); } });
+        w.querySelectorAll('[data-rf]').forEach(b => b.onclick = async () => { const r = askReason(`제안 #${b.dataset.rf} 를 환불할까요?`); if (!r) return; try { await rpc('admin_trade_refund_offer', { p_offer: +b.dataset.rf, p_reason: r }); renderTrade(); } catch (e) { alert(e.message); } });
+      } else {
+        const c = await rpc('admin_trade_config');
+        w.innerHTML = `<div class="ad-wrap"><table class="ad-table"><thead><tr><th>키</th><th>값</th><th>설명</th><th></th></tr></thead><tbody>
+          ${(c.config || []).map(x => `<tr><td>${esc(x.key)}</td><td><b>${x.val}</b></td><td>${esc(x.note || '')}</td><td><button class="ad-btn sub" data-ck="${esc(x.key)}" data-cv="${x.val}">수정</button></td></tr>`).join('')}</tbody></table>
+          <div class="ad-msg" style="margin-top:10px">등급별 1개당 범위 · 물건끼리 고정 수수료 (값을 누르면 수정, 골드 칸 비우면 골드 불가)</div>
+          <table class="ad-table"><thead><tr><th>등급</th><th>🥤 최소</th><th>🥤 최대</th><th>🪙 최소</th><th>🪙 최대</th><th>고정 수수료</th></tr></thead><tbody>
+          ${(c.bands || []).map(b => `<tr><td>${esc(b.label)}</td>${['d_min', 'd_max', 'g_min', 'g_max', 'fix_fee'].map(f => `<td><button class="ad-btn sub" data-bk="${esc(b.gkey)}" data-bf="${f}">${b[f] ?? '불가'}</button></td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+        w.querySelectorAll('[data-ck]').forEach(b => b.onclick = async () => { const nv = prompt(`${b.dataset.ck} 새 값:`, b.dataset.cv); if (nv == null || nv.trim() === '') return; const r = askReason(`${b.dataset.ck}: ${b.dataset.cv} → ${nv}`); if (!r) return;
+          try { await rpc('admin_trade_config_set', { p_key: b.dataset.ck, p_val: Math.floor(+nv), p_reason: r }); renderTrade(); } catch (e) { alert(e.message); } });
+        w.querySelectorAll('[data-bk]').forEach(b => b.onclick = async () => { const nv = prompt(`${b.dataset.bk}.${b.dataset.bf} 새 값 (골드 칸은 비우면 불가):`, b.textContent === '불가' ? '' : b.textContent); if (nv == null) return; const r = askReason(`${b.dataset.bk}.${b.dataset.bf} → ${nv || '불가'}`); if (!r) return;
+          try { await rpc('admin_trade_band_set', { p_gkey: b.dataset.bk, p_field: b.dataset.bf, p_val: nv.trim() === '' ? null : Math.floor(+nv), p_reason: r }); renderTrade(); } catch (e) { alert(e.message); } });
+      }
+    } catch (e) { fail(e); }
   }
 
   // --- 공지 게시판: 쓰기·수정·삭제·고정 (서버 admin_notice_save / admin_notice_delete, 관리자만). 게임 메인의 흐르는 공지에 표시 ---

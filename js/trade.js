@@ -21,7 +21,8 @@
     'card not owned': '이 인재가 없어요', 'gear not owned': '이 장비가 없어요', 'gear locked': '🔒 잠긴 장비예요', 'gear equipped': '장착 중인 장비는 먼저 해제해 주세요',
     'gear not tradable': '전설·심연 장비는 거래할 수 없어요', 'resale cooldown': '거래로 받은 물건은 72시간 뒤에 다시 올릴 수 있어요',
     'daily trade limit': '오늘 거래 한도를 다 썼어요', 'same partner limit': '같은 상대와는 7일에 3번까지예요', 'no condition': '거절 조건을 넣어 주세요',
-    'nothing to reject': '거절할 제안을 골라 주세요', 'duplicate card': '같은 인재를 두 번 골랐어요', 'duplicate gear': '같은 장비를 두 번 골랐어요', 'invalid amount': '수량을 확인해 주세요'
+    'nothing to reject': '거절할 제안을 골라 주세요', 'duplicate card': '같은 인재를 두 번 골랐어요', 'duplicate gear': '같은 장비를 두 번 골랐어요', 'invalid amount': '수량을 확인해 주세요',
+    'cancel limit': '오늘 제안 취소가 너무 많아요. 내일 다시 제안할 수 있어요', 'drink send limit': '🥤 오늘 보낼 수 있는 드링크 양을 넘어요 (하루 10,000)', 'drink recv limit': '🥤 오늘 받을 수 있는 드링크 양을 넘어요 (하루 10,000)'
   };
   const errText = m => { m = String(m || ''); const k = Object.keys(ERR).find(x => m.includes(x)); return k ? ERR[k] : /trade_|schema cache|Could not find/.test(m) ? '💱 거래 게시판은 준비 중이에요' : `⚠️ ${m.slice(0, 60)}`; };
   async function rpc(fn, args) {
@@ -75,10 +76,11 @@
     if (!await loadCfg()) { m.remove(); return; }
     const draw = async t => {
       tab = t;
-      body(m).innerHTML = `<div class="tr-head"><b>💱 거래 게시판</b><button class="tr-btn main" data-new>＋ 판매 글</button></div>
+      body(m).innerHTML = `<div class="tr-head"><b>💱 거래 게시판</b><span><button class="tr-btn" data-help>❓ 도움말</button> <button class="tr-btn main" data-new>＋ 판매 글</button></span></div>
         <div class="tr-tabs"><button data-tab="board" class="${t === 'board' ? 'on' : ''}">게시판</button><button data-tab="my" class="${t === 'my' ? 'on' : ''}">내 거래</button></div><div class="tr-list"><div class="tr-load">불러오는 중…</div></div>`;
       body(m).querySelectorAll('[data-tab]').forEach(b => b.onclick = () => draw(b.dataset.tab));
       body(m).querySelector('[data-new]').onclick = () => createListing(() => draw('my'));
+      body(m).querySelector('[data-help]').onclick = help;
       const L = body(m).querySelector('.tr-list');
       if (t === 'board') {
         const r = await rpc('trade_board', { p_limit: 50 }); if (!r) return;
@@ -101,6 +103,21 @@
     draw(tab);
   }
   const refreshMine = () => { S()?.load?.(); window.VRGear?.load?.(true); window.VRDrink?.status?.(); window.VRPlayer?.wallet?.(true); };
+
+  // ---- 도움말 (규칙 요약, 값은 서버 조절표 기준)
+  function help() {
+    const c = cfg || {}, B = bands || {}, rng = k => B[k] ? `🥤${n(B[k].d_min)}~${n(B[k].d_max)}${B[k].g_max != null ? ` · 🪙${n(B[k].g_min)}~${n(B[k].g_max)}` : ' · 🪙불가'}` : '-';
+    pop(`<div class="tr-head"><b>❓ 거래 도움말</b></div><div class="tr-help">
+      <p><b>흐름</b> 판매 글에 인재·장비(최대 ${c.max_items || 5}개)를 올리면 바로 보관돼요. 다른 사람은 인재·장비·🥤드링크·🪙골드를 섞어 제안하고, 판매자가 하나를 수락하면 한 번에 교환돼요. 나머지 제안은 자동으로 돌려받아요.</p>
+      <p><b>보관</b> 올리거나 제안한 물건·재화는 끝날 때까지 쓸 수 없어요. 거절·취소·글 내리기·${c.listing_hours || 72}시간 만료 때 즉시 돌아와요 (장비는 가방이 꽉 차면 📬 우편함).</p>
+      <p><b>수수료</b> 받는 재화의 ${c.fee_pct || 10}%가 사라져요. 물건끼리만 바꾸면 받는 물건 등급별로 골드 수수료를 내요.</p>
+      <p><b>골드</b> HR 이하 인재·희귀 이하 장비만 있을 때 쓸 수 있어요. SR 이상 인재나 영웅 장비가 끼면 드링크만 돼요.</p>
+      <p><b>거래할 수 없는 것</b> 🔗 스토리 보상 인재, 👑 리더, 🔒 잠근 인재·장비, 장착 중인 장비, 전설·심연 장비, 이벤트·보상으로 받은 🥤 드링크.</p>
+      <p><b>함께 넘어가는 것</b> 인재의 레벨·성장, 그리고 그 인재가 내 마지막 사본이면 💠 증표. 장착 장비는 해제돼 내 가방에 남아요. 덱에 든 인재는 덱에서 빠져요.</p>
+      <p><b>한도</b> Lv.${c.min_level || 20}·가입 ${c.min_account_days || 7}일부터 · 열린 글 ${c.max_open_listings || 5}개 · 대기 제안 ${c.max_open_offers || 10}개 · 하루 거래 ${c.daily_trades || 5}번 · 같은 상대 7일 ${c.same_partner_7d || 3}번 · 드링크 하루 보내기·받기 각각 ${n(c.daily_drink_send || 10000)} · 거절된 글엔 ${c.reoffer_cooldown_hours || 24}시간 뒤 다시 제안 · 받은 물건은 ${c.resale_hours || 72}시간 뒤 다시 올리기</p>
+      <p><b>1개당 가격 범위</b><br>인재 N·R ${rng('card_nr')}<br>인재 HR ${rng('card_hr')}<br>인재 SR ${rng('card_sr')}<br>인재 UR ${rng('card_ur')}<br>인재 MR·LR ${rng('card_mlr')}<br>장비 낡은~고급 ${rng('gear_low')}<br>장비 희귀 ${rng('gear_rare')}<br>장비 영웅 ${rng('gear_hero')}</p>
+      <p class="tr-note">이상한 거래는 운영자가 확인할 수 있어요.</p></div>`);
+  }
 
   // ---- 글 상세 (남의 글)
   function detail(l, after) {
