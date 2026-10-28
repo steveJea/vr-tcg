@@ -57,14 +57,16 @@
       <div class="gem-split">무료 ${n(cache?.free)} · 유료 ${n(cache?.paid)}</div>
       <button type="button" class="gem-charge" data-charge>＋ 충전</button><div class="gem-soon" hidden>💳 충전은 준비 중이에요</div>
       <div class="gem-shop">${['stamina', 'gold10k', 'ticket'].map(k => priceBtn(k)).join('')}</div>
+      ${window.VRDrink?.html?.() || ''}
       <div class="gem-how">🗺️ 챕터 첫 클리어 +50 · 📅 7일 연속 +30 · ⚔️ PvP 시즌 보상</div></div>`;
       m.querySelector('[data-charge]').onclick = () => { m.querySelector('.gem-soon').hidden = false; };
       m.querySelectorAll('[data-gem-buy]').forEach(b => b.onclick = async () => { b.disabled = true; const r = await buy(b.dataset.gemBuy); if (r) toast(`${ITEM[r.item]?.[0] || ''} ${REASON['buy:' + r.item] || ''} 완료`); if (m.isConnected) draw(); });
+      window.VRDrink?.bind?.(m, draw);
     };
     draw();
     m.addEventListener('click', e => { if (e.target === m || e.target.closest('[data-x]')) m.remove(); });   // 바깥 누르면 닫힘
     document.body.appendChild(m);
-    status(true).then(() => { if (m.isConnected) draw(); });
+    Promise.all([status(true), window.VRDrink?.status?.()]).then(() => { if (m.isConnected) draw(); });
   }
   document.addEventListener('click', e => { if (e.target.closest('[data-gem-open]')) { e.preventDefault(); e.stopPropagation(); open(); } }, true);
   /** 마이페이지: 잔액 + 최근 20건 */

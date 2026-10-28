@@ -44,3 +44,20 @@
 .gem-log-row b.up{color:#d8b4fe}.gem-log-row b.down{color:#a1a1aa}
 .gem-log-row small{text-align:right;opacity:.5;font-size:11px}
 .gem-log-empty{font-size:12px;opacity:.5;padding:6px}
+/* 체력의 드링크 (trade_drink.sql) */
+.drink-box { margin-top: 10px; padding: 10px; border-radius: 12px; background: rgba(56, 189, 248, .08); border: 1px solid rgba(56, 189, 248, .25); text-align: left; }
+.drink-top { display: flex; align-items: center; gap: 8px; }
+.drink-top > div { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.drink-top small { font-size: 11px; opacity: .75; }
+.drink-ic { font-size: 26px; }
+.drink-use { padding: 6px 10px; border-radius: 10px; font-weight: 800; font-size: 12px; background: #0ea5e9; color: #fff; }
+.drink-use:disabled { opacity: .4; }
+.drink-shop { display: flex; gap: 6px; margin-top: 8px; }
+.drink-shop .gem-buy { flex: 1; }
+.drink-how { margin-top: 6px; font-size: 10px; opacity: .6; }
+.gem-panel { position: relative; }
+.drink-ask { position: absolute; inset: 0; z-index: 5; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, .55); border-radius: inherit; }
+.drink-ask-box { background: #18181b; border: 1px solid #3f3f46; border-radius: 12px; padding: 14px; width: 80%; text-align: center; font-size: 13px; }
+.drink-ask-box div { display: flex; gap: 8px; margin-top: 12px; }
+.drink-ask-box button { flex: 1; padding: 7px; border-radius: 9px; font-weight: 800; background: #3f3f46; color: #fff; }
+.drink-ask-box [data-yes] { background: #0ea5e9; }
