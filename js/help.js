@@ -11,7 +11,8 @@
     ['raid', '🐉', '균열 토벌', ['하루 3회 · 조직이 함께 보스 HP를 깎아요', '일요일 22:00 정산 · 순위/참여 보상은 정산 24시간 전 가입자만', '난이도는 이번 주 첫 토벌 전까지만 변경']],
     ['war', '🏴', '구역 전쟁', ['매달 셋째 수~일 · 09:00~23:00 · 하루 1경기', '신청: 셋째 주 일~화 · 보스가 21칸 배치 (빈 칸 = 자동 · 남으면 동네 불량배)',
       '방어조 5곳을 먼저 부숴야 나머지 공격 가능 · 하루 공격 5회', '역할 버프: 방어조 방어 +20% · 돌격조 공격 +20% · 중간보스 +15% · 보스 +25%',
-      '파괴 점수: 방어 200 · 돌격/조직원 150 · 중간보스 250 · 보스 400 · 보스 격파 = 즉시 승리', '방어 덱 2개(목숨 +1)는 시즌 시작에 잠김 · 1·2번 덱에 같은 인재 불가']],
+      '파괴 점수: 방어 200 · 돌격/조직원 150 · 중간보스 250 · 보스 400 · 보스 격파 = 즉시 승리', '방어 덱 2개(목숨 +1)는 시즌 시작에 잠김 · 1·2번 덱에 같은 인재 불가', '참가: 조직원은 각자 [참가 신청] · 보스는 신청 안 한 조직원도 배치 가능 (✔ = 신청, ! = 방어 덱 없음)',
+      '<span class="vh-c" style="--c:#f59e0b"></span>방어조 <span class="vh-c" style="--c:#ef4444"></span>돌격조 <span class="vh-c" style="--c:#a855f7"></span>중간보스 <span class="vh-c" style="--c:#facc15"></span>보스 <span class="vh-c" style="--c:#3b82f6"></span>조직원']],
     ['mypage', '👤', '마이페이지', ['리더 · 재화 · 기록 · 덱', '스토리 카드를 누르면 바로 스토리 맵']],
   ];
   function open(key) {
@@ -28,6 +29,7 @@
   const css = document.createElement('style');
   css.textContent = `.main-q b{font:900 22px/1 serif;color:#f5c96a;text-shadow:0 1px 3px #000}
 .vh-q{width:28px;height:28px;border-radius:50%;border:1px solid rgba(245,201,106,.6);color:#f5c96a;font-weight:900;background:rgba(0,0,0,.55);line-height:1}.wr-q{position:absolute;right:84px;bottom:8px;z-index:2}
+.vh-c{display:inline-block;width:11px;height:11px;border-radius:50%;background:var(--c);margin:0 3px 0 6px;vertical-align:-1px;border:1px solid rgba(255,255,255,.5)}
 .vh-pop{position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:14px}
 .vh-panel{position:relative;width:min(440px,100%);max-height:86vh;overflow:auto;background:linear-gradient(#1c0a0e,#0b0305);border:1px solid rgba(245,201,106,.45);border-radius:16px;padding:14px;color:#f4f4f5}
 .vh-x{position:absolute;right:10px;top:8px;font-size:18px;opacity:.7}.vh-h{font-weight:900;font-size:17px;color:#f5c96a;margin-bottom:8px}

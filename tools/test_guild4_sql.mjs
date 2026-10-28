@@ -20,6 +20,7 @@ const src = f => readFileSync(new URL('../supabase/' + f, import.meta.url), 'utf
 const run = f => db.exec(src(f));
 for (const f of ['story.sql', 'gacha.sql', 'story_server.sql', 'story_gacha.sql', 'story_levels.sql', 'story_merge.sql', 'story_ch2.sql', 'story_cards_1022.sql', 'story_leader_lock.sql', 'story_level_stats.sql', 'story_min_battle.sql', 'admin.sql', 'phaseE_1.sql', 'phaseE_2.sql', 'quest.sql', 'quest_sweep.sql', 'phaseE_3.sql', 'phaseE_4.sql', 'phaseE_5.sql', 'pvp.sql', 'pvp_tier.sql', 'gem.sql', 'guild.sql', 'guild2.sql', 'guild3.sql']) await run(f);
 await run('guild4.sql'); await run('guild4.sql');   // 두 번 실행해도 안전
+await run('guild4_ui.sql'); await run('guild4_ui.sql');
 await run('manual_battle.sql'); await run('war_manual.sql'); await run('war_manual.sql');   // 수동 전투 기록 (war_log)
 let fails = 0; const ok = (c, m) => { if (!c) { fails++; console.log('FAIL', m); } else console.log('ok  ', m); };
 async function as(uid, sql, role = 'authenticated') {
@@ -63,12 +64,19 @@ for (const u of U.slice(0, 33)) { await as(u, `select war_set_deck('def1', '["c0
 for (const u of U.slice(11, 22)) await as(u, `select war_set_deck('def2', '["c5"]')`);   // 2조직: 방어 2번 덱 있음
 ok(/same card/.test(await err(U[0], `select war_set_deck('def2', '["c0"]')`)), '방어 덱 1·2 같은 카드 불가');
 ok(/card not owned/.test(await err(U[0], `select war_set_deck('atk2', '["zz"]')`)), '안 가진 카드 불가');
+// 개인 참가 신청 (guild4_ui.sql)
+let wu = await v(U[5], `select war_signup(true)`); ok(wu.me_signed && wu.signed.includes(U[5]), '조직원 개인 참가 신청');
+await v(U[6], `select war_signup(true)`); await v(U[6], `select war_signup(false)`);
+wu = await v(U[0], `select war_ui()`); ok(wu.signed.length === 1 && !wu.me_signed, '신청 취소 · 신청자 목록');
+ok(!!(await as(null, `select war_ui()`, 'anon')).err && !!(await as(U[0], `select * from war_signups`)).err, 'anon · 테이블 직접 접근 불가');
 // 시즌 시작: 잠금 · 대진
 await at('2026-11-18 10:00');
 s = await v(U[0], `select war_status()`);
 ok(s.phase === 'live' && s.day === 1 && s.entry.locked, '1일차 09시: 잠김 · 전투 중');
 ok(/defense locked/.test(await err(U[0], `select war_set_deck('def1', '["c3"]')`)) && !(await err(U[0], `select war_set_deck('atk2', '["c6"]')`)), '방어 덱 잠김 · 공격 덱은 바꿀 수 있음');
 ok(/signup closed/.test(await err(U[0], `select war_set_slot(2, '${U[2]}')`)), '배치 잠김');
+ok((await q1(`select user_id::text from war_roster where season='2026-11-18' and guild_id=${G[0]} and slot=2`)) === U[5], '빈 칸 자동 배치는 신청자 먼저');
+ok(/signup closed/.test(await err(U[7], `select war_signup(true)`)), '잠긴 뒤 신청 불가');
 ok(+(await q1(`select count(*) from war_roster where season='2026-11-18' and guild_id=${G[0]} and user_id is not null`)) === 11, '안 배치된 조직원 자동 배치');
 ok(+(await q1(`select count(*) from war_matches where season='2026-11-18' and day=1`)) === 2, '3조직 → 2경기 (하나는 NPC)');
 const m1 = await q1(`select id from war_matches where day=1 and guild_a=${G[0]}`);

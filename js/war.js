@@ -37,13 +37,16 @@ const PH = { soon: '신청 전 (셋째 주 일~화 신청)', signup: '신청 기
 // 아지트 HP % (카드 스냅샷 기준)
 const hpPct = cards => { let a = 0, b = 0; for (const o of cards || []) { const c = warCard({ uid: 'x', ...o, hp: null }, card); if (!c) continue; b += c.HP; a += o.hp == null ? c.HP : Math.min(c.HP, +o.hp); } return b ? a / b * 100 : 0; };
 
-let S = null, M = null, tab = 'enemy';
+let S = null, M = null, tab = 'enemy', U = { signed: [], me_signed: false, cards: {} };
+/** 리더 얼굴 (war_ui · guild4_ui.sql). 없으면 덱 첫 인재 */
+const face = (uid, fb) => { const id = (uid && U.cards?.[uid]) || fb; return id ? `${IMG}${id}.webp` : ''; };
+const loadUi = async () => { try { const r = await rpc('war_ui'); if (r?.ok) U = r; } catch {} };
 export async function open() {
   M?.remove(); M = pop('<div class="gd-loading">…</div>', 'wide wr');
   try { S = await rpc('war_status'); } catch (e) { toast(errText(e)); M.remove(); return; }
-  paint();
+  await loadUi(); paint();
 }
-async function reload() { try { S = await rpc('war_status'); } catch (e) { toast(errText(e)); } paint(); }
+async function reload() { try { S = await rpc('war_status'); } catch (e) { toast(errText(e)); } await loadUi(); paint(); }
 function paint() {
   if (!M?.isConnected) return;
   const s = S, mt = s.match, e = s.entry;
@@ -72,23 +75,26 @@ function paint() {
   q('[data-enter]').forEach(b => b.onclick = async () => { try { S = await rpc('war_enter'); toast('참가 신청 완료'); } catch (er) { toast(errText(er)); } paint(); });
   q('[data-withdraw]').forEach(b => b.onclick = async () => { if (!confirm('참가를 취소할까요?')) return; try { S = await rpc('war_withdraw'); } catch (er) { toast(errText(er)); } paint(); });
   q('[data-slot]').forEach(b => b.onclick = () => slotPop(+b.dataset.slot));
+  q('[data-mesign]').forEach(b => b.onclick = async () => { try { const r = await rpc('war_signup', { p_on: !U.me_signed }); if (r?.ok) U = r; } catch (er) { toast(errText(er)); } paint(); });
 }
 function signupView() {
-  const s = S, e = s.entry, boss = s.guild.role === 'boss', can = ['boss', 'officer'].includes(s.guild.role);
-  if (!e) return `<div class="wr-sign"><div>${gi('war_icon', '🏴')} 이번 시즌 참가 신청 <small>(조직원 ${s.guild.members}/10명 이상)</small></div>
-    ${s.phase === 'signup' ? (can ? '<button class="gd-big" data-enter>참가 신청</button>' : '<small>보스·간부가 신청할 수 있어요</small>') : (s.phase === 'soon' ? '<small>신청은 셋째 주 일~화 (수 09시 마감)</small>' : '<small>다음 시즌을 기다려 주세요</small>')}</div>${rankView()}`;
-  const groups = ROLE_ORDER.map(r => `<div class="wr-grp"><div class="wr-grp-h">${roleIc(r)}${WAR_ROLES[r].label}</div><div class="wr-slots">${s.roster.filter(x => x.role === r).map(x =>
-    `<button class="wr-slot ${x.user_id ? '' : 'empty'}" data-slot="${x.slot}" ${boss && s.phase === 'signup' ? '' : 'disabled'}><b>${x.user_id ? esc(x.name || '조직원') : (gi('war_npc', '🤡') + ' 불량배')}</b>${x.user_id ? (x.ready ? '<small>🛡️✔</small>' : '<small class="bad">덱 없음</small>') : ''}</button>`).join('')}</div></div>`).join('');
-  return `<div class="wr-sign"><div>${gi('ic_check', '✅')} ${e.status === 'out' ? (gi('ic_cross', '❌') + ' 인원 부족으로 불참') : '참가 중'}${e.locked ? ' · 명단 잠김' : ''}</div>${boss && s.phase === 'signup' ? '<button class="wr-wd" data-withdraw>참가 취소</button>' : ''}</div>${groups}`;
+  const s = S, e = s.entry, boss = s.guild.role === 'boss', can = ['boss', 'officer'].includes(s.guild.role), open = s.phase === 'signup';
+  const mine = open ? `<button class="gd-big wr-mesign ${U.me_signed ? 'on' : ''}" data-mesign>${U.me_signed ? `${gi('ic_check', '✅')} 신청함 · 취소` : `${gi('war_icon', '🏴')} 참가 신청`}</button>` : '';
+  if (!e) return `<div class="wr-sign"><div>${gi('war_icon', '🏴')} ${s.guild.members}/10 · ${gi('ic_check', '✅')} ${U.signed.length}</div>
+    ${open ? (can ? '<button class="gd-big" data-enter>조직 참가</button>' : '') : (s.phase === 'soon' ? '<small>셋째 주 일~화</small>' : '')}${mine}</div>${rankView()}`;
+  const slot = x => { const signed = x.user_id && U.signed.includes(x.user_id);
+    return `<button class="wr-slot ${x.user_id ? '' : 'empty'}" data-slot="${x.slot}" ${boss && open ? '' : 'disabled'}><span class="wr-face">${x.user_id && face(x.user_id) ? `<img src="${face(x.user_id)}" alt="" loading="lazy" onerror="this.remove()">` : `<i>${x.user_id ? '👤' : gi('war_npc', '🤡')}</i>`}${signed ? '<em class="wr-signed">✔</em>' : ''}${x.user_id && !x.ready ? '<em class="wr-nodeck">!</em>' : ''}</span><b>${x.user_id ? esc(x.name || '조직원') : '불량배'}</b></button>`; };
+  const groups = ROLE_ORDER.map(r => `<div class="wr-row r-${r}"><div class="wr-slots ${r}">${s.roster.filter(x => x.role === r).map(slot).join('')}</div></div>`).join('');
+  return `<div class="wr-sign"><div>${e.status === 'out' ? (gi('ic_cross', '❌') + ' 인원 부족으로 불참') : (gi('ic_check', '✅') + ' 참가 중')}${e.locked ? ' · ' + gi('ic_lock', '🔒') : ` · 신청 ${U.signed.length}`}</div>${mine}${boss && open ? '<button class="wr-wd" data-withdraw>조직 참가 취소</button>' : ''}</div>${groups}`;
 }
 const roleBuff = r => { const x = WAR_ROLES[r], t = []; if (x.atk > 1 && x.def > 1) t.push(`공방 +${Math.round((x.atk - 1) * 100)}%`); else { if (x.atk > 1) t.push(`공격 +${Math.round((x.atk - 1) * 100)}%`); if (x.def > 1) t.push(`방어 +${Math.round((x.def - 1) * 100)}%`); } return `${t.join(' ')} · ${n(S.numbers.points[r])}점`; };
 function mapView(list, foe) {
   const gate = S.match.gate_open;
-  return ROLE_ORDER.map(r => `<div class="wr-grp"><div class="wr-grp-h">${roleIc(r)}${WAR_ROLES[r].label}</div><div class="wr-ajs ${r}">${list.filter(a => a.role === r).map(a => {
-    const lead = a.cards[0], p = a.destroyed ? 0 : hpPct(a.cards), lock = foe && r !== 'def' && !gate;
+  return ROLE_ORDER.map(r => `<div class="wr-row r-${r}"><div class="wr-ajs ${r}">${list.filter(a => a.role === r).map(a => {
+    const lead = a.cards[0], p = a.destroyed ? 0 : hpPct(a.cards), lock = foe && r !== 'def' && !gate, src = a.npc && !a.user_id ? face(null, lead?.id) : face(a.user_id, lead?.id);
     return `<button class="wr-aj ${a.destroyed ? 'dead' : ''} ${lock ? 'lock' : ''} ${a.locked ? 'busy' : ''}" data-aj="${a.slot}" data-foe="${foe ? 1 : 0}">
-      ${lead ? `<img src="${IMG}${lead.id}.webp" alt="" loading="lazy" onerror="this.remove()">` : ''}${a.npc ? `<span class="wr-npc">${gi('war_npc', '🤡')}</span>` : ''}
-      <i class="wr-hpb"><b style="width:${p}%"></b></i><small>${esc(a.name)}</small>${a.decks > 1 ? `<em class="wr-dk">${a.deck}/${a.decks}</em>` : ''}${a.destroyed ? `<span class="wr-x">${gi('fx_destroy', '💥')}</span>` : lock ? `<span class="wr-x">${gi('ic_lock', '🔒')}</span>` : a.locked ? `<span class="wr-x">${gi('role_officer', '⚔️')}</span>` : ''}</button>`; }).join('')}</div></div>`).join('');
+      <span class="wr-face">${src ? `<img src="${src}" alt="" loading="lazy" onerror="this.remove()">` : ''}${a.npc ? `<span class="wr-npc">${gi('war_npc', '🤡')}</span>` : ''}${a.decks > 1 ? `<em class="wr-dk">${a.deck}/${a.decks}</em>` : ''}${a.destroyed ? `<span class="wr-x">${gi('fx_destroy', '💥')}</span>` : lock ? `<span class="wr-x">${gi('ic_lock', '🔒')}</span>` : a.locked ? `<span class="wr-x">${gi('role_officer', '⚔️')}</span>` : ''}</span>
+      <i class="wr-hpb"><b style="width:${p}%"></b></i><small>${esc(a.name)}</small></button>`; }).join('')}</div></div>`).join('');
 }
 function rankView() {
   const st = S.standings || [];
@@ -158,7 +164,7 @@ async function deckPop() {
 function slotPop(slot) {
   const x = S.roster.find(r => r.slot === slot);
   const m = pop(`<div class="rd-pt">${roleIc(x.role)} ${slot}번 · ${WAR_ROLES[x.role].label}</div>
-    ${S.members.map(u => `<button class="rd-dk" data-u="${u.user_id}"><b>${esc(u.name)}</b><small>${S.roster.find(r => r.user_id === u.user_id) ? `${S.roster.find(r => r.user_id === u.user_id).slot}번` : ''} ${u.ready ? '🛡️✔' : '덱 없음'}</small></button>`).join('')}
+    ${S.members.slice().sort((a, b) => U.signed.includes(b.user_id) - U.signed.includes(a.user_id)).map(u => `<button class="rd-dk" data-u="${u.user_id}"><b>${U.signed.includes(u.user_id) ? gi('ic_check', '✅') + ' ' : ''}${esc(u.name)}</b><small>${S.roster.find(r => r.user_id === u.user_id) ? `${S.roster.find(r => r.user_id === u.user_id).slot}번` : ''} ${u.ready ? '🛡️✔' : '덱 없음'}</small></button>`).join('')}
     <button class="rd-dk" data-u=""><b>${gi('war_npc', '🤡')} 비우기 (불량배)</b></button>`);
   m.querySelectorAll('[data-u]').forEach(b => b.onclick = async () => { try { S = await rpc('war_set_slot', { p_slot: slot, p_user: b.dataset.u || null }); m.remove(); } catch (er) { toast(errText(er)); } paint(); });
 }
