@@ -14,7 +14,7 @@
   const img = (src, slot, cls = '') => `<img class="${cls}" src="${src || sil(slot)}" alt="" loading="lazy" onerror="this.onerror=null;this.src='${sil(slot)}'">`;
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const sb = () => window.VRCloud?.sb;
-  let st = null, defs = null, sigils = null, off = false, cost = { enh: {}, salv: {}, rr: {} };
+  let st = null, defs = null, sigils = null, off = false, cost = { enh: {}, salv: {}, rr: {}, sig: {}, src: [], xr: 3 };
 
   async function load(force) {
     if (off || !sb() || !window.VRCloud?.user) return null;
@@ -25,7 +25,9 @@
         if (a.error) throw a.error;
         defs = Object.fromEntries((a.data || []).map(d => [d.id, d])); sigils = Object.fromEntries((b.data || []).map(d => [d.card_id, d]));
         const [e, s2, r] = await Promise.all(['gear_enhance_cost', 'gear_salvage', 'gear_reroll_cost'].map(t => sb().from(t).select('*')));   // PR5 표 (없으면 버튼 숨김)
-        cost = { enh: Object.fromEntries((e.data || []).map(x => [x.plus, x])), salv: Object.fromEntries((s2.data || []).map(x => [x.tier, x])), rr: Object.fromEntries((r.data || []).map(x => [x.tier, x])) };
+        const [sc, ss, sx] = await Promise.all(['sigil_cost', 'sigil_sources', 'sigil_drop_config'].map(t => sb().from(t).select('*')));   // PR6
+        cost = { enh: Object.fromEntries((e.data || []).map(x => [x.plus, x])), salv: Object.fromEntries((s2.data || []).map(x => [x.tier, x])), rr: Object.fromEntries((r.data || []).map(x => [x.tier, x])),
+          sig: Object.fromEntries((sc.data || []).map(x => [x.plus, x.frags])), src: ss.data || [], xr: +((sx.data || []).find(x => x.key === 'exchange_rate')?.v || 3) };
       }
       const { data, error } = await sb().rpc('gear_status'); if (error) throw error;
       st = data; return st;
@@ -55,7 +57,7 @@
   async function rpc(fn, args) {
     const { data, error } = await sb().rpc(fn, args);
     if (error) { const m = error.message || ''; toast(/not enough gold/.test(m) ? '🪙 골드가 부족해요' : /not enough dust/.test(m) ? '✨ 장비 가루가 부족해요' : `⚠️ ${m}`); return null; }
-    if (data && data.ok === false) { toast(`⚠️ ${({ 'card not owned': '이 인재가 서버에 아직 없어요', gem: `보석이 부족해요 (${data.need})`, max: '가방이 최대예요', 'not found': '장비를 찾을 수 없어요', 'bag full': '🎒 가방이 꽉 찼어요. 정리한 뒤 받아 주세요', 'locked or equipped': '🔒 잠금·장착 중인 장비는 팔거나 분해할 수 없어요', 'max plus': '이미 +5예요', 'no options': '부옵션이 없는 장비예요', 'event only': '이벤트 전용이에요', unsupported: '아직 받을 수 없는 우편이에요' })[data.reason] || data.reason}`); return null; }
+    if (data && data.ok === false) { toast(`⚠️ ${({ 'card not owned': '이 인재가 서버에 아직 없어요', gem: `보석이 부족해요 (${data.need})`, max: '가방이 최대예요', 'not found': '장비를 찾을 수 없어요', 'bag full': '🎒 가방이 꽉 찼어요. 정리한 뒤 받아 주세요', 'locked or equipped': '🔒 잠금·장착 중인 장비는 팔거나 분해할 수 없어요', 'max plus': '이미 +5예요', 'not enough frags': '조각이 부족해요', 'already crafted': '이미 만든 증표예요', 'not crafted': '먼저 증표를 만들어 주세요', 'not selectable': '이 인재는 고를 수 없어요', 'no exchange': '교환할 수 없는 인재예요', 'no options': '부옵션이 없는 장비예요', 'event only': '이벤트 전용이에요', unsupported: '아직 받을 수 없는 우편이에요' })[data.reason] || data.reason}`); return null; }
     await load(true); return data || {};
   }
 
@@ -75,14 +77,43 @@
       cur ? itemPop(cur, { cardId, reopen }) : bag({ slot: s, cardId, reopen }); });
   }
 
-  // 증표: 지금은 보기만 (제작·강화는 다음 PR)
+  // 증표: 조각 → 제작(+0) → 강화(+1~+5). 교환: 다른 인재 조각 3개 → 1개
+  const CHAR = { '1000100007': '민홍기', '2000400088': '최윤희', '2000100001': '임유리' };
+  const SRC_TXT = { story_boss: '스토리 보스 소탕', raid_select: '조직 토벌 순위', guild_shop: '조직 상점', pvp_shop: 'PvP 상점', event: '이벤트', exchange: '조각 교환' };
+  const sigIcon = c => SIGIL_ICON[c] ? `img/gear/${SIGIL_ICON[c]}.webp` : '';
   function sigilPop(cardId) {
-    const sg = sigils[cardId], own = (st.sigils || []).find(s => s.card === String(cardId));
+    cardId = String(cardId);
+    const sg = sigils[cardId], own = (st.sigils || []).find(s => s.card === cardId);
     if (!sg) return pop(`<div class="gear-big">${img('', 'sigil')}</div><b>증표</b><p class="gear-dim">이 인재의 증표는 아직 준비 중이에요</p>`);
-    const cur = own?.plus ?? null, step = (sg.steps || [])[cur ?? 0];
-    pop(`<div class="gear-big">${img(`img/gear/${SIGIL_ICON[cardId]}.webp`, 'sigil', cur == null ? 'dim' : '')}</div><b>${esc(sg.name)}</b> ${cur != null ? `<span class="gear-plus">+${cur}</span>` : ''}
-      <div class="gear-sig">${sigTxt(step)}</div>${cur != null && sg.steps[cur + 1] ? `<div class="gear-sig next"><small>다음 +${cur + 1}</small>${sigTxt(sg.steps[cur + 1])}</div>` : ''}
-      <p class="gear-dim">조각 ${own?.frags || 0}${cur == null ? ' / 50 · 모으면 증표를 만들 수 있어요' : ''}</p>`);
+    const cur = own?.plus ?? null, fr = own?.frags || 0, step = (sg.steps || [])[cur ?? 0], nx = cur == null ? 0 : cur + 1, need = cost.sig[nx], max = cur === 5;
+    const srcs = cost.src.filter(x => x.card_id === cardId).map(x => SRC_TXT[x.source] || x.source);
+    const m = pop(`<div class="gear-big">${img(sigIcon(cardId), 'sigil', cur == null ? 'dim' : '')}</div><b>${esc(sg.name)}</b> ${cur != null ? `<span class="gear-plus">+${cur}</span>` : ''}
+      <div class="gear-dim">${esc(CHAR[cardId] || '')}</div>
+      <div class="gear-sig">${cur == null ? '<small>만들면 (+0)</small>' : ''}${sigTxt(step)}</div>${cur != null && sg.steps[cur + 1] ? `<div class="gear-sig next"><small>다음 +${cur + 1}</small>${sigTxt(sg.steps[cur + 1])}</div>` : ''}
+      ${max ? '<div class="gear-dim">✨ 완성 (+5)</div>' : `<div class="sig-bar"><i style="width:${Math.min(100, fr / need * 100)}%"></i><span>조각 ${fr} / ${need}</span></div>`}
+      <div class="gear-acts">${max ? '' : `<button class="gear-btn main" data-s="up" ${fr >= need ? '' : 'disabled'}>${cur == null ? '🔨 증표 만들기' : `⬆️ +${nx} 강화`}<small>조각 ${need}</small></button>`}
+        <button class="gear-btn" data-s="ex">🔄 조각 교환</button></div>
+      ${srcs.length ? `<div class="gear-dim">얻는 곳: ${srcs.join(' · ')}</div>` : ''}`, 'item');
+    m.querySelector('[data-s="up"]')?.addEventListener('click', async e => {
+      const b = e.currentTarget;
+      if (!await ask(`<div class="gear-big">${img(sigIcon(cardId), 'sigil')}</div><div>${cur == null ? `조각 ${need}개로 <b>${esc(sg.name)}</b>을 만들까요?` : `조각 ${need}개로 <b>+${cur} → +${nx}</b> 강화할까요? (확정 성공)`}</div>`)) return;
+      b.disabled = true; const r = await rpc(cur == null ? 'sigil_craft' : 'sigil_enhance', { p_card: cardId });
+      if (r) { m.remove(); toast(cur == null ? `🔨 ${sg.name} 완성!` : `⬆️ ${sg.name} +${nx}`); sigilPop(cardId); } else b.disabled = false; });
+    m.querySelector('[data-s="ex"]').onclick = () => { m.remove(); exchangePop(cardId); };
+  }
+  // 교환: 다른 증표 조각 (rate) → 이 인재 1
+  function exchangePop(to) {
+    const xr = cost.xr, from = (st.sigils || []).filter(s => s.card !== to && s.frags >= xr && sigils[s.card]);
+    const m = pop(`<div class="gear-big">${img(sigIcon(to), 'sigil')}</div><b>${esc(CHAR[to] || '')} 조각 받기</b><div class="gear-dim">다른 인재 조각 ${xr}개 → 1개</div>
+      <div class="gear-drops">${from.map(s => `<button class="gear-drop" data-f="${s.card}">${img(sigIcon(s.card), 'sigil')}<span>${esc(CHAR[s.card] || s.card)} ${s.frags}</span></button>`).join('') || '<div class="gear-dim">교환할 조각이 없어요</div>'}</div>`, 'item');
+    m.querySelectorAll('[data-f]').forEach(b => b.onclick = async () => { const f = from.find(s => s.card === b.dataset.f), mx = Math.floor(f.frags / xr);
+      const n = await new Promise(res => { const q = pop(`<b>몇 개 받을까요?</b><div class="gear-dim">${esc(CHAR[f.card])} 조각 ${xr}개당 1개 · 최대 ${mx}</div>
+        <div class="gear-acts">${[...new Set([1, 5, 10, mx])].filter(k => k >= 1 && k <= mx).map(k => `<button class="gear-btn" data-k="${k}">${k === mx ? `최대 ${k}` : k}개</button>`).join('')}</div>`, 'item');
+        const o = new MutationObserver(() => { if (!q.isConnected) { o.disconnect(); res(0); } }); o.observe(document.body, { childList: true });
+        q.querySelectorAll('[data-k]').forEach(k => k.onclick = () => { o.disconnect(); q.remove(); res(+k.dataset.k); }); });
+      if (!n) return;
+      if (!await ask(`<div class="gear-drops"><div class="gear-drop">${img(sigIcon(f.card), 'sigil')}<span>−${n * xr}</span></div><div class="gear-drop">${img(sigIcon(to), 'sigil')}<span>+${n}</span></div></div><div>${CHAR[f.card]} 조각 ${n * xr}개를 ${CHAR[to]} 조각 ${n}개로 바꿀까요?</div>`)) return;
+      const r = await rpc('sigil_exchange', { p_from: f.card, p_to: to, p_n: n }); if (r) { m.remove(); sigilPop(to); } });
   }
 
   const MOD = { hit_pct: v => `타격 ${v}%`, hits: v => `${v}회`, bleed_pct: v => `출혈 ${v}%`, cooldown: v => `쿨타임 ${v}`, mp: v => `MP ${v}`, fallback_hp_pct: v => `대체 대상 HP -${v}%`, targets: v => `대상 ${v}명`, duration: v => `${v}턴`,
@@ -164,6 +195,7 @@
   // 획득 장비 (결과 화면): 서버 gear_drops_take → 그림 위주 팝업. 상자·우편행은 표시만
   const SRC = { story_sweep: '소탕', tower: '탑', raid: '토벌', raid_clear: '토벌 처치 상자', raid_rank: '토벌 순위 상자' };
   const tileOf = x => { const d = defs?.[x.def_id];
+    if (x.kind === 'sigil') return `<div class="gear-drop">${img(sigIcon(x.def_id), 'sigil')}${x.mail ? '<b>📬</b>' : ''}<span>${x.def_id === 'sigilpick' ? '증표 조각 (선택)' : `${esc(CHAR[x.def_id] || '')} 조각`}</span></div>`;
     if (x.kind === 'box') return `<div class="gear-drop box gt${x.tier}"><span class="gear-box">🎁</span><span>${TIER[x.tier] || ''} 상자</span></div>`;
     return d ? `<div class="gear-drop gt${d.tier}">${img(iconOf(d), d.slot)}${x.mail ? '<b>📬</b>' : ''}<span>${esc(d.name)}</span></div>` : ''; };
   async function showDrops() {
@@ -185,10 +217,20 @@
       const { data: list, error } = await sb().rpc('mail_list'); if (error) { m.remove(); return toast(`⚠️ ${error.message}`); }
       m.querySelector('.gear-pop').innerHTML = `<div class="gear-bag-top"><b>📬 우편함</b><small>🎒 ${st.count}/${st.slots}</small></div>
         <div class="gear-grid">${list.map(ml => { const p = ml.payload || {}, d = defs[p.def_id];
+          if (ml.kind === 'sigil_frag') return `<button class="gear-cell" data-m="${ml.id}">${img('', 'sigil')}<i>×${p.n}</i></button>`;
           return ml.kind === 'box' ? `<button class="gear-cell gt${p.tier}" data-m="${ml.id}"><span class="gear-box">🎁</span></button>`
             : d ? `<button class="gear-cell gt${d.tier}" data-m="${ml.id}">${img(iconOf(d), d.slot)}</button>` : ''; }).join('') || '<div class="gear-dim">우편이 없어요</div>'}</div>
         <div class="gear-dim">보관 7일 · 상자 14일</div>`;
       m.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { const ml = list.find(x => String(x.id) === b.dataset.m), p = ml.payload || {};
+        if (ml.kind === 'sigil_frag') {
+          const ok = cost.src.filter(x => x.source === (p.pick || 'raid_select')).map(x => x.card_id);
+          const q = pop(`<div class="gear-big">${img('', 'sigil')}</div><b>증표 조각 ×${p.n}</b><div class="gear-dim">받을 인재를 고르세요</div>
+            <div class="gear-drops">${ok.map(c => `<button class="gear-drop" data-c="${c}">${img(sigIcon(c), 'sigil')}<span>${esc(CHAR[c] || c)}</span></button>`).join('')}</div>`, 'item');
+          q.querySelectorAll('[data-c]').forEach(x => x.onclick = async () => { const c = x.dataset.c;
+            if (!await ask(`<div class="gear-big">${img(sigIcon(c), 'sigil')}</div><div>${esc(CHAR[c] || c)} 조각 ${p.n}개를 받을까요?</div>`)) return;
+            const r = await rpc('sigil_mail_claim', { p_id: ml.id, p_card: c }); q.remove(); if (r) toast(`${CHAR[c]} 조각 +${r.n}`); if (m.isConnected) draw(); });
+          return;
+        }
         if (ml.kind === 'box') {
           const q = pop(`<div class="gear-big gt${p.tier}"><span class="gear-box big">🎁</span></div><b>🎁 ${TIER[p.tier]} 상자</b>
             ${p.up_tier ? `<div class="gear-dim">${p.up_pct}% 확률로 ${TIER[p.up_tier]}</div>` : ''}<div class="gear-dim">받을 칸을 고르세요</div>
