@@ -295,5 +295,8 @@
     draw();
   }
 
+  // 메인 거래소 타일 (게스트는 main-menu.js 가 로그인 확인 먼저)
+  const mount = () => document.getElementById('main-trade')?.addEventListener('click', () => { if (window.VRCloud?.user || window.__TRADE_MOCK) open(); });
+  if (typeof document !== 'undefined' && document.addEventListener) { if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount); else mount(); }
   window.VRTrade = { open, _priceInfo: (l, o, d, g, c, b) => { cfg = c; bands = b; return priceInfo(l, o, d, g); }, _errText: errText, _cardBlock: (o, s) => { cfg = cfg || {}; return cardBlock(o, s); }, _sortCards: (list, k, desc) => { srt.c = { k, desc }; return sortCards(list); } };
 })();
