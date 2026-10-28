@@ -33,3 +33,5 @@
 .tr-pop *{box-sizing:border-box}.tr-x{background:none;border:0;color:#fff;cursor:pointer}
 .tr-cur-in input{width:100%}.tr-cur-in label{min-width:0}
 .tr-help{font-size:12px;line-height:1.55}.tr-help p{margin:0 0 8px}.tr-help b{color:#fde68a}
+.tr-sec-row{display:flex;align-items:center;justify-content:space-between;gap:6px;margin:12px 0 6px}.tr-sec-row .tr-sec{margin:0}
+.tr-sortbar{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}.tr-chip{padding:3px 9px;font-size:11px}

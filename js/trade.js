@@ -142,21 +142,48 @@
     if (g.card) return '장착 중'; if (g.locked) return '🔒 잠금'; if ((d?.tier || 0) > 5) return '거래 불가 등급';
     return '';
   }
+  // ---- 정렬 (인재: 등급·레벨·이름·획득 / 장비: 등급·강화·이름). 같은 버튼 다시 누르면 ▼▲ 전환, 기억함. 못 올리는 것도 제자리(흐리게)
+  const G_ORD = ['N', 'R', 'HR', 'SR', 'UR', 'MR', 'LR'];
+  const CSORT = { grade: '등급', level: '레벨', name: '이름', new: '획득' }, GSORT = { tier: '등급', plus: '강화', name: '이름' };
+  const SK = 'vr-trade-sort';
+  let srt = (() => { try { const v = JSON.parse(localStorage.getItem(SK)); if (v?.c && CSORT[v.c.k] && v?.g && GSORT[v.g.k]) return v; } catch {} return { c: { k: 'grade', desc: true }, g: { k: 'tier', desc: true } }; })();
+  const setSrt = (w, k) => { srt[w] = srt[w].k === k ? { k, desc: !srt[w].desc } : { k, desc: true }; try { localStorage.setItem(SK, JSON.stringify(srt)); } catch {} };
+  const cmpName = (a, b) => String(a || '').localeCompare(String(b || ''), 'ko');
+  function sortCards(list) {
+    const { k, desc } = srt.c, d = desc ? -1 : 1;
+    const gi = o => G_ORD.indexOf(gradeOf(o.id)), nm = o => cardOf(o.id)?.name || o.id;
+    return list.slice().sort((A, B) => { const a = A.o, b = B.o;
+      const v = k === 'grade' ? gi(a) - gi(b) : k === 'level' ? (a.level | 0) - (b.level | 0) : k === 'name' ? cmpName(nm(a), nm(b)) : A.i - B.i;
+      return v * d || (gi(b) - gi(a)) || ((b.level | 0) - (a.level | 0)) || cmpName(nm(a), nm(b)) || (B.i - A.i); });
+  }
+  function sortGear(list) {
+    const { k, desc } = srt.g, d = desc ? -1 : 1;
+    const t = g => defOf(g.def)?.tier || 0, nm = g => defOf(g.def)?.name || '';
+    return list.slice().sort((A, B) => { const a = A.g, b = B.g;
+      const v = k === 'tier' ? t(a) - t(b) : k === 'plus' ? (a.plus | 0) - (b.plus | 0) : cmpName(nm(a), nm(b));
+      return v * d || (t(b) - t(a)) || ((b.plus | 0) - (a.plus | 0)) || cmpName(nm(a), nm(b)) || (b.id - a.id); });
+  }
+  const sortBar = (w, opts) => `<div class="tr-sortbar">${Object.entries(opts).map(([k, l]) => `<button type="button" class="story-chip tr-chip ${srt[w].k === k ? 'on' : ''}" data-srt="${w}:${k}" aria-pressed="${srt[w].k === k}">${l}${srt[w].k === k ? (srt[w].desc ? ' ▼' : ' ▲') : ''}</button>`).join('')}</div>`;
+
   async function picker(host, onChange) {
     await S()?.load?.(); const save = S()?.save; const gs = (await window.VRGear?.load?.(true))?.gear || [];
     const inDeck = new Set((save?.decks || []).flatMap(d => d?.uids || []));
     const sel = { cards: new Set(), gear: new Set() }, max = cfg.max_items || 5;
-    const cards = (save?.owned || []).map(o => ({ o, why: cardBlock(o, save) })).sort((a, b) => !!a.why - !!b.why);
-    const gear = gs.map(g => ({ g, why: gearBlock(g) })).sort((a, b) => !!a.why - !!b.why);
-    host.innerHTML = `<div class="tr-sec">인재</div><div class="tr-pick">${cards.map(({ o, why }) => `<div class="tr-pk ${why ? 'no' : ''}" data-pc="${esc(o.uid)}">${cardTile(o)}${why ? `<i>${why}</i>` : inDeck.has(o.uid) ? '<i class="soft">덱에서 빠짐</i>' : ''}</div>`).join('') || '<div class="tr-empty">인재가 없어요</div>'}</div>
-      <div class="tr-sec">장비</div><div class="tr-pick">${gear.map(({ g, why }) => `<div class="tr-pk ${why ? 'no' : ''}" data-pg="${g.id}">${gearTile(g)}${why ? `<i>${why}</i>` : ''}</div>`).join('') || '<div class="tr-empty">장비가 없어요</div>'}</div>`;
+    const cards = (save?.owned || []).map((o, i) => ({ o, i, why: cardBlock(o, save) }));
+    const gear = gs.map(g => ({ g, why: gearBlock(g) }));
     const count = () => sel.cards.size + sel.gear.size;
-    host.querySelectorAll('[data-pc],[data-pg]').forEach(el => el.onclick = () => {
-      if (el.classList.contains('no')) return toast(`이 물건은 올릴 수 없어요: ${el.querySelector('i')?.textContent || ''}`);
-      const isC = 'pc' in el.dataset, set = isC ? sel.cards : sel.gear, k = isC ? el.dataset.pc : +el.dataset.pg;
-      if (set.has(k)) set.delete(k); else { if (count() >= max) return toast(`한쪽에 최대 ${max}개까지예요`); set.add(k); }
-      el.classList.toggle('on', set.has(k)); onChange?.();
-    });
+    const draw = () => {
+      host.innerHTML = `<div class="tr-sec-row"><div class="tr-sec">인재</div>${sortBar('c', CSORT)}</div><div class="tr-pick">${sortCards(cards).map(({ o, why }) => `<div class="tr-pk ${why ? 'no' : ''} ${sel.cards.has(o.uid) ? 'on' : ''}" data-pc="${esc(o.uid)}">${cardTile(o)}${why ? `<i>${why}</i>` : inDeck.has(o.uid) ? '<i class="soft">덱에서 빠짐</i>' : ''}</div>`).join('') || '<div class="tr-empty">인재가 없어요</div>'}</div>
+        <div class="tr-sec-row"><div class="tr-sec">장비</div>${gear.length > 1 ? sortBar('g', GSORT) : ''}</div><div class="tr-pick">${sortGear(gear).map(({ g, why }) => `<div class="tr-pk ${why ? 'no' : ''} ${sel.gear.has(g.id) ? 'on' : ''}" data-pg="${g.id}">${gearTile(g)}${why ? `<i>${why}</i>` : ''}</div>`).join('') || '<div class="tr-empty">장비가 없어요</div>'}</div>`;
+      host.querySelectorAll('[data-srt]').forEach(b => b.onclick = () => { const [w, k] = b.dataset.srt.split(':'); setSrt(w, k); draw(); });
+      host.querySelectorAll('[data-pc],[data-pg]').forEach(el => el.onclick = () => {
+        if (el.classList.contains('no')) return toast(`이 물건은 올릴 수 없어요: ${el.querySelector('i')?.textContent || ''}`);
+        const isC = 'pc' in el.dataset, set = isC ? sel.cards : sel.gear, k = isC ? el.dataset.pc : +el.dataset.pg;
+        if (set.has(k)) set.delete(k); else { if (count() >= max) return toast(`한쪽에 최대 ${max}개까지예요`); set.add(k); }
+        el.classList.toggle('on', set.has(k)); onChange?.();
+      });
+    };
+    draw();
     const keys = () => [...[...sel.cards].map(u => cardKey(save.owned.find(o => o.uid === u)?.id)), ...[...sel.gear].map(id => gearKey(defOf(gs.find(g => g.id === id)?.def)?.tier || 1))];
     return { sel, count, keys };
   }
@@ -268,5 +295,5 @@
     draw();
   }
 
-  window.VRTrade = { open, _priceInfo: (l, o, d, g, c, b) => { cfg = c; bands = b; return priceInfo(l, o, d, g); }, _errText: errText, _cardBlock: (o, s) => { cfg = cfg || {}; return cardBlock(o, s); } };
+  window.VRTrade = { open, _priceInfo: (l, o, d, g, c, b) => { cfg = c; bands = b; return priceInfo(l, o, d, g); }, _errText: errText, _cardBlock: (o, s) => { cfg = cfg || {}; return cardBlock(o, s); }, _sortCards: (list, k, desc) => { srt.c = { k, desc }; return sortCards(list); } };
 })();
