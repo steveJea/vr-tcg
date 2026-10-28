@@ -115,6 +115,7 @@ async function start(id, opt = {}) {
   T = { id, def, i: 0, locks: new Set(def.locks || []), el: build(), cb: opt.onDone };
   applyLocks(true);
   for (const ev of ['click', 'pointerdown', 'pointerup', 'mousedown']) document.addEventListener(ev, guard, true);
+  if (def.noSkip) T.el.ov.querySelector('.tut-skip').style.display = 'none';   // noSkip: 건너뛰기 없음 (강제 영입)
   show(); place();
   return true;
 }

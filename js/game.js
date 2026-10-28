@@ -1189,6 +1189,19 @@ function lastTurnToast() {
 
 const hpPrev = new Map();
 const hpText = t => String(t || '').replace(/체력/g, 'HP');
+// 전투 중 스킬 설명 팝업 (ⓘ 또는 사용 버튼 길게 누르기). 바깥 누르면 닫힘. 스킬은 쓰지 않음
+function skillInfoPop(unit, s) {
+  if (!s) return; document.getElementById('sk-pop')?.remove();
+  const slv = s.mode === 'active' && unit ? skillLvOf(unit, s) : 1, cd = s.mode === 'active' ? skillCdAt(s.cooldown, slv) : 0;
+  const el = document.createElement('div'); el.id = 'sk-pop'; el.className = 'sk-pop';
+  el.innerHTML = `<div class="sk-pop-c" role="dialog" aria-label="스킬 설명"><div class="sk-pop-h">${unit?.card ? `<img src="${IMG}${unit.card.id}.webp" alt="">` : ''}<div><span class="px-1.5 rounded text-[10px] font-bold text-white ${TYPE_COLOR[s.type] || 'bg-zinc-600'}">${s.type || ''}</span>
+    <b>${s.name}</b><small>${s.mode === 'active' ? `MP ${s.mp} · 쿨 ${cd}${slv > 1 ? ` · Lv${slv}` : ''}` : '패시브'}</small></div></div>
+    <div class="sk-pop-d">${hpText(s.desc) || '설명 없음'}${s.note ? `<div class="sk-pop-n">${hpText(s.note)}</div>` : ''}</div>
+    ${unit ? `<div class="sk-pop-mp">MP ${unit.mp}/${unit.maxMp}</div>` : ''}</div>`;
+  el.addEventListener('click', e => { if (!e.target.closest('.sk-pop-c')) el.remove(); });
+  el.addEventListener('contextmenu', e => e.preventDefault());
+  document.body.appendChild(el);
+}
 function render() {
   renderAutoBtn();
   if (S) preloadFx([...S.me.field, ...S.ai.field].map(u => u.base || u.card));
@@ -1395,7 +1408,15 @@ function showDetail(c, { fromHand = false, hp, unit = null, view = null, power =
       <button id="sacrifice-btn" ${sc.ok && myTurn ? '' : 'disabled'} class="mt-2 w-full py-2.5 rounded-2xl bg-rose-600 hover:bg-rose-500 disabled:opacity-40 text-white font-bold">${ic('bleed', { alt: '' })} 희생 (마나 +${sc.gain})${sc.ok || !myTurn ? '' : ` — ${sc.reason}`}</button>
       <div class="text-[11px] text-zinc-500 mt-1 text-center">카드를 없애고 코스트의 ${Math.round(RULES.SACRIFICE_RATIO * 100)}%를 마나로 (턴당 1회)</div>`; })() : ''}`;
   fixImages($('detail-body'));
-  if (unit) $('detail-body').querySelectorAll('[data-skill]').forEach(b => b.onclick = () => { const s = unit.sk[+b.dataset.skill]; hideModal('detail'); castSkill('me', unit, s); });
+  if (unit) $('detail-body').querySelectorAll('[data-skill]').forEach(b => {
+    // 길게 누르기(0.45초) = 설명만 보기 (스킬은 안 씀). 짧게 탭 = 사용
+    let t = null, held = false; const cancel = () => { clearTimeout(t); t = null; };
+    b.addEventListener('pointerdown', () => { held = false; cancel(); t = setTimeout(() => { held = true; skillInfoPop(unit, unit.sk[+b.dataset.skill]); }, 450); });
+    ['pointerup', 'pointerleave', 'pointercancel'].forEach(k => b.addEventListener(k, cancel));
+    b.addEventListener('contextmenu', e => e.preventDefault());
+    b.onclick = e => { if (held) { held = false; e.preventDefault(); return; } const s = unit.sk[+b.dataset.skill]; hideModal('detail'); castSkill('me', unit, s); };
+  });
+  if (unit) $('detail-body').querySelectorAll('[data-skinfo]').forEach(b => b.onclick = e => { e.stopPropagation(); skillInfoPop(unit, unit.sk[+b.dataset.skinfo]); });
   if (unit) $('detail-body').querySelectorAll('[data-equip]').forEach(b => b.onclick = () => { const r = equipItem('me', unit, b.dataset.equip); if (r.ok) showDetail(unit.card, { hp: unit.hp, unit }); });
   if (unit && $('sacrifice-btn')) $('sacrifice-btn').onclick = () => { const r = doSacrifice('me', unit); if (r.ok) hideModal('detail'); };
   if (unit && $('recall-btn')) $('recall-btn').onclick = () => { const r = recall('me', unit); if (r.ok) hideModal('detail'); };
@@ -1423,7 +1444,7 @@ function skillListHTML(c, unit, myTurn, lv = 1, opt = {}) {
       `<summary class="flex items-center gap-1.5 flex-wrap"><span class="px-1.5 rounded text-[10px] font-bold ${TYPE_COLOR[s.type] || 'bg-zinc-600'}">${s.type}</span><span class="text-[10px] text-zinc-400">${s.mode === 'active' ? '액티브' : '패시브'}</span><span class="font-bold text-sm">${s.name}</span>${lvBadge}${upBtn}
         <span class="ml-auto text-[10px] text-zinc-400">${locked ? '🔒' : ''}Lv${s.unlock}${s.mode === 'active' ? ` · MP ${s.mp} · 쿨 ${cdNow}` : ''}</span></summary>`}
       <div class="text-[11px] text-zinc-300 mt-0.5">${hpText(s.desc)}${s.note ? ` <span class="text-zinc-500">(${hpText(s.note)})</span>` : ''}</div></details>
-      ${s.mode === 'active' && mine ? `<button data-skill="${i}" ${st.ok && myTurn ? '' : 'disabled'} class="mt-1 w-full py-1.5 rounded-lg bg-fuchsia-600 hover:bg-fuchsia-500 disabled:opacity-40 text-xs font-bold">${st.ok ? '사용 (공격 대신)' : st.reason}</button>` : ''}
+      ${s.mode === 'active' && mine ? `<div class="mt-1 flex gap-1.5"><button type="button" data-skinfo="${i}" class="sk-info" aria-label="스킬 설명">i</button><button data-skill="${i}" ${st.ok && myTurn ? '' : 'disabled'} class="flex-1 py-1.5 rounded-lg bg-fuchsia-600 hover:bg-fuchsia-500 disabled:opacity-40 text-xs font-bold">${st.ok ? '사용 (공격 대신)' : st.reason}</button></div>` : ''}
       ${s.mode === 'passive' && unit ? `<div class="text-[10px] mt-0.5 ${locked ? 'text-zinc-500' : 'text-emerald-400'}">${locked ? `Lv${s.unlock}에 해금` : (unit.fired[s.name] ? '발동됨' : '활성')}</div>` : ''}
     </div>`; }).join('')}</div>`;
 }
@@ -1622,7 +1643,10 @@ function zoomFromBtn(b) {
 }
 // 캡처 단계에서 가로채서 카드 선택/드래그/상세창이 같이 동작하지 않게 함
 ['pointerdown', 'mousedown', 'touchstart'].forEach(t => document.addEventListener(t, e => { if (e.target.closest?.('.zoom-btn')) e.stopPropagation(); }, { capture: true, passive: true }));
-document.addEventListener('click', e => { const b = e.target.closest?.('.zoom-btn'); if (!b) return; e.stopPropagation(); e.preventDefault(); zoomFromBtn(b); }, true);
+document.addEventListener('click', e => { const b = e.target.closest?.('.zoom-btn'); if (!b) return;
+  // 튜토리얼 가이드 중 전장 카드의 🔍 = 카드 탭으로 처리 (손가락 표시 근처라 잘못 눌리면 큰 그림이 가이드 밑에 깔려 진행 멈춤 · ch0-2 자리 바꾸기)
+  if (window.VRTutorial?.active && b.closest('#me-field [data-uid], #ai-field [data-uid], #me-boss [data-uid], #ai-boss [data-uid]')) { e.preventDefault(); return; }
+  e.stopPropagation(); e.preventDefault(); zoomFromBtn(b); }, true);
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('zoom-view')?.classList.contains('open')) { e.stopPropagation(); closeZoom(); } }, true);
 
 

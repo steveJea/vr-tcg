@@ -641,3 +641,16 @@ span.story-lvpct { background: rgba(251,191,36,.12); border: 1px solid rgba(251,
 .kickoff-ov { position: fixed; inset: 0; z-index: 55; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,.45); }
 .kickoff-btn { padding: 16px 44px; border-radius: 999px; font-size: 22px; font-weight: 900; color: #1a1205; background: linear-gradient(#fde68a,#f59e0b); box-shadow: 0 0 24px rgba(245,158,11,.6); animation: kickPulse 1.4s ease-in-out infinite; }
 @keyframes kickPulse { 50% { transform: scale(1.06); } }
+/* 챕터 0 강제 10회 프리미엄 영입: 나가기·탭·1회·젬 숨김 */
+.gr-forced ~ * .story-back, body:has(.gr-forced) .story-back, body:has(.gr-forced) .story-nav, .gr-forced .gr-banners, .gr-forced [data-draw="1"], .gr-forced .gr-gem { display: none !important; }
+
+/* 전투 스킬 설명: ⓘ 버튼 · 길게 누르기 팝업 (바깥 누르면 닫힘) */
+.sk-info{flex:none;width:34px;border-radius:10px;background:#3f3f46;color:#e9d5ff;font:italic 900 15px/1 Georgia,serif;border:1px solid rgba(233,213,255,.35)}
+.sk-info:active{background:#52525b}
+[data-skill]{-webkit-touch-callout:none;user-select:none;-webkit-user-select:none}
+.sk-pop{position:fixed;inset:0;z-index:10050;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.45);padding:16px}
+.sk-pop-c{width:min(340px,100%);background:#18181b;border:1px solid #a855f7;border-radius:16px;padding:14px;color:#f4f4f5;box-shadow:0 0 24px rgba(168,85,247,.35)}
+.sk-pop-h{display:flex;gap:10px;align-items:center}.sk-pop-h img{width:52px;height:52px;border-radius:50%;object-fit:cover;object-position:top;border:2px solid #a855f7}
+.sk-pop-h b{display:block;font-size:17px;margin-top:3px}.sk-pop-h small{color:#93c5fd;font-weight:700;font-size:12px}
+.sk-pop-d{margin-top:10px;font-size:14px;line-height:1.5;color:#e4e4e7}.sk-pop-n{margin-top:6px;font-size:12px;color:#a1a1aa}
+.sk-pop-mp{margin-top:10px;font-size:12px;color:#93c5fd;text-align:right}
