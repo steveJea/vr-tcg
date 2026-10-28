@@ -208,7 +208,7 @@ function startGame(story = null) {
       const tgt = PS && S.me.field.find(u => String(u.card.id) === String(PS.id));
       if (tgt && S.me.field.some(u => String(u.card.id) === String(PS.with))) { tgt.noDamage = true; tgt.pairShield = PS.turns; S.pairShield = { u: tgt, turns: PS.turns }; log(`🛡️ 자매의 가호: ${tgt.card.name}은(는) ${PS.turns}턴 동안 피해를 입지 않아요.`, 'text-sky-300'); } }
     refreshAll(S.me); refreshAll(S.ai);
-    S.kick = story.kickoff ? kickoffGate() : null;   // story.kickoff: [시작하기] 를 눌러야 등장 연출·첫 턴·가이드 시작 (챕터 0)
+    S.kick = story.kickoff ? kickoffGate(story.kickoff !== 'external') : null;   // story.kickoff: [시작하기] 를 눌러야 등장 연출·첫 턴·가이드 시작 (챕터 0)
     const s0 = S, after = (fn, ms) => (s0.kick || Promise.resolve()).then(() => setTimeout(() => { if (S === s0 && !S.over) fn(); }, ms));
     after(() => { for (const w of ['me', 'ai']) for (const u of S[w].field) onEnter(w, u); flushHeldPassives(); }, 400);
     if (story.tutorial) after(async () => { for (let k = 0; k < 50 && (fxQueueRun || fxQueue.length); k++) await sleep(200); if (S === s0 && !S.over) window.VRTutorial?.start(story.tutorial, { force: !!story.tutorialForce }); }, 900);   // 등장 연출이 끝난 뒤 가이드   // 페이즈의 tutorial id → 가이드 (data/tutorials/<id>.json)   // 출전 카드 등장 컷인·이벤트
@@ -604,12 +604,14 @@ function awakenCheck() {
   runFxQueue();
 }
 /** [시작하기] 버튼: 누르면 resolve. 전투 화면 위 가운데 */
-function kickoffGate() {
+function kickoffGate(overlay = true) {
   return new Promise(res => {
     document.getElementById('kickoff-ov')?.remove();
+    const s0 = S; s0.kickGo = () => { if (s0.kickGo) { s0.kickGo = null; document.getElementById('kickoff-ov')?.remove(); res(); } };   // 'external': 다른 화면(스토리 조건 창 [전투 시작])이 TCG.kickoff() 로 시작
+    if (!overlay) return;
     const ov = document.createElement('div'); ov.id = 'kickoff-ov'; ov.className = 'kickoff-ov';
     ov.innerHTML = '<button type="button" class="kickoff-btn">⚔️ 시작하기</button>';
-    ov.querySelector('button').onclick = () => { ov.remove(); playSe(4); res(); };
+    ov.querySelector('button').onclick = () => { playSe(4); s0.kickGo?.(); };
     document.body.appendChild(ov);
   });
 }
@@ -1210,7 +1212,7 @@ function render() {
   renderHero('me'); renderHero('ai');
   const myTurn = !!S && S.turn === 'me' && !S.over && !S.busy;
   const tl = isFinite(maxTurns()) ? `${Math.min(S.totalTurns, maxTurns())}/${maxTurns()}턴` : `${S.totalTurns}턴 (무제한)`;
-  $('turn-info').textContent = S.over ? '게임 종료' : (S.turn === 'me' ? `내 턴 · ${tl}` : `상대 턴 · ${tl}...`);
+  $('turn-info').textContent = S.over ? '게임 종료' : S.turn === 'wait' ? '⚔️ 전투 준비' : (S.turn === 'me' ? `내 턴 · ${tl}` : `상대 턴 · ${tl}...`);
   $('end-turn').disabled = !myTurn;
   for (const type of Object.keys(ACTIONS)) {
     const c = canAction(type, S.me), btn = $(`act-${type}`);
@@ -1748,4 +1750,4 @@ async function viewBattle({ session, aiName = '상대', bg = 'normal', manual = 
     S = null; selected = null;
   }
 }
-window.TCG = { viewBattle, get NPC() { return NPC; }, cardById: id => POOL.find(c => String(c.id) === String(id)) || NPC.find(c => String(c.id) === String(id)), isNpc, cardTitle, cardTags, cardStats, regionShort, playStinger, showCardInfo, skillsOf, combos, arcadeOpts: ArcadeOpts, openArcadeOpts, playSe, onEnter, checkEvents, showEvent, mvpVoice, get events() { return EVENTS; }, get seOn() { return seOn; }, skillListHTML: (c, lv, opt) => skillListHTML(c, null, false, lv, opt), voiceTest(k) { if (!voiceSet?.has(k)) return false; const a = voiceAudio(k); a.volume = voiceVol; a.currentTime = 0; voiceCur = a; a.play().catch(() => {}); return true; }, get voiceActive() { return voiceActive.size; }, get voice() { return { on: voiceOn, vol: voiceVol, cur: voiceCur && { src: voiceCur.src, paused: voiceCur.paused, t: voiceCur.currentTime }, set: voiceSet && voiceSet.size }; }, openZoom, closeZoom, dupCheck, get errors() { return window.TCG_ERRORS || []; }, cutIn, passiveCutIn, sortedHand, get handSort() { return handSort; }, put: debugPut, castSkill, skillState, get S() { return S; }, RULES, calcPower: c => calcPower(c, skillsOf(c?.id)), skillLvPowerMult: (id, lvMap) => skillLvPowerMult(skillsOf(id), lvMap), elementMultiplier, calcDamage, canSummon, buildDeck, summon, attack, recall, attackAll, endTurn, canRecall, recallCost, makeUnit, resolveAttack, useAction, canAction, startGame, startStory, cardHTML, get ready() { return POOL.length > 0; }, equipItem, doSacrifice, finish, attackTargets, get POOL() { return POOL; }, render, Stats };
+window.TCG = { kickoff: () => S?.kickGo?.(), viewBattle, get NPC() { return NPC; }, cardById: id => POOL.find(c => String(c.id) === String(id)) || NPC.find(c => String(c.id) === String(id)), isNpc, cardTitle, cardTags, cardStats, regionShort, playStinger, showCardInfo, skillsOf, combos, arcadeOpts: ArcadeOpts, openArcadeOpts, playSe, onEnter, checkEvents, showEvent, mvpVoice, get events() { return EVENTS; }, get seOn() { return seOn; }, skillListHTML: (c, lv, opt) => skillListHTML(c, null, false, lv, opt), voiceTest(k) { if (!voiceSet?.has(k)) return false; const a = voiceAudio(k); a.volume = voiceVol; a.currentTime = 0; voiceCur = a; a.play().catch(() => {}); return true; }, get voiceActive() { return voiceActive.size; }, get voice() { return { on: voiceOn, vol: voiceVol, cur: voiceCur && { src: voiceCur.src, paused: voiceCur.paused, t: voiceCur.currentTime }, set: voiceSet && voiceSet.size }; }, openZoom, closeZoom, dupCheck, get errors() { return window.TCG_ERRORS || []; }, cutIn, passiveCutIn, sortedHand, get handSort() { return handSort; }, put: debugPut, castSkill, skillState, get S() { return S; }, RULES, calcPower: c => calcPower(c, skillsOf(c?.id)), skillLvPowerMult: (id, lvMap) => skillLvPowerMult(skillsOf(id), lvMap), elementMultiplier, calcDamage, canSummon, buildDeck, summon, attack, recall, attackAll, endTurn, canRecall, recallCost, makeUnit, resolveAttack, useAction, canAction, startGame, startStory, cardHTML, get ready() { return POOL.length > 0; }, equipItem, doSacrifice, finish, attackTargets, get POOL() { return POOL; }, render, Stats };

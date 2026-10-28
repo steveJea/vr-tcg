@@ -727,7 +727,7 @@
       tutorial: ph.tutorial,
       // 챕터 0: reserve = 소환 대기 카드(소환 버튼으로 필드에) · fullMp = 시작 MP 가득 · meLevels = 내 카드 전투 시작 레벨 · awaken = 쓰러지면 난입
       reserve: (ph.reserve || []).map(id => repOf(id) || guestOf(id)).filter(o => card(o.id)).map(o => mul({ ...boosted(o), uid: o.uid })),
-      kickoff: !!ch.tutorial,   // 챕터 0: [시작하기] 눌러야 시작 (다른 챕터는 그대로 자동 시작)
+      kickoff: ch.tutorial ? true : 'external',   // 챕터 0: 가운데 [⚔️ 시작하기] · 그 밖: 조건 창의 [⚔️ 전투 시작]/✕ 가 시작 신호   // 모든 스토리 전투: [시작하기] 눌러야 등장 연출 → 첫 턴 → 가이드 (탑·퀘스트·PvP·전쟁·토벌은 그대로 자동 시작)
       fullMp: !!ph.fullMp, meLevels: ph.party?.battleLevels,
       awaken: ph.awaken ? { ...ph.awaken, card: lvScaled(card(ph.awaken.id), ph.awaken.storyLevel || 1) } : undefined,   // 튜토리얼 가이드 id (data/tutorials/<id>.json · README 참고) — 처음 한 번만   // 조윤이는 조윤하를 공격하지 않음 + 페이즈 spare (예: CH3 P6 안지수 → 조윤하)
       onEnd: (win, reason, st) => result(ch, ph, win, reason, st),
@@ -780,7 +780,7 @@
       ${c.info.length ? `<div class="sc-sec info">${c.info.map(row).join('')}</div>` : ''}
       <button type="button" class="sc-go">⚔️ 전투 시작</button></div>`;
     document.body.appendChild(el);
-    const close = () => el.remove();
+    const close = () => { el.remove(); window.TCG?.kickoff?.(); };   // 닫으면 전투 시작 (킥오프)
     el.onclick = e => { if (e.target === el || e.target.closest('.story-cond-x, .sc-go')) close(); };
     return el;
   }
