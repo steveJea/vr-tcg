@@ -491,7 +491,7 @@
       <div class="text-center mt-3"><button class="story-btn" data-x>확인</button></div>`, () => renderMap());
     res.el.querySelector('[data-x]').onclick = () => res.close();
     if (r.player?.levelups) levelUpFx(`PLAYER LEVEL UP! Lv.${r.player.level}`);
-    if (r.gear?.length) window.VRGear?.showDrops?.();   // 장비 PR4: 획득 장비 (그림)
+    if (r.gear?.length || r.sigil?.length) window.VRGear?.showDrops?.();   // 장비 PR4: 획득 장비 (그림)
   }
 
   // ----- 스토리 메인 (허브): 이어하기 · 챕터 목록 · 메뉴. 배경 img/story/hub/bg_pc.webp / bg_m.webp (없으면 메인 배경) -----

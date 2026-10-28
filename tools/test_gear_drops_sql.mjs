@@ -19,7 +19,7 @@ insert into profiles (id, nickname) values ('${A}','에이'),('${B}','비'),('${
 const src = f => readFileSync(new URL('../supabase/' + f, import.meta.url), 'utf8');
 const run = f => db.exec(src(f));
 for (const f of ['story.sql', 'gacha.sql', 'story_server.sql', 'story_gacha.sql', 'story_levels.sql', 'story_merge.sql', 'story_ch2.sql', 'story_cards_1022.sql', 'story_leader_lock.sql', 'story_level_stats.sql', 'story_min_battle.sql', 'admin.sql', 'phaseE_1.sql', 'phaseE_2.sql', 'quest.sql', 'quest_sweep.sql', 'phaseE_3.sql', 'phaseE_4.sql', 'phaseE_5.sql', 'story_ch3.sql', 'pvp.sql', 'pvp_tier.sql', 'gem.sql', 'guild.sql', 'guild2.sql', 'guild3.sql', 'tower_v2.sql', 'gear_v1.sql']) await run(f);
-await run('gear_drops.sql'); await run('gear_drops.sql');   // 두 번 실행해도 안전
+await run('gear_drops.sql'); await run('gear_drops.sql'); await run('gear_sigil.sql');   // 두 번 실행해도 안전
 let fails = 0; const ok = (c, m) => { if (!c) { fails++; console.log('FAIL', m); } else console.log('ok  ', m); };
 async function as(uid, sql, role = 'authenticated') {
   await db.exec(`reset role; select set_config('request.jwt.claims', '${JSON.stringify(uid ? { sub: uid, email: 'x@x' } : {})}', false); set role ${role};`);
