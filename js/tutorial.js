@@ -1,6 +1,7 @@
 // ===== 튜토리얼 가이드 (data/tutorials/<id>.json · 설명: data/tutorials/README.md) =====
 // 화면을 어둡게 하고 대상 하나만 밝게(스포트라이트) + 말풍선. 대상만 누를 수 있음(정보 단계는 아무 데나 탭).
 // 게임(js/game.js)이 TUT.emit('card_selected' | 'attack_done' | 'skill_used' | 'battle_end' | 'turn_start') 로 알려 주면 다음 단계로.
+// 단계 옵션: silent(가리지 않고 이벤트만 대기) · unlock:[잠금들](이 단계에서 해제) · 이벤트 추가: summoned · swapped · awaken
 // 잠금(locks): auto · speed(2배속) · skip(연출 생략) · attack_all(일괄 공격) · end_turn · giveup — 진행 중에만 적용.
 const LOCKS = ['auto', 'speed', 'skip', 'attack_all', 'end_turn', 'giveup'];
 const LOCK_SEL = { auto: '#auto-btn', speed: '#spd-btn', skip: '#fx-skip', attack_all: '#attack-all', end_turn: '#end-turn', giveup: '#story-giveup' };
@@ -19,6 +20,7 @@ function resolve(t) {
     case 'enemy_card': return cards('ai')[n] || null;
     case 'skill_btn': return cards('me')[n]?.querySelector('.skill-btn') || null;
     case 'skill_use': return document.querySelector('#detail:not(.hidden) [data-skill]:not([disabled])');
+    case 'reserve_btn': return document.getElementById('reserve-btn');
     case 'attack_all': return document.getElementById('attack-all');
     case 'end_turn': return document.getElementById('end-turn');
     case 'auto_btn': return document.getElementById('auto-btn');
@@ -57,6 +59,8 @@ function place() {
 function show() {
   const st = T.def.steps[T.i]; if (!st) return finish(false);
   const { bub, ov } = T.el;
+  if (st.unlock) { for (const k of st.unlock) T.locks.delete(k); applyLocks(true); }   // unlock: 이 단계부터 잠금 해제 (예: 각성 난입 → AUTO·2배속)
+  ov.style.display = st.silent ? 'none' : '';   // silent: 화면을 가리지 않고 이벤트만 기다림 (예: 적 턴 → turn_start, 각성 → awaken)
   bub.querySelector('p').textContent = st.text || '';
   bub.querySelector('.tut-who').textContent = st.speaker || '';
   const face = bub.querySelector('.tut-face'); face.style.display = st.face ? '' : 'none'; if (st.face) face.src = faceSrc(st.face);
@@ -71,7 +75,7 @@ function next() { if (!T) return; T.i++; if (T.i >= T.def.steps.length) finish(f
 /** 정보 단계 탭 · 대상 아닌 곳 탭 막기 (capture 단계) */
 function guard(e) {
   if (!T) return;
-  const st = T.def.steps[T.i]; if (!st) return;
+  const st = T.def.steps[T.i]; if (!st || st.silent) return;
   if (e.target.closest?.('.tut-skip')) return;
   const info = !st.wait || st.wait === 'tap';
   const hard = e.type === 'click';   // pointerdown 등은 전파만 막음 (preventDefault 하면 모바일에서 click 이 사라짐)
@@ -118,7 +122,9 @@ async function start(id, opt = {}) {
 /** 게임 → 튜토리얼: 기다리던 이벤트면 다음 단계 */
 function emit(ev, detail = {}) {
   if (!T) return;
-  const st = T.def.steps[T.i]; if (!st || st.wait !== ev) return;
+  const st = T.def.steps[T.i];
+  if (ev === 'battle_end' && st?.wait !== 'battle_end') return finish(false);   // 가이드 도중 전투가 끝나면 조용히 마침
+  if (!st || st.wait !== ev) return;
   if (st.match && Object.entries(st.match).some(([k, v]) => detail[k] !== v)) return;
   setTimeout(next, st.delay ?? 350);
 }

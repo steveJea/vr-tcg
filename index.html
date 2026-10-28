@@ -396,6 +396,7 @@
       <div class="mana-line flex justify-between text-[11px] text-zinc-400 mt-1"><span class="text-sky-300 font-bold"><img src="img/ui/mana.webp" alt="" class="ui-ic" width="64" height="64"> 마나 <span id="me-mana"></span></span><span class="deck-info">덱 <span id="me-deck"></span> · 손패 <span id="me-handcount"></span></span></div>
     </div>
     <div class="shrink-0 flex flex-col gap-1.5">
+      <button id="reserve-btn" class="hidden px-2 py-1.5 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white text-xs font-bold flex items-center gap-1" title="소환"><img alt="" class="w-7 h-7 rounded-md object-cover object-top"><span>소환</span></button>
       <button id="attack-all" class="px-3 md:px-6 py-2 rounded-xl bg-red-600 hover:bg-red-500 disabled:opacity-40 text-white text-sm font-bold">일괄 공격</button>
       <button id="story-giveup" class="hidden px-3 md:px-6 py-1.5 rounded-xl bg-zinc-800 border border-red-500/50 hover:bg-red-900/60 text-red-200 text-xs md:text-sm font-bold" title="도전 포기"><img src="img/ui/give_up.webp" alt="" class="ui-ic" width="64" height="64"> 포기</button>
       <button id="end-turn" class="px-3 md:px-6 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 text-black font-bold">턴 종료</button>
@@ -524,6 +525,7 @@
 <div id="cutin" class="hidden"></div>
 <section id="story-screen" class="hidden"></section>
 <script src="js/story-data.js"></script>
+<script src="js/story-data-ch0.js"></script>
 <script src="js/story-data-ch2.js"></script>
 <script src="js/story-data-ch3.js"></script>
 <script src="js/story-data-ch4.js"></script>
