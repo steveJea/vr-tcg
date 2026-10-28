@@ -250,11 +250,45 @@
     draw();
   }
 
+  // 상점 상품 그림 (조직·PvP 공용): 증표 조각 · 장비 상자 · 가루
+  function shopIcon(g) {
+    if (g?.sigil) return g.sigil.card ? img(sigIcon(g.sigil.card), 'sigil') : img('', 'sigil');
+    if (g?.gear_box) return `<span class="gear-box">🎁</span>`;
+    if (g?.dust) return '<span class="gear-box">✨</span>';
+    return '';
+  }
+  const shopName = g => g?.sigil ? (g.sigil.card ? `${CHAR[g.sigil.card] || ''} 증표 조각 ×${g.sigil.n}` : `증표 조각 선택 ×${g.sigil.n}`)
+    : g?.gear_box ? `${TIER[g.gear_box.tier]} 장비 상자${g.gear_box.up_tier ? ` (${TIER[g.gear_box.up_tier]} ${g.gear_box.up_pct}%)` : ''}` : g?.dust ? `장비 가루 ×${g.dust}` : '';
+  const LIM = { day: '오늘', week: '이번 주', month: '이번 달' };
+  // PvP 상점 (혼). 구매 전 확인, 상자·선택 조각은 우편함
+  async function pvpShop() {
+    if (!sb() || !window.VRCloud?.user) return toast('로그인이 필요해요');
+    await load();
+    const m = pop('<div class="gear-dim">불러오는 중…</div>', 'bag');
+    const draw = async () => {
+      const { data: S, error } = await sb().rpc('pvp_shop_status'); if (error) { m.remove(); return toast(/pvp_shop|schema cache|Could not find/.test(error.message) ? '🛒 PvP 상점은 준비 중이에요' : `⚠️ ${error.message}`); }
+      const shown = new Set();
+      m.querySelector('.gear-pop').innerHTML = `<div class="gear-bag-top"><b>🛒 PvP 상점</b><span>🔥 혼 <b>${fmt(S.soul)}</b></span></div>
+        <div class="shop-grid">${S.items.map(it => { const first = !shown.has(it.grp); shown.add(it.grp);
+          return `<button class="shop-it ${it.left === 0 ? 'done' : ''}" data-i="${it.item}" ${it.left === 0 ? 'disabled' : ''}><span class="shop-ic">${shopIcon(it.gives)}</span><span class="shop-nm">${esc(shopName(it.gives))}</span>
+            <span class="shop-p">🔥 ${fmt(it.price)}</span>${it.limit_kind ? `<small>${LIM[it.limit_kind]} ${it.left}/${it.limit_n}${it.grp !== it.item ? ' (묶음)' : ''}</small>` : ''}</button>`; }).join('')}</div>
+        <div class="gear-dim">증표 조각은 민홍기·최윤희 주 3개 (함께 셈) · 상자·선택 조각은 📬 우편함으로</div>`;
+      m.querySelectorAll('[data-i]').forEach(b => b.onclick = async () => { const it = S.items.find(x => x.item === b.dataset.i);
+        if (S.soul < it.price) return toast('🔥 혼이 부족해요');
+        if (!await ask(`<div class="gear-big">${shopIcon(it.gives)}</div><b>${esc(shopName(it.gives))}</b><div>🔥 혼 ${fmt(it.price)}개로 살까요?</div>`)) return;
+        b.disabled = true; const { data: r, error: e } = await sb().rpc('pvp_shop_buy', { p_item: it.item });
+        if (e) toast(/limit reached/.test(e.message) ? '구매 한도를 다 썼어요' : /not enough soul/.test(e.message) ? '🔥 혼이 부족해요' : `⚠️ ${e.message}`);
+        else { if (r.wallet) window.VRPlayer?.setWallet?.(r.wallet); toast(r.box_mail || r.sigil_mail ? '📬 우편함으로 보냈어요' : '구매 완료'); await load(true); }
+        if (m.isConnected) draw(); });
+    };
+    draw();
+  }
+
   /** 전투용: 이 인재에 낀 장비·증표 단계 (gear-core.js applyGear 입력) */
   function forCard(cardId) {
     const gear = mine(cardId).map(g => { const d = defs?.[g.def]; return d && { stat: d.main_stat, pct: +d.main_pct, plus: g.plus | 0, opts: g.opts || [] }; }).filter(Boolean);
     const sg = (st?.sigils || []).find(s => s.card === String(cardId));
     return { gear, sigil: sg?.plus ?? null };
   }
-  window.VRGear = { load, forCard, slotsHTML, bind, bag, mailbox, showDrops, get ready() { return !!st; }, get off() { return off; }, _defs: () => defs };
+  window.VRGear = { load, forCard, slotsHTML, bind, bag, mailbox, showDrops, pvpShop, ask, shopIcon, get ready() { return !!st; }, get off() { return off; }, _defs: () => defs };
 })();

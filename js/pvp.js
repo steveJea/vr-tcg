@@ -69,12 +69,13 @@ function paint() {
       <span class="pvp-deck-no">${n > 1 ? i + 1 : '🛡'}</span><span class="pvp-deck-row">${d ? d.uids.map(u => thumb(byUid.get(u) && { ...card(byUid.get(u).id), level: byUid.get(u).level })).join('') : '<span class="pvp-plus">＋</span>'}</span>
       ${view.league === 'hr' && d ? `<small class="pvp-cost">${d.cost}/150</small>` : ''}</button>`).join('')}</div>
     <div class="pvp-bmode">${modeToggle()}</div>
-    <div class="pvp-acts"><button class="pvp-rank" data-rank title="랭킹">🏅</button>${st.left <= 0 && window.VRGem?.item?.('pvp_try') ? `<button class="pvp-gemtry" data-gemtry ${window.VRGem.item('pvp_try').left === 0 ? 'disabled' : ''} title="추가 도전 (하루 3회)">🎫+1 <small>🔮${window.VRGem.item('pvp_try').price}</small></button>` : ''}<button class="pvp-go" data-go ${ready ? '' : 'disabled'}>⚔️ 매칭</button></div>
+    <div class="pvp-acts"><button class="pvp-rank" data-rank title="랭킹">🏅</button><button class="pvp-rank" data-shop title="PvP 상점">🛒</button>${st.left <= 0 && window.VRGem?.item?.('pvp_try') ? `<button class="pvp-gemtry" data-gemtry ${window.VRGem.item('pvp_try').left === 0 ? 'disabled' : ''} title="추가 도전 (하루 3회)">🎫+1 <small>🔮${window.VRGem.item('pvp_try').price}</small></button>` : ''}<button class="pvp-go" data-go ${ready ? '' : 'disabled'}>⚔️ 매칭</button></div>
     <div class="pvp-top"><div class="pvp-top-h">🏅 TOP 10</div><div class="pvp-rk">${rkRows(top)}</div></div>`;
   m.querySelectorAll('[data-league]').forEach(b => b.onclick = () => { view.league = b.dataset.league; save(); open(); });
   m.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => { view.mode = b.dataset.mode; save(); open(); });
   m.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => editDeck(+b.dataset.edit));
   m.querySelector('[data-rank]').onclick = rankings; bindWho(m);
+  m.querySelector('[data-shop]').onclick = () => window.VRGear?.pvpShop?.();   // 장비 PR7
   m.querySelector('[data-tiers]').onclick = tierTable;
   if (st.pending) claimTier();
   m.querySelector('[data-go]').onclick = fight; bindMode(m);
