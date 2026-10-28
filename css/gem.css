@@ -26,7 +26,7 @@
 .gem-buy-p{font-size:12px;font-weight:800;color:#e9d5ff;background:rgba(0,0,0,.35);border-radius:999px;padding:2px 8px}
 .gem-buy small{position:absolute;top:4px;right:6px;font-size:10px;opacity:.6}
 .gem-how{margin-top:12px;font-size:10.5px;opacity:.55;line-height:1.5}
-.gem-toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);z-index:120;padding:9px 16px;border-radius:999px;background:rgba(46,16,101,.95);border:1px solid #a855f7;color:#f3e8ff;font-weight:700;font-size:14px;box-shadow:0 0 18px rgba(168,85,247,.5);white-space:nowrap}
+.gem-toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);z-index:210;padding:9px 16px;border-radius:999px;background:rgba(46,16,101,.95);border:1px solid #a855f7;color:#f3e8ff;font-weight:700;font-size:14px;box-shadow:0 0 18px rgba(168,85,247,.5);white-space:nowrap}
 /* 카드 뽑기: 소환권 사기 줄 */
 .gr-gem{display:flex;justify-content:center;gap:10px;margin-top:10px}
 .gr-gem .gem-buy{flex-direction:row;padding:7px 12px;gap:8px;background:rgba(20,6,40,.75);backdrop-filter:blur(4px)}

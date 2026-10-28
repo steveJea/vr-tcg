@@ -10,7 +10,7 @@
 .gt1{border-color:#71717a!important}.gt2{border-color:#a1a1aa!important}.gt3{border-color:#22c55e!important}.gt4{border-color:#3b82f6!important}
 .gt5{border-color:#a855f7!important}.gt6{border-color:#f59e0b!important}.gt7{border-color:#e11d48!important}
 .gear-name.gt1 small{color:#a1a1aa}.gear-name.gt3 small{color:#4ade80}.gear-name.gt4 small{color:#60a5fa}.gear-name.gt5 small{color:#c084fc}.gear-name.gt6 small{color:#fbbf24}.gear-name.gt7 small{color:#fb7185}
-.gear-pop-bg{position:fixed;inset:0;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;z-index:70;padding:16px}
+.gear-pop-bg{position:fixed;inset:0;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;z-index:140;padding:16px}
 .gear-pop{background:#18181b;border:1px solid rgba(255,255,255,.15);border-radius:20px;padding:16px;width:100%;max-width:380px;color:#fafafa;text-align:center;max-height:calc(100dvh - 2rem);overflow-y:auto}
 .gear-pop.bag{max-width:420px}
 .gear-big{width:120px;height:120px;margin:0 auto 8px;border:3px solid #3f3f46;border-radius:18px;background:#27272a;display:flex;align-items:center;justify-content:center}
@@ -58,3 +58,8 @@
 .gear-bulk{position:sticky;bottom:-16px;background:#18181b;padding:8px 0;align-items:center}
 .sig-bar{position:relative;height:20px;border-radius:999px;background:#27272a;margin:10px 0;overflow:hidden}.sig-bar i{position:absolute;inset:0 auto 0 0;background:linear-gradient(90deg,#a855f7,#f59e0b)}.sig-bar span{position:relative;font-size:12px;font-weight:800;line-height:20px}
 button.gear-drop{cursor:pointer}
+.shop-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:8px 0}
+.shop-it{display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 4px;border-radius:14px;background:#27272a;border:1px solid rgba(255,255,255,.12)}
+.shop-it.done{opacity:.4}.shop-ic img{width:56px;height:56px;object-fit:contain}.shop-ic .gear-box{font-size:2.4rem;line-height:56px;height:56px}
+.shop-nm{font-size:11px;font-weight:700;line-height:1.2}.shop-p{font-size:12px;font-weight:800;color:#fbbf24}.shop-it small{font-size:10px;opacity:.7}
+.gear-big .gear-box{font-size:4rem;line-height:1.5;height:auto}

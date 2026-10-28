@@ -36,7 +36,7 @@
     m.addEventListener('click', e => { if (e.target === m || e.target.closest('[data-x]')) m.remove(); });
     document.body.appendChild(m); return m;
   }
-  async function act(name, args, okMsg) { try { const r = await rpc(name, args); if (okMsg) toast(okMsg); await refresh(); return r || true; } catch (e) { toast(errText(e)); return null; } }
+  async function act(name, args, okMsg) { try { const r = await rpc(name, args); if (okMsg) toast(typeof okMsg === 'function' ? okMsg(r) : okMsg); await refresh(); return r || true; } catch (e) { toast(errText(e)); return null; } }
   async function refresh() { await status(); if (ov) paint(); window.dispatchEvent(new Event('vr:guild')); }
   function close() { ov?.remove(); ov = null; }
   async function open() {
@@ -147,11 +147,14 @@
     m.querySelector('[data-tr]')?.addEventListener('click', async () => { if (confirm(`${x.name} 에게 보스를 이관할까요?`) && await act('guild_transfer', { p_user: x.user_id }, '👑 보스를 이관했어요')) m.remove(); });
     m.querySelector('[data-kick]')?.addEventListener('click', async () => { if (confirm(`${x.name} 을(를) 추방할까요? 72시간 동안 다시 들어올 수 없어요`) && await act('guild_kick', { p_user: x.user_id }, '추방했어요')) m.remove(); });
   }
+  const gearName = g => g?.sigil ? `임유리 증표 조각 ×${g.sigil.n}` : g?.gear_box ? `${['', '낡은', '일반', '고급', '희귀', '영웅'][g.gear_box.tier]} 장비 상자` : g?.dust ? `장비 가루 ×${g.dust}` : '';
   function shopPop() {
-    const draw = m => { m.querySelector('.gd-shop').innerHTML = st.shop.map(s => { const [ic, l] = SHOP[s.item] || [gi('ic_gift', '🎁'), s.item]; const lock = st.guild.level < s.min_level, done = s.left === 0 || s.owned;
+    const draw = m => { m.querySelector('.gd-shop').innerHTML = st.shop.map(s => { const [ic, l] = SHOP[s.item] || (window.VRGear?.shopIcon?.(s.gives) ? [window.VRGear.shopIcon(s.gives), gearName(s.gives)] : [gi('ic_gift', '🎁'), s.item]); const lock = st.guild.level < s.min_level, done = s.left === 0 || s.owned;
       return `<button class="gd-si" data-buy="${s.item}" ${lock || done ? 'disabled' : ''}><span class="gd-si-ic">${ic}</span><b>${l}</b><span class="gd-si-p">${LOYI}${n(s.price)}</span>${lock ? `<small class="gd-si-l">${gi('ic_lock', '🔒')} Lv.${s.min_level}</small>` : s.left != null ? `<small class="gd-si-l">${s.owned ? '보유' : s.left}</small>` : ''}</button>`; }).join('');
       m.querySelector('.gd-loy b').textContent = n(st.loyalty);
-      m.querySelectorAll('[data-buy]').forEach(b => b.onclick = async () => { b.disabled = true; const r = await act('guild_shop_buy', { p_item: b.dataset.buy }, `${SHOP[b.dataset.buy]?.[0] || ''} 구매 완료`); if (r?.wallet) window.VRPlayer?.setWallet?.(r.wallet); if (m.isConnected) draw(m); }); };
+      m.querySelectorAll('[data-buy]').forEach(b => b.onclick = async () => { const s = st.shop.find(x => x.item === b.dataset.buy), [ic, l] = SHOP[s.item] || [window.VRGear?.shopIcon?.(s.gives) || '🎁', gearName(s.gives)];
+        if (window.VRGear?.ask && !await window.VRGear.ask(`<div class="gear-big">${ic}</div><b>${l}</b><div>${LOYI} 충성 ${n(s.price)}로 살까요?</div>`)) return;   // 장비 PR7: 구매 전 확인
+        b.disabled = true; const r = await act('guild_shop_buy', { p_item: b.dataset.buy }, r0 => r0?.box_mail ? '📬 우편함으로 보냈어요' : `${SHOP[b.dataset.buy]?.[0] || ''} 구매 완료`); if (r?.wallet) window.VRPlayer?.setWallet?.(r.wallet); if (r) window.VRGear?.load?.(true); if (m.isConnected) draw(m); }); };
     const m = pop(`<div class="gd-h big">${gi('tile_shop', '🛒')} 조직 상점 <span class="gd-loy">${LOYI} <b></b></span></div><div class="gd-shop"></div>`, 'wide');
     draw(m);
   }
