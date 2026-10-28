@@ -2,6 +2,7 @@
 #stfx-layer { position: fixed; inset: 0; pointer-events: none; z-index: 80; overflow: hidden; }
 #stfx-layer > div { position: fixed; pointer-events: none; animation-duration: var(--d, 600ms); animation-fill-mode: forwards; }
 #stfx-layer .has-img { background-size: contain; background-repeat: no-repeat; background-position: center; }
+#stfx-layer .has-img { mix-blend-mode: screen; } /* fx 스프라이트: 검은 배경 기준 알파 → screen 블렌딩 */
 #stfx-layer .has-img::before, #stfx-layer .has-img::after { display: none !important; }
 
 /* 공통: 상태 이름 팝 */
