@@ -45,3 +45,4 @@
 .tile-trade-emb{display:none}.tile-trade.noimg .tile-trade-emb{display:block;position:absolute;left:50%;top:38%;transform:translate(-50%,-50%);font-size:40px;filter:drop-shadow(0 0 10px rgba(245,158,11,.6));z-index:1}
 .tile-trade .main-tile-t{left:0;right:0;bottom:22px;text-align:center;text-shadow:0 2px 6px #000}
 .tile-trade-sub{position:absolute;left:0;right:0;bottom:7px;z-index:1;text-align:center;font-size:11px;color:#fde68a;opacity:.85;text-shadow:0 1px 3px #000}
+.tr-ic{display:inline-block;width:1.25em;height:1.25em;object-fit:contain;vertical-align:-.28em;margin-right:2px}.tr-head .tr-ic{width:1.4em;height:1.4em}

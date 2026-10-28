@@ -90,7 +90,7 @@
     const m = pop(`<div class="gear-big">${img(sigIcon(cardId), 'sigil', cur == null ? 'dim' : '')}</div><b>${esc(sg.name)}</b> ${cur != null ? `<span class="gear-plus">+${cur}</span>` : ''}
       <div class="gear-dim">${esc(CHAR[cardId] || '')}</div>
       <div class="gear-sig">${cur == null ? '<small>만들면 (+0)</small>' : ''}${sigTxt(step)}</div>${cur != null && sg.steps[cur + 1] ? `<div class="gear-sig next"><small>다음 +${cur + 1}</small>${sigTxt(sg.steps[cur + 1])}</div>` : ''}
-      ${max ? '<div class="gear-dim">✨ 완성 (+5)</div>' : `<div class="sig-bar"><i style="width:${Math.min(100, fr / need * 100)}%"></i><span>조각 ${fr} / ${need}</span></div>`}
+      ${max ? '<div class="gear-dim"><img class="ui-ic" src="img/ui/cur_dust.webp" alt="">완성 (+5)</div>' : `<div class="sig-bar"><i style="width:${Math.min(100, fr / need * 100)}%"></i><span>조각 ${fr} / ${need}</span></div>`}
       <div class="gear-acts">${max ? '' : `<button class="gear-btn main" data-s="up" ${fr >= need ? '' : 'disabled'}>${cur == null ? '🔨 증표 만들기' : `⬆️ +${nx} 강화`}<small>조각 ${need}</small></button>`}
         <button class="gear-btn" data-s="ex">🔄 조각 교환</button></div>
       ${srcs.length ? `<div class="gear-dim">얻는 곳: ${srcs.join(' · ')}</div>` : ''}`, 'item');
@@ -132,19 +132,19 @@
         ${ctx.cardId && g.card !== String(ctx.cardId) ? '<button data-a="equip" class="gear-btn main">장착</button>' : ''}
         ${g.card ? '<button data-a="unequip" class="gear-btn">해제</button>' : ''}
         ${ctx.cardId && g.card === String(ctx.cardId) ? '<button data-a="swap" class="gear-btn">바꾸기</button>' : ''}
-        <button data-a="lock" class="gear-btn">${g.locked ? '🔓 잠금 해제' : '🔒 잠금'}</button></div>
+        <button data-a="lock" class="gear-btn">${g.locked ? '<img class="ui-ic" src="img/ui/unlock.webp" alt="">잠금 해제' : '<img class="ui-ic" src="img/ui/lock.webp" alt="">잠금'}</button></div>
       <div class="gear-acts">
-        ${cost.enh[g.plus + 1] ? `<button data-a="enh" class="gear-btn">⬆️ 강화 +${g.plus + 1}<small>🪙${fmt(cost.enh[g.plus + 1].gold)} ✨${cost.enh[g.plus + 1].dust}</small></button>` : ''}
-        ${d.opt_count && cost.rr[d.tier] ? `<button data-a="rr" class="gear-btn">🎲 재설정<small>🪙${fmt(cost.rr[d.tier].gold)} ✨${cost.rr[d.tier].dust}</small></button>` : ''}
-        ${!g.locked && !g.card && cost.salv[d.tier] ? `<button data-a="dis" class="gear-btn">🔨 분해<small>✨+${cost.salv[d.tier].dust}</small></button><button data-a="sell" class="gear-btn">🪙 매각<small>+${fmt(cost.salv[d.tier].gold)}</small></button>` : ''}</div>
-      <div class="gear-dim">✨ 장비 가루 ${fmt(st.dust || 0)}</div>`, 'item');
+        ${cost.enh[g.plus + 1] ? `<button data-a="enh" class="gear-btn">⬆️ 강화 +${g.plus + 1}<small><img class="ui-ic" src="img/ui/cur_gold.webp" alt="">${fmt(cost.enh[g.plus + 1].gold)} <img class="ui-ic" src="img/ui/cur_dust.webp" alt="">${cost.enh[g.plus + 1].dust}</small></button>` : ''}
+        ${d.opt_count && cost.rr[d.tier] ? `<button data-a="rr" class="gear-btn"><img class="ui-ic" src="img/ui/reroll.webp" alt="">재설정<small><img class="ui-ic" src="img/ui/cur_gold.webp" alt="">${fmt(cost.rr[d.tier].gold)} <img class="ui-ic" src="img/ui/cur_dust.webp" alt="">${cost.rr[d.tier].dust}</small></button>` : ''}
+        ${!g.locked && !g.card && cost.salv[d.tier] ? `<button data-a="dis" class="gear-btn">🔨 분해<small><img class="ui-ic" src="img/ui/cur_dust.webp" alt="">+${cost.salv[d.tier].dust}</small></button><button data-a="sell" class="gear-btn"><img class="ui-ic" src="img/ui/cur_gold.webp" alt="">매각<small>+${fmt(cost.salv[d.tier].gold)}</small></button>` : ''}</div>
+      <div class="gear-dim"><img class="ui-ic" src="img/ui/cur_dust.webp" alt="">장비 가루 ${fmt(st.dust || 0)}</div>`, 'item');
     const done = () => { m.remove(); ctx.reopen?.(); ctx.back?.(); };
     m.querySelectorAll('[data-a]').forEach(b => b.onclick = async () => { b.disabled = true; const a = b.dataset.a;
       if (a === 'swap') { m.remove(); return bag({ slot, cardId: ctx.cardId, reopen: ctx.reopen }); }
       if (['enh', 'rr', 'dis', 'sell'].includes(a)) {
         const c = a === 'enh' ? cost.enh[g.plus + 1] : a === 'rr' ? cost.rr[d.tier] : cost.salv[d.tier];
-        const q = a === 'enh' ? `+${g.plus} → <b>+${g.plus + 1}</b> (확정 성공)<br>🪙 ${fmt(c.gold)} · ✨ ${c.dust} 사용` : a === 'rr' ? `부옵션을 다시 굴려요 (지금 값은 사라져요)<br>🪙 ${fmt(c.gold)} · ✨ ${c.dust} 사용`
-          : a === 'dis' ? `분해하면 ✨ 장비 가루 ${c.dust}개를 받아요` : `매각하면 🪙 ${fmt(c.gold)} 골드를 받아요`;
+        const q = a === 'enh' ? `+${g.plus} → <b>+${g.plus + 1}</b> (확정 성공)<br><img class="ui-ic" src="img/ui/cur_gold.webp" alt="">${fmt(c.gold)} · <img class="ui-ic" src="img/ui/cur_dust.webp" alt="">${c.dust} 사용` : a === 'rr' ? `부옵션을 다시 굴려요 (지금 값은 사라져요)<br><img class="ui-ic" src="img/ui/cur_gold.webp" alt="">${fmt(c.gold)} · <img class="ui-ic" src="img/ui/cur_dust.webp" alt="">${c.dust} 사용`
+          : a === 'dis' ? `분해하면 <img class="ui-ic" src="img/ui/cur_dust.webp" alt="">장비 가루 ${c.dust}개를 받아요` : `매각하면 <img class="ui-ic" src="img/ui/cur_gold.webp" alt="">${fmt(c.gold)} 골드를 받아요`;
         if (!await ask(`<div class="gear-big gt${d.tier}">${img(iconOf(d), slot)}</div>${d.tier >= 6 && a === 'dis' ? '<div class="gear-warn">⚠️ 이벤트 장비예요. 다시 얻기 어려워요</div>' : ''}<div>${q}</div>`, a === 'dis' || a === 'sell')) { b.disabled = false; return; }
         if (d.tier >= 6 && (a === 'dis' || a === 'sell') && !await ask(`<div class="gear-warn">⚠️ 정말 ${TIER[d.tier]} 장비를 ${a === 'dis' ? '분해' : '매각'}할까요?</div>`, true)) { b.disabled = false; return; }
         const r = await rpc(a === 'enh' ? 'gear_enhance' : a === 'rr' ? 'gear_reroll' : a === 'dis' ? 'gear_dismantle' : 'gear_sell', a === 'enh' || a === 'rr' ? { p_gear: g.id } : { p_ids: [g.id] });
@@ -166,15 +166,15 @@
     const draw = () => {
       const list = (st.gear || []).filter(g => filt === 'all' || slotOf(g) === filt).sort((a, b) => (defs[b.def]?.tier || 0) - (defs[a.def]?.tier || 0) || b.plus - a.plus);
       const nx = st.next_expand;
-      m.querySelector('.gear-pop').innerHTML = `<div class="gear-bag-top"><b>🎒 ${st.count}/${st.slots}</b><button class="gear-btn" data-mail>📬${st.mail ? ` <i class="gear-badge">${st.mail}</i>` : ''}</button>${nx ? `<button class="gear-btn" data-x>+10칸 ${window.VRGem?.ICON || '💎'} ${nx.gem}</button>` : '<small>최대</small>'}</div>
+      m.querySelector('.gear-pop').innerHTML = `<div class="gear-bag-top"><b><img class="ui-ic" src="img/ui/bag.webp" alt="">${st.count}/${st.slots}</b><button class="gear-btn" data-mail><img class="ui-ic" src="img/ui/mailbox.webp" alt="">${st.mail ? ` <i class="gear-badge">${st.mail}</i>` : ''}</button>${nx ? `<button class="gear-btn" data-x>+10칸 ${window.VRGem?.ICON || '💎'} ${nx.gem}</button>` : '<small>최대</small>'}</div>
         <div class="gear-tabs">${[['all', '전체'], ...SLOTS].map(([k, l]) => `<button data-f="${k}" class="${filt === k ? 'on' : ''}">${k === 'all' ? '' : img(sil(k), k)}${l}</button>`).join('')}</div>
-        ${ctx.cardId ? '' : `<div class="gear-sel">${pick ? `${[1, 2, 3, 4, 5].map(t => `<button data-t="${t}" class="gt${t}">${TIER[t]}</button>`).join('')}<button data-pk>취소</button>` : `<small>✨ 가루 ${fmt(st.dust || 0)}</small><button class="gear-btn" data-pk>☑️ 여러 개 정리</button>`}</div>`}
-        <div class="gear-grid">${list.map(g => { const d = defs[g.def]; return `<button class="gear-cell gt${d.tier} ${pick?.has(g.id) ? 'pick' : ''} ${pick && (g.locked || g.card) ? 'nopick' : ''}" data-g="${g.id}">${img(iconOf(d), slotOf(g))}${g.plus ? `<i>+${g.plus}</i>` : ''}${g.card ? '<b class="gear-eq">E</b>' : ''}${g.locked ? '<b class="gear-lk">🔒</b>' : ''}</button>`; }).join('') || '<div class="gear-dim">아직 장비가 없어요. 소탕·탑·토벌에서 얻을 수 있어요</div>'}</div>`;
+        ${ctx.cardId ? '' : `<div class="gear-sel">${pick ? `${[1, 2, 3, 4, 5].map(t => `<button data-t="${t}" class="gt${t}">${TIER[t]}</button>`).join('')}<button data-pk>취소</button>` : `<small><img class="ui-ic" src="img/ui/cur_dust.webp" alt="">가루 ${fmt(st.dust || 0)}</small><button class="gear-btn" data-pk>☑️ 여러 개 정리</button>`}</div>`}
+        <div class="gear-grid">${list.map(g => { const d = defs[g.def]; return `<button class="gear-cell gt${d.tier} ${pick?.has(g.id) ? 'pick' : ''} ${pick && (g.locked || g.card) ? 'nopick' : ''}" data-g="${g.id}">${img(iconOf(d), slotOf(g))}${g.plus ? `<i>+${g.plus}</i>` : ''}${g.card ? '<b class="gear-eq">E</b>' : ''}${g.locked ? '<b class="gear-lk"><img class="ui-ic" src="img/ui/lock.webp" alt=""></b>' : ''}</button>`; }).join('') || '<div class="gear-dim">아직 장비가 없어요. 소탕·탑·토벌에서 얻을 수 있어요</div>'}</div>`;
       if (pick) { const sel = st.gear.filter(g => pick.has(g.id)), sum = k => sel.reduce((a, g) => a + (cost.salv[defs[g.def].tier]?.[k] || 0), 0);
-        m.querySelector('.gear-pop').insertAdjacentHTML('beforeend', `<div class="gear-acts gear-bulk"><b>${sel.length}개 선택</b><button class="gear-btn" data-bk="dis" ${sel.length ? '' : 'disabled'}>🔨 분해 ✨+${sum('dust')}</button><button class="gear-btn main" data-bk="sell" ${sel.length ? '' : 'disabled'}>🪙 매각 +${fmt(sum('gold'))}</button></div>`);
+        m.querySelector('.gear-pop').insertAdjacentHTML('beforeend', `<div class="gear-acts gear-bulk"><b>${sel.length}개 선택</b><button class="gear-btn" data-bk="dis" ${sel.length ? '' : 'disabled'}>🔨 분해 <img class="ui-ic" src="img/ui/cur_dust.webp" alt="">+${sum('dust')}</button><button class="gear-btn main" data-bk="sell" ${sel.length ? '' : 'disabled'}><img class="ui-ic" src="img/ui/cur_gold.webp" alt="">매각 +${fmt(sum('gold'))}</button></div>`);
         m.querySelectorAll('[data-bk]').forEach(b => b.onclick = async () => { const dis = b.dataset.bk === 'dis', hi = sel.some(g => defs[g.def].tier >= 5);
           if (!await ask(`<div class="gear-drops">${sel.slice(0, 15).map(g => `<div class="gear-drop gt${defs[g.def].tier}">${img(iconOf(defs[g.def]), slotOf(g))}</div>`).join('')}${sel.length > 15 ? `<div class="gear-dim">외 ${sel.length - 15}개</div>` : ''}</div>
-            ${hi ? '<div class="gear-warn">⚠️ 영웅 이상 장비가 섞여 있어요</div>' : ''}<div>${sel.length}개를 ${dis ? `분해해서 ✨ 가루 ${sum('dust')}개` : `매각해서 🪙 ${fmt(sum('gold'))} 골드`}를 받을까요?</div>`, true)) return;
+            ${hi ? '<div class="gear-warn">⚠️ 영웅 이상 장비가 섞여 있어요</div>' : ''}<div>${sel.length}개를 ${dis ? `분해해서 <img class="ui-ic" src="img/ui/cur_dust.webp" alt="">가루 ${sum('dust')}개` : `매각해서 <img class="ui-ic" src="img/ui/cur_gold.webp" alt="">${fmt(sum('gold'))} 골드`}를 받을까요?</div>`, true)) return;
           b.disabled = true; const r = await rpc(dis ? 'gear_dismantle' : 'gear_sell', { p_ids: sel.map(g => g.id) });
           if (r) { if (r.wallet) window.VRPlayer?.setWallet?.(r.wallet); toast(dis ? `✨ 장비 가루 +${r.dust_got}` : `🪙 골드 +${fmt(r.gold)}`); pick = null; } if (m.isConnected) draw(); });
       }
@@ -195,16 +195,16 @@
   // 획득 장비 (결과 화면): 서버 gear_drops_take → 그림 위주 팝업. 상자·우편행은 표시만
   const SRC = { story_sweep: '소탕', tower: '탑', raid: '토벌', raid_clear: '토벌 처치 상자', raid_rank: '토벌 순위 상자' };
   const tileOf = x => { const d = defs?.[x.def_id];
-    if (x.kind === 'sigil') return `<div class="gear-drop">${img(sigIcon(x.def_id), 'sigil')}${x.mail ? '<b>📬</b>' : ''}<span>${x.def_id === 'sigilpick' ? '증표 조각 (선택)' : `${esc(CHAR[x.def_id] || '')} 조각`}</span></div>`;
-    if (x.kind === 'box') return `<div class="gear-drop box gt${x.tier}"><span class="gear-box">🎁</span><span>${TIER[x.tier] || ''} 상자</span></div>`;
-    return d ? `<div class="gear-drop gt${d.tier}">${img(iconOf(d), d.slot)}${x.mail ? '<b>📬</b>' : ''}<span>${esc(d.name)}</span></div>` : ''; };
+    if (x.kind === 'sigil') return `<div class="gear-drop">${img(sigIcon(x.def_id), 'sigil')}${x.mail ? '<b><img class="ui-ic" src="img/ui/mailbox.webp" alt=""></b>' : ''}<span>${x.def_id === 'sigilpick' ? '증표 조각 (선택)' : `${esc(CHAR[x.def_id] || '')} 조각`}</span></div>`;
+    if (x.kind === 'box') return `<div class="gear-drop box gt${x.tier}"><span class="gear-box"><img class="ui-ic" src="img/ui/gear_box.webp" alt=""></span><span>${TIER[x.tier] || ''} 상자</span></div>`;
+    return d ? `<div class="gear-drop gt${d.tier}">${img(iconOf(d), d.slot)}${x.mail ? '<b><img class="ui-ic" src="img/ui/mailbox.webp" alt=""></b>' : ''}<span>${esc(d.name)}</span></div>` : ''; };
   async function showDrops() {
     if (off || !sb() || !window.VRCloud?.user) return [];
     const { data, error } = await sb().rpc('gear_drops_take'); if (error || !data?.length) return [];
     if (!defs) await load(true); else load(true);
     const mail = data.some(x => x.mail || x.kind === 'box');
-    pop(`<div class="gear-drops-h">✨ 장비 획득</div><div class="gear-drops">${data.map(tileOf).join('')}</div>
-      ${mail ? '<div class="gear-dim">📬 상자와 가방에 못 넣은 장비는 우편함에 있어요</div><button class="gear-btn main" data-mb>📬 우편함</button>' : ''}`, 'drops')
+    pop(`<div class="gear-drops-h"><img class="ui-ic" src="img/ui/cur_dust.webp" alt="">장비 획득</div><div class="gear-drops">${data.map(tileOf).join('')}</div>
+      ${mail ? '<div class="gear-dim"><img class="ui-ic" src="img/ui/mailbox.webp" alt="">상자와 가방에 못 넣은 장비는 우편함에 있어요</div><button class="gear-btn main" data-mb><img class="ui-ic" src="img/ui/mailbox.webp" alt="">우편함</button>' : ''}`, 'drops')
       .querySelector('[data-mb]')?.addEventListener('click', e => { e.target.closest('.gear-pop-bg').remove(); mailbox(); });
     return data;
   }
@@ -215,10 +215,10 @@
     const close = () => { ctx.back?.(); };
     const draw = async () => {
       const { data: list, error } = await sb().rpc('mail_list'); if (error) { m.remove(); return toast(`⚠️ ${error.message}`); }
-      m.querySelector('.gear-pop').innerHTML = `<div class="gear-bag-top"><b>📬 우편함</b><small>🎒 ${st.count}/${st.slots}</small></div>
+      m.querySelector('.gear-pop').innerHTML = `<div class="gear-bag-top"><b><img class="ui-ic" src="img/ui/mailbox.webp" alt="">우편함</b><small><img class="ui-ic" src="img/ui/bag.webp" alt="">${st.count}/${st.slots}</small></div>
         <div class="gear-grid">${list.map(ml => { const p = ml.payload || {}, d = defs[p.def_id];
           if (ml.kind === 'sigil_frag') return `<button class="gear-cell" data-m="${ml.id}">${img('', 'sigil')}<i>×${p.n}</i></button>`;
-          return ml.kind === 'box' ? `<button class="gear-cell gt${p.tier}" data-m="${ml.id}"><span class="gear-box">🎁</span></button>`
+          return ml.kind === 'box' ? `<button class="gear-cell gt${p.tier}" data-m="${ml.id}"><span class="gear-box"><img class="ui-ic" src="img/ui/gear_box.webp" alt=""></span></button>`
             : d ? `<button class="gear-cell gt${d.tier}" data-m="${ml.id}">${img(iconOf(d), d.slot)}</button>` : ''; }).join('') || '<div class="gear-dim">우편이 없어요</div>'}</div>
         <div class="gear-dim">보관 7일 · 상자 14일</div>`;
       m.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { const ml = list.find(x => String(x.id) === b.dataset.m), p = ml.payload || {};
@@ -232,7 +232,7 @@
           return;
         }
         if (ml.kind === 'box') {
-          const q = pop(`<div class="gear-big gt${p.tier}"><span class="gear-box big">🎁</span></div><b>🎁 ${TIER[p.tier]} 상자</b>
+          const q = pop(`<div class="gear-big gt${p.tier}"><span class="gear-box big"><img class="ui-ic" src="img/ui/gear_box.webp" alt=""></span></div><b><img class="ui-ic" src="img/ui/gear_box.webp" alt="">${TIER[p.tier]} 상자</b>
             ${p.up_tier ? `<div class="gear-dim">${p.up_pct}% 확률로 ${TIER[p.up_tier]}</div>` : ''}<div class="gear-dim">받을 칸을 고르세요</div>
             <div class="gear-tabs">${SLOTS.map(([k, l]) => `<button data-s="${k}">${img(sil(k), k)}${l}</button>`).join('')}</div>`, 'item');
           q.querySelectorAll('[data-s]').forEach(x => x.onclick = async () => { q.querySelectorAll('[data-s]').forEach(y => y.disabled = true);
@@ -253,8 +253,8 @@
   // 상점 상품 그림 (조직·PvP 공용): 증표 조각 · 장비 상자 · 가루
   function shopIcon(g) {
     if (g?.sigil) return g.sigil.card ? img(sigIcon(g.sigil.card), 'sigil') : img('', 'sigil');
-    if (g?.gear_box) return `<span class="gear-box">🎁</span>`;
-    if (g?.dust) return '<span class="gear-box">✨</span>';
+    if (g?.gear_box) return `<span class="gear-box"><img class="ui-ic" src="img/ui/gear_box.webp" alt=""></span>`;
+    if (g?.dust) return '<span class="gear-box"><img class="ui-ic" src="img/ui/cur_dust.webp" alt=""></span>';
     return '';
   }
   const shopName = g => g?.sigil ? (g.sigil.card ? `${CHAR[g.sigil.card] || ''} 증표 조각 ×${g.sigil.n}` : `증표 조각 선택 ×${g.sigil.n}`)
@@ -272,7 +272,7 @@
         <div class="shop-grid">${S.items.map(it => { const first = !shown.has(it.grp); shown.add(it.grp);
           return `<button class="shop-it ${it.left === 0 ? 'done' : ''}" data-i="${it.item}" ${it.left === 0 ? 'disabled' : ''}><span class="shop-ic">${shopIcon(it.gives)}</span><span class="shop-nm">${esc(shopName(it.gives))}</span>
             <span class="shop-p">🔥 ${fmt(it.price)}</span>${it.limit_kind ? `<small>${LIM[it.limit_kind]} ${it.left}/${it.limit_n}${it.grp !== it.item ? ' (묶음)' : ''}</small>` : ''}</button>`; }).join('')}</div>
-        <div class="gear-dim">증표 조각은 민홍기·최윤희 주 3개 (함께 셈) · 상자·선택 조각은 📬 우편함으로</div>`;
+        <div class="gear-dim">증표 조각은 민홍기·최윤희 주 3개 (함께 셈) · 상자·선택 조각은 <img class="ui-ic" src="img/ui/mailbox.webp" alt="">우편함으로</div>`;
       m.querySelectorAll('[data-i]').forEach(b => b.onclick = async () => { const it = S.items.find(x => x.item === b.dataset.i);
         if (S.soul < it.price) return toast('🔥 혼이 부족해요');
         if (!await ask(`<div class="gear-big">${shopIcon(it.gives)}</div><b>${esc(shopName(it.gives))}</b><div>🔥 혼 ${fmt(it.price)}개로 살까요?</div>`)) return;

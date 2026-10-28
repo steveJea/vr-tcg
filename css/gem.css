@@ -61,3 +61,4 @@
 .drink-ask-box div { display: flex; gap: 8px; margin-top: 12px; }
 .drink-ask-box button { flex: 1; padding: 7px; border-radius: 9px; font-weight: 800; background: #3f3f46; color: #fff; }
 .drink-ask-box [data-yes] { background: #0ea5e9; }
+.ui-ic{display:inline-block;width:1.2em;height:1.2em;object-fit:contain;vertical-align:-.25em}.drink-ic .ui-ic{width:30px;height:30px}.gear-box .ui-ic{width:1em;height:1em;vertical-align:middle}

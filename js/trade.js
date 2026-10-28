@@ -6,6 +6,7 @@
   const TIER = ['', '낡은', '일반', '고급', '희귀', '영웅', '전설', '심연'];
   const GRADE = { NORMAL: 'N', RARE: 'R', 'HIGH RARE': 'HR', 'SUPER RARE': 'SR', 'ULTRA RARE': 'UR', 'MYTHIC RARE': 'MR', 'LEGENDARY RARE': 'LR' };
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const I = f => `<img class="tr-ic" src="img/ui/${f}.webp" alt="">`;   // 아이콘 (img/ui)
   const n = v => Number(v || 0).toLocaleString('ko-KR');
   const toast = t => (window.VRGem?.toast || window.alert)(t);
   const ERR = {
@@ -66,7 +67,7 @@
   const gearTile = (g, extra = '') => { const d = defOf(g.def_id || g.def); return `<div class="tr-it gear t-${d?.tier || 0}" ${extra}><img src="${gearIcon(d)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'"><b>${esc(d?.name || '장비')}${g.plus ? ` +${g.plus}` : ''}</b><small>${TIER[d?.tier] || ''}</small></div>`; };
   const itemsHTML = (cards, gear) => (cards || []).map(x => cardTile(x.card || x)).join('') + (gear || []).map(x => gearTile(x.row || x)).join('');
   const left = t => { const s = Math.max(0, (new Date(t) - Date.now()) / 1000); return s >= 3600 ? `${Math.floor(s / 3600)}시간` : `${Math.ceil(s / 60)}분`; };
-  const curTxt = (d, g) => [d ? `🥤${n(d)}` : '', g ? `🪙${n(g)}` : ''].filter(Boolean).join(' + ');
+  const curTxt = (d, g) => [d ? `${I('cur_drink')}${n(d)}` : '', g ? `${I('cur_gold')}${n(g)}` : ''].filter(Boolean).join(' + ');
 
   // ---- 메인: 게시판 / 내 거래
   async function open(tab = 'board') {
@@ -76,7 +77,7 @@
     if (!await loadCfg()) { m.remove(); return; }
     const draw = async t => {
       tab = t;
-      body(m).innerHTML = `<div class="tr-head"><b>💱 거래 게시판</b><span><button class="tr-btn" data-help>❓ 도움말</button> <button class="tr-btn main" data-new>＋ 판매 글</button></span></div>
+      body(m).innerHTML = `<div class="tr-head"><b>${I('trade')}거래 게시판</b><span><button class="tr-btn" data-help>${I('help')}도움말</button> <button class="tr-btn main" data-new>＋ 판매 글</button></span></div>
         <div class="tr-tabs"><button data-tab="board" class="${t === 'board' ? 'on' : ''}">게시판</button><button data-tab="my" class="${t === 'my' ? 'on' : ''}">내 거래</button></div><div class="tr-list"><div class="tr-load">불러오는 중…</div></div>`;
       body(m).querySelectorAll('[data-tab]').forEach(b => b.onclick = () => draw(b.dataset.tab));
       body(m).querySelector('[data-new]').onclick = () => createListing(() => draw('my'));
@@ -85,14 +86,14 @@
       if (t === 'board') {
         const r = await rpc('trade_board', { p_limit: 50 }); if (!r) return;
         L.innerHTML = r.listings.length ? r.listings.map(l => `<button class="tr-row" data-l="${l.id}"><div class="tr-items">${itemsHTML(l.cards, l.gear)}</div>
-          <div class="tr-meta">${l.want ? `<span class="tr-want">💬 ${esc(l.want)}</span>` : ''}<span>⏳ ${left(l.expires_at)}</span><span>📨 제안 ${l.offers}</span>${l.mine ? '<span class="tr-tag">내 글</span>' : l.my_offer ? '<span class="tr-tag">제안함</span>' : ''}</div></button>`).join('')
+          <div class="tr-meta">${l.want ? `<span class="tr-want">${I('trade_want')}${esc(l.want)}</span>` : ''}<span>${I('timer')}${left(l.expires_at)}</span><span>${I('trade_offer')}제안 ${l.offers}</span>${l.mine ? '<span class="tr-tag">내 글</span>' : l.my_offer ? '<span class="tr-tag">제안함</span>' : ''}</div></button>`).join('')
           : '<div class="tr-empty">아직 올라온 글이 없어요</div>';
         L.querySelectorAll('[data-l]').forEach(b => b.onclick = () => { const l = r.listings.find(x => x.id === +b.dataset.l); l.mine ? manage(l.id, () => draw(tab)) : detail(l, () => draw(tab)); });
       } else {
         const r = await rpc('trade_my'); if (!r) return;
         const ST = { open: '열림', done: '거래 완료', cancelled: '내림', expired: '만료', pending: '대기', accepted: '수락됨', rejected: '거절됨', refunded: '환불됨' };
         L.innerHTML = `<div class="tr-sec">내 판매 글</div>${r.listings.map(l => `<button class="tr-row" data-ml="${l.id}"><div class="tr-items">${itemsHTML(l.cards, l.gear)}</div>
-            <div class="tr-meta"><span class="tr-tag s-${l.status}">${ST[l.status]}</span>${l.status === 'open' ? `<span>⏳ ${left(l.expires_at)}</span><span>📨 제안 ${l.offers.filter(o => o.status === 'pending').length}</span>` : ''}</div></button>`).join('') || '<div class="tr-empty">판매 글이 없어요</div>'}
+            <div class="tr-meta"><span class="tr-tag s-${l.status}">${ST[l.status]}</span>${l.status === 'open' ? `<span>${I('timer')}${left(l.expires_at)}</span><span>${I('trade_offer')}제안 ${l.offers.filter(o => o.status === 'pending').length}</span>` : ''}</div></button>`).join('') || '<div class="tr-empty">판매 글이 없어요</div>'}
           <div class="tr-sec">내 제안</div>${r.offers.map(o => `<div class="tr-row"><div class="tr-items">${itemsHTML(o.cards, o.gear)}${curTxt(o.drinks, o.gold) ? `<div class="tr-cur">${curTxt(o.drinks, o.gold)}</div>` : ''}</div>
             <div class="tr-meta"><span class="tr-tag s-${o.status}">${ST[o.status]}</span>${o.reoffer_at && new Date(o.reoffer_at) > Date.now() ? `<span>다시 제안: ${left(o.reoffer_at)} 뒤</span>` : ''}${o.status === 'pending' ? `<button class="tr-btn" data-oc="${o.id}">제안 취소</button>` : ''}</div></div>`).join('') || '<div class="tr-empty">제안한 글이 없어요</div>'}`;
         L.querySelectorAll('[data-ml]').forEach(b => b.onclick = () => manage(+b.dataset.ml, () => draw(tab)));
@@ -106,8 +107,8 @@
 
   // ---- 도움말 (규칙 요약, 값은 서버 조절표 기준)
   function help() {
-    const c = cfg || {}, B = bands || {}, rng = k => B[k] ? `🥤${n(B[k].d_min)}~${n(B[k].d_max)}${B[k].g_max != null ? ` · 🪙${n(B[k].g_min)}~${n(B[k].g_max)}` : ' · 🪙불가'}` : '-';
-    pop(`<div class="tr-head"><b>❓ 거래 도움말</b></div><div class="tr-help">
+    const c = cfg || {}, B = bands || {}, rng = k => B[k] ? `${I('cur_drink')}${n(B[k].d_min)}~${n(B[k].d_max)}${B[k].g_max != null ? ` · ${I('cur_gold')}${n(B[k].g_min)}~${n(B[k].g_max)}` : ` · ${I('cur_gold')}불가`}` : '-';
+    pop(`<div class="tr-head"><b>${I('help')}거래 도움말</b></div><div class="tr-help">
       <p><b>흐름</b> 판매 글에 인재·장비(최대 ${c.max_items || 5}개)를 올리면 바로 보관돼요. 다른 사람은 인재·장비·🥤드링크·🪙골드를 섞어 제안하고, 판매자가 하나를 수락하면 한 번에 교환돼요. 나머지 제안은 자동으로 돌려받아요.</p>
       <p><b>보관</b> 올리거나 제안한 물건·재화는 끝날 때까지 쓸 수 없어요. 거절·취소·글 내리기·${c.listing_hours || 72}시간 만료 때 즉시 돌아와요 (장비는 가방이 꽉 차면 📬 우편함).</p>
       <p><b>수수료</b> 받는 재화의 ${c.fee_pct || 10}%가 사라져요. 물건끼리만 바꾸면 받는 물건 등급별로 골드 수수료를 내요.</p>
@@ -121,8 +122,8 @@
 
   // ---- 글 상세 (남의 글)
   function detail(l, after) {
-    const m = pop(`<div class="tr-head"><b>판매 글</b><span>⏳ ${left(l.expires_at)} · 📨 제안 ${l.offers}</span></div>
-      <div class="tr-items big">${itemsHTML(l.cards, l.gear)}</div>${l.want ? `<div class="tr-want">💬 ${esc(l.want)}</div>` : ''}
+    const m = pop(`<div class="tr-head"><b>판매 글</b><span>${I('timer')}${left(l.expires_at)} · ${I('trade_offer')}제안 ${l.offers}</span></div>
+      <div class="tr-items big">${itemsHTML(l.cards, l.gear)}</div>${l.want ? `<div class="tr-want">${I('trade_want')}${esc(l.want)}</div>` : ''}
       <div class="tr-note">다른 사람의 제안 내용은 보이지 않아요</div>
       <div class="tr-acts">${l.my_offer ? '<button class="tr-btn" data-c>내 제안 취소</button>' : '<button class="tr-btn main" data-o>제안하기</button>'}</div>`);
     m.querySelector('[data-o]')?.addEventListener('click', () => { m.remove(); makeOffer(l, after); });
@@ -131,15 +132,15 @@
 
   // ---- 고르기 목록: 못 올리는 이유 표시
   function cardBlock(o, save) {
-    if (o.uid === save.leader) return '👑 리더';
-    if (o.bound !== false) return '🔗 귀속';
-    if (o.locked && !o.dlk) return '🔒 잠금';
-    if (o.traded_at && o.traded_at * 1000 > Date.now() - (cfg.resale_hours || 72) * 3600e3) return '⏳ 재판매 대기';
+    if (o.uid === save.leader) return I('leader_crown') + '리더';
+    if (o.bound !== false) return I('bound') + '귀속';
+    if (o.locked && !o.dlk) return I('lock') + '잠금';
+    if (o.traded_at && o.traded_at * 1000 > Date.now() - (cfg.resale_hours || 72) * 3600e3) return I('timer') + '재판매 대기';
     return '';
   }
   function gearBlock(g) {
     const d = defOf(g.def);
-    if (g.card) return '장착 중'; if (g.locked) return '🔒 잠금'; if ((d?.tier || 0) > 5) return '거래 불가 등급';
+    if (g.card) return '장착 중'; if (g.locked) return I('lock') + '잠금'; if ((d?.tier || 0) > 5) return '거래 불가 등급';
     return '';
   }
   // ---- 정렬 (인재: 등급·레벨·이름·획득 / 장비: 등급·강화·이름). 같은 버튼 다시 누르면 ▼▲ 전환, 기억함. 못 올리는 것도 제자리(흐리게)
@@ -215,9 +216,9 @@
     else if (!oKeys.length && (drinks || gold) && drinks / Math.max(dmin, 1) + (goldOk && gmin ? gold / gmin : 0) < 1) err = ERR['price too low'];
     else if (!oKeys.length && onlyItems) err = ERR['nothing to offer'];
     const fix = onlyItems ? lKeys.reduce((a, k) => a + (+B(k).fix_fee || 0), 0) : 0;
-    const html = `<div class="tr-rule"><div>🥤 드링크 ${oKeys.length ? `최대 ${n(dmax)}` : `${n(dmin)} ~ ${n(dmax)}`}</div>
-      <div>🪙 골드 ${goldOk ? (oKeys.length ? `최대 ${n(gmax)}` : `${n(gmin)} ~ ${n(gmax)}`) : '<b class="no">불가</b> (SR 이상 인재·영웅 장비 포함)'}</div>
-      <div>💸 ${onlyItems ? `물건끼리: 수수료 골드 ${n(fix)} (제안할 때 보관)` : `판매자는 ${pct}% 수수료 뒤 ${curTxt(drinks - Math.ceil(drinks * pct / 100), gold - Math.ceil(gold * pct / 100))} 받아요`}</div>
+    const html = `<div class="tr-rule"><div>${I('cur_drink')}드링크 ${oKeys.length ? `최대 ${n(dmax)}` : `${n(dmin)} ~ ${n(dmax)}`}</div>
+      <div>${I('cur_gold')}골드 ${goldOk ? (oKeys.length ? `최대 ${n(gmax)}` : `${n(gmin)} ~ ${n(gmax)}`) : '<b class="no">불가</b> (SR 이상 인재·영웅 장비 포함)'}</div>
+      <div>${I('fee_burn')}${onlyItems ? `물건끼리: 수수료 골드 ${n(fix)} (제안할 때 보관)` : `판매자는 ${pct}% 수수료 뒤 ${curTxt(drinks - Math.ceil(drinks * pct / 100), gold - Math.ceil(gold * pct / 100))} 받아요`}</div>
       ${err ? `<div class="tr-err">${err}</div>` : ''}</div>`;
     return { html, err, fix };
   }
@@ -229,7 +230,7 @@
     const m = pop(`<div class="tr-head"><b>제안하기</b></div><div class="tr-items">${itemsHTML(l.cards, l.gear)}</div>
       <div class="tr-sec">내가 줄 것 (인재·장비는 선택)</div>
       <div class="tr-cur-in"><label>🥤 드링크 <input type="number" min="0" step="1" value="0" data-d><small>거래 가능 ${n((dr?.tradable || 0) - (dr?.locked || 0))}</small></label>
-        <label>🪙 골드 <input type="number" min="0" step="100" value="0" data-g>${gold != null ? `<small>보유 ${n(gold)}</small>` : ''}</label></div>
+        <label>${I('cur_gold')}골드 <input type="number" min="0" step="100" value="0" data-g>${gold != null ? `<small>보유 ${n(gold)}</small>` : ''}</label></div>
       <div class="tr-info"></div><div class="tr-pickwrap"></div>
       <div class="tr-acts"><button class="tr-btn main" data-ok>제안 보내기</button></div>`, 'wide');
     const val = s => Math.max(0, Math.floor(+m.querySelector(s).value || 0));
@@ -240,7 +241,7 @@
     m.querySelector('[data-ok]').onclick = async () => {
       const i = upd(); if (i.err) return toast(i.err);
       const d = val('[data-d]'), g = val('[data-g]');
-      if (!await ask(`이 조건으로 제안할까요?<br><b>${[p.count() ? `물건 ${p.count()}개` : '', curTxt(d, g), i.fix ? `수수료 🪙${n(i.fix)}` : ''].filter(Boolean).join(' + ')}</b><br><small>보낸 것은 바로 보관되고, 거절·취소·만료되면 그대로 돌아와요</small>`)) return;
+      if (!await ask(`이 조건으로 제안할까요?<br><b>${[p.count() ? `물건 ${p.count()}개` : '', curTxt(d, g), i.fix ? `수수료 ${I('cur_gold')}${n(i.fix)}` : ''].filter(Boolean).join(' + ')}</b><br><small>보낸 것은 바로 보관되고, 거절·취소·만료되면 그대로 돌아와요</small>`)) return;
       const r = await rpc('trade_offer', { p_listing: l.id, p_cards: [...p.sel.cards], p_gear: [...p.sel.gear], p_drinks: d, p_gold: g });
       if (r) { toast('📨 제안을 보냈어요'); m.remove(); refreshMine(); after?.(); }
     };
@@ -258,13 +259,13 @@
       const row = o => `<div class="tr-off" data-of="${o.id}"><label class="tr-chk"><input type="checkbox" data-sel="${o.id}"></label>
         <div class="tr-off-b"><div class="tr-nick">${esc(o.nick || '익명')}</div><div class="tr-items">${itemsHTML(o.cards, o.gear)}${curTxt(o.drinks, o.gold) ? `<div class="tr-cur">${curTxt(o.drinks, o.gold)}</div>` : ''}</div></div>
         <div class="tr-off-a"><button class="tr-btn main" data-ac="${o.id}">수락</button><button class="tr-btn" data-rj="${o.id}">거절</button></div></div>`;
-      body(m).innerHTML = `<div class="tr-head"><b>내 판매 글</b>${l.status === 'open' ? `<span>⏳ ${left(l.expires_at)}</span>` : ''}</div>
+      body(m).innerHTML = `<div class="tr-head"><b>내 판매 글</b>${l.status === 'open' ? `<span>${I('timer')}${left(l.expires_at)}</span>` : ''}</div>
         <div class="tr-items big">${itemsHTML(l.cards, l.gear)}</div>
         ${l.status !== 'open' ? '<div class="tr-note">끝난 글이에요</div>' : `
         <div class="tr-head sm"><b>📨 제안 ${offs.length}개</b><span><button class="tr-btn ${sort === 'cur' ? 'on' : ''}" data-sort="cur">재화 많은 순</button><button class="tr-btn" data-sort="new">새 순</button></span></div>
         <div class="tr-offs">${list().map(row).join('') || '<div class="tr-empty">아직 제안이 없어요</div>'}</div>
         ${offs.length ? `<div class="tr-bulk"><button class="tr-btn" data-rsel>선택 거절</button>
-          <span>조건 아래 전부 거절: 🥤<input type="number" min="0" data-md placeholder="최소"> 🪙<input type="number" min="0" data-mg placeholder="최소"> <label><input type="checkbox" data-ni> 물건 없는 제안</label></span><button class="tr-btn" data-rbelow>거절</button></div>` : ''}
+          <span>조건 아래 전부 거절: ${I('cur_drink')}<input type="number" min="0" data-md placeholder="최소"> ${I('cur_gold')}<input type="number" min="0" data-mg placeholder="최소"> <label><input type="checkbox" data-ni> 물건 없는 제안</label></span><button class="tr-btn" data-rbelow>거절</button></div>` : ''}
         <div class="tr-acts"><button class="tr-btn danger" data-down>글 내리기</button></div>`}`;
       const offTxt = o => [o.cards.length + o.gear.length ? `물건 ${o.cards.length + o.gear.length}개` : '', curTxt(o.drinks, o.gold)].filter(Boolean).join(' + ');
       body(m).querySelectorAll('[data-sort]').forEach(b => b.onclick = () => { sort = b.dataset.sort; body(m).querySelector('.tr-offs').innerHTML = list().map(row).join(''); bindRows(); });
