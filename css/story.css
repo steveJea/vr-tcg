@@ -659,3 +659,4 @@ span.story-lvpct { background: rgba(251,191,36,.12); border: 1px solid rgba(251,
 .merge-scold-img { width: 62%; max-width: 220px; aspect-ratio: 3/4; object-fit: cover; object-position: top; border-radius: 14px; box-shadow: 0 0 18px rgba(239,68,68,.45); }
 .merge-scold-bub { margin-top: -18px; position: relative; width: 100%; padding: 10px 12px; border-radius: 14px; background: #1f1720; border: 2px solid #f87171; text-align: left; }
 .merge-scold-bub b { color: #fca5a5; font-size: 13px; } .merge-scold-bub p { font-size: 16px; font-weight: 800; margin: 2px 0; } .merge-scold-bub small { color: #a1a1aa; font-size: 11px; }
+.story-tk-card[data-pulled],.gacha-card[data-pulled]{cursor:pointer}

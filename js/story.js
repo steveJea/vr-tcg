@@ -1513,6 +1513,29 @@
   }
   // ----- 상점 (카드 뽑기) 화면: 일반 뽑기(하루 1회 무료) · 특수 뽑기(소환권) -----
   /** 인재영입 배너: 일반 · 프리미엄 (+ 나중에 특정 캐릭터 배너를 여기에 추가: { key, label, sub }, 그림 img/ui/gacha/banner_<key>.webp) */
+  // ----- 뽑기 결과 탭: 인재 → 보유 인재 상세 · 빈 곳 → 결과 지우고 영입 첫 화면. 연출 중(resultOn=false)·강제 영입 중엔 무시 -----
+  let resultOn = false;
+  /** 이번 뽑기로 새로 생긴 인스턴스 uid (뽑은 순서대로). 없으면(서버가 합친 경우 등) '' → 탭 시 대표 인스턴스 */
+  function newUids(before, ids) {
+    const fresh = save.owned.filter(o => !before.has(o.uid)), used = new Set();
+    return ids.map(id => { const o = fresh.find(x => x.id === String(id) && !used.has(x.uid)); if (o) used.add(o.uid); return o?.uid || ''; });
+  }
+  function openPulled(u, id) {
+    const o = (u && byUid(u)) || repOf(id); if (!o) return toast('인재를 찾지 못했어요');
+    clearInterval(gachaTimer); renderCards(); cardDetail(o.uid);
+  }
+  function bindResultTap() {
+    const sh = root().querySelector('.story-shop'), room = $('gr-room');
+    const onTap = e => {
+      if (!resultOn || forcedPullOn || $('gr-room')?.classList.contains('busy')) return;
+      const t = e.target.closest('[data-pulled]');
+      if (t) { e.stopPropagation(); return openPulled(t.dataset.pulled, t.dataset.pid); }
+      if (e.target.closest('button, a, input, select, .gr-banners, .gr-gem, .story-top, .gr-actions')) return;
+      renderShop(shopTab);
+    };
+    sh?.addEventListener('click', onTap); room?.addEventListener('click', onTap);
+    sh?.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.closest('[data-pulled]')) { e.preventDefault(); onTap(e); } });
+  }
   const GACHA_BANNERS = [{ key: 'daily', label: '일반' }, { key: 'special', label: '프리미엄' }];
   function renderShop(tab) {
     if (tab) shopTab = tab;
@@ -1534,7 +1557,7 @@
       ${daily ? '' : `<div class="gr-gem" id="gr-gem">${gemRow()}</div>`}</div>`, 'gacha');
     gateLayout();
     if (forcedPullOn) root().querySelector('.story-shop')?.classList.add('gr-forced');   // 강제 영입: 나가기·탭·1회·젬 숨김
-    bind();
+    bind(); resultOn = false; bindResultTap();
     root().querySelectorAll('[data-tab]').forEach(b => b.onclick = () => renderShop(b.dataset.tab));
     $('gacha-rates').onclick = showRates;
     if (tickets == null) syncTickets().then(r => { if (root().querySelector('.story-shop')) { if (r.added) toast(`🎟️ 소환권 +${r.added} (챕터 클리어 보상)`); renderShop(); } });
@@ -1542,7 +1565,8 @@
       bindGem();
       if (window.VRGem && !window.VRGem.now) window.VRGem.status().then(() => { const g = $('gr-gem'); if (g) { g.innerHTML = gemRow(); bindGem(); } });
       root().querySelectorAll('[data-draw]').forEach(b => b.onclick = async () => {
-        root().querySelectorAll('[data-draw]').forEach(x => x.disabled = true); $('gacha-msg').textContent = ''; $('tk-result').innerHTML = '';
+        root().querySelectorAll('[data-draw]').forEach(x => x.disabled = true); $('gacha-msg').textContent = ''; $('tk-result').innerHTML = ''; resultOn = false;
+        const before = new Set(save.owned.map(o => o.uid));
         const r = await drawTickets(+b.dataset.draw);
         if (!r.ok && forcedPullOn && r.reason === 'tickets') { forcedPullOn = false; await markPullDone(); toast('소환권이 부족해 강제 영입을 건너뛰어요.'); return enter(); }   // 막힘 방지
         if (!r.ok && forcedPullOn) root().querySelector('.story-shop')?.classList.remove('gr-forced');   // 다른 오류: 나가기 허용 (다음 접속 때 다시 안내)
@@ -1551,13 +1575,15 @@
         root().querySelectorAll('.story-ticket b').forEach(x => x.textContent = tickets);
         await playGate(bestG);
         if (!$('tk-result')) return;
-        $('tk-result').innerHTML = r.cards.map((x, i) => { const c = card(x.card_id); return `<div class="story-tk-card g-${GLOW[x.grade]}" style="animation-delay:${i * 0.08}s"><img src="${IMG}${c.id}.webp" alt="${esc(c.name)}"><span class="story-rar">${RAR[x.grade]}</span><div>${esc(c.name)}</div></div>`; }).join('');
+        const uids = newUids(before, r.cards.map(x => x.card_id));
+        $('tk-result').innerHTML = r.cards.map((x, i) => { const c = card(x.card_id); return `<div class="story-tk-card g-${GLOW[x.grade]}" data-pulled="${esc(uids[i] || '')}" data-pid="${esc(c.id)}" role="button" tabindex="0" style="animation-delay:${i * 0.08}s"><img src="${IMG}${c.id}.webp" alt="${esc(c.name)}"><span class="story-rar">${RAR[x.grade]}</span><div>${esc(c.name)}</div></div>`; }).join('');
         $('tk-result').className = `story-tk-result n${r.cards.length}`;
         $('gacha-msg').innerHTML = `+${r.cards.length} · <span class="g-text-${GLOW[bestG]}">최고 ${RAR[bestG]}</span>`;
         if (forcedPullOn && r.cards.length === 10) { forcedPullOn = false; await markPullDone();
           const nb = document.createElement('button'); nb.className = 'gr-go gr-forced-next'; nb.id = 'forced-pull-next'; nb.textContent = save.starter ? '계속 ▶' : '함께할 캐릭터 고르기 ▶';
-          nb.onclick = () => enter(); root().querySelector('.gr-actions')?.replaceChildren(nb); return; }
+          nb.onclick = () => enter(); root().querySelector('.gr-actions')?.replaceChildren(nb); return; }   // 강제 영입 결과: 탭 이동 없음 (계속 버튼만)
         root().querySelectorAll('[data-draw]').forEach(x => x.disabled = (tickets | 0) < +x.dataset.draw);
+        if (!forcedPullOn) resultOn = true;
       });
       return;
     }
@@ -1565,7 +1591,8 @@
     tick(); gachaTimer = setInterval(tick, 1000);
     const go = $('gacha-go'); if (!go) return;
     go.onclick = async () => {
-      go.disabled = true;
+      go.disabled = true; resultOn = false;
+      const before = new Set(save.owned.map(o => o.uid));
       const r = await drawOnce();
       if (!r.ok) { go.remove(); $('gacha-msg').textContent = r.reason === 'already' ? '오늘은 이미 뽑았어요.' : `뽑기에 실패했어요: ${r.msg || ''}`; tick(); return; }
       const c = card(r.card_id), g = GLOW[r.grade] || 'n';
@@ -1575,8 +1602,9 @@
       if (!$('gacha-front')) return;
       $('gacha-front').innerHTML = `<img src="${IMG}${c.id}.webp" alt="${esc(c.name)}"><span class="story-rar">${RAR[c.grade]}</span><div class="gacha-name">${esc(c.name)}</div>`;
       const el = $('gacha-card'); $('gacha-stage').className = `gacha-stage gr-card g-${g}`;
+      el.dataset.pulled = newUids(before, [r.card_id])[0] || ''; el.dataset.pid = c.id;
       requestAnimationFrame(() => el.classList.add('flip'));
-      setTimeout(() => { const m = $('gacha-msg'); if (m) m.innerHTML = `<b class="g-text-${g}">${RAR[c.grade]} · ${esc(c.name)}</b>${r.count > 1 ? ` <span class="story-dup-inline">x${r.count}</span>` : ''}`; tick(); }, 900);
+      setTimeout(() => { const m = $('gacha-msg'); if (m) m.innerHTML = `<b class="g-text-${g}">${RAR[c.grade]} · ${esc(c.name)}</b>${r.count > 1 ? ` <span class="story-dup-inline">x${r.count}</span>` : ''}`; tick(); if ($('gacha-card') === el) resultOn = true; }, 900);
     };
   }
 
