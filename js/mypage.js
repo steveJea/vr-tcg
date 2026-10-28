@@ -75,7 +75,7 @@
 
   // ---- 기본 섹션 ----
   const pct = (a, b) => b ? Math.floor(a / b * 100) : 0;
-  const thumb = (o, cls = '', cnt = 1) => `<button type="button" class="mp-card rar-${SHORT[o.grade] || 'N'} ${cls}" data-uid="${esc(o.uid)}" data-id="${esc(o.id)}" title="${esc(o.name)}${cnt > 1 ? ` x${cnt}` : ''}" aria-label="${esc(o.name)} 카드 정보"><img loading="lazy" src="${IMG}${o.id}.webp" alt="${esc(o.name)}" onerror="this.style.visibility='hidden'">
+  const thumb = (o, cls = '', cnt = 1) => `<button type="button" class="mp-card rar-${SHORT[o.grade] || 'N'} ${cls}" data-uid="${esc(o.uid)}" data-id="${esc(o.id)}" title="${esc(o.name)}${cnt > 1 ? ` x${cnt}` : ''}" aria-label="${esc(o.name)} 인재 정보"><img loading="lazy" src="${IMG}${o.id}.webp" alt="${esc(o.name)}" onerror="this.style.visibility='hidden'">
     <span class="mp-rar">${SHORT[o.grade] || ''}</span>${o.leader ? '<span class="mp-lead">👑</span>' : ''}${o.fav ? '<span class="mp-fav">★</span>' : ''}${cnt > 1 ? `<span class="mp-cnt">x${cnt}</span>` : ''}<span class="mp-lv">Lv.${o.level || 1}</span><span class="mp-nm">${esc(o.name)}</span></button>`;
   /** 같은 카드(id) 여러 장은 한 칸으로: 대표 = 리더 > 덱 > 레벨·EX 높은 것, 개수는 x<n> */
   function groupOwned(owned, deck) {
@@ -100,29 +100,29 @@
       <div class="mp-leader-cap"><span class="mp-rar">${SHORT[L.grade] || ''}</span><b>${esc(L.name)}</b><small>리더 · Lv.${L.level || 1}${L.power ? ` · ⚡ ${Number(L.power).toLocaleString('ko-KR')}` : ''}</small></div>
       <span class="mp-play" aria-hidden="true">▶</span></div>`;
   } });
-  addSection({ id: 'player', order: 15, title: '플레이어', render: ctx => { const p = ctx.player; if (!p) return '';
+  addSection({ id: 'player', order: 15, render: ctx => { const p = ctx.player; if (!p) return '';
     const pct = p.xp_next ? Math.min(100, Math.round(p.xp / p.xp_next * 100)) : 100, full = p.stamina >= p.stamina_max;
     return `<div class="mp-player"><div class="mp-plv"><b>Lv.${p.level}</b><small>/ ${p.max_level}</small></div>
-      <div class="mp-pinfo"><div class="mp-pxp"><span>경험치</span><span>${p.xp_next ? `${p.xp.toLocaleString('ko-KR')} / ${p.xp_next.toLocaleString('ko-KR')}` : '최대 레벨'}</span></div><div class="mp-bar"><i style="width:${pct}%"></i></div>
-      <div class="mp-pxp"><span>🔋 행동력</span><span><b>${p.stamina}</b> / ${p.stamina_max}${full ? '' : ` · +1 ${window.VRPlayer?.mmss?.(p.next_regen_secs) || ''}`}</span></div><div class="mp-bar st"><i style="width:${Math.min(100, Math.round(p.stamina / p.stamina_max * 100))}%"></i></div>
-      <small class="mp-pnote" title="스토리 페이즈 1회 = 행동력 ${p.cost?.story ?? 6} (패배·포기 시 반환) · 6분에 1 회복 · 시련의 탑·아케이드는 무료">${window.VRIcon?.cur?.('stamina') || '🔋'} ${p.cost?.story ?? 6}/스토리 · 6분 +1</small></div></div>`; } });
-  addSection({ id: 'wallet', order: 20, title: '재화', render: ctx => `<div class="mp-wallet">${CURRENCIES.map(c => { const v = c.value(ctx);
-    return `<div class="mp-cur ${c.soon ? 'soon' : ''}" data-cur="${c.key}"><span class="mp-cur-ic">${window.VRIcon?.cur?.(c.key, { alt: c.label }) || c.icon}</span><span class="mp-cur-l">${c.label}</span><b>${v == null ? (c.soon ? '준비 중' : '-') : Number(v).toLocaleString('ko-KR')}</b></div>`; }).join('')}</div>` });
+      <div class="mp-pinfo"><div class="mp-pxp"><span>EXP</span><span>${p.xp_next ? `${p.xp.toLocaleString('ko-KR')} / ${p.xp_next.toLocaleString('ko-KR')}` : '최대 레벨'}</span></div><div class="mp-bar"><i style="width:${pct}%"></i></div>
+      <div class="mp-pxp"><span>${window.VRIcon?.cur?.('stamina') || '🔋'}</span><span><b>${p.stamina}</b> / ${p.stamina_max}${full ? '' : ` · +1 ${window.VRPlayer?.mmss?.(p.next_regen_secs) || ''}`}</span></div><div class="mp-bar st"><i style="width:${Math.min(100, Math.round(p.stamina / p.stamina_max * 100))}%"></i></div></div></div>`; } });
+  addSection({ id: 'wallet', order: 20, render: ctx => `<div class="mp-wallet">${CURRENCIES.map(c => { const v = c.value(ctx);
+    return `<div class="mp-cur ${c.soon ? 'soon' : ''}" data-cur="${c.key}" title="${esc(c.label)}"><span class="mp-cur-ic">${window.VRIcon?.cur?.(c.key, { alt: c.label }) || c.icon}</span><b>${v == null ? (c.soon ? '준비 중' : '-') : Number(v).toLocaleString('ko-KR')}</b></div>`; }).join('')}</div>` });
   // 조직 (guild.sql · js/guild.js): 엠블럼 · 이름 · 레벨 → 조직 화면
   addSection({ id: 'guild', order: 11, render: ctx => ctx.guild ? window.VRGuild?.myCard?.(ctx.guild) || '' : '' });
   // 심연석 (gem.sql · js/gem.js): 잔액 + 최근 20건
-  addSection({ id: 'gem', order: 21, title: '🔮 심연석', render: ctx => ctx.gem ? window.VRGem?.section?.(ctx.gem) || '' : '' });
-  addSection({ id: 'record', order: 30, title: '전적', render: ctx => {
+  addSection({ id: 'gem', order: 21, render: ctx => ctx.gem ? window.VRGem?.section?.(ctx.gem) || '' : '' });
+  addSection({ id: 'record', order: 30, render: ctx => {
     const a = ctx.arcade, s = ctx.story, g = ctx.gallery;
     const chs = s?.chapters || [], done = chs.reduce((x, c) => x + c.done, 0), tot = chs.reduce((x, c) => x + c.total, 0);
     const games = a ? a.wins + a.losses + a.draws : 0;
     return `<div class="mp-rec">
+      ${s?.current ? (() => { const c = s.current; return `<button type="button" class="mp-story" data-nav="story" data-ch="${c.i}" aria-label="스토리 맵"><span class="mp-story-bg" style="background-image:url(img/story/ch_bg_${esc(c.id)}.webp)${c.cover ? `,url(${esc(c.cover)})` : ''},url(img/story/opening_poster.webp)"></span>
+        <span class="mp-story-t"><small>${esc(c.title)}</small><b>${esc(c.subtitle)}</b><i>${c.phase ? `Phase.${c.phase}${c.boss ? ' · BOSS' : ''}` : `✔ ${c.done}/${c.total}`}</i></span></button>`; })() : ''}
       <div class="mp-stat"><span>아케이드</span><b>${a ? `${a.wins}승 ${a.losses}패${a.draws ? ` ${a.draws}무` : ''}` : '-'}</b><small>${a && games ? `승률 ${pct(a.wins, games)}%` : '기록 없음'}</small></div>
-      <div class="mp-stat"><span>스토리</span><b>${tot ? `${done}/${tot}` : '-'}</b><small>${chs.map(c => `${esc(c.title)} ${c.done}/${c.total}`).join(' · ') || '진행 없음'}</small></div>
       <div class="mp-stat"><span>시련의 탑</span><b>${ctx.questBest != null ? `${ctx.questBest}층` : '-'}</b><small>최고 기록</small></div>
       <div class="mp-stat"><span>갤러리</span><b>${g ? `${pct(g.have, g.total)}%` : '-'}</b><small>${g ? `${g.have}/${g.total} 수집` : ''}</small></div></div>`;
   } });
-  addSection({ id: 'nav', order: 12, render: ctx => ctx.story ? `<div class="mp-nav"><button type="button" class="mp-navbtn" data-nav="cards"><span>🃏</span>보유 카드<small>${ctx.story.owned.length}</small></button><button type="button" class="mp-navbtn" data-nav="decks"><span>🗂</span>덱 설정<small>${(ctx.story.decks || []).filter(d => d.uids.length).length}/10</small></button></div>` : '' });
+  addSection({ id: 'nav', order: 12, render: ctx => ctx.story ? `<div class="mp-nav"><button type="button" class="mp-navbtn" data-nav="cards"><span>🃏</span>보유 인재<small>${ctx.story.owned.length}</small></button><button type="button" class="mp-navbtn" data-nav="decks"><span>🗂</span>덱 설정<small>${(ctx.story.decks || []).filter(d => d.uids.length).length}/10</small></button></div>` : '' });
   addSection({ id: 'deck', order: 40, title: '마이 덱', render: ctx => {
     const s = ctx.story; if (!s) return '';
     const by = new Map(s.owned.map(o => [o.uid, o])), ds = (s.decks || []).filter(d => d.uids.length);
@@ -142,7 +142,7 @@
     m.innerHTML = `<div class="mp-panel" role="dialog" aria-label="마이페이지"><div class="mp-head"><div class="mp-title">${window.VRIcon?.icon('mypage_btn', { alt: '' }) || '👤'} 마이페이지</div><button class="mp-x" id="mp-close" aria-label="닫기">✕</button></div><div id="mp-body" class="mp-body"></div></div>`;
     document.body.appendChild(m);
     m.addEventListener('click', e => { if (e.target === m || e.target.closest('#mp-close')) return close();
-      const nv = e.target.closest('[data-nav]'); if (nv) { close(); const S = window.VRStory; return nv.dataset.nav === 'decks' ? S?.openDecks?.() : S?.openCards?.(); }
+      const nv = e.target.closest('[data-nav]'); if (nv) { close(); const S = window.VRStory; return nv.dataset.nav === 'story' ? S?.openMap?.(+nv.dataset.ch) : nv.dataset.nav === 'decks' ? S?.openDecks?.() : S?.openCards?.(); }
       const t = e.target.closest('.mp-card[data-uid]'); if (t) openCard(t.dataset.uid, t.dataset.id); });   // 바깥 클릭 = 닫기
     document.addEventListener('keydown', e => { if (e.key === 'Escape' && !m.classList.contains('hidden')) close(); });
     return m;

@@ -34,7 +34,7 @@
   const hideIntro = () => { localStorage.setItem(INTRO_KEY, '1'); intro.classList.add('hidden'); const v = $('intro-video'); v.pause(); };
   $('intro-login').onclick = () => { localStorage.setItem(INTRO_KEY, '1'); login(); };
   $('intro-guest').onclick = async () => {
-    if (await confirmYN('<b>게스트는 아케이드만</b> 플레이할 수 있어요.<br>카드 수집·소환은 할 수 없어요.<div class="vc-q">그래도 게스트로 하시겠어요?</div>')) hideIntro();
+    if (await confirmYN('<b>게스트는 아케이드만</b> 플레이할 수 있어요.<br>인재 수집·소환은 할 수 없어요.<div class="vc-q">그래도 게스트로 하시겠어요?</div>')) hideIntro();
   };
   if (localStorage.getItem(INTRO_KEY) !== '1' && !/[?&]code=|access_token=/.test(location.search + location.hash)) {
     // 이미 로그인된 세션이면 바로 메인

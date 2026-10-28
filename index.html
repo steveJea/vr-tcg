@@ -294,7 +294,8 @@
   <div class="main-vignette absolute inset-0 pointer-events-none"></div>
   <div class="main-top absolute top-0 inset-x-0 z-20 flex items-start justify-between gap-2 p-3 md:p-4">
     <div id="acct-box" class="acct-box min-w-0"></div>
-    <button id="main-settings" class="main-gear" type="button" aria-label="게임설정" aria-haspopup="dialog" aria-controls="main-menu-pop" aria-expanded="false" title="게임설정"><img src="img/ui/gear.webp" alt="" width="64" height="64"></button>
+    <div class="main-top-r flex items-start gap-2"><button id="main-help-q" class="main-gear main-q" type="button" aria-label="도움말" title="도움말" onclick="window.VRHelp&&VRHelp.open()"><b>?</b></button>
+    <button id="main-settings" class="main-gear" type="button" aria-label="게임설정" aria-haspopup="dialog" aria-controls="main-menu-pop" aria-expanded="false" title="게임설정"><img src="img/ui/gear.webp" alt="" width="64" height="64"></button></div>
   </div>
   <div class="relative z-10 h-full flex flex-col items-center justify-end md:justify-center px-6 pb-14 md:pb-0">
     <h1 class="main-logo-wrap">
@@ -516,6 +517,7 @@
 <script type="module" src="js/pvp.js"></script>
 <script type="module" src="js/raid.js"></script>
 <script type="module" src="js/war.js"></script>
+<script src="js/help.js" defer></script>
 <script src="js/ranking.js"></script>
 <div id="cutin" class="hidden"></div>
 <section id="story-screen" class="hidden"></section>

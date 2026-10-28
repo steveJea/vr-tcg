@@ -90,13 +90,13 @@
     const m = e.detail || {};
     const box = endBox();
     if (!logged()) {
-      box.innerHTML = `<div class="gal-hint">${IC('gallery')} 로그인하면 카드가 갤러리에 수집돼요</div>`;
+      box.innerHTML = `<div class="gal-hint">${IC('gallery')} 로그인하면 인재가 갤러리에 수집돼요</div>`;
       return;
     }
     const ids = m.result === 'win' ? [...new Set((m.fieldIds || []).map(String))] : [];
     const mvp = m.mvpId ? String(m.mvpId) : null;
     if (m.result !== 'win' && mvp) ids.push(mvp);
-    if (!ids.length) { box.innerHTML = `<div class="gal-hint">이번 판은 갤러리에 수집된 카드가 없어요</div>`; return; }
+    if (!ids.length) { box.innerHTML = `<div class="gal-hint">이번 판은 갤러리에 수집된 인재가 없어요</div>`; return; }
     box.innerHTML = `<div class="gal-hint">${IC('gallery')} 갤러리에 수집 중...</div>`;
     try {
       await loadCards();
@@ -142,8 +142,8 @@
     if ($('gal-modal')) return;
     const m = document.createElement('div');
     m.id = 'gal-modal'; m.className = 'gal-modal hidden';
-    m.innerHTML = `<div class="gal-panel" role="dialog" aria-label="카드 갤러리">
-      <div class="gal-head"><div><div class="gal-title">${IC('gallery')} 카드 갤러리</div><div id="gal-progress" class="gal-progress"></div></div>
+    m.innerHTML = `<div class="gal-panel" role="dialog" aria-label="인재 갤러리">
+      <div class="gal-head"><div><div class="gal-title">${IC('gallery')} 인재 갤러리</div><div id="gal-progress" class="gal-progress"></div></div>
         <button id="gal-close" class="gal-x" aria-label="닫기">✕</button></div>
       <div class="gal-bar"><div id="gal-bar-fill"></div></div>
       <div id="gal-filters" class="gal-filters"></div>
@@ -173,9 +173,9 @@
     $('gal-modal').classList.remove('hidden'); document.body.classList.add('gal-lock');
     $('gal-detail').classList.add('hidden');
     $('gal-msg').textContent = '불러오는 중...'; $('gal-grid').innerHTML = '';
-    try { await loadCards(); await loadSkills(); } catch { $('gal-msg').textContent = '카드 목록을 불러오지 못했어요. 인터넷 연결을 확인해 주세요.'; return; }
+    try { await loadCards(); await loadSkills(); } catch { $('gal-msg').textContent = '인재 목록을 불러오지 못했어요. 인터넷 연결을 확인해 주세요.'; return; }
     let msg = '';
-    if (!logged()) { owned = new Map(); msg = cloud()?.sb ? '🔑 로그인하면 카드가 갤러리에 수집돼요' : '📡 지금은 서버에 연결할 수 없어요. 게스트로는 수집되지 않아요'; }
+    if (!logged()) { owned = new Map(); msg = cloud()?.sb ? '🔑 로그인하면 인재가 갤러리에 수집돼요' : '📡 지금은 서버에 연결할 수 없어요. 게스트로는 수집되지 않아요'; }
     else { try { await flushPending(); await fetchOwned(); } catch (e) { console.warn('[gallery] load failed', e); msg = '📡 갤러리를 불러오지 못했어요. 잠시 후 다시 시도해 주세요'; } }
     $('gal-msg').innerHTML = msg ? (logged() || !cloud()?.sb ? esc(msg) : `${window.VRIcon ? VRIcon.swap(esc(msg)) : esc(msg)} <button id="gal-login" class="gal-login">로그인</button>`) : '';
     if ($('gal-login')) $('gal-login').onclick = () => cloud().login();

@@ -137,14 +137,14 @@
     const boss = me.role === 'boss' && x.role !== 'boss';
     const m = pop(`<div class="gd-mp">${x.card ? `<img class="gd-mp-img" src="${IMG}${x.card}.webp" alt="" onerror="this.remove()">` : '<div class="gd-mp-no">👤</div>'}
       <div class="gd-mp-n">${ROLE[x.role][0]} ${esc(x.name)}</div><div class="gd-mp-s">${ROLE[x.role][1]} · ${new Date(x.joined_at).toLocaleDateString('ko-KR')} 가입</div><div class="gd-mp-d">…</div>
-      <div class="gd-mp-a">${boss ? `<button data-role="${x.role === 'officer' ? 'member' : 'officer'}">${x.role === 'officer' ? '간부 해제' : (gi('role_officer', '⚔️') + ' 간부 임명')}</button><button data-tr>${gi('role_boss', '👑')} 보스 넘기기</button>` : ''}${canKick ? '<button class="bad" data-kick>추방</button>' : ''}</div></div>`);
+      <div class="gd-mp-a">${boss ? `<button data-role="${x.role === 'officer' ? 'member' : 'officer'}">${x.role === 'officer' ? '간부 해제' : (gi('role_officer', '⚔️') + ' 간부 임명')}</button><button data-tr>${gi('role_boss', '👑')} 보스 이관</button>` : ''}${canKick ? '<button class="bad" data-kick>추방</button>' : ''}</div></div>`);
     const ago = t => { const h = (Date.now() - new Date(t)) / 36e5; return h < 1 ? '방금' : h < 24 ? `${Math.floor(h)}시간 전` : `${Math.floor(h / 24)}일 전`; };
     rpc('guild_member_info', { p_user: x.user_id }).then(d => { const el = m.querySelector('.gd-mp-d'); if (!el || !d) return;
       el.innerHTML = `<div class="gd-mp-g"><span><small>레벨</small><b>Lv.${d.level}</b></span><span><small>충성 누적</small><b>${LOYI}${n(d.loyalty_total)}</b></span><span><small>이번 주</small><b>${LOYI}${n(d.loyalty_week)}</b></span>
         <span><small>PvP</small><b>${d.pvp ? `${esc(d.pvp.tier)} ${n(d.pvp.rating)}` : '-'}</b></span><span><small>접속</small><b>${ago(d.seen_at)}</b></span></div>
         ${d.top?.length ? `<div class="gd-mp-top">${d.top.map(c => `<span><img src="${IMG}${c.id}.webp" alt="" loading="lazy" onerror="this.remove()"><small>Lv.${c.level}</small></span>`).join('')}</div>` : ''}`; }).catch(() => { const el = m.querySelector('.gd-mp-d'); if (el) el.remove(); });
     m.querySelector('[data-role]')?.addEventListener('click', async e => { if (await act('guild_set_role', { p_user: x.user_id, p_role: e.currentTarget.dataset.role }, '역할을 바꿨어요')) m.remove(); });
-    m.querySelector('[data-tr]')?.addEventListener('click', async () => { if (confirm(`${x.name} 에게 보스를 넘길까요?`) && await act('guild_transfer', { p_user: x.user_id }, '👑 보스를 넘겼어요')) m.remove(); });
+    m.querySelector('[data-tr]')?.addEventListener('click', async () => { if (confirm(`${x.name} 에게 보스를 이관할까요?`) && await act('guild_transfer', { p_user: x.user_id }, '👑 보스를 이관했어요')) m.remove(); });
     m.querySelector('[data-kick]')?.addEventListener('click', async () => { if (confirm(`${x.name} 을(를) 추방할까요? 72시간 동안 다시 들어올 수 없어요`) && await act('guild_kick', { p_user: x.user_id }, '추방했어요')) m.remove(); });
   }
   function shopPop() {
@@ -152,7 +152,7 @@
       return `<button class="gd-si" data-buy="${s.item}" ${lock || done ? 'disabled' : ''}><span class="gd-si-ic">${ic}</span><b>${l}</b><span class="gd-si-p">${LOYI}${n(s.price)}</span>${lock ? `<small class="gd-si-l">${gi('ic_lock', '🔒')} Lv.${s.min_level}</small>` : s.left != null ? `<small class="gd-si-l">${s.owned ? '보유' : s.left}</small>` : ''}</button>`; }).join('');
       m.querySelector('.gd-loy b').textContent = n(st.loyalty);
       m.querySelectorAll('[data-buy]').forEach(b => b.onclick = async () => { b.disabled = true; const r = await act('guild_shop_buy', { p_item: b.dataset.buy }, `${SHOP[b.dataset.buy]?.[0] || ''} 구매 완료`); if (r?.wallet) window.VRPlayer?.setWallet?.(r.wallet); if (m.isConnected) draw(m); }); };
-    const m = pop(`<div class="gd-h big">${gi('tile_shop', '🛒')} 조직 상점 <span class="gd-loy">${LOYI} <b></b></span></div><div class="gd-shop"></div><small class="gd-hint">충성은 스토리·PvP로 조직 세력을 올리면 쌓여요</small>`, 'wide');
+    const m = pop(`<div class="gd-h big">${gi('tile_shop', '🛒')} 조직 상점 <span class="gd-loy">${LOYI} <b></b></span></div><div class="gd-shop"></div>`, 'wide');
     draw(m);
   }
   function reqPop() {
