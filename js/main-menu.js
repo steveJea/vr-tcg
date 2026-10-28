@@ -76,15 +76,14 @@
     $('main-tutorial').classList.toggle('hidden', lv >= TUT_LV);
   }
 
-  // --- 공지 한 줄: 관리자 게시판(notices 테이블, 고정 먼저) + data/notice.json 을 합쳐서 흐르는 글자 ---
-  let jsonItems = [], dbItems = [];
+  // --- 공지 한 줄: 관리자 게시판(notices 테이블, 고정 먼저)에 쓴 글만 흐르는 글자로. 없으면 공지 줄 숨김 ---
+  let dbItems = [];
   const paintNotice = () => {
-    const items = [...dbItems, ...jsonItems].filter(Boolean); if (!items.length) return;
+    const items = dbItems.filter(Boolean); if (!items.length) { $('notice-line').classList.add('hidden'); return; }
     const t = $('notice-text'); t.textContent = items.join('   ·   ');
     t.style.animationDuration = `${Math.max(10, t.textContent.length * 0.28)}s`;
     $('notice-line').classList.remove('hidden');
   };
-  fetch('data/notice.json', { cache: 'no-cache' }).then(r => r.json()).then(d => { jsonItems = d.items || []; paintNotice(); }).catch(() => {});
   const loadBoard = async () => {
     try {
       const rows = window.__NOTICE_MOCK ? await window.__NOTICE_MOCK() : (await window.VRCloud.sb.from('notices').select('body,pinned,created_at').order('pinned', { ascending: false }).order('created_at', { ascending: false }).limit(20)).data;
