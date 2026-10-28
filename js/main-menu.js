@@ -45,9 +45,9 @@
   // --- 게스트 잠금: 아케이드 외 버튼 → 로그인 확인 ---
   const paintLocks = () => {
     const guest = !user();
-    document.querySelectorAll('.main-tile[data-auth]').forEach(b => b.classList.toggle('guest-lock', guest));
+    document.querySelectorAll('#start-screen [data-auth]').forEach(b => b.classList.toggle('guest-lock', guest));
   };
-  document.querySelectorAll('.main-tile[data-auth]').forEach(b => b.addEventListener('click', async e => {
+  document.querySelectorAll('#start-screen [data-auth]').forEach(b => b.addEventListener('click', async e => {
     if (user()) return;
     e.stopImmediatePropagation(); e.preventDefault();
     if (await confirmYN('로그인하시겠어요?')) login();
@@ -55,7 +55,7 @@
   // 로그아웃하면 인트로(로그인/게스트 선택)를 다시 보여 줌
   let hadUser = !!user();
   window.addEventListener('vr:user', () => {
-    paintLocks(); paintTut();
+    paintLocks(); paintTut(); paintHome();
     const now = !!user();
     if (hadUser && !now) { localStorage.removeItem(INTRO_KEY); showIntro(); }
     hadUser = now;
@@ -92,7 +92,34 @@
   };
   { let n = 0; const w = setInterval(() => { if (window.__NOTICE_MOCK || window.VRCloud?.sb) { clearInterval(w); loadBoard(); } else if (++n > 40) clearInterval(w); }, 250); }
 
-  paintLocks(); paintTut();
+  paintLocks(); paintTut(); paintHome();
   let tries = 0; const poll = setInterval(() => { paintLocks(); if (window.VRCloud?.ready || ++tries > 40) clearInterval(poll); }, 250);
+  // --- 개편 A: 상단 재화·레벨, 스토리 이어하기 카드, 하단 탭, 설정 안 푸터·로그아웃 ---
+  async function paintHome() {
+    const scr = $('start-screen'), u = user();
+    scr.classList.toggle('is-guest', !u);
+    $('main-logout').classList.toggle('hidden', !u);
+    const cur = $('main-cur'); if (!u) { cur.innerHTML = ''; return; }
+    try {
+      const [st, w, g] = await Promise.all([window.VRPlayer?.status?.(), window.VRPlayer?.wallet?.(), window.VRGem?.status?.()]);
+      const n = v => (v | 0) >= 100000 ? Math.floor(v / 1000) + 'k' : (v | 0).toLocaleString();
+      if (st?.level != null) { const c = document.querySelector('#acct-box .acct-chip'); if (c && !c.querySelector('.acct-lv')) c.insertAdjacentHTML('beforeend', `<b class="acct-lv">Lv.${st.level | 0}</b>`); }
+      cur.innerHTML = [g && `<span title="심연석">🔮 ${n(g.gem)}</span>`, w && `<span title="골드">🪙 ${n(w.gold)}</span>`].filter(Boolean).join('');
+    } catch {}
+    try {
+      const sm = await window.VRStory?.summary?.(), c = sm?.current;
+      if (c) $('main-cta-sub').textContent = `CHAPTER ${c.i} · ${c.phase ? 'PHASE ' + c.phase : `${c.done}/${c.total}`}${c.title ? ' · ' + c.title : ''}`;
+    } catch {}
+  }
+  $('tab-talent').addEventListener('click', () => { if (user()) window.VRStory?.openCards?.(); });
+  $('tab-home').addEventListener('click', () => document.querySelectorAll('.main-pop:not(.hidden)').forEach(p => p.classList.add('hidden')));
+  $('main-logout').addEventListener('click', () => $('acct-logout')?.click());
+  // 그림순이 에셋이 있으면 자동 교체 (없으면 이모지/기존 그림 유지)
+  const tryImg = (src, ok) => { const i = new Image(); i.onload = () => ok(src); i.src = src; };
+  document.querySelectorAll('.main-tab [data-ic]').forEach(el => tryImg(`img/ui/main/tab_${el.dataset.ic}.webp`, s => { el.innerHTML = `<img src="${s}" alt="">`; }));
+  { const im = document.querySelector('#story-btn [data-alt]'); if (im) tryImg(im.dataset.alt, s => { im.src = s; }); }
+  // 패밀리 링크·저작권 → 설정 팝업 안으로
+  { let k = 0; const mv = () => { const f = $('mbbs-footer'); if (f) $('gm-foot').appendChild(f); else if (++k < 40) setTimeout(mv, 150); }; mv(); }
+  window.addEventListener('tcg:ready', paintHome);
   window.VRMainMenu = { confirmYN, showIntro, hideIntro };
 })();
