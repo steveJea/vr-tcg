@@ -208,8 +208,10 @@ function startGame(story = null) {
       const tgt = PS && S.me.field.find(u => String(u.card.id) === String(PS.id));
       if (tgt && S.me.field.some(u => String(u.card.id) === String(PS.with))) { tgt.noDamage = true; tgt.pairShield = PS.turns; S.pairShield = { u: tgt, turns: PS.turns }; log(`🛡️ 자매의 가호: ${tgt.card.name}은(는) ${PS.turns}턴 동안 피해를 입지 않아요.`, 'text-sky-300'); } }
     refreshAll(S.me); refreshAll(S.ai);
-    setTimeout(() => { if (S && !S.over) { for (const w of ['me', 'ai']) for (const u of S[w].field) onEnter(w, u); flushHeldPassives(); } }, 400);
-    if (story.tutorial) window.setTimeout(() => window.VRTutorial?.start(story.tutorial, { force: !!story.tutorialForce }), 900);   // 페이즈의 tutorial id → 가이드 (data/tutorials/<id>.json)   // 출전 카드 등장 컷인·이벤트
+    S.kick = story.kickoff ? kickoffGate() : null;   // story.kickoff: [시작하기] 를 눌러야 등장 연출·첫 턴·가이드 시작 (챕터 0)
+    const s0 = S, after = (fn, ms) => (s0.kick || Promise.resolve()).then(() => setTimeout(() => { if (S === s0 && !S.over) fn(); }, ms));
+    after(() => { for (const w of ['me', 'ai']) for (const u of S[w].field) onEnter(w, u); flushHeldPassives(); }, 400);
+    if (story.tutorial) after(async () => { for (let k = 0; k < 50 && (fxQueueRun || fxQueue.length); k++) await sleep(200); if (S === s0 && !S.over) window.VRTutorial?.start(story.tutorial, { force: !!story.tutorialForce }); }, 900);   // 등장 연출이 끝난 뒤 가이드   // 페이즈의 tutorial id → 가이드 (data/tutorials/<id>.json)   // 출전 카드 등장 컷인·이벤트
     if (S.me.leaderSkill) log(`👑 리더 스킬 [${S.me.leaderSkill.name} · ${S.me.leaderSkill.label}]: ${S.me.leaderSkill.text}. 리더가 쓰러지면 해제되고 아군 진영 HP −${Math.round((S.me.leaderSkill.deathPenalty ?? 0.3) * 100)}%`, 'text-amber-300');
     log(story.win === 'ko' ? '👑 보스전: 보스는 진영 안에서 쓰러지지 않아요. 상대 진영 HP를 0으로!' : '⚔️ 일반전: 상대 카드를 모두 쓰러뜨리세요!', 'text-amber-300');
   }
@@ -218,7 +220,8 @@ function startGame(story = null) {
   if (!fs) log(first === 'me' ? '🪙 동전 던지기: 내가 선공!' : `🪙 동전 던지기: 컴퓨터가 선공! (나는 후공, 시작 손패 +${RULES.SECOND_PLAYER_BONUS_CARDS})`, 'text-emerald-400');
   $('me-order').textContent = first === 'me' ? '선공' : '후공';
   $('ai-order').textContent = first === 'ai' ? '선공' : '후공';
-  startTurn(first);
+  if (S.kick) { S.turn = 'wait'; render(); }   // 시작 전: 카드는 보이지만 아무 행동 불가
+  if (S.kick) { const s0 = S; S.kick.then(() => setTimeout(() => { if (S === s0 && !S.over) { startTurn(first); render(); } }, 1200)); } else startTurn(first);
 }
 
 function startTurn(who) {
@@ -599,6 +602,16 @@ function awakenCheck() {
     TUT('awaken', { id: A.card.id });
   });
   runFxQueue();
+}
+/** [시작하기] 버튼: 누르면 resolve. 전투 화면 위 가운데 */
+function kickoffGate() {
+  return new Promise(res => {
+    document.getElementById('kickoff-ov')?.remove();
+    const ov = document.createElement('div'); ov.id = 'kickoff-ov'; ov.className = 'kickoff-ov';
+    ov.innerHTML = '<button type="button" class="kickoff-btn">⚔️ 시작하기</button>';
+    ov.querySelector('button').onclick = () => { ov.remove(); playSe(4); res(); };
+    document.body.appendChild(ov);
+  });
 }
 /** 소환 대기 카드(S.reserve) 소환 — 내 턴에 버튼. 지금은 무료(cost 0); 마나 코스트 설계가 오면 cost 만 채우면 됨 */
 function summonReserve() {

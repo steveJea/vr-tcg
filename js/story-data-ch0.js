@@ -325,7 +325,15 @@ window.STORY_DATA.chapters.unshift({
     "mustLive": [],
     "fixedLevel": {
      "2000100001": 1
-    }
+    },
+    "only": [
+     "2000100006",
+     "2000100004"
+    ],
+    "guests": [
+     "2000100006",
+     "2000100004"
+    ]
    },
    "awaken": {
     "on": "2000100001",
