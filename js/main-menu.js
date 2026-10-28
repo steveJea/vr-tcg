@@ -76,13 +76,22 @@
     $('main-tutorial').classList.toggle('hidden', lv >= TUT_LV);
   }
 
-  // --- 공지 한 줄 (data/notice.json, 흐르는 글자) ---
-  fetch('data/notice.json', { cache: 'no-cache' }).then(r => r.json()).then(d => {
-    const items = (d.items || []).filter(Boolean); if (!items.length) return;
+  // --- 공지 한 줄: 관리자 게시판(notices 테이블, 고정 먼저) + data/notice.json 을 합쳐서 흐르는 글자 ---
+  let jsonItems = [], dbItems = [];
+  const paintNotice = () => {
+    const items = [...dbItems, ...jsonItems].filter(Boolean); if (!items.length) return;
     const t = $('notice-text'); t.textContent = items.join('   ·   ');
     t.style.animationDuration = `${Math.max(10, t.textContent.length * 0.28)}s`;
     $('notice-line').classList.remove('hidden');
-  }).catch(() => {});
+  };
+  fetch('data/notice.json', { cache: 'no-cache' }).then(r => r.json()).then(d => { jsonItems = d.items || []; paintNotice(); }).catch(() => {});
+  const loadBoard = async () => {
+    try {
+      const rows = window.__NOTICE_MOCK ? await window.__NOTICE_MOCK() : (await window.VRCloud.sb.from('notices').select('body,pinned,created_at').order('pinned', { ascending: false }).order('created_at', { ascending: false }).limit(20)).data;
+      dbItems = (rows || []).map(r => (r.pinned ? '📌 ' : '') + r.body); paintNotice();
+    } catch {}
+  };
+  { let n = 0; const w = setInterval(() => { if (window.__NOTICE_MOCK || window.VRCloud?.sb) { clearInterval(w); loadBoard(); } else if (++n > 40) clearInterval(w); }, 250); }
 
   paintLocks(); paintTut();
   let tries = 0; const poll = setInterval(() => { paintLocks(); if (window.VRCloud?.ready || ++tries > 40) clearInterval(poll); }, 250);
