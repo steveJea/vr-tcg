@@ -672,3 +672,5 @@ span.story-lvpct { background: rgba(251,191,36,.12); border: 1px solid rgba(251,
 .story-chtitle{display:flex;align-items:center;justify-content:center;gap:10px}
 .story-charr{flex:none;width:38px;height:38px;border-radius:999px;border:1px solid #fbbf24;background:rgba(24,24,27,.75);color:#fde68a;font-size:26px;font-weight:900;line-height:1;display:flex;align-items:center;justify-content:center}
 .story-charr:disabled{opacity:.4;color:#71717a;border-color:#3f3f46;background:#0f0f11;cursor:not-allowed}
+/* 챕터 맵: 메뉴 바를 맨 아래로 */
+.story-map-bottom{margin-top:18px}
