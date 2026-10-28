@@ -1,6 +1,6 @@
 import { levelUpOnce, RULES, calcPower, skillLvPowerMult, skillCountMult, ELEMENTS, elementMultiplier, calcDamage, canSummon, buildDeck, parseCSV, aiSummonOrder, aiPickTarget, recallCost, canRecall, aiShouldRecall, makeUnit, resolveAttack, refillMana, ACTIONS, canAction, doAction, clearBuff, aiWantShuffle, aiWantBuff, aiWantHeal, aiWantFieldHeal, aiPickItem, endTurnXp, ITEMS, canEquip, equip, attackTargets, canTarget, autoTarget, heroLocked, xpToNext, SKILLS, gainXp, setCardPool, canSacrifice, sacrifice, aiPickSacrifice, aiWantAccel, judgeTimeout, JUDGE_LABEL, genderMult, GRADES, GRADE_SHORT, allowedGrades, baseEvade, swapField } from './rules.js';
 import { autoNext, noteUsed } from './auto-ai.js';
-import { initStatusFx, statusApplyFx, paraSkipFx, confuseAllyFx, statusClasses, statusDecor, statusIconUrl, isStatusFxKind } from './status-fx.js';
+import { initStatusFx, statusApplyFx, paraSkipFx, confuseAllyFx, tauntPullFx, statusClasses, statusDecor, statusIconUrl, isStatusFxKind } from './status-fx.js';
 import { skillCd, skillMp, setSpare, spareBlocked, setSkillData, setEmitter, initPlayers, placeUnit, turnStart, turnEnd, useSkill, skillState, aiPickSkill, skillLvOf, skillCdAt, skillLvMult, skillLvProb, SKILL_LV_MAX, refreshAll, statusIcons, skillsOf, combos, STATUS, SK, maleLure, checkDeath } from './skills.js';
 
 const IMG = 'https://raw.githubusercontent.com/steveJea/vr-ideal-worldcup/main/img/bt_img/';
@@ -480,6 +480,7 @@ async function attack(who, unit, target, fromBatch = false) {
     const shown = lure && lure !== target ? lure : target;
     const tEl = shown ? (unitEl(oWho, shown) || heroEl(oWho)) : heroEl(oWho);
     playSe(7);
+    if (shown?.st?.taunt) tauntPullFx(aEl, tEl);
     const hit = await withTimeout(lunge(aEl, tEl), 750);
 
     const cls = who === 'me' ? 'text-emerald-300' : 'text-red-300';

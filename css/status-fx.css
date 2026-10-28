@@ -89,3 +89,26 @@
 @media (prefers-reduced-motion: reduce) {
   .unit.st-para > .relative, .unit.st-confuse > .relative, .stfx-stars, .stfx-p-spark, .stfx-b-drip, .status-icons .st-big { animation: none !important; }
 }
+
+/* ===== 도발: 방패 슬램 + 붉은 오라 ===== */
+.stfx-text-taunt { color: #fee2e2; text-shadow: 0 0 12px #ef4444, 0 0 24px #b91c1c; }
+.stfx-aura-burst { width: calc(var(--w) * 1.9); height: calc(var(--w) * 1.9); transform: translate(-50%, -50%); border-radius: 50%; animation-name: stfx-aura-burst; }
+.stfx-aura-burst:not(.has-img) { background: radial-gradient(circle, rgba(254,202,202,.0) 25%, rgba(239,68,68,.75) 45%, rgba(185,28,28,.35) 60%, transparent 70%); }
+@keyframes stfx-aura-burst { 0% { opacity: 0; transform: translate(-50%, -50%) scale(.3); } 25% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -50%) scale(1.4); } }
+.stfx-shield-slam { width: calc(var(--w) * .7); height: calc(var(--w) * .8); transform: translate(-50%, -50%); animation-name: stfx-shield-slam; animation-timing-function: cubic-bezier(.3,1.6,.5,1); }
+#stfx-layer .stfx-shield-slam.has-img { mix-blend-mode: normal; }
+.stfx-shield-slam:not(.has-img) { background: linear-gradient(160deg, #fca5a5, #dc2626 55%, #7f1d1d); clip-path: polygon(50% 0, 100% 15%, 92% 60%, 50% 100%, 8% 60%, 0 15%);
+  filter: drop-shadow(0 0 10px #ef4444); }
+@keyframes stfx-shield-slam { 0% { opacity: 0; transform: translate(-50%, -160%) scale(1.8); } 35% { opacity: 1; transform: translate(-50%, -50%) scale(1); } 45% { transform: translate(-50%, -45%) scale(1.1, .9); }
+  75% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -50%) scale(1.2); } }
+.stfx-pull { height: 4px; transform-origin: 0 50%; margin-top: -2px; animation-name: stfx-pull; border-radius: 2px;
+  background: linear-gradient(90deg, transparent, rgba(239,68,68,.9) 30%, #fecaca); box-shadow: 0 0 8px #dc2626; }
+.stfx-pull::after { content: ''; position: absolute; right: -6px; top: 50%; width: 14px; height: 14px; margin-top: -7px; background: #fecaca; clip-path: polygon(0 0, 100% 50%, 0 100%); filter: drop-shadow(0 0 4px #ef4444); }
+@keyframes stfx-pull { 0% { opacity: 0; clip-path: inset(0 100% 0 0); } 40% { opacity: 1; clip-path: inset(0 0 0 0); } 100% { opacity: 0; clip-path: inset(0 0 0 0); } }
+.unit.st-taunt > .relative { border-radius: 8px; animation: stfx-taura 1.6s ease-in-out infinite; }
+@keyframes stfx-taura { 0%, 100% { box-shadow: 0 0 0 1px rgba(239,68,68,.6), 0 0 8px 1px rgba(239,68,68,.45); } 50% { box-shadow: 0 0 0 2px rgba(248,113,113,.9), 0 0 18px 4px rgba(220,38,38,.7); } }
+.stfx-t-emblem { position: absolute; right: 2px; bottom: 18%; width: 16px; height: 18px; animation: stfx-ipulse 1.6s ease-in-out infinite; }
+.stfx-t-emblem:not(.has-img) { background: linear-gradient(160deg, #fca5a5, #dc2626 60%, #7f1d1d); clip-path: polygon(50% 0, 100% 15%, 92% 60%, 50% 100%, 8% 60%, 0 15%); filter: drop-shadow(0 0 3px #ef4444); }
+.stfx-t-emblem.has-img { background-size: contain; background-repeat: no-repeat; background-position: center; }
+.status-icons .st-big.taunt { filter: drop-shadow(0 0 3px #ef4444); }
+@media (prefers-reduced-motion: reduce) { .unit.st-taunt > .relative, .stfx-t-emblem { animation: none !important; } }
