@@ -240,7 +240,7 @@
     r.scrollTop = 0;
   }
   function home() { bgm('main'); root().classList.add('hidden'); $('start-screen').classList.remove('hidden'); }
-  const topBar = (title, back = 'home') => `<div class="story-top"><button class="story-back" data-go="${back}">← ${back === 'home' ? '처음으로' : back === 'hub' ? '스토리 메인' : '돌아가기'}</button><div class="story-top-title">${title}</div><span class="flex gap-1.5"><button class="story-mycards story-gacha-btn" data-go="gacha">🎴 인재영입${canDraw() ? '<i class="story-badge">1</i>' : ''}</button><button class="story-mycards" data-go="cards">🃏 보유 인재</button><button class="story-mycards" data-go="decks">🗂 덱</button></span></div>`;
+  const topBar = (title, back = 'home', nav = true) => `<div class="story-top"><button class="story-back" data-go="${back}">← ${back === 'home' ? '처음으로' : back === 'hub' ? '스토리 메인' : '돌아가기'}</button><div class="story-top-title">${title}</div>${nav ? `<span class="flex gap-1.5"><button class="story-mycards story-gacha-btn" data-go="gacha">🎴 인재영입${canDraw() ? '<i class="story-badge">1</i>' : ''}</button><button class="story-mycards" data-go="cards">🃏 보유 인재</button><button class="story-mycards" data-go="decks">🗂 덱</button></span>` : '<span></span>'}</div>`;
   function bind(extra = {}) {
     root().querySelectorAll('[data-go]').forEach(b => b.onclick = () => ({ home, hub: renderHub, map: renderMap, cards: renderCards, decks: renderDecks, gacha: renderShop, bonds: renderBonds, ...extra })[b.dataset.go]?.());
   }
@@ -386,12 +386,12 @@
     const swOn = serverMode && done.length, swP = window.VRPlayer?.now?.(), swNeed = swP?.unlocks?.sweep ?? SWEEP_LV, swLock = !!swP && (swP.level | 0) < swNeed;
     const node = (p, i) => { const st = done.includes(p.no) ? 'done' : p.no === nextNo ? 'next' : 'lock', boss = p.type === 'boss';
       const dot = boss ? ic('crown', { alt: '보스', cls: 'story-node-ic' }) : st === 'done' ? '✔' : st === 'lock' ? '🔒' : p.no;
-      return `${i ? `<div class="story-path ${st !== 'lock' ? 'on' : ''}"></div>` : ''}<span class="story-node-wrap"><button class="story-node ${st} ${p.type}" data-phase="${p.no}" ${st === 'lock' ? 'disabled' : ''} aria-label="Phase ${p.no}${boss ? ' 보스' : ''}${st === 'done' ? ' 다시 하기' : ''}"><span class="story-node-dot">${dot}${boss && st === 'done' ? '<i class="story-node-ok">✔</i>' : ''}</span><span class="story-node-label">${boss ? 'BOSS' : p.no}</span></button>${swOn && st === 'done' ? `<button class="story-node-sw ${swLock ? 'off' : ''}" data-sweep="${p.no}" title="소탕" aria-label="Phase ${p.no} 소탕">${SW()}</button>` : ''}</span>`; };
+      return `${i ? `<div class="story-path ${st !== 'lock' ? 'on' : ''}"></div>` : ''}<span class="story-node-wrap"><button class="story-node ${st} ${p.type}" data-phase="${p.no}" ${st === 'lock' ? 'disabled' : ''} aria-label="Phase ${p.no}${boss ? ' 보스' : ''}${st === 'done' ? ' 다시 하기' : ''}"><span class="story-node-dot">${dot}${boss && st === 'done' ? '<i class="story-node-ok">✔</i>' : ''}</span><span class="story-node-label">${boss ? 'BOSS' : p.no}</span></button></span>`; };
     const rows = []; for (let k = 0; k < ch.phases.length; k += 5) rows.push(ch.phases.slice(k, k + 5));   // 5칸씩 한 줄
     const tabs = D.chapters.length > 1 ? `<div class="story-chtabs">${D.chapters.map((c, i) => { const open = chapterOpen(i), why = !open ? (i && !chapterDone(D.chapters[i - 1]) ? `${esc(D.chapters[i - 1].title)} 클리어 후` : '준비 중') : '';
       return `<button class="story-chtab ${i === curCh ? 'on' : ''}" data-ch="${i}" ${open ? '' : 'disabled'}>${open ? '' : '🔒 '}${esc(c.title)}${why ? `<small>${why}</small>` : ''}</button>`; }).join('')}</div>` : '';
     const nextCh = D.chapters[curCh + 1], nextOpen = nextCh && chapterOpen(curCh + 1);
-    show(`${topBar(esc(ch.title), 'hub')}${tabs}
+    show(`<div class="story-map-bg" aria-hidden="true" style="background-image:url(img/story/ch_bg_${esc(base.id)}.webp)"></div>${topBar(esc(ch.title), 'hub')}${tabs}
       <div class="text-center mt-2"><div class="story-chapter-big text-3xl md:text-5xl">${esc(ch.title)}</div><div class="story-chapter-name">${esc(ch.subtitle)}</div>
         ${hero && ch.route ? `<div class="story-route-tag">루트 <b>${esc(hero.name)}</b>${clearedOf(ch).length ? '' : ' <button class="story-mini" data-go="route">루트 바꾸기</button>'}</div>` : ''}</div>
       <div class="story-player-row" data-vr-player></div>
@@ -405,12 +405,17 @@
     bind({ stats: () => openStats(renderMap), opening: () => playOpening(renderMap), endvideo: () => endingVideo(base), route: () => renderRouteSelect(curCh),
       rule: () => popup(`<div class="text-lg font-black mb-2">⚔️ 스토리 전투</div><div class="text-sm text-zinc-300 leading-relaxed">출전 인재 최대 ${MAX_PICK()}명이 모두 필드에서 시작해요 (손패·드로우·용병 없음, 내 진영 없음).<br>내 인재가 모두 쓰러지거나 ${RULES_TURNS()}턴이 지나면 패배.<br>일반전은 상대 인재 전멸, 👑 보스전은 상대 진영 HP 0이면 승리.</div><button data-close-pop class="story-btn w-full mt-4">확인</button>`) }); playerPaint();
     root().querySelectorAll('[data-ch]').forEach(b => b.onclick = () => renderMap(+b.dataset.ch));
-    root().querySelectorAll('[data-phase]').forEach(b => b.onclick = () => startPhase(ch, ch.phases.find(p => p.no === +b.dataset.phase)));
-    root().querySelectorAll('[data-sweep]').forEach(b => b.onclick = e => { e.stopPropagation();
-      const P = window.VRPlayer?.now?.(), need = P?.unlocks?.sweep ?? SWEEP_LV;
-      if (P && (P.level | 0) < need) return toast(`${SW()} 소탕은 플레이어 Lv.${need}부터 (현재 Lv.${P.level | 0})`);
-      sweepPop(ch, ch.phases.find(p => p.no === +b.dataset.sweep)); });
-    if (swOn && !swP && window.VRPlayer) window.VRPlayer.status().then(() => root().querySelectorAll('.story-node-sw').forEach(b => { const P = window.VRPlayer.now?.(); b.classList.toggle('off', !!P && (P.level | 0) < (P.unlocks?.sweep ?? SWEEP_LV)); })).catch(() => {});
+    // 페이즈 누르면 팝업: 안 깬 페이즈 = [도전하기], 깬 페이즈 = [도전하기][소탕하기]
+    root().querySelectorAll('[data-phase]').forEach(b => b.onclick = () => {
+      const ph = ch.phases.find(p => p.no === +b.dataset.phase), cleared = done.includes(ph.no), canSw = swOn && cleared;
+      const pp = popup(`<div class="story-phpop"><div class="story-phpop-t">${esc(ch.title)} · Phase.${ph.no}${ph.type === 'boss' ? ' · BOSS' : ''}</div>${ph.title ? `<div class="story-phpop-s">${esc(ph.title)}</div>` : ''}
+        <div class="story-phpop-a"><button class="story-btn" data-ph-go>⚔️ 도전하기</button>${canSw ? `<button class="story-btn story-btn-sw" data-ph-sw>${SW()} 소탕하기</button>` : ''}</div></div>`);
+      pp.el.querySelector('[data-ph-go]').onclick = () => { pp.close(true); startPhase(ch, ph); };
+      pp.el.querySelector('[data-ph-sw]')?.addEventListener('click', () => {
+        const P = window.VRPlayer?.now?.(), need = P?.unlocks?.sweep ?? SWEEP_LV;
+        if (P && (P.level | 0) < need) return toast(`${SW()} 소탕은 플레이어 Lv.${need}부터 (현재 Lv.${P.level | 0})`);
+        pp.close(true); sweepPop(ch, ph); });
+    });
   }
 
   // ----- 소탕 (phaseE_5.sql story_sweep): 클리어한 페이즈를 1/5/10회 자동 정산. 플레이어 Lv5+, 1회 행동력 6 -----
@@ -618,6 +623,8 @@
     if (!sel.length) sel = all.slice().sort((a, b) => (isLeader(b) - isLeader(a)) || (boosted(b)?.power || 0) - (boosted(a)?.power || 0)).slice(0, slots).map(o => o.uid);
     const deck0 = new Set(sel);   // 현재 덱: 창을 연 순간의 출전 카드 (고르는 동안 자리가 바뀌지 않게)
     let list = sortInst(all, deck0);
+    const rec = new Set((ph.recommend || ph.party?.recommend || ch.recommend || []).map(String)), pf = { skill: false, rec: false };
+    const pfOk = o => (!pf.skill || skillsOf(o.id).length > 0) && (!pf.rec || rec.has(String(o.id)));
     /** 출전 카드 타일: 등급·별·기술 수·레벨·이름 */
     const pickTile = o => { const c = boosted(o), n = skillsOf(o.id).length; return `<div class="story-card story-pick-tile ${rcls(c)}"><div class="story-card-img"><img src="${IMG}${c.id}.webp" alt="${esc(c.name)}" loading="lazy" onerror="this.style.visibility='hidden'"><span class="story-rar">${RAR[c.grade] || 'N'}</span>${window.rarityStars?.(c, exOf(o) ? 'ex' : 'base', 'rstars-over rstars-sm') || ''}${n ? `<span class="story-skn" title="기술 ${n}개">✦${n}</span>` : ''}${deck0.has(o.uid) ? '<span class="story-curdeck">현재 덱</span>' : ''}</div><div class="story-card-name">${esc(c.name)}</div><div class="text-[11px] text-zinc-300 font-bold">Lv.${norm({ ...o }).level}${isLeader(o) ? ` · ${ic('crown', { alt: '' })} 리더` : ''}</div></div>`; };
     const boss = ph.type === 'boss';
@@ -627,7 +634,7 @@
         <div class="text-xs text-zinc-400 mb-2">${opts?.note ? `${opts.note}<br>` : ''}고른 인재가 모두 필드에서 시작해요. 손패·드로우는 없고, 내 인재가 모두 쓰러지면 패배예요.${boss ? '<br>👑 보스전: 보스는 진영 안에서 쓰러지지 않아요. 상대 진영 HP를 0으로!' : ''}</div>
         ${forced.length ? `<div class="story-forced-h">${ic('crown', { alt: '' })} 필수 출전 ${forced.length}장 <small>(게스트는 리더 레벨로 함께 싸우고, 전투 EXP는 받지 않아요)</small></div><div class="story-grid story-deckpick story-forced">${forced.map(fTile).join('')}</div>
           <div class="story-forced-h">나머지 ${slots}장 고르기${[...exclude].filter(id => !forced.some(o => o.id === id)).map(id => card(id)).filter(Boolean).map(c => ` · <span class="text-red-300">${esc(c.name)} 출전 불가</span>`).join('')}${notes.map(t => ` · <span class="text-red-300">${t}</span>`).join('')}</div>` : ''}${ph.enemyFirst ? '<div class="story-hint">⚡ 이번 페이즈는 적이 먼저 공격해요</div>' : ''}
-        ${decksOf().some(d => d?.uids?.length) ? `<div class="story-sortbar story-deckchips">${decksOf().map((d, i) => d?.uids?.length ? `<button class="story-chip" data-usedeck="${i}">🗂 ${esc(deckName(d, i))}</button>` : '').join('')}</div>` : ''}${sortBar()}<div class="story-grid story-deckpick">${list.map(o => { const on = sel.includes(o.uid);
+        ${decksOf().some(d => d?.uids?.length) ? `<div class="story-sortbar story-deckchips">${decksOf().map((d, i) => d?.uids?.length ? `<button class="story-chip" data-usedeck="${i}">🗂 ${esc(deckName(d, i))}</button>` : '').join('')}</div>` : ''}${sortBar()}<div class="story-sortbar story-pickf"><button class="story-chip ${pf.skill ? 'on' : ''}" data-pf="skill">✦ 스킬</button><button class="story-chip ${pf.rec ? 'on' : ''}" data-pf="rec" ${rec.size ? '' : 'disabled'}>추천 ${rec.size ? '' : '-'}</button></div><div class="story-grid story-deckpick">${list.filter(o => sel.includes(o.uid) || pfOk(o)).map(o => { const on = sel.includes(o.uid);
           return `<button class="story-pick-card ${on ? 'on' : ''}" data-pick="${o.uid}">${pickTile(o)}${on ? '<i class="story-pick-check">✔</i>' : ''}</button>`; }).join('')}</div>
         ${(() => { const lo = byUid(save.leader); if (!lo) return ''; const inF = forced.some(f => f.uid === lo.uid), out = inF ? '' : !all.some(x => x.uid === lo.uid) ? '이번 페이즈에는 리더가 출전할 수 없어 리더 스킬이 꺼져요' : !sel.includes(lo.uid) ? '리더를 출전시키지 않으면 리더 스킬이 꺼져요' : ''; return out ? `<div class="story-hint">${ic('crown', { alt: '' })} ${out}</div>` : `<div class="text-[11px] text-amber-200 mt-2">${ic('crown', { alt: '' })} 리더 스킬 켜짐: ${esc(leaderEff(lo.id)?.text || '')}</div>`; })()}
         <div class="flex gap-2 mt-3 story-pop-actions"><button class="story-back flex-1" data-close-pop>취소</button><button class="story-btn flex-1" id="story-deck-ok" ${sel.length || forced.length ? '' : 'disabled'}>출전 (${forced.length + sel.length}장)</button></div>`, () => (opts?.onCancel || renderMap)());
@@ -639,6 +646,7 @@
         p.close(true); draw();
       });
       p.el.querySelectorAll('[data-sort]').forEach(b => b.onclick = () => { setSort(b.dataset.sort); list = sortInst(all, deck0); p.close(true); draw(); });
+      p.el.querySelectorAll('[data-pf]').forEach(b => b.onclick = () => { pf[b.dataset.pf] = !pf[b.dataset.pf]; p.close(true); draw(); });
       p.el.querySelectorAll('[data-usedeck]').forEach(b => b.onclick = () => { const v = new Set(all.map(o => o.uid)); sel = (decksOf()[+b.dataset.usedeck]?.uids || []).filter(u => v.has(u)).slice(0, slots); deck0.clear(); sel.forEach(u => deck0.add(u)); list = sortInst(all, deck0); p.close(true); draw(); });
       $('story-deck-ok').onclick = () => { if (!sel.length && !forced.length) return; try { localStorage.setItem(PICK_KEY(), JSON.stringify(sel)); } catch {} p.close(true); go([...forced, ...list.filter(o => sel.includes(o.uid))]); };
     };
@@ -927,7 +935,7 @@
       .sort((a, b) => (isLeader(b.rep) - isLeader(a.rep)) || sortCmp(a, b));
   }
   // ----- 보유 카드 정렬: 등급순 · 레벨순 · 획득순 (기본 획득순 최신 먼저, 같은 버튼 다시 누르면 오름/내림 전환, localStorage 기억) -----
-  const SORT_KEY = 'vr-story-card-sort', SORTS = { new: '획득', grade: '등급', level: '레벨', cls: '속성', region: '지역', name: '이름' }, GRADE_ORD = Object.keys(RAR);
+  const SORT_KEY = 'vr-story-card-sort', SORTS = { new: '획득', grade: '등급', level: '레벨', cls: '속성', region: '지역', skill: '스킬', name: '이름' }, GRADE_ORD = Object.keys(RAR);
   let cardSort = (() => { try { const v = JSON.parse(localStorage.getItem(SORT_KEY)); if (v && SORTS[v.k]) return { k: v.k, desc: v.desc !== false }; } catch {} return { k: 'new', desc: true }; })();
   const setSort = k => { cardSort = cardSort.k === k ? { k, desc: !cardSort.desc } : { k, desc: true }; try { localStorage.setItem(SORT_KEY, JSON.stringify(cardSort)); } catch {} };
   /** 그룹 정렬 키: 획득 = 그 카드의 가장 최근 장(보유 목록 순서), 등급 = 등급 순위, 레벨 = 대표 장 레벨. 동점은 등급 → 레벨 → 최신 순 */
@@ -939,34 +947,35 @@
   function sortCmp(a, b) {
     const nw = g => Math.max(...g.list.map(idxOf)), gr = g => GRADE_ORD.indexOf(card(g.id)?.grade || 'NORMAL'), lv = g => g.rep?.level || 0;
     if (cardSort.k === 'name') { const d = nameCmp(a.id, b.id); return cardSort.desc ? d : -d; }
-    const key = { new: [nw], grade: [gr, lv, nw], level: [lv, gr, nw], cls: [g => -clsI(g.id), gr, lv], region: [g => -regI(g.id), gr, lv] }[cardSort.k];
+    const key = { new: [nw], grade: [gr, lv, nw], level: [lv, gr, nw], cls: [g => -clsI(g.id), gr, lv], region: [g => -regI(g.id), gr, lv], skill: [g => skillsOf(g.id).length, gr, lv] }[cardSort.k];
     for (const f of key) { const d = f(a) - f(b); if (d) return cardSort.desc ? -d : d; }
     return 0;
   }
   /** 인스턴스 목록 정렬 (모든 카드 목록 창 공용): 리더 → pin(현재 덱 등) → 고른 정렬 */
   function sortInst(list, pin = null) {
     const nw = o => idxOf(o), gr = o => GRADE_ORD.indexOf(card(o.id)?.grade || 'NORMAL'), lv = o => o.level | 0;
-    const key = { new: [nw], grade: [gr, lv, nw], level: [lv, gr, nw], cls: [o => -clsI(o.id), gr, lv], region: [o => -regI(o.id), gr, lv], name: [] }[cardSort.k];
+    const key = { new: [nw], grade: [gr, lv, nw], level: [lv, gr, nw], cls: [o => -clsI(o.id), gr, lv], region: [o => -regI(o.id), gr, lv], skill: [o => skillsOf(o.id).length, gr, lv], name: [] }[cardSort.k];
     return list.slice().sort((a, b) => (isLeader(b) - isLeader(a)) || (pin ? (pin.has(b.uid) - pin.has(a.uid)) : 0) || (cardSort.k === 'name' ? (cardSort.desc ? nameCmp(a.id, b.id) : -nameCmp(a.id, b.id)) : 0) || (() => { for (const f of key) { const d = f(a) - f(b); if (d) return cardSort.desc ? -d : d; } return 0; })());
   }
   /** 팝업 안 정렬 버튼: 누르면 팝업을 다시 그림 */
   const bindSort = (p, again) => p.el.querySelectorAll('[data-sort]').forEach(b => b.onclick = () => { setSort(b.dataset.sort); p.close(true); again(); });
   const sortBar = () => `<div class="story-sortbar">${Object.entries(SORTS).map(([k, l]) => `<button class="story-chip ${cardSort.k === k ? 'on' : ''}" data-sort="${k}" aria-pressed="${cardSort.k === k}">${l}${cardSort.k === k ? (cardSort.desc ? ' ▼' : ' ▲') : ''}</button>`).join('')}</div>`;
   // ----- 보유 카드 필터: 이름 검색 · 등급 · 속성 · 지역 · 즐겨찾기 (세션 동안 유지) -----
-  const cardFilter = { q: '', grade: '', cls: '', region: '', fav: false };
+  const cardFilter = { q: '', grade: '', cls: '', region: '', fav: false, skill: false };
   const passFilter = (id, list) => { const c = card(id); if (!c) return false; const f = cardFilter;
-    return (!f.q || c.name.includes(f.q.trim())) && (!f.grade || c.grade === f.grade) && (!f.cls || c.class === f.cls) && (!f.region || c.region === f.region) && (!f.fav || list.some(isFav)); };
+    return (!f.q || c.name.includes(f.q.trim())) && (!f.grade || c.grade === f.grade) && (!f.cls || c.class === f.cls) && (!f.region || c.region === f.region) && (!f.fav || list.some(isFav)) && (!f.skill || skillsOf(id).length > 0); };
   const filterBar = () => { const f = cardFilter, opt = (v, l, cur) => `<option value="${esc(v)}" ${cur === v ? 'selected' : ''}>${esc(l)}</option>`;
     return `<div class="story-filter"><input id="sf-q" type="search" placeholder="인재명" value="${esc(f.q)}" autocomplete="off">
       <select id="sf-grade">${opt('', '등급', f.grade)}${GRADE_ORD.slice().reverse().map(g => opt(g, RAR[g] || g, f.grade)).join('')}</select>
       <select id="sf-cls">${opt('', '속성', f.cls)}${CLS_ORD.map(k => opt(k, CLS_KO[k], f.cls)).join('')}</select>
       <select id="sf-region">${opt('', '지역', f.region)}${regionsAll().map(r => opt(r, r, f.region)).join('')}</select>
-      <button id="sf-fav" class="story-chip ${f.fav ? 'on' : ''}" aria-pressed="${f.fav}" title="즐겨찾기">★</button></div>`; };
+      <button id="sf-fav" class="story-chip ${f.fav ? 'on' : ''}" aria-pressed="${f.fav}" title="즐겨찾기">★</button><button id="sf-skill" class="story-chip ${f.skill ? 'on' : ''}" aria-pressed="${f.skill}" title="스킬 있는 인재만">✦ 스킬</button></div>`; };
   const bindFilter = again => {
     const q = $('sf-q'); if (!q) return;
     let tm; q.oninput = () => { clearTimeout(tm); tm = setTimeout(() => { cardFilter.q = q.value; const pos = q.selectionStart; again(); const n = $('sf-q'); if (n) { n.focus(); try { n.setSelectionRange(pos, pos); } catch {} } }, 200); };
     for (const k of ['grade', 'cls', 'region']) $('sf-' + k).onchange = e => { cardFilter[k] = e.target.value; again(); };
     $('sf-fav').onclick = () => { cardFilter.fav = !cardFilter.fav; again(); };
+    $('sf-skill').onclick = () => { cardFilter.skill = !cardFilter.skill; again(); };
   };
   /** 내 카드 썸네일: 별(등급) + 이름 + 현재 레벨만 */
   const ownTile = (o, c, badges = '', after = '') => `<div class="story-card story-own-tile ${rcls(c)}"><div class="story-card-img"><img src="${IMG}${c.id}.webp" alt="${esc(c.name)}" loading="lazy" onerror="this.style.visibility='hidden'">${window.rarityStars?.(c, exOf(o) ? 'ex' : 'base', 'rstars-over rstars-sm') || ''}${isLeader(o) ? `<span class="story-own-leader" title="리더">${ic('crown', { alt: '리더' })}</span>` : ''}${o.cpts ? `<div class="story-cpts">+${o.cpts}</div>` : ''}${badges}${after ? `<div class="story-own-acts">${after}</div>` : ''}</div><div class="story-card-name">${esc(exName(o, c.name.replace(/^\[EX\d+\] /, '')))}</div><div class="story-own-lv">Lv.${o.level}</div></div>`;
@@ -1430,14 +1439,18 @@
     });
   }
   // ----- 상점 (카드 뽑기) 화면: 일반 뽑기(하루 1회 무료) · 특수 뽑기(소환권) -----
+  /** 인재영입 배너: 일반 · 프리미엄 (+ 나중에 특정 캐릭터 배너를 여기에 추가: { key, label, sub }, 그림 img/ui/gacha/banner_<key>.webp) */
+  const GACHA_BANNERS = [{ key: 'daily', label: '일반' }, { key: 'special', label: '프리미엄' }];
   function renderShop(tab) {
     if (tab) shopTab = tab;
     clearInterval(gachaTimer);
     const avail = canDraw(), daily = shopTab === 'daily';
     const bg = `<picture class="gr-bg"><source media="(orientation: portrait), (max-aspect-ratio: 4/5)" srcset="${GDIR}bg_portrait_720.webp 720w, ${GDIR}bg_portrait.webp 1080w" sizes="100vw"><img src="${GDIR}bg_landscape.webp" srcset="${GDIR}bg_landscape_1280.webp 1280w, ${GDIR}bg_landscape.webp 1920w" sizes="100vw" alt=""></picture>`;
-    show(`<div class="gr-room" id="gr-room">${bg}</div>${topBar(`${ICN('gacha', '🎴')} 인재영입`, 'hub')}<div class="story-shop gr-ui">
-      <div class="gr-tabs"><button class="${daily ? 'on' : ''}" data-tab="daily" title="일반 뽑기 · 하루 1회 무료 (KST 자정 초기화)">${ICN('gacha', '🎴')}<span>일반</span>${avail ? '<i class="story-badge">1</i>' : ''}</button><button class="${daily ? '' : 'on'}" data-tab="special" title="프리미엄 영입 · 소환권 1장 = 1회 · 10회는 HR 이상 1명 보장"><span>프리미엄</span>${ticketBadge(tickets)}</button>
-        <button class="gr-ic" id="gacha-rates" title="뽑기 확률" aria-label="뽑기 확률">${ICN('gacha_rates', '📊')}</button><button class="gr-ic" data-go="cards" title="내 인재" aria-label="내 인재">${ICN('my_cards', '🃏')}</button></div>
+    show(`<div class="gr-room" id="gr-room">${bg}</div>${topBar(`${ICN('gacha', '🎴')} 인재영입`, 'hub', false)}<div class="story-shop gr-ui">
+      <div class="gr-banners" role="tablist">${GACHA_BANNERS.map(k => { const on = k.key === shopTab;
+        const sub = k.key === 'daily' ? (avail ? '오늘 1회' : '⏳') : k.key === 'special' ? ticketBadge(tickets) : esc(k.sub || '');
+        return `<button class="gr-bn gr-bn-${k.key} ${on ? 'on' : ''}" data-tab="${k.key}" role="tab" aria-selected="${on}"><img src="img/ui/gacha/banner_${k.key}.webp" alt="" onerror="this.remove()"><b>${k.label}</b><small>${sub}</small>${k.key === 'daily' && avail ? '<i class="story-badge">1</i>' : ''}</button>`; }).join('')}
+        <button class="gr-ic gr-rates" id="gacha-rates" title="뽑기 확률" aria-label="뽑기 확률">${ICN('gacha_rates', '📊')}</button></div>
       <div class="gr-stage">${daily
         ? `<div class="gacha-stage gr-card" id="gacha-stage"><div class="gacha-card" id="gacha-card"><div class="gacha-face gacha-back"></div><div class="gacha-face gacha-front" id="gacha-front"></div></div></div>`
         : `<div id="tk-result" class="story-tk-result"></div>`}</div>
