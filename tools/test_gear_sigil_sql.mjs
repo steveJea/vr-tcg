@@ -78,4 +78,11 @@ for (const f of [`sigil_craft('${YURI}')`, `sigil_enhance('${YURI}')`, `sigil_ex
 ok(!!(await as(A, `select _sigil_add('${A}', '${YURI}', 500, 'x')`)).err, '내부 함수 직접 호출 불가');
 ok(!!(await as(A, `update player_sigils set frags = 999`)).err || +(await frags(A, YURI)) !== 999, '조각 직접 수정 불가');
 ok(!!(await as(null, `select * from sigil_daily`, 'anon')).err && !!(await as(null, `select * from sigil_story_boss`, 'anon')).err, '표 anon 거부');
+// 후속: 스토리 조각 끄기 (gear_sigil_story_off.sql, 두 번 실행)
+await run('gear_sigil_story_off.sql'); await run('gear_sigil_story_off.sql');
+ok(+(await q1(`select count(*) from sigil_story_boss`)) === 0 && +(await q1(`select v from sigil_drop_config where key='story_boss_on'`)) === 0, '끄기: 매핑 비움 · 꺼짐');
+await db.exec(`insert into sigil_story_boss (card_id, chapter) values ('${YURI}', 3); delete from sigil_daily`);
+s = await v(A, `select story_sweep(3, 10, 1)`); ok(s.sigil?.length === 0, `꺼져 있으면 매핑이 있어도 조각 없음 (${s.err || ''})`);
+await db.exec(`update sigil_drop_config set v = 1 where key = 'story_boss_on'`);
+s = await v(A, `select story_sweep(3, 10, 1)`); ok(s.sigil?.length === 1, '다시 켜면 나옴');
 console.log(fails ? `\n${fails} FAIL` : '\nALL OK'); process.exit(fails ? 1 : 0);

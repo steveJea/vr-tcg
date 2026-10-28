@@ -14,7 +14,7 @@
   const img = (src, slot, cls = '') => `<img class="${cls}" src="${src || sil(slot)}" alt="" loading="lazy" onerror="this.onerror=null;this.src='${sil(slot)}'">`;
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const sb = () => window.VRCloud?.sb;
-  let st = null, defs = null, sigils = null, off = false, cost = { enh: {}, salv: {}, rr: {}, sig: {}, src: [], xr: 3 };
+  let st = null, defs = null, sigils = null, off = false, cost = { enh: {}, salv: {}, rr: {}, sig: {}, src: [], xr: 3, storyOn: false };
 
   async function load(force) {
     if (off || !sb() || !window.VRCloud?.user) return null;
@@ -27,7 +27,7 @@
         const [e, s2, r] = await Promise.all(['gear_enhance_cost', 'gear_salvage', 'gear_reroll_cost'].map(t => sb().from(t).select('*')));   // PR5 표 (없으면 버튼 숨김)
         const [sc, ss, sx] = await Promise.all(['sigil_cost', 'sigil_sources', 'sigil_drop_config'].map(t => sb().from(t).select('*')));   // PR6
         cost = { enh: Object.fromEntries((e.data || []).map(x => [x.plus, x])), salv: Object.fromEntries((s2.data || []).map(x => [x.tier, x])), rr: Object.fromEntries((r.data || []).map(x => [x.tier, x])),
-          sig: Object.fromEntries((sc.data || []).map(x => [x.plus, x.frags])), src: ss.data || [], xr: +((sx.data || []).find(x => x.key === 'exchange_rate')?.v || 3) };
+          sig: Object.fromEntries((sc.data || []).map(x => [x.plus, x.frags])), src: ss.data || [], xr: +((sx.data || []).find(x => x.key === 'exchange_rate')?.v || 3), storyOn: +((sx.data || []).find(x => x.key === 'story_boss_on')?.v ?? 0) === 1 };
       }
       const { data, error } = await sb().rpc('gear_status'); if (error) throw error;
       st = data; return st;
@@ -86,7 +86,7 @@
     const sg = sigils[cardId], own = (st.sigils || []).find(s => s.card === cardId);
     if (!sg) return pop(`<div class="gear-big">${img('', 'sigil')}</div><b>증표</b><p class="gear-dim">이 인재의 증표는 아직 준비 중이에요</p>`);
     const cur = own?.plus ?? null, fr = own?.frags || 0, step = (sg.steps || [])[cur ?? 0], nx = cur == null ? 0 : cur + 1, need = cost.sig[nx], max = cur === 5;
-    const srcs = cost.src.filter(x => x.card_id === cardId).map(x => SRC_TXT[x.source] || x.source);
+    const srcs = cost.src.filter(x => x.card_id === cardId && (x.source !== 'story_boss' || cost.storyOn)).map(x => SRC_TXT[x.source] || x.source);
     const m = pop(`<div class="gear-big">${img(sigIcon(cardId), 'sigil', cur == null ? 'dim' : '')}</div><b>${esc(sg.name)}</b> ${cur != null ? `<span class="gear-plus">+${cur}</span>` : ''}
       <div class="gear-dim">${esc(CHAR[cardId] || '')}</div>
       <div class="gear-sig">${cur == null ? '<small>만들면 (+0)</small>' : ''}${sigTxt(step)}</div>${cur != null && sg.steps[cur + 1] ? `<div class="gear-sig next"><small>다음 +${cur + 1}</small>${sigTxt(sg.steps[cur + 1])}</div>` : ''}
