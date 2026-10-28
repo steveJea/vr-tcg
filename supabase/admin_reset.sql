@@ -1,7 +1,8 @@
 -- =====================================================================
 -- 관리자: 계정 초기화 (admin_reset_account) — Supabase SQL Editor 에서 실행. 여러 번 실행해도 안전
 -- 선행: admin.sql (_admin_guard · admin_log) 및 게임 테이블 SQL 들. 없는 테이블은 건너뜀
--- 동작: 대상 유저의 게임 데이터를 새 계정 상태로 되돌림. 로그인(auth.users)·닉네임(profiles)은 유지
+-- 동작: 대상 유저의 게임 데이터를 새 계정 상태로 되돌림. 로그인(auth.users)은 유지. 닉네임·아바타(구글 프로필 사진)는 가입 때 값(구글 이름/사진)으로 되돌림
+--   소환권(story_gacha.tickets)은 유지. 일일 뽑기는 오늘 다시 가능하게 last_draw 를 어제로. 뽑기 기록(story_gacha_log)은 삭제(인재가 지워지므로 거래 가능 수 계산이 어긋나지 않게)
 --   유료 재화는 기본 유지: player_wallet.gem_paid(유료 심연석) · player_items.tradable(유료 심연석으로 산 드링크)
 --   거래소: 대상이 올린 열린 글은 취소(판매자·제안자 모두 원래대로 반환), 대상의 대기 제안은 환불 → 그 뒤 초기화
 --   조직: 조직원이면 탈퇴 처리. 보스면 조직원이 남아 있으면 승계자(간부 우선 → 충성 순)에게 보스 이전, 혼자면 조직 해산
@@ -17,7 +18,7 @@ declare
   nick text; em text; n bigint; s jsonb := '{}'::jsonb; lid bigint; oid bigint; m guild_members; heir uuid; gp bigint := 0; dt int := 0;
   t text;
   wipe text[] := array[
-    'story_progress', 'story_gacha', 'story_gacha_log', 'saves', 'matches', 'gallery',
+    'story_progress', 'story_gacha_log', 'saves', 'matches', 'gallery',
     'player_state', 'player_gear', 'player_gear_meta', 'player_sigils', 'player_mail', 'sigil_daily', 'gear_drop_log',
     'quest_progress', 'tower_progress', 'gem_login',
     'pvp_decks', 'pvp_ratings', 'pvp_attempts', 'pvp_reward_claims', 'pvp_bonus_tries', 'pvp_tier_claims', 'pvp_titles', 'pvp_shop_log',
@@ -105,6 +106,18 @@ begin
     end if;
     s := s || jsonb_build_object('drink_paid_kept', dt);
   end if;
+
+  -- 3.5) 소환권 유지: story_gacha 행은 남기고 일일 뽑기만 오늘 가능하게
+  if to_regclass('public.story_gacha') is not null then
+    update story_gacha set last_draw = (now() at time zone 'Asia/Seoul')::date - 1, updated_at = now() where user_id = p_user;
+    s := s || jsonb_build_object('tickets_kept', coalesce((select (to_jsonb(g)->>'tickets')::int from story_gacha g where user_id = p_user), 0));
+  end if;
+  -- 3.6) 닉네임·아바타를 새 가입 때 값으로 (handle_new_user 와 같은 규칙)
+  update profiles p set
+    nickname = left(coalesce(u.raw_user_meta_data->>'name', u.raw_user_meta_data->>'full_name', split_part(u.email, '@', 1), '플레이어'), 20),
+    avatar_url = u.raw_user_meta_data->>'avatar_url', updated_at = now()
+  from auth.users u where u.id = p_user and p.id = p_user;
+  s := s || jsonb_build_object('old_nickname', nick, 'profile_reset', true);
 
   -- 4) 나머지 게임 데이터 삭제
   foreach t in array wipe loop
