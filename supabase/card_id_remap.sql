@@ -12,6 +12,10 @@
 -- 순서: 점검(서비스 잠시 멈춤) → 이 파일 실행 → 두 저장소 PR 동시에 머지 (README: tools/idmap/README.md)
 -- =====================================================================
 begin;
+-- 작업용 스키마 _idremap (임시 표 대신 진짜 표: SQL Editor 가 세션을 나눠도 안전). 다시 실행하면 지우고 새로 만듦
+drop schema if exists _idremap cascade;
+create schema _idremap;
+revoke all on schema _idremap from public, anon, authenticated;
 
 create table if not exists public.card_id_alias (old_id text primary key, new_id text not null unique, name text);
 alter table public.card_id_alias enable row level security;
@@ -497,7 +501,7 @@ insert into public.card_id_alias (old_id, new_id, name) values
 on conflict (old_id) do nothing;
 
 -- 글자 안의 옛 ID → 새 ID (앞뒤가 숫자가 아닌 10자리만)
-create or replace function pg_temp.idfix(t text) returns text language plpgsql as $$
+create or replace function _idremap.idfix(t text) returns text language plpgsql as $$
 declare m text; r text := t;
 begin
   if t is null or t !~ '[12][01]0[0-9]{7}' then return t; end if;
@@ -506,51 +510,51 @@ begin
   end loop;
   return r;
 end $$;
-create or replace function pg_temp.idold(t text) returns boolean language sql as $$
+create or replace function _idremap.idold(t text) returns boolean language sql as $$
   select t is not null and t ~ '[12][01]0[0-9]{7}' and exists (
     select 1 from regexp_matches(t, '(?<![0-9])([12][01]0[0-9]{7})(?![0-9])', 'g') x join public.card_id_alias a on a.old_id = x[1]) $$;
 -- JSON: 키·글자 값·숫자 값 모두
-create or replace function pg_temp.idfixj(j jsonb) returns jsonb language plpgsql as $$
+create or replace function _idremap.idfixj(j jsonb) returns jsonb language plpgsql as $$
 declare k text; v jsonb; o jsonb; n text;
 begin
   if j is null then return null; end if;
   case jsonb_typeof(j)
-    when 'object' then o := '{}'::jsonb; for k, v in select * from jsonb_each(j) loop o := o || jsonb_build_object(pg_temp.idfix(k), pg_temp.idfixj(v)); end loop; return o;
-    when 'array' then return coalesce((select jsonb_agg(pg_temp.idfixj(e) order by i) from jsonb_array_elements(j) with ordinality t(e, i)), '[]'::jsonb);
-    when 'string' then return to_jsonb(pg_temp.idfix(j #>> '{}'));
+    when 'object' then o := '{}'::jsonb; for k, v in select * from jsonb_each(j) loop o := o || jsonb_build_object(_idremap.idfix(k), _idremap.idfixj(v)); end loop; return o;
+    when 'array' then return coalesce((select jsonb_agg(_idremap.idfixj(e) order by i) from jsonb_array_elements(j) with ordinality t(e, i)), '[]'::jsonb);
+    when 'string' then return to_jsonb(_idremap.idfix(j #>> '{}'));
     when 'number' then n := (select new_id from public.card_id_alias where old_id = j::text); return case when n is null then j else to_jsonb(n::bigint) end;
     else return j;
   end case;
 end $$;
 
-create temp table idremap_report (kind text, name text, before_n bigint, after_n bigint) on commit drop;
+create table _idremap.report (seq serial, kind text, name text, before_n bigint, after_n bigint);
 
 -- 외래키: 글자형(text·varchar) 키 열이 있는 public 외래키 전부 (참조하는 쪽·참조되는 쪽 어느 쪽이든) → 정의 저장 후 삭제
 -- (부모·자식 ID 를 차례로 바꾸는 중간에 어긋나 실패하던 문제. 다시 만들 때 PostgreSQL 이 모든 줄을 다시 검사)
-create temp table idremap_fk on commit drop as      -- public 표가 한쪽이라도 걸린 외래키 전부 (열 종류 무관: text·int·bigint·uuid …)
+create table _idremap.fk as      -- public 표가 한쪽이라도 걸린 외래키 전부 (열 종류 무관: text·int·bigint·uuid …)
   select c.conrelid::regclass::text tbl, c.conname, pg_get_constraintdef(c.oid) def
   from pg_constraint c
   where c.contype = 'f'
     and (c.conrelid in (select oid from pg_class where relnamespace = 'public'::regnamespace)
       or c.confrelid in (select oid from pg_class where relnamespace = 'public'::regnamespace));
 do $$ begin   -- 실행 화면(Messages)에 판·찾은 외래키 표시
-  raise notice 'card_id_remap v3 (외래키 전부 지웠다 다시 만듦) · 외래키 %개: %', (select count(*) from idremap_fk),
-    coalesce((select string_agg(tbl || '.' || conname, ', ' order by tbl) from idremap_fk), '-');
-  if not exists (select 1 from idremap_fk where conname = 'sigil_sources_card_id_fkey')
+  raise notice 'card_id_remap v4 (외래키 전부 지웠다 다시 만듦) · 외래키 %개: %', (select count(*) from _idremap.fk),
+    coalesce((select string_agg(tbl || '.' || conname, ', ' order by tbl) from _idremap.fk), '-');
+  if not exists (select 1 from _idremap.fk where conname = 'sigil_sources_card_id_fkey')
      and exists (select 1 from pg_constraint where conname = 'sigil_sources_card_id_fkey') then
     raise exception 'sigil_sources_card_id_fkey 가 목록에 없음 — 중단';
   end if;
 end $$;
 do $$ declare f record; begin
-  for f in select * from idremap_fk loop execute format('alter table %s drop constraint %I', f.tbl, f.conname); end loop;
+  for f in select * from _idremap.fk loop execute format('alter table %s drop constraint %I', f.tbl, f.conname); end loop;
 end $$;
 
 -- 사용자 트리거: 켜져 있던 것만 기록 → 바꾸는 동안 끄고 끝에 다시 켬
-create temp table idremap_trg on commit drop as
+create table _idremap.trg as
   select t.tgrelid::regclass::text tbl, t.tgname from pg_trigger t join pg_class c on c.oid = t.tgrelid
   where c.relnamespace = 'public'::regnamespace and not t.tgisinternal and t.tgenabled <> 'D';
 do $$ declare f record; begin
-  for f in select * from idremap_trg loop execute format('alter table %s disable trigger %I', f.tbl, f.tgname); end loop;
+  for f in select * from _idremap.trg loop execute format('alter table %s disable trigger %I', f.tbl, f.tgname); end loop;
 end $$;
 do $$
 declare c record; nb bigint; na bigint; expr text; fx text;
@@ -562,17 +566,17 @@ begin
       and (col.data_type in ('text', 'character varying', 'jsonb', 'json', 'integer', 'bigint', 'numeric') or col.udt_name in ('_text', '_varchar', '_int4', '_int8'))
   loop
     expr := format('%I::text', c.cn);
-    execute format('select count(*) from public.%I where pg_temp.idold(%s)', c.t, expr) into nb;
+    execute format('select count(*) from public.%I where _idremap.idold(%s)', c.t, expr) into nb;
     if nb > 0 then
-      fx := case when c.dt = 'jsonb' then format('pg_temp.idfixj(%I)', c.cn)
-                 when c.dt = 'json' then format('pg_temp.idfixj(%I::jsonb)::json', c.cn)
-                 when c.ut in ('_text', '_varchar') then format('(select array_agg(pg_temp.idfix(x) order by i) from unnest(%I) with ordinality u(x, i))', c.cn)
-                 when c.ut in ('_int4', '_int8') then format('(select array_agg(pg_temp.idfix(x::text)::%s order by i) from unnest(%I) with ordinality u(x, i))', substr(c.ut, 2), c.cn)
-                 when c.dt in ('integer', 'bigint', 'numeric') then format('pg_temp.idfix(%I::text)::%s', c.cn, c.dt)   -- 숫자 열: 글자로 바꿔 고친 뒤 원래 종류로
-                 else format('pg_temp.idfix(%I)', c.cn) end;
-      execute format('update public.%I set %I = %s where pg_temp.idold(%s)', c.t, c.cn, fx, expr);
-      execute format('select count(*) from public.%I where pg_temp.idold(%s)', c.t, expr) into na;
-      insert into idremap_report values ('column', c.t || '.' || c.cn, nb, na);
+      fx := case when c.dt = 'jsonb' then format('_idremap.idfixj(%I)', c.cn)
+                 when c.dt = 'json' then format('_idremap.idfixj(%I::jsonb)::json', c.cn)
+                 when c.ut in ('_text', '_varchar') then format('(select array_agg(_idremap.idfix(x) order by i) from unnest(%I) with ordinality u(x, i))', c.cn)
+                 when c.ut in ('_int4', '_int8') then format('(select array_agg(_idremap.idfix(x::text)::%s order by i) from unnest(%I) with ordinality u(x, i))', substr(c.ut, 2), c.cn)
+                 when c.dt in ('integer', 'bigint', 'numeric') then format('_idremap.idfix(%I::text)::%s', c.cn, c.dt)   -- 숫자 열: 글자로 바꿔 고친 뒤 원래 종류로
+                 else format('_idremap.idfix(%I)', c.cn) end;
+      execute format('update public.%I set %I = %s where _idremap.idold(%s)', c.t, c.cn, fx, expr);
+      execute format('select count(*) from public.%I where _idremap.idold(%s)', c.t, expr) into na;
+      insert into _idremap.report (kind, name, before_n, after_n) values ('column', c.t || '.' || c.cn, nb, na);
     end if;
   end loop;
 end $$;
@@ -582,10 +586,10 @@ do $$
 declare f record; def text;
 begin
   for f in select p.oid, p.oid::regprocedure::text nm from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-           where n.nspname = 'public' and p.prokind in ('f', 'p') and pg_temp.idold(p.prosrc) loop
+           where n.nspname = 'public' and p.prokind in ('f', 'p') and _idremap.idold(p.prosrc) loop
     def := pg_get_functiondef(f.oid);
-    execute pg_temp.idfix(def);
-    insert into idremap_report values ('function', f.nm, 1, (select count(*) from pg_proc where oid = f.oid and pg_temp.idold(prosrc)));
+    execute _idremap.idfix(def);
+    insert into _idremap.report (kind, name, before_n, after_n) values ('function', f.nm, 1, (select count(*) from pg_proc where oid = f.oid and _idremap.idold(prosrc)));
   end loop;
 end $$;
 
@@ -611,29 +615,28 @@ end $$;
 
 -- 외래키 원래 정의 그대로 다시 만들기 (모든 줄 검사 — 어긋나면 여기서 실패하고 전부 취소) · 트리거 다시 켜기
 do $$ declare f record; begin
-  for f in select * from idremap_fk loop
+  for f in select * from _idremap.fk loop
     execute format('alter table %s add constraint %I %s', f.tbl, f.conname, f.def);
-    insert into idremap_report values ('foreign key(다시 만듦)', f.tbl || '.' || f.conname, 0, 0);
+    insert into _idremap.report (kind, name, before_n, after_n) values ('foreign key(다시 만듦)', f.tbl || '.' || f.conname, 0, 0);
   end loop;
-  for f in select * from idremap_trg loop execute format('alter table %s enable trigger %I', f.tbl, f.tgname); end loop;
+  for f in select * from _idremap.trg loop execute format('alter table %s enable trigger %I', f.tbl, f.tgname); end loop;
 end $$;
 
 -- 참고: 뷰·기본값에 옛 ID 가 있으면 표시만 (자동 변경 안 함)
-insert into idremap_report select 'view(확인 필요)', viewname, 1, 1 from pg_views where schemaname = 'public' and pg_temp.idold(definition);
-insert into idremap_report select 'default(확인 필요)', c.relname || '.' || a.attname, 1, 1
+insert into _idremap.report (kind, name, before_n, after_n) select 'view(확인 필요)', viewname, 1, 1 from pg_views where schemaname = 'public' and _idremap.idold(definition);
+insert into _idremap.report (kind, name, before_n, after_n) select 'default(확인 필요)', c.relname || '.' || a.attname, 1, 1
   from pg_attrdef d join pg_class c on c.oid = d.adrelid join pg_attribute a on a.attrelid = d.adrelid and a.attnum = d.adnum
-  join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' and pg_temp.idold(pg_get_expr(d.adbin, d.adrelid));
+  join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' and _idremap.idold(pg_get_expr(d.adbin, d.adrelid));
 
 -- 남은 옛 ID 가 있으면 전부 취소
 do $$ begin
-  if exists (select 1 from idremap_report where kind in ('column', 'function') and after_n > 0) then
-    raise exception '옛 카드 ID 가 남아 있어 전부 취소합니다: %', (select string_agg(name, ', ') from idremap_report where after_n > 0 and kind in ('column', 'function'));
+  if exists (select 1 from _idremap.report where kind in ('column', 'function') and after_n > 0) then
+    raise exception '옛 카드 ID 가 남아 있어 전부 취소합니다: %', (select string_agg(name, ', ') from _idremap.report where after_n > 0 and kind in ('column', 'function'));
   end if;
 end $$;
 
 -- 결과 표 (SQL Editor 는 마지막 결과를 보여 주므로 커밋 직전 표 + 커밋 뒤 같은 표를 남김)
-drop table if exists idremap_result;
-create temp table idremap_result as select * from idremap_report;
 commit;
 
-select kind, name, before_n as "변경 전", after_n as "변경 후" from idremap_result order by kind, name;
+select kind, name, before_n as "변경 전", after_n as "변경 후" from _idremap.report order by seq;
+-- 확인 끝나면 (선택): drop schema _idremap cascade;

@@ -59,9 +59,13 @@ const trgOn = async () => (await db.query(`select count(*)::int n from pg_trigge
 const fk0 = await fkAll(), trg0 = await trgOn();
 const before = (await db.query(`select reward_card from public.story_phase_config where chapter = 0 order by phase`)).rows.map(r => r.reward_card);
 ok(before.join() === '2000100006,2000100004,2000900206', `변경 전 챕터0 보상 = 옛 ID (${before})`);
-await db.exec(readFileSync(new URL('../../supabase/card_id_remap.sql', import.meta.url), 'utf8'));
-await db.exec(readFileSync(new URL('../../supabase/card_id_remap.sql', import.meta.url), 'utf8'));   // 같은 세션 다시 실행해도 안전 (바뀔 것 없음)
-const MIG = readFileSync(new URL('../../supabase/card_id_remap.sql', import.meta.url), 'utf8');
+const MIGSQL = readFileSync(new URL('../../supabase/card_id_remap.sql', import.meta.url), 'utf8');
+const notices = [];
+const runMig = async () => { const r = await db.exec(MIGSQL, { onNotice: n => notices.push(n.message) }); return r[r.length - 1]; };   // Supabase SQL Editor 처럼 한 문자열 · simple protocol
+const last1 = await runMig();
+ok(last1.rows.length > 0 && 'kind' in last1.rows[0], `마지막 결과 = 보고 표 ${last1.rows.length}줄 (커밋 뒤 SELECT)`);
+ok(notices.some(m => /card_id_remap v4/.test(m) && /sigil_sources_card_id_fkey/.test(m)), `NOTICE: ${(notices.find(m => /v4/.test(m)) || "").slice(0, 110)}…`);
+await runMig();   // 다시 실행해도 안전   // 같은 세션 다시 실행해도 안전 (바뀔 것 없음)
 ok((await fkAll()) === fk0, '외래키 전부 원래 정의 그대로 다시 생김');
 ok((await trgOn()) === trg0 && trg0 > 0, `사용자 트리거 ${trg0}개 다시 켜짐`);
 const sig = (await db.query(`select count(*)::int n, count(*) filter (where card_id::text ~ '^1[0-9]{4}$')::int ok from public.sigil_sources`)).rows[0];
@@ -84,7 +88,13 @@ let mixed = true; for (let s = 0; s < 40; s++) { const deck = (await db.query(`s
 ok(mixed, '세력전 NPC 덱 40개 모두 남녀 섞임');
 const left = (await db.query(`select count(distinct p.oid)::int n from pg_proc p join pg_namespace n on n.oid = p.pronamespace join public.card_id_alias a on p.prosrc ~ ('(^|[^0-9])' || a.old_id || '([^0-9]|$)') where n.nspname = 'public'`)).rows[0].n;
 ok(left === 0, `옛 ID 남은 함수 ${left}개`);
-const rep = (await db.query(`select * from idremap_result order by kind, name`)).rows; console.log(rep.length, '항목 보고:', rep.slice(0, 8).map(r => `${r.kind} ${r.name} ${r.before_n}→${r.after_n}`).join(' | '));
+const rep = (await db.query(`select * from _idremap.report order by seq`)).rows; console.log(rep.length, '항목 보고:', rep.slice(0, 8).map(r => `${r.kind} ${r.name} ${r.before_n}→${r.after_n}`).join(' | '));
 ok((await db.query(`select count(*)::int n from public.card_id_alias`)).rows[0].n === 474, '대응표 474');
 ok(rep.filter(r => r.kind === 'column').length === 0, '두 번째 실행: 바뀐 열 0 (이미 새 ID)');
+// 실패 시 전부 취소 확인: 옛 ID 를 다시 심고 함수 하나를 망가뜨려 중간 오류 → card_id_alias·데이터 그대로
+await db.exec(`update public.gallery set card_id = '2000100001'; create or replace function public._idremap_boom() returns void language sql as $f$ select 1 $f$;`);
+const bad = MIGSQL.replace("-- 외래키 원래 정의 그대로 다시 만들기", "select 1/0;\n-- 외래키 원래 정의 그대로 다시 만들기");
+let threw = false; try { await db.exec(bad); } catch { threw = true; }
+try { await db.exec('rollback'); } catch {}
+ok(threw && (await db.query(`select card_id from public.gallery`)).rows[0].card_id === '2000100001' && (await fkAll()) === fk0, '중간 오류 → 전부 취소(데이터·외래키 그대로)');
 console.log(fails ? `${fails} FAILED` : 'ALL PASS'); process.exit(fails ? 1 : 0);
