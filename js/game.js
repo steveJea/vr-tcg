@@ -1,6 +1,6 @@
 import { levelUpOnce, RULES, calcPower, skillLvPowerMult, skillCountMult, ELEMENTS, elementMultiplier, calcDamage, canSummon, buildDeck, parseCSV, aiSummonOrder, aiPickTarget, recallCost, canRecall, aiShouldRecall, makeUnit, resolveAttack, refillMana, ACTIONS, canAction, doAction, clearBuff, aiWantShuffle, aiWantBuff, aiWantHeal, aiWantFieldHeal, aiPickItem, endTurnXp, ITEMS, canEquip, equip, attackTargets, canTarget, autoTarget, heroLocked, xpToNext, SKILLS, gainXp, setCardPool, canSacrifice, sacrifice, aiPickSacrifice, aiWantAccel, judgeTimeout, JUDGE_LABEL, genderMult, GRADES, GRADE_SHORT, allowedGrades, baseEvade, swapField } from './rules.js';
 import { autoNext, noteUsed } from './auto-ai.js';
-import { setSpare, spareBlocked, setSkillData, setEmitter, initPlayers, placeUnit, turnStart, turnEnd, useSkill, skillState, aiPickSkill, skillLvOf, skillCdAt, skillLvMult, skillLvProb, SKILL_LV_MAX, refreshAll, statusIcons, skillsOf, combos, STATUS, SK, maleLure, checkDeath } from './skills.js';
+import { skillCd, skillMp, setSpare, spareBlocked, setSkillData, setEmitter, initPlayers, placeUnit, turnStart, turnEnd, useSkill, skillState, aiPickSkill, skillLvOf, skillCdAt, skillLvMult, skillLvProb, SKILL_LV_MAX, refreshAll, statusIcons, skillsOf, combos, STATUS, SK, maleLure, checkDeath } from './skills.js';
 
 const IMG = 'https://raw.githubusercontent.com/steveJea/vr-ideal-worldcup/main/img/bt_img/';
 const NF = new Intl.NumberFormat('ko-KR');
@@ -1194,10 +1194,10 @@ const hpText = t => String(t || '').replace(/체력/g, 'HP');
 // 전투 중 스킬 설명 팝업 (ⓘ 또는 사용 버튼 길게 누르기). 바깥 누르면 닫힘. 스킬은 쓰지 않음
 function skillInfoPop(unit, s) {
   if (!s) return; document.getElementById('sk-pop')?.remove();
-  const slv = s.mode === 'active' && unit ? skillLvOf(unit, s) : 1, cd = s.mode === 'active' ? skillCdAt(s.cooldown, slv) : 0;
+  const slv = s.mode === 'active' && unit ? skillLvOf(unit, s) : 1, cd = s.mode === 'active' ? (unit?.cd ? skillCd(unit, s) : skillCdAt(s.cooldown, slv)) : 0, smp = unit?.cd ? skillMp(unit, s) : s.mp;   // 증표·장비 반영
   const el = document.createElement('div'); el.id = 'sk-pop'; el.className = 'sk-pop';
   el.innerHTML = `<div class="sk-pop-c" role="dialog" aria-label="스킬 설명"><div class="sk-pop-h">${unit?.card ? `<img src="${IMG}${unit.card.id}.webp" alt="">` : ''}<div><span class="px-1.5 rounded text-[10px] font-bold text-white ${TYPE_COLOR[s.type] || 'bg-zinc-600'}">${s.type || ''}</span>
-    <b>${s.name}</b><small>${s.mode === 'active' ? `MP ${s.mp} · 쿨 ${cd}${slv > 1 ? ` · Lv${slv}` : ''}` : '패시브'}</small></div></div>
+    <b>${s.name}</b><small>${s.mode === 'active' ? `MP ${smp} · 쿨 ${cd}${slv > 1 ? ` · Lv${slv}` : ''}` : '패시브'}</small></div></div>
     <div class="sk-pop-d">${hpText(s.desc) || '설명 없음'}${s.note ? `<div class="sk-pop-n">${hpText(s.note)}</div>` : ''}</div>
     ${unit ? `<div class="sk-pop-mp">MP ${unit.mp}/${unit.maxMp}</div>` : ''}</div>`;
   el.addEventListener('click', e => { if (!e.target.closest('.sk-pop-c')) el.remove(); });

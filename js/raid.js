@@ -117,7 +117,7 @@ async function fight(e) {
   const dk = pickDeck(DL); if (!dk) return;
   e.currentTarget.disabled = true;
   let st; try { st = await rpc('raid_start', { p_uids: dk.cards.map(o => o.uid) }); } catch (er) { toast(errText(er)); paint(); return; }
-  const deck = st.deck.map(o => snapCard(o, card)).filter(Boolean), log = [], t0 = Date.now();
+  const deck = st.deck.map(o => snapCard(o, card, 'raid')).filter(Boolean), log = [], t0 = Date.now();
   let res;
   const V = window.TCG?.viewBattle;
   if (V) {   // 스토리·탑과 같은 전투 화면 (js/game.js). 수동이면 행동 기록을 raid_log 로 (tools/raid_verify.mjs 재생 검증)

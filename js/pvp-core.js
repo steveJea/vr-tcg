@@ -2,6 +2,7 @@
 // 서버(pvp_start)가 준 seed + 양쪽 덱 스냅샷(서버가 story_progress 에서 읽은 id·level·ex·exb·boost·skillLv)으로
 // 양쪽 모두 자동 전투 AI(auto-ai.js)로 싸운다. 같은 seed·같은 스냅샷이면 결과가 항상 같아 tools/pvp_verify.mjs 로 재검증 가능.
 import { initPlayers, placeUnit, turnStart, turnEnd, useSkill, skillState, refreshAll, setRng, setEmitter, getEmitter, skillsOf } from './skills.js';
+import { applyGear } from './gear-core.js';
 import { makeUnit, resolveAttack, refillMana, clearBuff, endTurnXp, skillLvPowerMult, attackTargets } from './rules.js';
 import { autoNext, noteUsed } from './auto-ai.js';
 
@@ -13,12 +14,12 @@ const LV_RATE = { 'NORMAL': 0.01, 'RARE': 0.02, 'HIGH RARE': 0.03, 'SUPER RARE':
 const PER_PT = { ATK: 1, HP: 5, DEF: 1 }, PT_FULL = 5;
 const ptGain = (s, n) => { n = Math.max(0, n | 0); const k = PER_PT[s]; return k * Math.min(n, PT_FULL) + Math.floor(k * Math.max(0, n - PT_FULL) / 2); };
 /** 스냅샷 한 장 → 전투 카드 */
-export function snapCard(o, cardById) {
+export function snapCard(o, cardById, mode = 'pvp') {   // mode: pvp·war(장비 50%·증표 +3) / raid(100%) — gear-core.js GEAR_MODE
   const c = cardById(o.id); if (!c) return null;
   const lv = Math.max(1, o.level | 0 || 1), lp = Math.round((LV_RATE[c.grade] || 0.01) * (lv - 1) * 100), exb = Math.max(0, +o.exb || 0), ex = Math.max(0, o.ex | 0);
   const st = s => Math.round(c[s] * (1 + exb / 100) * (1 + lp / 100)) + ptGain(s, (o.boost || {})[s]);
-  return { ...c, name: ex ? `[EX${ex}] ${c.name}` : c.name, ex, slv: lv, ATK: st('ATK'), HP: st('HP'), DEF: st('DEF'), power: Math.round((+c.power || 0) * (1 + exb / 100) * (1 + lp / 100) * skillLvPowerMult(skillsOf(o.id), o.skillLv)),
-    ...(o.skillLv && typeof o.skillLv === 'object' ? { skillLv: { ...o.skillLv } } : {}) };
+  return applyGear({ ...c, name: ex ? `[EX${ex}] ${c.name}` : c.name, ex, slv: lv, ATK: st('ATK'), HP: st('HP'), DEF: st('DEF'), power: Math.round((+c.power || 0) * (1 + exb / 100) * (1 + lp / 100) * skillLvPowerMult(skillsOf(o.id), o.skillLv)),
+    ...(o.skillLv && typeof o.skillLv === 'object' ? { skillLv: { ...o.skillLv } } : {}) }, { gear: o.gear, sigil: o.sigil ?? null }, mode);   // 장비·증표 = 서버 스냅샷(_pvp_snap)이 붙여 준 값만
 }
 /** 덱 규칙 검사 (서버 _pvp_check 와 같은 규칙, 화면 안내용) */
 export function deckCheck(cards, league) {

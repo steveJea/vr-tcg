@@ -254,6 +254,8 @@
   function bind(extra = {}) {
     root().querySelectorAll('[data-go]').forEach(b => b.onclick = () => ({ home, hub: renderHub, map: renderMap, cards: renderCards, decks: renderDecks, gacha: renderShop, bonds: renderBonds, ...extra })[b.dataset.go]?.());
   }
+  // 장비·증표 (gear.js 가 불러 둔 내 장비 → gear-core.js applyGear). 서버에 장비가 없거나 아직 못 불렀으면 그대로
+  const gearOn = (c, mode) => (c?.id && window.VRGearCore && window.VRGear?.ready && serverMode) ? window.VRGearCore.applyGear(c, window.VRGear.forCard(c.id), mode) : c;
   const rcls = c => `rar-${(RAR[c?.grade] || 'N').toLowerCase()}`;
   const tile = (c, extra = '') => `<div class="story-card ${rcls(c)}"><div class="story-card-img"><img src="${IMG}${c.id}.webp" alt="${esc(c.name)}" loading="lazy" onerror="this.style.visibility='hidden'"><span class="story-rar">${RAR[c.grade] || 'N'}</span></div><div class="story-card-name">${esc(c.name)}</div><div class="story-card-stats"><span class="text-orange-400">${ic('atk', { cls: 'ui-ic-sm' })}${fmt(c.ATK)}</span><span class="text-red-400">${ic('hp', { cls: 'ui-ic-sm' })}${fmt(c.HP)}</span><span class="text-sky-400">${ic('def', { cls: 'ui-ic-sm' })}${fmt(c.DEF)}</span></div>${extra}</div>`;
 
@@ -279,6 +281,7 @@
     }
     if (!window.TCG?.ready) return;
     await load();
+    if (serverMode) await window.VRGear?.load?.();   // 장비 (전투 반영용)
     await checkChapters(); curCh = null; tickets = null;
     if (!save.openingSeen) return renderOpening();
     if (ch0Pending()) return autoCh0();
@@ -715,7 +718,7 @@
     bgm(boss || ph.bgm === 'boss' ? 'boss' : 'battle');
     // party.statMul: { 카드id: { HP: 2, DEF: 2 } } → 이 페이즈에서만 해당 카드 스탯 배율 (최종 스탯 × 배율, 반올림)
     const SM = ph.party?.statMul || {}, mul = c => { const m = SM[String(c.id)]; if (!m) return c; const o = { ...c }; for (const k of Object.keys(m)) if (o[k] != null) o[k] = Math.round(o[k] * m[k]); return o; };
-    const me = (picked || deckInstances()).slice(0, MAX_PICK()).map(o => mul({ ...boosted(o), uid: o.uid })).filter(x => x.id);
+    const me = (picked || deckInstances()).slice(0, MAX_PICK()).map(o => gearOn(mul({ ...boosted(o), uid: o.uid }), 'story')).filter(x => x.id);
     deckUid = Object.fromEntries(me.map(c => [String(c.id), c.uid]));
     const bc = boss ? bossOf(ph, enemies) : null;
     // 보스 카드를 맨 앞에 (진영 안 표시), 나머지는 그대로
@@ -1594,7 +1597,7 @@
     load: async () => { if (!user()) return false; await load(); return !!save; }, get save() { return save; }, user, show, home, popup, toast, bgm, tile, esc, IMG, card,
     pickDeck: (enemies, onGo, onCancel, note, party) => pickDeck({}, party ? { party } : {}, enemies, { onGo, onCancel, note }),
     instances: () => deckInstances(),
-    battleCards: list => list.slice(0, MAX_PICK()).map(o => ({ ...boosted(o), uid: o.uid })).filter(x => x.id),
+    battleCards: (list, mode = 'tower') => list.slice(0, MAX_PICK()).map(o => gearOn({ ...boosted(o), uid: o.uid }, mode)).filter(x => x.id),
     leaderFor: me => { const lo = me.find(c => c.uid === save.leader), le = lo && leaderEff(lo.id); return le ? { ...le, uid: lo.uid } : undefined; },
     ownedCount: () => deckInstances().length, syncTickets,
     /** 마지막으로 고른 출전 카드 (없으면 빈 배열). 보유 카드가 출전 수 이하면 전부 */
