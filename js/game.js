@@ -374,11 +374,37 @@ function setBattleBg(kind) {
   if (!bg._watch) { bg._watch = new MutationObserver(() => bg.classList.toggle('on', !$('game').classList.contains('hidden'))); bg._watch.observe($('game'), { attributes: true, attributeFilter: ['class'] }); }
 }
 
-function shake(el) {
-  if (!el || FX_OFF()) return;
-  el.classList.remove('fx-shake', 'fx-hitflash'); void el.offsetWidth;
-  el.classList.add('fx-shake', 'fx-hitflash');
-  setTimeout(() => el.classList.remove('fx-shake', 'fx-hitflash'), 165);
+/** 타격감: 히트스톱(피격 순간 정지) → 하얀 섬광 + 넉백(밀려났다 복귀) + 화면 흔들림(피해량 비례).
+ *  o = { dmg, crit, big }  big = UR/MR 스킬. 스킵·패스트포워드면 생략, 2배속이면 절반, 모션 줄이기면 섬광만 */
+let bigSkillAt = 0;   // 최근 UR/MR 스킬 시전 시각 (스킬 피해 강조용)
+const isBigHit = () => performance.now() - bigSkillAt < 2500;
+let stopTimer, screenTimer;
+function shake(el, o = {}) {
+  if (!el || FX_OFF() || !el.isConnected) return;
+  const crit = !!o.crit, big = !!o.big, d = typeof o.dmg === 'number' ? Math.max(0, o.dmg) : 0;
+  const k = spdOn() ? 0.5 : 1;
+  const stop = Math.round((crit || big ? 110 : d >= 1000 ? 85 : 60) * k);   // 히트스톱 ms
+  // 흔들림 세기(px): 피해량 로그 스케일 2~7, 치명타 ×1.5, UR/MR ×1.6, 최대 12
+  const amp = Math.min(12, (2 + Math.min(5, Math.log10(d + 1) * 1.4)) * (crit ? 1.5 : 1) * (big ? 1.6 : 1));
+  el.classList.remove('fx-shake', 'fx-hitflash', 'fx-knock'); void el.offsetWidth;
+  el.classList.add('fx-hitflash');
+  if (REDUCED()) { setTimeout(() => el.classList.remove('fx-hitflash'), 120); return; }
+  const root = document.querySelector('main') || document.body;
+  // 히트스톱: 전장 애니메이션 잠깐 정지 (데미지 숫자·컷인 제외)
+  root.classList.add('fx-stop'); clearTimeout(stopTimer);
+  stopTimer = setTimeout(() => root.classList.remove('fx-stop'), stop);
+  const up = !!el.closest('#ai-field, #ai-boss, #ai-hero');
+  el.style.setProperty('--kb', `${(up ? -1 : 1) * Math.round(4 + amp)}px`);
+  setTimeout(() => {
+    if (!el.isConnected) return;
+    el.classList.add('fx-knock', 'fx-shake');
+    setTimeout(() => el.classList.remove('fx-knock', 'fx-shake', 'fx-hitflash'), Math.round(200 * k));
+    if (amp >= 3.5 || crit || big) {   // 약한 잔타는 화면까지 흔들지 않음
+      root.style.setProperty('--amp', `${amp.toFixed(1)}px`);
+      root.classList.remove('fx-screen'); void root.offsetWidth; root.classList.add('fx-screen');
+      clearTimeout(screenTimer); screenTimer = setTimeout(() => root.classList.remove('fx-screen'), Math.round((crit || big ? 260 : 180) * k));
+    }
+  }, stop);
 }
 
 /** 치명타 연출: 노란 섬광 + 방사선 링 (속성 유리 피 튀김과 별개, 짧게) */
@@ -456,17 +482,17 @@ async function attack(who, unit, target, fromBatch = false) {
     pendingDying = [];
     for (const e of resolveAttack(p, o, unit, target)) {
       playSe(e.type === 'hit' ? 1 : (e.type === 'hero' || e.type === 'overflow') ? 3 : 0);
-      if (e.type === 'hero') { log(`${unit.card.name} → ${o.name} 진영 ${fmt(e.dmg)} 피해`, cls); shake(tEl); hitFx(tEl); dmgNumber(tEl, `-${fmt(e.dmg)}`); }
+      if (e.type === 'hero') { log(`${unit.card.name} → ${o.name} 진영 ${fmt(e.dmg)} 피해`, cls); shake(tEl, { dmg: e.dmg }); hitFx(tEl); dmgNumber(tEl, `-${fmt(e.dmg)}`); }
       else if (e.type === 'hit') {
         const real = e.target || shown;
         const rEl = (real && (unitEl(oWho, real) || unitEl(who, real))) || tEl;
         const orig = shown || null;
         log(`${unit.card.name} → ${real?.card?.name ?? '?'}${orig && real !== orig ? ` (${orig.card.name} 대신)` : (!orig ? ' (진영 공격 유도)' : '')} ${fmt(e.d1)} 피해${e.mult !== 1 ? ` (속성 ×${e.mult})` : ''}${real?.card && genderMult(unit.card, real.card) !== 1 ? ` (성별 ×${genderMult(unit.card, real.card)})` : ''}${e.killed ? ', 처치 (반격 없음)' : `, 반격 ${fmt(e.d2)}${e.survived ? ' (HP 1로 버팀)' : ''}`}`, cls);
-        shake(rEl); hitFx(rEl, e.mult > 1 ? 'blood' : 'impact'); critNum(rEl, e.d1, real);   // 속성 유리 = 피 튀김, 치명타 = 노란 숫자
-        if (e.d2) { shake(aEl); hitFx(aEl); if (critSet.delete(unit)) dmgNumber(aEl, `-${fmt(e.d2)}`, '#fde047', false, 'fx-dmg-crit'); else dmgNumber(aEl, `-${fmt(e.d2)}`, '#fca5a5'); }
+        shake(rEl, { dmg: e.d1, crit: critSet.has(real) }); hitFx(rEl, e.mult > 1 ? 'blood' : 'impact'); critNum(rEl, e.d1, real);   // 속성 유리 = 피 튀김, 치명타 = 노란 숫자
+        if (e.d2) { shake(aEl, { dmg: e.d2, crit: critSet.has(unit) }); hitFx(aEl); if (critSet.delete(unit)) dmgNumber(aEl, `-${fmt(e.d2)}`, '#fde047', false, 'fx-dmg-crit'); else dmgNumber(aEl, `-${fmt(e.d2)}`, '#fca5a5'); }
       }
       else if (e.type === 'evade') { const rEl = unitEl(oWho, e.target) || tEl; log(`${unit.card.name} → ${e.target.card.name} 공격 회피! (피해·반격 없음)`, cls); dmgNumber(rEl, 'MISS', '#e0f2fe'); }
-      else if (e.type === 'overflow') { log(`초과 피해 ${fmt(e.dmg)} → ${o.name} 진영`, 'text-orange-300'); const h = heroEl(oWho); shake(h); hitFx(h); dmgNumber(h, `💥 -${fmt(e.dmg)}`, '#fdba74'); }
+      else if (e.type === 'overflow') { log(`초과 피해 ${fmt(e.dmg)} → ${o.name} 진영`, 'text-orange-300'); const h = heroEl(oWho); shake(h, { dmg: e.dmg }); hitFx(h); dmgNumber(h, `💥 -${fmt(e.dmg)}`, '#fdba74'); }
     }
     critSet.clear();
     renderHero(oWho); renderHero(who);
@@ -1015,15 +1041,15 @@ function onEngine(e) {
   const nm = u => u.card.name;
   if (e.type === 'dealt') { if (e.src.owner === S.me) { const L = S.log, k = e.src.card.id, r = L.dmg.get(k) || { card: e.src.card, dmg: 0 }; r.dmg += e.dmg; L.dmg.set(k, r); L.total += e.dmg; } return; }
   switch (e.type) {
-    case 'skill': log(`${e.unit.owner.name}: ${nm(e.unit)} ⚡[${e.skill.name}] (MP ${e.skill.mp})`, 'text-fuchsia-300'); break;
+    case 'skill': if (/^(UR|MR)$/.test(e.unit.card.grade)) bigSkillAt = performance.now(); log(`${e.unit.owner.name}: ${nm(e.unit)} ⚡[${e.skill.name}] (MP ${e.skill.mp})`, 'text-fuchsia-300'); break;
     case 'passive': log(`${e.unit.owner.name}: ${nm(e.unit)} ✨[${e.name}]${e.text ? ' — ' + e.text : ''}`, 'text-fuchsia-200'); if (!FX_OFF()) dmgNumber(uEl(e.unit), `✨${e.name}`, '#f0abfc'); if (!CUT_OFF()) passiveCutIn(e.unit, e.name); break;
-    case 'dmg': { playSe(1); const el = uEl(e.unit); shake(el); if (typeof e.dmg !== 'number' || e.dmg > 0) hitFx(el, 'blood'); if (typeof e.dmg === 'number') critNum(el, e.dmg, e.unit); else dmgNumber(el, e.dmg); break; }
-    case 'hero': { if (e.dmg > 0) playSe(3); const el = heroEl(whoOf(e.p)); shake(el); if (e.dmg > 0) hitFx(el, 'blood'); dmgNumber(el, `-${fmt(e.dmg)}`, e.kind === 'self' ? '#fca5a5' : undefined); log(`${e.p.name} 본진 ${fmt(e.dmg)} 피해${e.kind === 'self' ? ' (자기 공격)' : ''}`, 'text-orange-300'); break; }
+    case 'dmg': { playSe(1); const el = uEl(e.unit); shake(el, { dmg: e.dmg, crit: critSet.has(e.unit), big: isBigHit() }); if (typeof e.dmg !== 'number' || e.dmg > 0) hitFx(el, 'blood'); if (typeof e.dmg === 'number') critNum(el, e.dmg, e.unit); else dmgNumber(el, e.dmg); break; }
+    case 'hero': { if (e.dmg > 0) playSe(3); const el = heroEl(whoOf(e.p)); shake(el, { dmg: e.dmg, big: isBigHit() }); if (e.dmg > 0) hitFx(el, 'blood'); dmgNumber(el, `-${fmt(e.dmg)}`, e.kind === 'self' ? '#fca5a5' : undefined); log(`${e.p.name} 본진 ${fmt(e.dmg)} 피해${e.kind === 'self' ? ' (자기 공격)' : ''}`, 'text-orange-300'); break; }
     case 'heal': dmgNumber(uEl(e.unit), `+${fmt(e.amt)}`, '#6ee7b7'); break;
     case 'heroHeal': dmgNumber(heroEl(whoOf(e.p)), `+${fmt(e.amt)}`, '#6ee7b7'); log(`${e.p.name} 본진 HP +${fmt(e.amt)}`, 'text-emerald-300'); break;
     case 'leaderDown': {
       const pc = Math.round((e.pct || 0.3) * 100);
-      if (e.base) { const el = heroEl(whoOf(e.p)); shake(el); dmgNumber(el, `-${fmt(e.dmg)}`, '#fca5a5'); }
+      if (e.base) { const el = heroEl(whoOf(e.p)); shake(el, { dmg: e.dmg }); dmgNumber(el, `-${fmt(e.dmg)}`, '#fca5a5'); }
       log(`👑 ${e.p.name}: 리더 ${nm(e.unit)} 쓰러짐! 리더 스킬 해제 · ${e.base ? `진영 HP −${fmt(e.dmg)} (최대의 ${pc}%)` : `아군 진영 HP −${pc}% (남은 아군 ${e.n}장, 총 ${fmt(e.dmg)} 피해)`}`, 'text-red-400 font-bold');
       break; }
     case 'destroy': log(`${nm(e.unit)} 파괴!`, 'text-zinc-400'); pendingDying.push(uEl(e.unit)); if (S.story?.rules) storyOnDeath(e.unit); break;
@@ -1696,7 +1722,7 @@ async function viewBattle({ session, aiName = '상대', bg = 'normal', manual = 
   render();
   const drain = () => { const ev = session.events || []; const out = ev.splice(0, ev.length); return out; };
   // 마나 없음: 처치 마나(refund) 연출 생략. 같은 카드에 숫자가 겹치지 않게 조금씩 띄워 보여 줌
-  const bossNum = (d, weak) => { if (!raid || !(d > 0)) return; const el = unitEl('ai', V.B0[0]); shake(el); hitFx(el, 'blood'); dmgNumber(el, `-${fmt(d)}`, d >= raid.cap ? '#f97316' : '#fde047', false, 'fx-dmg-crit fx-dmg-raid'); if (weak) dmgNumber(el, '약점!', '#fca5a5', false, 'fx-dmg-mini'); if (d >= raid.cap) dmgNumber(el, 'MAX', '#fb923c', false, 'fx-dmg-mini'); };
+  const bossNum = (d, weak) => { if (!raid || !(d > 0)) return; const el = unitEl('ai', V.B0[0]); shake(el, { dmg: d, crit: d >= raid.cap }); hitFx(el, 'blood'); dmgNumber(el, `-${fmt(d)}`, d >= raid.cap ? '#f97316' : '#fde047', false, 'fx-dmg-crit fx-dmg-raid'); if (weak) dmgNumber(el, '약점!', '#fca5a5', false, 'fx-dmg-mini'); if (d >= raid.cap) dmgNumber(el, 'MAX', '#fb923c', false, 'fx-dmg-mini'); };
   const play = async (evs, gap = 0) => { const seen = new Map(); for (const e of evs) { if (e.type === 'refund') continue; if (raid && e.type === 'dmg' && e.unit === V.B0[0]) continue;   /* 보스 원래 피해 숫자 대신 상한 적용 피해(bossNum) */
     try { onEngine(e); } catch (err) { reportError('view', err); }   // ⚠️ 주석 뒤에 붙이면 통째로 꺼짐 (#190~#195 스킬 타격·상태·레벨업 연출 누락 원인)
     if (gap && e.unit && ['levelup', 'mp', 'status', 'heal', 'immune', 'miss', 'resist', 'elfx'].includes(e.type)) { const n = (seen.get(e.unit) || 0) + 1; seen.set(e.unit, n); if (n > 0) await sleep(fxMs(gap)); } } };
@@ -1716,7 +1742,7 @@ async function viewBattle({ session, aiName = '상대', bg = 'normal', manual = 
           const late = evs.filter(e => !['dmg', 'crit', 'dealt', 'destroy', 'hero'].includes(e.type)); await play(evs.filter(e => !late.includes(e)));
           for (const e of a.hits || []) {
             playSe(e.type === 'hit' ? 1 : 0);
-            if (e.type === 'hit') { const real = e.target || a.t, rEl = (real && unitEl(oWho, real)) || tEl; shake(rEl); hitFx(rEl, e.mult > 1 ? 'blood' : 'impact'); if (raid && real === V.B0[0]) critSet.delete(real); else critNum(rEl, e.d1, real); if (e.d2) { shake(aEl); hitFx(aEl); dmgNumber(aEl, `-${fmt(e.d2)}`, '#fca5a5'); } }
+            if (e.type === 'hit') { const real = e.target || a.t, rEl = (real && unitEl(oWho, real)) || tEl; shake(rEl, { dmg: e.d1, crit: critSet.has(real) }); hitFx(rEl, e.mult > 1 ? 'blood' : 'impact'); if (raid && real === V.B0[0]) critSet.delete(real); else critNum(rEl, e.d1, real); if (e.d2) { shake(aEl, { dmg: e.d2 }); hitFx(aEl); dmgNumber(aEl, `-${fmt(e.d2)}`, '#fca5a5'); } }
             else if (e.type === 'evade') dmgNumber(unitEl(oWho, e.target) || tEl, 'MISS', '#e0f2fe');
           }
           critSet.clear(); if (raid) { bossNum(a.d, a.weak); S.vDmg = v.damage; raidPaint(v.damage, a.d); }
