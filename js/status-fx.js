@@ -1,7 +1,7 @@
-// 상태이상(마비·혼란·출혈) 연출 — 걸리는 순간 큰 연출 + 걸려 있는 동안 은은한 지속 연출
+// 상태이상(마비·혼란·출혈·도발) 연출 — 걸리는 순간 큰 연출 + 걸려 있는 동안 은은한 지속 연출
 // 이미지 에셋(img/effects/{paralyze,confuse,bleed}_{icon,fx}.webp)이 있으면 사용, 없으면 CSS 로 대체
-const KIND = { para: 'paralyze', confuse: 'confuse', bleed: 'bleed' };
-const LABEL = { para: '마비!', confuse: '혼란!', bleed: '출혈!' };
+const KIND = { para: 'paralyze', confuse: 'confuse', bleed: 'bleed', taunt: 'taunt' };
+const LABEL = { para: '마비!', confuse: '혼란!', bleed: '출혈!', taunt: '도발!' };
 const ASSET = {};   // 'paralyze_icon' → url | null(없음) | undefined(확인 중)
 const url = n => `img/effects/${n}.webp`;
 function probe(n) {
@@ -60,6 +60,10 @@ export function statusApplyFx(el, kind) {
     spawn('stfx-slash', r, 600, d => sprite(d, fx));
     for (let i = 0; i < 7; i++) spawn('stfx-blood', r, 700, d => { const a = Math.random() * Math.PI * 2, s = 30 + Math.random() * 50; d.style.setProperty('--dx', Math.cos(a) * s + 'px'); d.style.setProperty('--dy', Math.sin(a) * s + 'px'); });
     bleedTickFx(el);
+  } else if (kind === 'taunt') {
+    spawn('stfx-aura-burst', r, 700, d => sprite(d, fx));
+    spawn('stfx-shield-slam', r, 600, d => sprite(d, 'taunt_icon'));
+    screen('stfx-edge-red', 450);
   }
   textPop(r, kind);
   el.classList.remove('stfx-pop'); void el.offsetWidth; el.classList.add('stfx-pop');
@@ -85,10 +89,18 @@ export function confuseAllyFx(el) {
   screen('stfx-screen-swirl', 600);
   if (el?.isConnected) { const r = el.getBoundingClientRect(); if (r.width) spawn('stfx-swirl small', r, 500, d => sprite(d, 'confuse_fx')); }
 }
+/** 도발 유닛을 공격할 때: 공격자 → 도발 유닛으로 끌려가는 붉은 선 */
+export function tauntPullFx(fromEl, toEl) {
+  if (!fromEl || !toEl || opt.off() || !fromEl.isConnected || !toEl.isConnected) return;
+  const a = fromEl.getBoundingClientRect(), b = toEl.getBoundingClientRect(); if (!a.width || !b.width) return;
+  const x1 = a.left + a.width / 2, y1 = a.top + a.height / 2, x2 = b.left + b.width / 2, y2 = b.top + b.height / 2;
+  const len = Math.hypot(x2 - x1, y2 - y1), ang = Math.atan2(y2 - y1, x2 - x1);
+  spawn('stfx-pull', null, 450, d => { d.style.left = x1 + 'px'; d.style.top = y1 + 'px'; d.style.width = len + 'px'; d.style.transform = `rotate(${ang}rad)`; });
+}
 /** 렌더 시 유닛 지속 연출 클래스 */
 export function statusClasses(u) {
   const s = u.st || {};
-  return `${s.para ? 'st-para' : ''} ${s.confuse ? 'st-confuse' : ''} ${s.bleed ? 'st-bleed' : ''}`;
+  return `${s.para ? 'st-para' : ''} ${s.confuse ? 'st-confuse' : ''} ${s.bleed ? 'st-bleed' : ''} ${s.taunt ? 'st-taunt' : ''}`;
 }
 /** 지속 연출용 장식 레이어 HTML (카드 .relative 안에 넣음) */
 export function statusDecor(u) {
@@ -97,5 +109,6 @@ export function statusDecor(u) {
   if (s.para) h += '<span class="stfx-p-spark"></span><span class="stfx-p-spark b"></span>';
   if (s.confuse) h += '<span class="stfx-stars"><i>★</i><i>✦</i><i>★</i></span>';
   if (s.bleed) h += '<span class="stfx-b-drip"></span><span class="stfx-b-drip b"></span>';
+  if (s.taunt) h += `<span class="stfx-t-emblem${ASSET.taunt_icon ? ' has-img' : ''}"${ASSET.taunt_icon ? ` style="background-image:url('${ASSET.taunt_icon}')"` : ''}></span>`;
   return h ? `<div class="stfx-decor" aria-hidden="true">${h}</div>` : '';
 }
