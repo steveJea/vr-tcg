@@ -173,6 +173,9 @@
 
   // 고른 캐릭터 전용 대본(byStarter)이 있으면 챕터 기본값 위에 덮어씀
   // 챕터 2~: 고른 루트(byRoute, save.routes[챕터 id]) 대본을 덮어씀. 루트 주인공(hero)은 출전 카드 필수
+  // 챕터 맵 배경 키: 시작 캐릭터별 대본(byStarter)이 있으면 ch_bg_<챕터id>_<캐릭터id>, 아니면 ch_bg_<챕터id>
+  const bgKey = base => base.byStarter && save?.starter ? `${base.id}_${save.starter}` : String(base.id);
+  const bgUrl = base => `url(img/story/ch_bg_${esc(bgKey(base))}.webp),url(img/story/ch_bg_${esc(base.id)}.webp)`;
   const routeOf = base => base.byRoute ? save?.routes?.[base.id] || null : null;
   function chapterFor(base) {
     const key = base.byStarter ? save?.starter : routeOf(base);
@@ -406,7 +409,7 @@
     const tabs = D.chapters.length > 1 ? `<div class="story-chtabs">${D.chapters.map((c, i) => { const open = chapterOpen(i), why = !open ? (i && !chapterDone(D.chapters[i - 1]) ? `${esc(D.chapters[i - 1].title)} 클리어 후` : '준비 중') : '';
       return `<button class="story-chtab ${i === curCh ? 'on' : ''}" data-ch="${i}" ${open ? '' : 'disabled'}>${open ? '' : '🔒 '}${esc(c.title)}${why ? `<small>${why}</small>` : ''}</button>`; }).join('')}</div>` : '';
     const nextCh = D.chapters[curCh + 1], nextOpen = nextCh && chapterOpen(curCh + 1);
-    show(`<div class="story-map-bg" aria-hidden="true" style="background-image:url(img/story/ch_bg_${esc(base.id)}.webp)"></div>${topBar(esc(ch.title), 'hub')}${tabs}
+    show(`<div class="story-map-bg" aria-hidden="true" style="background-image:${bgUrl(base)}"></div>${topBar(esc(ch.title), 'hub')}${tabs}
       <div class="text-center mt-2"><div class="story-chapter-big text-3xl md:text-5xl">${esc(ch.title)}</div><div class="story-chapter-name">${esc(ch.subtitle)}</div>
         ${hero && ch.route ? `<div class="story-route-tag">루트 <b>${esc(hero.name)}</b>${clearedOf(ch).length ? '' : ' <button class="story-mini" data-go="route">루트 바꾸기</button>'}</div>` : ''}</div>
       <div class="story-player-row" data-vr-player></div>
@@ -1548,7 +1551,7 @@
       owned: save.owned.map(view), uniq: inst.length,
       chapters: D.chapters.map(ch => ({ id: ch.id, title: ch.title, done: (save.cleared?.[ch.id] || []).filter(no => ch.phases.some(p => p.no === no)).length, total: ch.phases.length })),
       current: (() => { try { const i = hubCurIdx(), base = D.chapters[i], ch = chapterFor(base), nx = nextPlay(), n = clearedOf(ch).length, cv = chCover(base);
-        return { i, id: base.id, title: base.title, subtitle: ch.subtitle || base.title, phase: nx && nx.i === i ? nx.ph.no : null, boss: nx && nx.i === i && nx.ph.type === 'boss', done: n, total: ch.phases.length, cover: cv ? `${IMG}${cv}.webp` : null }; } catch { return null; } })(),
+        return { i, id: base.id, bg: bgKey(base), title: base.title, subtitle: ch.subtitle || base.title, phase: nx && nx.i === i ? nx.ph.no : null, boss: nx && nx.i === i && nx.ph.type === 'boss', done: n, total: ch.phases.length, cover: cv ? `${IMG}${cv}.webp` : null }; } catch { return null; } })(),
     };
   }
   /** 다른 모드(퀘스트)용 내부 도구 */

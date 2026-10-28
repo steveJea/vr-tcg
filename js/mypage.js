@@ -116,7 +116,7 @@
     const chs = s?.chapters || [], done = chs.reduce((x, c) => x + c.done, 0), tot = chs.reduce((x, c) => x + c.total, 0);
     const games = a ? a.wins + a.losses + a.draws : 0;
     return `<div class="mp-rec">
-      ${s?.current ? (() => { const c = s.current; return `<button type="button" class="mp-story" data-nav="story" data-ch="${c.i}" aria-label="스토리 맵"><span class="mp-story-bg" style="background-image:url(img/story/ch_bg_${esc(c.id)}.webp)${c.cover ? `,url(${esc(c.cover)})` : ''},url(img/story/opening_poster.webp)"></span>
+      ${s?.current ? (() => { const c = s.current; return `<button type="button" class="mp-story" data-nav="story" data-ch="${c.i}" aria-label="스토리 맵"><span class="mp-story-bg" style="background-image:url(img/story/ch_bg_${esc(c.bg || c.id)}.webp),url(img/story/ch_bg_${esc(c.id)}.webp)${c.cover ? `,url(${esc(c.cover)})` : ''},url(img/story/opening_poster.webp)"></span>
         <span class="mp-story-t"><small>${esc(c.title)}</small><b>${esc(c.subtitle)}</b><i>${c.phase ? `Phase.${c.phase}${c.boss ? ' · BOSS' : ''}` : `✔ ${c.done}/${c.total}`}</i></span></button>`; })() : ''}
       <div class="mp-stat"><span>아케이드</span><b>${a ? `${a.wins}승 ${a.losses}패${a.draws ? ` ${a.draws}무` : ''}` : '-'}</b><small>${a && games ? `승률 ${pct(a.wins, games)}%` : '기록 없음'}</small></div>
       <div class="mp-stat"><span>시련의 탑</span><b>${ctx.questBest != null ? `${ctx.questBest}층` : '-'}</b><small>최고 기록</small></div>
