@@ -161,10 +161,12 @@
   const ownedCards = () => deckInstances().map(o => ({ ...boosted(o), uid: o.uid })).filter(x => x.id);
   const normals = () => pool().filter(c => c.grade === 'NORMAL').sort((a, b) => a.power - b.power);
   const rand = a => a[Math.floor(Math.random() * a.length)];
+  /** 스토리 레벨 배율만 적용한 카드 (적 enemies.storyLevels · 각성 난입): HP·ATK·DEF × (1 + 등급 비율 × (Lv−1)) */
+  function lvScaled(c, lv) { const m = 1 + (LV_RATE[c.grade] || 0.01) * (Math.max(1, lv) - 1); const o = { ...c, HP: Math.round(c.HP * m), ATK: Math.round(c.ATK * m), DEF: Math.round(c.DEF * m), storyLv: lv, storyBoost: true }; o.power = window.TCG?.calcPower ? TCG.calcPower(o) : c.power; return o; }
   function pickEnemies(ph) {
     // enemies.boost: { 카드 id: { HP, ATK, DEF, power } } 이 페이즈에서만 쓰는 적 능력치 (카드 원본은 그대로)
-    if (ph.enemies.ids) return ph.enemies.ids.map(card).filter(Boolean).map(c => { const b = ph.enemies.boost?.[String(c.id)]; if (!b) return { ...c }; const e = { ...c, ...b, storyBoost: true }; e.power = window.TCG?.calcPower ? TCG.calcPower(e) : (b.power ?? c.power); return e; });   // boost power = 옵션 B 공식(boost 스탯)   // 같은 id 적 여러 명(CH6 J×5 등)도 서로 다른 객체로
-    const [a, b] = ph.enemies.rank, list = normals().slice(a, b), out = [];
+    if (ph.enemies.ids) return ph.enemies.ids.map(card).filter(Boolean).map(c => { const sl = ph.enemies.storyLevels?.[String(c.id)]; if (sl) c = lvScaled(c, sl); const b = ph.enemies.boost?.[String(c.id)]; if (!b) return { ...c }; const e = { ...c, ...b, storyBoost: true }; e.power = window.TCG?.calcPower ? TCG.calcPower(e) : (b.power ?? c.power); return e; });   // boost power = 옵션 B 공식(boost 스탯)   // 같은 id 적 여러 명(CH6 J×5 등)도 서로 다른 객체로
+    const [a, b] = ph.enemies.rank || [0, 0], list = normals().slice(a, b), out = [];
     while (out.length < ph.enemies.count && list.length) out.push(list.splice(Math.floor(Math.random() * list.length), 1)[0]);
     return out;
   }
@@ -216,15 +218,18 @@
   let curCh = null;          // 보고 있는 챕터 위치 (D.chapters 기준)
   let chReady = {};          // 서버에 페이즈 설정이 있는 챕터 (서버 모드에서만 확인)
   const chapterDone = base => base.phases.every(p => (save.cleared[base.id] || []).includes(p.no));
-  const chapterOpen = i => i === 0 || (chapterDone(D.chapters[i - 1]) && chReady[D.chapters[i].id] !== false);
+  const CH1 = () => Math.max(0, D.chapters.findIndex(c => c.id === 1));   // 챕터 1 위치 (앞에 챕터 0 튜토리얼이 있으면 1)
+  // 챕터 0(튜토리얼): 서버에 설정이 있으면 열림 · 챕터 1: 항상 열림(기존 진행 그대로, 챕터 0 클리어 불필요) · 2~: 이전 챕터 클리어 후
+  const chapterOpen = i => { const c = D.chapters[i]; if (!c) return false; if (c.id === 0) return chReady[0] !== false; if (c.id === 1) return true; return chapterDone(D.chapters[i - 1]) && chReady[c.id] !== false; };
+  const ch0Pending = () => { const c = D.chapters.find(x => x.id === 0); return !!c && chReady[0] !== false && !chapterDone(c); };
   async function checkChapters() {
     chReady = {};
     if (!serverMode) return;
     try { const { data, error } = await cloud().sb.from('story_phase_config').select('chapter'); if (error) throw error; const have = new Set((data || []).map(r => r.chapter));
       for (const c of D.chapters) chReady[c.id] = have.has(c.id); } catch {}
   }
-  const latestOpen = () => { let i = 0; while (i + 1 < D.chapters.length && chapterOpen(i + 1)) i++; return i; }
-  const introOf = s => D.chapters[0].byStarter?.[s.id]?.intro || s.tagline;
+  const latestOpen = () => { let i = save?.starter ? CH1() : 0; while (i + 1 < D.chapters.length && chapterOpen(i + 1)) i++; return i; }
+  const introOf = s => D.chapters[CH1()].byStarter?.[s.id]?.intro || s.tagline;
 
   // ----- BGM -----
   const BGM = { story: 'audio/story_story.mp3', battle: 'audio/story_battle.mp3', boss: 'audio/story_boss.mp3', ending: 'audio/story_ending.mp3', main: 'audio/main.mp3',
@@ -240,7 +245,7 @@
     r.scrollTop = 0;
   }
   function home() { bgm('main'); root().classList.add('hidden'); $('start-screen').classList.remove('hidden'); }
-  const topBar = (title, back = 'home', nav = true) => `<div class="story-top"><button class="story-back" data-go="${back}">← ${back === 'home' ? '처음으로' : back === 'hub' ? '스토리 메인' : '돌아가기'}</button><div class="story-top-title">${title}</div>${nav ? `<span class="flex gap-1.5"><button class="story-mycards story-gacha-btn" data-go="gacha">🎴 인재영입${canDraw() ? '<i class="story-badge">1</i>' : ''}</button><button class="story-mycards" data-go="cards">🃏 보유 인재</button><button class="story-mycards" data-go="decks">🗂 덱</button></span>` : '<span></span>'}</div>`;
+  const topBar = (title, back = 'home', nav = true) => (back === 'hub' && !save?.starter && (back = 'home'), nav && !save?.starter && (nav = false), 0) || `<div class="story-top"><button class="story-back" data-go="${back}">← ${back === 'home' ? '처음으로' : back === 'hub' ? '스토리 메인' : '돌아가기'}</button><div class="story-top-title">${title}</div>${nav ? `<span class="flex gap-1.5"><button class="story-mycards story-gacha-btn" data-go="gacha">🎴 인재영입${canDraw() ? '<i class="story-badge">1</i>' : ''}</button><button class="story-mycards" data-go="cards">🃏 보유 인재</button><button class="story-mycards" data-go="decks">🗂 덱</button></span>` : '<span></span>'}</div>`;
   function bind(extra = {}) {
     root().querySelectorAll('[data-go]').forEach(b => b.onclick = () => ({ home, hub: renderHub, map: renderMap, cards: renderCards, decks: renderDecks, gacha: renderShop, bonds: renderBonds, ...extra })[b.dataset.go]?.());
   }
@@ -271,6 +276,7 @@
     await load();
     await checkChapters(); curCh = null; tickets = null;
     if (!save.openingSeen) return renderOpening();
+    if (ch0Pending()) return autoCh0();   // 챕터 0 미클리어(새·기존 사용자 모두): 목록 대신 바로 시작 (클리어 기록 = 서버 진행, 비로그인 모의는 localStorage)
     if (!save.starter) return renderSelect();
     renderHub();
     // 스탯 규칙 변경 안내 (한 번만)
@@ -314,7 +320,7 @@
   }
   function renderOpening() {
     show('<div class="min-h-[60vh]"></div>');
-    playOpening(async () => { await act('story_mark_seen', { p_key: 'openingSeen' }, () => { save.openingSeen = true; }); save.starter ? renderMap() : renderSelect(); });
+    playOpening(async () => { await act('story_mark_seen', { p_key: 'openingSeen' }, () => { save.openingSeen = true; }); ch0Pending() ? autoCh0() : save.starter ? renderMap() : renderSelect(); });
   }
   const replayBtn = `<button class="story-back" data-go="opening">${ic('opening', { alt: '' })} 오프닝 다시 보기</button>`;
 
@@ -327,7 +333,7 @@
     root().querySelectorAll('[data-pick]').forEach(b => b.onclick = () => {
       const c = card(b.dataset.pick);
       const p = popup(`<div class="text-lg font-black mb-3">${esc(c.name)}(으)로 시작할까요?</div>${tile(c)}<div class="flex gap-2 mt-4"><button data-close-pop class="flex-1 py-2.5 rounded-xl bg-zinc-700 font-bold">취소</button><button id="story-pick-ok" class="flex-1 py-2.5 rounded-xl bg-amber-400 text-black font-bold">결정</button></div>`);
-      $('story-pick-ok').onclick = async () => { p.close(); const r = await act('story_choose_starter', { p_id: String(c.id) }, () => { save.starter = String(c.id); const lead = newCard(c.id); save.leader = lead.uid; save.owned = [lead, ...save.owned]; }); if (!r.ok) return renderSelect(); const ch = chapterFor(D.chapters[0]); chapterIntro(ch, () => startStory(ch)); };
+      $('story-pick-ok').onclick = async () => { p.close(); const r = await act('story_choose_starter', { p_id: String(c.id) }, () => { save.starter = String(c.id); const lead = newCard(c.id); save.leader = lead.uid; save.owned = [lead, ...save.owned]; }); if (!r.ok) return renderSelect(); curCh = CH1(); const ch = chapterFor(D.chapters[CH1()]); chapterIntro(ch, () => startStory(ch)); };
     });
   }
 
@@ -363,6 +369,14 @@
     el.addEventListener('click', () => { try { localStorage.setItem(k, '1'); } catch {} el.remove(); next(); });
     document.body.appendChild(el);
   }
+  /** 챕터 0 자동 시작: 도입 내레이션(처음 한 번) → 아직 안 깬 첫 페이즈 */
+  function autoCh0() {
+    const i = D.chapters.findIndex(c => c.id === 0), ch = chapterFor(D.chapters[i]); curCh = i; hubC = i;
+    const ph = ch.phases.find(p => !(save.cleared?.[0] || save.cleared?.['0'] || []).includes(p.no)) || ch.phases[0];
+    const go = () => startPhase(ch, ph);
+    if (ch.start?.length && !routeStartSeen(ch)) return playLines(ch.start, [], () => { try { localStorage.setItem(RS_KEY(ch), '1'); } catch {} go(); }, 'story', ch.hero);
+    go();
+  }
   function routeStart(ch) { contentWarn(ch, () => routeStart0(ch)); }
   function routeStart0(ch) { playLines([...(ch.single && ch.tagline ? [{ speaker: '내레이션', text: ch.tagline.replace(/\n/g, ' ') }] : []), ...ch.start], [], () => { try { localStorage.setItem(RS_KEY(ch), '1'); } catch {} renderMap(); }, 'story', ch.hero); }
 
@@ -378,7 +392,8 @@
     const base = D.chapters[curCh];
     if (base.byRoute && !routeOf(base)) return renderRouteSelect(curCh);
     const ch = chapterFor(base), done = clearedOf(ch);
-    if (curCh === 0 && ch.start?.length && !save.startSeen) return startStory(ch);
+    if (base.id >= 1 && !save.starter) return renderSelect();   // 챕터 0(튜토리얼) 뒤 첫 캐릭터 고르기
+    if (base.id === 1 && ch.start?.length && !save.startSeen) return startStory(ch);
     if ((ch.route || ch.single) && ch.start?.length && !routeStartSeen(ch)) return routeStart(ch);
     const nextNo = ch.phases.find(p => !done.includes(p.no))?.no;
     const leader = boosted(byUid(save.leader) || save.owned[0]);
@@ -401,7 +416,7 @@
         ${save.points ? `<button class="story-ic-btn pts" type="button" data-go="stats" title="스탯 포인트 분배" aria-label="스탯 포인트 ${save.points} 분배">⭐<b>${save.points}</b></button>` : ''}
         ${!serverMode && !window.__STORY_MOCK_USER ? '<div class="text-[11px] text-amber-400">⚠️ 서버 저장 준비 중이라 이 브라우저에만 저장돼요</div>' : ''}</div>
       ${nextNo ? '' : `<div class="story-clear">✔ CLEAR ${nextOpen ? `<button class="story-btn" data-ch="${curCh + 1}">${esc(nextCh.title)} →</button>` : '<small>다음 챕터 준비 중</small>'}</div>`}
-      <div class="text-center mt-4 flex flex-wrap gap-2 justify-center">${chapterDone(base) && videoOf(base) ? `<button class="story-back story-vid-btn" data-go="endvideo" title="엔딩 영상 다시 보기">🎬 엔딩</button>` : ''}${curCh === 0 ? `<button class="story-back" data-go="opening" title="오프닝 다시 보기">${ic('opening', { alt: '' }) || '🎬'} 오프닝</button>` : ''}</div>`);
+      <div class="text-center mt-4 flex flex-wrap gap-2 justify-center">${chapterDone(base) && videoOf(base) ? `<button class="story-back story-vid-btn" data-go="endvideo" title="엔딩 영상 다시 보기">🎬 엔딩</button>` : ''}${base.id <= 1 ? `<button class="story-back" data-go="opening" title="오프닝 다시 보기">${ic('opening', { alt: '' }) || '🎬'} 오프닝</button>` : ''}</div>`);
     bind({ stats: () => openStats(renderMap), opening: () => playOpening(renderMap), endvideo: () => endingVideo(base), route: () => renderRouteSelect(curCh),
       rule: () => popup(`<div class="text-lg font-black mb-2">⚔️ 스토리 전투</div><div class="text-sm text-zinc-300 leading-relaxed">출전 인재 최대 ${MAX_PICK()}명이 모두 필드에서 시작해요 (손패·드로우·용병 없음, 내 진영 없음).<br>내 인재가 모두 쓰러지거나 ${RULES_TURNS()}턴이 지나면 패배.<br>일반전은 상대 인재 전멸, 👑 보스전은 상대 진영 HP 0이면 승리.</div><button data-close-pop class="story-btn w-full mt-4">확인</button>`) }); playerPaint();
     root().querySelectorAll('[data-ch]').forEach(b => b.onclick = () => renderMap(+b.dataset.ch));
@@ -449,7 +464,9 @@
 
   // ----- 스토리 메인 (허브): 이어하기 · 챕터 목록 · 메뉴. 배경 img/story/hub/bg_pc.webp / bg_m.webp (없으면 메인 배경) -----
   function nextPlay() {   // 열린 챕터 중 안 깬 페이즈가 있는 첫 챕터
-    for (let i = 0; i < D.chapters.length && chapterOpen(i); i++) {
+    for (let i = 0; i < D.chapters.length; i++) {
+      if (!chapterOpen(i)) { if (D.chapters[i].id === 0) continue; break; }
+      if (D.chapters[i].id === 0 && save.starter) continue;   // 기존 사용자: 이어하기는 챕터 0 건너뜀 (원하면 챕터 목록에서)
       const base = D.chapters[i], ch = chapterFor(base), ph = ch.phases.find(p => !clearedOf(ch).includes(p.no));
       if (ph) return { i, base, ch, ph };
     }
@@ -516,7 +533,7 @@
       if (!nx) return;
       curCh = nx.i;
       // 루트 선택·시작 대사가 남았으면 지도 쪽 흐름으로, 아니면 바로 다음 페이즈
-      if ((nx.base.byRoute && !routeOf(nx.base)) || (nx.i === 0 && nx.ch.start?.length && !save.startSeen) || ((nx.ch.route || nx.ch.single) && nx.ch.start?.length && !routeStartSeen(nx.ch))) return renderMap(nx.i);
+      if ((nx.base.byRoute && !routeOf(nx.base)) || (nx.base.id === 1 && nx.ch.start?.length && !save.startSeen) || ((nx.ch.route || nx.ch.single) && nx.ch.start?.length && !routeStartSeen(nx.ch))) return renderMap(nx.i);
       startPhase(nx.ch, nx.ph);
     };
   }
@@ -594,7 +611,7 @@
   function partyOf(ch, ph) {
     const pt = ph.party || (ch.hero ? { forced: [ch.hero] } : null);
     // party.levels { id: Lv }: 보유하지 않은 필수 카드(게스트)의 레벨 (CH7: 시트 강제배정 레벨)
-    const forced = (pt?.forced || []).map(id => repOf(id) || (g => (pt?.levels?.[id] ? { ...g, level: Math.max(1, Math.min(lvCap(g), pt.levels[id] | 0)) } : g))(guestOf(id))).filter(o => card(o.id));
+    const forced = (pt?.forced || []).map(id => (pt?.fixedLevel?.[id] ? null : repOf(id)) || (g => { const lv = pt?.fixedLevel?.[id] ?? pt?.levels?.[id]; return lv ? { ...g, level: Math.max(1, Math.min(lvCap(g), lv | 0)) } : g; })(guestOf(id))).filter(o => card(o.id));
     // 추가 조건 (챕터 3~): noMale · maxMor(필수 카드 제외) · maxGrade. 필수 카드는 조건 예외
     const GO = ['NORMAL', 'RARE', 'HIGH RARE', 'SUPER RARE', 'ULTRA RARE', 'MYTHIC RARE', 'LEGENDARY RARE'], gi = pt?.maxGrade ? GO.indexOf(pt.maxGrade) : -1;
     const rules = [];
@@ -617,6 +634,7 @@
     const all = [...new Map([...guests.filter(o => !exclude.has(o.id)), ...deckInstances().filter(o => !exclude.has(o.id) && allow(o))].map(o => [o.uid, o])).values()];
     const go = opts?.onGo || (list => battle(ch, ph, enemies, list));
     if (all.length <= slots && !forced.length) return go(all);
+    if (ph.party?.auto && !opts) return go(forced);   // party.auto: 고르기 창 없이 필수 카드만 (챕터 0 튜토리얼)
     let last = []; try { last = JSON.parse(localStorage.getItem(PICK_KEY()) || '[]'); } catch {}
     const valid = new Set(all.map(o => o.uid));
     let sel = last.filter(u => valid.has(u)).slice(0, slots);
@@ -676,10 +694,14 @@
       me, ai, leader: (() => { const lo = me.find(c => c.uid === save.leader), le = lo && leaderEff(lo.id); return le ? { ...le, uid: lo.uid } : undefined; })(), win: boss ? 'ko' : 'wipe', aiHp: boss ? bossHp(ch, ph) : undefined, bossId: bc ? String(bc.id) : undefined, enemyLevels: ph.enemies?.levels, aiName: ph.enemyName || (boss ? '보스' : '적군'), rules: battleRules(ch, ph), first: ph.enemyFirst ? 'ai' : 'me',   // 기본 내가 선공, 페이즈 enemyFirst 면 적 선공
      
       spare: { ...STORY_SPARE, ...(ph.spare || {}) },
-      tutorial: ph.tutorial,   // 튜토리얼 가이드 id (data/tutorials/<id>.json · README 참고) — 처음 한 번만   // 조윤이는 조윤하를 공격하지 않음 + 페이즈 spare (예: CH3 P6 안지수 → 조윤하)
+      tutorial: ph.tutorial,
+      // 챕터 0: reserve = 소환 대기 카드(소환 버튼으로 필드에) · fullMp = 시작 MP 가득 · meLevels = 내 카드 전투 시작 레벨 · awaken = 쓰러지면 난입
+      reserve: (ph.reserve || []).map(id => repOf(id) || guestOf(id)).filter(o => card(o.id)).map(o => mul({ ...boosted(o), uid: o.uid })),
+      fullMp: !!ph.fullMp, meLevels: ph.party?.battleLevels,
+      awaken: ph.awaken ? { ...ph.awaken, card: lvScaled(card(ph.awaken.id), ph.awaken.storyLevel || 1) } : undefined,   // 튜토리얼 가이드 id (data/tutorials/<id>.json · README 참고) — 처음 한 번만   // 조윤이는 조윤하를 공격하지 않음 + 페이즈 spare (예: CH3 P6 안지수 → 조윤하)
       onEnd: (win, reason, st) => result(ch, ph, win, reason, st),
     });
-    showConditions(ch, ph);   // 승리·패배 조건 (닫을 수 있음)
+    if (!ch.tutorial) showConditions(ch, ph);   // 승리·패배 조건 (닫을 수 있음) · 챕터 0 은 가이드가 대신
   }
   // ----- 페이즈 전투 규칙: 데이터 rules + 단일 루트 챕터(3~)의 필수 출전 카드는 쓰러지면 패배 -----
   const CH3_PAIR_SHIELD = { id: '2000500111', with: '2000500114', turns: 2 };   // 조윤하 + 조윤이 동시 출전 → 조윤하 2턴 피해 무효
@@ -924,7 +946,7 @@
     const short = [...own, ...LS_FOE.filter(([k]) => e[k]).map(([k, l]) => `적${l} −${pc(e[k])}%`)].join(' ');
     return { ...e, name: c.name, label: `${el.name || c.class}·${cl.name || c.attribute}`, text, short, deathPenalty: L.deathPenalty ?? 0.3 };
   }
-  const leaderUnlocked = () => chapterDone(D.chapters[0]);   // 리더 변경: 챕터 1 클리어 후
+  const leaderUnlocked = () => chapterDone(D.chapters[CH1()]);   // 리더 변경: 챕터 1 클리어 후
   const canMerge = o => exOf(o) < maxEx(o) && materialsOf(o).length > 0;
   const idxOf = o => save.owned.indexOf(o);
   let openGroups = new Set();

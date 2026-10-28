@@ -632,3 +632,8 @@ span.story-lvpct { background: rgba(251,191,36,.12); border: 1px solid rgba(251,
 /* 페이즈 팝업 */
 .story-phpop{text-align:center}.story-phpop-t{font-weight:900;font-size:18px;color:#fde68a}.story-phpop-s{font-size:13px;opacity:.8;margin-top:2px}
 .story-phpop-a{display:flex;gap:8px;margin-top:14px}.story-phpop-a .story-btn{flex:1;margin:0}.story-btn-sw{background:linear-gradient(90deg,#0e7490,#0891b2)!important}
+/* 챕터 0: 각성 난입 토스트 */
+.awaken-toast { position: fixed; left: 50%; top: 38%; transform: translate(-50%,-50%); z-index: 60; pointer-events: none; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 14px 22px; border-radius: 16px; background: radial-gradient(circle, rgba(168,85,247,.9), rgba(30,0,50,.9)); color: #fff; text-shadow: 0 0 8px #f0abfc; animation: awakenIn 2.6s ease forwards; }
+.awaken-toast b { font-size: 26px; letter-spacing: .1em; } .awaken-toast span { font-size: 14px; }
+@keyframes awakenIn { 0% { opacity: 0; transform: translate(-50%,-50%) scale(1.6); } 12% { opacity: 1; transform: translate(-50%,-50%) scale(1); } 80% { opacity: 1; } 100% { opacity: 0; } }
+.awaken-toast[style*="url("] { width: 92vw; max-width: 420px; aspect-ratio: 16/9; justify-content: flex-end; background-size: cover; background-position: center 30%; }

@@ -196,12 +196,14 @@ function startGame(story = null) {
         if (who === 'me') S.log.played.add(String(c.id));
         if (who === 'me' && story.leader && c.uid && c.uid === story.leader.uid && !p.field.some(x => x.isLeader)) { u.isLeader = true; p.leaderSkill = story.leader; }
         if (who === 'ai' && story.bossId != null && String(c.id) === String(story.bossId) && !p.field.some(x => x.undying)) { u.undying = true; u.boss = true; }
+        if (who === 'me') { const lv = +(story.meLevels?.[String(c.id)] || 0); while (u.level < Math.min(lv, RULES.LEVEL_MAX)) levelUpOnce(u); if (story.fullMp) u.mp = u.maxMp; }   // 챕터 0: 내 카드 시작 레벨(party.battleLevels) · 시작 MP 가득
         if (who === 'ai') { const lv = +(story.enemyLevels?.[String(c.id)] || 0); while (u.level < Math.min(lv, RULES.LEVEL_MAX)) levelUpOnce(u); }   // 페이즈 적 시작 레벨 (enemies.levels)
         if (who === 'ai' && (story.rules?.undying || []).map(String).includes(String(c.id))) u.undying = true;   // 불사 적 (피해는 받지만 쓰러지지 않음)
         if (who === 'ai' && story.rules?.invuln != null && String(c.id) === String(story.rules.invuln) && !p.field.some(x => x.noDamage)) { u.undying = true; u.noDamage = true; u.boss = true; }
       }
       p.deck = [];
     }
+    S.reserve = (story.reserve || []).map(c => ({ card: c, cost: 0 }));   // 소환 대기 (챕터 0). cost: 나중에 '마나 100 고정 · 코스트 소환' 설계에서 쓸 자리 (지금은 0 = 무료)
     { const PS = story.rules?.pairShield;   // 챕터 3 밸런스: 조윤하·조윤이가 둘 다 내 필드에 있으면 조윤하 처음 N턴 피해 무효
       const tgt = PS && S.me.field.find(u => String(u.card.id) === String(PS.id));
       if (tgt && S.me.field.some(u => String(u.card.id) === String(PS.with))) { tgt.noDamage = true; tgt.pairShield = PS.turns; S.pairShield = { u: tgt, turns: PS.turns }; log(`🛡️ 자매의 가호: ${tgt.card.name}은(는) ${PS.turns}턴 동안 피해를 입지 않아요.`, 'text-sky-300'); } }
@@ -224,7 +226,7 @@ function startTurn(who) {
   S.turn = who; if (who === S.first) S.turnNo++; S.totalTurns++;
   if (S.pairShield && S.turnNo > S.pairShield.turns) { const u = S.pairShield.u; S.pairShield = null; u.noDamage = false; delete u.pairShield; log(`🛡️ 자매의 가호가 사라졌다: ${u.card.name}`, 'text-zinc-400'); }
   if (S.story?.rules && storyTurnRules(who)) return true;
-  if (who === 'me') { S.myTurns++; if (myTurnsLeft() === 1) lastTurnToast(); }
+  if (who === 'me') { S.myTurns++; setTimeout(() => TUT('turn_start', { turn: S.turnNo }), 50); if (myTurnsLeft() === 1) lastTurnToast(); }
   clearBuff(opp(who));                   // 지난 턴 강화 해제
   const bonus = refillMana(p);
   if (bonus) { log(`${p.name}: 처치 보너스 마나 +${bonus}`, 'text-sky-300'); if (who === 'me') floatText(`${ic('mana')} +${bonus}`, 'text-sky-300', 'me', true); }
@@ -573,10 +575,41 @@ function checkEnd() {
   if (S.story) {   // 스토리: 내 필드 카드 전멸 시 패배 / 일반전은 상대 카드 전멸 시 승리 (보스전은 진영 HP 0)
     const gone = p => !p.field.length && !p.hand.length && !p.deck.length;
     if (S.mustLiveDown) return finish(false, 'mustlive');
+    awakenCheck();
     if (S.story.win === 'wipe' && gone(S.ai)) return finish(true, 'wipe');   // 그 순간 적 카드가 모두 쓰러져 있으면 승리 (부활 대기 중이어도)
     if (gone(S.me)) return finish(false, 'wipe');
   }
   return false;
+}
+/** 챕터 0 P3: story.awaken.on 카드가 필드에서 사라지면 각성 카드 난입 (한 번) — 전멸 판정보다 먼저 */
+function awakenCheck() {
+  const A = S.story?.awaken;
+  if (!A || S.awakened || !A.card || S.me.field.some(u => String(u.card.id) === String(A.on))) return;
+  S.awakened = true;
+  const u = placeUnit(S.me, { ...A.card }, makeUnit, true);
+  while (u.level < Math.min(A.battleLevel || 1, RULES.LEVEL_MAX)) levelUpOnce(u);
+  u.hp = u.maxHp; u.mp = u.maxMp; u.canAttack = true;
+  S.log.played.add(String(A.card.id));
+  log(`⚡ ${A.card.name} 난입!`, 'text-fuchsia-300');
+  render(); playSe(6);
+  fxQueue.push(async () => {
+    const t = document.createElement('div'); t.className = 'awaken-toast'; if (A.image) t.style.backgroundImage = `linear-gradient(rgba(30,0,50,.35),rgba(30,0,50,.75)),url(${A.image})`; t.innerHTML = `<b>⚡ 각성</b><span>${escHtml(A.line || A.card.name)}</span>`;
+    document.body.appendChild(t); setTimeout(() => t.remove(), 2600);
+    await withTimeout(cutIn(u, '각성', null), 2500);
+    TUT('awaken', { id: A.card.id });
+  });
+  runFxQueue();
+}
+/** 소환 대기 카드(S.reserve) 소환 — 내 턴에 버튼. 지금은 무료(cost 0); 마나 코스트 설계가 오면 cost 만 채우면 됨 */
+function summonReserve() {
+  const r = S?.reserve?.[0];
+  if (!r || S.turn !== 'me' || S.over || S.busy) return;
+  if ((r.cost || 0) > S.me.mana) return;
+  S.me.mana -= r.cost || 0; S.reserve.shift();
+  const u = placeUnit(S.me, { ...r.card }, makeUnit);
+  u.canAttack = true; S.log.played.add(String(r.card.id));
+  log(`${S.me.name}: ${r.card.name} 소환`, 'text-violet-300');
+  playSe(2); render(); onEnter('me', u); TUT('summoned', { id: r.card.id });
 }
 /** 턴 종료 후: 전체 턴 제한 도달 시 판정 */
 function checkTimeout() {
@@ -1163,6 +1196,7 @@ function render() {
     btn.querySelector('.reason').textContent = S.limitedAids ? '일반대전 전용' : myTurn && done ? '이번 판 고용 완료' : ''; }
   if (S.story) { const b = $('act-shuffle'); b.disabled = true; b.querySelector('.reason').textContent = '스토리 불가'; }
   $('attack-all').disabled = !myTurn || !S.me.field.some(u => u.canAttack);
+  { const rb = $('reserve-btn'), r = S.reserve?.[0]; if (rb) { rb.classList.toggle('hidden', !r || !!S.view); if (r) { rb.querySelector('img').src = `${IMG}${r.card.id}.webp`; rb.disabled = !myTurn || (r.cost || 0) > S.me.mana; } } }
   const selU = selected != null ? S.me.field.find(x => x.uid === selected) : null;
   if (selected != null && (!selU || !myTurn)) selected = null;
   const atkSel = selU?.canAttack ? selU : null;
@@ -1296,7 +1330,7 @@ function onUnitClick(who, u) {
   if (who === 'me') {
     // 탭 → 다른 내 카드 탭: 자리 바꾸기 (턴 소모 없음). 같은 카드 다시 탭: 선택 해제 + 정보
     const cur = selected != null ? S.me.field.find(x => x.uid === selected) : null;
-    if (myTurn && cur && cur !== u && !u.undying) { if (swapField(S.me, cur, u)) { selected = null; playSe(4); render(); return; } }
+    if (myTurn && cur && cur !== u && !u.undying) { if (swapField(S.me, cur, u)) { selected = null; playSe(4); render(); TUT('swapped'); return; } }
     if (myTurn && !u.undying && selected !== u.uid) { selected = u.uid; render(); TUT('card_selected', { index: S.me.field.indexOf(u) }); return; }
     if (selected === u.uid) { selected = null; render(); }
     showDetail(u.card, { hp: u.hp, unit: u });
@@ -1446,6 +1480,7 @@ $('endturn-ok').onclick = () => { if ($('endturn-noask').checked) localStorage.s
 $('endturn-cancel').onclick = () => hideModal('endturn-confirm');
 $('end-turn').onclick = requestEndTurn;
 $('attack-all').onclick = attackAll;
+{ const rb = $('reserve-btn'); if (rb) rb.onclick = summonReserve; }
 for (const type of Object.keys(ACTIONS)) $(`act-${type}`).onclick = () => { if (S.story && type === 'shuffle') return; if (S.turn === 'me' && !S.busy && !S.over) useAction('me', type); };
 $('ai-hero').onclick = onHeroClick;
 $('help-btn').onclick = () => showModal('help');

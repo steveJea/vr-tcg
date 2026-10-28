@@ -1,0 +1,8 @@
+{
+  "title": "챕터0 Phase 3 · 각성 → AUTO·2배속 해제",
+  "locks": ["auto", "speed", "giveup"],
+  "steps": [
+    { "silent": true, "wait": "awaken" },
+    { "target": "auto_btn", "text": "…이제 AUTO·2배속을 쓸 수 있어. 귀찮으면 맡겨.", "speaker": "[각성] 임유리", "face": "card:2000000008", "wait": "tap", "unlock": ["auto", "speed"] }
+  ]
+}
