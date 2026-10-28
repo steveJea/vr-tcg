@@ -479,7 +479,7 @@
   async function doSweep(ch, ph, n, pop) {
     const { data: r, error } = await cloud().sb.rpc('story_sweep', { p_chapter: ch.id, p_phase: ph.no, p_runs: n });
     pop.close(true);
-    if (error) { const m = error.message || ''; toast(/stamina/.test(m) ? '🔋 행동력이 부족해요' : /locked/.test(m) ? `⚡ 소탕은 플레이어 Lv.${SWEEP_LV}부터` : /not cleared/.test(m) ? '클리어한 페이즈만 소탕할 수 있어요' : `⚠️ 소탕 실패: ${m}`); window.VRPlayer?.status(true).then(() => window.VRPlayer.paint()); return; }
+    if (error) { const m = error.message || ''; toast(/bag full/.test(m) ? '🎒 장비 가방이 꽉 찼어요. 정리하거나 칸을 늘린 뒤 소탕해 주세요' : /stamina/.test(m) ? '🔋 행동력이 부족해요' : /locked/.test(m) ? `⚡ 소탕은 플레이어 Lv.${SWEEP_LV}부터` : /not cleared/.test(m) ? '클리어한 페이즈만 소탕할 수 있어요' : `⚠️ 소탕 실패: ${m}`); window.VRPlayer?.status(true).then(() => window.VRPlayer.paint()); return; }
     if (r.player) window.VRPlayer?.set(r.player); window.VRPlayer?.setWallet(r.wallet);
     const d = r.drops || {}, line = (k, ic2, nm) => d[k] ? `<div class="story-sweep-get">${ic2} ${nm} <b>+${fmt(d[k])}</b></div>` : '';
     const res = popup(`<div class="text-lg font-black text-center">${SW()} 소탕 완료 ×${r.runs}</div>
@@ -491,6 +491,7 @@
       <div class="text-center mt-3"><button class="story-btn" data-x>확인</button></div>`, () => renderMap());
     res.el.querySelector('[data-x]').onclick = () => res.close();
     if (r.player?.levelups) levelUpFx(`PLAYER LEVEL UP! Lv.${r.player.level}`);
+    if (r.gear?.length) window.VRGear?.showDrops?.();   // 장비 PR4: 획득 장비 (그림)
   }
 
   // ----- 스토리 메인 (허브): 이어하기 · 챕터 목록 · 메뉴. 배경 img/story/hub/bg_pc.webp / bg_m.webp (없으면 메인 배경) -----

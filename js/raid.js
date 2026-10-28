@@ -104,7 +104,7 @@ function diffPop() {
 }
 async function claim(e) {
   e.currentTarget.disabled = true;
-  try { S = await rpc('raid_claim'); const g = S.got || {}; toast(`받음 ${rwTxt(g).replace(/<img[^>]*alt="([^"]*)"[^>]*>/g, '$1').replace(/<[^>]+>/g, ' ')}${g.rank ? ` · ${g.rank}위` : ''}`); window.VRPlayer?.wallet?.(true); window.VRGem?.status?.(true); window.dispatchEvent(new Event('vr:guild')); }
+  try { S = await rpc('raid_claim'); const g = S.got || {}; toast(`받음 ${rwTxt(g).replace(/<img[^>]*alt="([^"]*)"[^>]*>/g, '$1').replace(/<[^>]+>/g, ' ')}${g.rank ? ` · ${g.rank}위` : ''}`); window.VRPlayer?.wallet?.(true); window.VRGem?.status?.(true); window.VRGear?.showDrops?.(); window.dispatchEvent(new Event('vr:guild')); }
   catch (er) { toast(errText(er)); }
   paint();
 }
@@ -147,6 +147,7 @@ function result(r) {
   if (!r) return;
   window.VRPlayer?.wallet?.(true);
   pop(`<div class="rd-res"><small>입힌 피해</small><b>${n(r.damage)}</b>${r.cleared ? `<div class="rd-clr">${gi('fx_destroy', '💥')} ${r.cleared}단계 처치!</div>` : ''}<div class="rd-got">${rwTxt(r.got)}</div></div><button class="gd-big" data-x>확인</button>`, 'rd-r');
+  window.VRGear?.showDrops?.();   // 장비 PR4: 토벌 드롭
 }
 // ---- 전투 재생 (계산된 기록 그대로 · SKIP) ----
 function playback(st, res, log, t0) {

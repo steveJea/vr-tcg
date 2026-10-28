@@ -34,3 +34,16 @@
 .gear-cell img{width:100%;height:100%;object-fit:contain}
 .gear-eq{position:absolute;left:3px;top:2px;font-size:10px;background:#f59e0b;color:#000;border-radius:5px;padding:0 3px}
 .gear-lk{position:absolute;left:2px;bottom:1px;font-size:10px}
+
+/* 장비 PR4: 획득 팝업 · 우편함 */
+.gear-badge{background:#ef4444;color:#fff;border-radius:999px;padding:0 6px;font-style:normal;font-size:.75rem;margin-left:2px}
+.gear-drops-h{font-weight:800;font-size:1.1rem;margin-bottom:10px}
+.gear-drops{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:10px}
+.gear-drop{position:relative;width:88px;display:flex;flex-direction:column;align-items:center;gap:4px;border-radius:14px;padding:6px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);animation:gearIn .35s ease both}
+.gear-drop img{width:72px;height:72px;object-fit:contain}
+.gear-drop span{font-size:.72rem;line-height:1.15}
+.gear-drop>b{position:absolute;top:2px;right:4px;font-size:1rem}
+.gear-drop.box>b{top:24px;right:auto;font-size:1.8rem}
+@keyframes gearIn{from{transform:scale(.6);opacity:0}to{transform:none;opacity:1}}
+.gear-box{font-size:2.6rem;line-height:72px;height:72px;display:block}.gear-cell .gear-box{font-size:1.8rem;line-height:1.4}.gear-box.big{font-size:3rem;line-height:1.6;height:auto}
+.gear-drop span.gear-box{font-size:2.6rem;line-height:72px}

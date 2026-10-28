@@ -1,6 +1,6 @@
 // ===== 장비 (PR2: 화면) — supabase/gear_v1.sql 의 gear_status / gear_equip / gear_unequip / gear_lock / gear_expand 사용 =====
 // 인재 정보에 2×2 칸(무기·방어구·액세서리·증표). 증표 칸은 SR 이상만. 가방(100~200칸). 팝업은 바깥 누르면 닫힘
-// 아이콘: img/gear/{weapon|armor|accessory}_{tier}_{n}.webp, 없으면 {slot}_0_1 실루엣. 증표: sigil_1_1~3, 없으면 sigil_0_1
+// 아이콘: img/gear/{weapon|armor|accessory}_{tier}_{n}.webp (1~7등급 전부 있음, 심연 방어구는 armor_7_1·7_2만), 없으면 {slot}_0_1 실루엣. 증표: sigil_1_1~3, 없으면 sigil_0_1
 (() => {
   const SLOTS = [['weapon', '무기'], ['armor', '방어구'], ['acc', '액세서리']];
   const TIER = ['', '낡은', '일반', '고급', '희귀', '영웅', '전설', '심연'];
@@ -45,7 +45,7 @@
   async function rpc(fn, args) {
     const { data, error } = await sb().rpc(fn, args);
     if (error) { toast(`⚠️ ${error.message}`); return null; }
-    if (data && data.ok === false) { toast(`⚠️ ${({ 'card not owned': '이 인재가 서버에 아직 없어요', gem: `보석이 부족해요 (${data.need})`, max: '가방이 최대예요', 'not found': '장비를 찾을 수 없어요' })[data.reason] || data.reason}`); return null; }
+    if (data && data.ok === false) { toast(`⚠️ ${({ 'card not owned': '이 인재가 서버에 아직 없어요', gem: `보석이 부족해요 (${data.need})`, max: '가방이 최대예요', 'not found': '장비를 찾을 수 없어요', 'bag full': '🎒 가방이 꽉 찼어요. 정리한 뒤 받아 주세요', 'event only': '이벤트 전용이에요', unsupported: '아직 받을 수 없는 우편이에요' })[data.reason] || data.reason}`); return null; }
     await load(true); return data || {};
   }
 
@@ -107,15 +107,63 @@
     const draw = () => {
       const list = (st.gear || []).filter(g => filt === 'all' || slotOf(g) === filt).sort((a, b) => (defs[b.def]?.tier || 0) - (defs[a.def]?.tier || 0) || b.plus - a.plus);
       const nx = st.next_expand;
-      m.querySelector('.gear-pop').innerHTML = `<div class="gear-bag-top"><b>🎒 ${st.count}/${st.slots}</b>${nx ? `<button class="gear-btn" data-x>+10칸 ${window.VRGem?.ICON || '💎'} ${nx.gem}</button>` : '<small>최대</small>'}</div>
+      m.querySelector('.gear-pop').innerHTML = `<div class="gear-bag-top"><b>🎒 ${st.count}/${st.slots}</b><button class="gear-btn" data-mail>📬${st.mail ? ` <i class="gear-badge">${st.mail}</i>` : ''}</button>${nx ? `<button class="gear-btn" data-x>+10칸 ${window.VRGem?.ICON || '💎'} ${nx.gem}</button>` : '<small>최대</small>'}</div>
         <div class="gear-tabs">${[['all', '전체'], ...SLOTS].map(([k, l]) => `<button data-f="${k}" class="${filt === k ? 'on' : ''}">${k === 'all' ? '' : img(sil(k), k)}${l}</button>`).join('')}</div>
         <div class="gear-grid">${list.map(g => { const d = defs[g.def]; return `<button class="gear-cell gt${d.tier}" data-g="${g.id}">${img(iconOf(d), slotOf(g))}${g.plus ? `<i>+${g.plus}</i>` : ''}${g.card ? '<b class="gear-eq">E</b>' : ''}${g.locked ? '<b class="gear-lk">🔒</b>' : ''}</button>`; }).join('') || '<div class="gear-dim">아직 장비가 없어요. 소탕·탑·토벌에서 얻을 수 있어요</div>'}</div>`;
       m.querySelectorAll('[data-f]').forEach(b => b.onclick = () => { filt = b.dataset.f; draw(); });
       m.querySelectorAll('[data-g]').forEach(b => b.onclick = () => { const g = st.gear.find(x => String(x.id) === b.dataset.g);
         if (ctx.cardId && !g.card) { rpc('gear_equip', { p_gear: g.id, p_card: String(ctx.cardId) }).then(r => { if (r) { m.remove(); ctx.reopen?.(); } }); return; }
         itemPop(g, { cardId: ctx.cardId, back: () => { if (m.isConnected) draw(); } }); });
+      m.querySelector('[data-mail]').onclick = () => mailbox({ back: () => { if (m.isConnected) draw(); } });
       const x = m.querySelector('[data-x]'); if (x) x.onclick = async () => { if (!confirm(`가방을 10칸 늘릴까요? (보석 ${nx.gem})`)) return; x.disabled = true; const r = await rpc('gear_expand', {}); if (r) { window.VRGem?.status?.(true); } if (m.isConnected) draw(); };
     };
+    draw();
+  }
+
+  // 획득 장비 (결과 화면): 서버 gear_drops_take → 그림 위주 팝업. 상자·우편행은 표시만
+  const SRC = { story_sweep: '소탕', tower: '탑', raid: '토벌', raid_clear: '토벌 처치 상자', raid_rank: '토벌 순위 상자' };
+  const tileOf = x => { const d = defs?.[x.def_id];
+    if (x.kind === 'box') return `<div class="gear-drop box gt${x.tier}"><span class="gear-box">🎁</span><span>${TIER[x.tier] || ''} 상자</span></div>`;
+    return d ? `<div class="gear-drop gt${d.tier}">${img(iconOf(d), d.slot)}${x.mail ? '<b>📬</b>' : ''}<span>${esc(d.name)}</span></div>` : ''; };
+  async function showDrops() {
+    if (off || !sb() || !window.VRCloud?.user) return [];
+    const { data, error } = await sb().rpc('gear_drops_take'); if (error || !data?.length) return [];
+    if (!defs) await load(true); else load(true);
+    const mail = data.some(x => x.mail || x.kind === 'box');
+    pop(`<div class="gear-drops-h">✨ 장비 획득</div><div class="gear-drops">${data.map(tileOf).join('')}</div>
+      ${mail ? '<div class="gear-dim">📬 상자와 가방에 못 넣은 장비는 우편함에 있어요</div><button class="gear-btn main" data-mb>📬 우편함</button>' : ''}`, 'drops')
+      .querySelector('[data-mb]')?.addEventListener('click', e => { e.target.closest('.gear-pop-bg').remove(); mailbox(); });
+    return data;
+  }
+  // 우편함: 장비는 받기, 상자는 슬롯 골라 열기
+  async function mailbox(ctx = {}) {
+    if (!await load()) return toast('장비를 불러오지 못했어요');
+    const m = pop('', 'bag');
+    const close = () => { ctx.back?.(); };
+    const draw = async () => {
+      const { data: list, error } = await sb().rpc('mail_list'); if (error) { m.remove(); return toast(`⚠️ ${error.message}`); }
+      m.querySelector('.gear-pop').innerHTML = `<div class="gear-bag-top"><b>📬 우편함</b><small>🎒 ${st.count}/${st.slots}</small></div>
+        <div class="gear-grid">${list.map(ml => { const p = ml.payload || {}, d = defs[p.def_id];
+          return ml.kind === 'box' ? `<button class="gear-cell gt${p.tier}" data-m="${ml.id}"><span class="gear-box">🎁</span></button>`
+            : d ? `<button class="gear-cell gt${d.tier}" data-m="${ml.id}">${img(iconOf(d), d.slot)}</button>` : ''; }).join('') || '<div class="gear-dim">우편이 없어요</div>'}</div>
+        <div class="gear-dim">보관 7일 · 상자 14일</div>`;
+      m.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { const ml = list.find(x => String(x.id) === b.dataset.m), p = ml.payload || {};
+        if (ml.kind === 'box') {
+          const q = pop(`<div class="gear-big gt${p.tier}"><span class="gear-box big">🎁</span></div><b>🎁 ${TIER[p.tier]} 상자</b>
+            ${p.up_tier ? `<div class="gear-dim">${p.up_pct}% 확률로 ${TIER[p.up_tier]}</div>` : ''}<div class="gear-dim">받을 칸을 고르세요</div>
+            <div class="gear-tabs">${SLOTS.map(([k, l]) => `<button data-s="${k}">${img(sil(k), k)}${l}</button>`).join('')}</div>`, 'item');
+          q.querySelectorAll('[data-s]').forEach(x => x.onclick = async () => { q.querySelectorAll('[data-s]').forEach(y => y.disabled = true);
+            const r = await rpc('gear_box_open', { p_id: ml.id, p_slot: x.dataset.s }); q.remove();
+            if (r?.gear_id) { const g = st.gear.find(y => y.id === r.gear_id); if (g) itemPop(g, {}); }
+            if (m.isConnected) draw(); });
+        } else {
+          const d = defs[p.def_id]; const q = pop(`<div class="gear-big gt${d.tier}">${img(iconOf(d), d.slot)}</div><div class="gear-name gt${d.tier}"><small>${TIER[d.tier]}</small> ${esc(d.name)}</div>
+            <div class="gear-main">${mainTxt(d)}</div>${(p.opts || []).map(o => `<div class="gear-opt">${esc(OPT[o.opt] || o.opt)} +${o.v}${o.opt === 'cooldown' ? '' : '%'}</div>`).join('')}
+            <div class="gear-acts"><button class="gear-btn main" data-c>받기</button></div>`, 'item');
+          q.querySelector('[data-c]').onclick = async e => { e.target.disabled = true; const r = await rpc('mail_claim', { p_id: ml.id }); q.remove(); if (r && m.isConnected) draw(); };
+        } });
+    };
+    const o = new MutationObserver(() => { if (!m.isConnected) { o.disconnect(); close(); } }); o.observe(document.body, { childList: true });
     draw();
   }
 
@@ -125,5 +173,5 @@
     const sg = (st?.sigils || []).find(s => s.card === String(cardId));
     return { gear, sigil: sg?.plus ?? null };
   }
-  window.VRGear = { load, forCard, slotsHTML, bind, bag, get ready() { return !!st; }, get off() { return off; }, _defs: () => defs };
+  window.VRGear = { load, forCard, slotsHTML, bind, bag, mailbox, showDrops, get ready() { return !!st; }, get off() { return off; }, _defs: () => defs };
 })();
