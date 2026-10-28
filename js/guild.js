@@ -188,6 +188,13 @@
   const QIC = { phase: '🗡️', stamina: '🔋', pvp_win: '⚔️', tower: '🗼', draw: '🎴', boss: '💀', levelup: '⬆️', checkin: '🕯️' };
   const QIMG = { pvp_win: 'pvp', draw: 'gacha', checkin: 'gold' };
   const qic = (ev, fb) => `<span class="gd-qic"><i>${QIC[ev] || fb || gi('tile_log', '📜')}</i><img src="img/ui/guild/quest_${QIMG[ev] || ev}.webp" alt="" onerror="this.remove()"></span>`;
+  // 의뢰 제목 누르면 관련 메뉴로 (팝업·조직 화면 닫고 이동). 집결은 조직 안 집결 팝업
+  const QGO = {
+    phase: () => window.VRStory?.openMap?.(), stamina: () => window.VRStory?.openMap?.(), boss: () => window.VRStory?.openMap?.(),
+    tower: () => window.VRQuest?.open?.(), draw: () => window.VRStory?.openShop?.(), levelup: () => window.VRStory?.openCards?.(),
+    pvp_win: () => window.VRPvp?.open?.(), raid: () => window.VRRaid?.open?.(), checkin: 'rally' };
+  const qt = q => QGO[q.event] ? `<button class="gd-qt" data-go="${esc(q.event)}">${esc(q.label)}<i>›</i></button>` : `<b>${esc(q.label)}</b>`;
+  function qGo(m, ev) { const g = QGO[ev]; if (!g) return; m.remove(); if (g === 'rally') return rallyPop(); close(); g(); }
   const RWT = { loyalty: LOY, gold: '🪙', gem: '🔮', tickets: '🎟️', exp: '⚜️' };
   const RW = { loyalty: LOYI, gold: gi('cur_gold', '🪙'), gem: gi('cur_gem', '🔮'), tickets: gi('cur_ticket', '🎟️'), exp: gi('cur_exp', '⚜️') };
   const rwTxt = rw => Object.entries(rw || {}).filter(([k, v]) => RW[k] && v).map(([k, v]) => `<span>${RW[k]}${n(v)}</span>`).join('');
@@ -225,15 +232,16 @@
       const left = Math.max(0, Math.ceil((new Date(Q.week_end) - Date.now()) / 864e5));
       m.querySelector('.gd-pop-panel').innerHTML = `<button class="gd-x" data-x aria-label="닫기">${gi('ic_close', '✕')}</button>
         <div class="gd-qtabs"><button data-tab="daily" class="${tab === 'daily' ? 'on' : ''}">${gi('tile_log', '📜')} 일일</button><button data-tab="weekly" class="${tab === 'weekly' ? 'on' : ''}"><img class="gd-tabic" src="img/ui/guild/quest_weekly.webp" alt="">주간 <small>D-${left}</small></button></div>
-        ${tab === 'daily' ? `<div class="gd-ql">${Q.daily.map(q => `<div class="gd-q ${q.claimed ? 'done' : ''}">${qic(q.event, q.icon)}<div class="gd-q-m"><b>${esc(q.label)}</b><small>${q.progress}/${q.goal}</small>${bar(q.progress, q.goal)}<span class="gd-rw">${rwTxt(q.reward)}</span></div>
+        ${tab === 'daily' ? `<div class="gd-ql">${Q.daily.map(q => `<div class="gd-q ${q.claimed ? 'done' : ''}">${qic(q.event, q.icon)}<div class="gd-q-m">${qt(q)}<small>${q.progress}/${q.goal}</small>${bar(q.progress, q.goal)}<span class="gd-rw">${rwTxt(q.reward)}</span></div>
             <div class="gd-q-a">${q.claimed ? gi('ic_check', '✔') : q.progress >= q.goal ? `<button class="gd-ok" data-claim="${q.slot}">받기</button>` : Q.reroll_left ? `<button class="gd-rr" data-rr="${q.slot}" title="교체 (하루 1번)">${gi('ic_reroll', '🔄')}</button>` : ''}</div></div>`).join('')}</div>
           <button class="gd-big gd-all" data-claim="0" ${Q.daily.every(q => q.claimed) && !Q.all_claimed ? '' : 'disabled'}>${Q.all_claimed ? (gi('ic_check', '✔') + ' 3개 완료 보너스') : `3개 완료 보너스 ${rwTxt(Q.all_reward)}`}</button>`
-        : `<div class="gd-ql">${Q.weekly.map(q => `<div class="gd-wq">${qic(q.event, q.icon)}<div class="gd-q-m"><b>${esc(q.label)}</b><small>${n(q.progress)}/${n(q.goal)} · 내 기여 ${n(q.mine)}${q.mine < q.min ? ` <em>(최소 ${q.min})</em>` : ''}</small>
+        : `<div class="gd-ql">${Q.weekly.map(q => `<div class="gd-wq">${qic(q.event, q.icon)}<div class="gd-q-m">${qt(q)}<small>${n(q.progress)}/${n(q.goal)} · 내 기여 ${n(q.mine)}${q.mine < q.min ? ` <em>(최소 ${q.min})</em>` : ''}</small>
             <div class="gd-qbar w">${'<i style="width:' + Math.min(100, q.progress / q.goal / 1.5 * 100).toFixed(1) + '%"></i>'}${q.tiers.map(t => `<em style="left:${t.tier / 1.5}%" class="${t.reached ? 'on' : ''}"></em>`).join('')}</div>
             <div class="gd-wt">${q.tiers.map(t => `<button data-w="${q.slot}:${t.tier}" class="${t.claimed ? 'done' : t.reached ? 'ready' : ''}" ${t.reached && !t.claimed && q.mine >= q.min ? '' : 'disabled'}><b>${t.tier}%</b>${rwTxt(t.reward)}</button>`).join('')}</div>
             <div class="gd-top">${q.top.map((x, i) => `<span>${[gi('rank_1', '🥇'), gi('rank_2', '🥈'), gi('rank_3', '🥉'), '4', '5'][i]} ${esc(x.name)} <b>${n(x.amount)}</b></span>`).join('')}</div></div></div>`).join('')}</div>`}`;
       m.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { tab = b.dataset.tab; draw(Q); });
       m.querySelectorAll('[data-claim]').forEach(b => b.onclick = () => { b.disabled = true; act2(m, 'guild_quest_claim', { p_slot: +b.dataset.claim }, r => draw(r || Q)); });
+      m.querySelectorAll('[data-go]').forEach(b => b.onclick = () => qGo(m, b.dataset.go));
       m.querySelectorAll('[data-rr]').forEach(b => b.onclick = () => { b.disabled = true; act2(m, 'guild_quest_reroll', { p_slot: +b.dataset.rr }, r => draw(r || Q)); });
       m.querySelectorAll('[data-w]').forEach(b => b.onclick = () => { const [sl, t] = b.dataset.w.split(':'); b.disabled = true; act2(m, 'guild_weekly_claim', { p_slot: +sl, p_tier: +t }, r => draw(r || Q)); });
     };
