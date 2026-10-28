@@ -1119,10 +1119,26 @@
       toast(`⬆ ${s.name} Lv${r.level} · 🔥 −${fmt(r.soul)} · 🪙 −${fmt(r.gold)}`);
     };
   }
+  // 인재 이미지 확대 보기 — 아무 곳이나 탭하면 닫힘, 두 손가락 핀치 확대
+  function zoomImg(src) {
+    const ov = document.createElement('div'); ov.className = 'cd-zoom-ov';
+    ov.innerHTML = `<img src="${src}" alt="">`; document.body.appendChild(ov);
+    const im = ov.firstChild, pts = new Map(); let sc = 1, tx = 0, ty = 0, d0 = 0, s0 = 1, moved = false, last = null;
+    const ap = () => { im.style.transform = `translate(${tx}px,${ty}px) scale(${sc})`; };
+    const dist = () => { const [a, b] = [...pts.values()]; return Math.hypot(a.x - b.x, a.y - b.y); };
+    ov.addEventListener('pointerdown', e => { pts.set(e.pointerId, { x: e.clientX, y: e.clientY }); if (pts.size === 2) { d0 = dist(); s0 = sc; moved = true; } last = { x: e.clientX, y: e.clientY }; });
+    ov.addEventListener('pointermove', e => { if (!pts.has(e.pointerId)) return; pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pts.size === 2 && d0) { sc = Math.min(5, Math.max(1, s0 * dist() / d0)); if (sc === 1) tx = ty = 0; ap(); }
+      else if (pts.size === 1 && sc > 1 && last) { const dx = e.clientX - last.x, dy = e.clientY - last.y; if (Math.abs(dx) + Math.abs(dy) > 2) moved = true; tx += dx; ty += dy; last = { x: e.clientX, y: e.clientY }; ap(); } });
+    const up = e => { pts.delete(e.pointerId); if (pts.size < 2) d0 = 0; if (pts.size === 1) last = [...pts.values()][0];
+      if (!pts.size) { if (!moved) ov.remove(); moved = false; } };
+    ov.addEventListener('pointerup', up); ov.addEventListener('pointercancel', e => { pts.delete(e.pointerId); if (!pts.size) moved = false; });
+    ov.addEventListener('wheel', e => { e.preventDefault(); sc = Math.min(5, Math.max(1, sc * (e.deltaY < 0 ? 1.15 : 1 / 1.15))); if (sc === 1) tx = ty = 0; ap(); }, { passive: false });
+  }
   function cardDetail(u) {
     const o = byUid(u); if (!o) return renderCards(); norm(o);
     const c = boosted(o), cap = lvCap(o), n = copiesOf(o.id).length, rep = repOf(o.id) === o;
-    const p = popup(`<div class="flex gap-3"><div class="cd-img relative shrink-0 self-start"><img src="${IMG}${c.id}.webp" class="w-full aspect-[3/4] object-cover rounded-xl" alt="">${window.rarityStars?.(c, exOf(o) ? 'ex' : 'base', 'rstars-over') || ''}</div><div class="flex-1 min-w-0">
+    const p = popup(`<div class="flex gap-3"><div class="cd-img relative shrink-0 self-start"><img src="${IMG}${c.id}.webp" class="w-full aspect-[3/4] object-cover rounded-xl" alt="">${window.rarityStars?.(c, exOf(o) ? 'ex' : 'base', 'rstars-over') || ''}<button type="button" class="cd-zoom" aria-label="이미지 확대" title="이미지 확대"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/></svg></button></div><div class="flex-1 min-w-0">
         <div class="text-lg font-black truncate">${window.TCG?.cardTitle ? TCG.cardTitle(c, isLeader(o) ? ic('crown', { alt: '리더' }) + ' ' : '') : `${isLeader(o) ? ic('crown', { alt: '리더' }) + ' ' : ''}${esc(c.name)} <span class="text-xs text-zinc-400">${RAR[c.grade] || 'N'}</span>`}</div>${window.TCG?.cardTags?.(c, [n > 1 ? `×${n}${rep ? ' ⚔️' : ''}` : '']) || ''}
         ${o.bound === true ? `<div class="text-[10px] font-bold text-amber-300/90" title="스토리 보상 인재는 거래할 수 없어요"><img class="ui-ic" src="img/ui/bound.webp" alt=""> 귀속</div>` : ""}
         ${lvBar(o)}
@@ -1140,6 +1156,7 @@
       <button id="story-d-lock" class="cd-sm" title="${isLeader(o) ? '리더' : inDeck(o) ? '덱 인재' : '잠금'}" ${isLeader(o) || inDeck(o) ? 'disabled' : ''}>${isLeader(o) ? '🔒 리더' : inDeck(o) ? '🔒 덱' : o.locked ? '🔓 해제' : '🔒 잠금'}</button>
       ${isLeader(o) ? '' : `<button id="story-d-leader" class="cd-sm lead" title="${leaderUnlocked() ? '리더로 지정' : '리더 변경: 챕터 1 클리어 후'}" ${leaderUnlocked() ? '' : 'disabled'}>${ic('crown', { alt: '' })} 리더 지정</button>`}</div>
       ${skillsOf(o.id).length ? `<div class="story-detail-skills"><div class="text-sm font-black mt-4">${window.VRIcon?.or?.('skill_count', '📜') || '📜'} ${skillsOf(o.id).length}</div>${window.TCG?.skillListHTML?.(c, o.level, { skillLv: o.skillLv, up: serverMode, compact: true }) || ''}</div>` : ''}`, renderCards);
+    { const zb = p.el.querySelector('.cd-zoom'); if (zb) zb.onclick = e => { e.stopPropagation(); zoomImg(`${IMG}${c.id}.webp`); }; }
     { const st = p.el.querySelector('.cd-stats'); if (st) { const t = () => st.classList.toggle('open'); st.onclick = t; st.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); t(); } }; } }
     { const gw = $('story-d-gear'), gb = () => window.VRGear?.bind?.(gw, o.id, c.grade, () => cardDetail(o.uid));   // 장비 칸 (gear.js)
       if (gw && window.VRGear && serverMode) { if (window.VRGear.ready) gb(); else window.VRGear.load().then(r => { if (r && gw.isConnected) { gw.innerHTML = window.VRGear.slotsHTML(o.id, c.grade); gb(); } }); } }
