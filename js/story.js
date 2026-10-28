@@ -554,7 +554,7 @@
         <button data-go="bonds" title="인연 조합"><span>🤝</span>인연</button>
         <button id="story-quest" type="button" onclick="window.VRQuest&&VRQuest.open()"><span>🗼</span>시련의 탑</button>
         <button id="story-mypage" type="button" onclick="window.VRMyPage&&VRMyPage.open()"><span>👤</span>마이</button>
-        <button id="story-trade" type="button" onclick="window.VRTrade&&VRTrade.open()" title="인재·장비 거래"><span>💱</span>거래</button></div>
+        <button id="story-trade" type="button" onclick="window.VRTrade&&VRTrade.open()" title="인재·장비 거래"><span><img class="ui-ic" src="img/ui/trade.webp" alt=""></span>거래</button></div>
     </div>`);
     const mv = d => { const n = Math.max(0, Math.min(cur, hubC + d)); if (n !== hubC) { hubC = n; renderHub(); } };
     $('hub-up').onclick = () => mv(1); $('hub-down').onclick = () => mv(-1);
@@ -1124,7 +1124,7 @@
     const c = boosted(o), cap = lvCap(o), n = copiesOf(o.id).length, rep = repOf(o.id) === o;
     const p = popup(`<div class="flex gap-3"><div class="cd-img relative shrink-0 self-start"><img src="${IMG}${c.id}.webp" class="w-full aspect-[3/4] object-cover rounded-xl" alt="">${window.rarityStars?.(c, exOf(o) ? 'ex' : 'base', 'rstars-over') || ''}</div><div class="flex-1 min-w-0">
         <div class="text-lg font-black truncate">${window.TCG?.cardTitle ? TCG.cardTitle(c, isLeader(o) ? ic('crown', { alt: '리더' }) + ' ' : '') : `${isLeader(o) ? ic('crown', { alt: '리더' }) + ' ' : ''}${esc(c.name)} <span class="text-xs text-zinc-400">${RAR[c.grade] || 'N'}</span>`}</div>${window.TCG?.cardTags?.(c, [n > 1 ? `×${n}${rep ? ' ⚔️' : ''}` : '']) || ''}
-        ${o.bound === true ? `<div class="text-[10px] font-bold text-amber-300/90" title="스토리 보상 인재는 거래할 수 없어요">🔗 귀속</div>` : ""}
+        ${o.bound === true ? `<div class="text-[10px] font-bold text-amber-300/90" title="스토리 보상 인재는 거래할 수 없어요"><img class="ui-ic" src="img/ui/bound.webp" alt=""> 귀속</div>` : ""}
         ${lvBar(o)}
         <div class="cd-stats" role="button" tabindex="0" title="눌러서 기본 + 레벨 보기"><div class="cd-power"><span>⚡ POWER</span><b>${fmt(c.power)}</b><small class="cd-brk">기본 ${fmt(card(o.id).power)}</small></div>${STATS.map(s => { const base = card(o.id)[s], exB = Math.round(base * (1 + exbOf(o) / 100)) - base, lvB = Math.round(base * (1 + exbOf(o) / 100) * (1 + lvPct(o) / 100)) - base - exB, pt = ptGain(s, o.boost?.[s]);
           return `<div><span>${STAT_LABEL[s]}</span><b>${fmt(c[s])}</b><small class="cd-brk">기본 ${fmt(base)}${exB ? ` <i class="text-red-300">+${fmt(exB)} EX</i>` : ''}${lvB ? ` <i class="text-amber-300">+${fmt(lvB)} 레벨</i>` : ''}${pt ? ` <i class="text-emerald-300">+${fmt(pt)} 포인트</i>` : ''}</small></div>`; }).join('')}

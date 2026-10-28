@@ -35,3 +35,14 @@
 .tr-help{font-size:12px;line-height:1.55}.tr-help p{margin:0 0 8px}.tr-help b{color:#fde68a}
 .tr-sec-row{display:flex;align-items:center;justify-content:space-between;gap:6px;margin:12px 0 6px}.tr-sec-row .tr-sec{margin:0}
 .tr-sortbar{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}.tr-chip{padding:3px 9px;font-size:11px}
+/* 메인 거래소 타일 (조직 옆, 같은 4:3 크기). 그림: img/ui/v2/btn_trade.webp (800×600). 그림 없으면 임시 바탕 */
+.main-grid .tile-guild,.main-grid .tile-guild:not(.noimg){grid-column:auto;height:auto;aspect-ratio:4/3}
+.main-grid .tile-guild.noimg .main-tile-t,.main-grid .tile-trade.noimg .main-tile-t{left:0;right:0;top:auto;bottom:22px;text-align:center;letter-spacing:.15em}
+.main-grid .tile-guild.noimg .tile-guild-emb{left:50%;top:38%;transform:translate(-50%,-50%)}
+.main-grid .tile-guild.noimg .tile-guild-sub{left:0;right:0;text-align:center;bottom:7px}
+.tile-trade{background:radial-gradient(120% 140% at 50% 30%,#3b2a07 0%,#140d03 60%,#070401 100%);border-color:rgba(245,158,11,.5)}
+.tile-trade::after{background:linear-gradient(180deg,transparent 0%,transparent 45%,rgba(0,0,0,.6) 66%,rgba(0,0,0,.92) 100%)}
+.tile-trade-emb{display:none}.tile-trade.noimg .tile-trade-emb{display:block;position:absolute;left:50%;top:38%;transform:translate(-50%,-50%);font-size:40px;filter:drop-shadow(0 0 10px rgba(245,158,11,.6));z-index:1}
+.tile-trade .main-tile-t{left:0;right:0;bottom:22px;text-align:center;text-shadow:0 2px 6px #000}
+.tile-trade-sub{position:absolute;left:0;right:0;bottom:7px;z-index:1;text-align:center;font-size:11px;color:#fde68a;opacity:.85;text-shadow:0 1px 3px #000}
+.tr-ic{display:inline-block;width:1.25em;height:1.25em;object-fit:contain;vertical-align:-.28em;margin-right:2px}.tr-head .tr-ic{width:1.4em;height:1.4em}
