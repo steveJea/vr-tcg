@@ -125,6 +125,18 @@ function vsScreen(s) {
 }
 
 // ---- 덱 편집 (PvP 전용 · 마이 덱에서 불러오기) ----
+// 인재 정렬 (스토리·거래소와 같은 칩: 같은 버튼 다시 누르면 ▼▲ 전환, localStorage 기억)
+const PSORTS = { grade: '등급', level: '레벨', power: '전투력', name: '이름', new: '획득' }, PSORT_KEY = 'vr-pvp-card-sort';
+const GRADE_ORD = ['NORMAL', 'RARE', 'HIGH RARE', 'SUPER RARE', 'ULTRA RARE', 'MYTHIC RARE', 'LEGENDARY RARE'];
+let psort = (() => { try { const v = JSON.parse(localStorage.getItem(PSORT_KEY)); if (v && PSORTS[v.k]) return { k: v.k, desc: v.desc !== false }; } catch {} return { k: 'power', desc: true }; })();
+const setPSort = k => { psort = psort.k === k ? { k, desc: !psort.desc } : { k, desc: true }; try { localStorage.setItem(PSORT_KEY, JSON.stringify(psort)); } catch {} };
+export function sortPool(list, cardOf = card, all = owned, s = psort) {
+  const idx = new Map(all.map((o, i) => [o.uid, i])), gr = o => GRADE_ORD.indexOf(cardOf(o.id)?.grade), lv = o => o.level | 0, pw = o => +o.power || 0, nw = o => idx.get(o.uid) ?? -1;
+  const nm = o => cardOf(o.id)?.name || '', d = s.desc ? -1 : 1;
+  const key = { grade: [gr, lv, pw], level: [lv, gr, pw], power: [pw, gr, lv], new: [nw], name: [] }[s.k] || [pw];
+  return list.slice().sort((a, b) => { if (s.k === 'name') { const v = nm(a).localeCompare(nm(b), 'ko'); if (v) return v * d; } for (const f of key) { const v = f(a) - f(b); if (v) return v * d; } return 0; });
+}
+const sortChips = () => `<div class="pvp-chips pvp-sort">${Object.entries(PSORTS).map(([k, l]) => `<button data-srt="${k}" class="${psort.k === k ? 'on' : ''}" aria-pressed="${psort.k === k}">${l}${psort.k === k ? (psort.desc ? ' ▼' : ' ▲') : ''}</button>`).join('')}</div>`;
 function editDeck(slot) {
   const cur = st.decks.find(d => d.slot === slot);
   let sel = cur ? [...cur.uids] : [];
@@ -137,10 +149,11 @@ function editDeck(slot) {
     m.querySelector('.pvp-panel').innerHTML = `<button class="pvp-x" data-x>✕</button>
       <div class="pvp-h">${MODES[view.mode].decks > 1 ? `덱 ${slot + 1}` : '🛡 덱'} <small>${sel.length}/5${L.costCap ? ` · ${cost}/${L.costCap}` : ''}</small></div>
       ${myDecks.length ? `<div class="pvp-chips">${myDecks.map((d, i) => `<button data-load="${i}">🗂 ${esc(d.name)}</button>`).join('')}</div>` : ''}
-      <div class="pvp-pick">${pool.map(o => { const c = card(o.id), on = sel.includes(o.uid), dis = usedElsewhere.has(o.id); return c ? `<button data-u="${o.uid}" class="${on ? 'on' : ''}" ${dis ? 'disabled' : ''}>${thumb({ ...c, level: o.level }, on ? `<b class="pvp-n">${sel.indexOf(o.uid) + 1}</b>` : '')}</button>` : ''; }).join('') || '<div class="pvp-empty">없음</div>'}</div>
+      ${pool.length > 1 ? sortChips() : ''}<div class="pvp-pick">${sortPool(pool).map(o => { const c = card(o.id), on = sel.includes(o.uid), dis = usedElsewhere.has(o.id); return c ? `<button data-u="${o.uid}" class="${on ? 'on' : ''}" ${dis ? 'disabled' : ''}>${thumb({ ...c, level: o.level }, on ? `<b class="pvp-n">${sel.indexOf(o.uid) + 1}</b>` : '')}</button>` : ''; }).join('') || '<div class="pvp-empty">없음</div>'}</div>
       <div class="pvp-acts">${cur ? '<button data-del class="pvp-ghost">🗑</button>' : ''}<button data-ok class="pvp-go" ${bad ? 'disabled' : ''}>${bad ? esc(bad) : '저장'}</button></div>`;
     m.querySelectorAll('[data-u]').forEach(b => b.onclick = () => cardInfo(b.dataset.u));
     m.querySelectorAll('[data-load]').forEach(b => b.onclick = () => { const d = myDecks[+b.dataset.load]; const ok = new Set(pool.map(o => o.uid)); sel = d.uids.filter(u => ok.has(u)).slice(0, 5); if (sel.length < d.uids.length) toast('일부 제외'); drawAll(); });
+    m.querySelectorAll('[data-srt]').forEach(b => b.onclick = () => { const sc = m.querySelector('.pvp-pick')?.scrollTop || 0; setPSort(b.dataset.srt); drawAll(); const g = m.querySelector('.pvp-pick'); if (g) g.scrollTop = sc; });
     m.querySelector('[data-ok]').onclick = () => commit();
   };
   const commit = async () => { try { await rpc('pvp_set_deck', { p_league: view.league, p_mode: view.mode, p_slot: slot, p_uids: sel }); m.remove(); open(); } catch (e) { toast(errText(e)); } };
