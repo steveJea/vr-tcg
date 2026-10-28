@@ -20,7 +20,7 @@
   const user = () => (window.__STORY_MOCK_CLOUD || window.VRCloud)?.user || window.__STORY_MOCK_USER || null;
   const pool = () => window.TCG?.POOL || [];
   const skillsOf = id => window.TCG?.skillsOf?.(id) || [];
-  const card = id => pool().find(c => String(c.id) === String(id)) || (window.TCG?.NPC || []).find(c => String(c.id) === String(id));   // NPC: 스토리 적 전용
+  const card = id => (id = window.cardIdNew ? window.cardIdNew(id) : id, 0) || pool().find(c => String(c.id) === String(id)) || (window.TCG?.NPC || []).find(c => String(c.id) === String(id));   // NPC: 스토리 적 전용
   let save = null, cloudOk = true, serverMode = false;
   const cloud = () => window.__STORY_MOCK_CLOUD || window.VRCloud;
 

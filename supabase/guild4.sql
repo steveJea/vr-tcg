@@ -91,13 +91,14 @@ create or replace function public._war_phase(p_season date) returns text languag
 create or replace function public._war_npc_deck(p_seed text, p_scale numeric) returns jsonb language plpgsql stable as $$
 declare hr text[] := array['1000000031','1000000032','2000000033','2000000034','2000000035','2000000036','2000000037','2000000038'];
         r text[] := array['1000000028','1000000029','1000000030','2000000029','2000000030','2000000031','2000000032'];
+        male text[] := array['1000000028','1000000029','1000000030','1000000031','1000000032'];   -- 성별은 ID 첫 자리가 아니라 카드 데이터(gender)로 (ID 변경 후에도 맞게)
         a text[]; b text[]; ids text[]; alt text; out jsonb := '[]'::jsonb; i int;
 begin
   select array_agg(x order by md5(p_seed || ':h:' || x)) into a from unnest(hr) x;
   select array_agg(x order by md5(p_seed || ':r:' || x)) into b from unnest(r) x;
   ids := a[1:2] || b[1:3];
-  if (select count(distinct left(x, 1)) from unnest(ids) x) < 2 then
-    select x into alt from unnest(b[4:7]) x where left(x, 1) <> left(ids[1], 1) limit 1;
+  if (select count(distinct (x = any(male))) from unnest(ids) x) < 2 then
+    select x into alt from unnest(b[4:7]) x where (x = any(male)) <> (ids[1] = any(male)) limit 1;
     ids[5] := alt;
   end if;
   for i in 1..5 loop out := out || jsonb_build_object('uid', 'n' || i, 'id', ids[i], 'level', (_war_numbers()->>'npc_level')::int, 'scale', p_scale); end loop;
