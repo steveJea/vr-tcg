@@ -34,7 +34,7 @@ ok(+await sv(`select count(*) from gear_defs where tier >= 6 and not event_only`
 ok(+await sv(`select count(*) from gear_raid_rewards`) === 9, '토벌 보상표 9행 (재실행 중복 없음)');
 ok(+await sv(`select max(tier) from gear_raid_rewards`) <= 5 && +await sv(`select max(coalesce(up_tier,0)) from gear_raid_rewards`) <= 5, '토벌 보상 최고 영웅');
 ok(+await sv(`select sum(frags) from sigil_cost`) === 530, '증표 조각 합계 530');
-ok(+await sv(`select count(*) from sigil_defs`) === 3 && +await sv(`select jsonb_array_length(steps) from sigil_defs where card_id='2000100001'`) === 6, '증표 3종, +0~+5');
+ok(+await sv(`select count(*) from sigil_defs`) === 3 && +await sv(`select jsonb_array_length(steps) from sigil_defs where card_id='10325'`) === 6, '증표 3종, +0~+5');
 ok(+await sv(`select sum((slots_to - slots_from + 1) / 10 * gem) from gear_slot_price`) === 3700, '가방 확장 총 3,700 보석');
 ok(await sv(`select string_agg(gem::text, ',' order by slots_from) from gear_slot_price`) === '100,100,150,150,200,200,400,400,1000,1000', '구간 가격 100/150/200/400/1000');
 
@@ -46,7 +46,7 @@ ok(!!(await q(`select public._gear_grant('${U}','weapon_2_1','x')`)).err, '내�
 ok(!!(await q(`select * from gear_event_grants`)).err, '이벤트 표 비공개');
 
 // 지급 (서버 내부) + 영웅 초과 거부
-await db.exec(`insert into story_progress (user_id, data) values ('${U}','{"owned":[{"id":"1000100007"},{"id":"2000100001"}]}') on conflict (user_id) do update set data = excluded.data`);
+await db.exec(`insert into story_progress (user_id, data) values ('${U}','{"owned":[{"id":"10118"},{"id":"10325"}]}') on conflict (user_id) do update set data = excluded.data`);
 const g1 = (await db.query(`select public._gear_grant('${U}','weapon_4_2','test') r`)).rows[0].r.gear_id;
 const g2 = (await db.query(`select public._gear_grant('${U}','weapon_2_1','test') r`)).rows[0].r.gear_id;
 let e = null; try { await db.query(`select public._gear_grant('${U}','weapon_6_1','raid')`); } catch (x) { e = x.message; }
@@ -68,8 +68,8 @@ const st = one(await q(`select public.gear_status()`));
 ok(st.slots === 100 && st.count === 3 && st.next_expand.gem === 100, 'gear_status 100칸, 다음 확장 100 보석');
 ok(one(await qv(`select count(*) from player_gear`)) == 0, '다른 사람 장비 안 보임');
 ok(one(await q(`select public.gear_lock(${g1}, true)`)).ok && one(await qv(`select public.gear_lock(${g1}, false)`)).ok === false, '잠금: 본인만');
-ok(one(await q(`select public.gear_equip(${g1}, '1000100007')`)).ok, '장착');
-ok(one(await q(`select public.gear_equip(${g2}, '1000100007')`)).ok && await sv(`select equipped_card from player_gear where id=${g1}`) === null, '같은 슬롯 교체 시 이전 장비 해제');
+ok(one(await q(`select public.gear_equip(${g1}, '10118')`)).ok, '장착');
+ok(one(await q(`select public.gear_equip(${g2}, '10118')`)).ok && await sv(`select equipped_card from player_gear where id=${g1}`) === null, '같은 슬롯 교체 시 이전 장비 해제');
 ok(one(await q(`select public.gear_equip(${g1}, '9999')`)).reason === 'card not owned', '없는 인재 장착 거부');
 ok(one(await q(`select public.gear_unequip(${g2})`)).ok && await sv(`select equipped_card from player_gear where id=${g2}`) === null, '해제');
 

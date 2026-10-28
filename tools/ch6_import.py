@@ -23,7 +23,7 @@ def line(r):
     L = {'speaker': nm(m.group(1) if m else sp), 'text': fx(r[4])}
     if m: L['expr'] = m.group(2)
     return L
-BAN = {'임유리': '2000100001', '문지예': '2000600126', '문지철': '1000600130'}
+BAN = {'임유리': '10325', '문지예': '10111', '문지철': '10112'}
 start, phases, cur, after = [], [], None, False
 for r in R[1:]:
     r = r + [''] * 20

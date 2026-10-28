@@ -7,7 +7,7 @@
 
 -- 1) 조직 상점 상품 추가 (기존 guild_shop 표) ------------------------------------
 insert into public.guild_shop (item, ord, price, gives, limit_kind, limit_n, min_level) values
-  ('sigil_yuri', 10, 150,  '{"sigil":{"card":"2000100001","n":1}}', 'week', 3, 1),
+  ('sigil_yuri', 10, 150,  '{"sigil":{"card":"10325","n":1}}', 'week', 3, 1),
   ('gbox_adv',   11, 400,  '{"gear_box":{"tier":3,"up_tier":4,"up_pct":10}}', 'week', 2, 1),
   ('gbox_rare',  12, 1200, '{"gear_box":{"tier":4,"up_tier":5,"up_pct":5}}', 'week', 1, 3),
   ('gdust10',    13, 100,  '{"dust":10}', 'day', 1, 1)
@@ -77,8 +77,8 @@ create table if not exists public.pvp_shop (
   limit_kind text check (limit_kind in ('day', 'week', 'month')), limit_n int, active boolean not null default true
 );
 insert into public.pvp_shop (item, ord, price, gives, limit_grp, limit_kind, limit_n) values
-  ('sigil_min',   1, 10, '{"sigil":{"card":"1000100007","n":1}}', 'sigil_week', 'week', 3),
-  ('sigil_yun',   2, 10, '{"sigil":{"card":"2000400088","n":1}}', 'sigil_week', 'week', 3),
+  ('sigil_min',   1, 10, '{"sigil":{"card":"10118","n":1}}', 'sigil_week', 'week', 3),
+  ('sigil_yun',   2, 10, '{"sigil":{"card":"10415","n":1}}', 'sigil_week', 'week', 3),
   ('sigil_pick5', 3, 40, '{"sigil":{"pick":"pvp_shop","n":5}}', 'sigil_month', 'month', 1),
   ('gbox_rare',   4, 30, '{"gear_box":{"tier":4,"up_tier":5,"up_pct":5}}', 'gbox_rare', 'week', 1),
   ('gdust10',     5, 5,  '{"dust":10}', 'gdust10', 'day', 1)

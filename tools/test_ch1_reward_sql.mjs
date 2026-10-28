@@ -24,19 +24,19 @@ async function as(role, claims, sql) {
 }
 const me = { sub: U, email: 'u@x.com' }, q = s => as('authenticated', me, s);
 const age = () => db.exec(`update public.story_progress set data = jsonb_set(data, '{battle,at}', to_jsonb((extract(epoch from now()) - 60)::bigint)) where user_id = '${U}'`);
-const W = ['2000800171', '2001700341', '2000400085', '2001100231', '2000400086'];
+const W = ['10248', '10093', '10185', '10130', '10308'];
 const cfg = (await db.query(`select phase, reward_card from public.story_phase_config where chapter = 1 order by phase`)).rows;
 ok(cfg.map(r => r.reward_card).join() === W.join(), '챕터 1 페이즈 1~5 보상 카드 설정');
 ok(/permission denied/.test((await q(`select public._story_complete_phase_e0(1,1,'[]'::jsonb)`)).err || ''), '_e0 직접 호출 불가');
-await q(`select public.story_choose_starter('2000600126')`);
+await q(`select public.story_choose_starter('10111')`);
 await db.exec(`update public.player_state set stamina = 999 where user_id='${U}'`);
 // 1-1 예유진을 미리 보유 → 한 장 더
-await db.exec(`update public.story_progress set data = jsonb_set(data, '{owned}', coalesce(data->'owned','[]'::jsonb) || '[{"uid":"pre1","id":"2000800171","level":3,"exp":0,"totalExp":0,"boost":{}}]') where user_id='${U}'`);
+await db.exec(`update public.story_progress set data = jsonb_set(data, '{owned}', coalesce(data->'owned','[]'::jsonb) || '[{"uid":"pre1","id":"10248","level":3,"exp":0,"totalExp":0,"boost":{}}]') where user_id='${U}'`);
 const owned = async () => (await db.query(`select data->'owned' o from public.story_progress where user_id='${U}'`)).rows[0].o;
 for (let ph = 1; ph <= 5; ph++) {
   if (ph === 5) await db.exec(`update public.story_progress set data = jsonb_set(data, '{cleared,1}', '[1,2,3,4]') where user_id='${U}'`);
   const s = await q(`select public.story_start_phase(1,${ph}) d`); if (s.err) console.log('start err', s.err);
-  await age(); const r = await q(`select public.story_complete_phase(1,${ph},'[{"uid":"pre1","id":"2000800171","kills":0}]'::jsonb) r`);
+  await age(); const r = await q(`select public.story_complete_phase(1,${ph},'[{"uid":"pre1","id":"10248","kills":0}]'::jsonb) r`);
   if (r.err) console.log('ERR', r.err);
   const x = r.rows?.[0]?.r; ok(x?.first === true && x.reward_id === W[ph - 1] && x.reward_uid, `1-${ph} 첫 클리어 보상 = ${W[ph - 1]}`);
   if (ph === 1) { const o = await owned(); ok(o.filter(c => c.id === W[0]).length === 2, '이미 보유한 예유진 → 한 장 더 (2장)');

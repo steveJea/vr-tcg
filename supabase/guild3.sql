@@ -50,9 +50,9 @@ create or replace function public._raid_numbers() returns jsonb language sql imm
 }'::jsonb $$;
 -- 단계 → 보스 (js/raid-core.js RAID_BOSSES 와 같음)
 create or replace function public._raid_boss(p_stage int) returns jsonb language sql immutable as $$
-  select (array['{"id":"2000100001","name":"임유리","weak":"CHARGE"}', '{"id":"2000000008","name":"[각성] 임유리","weak":"DEFENSE"}',
-                '{"id":"2000900234","name":"김신현","weak":"CRUSH"}', '{"id":"1000200030","name":"김성진","weak":"SUPPORT"}',
-                '{"id":"2001500316","name":"이지영","weak":"DISTURB"}'])[((greatest(p_stage, 1) - 1) % 5) + 1]::jsonb $$;
+  select (array['{"id":"10325","name":"임유리","weak":"CHARGE"}', '{"id":"10326","name":"[각성] 임유리","weak":"DEFENSE"}',
+                '{"id":"10062","name":"김신현","weak":"CRUSH"}', '{"id":"10060","name":"김성진","weak":"SUPPORT"}',
+                '{"id":"10311","name":"이지영","weak":"DISTURB"}'])[((greatest(p_stage, 1) - 1) % 5) + 1]::jsonb $$;
 create or replace function public._raid_now() returns timestamptz language sql stable as $$ select now() $$;   -- 테스트에서 바꿔 끼움
 create or replace function public._raid_end(p_week date) returns timestamptz language sql stable as $$ select ((p_week + 6)::timestamp + interval '22 hours') at time zone 'Asia/Seoul' $$;
 create or replace function public._raid_hp(p_diff text, p_members int, p_stage int) returns bigint language sql immutable as $$

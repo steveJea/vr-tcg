@@ -34,7 +34,7 @@ const bond = all.filter(([f]) => f.bond), withCombo = bond.filter(([, g]) => g.c
 ok('인연 층은 조합 포함', withCombo.length === bond.length, `${withCombo.length}/${bond.length}`);
 ok('조합 멤버가 실제로 다 들어감', withCombo.every(([, g]) => combos.find(c => c.name === g.combo).cards.every(id => g.enemies.some(e => String(e.id) === String(id)))));
 ok('인연 x 층은 조합 표시 없음', all.filter(([f]) => !f.bond).every(([, g]) => !g.combo));
-ok('수동 고정 적 (덮어쓰기)', (() => { const g = G.generate(cfg, { floor: 3, grade: 'NORMAL', power: 800, others: 'same', enemies: [{ id: '1000000001', level: 5 }, { id: '1000000002' }] }, pool, combos); return g.manual && g.enemies.length === 2 && g.enemies[0].qLevel === 5; })());
+ok('수동 고정 적 (덮어쓰기)', (() => { const g = G.generate(cfg, { floor: 3, grade: 'NORMAL', power: 800, others: 'same', enemies: [{ id: '10370', level: 5 }, { id: '10368' }] }, pool, combos); return g.manual && g.enemies.length === 2 && g.enemies[0].qLevel === 5; })());
 // 3b) 속성 탑 적 (PR-D)
 {
   const npc = parseCSV(fs.readFileSync('data/npc_cards.csv', 'utf8')), T = { wind: 'WIND', ice: 'ICE', fire: 'FIRE', light: 'LIGHT', dark: 'DARK' };
@@ -55,7 +55,7 @@ ok('수동 고정 적 (덮어쓰기)', (() => { const g = G.generate(cfg, { floo
 {
   const C = id => pool.find(c => String(c.id) === id), mk = (c, uid) => { const u = makeUnit(c, uid); u.sk = skillsOf(c.id); return u; };
   const run = noBase => { const a = { name: 'A', field: [], hand: [], deck: [], mana: 99, hp: 3000, maxHp: 3000, turnsTaken: 9, noBase }, b = { name: 'B', field: [], hand: [], deck: [], mana: 99, hp: 3000, maxHp: 3000, turnsTaken: 9, noBase };
-    initPlayers(a, b); TURN.p = a; const u = placeUnit(a, C('2000300083'), mk); placeUnit(b, C('1000100012'), mk); u.level = 10; u.mp = u.maxMp; u.canAttack = true; refreshAll(a);
+    initPlayers(a, b); TURN.p = a; const u = placeUnit(a, C('10323'), mk); placeUnit(b, C('10074'), mk); u.level = 10; u.mp = u.maxMp; u.canAttack = true; refreshAll(a);
     return aiPickSkill(u)?.name; };
   const cnt = nb => Array.from({ length: 200 }, () => run(nb)).filter(n => n === 'Fatal Temptation').length;
   const withBase = cnt(false), noBase = cnt(true);

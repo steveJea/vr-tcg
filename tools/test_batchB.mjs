@@ -83,11 +83,11 @@ ok('속성 기본 회피 바람 7% / 그 외 4%', baseEvade(W) === 0.07 && baseE
 { const idx = new Set(JSON.parse(fs.readFileSync('data/voice/index.json')));
   const miss = [...idx].filter(k => !fs.existsSync(`data/voice/${k}.mp3`)); ok('voice index 파일 모두 존재', !miss.length, miss.join(','));
   ok('등장 보이스 _0 13장 · 승리 보이스 _9 13장', [...idx].filter(k => k.endsWith('_0')).length === 13 && [...idx].filter(k => k.endsWith('_9')).length === 13);
-  ok('2000000012_* 없음 (하지혜 = 2000000017)', ![...idx].some(k => k.startsWith('2000000012_')) && idx.has('2000000017_0') && fs.existsSync('data/fx/2000000017_0.webp')); }
+  ok('10452_* 없음 (하지혜 = 10440)', ![...idx].some(k => k.startsWith('10452_')) && idx.has('10440_0') && fs.existsSync('data/fx/10440_0.webp')); }
 { const ev = JSON.parse(fs.readFileSync('data/events.json'));
   ok('events.json: 이벤트 파일 존재', ev.events.every(e => (!e.image || fs.existsSync(e.image)) && (!e.voice || fs.existsSync(e.voice))));
   ok('유리x나리 카드 id 유효', ev.events[0].sides.flat().every(id => C(id)), ev.events[0].sides.flat().map(id => C(id)?.name).join(','));
-  ok('entry.fx에 이성호 1002400378 포함', ev.entry.fx.includes('1002400378'));
+  ok('entry.fx에 이성호 10304 포함', ev.entry.fx.includes('10304'));
   ok('entry.fx 이미지 존재', ev.entry.fx.every(id => fs.existsSync(`data/fx/${id}_0.webp`))); }
 { const se = { 1: 4, 2: 2, 3: 4, 4: 3, 5: 1, 6: 1, 7: 3 }; const miss = [];
   for (const [c, n] of Object.entries(se)) for (let i = 1; i <= n; i++) { const f = `audio/se/00${c}_0${i}.mp3`; if (!fs.existsSync(f)) miss.push(f); }

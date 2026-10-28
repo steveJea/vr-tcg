@@ -84,9 +84,10 @@ ok(+(await q1(`select guild_b from war_matches where id=${m1}`)) === G[1], '1일
 ok((await q1(`select guild_b from war_matches where day=1 and guild_a=${G[2]}`)) == null, '남는 조직 = 동네 불량배파');
 ok(+(await q1(`select count(*) from war_ajits where match_id=${m1} and npc`)) === 20, '빈 10칸 × 2쪽 = 동네 불량배');
 const npc = await q1(`select _war_npc_deck('x:1', _war_scale('2026-11-18', 0))`);
-const HR = ['1000000031', '1000000032', '2000000033', '2000000034', '2000000035', '2000000036', '2000000037', '2000000038'];
+const HR = ['10151', '10152', '10163', '10164', '10165', '10166', '10167', '10168'];
+const MALE = ['10148', '10149', '10150', '10151', '10152'];   // 성별은 카드 데이터(gender) 기준
 let mixed = true, shape = true;
-for (let k = 0; k < 40; k++) { const d = await q1(`select _war_npc_deck('t${k}', 1)`); const g = new Set(d.map(c => c.id[0])); if (g.size < 2) mixed = false; if (d.filter(c => HR.includes(c.id)).length !== 2 || d.length !== 5) shape = false; }
+for (let k = 0; k < 40; k++) { const d = await q1(`select _war_npc_deck('t${k}', 1)`); const g = new Set(d.map(c => MALE.includes(c.id))); if (g.size < 2) mixed = false; if (d.filter(c => HR.includes(c.id)).length !== 2 || d.length !== 5) shape = false; }
 ok(mixed && shape && npc[0].scale === 1 && npc[0].level === 10, '불량배 덱: HR 2 + R 3 · 남녀 섞임 · 레벨 10 고정');
 ok(JSON.stringify(npc) === JSON.stringify(await q1(`select _war_npc_deck('x:1', 1)`)), '불량배 덱 seed 고정');
 ok((await q1(`select _war_numbers()->'standings'->>'draw'`)) === '2', '무승부 = 2점');

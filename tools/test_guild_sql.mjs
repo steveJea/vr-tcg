@@ -81,7 +81,7 @@ let g = (await db.query(`select exp from guilds where id=${gid}`)).rows[0]; ok(+
 await db.exec(`select _player_add_xp('${C}', 60000, true)`); ok(await loyal(C) === 100, '스토리 하루 상한 100');
 await db.exec(`select _guild_feed('${C}', 'pvp', 10)`); ok(await loyal(C) === 110, 'PvP 승리 +10');
 // PvP 실제 승리 연동
-await db.exec(`insert into story_progress (user_id, data) values ('${A}', '{"owned":[{"uid":"a","id":"1000000001"},{"uid":"b","id":"1000000002"}],"leader":"a"}') on conflict (user_id) do update set data = excluded.data`);
+await db.exec(`insert into story_progress (user_id, data) values ('${A}', '{"owned":[{"uid":"a","id":"10370"},{"uid":"b","id":"10368"}],"leader":"a"}') on conflict (user_id) do update set data = excluded.data`);
 await as(A, `select pvp_set_deck('open','1v1',0,'["a","b"]')`);
 const s = await v(A, `select pvp_start('open','1v1')`); r = await as(A, `select pvp_report(${s.id}, 1, 0)`);
 ok(!r.err && await loyal(A) === 10, 'pvp_report 승리 → 충성 +10 ' + (r.err || ''));
@@ -89,7 +89,7 @@ ok(!r.err && await loyal(A) === 10, 'pvp_report 승리 → 충성 +10 ' + (r.err
 await db.exec(`select _guild_exp(${gid}, null, 1000, 'test', 'lvtest')`);
 st = await v(A, `select guild_status()`); ok(st.guild.level === 2 && st.guild.max_members === 18 && st.guild.officers_max === 2, '세력 1000 → Lv2 (18명 · 간부 2)');
 ok((await db.query(`select _guild_exp(${gid}, null, 1000, 'test', 'lvtest') n`)).rows[0].n === 0, '같은 ref 세력 중복 없음');
-ok(st.members[0].role === 'boss' && st.members[0].card === '1000000001', '멤버 목록: 보스 먼저 · 리더 카드');
+ok(st.members[0].role === 'boss' && st.members[0].card === '10370', '멤버 목록: 보스 먼저 · 리더 카드');
 // 충성 상점
 await db.exec(`select _loyalty_add('${C}', 1000, 'test', null, '{}')`);
 const t0 = +((await db.query(`select tickets from story_gacha where user_id='${C}'`)).rows[0]?.tickets || 0);

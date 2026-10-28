@@ -29,7 +29,7 @@ const wrapped = (await db.query(`select count(*) c from pg_proc where proname in
 ok(+wrapped === 2, '원래 함수 _e0 로 보관 (재실행해도 2개)');
 ok(/permission denied/.test((await q(`select public._story_start_phase_e0(1,1)`)).err || ''), '_e0 직접 호출 불가 (행동력 우회 차단)');
 ok(/permission denied/.test((await as('anon', {}, 'select public.player_status()')).err || ''), 'anon 은 player_status 불가');
-await q(`select public.story_choose_starter('2000600126')`);
+await q(`select public.story_choose_starter('10111')`);
 let s = await P();
 ok(s.level === 1 && s.stamina === 40 && s.stamina_max === 40 && s.xp_next === 300 && s.cost.story === 6 && s.cost.quest === 0, `처음: Lv1 행동력 40/40 (${JSON.stringify(s).slice(0, 120)})`);
 // 시작 → 6 차감
@@ -66,7 +66,7 @@ s = await P(); ok(s.stamina === 7 && s.next_regen_secs > 290 && s.next_regen_sec
 await db.exec(`update public.player_state set stamina = 5, stamina_at = now() - interval '30 days' where user_id='${U}'`);
 s = await P(); ok(s.stamina === s.stamina_max && s.next_regen_secs === 0, '오래 지나도 최대치까지만');
 // 기존 유저: 클리어 기록이 있어도 소급 없이 Lv1
-await db.exec(`insert into public.story_progress (user_id, data) values ('${V}', '{"starter":"2000600126","cleared":{"1":[1,2,3,4,5]}}')`);
+await db.exec(`insert into public.story_progress (user_id, data) values ('${V}', '{"starter":"10111","cleared":{"1":[1,2,3,4,5]}}')`);
 const sv = (await as('authenticated', { sub: V, email: 'v@x.com' }, 'select public.player_status() s')).rows[0].s;
 ok(sv.level === 1 && sv.xp === 0 && sv.stamina === 40 && sv.stamina_max === 40, `소급 없음: Lv1 xp0 행동력 40/40 (${sv.level}/${sv.xp}/${sv.stamina})`);
 ok(!(await db.query(`select 1 from public.player_wallet where user_id='${V}'`)).rows.length, '기존 유저 골드 지급 없음');

@@ -3,12 +3,12 @@
   "locks": ["auto", "speed", "skip", "attack_all", "giveup"],
   "prep": { "fullMp": true },
   "steps": [
-    { "text": "첫 전투야. 내가 알려줄게.", "speaker": "임유리", "face": "card:2000100001", "wait": "tap" },
+    { "text": "첫 전투야. 내가 알려줄게.", "speaker": "임유리", "face": "card:10325", "wait": "tap" },
     { "target": "my_card:0", "text": "내 카드를 눌러 선택해.", "speaker": "임유리", "wait": "card_selected", "match": { "index": 0 } },
     { "target": "enemy_card:0", "text": "공격할 적을 눌러!", "speaker": "임유리", "wait": "attack_done" },
     { "target": "skill_btn:1", "text": "MP가 차면 기술! 이 버튼을 눌러.", "speaker": "임유리", "wait": "tap_target" },
     { "target": "skill_use", "text": "사용!", "speaker": "임유리", "wait": "skill_used", "pad": 4 },
-    { "text": "잘했어. 이제 마음껏 싸워 봐.", "speaker": "임유리", "face": "card:2000100001", "wait": "tap" }
+    { "text": "잘했어. 이제 마음껏 싸워 봐.", "speaker": "임유리", "face": "card:10325", "wait": "tap" }
   ],
-  "demo": { "me": ["2000100001", "1000100009", "1000100010"], "ai": ["1000000031", "2000000033", "1000000028"], "aiName": "연습 상대" }
+  "demo": { "me": ["10325", "10019", "10018"], "ai": ["10151", "10163", "10148"], "aiName": "연습 상대" }
 }

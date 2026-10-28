@@ -36,7 +36,7 @@ let s1 = await sum('NORMAL', 1, 19); ok(s1.b === 380 && s1.g === 1900, `N 1→20
 s1 = await sum('MYTHIC RARE', 1, 69); ok(s1.b === 43470 && s1.g === 144900, `MR 1→70 합계 피 43,470 · 골드 144,900 (${s1.b}/${s1.g})`);
 s1 = await sum('RARE', 1, 29); ok(s1.b === 1305 && s1.g === 6525, `R 1→30 (${s1.b}/${s1.g})`);
 // 카드 준비
-await q(`select public.story_choose_starter('2000600126')`);
+await q(`select public.story_choose_starter('10111')`);
 const nId = await idOf('NORMAL'), urId = await idOf('ULTRA RARE');
 await db.exec(`update public.story_progress set data = jsonb_set(data, '{owned}', data->'owned' || '[{"uid":"n1","id":"${nId}","level":3,"exp":150,"totalExp":450},{"uid":"n2","id":"${nId}","level":1},{"uid":"n3","id":"${nId}","level":1,"locked":true},{"uid":"u1","id":"${urId}","level":1,"ex":4},{"uid":"u2","id":"${urId}","level":1}]'::jsonb) where user_id='${U}'`);
 ok(/not enough gold|not enough blood/.test((await q(`select public.story_card_levelup('n1', 1)`)).err || ''), '재화 없으면 거부');

@@ -22,25 +22,25 @@ for (const f of ['story.sql', 'gacha.sql', 'story_server.sql', 'story_gacha.sql'
 const sv = async s => Object.values((await db.query(s)).rows[0])[0];
 let fails = 0; const ok = (c, m) => { if (!c) { fails++; console.log('FAIL', m); } else console.log('ok  ', m); };
 const as = async (sub, sql) => { await db.exec(`reset role; select set_config('request.jwt.claims', '${JSON.stringify({ sub })}', false); set role authenticated;`); try { return (await db.query(sql)).rows[0]; } catch (e) { return { err: e.message }; } finally { await db.exec('reset role'); } };
-// 기존 보유분: U = 시작 인재 2000100004 ×1, 2000100001(임유리) ×1, 영입 기록 있는 A ×3 (기록 2), 기록 없는 B ×1, 페이즈 0-1 보상 2000100006 ×2 (기록 1)
+// 기존 보유분: U = 시작 인재 10462 ×1, 10325(임유리) ×1, 영입 기록 있는 A ×3 (기록 2), 기록 없는 B ×1, 페이즈 0-1 보상 10256 ×2 (기록 1)
 const own = (id, n) => Array.from({ length: n }, (_, k) => ({ uid: id + '_' + k, id, level: 1 }));
-const owned = [...own('2000100004', 1), ...own('2000100001', 1), ...own('A', 3), ...own('B', 1), ...own('2000100006', 2)];
-await db.query(`insert into story_progress (user_id, data) values ($1, $2)`, [U, JSON.stringify({ starter: '2000100004', cleared: { 1: [1] }, owned })]);
-await db.exec(`update story_phase_config set reward_card = '2000100006' where chapter = 1 and phase = 1;
-insert into story_gacha_log (user_id, card_id, grade) values ('${U}','A','R'),('${U}','A','R'),('${U}','2000100006','R'),('${U}','B','R'),('${U}','B','R');
+const owned = [...own('10462', 1), ...own('10325', 1), ...own('A', 3), ...own('B', 1), ...own('10256', 2)];
+await db.query(`insert into story_progress (user_id, data) values ($1, $2)`, [U, JSON.stringify({ starter: '10462', cleared: { 1: [1] }, owned })]);
+await db.exec(`update story_phase_config set reward_card = '10256' where chapter = 1 and phase = 1;
+insert into story_gacha_log (user_id, card_id, grade) values ('${U}','A','R'),('${U}','A','R'),('${U}','10256','R'),('${U}','B','R'),('${U}','B','R');
 update story_gacha_log set card_id = 'Z' where card_id = 'B';`);
 await run('trade_origin.sql'); await run('trade_origin.sql'); await run('trade_origin_v2.sql'); await run('trade_origin_v2.sql');
 const rows = (await db.query(`select o->>'id' id, o->>'src' src, (o->>'bound')::bool bound from story_progress, jsonb_array_elements(data->'owned') o where user_id = '${U}'`)).rows;
 const cnt = (id, src) => rows.filter(r => r.id === id && r.src === src).length;
-ok(cnt('2000100004', 'starter') === 1 && cnt('2000100001', 'story') === 1, '시작 인재 → starter(거래 가능), 임유리 → story 귀속');
+ok(cnt('10462', 'starter') === 1 && cnt('10325', 'story') === 1, '시작 인재 → starter(거래 가능), 임유리 → story 귀속');
 ok(cnt('A', 'recruit_backfill') === 2 && cnt('A', 'unknown') === 1, '영입 기록 2건 → 2장만 거래 가능, 나머지 1장 unknown(거래 가능)');
 ok(cnt('B', 'unknown') === 1, '영입 기록 없음 → unknown(거래 가능)');
-ok(cnt('2000100006', 'story') === 1 && cnt('2000100006', 'recruit_backfill') === 1, '챕터 보상 1장 story, 영입 기록 1건분 거래 가능');
+ok(cnt('10256', 'story') === 1 && cnt('10256', 'recruit_backfill') === 1, '챕터 보상 1장 story, 영입 기록 1건분 거래 가능');
 ok(rows.every(r => r.bound === (r.src === 'story')), 'bound = story 만 true');
 ok(rows.length === 8, '재실행해도 개수·출처 그대로');
 // 새 경로
 await db.query(`insert into story_progress (user_id, data) values ($1, '{}')`, [V]);
-const st = await as(V, `select story_choose_starter('2000600126') r`);
+const st = await as(V, `select story_choose_starter('10111') r`);
 const dd = await as(V, `select story_daily_draw() r`);
 const vr = (await db.query(`select o->>'src' src, (o->>'bound')::bool bound, o ? 'got_at' g from story_progress, jsonb_array_elements(data->'owned') o where user_id = '${V}'`)).rows;
 console.log('  starter', JSON.stringify(st).slice(0, 80), 'daily', JSON.stringify(dd).slice(0, 80));

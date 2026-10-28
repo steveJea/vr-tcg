@@ -25,7 +25,7 @@ async function as(role, claims, sql) {
 const me = { sub: U, email: 'u@x.com' }, q = s => as('authenticated', me, s);
 const W = '00000000-0000-0000-0000-000000000004';
 await db.exec(`insert into auth.users (id, email, email_confirmed_at) values ('${W}','w@x.com',now()); insert into profiles (id, nickname) values ('${U}','유','),('${V}','브이'),('${W}','더블');`.replace("'유','", "'유'"));
-const owned = [{ uid: 'a', id: '1000000001', level: 5 }, { uid: 'b', id: '1000000002' }, { uid: 'c', id: '1000000005' }, { uid: 'd', id: '1000000001' }, { uid: 'mr', id: '1000200030' }];
+const owned = [{ uid: 'a', id: '10370', level: 5 }, { uid: 'b', id: '10368' }, { uid: 'c', id: '10351' }, { uid: 'd', id: '10370' }, { uid: 'mr', id: '10060' }];
 for (const x of [U, V]) await db.exec(`insert into story_progress (user_id, data) values ('${x}', '${JSON.stringify({ owned })}'::jsonb) on conflict (user_id) do update set data = excluded.data`);
 const as2 = (id, s) => as('authenticated', { sub: id, email: 'x' }, s);
 const one = r => r.rows?.[0] && Object.values(r.rows[0])[0];

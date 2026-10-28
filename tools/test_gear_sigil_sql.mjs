@@ -27,7 +27,7 @@ async function as(uid, sql, role = 'authenticated') {
 }
 const v = async (u, s) => { const r = await as(u, s); return r.err ? { err: r.err } : Object.values(r.rows[0])[0]; };
 const q1 = async s => Object.values((await db.query(s)).rows[0] || {})[0];
-const MIN = '1000100007', YUN = '2000400088', YURI = '2000100001';
+const MIN = '10118', YUN = '10415', YURI = '10325';
 const frags = async (u, c) => +((await q1(`select frags from player_sigils where user_id='${u}' and card_id='${c}'`)) ?? -1);
 const plus = async (u, c) => await q1(`select plus from player_sigils where user_id='${u}' and card_id='${c}'`);
 ok(+(await q1(`select sum(frags) from sigil_cost`)) === 530, '제작~+5 합계 530');
@@ -70,7 +70,7 @@ await v(B, `select raid_claim()`);
 const ml = (await v(B, `select mail_list()`)).find(m => m.kind === 'sigil_frag');
 ok(ml && ml.payload.n === 6, `순위 1위: 증표 조각 6개 선택 우편 (${ml?.payload?.n})`);
 ok((await v(B, `select gear_drops_take()`)).some(x => x.kind === 'sigil' && x.mail), '결과 기록 (우편)');
-ok((await v(B, `select sigil_mail_claim(${ml.id}, '1000000001')`)).reason === 'not selectable', '고를 수 없는 인재 거부');
+ok((await v(B, `select sigil_mail_claim(${ml.id}, '10370')`)).reason === 'not selectable', '고를 수 없는 인재 거부');
 const mc = await v(B, `select sigil_mail_claim(${ml.id}, '${YUN}')`); ok(mc.ok && (await frags(B, YUN)) === 6, '최윤희 조각 6개 받음');
 ok((await v(B, `select sigil_mail_claim(${ml.id}, '${YUN}')`)).reason === 'not found', '두 번 못 받음');
 // 보안

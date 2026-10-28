@@ -17,7 +17,7 @@ insert into auth.users (id, email, email_confirmed_at) values ('${U}','u@x.com',
 const run = f => db.exec(readFileSync(new URL('../supabase/' + f, import.meta.url), 'utf8'));
 for (const f of ['story.sql', 'gacha.sql', 'story_server.sql', 'story_gacha.sql', 'story_levels.sql', 'story_level_stats.sql', 'story_merge.sql', 'story_ch2.sql', 'story_cards_1022.sql', 'story_leader_lock.sql', 'story_min_battle.sql', 'quest.sql', 'admin.sql', 'phaseE_1.sql', 'phaseE_2.sql']) await run(f);
 // 이전 대상: 남은 EXP 255 + 40 = 295 → 피 29
-await db.exec(`insert into public.story_progress (user_id, data) values ('${M}', '{"starter":"2000600126","leader":"a","owned":[{"uid":"a","id":"2000600126","level":5,"exp":255,"totalExp":1255},{"uid":"b","id":"2000200044","level":2,"exp":40,"totalExp":140}]}')`);
+await db.exec(`insert into public.story_progress (user_id, data) values ('${M}', '{"starter":"10111","leader":"a","owned":[{"uid":"a","id":"10111","level":5,"exp":255,"totalExp":1255},{"uid":"b","id":"10265","level":2,"exp":40,"totalExp":140}]}')`);
 await run('phaseE_3.sql'); await run('phaseE_3.sql');   // 두 번 실행해도 안전 (이전 1회)
 let fails = 0; const ok = (c, m) => { if (!c) { fails++; console.log('FAIL', m); } else console.log('ok  ', m); };
 async function as(role, claims, sql) {
@@ -38,7 +38,7 @@ d = await C(5, 'normal', false, 0.9, 0.1); ok(d.soul === 1 && d.gold === 240, `c
 d = await C(5, 'boss', false); ok(d.soul === 5 && d.shard === 5, `ch5 보스: 혼 5, 조각 3+2=${d.shard}`);
 d = await C(5, 'normal', true); ok(d.soul === 2, 'ch5 첫 클리어 혼 2');
 // 실제 클리어 → 지갑
-await q(`select public.story_choose_starter('2000600126')`);
+await q(`select public.story_choose_starter('10111')`);
 await q('select public.story_start_phase(1,1)');
 await db.exec(`update public.story_progress set data = jsonb_set(data, '{battle,at}', to_jsonb((extract(epoch from now()) - 10)::bigint)) where user_id='${U}'`);
 await db.exec(`update public.player_state set xp = 200 where user_id='${U}'`);   // 필요 경험치 3배(300): 200 + 110 → 레벨업
@@ -59,8 +59,8 @@ await q('select public.quest_start(1)');
 await db.exec(`update public.quest_progress set battle = jsonb_set(battle, '{at}', to_jsonb((extract(epoch from now()) - 60)::bigint)) where user_id='${U}'`);
 r = await q(`select public.quest_complete(1, '{"turns":5}') r`); ok(r.rows?.[0].r.currency === null, '재클리어는 재화 없음');
 // 분해
-await db.exec(`update public.story_progress set data = jsonb_set(data, '{owned}', data->'owned' || '[{"uid":"x1","id":"2000200044","level":3,"exp":0,"totalExp":300,"boost":{"ATK":2}},{"uid":"x2","id":"2000200044","level":1,"exp":0,"totalExp":0,"locked":true}]'::jsonb) where user_id='${U}'`);
-const g = (await db.query(`select grade from public.story_card_pool where id='2000200044'`)).rows[0]?.grade;
+await db.exec(`update public.story_progress set data = jsonb_set(data, '{owned}', data->'owned' || '[{"uid":"x1","id":"10265","level":3,"exp":0,"totalExp":300,"boost":{"ATK":2}},{"uid":"x2","id":"10265","level":1,"exp":0,"totalExp":0,"locked":true}]'::jsonb) where user_id='${U}'`);
+const g = (await db.query(`select grade from public.story_card_pool where id='10265'`)).rows[0]?.grade;
 const y = (await db.query(`select public._dismantle_yield('${g}') y`)).rows[0].y;
 const w0 = await W(), pts0 = (await db.query(`select (data->>'points')::int p from public.story_progress where user_id='${U}'`)).rows[0].p;
 r = await q(`select public.story_dismantle(array['x1']) r`);
@@ -73,7 +73,7 @@ const lead = (await db.query(`select data->>'leader' l from public.story_progres
 ok(/leader/.test((await q(`select public.story_dismantle(array['${lead}'])`)).err || ''), '리더 거부');
 ok(/not owned/.test((await q(`select public.story_dismantle(array['nope'])`)).err || ''), '없는 카드 거부');
 // 예전 RPC 는 EXP 대신 재화
-await db.exec(`update public.story_progress set data = jsonb_set(data, '{owned}', data->'owned' || '[{"uid":"x3","id":"2000200044","level":1,"exp":0,"totalExp":0}]'::jsonb) where user_id='${U}'`);
+await db.exec(`update public.story_progress set data = jsonb_set(data, '{owned}', data->'owned' || '[{"uid":"x3","id":"10265","level":1,"exp":0,"totalExp":0}]'::jsonb) where user_id='${U}'`);
 const lv0 = (await db.query(`select data->'owned'->0 o from public.story_progress where user_id='${U}'`)).rows[0].o;
 r = await q(`select public.story_discard_many(array['x3'], '${lead}') r`);
 ok(r.rows?.[0].r.exp === 0 && r.rows[0].r.gold === y.gold, '예전 story_discard_many → 재화 분해, EXP 0');

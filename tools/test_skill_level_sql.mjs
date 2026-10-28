@@ -41,7 +41,7 @@ const pk = (await db.query(`select m.card_id id, min(m.unlock) lo, max(m.unlock)
 const hiIdx = (await db.query(`select idx from public.story_skill_meta where card_id='${pk.id}' order by unlock desc limit 1`)).rows[0].idx;
 const loIdx = (await db.query(`select idx from public.story_skill_meta where card_id='${pk.id}' order by unlock asc limit 1`)).rows[0].idx;
 const passIdx = (await db.query(`select g::int i from generate_series(1,6) g where not exists (select 1 from public.story_skill_meta where card_id='${pk.id}' and idx=g) order by 1 limit 1`)).rows[0].i;
-await q(`select public.story_choose_starter('2000600126')`);
+await q(`select public.story_choose_starter('10111')`);
 await db.exec(`update public.story_progress set data = jsonb_set(data, '{owned}', data->'owned' || '[{"uid":"s1","id":"${pk.id}","level":${pk.lo}},{"uid":"s2","id":"${pk.id}","level":1,"skillLv":{"${loIdx}":7},"soulSpent":999},{"uid":"s3","id":"${pk.id}","level":1}]'::jsonb) where user_id='${U}'`);
 ok(/not enough soul/.test((await q(`select public.story_skill_levelup('s1', ${loIdx}, 1)`)).err || ''), '혼 없으면 거부');
 ok(/skill locked/.test((await q(`select public.story_skill_levelup('s1', ${hiIdx}, 1)`)).err || ''), `카드 Lv 미달 스킬 거부 (해금 Lv${pk.ul})`);

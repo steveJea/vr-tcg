@@ -19,8 +19,8 @@ const sides = (aCards, bIds) => {
 };
 const sk = (u, n) => u.sk.find(s => s.name === n);
 const cast = (u, n) => { u.canAttack = true; u.mp = u.maxMp; u.cd = {}; return useSkill(u, sk(u, n)); };
-const MIN = '1000100007', YUN = '2000400088', YURI = '2000100001';
-const FOE = ['1000100012', '1000100013', '1000100014'];
+const MIN = '10118', YUN = '10415', YURI = '10325';
+const FOE = ['10074', '10080', '10445'];
 const W4 = { stat: 'atk', pct: 8, plus: 0, opts: [{ opt: 'crit', v: 2 }] }, A5 = { stat: 'hp', pct: 10, plus: 5, opts: [{ opt: 'dmg_reduce', v: 5 }] };
 
 // 1) 스탯 반영
@@ -74,7 +74,7 @@ const W4 = { stat: 'atk', pct: 8, plus: 0, opts: [{ opt: 'crit', v: 2 }] }, A5 =
 { const { A } = sides([applyGear(C(MIN), { gear: [{ stat: 'evade', pct: 5, plus: 0 }, { stat: 'mp', pct: 5, plus: 0 }] }, 'story')], FOE);
   RULES.EVADE_ON = true; ok('회피 +5%p', Math.abs(evadeChance(A[0]) - (RULES.EVADE_BASE[C(MIN).class] ?? RULES.EVADE_DEFAULT) - 0.05) < 1e-9); RULES.EVADE_ON = false; }
 // 6) 전투 끝까지 (증표 덱 PvP 한 판)
-{ const deck = [MIN, YUN, YURI, '1000200018', '1000200030'].map(id => snapCard({ id, level: 30, gear: [W4, A5], sigil: 5 }, C, 'pvp'));
-  const foe = ['1000100012', '1000100013', '1000100014', '1000100016', '1000200020'].map(id => snapCard({ id, level: 30 }, C, 'pvp'));
+{ const deck = [MIN, YUN, YURI, '10051', '10060'].map(id => snapCard({ id, level: 30, gear: [W4, A5], sigil: 5 }, C, 'pvp'));
+  const foe = ['10074', '10080', '10445', '10375', '10404'].map(id => snapCard({ id, level: 30 }, C, 'pvp'));
   let r; try { r = runMatch(deck, foe, 12345); } catch (e) { r = { err: e.message }; } ok('PvP 한 판 오류 없음', r && !r.err, r?.err || `win=${r.win}`); }
 console.log(fails ? `\n${fails} FAIL` : '\nALL PASS');

@@ -19,7 +19,7 @@
 | `target` | 밝게 할 대상. 없으면 정보 단계(화면 전체 어둡게) | `my_card:0` `enemy_card:0` `skill_btn:1` `skill_use` `attack_all` `end_turn` `auto_btn` `speed_btn` 또는 CSS 선택자 `#end-turn` |
 | `text` | 말풍선 글 (짧게) | `"내 카드를 눌러 선택해."` |
 | `speaker` | 말하는 사람 이름 | `"임유리"` |
-| `face` | (선택) 얼굴 그림. `card:<카드id>` 또는 이미지 경로 | `"card:2000100001"` |
+| `face` | (선택) 얼굴 그림. `card:<카드id>` 또는 이미지 경로 | `"card:10325"` |
 | `wait` | 다음으로 넘어가는 때 | 아래 표 |
 | `match` | (선택) 이벤트 조건 | `{ "index": 0 }` = 0번 카드를 골랐을 때만 |
 | `delay` | (선택) 이벤트 뒤 기다림 ms (기본 350) | |

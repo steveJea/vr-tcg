@@ -27,7 +27,7 @@ const as = async (sub, sql, role = 'authenticated') => { await db.exec(`reset ro
 const E = (r, m) => r && r.err && r.err.includes(m);
 // 등급별 카드·장비 id
 const cg = async g => sv(`select id from story_card_pool where grade = '${g}' order by id limit 1`);
-const HR = await cg('HIGH RARE'), SR = await cg('SUPER RARE'), NR = await cg('RARE'), YURI = '2000100001';
+const HR = await cg('HIGH RARE'), SR = await cg('SUPER RARE'), NR = await cg('RARE'), YURI = '10325';
 const gt = async t => sv(`select id from gear_defs where tier = ${t} and not event_only order by id limit 1`);
 const G2 = await gt(2), G4 = await gt(4), G5 = await gt(5);
 const users = [A, B, C, D];

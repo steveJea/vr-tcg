@@ -397,8 +397,8 @@
     if (r?.added) toast(`🎟️ 챕터 0 클리어 보상: 프리미엄 소환권 +${r.added}`);
     window.VRTutorial?.finishIf?.('ch0_pull');
     window.VRTutorial?.start('ch0_pull', { force: true, def: { noSkip: true, anchor: '.gr-forced', steps: [
-      { text: '챕터 0 클리어 보상으로 프리미엄 소환권 10장을 받았어. 바로 써 봐.', speaker: '임유리', face: 'card:2000100001', wait: 'tap' },
-      { target: '.gr-go10', text: '10회 프리미엄 영입! (HR 이상 1명 보장)', speaker: '임유리', face: 'card:2000100001', wait: 'tap_target' }] } });
+      { text: '챕터 0 클리어 보상으로 프리미엄 소환권 10장을 받았어. 바로 써 봐.', speaker: '임유리', face: 'card:10325', wait: 'tap' },
+      { target: '.gr-go10', text: '10회 프리미엄 영입! (HR 이상 1명 보장)', speaker: '임유리', face: 'card:10325', wait: 'tap_target' }] } });
   }
   /** 챕터 0 자동 시작: 도입 내레이션(처음 한 번) → 아직 안 깬 첫 페이즈 */
   function autoCh0() {
@@ -709,7 +709,7 @@
 
   let deckUid = {};   // 이번 전투 출전 카드 id → 인스턴스 uid
   /** 스토리 보호 규칙: 공격자 id → 공격하지 않는 카드 id (기본 공격·스킬·반격·광역 모두) */
-  const STORY_SPARE = { '2000500114': ['2000500111'] };   // 조윤이 → 조윤하
+  const STORY_SPARE = { '10383': ['10384'] };   // 조윤이 → 조윤하
   async function battle(ch, ph, enemies, picked) {
     const P = window.VRPlayer, ps = serverMode && P ? await P.status(true) : null;
     if (ps && ps.stamina < P.cost) { staminaShort(ps); return renderMap(); }
@@ -741,7 +741,7 @@
     if (!ch.tutorial) showConditions(ch, ph);   // 승리·패배 조건 (닫을 수 있음) · 챕터 0 은 가이드가 대신
   }
   // ----- 페이즈 전투 규칙: 데이터 rules + 단일 루트 챕터(3~)의 필수 출전 카드는 쓰러지면 패배 -----
-  const CH3_PAIR_SHIELD = { id: '2000500111', with: '2000500114', turns: 2 };   // 조윤하 + 조윤이 동시 출전 → 조윤하 2턴 피해 무효
+  const CH3_PAIR_SHIELD = { id: '10384', with: '10383', turns: 2 };   // 조윤하 + 조윤이 동시 출전 → 조윤하 2턴 피해 무효
   function battleRules(ch, ph) {
     const R = { ...(ph.rules || {}) };
     const forced = ch.single ? (ph.party?.mustLive || ph.party?.forced || []).map(String) : [];   // party.mustLive: 쓰러지면 패배할 카드 (없으면 필수 카드 전원)

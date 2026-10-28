@@ -25,7 +25,7 @@ async function as(role, claims, sql) {
 const me = { sub: U, email: 'u@x.com' }, q = s => as('authenticated', me, s);
 const W = '00000000-0000-0000-0000-000000000004';
 await db.exec(`insert into auth.users (id, email, email_confirmed_at) values ('${W}','w@x.com',now()); insert into profiles (id, nickname) values ('${U}','유','),('${V}','브이'),('${W}','더블');`.replace("'유','", "'유'"));
-const owned = [{ uid: 'a', id: '1000000001', level: 5 }, { uid: 'b', id: '1000000002' }, { uid: 'c', id: '1000000005' }, { uid: 'd', id: '1000000001' }, { uid: 'mr', id: '1000200030' }];
+const owned = [{ uid: 'a', id: '10370', level: 5 }, { uid: 'b', id: '10368' }, { uid: 'c', id: '10351' }, { uid: 'd', id: '10370' }, { uid: 'mr', id: '10060' }];
 for (const x of [U, V]) await db.exec(`insert into story_progress (user_id, data) values ('${x}', '${JSON.stringify({ owned })}'::jsonb) on conflict (user_id) do update set data = excluded.data`);
 const as2 = (id, s) => as('authenticated', { sub: id, email: 'x' }, s);
 const one = r => r.rows?.[0] && Object.values(r.rows[0])[0];
@@ -42,7 +42,7 @@ r = await q(`select pvp_report(${s.id}, 1, 0)`); ok(!r.err && one(r).win && one(
 ok(/already/.test((await q(`select pvp_report(${s.id}, 1, 0)`)).err || ''), '보고는 한 번만');
 ok(!!(await as2(V, `select pvp_report(${s.id}, 1, 0)`)).err, '남의 기록 보고 불가');
 await as2(V, `select pvp_set_deck('open','1v1',0,'["c"]')`);
-r = await q(`select pvp_start('open','1v1')`); s = one(r); ok(!s.bot && s.opp_name === '브이' && s.opp[0][0].id === '1000000005', '레이팅 비슷한 유저 매칭');
+r = await q(`select pvp_start('open','1v1')`); s = one(r); ok(!s.bot && s.opp_name === '브이' && s.opp[0][0].id === '10351', '레이팅 비슷한 유저 매칭');
 const before = one(await q(`select pvp_status('open','1v1')`)); ok(before.rating === 1000 + 8 - s.dl || before.rating < 1010, '미보고 = 패배 선반영');
 ok(/bad result/.test((await q(`select pvp_report(${s.id}, 2, 0)`)).err || ''), '1v1 결과 형식 검사');
 for (let i = 0; i < 8; i++) await q(`select pvp_start('open','1v1')`);

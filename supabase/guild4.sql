@@ -89,9 +89,9 @@ create or replace function public._war_phase(p_season date) returns text languag
 
 -- 4) 동네 불량배 (NPC): HR 2 + R 3, 남녀 섞임, seed 로 고정
 create or replace function public._war_npc_deck(p_seed text, p_scale numeric) returns jsonb language plpgsql stable as $$
-declare hr text[] := array['1000000031','1000000032','2000000033','2000000034','2000000035','2000000036','2000000037','2000000038'];
-        r text[] := array['1000000028','1000000029','1000000030','2000000029','2000000030','2000000031','2000000032'];
-        male text[] := array['1000000028','1000000029','1000000030','1000000031','1000000032'];   -- 성별은 ID 첫 자리가 아니라 카드 데이터(gender)로 (ID 변경 후에도 맞게)
+declare hr text[] := array['10151','10152','10163','10164','10165','10166','10167','10168'];
+        r text[] := array['10148','10149','10150','10159','10160','10161','10162'];
+        male text[] := array['10148','10149','10150','10151','10152'];   -- 성별은 ID 첫 자리가 아니라 카드 데이터(gender)로 (ID 변경 후에도 맞게)
         a text[]; b text[]; ids text[]; alt text; out jsonb := '[]'::jsonb; i int;
 begin
   select array_agg(x order by md5(p_seed || ':h:' || x)) into a from unnest(hr) x;

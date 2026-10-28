@@ -24,7 +24,7 @@ async function as(role, claims, sql) {
 }
 const qa = (u, s) => as('authenticated', { sub: u, email: 'x@x.com' }, s);
 const age = u => db.exec(`update public.story_progress set data = jsonb_set(data, '{battle,at}', to_jsonb((extract(epoch from now()) - 60)::bigint)) where user_id = '${u}'`);
-const W = ['2000100006', '2000100004', '2000900206'];
+const W = ['10256', '10462', '10207'];
 await qa(U, `select public.player_status()`); await db.exec(`update public.player_state set stamina = 999`);
 ok(/locked/.test((await qa(U, `select public.story_start_phase(0,2)`)).err || ''), '0-2 는 0-1 클리어 전 잠김');
 for (let ph = 1; ph <= 3; ph++) {
@@ -33,7 +33,7 @@ for (let ph = 1; ph <= 3; ph++) {
   ok(r.rows?.[0]?.r?.reward_id === W[ph - 1], `0-${ph} 보상 ${W[ph - 1]} ${r.err || ''}`);
 }
 ok(/starter/.test((await qa(U, `select public.story_start_phase(1,1)`)).err || ''), '챕터 1 은 여전히 스타터 필요');
-await qa(V, `select public.story_choose_starter('2000600126')`); await db.exec(`update public.player_state set stamina = 999`);
+await qa(V, `select public.story_choose_starter('10111')`); await db.exec(`update public.player_state set stamina = 999`);
 ok(!(await qa(V, `select public.story_start_phase(1,1)`)).err, '기존 사용자: 챕터 0 없이 1-1 시작');
 await db.exec(`update public.story_progress set data = jsonb_set(data, '{cleared}', '{"1":[1,2,3,4,5]}') where user_id='${V}'`);
 ok(!(await qa(V, `select public.story_start_phase(2,1)`)).err, '기존 사용자: 챕터 1 클리어 → 2-1 (챕터 0 무관)');

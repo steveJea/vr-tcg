@@ -24,7 +24,7 @@ eval(readFileSync(new URL('../js/story-data-ch5.js', import.meta.url), 'utf8'));
 const ch = window.STORY_DATA.chapters[0];
 const csv = f => Object.fromEntries(readFileSync(new URL('../data/' + f, import.meta.url), 'utf8').replace(/^\uFEFF/, '').trim().split(/\r?\n/).slice(1).map(l => l.split(',')).map(v => [v[0], v]));
 const cards = { ...csv('npc_cards.csv'), ...csv('cards.csv') }, nm = id => cards[id]?.[1];
-const GW = '2000600116', HR = '2001900347', AY = '2000600129', SY = '2000600128';
+const GW = '10442', HR = '10399', AY = '10360', SY = '10357';
 ok(ch.id === 5 && ch.subtitle === '영원히 멈추지 않는 비' && ch.phases.length === 10 && ch.single && ch.hero === GW, '챕터 5 · 10 페이즈 · 주인공 한겨울');
 ok(ch.phases.every(p => p.enemies.ids.length === 5 && p.enemies.ids.every(id => nm(id))), '페이즈마다 적 5명, 모두 카드 있음');
 const P_ = n => ch.phases[n - 1];
@@ -47,7 +47,7 @@ async function as(role, claims, sql) {
 const me = { sub: U, email: 'u@x.com' }, q = s => as('authenticated', me, s);
 const cfg = (await db.query(`select phase, type, points from public.story_phase_config where chapter = 5 order by phase`)).rows;
 ok(cfg.length === 10 && cfg[9].type === 'boss' && cfg[9].points === 5 && cfg[0].points === 3, '페이즈 설정 10개 (멱등)');
-await q(`select public.story_choose_starter('2000600126')`); await q('select public.player_status()');
+await q(`select public.story_choose_starter('10111')`); await q('select public.player_status()');
 await db.exec(`update public.player_state set stamina = 200, level = 10 where user_id='${U}'`);
 ok(/phase locked/.test((await q('select public.story_start_phase(5, 1)')).err || ''), '챕터 4 미완료 시 잠김');
 await db.exec(`update public.story_progress set data = jsonb_set(data, '{cleared}', (select jsonb_object_agg(chapter::text, ps) from (select chapter, jsonb_agg(phase) ps from public.story_phase_config where chapter < 5 group by chapter) x)) where user_id='${U}'`);

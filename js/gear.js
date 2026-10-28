@@ -6,7 +6,7 @@
   const TIER = ['', '낡은', '일반', '고급', '희귀', '영웅', '전설', '심연'];
   const STAT = { atk: '공격력', hp: '체력', def: '방어력', crit: '치명타', evade: '회피', mp: '시작 MP' };
   const OPT = { crit_dmg: '치명 피해', elem_dmg: '속성 피해', crit: '치명타', dmg_reduce: '피해 감소', debuff_resist: '디버프 저항', evade: '회피', mp_regen: 'MP 회복', kill_mp: '처치 시 MP', cooldown: '쿨타임' };
-  const SIGIL_ICON = { '1000100007': 'sigil_1_1', '2000400088': 'sigil_1_2', '2000100001': 'sigil_1_3' };
+  const SIGIL_ICON = { '10118': 'sigil_1_1', '10415': 'sigil_1_2', '10325': 'sigil_1_3' };
   const SR_UP = ['SUPER RARE', 'ULTRA RARE', 'MYTHIC RARE', 'LEGENDARY RARE'];
   const file = s => s === 'acc' ? 'accessory' : s;
   const iconOf = d => d ? `img/gear/${file(d.slot)}_${d.tier}_${d.id.split('_')[2]}.webp` : '';
@@ -78,7 +78,7 @@
   }
 
   // 증표: 조각 → 제작(+0) → 강화(+1~+5). 교환: 다른 인재 조각 3개 → 1개
-  const CHAR = { '1000100007': '민홍기', '2000400088': '최윤희', '2000100001': '임유리' };
+  const CHAR = { '10118': '민홍기', '10415': '최윤희', '10325': '임유리' };
   const SRC_TXT = { story_boss: '스토리 보스 소탕', raid_select: '조직 토벌 순위', guild_shop: '조직 상점', pvp_shop: 'PvP 상점', event: '이벤트', exchange: '조각 교환' };
   const sigIcon = c => SIGIL_ICON[c] ? `img/gear/${SIGIL_ICON[c]}.webp` : '';
   function sigilPop(cardId) {

@@ -25,9 +25,9 @@ insert into auth.users (id, email, email_confirmed_at, raw_user_meta_data) value
  ('${ADMIN}', 'stevejean77@gmail.com', now(), '{"full_name":"Steve"}'),
  ('${USER}', 'someone@gmail.com', now(), '{"full_name":"유저"}'),
  ('${FAKE}', 'StevejeAn77@gmail.com', null, '{}');
-insert into public.story_progress values ('${USER}', '{"owned":[{"uid":"a","id":"1000000001","level":3}],"leader":"a","cleared":{"1":[1,2]}}');
+insert into public.story_progress values ('${USER}', '{"owned":[{"uid":"a","id":"10370","level":3}],"leader":"a","cleared":{"1":[1,2]}}');
 insert into public.matches (user_id, result) values ('${USER}','win'),('${USER}','win'),('${USER}','lose');
-insert into public.story_gacha_log (user_id, card_id, grade, kind) values ('${USER}','1000000001','NORMAL','ticket');
+insert into public.story_gacha_log (user_id, card_id, grade, kind) values ('${USER}','10370','NORMAL','ticket');
 `);
 await db.exec(readFileSync(new URL('../supabase/admin.sql', import.meta.url), 'utf8'));
 let fails = 0;

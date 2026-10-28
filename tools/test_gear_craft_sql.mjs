@@ -45,8 +45,8 @@ ok(!!(await v(V, `select gear_enhance(${a})`)).err, '남의 장비 강화 불가
 const b = await give(U, 'armor_3_1'), c = await give(U, 'acc_2_1'), e = await give(U, 'weapon_5_1');
 await db.exec(`update player_gear set locked = true where id = ${e}`);
 ok((await v(U, `select gear_sell(array[${b}, ${e}]::bigint[])`)).reason === 'locked or equipped' && +(await q1(`select count(*) from player_gear where id in (${b}, ${e})`)) === 2, '잠금 섞이면 전체 거부');
-await db.exec(`insert into story_progress (user_id, data) values ('${U}', '{"owned":[{"uid":"x","id":"1000100007"}]}') on conflict (user_id) do update set data = excluded.data`);
-await db.exec(`update player_gear set equipped_card = '1000100007' where id = ${a}`);
+await db.exec(`insert into story_progress (user_id, data) values ('${U}', '{"owned":[{"uid":"x","id":"10118"}]}') on conflict (user_id) do update set data = excluded.data`);
+await db.exec(`update player_gear set equipped_card = '10118' where id = ${a}`);
 ok((await v(U, `select gear_dismantle(array[${a}]::bigint[])`)).reason === 'locked or equipped', '장착 장비 분해 불가');
 const g0 = await gold(U), s = await v(U, `select gear_sell(array[${b}, ${c}]::bigint[])`);
 ok(s.ok && s.count === 2 && (await gold(U)) - g0 === 700, '매각 2개: 고급 500 + 일반 200 골드');

@@ -28,7 +28,7 @@ const nm = id => cards[id];
 ok(ch.id === 3 && ch.subtitle === 'Just For YOU' && ch.phases.length === 10 && ch.single && nm(ch.hero) === '조윤하', '챕터 3 · 10 페이즈 · 주인공 조윤하');
 ok(ch.phases.every(p => p.enemies.ids.length === 5 && p.enemies.ids.every(id => cards[id])), '페이즈마다 적 5명, 모두 카드 있음');
 ok(JSON.stringify(ch.phases[9].enemies.ids.map(nm)) === JSON.stringify(['소민섭', '불량배-S', '불량배-R', '박성관', '고정태']) && nm(ch.phases[9].bossId) === '소민섭' && ch.phases[9].type === 'boss', '10페이즈 적·보스(L) 소민섭');
-ok(nm(ch.phases[2].bossId) === '하장미' && ch.phases[9].party.exclude.map(nm).includes('조윤이') && ch.phases[9].noPairShield && ch.phases[5].spare?.['2002000353'], '3페이즈 하장미 · 10페이즈 조윤이 금지·보호 해제 · 6페이즈 안지수 spare');
+ok(nm(ch.phases[2].bossId) === '하장미' && ch.phases[9].party.exclude.map(nm).includes('조윤이') && ch.phases[9].noPairShield && ch.phases[5].spare?.['10229'], '3페이즈 하장미 · 10페이즈 조윤이 금지·보호 해제 · 6페이즈 안지수 spare');
 const F = ch.phases.map(p => p.party.forced.map(nm).join('+'));
 ok(JSON.stringify(F) === JSON.stringify(['조윤하', '조윤하', '조윤이', '조윤하', '조윤하', '조윤하', '조윤하+조윤이', '조윤하', '조윤이', '조윤하']), `강제 배정 ${F}`);
 const P_ = n => ch.phases[n - 1];
@@ -44,7 +44,7 @@ async function as(role, claims, sql) {
 const me = { sub: U, email: 'u@x.com' }, q = s => as('authenticated', me, s);
 const cfg = (await db.query(`select phase, type, points from public.story_phase_config where chapter = 3 order by phase`)).rows;
 ok(cfg.length === 10 && cfg[9].type === 'boss' && cfg[9].points === 5 && cfg[0].points === 3, '페이즈 설정 10개 (멱등)');
-await q(`select public.story_choose_starter('2000600126')`); await q('select public.player_status()');
+await q(`select public.story_choose_starter('10111')`); await q('select public.player_status()');
 await db.exec(`update public.player_state set stamina = 200, level = 10 where user_id='${U}'`);
 ok(/phase locked/.test((await q('select public.story_start_phase(3, 1)')).err || ''), '챕터 2 미완료 시 잠김');
 await db.exec(`update public.story_progress set data = jsonb_set(data, '{cleared}', (select jsonb_object_agg(chapter::text, ps) from (select chapter, jsonb_agg(phase) ps from public.story_phase_config where chapter < 3 group by chapter) x)) where user_id='${U}'`);

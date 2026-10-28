@@ -27,7 +27,7 @@ async function as(uid, sql, role = 'authenticated') {
 }
 const v = async (u, s) => { const r = await as(u, s); return r.err ? { err: r.err } : Object.values(r.rows[0])[0]; };
 const q1 = async s => Object.values((await db.query(s)).rows[0] || {})[0];
-const MIN = '1000100007', YUN = '2000400088', YURI = '2000100001';
+const MIN = '10118', YUN = '10415', YURI = '10325';
 const frags = async (u, c) => +((await q1(`select frags from player_sigils where user_id='${u}' and card_id='${c}'`)) ?? 0);
 const soul = async u => +(await q1(`select coalesce((select soul from player_wallet where user_id='${u}'), 0)`));
 // PvP 상점
