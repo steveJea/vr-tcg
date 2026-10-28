@@ -13,7 +13,7 @@ export const WAR_ROLES = {
 };
 /** 스냅샷 1장 → 전투 카드 (NPC 는 scale 배율, 역할 버프, 현재 HP) */
 export function warCard(o, cardById, buff = {}) {
-  const c = snapCard(o, cardById); if (!c) return null;
+  const c = snapCard(o, cardById, 'war'); if (!c) return null;
   const s = +o.scale || 1, a = (buff.atk || 1) * s, d = (buff.def || 1) * s;
   const HP = Math.max(1, Math.round(c.HP * s));
   return { ...c, ATK: Math.round(c.ATK * a), DEF: Math.round(c.DEF * d), HP, _uid: o.uid, _hp: o.hp == null ? HP : Math.max(0, Math.min(HP, +o.hp)) };

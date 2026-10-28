@@ -1,6 +1,7 @@
 // ===== 스킬 · 상태이상 · 시너지 엔진 (게임·시뮬레이션 공용) =====
 // 스킬 데이터: data/skills.json (카드 id → 스킬 목록), 조합: data/combos.json
 // 각 스킬 효과는 '효과 내용' 기준으로 아래 ACTIVE / PASSIVE 표에 스킬 이름별로 구현
+import { sigilFor } from './gear-core.js';
 import { critRate, RULES, elementMultiplier, cardElemMult, statusResistHalf, calcDamage, gainXp, heroLocked, killXp, levelDown, levelUpOnce, genderMult, baseEvade } from './rules.js';
 import { poolCard, makeUnit } from './rules.js';
 const YURI_AWAKE_ID = '2000000008';   // [각성] 임유리
@@ -48,6 +49,9 @@ export function initUnit(u, p) {
   u.maxMp = Math.round(SK.MP_BASE + (u.base.MEN || 0) * SK.MP_PER_MEN);
   u.mp = Math.round(u.maxMp * SK.MP_START_RATIO);
   u.mpRegen = Math.round(SK.MP_REGEN_BASE + (u.base.MOR || 0) * SK.MP_REGEN_PER_MOR);
+  const g = u.base.gear;   // 장비 (gear-core.js): 시작 MP·MP 회복
+  if (g?.mpStart) u.mp = Math.min(u.maxMp, u.mp + Math.round(u.maxMp * g.mpStart / 100));
+  if (g?.mpRegen) u.mpRegen = Math.round(u.mpRegen * (1 + g.mpRegen / 100));
 }
 
 // ---- 상태이상 ----
@@ -88,6 +92,7 @@ export function addStatus(u, key, turns, data = {}, kind = key) {
   const def = STATUS[kind] || {};
   const isDebuff = def.debuff || (data.atk < 0 || data.def < 0);
   if (isDebuff && (u.st.debuffImmune || hasPassive(u, '반야'))) { emit({ type: 'resist', unit: u, text: '디버프 면역' }); return false; }
+  if (isDebuff && u.base?.gear?.debRes && chance(u.base.gear.debRes / 100)) { emit({ type: 'resist', unit: u, text: '장비 저항' }); return false; }
   // 디버프 반사 패시브 (장서현·장서아): 모든 디버프 면역 + 시전자(스킬 사용 중인 카드)에게 그대로 반환
   if (isDebuff && REFLECT_PASSIVES.some(n => hasPassive(u, n))) {
     emit({ type: 'resist', unit: u, text: '디버프 반사' });
@@ -190,7 +195,9 @@ export function skillLvOf(u, s) {
   const i = (u.sk || []).indexOf(s), m = u.base?.skillLv || u.card?.skillLv;
   return i < 0 || !m ? 1 : Math.min(SKILL_LV_MAX, Math.max(1, m[i + 1] | 0 || 1));
 }
-export const skillCd = (u, s) => skillCdAt(s.cooldown, skillLvOf(u, s));
+export const skillCd = (u, s) => { const sg = sigilFor(u, s.name), c = skillCdAt(sg?.cooldown ?? s.cooldown, skillLvOf(u, s)); return c <= 0 ? c : Math.max(sg ? 2 : 1, c - (u.base?.gear?.cd || 0)); };   // 증표 쿨타임 최소 2 · 장비 쿨타임 -1
+/** 스킬 MP (증표가 바꾼 값 우선) */
+export const skillMp = (u, s) => sigilFor(u, s.name)?.mp ?? s.mp;
 /** 스킬 실행 중 배율 ({ u: 시전자, m: 배율 }). 시전자가 주는 피해·자기 편 회복·ATK/DEF 버프/디버프 수치에만 적용 */
 let SKC = null;
 const skScale = v => SKC ? v * SKC.m : v;
@@ -203,8 +210,11 @@ export function damageUnit(target, dmg, src = null, { silent = false } = {}) {
   // 성별 간 피해 (모든 모드·기본 공격·스킬·반격 공통): 남→여 85%, 여→남 105%
   if (src?.card && src.owner !== target.owner && dmg > 0) { const gm = genderMult(src.card, target.card); if (gm !== 1) dmg = Math.max(1, Math.round(dmg * gm)); }
   if (src?.card && src.owner !== target.owner && dmg > 0) {
-    if (chance(critRate(src.card))) { dmg = Math.round(dmg * RULES.CRIT_MULT); emit({ type: 'crit', unit: target, src }); stats.count('치명타'); }   // 치명타: 기본 공격·스킬·반격
+    const sg = src.card.gear, tg = target.card?.gear;
+    if (sg?.elem && cardElemMult(src.card, target.card) > 1) dmg = Math.round(dmg * (1 + sg.elem / 100));   // 장비: 속성 피해
+    if (chance(critRate(src.card) + (sg?.crit || 0))) { dmg = Math.round(dmg * (RULES.CRIT_MULT + (sg?.critDmg || 0) / 100)); emit({ type: 'crit', unit: target, src }); stats.count('치명타'); }   // 치명타: 기본 공격·스킬·반격
     if (src.st?.burn) dmg = Math.max(1, Math.round(dmg * (1 - RULES.BURN_DOWN)));   // 화상: 주는 피해 -5%
+    if (tg?.dr) dmg = Math.max(1, Math.round(dmg * (1 - tg.dr / 100)));   // 장비: 피해 감소
     if (RULES.EL_PASSIVE_ON && target.card?.class === 'ICE' && chance(RULES.ICE_GUARD_P)) { dmg = Math.max(1, Math.round(dmg * RULES.ICE_GUARD_MULT)); emit({ type: 'elfx', unit: target, kind: 'guard' }); }   // 얼음 방어
   }
   if (target.st.pleading) dmg = Math.round(dmg * 0.5);
@@ -306,6 +316,7 @@ export function checkDeath(u, killer = null) {
   if (String(u.base.id) === YOUNGA_ID) for (const a of p.field) if (a.st.vow) vowBroken(a);
   // MP 흡수: 처치한 카드가 상대의 현재 MP 20% 흡수 (최소 3)
   if (killer && killer.owner !== p && killer.hp > 0 && killer.owner.field.includes(killer)) gainMp(killer, Math.max(SK.MP_ABSORB_MIN, Math.round((u.mp || 0) * SK.MP_ABSORB_RATIO)), '흡수');
+  if (killer?.base?.gear?.killMp && killer.owner !== p && killer.hp > 0 && killer.owner.field.includes(killer)) gainMp(killer, killer.maxMp * killer.base.gear.killMp / 100, '장비');   // 장비: 처치 시 MP
   // 표식: 사망 시 시전자 MP 회복
   for (const s of Object.values(u.st)) if (s.mpOnDeath && s.caster && s.caster.owner.field.includes(s.caster)) gainMp(s.caster, s.caster.maxMp * s.mpOnDeath, s.label);
   // 천사의 절규: 아군 사망마다
@@ -432,7 +443,7 @@ function hitAll(src, f, n, pct, opt = {}) {
 }
 const heroHit = (src, f, pct) => damageHero(f, skillDamage(src, null, pct), src.owner, 'skill', src);
 const debuffAll = (f, key, turns, data) => live(f).forEach(t => addStatus(t, key, turns, data, data.kind || 'mod'));
-export const bleedOn = (t, src, turns = 1) => { if (addStatus(t, 'bleed', turns, { atk: -0.05, def: -0.05 }, 'bleed')) { damageUnit(t, Math.max(1, Math.round(t.maxHp * 0.05)), null); checkDeath(t, src); } };
+export const bleedOn = (t, src, turns = 1, pct = 0.05) => { if (addStatus(t, 'bleed', turns, { atk: -0.05, def: -0.05 }, 'bleed')) { damageUnit(t, Math.max(1, Math.round(t.maxHp * pct)), null); checkDeath(t, src); } };
 /** 현재 HP의 pct 제거 (카드당 최대 cap) */
 const hpCut = (u, f, pct, cap) => { const ts = live(f); ts.forEach(t => damageUnit(t, Math.min(cap, Math.max(1, Math.round(t.hp * pct))), u)); ts.forEach(t => checkDeath(t, u)); };
 /** 필드 양 옆 카드 */
@@ -466,7 +477,7 @@ function jihyeStrike(u, ts) {
   ts.forEach(t => { if (!checkDeath(t, u) && t.owner.field.includes(t) && t.hp < t.maxHp * 0.5) bleedOn(t, u, 1); });
 }
 const pickRandom = arr => arr.length ? arr[Math.floor(rng() * arr.length)] : null;
-const yuriKiss = (u, f, prob, kind) => { if (sChance(prob)) live(f).forEach(t => addStatus(t, kind, 1, {}, kind)); else emit({ type: 'miss', unit: u, text: '확률 실패' }); f.actionLock = Math.max(f.actionLock, 1); emit({ type: 'log', text: `${f.name || '상대'}: 다음 턴 고유기술(셔플·보강·강화·필드 회복) 봉인` }); };
+const yuriKiss = (u, f, prob, kind, thenBleed) => { if (sChance(prob)) live(f).forEach(t => { if (addStatus(t, kind, 1, {}, kind) && thenBleed) bleedOn(t, u); }); else emit({ type: 'miss', unit: u, text: '확률 실패' }); f.actionLock = Math.max(f.actionLock, 1); emit({ type: 'log', text: `${f.name || '상대'}: 다음 턴 고유기술(셔플·보강·강화·필드 회복) 봉인` }); };
 
 export const ACTIVE = {
   // [각성] 이민채 (NPC, 챕터 4 보스): 랜덤 2인을 공격력 15%로 5회씩 타격
@@ -529,9 +540,12 @@ export const ACTIVE = {
   'Sperandum Est Infestis': (u, p, f) => { const ts = live(f); for (let i = 0; i < 2; i++) ts.forEach(t => damageUnit(t, skillDamage(u, t, 0.2, { extra: t.card.cost < 30 ? 2 : 1 }), u)); ts.forEach(t => checkDeath(t, u)); },
   'Memento Mori': (u, p, f) => { const ts = live(f); hitAll(u, f, 3, 0.2); ts.forEach(t => f.field.includes(t) && sChance(0.2) && addStatus(t, 'para', 1, {}, 'para')); },
   // 임유리
-  '아름다운 고통의 키스': (u, p, f) => { hpCut(u, f, 0.08, 120); yuriKiss(u, f, 0.3, 'confuse'); },
-  '더 울어, 예쁘게!': (u, p, f) => { hpCut(u, f, 0.12, 180); yuriKiss(u, f, 0.3, 'disrupt'); },
-  '천천히 찢는 사랑': (u, p, f) => { const ts = live(f); hitAll(u, f, 2, 0.4); ts.forEach(t => f.field.includes(t) && sChance(0.5) && bleedOn(t, u)); },
+  // 임유리 — 증표 「피어난 키스」(gear-core.js SIGILS): b = 키스 2종(HP%·상한·혼란 확률·MP), a = 천천히 찢는 사랑(배율·횟수·출혈)
+  '아름다운 고통의 키스': (u, p, f) => { const m = sigilFor(u, '아름다운 고통의 키스'); hpCut(u, f, (m?.hp_pct?.[0] ?? 8) / 100, m?.cap?.[0] ?? 120); yuriKiss(u, f, (m?.cc_pct ?? 30) / 100, 'confuse', m?.cc_then_bleed); },
+  '더 울어, 예쁘게!': (u, p, f) => { const m = sigilFor(u, '더 울어, 예쁘게!'); hpCut(u, f, (m?.hp_pct?.[1] ?? 12) / 100, m?.cap?.[1] ?? 180); yuriKiss(u, f, (m?.cc_pct ?? 30) / 100, 'disrupt', m?.cc_then_bleed); },
+  '천천히 찢는 사랑': (u, p, f) => { const m = sigilFor(u, '천천히 찢는 사랑'), pct = (m?.hit_pct ?? 40) / 100, n = m?.hits ?? 2, ts = live(f), bl = ts.filter(t => t.st.bleed);
+    hitAll(u, f, n, pct); if (m?.vs_bleed_dmg_pct) { bl.forEach(t => f.field.includes(t) && damageUnit(t, skillDamage(u, t, pct * n * m.vs_bleed_dmg_pct / 100), u)); bl.forEach(t => checkDeath(t, u)); }
+    ts.forEach(t => f.field.includes(t) && sChance((m?.bleed_pct ?? 50) / 100) && bleedOn(t, u, 1, (m?.bleed_dmg_pct ?? 5) / 100)); },
   // 임나리
   'Seductive Whisper': (u, p, f) => { if (hitAll(u, f, 3, 0.2)) gainMp(u, u.maxMp * 0.1, '사망자 발생'); },
   'Alluring Dance': (u, p, f) => { if (hitAll(u, f, 3, 0.3)) gainMp(u, u.maxMp * 0.15, '사망자 발생'); },
@@ -576,16 +590,21 @@ export const ACTIVE = {
   // ===== v2 신규 =====
   // 민홍기 [용서는 없다]: 적 전체 20%×2, 각 30% 확률 1턴 출혈
   '용서는 없다': (u, p, f) => { const ts = live(f); hitAll(u, f, 2, 0.2); ts.forEach(t => { if (f.field.includes(t) && t.hp > 0 && sChance(0.3)) bleedOn(t, u, 1); }); },
-  '무답무용': (u, p, f) => { const t = by(live(f), x => x.card.ATK, -1); if (t && !multiHit(u, t, 5, 0.3) && sChance(0.3)) bleedOn(t, u); },
+  '무답무용': (u, p, f) => { const m = sigilFor(u, '무답무용'), t = by(live(f), x => x.card.ATK, -1); if (!t) return;   // 증표: 배율·횟수·출혈, +5 출혈 대상 피해↑·처치 시 추가 타격
+    const pct = (m?.hit_pct ?? 30) / 100 * (m?.vs_bleed_dmg_pct && t.st.bleed ? 1 + m.vs_bleed_dmg_pct / 100 : 1);
+    if (!multiHit(u, t, m?.hits ?? 5, pct)) { if (sChance((m?.bleed_pct ?? 30) / 100)) bleedOn(t, u); }
+    else if (m?.on_kill_extra_hits) { const t2 = by(live(f), x => x.card.ATK, -1); if (t2) multiHit(u, t2, m.on_kill_extra_hits, (m.hit_pct ?? 30) / 100); } },
   '껌밟기': (u, p, f) => { const t = by(females(f), x => x.card.cost); if (t) multiHit(u, t, 5, 0.3); },
   '되겠냐?': (u, p, f) => { const t = by(females(f), x => x.card.cost, -1); if (t && multiHit(u, t, 5, 0.4)) gainMp(u, u.maxMp * 0.2, '처치'); },
   '고갈될 예정입니다.': (u, p, f) => { if (sChance(0.2)) live(f).forEach(t => addStatus(t, 'confuse', 1, {}, 'confuse')); else emit({ type: 'miss', unit: u, text: '확률 실패' }); },
   '이건 내분입니다.': (u, p, f) => debuffAll(f, '이건 내분입니다.', 2, { atk: -0.05, def: -0.05, label: 'ATK·DEF -5%' }),
-  '나 좀 내버려둬': u => addStatus(u, 'decoy', 1, { pick: 'cost', male: true, label: '대신 맞기(코스트 최고)' }, 'decoy'),
+  '나 좀 내버려둬': u => addStatus(u, 'decoy', sigilFor(u, '나 좀 내버려둬')?.duration ?? 1, { pick: 'cost', male: true, label: '대신 맞기(코스트 최고)' }, 'decoy'),
   '소녀의 거래': u => addStatus(u, 'decoy', 1, { pick: 'hp', male: true, label: '대신 맞기(HP 최고)' }, 'decoy'),
   '영원한 유혹의 굴레': (u, p, f) => { const t = by(live(f).filter(x => x.card.cost < 40), x => x.card.cost, -1); if (t) addStatus(u, 'decoy', 1, { proxy: t, label: `${t.card.name} 대신 맞기` }, 'decoy'); else emit({ type: 'miss', unit: u, text: '대상 없음' }); },
   '배신의 향연': (u, p, f) => { const t = by(live(f), x => x.base.MOR || 0); if (t) addStatus(u, 'decoy', 1, { proxy: t, healOnKill: 1, label: `${t.card.name} 대신 맞기` }, 'decoy'); },
-  '제발 그냥 가줘': (u, p, f) => { const t = by(males(f), x => x.card.cost, -1); if (!t) return; damageUnit(t, Math.ceil(t.hp * 0.8), u); checkDeath(t, u); },
+  '제발 그냥 가줘': (u, p, f) => { const m = sigilFor(u, '제발 그냥 가줘'), ms = males(f).sort((a, b) => b.card.cost - a.card.cost).slice(0, m?.targets ?? 1);   // 증표: 대상 수, 남성 없으면 코스트 최고 적 HP 일부
+    if (!ms.length) { const t = m?.fallback_hp_pct && by(live(f), x => x.card.cost, -1); if (t) { damageUnit(t, Math.ceil(t.hp * m.fallback_hp_pct / 100), u); checkDeath(t, u); } return; }
+    ms.forEach(t => damageUnit(t, Math.ceil(t.hp * 0.8), u)); ms.forEach(t => checkDeath(t, u)); },
   '피눈물': (u, p, f) => { const t = by(males(f), x => x.base.MOR || 0); if (!t) return; const i = f.field.indexOf(t); const nb = [f.field[i - 1], f.field[i + 1]].filter(Boolean); damageUnit(t, Math.round(u.maxHp * 0.4), u); nb.forEach(x => damageUnit(x, Math.max(1, Math.round(u.maxHp * 0.16)), u)); [t, ...nb].forEach(x => checkDeath(x, u)); },
   '너는 몰라': (u, p, f) => debuffAll(f, '너는 몰라', 1, { atk: -0.15, def: -0.15, label: 'ATK·DEF -15%' }),
   '너의 이름은?': (u, p, f) => { const t = by(live(f), x => x.base.MOR || 0, -1); if (t && sChance(0.4) && addStatus(t, 'para', 2, {}, 'para')) addStatus(t, '너의 이름은?', 2, { def: -0.15, label: 'DEF -15%' }, 'mod'); else emit({ type: 'miss', unit: u, text: '확률 실패' }); },
@@ -754,7 +773,7 @@ const REQ = { '나? 폭격기야~': f => bomberTargets(f).length, '약해보이�
   '너는 내가 끝낸다!': f => f.field.some(x => String(x.base.id) === CHANGWON_ID), '되겠냐?': f => females(f).length, '귀여운 고문자': f => females(f).length,
   '지킨다': (f, u) => younga(u.owner) && !u.st.vow,
   '내 동생 건드리지마!': (f, u) => u.owner.field.some(x => [YEEUN_ID, JUNTAE_ID].includes(String(x.base.id))),
-  '나 좀 내버려둬': f => males(f).length, '제발 그냥 가줘': f => males(f).length, '소녀의 거래': f => males(f).length, '피눈물': f => males(f).length, '이리 올래?': f => males(f).length, '짜릿하니?': f => males(f).length };
+  '나 좀 내버려둬': f => males(f).length, '제발 그냥 가줘': (f, u) => males(f).length || !!sigilFor(u, '제발 그냥 가줘')?.fallback_hp_pct, '소녀의 거래': f => males(f).length, '피눈물': f => males(f).length, '이리 올래?': f => males(f).length, '짜릿하니?': f => males(f).length };
 
 /** 남성 기본 공격 유도: [나 좀 내버려둬]/[소녀의 거래] 시전 중(decoy.male)인 카드 중 코스트 최고. 마비·혼란 시 미발동 */
 export function maleLure(attacker, side) {
@@ -795,7 +814,7 @@ export const roseCounter = (target, attacker) => !!attacker?.st?.['장미가시�
 export const counterMult = (target, attacker) => (target.st.pleading ? 2.5 : 1) * (hasPassive(target, '이게 반격이야') ? 1.5 : 1) * (target.st.thorns?.cm || 1) * (roseCounter(target, attacker) ? 2 : 1);
 /** 정치욱 [그렇게 느려도 되겠어?]: 기본 공격 회피 판정 */
 export function evadeChance(target) {
-  return Math.min(RULES.EVADE_CAP, baseEvade(target.card) + (target.st.evade?.p || 0));
+  return Math.min(RULES.EVADE_CAP, baseEvade(target.card) + (target.card?.gear?.evade || 0) + (target.st.evade?.p || 0));
 }
 /** 기본 공격 회피: 속성 기본 회피(바람 7%, 그 외 4%) + 스킬 회피(정치욱 [그렇게 느려도 되겠어?] 40%), 상한 60% */
 export function rollEvade(target, attacker) {
@@ -814,7 +833,7 @@ export function skillState(u, s) {
   if (provoker(u)) return { ok: false, reason: '도발당함 (스킬 불가)' };
   if (/게임 당 1회/.test(s.note) && u.owner.once['a:' + s.name]) return { ok: false, reason: '게임 당 1회 (사용함)' };
   if (u.cd[s.name] > 0) return { ok: false, reason: `쿨타임 ${u.cd[s.name]}턴` };
-  if (u.mp < s.mp) return { ok: false, reason: `MP 부족 (${u.mp}/${s.mp})` };
+  if (u.mp < skillMp(u, s)) return { ok: false, reason: `MP 부족 (${u.mp}/${skillMp(u, s)})` };
   if (!u.canAttack) return { ok: false, reason: '이번 턴 행동함' };
   if (!ACTIVE[s.name]) return { ok: false, reason: '미구현' };
   if (REQ[s.name] && !REQ[s.name](u.owner.foe, u)) return { ok: false, reason: s.name === '지킨다' ? (u.st.vow ? '맹세 유지 중' : '이영아가 필드에 없음') : s.name === '너는 내가 끝낸다!' ? '상대 필드에 김대욱 없음' : '대상 없음' };
@@ -824,7 +843,7 @@ export function skillState(u, s) {
 export function useSkill(u, s) {
   const st = skillState(u, s); if (!st.ok) return st;
   const p = u.owner;
-  u.mp -= s.mp; u.cd[s.name] = skillCd(u, s); u.canAttack = false;
+  u.mp -= skillMp(u, s); u.cd[s.name] = skillCd(u, s); u.canAttack = false;
   if (/게임 당 1회/.test(s.note)) p.once['a:' + s.name] = 1;
   emit({ type: 'skill', unit: u, skill: s });
   stats.count(s.name);
@@ -979,7 +998,7 @@ export function aiSkillScores(u, { noSave = false } = {}) {
   const cands = [];
   // MP 저축: 해금된 최상위 액티브가 MP 부족이면 50% 확률로 하위 스킬을 아끼고 기본 공격
   const top = (u.sk || []).filter(s => s.mode === 'active' && u.level >= s.unlock && ACTIVE[s.name]).sort((a, b) => b.unlock - a.unlock)[0];
-  const saving = !noSave && top && u.mp < top.mp && !(u.cd[top.name] > 0) && rng() < 0.5;
+  const saving = !noSave && top && u.mp < skillMp(u, top) && !(u.cd[top.name] > 0) && rng() < 0.5;
   for (const s of u.sk || []) {
     if (!skillState(u, s).ok) continue;
     if (saving && s !== top) continue;

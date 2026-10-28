@@ -119,5 +119,11 @@
     draw();
   }
 
-  window.VRGear = { load, slotsHTML, bind, bag, get ready() { return !!st; }, get off() { return off; }, _defs: () => defs };
+  /** 전투용: 이 인재에 낀 장비·증표 단계 (gear-core.js applyGear 입력) */
+  function forCard(cardId) {
+    const gear = mine(cardId).map(g => { const d = defs?.[g.def]; return d && { stat: d.main_stat, pct: +d.main_pct, plus: g.plus | 0, opts: g.opts || [] }; }).filter(Boolean);
+    const sg = (st?.sigils || []).find(s => s.card === String(cardId));
+    return { gear, sigil: sg?.plus ?? null };
+  }
+  window.VRGear = { load, forCard, slotsHTML, bind, bag, get ready() { return !!st; }, get off() { return off; }, _defs: () => defs };
 })();

@@ -14,7 +14,7 @@ const rows = JSON.parse(readFileSync(process.argv[2] || 'attempts.json', 'utf8')
 const bad = []; let good = 0;
 for (const a of rows) {
   const J = v => typeof v === 'string' ? JSON.parse(v) : v;
-  const r = runRaid(J(a.snap).map(o => snapCard(o, byId)).filter(Boolean), +a.stage, a.difficulty, a.seed, byId, null, a.actions ? J(a.actions) : null);   // actions 있으면 수동 판: 기록대로 재생
+  const r = runRaid(J(a.snap).map(o => snapCard(o, byId, 'raid')).filter(Boolean), +a.stage, a.difficulty, a.seed, byId, null, a.actions ? J(a.actions) : null);   // actions 있으면 수동 판: 기록대로 재생
   if (r.damage === +a.reported) good++; else { bad.push(a.id); console.log(`✕ #${a.id} 보고 ${a.reported} / 재계산 ${r.damage}`); }
 }
 console.log(`일치 ${good} · 불일치 ${bad.length}`);
