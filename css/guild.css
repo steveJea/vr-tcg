@@ -213,3 +213,4 @@ img.gi{position:static!important;inset:auto!important;display:inline-block;width
 .wr-nodeck{position:absolute;left:0;top:0;font-style:normal;font-size:10px;background:#dc2626;color:#fff;border-radius:50%;width:14px;height:14px;display:grid;place-items:center;z-index:2}
 .wr-row .wr-dk{top:0;right:0}.wr-row .wr-npc{top:auto;bottom:2px;left:50%;transform:translateX(-50%)}
 .wr-mesign{margin-top:6px}.wr-mesign.on{background:linear-gradient(90deg,#166534,#15803d)}
+.gd-qt{all:unset;cursor:pointer;font-weight:700;display:inline-flex;align-items:center;gap:4px;align-self:flex-start}.gd-qt i{font-style:normal;opacity:.7;font-size:15px;line-height:1}.gd-qt:hover,.gd-qt:active{color:#fcd34d}
