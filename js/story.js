@@ -435,11 +435,13 @@
       const dot = boss ? ic('crown', { alt: '보스', cls: 'story-node-ic' }) : st === 'done' ? '✔' : st === 'lock' ? '🔒' : p.no;
       return `${i ? `<div class="story-path ${st !== 'lock' ? 'on' : ''}"></div>` : ''}<span class="story-node-wrap"><button class="story-node ${st} ${p.type}" data-phase="${p.no}" ${st === 'lock' ? 'disabled' : ''} aria-label="Phase ${p.no}${boss ? ' 보스' : ''}${st === 'done' ? ' 다시 하기' : ''}"><span class="story-node-dot">${dot}${boss && st === 'done' ? '<i class="story-node-ok">✔</i>' : ''}</span><span class="story-node-label">${boss ? 'BOSS' : p.no}</span></button></span>`; };
     const rows = []; for (let k = 0; k < ch.phases.length; k += 5) rows.push(ch.phases.slice(k, k + 5));   // 5칸씩 한 줄
-    const tabs = D.chapters.length > 1 ? `<div class="story-chtabs">${D.chapters.map((c, i) => { const open = chapterOpen(i);
-      return `<button class="story-chtab ${i === curCh ? 'on' : ''}" data-ch="${i}" ${open ? '' : 'disabled'}>${esc(c.title)}</button>`; }).join('')}</div>` : '';
+    // 챕터 탭 대신 제목 옆 ‹ › : 방향으로 가장 가까운 열린 챕터로 이동, 없으면 흐리게
+    const seekCh = d => { for (let i = curCh + d; i >= 0 && i < D.chapters.length; i += d) if (chapterOpen(i)) return i; return -1; };
+    const prevI = seekCh(-1), nextI = seekCh(1);
+    const arr = (i, cls, lbl, t) => `<button class="story-charr ${cls}" ${i >= 0 ? `data-ch="${i}"` : 'disabled'} aria-label="${lbl}">${t}</button>`;
     const nextCh = D.chapters[curCh + 1], nextOpen = nextCh && chapterOpen(curCh + 1);
-    show(`<div class="story-map-bg" aria-hidden="true" style="background-image:${bgUrl(base)}"></div>${topBar(esc(ch.title), 'hub')}${tabs}
-      <div class="text-center mt-2"><div class="story-chapter-big text-3xl md:text-5xl">${esc(ch.title)}</div><div class="story-chapter-name">${esc(ch.subtitle)}</div>
+    show(`<div class="story-map-bg" aria-hidden="true" style="background-image:${bgUrl(base)}"></div>${topBar(esc(ch.title), 'hub')}
+      <div class="text-center mt-2"><div class="story-chtitle">${arr(prevI, 'l', '이전 챕터', '‹')}<div class="story-chapter-big text-3xl md:text-5xl">${esc(ch.title)}</div>${arr(nextI, 'r', '다음 챕터', '›')}</div><div class="story-chapter-name">${esc(ch.subtitle)}</div>
         ${hero && ch.route ? `<div class="story-route-tag">루트 <b>${esc(hero.name)}</b>${clearedOf(ch).length ? '' : ' <button class="story-mini" data-go="route">루트 바꾸기</button>'}</div>` : ''}</div>
       <div class="story-player-row" data-vr-player></div>
       ${rows.map(r => `<div class="story-map ${rows.length > 1 ? 'story-map-row' : ''}">${r.map(node).join('')}</div>`).join('')}
