@@ -14,7 +14,7 @@
   const img = (src, slot, cls = '') => `<img class="${cls}" src="${src || sil(slot)}" alt="" loading="lazy" onerror="this.onerror=null;this.src='${sil(slot)}'">`;
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const sb = () => window.VRCloud?.sb;
-  let st = null, defs = null, sigils = null, off = false;
+  let st = null, defs = null, sigils = null, off = false, cost = { enh: {}, salv: {}, rr: {} };
 
   async function load(force) {
     if (off || !sb() || !window.VRCloud?.user) return null;
@@ -24,6 +24,8 @@
         const [a, b] = await Promise.all([sb().from('gear_defs').select('*'), sb().from('sigil_defs').select('*')]);
         if (a.error) throw a.error;
         defs = Object.fromEntries((a.data || []).map(d => [d.id, d])); sigils = Object.fromEntries((b.data || []).map(d => [d.card_id, d]));
+        const [e, s2, r] = await Promise.all(['gear_enhance_cost', 'gear_salvage', 'gear_reroll_cost'].map(t => sb().from(t).select('*')));   // PR5 표 (없으면 버튼 숨김)
+        cost = { enh: Object.fromEntries((e.data || []).map(x => [x.plus, x])), salv: Object.fromEntries((s2.data || []).map(x => [x.tier, x])), rr: Object.fromEntries((r.data || []).map(x => [x.tier, x])) };
       }
       const { data, error } = await sb().rpc('gear_status'); if (error) throw error;
       st = data; return st;
@@ -42,10 +44,18 @@
     m.onclick = e => { if (down && e.target === m) m.remove(); down = false; };   // 바깥 누르면 닫힘
     document.body.appendChild(m); return m;
   }
+  const fmt = n => Number(n || 0).toLocaleString('ko-KR');
+  // 확인 팝업 (바깥 누르면 취소)
+  function ask(html, danger) {
+    return new Promise(res => { let done = false; const fin = v => { if (done) return; done = true; o.disconnect(); m.remove(); res(v); };
+      const m = pop(`${html}<div class="gear-acts"><button class="gear-btn" data-n>취소</button><button class="gear-btn main ${danger ? 'danger' : ''}" data-y>확인</button></div>`, 'item');
+      const o = new MutationObserver(() => { if (!m.isConnected) fin(false); }); o.observe(document.body, { childList: true });
+      m.querySelector('[data-y]').onclick = () => fin(true); m.querySelector('[data-n]').onclick = () => fin(false); });
+  }
   async function rpc(fn, args) {
     const { data, error } = await sb().rpc(fn, args);
-    if (error) { toast(`⚠️ ${error.message}`); return null; }
-    if (data && data.ok === false) { toast(`⚠️ ${({ 'card not owned': '이 인재가 서버에 아직 없어요', gem: `보석이 부족해요 (${data.need})`, max: '가방이 최대예요', 'not found': '장비를 찾을 수 없어요', 'bag full': '🎒 가방이 꽉 찼어요. 정리한 뒤 받아 주세요', 'event only': '이벤트 전용이에요', unsupported: '아직 받을 수 없는 우편이에요' })[data.reason] || data.reason}`); return null; }
+    if (error) { const m = error.message || ''; toast(/not enough gold/.test(m) ? '🪙 골드가 부족해요' : /not enough dust/.test(m) ? '✨ 장비 가루가 부족해요' : `⚠️ ${m}`); return null; }
+    if (data && data.ok === false) { toast(`⚠️ ${({ 'card not owned': '이 인재가 서버에 아직 없어요', gem: `보석이 부족해요 (${data.need})`, max: '가방이 최대예요', 'not found': '장비를 찾을 수 없어요', 'bag full': '🎒 가방이 꽉 찼어요. 정리한 뒤 받아 주세요', 'locked or equipped': '🔒 잠금·장착 중인 장비는 팔거나 분해할 수 없어요', 'max plus': '이미 +5예요', 'no options': '부옵션이 없는 장비예요', 'event only': '이벤트 전용이에요', unsupported: '아직 받을 수 없는 우편이에요' })[data.reason] || data.reason}`); return null; }
     await load(true); return data || {};
   }
 
@@ -91,10 +101,28 @@
         ${ctx.cardId && g.card !== String(ctx.cardId) ? '<button data-a="equip" class="gear-btn main">장착</button>' : ''}
         ${g.card ? '<button data-a="unequip" class="gear-btn">해제</button>' : ''}
         ${ctx.cardId && g.card === String(ctx.cardId) ? '<button data-a="swap" class="gear-btn">바꾸기</button>' : ''}
-        <button data-a="lock" class="gear-btn">${g.locked ? '🔓 잠금 해제' : '🔒 잠금'}</button></div>`, 'item');
+        <button data-a="lock" class="gear-btn">${g.locked ? '🔓 잠금 해제' : '🔒 잠금'}</button></div>
+      <div class="gear-acts">
+        ${cost.enh[g.plus + 1] ? `<button data-a="enh" class="gear-btn">⬆️ 강화 +${g.plus + 1}<small>🪙${fmt(cost.enh[g.plus + 1].gold)} ✨${cost.enh[g.plus + 1].dust}</small></button>` : ''}
+        ${d.opt_count && cost.rr[d.tier] ? `<button data-a="rr" class="gear-btn">🎲 재설정<small>🪙${fmt(cost.rr[d.tier].gold)} ✨${cost.rr[d.tier].dust}</small></button>` : ''}
+        ${!g.locked && !g.card && cost.salv[d.tier] ? `<button data-a="dis" class="gear-btn">🔨 분해<small>✨+${cost.salv[d.tier].dust}</small></button><button data-a="sell" class="gear-btn">🪙 매각<small>+${fmt(cost.salv[d.tier].gold)}</small></button>` : ''}</div>
+      <div class="gear-dim">✨ 장비 가루 ${fmt(st.dust || 0)}</div>`, 'item');
     const done = () => { m.remove(); ctx.reopen?.(); ctx.back?.(); };
     m.querySelectorAll('[data-a]').forEach(b => b.onclick = async () => { b.disabled = true; const a = b.dataset.a;
       if (a === 'swap') { m.remove(); return bag({ slot, cardId: ctx.cardId, reopen: ctx.reopen }); }
+      if (['enh', 'rr', 'dis', 'sell'].includes(a)) {
+        const c = a === 'enh' ? cost.enh[g.plus + 1] : a === 'rr' ? cost.rr[d.tier] : cost.salv[d.tier];
+        const q = a === 'enh' ? `+${g.plus} → <b>+${g.plus + 1}</b> (확정 성공)<br>🪙 ${fmt(c.gold)} · ✨ ${c.dust} 사용` : a === 'rr' ? `부옵션을 다시 굴려요 (지금 값은 사라져요)<br>🪙 ${fmt(c.gold)} · ✨ ${c.dust} 사용`
+          : a === 'dis' ? `분해하면 ✨ 장비 가루 ${c.dust}개를 받아요` : `매각하면 🪙 ${fmt(c.gold)} 골드를 받아요`;
+        if (!await ask(`<div class="gear-big gt${d.tier}">${img(iconOf(d), slot)}</div>${d.tier >= 6 && a === 'dis' ? '<div class="gear-warn">⚠️ 이벤트 장비예요. 다시 얻기 어려워요</div>' : ''}<div>${q}</div>`, a === 'dis' || a === 'sell')) { b.disabled = false; return; }
+        if (d.tier >= 6 && (a === 'dis' || a === 'sell') && !await ask(`<div class="gear-warn">⚠️ 정말 ${TIER[d.tier]} 장비를 ${a === 'dis' ? '분해' : '매각'}할까요?</div>`, true)) { b.disabled = false; return; }
+        const r = await rpc(a === 'enh' ? 'gear_enhance' : a === 'rr' ? 'gear_reroll' : a === 'dis' ? 'gear_dismantle' : 'gear_sell', a === 'enh' || a === 'rr' ? { p_gear: g.id } : { p_ids: [g.id] });
+        if (!r) { b.disabled = false; return; }
+        if (r.wallet) window.VRPlayer?.setWallet?.(r.wallet); else window.VRPlayer?.wallet?.(true);
+        m.remove(); ctx.reopen?.(); ctx.back?.();
+        if (a === 'enh' || a === 'rr') { const ng = st.gear.find(x => x.id === g.id); if (ng) itemPop(ng, ctx); }
+        return;
+      }
       const r = a === 'equip' ? await rpc('gear_equip', { p_gear: g.id, p_card: String(ctx.cardId) }) : a === 'unequip' ? await rpc('gear_unequip', { p_gear: g.id }) : await rpc('gear_lock', { p_gear: g.id, p_locked: !g.locked });
       if (r) done(); else b.disabled = false; });
   }
@@ -102,16 +130,29 @@
   // 가방 (slot 지정 시 그 슬롯만, cardId 있으면 고르면 장착)
   async function bag(ctx = {}) {
     if (!await load()) return toast('장비를 불러오지 못했어요');
-    let filt = ctx.slot || 'all';
+    let filt = ctx.slot || 'all', pick = null;   // pick: 여러 개 선택 모드 (Set)
     const m = pop('', 'bag');
     const draw = () => {
       const list = (st.gear || []).filter(g => filt === 'all' || slotOf(g) === filt).sort((a, b) => (defs[b.def]?.tier || 0) - (defs[a.def]?.tier || 0) || b.plus - a.plus);
       const nx = st.next_expand;
       m.querySelector('.gear-pop').innerHTML = `<div class="gear-bag-top"><b>🎒 ${st.count}/${st.slots}</b><button class="gear-btn" data-mail>📬${st.mail ? ` <i class="gear-badge">${st.mail}</i>` : ''}</button>${nx ? `<button class="gear-btn" data-x>+10칸 ${window.VRGem?.ICON || '💎'} ${nx.gem}</button>` : '<small>최대</small>'}</div>
         <div class="gear-tabs">${[['all', '전체'], ...SLOTS].map(([k, l]) => `<button data-f="${k}" class="${filt === k ? 'on' : ''}">${k === 'all' ? '' : img(sil(k), k)}${l}</button>`).join('')}</div>
-        <div class="gear-grid">${list.map(g => { const d = defs[g.def]; return `<button class="gear-cell gt${d.tier}" data-g="${g.id}">${img(iconOf(d), slotOf(g))}${g.plus ? `<i>+${g.plus}</i>` : ''}${g.card ? '<b class="gear-eq">E</b>' : ''}${g.locked ? '<b class="gear-lk">🔒</b>' : ''}</button>`; }).join('') || '<div class="gear-dim">아직 장비가 없어요. 소탕·탑·토벌에서 얻을 수 있어요</div>'}</div>`;
+        ${ctx.cardId ? '' : `<div class="gear-sel">${pick ? `${[1, 2, 3, 4, 5].map(t => `<button data-t="${t}" class="gt${t}">${TIER[t]}</button>`).join('')}<button data-pk>취소</button>` : `<small>✨ 가루 ${fmt(st.dust || 0)}</small><button class="gear-btn" data-pk>☑️ 여러 개 정리</button>`}</div>`}
+        <div class="gear-grid">${list.map(g => { const d = defs[g.def]; return `<button class="gear-cell gt${d.tier} ${pick?.has(g.id) ? 'pick' : ''} ${pick && (g.locked || g.card) ? 'nopick' : ''}" data-g="${g.id}">${img(iconOf(d), slotOf(g))}${g.plus ? `<i>+${g.plus}</i>` : ''}${g.card ? '<b class="gear-eq">E</b>' : ''}${g.locked ? '<b class="gear-lk">🔒</b>' : ''}</button>`; }).join('') || '<div class="gear-dim">아직 장비가 없어요. 소탕·탑·토벌에서 얻을 수 있어요</div>'}</div>`;
+      if (pick) { const sel = st.gear.filter(g => pick.has(g.id)), sum = k => sel.reduce((a, g) => a + (cost.salv[defs[g.def].tier]?.[k] || 0), 0);
+        m.querySelector('.gear-pop').insertAdjacentHTML('beforeend', `<div class="gear-acts gear-bulk"><b>${sel.length}개 선택</b><button class="gear-btn" data-bk="dis" ${sel.length ? '' : 'disabled'}>🔨 분해 ✨+${sum('dust')}</button><button class="gear-btn main" data-bk="sell" ${sel.length ? '' : 'disabled'}>🪙 매각 +${fmt(sum('gold'))}</button></div>`);
+        m.querySelectorAll('[data-bk]').forEach(b => b.onclick = async () => { const dis = b.dataset.bk === 'dis', hi = sel.some(g => defs[g.def].tier >= 5);
+          if (!await ask(`<div class="gear-drops">${sel.slice(0, 15).map(g => `<div class="gear-drop gt${defs[g.def].tier}">${img(iconOf(defs[g.def]), slotOf(g))}</div>`).join('')}${sel.length > 15 ? `<div class="gear-dim">외 ${sel.length - 15}개</div>` : ''}</div>
+            ${hi ? '<div class="gear-warn">⚠️ 영웅 이상 장비가 섞여 있어요</div>' : ''}<div>${sel.length}개를 ${dis ? `분해해서 ✨ 가루 ${sum('dust')}개` : `매각해서 🪙 ${fmt(sum('gold'))} 골드`}를 받을까요?</div>`, true)) return;
+          b.disabled = true; const r = await rpc(dis ? 'gear_dismantle' : 'gear_sell', { p_ids: sel.map(g => g.id) });
+          if (r) { if (r.wallet) window.VRPlayer?.setWallet?.(r.wallet); toast(dis ? `✨ 장비 가루 +${r.dust_got}` : `🪙 골드 +${fmt(r.gold)}`); pick = null; } if (m.isConnected) draw(); });
+      }
+      m.querySelectorAll('[data-pk]').forEach(b => b.onclick = () => { pick = pick ? null : new Set(); draw(); });
+      m.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { const t = +b.dataset.t, ids = list.filter(g => defs[g.def].tier === t && !g.locked && !g.card).map(g => g.id);
+        const all = ids.length && ids.every(i => pick.has(i)); ids.forEach(i => all ? pick.delete(i) : pick.add(i)); draw(); });
       m.querySelectorAll('[data-f]').forEach(b => b.onclick = () => { filt = b.dataset.f; draw(); });
       m.querySelectorAll('[data-g]').forEach(b => b.onclick = () => { const g = st.gear.find(x => String(x.id) === b.dataset.g);
+        if (pick) { if (g.locked || g.card) return toast('🔒 잠금·장착 중인 장비는 고를 수 없어요'); pick.has(g.id) ? pick.delete(g.id) : pick.add(g.id); return draw(); }
         if (ctx.cardId && !g.card) { rpc('gear_equip', { p_gear: g.id, p_card: String(ctx.cardId) }).then(r => { if (r) { m.remove(); ctx.reopen?.(); } }); return; }
         itemPop(g, { cardId: ctx.cardId, back: () => { if (m.isConnected) draw(); } }); });
       m.querySelector('[data-mail]').onclick = () => mailbox({ back: () => { if (m.isConnected) draw(); } });
