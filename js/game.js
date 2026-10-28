@@ -9,7 +9,7 @@ const $ = id => document.getElementById(id);
 // 2배속: 전투 화면의 대기·연출 타이머와 CSS 애니메이션만 빠르게 (게임 규칙·난수 무관). PvP 재생과 같은 저장 키
 const SPD_KEY = 'vrTcgSpd2';
 let spd2 = localStorage.getItem(SPD_KEY) === '1';
-const spdOn = () => spd2 && !!S && !S.over;
+const spdOn = () => spd2 && !!S && !S.over && !window.VRTutorial?.locked('speed');
 const setTimeout = (f, ms = 0, ...a) => window.setTimeout(f, spdOn() ? ms / 2 : ms, ...a);   // 이 모듈 안의 타이머만 영향
 let spdTick = 0;
 function spdSync() {
@@ -93,6 +93,8 @@ const ArcadeOpts = {
 const maxTurns = () => S?.maxTurns ?? RULES.MAX_TURNS;
 let S = null;          // 게임 상태
 let selected = null;   // 선택된 공격 유닛 uid
+const TUT = (ev, d) => { try { window.VRTutorial?.emit(ev, d); } catch {} };   // 튜토리얼 가이드 (js/tutorial.js)
+const TUT_LOCK = k => !!window.VRTutorial?.locked(k);
 let uidSeq = 1;
 // 연출 스킵: 토글(localStorage 저장) 또는 연출 중 클릭으로 현재 연출 빨리 감기
 const SKIP_KEY = 'vrTcgSkipFx';
@@ -109,7 +111,7 @@ let autoOn = localStorage.getItem(AUTO_KEY()) === '1', autoRunning = false;
 // 자동 전투 해금: 계정 레벨(플레이어 레벨, player_status.level) 5 이상
 const AUTO_LV = 5;
 const autoLocked = () => (window.VRPlayer?.now?.()?.level ?? 0) < AUTO_LV;
-const autoActive = () => autoOn && !autoLocked() && !!S?.story && !S.over && !S.view;
+const autoActive = () => autoOn && !autoLocked() && !!S?.story && !S.over && !S.view && !TUT_LOCK('auto');
 function renderAutoBtn() {
   const b = $('auto-btn'); if (!b) return;
   b.classList.toggle('hidden', !S?.story); b.classList.toggle('on', autoOn);
@@ -204,7 +206,8 @@ function startGame(story = null) {
       const tgt = PS && S.me.field.find(u => String(u.card.id) === String(PS.id));
       if (tgt && S.me.field.some(u => String(u.card.id) === String(PS.with))) { tgt.noDamage = true; tgt.pairShield = PS.turns; S.pairShield = { u: tgt, turns: PS.turns }; log(`🛡️ 자매의 가호: ${tgt.card.name}은(는) ${PS.turns}턴 동안 피해를 입지 않아요.`, 'text-sky-300'); } }
     refreshAll(S.me); refreshAll(S.ai);
-    setTimeout(() => { if (S && !S.over) { for (const w of ['me', 'ai']) for (const u of S[w].field) onEnter(w, u); flushHeldPassives(); } }, 400);   // 출전 카드 등장 컷인·이벤트
+    setTimeout(() => { if (S && !S.over) { for (const w of ['me', 'ai']) for (const u of S[w].field) onEnter(w, u); flushHeldPassives(); } }, 400);
+    if (story.tutorial) window.setTimeout(() => window.VRTutorial?.start(story.tutorial, { force: !!story.tutorialForce }), 900);   // 페이즈의 tutorial id → 가이드 (data/tutorials/<id>.json)   // 출전 카드 등장 컷인·이벤트
     if (S.me.leaderSkill) log(`👑 리더 스킬 [${S.me.leaderSkill.name} · ${S.me.leaderSkill.label}]: ${S.me.leaderSkill.text}. 리더가 쓰러지면 해제되고 아군 진영 HP −${Math.round((S.me.leaderSkill.deathPenalty ?? 0.3) * 100)}%`, 'text-amber-300');
     log(story.win === 'ko' ? '👑 보스전: 보스는 진영 안에서 쓰러지지 않아요. 상대 진영 HP를 0으로!' : '⚔️ 일반전: 상대 카드를 모두 쓰러뜨리세요!', 'text-amber-300');
   }
@@ -474,6 +477,7 @@ async function attack(who, unit, target, fromBatch = false) {
     if (!prevBusy) fastForward = false;
     render();
     checkEnd();
+    if (who === 'me') TUT('attack_done');
   }
 }
 
@@ -502,7 +506,7 @@ function floatText(text, cls, side = 'me', html = false) {
 }
 
 function finish(win, reason) {
-  S.over = true; hideModal('detail');
+  S.over = true; hideModal('detail'); TUT('battle_end', { win: !!win });
   try { window.VRSound?.jingle?.(win === null ? 'draw' : win ? 'victory' : 'defeat'); } catch {}   // 전투 종료 징글 (전 모드, 1회)
   if (S.story) {   // 스토리 모드: 아케이드 전적·랭킹·갤러리에 기록하지 않고 스토리 화면으로 결과 전달
     render();
@@ -950,6 +954,7 @@ async function castSkill(who, u, s) {
     S.busy = prevBusy;
     if (!prevBusy) fastForward = false;
     render();
+    if (who === 'me') TUT('skill_used', { skill: s.name });
     checkEnd();
   }
 }
@@ -1292,7 +1297,7 @@ function onUnitClick(who, u) {
     // 탭 → 다른 내 카드 탭: 자리 바꾸기 (턴 소모 없음). 같은 카드 다시 탭: 선택 해제 + 정보
     const cur = selected != null ? S.me.field.find(x => x.uid === selected) : null;
     if (myTurn && cur && cur !== u && !u.undying) { if (swapField(S.me, cur, u)) { selected = null; playSe(4); render(); return; } }
-    if (myTurn && !u.undying && selected !== u.uid) { selected = u.uid; render(); return; }
+    if (myTurn && !u.undying && selected !== u.uid) { selected = u.uid; render(); TUT('card_selected', { index: S.me.field.indexOf(u) }); return; }
     if (selected === u.uid) { selected = null; render(); }
     showDetail(u.card, { hp: u.hp, unit: u });
   } else {
@@ -1458,13 +1463,13 @@ renderSeBtn();
 $('voice-vol').oninput = e => { voiceVol = (+e.target.value || 0) / 100; localStorage.setItem(VOICE_VOL_KEY, String(voiceVol)); if (voiceCur) voiceCur.volume = voiceVol; };
 $('voice-vol').onclick = e => e.stopPropagation();
 renderVoiceBtn();
-$('spd-btn').onclick = e => { e.stopPropagation(); spd2 = !spd2; localStorage.setItem(SPD_KEY, spd2 ? '1' : '0'); renderSpdBtn(); spdSync(); };
+$('spd-btn').onclick = e => { e.stopPropagation(); if (TUT_LOCK('speed')) return; spd2 = !spd2; localStorage.setItem(SPD_KEY, spd2 ? '1' : '0'); renderSpdBtn(); spdSync(); };
 renderSpdBtn(); spdSync();
-$('fx-skip').onclick = e => { e.stopPropagation(); skipFx = !skipFx; localStorage.setItem(SKIP_KEY, skipFx ? '1' : '0'); if (S?.busy) fastForward = true; renderSkipBtn(); };
+$('fx-skip').onclick = e => { e.stopPropagation(); if (TUT_LOCK('skip')) return; skipFx = !skipFx; localStorage.setItem(SKIP_KEY, skipFx ? '1' : '0'); if (S?.busy) fastForward = true; renderSkipBtn(); };
 // 연출 중 화면을 누르면 현재 연출 빨리 감기
 $('game').addEventListener('click', e => { if (S?.view && e.target.closest('button')) return; if (S?.busy && !S.over) fastForward = true; }, true);   // 화면 전투: AUTO·X2 등 버튼 탭은 빨리감기 아님
 renderSkipBtn();
-$('auto-btn').onclick = e => { e.stopPropagation(); if (S?.view) { S.view.auto = !S.view.auto; renderAutoBtn(); if (S.view.auto) S.view.ask?.({ k: 'auto' }); return; } if (autoLocked()) return autoHint(); autoOn = !autoOn; localStorage.setItem(AUTO_KEY(), autoOn ? '1' : '0'); renderAutoBtn(); if (autoActive() && S.turn === 'me' && !S.busy) autoTurn(); };
+$('auto-btn').onclick = e => { e.stopPropagation(); if (TUT_LOCK('auto')) return; if (S?.view) { S.view.auto = !S.view.auto; renderAutoBtn(); if (S.view.auto) S.view.ask?.({ k: 'auto' }); return; } if (autoLocked()) return autoHint(); autoOn = !autoOn; localStorage.setItem(AUTO_KEY(), autoOn ? '1' : '0'); renderAutoBtn(); if (autoActive() && S.turn === 'me' && !S.busy) autoTurn(); };
 function autoHint() {
   document.getElementById('auto-hint')?.remove();
   const t = document.createElement('div'); t.id = 'auto-hint'; t.className = 'auto-hint'; t.textContent = `🔒 계정 Lv${AUTO_LV}부터 AUTO`;
@@ -1576,7 +1581,8 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('zoom-vi
 // ===== PvP·구역 전쟁 전투 화면: 스토리·탑과 같은 화면/연출, 전투 계산은 서버 seed 엔진(pvp-core matchGen) 그대로 =====
 // session = manualMatch/warSession(view:true). 화면은 엔진이 한 행동씩 멈출 때(anim) 연출하고, 내 차례(ask)면 입력을 기다림. 결과·행동 기록은 엔진 것 그대로
 /** raid: { stage, bossId, bossName, hpLeft, hpMax, cap, weakLabel, deadline(ms) } → 균열 토벌 화면 (큰 보스 HP 바 · 누적 피해 · 남은 시간) */
-async function viewBattle({ session, aiName = '상대', bg = 'normal', manual = false, maxTurns: mt = 40, title = '', raid = null } = {}) {
+async function viewBattle({ session, aiName = '상대', bg = 'normal', manual = false, maxTurns: mt = 40, title = '', raid = null, tutorial = null } = {}) {
+  if (tutorial) setTimeout(() => window.VRTutorial?.start(tutorial), 900);   // 튜토리얼 가이드 (js/tutorial.js)
   // 전투 화면을 띄운 팝업 층(조직 .gd-ov · 토벌/전쟁 .gd-pop · PvP · 마이페이지 등)은 전투 동안 숨겼다가 끝나면 그대로 복원
   const LAYERS = '.pvp-modal, .pvp-vsx, .gd-ov, .gd-pop, .mp-modal, .gal-modal, .ad-modal, #start-screen, #story-screen';
   const hid = [...document.querySelectorAll(LAYERS)].filter(e => !e.classList.contains('hidden') && e.style.display !== 'none');
@@ -1629,7 +1635,7 @@ async function viewBattle({ session, aiName = '상대', bg = 'normal', manual = 
         fastForward = false;   // 탭 빨리감기는 그 행동 하나만 (스토리처럼) — 안 풀면 한 번 탭 뒤 전투 전체가 연출 없이 순식간에 끝남
         if (a.k === 'turn' && !S.totalTurns) { $('me-order').textContent = who === 'me' ? '선공' : '후공'; $('ai-order').textContent = who === 'ai' ? '선공' : '후공'; }
         if (a.k === 'turn') { S.turn = who; S.totalTurns++; if (who === 'me') S.myTurns++; S.busy = true; render(); if (raid && who === 'me') floatText(`T${a.t}/${mt / 2}`, 'text-amber-200 text-2xl', 'me'); await play(evs, 160); if (raid) { bossNum(v.damage - (S.vDmg || 0)); S.vDmg = v.damage; raidPaint(v.damage, 1); } await sleep(AI_DELAY()); }
-        else if (a.k === 'skill') { S.busy = true; selected = null;   /* 컷인 전엔 다시 그리지 않음: 엔진은 이미 스킬 결과(처치 포함)를 반영 → 그리면 맞을 카드가 먼저 사라짐 */ if (!(await mrVideo(a.u, a.s))) await withTimeout(cutIn(a.u, a.s.name, a.s.fx), 3000); pendingDying = []; await play(evs, 160); if (raid) { bossNum(a.d, a.weak); S.vDmg = v.damage; raidPaint(v.damage, a.d); } if (who === 'me') S.log.skills++; render(); await sleep(fxMs(450)); await withTimeout(fadeDying(), 750); }
+        else if (a.k === 'skill') { S.busy = true; selected = null;   /* 컷인 전엔 다시 그리지 않음: 엔진은 이미 스킬 결과(처치 포함)를 반영 → 그리면 맞을 카드가 먼저 사라짐 */ if (!(await mrVideo(a.u, a.s))) await withTimeout(cutIn(a.u, a.s.name, a.s.fx), 3000); pendingDying = []; await play(evs, 160); if (raid) { bossNum(a.d, a.weak); S.vDmg = v.damage; raidPaint(v.damage, a.d); } if (who === 'me') S.log.skills++; render(); await sleep(fxMs(450)); await withTimeout(fadeDying(), 750); if (who === 'me') TUT('skill_used', { skill: a.s?.name }); }
         else if (a.k === 'atk') {
           S.busy = true; const oWho = who === 'me' ? 'ai' : 'me', aEl = unitEl(who, a.u), tEl = a.t ? unitEl(oWho, a.t) : null;
           playSe(7); const hit = await withTimeout(lunge(aEl, tEl), 750); pendingDying = [];
@@ -1641,7 +1647,7 @@ async function viewBattle({ session, aiName = '상대', bg = 'normal', manual = 
             else if (e.type === 'evade') dmgNumber(unitEl(oWho, e.target) || tEl, 'MISS', '#e0f2fe');
           }
           critSet.clear(); if (raid) { bossNum(a.d, a.weak); S.vDmg = v.damage; raidPaint(v.damage, a.d); }
-          await withTimeout(hit?.back?.() ?? Promise.resolve(), 750); resetAnim(aEl); await play(late, 220); render(); await withTimeout(fadeDying(), 750); await sleep(AI_DELAY());
+          await withTimeout(hit?.back?.() ?? Promise.resolve(), 750); resetAnim(aEl); await play(late, 220); render(); await withTimeout(fadeDying(), 750); if (who === 'me') TUT('attack_done'); await sleep(AI_DELAY());
         } else { await play(evs, 160); if (raid && a.d) { bossNum(a.d); S.vDmg = v.damage; raidPaint(v.damage, a.d); } render(); }
         x = session.next(); continue;
       }
@@ -1656,7 +1662,7 @@ async function viewBattle({ session, aiName = '상대', bg = 'normal', manual = 
       x = session.next();
     }
     await play(drain());
-    S.over = true; render();
+    S.over = true; render(); TUT('battle_end', { win: !!(x.value && x.value.win) });
     if (raid) { raidPaint(x.value?.damage || 0, 1); try { window.VRSound?.jingle?.('victory'); } catch {} floatText(`총 피해 ${fmt(x.value?.damage || 0)}`, 'text-amber-300 text-3xl', 'ai'); }
     else { try { window.VRSound?.jingle?.(x.value?.win ? 'victory' : 'defeat'); } catch {}
       floatText(x.value?.win ? 'WIN' : 'LOSE', x.value?.win ? 'text-emerald-300 text-5xl' : 'text-red-400 text-5xl', 'ai'); }
