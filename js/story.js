@@ -283,10 +283,10 @@
     await load();
     if (serverMode) await window.VRGear?.load?.();   // 장비 (전투 반영용)
     await checkChapters(); curCh = null; tickets = null;
-    if (!save.openingSeen) return renderOpening();
-    if (ch0Pending()) return autoCh0();
-    if (pullPending()) return forcedPull();   // 챕터 0 클리어 후 강제 10회 프리미엄 영입 (끝낼 때까지 매번)   // 챕터 0 미클리어(새·기존 사용자 모두): 목록 대신 바로 시작 (클리어 기록 = 서버 진행, 비로그인 모의는 localStorage)
-    if (!save.starter) return renderSelect();
+    if (!save.openingSeen) { renderOpening(); return 'gate'; }
+    if (ch0Pending()) { autoCh0(); return 'gate'; }
+    if (pullPending()) { forcedPull(); return 'gate'; }   // 챕터 0 클리어 후 강제 10회 프리미엄 영입 (끝낼 때까지 매번)   // 챕터 0 미클리어(새·기존 사용자 모두): 목록 대신 바로 시작 (클리어 기록 = 서버 진행, 비로그인 모의는 localStorage)
+    if (!save.starter) { renderSelect(); return 'gate'; }
     renderHub();
     // 스탯 규칙 변경 안내 (한 번만)
     const RF = `vrTcgStatRefundSeen:${user()?.id || 'guest'}:${D.statRuleV || 1}`;
@@ -395,7 +395,8 @@
     forcedPullOn = true;
     renderShop('special');
     if (r?.added) toast(`🎟️ 챕터 0 클리어 보상: 프리미엄 소환권 +${r.added}`);
-    window.VRTutorial?.start('ch0_pull', { force: true, def: { noSkip: true, steps: [
+    window.VRTutorial?.finishIf?.('ch0_pull');
+    window.VRTutorial?.start('ch0_pull', { force: true, def: { noSkip: true, anchor: '.gr-forced', steps: [
       { text: '챕터 0 클리어 보상으로 프리미엄 소환권 10장을 받았어. 바로 써 봐.', speaker: '임유리', face: 'card:2000100001', wait: 'tap' },
       { target: '.gr-go10', text: '10회 프리미엄 영입! (HR 이상 1명 보장)', speaker: '임유리', face: 'card:2000100001', wait: 'tap_target' }] } });
   }
@@ -1532,6 +1533,8 @@
       root().querySelectorAll('[data-draw]').forEach(b => b.onclick = async () => {
         root().querySelectorAll('[data-draw]').forEach(x => x.disabled = true); $('gacha-msg').textContent = ''; $('tk-result').innerHTML = '';
         const r = await drawTickets(+b.dataset.draw);
+        if (!r.ok && forcedPullOn && r.reason === 'tickets') { forcedPullOn = false; await markPullDone(); toast('소환권이 부족해 강제 영입을 건너뛰어요.'); return enter(); }   // 막힘 방지
+        if (!r.ok && forcedPullOn) root().querySelector('.story-shop')?.classList.remove('gr-forced');   // 다른 오류: 나가기 허용 (다음 접속 때 다시 안내)
         if (!r.ok) { $('gacha-msg').textContent = r.reason === 'tickets' ? '소환권이 부족해요.' : `뽑기에 실패했어요: ${r.msg || ''}`; root().querySelectorAll('[data-draw]').forEach(x => x.disabled = (tickets | 0) < +x.dataset.draw); return; }
         const bestG = r.cards.reduce((a, c) => GORDER.indexOf(c.grade) > GORDER.indexOf(a) ? c.grade : a, 'NORMAL');
         root().querySelectorAll('.story-ticket b').forEach(x => x.textContent = tickets);
@@ -1604,6 +1607,6 @@
     /** 마지막으로 고른 출전 카드 (없으면 빈 배열). 보유 카드가 출전 수 이하면 전부 */
     lastDeck: () => { const all = deckInstances(); if (all.length <= MAX_PICK()) return all; let last = []; try { last = JSON.parse(localStorage.getItem(PICK_KEY()) || '[]'); } catch {} const by = new Map(all.map(o => [o.uid, o])); return last.map(u => by.get(u)).filter(Boolean).slice(0, MAX_PICK()); },
   };
-  const openPage = async fn => { await enter(); if (save?.starter) fn(); };
+  const openPage = async fn => { if ((await enter()) === 'gate') return; if (save?.starter) fn(); };   // 오프닝·챕터 0·강제 영입·캐릭터 고르기 중이면 그 화면 유지 (위에 다른 화면 덮지 않음)
   window.VRStory = { openMap: i => openPage(() => renderMap(i)), openCards: () => openPage(renderCards), openDecks: () => openPage(renderDecks), api, bgm, BGM, endingVideo, videoOf, conditionsOf, battleRules, summary, enter, openGacha, renderHub, renderShop, drawOnce, kstDay, get save() { return save; }, renderMap, renderCards, openStats, renderSelect, playLines };
 })();
