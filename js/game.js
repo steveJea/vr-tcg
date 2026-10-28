@@ -1630,7 +1630,10 @@ function zoomFromBtn(b) {
 }
 // 캡처 단계에서 가로채서 카드 선택/드래그/상세창이 같이 동작하지 않게 함
 ['pointerdown', 'mousedown', 'touchstart'].forEach(t => document.addEventListener(t, e => { if (e.target.closest?.('.zoom-btn')) e.stopPropagation(); }, { capture: true, passive: true }));
-document.addEventListener('click', e => { const b = e.target.closest?.('.zoom-btn'); if (!b) return; e.stopPropagation(); e.preventDefault(); zoomFromBtn(b); }, true);
+document.addEventListener('click', e => { const b = e.target.closest?.('.zoom-btn'); if (!b) return;
+  // 튜토리얼 가이드 중 전장 카드의 🔍 = 카드 탭으로 처리 (손가락 표시 근처라 잘못 눌리면 큰 그림이 가이드 밑에 깔려 진행 멈춤 · ch0-2 자리 바꾸기)
+  if (window.VRTutorial?.active && b.closest('#me-field [data-uid], #ai-field [data-uid], #me-boss [data-uid], #ai-boss [data-uid]')) { e.preventDefault(); return; }
+  e.stopPropagation(); e.preventDefault(); zoomFromBtn(b); }, true);
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('zoom-view')?.classList.contains('open')) { e.stopPropagation(); closeZoom(); } }, true);
 
 
