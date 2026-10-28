@@ -88,7 +88,7 @@ revoke all on function public._story_cap(text, int), public._story_max_ex(text),
 create or replace function public.story_choose_starter(p_id text) returns jsonb language plpgsql security definer set search_path = public as $$
 declare uid uuid := auth.uid(); d jsonb; e jsonb;
 begin
-  if p_id not in ('2000600126', '2000200044', '2001500294') then raise exception 'invalid starter'; end if;
+  if p_id not in ('10111', '10265', '10224') then raise exception 'invalid starter'; end if;
   d := _story_lock(uid);
   if coalesce(d->>'starter', '') <> '' then raise exception 'starter already chosen'; end if;
   e := _story_new_card(p_id);

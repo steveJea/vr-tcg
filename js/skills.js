@@ -4,7 +4,7 @@
 import { sigilFor } from './gear-core.js';
 import { critRate, RULES, elementMultiplier, cardElemMult, statusResistHalf, calcDamage, gainXp, heroLocked, killXp, levelDown, levelUpOnce, genderMult, baseEvade } from './rules.js';
 import { poolCard, makeUnit } from './rules.js';
-const YURI_AWAKE_ID = '2000000008';   // [각성] 임유리
+const YURI_AWAKE_ID = '10326';   // [각성] 임유리
 
 export const SK = {
   MP_BASE: 50, MP_PER_MEN: 1,           // 최대 MP = 50 + MEN (51~150)
@@ -304,7 +304,7 @@ export function checkDeath(u, killer = null) {
   }
   p.lastDead = u.base;
   // 유가을 [도저히 용서 못해!]: 민유연이 쓰러지면 (전투당 1회, 유가을이 필드에 있을 때) 상대 전체 2턴 DEF -20% + 1턴 출혈
-  if (p.foe && String(u.base.id) === '2000100008' && !p.gaeulRage) {
+  if (p.foe && String(u.base.id) === '10115' && !p.gaeulRage) {
     const g = p.field.find(x => x !== u && x.hp > 0 && hasPassive(x, '도저히 용서 못해!'));
     if (g) { p.gaeulRage = true; emit({ type: 'passive', unit: g, name: '도저히 용서 못해!' }); stats.count('도저히 용서 못해!'); debuffAll(p.foe, '도저히 용서 못해!', 2, { def: -0.2, label: 'DEF -20%' }); live(p.foe).forEach(t => bleedOn(t, g, 1)); }
   }
@@ -403,7 +403,7 @@ const GRADE_ORDER = ['NORMAL', 'RARE', 'HIGH RARE', 'SUPER RARE', 'ULTRA RARE', 
 const gradeIdx = x => GRADE_ORDER.indexOf(typeof x === 'string' ? x : x.base.grade);
 const immuneAllies = (p, pred, turns) => { for (const a of live(p)) if (pred(a)) addStatus(a, 'immune', turns, {}, 'immune'); };
 // 선나영 [언니...도와줘요.]: 2턴 간 선미영(같은 레벨)으로 교체. 끝나면 선나영으로 돌아와 HP 100%. 선미영이 쓰러지면 선나영도 쓰러짐
-export const MIYOUNG_ID = '2000400094';
+export const MIYOUNG_ID = '10186';
 const LV_RATE = { 'NORMAL': 0.01, 'RARE': 0.02, 'HIGH RARE': 0.03, 'SUPER RARE': 0.04, 'ULTRA RARE': 0.05, 'MYTHIC RARE': 0.06, 'LEGENDARY RARE': 0.05 };
 function swapSister(u) {
   const mc = poolCard(MIYOUNG_ID); if (!mc || u.swap) return;
@@ -735,8 +735,8 @@ export const ACTIVE = {
   '드론 폭격!': (u, p, f) => hitAllOverflow(u, f, 0.3),
   '드론 연사!': (u, p, f) => { if (!f.noBase && !heroLocked(p)) heroHit(u, f, 1.5); else hitAll(u, f, 1, 0.3); },
 };
-export const CHANGWON_ID = '1002100371';
-export const YEEUN_ID = '2000200053', JUNTAE_ID = '1000200052', JIEUN_REVIVE_HP = 0.5;
+export const CHANGWON_ID = '10053';
+export const YEEUN_ID = '10466', JUNTAE_ID = '10469', JIEUN_REVIVE_HP = 0.5;
 const owns = (p, c) => [...p.deck, ...p.hand, ...p.field.map(u => u.base)].some(x => String(x.id) === String(c.id));
 const females = side => live(side).filter(x => x.base.gender === 'FEMALE');
 const males = side => live(side).filter(x => x.base.gender === 'MALE');
@@ -744,7 +744,7 @@ const bomberTargets = side => females(side).filter(x => gradeIdx(x) < gradeIdx('
 const lowMorMales = side => males(side).filter(x => (+x.base.MOR || 0) < 30);
 function cleanse(a) { for (const [k, s] of Object.entries(a.st)) if (STATUS[s.kind]?.debuff || s.atk < 0 || s.def < 0) delete a.st[k]; a.curse = 0; }
 // ---- 이명진 [지킨다] · 김후 [나는 약하지 않아] ----
-export const YOUNGA_ID = '2000600132';
+export const YOUNGA_ID = '10306';
 export const VOW = { DEF_STEP: 0.004, HEAL: 0.02, RAGE_ATK: 0.6, RAGE_TURNS: 3 };
 export const NOTWEAK = { CHANCE: 0.4, TURNS: 2, HEAL: 0.3 };
 const younga = side => side.field.find(x => String(x.base.id) === YOUNGA_ID);
@@ -782,7 +782,7 @@ export function maleLure(attacker, side) {
   return c.length ? by(c, x => x.card.cost, -1) : null;
 }
 /** 기본 공격 대상 재지정: 대신 맞기(decoy) → 수호(사랑하는 친구거든!·튀 므 망크). 반환 { target, ratio, proxyOf } */
-const GUARD = { '사랑하는 친구거든!': '2000100008', '튀 므 망크': '2000600116', '내가 오빠잖아.': '2002000354' };   // 내가 오빠잖아: 강준철 → 강재아
+const GUARD = { '사랑하는 친구거든!': '10115', '튀 므 망크': '10442', '내가 오빠잖아.': '10012' };   // 내가 오빠잖아: 강준철 → 강재아
 export function redirectAttack(attacker, target) {
   const tp = target.owner;
   const dc = target.st.decoy;

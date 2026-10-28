@@ -9,7 +9,7 @@
 insert into public.story_phase_config (chapter, phase, type, points, reward_grade, enemy_count) values
   (0,1,'normal',3,null,1), (0,2,'normal',3,null,5), (0,3,'normal',3,null,5)
 on conflict (chapter, phase) do update set type = excluded.type, points = excluded.points, reward_grade = excluded.reward_grade, enemy_count = excluded.enemy_count;
-update public.story_phase_config set reward_card = case phase when 1 then '2000100006' when 2 then '2000100004' when 3 then '2000900206' end where chapter = 0;
+update public.story_phase_config set reward_card = case phase when 1 then '10256' when 2 then '10462' when 3 then '10207' end where chapter = 0;
 
 -- 원래 전투 시작(_e0, phaseE_2 가 감쌈)을 다시 정의: 챕터 0 은 스타터 불필요 · 챕터 0 은 다른 챕터 선행 조건에서 제외
 create or replace function public._story_start_phase_e0(p_chapter int, p_phase int) returns jsonb language plpgsql security definer set search_path = public as $$

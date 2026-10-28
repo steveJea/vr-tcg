@@ -19,7 +19,7 @@ const sides = (aIds, bIds, lv = 10) => {
 };
 const sk = (u, name) => u.sk.find(s => s.name === name);
 const cast = (u, name) => { u.canAttack = true; u.mp = u.maxMp; u.cd = {}; return useSkill(u, sk(u, name)); };
-const S1 = '2100000001', S2 = '2100000002', YURI = '2000000008', N = ['1000100009', '1000100010', '2000100003'];
+const S1 = '10335', S2 = '10334', YURI = '10326', N = ['10019', '10018', '10300'];
 // 카드·전투력
 ok('장서현 MR·ABYSS·BALANCE·cost 100', C(S1)?.grade === 'MYTHIC RARE' && C(S1).class === 'ABYSS' && C(S1).attribute === 'BALANCE' && C(S1).cost === 100);
 ok('장서아 LR·VOID·UNLIMITED·cost 185', C(S2)?.grade === 'LEGENDARY RARE' && C(S2).class === 'VOID' && C(S2).attribute === 'UNLIMITED' && C(S2).cost === 185 && GRADE_SHORT['LEGENDARY RARE'] === 'LR');
@@ -34,13 +34,13 @@ ok('UNLIMITED끼리 보정 없음', cardElemMult({ class: 'FIRE', attribute: 'UN
 ok('VOID 1장·ABYSS와 같은 덱 불가', deckClassError([C(S2), C(S1)]) && deckClassError([C(S2), C(S2)]) && !deckClassError([C(S2), C(N[0])]));
 { const pool = [...cards.filter(c => c.grade !== 'LEGENDARY RARE'), C(S2), { ...C(S2), id: 'v2' }]; let bad = 0; for (let i = 0; i < 30; i++) if (deckClassError(buildDeck(pool, Math.random))) bad++; ok('buildDeck: 공허·심연 규칙 지킴', bad === 0, `${bad}`); }
 // 디버프 반사 + 즉사 면역
-{ const sk = await import('../js/skills.js'); const { A, B } = sides(['1002100366'], [S1]); const caster = A[0], t = B[0];
+{ const sk = await import('../js/skills.js'); const { A, B } = sides(['10070'], [S1]); const caster = A[0], t = B[0];
   // 시전 중(ACTOR) 디버프 → 반사: ACTIVE 직접 호출 대신 useSkill 로 임의 디버프 스킬
   sk.ACTIVE['__probe'] = (u, p, f) => sk.addStatus(f.field[0], 'probe', 2, { atk: -0.3, label: 'probe' }, 'mod');
   caster.sk = [...caster.sk, { name: '__probe', mode: 'active', mp: 0, cooldown: 0, unlock: 1, type: '디버프', target: '적 단일', desc: '' }];
   caster.canAttack = true; const r = sk.useSkill(caster, caster.sk.at(-1));
   ok('반사 패시브: 디버프 면역 + 시전자에게 반환', r.ok && !t.st.probe && caster.st.probe?.atk === -0.3); }
-{ const { A, B } = sides(['1001500315'], [S1]); const r = cast(A[0], '러시안룰렛'); ok('반사 패시브: 즉사 면역', r.ok && B[0].hp > 0 && B[0].owner.field.includes(B[0])); }
+{ const { A, B } = sides(['10054'], [S1]); const r = cast(A[0], '러시안룰렛'); ok('반사 패시브: 즉사 면역', r.ok && B[0].hp > 0 && B[0].owner.field.includes(B[0])); }
 // 장서현 액티브
 { const { A, B } = sides([S1], N); B.forEach(t => { t.st = {}; t.paraBlock = 2; }); const r = cast(A[0], '안타까운 거죠!');
   ok('안타까운 거죠!: 연속 마비 금지 예외 · 2턴 · HP 고갈 · DEF −20%', r.ok && B.every(t => t.st.para && t.st.para.t >= 2 && t.st.dot?.pct === 0.1 && t.st['안타까운 거죠!']?.def === -0.2)); }

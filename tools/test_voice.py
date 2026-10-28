@@ -10,11 +10,11 @@ async def run(b,name,vp,mobile):
     await pg.goto(URL); await pg.wait_for_function("window.TCG && TCG.POOL.length && TCG.voice.set")
     await pg.evaluate("TCG.startGame()"); await pg.wait_for_function("TCG.S.turn==='me' && !TCG.S.busy",timeout=30000)
     await pg.mouse.click(5,vp['height']-5)  # 첫 탭 -> 오디오 잠금 해제
-    await pg.evaluate("""(()=>{TCG.put('me','2001500316',5);TCG.put('ai','2000100001',5);const u=TCG.S.me.field.find(x=>x.card.id==='2001500316');u.mp=999;u.canAttack=true;TCG.render();window._u=u;})()""")
+    await pg.evaluate("""(()=>{TCG.put('me','10311',5);TCG.put('ai','10325',5);const u=TCG.S.me.field.find(x=>x.card.id==='10311');u.mp=999;u.canAttack=true;TCG.render();window._u=u;})()""")
     print(await pg.evaluate("JSON.stringify(TCG.skillState(_u,_u.sk[0]))+_u.level"))
     await pg.evaluate("TCG.castSkill('me',_u,_u.sk[0])"); await pg.wait_for_timeout(700)
     v=await pg.evaluate("TCG.voice"); print(name,v,reqs)
-    assert v['cur'] and '2001500316_1.mp3' in v['cur']['src'] and (not v['cur']['paused'] or v['cur']['t']>0)
+    assert v['cur'] and '10311_1.mp3' in v['cur']['src'] and (not v['cur']['paused'] or v['cur']['t']>0)
     await pg.wait_for_function("!TCG.S.busy",timeout=10000)
     await pg.click('#voice-toggle'); assert (await pg.evaluate("TCG.voice"))['on']==False
     await pg.click('#voice-toggle')

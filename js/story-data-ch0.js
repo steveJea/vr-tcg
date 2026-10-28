@@ -5,7 +5,7 @@ window.STORY_DATA.chapters.unshift({
  "title": "CHAPTER 0",
  "subtitle": "공허한 여신",
  "single": true,
- "hero": "2000100001",
+ "hero": "10325",
  "tutorial": true,
  "start": [
   {
@@ -31,9 +31,9 @@ window.STORY_DATA.chapters.unshift({
   }
  ],
  "rewardCards": {
-  "1": "2000100006",
-  "2": "2000100004",
-  "3": "2000900206"
+  "1": "10256",
+  "2": "10462",
+  "3": "10207"
  },
  "phases": [
   {
@@ -43,10 +43,10 @@ window.STORY_DATA.chapters.unshift({
    "title": "공허한 여신님",
    "enemies": {
     "ids": [
-     "2000100006"
+     "10256"
     ],
     "boost": {
-     "2000100006": {
+     "10256": {
       "HP": 700
      }
     }
@@ -112,15 +112,15 @@ window.STORY_DATA.chapters.unshift({
    "tutorial": "ch0_p1",
    "party": {
     "forced": [
-     "2000100001"
+     "10325"
     ],
     "mustLive": [
-     "2000100001"
+     "10325"
     ],
     "noExtra": true,
     "auto": true,
     "battleLevels": {
-     "2000100001": 2
+     "10325": 2
     }
    },
    "fullMp": true
@@ -132,11 +132,11 @@ window.STORY_DATA.chapters.unshift({
    "title": "사냥",
    "enemies": {
     "ids": [
-     "2000000024",
-     "2000000023",
-     "2000000023",
-     "2000000023",
-     "2000000023"
+     "10154",
+     "10153",
+     "10153",
+     "10153",
+     "10153"
     ]
    },
    "lines": {
@@ -222,16 +222,16 @@ window.STORY_DATA.chapters.unshift({
    "tutorial": "ch0_p2",
    "party": {
     "forced": [
-     "2000100001"
+     "10325"
     ],
     "mustLive": [
-     "2000100001"
+     "10325"
     ],
     "noExtra": true,
     "auto": true
    },
    "reserve": [
-    "2000100006"
+    "10256"
    ]
   },
   {
@@ -241,19 +241,19 @@ window.STORY_DATA.chapters.unshift({
    "title": "위기",
    "enemies": {
     "ids": [
-     "2000300083",
-     "2000000038",
-     "2000000038",
-     "2000000038",
-     "2000000038"
+     "10323",
+     "10168",
+     "10168",
+     "10168",
+     "10168"
     ],
     "storyLevels": {
-     "2000300083": 30,
-     "2000000038": 30
+     "10323": 30,
+     "10168": 30
     },
     "levels": {
-     "2000300083": 5,
-     "2000000038": 3
+     "10323": 5,
+     "10168": 3
     }
    },
    "lines": {
@@ -321,24 +321,24 @@ window.STORY_DATA.chapters.unshift({
    "tutorial": "ch0_p3",
    "party": {
     "forced": [
-     "2000100001"
+     "10325"
     ],
     "mustLive": [],
     "fixedLevel": {
-     "2000100001": 1
+     "10325": 1
     },
     "only": [
-     "2000100006",
-     "2000100004"
+     "10256",
+     "10462"
     ],
     "guests": [
-     "2000100006",
-     "2000100004"
+     "10256",
+     "10462"
     ]
    },
    "awaken": {
-    "on": "2000100001",
-    "id": "2000000008",
+    "on": "10325",
+    "id": "10326",
     "storyLevel": 100,
     "battleLevel": 10,
     "line": "....약해...",

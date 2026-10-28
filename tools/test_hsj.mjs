@@ -19,7 +19,7 @@ const sides = (aIds, bIds, lv = 10) => {
 };
 const sk = (u, name) => u.sk.find(s => s.name === name);
 const cast = (u, name) => { u.canAttack = true; u.mp = u.maxMp; u.cd = {}; return useSkill(u, sk(u, name)); };
-const H = '1100000001', N = ['1000100009', '1000100010', '2000100003'];
+const H = '10435', N = ['10019', '10018', '10300'];
 ok('하승진 카드 (UR·FIRE·DISTURB·72933·50)', C(H)?.name === '하승진' && C(H).grade === 'ULTRA RARE' && C(H).power === 72933 && C(H).cost === 50 && skillsOf(H).length === 3);
 { const { A, B } = sides([H], N); const before = B.map(t => t.mp); const r = cast(A[0], '처음부터...다시.');
   ok('처음부터...다시.: 적 MP 50% 제거', r.ok && B.every((t, i) => t.mp === before[i] - Math.round(before[i] * 0.5)), B.map(t => t.mp).join('/')); }

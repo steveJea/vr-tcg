@@ -5,8 +5,8 @@
 전투 규칙(레벨·보상·튜토리얼 id·각성 난입 등)은 아래 PHASE 에서 고칩니다. 합류 대사(JOIN)는 시트에 없어서 여기 따로 둡니다."""
 import csv, json, os, sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-YURI, AWAKE, YUNA, YEBO, JIA, NARI = '2000100001', '2000000008', '2000100006', '2000100004', '2000900206', '2000300083'
-NPC = {'불량배L': '2000000024', '불량배K': '2000000023', '불량배Z': '2000000038', '오유나': YUNA, '임나리': NARI}
+YURI, AWAKE, YUNA, YEBO, JIA, NARI = '10325', '10326', '10256', '10462', '10207', '10323'
+NPC = {'불량배L': '10154', '불량배K': '10153', '불량배Z': '10168', '오유나': YUNA, '임나리': NARI}
 SPK = {'NA': '내레이션', '[각성]임유리': '[각성] 임유리'}
 # 페이즈 전투 설정 (시트 밖)
 PHASE = {
@@ -17,7 +17,7 @@ PHASE = {
           party=dict(forced=[YURI], mustLive=[YURI], noExtra=True, auto=True), reserve=[YUNA]),
   3: dict(enemyName='임나리', tutorial='ch0_p3',
           party=dict(forced=[YURI], mustLive=[], fixedLevel={YURI: 1}, only=[YUNA, YEBO], guests=[YUNA, YEBO]),   # 강제 임유리 + 오유나·황보예만 고르기
-          enemies=dict(storyLevels={NARI: 30, '2000000038': 30}, levels={NARI: 5, '2000000038': 3}),
+          enemies=dict(storyLevels={NARI: 30, '10168': 30}, levels={NARI: 5, '10168': 3}),
           awaken=dict(on=YURI, id=AWAKE, storyLevel=100, battleLevel=10, line='....약해...', image='img/story/ch0-05.webp')),
 }
 REWARD = {1: YUNA, 2: YEBO, 3: JIA}

@@ -16,14 +16,14 @@ create table public.gallery (user_id uuid, card_id text, count int, mvp_count in
 insert into auth.users (id, email, email_confirmed_at) values ('${U}','u@x.com',now()),('${M}','m@x.com',now());`);
 const run = f => db.exec(readFileSync(new URL('../supabase/' + f, import.meta.url), 'utf8'));
 for (const f of ['story.sql', 'gacha.sql', 'story_server.sql', 'story_gacha.sql', 'story_levels.sql', 'story_level_stats.sql', 'story_merge.sql', 'story_ch2.sql', 'story_cards_1022.sql', 'story_leader_lock.sql', 'story_min_battle.sql', 'quest.sql', 'admin.sql', 'phaseE_1.sql', 'phaseE_2.sql', 'phaseE_3.sql']) await run(f);
-await run('phaseE_4.sql'); await run('phaseE_5.sql'); await run('story_ch3.sql'); await db.exec(`insert into public.story_card_pool (id, grade) values ('2000000022','SUPER RARE') on conflict do nothing`); await run('story_ch4.sql')// --- 데이터 (js/story-data-ch4.js) ---
+await run('phaseE_4.sql'); await run('phaseE_5.sql'); await run('story_ch3.sql'); await db.exec(`insert into public.story_card_pool (id, grade) values ('10301','SUPER RARE') on conflict do nothing`); await run('story_ch4.sql')// --- 데이터 (js/story-data-ch4.js) ---
 let fails = 0; const ok = (c, m) => { if (!c) { fails++; console.log('FAIL', m); } else console.log('ok  ', m); };
 globalThis.window = { STORY_DATA: { chapters: [] } };
 eval(readFileSync(new URL('../js/story-data-ch4.js', import.meta.url), 'utf8'));
 const ch = window.STORY_DATA.chapters[0];
 const csv = f => Object.fromEntries(readFileSync(new URL('../data/' + f, import.meta.url), 'utf8').replace(/^\uFEFF/, '').trim().split(/\r?\n/).slice(1).map(l => l.split(',')).map(v => [v[0], v]));
 const cards = csv('cards.csv'), npc = csv('npc_cards.csv'), nm = id => (cards[id] || npc[id])?.[1];
-const AW = '2000000022', MC = '2000100003', YW = '2000000039', YR = '2000100001';
+const AW = '10301', MC = '10300', YW = '10302', YR = '10325';
 ok(npc[AW] && npc[AW][1] === '[각성] 이민채' && npc[AW][16] === '1' && !cards[AW], 'NPC 카드는 npc_cards.csv 에만 (일반 카드 목록·뽑기·갤러리 제외)');
 const SK = JSON.parse(readFileSync(new URL('../data/skills.json', import.meta.url), 'utf8'));
 ok(SK[AW]?.length === 2 && SK[AW][0].name === '사랑해!!!' && SK[AW][1].mode === 'passive', 'NPC 스킬 2개');
@@ -35,7 +35,7 @@ ok(P_(10).enemies.ids[0] === AW && P_(10).enemies.ids.slice(1).every(id => id ==
 const F = ch.phases.map(p => p.party.forced.map(nm).join('+'));
 ok(JSON.stringify(F) === JSON.stringify(['이민채', '이민채', '이민채', '이민채+임유리', '이민채+임유리', '이민채', '이민채', '이민채', '이민채', '임유리']), `강제 배정 ${F}`);
 ok([4, 5, 6, 7].every(n => P_(n).rules.mustLive[0] === MC) && [1, 2, 3, 8, 9, 10].every(n => !P_(n).rules?.mustLive), '4~7 이민채 사망 시 패배');
-ok(P_(8).rules.revive[0].id === '2000100005' && P_(8).rules.revive[0].level === 1 && P_(8).rules.revive[0].delay === 2 && !P_(8).rules.revive[0].times && P_(9).rules.revive.every(r => r.delay === 2 && !r.times) && P_(9).rules.revive.map(r => nm(r.id) + r.level).join() === '김지수keep,오유나keep', '8 김지수 Lv1 · 9 김지수·오유나 레벨 승계: 2턴 후 부활(무제한)');
+ok(P_(8).rules.revive[0].id === '10072' && P_(8).rules.revive[0].level === 1 && P_(8).rules.revive[0].delay === 2 && !P_(8).rules.revive[0].times && P_(9).rules.revive.every(r => r.delay === 2 && !r.times) && P_(9).rules.revive.map(r => nm(r.id) + r.level).join() === '김지수keep,오유나keep', '8 김지수 Lv1 · 9 김지수·오유나 레벨 승계: 2턴 후 부활(무제한)');
 ok(P_(10).rules.invuln === AW && P_(10).rules.expire === 10 && P_(10).rules.revive[0].id === YW && P_(10).rules.revive[0].level === 1 && !P_(10).rules.revive[0].times && P_(10).final && P_(10).party.forced[0] === YR, '10 각성 무적·10턴 자동 사망·염원 부활 · 임유리 조작');
 ok([2, 4, 6, 9, 10].every(n => P_(n).after?.length) && ch.ending?.length && ch.start?.length && ch.tagline, '전투 후 대사 · 시작 · 엔딩');
 ok(ch.phases.flatMap(p => p.lines.default).filter(l => l.expr).length > 20 && ch.phases.flatMap(p => p.lines.default).every(l => !l.expr || ['화남', '웃음'].includes(l.expr)), '표정 태그');
@@ -47,7 +47,7 @@ async function as(role, claims, sql) {
 const me = { sub: U, email: 'u@x.com' }, q = s => as('authenticated', me, s);
 const cfg = (await db.query(`select phase, type, points from public.story_phase_config where chapter = 4 order by phase`)).rows;
 ok(cfg.length === 10 && cfg[9].type === 'boss' && cfg[9].points === 5 && cfg[0].points === 3, '페이즈 설정 10개 (멱등)');
-await q(`select public.story_choose_starter('2000600126')`); await q('select public.player_status()');
+await q(`select public.story_choose_starter('10111')`); await q('select public.player_status()');
 await db.exec(`update public.player_state set stamina = 200, level = 10 where user_id='${U}'`);
 ok(/phase locked/.test((await q('select public.story_start_phase(4, 1)')).err || ''), '챕터 3 미완료 시 잠김');
 await db.exec(`update public.story_progress set data = jsonb_set(data, '{cleared}', (select jsonb_object_agg(chapter::text, ps) from (select chapter, jsonb_agg(phase) ps from public.story_phase_config where chapter < 4 group by chapter) x)) where user_id='${U}'`);
@@ -59,5 +59,5 @@ await db.exec(`update public.player_state set level = 10, stamina = 100 where us
 r = await q('select public.story_sweep(4, 1, 5) r'); ok(r.rows?.[0]?.r?.runs === 5, `4-1 소탕 (${r.err || ''})`);
 ok(/phase locked/.test((await q('select public.story_start_phase(4, 3)')).err || ''), '4-3 은 4-2 전 잠김');
 ok(/permission denied/.test((await as('anon', {}, 'select public.story_start_phase(4, 1)')).err || ''), 'anon 불가');
-ok(+(await db.query(`select count(*) c from public.story_card_pool where id='2000000022'`)).rows[0].c === 0, 'NPC 뽑기 풀에서 제거');
+ok(+(await db.query(`select count(*) c from public.story_card_pool where id='10301'`)).rows[0].c === 0, 'NPC 뽑기 풀에서 제거');
 console.log(fails ? `${fails} FAIL` : 'ALL OK'); process.exit(fails ? 1 : 0);

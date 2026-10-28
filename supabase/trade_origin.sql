@@ -41,7 +41,7 @@ begin
     select c.reward_card from story_phase_config c
       where c.reward_card is not null and coalesce(d->'cleared'->(c.chapter::text), '[]'::jsonb) @> to_jsonb(c.phase)
     union all select d->>'starter' where coalesce(d->>'starter', '') <> ''
-    union all select '2000100001'
+    union all select '10325'
   loop known := jsonb_set(known, array[cid], to_jsonb(coalesce((known->>cid)::int, 0) + 1)); end loop;
   -- 영입 가능분 = 영입 기록 − 이미 recruit 표시
   for cid in select distinct x->>'id' from jsonb_array_elements(d->'owned') x where not (x ? 'src') loop

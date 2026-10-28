@@ -377,21 +377,21 @@ insert into sigil_cost (plus, frags) values (0, 50), (1, 30), (2, 50), (3, 80), 
 on conflict (plus) do update set frags = excluded.frags;
 
 insert into sigil_defs (card_id, name, effects, icon, steps) values
-('1000100007', '무답무용', 1, 'img/gear/sigil_1000100007.webp', '[
+('10118', '무답무용', 1, 'img/gear/sigil_10118.webp', '[
  {"plus":0,"skill":"무답무용","hit_pct":35,"hits":6,"bleed_pct":40},
  {"plus":1,"skill":"무답무용","hit_pct":40,"hits":6,"bleed_pct":45},
  {"plus":2,"skill":"무답무용","hit_pct":40,"hits":7,"bleed_pct":50,"cooldown":3},
  {"plus":3,"skill":"무답무용","hit_pct":45,"hits":7,"bleed_pct":60,"cooldown":3},
  {"plus":4,"skill":"무답무용","hit_pct":50,"hits":7,"bleed_pct":70,"cooldown":3},
  {"plus":5,"skill":"무답무용","hit_pct":50,"hits":7,"bleed_pct":70,"cooldown":3,"vs_bleed_dmg_pct":30,"on_kill_extra_hits":3}]'::jsonb),
-('2000400088', '제발 그냥 가줘', 1, 'img/gear/sigil_2000400088.webp', '[
+('10415', '제발 그냥 가줘', 1, 'img/gear/sigil_10415.webp', '[
  {"plus":0,"skill":"제발 그냥 가줘","cooldown":6,"mp":75,"fallback_hp_pct":40},
  {"plus":1,"skill":"제발 그냥 가줘","cooldown":6,"mp":70,"fallback_hp_pct":50},
  {"plus":2,"skill":"제발 그냥 가줘","cooldown":5,"mp":65,"fallback_hp_pct":50,"also":{"skill":"나 좀 내버려둬","cooldown":4}},
  {"plus":3,"skill":"제발 그냥 가줘","cooldown":4,"mp":60,"fallback_hp_pct":60,"also":{"skill":"나 좀 내버려둬","cooldown":4}},
  {"plus":4,"skill":"제발 그냥 가줘","cooldown":4,"mp":55,"fallback_hp_pct":60,"also":{"skill":"나 좀 내버려둬","cooldown":4,"duration":2}},
  {"plus":5,"skill":"제발 그냥 가줘","cooldown":3,"mp":50,"fallback_hp_pct":60,"targets":2,"also":{"skill":"나 좀 내버려둬","cooldown":4,"duration":2}}]'::jsonb),
-('2000100001', '피어난 키스', 2, 'img/gear/sigil_2000100001.webp', '[
+('10325', '피어난 키스', 2, 'img/gear/sigil_10325.webp', '[
  {"plus":0,"a":{"skill":"천천히 찢는 사랑","hit_pct":55,"hits":2,"bleed_pct":70},"b":{"hp_pct":[10,15],"cap":[160,240],"cc_pct":40}},
  {"plus":1,"a":{"skill":"천천히 찢는 사랑","hit_pct":60,"hits":2,"bleed_pct":75},"b":{"hp_pct":[10,15],"cap":[180,270],"cc_pct":45}},
  {"plus":2,"a":{"skill":"천천히 찢는 사랑","hit_pct":50,"hits":3,"bleed_pct":80},"b":{"hp_pct":[12,18],"cap":[200,300],"cc_pct":50}},
@@ -401,7 +401,7 @@ insert into sigil_defs (card_id, name, effects, icon, steps) values
 on conflict (card_id) do update set name = excluded.name, effects = excluded.effects, icon = excluded.icon, steps = excluded.steps;
 
 insert into sigil_sources (card_id, source, ref) values
-  ('1000100007','story_boss',null),('1000100007','raid_select',null),('1000100007','pvp_shop',null),('1000100007','exchange',null),
-  ('2000400088','story_boss',null),('2000400088','raid_select',null),('2000400088','pvp_shop',null),('2000400088','exchange',null),
-  ('2000100001','story_boss',null),('2000100001','raid_select',null),('2000100001','guild_shop',null),('2000100001','exchange',null)
+  ('10118','story_boss',null),('10118','raid_select',null),('10118','pvp_shop',null),('10118','exchange',null),
+  ('10415','story_boss',null),('10415','raid_select',null),('10415','pvp_shop',null),('10415','exchange',null),
+  ('10325','story_boss',null),('10325','raid_select',null),('10325','guild_shop',null),('10325','exchange',null)
 on conflict do nothing;

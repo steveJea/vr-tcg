@@ -71,7 +71,7 @@ let qs = await v(A, `select guild_quests()`); ok(qs.daily.length === 3 && qs.wee
 ok(qs.weekly.every(w => w.goal % 4 === 0 || w.goal % 3 === 0), '주간 목표 = 1인 목표 × 인원');
 ok(/not reached/.test((await as(A, `select guild_quest_claim(1)`)).err || ''), '미완료 의뢰 보상 불가');
 // 트리거: 뽑기 · 레벨업 · 탑
-await db.exec(`insert into story_gacha_log (user_id, card_id, grade) values ('${A}', '1000000001', 'RARE')`);
+await db.exec(`insert into story_gacha_log (user_id, card_id, grade) values ('${A}', '10370', 'RARE')`);
 await db.exec(`select _wallet_add('${A}', '{"gold":-10}', 'card_levelup')`);
 await db.exec(`insert into quest_progress (user_id) values ('${A}') on conflict do nothing; update quest_progress set clears = clears + 1 where user_id = '${A}'`);
 qs = await v(A, `select guild_quests()`); ok(qs.daily.every(d => d.progress === 1), '뽑기·레벨업·탑 트리거로 진행 ' + JSON.stringify(qs.daily.map(d => d.progress)));
@@ -87,7 +87,7 @@ r = await as(B, `select guild_quest_reroll(1)`); ok(!r.err && one(r).daily[0].ke
 ok(/reroll used/.test((await as(B, `select guild_quest_reroll(2)`)).err || ''), '교체는 하루 1번');
 // PvP 승리 이벤트 (pvp_report → _guild_feed → _guild_event)
 await db.exec(`delete from guild_daily_quests where user_id='${C}'; insert into guild_daily_quests (user_id, day, slot, qkey, goal) values ('${C}', _guild_day(), 1, 'd_pvp', 2), ('${C}', _guild_day(), 2, 'd_phase', 5), ('${C}', _guild_day(), 3, 'd_stamina', 60)`);
-await db.exec(`insert into story_progress (user_id, data) values ('${C}', '{"owned":[{"uid":"a","id":"1000000001"},{"uid":"b","id":"1000000002"}],"leader":"a"}') on conflict (user_id) do update set data = excluded.data`);
+await db.exec(`insert into story_progress (user_id, data) values ('${C}', '{"owned":[{"uid":"a","id":"10370"},{"uid":"b","id":"10368"}],"leader":"a"}') on conflict (user_id) do update set data = excluded.data`);
 await as(C, `select pvp_set_deck('open','1v1',0,'["a","b"]')`);
 const s = await v(C, `select pvp_start('open','1v1')`); await as(C, `select pvp_report(${s.id}, 1, 0)`);
 qs = await v(C, `select guild_quests()`); ok(qs.daily[0].progress === 1, 'PvP 승리 → 의뢰 진행');
@@ -98,12 +98,12 @@ qs = await v(C, `select guild_quests()`); ok(!r.err && qs.daily[1].progress === 
 // 주간 공동 의뢰
 await db.exec(`delete from guild_weekly_quests where guild_id=${gid}; delete from guild_weekly_contrib where guild_id=${gid};
   insert into guild_weekly_quests (guild_id, week, slot, qkey, goal) values (${gid}, _guild_week(), 1, 'w_draw', 15), (${gid}, _guild_week(), 2, 'w_tower', 15), (${gid}, _guild_week(), 3, 'w_checkin', 15)`);
-for (let i = 0; i < 8; i++) await db.exec(`insert into story_gacha_log (user_id, card_id, grade) values ('${B}', '1000000001', 'RARE')`);
+for (let i = 0; i < 8; i++) await db.exec(`insert into story_gacha_log (user_id, card_id, grade) values ('${B}', '10370', 'RARE')`);
 qs = await v(B, `select guild_quests()`); ok(qs.weekly[0].progress === 8 && qs.weekly[0].mine === 8 && qs.weekly[0].tiers[0].reached && !qs.weekly[0].tiers[1].reached, '주간: 8/15 → 50% 달성');
 ok(/contribution too low/.test((await as(A, `select guild_weekly_claim(1, 50)`)).err || ''), '기여 1% 미만 보상 불가');
 const eb = +(await q1(`select exp from guilds where id=${gid}`)); r = await as(B, `select guild_weekly_claim(1, 50)`);
 ok(!r.err && +(await q1(`select exp from guilds where id=${gid}`)) === eb + 100, '50% 보상 · 조직 세력 +100 ' + (r.err || ''));
-for (let i = 0; i < 7; i++) await db.exec(`insert into story_gacha_log (user_id, card_id, grade) values ('${B}', '1000000001', 'RARE')`);
+for (let i = 0; i < 7; i++) await db.exec(`insert into story_gacha_log (user_id, card_id, grade) values ('${B}', '10370', 'RARE')`);
 const gb = +((await q1(`select gem_free from player_wallet where user_id='${B}'`)) || 0);
 r = await as(B, `select guild_weekly_claim(1, 100)`); ok(!r.err && +(await q1(`select gem_free from player_wallet where user_id='${B}'`)) === gb + 10, '100%: 심연석 +10 · 골드 3,000 ' + (r.err || ''));
 ok(/not reached/.test((await as(B, `select guild_weekly_claim(1, 150)`)).err || ''), '150% 미달');

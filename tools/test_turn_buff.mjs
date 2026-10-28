@@ -9,7 +9,7 @@ const cards = parseCSV(fs.readFileSync('data/cards.csv', 'utf8')); const C = id 
 const mk = (c, uid) => { const u = makeUnit(c, uid); u.sk = skillsOf(c.id); return u; };
 let fails = 0; const ok = (n, c, x = '') => { console.log((c ? 'PASS ' : 'FAIL ') + n + (x ? ' — ' + x : '')); if (!c) { fails++; process.exitCode = 1; } };
 const pl = n => ({ name: n, field: [], hand: [], deck: [], mana: 99, hp: 3000, maxHp: 3000, turnsTaken: 9 });
-const YJ = '2000800171', YH = '2000500111', YI = '2000400086', FOE = '1002400375';
+const YJ = '10248', YH = '10384', YI = '10308', FOE = '10200';
 // 내 턴 → 상대 턴 한 바퀴
 const myTurnThenFoe = (a, b) => { turnEnd(a); TURN.p = b; turnStart(b); };
 const foeThenMine = (a, b) => { turnEnd(b); TURN.p = a; turnStart(a); };

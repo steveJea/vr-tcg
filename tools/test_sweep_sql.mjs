@@ -26,7 +26,7 @@ const me = { sub: U, email: 'u@x.com' }, q = s => as('authenticated', me, s);
 const W = async () => (await db.query(`select gold::int, blood::int, shard::int, soul::int from public.player_wallet where user_id='${U}'`)).rows[0] || { gold: 0, blood: 0, shard: 0, soul: 0 };
 const give = o => db.query(`select public._wallet_add('${U}', '${JSON.stringify(o)}', 'test')`);
 
-await q(`select public.story_choose_starter('2000600126')`);
+await q(`select public.story_choose_starter('10111')`);
 await q('select public.player_status()');
 await db.exec(`update public.story_progress set data = jsonb_set(data, '{cleared}', '{"1":[1]}') where user_id='${U}'`);
 const sw = (c, p, n) => q(`select public.story_sweep(${c}, ${p}, ${n}) r`);

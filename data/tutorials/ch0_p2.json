@@ -2,12 +2,12 @@
   "title": "챕터0 Phase 2 · 소환·자리 바꾸기·일괄 공격",
   "locks": ["auto", "speed", "giveup"],
   "steps": [
-    { "text": "혼자는 귀찮아. 유나를 불러.", "speaker": "임유리", "face": "card:2000100001", "wait": "tap" },
-    { "target": "reserve_btn", "text": "소환 버튼을 누르면 대기 중인 동료가 나와.", "speaker": "임유리", "face": "card:2000100001", "wait": "summoned" },
-    { "target": "my_card:0", "text": "내 카드를 하나 누르고…", "speaker": "임유리", "face": "card:2000100001", "wait": "card_selected", "match": { "index": 0 } },
-    { "target": "my_card:1", "text": "다른 내 카드를 누르면 자리가 바뀌어.", "speaker": "임유리", "face": "card:2000100001", "wait": "swapped" },
-    { "target": "attack_all", "text": "일괄 공격! 모두 한 번에 공격해.", "speaker": "임유리", "face": "card:2000100001", "wait": "tap_target" },
-    { "text": "편하지? 나머지도 치워.", "speaker": "임유리", "face": "card:2000100001", "wait": "tap" },
+    { "text": "혼자는 귀찮아. 유나를 불러.", "speaker": "임유리", "face": "card:10325", "wait": "tap" },
+    { "target": "reserve_btn", "text": "소환 버튼을 누르면 대기 중인 동료가 나와.", "speaker": "임유리", "face": "card:10325", "wait": "summoned" },
+    { "target": "my_card:0", "text": "내 카드를 하나 누르고…", "speaker": "임유리", "face": "card:10325", "wait": "card_selected", "match": { "index": 0 } },
+    { "target": "my_card:1", "text": "다른 내 카드를 누르면 자리가 바뀌어.", "speaker": "임유리", "face": "card:10325", "wait": "swapped" },
+    { "target": "attack_all", "text": "일괄 공격! 모두 한 번에 공격해.", "speaker": "임유리", "face": "card:10325", "wait": "tap_target" },
+    { "text": "편하지? 나머지도 치워.", "speaker": "임유리", "face": "card:10325", "wait": "tap" },
     { "silent": true, "wait": "battle_end" }
   ]
 }

@@ -8,8 +8,8 @@ const cards = parseCSV(fs.readFileSync('data/cards.csv','utf8')); const C = id =
 const mk=(c,uid)=>{const u=makeUnit(c,uid);u.sk=skillsOf(c.id);return u;};
 const ok=(n,c)=>{console.log((c?'PASS ':'FAIL ')+n); if(!c) process.exitCode=1;};
 const setup=()=>{const a={name:'A',field:[],hand:[],mana:99,hp:3000,turnsTaken:9},b={name:'B',field:[],hand:[],mana:99,hp:3000,turnsTaken:9};initPlayers(a,b);
- const yh=placeUnit(a,C('2000400088'),mk), hk=placeUnit(a,C('2000400097'),mk), other=placeUnit(a,C('2000100008'),mk);
- const m=placeUnit(b,C('1000200018'),mk), m2=placeUnit(b,C('1000100007'),mk), fem=placeUnit(b,C('2000600116'),mk); [yh,hk].forEach(u=>u.level=3); return {a,b,yh,hk,other,m,m2,fem};};
+ const yh=placeUnit(a,C('10415'),mk), hk=placeUnit(a,C('10317'),mk), other=placeUnit(a,C('10115'),mk);
+ const m=placeUnit(b,C('10051'),mk), m2=placeUnit(b,C('10118'),mk), fem=placeUnit(b,C('10442'),mk); [yh,hk].forEach(u=>u.level=3); return {a,b,yh,hk,other,m,m2,fem};};
 let t=setup(); ACTIVE['나 좀 내버려둬'](t.yh,t.a,t.b); ACTIVE['소녀의 거래'](t.hk,t.a,t.b);
 let o=t.other.hp,y=t.yh.hp; let ev=resolveAttack(t.b,t.a,t.m,t.other);
 ok('male attack on ally redirected to higher-cost 윤희, proxy hit, 윤희 unharmed', t.other.hp===o && t.yh.hp===y && ev[0].target!==t.other && t.b.field.includes(ev[0].target)||ev[0].target.hp<=0);

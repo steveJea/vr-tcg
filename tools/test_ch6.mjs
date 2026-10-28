@@ -24,7 +24,7 @@ eval(readFileSync(new URL('../js/story-data-ch6.js', import.meta.url), 'utf8'));
 const ch = window.STORY_DATA.chapters[0];
 const csv = f => Object.fromEntries(readFileSync(new URL('../data/' + f, import.meta.url), 'utf8').replace(/^\uFEFF/, '').trim().split(/\r?\n/).slice(1).map(l => l.split(',')).map(v => [v[0], v]));
 const cards = { ...csv('npc_cards.csv'), ...csv('cards.csv') }, nm = id => cards[id]?.[1];
-const JA = '2000600115', JC = '1000600130', JY = '2000600126', YR = '2000100001', P_ = n => ch.phases[n - 1];
+const JA = '10110', JC = '10112', JY = '10111', YR = '10325', P_ = n => ch.phases[n - 1];
 ok(ch.id === 6 && ch.subtitle === '마지막 대답' && ch.phases.length === 10 && ch.single && ch.hero === JA && ch.endingVideo === '5UXd2Yv5p3E' && ch.warning, '챕터 6 · 10 페이즈 · 주인공 문지아 · 엔딩 영상 · 경고');
 ok(P_(1).enemies.ids.length === 3 && ch.phases.slice(1).every(p => p.enemies.ids.length === 5) && ch.phases.every(p => p.enemies.ids.every(id => nm(id))), '1페이즈 적 3명 · 나머지 5명 · 모두 카드/NPC');
 ok(P_(3).enemies.ids.every(id => nm(id) === '불량배-J') && P_(6).enemies.ids.every(id => nm(id) === '불량배-X'), '같은 NPC 여러 명 (J×5, X×5)');
@@ -45,7 +45,7 @@ async function as(role, claims, sql) {
 const me = { sub: U, email: 'u@x.com' }, q = s => as('authenticated', me, s);
 const cfg = (await db.query(`select phase, type, points from public.story_phase_config where chapter = 6 order by phase`)).rows;
 ok(cfg.length === 10 && cfg[9].type === 'boss' && cfg[9].points === 5 && cfg[0].points === 3, '페이즈 설정 10개 (멱등)');
-await q(`select public.story_choose_starter('2000600126')`); await q('select public.player_status()');
+await q(`select public.story_choose_starter('10111')`); await q('select public.player_status()');
 await db.exec(`update public.player_state set stamina = 200, level = 10 where user_id='${U}'`);
 ok(/phase locked/.test((await q('select public.story_start_phase(6, 1)')).err || ''), '챕터 5 미완료 시 잠김');
 await db.exec(`update public.story_progress set data = jsonb_set(data, '{cleared}', (select jsonb_object_agg(chapter::text, ps) from (select chapter, jsonb_agg(phase) ps from public.story_phase_config where chapter < 6 group by chapter) x)) where user_id='${U}'`);

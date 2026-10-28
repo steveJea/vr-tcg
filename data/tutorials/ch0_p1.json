@@ -3,15 +3,15 @@
   "locks": ["auto", "speed", "giveup", "attack_all"],
   "prep": { "fullMp": true },
   "steps": [
-    { "text": "하아암… 귀찮지만 알려줄게.", "speaker": "임유리", "face": "card:2000100001", "wait": "tap" },
-    { "target": "my_card:0", "text": "내 카드를 눌러 선택해.", "speaker": "임유리", "face": "card:2000100001", "wait": "card_selected", "match": { "index": 0 } },
-    { "target": "enemy_card:0", "text": "공격할 적을 눌러.", "speaker": "임유리", "face": "card:2000100001", "wait": "attack_done" },
-    { "target": "end_turn", "text": "공격이 끝나면 턴 종료.", "speaker": "임유리", "face": "card:2000100001", "wait": "tap_target" },
+    { "text": "하아암… 귀찮지만 알려줄게.", "speaker": "임유리", "face": "card:10325", "wait": "tap" },
+    { "target": "my_card:0", "text": "내 카드를 눌러 선택해.", "speaker": "임유리", "face": "card:10325", "wait": "card_selected", "match": { "index": 0 } },
+    { "target": "enemy_card:0", "text": "공격할 적을 눌러.", "speaker": "임유리", "face": "card:10325", "wait": "attack_done" },
+    { "target": "end_turn", "text": "공격이 끝나면 턴 종료.", "speaker": "임유리", "face": "card:10325", "wait": "tap_target" },
     { "silent": true, "wait": "turn_start" },
-    { "target": "skill_btn:0", "text": "MP가 가득 찼어. 기술 버튼을 눌러.", "speaker": "임유리", "face": "card:2000100001", "wait": "tap_target" },
-    { "target": "skill_use", "text": "사용!", "speaker": "임유리", "face": "card:2000100001", "wait": "skill_used", "pad": 4 },
-    { "text": "아..그리고 스킬은 공격 대신 쓰는 거니까 잘 판단하렴", "speaker": "임유리", "face": "card:2000100001", "wait": "tap" },
-    { "text": "끝. 나머지는 알아서 해.", "speaker": "임유리", "face": "card:2000100001", "wait": "tap" },
+    { "target": "skill_btn:0", "text": "MP가 가득 찼어. 기술 버튼을 눌러.", "speaker": "임유리", "face": "card:10325", "wait": "tap_target" },
+    { "target": "skill_use", "text": "사용!", "speaker": "임유리", "face": "card:10325", "wait": "skill_used", "pad": 4 },
+    { "text": "아..그리고 스킬은 공격 대신 쓰는 거니까 잘 판단하렴", "speaker": "임유리", "face": "card:10325", "wait": "tap" },
+    { "text": "끝. 나머지는 알아서 해.", "speaker": "임유리", "face": "card:10325", "wait": "tap" },
     { "silent": true, "wait": "battle_end" }
   ]
 }

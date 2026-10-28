@@ -14,7 +14,7 @@ on conflict (chapter, phase) do update set type = excluded.type, points = exclud
 create or replace function public.story_choose_route(p_chapter int, p_route text) returns jsonb language plpgsql security definer set search_path = public as $$
 declare uid uuid := auth.uid(); d jsonb; cur text;
 begin
-  if not (p_chapter = 2 and p_route in ('1000600122', '1000600120')) then raise exception 'invalid route'; end if;
+  if not (p_chapter = 2 and p_route in ('10298', '10081')) then raise exception 'invalid route'; end if;
   d := _story_lock(uid);
   if coalesce(d->>'starter', '') = '' then raise exception 'choose starter first'; end if;
   cur := d->'routes'->>(p_chapter::text);

@@ -10,11 +10,11 @@ export const RAID_TURNS = 15;              // 내 턴 15번 (보스 턴 포함 3
 export const BOSS_BAR = 1e7;               // 보스 HP 막대 (실제 공유 HP 는 서버)
 // 단계 → 보스 (5단계 뒤 다시 1번부터, HP 는 계속 ×1.35). 서버 _raid_boss_of 와 같음
 export const RAID_BOSSES = [
-  { id: '2000100001', name: '임유리', weak: 'CHARGE', icon: '🖤' },
-  { id: '2000000008', name: '[각성] 임유리', weak: 'DEFENSE', icon: '🌑' },
-  { id: '2000900234', name: '김신현', weak: 'CRUSH', icon: '⛓️' },
-  { id: '1000200030', name: '김성진', weak: 'SUPPORT', icon: '🔥' },
-  { id: '2001500316', name: '이지영', weak: 'DISTURB', icon: '👁️' },
+  { id: '10325', name: '임유리', weak: 'CHARGE', icon: '🖤' },
+  { id: '10326', name: '[각성] 임유리', weak: 'DEFENSE', icon: '🌑' },
+  { id: '10062', name: '김신현', weak: 'CRUSH', icon: '⛓️' },
+  { id: '10060', name: '김성진', weak: 'SUPPORT', icon: '🔥' },
+  { id: '10311', name: '이지영', weak: 'DISTURB', icon: '👁️' },
 ];
 export const RAID_DIFF = { normal: { label: '일반', atk: 1, def: 1 }, hard: { label: '어려움', atk: 1.6, def: 1.3 }, abyss: { label: '심연', atk: 2.4, def: 1.7 } };
 export const WEAK_MULT = 1.25;

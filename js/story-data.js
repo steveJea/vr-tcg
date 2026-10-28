@@ -5,9 +5,9 @@ window.STORY_DATA = {
   // 오프닝: 메인 스토리 첫 진입 시 1번 재생. video 경로를 넣으면 영상, 비어 있으면 자리표시 화면
   opening: { video: 'video/opening.mp4', poster: 'img/story/opening_poster.webp', title: 'OPENING', text: '' },
   starters: [
-    { id: '2000600126', name: '문지예', tagline: '(소개 문구 준비 중)' },
-    { id: '2000200044', name: '용지혜', tagline: '(소개 문구 준비 중)' },
-    { id: '2001500294', name: '안리', tagline: '(소개 문구 준비 중)' },
+    { id: '10111', name: '문지예', tagline: '(소개 문구 준비 중)' },
+    { id: '10265', name: '용지혜', tagline: '(소개 문구 준비 중)' },
+    { id: '10224', name: '안리', tagline: '(소개 문구 준비 중)' },
   ],
   // 밸런스: 승리 시 스탯 포인트, 포인트 1당 상승량
   statPoints: { normal: 3, boss: 5 },
@@ -43,7 +43,7 @@ window.STORY_DATA = {
       id: 1, title: 'CHAPTER 1', subtitle: '(챕터 제목 준비 중)',
       rewardCard: 'NORMAL',   // 페이즈 첫 클리어 시 무료 카드 등급. 없으면(챕터 2~) 스탯 포인트만
       // 페이즈 첫 클리어 고정 보상 카드 (모든 루트 동일, 이미 있으면 한 장 더). 서버: supabase/story_ch1_reward.sql
-      rewardCards: { 1: '2000800171', 2: '2001700341', 3: '2000400085', 4: '2001100231', 5: '2000400086' },   // 예유진·남태은·선나영·반지아·이윤이
+      rewardCards: { 1: '10248', 2: '10093', 3: '10185', 4: '10130', 5: '10308' },   // 예유진·남태은·선나영·반지아·이윤이
       phases: [
         // enemyName: 전투 화면 상대 이름 / enemies: 노멀 카드 power 순위 구간 [from, to) 에서 count 장 / 또는 ids: ['카드id', ...] 로 직접 지정
         { no: 1, type: 'normal', enemyName: '적군', title: '(페이즈 1 제목)', tip: '출전 카드가 모두 필드에서 시작해요. 내 카드를 누르고 상대 카드를 눌러 공격해 보세요.', enemies: { count: 1, rank: [0, 30] },
@@ -68,7 +68,7 @@ window.STORY_DATA = {
 // ===== 문지예 전용 챕터 1 「브레이크」 (원문: 사용자 확정 대본, 수정 금지) =====
 // 고른 캐릭터가 문지예일 때만 위 기본값을 덮어씁니다. 화자 이름과 같은 카드가 있으면 그 카드가 초상화로 나옵니다.
 // 문지예 루트: 스토리 시트 CH1-2 탭 기준 (약자 M/M1=문지예, M2=문지철, S=수상한 남자, NA=내레이션, A~D·K·L=불량배 NPC)
-window.STORY_DATA.chapters[0].byStarter = { '2000600126': {
+window.STORY_DATA.chapters[0].byStarter = { '10111': {
   "subtitle": "브레이크",
   "phases": {
     "1": {
@@ -76,7 +76,7 @@ window.STORY_DATA.chapters[0].byStarter = { '2000600126': {
       "enemyName": "수상한 남자",
       "enemies": {
         "ids": [
-          "1000000022"
+          "10210"
         ]
       },
       "lines": [
@@ -91,8 +91,8 @@ window.STORY_DATA.chapters[0].byStarter = { '2000600126': {
       ],
       "party": {
         "forced": [
-          "2000600126",
-          "1000600130"
+          "10111",
+          "10112"
         ]
       },
       "after": [
@@ -123,8 +123,8 @@ window.STORY_DATA.chapters[0].byStarter = { '2000600126': {
       "enemyName": "불량배-A",
       "enemies": {
         "ids": [
-          "1000000023",
-          "1000000024"
+          "10143",
+          "10144"
         ]
       },
       "lines": [
@@ -155,7 +155,7 @@ window.STORY_DATA.chapters[0].byStarter = { '2000600126': {
       ],
       "party": {
         "forced": [
-          "2000600126"
+          "10111"
         ]
       }
     },
@@ -164,9 +164,9 @@ window.STORY_DATA.chapters[0].byStarter = { '2000600126': {
       "enemyName": "불량배-K",
       "enemies": {
         "ids": [
-          "2000000023",
-          "1000000023",
-          "1000000024"
+          "10153",
+          "10143",
+          "10144"
         ]
       },
       "lines": [
@@ -205,7 +205,7 @@ window.STORY_DATA.chapters[0].byStarter = { '2000600126': {
       ],
       "party": {
         "forced": [
-          "2000600126"
+          "10111"
         ]
       },
       "after": [
@@ -224,10 +224,10 @@ window.STORY_DATA.chapters[0].byStarter = { '2000600126': {
       "enemyName": "불량배-L",
       "enemies": {
         "ids": [
-          "2000000024",
-          "2000000023",
-          "1000000023",
-          "1000000024"
+          "10154",
+          "10153",
+          "10143",
+          "10144"
         ]
       },
       "lines": [
@@ -262,7 +262,7 @@ window.STORY_DATA.chapters[0].byStarter = { '2000600126': {
       ],
       "party": {
         "forced": [
-          "2000600126"
+          "10111"
         ]
       }
     },
@@ -271,11 +271,11 @@ window.STORY_DATA.chapters[0].byStarter = { '2000600126': {
       "enemyName": "불량배-D",
       "enemies": {
         "ids": [
-          "1000000026",
-          "2000000023",
-          "1000000023",
-          "1000000024",
-          "1000000025"
+          "10146",
+          "10153",
+          "10143",
+          "10144",
+          "10145"
         ]
       },
       "lines": [
@@ -314,10 +314,10 @@ window.STORY_DATA.chapters[0].byStarter = { '2000600126': {
       ],
       "party": {
         "forced": [
-          "2000600126"
+          "10111"
         ]
       },
-      "bossId": "1000000026"
+      "bossId": "10146"
     }
   },
   "intro": "구로 배척지 '여왕벌클럽'의 2인자.\n잔인한 언니와 오빠를 멈춰 세우는 단 하나의 브레이크.\n싸움은 약하지만, 사람의 마음을 읽는 데엔 누구보다 빠르다.",
@@ -393,7 +393,7 @@ window.STORY_DATA.chapters[0].byStarter = { '2000600126': {
 window.STORY_DATA.noPortrait = ['내레이션', '쓰러진 남자', '???'];
 
 // ===== 안리 전용 챕터 1 「불안한 여운」 (스토리 시트 CH1-3 탭 기준: AN=안리, H=홍가영, NA=내레이션, A~D·K·L=불량배 NPC) =====
-window.STORY_DATA.chapters[0].byStarter['2001500294'] = {
+window.STORY_DATA.chapters[0].byStarter['10224'] = {
   "subtitle": "불안한 여운",
   "phases": {
     "1": {
@@ -401,7 +401,7 @@ window.STORY_DATA.chapters[0].byStarter['2001500294'] = {
       "enemyName": "불량배-A",
       "enemies": {
         "ids": [
-          "1000000023"
+          "10143"
         ]
       },
       "lines": [
@@ -432,7 +432,7 @@ window.STORY_DATA.chapters[0].byStarter['2001500294'] = {
       ],
       "party": {
         "forced": [
-          "2001500294"
+          "10224"
         ]
       }
     },
@@ -441,8 +441,8 @@ window.STORY_DATA.chapters[0].byStarter['2001500294'] = {
       "enemyName": "불량배-K",
       "enemies": {
         "ids": [
-          "2000000023",
-          "1000000023"
+          "10153",
+          "10143"
         ]
       },
       "lines": [
@@ -473,7 +473,7 @@ window.STORY_DATA.chapters[0].byStarter['2001500294'] = {
       ],
       "party": {
         "forced": [
-          "2001500294"
+          "10224"
         ]
       }
     },
@@ -482,8 +482,8 @@ window.STORY_DATA.chapters[0].byStarter['2001500294'] = {
       "enemyName": "불량배-C",
       "enemies": {
         "ids": [
-          "1000000025",
-          "1000000024"
+          "10145",
+          "10144"
         ]
       },
       "lines": [
@@ -514,7 +514,7 @@ window.STORY_DATA.chapters[0].byStarter['2001500294'] = {
       ],
       "party": {
         "forced": [
-          "2001500294"
+          "10224"
         ]
       }
     },
@@ -523,9 +523,9 @@ window.STORY_DATA.chapters[0].byStarter['2001500294'] = {
       "enemyName": "불량배-C",
       "enemies": {
         "ids": [
-          "1000000025",
-          "2000000024",
-          "2000000023"
+          "10145",
+          "10154",
+          "10153"
         ]
       },
       "lines": [
@@ -556,7 +556,7 @@ window.STORY_DATA.chapters[0].byStarter['2001500294'] = {
       ],
       "party": {
         "forced": [
-          "2001500294"
+          "10224"
         ]
       }
     },
@@ -565,10 +565,10 @@ window.STORY_DATA.chapters[0].byStarter['2001500294'] = {
       "enemyName": "불량배-D",
       "enemies": {
         "ids": [
-          "1000000026",
-          "2000000023",
-          "2000000024",
-          "1000000025"
+          "10146",
+          "10153",
+          "10154",
+          "10145"
         ]
       },
       "lines": [
@@ -599,10 +599,10 @@ window.STORY_DATA.chapters[0].byStarter['2001500294'] = {
       ],
       "party": {
         "forced": [
-          "2001500294"
+          "10224"
         ]
       },
-      "bossId": "1000000026"
+      "bossId": "10146"
     }
   },
   "intro": "성동의 복싱 소녀, 전국체전 금메달리스트.\n유치원 때부터 함께한 단짝 가영과 매일 링에 오른다.\n짧고 묵직한 한 방. 시비는 사양하지만, 피하지도 않는다.",
@@ -666,7 +666,7 @@ window.STORY_DATA.chapters[0].byStarter['2001500294'] = {
 
 // ===== 용지혜 전용 챕터 1 「동생의 이름으로」 (원문: 사용자 확정 대본, 수정 금지) =====
 // 용지혜 루트 「개미굴」: 스토리 시트 CH1 탭 기준 (약자 Y=용지혜, Y2=용지효, NA=내레이션, A~D·K·L=불량배 NPC)
-window.STORY_DATA.chapters[0].byStarter['2000200044'] = {
+window.STORY_DATA.chapters[0].byStarter['10265'] = {
   "subtitle": "개미굴",
   "phases": {
     "1": {
@@ -674,7 +674,7 @@ window.STORY_DATA.chapters[0].byStarter['2000200044'] = {
       "enemyName": "불량배-A",
       "enemies": {
         "ids": [
-          "1000000023"
+          "10143"
         ]
       },
       "lines": [
@@ -701,7 +701,7 @@ window.STORY_DATA.chapters[0].byStarter['2000200044'] = {
       ],
       "party": {
         "forced": [
-          "2000200044"
+          "10265"
         ]
       }
     },
@@ -710,8 +710,8 @@ window.STORY_DATA.chapters[0].byStarter['2000200044'] = {
       "enemyName": "불량배-K",
       "enemies": {
         "ids": [
-          "2000000023",
-          "2000000024"
+          "10153",
+          "10154"
         ]
       },
       "lines": [
@@ -746,7 +746,7 @@ window.STORY_DATA.chapters[0].byStarter['2000200044'] = {
       ],
       "party": {
         "forced": [
-          "2000200044"
+          "10265"
         ]
       }
     },
@@ -755,8 +755,8 @@ window.STORY_DATA.chapters[0].byStarter['2000200044'] = {
       "enemyName": "불량배-A",
       "enemies": {
         "ids": [
-          "1000000023",
-          "1000000024"
+          "10143",
+          "10144"
         ]
       },
       "lines": [
@@ -783,7 +783,7 @@ window.STORY_DATA.chapters[0].byStarter['2000200044'] = {
       ],
       "party": {
         "forced": [
-          "2000200044"
+          "10265"
         ]
       }
     },
@@ -792,9 +792,9 @@ window.STORY_DATA.chapters[0].byStarter['2000200044'] = {
       "enemyName": "불량배-C",
       "enemies": {
         "ids": [
-          "1000000025",
-          "1000000024",
-          "2000000023"
+          "10145",
+          "10144",
+          "10153"
         ]
       },
       "lines": [
@@ -825,7 +825,7 @@ window.STORY_DATA.chapters[0].byStarter['2000200044'] = {
       ],
       "party": {
         "forced": [
-          "2000200044"
+          "10265"
         ]
       }
     },
@@ -834,11 +834,11 @@ window.STORY_DATA.chapters[0].byStarter['2000200044'] = {
       "enemyName": "불량배-D",
       "enemies": {
         "ids": [
-          "1000000026",
-          "1000000024",
-          "1000000025",
-          "2000000023",
-          "2000000024"
+          "10146",
+          "10144",
+          "10145",
+          "10153",
+          "10154"
         ]
       },
       "lines": [
@@ -873,10 +873,10 @@ window.STORY_DATA.chapters[0].byStarter['2000200044'] = {
       ],
       "party": {
         "forced": [
-          "2000200044"
+          "10265"
         ]
       },
-      "bossId": "1000000026",
+      "bossId": "10146",
       "after": [
         {
           "speaker": "용지혜",

@@ -11,9 +11,9 @@ const N = JSON.parse(rd('../supabase/guild4.sql').match(/_war_numbers\(\) return
 ok(Object.entries(WAR_ROLES).every(([k, r]) => N.roles[k].atk === r.atk && N.roles[k].def === r.def), '역할 버프 = guild4.sql');
 const sr = pool.filter(c => c.grade === 'SUPER RARE');
 const atk = sr.slice(0, 5).map((c, i) => ({ uid: 'c' + i, id: c.id, level: 20 }));
-const bully = ['1000000031', '2000000033', '1000000028', '2000000029', '2000000030'].map((id, i) => ({ uid: 'n' + i, id, level: 1, scale: 2.8 }));
+const bully = ['10151', '10163', '10148', '10159', '10160'].map((id, i) => ({ uid: 'n' + i, id, level: 1, scale: 2.8 }));
 const A = warDeck(atk, byId, { atk: 1.2, def: 1 }), B = warDeck(bully, byId, { atk: 1, def: 1.2 });
-ok(B.length === 5 && B[0].HP === Math.round(byId('1000000031').HP * 2.8), '불량배 카드 + 배율');
+ok(B.length === 5 && B[0].HP === Math.round(byId('10151').HP * 2.8), '불량배 카드 + 배율');
 const r1 = runWar(A, B, 4242), r2 = runWar(warDeck(atk, byId, { atk: 1.2, def: 1 }), warDeck(bully, byId, { atk: 1, def: 1.2 }), 4242);
 ok(JSON.stringify(r1) === JSON.stringify(r2), '같은 seed = 같은 결과');
 ok(Object.entries(r1.aHp).every(([u, h]) => h <= A.find(c => c._uid === u).HP), '남은 HP ≤ 최대');

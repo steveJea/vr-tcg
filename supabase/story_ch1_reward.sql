@@ -9,7 +9,7 @@ alter table public.story_phase_config add column if not exists reward_card text;
 
 -- (보상 카드 5장 모두 story_card_pool 에 이미 있음: 2026-10-25 확인)
 update public.story_phase_config set reward_card = case phase
-  when 1 then '2000800171' when 2 then '2001700341' when 3 then '2000400085' when 4 then '2001100231' when 5 then '2000400086' end
+  when 1 then '10248' when 2 then '10093' when 3 then '10185' when 4 then '10130' when 5 then '10308' end
 where chapter = 1 and phase between 1 and 5;
 
 do $$ begin

@@ -3,6 +3,6 @@
   "locks": ["auto", "speed", "giveup"],
   "steps": [
     { "silent": true, "wait": "awaken" },
-    { "target": "auto_btn", "text": "…이제 AUTO·2배속을 쓸 수 있어. 귀찮으면 맡겨.", "speaker": "[각성] 임유리", "face": "card:2000000008", "wait": "tap", "unlock": ["auto", "speed"] }
+    { "target": "auto_btn", "text": "…이제 AUTO·2배속을 쓸 수 있어. 귀찮으면 맡겨.", "speaker": "[각성] 임유리", "face": "card:10326", "wait": "tap", "unlock": ["auto", "speed"] }
   ]
 }

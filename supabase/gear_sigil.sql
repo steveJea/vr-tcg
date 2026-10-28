@@ -12,7 +12,7 @@
 create table if not exists public.sigil_story_boss (     -- 인재 → 그 인재 챕터 (보스 페이즈 소탕에서 조각). 임시값
   card_id text primary key references public.sigil_defs(card_id), chapter int not null
 );
-insert into public.sigil_story_boss (card_id, chapter) values ('2000100001', 4), ('1000100007', 7), ('2000400088', 5) on conflict (card_id) do nothing;
+insert into public.sigil_story_boss (card_id, chapter) values ('10325', 4), ('10118', 7), ('10415', 5) on conflict (card_id) do nothing;
 create table if not exists public.sigil_drop_config (key text primary key, v numeric not null);
 insert into public.sigil_drop_config (key, v) values ('story_boss_pct', 15), ('story_boss_daily', 3), ('exchange_rate', 3) on conflict (key) do nothing;
 create table if not exists public.sigil_daily (

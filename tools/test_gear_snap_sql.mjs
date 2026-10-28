@@ -21,10 +21,10 @@ for (const f of ['story.sql', 'gacha.sql', 'story_server.sql', 'story_gacha.sql'
 await run('gem.sql'); await run('gear_v1.sql'); await run('gear_v1.sql');   // 두 번 실행해도 안전
 await run('gem.sql'); await run('gear_v1.sql'); await run('gear_snap.sql'); await run('gear_snap.sql');   // 두 번 실행해도 안전
 let fails = 0; const ok = (c, m) => { if (!c) { fails++; console.log('FAIL', m); } else console.log('ok  ', m); };
-await db.exec(`insert into pvp_card_meta (id, grade, cost) values ('1000100007','SUPER RARE',43),('2000100001','ULTRA RARE',50) on conflict do nothing`);
-await db.exec(`insert into story_progress (user_id, data) values ('${U}','{"owned":[{"uid":"a","id":"1000100007","level":5},{"uid":"b","id":"2000100001"}]}') on conflict (user_id) do update set data = excluded.data`);
+await db.exec(`insert into pvp_card_meta (id, grade, cost) values ('10118','SUPER RARE',43),('10325','ULTRA RARE',50) on conflict do nothing`);
+await db.exec(`insert into story_progress (user_id, data) values ('${U}','{"owned":[{"uid":"a","id":"10118","level":5},{"uid":"b","id":"10325"}]}') on conflict (user_id) do update set data = excluded.data`);
 const g = (await db.query(`select public._gear_grant('${U}','weapon_4_2','test') r`)).rows[0].r.gear_id;
-await db.exec(`update player_gear set equipped_card='1000100007', plus=2 where id=${g}; insert into player_sigils (user_id, card_id, plus, frags) values ('${U}','1000100007',4,0),('${U}','2000100001',null,12)`);
+await db.exec(`update player_gear set equipped_card='10118', plus=2 where id=${g}; insert into player_sigils (user_id, card_id, plus, frags) values ('${U}','10118',4,0),('${U}','10325',null,12)`);
 const s = (await db.query(`select public._pvp_snap('${U}', '["a","b"]'::jsonb, 'open') r`)).rows[0].r.cards;
 ok(s[0].gear.length === 1 && s[0].gear[0].def === 'weapon_4_2' && s[0].gear[0].stat === 'atk' && +s[0].gear[0].pct === 8 && s[0].gear[0].plus === 2, '장착 장비가 스냅샷에');
 ok(s[0].sigil === 4, '증표 단계 4');
