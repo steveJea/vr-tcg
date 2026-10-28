@@ -1,0 +1,25 @@
+// js/trade.js 검증: 가격·골드 미리보기, 오류 문구, 못 올리는 이유, 화면 문구에 "카드" 없음
+import { readFileSync } from 'fs'; import vm from 'vm';
+const src = readFileSync(new URL('../js/trade.js', import.meta.url), 'utf8');
+const ctx = { window: {}, document: {}, console }; vm.createContext(ctx); vm.runInContext(src, ctx);
+const T = ctx.window.VRTrade; let fails = 0; const ok = (c, m) => { if (!c) { fails++; console.log('FAIL', m); } else console.log('ok  ', m); };
+const bands = Object.fromEntries([['card_nr',1,50,1000,20000,500],['card_hr',5,200,5000,100000,1000],['card_sr',20,1000,null,null,3000],['card_ur',100,3000,null,null,10000],['gear_rare',5,200,5000,80000,1000],['gear_hero',20,1000,null,null,3000]].map(([gkey,d_min,d_max,g_min,g_max,fix_fee]) => [gkey, { gkey, d_min, d_max, g_min, g_max, fix_fee }]));
+const cfg = { fee_pct: 10 }, P = (l, o, d, g) => T._priceInfo(l, o, d, g, cfg, bands);
+ok(P(['card_sr'], [], 0, 1000).err.includes('골드'), 'SR 글에 골드 → 불가');
+ok(P(['card_hr'], ['card_sr'], 0, 1000).err.includes('골드'), '제안 쪽에 SR 이 끼어도 골드 불가');
+ok(!P(['card_hr', 'gear_rare'], [], 0, 30000).err, 'HR + 희귀 → 골드 30,000 가능');
+ok(P(['card_ur'], [], 5000, 0).err.includes('많아요'), '최대 초과');
+ok(P(['card_ur'], [], 50, 0).err.includes('적어요'), '재화만: 최소 미만');
+ok(!P(['card_ur'], ['card_nr'], 50, 0).err, '물건 포함이면 최소 검사 없음');
+ok(P(['card_ur'], [], 1000, 0).html.includes('900'), '판매자 수령 미리보기 (10% 뒤 900)');
+ok(P(['card_ur'], ['card_sr'], 0, 0).fix === 10000, '물건끼리: 고정 수수료 미리보기');
+ok(P(['card_ur'], [], 0, 0).err.length > 0, '빈 제안 불가');
+ok(T._errText('some odd error').includes('⚠️') && T._errText('x reoffer cooldown y').includes('24시간'), '서버 오류 → 한국어 문구');
+ok(T._errText('Could not find the function public.trade_board').includes('준비 중'), 'SQL 없으면 준비 중');
+const save = { leader: 'L' };
+ok(T._cardBlock({ uid: 'L', bound: false }, save).includes('리더') && T._cardBlock({ uid: 'a', bound: true }, save).includes('귀속') && T._cardBlock({ uid: 'a', bound: false, locked: true }, save).includes('잠금'), '못 올리는 이유: 리더·귀속·잠금');
+ok(T._cardBlock({ uid: 'a', bound: false, locked: true, dlk: true }, save) === '', '덱 자동 잠금은 올릴 수 있음 (덱에서 빠짐)');
+ok(T._cardBlock({ uid: 'a', bound: false, traded_at: Date.now() / 1000 }, save).includes('재판매'), '재판매 대기');
+const strs = src.match(/'[^'\n]*'|`[^`]*`/g).join(' ');
+ok(!/카드/.test(strs.replace(/cardTile|cardOf|cardKey|cardBlock/g, '')), '화면 문구에 "카드" 없음 (인재로 표기)');
+console.log(fails ? `${fails} FAIL` : 'ALL OK'); process.exit(fails ? 1 : 0);
