@@ -907,7 +907,8 @@
       $('story-intro').onclick = go;
     });
     if (first && (ph.type === 'boss' || ph.final) && ch.ending?.length) await new Promise(ok => playLines(ch.ending, [], ok, 'ending', ph.hero || ch.hero));
-    if (first && chapterDone(D.chapters.find(c => c.id === ch.id) || ch)) await endingVideo(ch);   // 챕터 엔딩 영상 (있으면)
+    // 챕터 첫 클리어 + 엔딩 영상 있음 → 승리 화면에 🎬 엔딩 보기 (탭으로 열어야 모바일 전체화면·가로 가능). 영상을 닫기 전까지 NEXT 숨김
+    const needVid = first && chapterDone(D.chapters.find(c => c.id === ch.id) || ch) && !!videoOf(ch);
     const tk = first && chapterDone(D.chapters.find(c => c.id === ch.id) || ch) ? await syncTickets() : null;   // 챕터 첫 클리어 → 소환권
     // [다음 챕터로]: 다음 페이즈로, 마지막 페이즈면 다음 챕터로. 다음 챕터가 잠겼으면 🔒, 아예 없으면 숨김
     const nextPh = ch.phases[ch.phases.findIndex(p => p.no === ph.no) + 1] || null;
@@ -920,8 +921,8 @@
       ${playerResult(pr)}
       ${expList(r.exp)}
       <div class="mt-4 text-lg">${pts ? `스탯 포인트 <b class="text-emerald-300">+${pts}</b> (보유 ${save.points})` : '<span class="text-zinc-400 text-sm">다시 클리어한 페이즈라 스탯 포인트는 없어요.</span>'}</div>
-      <div class="flex flex-col gap-2 max-w-xs mx-auto mt-5"><div class="story-split">${'<button class="story-btn" data-go="stats">📈 스탯업</button>'}${hasNext ? `<button class="story-btn story-next" data-go="nextch" ${nextOpen ? '' : 'disabled'} title="${nextPh ? `Phase.${nextPh.no}` : nextOpen ? esc(nextChB.title) : '다음 챕터는 아직 잠겨 있어요'}">${nextOpen ? '▶' : '🔒'} NEXT</button>` : ''}</div><button class="story-back" data-go="map">챕터 지도로</button></div></div>`);
-    bind({ stats: () => openStats(renderMap), nextch: () => { if (nextPh) startPhase(ch, nextPh); else if (nextOpen) { hubC = nextI; chapterCard(nextChB).then(() => renderMap(nextI)); } } });
+      <div class="flex flex-col gap-2 max-w-xs mx-auto mt-5">${needVid ? '<button class="story-btn story-endvid" data-go="endvid">🎬 엔딩 보기</button>' : ''}<div class="story-split">${'<button class="story-btn" data-go="stats">📈 스탯업</button>'}${hasNext ? `<button class="story-btn story-next" ${needVid ? 'style="display:none"' : ''} data-go="nextch" ${nextOpen ? '' : 'disabled'} title="${nextPh ? `Phase.${nextPh.no}` : nextOpen ? esc(nextChB.title) : '다음 챕터는 아직 잠겨 있어요'}">${nextOpen ? '▶' : '🔒'} NEXT</button>` : ''}</div><button class="story-back" data-go="map">챕터 지도로</button></div></div>`);
+    bind({ stats: () => openStats(renderMap), endvid: () => endingVideo(ch).then(() => { const n = root().querySelector('.story-next'); if (n) n.style.display = ''; }), nextch: () => { if (nextPh) startPhase(ch, nextPh); else if (nextOpen) { hubC = nextI; chapterCard(nextChB).then(() => renderMap(nextI)); } } });
     if (pr?.levelups) levelUpFx('PLAYER LEVEL UP!'); else if ((r.exp || []).some(e => e.level > e.from)) levelUpFx();
   }
   // 다음 챕터 진입 타이틀 카드: CHAPTER N / 부제 — 페이드 인 → 1.7초 → 페이드 아웃. 탭하면 건너뜀
