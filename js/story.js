@@ -747,7 +747,7 @@
       tutorial: ph.tutorial,
       // 챕터 0: reserve = 소환 대기 카드(소환 버튼으로 필드에) · fullMp = 시작 MP 가득 · meLevels = 내 카드 전투 시작 레벨 · awaken = 쓰러지면 난입
       reserve: (ph.reserve || []).map(id => repOf(id) || guestOf(id)).filter(o => card(o.id)).map(o => mul({ ...boosted(o), uid: o.uid })),
-      kickoff: ch.tutorial ? true : 'external',   // 챕터 0: 가운데 [⚔️ 시작하기] · 그 밖: 조건 창의 [⚔️ 전투 시작]/✕ 가 시작 신호   // 모든 스토리 전투: [시작하기] 눌러야 등장 연출 → 첫 턴 → 가이드 (탑·퀘스트·PvP·전쟁·토벌은 그대로 자동 시작)
+      kickoff: ch.tutorial && !ph.pool ? true : 'external',   // 챕터 0: 가운데 [⚔️ 시작하기] · 그 밖: 조건 창의 [⚔️ 전투 시작]/✕ 가 시작 신호   // 모든 스토리 전투: [시작하기] 눌러야 등장 연출 → 첫 턴 → 가이드 (탑·퀘스트·PvP·전쟁·토벌은 그대로 자동 시작)
       fullMp: !!ph.fullMp, meLevels: ph.party?.battleLevels,
       // 제한 마나 (챕터 1~): 시작에 한 번만, 다시 차지 않음. 출전 카드는 손패 → 코스트 내고 소환. 필수 인재는 1명 2턴·2명+ 3턴 안에 소환
       manaPool: ch.tutorial && !ph.pool ? undefined : storyMana(ch, ph, me),   // 챕터 0 은 ph.pool 페이즈(P4 튜토리얼)만
@@ -755,7 +755,7 @@
       awaken: ph.awaken ? { ...ph.awaken, card: lvScaled(card(ph.awaken.id), ph.awaken.storyLevel || 1) } : undefined,   // 튜토리얼 가이드 id (data/tutorials/<id>.json · README 참고) — 처음 한 번만   // 조윤이는 조윤하를 공격하지 않음 + 페이즈 spare (예: CH3 P6 안지수 → 조윤하)
       onEnd: (win, reason, st) => result(ch, ph, win, reason, st),
     });
-    if (!ch.tutorial) showConditions(ch, ph);   // 승리·패배 조건 (닫을 수 있음) · 챕터 0 은 가이드가 대신
+    if (!ch.tutorial || ph.pool) showConditions(ch, ph);   // 챕터 0 P4(마나 전투)는 조건 창도 보여 줌   // 승리·패배 조건 (닫을 수 있음) · 챕터 0 은 가이드가 대신
   }
   // ----- 스토리 제한 마나: 80 + 15×챕터 + 2×플레이어 레벨 (보스 +40, 페이즈 manaBonus 가산 · ph.mana 있으면 그 값 고정) -----
   function storyMana(ch, ph, me) {

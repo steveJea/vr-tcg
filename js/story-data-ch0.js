@@ -425,7 +425,7 @@ window.STORY_DATA.chapters.unshift({
    "tutorial": "ch0_p4",
    "party": {
     "forced": ["10325", "10256", "10207", "10462"],
-    "mustLive": [],
+    "mustLive": ["10325"],
     "noExtra": true,
     "auto": true
    }
