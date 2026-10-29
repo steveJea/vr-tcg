@@ -78,6 +78,9 @@ SQL Editor 에서 형님이 직접 실행하는 파일들. **같은 함수를 �
 68. `story_decks10.sql` (2026-10-29)
 69. `guild_lend_notice.sql` (2026-10-29)
 70. `story_stars.sql` (2026-10-29)
+71. `blood_rebalance.sql` (2026-10-29)
+72. `blood_rebalance_preview.sql` (2026-10-29) — 읽기 전용 미리보기
+73. `blood_rebalance_refund.sql` (2026-10-29) — ⚠ 1회용 환급 (다시 돌려도 중복 지급 안 됨)
 
 ## 여러 파일에 정의된 함수 → 최신 정의 파일
 
@@ -86,6 +89,7 @@ SQL Editor 에서 형님이 직접 실행하는 파일들. **같은 함수를 �
 | `_gear_grant` | `gear_drops.sql` | `gear_v1.sql` |
 | `_gear_raid_claim_trg` | `gear_sigil.sql` | `gear_drops.sql` |
 | `_guild_feed` | `guild2.sql` | `guild.sql` |
+| `_lv_cost`, `_lv_cost_b`, `_lv_cost_g`, `card_cost_table` | `blood_rebalance.sql` | `phaseE_4.sql` |
 | `_player_add_xp` | `guild.sql` | `phaseE_2.sql` |
 | `_player_xp_need` | `player_xp_x3.sql` | `phaseE_2.sql` |
 | `_pvp_extra` | `gem.sql` | `pvp.sql` |
