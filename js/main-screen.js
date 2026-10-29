@@ -106,6 +106,8 @@
   const stop = () => { if (audio) audio.pause(); if (jingleA) { jingleA.pause(); jingleA = null; } };
   // 승리·패배 징글 (한 번만): 반복 BGM을 페이드아웃·일시정지 → 징글 → 끝나면 그때의 트랙을 페이드인. 음소거·덕킹·볼륨은 그대로
   const JINGLE = { victory: 'audio/victory.mp3', defeat: 'audio/defeat.mp3', draw: 'audio/draw.mp3' };
+  // 모드별 BGM (README 참고)
+  window.VR_BGM = { pvpLobby: 'audio/pvp_lobby.mp3', pvpBattle: 'audio/pvp_battle.mp3', raid: 'audio/raid.mp3', guildHome: 'audio/guild_lobby.mp3', guildBattle: 'audio/guild_battle.mp3' };
   let jingleA = null;
   const jingle = (name) => {
     const url = JINGLE[name]; if (!url || !soundOn || held) return;
@@ -119,12 +121,21 @@
     j.play().catch(done);
   };
   const hold = (on) => { held = !!on; held ? stop() : play(); };
+  // 화면 BGM (PvP 대기실·길드 홈·토벌 등): scope(화면 요소, 트랙) → 그 요소가 문서에서 빠지면(닫힘) 들어오기 전 트랙으로. 겹쳐 열면 스택처럼 복귀
+  const scopes = [];
+  const scope = (el, next) => {
+    if (!el || !next) return;
+    let prev = src; if (prev === next) { const o = scopes.find(x => x.src === next); if (o) prev = o.prev; }
+    scopes.push({ el, src: next, prev }); setTrack(next);
+  };
+  new MutationObserver(() => { for (let i = scopes.length - 1; i >= 0; i--) { const x = scopes[i]; if (x.el.isConnected) continue;
+    scopes.splice(i, 1); if (src === x.src && !scopes.some(y => y.src === x.src)) setTrack(x.prev); } }).observe(document.body, { childList: true });
   btn?.addEventListener('click', e => { e.stopPropagation(); soundOn = !soundOn; localStorage.setItem(KEY, soundOn ? '1' : '0'); soundOn ? play() : stop(); renderBtn(); });
   // 브라우저 자동재생 정책: 첫 사용자 입력 후 재생
   const first = () => { play(); removeEventListener('pointerdown', first); removeEventListener('keydown', first); };
   addEventListener('pointerdown', first); addEventListener('keydown', first);
   renderBtn();
-  window.VRSound = { play, stop, hold, duck, setVolume, setTrack, jingle, get jingling() { return !!jingleA; }, get track() { return src; }, get held() { return held; }, get paused() { return !audio || audio.paused; }, get on() { return soundOn; }, get ducked() { return ducked; }, get volume() { return audio ? audio.volume : null; }, get baseVolume() { return baseVol; } };
+  window.VRSound = { play, stop, hold, duck, setVolume, setTrack, scope, jingle, get jingling() { return !!jingleA; }, get track() { return src; }, get held() { return held; }, get paused() { return !audio || audio.paused; }, get on() { return soundOn; }, get ducked() { return ducked; }, get volume() { return audio ? audio.volume : null; }, get baseVolume() { return baseVol; } };
 })();
 
 // ===== 메인 화면: 설정 팝업 (연출 스킵·배경음악). 바깥 클릭·Esc·닫기로 닫힘 =====

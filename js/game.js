@@ -163,7 +163,7 @@ function startGame(story = null) {
   if (story && typeof story.then === 'function' || story instanceof Event) story = null;
   setSpare(story?.spare);   // 스토리 보호 규칙 (없으면 해제)
   const first = story?.first || (Math.random() < 0.5 ? 'me' : 'ai');   // 선공 동전 던지기
-  if (!story) { try { window.VRSound?.setTrack?.('audio/arcade_battle.mp3'); } catch {} }   // 아케이드 전용 BGM (나가면 메인으로)
+  if (!story) { try { window.VRSound?.setTrack?.('audio/arcade_battle.mp3'); } catch {} }   // 아케이드 전용 BGM (ARCADE_MODE) (나가면 메인으로)
   const fs = !!story;   // 스토리: 손패 없이 출전 카드 전부 필드에서 시작
   const ao = story ? ArcadeOpts.DEF : ArcadeOpts.load(), grades = story ? null : allowedGrades(ao);
   const gPool = grades ? POOL.filter(c => grades.has(c.grade)) : null;
@@ -1714,7 +1714,13 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('zoom-vi
 // ===== PvP·구역 전쟁 전투 화면: 스토리·탑과 같은 화면/연출, 전투 계산은 서버 seed 엔진(pvp-core matchGen) 그대로 =====
 // session = manualMatch/warSession(view:true). 화면은 엔진이 한 행동씩 멈출 때(anim) 연출하고, 내 차례(ask)면 입력을 기다림. 결과·행동 기록은 엔진 것 그대로
 /** raid: { stage, bossId, bossName, hpLeft, hpMax, cap, weakLabel, deadline(ms) } → 균열 토벌 화면 (큰 보스 HP 바 · 누적 피해 · 남은 시간) */
-async function viewBattle({ session, aiName = '상대', bg = 'normal', manual = false, maxTurns: mt = 40, title = '', raid = null, tutorial = null } = {}) {
+// music: 이 전투 동안의 BGM (PvP·토벌·전쟁). 끝나면 들어오기 전 트랙으로
+async function viewBattle(o = {}) {
+  const snd = window.VRSound, prev = snd?.track, mu = o.music;
+  if (mu) try { snd?.setTrack?.(mu); } catch {}
+  try { return await viewBattle0(o); } finally { if (mu && snd?.track === mu && prev) try { snd.setTrack(prev); } catch {} }
+}
+async function viewBattle0({ session, aiName = '상대', bg = 'normal', manual = false, maxTurns: mt = 40, title = '', raid = null, tutorial = null } = {}) {
   if (tutorial) setTimeout(() => window.VRTutorial?.start(tutorial), 900);   // 튜토리얼 가이드 (js/tutorial.js)
   // 전투 화면을 띄운 팝업 층(조직 .gd-ov · 토벌/전쟁 .gd-pop · PvP · 마이페이지 등)은 전투 동안 숨겼다가 끝나면 그대로 복원
   const LAYERS = '.pvp-modal, .pvp-vsx, .gd-ov, .gd-pop, .mp-modal, .gal-modal, .ad-modal, #start-screen, #story-screen';

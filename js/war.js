@@ -124,7 +124,7 @@ async function attack(slot, deck) {
   if (V) {
     const ses = warSession(A, B, st.seed, log, { view: true, manual: true });
     const feed = manual ? ses : { events: ses.events, next: inp => { let x = ses.next(inp); while (!x.done && x.value.ask) x = ses.next({ k: 'auto' }); return x; } };
-    res = await V({ session: feed, aiName, manual, maxTurns: 40, bg: 'war', title: `🏴 구역 전쟁 · ${aiName}` });
+    res = await V({ session: feed, aiName, manual, maxTurns: 40, bg: 'war', music: window.VR_BGM?.guildBattle, title: `🏴 구역 전쟁 · ${aiName}` });
     if (manual) { try { await rpc('war_log', { p_id: st.id, p_actions: ses.acts }); } catch (er) { toast(errText(er)); } }
   } else { res = runWar(A, B, st.seed, log); await playback(res, log, t0); }
   let fin = null;
