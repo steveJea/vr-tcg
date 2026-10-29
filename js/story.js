@@ -240,7 +240,8 @@
 
   // ----- BGM -----
   const BGM = { story: 'audio/story_story.mp3', battle: 'audio/story_battle.mp3', boss: 'audio/story_boss.mp3', ending: 'audio/story_ending.mp3', main: 'audio/main.mp3',
-    tower: 'audio/tower.mp3', gacha: 'audio/gacha.mp3', mypage: 'audio/mypage.mp3', arcade: 'audio/arcade_battle.mp3' };
+    tower: 'audio/tower.mp3', gacha: 'audio/gacha.mp3', mypage: 'audio/mypage.mp3', arcade: 'audio/arcade_battle.mp3', boss2: 'audio/story_boss2.mp3' };
+  const BOSS2_FROM = 8;   // 스토리 보스 BGM 2 (BOSS_2): 이 챕터부터
   const bgm = k => { try { window.VRSound?.setTrack?.(BGM[k]); } catch {} };
 
   // ----- 화면 -----
@@ -729,7 +730,7 @@
     if (ps) P.status(true);
     root().classList.add('hidden');
     const boss = ph.type === 'boss';
-    bgm(boss || ph.bgm === 'boss' ? 'boss' : 'battle');
+    bgm(boss || ph.bgm === 'boss' ? ((ch.id | 0) >= BOSS2_FROM ? 'boss2' : 'boss') : 'battle');   // 챕터 8~ 보스전은 BOSS_2
     // party.statMul: { 카드id: { HP: 2, DEF: 2 } } → 이 페이즈에서만 해당 카드 스탯 배율 (최종 스탯 × 배율, 반올림)
     const SM = ph.party?.statMul || {}, mul = c => { const m = SM[String(c.id)]; if (!m) return c; const o = { ...c }; for (const k of Object.keys(m)) if (o[k] != null) o[k] = Math.round(o[k] * m[k]); return o; };
     const me = (picked || deckInstances()).slice(0, MAX_PICK()).map(o => gearOn(mul({ ...boosted(o), uid: o.uid }), 'story')).filter(x => x.id);
