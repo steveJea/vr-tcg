@@ -37,6 +37,7 @@ ok([1, 2, 9, 11].every(n => P_(n).party.forced.join() === SR && P_(n).party.must
 ok([9, 11].every(n => P_(n).party.exclude.join() === JY && !P_(n).party.noMale) && [3, 4, 5, 15].every(n => P_(n).party.noMale && P_(n).party.forced.join() === JY), '출전 조건 (남성 불가 · 안지윤 출전 금지)');
 const all = [...ch.start, ...ch.phases.flatMap(p => [...p.lines.default, ...(p.after || [])])];
 ok(all.length > 250 && all.every(l => l.speaker && !/^(NA|JY\d?|SR|A\d|C\d|DV\d|[A-Z])$/.test(l.speaker)), `화자 실명 (${all.length}줄)`);
+ok(ch.endingVideo === 'hZVw28WEYHY', '엔딩 영상');
 ok(all.filter(l => l.image).length === 1 && ch.start.some(l => l.image === 'img/story/ch8-01.webp'), 'CG CH08-01');
 const me = { sub: U, email: 'u@x.com' }, q = s => as('authenticated', me, s);
 const cfg = (await db.query(`select phase, type, points from public.story_phase_config where chapter = 8 order by phase`)).rows;

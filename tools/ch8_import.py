@@ -74,7 +74,7 @@ for p in phases:
     p['enemies']['boost'] = b
 JY = IDS['안지윤']
 ch = {'id': CHN, 'title': f'CHAPTER {CHN}', 'subtitle': R[1][19].strip() or '주홍글씨', 'rewardCard': None, 'hero': JY, 'single': True, 'phases': phases,
-      'tagline': '', 'warning': '이 챕터에는 따돌림·괴롭힘·죽음 묘사가 포함되어 있습니다.', 'start': start, 'ending': []}
+      'tagline': '', 'warning': '이 챕터에는 따돌림·괴롭힘·죽음 묘사가 포함되어 있습니다.', 'start': start, 'ending': [], 'endingVideo': 'hZVw28WEYHY'}
 hdr = (f'// ===== 스토리 챕터 {CHN} 「{ch["subtitle"]}」 (시트 CH{CHN} → python3 tools/ch8_import.py <csv> 로 생성. 직접 고쳐도 됨) =====\n'
        f'// 단일 루트(single): 주인공 안지윤 · 페이즈 {len(phases)}개 (마지막 보스). 안소라 페이즈(1·2·9·11)는 안소라 게스트. 적 레벨은 시트 값 → enemies.boost\n')
 open(f'js/story-data-ch{CHN}.js', 'w', encoding='utf8').write(hdr + 'window.STORY_DATA.chapters.push(' + json.dumps(ch, ensure_ascii=False, indent=1) + ');\n')
