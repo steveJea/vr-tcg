@@ -118,6 +118,7 @@ const autoLocked = () => (window.VRPlayer?.now?.()?.level ?? 0) < AUTO_LV;
 const autoHeld = () => { if (S && TUT_LOCK('auto')) S.autoHold = true; return !!S?.autoHold; };
 const autoActive = () => autoOn && !autoLocked() && !!S?.story && !S.over && !S.view && !autoHeld();
 function renderAutoBtn() {
+  renderSpdBtn();   // 2배속 버튼 표시도 잠금/보류 상태와 맞춤
   const b = $('auto-btn'); if (!b) return;
   b.classList.toggle('hidden', !S?.story); b.classList.toggle('on', autoOn);
   if (S?.view) { const on = S.view.auto; b.classList.toggle('on', on); b.classList.remove('locked'); b.title = '자동 전투'; b.setAttribute('aria-pressed', String(on)); b.textContent = on ? '⏸ AUTO' : '▶ AUTO'; return; }
