@@ -231,7 +231,10 @@
   const chapterDone = base => base.phases.every(p => (save.cleared[base.id] || []).includes(p.no));
   const CH1 = () => Math.max(0, D.chapters.findIndex(c => c.id === 1));   // 챕터 1 위치 (앞에 챕터 0 튜토리얼이 있으면 1)
   // 챕터 0(튜토리얼): 서버에 설정이 있으면 열림 · 챕터 1: 항상 열림(기존 진행 그대로, 챕터 0 클리어 불필요) · 2~: 이전 챕터 클리어 후
-  const chapterOpen = i => { const c = D.chapters[i]; if (!c) return false; if (c.id === 0) return chReady[0] !== false; if (c.id === 1) return true; return chapterDone(D.chapters[i - 1]) && chReady[c.id] !== false; };
+  // 챕터 입장 레벨 (서버 _player_unlock_level 'chapter_N' → player_json unlocks.chapters). 이미 한 페이즈라도 깬 챕터는 제한 없음
+  const chNeedLv = c => serverMode ? (window.VRPlayer?.now?.()?.unlocks?.chapters?.[c.id] | 0) : 0;
+  const chLvLock = c => { const need = chNeedLv(c), P = window.VRPlayer?.now?.(); return need > 0 && !!P && (P.level | 0) < need && !(save.cleared[c.id] || []).length; };
+  const chapterOpen = i => { const c = D.chapters[i]; if (!c) return false; if (c.id === 0) return chReady[0] !== false; if (c.id === 1) return true; return chapterDone(D.chapters[i - 1]) && chReady[c.id] !== false && !chLvLock(c); };
   // 챕터 0 '나중에 추가된' 페이즈(p.late, 예: P4 마나 소환 튜토리얼): 스타터를 이미 고른 기존 사용자는 강제 진행·강제 영입 판정에서 빼고 지도에서 자유롭게
   const ch0Core = c => save?.starter ? { ...c, phases: c.phases.filter(p => !p.late) } : c;
   const ch0Pending = () => { const c = D.chapters.find(x => x.id === 0); return !!c && chReady[0] !== false && !chapterDone(ch0Core(c)); };
@@ -573,7 +576,7 @@
   function hubSlot(i, size) {
     const base = D.chapters[i]; if (!base) return `<div class="hub-ch-slot ${size} empty"></div>`;
     const open = chapterOpen(i), ch = chapterFor(base), n = clearedOf(ch).length, tot = ch.phases.length, done = open && n >= tot, cv = chCover(base);
-    const why = open ? '' : (i && !chapterDone(D.chapters[i - 1]) ? '이전 챕터 클리어 후' : '준비 중');
+    const why = open ? '' : (i && !chapterDone(D.chapters[i - 1]) ? '이전 챕터 클리어 후' : chLvLock(D.chapters[i]) ? `Lv ${chNeedLv(D.chapters[i])} 필요` : '준비 중');
     const st = !open ? `🔒 ${why}` : done ? '✔ 클리어 · 다시 하기' : n ? `진행 중 ${n}/${tot}` : '새 챕터';
     return `<button class="hub-ch-slot ${size} ${open ? '' : 'locked'} ${done ? 'done' : ''}" data-hubch="${i}" ${open ? '' : 'disabled'}>
       <span class="hub-ch-img" style="background-image:${cv ? `url(${IMG}${cv}.webp),` : ''}url(img/story/opening_poster.webp)"></span>
@@ -786,7 +789,7 @@
     const P = window.VRPlayer, ps = serverMode && P ? await P.status(true) : null;
     if (ps && ps.stamina < P.cost) { staminaShort(ps); return renderMap(); }
     const st = await act('story_start_phase', { p_chapter: ch.id, p_phase: ph.no }, () => {});
-    if (!st.ok) { if (/stamina/.test(st.error?.message || '')) staminaShort(await P?.status(true)); return renderMap(); }
+    if (!st.ok) { const em = st.error?.message || '', lvM = /level required.*level (\d+)/.exec(em); if (lvM) toast(`🔒 Lv ${lvM[1]} 필요 — 계정 레벨을 올린 뒤 입장할 수 있어요`); else if (/stamina/.test(em)) staminaShort(await P?.status(true)); return renderMap(); }
     if (ps) P.status(true);
     root().classList.add('hidden');
     const boss = ph.type === 'boss';
