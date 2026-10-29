@@ -679,3 +679,6 @@ span.story-lvpct { background: rgba(251,191,36,.12); border: 1px solid rgba(251,
 .story-wrap:has(.story-map-screen){padding-bottom:0}
 .story-map-screen{display:flex;flex-direction:column;min-height:calc(100dvh - 12px)}
 .story-map-dock{margin-top:auto;padding:16px 0 calc(16px + env(safe-area-inset-bottom,0px))}
+/* 탑 VICTORY: 다음 층 / 소탕하기 같은 크기로 나란히 */
+.q-win-row{display:flex;gap:8px;align-items:stretch}
+.q-win-row>.story-btn{flex:1 1 0!important;width:auto!important;min-width:0;margin:0!important;display:flex!important;flex-direction:row!important;align-items:center;justify-content:center;gap:6px;white-space:nowrap}
