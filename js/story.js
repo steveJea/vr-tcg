@@ -691,9 +691,9 @@
     const rec = new Set((ph.recommend || ph.party?.recommend || ch.recommend || []).map(String)), pf = { skill: false, rec: false };
     const pfOk = o => (!pf.skill || skillsOf(o.id).length > 0) && (!pf.rec || rec.has(String(o.id)));
     /** 출전 카드 타일: 등급·별·기술 수·레벨·이름 */
-    const pickTile = o => { const c = boosted(o), n = skillsOf(o.id).length; return `<div class="story-card story-pick-tile ${rcls(c)}"><div class="story-card-img"><img src="${IMG}${c.id}.webp" alt="${esc(c.name)}" loading="lazy" onerror="this.style.visibility='hidden'"><span class="story-rar">${RAR[c.grade] || 'N'}</span>${window.rarityStars?.(c, exOf(o) ? 'ex' : 'base', 'rstars-over rstars-sm') || ''}${n ? `<span class="story-skn" title="기술 ${n}개">✦${n}</span>` : ''}${deck0.has(o.uid) ? '<span class="story-curdeck">현재 덱</span>' : ''}</div><div class="story-card-name">${esc(c.name)}</div><div class="text-[11px] text-zinc-300 font-bold">Lv.${norm({ ...o }).level}${isLeader(o) ? ` · ${ic('crown', { alt: '' })} 리더` : ''}</div></div>`; };
+    const pickTile = o => { const c = boosted(o); return `<div class="story-card story-pick-tile ${rcls(c)}"><div class="story-card-img"><img src="${IMG}${c.id}.webp" alt="${esc(c.name)}" loading="lazy" onerror="this.style.visibility='hidden'"><span class="story-rar">${RAR[c.grade] || 'N'}</span>${window.rarityStars?.(c, exOf(o) ? 'ex' : 'base', 'rstars-over rstars-sm') || ''}${skBadge(o.id)}${deck0.has(o.uid) ? '<span class="story-curdeck">현재 덱</span>' : ''}</div><div class="story-card-name">${esc(c.name)}</div><div class="text-[11px] text-zinc-300 font-bold">Lv.${norm({ ...o }).level}${isLeader(o) ? ` · ${ic('crown', { alt: '' })} 리더` : ''}</div></div>`; };
     const boss = ph.type === 'boss';
-    const fTile = o => { const c = boosted(o); return `<div class="story-pick-card on locked" title="이번 페이즈 필수 출전">${tile(c, `<div class="text-[10px] ${isGuest(o) ? 'text-sky-300' : 'text-zinc-400'}">Lv.${norm({ ...o }).level}${isGuest(o) ? ' · 게스트' : ''}</div>`)}<i class="story-pick-check">🔒</i></div>`; };
+    const fTile = o => { const c = boosted(o); return `<div class="story-pick-card on locked" title="이번 페이즈 필수 출전">${skBadge(o.id, 'story-skn-f')}${tile(c, `<div class="text-[10px] ${isGuest(o) ? 'text-sky-300' : 'text-zinc-400'}">Lv.${norm({ ...o }).level}${isGuest(o) ? ' · 게스트' : ''}</div>`)}<i class="story-pick-check">🔒</i></div>`; };
     const draw = () => {
       const p = popup(`<div class="story-pop-title">출전 인재 선택 <span class="text-emerald-300">${forced.length + sel.length}/${forced.length + slots}</span></div>
         <div class="text-xs text-zinc-400 mb-2">${opts?.note ? `${opts.note}<br>` : ''}고른 인재가 모두 필드에서 시작해요. 손패·드로우는 없고, 내 인재가 모두 쓰러지면 패배예요.${boss ? '<br>👑 보스전: 보스는 진영 안에서 쓰러지지 않아요. 상대 진영 HP를 0으로!' : ''}</div>
@@ -1049,6 +1049,20 @@
     $('sf-skill').onclick = () => { cardFilter.skill = !cardFilter.skill; again(); };
   };
   /** 내 카드 썸네일: 별(등급) + 이름 + 현재 레벨만 */
+  // ----- 덱·출전 고르기 카드의 기술 표시 ✦N: 누르면 기술 이름·설명 팝업 (카드 선택은 그대로). 바깥 누르면 닫힘 -----
+  const skBadge = (id, cls = '') => { const n = skillsOf(id).length; return n ? `<span class="story-skn ${cls}" data-skid="${esc(String(id))}" role="button" tabindex="0" aria-label="기술 ${n}개 보기" title="기술 보기">✦${n}</span>` : ''; };
+  function skillPop(id, at) {
+    document.getElementById('story-skpop')?.remove();
+    const c = card(id), list = skillsOf(id); if (!list.length) return;
+    const el = document.createElement('div'); el.id = 'story-skpop'; el.className = 'story-skpop';
+    el.innerHTML = `<div class="story-skpop-box" role="dialog" aria-label="${esc(c?.name || '')} 기술"><div class="story-skpop-h">${esc(c?.name || '')}</div>${list.map(k => `<div class="story-skpop-row"><div class="story-skpop-n"><b>${esc(k.name)}</b><i class="${k.mode === 'passive' ? 'pas' : 'act'}">${k.mode === 'passive' ? '패시브' : '액티브'}</i>${k.unlock > 1 ? `<small>Lv${k.unlock}</small>` : ''}${k.mode !== 'passive' && k.mp ? `<small>MP ${k.mp}</small>` : ''}</div><div class="story-skpop-d">${esc(k.desc || '')}</div></div>`).join('')}</div>`;
+    document.body.appendChild(el);
+    const box = el.firstChild, r = at?.getBoundingClientRect?.();
+    if (r) { const w = box.offsetWidth, h = box.offsetHeight; box.style.left = `${Math.max(8, Math.min(innerWidth - w - 8, r.right - w))}px`; box.style.top = `${r.bottom + 6 + h > innerHeight - 8 ? Math.max(8, r.top - h - 6) : r.bottom + 6}px`; }
+    el.addEventListener('click', e => { if (!e.target.closest('.story-skpop-box')) el.remove(); });
+  }
+  // 캡처 단계에서 먼저 받아 카드(button) 선택 클릭으로 안 넘어가게
+  for (const t of ['click', 'keydown']) document.addEventListener(t, e => { const b = e.target.closest?.('[data-skid]'); if (!b || (t === 'keydown' && e.key !== 'Enter' && e.key !== ' ')) return; e.preventDefault(); e.stopPropagation(); skillPop(b.dataset.skid, b); }, true);
   const ownTile = (o, c, badges = '', after = '') => `<div class="story-card story-own-tile ${rcls(c)}"><div class="story-card-img"><img src="${IMG}${c.id}.webp" alt="${esc(c.name)}" loading="lazy" onerror="this.style.visibility='hidden'">${window.rarityStars?.(c, exOf(o) ? 'ex' : 'base', 'rstars-over rstars-sm') || ''}${isLeader(o) ? `<span class="story-own-leader" title="리더">${ic('crown', { alt: '리더' })}</span>` : ''}${o.cpts ? `<div class="story-cpts">+${o.cpts}</div>` : ''}${badges}${after ? `<div class="story-own-acts">${after}</div>` : ''}</div><div class="story-card-name">${esc(exName(o, c.name.replace(/^\[EX\d+\] /, '')))}</div><div class="story-own-lv">Lv.${o.level}</div></div>`;
   function renderCards() {
     const k = D.statPerPoint; save.owned.forEach(norm);
@@ -1277,7 +1291,7 @@
     const draw = () => {
       const list = sortInst(all.filter(o => passFilter(o.id, [o])), new Set(sel));
       const p = popup(`<div class="story-pop-title"><input id="dk-name" class="story-deck-name" maxlength="16" placeholder="덱 ${i + 1}" value="${esc(name)}"> <span class="text-emerald-300">${sel.length}/${MAX_PICK()}</span></div>
-        ${sortBar()}${filterBar()}<div class="story-grid story-deckpick">${list.map(o => { const c = boosted(o), on = sel.includes(o.uid); return c ? `<button class="story-pick-card ${on ? 'on' : ''}" data-dk="${o.uid}">${ownTile(o, c, isFav(o) ? '<div class="story-favbadge">★</div>' : '')}${on ? `<i class="story-pick-check">${sel.indexOf(o.uid) + 1}</i>` : ''}</button>` : ''; }).join('') || '<div class="story-empty">없음</div>'}</div>
+        ${sortBar()}${filterBar()}<div class="story-grid story-deckpick">${list.map(o => { const c = boosted(o), on = sel.includes(o.uid); return c ? `<button class="story-pick-card ${on ? 'on' : ''}" data-dk="${o.uid}">${ownTile(o, c, (isFav(o) ? '<div class="story-favbadge">★</div>' : '') + skBadge(o.id))}${on ? `<i class="story-pick-check">${sel.indexOf(o.uid) + 1}</i>` : ''}</button>` : ''; }).join('') || '<div class="story-empty">없음</div>'}</div>
         <div class="flex gap-2 mt-3 story-pop-actions"><button class="story-back" id="dk-clear" ${ds[i].uids?.length || sel.length ? '' : 'disabled'}>비우기</button><button class="story-back flex-1" data-close-pop>취소</button><button class="story-btn flex-1" id="dk-ok">저장</button></div>`, renderDecks);
       const keep = () => { name = $('dk-name')?.value || name; };
       p.el.querySelectorAll('[data-dk]').forEach(b => b.onclick = () => { keep(); const u = b.dataset.dk;
