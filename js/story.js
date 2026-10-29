@@ -445,7 +445,7 @@
     const swOn = serverMode && done.length, swP = window.VRPlayer?.now?.(), swNeed = swP?.unlocks?.sweep ?? SWEEP_LV, swLock = !!swP && (swP.level | 0) < swNeed;
     const node = (p, i) => { const st = done.includes(p.no) ? 'done' : p.no === nextNo ? 'next' : 'lock', boss = p.type === 'boss';
       const dot = boss ? ic('crown', { alt: '보스', cls: 'story-node-ic' }) : st === 'done' ? '✔' : st === 'lock' ? '🔒' : p.no;
-      return `${i ? `<div class="story-path ${st !== 'lock' ? 'on' : ''}"></div>` : ''}<span class="story-node-wrap"><button class="story-node ${st} ${p.type}" data-phase="${p.no}" ${st === 'lock' ? 'disabled' : ''} aria-label="Phase ${p.no}${boss ? ' 보스' : ''}${st === 'done' ? ' 다시 하기' : ''}"><span class="story-node-dot">${dot}${boss && st === 'done' ? '<i class="story-node-ok">✔</i>' : ''}</span><span class="story-node-label">${boss ? 'BOSS' : p.no}</span></button></span>`; };
+      return `${i ? `<div class="story-path ${st !== 'lock' ? 'on' : ''}"></div>` : ''}<span class="story-node-wrap"><button class="story-node ${st} ${p.type}" data-phase="${p.no}" ${st === 'lock' ? 'disabled' : ''} aria-label="Phase ${p.no}${boss ? ' 보스' : ''}${st === 'done' ? ' 다시 하기' : ''}"><span class="story-node-dot">${dot}${boss && st === 'done' ? '<i class="story-node-ok">✔</i>' : ''}</span><span class="story-node-label">${boss ? 'BOSS' : p.no}</span>${st === 'done' ? starHtml(starsOf(ch.id, p.no), 'node') : ''}</button></span>`; };
     const rows = []; for (let k = 0; k < ch.phases.length; k += 5) rows.push(ch.phases.slice(k, k + 5));   // 5칸씩 한 줄
     // 챕터 탭 대신 제목 옆 ‹ › : 방향으로 가장 가까운 열린 챕터로 이동, 없으면 흐리게
     const seekCh = d => { for (let i = curCh + d; i >= 0 && i < D.chapters.length; i += d) if (chapterOpen(i)) return i; return -1; };
@@ -828,6 +828,18 @@
     if (ph.tip && !(ph.rules)) info.push(['💡', esc(ph.tip)]);
     return { win, lose, info };
   }
+  // ----- 별점 (마나 전투만, 보상 없음): ★1 클리어 · +★ 내 턴 STAR_TURNS 이내 · +★ 남은 마나 STAR_MANA 이상 (페이즈 starTurns·starMana 로 바꿀 수 있음) -----
+  const STAR_TURNS = 10, STAR_MANA = 0.3;
+  const starsCalc = (ph, st) => { if (st?.mana == null || !st.maxMana) return 0; const t = ph.starTurns || STAR_TURNS, k = ph.starMana ?? STAR_MANA;
+    return 1 + ((st.myTurns | 0) <= t ? 1 : 0) + (st.mana >= Math.ceil(st.maxMana * k) ? 1 : 0); };
+  const starsOf = (chId, no) => +(save?.stars?.[chId]?.[no] || 0);
+  const starHtml = (n, cls = '') => n ? `<span class="story-stars ${cls}">${[1, 2, 3].map(i => `<i class="${i <= n ? 'on' : ''}">★</i>`).join('')}</span>` : '';
+  async function saveStars(ch, ph, n) {
+    if (!n || n <= starsOf(ch.id, ph.no)) return;
+    save.stars = save.stars || {}; save.stars[ch.id] = { ...(save.stars[ch.id] || {}), [ph.no]: n };
+    if (serverMode) { try { const { error } = await cloud().sb.rpc('story_set_stars', { p_chapter: ch.id, p_phase: ph.no, p_stars: n }); if (error) console.warn('[story] 별 저장', error.message); } catch {} }   // SQL 전이면 이 기기에만
+    cacheLocal();
+  }
   const RULES_MAX_MY = () => Math.floor((window.TCG?.RULES?.MAX_TURNS || 40) / 2);
   function showConditions(ch, ph) {
     document.getElementById('story-cond')?.remove();
@@ -956,7 +968,9 @@
     const nextPh = ch.phases[ch.phases.findIndex(p => p.no === ph.no) + 1] || null;
     const nextI = D.chapters.findIndex(c => c.id === ch.id) + 1, nextChB = nextPh ? null : D.chapters[nextI] || null;
     const hasNext = !!(nextPh || nextChB), nextOpen = !!nextPh || (!!nextChB && chapterOpen(nextI));
-    show(`<div class="text-center py-6"><div class="story-chapter-sub">Phase.${ph.no} CLEAR</div><div class="story-chapter-big text-emerald-300">VICTORY</div>
+    const stars = starsCalc(ph, st), bestB = starsOf(ch.id, ph.no); if (stars) await saveStars(ch, ph, stars);
+    const starRow = stars ? `<div class="story-star-res">${starHtml(stars, 'big')}<div class="text-[11px] text-zinc-400 mt-1">${[`★ 클리어`, `${(st.myTurns | 0) <= (ph.starTurns || STAR_TURNS) ? '✔' : '✖'} ${ph.starTurns || STAR_TURNS}턴 이내 (${st.myTurns | 0}턴)`, `${st.mana >= Math.ceil(st.maxMana * (ph.starMana ?? STAR_MANA)) ? '✔' : '✖'} 남은 마나 ${Math.round((ph.starMana ?? STAR_MANA) * 100)}% 이상 (${st.mana}/${st.maxMana})`].join(' · ')}${stars > bestB && bestB ? ' · <b class="text-amber-300">최고 기록!</b>' : ''}</div></div>` : '';
+    show(`<div class="text-center py-6"><div class="story-chapter-sub">Phase.${ph.no} CLEAR</div><div class="story-chapter-big text-emerald-300">VICTORY</div>${starRow}
       ${reward ? `<div class="mt-4 text-amber-200 font-bold">🎁 보상 인재 획득!</div><div class="flex justify-center mt-2 story-reward">${tile(reward)}</div>` : `<div class="mt-4 text-zinc-400 text-sm">${first ? '이번 챕터는 인재 보상 없이 스탯 포인트만 받아요.' : '이미 클리어한 페이즈라 인재 보상은 없어요.'}</div>`}
       ${tk?.added ? `<div class="mt-3 text-amber-200 font-bold">🎟️ 챕터 클리어 보상: 소환권 +${tk.added} <small class="text-zinc-400">(특수 뽑기에서 사용)</small></div>` : ''}
       ${r.drops ? `<div class="story-drops mt-3">${first ? '🎁 첫 클리어 ' : ''}획득 ${curTxt(r.drops)}</div>` : ''}
