@@ -10,7 +10,9 @@ const $ = id => document.getElementById(id);
 // 2배속: 전투 화면의 대기·연출 타이머와 CSS 애니메이션만 빠르게 (게임 규칙·난수 무관). PvP 재생과 같은 저장 키
 const SPD_KEY = 'vrTcgSpd2';
 let spd2 = localStorage.getItem(SPD_KEY) === '1';
-const spdOn = () => spd2 && !!S && !S.over && !window.VRTutorial?.locked('speed');
+// 튜토리얼이 2배속을 잠갔던 전투: 잠금이 풀려도 저장된 설정 무시, 직접 눌러야 켜짐
+const spdHeld = () => { if (S && window.VRTutorial?.locked('speed')) S.spdHold = true; return !!S?.spdHold; };
+const spdOn = () => spd2 && !!S && !S.over && !window.VRTutorial?.locked('speed') && !spdHeld();
 const setTimeout = (f, ms = 0, ...a) => window.setTimeout(f, spdOn() ? ms / 2 : ms, ...a);   // 이 모듈 안의 타이머만 영향
 let spdTick = 0;
 function spdSync() {
@@ -18,7 +20,7 @@ function spdSync() {
   const rate = () => { const r = spdOn() ? 2 : 1; for (const a of document.getAnimations()) if (a.playbackRate !== r) a.playbackRate = r; };
   rate(); if (spd2) spdTick = window.setInterval(rate, 80);
 }
-function renderSpdBtn() { const b = $('spd-btn'); if (!b) return; b.classList.toggle('on', spd2); b.setAttribute('aria-pressed', String(spd2)); b.textContent = 'X2'; }
+function renderSpdBtn() { const b = $('spd-btn'); if (!b) return; const on = spd2 && !spdHeld(); b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); b.textContent = 'X2'; }
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 // ===== 전적 저장 (나중에 서버 저장으로 교체 가능하도록 분리) =====
@@ -112,7 +114,7 @@ let autoOn = localStorage.getItem(AUTO_KEY()) === '1', autoRunning = false;
 // 자동 전투 해금: 계정 레벨(플레이어 레벨, player_status.level) 5 이상
 const AUTO_LV = 5;
 const autoLocked = () => (window.VRPlayer?.now?.()?.level ?? 0) < AUTO_LV;
-// 튜토리얼이 AUTO를 잠갔던 전투(챕0-3 각성 등): 잠금이 풀려도 저장된 AUTO 설정으로 자동 전환하지 않음 — 직접 눌러야 켜짐
+// 튜토리얼이 AUTO를 잠갔던 전투(챕0-3 각성 등). 2배속도 같은 방식(spdHeld): 잠금이 풀려도 저장된 AUTO 설정으로 자동 전환하지 않음 — 직접 눌러야 켜짐
 const autoHeld = () => { if (S && TUT_LOCK('auto')) S.autoHold = true; return !!S?.autoHold; };
 const autoActive = () => autoOn && !autoLocked() && !!S?.story && !S.over && !S.view && !autoHeld();
 function renderAutoBtn() {
@@ -1623,7 +1625,7 @@ renderSeBtn();
 $('voice-vol').oninput = e => { voiceVol = (+e.target.value || 0) / 100; localStorage.setItem(VOICE_VOL_KEY, String(voiceVol)); if (voiceCur) voiceCur.volume = voiceVol; };
 $('voice-vol').onclick = e => e.stopPropagation();
 renderVoiceBtn();
-$('spd-btn').onclick = e => { e.stopPropagation(); if (TUT_LOCK('speed')) return; spd2 = !spd2; localStorage.setItem(SPD_KEY, spd2 ? '1' : '0'); renderSpdBtn(); spdSync(); };
+$('spd-btn').onclick = e => { e.stopPropagation(); if (TUT_LOCK('speed')) return; if (S?.spdHold) { S.spdHold = false; spd2 = true; } else spd2 = !spd2; localStorage.setItem(SPD_KEY, spd2 ? '1' : '0'); renderSpdBtn(); spdSync(); };
 renderSpdBtn(); spdSync();
 $('fx-skip').onclick = e => { e.stopPropagation(); if (TUT_LOCK('skip')) return; skipFx = !skipFx; localStorage.setItem(SKIP_KEY, skipFx ? '1' : '0'); if (S?.busy) fastForward = true; renderSkipBtn(); };
 // 연출 중 화면을 누르면 현재 연출 빨리 감기
