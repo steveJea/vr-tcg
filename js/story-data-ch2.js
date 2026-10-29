@@ -388,7 +388,7 @@ window.STORY_DATA.chapters.push({
       },
       {
        "speaker": "불량배-B",
-       "text": "장난하냐? (그는 오류의 뒤통수를 세게 쳤다.)"
+       "text": "장난하냐? (그는 오류의 뒷통수를 세게 쳤다.)"
       },
       {
        "speaker": "이명진",
@@ -1014,7 +1014,7 @@ window.STORY_DATA.chapters.push({
     },
     {
      "speaker": "내레이션",
-     "text": "명진은 힘 없이 나가는 오류의 뒤를 몰래 쫓았다."
+     "text": "명진은 힘 없이 나가는 오류의 뒤를 몰래 좇았다."
     }
    ],
    "subtitle": "검은 밴",

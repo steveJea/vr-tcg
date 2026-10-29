@@ -180,7 +180,7 @@ window.STORY_DATA.chapters[0].byStarter = { '10111': {
         },
         {
           "speaker": "내레이션",
-          "text": "지예는 주머니에 있던 USB가 사라진 걸 알았다."
+          "text": "지혜는 주머니에 있던 USB가 사라진 걸 알았다."
         },
         {
           "speaker": "문지예",
@@ -188,7 +188,7 @@ window.STORY_DATA.chapters[0].byStarter = { '10111': {
         },
         {
           "speaker": "내레이션",
-          "text": "지예는 불량배들을 급하게 쫓아갔다."
+          "text": "지혜는 불량배들을 급하게 쫓아갔다."
         },
         {
           "speaker": "불량배-K",

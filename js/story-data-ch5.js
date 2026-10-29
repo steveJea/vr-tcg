@@ -224,7 +224,7 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "정아영",
-      "text": "우리 동네서 판을 벌이면 신고를 해야제."
+      "text": "우리 동네서 판을 벌리면 신고를 해야제."
      },
      {
       "speaker": "내레이션",

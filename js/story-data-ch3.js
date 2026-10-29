@@ -730,7 +730,7 @@ window.STORY_DATA.chapters.push({
      {
       "speaker": "박성관",
       "expr": "웃음",
-      "text": "그 대가는 뭘까요~ 우리 윤하 병X년~ 정신병자~"
+      "text": "그 댓가는 뭘까요~ 우리 윤하 병X년~ 정신병자~"
      },
      {
       "speaker": "불량배-S",
