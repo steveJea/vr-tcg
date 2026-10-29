@@ -112,13 +112,15 @@ let autoOn = localStorage.getItem(AUTO_KEY()) === '1', autoRunning = false;
 // 자동 전투 해금: 계정 레벨(플레이어 레벨, player_status.level) 5 이상
 const AUTO_LV = 5;
 const autoLocked = () => (window.VRPlayer?.now?.()?.level ?? 0) < AUTO_LV;
-const autoActive = () => autoOn && !autoLocked() && !!S?.story && !S.over && !S.view && !TUT_LOCK('auto');
+// 튜토리얼이 AUTO를 잠갔던 전투(챕0-3 각성 등): 잠금이 풀려도 저장된 AUTO 설정으로 자동 전환하지 않음 — 직접 눌러야 켜짐
+const autoHeld = () => { if (S && TUT_LOCK('auto')) S.autoHold = true; return !!S?.autoHold; };
+const autoActive = () => autoOn && !autoLocked() && !!S?.story && !S.over && !S.view && !autoHeld();
 function renderAutoBtn() {
   const b = $('auto-btn'); if (!b) return;
   b.classList.toggle('hidden', !S?.story); b.classList.toggle('on', autoOn);
   if (S?.view) { const on = S.view.auto; b.classList.toggle('on', on); b.classList.remove('locked'); b.title = '자동 전투'; b.setAttribute('aria-pressed', String(on)); b.textContent = on ? '⏸ AUTO' : '▶ AUTO'; return; }
   const lk = autoLocked(); b.classList.toggle('locked', lk); b.title = lk ? `자동 전투 · 계정 Lv${AUTO_LV}부터` : '자동 전투';
-  b.setAttribute('aria-pressed', String(autoOn && !lk)); b.textContent = lk ? '🔒 AUTO' : autoOn ? '⏸ AUTO' : '▶ AUTO';
+  const on = autoOn && !lk && !autoHeld(); b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); b.textContent = lk ? '🔒 AUTO' : on ? '⏸ AUTO' : '▶ AUTO';
   if (lk && S?.story && !b.dataset.lvReq) { b.dataset.lvReq = '1'; window.VRPlayer?.status?.().then(() => { delete b.dataset.lvReq; if (!autoLocked()) { renderAutoBtn(); if (autoActive() && S.turn === 'me' && !S.busy) autoTurn(); } }); }
 }
 /** 조건 안내·스토리 대사 등 화면 위 창이 떠 있으면 자동 진행 대기 */
@@ -1627,7 +1629,7 @@ $('fx-skip').onclick = e => { e.stopPropagation(); if (TUT_LOCK('skip')) return;
 // 연출 중 화면을 누르면 현재 연출 빨리 감기
 $('game').addEventListener('click', e => { if (S?.view && e.target.closest('button')) return; if (S?.busy && !S.over) fastForward = true; }, true);   // 화면 전투: AUTO·X2 등 버튼 탭은 빨리감기 아님
 renderSkipBtn();
-$('auto-btn').onclick = e => { e.stopPropagation(); if (TUT_LOCK('auto')) return; if (S?.view) { S.view.auto = !S.view.auto; renderAutoBtn(); if (S.view.auto) S.view.ask?.({ k: 'auto' }); return; } if (autoLocked()) return autoHint(); autoOn = !autoOn; localStorage.setItem(AUTO_KEY(), autoOn ? '1' : '0'); renderAutoBtn(); if (autoActive() && S.turn === 'me' && !S.busy) autoTurn(); };
+$('auto-btn').onclick = e => { e.stopPropagation(); if (TUT_LOCK('auto')) return; if (S?.view) { S.view.auto = !S.view.auto; renderAutoBtn(); if (S.view.auto) S.view.ask?.({ k: 'auto' }); return; } if (autoLocked()) return autoHint(); if (S?.autoHold) { S.autoHold = false; autoOn = true; } else autoOn = !autoOn; localStorage.setItem(AUTO_KEY(), autoOn ? '1' : '0'); renderAutoBtn(); if (autoActive() && S.turn === 'me' && !S.busy) autoTurn(); };
 function autoHint() {
   document.getElementById('auto-hint')?.remove();
   const t = document.createElement('div'); t.id = 'auto-hint'; t.className = 'auto-hint'; t.textContent = `🔒 계정 Lv${AUTO_LV}부터 AUTO`;
