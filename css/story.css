@@ -627,8 +627,11 @@ span.story-lvpct { background: rgba(251,191,36,.12); border: 1px solid rgba(251,
 
 /* 챕터 맵 배경 (img/story/ch_bg_<챕터id>.webp 1080×1920, 없으면 기존 배경) */
 .story-map-bg{position:fixed;inset:0;z-index:0;pointer-events:none;background-size:cover;background-position:center top}
+.story-map-bg-pc{display:none}
+/* PC(가로 화면): img/story/ch_bg_pc_<챕터id>.webp 1920×1080 */
+@media (min-aspect-ratio:4/3) and (min-width:901px){.story-map-bg-m{display:none}.story-map-bg-pc{display:block;background-position:center}}
 .story-map-bg::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.55),rgba(0,0,0,.35) 45%,rgba(0,0,0,.8))}
-.story-map-bg ~ *{position:relative;z-index:1}
+.story-map-bg ~ :not(.story-map-bg){position:relative;z-index:1}
 /* 페이즈 팝업 */
 .story-phpop{text-align:center}.story-phpop-t{font-weight:900;font-size:18px;color:#fde68a}.story-phpop-s{font-size:13px;opacity:.8;margin-top:2px}
 .story-phpop-a{display:flex;gap:8px;margin-top:14px}.story-phpop-a .story-btn{flex:1;margin:0}.story-btn-sw{background:linear-gradient(90deg,#0e7490,#0891b2)!important}
