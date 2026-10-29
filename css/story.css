@@ -692,3 +692,19 @@ span.story-lvpct { background: rgba(251,191,36,.12); border: 1px solid rgba(251,
 /* 탑 VICTORY: 다음 층 / 소탕하기 같은 크기로 나란히 */
 .q-win-row{display:flex;gap:8px;align-items:stretch}
 .q-win-row>.story-btn{flex:1 1 0!important;width:auto!important;min-width:0;margin:0!important;display:flex!important;flex-direction:row!important;align-items:center;justify-content:center;gap:6px;white-space:nowrap}
+
+/* 챕터 타이틀 카드 (NEXT로 새 챕터 진입) */
+.story-chcard{position:fixed;inset:0;z-index:9000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.6rem;text-align:center;padding:0 1.5rem;background:radial-gradient(ellipse at center,#1c1917 0%,#000 75%);cursor:pointer;animation:chcardIn .7s ease-out both}
+.story-chcard.out{animation:chcardOut .6s ease-in forwards}
+.story-chcard .story-chapter-name{font-size:clamp(16px,4.2vw,28px);color:#fde68a;letter-spacing:.06em}
+@keyframes chcardIn{from{opacity:0}to{opacity:1}}
+@keyframes chcardOut{from{opacity:1}to{opacity:0}}
+
+/* 엔딩 영상: 전체화면이면 꽉 차게, 전체화면 불가(iOS 등) + 세로면 90도 돌려 가로로 */
+.story-video:fullscreen,.story-video:-webkit-full-screen{padding:0}
+.story-video:fullscreen .story-video-box{width:min(100vw,calc(100vh*16/9));border-radius:0}
+@media (orientation:portrait){
+  .story-video.rot{padding:0}
+  .story-video.rot .story-video-box{width:min(100vh,calc(100vw*16/9));transform:rotate(90deg);border-radius:0;flex:none}
+  .story-video.rot .story-video-x{top:auto;bottom:14px}
+}

@@ -836,6 +836,15 @@
         <button type="button" class="story-video-x" id="story-video-x" aria-label="닫기">✕</button>`;
       document.body.appendChild(m);
       const ifr = m.querySelector('iframe'), tap = m.querySelector('#story-video-tap');
+      // 모바일: 전체화면 + 가로 고정 (사용자 탭 안에서만 허용 → 열 때 시도, 막히면 다음 탭에서 다시). iOS(가로 고정 미지원)·전체화면 불가 → 세로일 때 CSS 90도 회전
+      const mobile = matchMedia('(pointer:coarse)').matches || /Android|iPhone|iPad/i.test(navigator.userAgent);
+      const isFs = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
+      const goFull = async () => {
+        if (!mobile || closed || isFs()) return;
+        try { const rq = m.requestFullscreen || m.webkitRequestFullscreen; if (!rq) throw 0; await rq.call(m, { navigationUI: 'hide' }); } catch { m.classList.add('rot'); return; }
+        m.classList.remove('rot'); try { await screen.orientation?.lock?.('landscape'); } catch {}
+      };
+      const exitFull = () => { try { screen.orientation?.unlock?.(); } catch {} try { if (isFs()) (document.exitFullscreen || document.webkitExitFullscreen)?.call(document)?.catch?.(() => {}); } catch {} };
       const cmd = (func, args = []) => { try { ifr.contentWindow.postMessage(JSON.stringify({ event: 'command', func, args }), '*'); } catch {} };
       let playing = false;
       const onMsg = e => { if (!/youtube/.test(e.origin || '')) return; try { const d = typeof e.data === 'string' ? JSON.parse(e.data) : e.data; const st = d?.info?.playerState ?? (d?.event === 'onStateChange' ? d.info : undefined); if (st === 1) playing = true; if (st === 0) close(); } catch {} };
@@ -843,15 +852,15 @@
       ifr.addEventListener('load', () => { try { ifr.contentWindow.postMessage(JSON.stringify({ event: 'listening', id: 'story-video' }), '*'); } catch {} });
       // 소리 있는 자동 재생이 막히면(2.5초 안에 재생 안 됨) 음소거로 다시 + 큰 버튼으로 소리 켜기
       const fb = setTimeout(() => { if (playing) return; ifr.src = src(true); tap.classList.remove('hidden'); }, 2500);
-      tap.onclick = () => { cmd('unMute'); cmd('setVolume', [100]); cmd('playVideo'); tap.classList.add('hidden'); };
-      let closed = false;
+      tap.onclick = () => { goFull(); cmd('unMute'); cmd('setVolume', [100]); cmd('playVideo'); tap.classList.add('hidden'); };
       function close() {
-        if (closed) return; closed = true; clearTimeout(fb); window.removeEventListener('message', onMsg); m.remove();
+        if (closed) return; closed = true; clearTimeout(fb); window.removeEventListener('message', onMsg); exitFull(); m.remove();
         try { if (held) S_?.hold?.(false); else S_?.play?.(); } catch {}
         done(true);
       }
       m.querySelector('#story-video-x').onclick = close;
       m.onclick = e => { if (e.target === m) close(); };   // 바깥 누르면 닫기
+      let closed = false; goFull();
     });
   }
   async function result(ch, ph, win, reason, st = {}) {
@@ -912,8 +921,18 @@
       ${expList(r.exp)}
       <div class="mt-4 text-lg">${pts ? `스탯 포인트 <b class="text-emerald-300">+${pts}</b> (보유 ${save.points})` : '<span class="text-zinc-400 text-sm">다시 클리어한 페이즈라 스탯 포인트는 없어요.</span>'}</div>
       <div class="flex flex-col gap-2 max-w-xs mx-auto mt-5"><div class="story-split">${'<button class="story-btn" data-go="stats">📈 스탯업</button>'}${hasNext ? `<button class="story-btn story-next" data-go="nextch" ${nextOpen ? '' : 'disabled'} title="${nextPh ? `Phase.${nextPh.no}` : nextOpen ? esc(nextChB.title) : '다음 챕터는 아직 잠겨 있어요'}">${nextOpen ? '▶' : '🔒'} NEXT</button>` : ''}</div><button class="story-back" data-go="map">챕터 지도로</button></div></div>`);
-    bind({ stats: () => openStats(renderMap), nextch: () => { if (nextPh) startPhase(ch, nextPh); else if (nextOpen) { hubC = nextI; renderMap(nextI); } } });
+    bind({ stats: () => openStats(renderMap), nextch: () => { if (nextPh) startPhase(ch, nextPh); else if (nextOpen) { hubC = nextI; chapterCard(nextChB).then(() => renderMap(nextI)); } } });
     if (pr?.levelups) levelUpFx('PLAYER LEVEL UP!'); else if ((r.exp || []).some(e => e.level > e.from)) levelUpFx();
+  }
+  // 다음 챕터 진입 타이틀 카드: CHAPTER N / 부제 — 페이드 인 → 1.7초 → 페이드 아웃. 탭하면 건너뜀
+  function chapterCard(base) {
+    return new Promise(ok => {
+      let sub = base?.subtitle || ''; try { if (!base.byRoute || routeOf(base)) sub = chapterFor(base).subtitle || sub; } catch {}
+      const el = document.createElement('div'); el.className = 'story-chcard';
+      el.innerHTML = `<div class="story-chapter-big">${esc(base?.title || '')}</div>${sub ? `<div class="story-chapter-name">${esc(sub)}</div>` : ''}`;
+      let done = false; const end = () => { if (done) return; done = true; el.classList.add('out'); setTimeout(() => { el.remove(); ok(); }, 600); };
+      el.onclick = end; document.body.appendChild(el); setTimeout(end, 700 + 1700);
+    });
   }
   // 전투 EXP 결과 목록
   function expList(list) {
