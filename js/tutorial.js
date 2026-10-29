@@ -44,6 +44,7 @@ function place() {
   const tgt = st && resolve(st.target);
   ov.classList.toggle('dim', !!st);
   if (tgt) {
+    if (T.scrolled !== T.i && tgt.closest?.('#me-hand')) { T.scrolled = T.i; try { tgt.scrollIntoView({ block: 'nearest', inline: 'center' }); } catch {} }   // 가로 스크롤 손패: 대상 카드를 보이게
     const r = tgt.getBoundingClientRect(), pad = st.pad ?? 6;
     Object.assign(ring.style, { display: 'block', left: `${r.left - pad}px`, top: `${r.top - pad}px`, width: `${r.width + pad * 2}px`, height: `${r.height + pad * 2}px` });
     hand.style.display = 'block'; hand.style.left = `${r.left + r.width / 2}px`; hand.style.top = `${r.top + r.height * 0.6}px`;
