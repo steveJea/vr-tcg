@@ -176,6 +176,8 @@
   // 챕터 맵 배경 키: 시작 캐릭터별 대본(byStarter)이 있으면 ch_bg_<챕터id>_<캐릭터id>, 아니면 ch_bg_<챕터id>
   const bgKey = base => base.byStarter && save?.starter ? `${base.id}_${save.starter}` : String(base.id);
   const bgUrl = base => `url(img/story/ch_bg_${esc(bgKey(base))}.webp),url(img/story/ch_bg_${esc(base.id)}.webp)`;
+  // PC(가로 화면)용: img/story/ch_bg_pc_<키>.webp (1920×1080), 없으면 세로 그림
+  const bgPcUrl = base => `url(img/story/ch_bg_pc_${esc(bgKey(base))}.webp),url(img/story/ch_bg_pc_${esc(base.id)}.webp),${bgUrl(base)}`;
   const routeOf = base => base.byRoute ? save?.routes?.[base.id] || null : null;
   function chapterFor(base) {
     const key = base.byStarter ? save?.starter : routeOf(base);
@@ -439,7 +441,7 @@
     const prevI = seekCh(-1), nextI = seekCh(1);
     const arr = (i, cls, lbl, t) => `<button class="story-charr ${cls}" ${i >= 0 ? `data-ch="${i}"` : 'disabled'} aria-label="${lbl}">${t}</button>`;
     const nextCh = D.chapters[curCh + 1], nextOpen = nextCh && chapterOpen(curCh + 1);
-    show(`<div class="story-map-bg" aria-hidden="true" style="background-image:${bgUrl(base)}"></div>
+    show(`<div class="story-map-bg story-map-bg-m" aria-hidden="true" style="background-image:${bgUrl(base)}"></div><div class="story-map-bg story-map-bg-pc" aria-hidden="true" style="background-image:${bgPcUrl(base)}"></div>
       <div class="story-map-screen"><div class="story-map-top">${topBar(esc(ch.title), 'hub')}</div>
       <div class="story-map-dock">
       <div class="text-center"><div class="story-chtitle">${arr(prevI, 'l', '이전 챕터', '‹')}<div class="story-chapter-big text-3xl md:text-5xl">${esc(ch.title)}</div>${arr(nextI, 'r', '다음 챕터', '›')}</div><div class="story-chapter-name">${esc(ch.subtitle)}</div>
