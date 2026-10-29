@@ -329,7 +329,7 @@ export function checkDeath(u, killer = null) {
   for (const a of p.field) if (hasPassive(a, '천사의 절규')) { stats.count('천사의 절규'); a.cry++; heal(a, a.maxHp * 0.2, '천사의 절규'); emit({ type: 'passive', unit: a, name: '천사의 절규' }); }
   if (killer && killer.owner !== p) {
     const o = killer.owner, before = o.mana || 0;
-    o.mana = Math.min(RULES.MANA_MAX, before + Math.round(u.card.cost * RULES.KILL_MANA_RATIO));
+    o.mana = Math.min(o.manaPool ? o.maxMana : RULES.MANA_MAX, before + Math.round(u.card.cost * RULES.KILL_MANA_RATIO));   // 제한 마나: 시작 마나까지
     const refund = o.mana - before;
     o.killMana = (o.killMana || 0) + refund;
     emit({ type: 'refund', owner: o, killer, refund });
