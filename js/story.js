@@ -1192,14 +1192,15 @@
     root().querySelectorAll('[data-sort]').forEach(b => b.onclick = () => { setSort(b.dataset.sort); renderCards(); });
     root().querySelectorAll('[data-expand]').forEach(b => b.onclick = e => { e.stopPropagation(); const g = b.dataset.expand; openGroups.has(g) ? openGroups.delete(g) : openGroups.add(g); renderCards(); });
   }
-  // ----- 카드 레벨업 (단계 E-4, 서버 story_card_levelup): L → L+1 = 순수한 피 b×L, 골드 g×L×10 -----
+  // ----- 카드 레벨업 (단계 E-4, 서버 story_card_levelup): L → L+1 = 순수한 피 ceil(b×L×0.5), 골드 ceil(g×L×10×0.5) -----
   const LV_B = { 'NORMAL': 2, 'RARE': 3, 'HIGH RARE': 5, 'SUPER RARE': 8, 'ULTRA RARE': 12, 'MYTHIC RARE': 18, 'LEGENDARY RARE': 27 };
   const LV_G = { 'NORMAL': 1, 'RARE': 1.5, 'HIGH RARE': 2, 'SUPER RARE': 3, 'ULTRA RARE': 4, 'MYTHIC RARE': 6, 'LEGENDARY RARE': 9 };
+  const LV_MULT = 0.5;   // 피 리밸런스 (supabase/blood_rebalance.sql _lv_cost_mult 와 같게)
   const SHARD_BASE = { 'NORMAL': 1, 'RARE': 2, 'HIGH RARE': 4, 'SUPER RARE': 8, 'ULTRA RARE': 15, 'MYTHIC RARE': 30, 'LEGENDARY RARE': 60 };
   /** o 를 n 단계 올리는 비용 (최대 레벨까지만) */
   function lvUpCost(o, n, w) {
     const g = card(o.id)?.grade || 'NORMAL', cap = lvCap(o); let lv = o.level | 0 || 1, k = 0, gold = 0, blood = 0;
-    while (k < n && lv < cap) { const b = Math.ceil(LV_B[g] * lv), gg = Math.ceil(LV_G[g] * lv * 10);
+    while (k < n && lv < cap) { const b = Math.max(1, Math.ceil(LV_B[g] * lv * LV_MULT)), gg = Math.max(1, Math.ceil(LV_G[g] * lv * 10 * LV_MULT));
       if (w && k > 0 && (gold + gg > (w.gold | 0) || blood + b > (w.blood | 0))) break;
       blood += b; gold += gg; lv++; k++; }
     return { n: k, to: lv, gold, blood };
