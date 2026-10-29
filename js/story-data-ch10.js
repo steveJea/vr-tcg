@@ -2339,5 +2339,6 @@ window.STORY_DATA.chapters.push({
    "expr": "보통"
   }
  ],
- "ending": []
+ "ending": [],
+ "endingVideo": "1egJLy6rkPw"
 });

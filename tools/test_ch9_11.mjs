@@ -40,6 +40,7 @@ ok(CH[9].start.filter(l => l.speaker === '최윤희').every(l => l.slug === 'cho
 ok(CH[11].loan?.join() === '10491' && CH[11].phases[4].party.levels['10491'] === 74, 'CH11 [염원] 최윤정 대여 (페이즈 레벨)');
 ok(CH[11].phases[14].party.solo && CH[11].phases[14].party.forced.join() === '10311', 'CH11 P15 이지영 단독 출전');
 ok(CH[9].phases[2].party.exclude.join() === '10415' && CH[10].phases[3].party.exclude.join() === '10413' && CH[9].phases[0].party.noMale, '출전 금지 · 남성 불가');
+ok(CH[9].endingVideo === 'SZOOuvc5nak' && CH[10].endingVideo === '1egJLy6rkPw' && CH[11].endingVideo === 'w7kJ9vfJSgo', '엔딩 영상 9~11');
 ok(CH[3].loan?.sort().join() === '10383,10384', 'CH3 조윤하·조윤이 대여');
 const sk = JSON.parse(readFileSync(new URL('../data/skills.json', import.meta.url), 'utf8'));
 ok(sk['10490'].some(s => s.name === '지켜주고 싶어' && s.mode === 'passive') && ['너무너무 사랑해', '절대 무너지지 마'].every(n => sk['10491'].some(s => s.name === n && s.mode === 'passive')), '패시브 3종 데이터');

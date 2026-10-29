@@ -2086,6 +2086,7 @@ window.STORY_DATA.chapters.push({
   }
  ],
  "ending": [],
+ "endingVideo": "w7kJ9vfJSgo",
  "loan": [
   "10491"
  ]

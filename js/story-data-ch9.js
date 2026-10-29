@@ -2464,5 +2464,6 @@ window.STORY_DATA.chapters.push({
    "text": "그날 이후, 윤희는 한 번도 언니들 앞에서 울지 않았다."
   }
  ],
- "ending": []
+ "ending": [],
+ "endingVideo": "SZOOuvc5nak"
 });

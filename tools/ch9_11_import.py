@@ -7,6 +7,7 @@
 import csv, json, os, re, sys
 sys.path.insert(0, os.path.dirname(__file__)); from power import card_power
 SUB = {9: '기도', 10: '마지막 랠리', 11: '사라지지 않는 약속'}
+VIDEO = {9: 'SZOOuvc5nak', 10: '1egJLy6rkPw', 11: 'w7kJ9vfJSgo'}   # 챕터 엔딩 영상 (YouTube id)
 ALIAS = {'아빠': '윤희 아버지', 'NA': '내레이션', '나레이션': '내레이션'}
 # 최윤희 복장 (0 = 챕터 시작 스토리). 없는 페이즈는 교복
 OUT = {'school': {9: [0, 1, 2, 5, 9, 13, 15, 16, 17], 10: [6, 8]},
@@ -81,7 +82,7 @@ def build(chn, path, loan=()):
         p['enemies']['boost'] = b
     hero = phases[0]['party']['forced'][0]
     ch = {'id': chn, 'title': f'CHAPTER {chn}', 'subtitle': SUB[chn], 'rewardCard': None, 'hero': hero, 'single': True, 'phases': phases,
-          'tagline': '', 'warning': '이 챕터에는 괴롭힘·폭력·죽음 묘사가 포함되어 있습니다.', 'start': start, 'ending': []}
+          'tagline': '', 'warning': '이 챕터에는 괴롭힘·폭력·죽음 묘사가 포함되어 있습니다.', 'start': start, 'ending': [], 'endingVideo': VIDEO[chn]}
     if loan: ch['loan'] = list(loan)
     hdr = (f'// ===== 스토리 챕터 {chn} 「{SUB[chn]}」 (시트 CH{chn} → python3 tools/ch9_11_import.py <csv9> <csv10> <csv11> 로 생성. 직접 고쳐도 됨) =====\n'
            f'// 단일 루트(single) · 페이즈 {len(phases)}개 (마지막 보스). 최윤희 복장 = 대사 slug. 적 레벨은 시트 값 → enemies.boost' + (' · loan: 챕터 한정 대여 인재' if loan else '') + '\n')
