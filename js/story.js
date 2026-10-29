@@ -269,14 +269,18 @@
   const tile = (c, extra = '') => `<div class="story-card ${rcls(c)}"><div class="story-card-img"><img src="${IMG}${c.id}.webp" alt="${esc(c.name)}" loading="lazy" onerror="this.style.visibility='hidden'"><span class="story-rar">${RAR[c.grade] || 'N'}</span></div><div class="story-card-name">${esc(c.name)}</div><div class="story-card-stats"><span class="text-orange-400">${ic('atk', { cls: 'ui-ic-sm' })}${fmt(c.ATK)}</span><span class="text-red-400">${ic('hp', { cls: 'ui-ic-sm' })}${fmt(c.HP)}</span><span class="text-sky-400">${ic('def', { cls: 'ui-ic-sm' })}${fmt(c.DEF)}</span></div>${extra}</div>`;
 
   // 바깥 클릭으로 닫히는 팝업
+  /** 팝업 안 요소 → '클래스#순번' 키 (다시 그려도 같은 스크롤 상자를 찾게) */
+  const popScrollKeys = m => { const map = new Map(), n = {}; for (const e of [m, m.querySelector('.story-pop-panel'), ...m.querySelectorAll('.story-pop-panel *')]) { if (!e) continue; const c = e.tagName + '.' + e.className; n[c] = (n[c] | 0) + 1; map.set(c + '#' + n[c], e); } return map; };
   function popup(html, onClose) {
     let m = $('story-pop'); if (!m) { m = document.createElement('div'); m.id = 'story-pop'; document.body.appendChild(m); }
     m.className = 'fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-4';
     m.innerHTML = `<div class="story-pop-panel">${UI(html)}</div>`;
+    const keep = m._keep; m._keep = null;   // 같은 팝업 다시 그리기(close(true) → 바로 popup): 스크롤 위치 유지 (출전 고르기·덱 편집에서 인재 탭)
+    if (keep && performance.now() - keep.at < 1000) { const ks = popScrollKeys(m); for (const [k, t, l] of keep.pos) { const e = ks.get(k); if (e) { e.scrollTop = t; e.scrollLeft = l; } } }
     let down = false;
     m.onpointerdown = e => { down = e.target === m; };
     m.onclick = e => { if (down && e.target === m) close(); down = false; };
-    const close = silent => { m.className = 'hidden'; m.innerHTML = ''; if (silent !== true) onClose?.(); };   // close(true): 다음 팝업으로 넘어갈 때 onClose 생략
+    const close = silent => { if (silent === true) { const pos = []; for (const [k, e] of popScrollKeys(m)) if (e.scrollTop || e.scrollLeft) pos.push([k, e.scrollTop, e.scrollLeft]); m._keep = { at: performance.now(), pos }; } m.className = 'hidden'; m.innerHTML = ''; if (silent !== true) onClose?.(); };   // close(true): 다음 팝업으로 넘어갈 때 onClose 생략
     m.querySelectorAll('[data-close-pop]').forEach(b => b.onclick = () => close());
     return { el: m, close };
   }
