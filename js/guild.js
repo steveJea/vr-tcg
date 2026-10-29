@@ -150,7 +150,7 @@
   }
   const gearName = g => g?.sigil ? `임유리 증표 조각 ×${g.sigil.n}` : g?.gear_box ? `${['', '낡은', '일반', '고급', '희귀', '영웅'][g.gear_box.tier]} 장비 상자` : g?.dust ? `장비 가루 ×${g.dust}` : '';
   // ---- 인재 대여 (guild_lend.sql): 내 인재 3명 등록 · 조직원 인재 하루 1명 12시간 (원주인 레벨) · 스토리·시련의 탑에서만 ----
-  const LERR = { 'already borrowed today': '오늘은 이미 빌렸어요 (내일 다시)', 'already own card': '이미 가진 인재는 빌릴 수 없어요', 'own card': '내 인재는 빌릴 수 없어요', 'not lendable': '지금은 빌릴 수 없는 인재예요', 'not guildmate': '같은 조직원만 빌릴 수 있어요', 'too many': '최대 3명까지 등록할 수 있어요', 'not owned': '내 인재만 등록할 수 있어요' };
+  const LERR = { 'already borrowed today': '오늘은 이미 빌렸어요 (내일 다시)', 'joined too recently': '조직에 들어온 지 24시간이 지나야 빌릴 수 있어요', 'level too low': '계정 Lv.10부터 빌릴 수 있어요', 'already own card': '이미 가진 인재는 빌릴 수 없어요', 'own card': '내 인재는 빌릴 수 없어요', 'not lendable': '지금은 빌릴 수 없는 인재예요', 'not guildmate': '같은 조직원만 빌릴 수 있어요', 'too many': '최대 3명까지 등록할 수 있어요', 'not owned': '내 인재만 등록할 수 있어요' };
   const lerr = e => { const m = String(e?.message || e); const k = Object.keys(LERR).find(x => m.includes(x)); return k ? LERR[k] : /function|does not exist/.test(m) ? '대여 준비 중이에요' : errText(e); };
   const left = t => { const ms = Math.max(0, new Date(t) - Date.now()), m = Math.ceil(ms / 60000); return m >= 60 ? `${Math.floor(m / 60)}시간 ${m % 60}분` : `${m}분`; };
   const lcard = (id, lv, sub = '', attr = '', cls = '') => `<button class="gd-lc ${cls}" ${attr}><img src="${IMG}${id}.webp" alt="" loading="lazy" onerror="this.style.visibility='hidden'"><b>Lv.${lv | 0}</b>${sub ? `<small>${sub}</small>` : ''}</button>`;
@@ -167,7 +167,7 @@
     const m = pop(`<div class="gd-h big">${gi('tile_lend', '🤝')} 인재 대여</div>
       <div class="gd-h">📥 빌린 인재</div>${L.loan ? `<div class="gd-lrow">${lcard(L.loan.card_id, L.loan.snap?.level, `${esc(L.loan.lender_name)} · ${left(L.loan.expires_at)} 남음`)}<small class="gd-lnote">${esc(nm(L.loan.card_id))} · 스토리·시련의 탑 출전 고르기에서 [대여]로 써요</small></div>`
         : `<div class="gd-lnote">${L.borrowed_today ? '오늘은 이미 빌렸어요. 내일 다시 빌릴 수 있어요.' : `하루 1명 · ${L.hours}시간 동안 · 원주인 레벨 그대로`}</div>`}
-      <div class="gd-h">📤 내 대여 인재 <small>${L.mine.length}/${L.max} · 빌려줄 때마다 ${LOYI}${L.reward}</small></div><div class="gd-lrow">${L.mine.map(x => lcard(x.id, x.level)).join('')}<button class="gd-lc add" data-lset>✏️<small>바꾸기</small></button></div>
+      <div class="gd-h">📤 내 대여 인재 <small>${L.mine.length}/${L.max} · 빌려줄 때마다 ${LOYI}${L.reward} (하루 3번)</small></div><div class="gd-lrow">${L.mine.map(x => lcard(x.id, x.level)).join('')}<button class="gd-lc add" data-lset>✏️<small>바꾸기</small></button></div>
       <div class="gd-h">🤝 조직원 인재</div>${L.others.length ? '<div data-sb></div>' : ''}<div class="gd-lgrid" data-og></div>`, 'wide');
     L.others.forEach((x, i) => { x._i = i; x.uid = x.uid || ''; });
     const drawO = () => { const g = m.querySelector('[data-og]'), y = g.scrollTop, T = window.VRStory?.sortTool;
@@ -305,7 +305,7 @@
     if (noticeBusy || window.__GUILD_MOCK || !window.VRCloud?.user) return; noticeBusy = true;
     try { const L = await rpc('guild_lend_notices'); if (Array.isArray(L) && L.length) {
       const nm = id => window.VRStory?.api?.card?.(id)?.name || '인재';
-      const m = pop(`<div class="gd-h big">${gi('tile_lend', '🤝')} 대여 알림</div><div class="gd-lnl">${L.map(x => `<div class="gd-ln"><img src="${IMG}${x.card_id}.webp" alt="" loading="lazy" onerror="this.style.visibility='hidden'"><span><b>${esc(x.borrower_name)}</b>님이 <b>${esc(nm(x.card_id))}</b>를 빌렸어요 · ${LOYI} 충성 +${n(x.reward)}</span></div>`).join('')}</div>`);
+      const m = pop(`<div class="gd-h big">${gi('tile_lend', '🤝')} 대여 알림</div><div class="gd-lnl">${L.map(x => `<div class="gd-ln"><img src="${IMG}${x.card_id}.webp" alt="" loading="lazy" onerror="this.style.visibility='hidden'"><span><b>${esc(x.borrower_name)}</b>님이 <b>${esc(nm(x.card_id))}</b>를 빌렸어요${x.reward ? ` · ${LOYI} 충성 +${n(x.reward)}` : ' · 오늘 대여 보상(3번)은 다 받았어요'}</span></div>`).join('')}</div>`);
       void m; } } catch {} finally { noticeBusy = false; }
   }
   { let tries = 0; const t = setInterval(() => { if (window.VRCloud?.user) { clearInterval(t); setTimeout(lendNotices, 2500); } else if (++tries > 60) clearInterval(t); }, 1000); }
