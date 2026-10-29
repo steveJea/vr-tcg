@@ -646,10 +646,12 @@
     const lead = byUid(save.leader) || save.owned[0], g = { uid: 'guest:' + id, id: String(id), boost: {}, level: 1, exp: 0, totalExp: 0, cpts: 0, spentCard: 0, ex: 0, exb: 0, guest: true };
     g.level = Math.max(1, Math.min(lvCap(g), norm({ ...(lead || {}) }).level || 1)); return g;
   }
+  // 스토리 게스트·대여 인재(보유 X, guest: uid)의 시트 레벨: 등급 최대 레벨 예외 (CH8 안소라 Lv80 · CH11 [염원] 최윤정 Lv70~86). 플레이어 보유 카드는 기존 최대 레벨 그대로
+  const guestLv = lv => Math.max(1, Math.min(100, lv | 0));
   function partyOf(ch, ph) {
     const pt = ph.party || (ch.hero ? { forced: [ch.hero] } : null);
     // party.levels { id: Lv }: 보유하지 않은 필수 카드(게스트)의 레벨 (CH7: 시트 강제배정 레벨)
-    const forced = (pt?.forced || []).map(id => (pt?.fixedLevel?.[id] ? null : repOf(id)) || (g => { const lv = pt?.fixedLevel?.[id] ?? pt?.levels?.[id]; return lv ? { ...g, level: Math.max(1, Math.min(lvCap(g), lv | 0)) } : g; })(guestOf(id))).filter(o => card(o.id));
+    const forced = (pt?.forced || []).map(id => (pt?.fixedLevel?.[id] ? null : repOf(id)) || (g => { const lv = pt?.fixedLevel?.[id] ?? pt?.levels?.[id]; return lv ? { ...g, level: guestLv(lv), overCap: (lv | 0) > lvCap(g) } : g; })(guestOf(id))).filter(o => card(o.id));
     // 추가 조건 (챕터 3~): noMale · maxMor(필수 카드 제외) · maxGrade. 필수 카드는 조건 예외
     const GO = ['NORMAL', 'RARE', 'HIGH RARE', 'SUPER RARE', 'ULTRA RARE', 'MYTHIC RARE', 'LEGENDARY RARE'], gi = pt?.maxGrade ? GO.indexOf(pt.maxGrade) : -1;
     const rules = [];
@@ -669,7 +671,7 @@
     // party.guests: 고를 수 있는 게스트(보유 안 해도 출전 후보, 필수 아님). 보유 중이면 내 카드로
     // chapter.loan: 그 챕터에서만 빌려 쓰는 인재 (보유 X, 게스트로 출전 후보 · 챕터 끝나면 회수 = 저장 안 함). 보유 중이면 내 카드. 출전 금지·필수와 겹치면 제외
     const loanLv = id => ch.loanLevel?.[id] ?? pt?.levels?.[id];
-    const loans = (ch.loan || []).filter(id => !(pt?.guests || []).map(String).includes(String(id))).map(id => repOf(id) || (g => ({ ...g, loan: true, ...(loanLv(id) ? { level: Math.max(1, Math.min(lvCap(g), loanLv(id) | 0)) } : {}) }))(guestOf(id)));
+    const loans = (ch.loan || []).filter(id => !(pt?.guests || []).map(String).includes(String(id))).map(id => repOf(id) || (g => ({ ...g, loan: true, ...(loanLv(id) ? { level: guestLv(loanLv(id)), overCap: (loanLv(id) | 0) > lvCap(g) } : {}) }))(guestOf(id)));
     const guests = [...(pt?.guests || []).map(id => repOf(id) || guestOf(id)), ...loans].filter(o => card(o.id));
     return { forced, guests, exclude: new Set([...(pt?.exclude || []), ...(pt?.forced || [])].map(String)), allow, notes: [...rules.map(r => r.note), ...banNotes], max: pt?.solo ? Math.max(1, forced.length) : pt?.max };
   }
@@ -695,7 +697,7 @@
     const draw = () => {
       const p = popup(`<div class="story-pop-title">출전 인재 선택 <span class="text-emerald-300">${forced.length + sel.length}/${forced.length + slots}</span></div>
         <div class="text-xs text-zinc-400 mb-2">${opts?.note ? `${opts.note}<br>` : ''}고른 인재가 모두 필드에서 시작해요. 손패·드로우는 없고, 내 인재가 모두 쓰러지면 패배예요.${boss ? '<br>👑 보스전: 보스는 진영 안에서 쓰러지지 않아요. 상대 진영 HP를 0으로!' : ''}</div>
-        ${forced.length ? `<div class="story-forced-h">${ic('crown', { alt: '' })} 필수 출전 ${forced.length}장 <small>(게스트는 리더 레벨로 함께 싸우고, 전투 EXP는 받지 않아요)</small></div><div class="story-grid story-deckpick story-forced">${forced.map(fTile).join('')}</div>
+        ${forced.length ? `<div class="story-forced-h">${ic('crown', { alt: '' })} 필수 출전 ${forced.length}장 <small>(게스트는 정해진 레벨(없으면 리더 레벨)로 함께 싸우고, 전투 EXP는 받지 않아요)</small></div><div class="story-grid story-deckpick story-forced">${forced.map(fTile).join('')}</div>
           <div class="story-forced-h">나머지 ${slots}장 고르기${notes.map(t => ` · <span class="text-red-300">${t}</span>`).join('')}</div>` : ''}${ph.enemyFirst ? '<div class="story-hint">⚡ 이번 페이즈는 적이 먼저 공격해요</div>' : ''}
         ${decksOf().some(d => d?.uids?.length) ? `<div class="story-sortbar story-deckchips">${decksOf().map((d, i) => d?.uids?.length ? `<button class="story-chip" data-usedeck="${i}">🗂 ${esc(deckName(d, i))}</button>` : '').join('')}</div>` : ''}${sortBar()}<div class="story-sortbar story-pickf"><button class="story-chip ${pf.skill ? 'on' : ''}" data-pf="skill">✦ 스킬</button><button class="story-chip ${pf.rec ? 'on' : ''}" data-pf="rec" ${rec.size ? '' : 'disabled'}>추천 ${rec.size ? '' : '-'}</button></div><div class="story-grid story-deckpick">${list.filter(o => sel.includes(o.uid) || pfOk(o)).map(o => { const on = sel.includes(o.uid);
           return `<button class="story-pick-card ${on ? 'on' : ''}" data-pick="${o.uid}">${pickTile(o)}${on ? '<i class="story-pick-check">✔</i>' : ''}</button>`; }).join('')}</div>
@@ -1673,5 +1675,5 @@
     lastDeck: () => { const all = deckInstances(); if (all.length <= MAX_PICK()) return all; let last = []; try { last = JSON.parse(localStorage.getItem(PICK_KEY()) || '[]'); } catch {} const by = new Map(all.map(o => [o.uid, o])); return last.map(u => by.get(u)).filter(Boolean).slice(0, MAX_PICK()); },
   };
   const openPage = async fn => { if ((await enter()) === 'gate') return; if (save?.starter) fn(); };   // 오프닝·챕터 0·강제 영입·캐릭터 고르기 중이면 그 화면 유지 (위에 다른 화면 덮지 않음)
-  window.VRStory = { openMap: i => openPage(() => renderMap(i)), openCards: () => openPage(renderCards), openDecks: () => openPage(renderDecks), openShop: () => openPage(renderShop), api, bgm, BGM, endingVideo, videoOf, conditionsOf, battleRules, summary, enter, openGacha, renderHub, renderShop, drawOnce, kstDay, get save() { return save; }, renderMap, renderCards, openStats, renderSelect, playLines };
+  window.VRStory = { partyOf, pickDeck, openMap: i => openPage(() => renderMap(i)), openCards: () => openPage(renderCards), openDecks: () => openPage(renderDecks), openShop: () => openPage(renderShop), api, bgm, BGM, endingVideo, videoOf, conditionsOf, battleRules, summary, enter, openGacha, renderHub, renderShop, drawOnce, kstDay, get save() { return save; }, renderMap, renderCards, openStats, renderSelect, playLines };
 })();
