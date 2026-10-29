@@ -710,6 +710,7 @@ span.story-lvpct { background: rgba(251,191,36,.12); border: 1px solid rgba(251,
 }
 /* 스토리 제한 마나: 출전 카드가 손패에서 시작 → 손패 보이기 · 남은 마나 크게 */
 #game.story-field.story-pool #me-hand { display: flex !important; }
+#game.story-field.story-pool #hand-sort { display: flex !important; }   /* 아케이드처럼 정렬 탭 + 한 줄 가로 스크롤 손패 */
 #game.story-pool .mana-line { font-size: 13px; }
 #game.story-pool .pool-mana { font-size: 18px; color: #7dd3fc; }
 #game.story-pool .pool-note { color: #a1a1aa; font-weight: 500; }
