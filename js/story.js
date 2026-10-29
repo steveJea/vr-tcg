@@ -686,10 +686,29 @@
     const guests = [...(pt?.guests || []).map(id => repOf(id) || guestOf(id)), ...loans].filter(o => card(o.id));
     return { forced, guests, exclude: new Set([...(pt?.exclude || []), ...(pt?.forced || [])].map(String)), allow, notes: [...rules.map(r => r.note), ...banNotes], max: pt?.solo ? Math.max(1, forced.length) : pt?.max };
   }
-  /** opts (퀘스트 등 재사용): { onGo(list), onCancel(), note } — 없으면 스토리 페이즈 전투 */
+  // ----- 조직 인재 대여 (supabase/guild_lend.sql): 빌린 인재 1명 (원주인 레벨·스탯 스냅샷, 12시간) · 스토리·시련의 탑 출전 고르기에만 (소탕 X) -----
+  let lendLoan = null, lendAt = 0;
+  async function loadLend(force) {
+    if (!serverMode || !user()) { lendLoan = null; return null; }
+    if (!force && Date.now() - lendAt < 30000) return lendLoan;
+    try { const { data, error } = await cloud().sb.rpc('guild_lend_status'); if (error) throw error; lendLoan = data?.loan || null; } catch { lendLoan = null; }   // SQL 전·조직 없음 → 대여 없음
+    lendAt = Date.now(); return lendLoan;
+  }
+  const lendLeft = l => Math.max(0, new Date(l?.expires_at || 0) - Date.now());
+  const lendTime = ms => { const m = Math.ceil(ms / 60000); return m >= 60 ? `${Math.floor(m / 60)}시간 ${m % 60}분` : `${m}분`; };
+  /** 지금 쓸 수 있는 대여 인재 (게스트 uid → EXP·저장 없음). 이미 같은 인재를 갖고 있으면 없음 */
+  function lendInst() {
+    const l = lendLoan; if (!l || lendLeft(l) <= 0 || !card(l.card_id) || copiesOf(l.card_id).length) return null;
+    const s = l.snap || {};
+    return { uid: 'guest:lend:' + l.id, id: String(l.card_id), level: Math.max(1, s.level | 0 || 1), boost: s.boost || {}, ex: s.ex | 0, exb: +s.exb || 0, ...(s.skillLv ? { skillLv: s.skillLv } : {}), exp: 0, totalExp: 0, cpts: 0, spentCard: 0, guest: true, lend: { until: l.expires_at, from: l.lender_name || '' } };
+  }
+  const lendBadge = o => o?.lend ? `<span class="story-lend">대여 · ${lendTime(lendLeft({ expires_at: o.lend.until }))}</span>` : '';
+  /** opts (퀘스트 등 재사용): { onGo(list), onCancel(), note, noLend } — 없으면 스토리 페이즈 전투 */
   function pickDeck(ch, ph, enemies, opts = null) {
+    if (!opts?.noLend && serverMode && Date.now() - lendAt >= 30000) return loadLend().then(() => pickDeck(ch, ph, enemies, opts));
     const { forced, guests = [], exclude, allow, notes, max } = partyOf(ch, ph), pm = opts ? MAX_PICK() : pickMax(ch, ph), slots = Math.max(0, Math.min(pm, max || pm) - forced.length);   // party.max: 필수 포함 최대 장수
-    const all = [...new Map([...guests.filter(o => !exclude.has(o.id) && (!o.loan || allow(o))), ...deckInstances().filter(o => !exclude.has(o.id) && allow(o))].map(o => [o.uid, o])).values()];
+    const ln = opts?.noLend ? null : lendInst(), lend = ln && !exclude.has(ln.id) && allow(ln) && !guests.some(g => g.id === ln.id) ? [ln] : [];
+    const all = [...new Map([...lend, ...guests.filter(o => !exclude.has(o.id) && (!o.loan || allow(o))), ...deckInstances().filter(o => !exclude.has(o.id) && allow(o))].map(o => [o.uid, o])).values()];
     const go = opts?.onGo || (list => battle(ch, ph, enemies, list));
     if (all.length <= slots && !forced.length) return go(all);
     if (ph.party?.auto && !opts) return go(forced);   // party.auto: 고르기 창 없이 필수 카드만 (챕터 0 튜토리얼)
@@ -702,7 +721,7 @@
     const rec = new Set((ph.recommend || ph.party?.recommend || ch.recommend || []).map(String)), pf = { skill: false, rec: false };
     const pfOk = o => (!pf.skill || skillsOf(o.id).length > 0) && (!pf.rec || rec.has(String(o.id)));
     /** 출전 카드 타일: 등급·별·기술 수·레벨·이름 */
-    const pickTile = o => { const c = boosted(o); return `<div class="story-card story-pick-tile ${rcls(c)}"><div class="story-card-img"><img src="${IMG}${c.id}.webp" alt="${esc(c.name)}" loading="lazy" onerror="this.style.visibility='hidden'"><span class="story-rar">${RAR[c.grade] || 'N'}</span>${window.rarityStars?.(c, exOf(o) ? 'ex' : 'base', 'rstars-over rstars-sm') || ''}${skBadge(o.id)}${deck0.has(o.uid) ? '<span class="story-curdeck">현재 덱</span>' : ''}</div><div class="story-card-name">${esc(c.name)}</div><div class="text-[11px] text-zinc-300 font-bold">Lv.${norm({ ...o }).level}${isLeader(o) ? ` · ${ic('crown', { alt: '' })} 리더` : ''}</div></div>`; };
+    const pickTile = o => { const c = boosted(o); return `<div class="story-card story-pick-tile ${rcls(c)}"><div class="story-card-img"><img src="${IMG}${c.id}.webp" alt="${esc(c.name)}" loading="lazy" onerror="this.style.visibility='hidden'"><span class="story-rar">${RAR[c.grade] || 'N'}</span>${window.rarityStars?.(c, exOf(o) ? 'ex' : 'base', 'rstars-over rstars-sm') || ''}${skBadge(o.id)}${deck0.has(o.uid) ? '<span class="story-curdeck">현재 덱</span>' : ''}${lendBadge(o)}</div><div class="story-card-name">${esc(c.name)}</div><div class="text-[11px] text-zinc-300 font-bold">Lv.${norm({ ...o }).level}${isLeader(o) ? ` · ${ic('crown', { alt: '' })} 리더` : ''}</div></div>`; };
     const boss = ph.type === 'boss';
     const fTile = o => { const c = boosted(o); return `<div class="story-pick-card on locked" title="이번 페이즈 필수 출전">${skBadge(o.id, 'story-skn-f')}${tile(c, `<div class="text-[10px] ${isGuest(o) ? 'text-sky-300' : 'text-zinc-400'}">Lv.${norm({ ...o }).level}${isGuest(o) ? ' · 게스트' : ''}</div>`)}<i class="story-pick-check">🔒</i></div>`; };
     const draw = () => {
@@ -1724,7 +1743,7 @@
   /** 다른 모드(퀘스트)용 내부 도구 */
   const api = {
     load: async () => { if (!user()) return false; await load(); return !!save; }, get save() { return save; }, user, show, home, popup, toast, bgm, tile, esc, IMG, card,
-    pickDeck: (enemies, onGo, onCancel, note, party) => pickDeck({}, party ? { party } : {}, enemies, { onGo, onCancel, note }),
+    pickDeck: (enemies, onGo, onCancel, note, party, extra) => pickDeck({}, party ? { party } : {}, enemies, { onGo, onCancel, note, ...(extra || {}) }),   // extra.noLend: 대여 인재 빼기 (소탕)
     instances: () => deckInstances(),
     battleCards: (list, mode = 'tower') => list.slice(0, MAX_PICK()).map(o => gearOn({ ...boosted(o), uid: o.uid }, mode)).filter(x => x.id),
     leaderFor: me => { const lo = me.find(c => c.uid === save.leader), le = lo && leaderEff(lo.id); return le ? { ...le, uid: lo.uid } : undefined; },
@@ -1733,5 +1752,7 @@
     lastDeck: () => { const all = deckInstances(); if (all.length <= MAX_PICK()) return all; let last = []; try { last = JSON.parse(localStorage.getItem(PICK_KEY()) || '[]'); } catch {} const by = new Map(all.map(o => [o.uid, o])); return last.map(u => by.get(u)).filter(Boolean).slice(0, MAX_PICK()); },
   };
   const openPage = async fn => { if ((await enter()) === 'gate') return; if (save?.starter) fn(); };   // 오프닝·챕터 0·강제 영입·캐릭터 고르기 중이면 그 화면 유지 (위에 다른 화면 덮지 않음)
-  window.VRStory = { partyOf, pickDeck, openMap: i => openPage(() => renderMap(i)), openCards: () => openPage(renderCards), openDecks: () => openPage(renderDecks), openShop: () => openPage(renderShop), api, bgm, BGM, endingVideo, videoOf, conditionsOf, battleRules, summary, enter, openGacha, renderHub, renderShop, drawOnce, kstDay, get save() { return save; }, renderMap, renderCards, openStats, renderSelect, playLines };
+  /** 조직 대여 등록용: 내 인재 목록 (카드마다 1장) */
+  async function lendCards() { if (!user()) return []; if (!save) await load(); return (save ? deckInstances() : []).map(o => ({ uid: o.uid, id: o.id, name: card(o.id)?.name || o.id, level: o.level | 0, grade: card(o.id)?.grade })); }
+  window.VRStory = { lendCards, reloadLend: () => loadLend(true), partyOf, pickDeck, openMap: i => openPage(() => renderMap(i)), openCards: () => openPage(renderCards), openDecks: () => openPage(renderDecks), openShop: () => openPage(renderShop), api, bgm, BGM, endingVideo, videoOf, conditionsOf, battleRules, summary, enter, openGacha, renderHub, renderShop, drawOnce, kstDay, get save() { return save; }, renderMap, renderCards, openStats, renderSelect, playLines };
 })();

@@ -209,7 +209,7 @@
   async function sweep() {
     if (!deckOk()) return;
     const api = A(), c = tCls(), deck = (api.lastDeck?.() || []).filter(o => !c || api.card(o.id)?.class === c);
-    if (!deck.length) { api.toast('출전 인재를 먼저 골라 주세요'); return api.pickDeck([], list => runSweep(list), () => render(), `${SW()} 소탕에 쓸 덱${tCls() ? ` · ${EL[tCls()]} 속성만` : ''}`, party()); }
+    if (!deck.length) { api.toast('출전 인재를 먼저 골라 주세요'); return api.pickDeck([], list => runSweep(list), () => render(), `${SW()} 소탕에 쓸 덱${tCls() ? ` · ${EL[tCls()]} 속성만` : ''}`, party(), { noLend: true }); }
     runSweep(deck);
   }
   async function runSweep(list) {
