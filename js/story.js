@@ -430,6 +430,36 @@
     playLines(ch.start, [], async () => { await act('story_mark_seen', { p_key: 'startSeen' }, () => { save.startSeen = true; }); renderMap(); });
   }
   const clearedOf = ch => save.cleared[ch.id] || [];
+  // ----- 별 보상 (supabase/story_star_rewards.sql): 챕터 별 합계 → ★9 · ★18 · 전부 상자 (소환권 + 골드). 서버가 별을 다시 셈 -----
+  let starSt = null, starAt = 0;
+  async function starStatus(force) {
+    if (!serverMode) return null;
+    if (!force && starSt && Date.now() - starAt < 20000) return starSt;
+    try { const { data, error } = await cloud().sb.rpc('story_star_status'); if (error) throw error; starSt = data || []; } catch { starSt = null; }   // SQL 전이면 상자 안 보임
+    starAt = Date.now(); return starSt;
+  }
+  async function starBox(base) {
+    const all = await starStatus(), c = all?.find(x => x.chapter === base.id), box = root().querySelector('[data-starbox]');
+    if (!box || !c || !c.max || !c.milestones?.length) return;
+    const ready = c.milestones.some(m => m.ready && !m.claimed);
+    box.innerHTML = `<button class="story-starbox ${ready ? 'ready' : ''}" type="button" aria-label="별 보상"><span class="story-starbox-ic">🎁</span><b>★ ${c.total}/${c.max}</b>${ready ? '<i class="story-badge">!</i>' : ''}</button>`;
+    box.querySelector('button').onclick = () => starPop(base, c);
+  }
+  function starPop(base, c) {
+    const row = m => `<div class="story-starm ${m.claimed ? 'done' : m.ready ? 'ready' : ''}"><span class="story-starm-n">${m.key === 'all' ? '전부' : ''} ★${m.need}</span><span class="story-starm-r">🎟️ ${m.tickets} · 🪙 ${fmt(m.gold)}</span>${m.claimed ? '<span class="story-starm-ok">✔</span>' : `<button class="story-btn story-starm-go" data-claim="${m.key}" ${m.ready ? '' : 'disabled'}>${m.ready ? '받기' : '🔒'}</button>`}</div>`;
+    const p = popup(`<div class="story-pop-title">🎁 별 보상 · ${esc(base.title)}</div><div class="story-starbar"><i style="width:${Math.min(100, c.total / c.max * 100).toFixed(1)}%"></i><b>★ ${c.total} / ${c.max}</b></div>
+      <div class="text-[11px] text-zinc-400 mb-2">마나 전투 별(★1 클리어 · 10턴 이내 · 남은 마나 30%)을 모으면 받아요</div>${c.milestones.map(row).join('')}`);
+    p.el.querySelectorAll('[data-claim]').forEach(b => b.onclick = async () => {
+      b.disabled = true;
+      const { data, error } = await cloud().sb.rpc('story_star_claim', { p_chapter: base.id, p_key: b.dataset.claim });
+      if (error) { toast(/not enough stars/.test(error.message) ? '별이 모자라요' : /already/.test(error.message) ? '이미 받았어요' : `⚠️ ${error.message}`); b.disabled = false; return; }
+      toast(`🎁 소환권 +${data.gave.tickets} · 🪙 골드 +${fmt(data.gave.gold)}`);
+      if (data.wallet) window.VRPlayer?.setWallet?.(data.wallet);
+      if (data.tickets != null) tickets = data.tickets;
+      starSt = (starSt || []).map(x => x.chapter === base.id ? data.status : x);
+      p.close(true); starPop(base, data.status); starBox(base);
+    });
+  }
   function renderMap(idx) {
     if (pullPending()) return forcedPull();
     if (typeof idx === 'number') curCh = idx;
@@ -457,12 +487,13 @@
       <div class="story-map-dock">
       <div class="text-center"><div class="story-chtitle">${arr(prevI, 'l', '이전 챕터', '‹')}<div class="story-chapter-big text-3xl md:text-5xl">${esc(ch.title)}</div>${arr(nextI, 'r', '다음 챕터', '›')}</div><div class="story-chapter-name">${esc(ch.subtitle)}</div>
         ${hero && ch.route ? `<div class="story-route-tag">루트 <b>${esc(hero.name)}</b>${clearedOf(ch).length ? '' : ' <button class="story-mini" data-go="route">루트 바꾸기</button>'}</div>` : ''}</div>
-      <div class="story-player-row" data-vr-player></div>
+      <div class="story-player-row" data-vr-player></div><div class="story-starbox-wrap" data-starbox></div>
       ${rows.map(r => `<div class="story-map ${rows.length > 1 ? 'story-map-row' : ''}">${r.map(node).join('')}</div>`).join('')}
       ${!serverMode && !window.__STORY_MOCK_USER ? '<div class="text-[11px] text-amber-400 text-center">⚠️ 서버 저장 준비 중이라 이 브라우저에만 저장돼요</div>' : ''}
       ${nextNo ? '' : `<div class="story-clear">✔ CLEAR ${nextOpen ? `<button class="story-btn" data-ch="${curCh + 1}">${esc(nextCh.title)} →</button>` : '<small>다음 챕터 준비 중</small>'}</div>`}
       <div class="text-center mt-2 flex flex-wrap gap-2 justify-center">${chapterDone(base) && videoOf(base) ? `<button class="story-back story-vid-btn" data-go="endvideo" title="엔딩 영상 다시 보기">🎬 엔딩</button>` : ''}${base.id <= 1 ? `<button class="story-back" data-go="opening" title="오프닝 다시 보기">${ic('opening', { alt: '' }) || '🎬'} 오프닝</button>` : ''}</div>
       </div></div>`);
+    starBox(base);   // 별 보상 상자 (마나 전투 별 합계 · ★9/★18/전부)
     bind({ stats: () => openStats(renderMap), opening: () => playOpening(renderMap), endvideo: () => endingVideo(base), route: () => renderRouteSelect(curCh),
       rule: () => popup(`<div class="text-lg font-black mb-2">⚔️ 스토리 전투</div><div class="text-sm text-zinc-300 leading-relaxed">출전 인재 최대 ${MAX_PICK()}명이 모두 필드에서 시작해요 (손패·드로우·용병 없음, 내 진영 없음).<br>내 인재가 모두 쓰러지거나 ${RULES_TURNS()}턴이 지나면 패배.<br>일반전은 상대 인재 전멸, 👑 보스전은 상대 진영 HP 0이면 승리.</div><button data-close-pop class="story-btn w-full mt-4">확인</button>`) }); playerPaint();
     root().querySelectorAll('[data-ch]').forEach(b => b.onclick = () => renderMap(+b.dataset.ch));
@@ -838,7 +869,7 @@
     if (!n || n <= starsOf(ch.id, ph.no)) return;
     save.stars = save.stars || {}; save.stars[ch.id] = { ...(save.stars[ch.id] || {}), [ph.no]: n };
     if (serverMode) { try { const { error } = await cloud().sb.rpc('story_set_stars', { p_chapter: ch.id, p_phase: ph.no, p_stars: n }); if (error) console.warn('[story] 별 저장', error.message); } catch {} }   // SQL 전이면 이 기기에만
-    cacheLocal();
+    cacheLocal(); starAt = 0;   // 별 보상 상자 다시 불러오기
   }
   const RULES_MAX_MY = () => Math.floor((window.TCG?.RULES?.MAX_TURNS || 40) / 2);
   function showConditions(ch, ph) {
