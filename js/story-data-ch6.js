@@ -146,7 +146,7 @@ window.STORY_DATA.chapters.push({
     "default": [
      {
       "speaker": "불량배-K",
-      "text": "아..언니..진짜 우리가 아는 건 그게 다예요."
+      "text": "아..언니..진짜 우리가 아는 건 그게 다에요."
      },
      {
       "speaker": "불량배-D",
@@ -377,7 +377,7 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "내레이션",
-      "text": "그리고 그들은 누군가에게 90도로 인사를 한다. 선글라스를 낀 아주 젊고 예쁜 여자아이에게.."
+      "text": "그리고 그들은 누군가에게 90도로 인사를 한다. 선그라스를 낀 아주 젊고 예쁜 여자아이에게.."
      },
      {
       "speaker": "문지아",
@@ -405,7 +405,7 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "내레이션",
-      "text": "그때 불량배들이 지아를 둘러쌌다."
+      "text": "그때 불량배들이 지아를 둘러 쌓았다."
      },
      {
       "speaker": "불량배-X",
@@ -464,7 +464,7 @@ window.STORY_DATA.chapters.push({
     "default": [
      {
       "speaker": "내레이션",
-      "text": "지아는 칼에 베인 배를 붕대로 감쌌다. 그리고 자신이 아끼던 단검을 꺼냈다."
+      "text": "지아는 칼에 베인 배를 붕대로 감쌓았다. 그리고 자신이 아끼던 단검을 꺼냈다."
      },
      {
       "speaker": "문지아",
@@ -588,7 +588,7 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "인창수",
-      "text": "아....진짜....저런 거 건드리기 싫은데...누님. 그냥 가면 안 될까?"
+      "text": "아....진짜....저런 거 건들이기 싫은데...누님. 그냥 가면 안 될까?"
      },
      {
       "speaker": "문지아",

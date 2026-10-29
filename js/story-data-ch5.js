@@ -11,16 +11,23 @@ window.STORY_DATA.chapters.push({
   {
    "no": 1,
    "type": "normal",
-   "enemyName": "남다윤",
+   "enemyName": "불량배-O",
    "title": "부회장",
    "enemies": {
     "ids": [
-     "10285",
-     "10092",
-     "10391",
-     "10222",
-     "10091"
-    ]
+     "10153",
+     "10154",
+     "10155",
+     "10156",
+     "10157"
+    ],
+    "storyLevels": {
+     "10153": 25,
+     "10154": 25,
+     "10155": 25,
+     "10156": 25,
+     "10157": 30
+    }
    },
    "lines": {
     "default": [
@@ -29,11 +36,11 @@ window.STORY_DATA.chapters.push({
       "text": "쉬는 시간. 2학년 교실."
      },
      {
-      "speaker": "남다윤",
+      "speaker": "불량배-O",
       "text": "야, 부회장. 넌 암 것도 안 하면서 부회장이냐?"
      },
      {
-      "speaker": "주예나",
+      "speaker": "불량배-M",
       "text": "얼굴로 뽑혔잖아. 다 알아~"
      },
      {
@@ -41,7 +48,7 @@ window.STORY_DATA.chapters.push({
       "text": "아… 그, 그런 거 아닌데…"
      },
      {
-      "speaker": "심버들",
+      "speaker": "불량배-N",
       "text": "목소리 좀 크게 해. 안 들려, 병X아."
      },
      {
@@ -49,7 +56,7 @@ window.STORY_DATA.chapters.push({
       "text": "겨울은 고개를 숙였다. 손끝이 떨렸다."
      },
      {
-      "speaker": "남소연",
+      "speaker": "불량배-L",
       "text": "봐봐. 대답도 못 하잖아 ㅋㅋ"
      },
      {
@@ -57,11 +64,11 @@ window.STORY_DATA.chapters.push({
       "text": "야! 그만 좀 해. 겨울이가 뭘 잘못했는데?"
      },
      {
-      "speaker": "윤세정",
+      "speaker": "불량배-K",
       "text": "넌 또 뭔데 끼어들어?"
      },
      {
-      "speaker": "남다윤",
+      "speaker": "불량배-O",
       "text": "둘 다 따라 나와. 오늘 끝장 보자."
      },
      {
@@ -83,21 +90,28 @@ window.STORY_DATA.chapters.push({
    "hero": [
     "10442"
    ],
-   "bossId": "10091"
+   "bossId": "10157"
   },
   {
    "no": 2,
    "type": "normal",
-   "enemyName": "허진서",
+   "enemyName": "불량배-Q",
    "title": "왜 이렇게 됐지",
    "enemies": {
     "ids": [
-     "10270",
-     "10090",
-     "10391",
-     "10222",
-     "10454"
-    ]
+     "10143",
+     "10158",
+     "10155",
+     "10156",
+     "10159"
+    ],
+    "storyLevels": {
+     "10143": 25,
+     "10158": 25,
+     "10155": 25,
+     "10156": 25,
+     "10159": 30
+    }
    },
    "lines": {
     "default": [
@@ -110,11 +124,11 @@ window.STORY_DATA.chapters.push({
       "text": "옆 반 불량한 애들까지 우르르 몰려왔다."
      },
      {
-      "speaker": "허진서",
+      "speaker": "불량배-Q",
       "text": "뭐야, 부회장이 사고 쳤다며?"
      },
      {
-      "speaker": "유진산",
+      "speaker": "불량배-A",
       "text": "우리 애들 때렸다고? 간도 크네."
      },
      {
@@ -123,7 +137,7 @@ window.STORY_DATA.chapters.push({
       "expr": "우울"
      },
      {
-      "speaker": "남다연",
+      "speaker": "불량배-P",
       "text": "시끄러. 같이 손봐 줄게."
      },
      {
@@ -153,7 +167,7 @@ window.STORY_DATA.chapters.push({
    "hero": [
     "10442"
    ],
-   "bossId": "10454"
+   "bossId": "10159"
   },
   {
    "no": 3,
@@ -162,9 +176,9 @@ window.STORY_DATA.chapters.push({
    "title": "악마자매",
    "enemies": {
     "ids": [
-     "10454",
-     "10285",
-     "10092",
+     "10159",
+     "10153",
+     "10154",
      "10357",
      "10360"
     ],
@@ -175,6 +189,12 @@ window.STORY_DATA.chapters.push({
       "DEF": 26,
       "power": 2241
      }
+    },
+    "storyLevels": {
+     "10159": 25,
+     "10153": 25,
+     "10154": 25,
+     "10357": 25
     }
    },
    "lines": {
@@ -204,7 +224,7 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "정아영",
-      "text": "우리 동네서 판을 벌이면 신고를 해야제."
+      "text": "우리 동네서 판을 벌리면 신고를 해야제."
      },
      {
       "speaker": "내레이션",
@@ -256,16 +276,23 @@ window.STORY_DATA.chapters.push({
   {
    "no": 4,
    "type": "normal",
-   "enemyName": "노정아",
+   "enemyName": "불량배-U",
    "title": "작은 잘못",
    "enemies": {
     "ids": [
-     "10090",
-     "10296",
-     "10175",
-     "10044",
-     "10095"
-    ]
+     "10158",
+     "10160",
+     "10161",
+     "10162",
+     "10163"
+    ],
+    "storyLevels": {
+     "10158": 25,
+     "10160": 25,
+     "10161": 25,
+     "10162": 25,
+     "10163": 30
+    }
    },
    "lines": {
     "default": [
@@ -305,12 +332,12 @@ window.STORY_DATA.chapters.push({
       "text": "가게를 나서는 순간, 누군가 앞을 막았다."
      },
      {
-      "speaker": "노정아",
+      "speaker": "불량배-U",
       "text": "어머~ 부회장님이 도둑질을?",
       "expr": "웃음"
      },
      {
-      "speaker": "이누리",
+      "speaker": "불량배-R",
       "text": "손에 든 거 뭐야? 다 봤다?",
       "expr": "웃음"
      },
@@ -320,7 +347,7 @@ window.STORY_DATA.chapters.push({
       "expr": "놀람"
      },
      {
-      "speaker": "노정아",
+      "speaker": "불량배-U",
       "text": "내놔. 안 내놓으면 맞고 내놓든가.",
       "expr": "화남"
      }
@@ -334,21 +361,28 @@ window.STORY_DATA.chapters.push({
    "hero": [
     "10442"
    ],
-   "bossId": "10095"
+   "bossId": "10163"
   },
   {
    "no": 5,
    "type": "normal",
-   "enemyName": "오채원",
+   "enemyName": "불량배-W",
    "title": "뿌러버릴라",
    "enemies": {
     "ids": [
-     "10285",
-     "10092",
-     "10222",
-     "10043",
-     "10257"
-    ]
+     "10153",
+     "10154",
+     "10156",
+     "10164",
+     "10165"
+    ],
+    "storyLevels": {
+     "10153": 25,
+     "10154": 25,
+     "10156": 25,
+     "10164": 25,
+     "10165": 30
+    }
    },
    "lines": {
     "default": [
@@ -396,7 +430,7 @@ window.STORY_DATA.chapters.push({
       "text": "우선 쟈들부터 좀 손봐 봐라. 우리 대신."
      },
      {
-      "speaker": "오채원",
+      "speaker": "불량배-W",
       "text": "정아영이 보냈다고? 그럼 놀아 줘야지.",
       "expr": "웃음"
      },
@@ -415,21 +449,28 @@ window.STORY_DATA.chapters.push({
    "hero": [
     "10442"
    ],
-   "bossId": "10257"
+   "bossId": "10165"
   },
   {
    "no": 6,
    "type": "normal",
-   "enemyName": "황보재규",
+   "enemyName": "불량배-D",
    "title": "왜 나에게 이런...",
    "enemies": {
     "ids": [
-     "10361",
-     "10102",
-     "10035",
-     "10419",
-     "10463"
-    ]
+     "10166",
+     "10167",
+     "10144",
+     "10145",
+     "10146"
+    ],
+    "storyLevels": {
+     "10166": 25,
+     "10167": 25,
+     "10144": 25,
+     "10145": 25,
+     "10146": 30
+    }
    },
    "lines": {
     "default": [
@@ -440,7 +481,7 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "내레이션",
-      "text": "그리고 자매의 요구는 점점 더 심해졌다. 겨울이 상상조차 하지 못했던 것들..."
+      "text": "자매의 요구는 점점 더 심해졌다. 돈 심부름, 대리 시험, 다른 아이 협박...겨울이 상상조차 하지 못했던 일들이었다."
      },
      {
       "speaker": "한겨울",
@@ -457,17 +498,17 @@ window.STORY_DATA.chapters.push({
       "text": "자매의 명령을 끝냈다. 온몸이 쑤신다. 그때, 낯선 패거리가 앞을 막았다."
      },
      {
-      "speaker": "황보재규",
+      "speaker": "불량배-D",
       "text": "그 봉투 뭐냐? 아영이 갖다 줄 거냐?",
       "expr": "웃음"
      },
      {
-      "speaker": "류하늬",
+      "speaker": "불량배-Y",
       "text": "너...걔들이 최근에 찍은 그 공주님이구나? 불쌍해라~",
       "expr": "웃음"
      },
      {
-      "speaker": "곽진영",
+      "speaker": "불량배-B",
       "text": "놓고 가. 그럼 안 건드릴게."
      },
      {
@@ -476,7 +517,7 @@ window.STORY_DATA.chapters.push({
       "expr": "놀람"
      },
      {
-      "speaker": "황보재규",
+      "speaker": "불량배-D",
       "text": "말로 하니까 개OO가 말을 안 듣네.",
       "expr": "화남"
      },
@@ -495,7 +536,7 @@ window.STORY_DATA.chapters.push({
    "hero": [
     "10442"
    ],
-   "bossId": "10463"
+   "bossId": "10146"
   },
   {
    "no": 7,
@@ -504,12 +545,19 @@ window.STORY_DATA.chapters.push({
    "title": "제발..제발...",
    "enemies": {
     "ids": [
-     "10150",
      "10152",
-     "10299",
-     "10433",
-     "10036"
-    ]
+     "10147",
+     "10148",
+     "10149",
+     "10150"
+    ],
+    "storyLevels": {
+     "10152": 25,
+     "10147": 25,
+     "10148": 25,
+     "10149": 25,
+     "10150": 30
+    }
    },
    "lines": {
     "default": [
@@ -544,11 +592,11 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "내레이션",
-      "text": "B급 안전지대의 환락가, 공기가 축축하고 무거웠다."
+      "text": "B급 안전지대의 불법 도박장 뒷골목. 공기가 축축하고 무거웠다."
      },
      {
       "speaker": "불량배-H",
-      "text": "정아영이 이런 꼬맹이를 보냈어? 얘 일 할 수 있나?"
+      "text": "정아영이 이런 꼬맹이를 보냈어? 얘가 수금을 할 수 있나?"
      },
      {
       "speaker": "불량배-I",
@@ -590,12 +638,19 @@ window.STORY_DATA.chapters.push({
    "title": "죽고싶어..아니, 살고싶어!",
    "enemies": {
     "ids": [
-     "10150",
      "10152",
-     "10299",
-     "10433",
-     "10321"
-    ]
+     "10147",
+     "10148",
+     "10143",
+     "10150"
+    ],
+    "storyLevels": {
+     "10152": 25,
+     "10147": 25,
+     "10148": 25,
+     "10143": 25,
+     "10150": 30
+    }
    },
    "lines": {
     "default": [
@@ -632,7 +687,7 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "불량배-H",
-      "text": "근데 아영이 빚 다 때우려면..어후..끔찍한데?"
+      "text": "근데 아영이 빚을 쟤 혼자 다 갚는다고? 어후..끔찍한데?"
      },
      {
       "speaker": "불량배-J",
@@ -666,16 +721,23 @@ window.STORY_DATA.chapters.push({
   {
    "no": 9,
    "type": "normal",
-   "enemyName": "서오성",
+   "enemyName": "불량배-D",
    "title": "나는 영원히 멈춘다",
    "enemies": {
     "ids": [
-     "10181",
      "10150",
      "10152",
-     "10136",
-     "10182"
-    ]
+     "10144",
+     "10145",
+     "10146"
+    ],
+    "storyLevels": {
+     "10150": 25,
+     "10152": 25,
+     "10144": 25,
+     "10145": 25,
+     "10146": 30
+    }
    },
    "lines": {
     "default": [
@@ -709,13 +771,13 @@ window.STORY_DATA.chapters.push({
       "expr": "놀람"
      },
      {
-      "speaker": "서오성",
+      "speaker": "불량배-D",
       "text": "어이, 아영이 노예X~ 너 걔들 돈 갖고 있지?",
       "expr": "웃음"
      },
      {
-      "speaker": "서진성",
-      "text": "오늘 돈 안 가져왔지? 대신 몸으로 때우고 가~"
+      "speaker": "불량배-C",
+      "text": "오늘 돈 안 가져왔지? 대신 맞고 가~ 한 대에 만 원씩 깎아 줄게~"
      },
      {
       "speaker": "한겨울",
@@ -738,7 +800,7 @@ window.STORY_DATA.chapters.push({
    "hero": [
     "10442"
    ],
-   "bossId": "10181",
+   "bossId": "10146",
    "after": [
     {
      "speaker": "내레이션",
@@ -786,9 +848,9 @@ window.STORY_DATA.chapters.push({
    "enemies": {
     "ids": [
      "10357",
-     "10354",
-     "10321",
-     "10067",
+     "10168",
+     "10143",
+     "10147",
      "10360"
     ],
     "boost": {
@@ -804,6 +866,11 @@ window.STORY_DATA.chapters.push({
       "DEF": 30,
       "power": 7800
      }
+    },
+    "storyLevels": {
+     "10168": 25,
+     "10143": 25,
+     "10147": 25
     }
    },
    "lines": {
@@ -915,6 +982,10 @@ window.STORY_DATA.chapters.push({
  ],
  "tagline": "예쁘고 착한, 평범한 소녀.\n학교에서는 '공부 잘하는 예쁘고 조용한 애'로 통한다.\n어느 날, 겨울은 사건에 휘말리게 된다.",
  "start": [
+  {
+   "speaker": "내레이션",
+   "text": "예쁘고 착한, 평범한 소녀. 학교에서는 '공부 잘하는 예쁘고 조용한 애'로 통한다. 어느 날, 겨울은 사건에 휘말리게 된다."
+  },
   {
    "speaker": "내레이션",
    "text": "S급 안전지대. 넓고 조용한 집."

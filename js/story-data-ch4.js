@@ -11,15 +11,15 @@ window.STORY_DATA.chapters.push({
   {
    "no": 1,
    "type": "normal",
-   "enemyName": "남고은",
+   "enemyName": "불량배-O",
    "title": "딴따라",
    "enemies": {
     "ids": [
-     "10426",
-     "10121",
-     "10194",
-     "10268",
-     "10087"
+     "10153",
+     "10154",
+     "10155",
+     "10156",
+     "10157"
     ]
    },
    "lines": {
@@ -29,17 +29,17 @@ window.STORY_DATA.chapters.push({
       "text": "S급 안전지대. 전학 첫날의 교실."
      },
      {
-      "speaker": "탁동혜",
+      "speaker": "불량배-K",
       "text": "어머, 얘가 그 영상 걔야? 딴따라?",
       "expr": "웃음"
      },
      {
-      "speaker": "박샘",
+      "speaker": "불량배-L",
       "text": "딴따라 주제에 여기서 공부를 하시겠다고?",
       "expr": "웃음"
      },
      {
-      "speaker": "설하늘",
+      "speaker": "불량배-M",
       "text": "냄새 나. B급 냄새."
      },
      {
@@ -51,12 +51,12 @@ window.STORY_DATA.chapters.push({
       "text": "민채는 아무 말도 하지 못했다."
      },
      {
-      "speaker": "유나리",
+      "speaker": "불량배-N",
       "text": "교복도 물려받은 거지? 티 다 나~",
       "expr": "웃음"
      },
      {
-      "speaker": "남고은",
+      "speaker": "불량배-O",
       "text": "그 엄마에 그 딸이지 뭐. 집구석 꼴 뻔하다.",
       "expr": "웃음"
      },
@@ -66,13 +66,13 @@ window.STORY_DATA.chapters.push({
       "expr": "화남"
      },
      {
-      "speaker": "남고은",
+      "speaker": "불량배-O",
       "text": "어쩔? 열받았어? 가난뱅이 딴따라?",
       "expr": "웃음"
      },
      {
       "speaker": "이민채",
-      "text": "남고은! 그 입 다물어!!",
+      "text": "그 입 다물어!!",
       "expr": "화남"
      }
     ]
@@ -85,20 +85,20 @@ window.STORY_DATA.chapters.push({
    "hero": [
     "10300"
    ],
-   "bossId": "10087"
+   "bossId": "10157"
   },
   {
    "no": 2,
    "type": "normal",
-   "enemyName": "탁동탁",
+   "enemyName": "불량배-P",
    "title": "나는 왜 여기에",
    "enemies": {
     "ids": [
-     "10426",
-     "10121",
-     "10268",
-     "10087",
-     "10425"
+     "10153",
+     "10154",
+     "10156",
+     "10157",
+     "10158"
     ]
    },
    "lines": {
@@ -112,13 +112,13 @@ window.STORY_DATA.chapters.push({
       "text": "체육관 뒤 창고. 막다른 곳이었다."
      },
      {
-      "speaker": "탁동혜",
-      "text": "오빠! 얘야, 얘. 아까 나 밀친 애!",
+      "speaker": "불량배-K",
+      "text": "언니! 얘야, 얘. 아까 나 밀친 애!",
       "expr": "화남"
      },
      {
-      "speaker": "탁동탁",
-      "text": "이게 우리 동혜를 건드렸어?",
+      "speaker": "불량배-P",
+      "text": "이게 감히 내 동생을 건드렸어?",
       "expr": "웃음"
      },
      {
@@ -126,12 +126,12 @@ window.STORY_DATA.chapters.push({
       "text": "먼저… 먼저 시비 건 건 그쪽이잖아."
      },
      {
-      "speaker": "박샘",
+      "speaker": "불량배-L",
       "text": "B급 출신이 말대답도 하네? ㅋㅋ",
       "expr": "웃음"
      },
      {
-      "speaker": "탁동탁",
+      "speaker": "불량배-P",
       "text": "여긴 S급이야. 너 같은 건 원래 못 들어와."
      },
      {
@@ -139,13 +139,13 @@ window.STORY_DATA.chapters.push({
       "text": "…나는 왜 여기 온 걸까."
      },
      {
-      "speaker": "탁동탁",
+      "speaker": "불량배-P",
       "text": "혼잣말하냐? 개OO 같은 게.",
       "expr": "화남"
      },
      {
       "speaker": "이민채",
-      "text": "탁동탁… 비켜. 안 비키면 나도 안 참아.",
+      "text": "비켜. 안 비키면 나도 안 참아.",
       "expr": "화남"
      }
     ]
@@ -158,11 +158,11 @@ window.STORY_DATA.chapters.push({
    "hero": [
     "10300"
    ],
-   "bossId": "10425",
+   "bossId": "10158",
    "after": [
     {
-     "speaker": "탁동혜",
-     "text": "오, 오빠! 일어나 봐!"
+     "speaker": "불량배-K",
+     "text": "어, 언니! 일어나 봐!"
     },
     {
      "speaker": "이민채",
@@ -174,15 +174,15 @@ window.STORY_DATA.chapters.push({
   {
    "no": 3,
    "type": "normal",
-   "enemyName": "김소영",
+   "enemyName": "불량배-Q",
    "title": "행복하세요?",
    "enemies": {
     "ids": [
-     "10078",
-     "10239",
-     "10343",
-     "10308",
-     "10061"
+     "10160",
+     "10161",
+     "10162",
+     "10163",
+     "10159"
     ]
    },
    "lines": {
@@ -196,30 +196,30 @@ window.STORY_DATA.chapters.push({
       "text": "익숙한 얼굴들이 골목을 막아섰다. 예전 친구들이었다."
      },
      {
-      "speaker": "김소영",
+      "speaker": "불량배-Q",
       "text": "어휴~ 우리 아이돌님! 행복하세요?",
       "expr": "웃음"
      },
      {
-      "speaker": "김한별",
+      "speaker": "불량배-R",
       "text": "S급 물 먹으니까 우리는 눈에도 안 보이지?",
       "expr": "웃음"
      },
      {
       "speaker": "이민채",
-      "text": "소영아… 그런 거 아니야."
+      "text": "아니야… 그런 거 아니야."
      },
      {
-      "speaker": "양유영",
+      "speaker": "불량배-S",
       "text": "연락 한 통 없었잖아. 잘난 척은."
      },
      {
-      "speaker": "전미성",
+      "speaker": "불량배-T",
       "text": "사인 좀 해 줘요~ 나중에 팔게. ㅋㅋ",
       "expr": "웃음"
      },
      {
-      "speaker": "이윤이",
+      "speaker": "불량배-U",
       "text": "…솔직히 네가 뭐가 잘났는데?"
      },
      {
@@ -227,13 +227,13 @@ window.STORY_DATA.chapters.push({
       "text": "거기서도 여기서도… 나는 어디에도 없네."
      },
      {
-      "speaker": "김소영",
+      "speaker": "불량배-Q",
       "text": "뭐라고 중얼거려? 사람 무시하냐?",
       "expr": "화남"
      },
      {
       "speaker": "이민채",
-      "text": "김소영! 그만해. 진짜 그만해!!",
+      "text": "그만해. 진짜 그만해!!",
       "expr": "화남"
      }
     ]
@@ -246,20 +246,20 @@ window.STORY_DATA.chapters.push({
    "hero": [
     "10300"
    ],
-   "bossId": "10061"
+   "bossId": "10159"
   },
   {
    "no": 4,
    "type": "normal",
-   "enemyName": "유아리",
+   "enemyName": "불량배-V",
    "title": "태양",
    "enemies": {
     "ids": [
-     "10268",
-     "10216",
-     "10217",
-     "10061",
-     "10269"
+     "10156",
+     "10165",
+     "10166",
+     "10159",
+     "10164"
     ]
    },
    "lines": {
@@ -269,17 +269,17 @@ window.STORY_DATA.chapters.push({
       "text": "다음 날, 학교 복도 구석."
      },
      {
-      "speaker": "유아리",
+      "speaker": "불량배-V",
       "text": "어제 B급 친구들한테도 털렸다며? ㅋㅋ",
       "expr": "웃음"
      },
      {
-      "speaker": "신아은",
+      "speaker": "불량배-W",
       "text": "어디 가도 환영 못 받네. 불쌍해라~",
       "expr": "웃음"
      },
      {
-      "speaker": "신예은",
+      "speaker": "불량배-X",
       "text": "울어? 와, 진짜 운다."
      },
      {
@@ -293,10 +293,10 @@ window.STORY_DATA.chapters.push({
      {
       "speaker": "임유리",
       "text": "어머, 못생긴 애들이 성격도 더럽네~",
-      "expr": "싸늘"
+      "expr": "웃음"
      },
      {
-      "speaker": "유나리",
+      "speaker": "불량배-N",
       "text": "이… 임유리?! 네가 왜 여기…"
      },
      {
@@ -312,7 +312,7 @@ window.STORY_DATA.chapters.push({
      {
       "speaker": "임유리",
       "text": "당연하지. 자, 일어나. 같이 혼내 주자.",
-      "expr": "장난"
+      "expr": "웃음"
      },
      {
       "speaker": "내레이션",
@@ -330,7 +330,7 @@ window.STORY_DATA.chapters.push({
     "10300",
     "10325"
    ],
-   "bossId": "10269",
+   "bossId": "10164",
    "rules": {
     "mustLive": [
      "10300"
@@ -339,13 +339,13 @@ window.STORY_DATA.chapters.push({
    "tip": "💔 이민채가 쓰러지면 패배",
    "after": [
     {
-     "speaker": "유아리",
+     "speaker": "불량배-V",
      "text": "유, 유리야. 우린 그냥 장난친 거야…"
     },
     {
      "speaker": "임유리",
      "text": "장난? 나도 장난이었어. 꺼져~",
-     "expr": "싸늘"
+     "expr": "웃음"
     },
     {
      "speaker": "내레이션",
@@ -357,15 +357,15 @@ window.STORY_DATA.chapters.push({
   {
    "no": 5,
    "type": "normal",
-   "enemyName": "김나현",
+   "enemyName": "불량배-Y",
    "title": "너만 있으면 돼",
    "enemies": {
     "ids": [
-     "10268",
-     "10269",
-     "10216",
-     "10217",
-     "10052"
+     "10156",
+     "10164",
+     "10165",
+     "10166",
+     "10167"
     ]
    },
    "lines": {
@@ -382,23 +382,23 @@ window.STORY_DATA.chapters.push({
      {
       "speaker": "임유리",
       "text": "알아~ 너 표정에 다 써 있어.",
-      "expr": "장난"
+      "expr": "웃음"
      },
      {
       "speaker": "내레이션",
       "text": "학교 최고 스타 곁에 B급 출신이라니. 시선이 따가웠다."
      },
      {
-      "speaker": "김나현",
+      "speaker": "불량배-Y",
       "text": "쟤 뭔데 유리 옆에 딱 붙어 있어?",
       "expr": "화남"
      },
      {
-      "speaker": "신예은",
+      "speaker": "불량배-X",
       "text": "유리가 동정해 주는 거지. 착각하지 마."
      },
      {
-      "speaker": "유나리",
+      "speaker": "불량배-N",
       "text": "조용히 처리하자. 유리 모르게."
      },
      {
@@ -407,13 +407,13 @@ window.STORY_DATA.chapters.push({
       "expr": "싸늘"
      },
      {
-      "speaker": "김나현",
+      "speaker": "불량배-Y",
       "text": "유, 유리야… 그게…"
      },
      {
       "speaker": "임유리",
-      "text": "김나현. 내 거 건드리는 거 싫어해, 나.",
-      "expr": "분노"
+      "text": "너. 내 거 건드리는 거 싫어해, 나.",
+      "expr": "화남"
      },
      {
       "speaker": "이민채",
@@ -432,7 +432,7 @@ window.STORY_DATA.chapters.push({
     "10300",
     "10325"
    ],
-   "bossId": "10052",
+   "bossId": "10167",
    "rules": {
     "mustLive": [
      "10300"
@@ -443,15 +443,15 @@ window.STORY_DATA.chapters.push({
   {
    "no": 6,
    "type": "normal",
-   "enemyName": "김한결",
+   "enemyName": "불량배-Q",
    "title": "소원",
    "enemies": {
     "ids": [
-     "10256",
-     "10268",
-     "10121",
-     "10426",
-     "10077"
+     "10168",
+     "10156",
+     "10154",
+     "10153",
+     "10159"
     ]
    },
    "lines": {
@@ -475,12 +475,12 @@ window.STORY_DATA.chapters.push({
       "text": "유리 생각에 혼자 걷던 길. 누군가 앞을 막았다."
      },
      {
-      "speaker": "김한결",
+      "speaker": "불량배-Q",
       "text": "어라? 오늘은 공주님 경호원 없네?",
       "expr": "웃음"
      },
      {
-      "speaker": "탁동혜",
+      "speaker": "불량배-K",
       "text": "유리가 버렸대~ 소문 쫙 났어.",
       "expr": "웃음"
      },
@@ -490,17 +490,17 @@ window.STORY_DATA.chapters.push({
       "expr": "슬픔"
      },
      {
-      "speaker": "오유나",
+      "speaker": "불량배-Z",
       "text": "요즘 유리 옆에 딴 애 있던데? 몰랐어?"
      },
      {
-      "speaker": "박샘",
+      "speaker": "불량배-L",
       "text": "장난감 유통기한 끝났나 보지. ㅋㅋ",
       "expr": "웃음"
      },
      {
       "speaker": "이민채",
-      "text": "김한결… 유리 얘기 함부로 하지 마!!",
+      "text": "유리 얘기 함부로 하지 마!!",
       "expr": "화남"
      }
     ]
@@ -513,7 +513,7 @@ window.STORY_DATA.chapters.push({
    "hero": [
     "10300"
    ],
-   "bossId": "10077",
+   "bossId": "10159",
    "rules": {
     "mustLive": [
      "10300"
@@ -536,10 +536,10 @@ window.STORY_DATA.chapters.push({
    "title": "1%",
    "enemies": {
     "ids": [
-     "10268",
-     "10121",
-     "10426",
-     "10077",
+     "10156",
+     "10154",
+     "10153",
+     "10159",
      "10072"
     ]
    },
@@ -554,7 +554,7 @@ window.STORY_DATA.chapters.push({
       "text": "유리의 곁에서 웃고 있는, 너무도 아름다운 여자를."
      },
      {
-      "speaker": "유나리",
+      "speaker": "불량배-N",
       "text": "김지수야. 대한민국 1%. 유리의 새 연인.",
       "expr": "웃음"
      },
@@ -621,10 +621,10 @@ window.STORY_DATA.chapters.push({
    "title": "one of them",
    "enemies": {
     "ids": [
-     "10288",
-     "10462",
-     "10073",
-     "10256",
+     "10160",
+     "10161",
+     "10162",
+     "10168",
      "10072"
     ]
    },
@@ -640,16 +640,16 @@ window.STORY_DATA.chapters.push({
       "expr": "웃음"
      },
      {
-      "speaker": "윤은별",
+      "speaker": "불량배-R",
       "text": "지수야! 괜찮아?"
      },
      {
-      "speaker": "황보예",
+      "speaker": "불량배-S",
       "text": "감히 지수를 건드려?",
       "expr": "화남"
      },
      {
-      "speaker": "김지우",
+      "speaker": "불량배-T",
       "text": "유리가 그러더라. 걔 그냥 심심풀이였다고."
      },
      {
@@ -658,7 +658,7 @@ window.STORY_DATA.chapters.push({
       "expr": "슬픔"
      },
      {
-      "speaker": "오유나",
+      "speaker": "불량배-Z",
       "text": "너 only one 아니었어. one of them이었지.",
       "expr": "웃음"
      },
@@ -710,10 +710,10 @@ window.STORY_DATA.chapters.push({
    "title": "버리지 마",
    "enemies": {
     "ids": [
-     "10462",
-     "10073",
+     "10161",
+     "10162",
      "10072",
-     "10256",
+     "10168",
      "10325"
     ]
    },
@@ -740,7 +740,7 @@ window.STORY_DATA.chapters.push({
      {
       "speaker": "임유리",
       "text": "그게 문제야. 너무 쉽잖아. 재미없어.",
-      "expr": "장난"
+      "expr": "웃음"
      },
      {
       "speaker": "김지수",
@@ -844,13 +844,13 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "이민채",
-      "text": "그래, 유리야. 나를 가져가.",
-      "expr": "미침"
+      "text": "그래, 유리야. 나를 영원히 잊지 못하게 해 줄게.",
+      "expr": "웃음"
      },
      {
       "speaker": "이민채",
       "text": "내 모든 걸 너라는 호수에 바칠게.",
-      "expr": "미침"
+      "expr": "웃음"
      },
      {
       "speaker": "내레이션",
@@ -873,12 +873,12 @@ window.STORY_DATA.chapters.push({
      {
       "speaker": "임유리",
       "text": "알아서 지쳐 쓰러지겠지. 시간이나 끌자.",
-      "expr": "싸늘"
+      "expr": "웃음"
      },
      {
       "speaker": "이민채",
       "text": "유리야!!!!!!!! 나만 봐!!!!!!!!",
-      "expr": "미침"
+      "expr": "화남"
      }
     ]
    },
@@ -935,6 +935,10 @@ window.STORY_DATA.chapters.push({
  "start": [
   {
    "speaker": "내레이션",
+   "text": "아이돌을 꿈꾸던 소녀. 유명세를 타고 S급 안전지대의 학교에 왔지만, 그곳에서 만난 건… 태양보다 빛나는 한 아이였다."
+  },
+  {
+   "speaker": "내레이션",
    "text": "B급 안전지대. 좁은 연습실 거울 앞."
   },
   {
@@ -976,7 +980,7 @@ window.STORY_DATA.chapters.push({
   {
    "speaker": "임유리",
    "text": "누구? 아, 걔. 몰라.",
-   "expr": "싸늘"
+   "expr": "웃음"
   },
   {
    "speaker": "임유리",

@@ -203,11 +203,11 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "불량배-P",
-      "text": "오..쟤 알바 5개 하는 예쁘니잖아. 쟤 레이싱모델도 한다. ㅋㅋㅋ"
+      "text": "오..쟤 알바 5개 하는 독한 애잖아. 돈 꽤 모았다더라. ㅋㅋㅋ"
      },
      {
       "speaker": "불량배-Q",
-      "text": "오...저거 팔면 돈 좀 되겠는데? 언니~ 우리랑 일 좀 할래?"
+      "text": "오...그럼 저거 털면 돈 좀 되겠는데? 언니~ 우리한테 매달 상납 좀 할래?"
      },
      {
       "speaker": "조윤이",
@@ -664,11 +664,11 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "불량배-S",
-      "text": "아..더러워..ㅋㅋ 성관아. 니 입으로 말해라."
+      "text": "ㅋㅋ 친언니를 팔아넘기겠다고? 독하다 독해. 성관아, 니가 조건 말해 줘라."
      },
      {
       "speaker": "박성관",
-      "text": "그 있잖아...너만 할 수 있는 정성을 보이는 방식?"
+      "text": "ㅋㅋㅋ 돈은 됐고, 주먹으로 증명해봐. 우리 애들 다 이기면 믿어 줄게."
      }
     ]
    },
@@ -724,13 +724,13 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "박성관",
-      "expr": "웃음",
-      "text": "우리 윤하는~ 우리 윤하는~ 우리랑 신나는 시간을~~"
+      "text": "우리 윤하는~ 우리 윤하는~ 언니를 팔았대요~ 돈 몇 푼에~~",
+      "expr": "웃음"
      },
      {
       "speaker": "박성관",
       "expr": "웃음",
-      "text": "그 대가는 뭘까요~ 우리 윤하 병X년~ 정신병자~"
+      "text": "그 댓가는 뭘까요~ 우리 윤하 병X년~ 정신병자~"
      },
      {
       "speaker": "불량배-S",
@@ -757,7 +757,7 @@ window.STORY_DATA.chapters.push({
      {
       "speaker": "박성관",
       "expr": "웃음",
-      "text": "아… 그 나이스한 애가 니 동생 윤하냐? ㅋㅋㅋㅋ"
+      "text": "아… 언니 팔아넘긴 그 정신병자가 니 동생 윤하냐? ㅋㅋㅋㅋ"
      },
      {
       "speaker": "서태우",
@@ -787,7 +787,7 @@ window.STORY_DATA.chapters.push({
     },
     {
      "speaker": "박성관",
-      "expr": "웃음",
+     "expr": "웃음",
      "text": "ㅋㅋㅋ 그래도 너 오래 버텼다."
     },
     {
@@ -847,7 +847,7 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "내레이션",
-      "text": "허름한 아지트. 윤하는 부들부들 떨고 있다."
+      "text": "허름한 골목 안. 윤하는 부들부들 떨고 있다."
      },
      {
       "speaker": "박성관",
@@ -885,7 +885,7 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "소민섭",
-      "text": "얘가 신입이야? 몸은 예쁘네."
+      "text": "얘가 신입이야? 눈빛은 아직 안 죽었네. 금방 죽겠지만."
      },
      {
       "speaker": "조윤하",
@@ -930,8 +930,8 @@ window.STORY_DATA.chapters.push({
    "after": [
     {
      "speaker": "소민섭",
-      "expr": "웃음",
-     "text": "너 뭔 상상하냐? 빨리 일하러 안 가냐?"
+     "expr": "웃음",
+     "text": "너 뭘 꼬나봐? 그 눈 깔고 빨리 일하러 안 가냐?"
     },
     {
      "speaker": "조윤하",
@@ -939,7 +939,7 @@ window.STORY_DATA.chapters.push({
     },
     {
      "speaker": "소민섭",
-      "expr": "화남",
+     "expr": "화남",
      "text": "할당량 못 채우면 오늘 밥은 없다. 알지?"
     }
    ],
@@ -949,6 +949,10 @@ window.STORY_DATA.chapters.push({
  ],
  "tagline": "어린 시절 끔찍한 경험.\n윤하는 말을 잃었다. 그리고 어디에서나 빛나는\n저 언니를… 증오한다.",
  "start": [
+  {
+   "speaker": "내레이션",
+   "text": "어린 시절 끔찍한 경험. 윤하는 말을 잃었다. 그리고 어디에서나 빛나는 저 언니를… 증오한다."
+  },
   {
    "speaker": "내레이션",
    "text": "B급 안전지대. 허름한 빌라."
