@@ -354,6 +354,7 @@ export function ownsCard(p, id) { id = String(id); return [...p.deck, ...p.hand,
 export function refillMana(p) {
   p.turnsTaken = (p.turnsTaken || 0) + 1;   // 자기 턴 수 (영웅 공격 잠금 판정용)
   p.used = {};                            // 턴당 1회 액션 사용 기록 초기화
+  if (p.manaPool) { const b = p.bonusMana || 0; p.mana = Math.max(p.mana || 0, 0) + b; p.bonusMana = 0; return b; }   // 스토리 제한 마나: 턴마다 충전 없음
   p.maxMana = RULES.MANA_MAX;
   const gain = p.turnsTaken === 1 ? RULES.MANA_START : RULES.MANA_PER_TURN + (p.accel || 0) * RULES.ACCEL_BONUS;
   p.mana = Math.min(RULES.MANA_MAX, Math.max(p.mana || 0, 0) + gain) + (p.bonusMana || 0);

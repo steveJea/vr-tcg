@@ -131,6 +131,10 @@ async function autoTurn() {
       await vidWait();
       while ((S.busy || autoBlocked()) && !S.over) await sleep(80);
       if (!autoActive() || S.turn !== 'me') return;
+      if (S.me.manaPool) {   // 제한 마나 자동: 필수 인재 먼저, 그다음 낼 수 있는 가장 비싼 카드로 빈 칸 채우기
+        const can = affordable(), must = mustLeft(), c = can.find(x => must.includes(String(x.id))) || can.sort((a, b) => b.cost - a.cost)[0];
+        if (c) { summon('me', c); await sleep(AI_DELAY()); continue; }
+      }
       const a = autoNext(S.me, S.ai, turn);
       if (!a) break;
       if (a.kind === 'skill') { noteUsed(turn, a.s); await castSkill('me', a.u, a.s); }
@@ -165,6 +169,7 @@ function startGame(story = null) {
   const first = story?.first || (Math.random() < 0.5 ? 'me' : 'ai');   // 선공 동전 던지기
   if (!story) { try { window.VRSound?.setTrack?.('audio/arcade_battle.mp3'); } catch {} }   // 아케이드 전용 BGM (ARCADE_MODE) (나가면 메인으로)
   const fs = !!story;   // 스토리: 손패 없이 출전 카드 전부 필드에서 시작
+  const MP = story && Number.isFinite(story.manaPool) ? Math.max(0, Math.round(story.manaPool)) : null;   // 스토리 제한 마나: 전투 시작에 한 번, 다시 차지 않음 (story.js 에서만 줌)
   const ao = story ? ArcadeOpts.DEF : ArcadeOpts.load(), grades = story ? null : allowedGrades(ao);
   const gPool = grades ? POOL.filter(c => grades.has(c.grade)) : null;
   S = { me: newPlayer('나', first !== 'me', story?.me, story?.meHp, fs, grades), ai: newPlayer(story?.aiName || '적군', first !== 'ai', story?.ai, story?.aiHp, fs, grades), opts: ao, maxTurns: story ? RULES.MAX_TURNS : (ao.turns || Infinity), first, story, turn: first, turnNo: 0, totalTurns: 0, myTurns: 0, over: false, busy: false, fxSeen: new Set(), mercBought: 0, mercHired: null, mercOffer: [], log: { dmg: new Map(), total: 0, skills: 0, merc: null, played: new Set(), kills: {} } };
@@ -192,12 +197,12 @@ function startGame(story = null) {
     S.holdPassive = [];   // 0턴 패시브 컷인은 UR 등장 컷인 뒤로 미룸 (아래 onEnter 뒤에 재생)
     for (const who of ['me', 'ai']) {
       const p = S[who];
+      if (who === 'me' && MP) { p.hand = p.deck.splice(0); continue; }   // 제한 마나: 출전 카드는 손패로, 코스트 내고 소환
       for (const c of p.deck.splice(0, RULES.FIELD_MAX)) {
         const u = placeUnit(p, c, makeUnit);
         if (who === 'me') S.log.played.add(String(c.id));
-        if (who === 'me' && story.leader && c.uid && c.uid === story.leader.uid && !p.field.some(x => x.isLeader)) { u.isLeader = true; p.leaderSkill = story.leader; }
+        if (who === 'me') storyMeInit(u, c);
         if (who === 'ai' && story.bossId != null && String(c.id) === String(story.bossId) && !p.field.some(x => x.undying)) { u.undying = true; u.boss = true; }
-        if (who === 'me') { const lv = +(story.meLevels?.[String(c.id)] || 0); while (u.level < Math.min(lv, RULES.LEVEL_MAX)) levelUpOnce(u); if (story.fullMp) u.mp = u.maxMp; }   // 챕터 0: 내 카드 시작 레벨(party.battleLevels) · 시작 MP 가득
         if (who === 'ai') { const lv = +(story.enemyLevels?.[String(c.id)] || 0); while (u.level < Math.min(lv, RULES.LEVEL_MAX)) levelUpOnce(u); }   // 페이즈 적 시작 레벨 (enemies.levels)
         if (who === 'ai' && (story.rules?.undying || []).map(String).includes(String(c.id))) u.undying = true;   // 불사 적 (피해는 받지만 쓰러지지 않음)
         if (who === 'ai' && story.rules?.invuln != null && String(c.id) === String(story.rules.invuln) && !p.field.some(x => x.noDamage)) { u.undying = true; u.noDamage = true; u.boss = true; }
@@ -216,7 +221,15 @@ function startGame(story = null) {
     if (S.me.leaderSkill) log(`👑 리더 스킬 [${S.me.leaderSkill.name} · ${S.me.leaderSkill.label}]: ${S.me.leaderSkill.text}. 리더가 쓰러지면 해제되고 아군 진영 HP −${Math.round((S.me.leaderSkill.deathPenalty ?? 0.3) * 100)}%`, 'text-amber-300');
     log(story.win === 'ko' ? '👑 보스전: 보스는 진영 안에서 쓰러지지 않아요. 상대 진영 HP를 0으로!' : '⚔️ 일반전: 상대 카드를 모두 쓰러뜨리세요!', 'text-amber-300');
   }
-  if (fs) log('⚔️ 출전 카드가 모두 필드에서 시작합니다 (손패·드로우 없음).', 'text-emerald-400');
+  if (MP != null) {
+    S.me.manaPool = true; S.me.mana = S.me.maxMana = MP;
+    const need = (story.mustSummon || []).map(String).filter(id => S.me.hand.some(c => String(c.id) === id));
+    S.mustSummon = need.length ? { ids: need, by: need.length >= 2 ? 3 : 2 } : null;
+    $('game').classList.add('story-pool');
+    log(`${'💧'} 제한 마나 ${MP}: 이 전투 동안 다시 차지 않아요. 손패 카드를 코스트만큼 내고 소환하세요 (쓰러진 카드 코스트는 돌아오지 않음).`, 'text-sky-300');
+    if (S.mustSummon) log(`📌 필수 인재 ${S.mustSummon.ids.map(id => S.me.hand.find(c => String(c.id) === id)?.name).join('·')}: 내 ${S.mustSummon.by}번째 턴이 끝나기 전에 소환해야 해요.`, 'text-amber-300');
+  } else { $('game').classList.remove('story-pool'); S.mustSummon = null; }
+  if (fs && MP == null) log('⚔️ 출전 카드가 모두 필드에서 시작합니다 (손패·드로우 없음).', 'text-emerald-400');
   if (!story && !ArcadeOpts.isDefault(ao)) log(`🎛️ 게임 설정: ${ArcadeOpts.summary(ao)}`, 'text-amber-300');
   if (!fs) log(first === 'me' ? '🪙 동전 던지기: 내가 선공!' : `🪙 동전 던지기: 컴퓨터가 선공! (나는 후공, 시작 손패 +${RULES.SECOND_PLAYER_BONUS_CARDS})`, 'text-emerald-400');
   $('me-order').textContent = first === 'me' ? '선공' : '후공';
@@ -224,6 +237,17 @@ function startGame(story = null) {
   if (S.kick) { S.turn = 'wait'; render(); }   // 시작 전: 카드는 보이지만 아무 행동 불가
   if (S.kick) { const s0 = S; S.kick.then(() => setTimeout(() => { if (S === s0 && !S.over) { startTurn(first); render(); } }, 1200)); } else startTurn(first);
 }
+
+/** 스토리 내 카드 전투 준비: 리더 표시 · 시작 레벨 · 시작 MP (필드 시작이든 소환이든 공통) */
+function storyMeInit(u, c) {
+  const story = S.story, p = S.me; if (!story) return;
+  if (story.leader && c.uid && c.uid === story.leader.uid && !p.field.some(x => x !== u && x.isLeader)) { u.isLeader = true; p.leaderSkill = story.leader; }
+  const lv = +(story.meLevels?.[String(c.id)] || 0); while (u.level < Math.min(lv, RULES.LEVEL_MAX)) levelUpOnce(u); if (story.fullMp) u.mp = u.maxMp;   // 챕터 0: 내 카드 시작 레벨(party.battleLevels) · 시작 MP 가득
+}
+/** 제한 마나: 남은 필수 인재 (아직 소환 안 함) */
+const mustLeft = () => S?.mustSummon ? S.mustSummon.ids.filter(id => !S.log.played.has(id)) : [];
+/** 제한 마나: 손패에서 지금 낼 수 있는 카드 */
+const affordable = () => (S.me.hand || []).filter(c => { try { return canSummon(c, S.me, S.ai).ok; } catch { return false; } });
 
 function startTurn(who) {
   const p = S[who];
@@ -276,6 +300,7 @@ function summon(who, card) {
   log(`${p.name}: ${card.name} 소환 (코스트 ${card.cost})`);
   if (who === 'me' && S.story) S.log.played.add(String(card.id));   // 스토리: 참전 카드 기록 (EXP 지급용)
   const u = placeUnit(p, card, makeUnit, true);   // 새로 소환한 카드는 필드 맨 앞
+  if (who === 'me' && p.manaPool) { storyMeInit(u, card); refreshAll(p); }
   playSe(card.grade === 'MYTHIC RARE' || card.grade === 'LEGENDARY RARE' ? 6 : card.grade === 'ULTRA RARE' ? 5 : 2);
   render();
   onEnter(who, u);
@@ -611,7 +636,7 @@ function checkEnd() {
     if (S.mustLiveDown) return finish(false, 'mustlive');
     awakenCheck();
     if (S.story.win === 'wipe' && gone(S.ai)) return finish(true, 'wipe');   // 그 순간 적 카드가 모두 쓰러져 있으면 승리 (부활 대기 중이어도)
-    if (gone(S.me)) return finish(false, 'wipe');
+    if (S.me.manaPool ? !S.me.field.length && !affordable().length : gone(S.me)) return finish(false, 'wipe');   // 제한 마나: 필드가 비고 낼 수 있는 손패도 없으면 패배
   }
   return false;
 }
@@ -671,6 +696,7 @@ function endTurn() {
   selected = null;
   endTurnXp(S.me); turnEnd(S.me);
   render();
+  if (S.mustSummon && S.myTurns >= S.mustSummon.by && mustLeft().length) { S.mustSummonMiss = mustLeft().map(id => S.me.hand.find(c => String(c.id) === id)?.name).filter(Boolean).join('·'); log(`📌 필수 인재 ${S.mustSummonMiss}을(를) ${S.mustSummon.by}턴 안에 소환하지 못했다!`, 'text-red-400'); return finish(false, 'mustsummon'); }
   if (checkEnd() || checkTimeout()) return;
   startTurn('ai');
 }
@@ -1197,7 +1223,7 @@ function renderHero(who) {
   const p = S[who], max = p.maxHp || RULES.HERO_HP;
   $(`${who}-hp`).textContent = `${fmt(p.hp)} / ${fmt(max)}`;
   $(`${who}-hpbar`).style.width = Math.max(0, p.hp / max * 100) + '%';
-  $(`${who}-mana`).innerHTML = `${p.mana} / ${p.maxMana}` + (p.accel ? ` ${ic('gear', { cls: 'ui-ic-sm' })}+${RULES.MANA_PER_TURN + p.accel * RULES.ACCEL_BONUS}/턴` : '');
+  $(`${who}-mana`).innerHTML = (p.manaPool ? `<b class="pool-mana">${p.mana}</b> / ${p.maxMana} <small class="pool-note">(충전 없음)</small>${(() => { const n = mustLeft().length; if (!n) return ''; const left = Math.max(0, S.mustSummon.by - S.myTurns + (S.turn === 'me' ? 1 : 0)); return ` <span class="pool-must">📌 필수 인재 소환까지 ${left}턴</span>`; })()}` : `${p.mana} / ${p.maxMana}`) + (p.accel ? ` ${ic('gear', { cls: 'ui-ic-sm' })}+${RULES.MANA_PER_TURN + p.accel * RULES.ACCEL_BONUS}/턴` : '');
   $(`${who}-deck`).textContent = p.deck.length;
   $(`${who}-handcount`).textContent = p.hand.length;
 }

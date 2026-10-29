@@ -708,3 +708,9 @@ span.story-lvpct { background: rgba(251,191,36,.12); border: 1px solid rgba(251,
   .story-video.rot .story-video-box{width:min(100vh,calc(100vw*16/9));transform:rotate(90deg);border-radius:0;flex:none}
   .story-video.rot .story-video-x{top:auto;bottom:14px}
 }
+/* 스토리 제한 마나: 출전 카드가 손패에서 시작 → 손패 보이기 · 남은 마나 크게 */
+#game.story-field.story-pool #me-hand { display: flex !important; }
+#game.story-pool .mana-line { font-size: 13px; }
+#game.story-pool .pool-mana { font-size: 18px; color: #7dd3fc; }
+#game.story-pool .pool-note { color: #a1a1aa; font-weight: 500; }
+#game.story-pool .pool-must { margin-left: 4px; padding: 1px 6px; border-radius: 999px; background: rgba(245,158,11,.2); color: #fcd34d; font-size: 11px; white-space: nowrap; }

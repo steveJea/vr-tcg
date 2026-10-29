@@ -747,10 +747,20 @@
       reserve: (ph.reserve || []).map(id => repOf(id) || guestOf(id)).filter(o => card(o.id)).map(o => mul({ ...boosted(o), uid: o.uid })),
       kickoff: ch.tutorial ? true : 'external',   // 챕터 0: 가운데 [⚔️ 시작하기] · 그 밖: 조건 창의 [⚔️ 전투 시작]/✕ 가 시작 신호   // 모든 스토리 전투: [시작하기] 눌러야 등장 연출 → 첫 턴 → 가이드 (탑·퀘스트·PvP·전쟁·토벌은 그대로 자동 시작)
       fullMp: !!ph.fullMp, meLevels: ph.party?.battleLevels,
+      // 제한 마나 (챕터 1~): 시작에 한 번만, 다시 차지 않음. 출전 카드는 손패 → 코스트 내고 소환. 필수 인재는 1명 2턴·2명+ 3턴 안에 소환
+      manaPool: ch.tutorial ? undefined : storyMana(ch, ph, me),
+      mustSummon: ch.tutorial || !ch.single ? undefined : (ph.party?.forced || ph.party?.mustLive || []).map(String),
       awaken: ph.awaken ? { ...ph.awaken, card: lvScaled(card(ph.awaken.id), ph.awaken.storyLevel || 1) } : undefined,   // 튜토리얼 가이드 id (data/tutorials/<id>.json · README 참고) — 처음 한 번만   // 조윤이는 조윤하를 공격하지 않음 + 페이즈 spare (예: CH3 P6 안지수 → 조윤하)
       onEnd: (win, reason, st) => result(ch, ph, win, reason, st),
     });
     if (!ch.tutorial) showConditions(ch, ph);   // 승리·패배 조건 (닫을 수 있음) · 챕터 0 은 가이드가 대신
+  }
+  // ----- 스토리 제한 마나: 80 + 15×챕터 + 2×플레이어 레벨 (보스 +40, 페이즈 manaBonus 가산 · ph.mana 있으면 그 값 고정) -----
+  function storyMana(ch, ph, me) {
+    if (Number.isFinite(+ph.mana) && ph.mana !== '' && ph.mana != null) return +ph.mana;
+    let lv = +(window.VRPlayer?.now?.()?.level || 0);
+    if (!lv) { const lo = (me || []).find(c => c.uid === save.leader); lv = +(lo && (byUid(lo.uid)?.level || lo.level)) || 1; }   // 비로그인 모의: 리더 카드 레벨
+    return 80 + 15 * (ch.id | 0) + 2 * lv + (ph.type === 'boss' ? 40 : 0) + (+ph.manaBonus || 0);
   }
   // ----- 페이즈 전투 규칙: 데이터 rules + 단일 루트 챕터(3~)의 필수 출전 카드는 쓰러지면 패배 -----
   const CH3_PAIR_SHIELD = { id: '10384', with: '10383', turns: 2 };   // 조윤하 + 조윤이 동시 출전 → 조윤하 2턴 피해 무효
@@ -770,7 +780,10 @@
     else if (boss) win.push(['👑', '상대 진영 HP <b>0</b>', `보스 ${nm(ph.bossId)}는 쓰러지지 않아요`]);
     else win.push(['⚔️', '적 인재 <b>모두</b> 쓰러뜨리기', '']);
     for (const id of R.mustLive || []) lose.push(['💔', `<b>${nm(id)}</b> 쓰러짐`, '']);
-    lose.push(['☠️', '내 인재 <b>전멸</b>', '']);
+    const mp = !ch.tutorial, ms = mp && ch.single ? (ph.party?.forced || ph.party?.mustLive || []) : [];
+    if (ms.length) lose.push(['📌', `<b>${ms.map(nm).join('·')}</b> ${ms.length >= 2 ? 3 : 2}턴 안에 소환 못 함`, '']);
+    lose.push(['☠️', mp ? '필드 전멸 + <b>낼 수 있는 인재 없음</b>' : '내 인재 <b>전멸</b>', '']);
+    if (mp) info.push(['💧', `시작 마나 <b>${storyMana(ch, ph, deckInstances())}</b> · 다시 차지 않아요 (소환·공격력 강화에 사용)`]);
     lose.push(['⌛', `<b>${RULES_MAX_MY()}턴</b> 안에 못 이김`, '']);
     if (R.invuln != null) info.push(['🛡️', `${nm(R.invuln)}: 피해를 입지 않음`]);
     for (const r of R.revive || []) info.push(['🩸', `${nm(r.id)}: 쓰러지면 <b>${Math.max(1, r.delay | 0 || 1)}턴 후</b> 부활 (${r.level === 'keep' ? '레벨 유지' : 'Lv1'})${r.times ? ` · ${r.times}회` : ''}`]);
@@ -866,7 +879,7 @@
   async function result(ch, ph, win, reason, st = {}) {
     if (!win) {
       const ab = serverMode && window.VRPlayer ? await window.VRPlayer.abort() : null;
-      show(`<div class="text-center py-10"><div class="story-chapter-big text-red-400">DEFEAT</div><div class="text-zinc-300 mt-2">${reason === 'giveup' ? '도전을 포기했어요.' : reason === 'wipe' ? '내 필드 인재가 모두 쓰러졌어요.' : reason === 'mustlive' ? `${esc(window.TCG?.S?.mustLiveDown || card((battleRules(ch, ph)?.mustLive || [])[0])?.name || '필수 출전')} 인재가 쓰러졌어요.` : reason === 'timeout' ? (ph.type === 'boss' ? '턴 제한 안에 상대 진영을 무너뜨리지 못했어요.' : '턴 제한 안에 적을 모두 쓰러뜨리지 못했어요.') : '패배했어요.'} 스탯을 올리고 다시 도전해 보세요!</div>${ab?.refunded ? `<div class="mt-2 text-emerald-300 text-sm">🔋 행동력 ${ab.refunded} 반환 (보유 ${ab.stamina}/${ab.stamina_max})</div>` : ''}
+      show(`<div class="text-center py-10"><div class="story-chapter-big text-red-400">DEFEAT</div><div class="text-zinc-300 mt-2">${reason === 'giveup' ? '도전을 포기했어요.' : reason === 'wipe' ? (window.TCG?.S?.me?.manaPool ? '필드 인재가 모두 쓰러졌고, 남은 마나로 낼 수 있는 인재가 없어요.' : '내 필드 인재가 모두 쓰러졌어요.') : reason === 'mustsummon' ? `필수 인재 ${esc(window.TCG?.S?.mustSummonMiss || '')}을(를) 제때 소환하지 못했어요.` : reason === 'mustlive' ? `${esc(window.TCG?.S?.mustLiveDown || card((battleRules(ch, ph)?.mustLive || [])[0])?.name || '필수 출전')} 인재가 쓰러졌어요.` : reason === 'timeout' ? (ph.type === 'boss' ? '턴 제한 안에 상대 진영을 무너뜨리지 못했어요.' : '턴 제한 안에 적을 모두 쓰러뜨리지 못했어요.') : '패배했어요.'} 스탯을 올리고 다시 도전해 보세요!</div>${ab?.refunded ? `<div class="mt-2 text-emerald-300 text-sm">🔋 행동력 ${ab.refunded} 반환 (보유 ${ab.stamina}/${ab.stamina_max})</div>` : ''}
         <div class="flex flex-col gap-2 max-w-xs mx-auto mt-6"><button class="story-btn" id="story-retry">다시 도전</button><button class="story-back" data-go="map">챕터 지도로</button></div></div>`);
       bind(); $('story-retry').onclick = () => startPhase(ch, ph); return;
     }
