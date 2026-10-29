@@ -43,7 +43,7 @@
     close();
     ov = document.createElement('div'); ov.className = 'gd-ov'; ov.innerHTML = '<div class="gd-page"><div class="gd-loading">…</div></div>';
     ov.addEventListener('click', e => { if (e.target === ov || e.target.closest('[data-close]')) close(); });
-    document.body.appendChild(ov);
+    document.body.appendChild(ov); window.VRSound?.scope?.(ov, window.VR_BGM?.guildHome);
     await status(); paint();
   }
   const card = g => `<button class="gd-card" data-gid="${g.id}">${emb(g.emblem)}<span class="gd-card-m"><b>${esc(g.name)}</b><small>${esc(g.intro || '')}</small></span><span class="gd-card-r"><b>Lv.${g.level}</b><small>${gi('ic_members', '👥')} ${g.members}/${g.max_members} ${MODE[g.join_mode]?.[0] || ''}</small></span></button>`;

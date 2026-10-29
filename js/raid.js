@@ -52,7 +52,7 @@ const thumbs = cards => cards.map(o => `<span class="rd-th"><img src="${IMG}${o.
 let S = null, M = null, DL = [];
 export async function open() {
   M?.remove();
-  M = pop('<div class="gd-loading">…</div>', 'wide rd');
+  M = pop('<div class="gd-loading">…</div>', 'wide rd'); window.VRSound?.scope?.(M, window.VR_BGM?.raid);
   try { [S, DL] = await Promise.all([rpc('raid_status'), decks()]); } catch (e) { toast(errText(e)); M.remove(); return; }
   paint();
 }
@@ -126,7 +126,7 @@ async function fight(e) {
     const started = st.started_at ? new Date(st.started_at).getTime() : t0;
     M?.style && (M.style.display = 'none');
     try {
-      res = await V({ session: feed, aiName: st.boss.name, manual, maxTurns: RAID_TURNS * 2, bg: 'raid', title: `🐉 균열 토벌 · ${st.stage}단계 ${st.boss.name}`,
+      res = await V({ session: feed, aiName: st.boss.name, manual, maxTurns: RAID_TURNS * 2, music: window.VR_BGM?.raid, bg: 'raid', title: `🐉 균열 토벌 · ${st.stage}단계 ${st.boss.name}`,
         raid: { stage: st.stage, bossId: st.boss.id, bossName: st.boss.name, hpLeft: +S?.hp_left || 0, hpMax: +S?.hp_max || 0, cap: hitCap(st.stage), weakLabel: ATTR[st.boss.weak] || st.boss.weak || '', deadline: started + 20 * 60000 } });
     } finally { if (M?.style) M.style.display = ''; }
     if (manual) { try { await rpc('raid_log', { p_id: st.id, p_actions: ses.acts }); } catch (er) { toast(errText(er)); } }

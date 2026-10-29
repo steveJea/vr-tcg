@@ -46,7 +46,7 @@ const dleft = () => { const e = st?.season_end ? new Date(st.season_end) : null;
 // ---- 메인 ----
 export async function open() {
   if (!window.VRCloud?.user && !window.__PVP_MOCK) return modal('pvp-modal', `<button class="pvp-x" data-x>✕</button><div class="pvp-h">⚔️ PvP</div><div class="pvp-empty">🔒 로그인</div>`);
-  const m = modal('pvp-modal', `<div class="pvp-empty">…</div>`);
+  const m = modal('pvp-modal', `<div class="pvp-empty">…</div>`); window.VRSound?.scope?.(m, window.VR_BGM?.pvpLobby);
   try {
     const S = window.VRStory; const s = S?.summary ? await S.summary() : null;
     owned = s?.ok ? s.owned : []; myDecks = s?.ok ? (s.decks || []).filter(d => d.uids.length) : [];
@@ -218,7 +218,7 @@ async function viewSeries(s, toCards, manual) {
     let r, ses;
     if (VIEW()) { ses = manualMatch(toCards(s.me[i]), toCards(s.opp[i]), roundSeed(s.seed, i), log, { view: true, manual: true });
       if (!manual) ses = autoFeed(ses);
-      r = await VIEW()({ session: ses, aiName: `${s.opp_name}${s.bot ? ' 🤖' : ''}`, manual, maxTurns: 40, title: ttl, bg: 'normal' }); }
+      r = await VIEW()({ session: ses, aiName: `${s.opp_name}${s.bot ? ' 🤖' : ''}`, manual, maxTurns: 40, music: window.VR_BGM?.pvpBattle, title: ttl, bg: 'normal' }); }
     else { ses = manualMatch(toCards(s.me[i]), toCards(s.opp[i]), roundSeed(s.seed, i), log); r = await playManual({ session: ses, rec: log, title: `${s.opp_name}${s.bot ? ' 🤖' : ''}`, maxTurns: 40, round: M.decks > 1 ? `${i + 1}판` : '' }); }
     r.log = log; rounds.push(r); acts.push(ses.acts); r.win ? w++ : l++;
     if (w >= M.need || l >= M.need) break;
