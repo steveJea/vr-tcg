@@ -1040,6 +1040,7 @@
   /** 분해 잠금: 직접 잠근 카드 + 리더(자동 잠금). 잠긴 카드는 분해·합성 재료로 못 씀 (서버도 같은 검사) */
   // ----- 마이 덱 (최대 10개, 덱에 든 카드는 자동 잠금 · 서버 story_set_decks) · 즐겨찾기 (story_set_fav) -----
   const DECK_MAX = 10;
+  const DECK_CARDS = 10;   // 마이 덱 한 덱 최대 장수 (스토리 마나 전투 손패 10장 · 탑·PvP·전쟁·토벌은 앞 5장만)
   const decksOf = () => (Array.isArray(save?.decks) ? save.decks : []).slice(0, DECK_MAX);
   const inDeck = o => !!o && decksOf().some(d => (d?.uids || []).includes(o.uid));
   const isFav = o => !!o?.fav;
@@ -1332,7 +1333,7 @@
   // ----- 마이 덱 설정 화면 -----
   const deckName = (d, i) => (d?.name || '').trim() || `덱 ${i + 1}`;
   async function saveDecks(next, after) {
-    const clean = next.slice(0, DECK_MAX).map(d => ({ name: String(d?.name || '').slice(0, 16), uids: [...new Set((d?.uids || []).filter(u => byUid(u)))].slice(0, MAX_PICK()) }));
+    const clean = next.slice(0, DECK_MAX).map(d => ({ name: String(d?.name || '').slice(0, 16), uids: [...new Set((d?.uids || []).filter(u => byUid(u)))].slice(0, DECK_CARDS) }));
     const res = await act('story_set_decks', { p_decks: clean }, () => { save.decks = clean; return { decks: clean }; }, r => r.data);
     if (res.ok) after?.();
     return res.ok;
@@ -1340,7 +1341,7 @@
   function renderDecks() {
     save.owned.forEach(norm);
     const ds = decksOf(), slot = i => { const d = ds[i], list = (d?.uids || []).map(byUid).filter(Boolean);
-      return `<button class="story-deck-slot ${list.length ? '' : 'empty'}" data-deck="${i}"><div class="story-deck-h"><b>${esc(deckName(d, i))}</b><small>${list.length}/${MAX_PICK()}</small></div>
+      return `<button class="story-deck-slot ${list.length ? '' : 'empty'}" data-deck="${i}"><div class="story-deck-h"><b>${esc(deckName(d, i))}</b><small>${list.length}/${DECK_CARDS}</small></div>
         <div class="story-deck-row">${list.length ? list.map(o => { const c = boosted(o); return c ? `<span class="story-deck-th ${rcls(c)}"><img src="${IMG}${c.id}.webp" alt="${esc(c.name)}" loading="lazy" onerror="this.style.visibility='hidden'"><i>Lv.${o.level}</i></span>` : ''; }).join('') : '<span class="story-deck-plus">＋</span>'}</div></button>`; };
     show(`${topBar('🗂 마이 덱', 'cards')}<div class="story-cards-meta">${ds.filter(d => d?.uids?.length).length}/${DECK_MAX} · 🔒 자동 잠금</div>
       <div class="story-decks">${Array.from({ length: DECK_MAX }, (_, i) => slot(i)).join('')}</div>`);
@@ -1353,12 +1354,12 @@
     const all = deckInstances();
     const draw = () => {
       const list = sortInst(all.filter(o => passFilter(o.id, [o])), new Set(sel));
-      const p = popup(`<div class="story-pop-title"><input id="dk-name" class="story-deck-name" maxlength="16" placeholder="덱 ${i + 1}" value="${esc(name)}"> <span class="text-emerald-300">${sel.length}/${MAX_PICK()}</span></div>
+      const p = popup(`<div class="story-pop-title"><input id="dk-name" class="story-deck-name" maxlength="16" placeholder="덱 ${i + 1}" value="${esc(name)}"> <span class="text-emerald-300">${sel.length}/${DECK_CARDS}</span></div>
         ${sortBar()}${filterBar()}<div class="story-grid story-deckpick">${list.map(o => { const c = boosted(o), on = sel.includes(o.uid); return c ? `<button class="story-pick-card ${on ? 'on' : ''}" data-dk="${o.uid}">${ownTile(o, c, (isFav(o) ? '<div class="story-favbadge">★</div>' : '') + skBadge(o.id))}${on ? `<i class="story-pick-check">${sel.indexOf(o.uid) + 1}</i>` : ''}</button>` : ''; }).join('') || '<div class="story-empty">없음</div>'}</div>
         <div class="flex gap-2 mt-3 story-pop-actions"><button class="story-back" id="dk-clear" ${ds[i].uids?.length || sel.length ? '' : 'disabled'}>비우기</button><button class="story-back flex-1" data-close-pop>취소</button><button class="story-btn flex-1" id="dk-ok">저장</button></div>`, renderDecks);
       const keep = () => { name = $('dk-name')?.value || name; };
       p.el.querySelectorAll('[data-dk]').forEach(b => b.onclick = () => { keep(); const u = b.dataset.dk;
-        if (sel.includes(u)) sel = sel.filter(x => x !== u); else if (sel.length < MAX_PICK()) sel.push(u); else return toast(`최대 ${MAX_PICK()}장`);
+        if (sel.includes(u)) sel = sel.filter(x => x !== u); else if (sel.length < DECK_CARDS) sel.push(u); else return toast(`최대 ${DECK_CARDS}장`);
         p.close(true); draw(); });
       p.el.querySelectorAll('[data-sort]').forEach(b => b.onclick = () => { keep(); setSort(b.dataset.sort); p.close(true); draw(); });
       bindFilter(() => { keep(); p.close(true); draw(); });
