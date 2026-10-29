@@ -3447,5 +3447,118 @@
    "fx": "10334_6.webp",
    "note": ""
   }
+ ],
+ "10490": [
+  {
+   "card": "[염원] 최윤아",
+   "name": "사랑한단말야",
+   "type": "공격",
+   "mode": "active",
+   "target": "적군 전체",
+   "desc": "적군 전체에게 공격력 40%의 데미지를 부여하고, 30% 확률로 1턴 간 마비.",
+   "value": "40%, 30%",
+   "duration": 1,
+   "mp": 30,
+   "cooldown": 3,
+   "unlock": 5,
+   "fx": "",
+   "note": ""
+  }
+ ],
+ "10491": [
+  {
+   "card": "[염원] 최윤정",
+   "name": "왜 우리야!",
+   "type": "공격",
+   "mode": "active",
+   "target": "적군 전체",
+   "desc": "적군 전체에게 공격력 40%의 데미지를 부여하고, 30% 확률로 1턴 간 출혈.",
+   "value": "40%, 30%",
+   "duration": 1,
+   "mp": 30,
+   "cooldown": 3,
+   "unlock": 5,
+   "fx": "",
+   "note": ""
+  }
+ ],
+ "10493": [
+  {
+   "card": "안소라",
+   "name": "건드리지 마!",
+   "type": "버프",
+   "mode": "active",
+   "target": "자신",
+   "desc": "자신의 HP를 15% 회복하고, 2턴 간 자신의 공격력, 방어력을 15% 상승시킨다.",
+   "value": "15% / 15% / 15%",
+   "duration": 2,
+   "mp": 40,
+   "cooldown": 4,
+   "unlock": 2,
+   "fx": "",
+   "note": ""
+  },
+  {
+   "card": "안소라",
+   "name": "용납할 수 없어!",
+   "type": "공격",
+   "mode": "active",
+   "target": "적 전체",
+   "desc": "상대방 전체를 자신의 공격력 30%로 타격한다.(상대방 방어력 20% 무시)",
+   "value": "30%/ 20%",
+   "duration": 0,
+   "mp": 40,
+   "cooldown": 3,
+   "unlock": 5,
+   "fx": "",
+   "note": ""
+  }
+ ],
+ "10502": [
+  {
+   "card": "[염원] 안지윤",
+   "name": "깨져버린 세상",
+   "type": "디버프",
+   "mode": "active",
+   "target": "적 전체",
+   "desc": "100% 확률로 상대방을 1턴 간 마비 시킨다.",
+   "value": "1",
+   "duration": 1,
+   "mp": 10,
+   "cooldown": 5,
+   "unlock": 1,
+   "fx": "",
+   "note": ""
+  },
+  {
+   "card": "[염원] 안지윤",
+   "name": "더 이상 울기 싫어",
+   "type": "디버프",
+   "mode": "active",
+   "target": "적 전체",
+   "desc": "상대방 전체의 MP를 100% 제거한다.",
+   "value": "1",
+   "duration": 0,
+   "mp": 10,
+   "cooldown": 5,
+   "unlock": 2,
+   "fx": "",
+   "note": ""
+  },
+  {
+   "card": "[염원] 안지윤",
+   "name": "아무도 없는 곳에서",
+   "type": "버프",
+   "mode": "active",
+   "target": "자신",
+   "desc": "자신의 HP를 20% 회복하며, 1턴 간 자신의 방어력을 200% 향상시킨다.",
+   "value": "20%/ 200%",
+   "duration": 1,
+   "mp": 10,
+   "cooldown": 4,
+   "unlock": 3,
+   "fx": "",
+   "note": ""
+  }
  ]
 }
