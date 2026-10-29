@@ -397,7 +397,7 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "문지아",
-      "text": "제가 내 동생 죽였냐고!!!!!!!!!!!!!"
+      "text": "네가 내 동생 죽였냐고!!!!!!!!!!!!!"
      },
      {
       "speaker": "임유리",
