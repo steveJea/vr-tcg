@@ -83,6 +83,7 @@ SQL Editor 에서 형님이 직접 실행하는 파일들. **같은 함수를 �
 73. `blood_rebalance_refund.sql` (2026-10-29) — ⚠ 1회용 환급 (다시 돌려도 중복 지급 안 됨)
 74. `story_level_gate.sql` (2026-10-29) — 챕터 입장 레벨 제한. ⚠ 이후 `phaseE_2.sql` 다시 돌리지 마세요
 75. `lr_grade_align.sql` (2026-10-29)
+76. `story_ch0_jieun.sql` (2026-10-29) — 챕0 강제 10회 영입 하지은 확정
 
 ## 여러 파일에 정의된 함수 → 최신 정의 파일
 
@@ -149,7 +150,7 @@ SQL Editor 에서 형님이 직접 실행하는 파일들. **같은 함수를 �
 | `story_set_lock` | `story_decks.sql` | `schema.sql`, `story_leader_lock.sql` |
 | `story_start_phase` | `story_level_gate.sql` | `schema.sql`, `story_server.sql`, `phaseE_2.sql` |
 | `story_sweep` | `gear_sigil.sql` | `phaseE_5.sql`, `guild2.sql`, `gear_drops.sql` |
-| `story_ticket_draw` | `story_gacha.sql` | `schema.sql` |
+| `story_ticket_draw` | `story_ch0_jieun.sql` | `schema.sql`, `story_gacha.sql` |
 | `story_tickets` | `story_gacha.sql` | `schema.sql` |
 | `wallet_status` | `gem.sql` | `phaseE_1.sql` |
 
