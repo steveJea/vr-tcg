@@ -598,7 +598,7 @@
       for (const L0 of lines) { try {
         const tag = /^(.+?)\s*\(([^()]+)\)$/.exec(L0.speaker || ''), tagOk = tag && D.exprSlug?.[tag[2].trim()], L = tagOk ? { ...L0, speaker: tag[1], expr: L0.expr || L0.face || tag[2].trim() } : { ...L0, expr: L0.expr || L0.face };
         const pc = who(L), sp = L.speaker === 'starter' ? starter?.name : L.speaker === 'enemy' ? enemy?.name : L.speaker;
-        const nm = pc ? pc.name : sp, slug = pslug(nm), slug0 = nm && D.portraits?.[nm];
+        const nm = pc ? pc.name : sp, slug = L.slug || pslug(nm), slug0 = nm && D.portraits?.[nm];
         const ex = D.exprSlug?.[String(L.expr || '').trim().toLowerCase()] || D.exprSlug?.[String(L.expr || '').trim()] || 'base';
         const src = slug ? `img/story/portraits/${slug}_${ex}.webp` : pc ? picOf(pc) : null;
         if (!src || seen.has(src)) continue; seen.add(src);
@@ -612,7 +612,7 @@
       if (lines[i].image && step.cut !== i) { step.cut = i; return storyCutin(lines[i].image, step); }   // 대사 줄의 image: 컷인 이미지 먼저 보여주고 그 줄 진행
       const L0 = lines[i], tag = /^(.+?)\s*\(([^()]+)\)$/.exec(L0.speaker || ''), tagOk = tag && D.exprSlug?.[tag[2].trim()], L = tagOk ? { ...L0, speaker: tag[1], expr: L0.expr || L0.face || tag[2].trim() } : { ...L0, expr: L0.expr || L0.face };
       const pc = who(L), sp = L.speaker === 'starter' ? starter?.name : L.speaker === 'enemy' ? enemy?.name : (L.speaker === '내레이션' ? null : L.speaker);
-      const nm = pc ? pc.name : sp, slug = pslug(nm), slug0 = nm && D.portraits?.[nm];   // 카드 없는 화자(CH7 유연 아버지·어머니)도 초상화 지정 가능
+      const nm = pc ? pc.name : sp, slug = L.slug || pslug(nm), slug0 = nm && D.portraits?.[nm];   // 카드 없는 화자(CH7 유연 아버지·어머니)도 초상화 지정 가능
       const left = pc ? heroes.includes(pc) : !slug;
       const ex = D.exprSlug?.[String(L.expr || '').trim().toLowerCase()] || D.exprSlug?.[String(L.expr || '').trim()] || 'base';
       show(`<div class="story-dlg" id="story-dlg">
@@ -667,13 +667,16 @@
     if (pt?.solo) rules.push({ ok: () => false, note: '단독 출전' });
     const banNotes = (pt?.exclude || []).map(String).filter(id => !(pt?.forced || []).map(String).includes(id)).map(id => card(id)?.name).filter(Boolean).map(n => `${esc(n)} 출전 금지`);
     // party.guests: 고를 수 있는 게스트(보유 안 해도 출전 후보, 필수 아님). 보유 중이면 내 카드로
-    const guests = (pt?.guests || []).map(id => repOf(id) || guestOf(id)).filter(o => card(o.id));
+    // chapter.loan: 그 챕터에서만 빌려 쓰는 인재 (보유 X, 게스트로 출전 후보 · 챕터 끝나면 회수 = 저장 안 함). 보유 중이면 내 카드. 출전 금지·필수와 겹치면 제외
+    const loanLv = id => ch.loanLevel?.[id] ?? pt?.levels?.[id];
+    const loans = (ch.loan || []).filter(id => !(pt?.guests || []).map(String).includes(String(id))).map(id => repOf(id) || (g => ({ ...g, loan: true, ...(loanLv(id) ? { level: Math.max(1, Math.min(lvCap(g), loanLv(id) | 0)) } : {}) }))(guestOf(id)));
+    const guests = [...(pt?.guests || []).map(id => repOf(id) || guestOf(id)), ...loans].filter(o => card(o.id));
     return { forced, guests, exclude: new Set([...(pt?.exclude || []), ...(pt?.forced || [])].map(String)), allow, notes: [...rules.map(r => r.note), ...banNotes], max: pt?.solo ? Math.max(1, forced.length) : pt?.max };
   }
   /** opts (퀘스트 등 재사용): { onGo(list), onCancel(), note } — 없으면 스토리 페이즈 전투 */
   function pickDeck(ch, ph, enemies, opts = null) {
     const { forced, guests = [], exclude, allow, notes, max } = partyOf(ch, ph), slots = Math.max(0, Math.min(MAX_PICK(), max || MAX_PICK()) - forced.length);   // party.max: 필수 포함 최대 장수
-    const all = [...new Map([...guests.filter(o => !exclude.has(o.id)), ...deckInstances().filter(o => !exclude.has(o.id) && allow(o))].map(o => [o.uid, o])).values()];
+    const all = [...new Map([...guests.filter(o => !exclude.has(o.id) && (!o.loan || allow(o))), ...deckInstances().filter(o => !exclude.has(o.id) && allow(o))].map(o => [o.uid, o])).values()];
     const go = opts?.onGo || (list => battle(ch, ph, enemies, list));
     if (all.length <= slots && !forced.length) return go(all);
     if (ph.party?.auto && !opts) return go(forced);   // party.auto: 고르기 창 없이 필수 카드만 (챕터 0 튜토리얼)

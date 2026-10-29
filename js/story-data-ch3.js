@@ -6,6 +6,7 @@ window.STORY_DATA.chapters.push({
  "subtitle": "Just For YOU",
  "rewardCard": null,
  "hero": "10384",
+ "loan": ["10384", "10383"],
  "single": true,
  "phases": [
   {

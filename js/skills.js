@@ -279,6 +279,12 @@ export function checkDeath(u, killer = null) {
     emit({ type: 'heal', unit: u, amt: u.hp, why: '나는 쓰러지지 않아' }); refreshAll(p);
     return false;
   }
+  // [염원] 최윤정 너무너무 사랑해 (자신) · 절대 무너지지 마 ([염원] 최윤아): 사망 시 1회 즉시 부활 (HP 50%). 각 패시브 한 게임 1회
+  { const wj = hasPassive(u, '너무너무 사랑해') && !u.fired['너무너무 사랑해:rev'] ? u : null;
+    const wa = !wj && String(u.base?.id) === WISH_YUNA_ID ? p.field.find(x => x !== u && x.hp > 0 && hasPassive(x, '절대 무너지지 마') && !x.fired['절대 무너지지 마:rev']) : null;
+    const src = wj || wa, nm = wj ? '너무너무 사랑해' : '절대 무너지지 마';
+    if (src) { src.fired[nm + ':rev'] = 1; stats.count(nm); u.hp = Math.max(1, Math.round(u.maxHp * WISH_REVIVE_HP));
+      emit({ type: 'passive', unit: src, name: nm, text: `${u.card.name} 부활! HP ${WISH_REVIVE_HP * 100}%` }); emit({ type: 'heal', unit: u, amt: u.hp, why: nm }); refreshAll(p); return false; } }
   // 제발…그만 (문유선): 사망 시 1회 부활, HP 100%, 디버프 제거, 1턴 면역 + 도발
   if (hasPassive(u, '제발…그만') && !u.fired['제발…그만']) {
     u.fired['제발…그만'] = 1; stats.count('제발…그만');
@@ -744,6 +750,7 @@ export const ACTIVE = {
   '드론 연사!': (u, p, f) => { if (!f.noBase && !heroLocked(p)) heroHit(u, f, 1.5); else hitAll(u, f, 1, 0.3); },
 };
 export const CHANGWON_ID = '10053';
+export const WISH_YUNA_ID = '10490', WISH_REVIVE_HP = 0.5;   // [염원] 최윤아 · 염원 자매 부활 HP
 export const YEEUN_ID = '10466', JUNTAE_ID = '10469', JIEUN_REVIVE_HP = 0.5;
 const owns = (p, c) => [...p.deck, ...p.hand, ...p.field.map(u => u.base)].some(x => String(x.id) === String(c.id));
 const females = side => live(side).filter(x => x.base.gender === 'FEMALE');
@@ -913,6 +920,9 @@ export function turnStart(p) {
   // 임혜리 주님의 기적: 아군·본진 5% 회복
   const hy = findPassiveUnit(p, '주님의 기적');
   if (hy) { emit({ type: 'passive', unit: hy, name: '주님의 기적' }); stats.count('주님의 기적'); p.field.forEach(a => heal(a, a.maxHp * 0.05)); healHero(p, (p.maxHp || RULES.HERO_HP) * 0.05); }
+  // [염원] 최윤아 지켜주고 싶어: 매 턴 아군 전체 HP 10% 회복
+  const wy = findPassiveUnit(p, '지켜주고 싶어');
+  if (wy) { emit({ type: 'passive', unit: wy, name: '지켜주고 싶어' }); stats.count('지켜주고 싶어'); p.field.forEach(a => heal(a, a.maxHp * 0.1, '지켜주고 싶어')); }
   // Esoteric Method: 매 턴 HP -10%, ATK -3% 누적
   for (const u of [...p.field]) if (u.st.esoteric) { u.st.esoteric.stack = (u.st.esoteric.stack || 0) + 1; damageUnit(u, Math.max(1, Math.round(u.maxHp * 0.1)), null); checkDeath(u, u.st.esoteric.caster || null); }
   // v2: 체력 고갈 / 재생
