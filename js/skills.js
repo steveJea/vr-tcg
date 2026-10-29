@@ -483,6 +483,14 @@ export const ACTIVE = {
   // [각성] 이민채 (NPC, 챕터 4 보스): 랜덤 2인을 공격력 15%로 5회씩 타격
   // [염원] 이민채 (NPC, 챕터 4 보스 분신): 적 전체 공격력 30%
   '이건 사랑이야': (u, p, f) => { hitAll(u, f, 1, 0.3); },
+  // CH8~11 NPC (2026-10-29 캐릭터 시트): [염원] 최윤아·최윤정, 안소라, [염원] 안지윤
+  '사랑한단말야': (u, p, f) => { const ts = live(f); hitAll(u, f, 1, 0.4); ts.forEach(t => f.field.includes(t) && t.hp > 0 && sChance(0.3) && addStatus(t, 'para', 1, {}, 'para')); },
+  '왜 우리야!': (u, p, f) => { const ts = live(f); hitAll(u, f, 1, 0.4); ts.forEach(t => { if (f.field.includes(t) && t.hp > 0 && sChance(0.3)) bleedOn(t, u, 1); }); },
+  '건드리지 마!': u => { heal(u, u.maxHp * 0.15, '건드리지 마!'); addStatus(u, '건드리지 마!', 2, { atk: 0.15, def: 0.15, label: 'ATK·DEF +15%' }, 'mod'); },
+  '용납할 수 없어!': (u, p, f) => { hitAll(u, f, 1, 0.3, { ignoreDef: 0.2 }); },
+  '깨져버린 세상': (u, p, f) => live(f).forEach(t => addStatus(t, 'para', 1, {}, 'para')),
+  '더 이상 울기 싫어': (u, p, f) => live(f).forEach(t => { const m = t.mp; if (m > 0) { t.mp = 0; emit({ type: 'mp', unit: t, amt: -m }); } }),
+  '아무도 없는 곳에서': u => { heal(u, u.maxHp * 0.2, '아무도 없는 곳에서'); addStatus(u, '아무도 없는 곳에서', 1, { def: 2, label: 'DEF +200%' }, 'mod'); },
   // CH7 빌런 (2026-10-26): 여성 대상 스킬 · 김철민 아군 남성 방어
   '나? 폭격기야~': (u, p, f) => bomberTargets(f).forEach(t => addStatus(t, '나? 폭격기야~', 1, { atk: -0.4, label: '폭격기: ATK -40%' }, 'mod')),   // 이민수: HR 미만 여성 ATK -40% 1턴
   '약해보이냐? 진짜?': (u, p) => lowMorMales(p).forEach(a => addStatus(a, '약해보이냐? 진짜?', 1, { def: 0.3, label: 'DEF +30%' }, 'mod')),   // 김철민: 품성 30 미만 남성 DEF +30% 1턴
@@ -1054,6 +1062,8 @@ export function aiSkillScores(u, { noSave = false } = {}) {
       case '러시안룰렛': sc = n ? 90 + by(f.field, x => x.card.cost).card.cost : 0; break;
       case '힘들면...죽어': sc = n ? 90 + by(f.field, x => x.mp).card.cost : 0; break;
       case '처음부터...다시.': sc = n && !canKill ? 70 + Math.round(f.field.reduce((a, t) => a + t.mp, 0) / 20) : 0; break;
+      case '건드리지 마!': case '아무도 없는 곳에서': sc = n && u.hp < u.maxHp * 0.7 ? 86 : 0; break;
+      case '깨져버린 세상': case '더 이상 울기 싫어': sc = n >= 2 ? 88 + n * 3 : n ? 70 : 0; break;
       case '그게...최선인가?': sc = n >= 2 && !canKill ? 78 + n * 3 : 0; break;
       default:
         if (s.type === '디버프') sc = n >= 3 && !canKill ? 80 + n * 3 : 0;
