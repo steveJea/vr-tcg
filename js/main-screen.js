@@ -82,13 +82,18 @@
   };
   // 트랙 전환(크로스페이드): 스토리 모드 장면별 BGM. 덕킹·음소거·볼륨 설정은 그대로 적용
   let src = 'audio/main.mp3', xfRaf = 0;
+  // 페이드아웃 중인 이전 트랙들: 전환이 연달아 오면(예: 마이페이지 닫기 → 내 인재 열기) 앞 크로스페이드가 취소돼 이전 트랙이 계속 재생되던 문제 → 새 전환·징글 때 즉시 정지
+  const fading = new Set();
+  const kill = o => { fading.delete(o); try { o.pause(); o.removeAttribute('src'); o.load(); } catch {} };
+  const killFading = () => { for (const o of [...fading]) if (o !== audio) kill(o); };
   const setTrack = (next, ms = 900) => {
     if (!next) return;
     if (jingleA) { if (next !== src) { src = next; const o = audio; audio = null; missing = false; if (o) { o.pause(); o.removeAttribute('src'); o.load(); } } return; }   // 징글 중: 끝나면 새 트랙 재생
     if (next === src) return;
     src = next;
     const old = audio; audio = null; missing = false;
-    cancelAnimationFrame(fadeRaf); cancelAnimationFrame(xfRaf);
+    cancelAnimationFrame(fadeRaf); cancelAnimationFrame(xfRaf); killFading();
+    if (old) fading.add(old);
     const a = getAudio(); if (!a) return;
     a.volume = 0;
     const target = () => baseVol * (ducked ? DUCK : 1);
@@ -97,13 +102,13 @@
     const step = t => { const k = Math.min(1, Math.max(0, (t - t0) / ms));
       if (old) old.volume = Math.max(0, v0 * (1 - k));
       if (audio === a) a.volume = Math.min(1, target() * k);
-      if (k < 1) xfRaf = requestAnimationFrame(step); else if (old) { old.pause(); old.removeAttribute('src'); old.load(); } };
+      if (k < 1) xfRaf = requestAnimationFrame(step); else if (old) kill(old); };
     xfRaf = requestAnimationFrame(step);
   };
   // 일시 정지 유지(오프닝 영상 등): hold(true) 동안은 재생·트랙 전환 시 자동 재생을 막고, hold(false) 로 다시 재생
   let held = false;
   const play = () => { if (!soundOn || held || jingleA) return; const a = getAudio(); if (a) a.play().catch(() => {}); };
-  const stop = () => { if (audio) audio.pause(); if (jingleA) { jingleA.pause(); jingleA = null; } };
+  const stop = () => { killFading(); if (audio) audio.pause(); if (jingleA) { jingleA.pause(); jingleA = null; } };
   // 승리·패배 징글 (한 번만): 반복 BGM을 페이드아웃·일시정지 → 징글 → 끝나면 그때의 트랙을 페이드인. 음소거·덕킹·볼륨은 그대로
   const JINGLE = { victory: 'audio/victory.mp3', defeat: 'audio/defeat.mp3', draw: 'audio/draw.mp3' };
   // 모드별 BGM (README 참고)
@@ -112,7 +117,7 @@
   const jingle = (name) => {
     const url = JINGLE[name]; if (!url || !soundOn || held) return;
     if (jingleA) { jingleA.pause(); jingleA = null; }
-    cancelAnimationFrame(xfRaf);
+    cancelAnimationFrame(xfRaf); killFading();
     const loop = audio, v0 = loop ? loop.volume : 0, t0 = performance.now();
     if (loop) { const fo = t => { const k = Math.min(1, (t - t0) / 300); if (audio === loop && jingleA) loop.volume = v0 * (1 - k); if (k < 1) requestAnimationFrame(fo); else if (jingleA) loop.pause(); }; requestAnimationFrame(fo); }
     const j = new Audio(url); j.loop = false; j.volume = baseVol * (ducked ? DUCK : 1); jingleA = j;
