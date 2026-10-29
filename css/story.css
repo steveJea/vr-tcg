@@ -281,7 +281,17 @@ span.story-lvpct { background: rgba(251,191,36,.12); border: 1px solid rgba(251,
 .story-own-leader{position:absolute;right:4px;bottom:4px;line-height:0}
 .story-own-leader .ui-ic{width:18px;height:18px}
 .rstars-sm{font-size:12px;top:3px}
-.story-skn{position:absolute;right:5px;top:22px;font-size:10px;font-weight:900;padding:0 4px;border-radius:5px;background:rgba(0,0,0,.7);color:#e9d5ff}
+.story-skn{position:absolute;right:5px;top:22px;z-index:3;font-size:11px;font-weight:900;padding:2px 6px;border-radius:7px;background:rgba(0,0,0,.75);color:#e9d5ff;border:1px solid rgba(216,180,254,.55);cursor:pointer}
+.story-skn::before{content:'';position:absolute;inset:-8px}
+.story-skn:active{transform:scale(.92)}
+.story-own-tile .story-skn{top:auto;bottom:6px}
+.story-pick-card.locked{position:relative}.story-skn-f{top:30px;right:9px}
+.story-skpop{position:fixed;inset:0;z-index:9999}
+.story-skpop-box{position:absolute;left:50%;top:50%;width:min(300px,calc(100vw - 16px));max-height:60vh;overflow:auto;padding:10px 12px;border-radius:14px;background:#18181b;border:1px solid rgba(216,180,254,.4);box-shadow:0 10px 30px rgba(0,0,0,.6);color:#f4f4f5;text-align:left}
+.story-skpop-h{font-weight:900;font-size:14px;margin-bottom:6px;color:#fde68a}
+.story-skpop-row+.story-skpop-row{margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.08)}
+.story-skpop-n{display:flex;align-items:center;gap:5px;flex-wrap:wrap;font-size:13px}.story-skpop-n i{font-style:normal;font-size:10px;font-weight:800;padding:0 5px;border-radius:5px}.story-skpop-n i.act{background:#7c3aed}.story-skpop-n i.pas{background:#0f766e}.story-skpop-n small{font-size:10px;color:#a1a1aa}
+.story-skpop-d{font-size:12px;line-height:1.45;color:#d4d4d8;margin-top:3px}
 .story-curdeck{position:absolute;left:4px;bottom:4px;font-size:9px;font-weight:900;padding:1px 4px;border-radius:5px;background:#10b981;color:#052e16}
 .story-detail-skills{text-align:left}
 .story-bonds{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;padding:0 4px 20px}
