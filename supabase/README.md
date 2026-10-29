@@ -82,6 +82,7 @@ SQL Editor 에서 형님이 직접 실행하는 파일들. **같은 함수를 �
 72. `blood_rebalance_preview.sql` (2026-10-29) — 읽기 전용 미리보기
 73. `blood_rebalance_refund.sql` (2026-10-29) — ⚠ 1회용 환급 (다시 돌려도 중복 지급 안 됨)
 74. `story_level_gate.sql` (2026-10-29) — 챕터 입장 레벨 제한. ⚠ 이후 `phaseE_2.sql` 다시 돌리지 마세요
+75. `lr_grade_align.sql` (2026-10-29)
 
 ## 여러 파일에 정의된 함수 → 최신 정의 파일
 
@@ -91,6 +92,7 @@ SQL Editor 에서 형님이 직접 실행하는 파일들. **같은 함수를 �
 | `_gear_raid_claim_trg` | `gear_sigil.sql` | `gear_drops.sql` |
 | `_guild_feed` | `guild2.sql` | `guild.sql` |
 | `_lv_cost`, `_lv_cost_b`, `_lv_cost_g`, `card_cost_table` | `blood_rebalance.sql` | `phaseE_4.sql` |
+| `_dismantle_yield`, `_merge_shard_base`, `_skill_soul_base` | `lr_grade_align.sql` | `phaseE_3.sql`, `phaseE_4.sql`, `phaseE_6.sql` |
 | `_player_add_xp` | `guild.sql` | `phaseE_2.sql` |
 | `_player_xp_need` | `player_xp_x3.sql` | `phaseE_2.sql` |
 | `_pvp_extra` | `gem.sql` | `pvp.sql` |
@@ -98,13 +100,13 @@ SQL Editor 에서 형님이 직접 실행하는 파일들. **같은 함수를 �
 | `_pvp_snap` | `gear_snap.sql` | `pvp.sql` |
 | `_raid_numbers` | `manual_battle.sql` | `guild3.sql` |
 | `_sigil_story_roll` | `gear_sigil_story_off.sql` | `gear_sigil.sql` |
-| `_story_cap` | `story_merge.sql` | `schema.sql`, `story_levels.sql` |
+| `_story_cap` | `lr_grade_align.sql` | `schema.sql`, `story_levels.sql`, `story_merge.sql` |
 | `_story_earned` | `story_server.sql` | `schema.sql` |
-| `_story_feed_exp` | `story_levels.sql` | `schema.sql` |
+| `_story_feed_exp` | `lr_grade_align.sql` | `schema.sql`, `story_levels.sql` |
 | `_story_find` | `story_merge.sql` | `schema.sql` |
 | `_story_gain` | `story_level_stats.sql` | `schema.sql`, `story_levels.sql` |
 | `_story_lock` | `story_statpt.sql` | `schema.sql`, `story_server.sql`, `story_merge.sql` |
-| `_story_max_ex` | `story_merge.sql` | `schema.sql` |
+| `_story_max_ex` | `lr_grade_align.sql` | `schema.sql`, `story_merge.sql` |
 | `_story_migrate` | `story_merge.sql` | `schema.sql` |
 | `_story_min_battle_secs` | `story_min_battle.sql` | `schema.sql`, `story_server.sql` |
 | `_story_new_card` | `trade_origin_v2.sql` | `schema.sql`, `story_merge.sql`, `trade_origin.sql` |
