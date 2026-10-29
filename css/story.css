@@ -714,3 +714,8 @@ span.story-lvpct { background: rgba(251,191,36,.12); border: 1px solid rgba(251,
 #game.story-pool .pool-mana { font-size: 18px; color: #7dd3fc; }
 #game.story-pool .pool-note { color: #a1a1aa; font-weight: 500; }
 #game.story-pool .pool-must { margin-left: 4px; padding: 1px 6px; border-radius: 999px; background: rgba(245,158,11,.2); color: #fcd34d; font-size: 11px; white-space: nowrap; }
+/* 스토리 제한 마나: 손패 최대 10장 → 모바일은 5장씩 2줄 (가로 스크롤 없이) */
+@media (max-width: 640px) {
+  #game.story-pool #me-hand { flex-wrap: wrap; justify-content: center; gap: 6px; overflow-x: visible; }
+  #game.story-pool #me-hand .card-frame { width: 60px; }
+}

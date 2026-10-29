@@ -7,6 +7,10 @@
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const fmt = n => Number(n).toLocaleString('ko-KR');
   const MAX_PICK = () => window.STORY_DATA?.battleCards || 5;   // 스토리 전투 출전 카드 최대 장수
+  // 제한 마나 전투(챕터 1~ · 챕터 0 은 ph.pool 페이즈만): 출전 = 손패 최대 10장 (필드는 그대로 최대 5)
+  const POOL_PICK = () => window.STORY_DATA?.poolCards || 10;
+  const isPool = (ch, ph) => !!ch && !!ph && (!ch.tutorial || !!ph.pool);
+  const pickMax = (ch, ph) => isPool(ch, ph) ? POOL_PICK() : MAX_PICK();
   const RULES_TURNS = () => window.TCG?.RULES?.MAX_TURNS || 40;
   const STATS = ['ATK', 'HP', 'DEF'];
   const ic = (n, o) => window.VRIcon?.icon(n, o) || '';
@@ -680,7 +684,7 @@
   }
   /** opts (퀘스트 등 재사용): { onGo(list), onCancel(), note } — 없으면 스토리 페이즈 전투 */
   function pickDeck(ch, ph, enemies, opts = null) {
-    const { forced, guests = [], exclude, allow, notes, max } = partyOf(ch, ph), slots = Math.max(0, Math.min(MAX_PICK(), max || MAX_PICK()) - forced.length);   // party.max: 필수 포함 최대 장수
+    const { forced, guests = [], exclude, allow, notes, max } = partyOf(ch, ph), pm = opts ? MAX_PICK() : pickMax(ch, ph), slots = Math.max(0, Math.min(pm, max || pm) - forced.length);   // party.max: 필수 포함 최대 장수
     const all = [...new Map([...guests.filter(o => !exclude.has(o.id) && (!o.loan || allow(o))), ...deckInstances().filter(o => !exclude.has(o.id) && allow(o))].map(o => [o.uid, o])).values()];
     const go = opts?.onGo || (list => battle(ch, ph, enemies, list));
     if (all.length <= slots && !forced.length) return go(all);
@@ -699,7 +703,7 @@
     const fTile = o => { const c = boosted(o); return `<div class="story-pick-card on locked" title="이번 페이즈 필수 출전">${skBadge(o.id, 'story-skn-f')}${tile(c, `<div class="text-[10px] ${isGuest(o) ? 'text-sky-300' : 'text-zinc-400'}">Lv.${norm({ ...o }).level}${isGuest(o) ? ' · 게스트' : ''}</div>`)}<i class="story-pick-check">🔒</i></div>`; };
     const draw = () => {
       const p = popup(`<div class="story-pop-title">출전 인재 선택 <span class="text-emerald-300">${forced.length + sel.length}/${forced.length + slots}</span></div>
-        <div class="text-xs text-zinc-400 mb-2">${opts?.note ? `${opts.note}<br>` : ''}고른 인재가 모두 필드에서 시작해요. 손패·드로우는 없고, 내 인재가 모두 쓰러지면 패배예요.${boss ? '<br>👑 보스전: 보스는 진영 안에서 쓰러지지 않아요. 상대 진영 HP를 0으로!' : ''}</div>
+        <div class="text-xs text-zinc-400 mb-2">${opts?.note ? `${opts.note}<br>` : ''}${!opts && isPool(ch, ph) ? `고른 인재 ${forced.length + slots}장이 손패가 돼요. 마나로 소환하고, 마나는 다시 차지 않아요. (필드 최대 5장 · 시작 마나 <b class="text-sky-300">${storyMana(ch, ph, deckInstances())}</b>)` : '고른 인재가 모두 필드에서 시작해요. 손패·드로우는 없고, 내 인재가 모두 쓰러지면 패배예요.'}${boss ? '<br>👑 보스전: 보스는 진영 안에서 쓰러지지 않아요. 상대 진영 HP를 0으로!' : ''}</div>
         ${forced.length ? `<div class="story-forced-h">${ic('crown', { alt: '' })} 필수 출전 ${forced.length}장 <small>(게스트는 정해진 레벨(없으면 리더 레벨)로 함께 싸우고, 전투 EXP는 받지 않아요)</small></div><div class="story-grid story-deckpick story-forced">${forced.map(fTile).join('')}</div>
           <div class="story-forced-h">나머지 ${slots}장 고르기${notes.map(t => ` · <span class="text-red-300">${t}</span>`).join('')}</div>` : ''}${ph.enemyFirst ? '<div class="story-hint">⚡ 이번 페이즈는 적이 먼저 공격해요</div>' : ''}
         ${decksOf().some(d => d?.uids?.length) ? `<div class="story-sortbar story-deckchips">${decksOf().map((d, i) => d?.uids?.length ? `<button class="story-chip" data-usedeck="${i}">🗂 ${esc(deckName(d, i))}</button>` : '').join('')}</div>` : ''}${sortBar()}<div class="story-sortbar story-pickf"><button class="story-chip ${pf.skill ? 'on' : ''}" data-pf="skill">✦ 스킬</button><button class="story-chip ${pf.rec ? 'on' : ''}" data-pf="rec" ${rec.size ? '' : 'disabled'}>추천 ${rec.size ? '' : '-'}</button></div><div class="story-grid story-deckpick">${list.filter(o => sel.includes(o.uid) || pfOk(o)).map(o => { const on = sel.includes(o.uid);
@@ -735,7 +739,7 @@
     bgm(boss || ph.bgm === 'boss' ? ((ch.id | 0) >= BOSS2_FROM ? 'boss2' : 'boss') : 'battle');   // 챕터 8~ 보스전은 BOSS_2
     // party.statMul: { 카드id: { HP: 2, DEF: 2 } } → 이 페이즈에서만 해당 카드 스탯 배율 (최종 스탯 × 배율, 반올림)
     const SM = ph.party?.statMul || {}, mul = c => { const m = SM[String(c.id)]; if (!m) return c; const o = { ...c }; for (const k of Object.keys(m)) if (o[k] != null) o[k] = Math.round(o[k] * m[k]); return o; };
-    const me = (picked || deckInstances()).slice(0, MAX_PICK()).map(o => gearOn(mul({ ...boosted(o), uid: o.uid }), 'story')).filter(x => x.id);
+    const me = (picked || deckInstances()).slice(0, pickMax(ch, ph)).map(o => gearOn(mul({ ...boosted(o), uid: o.uid }), 'story')).filter(x => x.id);
     deckUid = Object.fromEntries(me.map(c => [String(c.id), c.uid]));
     const bc = boss ? bossOf(ph, enemies) : null;
     // 보스 카드를 맨 앞에 (진영 안 표시), 나머지는 그대로
