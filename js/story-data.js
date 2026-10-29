@@ -625,11 +625,11 @@ window.STORY_DATA.chapters[0].byStarter['10224'] = {
     },
     {
       "speaker": "내레이션",
-      "text": "저 멀리서 불량배들이 두 소녀를 보며 희롱한다."
+      "text": "저 멀리서 불량배들이 두 소녀를 보며 시비를 건다."
     },
     {
       "speaker": "불량배-A",
-      "text": "너희 진짜 쫙 빠졌네~ 오빠들이랑 놀까?"
+      "text": "어이~ 여기 통행료 있는 거 몰라? 지갑 다 털고 가라~"
     },
     {
       "speaker": "홍가영",
@@ -717,7 +717,7 @@ window.STORY_DATA.chapters[0].byStarter['10265'] = {
       "lines": [
         {
           "speaker": "불량배-K",
-          "text": "야..니 동생이 우리한테 빚져서 몸으로 떼워야 해."
+          "text": "야..니 동생이 우리한테 빚졌어. 평생 앵벌이로 갚아야 해."
         },
         {
           "speaker": "불량배-L",
@@ -812,7 +812,7 @@ window.STORY_DATA.chapters[0].byStarter['10265'] = {
         },
         {
           "speaker": "불량배-K",
-          "text": "히히히...지금...아마도 해피타임~"
+          "text": "히히히...지금쯤...대장한테 제대로 교육받고 있을걸~"
         },
         {
           "speaker": "용지혜",
@@ -914,7 +914,7 @@ window.STORY_DATA.chapters[0].byStarter['10265'] = {
     },
     {
       "speaker": "용지혜",
-      "text": "(오늘도 지효는 연락이 없네….)"
+      "text": "(지효가 왜 연락이 안 되지...)"
     },
     {
       "speaker": "내레이션",
@@ -930,7 +930,7 @@ window.STORY_DATA.chapters[0].byStarter['10265'] = {
     },
     {
       "speaker": "???",
-      "text": "야야...이거 이거...팔아버린다."
+      "text": "야야...이거 이거...묻어버린다."
     },
     {
       "speaker": "용지혜",

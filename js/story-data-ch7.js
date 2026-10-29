@@ -1014,7 +1014,7 @@ window.STORY_DATA.chapters.push({
    "after": [
     {
      "speaker": "강태준",
-     "text": "잘 놀고 갑니다~",
+     "text": "이번 내기도 내가 이겼다~ 3주 만에 울렸으니까. 다음 타겟은 누구로 할까?",
      "expr": "장난"
     },
     {
@@ -1357,6 +1357,10 @@ window.STORY_DATA.chapters.push({
       "text": "아...봄날의 햇살은 정말 밝고 따뜻하네~",
       "expr": "장난",
       "image": "img/story/ch7-14.webp"
+     },
+     {
+      "speaker": "내레이션",
+      "text": "웃음소리. 휴대폰 카메라의 빨간 불빛. 바닥에 짓밟힌 샌드위치."
      }
     ]
    },
@@ -1512,13 +1516,13 @@ window.STORY_DATA.chapters.push({
       "video": "video/story/ch7-15.mp4"
      },
      {
+      "speaker": "강태안",
+      "text": "[야. 아까 무릎 꿇고 빌던 영상, 애들 반응 좋더라. 내 말 안 들으면 학교 단톡에 싹 뿌린다.]"
+     },
+     {
       "speaker": "민유연",
       "text": "커컥.....",
       "expr": "화남"
-     },
-     {
-      "speaker": "강태안",
-      "text": "[야. 앞으로 너 내 말 안 들으면 이거 싹 따 뿌린다.]"
      },
      {
       "speaker": "민유연",
