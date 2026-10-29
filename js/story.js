@@ -1601,7 +1601,10 @@
     localTicketSync();
     if ((save.tickets | 0) < n) return { ok: false, reason: 'tickets', tickets: save.tickets | 0 };
     const cards = []; let hr = false;
+    const js = forcedPullOn && n === 10 && !save.ch0Jieun ? Math.floor(Math.random() * 10) : -1;   // 챕0 강제 영입: 하지은 확정 (서버: story_ch0_jieun.sql)
+    if (js >= 0) save.ch0Jieun = true;
     for (let i = 0; i < n; i++) {
+      if (i === js) { addOwned('10439'); cards.push({ card_id: '10439', grade: 'SUPER RARE' }); hr = true; continue; }
       let r = Math.random(); if (n === 10 && i === 9 && !hr) r = 0.8 + Math.random() * 0.2;   // 10회 HR 이상 보장
       const g = window.rollGachaRarity(r, G().special); if (!['NORMAL', 'RARE'].includes(g)) hr = true;
       const c = rand(pool().filter(x => x.grade === g)); addOwned(c.id); cards.push({ card_id: String(c.id), grade: g });
