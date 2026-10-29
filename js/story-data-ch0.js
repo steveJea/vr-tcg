@@ -33,7 +33,8 @@ window.STORY_DATA.chapters.unshift({
  "rewardCards": {
   "1": "10256",
   "2": "10462",
-  "3": "10207"
+  "3": "10207",
+  "4": "10208"
  },
  "phases": [
   {
@@ -343,6 +344,34 @@ window.STORY_DATA.chapters.unshift({
     "battleLevel": 10,
     "line": "....약해...",
     "image": "img/story/ch0-05.webp"
+   }
+  },
+  {
+   "no": 4,
+   "type": "normal",
+   "late": true,
+   "pool": true,
+   "mana": 200,
+   "mustSummon": ["10207"],
+   "enemyName": "문지예",
+   "title": "TODO(형님): 페이즈 제목",
+   "enemies": { "ids": ["10111", "10224", "10265"] },
+   "lines": {
+    "default": [
+     { "speaker": "TODO", "text": "TODO(형님): 전투 전 대사 1" },
+     { "speaker": "TODO", "text": "TODO(형님): 전투 전 대사 2" }
+    ]
+   },
+   "after": [
+    { "speaker": "TODO", "text": "TODO(형님): 승리 후 대사" },
+    { "speaker": "내레이션", "text": "송지은이 동료가 되었다." }
+   ],
+   "tutorial": "ch0_p4",
+   "party": {
+    "forced": ["10325", "10256", "10207", "10462"],
+    "mustLive": [],
+    "noExtra": true,
+    "auto": true
    }
   }
  ]

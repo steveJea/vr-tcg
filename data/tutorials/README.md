@@ -44,7 +44,7 @@
 ## 시트(튜토리얼 칸) → 단계로 옮기기
 "내 카드를 선택하고 상대 카드를 공격 · 기술 사용 (오토·2배속 비활성화)"
 → `locks: ["auto","speed"]`, 단계: 정보(tap) → `my_card:0`/`card_selected` → `enemy_card:0`/`attack_done` → `skill_btn:N`/`tap_target` → `skill_use`/`skill_used` → 정보(tap). 예시: `ch0_battle1.json`.
-(소환 튜토리얼은 전투 규칙 변경 뒤에 `summon` 이벤트를 추가할 예정)
+소환·공격력 UP: `summoned` (`id` = 카드 id, 손패 소환·reserve 소환) · `action_used` (`type` = `buff` 등). 예시: `ch0_p4.json` (챕터 0 P4, 제한 마나 · 손패 `#me-hand .hand-card[data-id="…"]` → `#summon-btn`)
 
 ## 개발용
 - 미리보기: `?tut=ch0_battle1` (연습 전투 + 가이드, 라이브 스토리와 무관 · json 의 `demo` 덱 사용)

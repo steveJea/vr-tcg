@@ -228,7 +228,9 @@
   const CH1 = () => Math.max(0, D.chapters.findIndex(c => c.id === 1));   // 챕터 1 위치 (앞에 챕터 0 튜토리얼이 있으면 1)
   // 챕터 0(튜토리얼): 서버에 설정이 있으면 열림 · 챕터 1: 항상 열림(기존 진행 그대로, 챕터 0 클리어 불필요) · 2~: 이전 챕터 클리어 후
   const chapterOpen = i => { const c = D.chapters[i]; if (!c) return false; if (c.id === 0) return chReady[0] !== false; if (c.id === 1) return true; return chapterDone(D.chapters[i - 1]) && chReady[c.id] !== false; };
-  const ch0Pending = () => { const c = D.chapters.find(x => x.id === 0); return !!c && chReady[0] !== false && !chapterDone(c); };
+  // 챕터 0 '나중에 추가된' 페이즈(p.late, 예: P4 마나 소환 튜토리얼): 스타터를 이미 고른 기존 사용자는 강제 진행·강제 영입 판정에서 빼고 지도에서 자유롭게
+  const ch0Core = c => save?.starter ? { ...c, phases: c.phases.filter(p => !p.late) } : c;
+  const ch0Pending = () => { const c = D.chapters.find(x => x.id === 0); return !!c && chReady[0] !== false && !chapterDone(ch0Core(c)); };
   async function checkChapters() {
     chReady = {};
     if (!serverMode) return;
@@ -386,7 +388,7 @@
   // 끝 표시: 서버 save.ch0Pull (story_mark_seen('ch0Pull'), supabase/story_ch0_pull.sql) · 서버 함수가 아직 없으면 이 브라우저 localStorage
   const PULL_KEY = () => `vrCh0Pull:${user()?.id || 'guest'}`;
   let forcedPullOn = false;
-  const pullPending = () => { const c = D.chapters.find(x => x.id === 0); if (!c || !chapterDone(c) || save?.ch0Pull) return false; try { if (localStorage.getItem(PULL_KEY())) return false; } catch {} return true; };
+  const pullPending = () => { const c = D.chapters.find(x => x.id === 0); if (!c || !chapterDone(ch0Core(c)) || save?.ch0Pull) return false; try { if (localStorage.getItem(PULL_KEY())) return false; } catch {} return true; };
   async function markPullDone() {
     save.ch0Pull = true; try { localStorage.setItem(PULL_KEY(), '1'); } catch {}
     if (serverMode) { try { await cloud().sb.rpc('story_mark_seen', { p_key: 'ch0Pull' }); } catch {} }   // SQL 전이면 'invalid key' → localStorage 만으로 동작
@@ -748,8 +750,8 @@
       kickoff: ch.tutorial ? true : 'external',   // 챕터 0: 가운데 [⚔️ 시작하기] · 그 밖: 조건 창의 [⚔️ 전투 시작]/✕ 가 시작 신호   // 모든 스토리 전투: [시작하기] 눌러야 등장 연출 → 첫 턴 → 가이드 (탑·퀘스트·PvP·전쟁·토벌은 그대로 자동 시작)
       fullMp: !!ph.fullMp, meLevels: ph.party?.battleLevels,
       // 제한 마나 (챕터 1~): 시작에 한 번만, 다시 차지 않음. 출전 카드는 손패 → 코스트 내고 소환. 필수 인재는 1명 2턴·2명+ 3턴 안에 소환
-      manaPool: ch.tutorial ? undefined : storyMana(ch, ph, me),
-      mustSummon: ch.tutorial || !ch.single ? undefined : (ph.party?.forced || ph.party?.mustLive || []).map(String),
+      manaPool: ch.tutorial && !ph.pool ? undefined : storyMana(ch, ph, me),   // 챕터 0 은 ph.pool 페이즈(P4 튜토리얼)만
+      mustSummon: ph.mustSummon ? ph.mustSummon.map(String) : ch.tutorial || !ch.single ? undefined : (ph.party?.forced || ph.party?.mustLive || []).map(String),
       awaken: ph.awaken ? { ...ph.awaken, card: lvScaled(card(ph.awaken.id), ph.awaken.storyLevel || 1) } : undefined,   // 튜토리얼 가이드 id (data/tutorials/<id>.json · README 참고) — 처음 한 번만   // 조윤이는 조윤하를 공격하지 않음 + 페이즈 spare (예: CH3 P6 안지수 → 조윤하)
       onEnd: (win, reason, st) => result(ch, ph, win, reason, st),
     });
@@ -778,11 +780,11 @@
     const win = [], lose = [], info = [];
     if (R.expire && R.invuln != null) win.push(['⏳', `<b>${R.expire}턴</b> 버티기`, `${R.expire}턴 후 ${nm(R.invuln)} 자동 소멸`]);
     else if (boss) win.push(['👑', '상대 진영 HP <b>0</b>', `보스 ${nm(ph.bossId)}는 쓰러지지 않아요`]);
-    else win.push(['⚔️', '적 인재 <b>모두</b> 쓰러뜨리기', '']);
+    else win.push(['⚔️', '적 <b>전멸</b>', '']);
     for (const id of R.mustLive || []) lose.push(['💔', `<b>${nm(id)}</b> 쓰러짐`, '']);
-    const mp = !ch.tutorial, ms = mp && ch.single ? (ph.party?.forced || ph.party?.mustLive || []) : [];
+    const mp = !ch.tutorial || !!ph.pool, ms = ph.mustSummon || (mp && ch.single ? (ph.party?.forced || ph.party?.mustLive || []) : []);
     if (ms.length) lose.push(['📌', `<b>${ms.map(nm).join('·')}</b> ${ms.length >= 2 ? 3 : 2}턴 안에 소환 못 함`, '']);
-    lose.push(['☠️', mp ? '필드 전멸 + <b>낼 수 있는 인재 없음</b>' : '내 인재 <b>전멸</b>', '']);
+    lose.push(['☠️', mp ? '아군 <b>전멸</b> (남은 마나로 소환 불가)' : '아군 <b>전멸</b>', '']);
     if (mp) info.push(['💧', `시작 마나 <b>${storyMana(ch, ph, deckInstances())}</b> · 다시 차지 않아요 (소환·공격력 강화에 사용)`]);
     lose.push(['⌛', `<b>${RULES_MAX_MY()}턴</b> 안에 못 이김`, '']);
     if (R.invuln != null) info.push(['🛡️', `${nm(R.invuln)}: 피해를 입지 않음`]);
@@ -879,7 +881,7 @@
   async function result(ch, ph, win, reason, st = {}) {
     if (!win) {
       const ab = serverMode && window.VRPlayer ? await window.VRPlayer.abort() : null;
-      show(`<div class="text-center py-10"><div class="story-chapter-big text-red-400">DEFEAT</div><div class="text-zinc-300 mt-2">${reason === 'giveup' ? '도전을 포기했어요.' : reason === 'wipe' ? (window.TCG?.S?.me?.manaPool ? '필드 인재가 모두 쓰러졌고, 남은 마나로 낼 수 있는 인재가 없어요.' : '내 필드 인재가 모두 쓰러졌어요.') : reason === 'mustsummon' ? `필수 인재 ${esc(window.TCG?.S?.mustSummonMiss || '')}을(를) 제때 소환하지 못했어요.` : reason === 'mustlive' ? `${esc(window.TCG?.S?.mustLiveDown || card((battleRules(ch, ph)?.mustLive || [])[0])?.name || '필수 출전')} 인재가 쓰러졌어요.` : reason === 'timeout' ? (ph.type === 'boss' ? '턴 제한 안에 상대 진영을 무너뜨리지 못했어요.' : '턴 제한 안에 적을 모두 쓰러뜨리지 못했어요.') : '패배했어요.'} 스탯을 올리고 다시 도전해 보세요!</div>${ab?.refunded ? `<div class="mt-2 text-emerald-300 text-sm">🔋 행동력 ${ab.refunded} 반환 (보유 ${ab.stamina}/${ab.stamina_max})</div>` : ''}
+      show(`<div class="text-center py-10"><div class="story-chapter-big text-red-400">DEFEAT</div><div class="text-zinc-300 mt-2">${reason === 'giveup' ? '도전을 포기했어요.' : reason === 'wipe' ? (window.TCG?.S?.me?.manaPool ? '아군 전멸! 남은 마나로 소환할 수 없어요.' : '아군 전멸!') : reason === 'mustsummon' ? `필수 인재 ${esc(window.TCG?.S?.mustSummonMiss || '')}을(를) 제때 소환하지 못했어요.` : reason === 'mustlive' ? `${esc(window.TCG?.S?.mustLiveDown || card((battleRules(ch, ph)?.mustLive || [])[0])?.name || '필수 출전')} 인재가 쓰러졌어요.` : reason === 'timeout' ? (ph.type === 'boss' ? '턴 제한 안에 상대 진영을 무너뜨리지 못했어요.' : '턴 제한 안에 적을 모두 쓰러뜨리지 못했어요.') : '패배했어요.'} 스탯을 올리고 다시 도전해 보세요!</div>${ab?.refunded ? `<div class="mt-2 text-emerald-300 text-sm">🔋 행동력 ${ab.refunded} 반환 (보유 ${ab.stamina}/${ab.stamina_max})</div>` : ''}
         <div class="flex flex-col gap-2 max-w-xs mx-auto mt-6"><button class="story-btn" id="story-retry">다시 도전</button><button class="story-back" data-go="map">챕터 지도로</button></div></div>`);
       bind(); $('story-retry').onclick = () => startPhase(ch, ph); return;
     }

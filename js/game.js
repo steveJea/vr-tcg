@@ -277,6 +277,7 @@ function useAction(who, type) {
   if (type === 'fieldheal') floatText(`${ic('heal')} +${fmt(r.healed)}`, 'text-emerald-300', who, true);
   if (type === 'buff') floatText(`${ic('atk')} ATK +${Math.round(RULES.BUFF_RATIO * 100)}%`, 'text-violet-300', who, true);
   render();
+  if (who === 'me') TUT('action_used', { type });   // 튜토리얼: 공격력 UP 등
   return r;
 }
 
@@ -301,6 +302,7 @@ function summon(who, card) {
   if (who === 'me' && S.story) S.log.played.add(String(card.id));   // 스토리: 참전 카드 기록 (EXP 지급용)
   const u = placeUnit(p, card, makeUnit, true);   // 새로 소환한 카드는 필드 맨 앞
   if (who === 'me' && p.manaPool) { storyMeInit(u, card); refreshAll(p); }
+  if (who === 'me') TUT('summoned', { id: String(card.id) });   // 튜토리얼: 손패 소환
   playSe(card.grade === 'MYTHIC RARE' || card.grade === 'LEGENDARY RARE' ? 6 : card.grade === 'ULTRA RARE' ? 5 : 2);
   render();
   onEnter(who, u);
