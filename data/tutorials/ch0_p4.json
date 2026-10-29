@@ -1,16 +1,101 @@
 {
   "title": "챕터0 P4 · 마나 소환 전투",
-  "locks": ["auto", "speed", "skip", "attack_all", "giveup"],
-  "steps": [
-    { "text": "TODO(형님): 도입 대사 (이번엔 손패에서 마나를 내고 소환하는 전투)", "speaker": "임유리", "face": "card:10325", "wait": "tap" },
-    { "target": "#me-mana", "text": "TODO(형님): 마나 설명 (전투 시작에 한 번만 받고, 다시 차지 않아)", "speaker": "임유리", "face": "card:10325", "wait": "tap", "pad": 6 },
-    { "target": "#me-hand .hand-card[data-id=\"10325\"]", "text": "TODO(형님): 손패 카드를 눌러 봐", "speaker": "임유리", "face": "card:10325", "wait": "tap_target" },
-    { "target": "#summon-btn", "text": "TODO(형님): 코스트만큼 마나를 내고 소환!", "speaker": "임유리", "face": "card:10325", "wait": "summoned", "match": { "id": "10325" }, "pad": 4 },
-    { "target": "#act-buff", "text": "TODO(형님): 공격력 UP 설명 (마나 30 · 이번 턴 필드 ATK +20%)", "speaker": "임유리", "face": "card:10325", "wait": "action_used", "match": { "type": "buff" }, "pad": 4 },
-    { "target": ".pool-must", "text": "TODO(형님): 필수 인재 설명 (송지아를 2턴 안에 소환하지 않으면 패배)", "speaker": "임유리", "face": "card:10325", "wait": "tap", "pad": 4 },
-    { "target": "#me-hand .hand-card[data-id=\"10207\"]", "text": "TODO(형님): 송지아를 눌러", "speaker": "임유리", "face": "card:10325", "wait": "tap_target" },
-    { "target": "#summon-btn", "text": "TODO(형님): 소환!", "speaker": "임유리", "face": "card:10325", "wait": "summoned", "match": { "id": "10207" }, "pad": 4 },
-    { "text": "TODO(형님): 마무리 대사 (적을 전멸시키면 승리, 아군이 전멸하면 패배)", "speaker": "임유리", "face": "card:10325", "wait": "tap" }
+  "locks": [
+    "auto",
+    "speed",
+    "skip",
+    "attack_all",
+    "giveup"
   ],
-  "demo": { "me": ["10325", "10256", "10207", "10462"], "ai": ["10111", "10224", "10265"], "aiName": "연습 상대" }
+  "steps": [
+    {
+      "text": "이번엔 인재를 손패에서 꺼내 싸울 거야.",
+      "speaker": "임유리",
+      "face": "card:10325",
+      "wait": "tap"
+    },
+    {
+      "target": "#me-mana",
+      "text": "이게 마나야. 전투 시작에 한 번 받고, 다시 차지 않아.",
+      "speaker": "임유리",
+      "face": "card:10325",
+      "wait": "tap",
+      "pad": 6
+    },
+    {
+      "target": "#me-hand .hand-card[data-id=\"10325\"]",
+      "text": "손패에서 나를 눌러 봐.",
+      "speaker": "임유리",
+      "face": "card:10325",
+      "wait": "tap_target"
+    },
+    {
+      "target": "#summon-btn",
+      "text": "코스트만큼 마나를 내고 소환!",
+      "speaker": "임유리",
+      "face": "card:10325",
+      "wait": "summoned",
+      "match": {
+        "id": "10325"
+      },
+      "pad": 4
+    },
+    {
+      "target": "#act-buff",
+      "text": "마나 30으로 이번 턴 필드 전체 ATK +20%. 눌러 봐.",
+      "speaker": "임유리",
+      "face": "card:10325",
+      "wait": "action_used",
+      "match": {
+        "type": "buff"
+      },
+      "pad": 4
+    },
+    {
+      "target": ".pool-must",
+      "text": "송지아는 필수 인재야. 2턴 안에 소환 못 하면 패배야.",
+      "speaker": "임유리",
+      "face": "card:10325",
+      "wait": "tap",
+      "pad": 4
+    },
+    {
+      "target": "#me-hand .hand-card[data-id=\"10207\"]",
+      "text": "송지아를 눌러.",
+      "speaker": "임유리",
+      "face": "card:10325",
+      "wait": "tap_target"
+    },
+    {
+      "target": "#summon-btn",
+      "text": "소환!",
+      "speaker": "임유리",
+      "face": "card:10325",
+      "wait": "summoned",
+      "match": {
+        "id": "10207"
+      },
+      "pad": 4
+    },
+    {
+      "text": "남은 마나는 아껴 써. 적을 전멸시키면 승리, 아군이 전멸하면 패배야.",
+      "speaker": "임유리",
+      "face": "card:10325",
+      "wait": "tap"
+    }
+  ],
+  "demo": {
+    "me": [
+      "10325",
+      "10256",
+      "10207",
+      "10462"
+    ],
+    "ai": [
+      "10111",
+      "10224",
+      "10265"
+    ],
+    "aiName": "연습 상대"
+  }
 }

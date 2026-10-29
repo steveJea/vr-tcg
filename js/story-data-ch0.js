@@ -354,17 +354,73 @@ window.STORY_DATA.chapters.unshift({
    "mana": 200,
    "mustSummon": ["10207"],
    "enemyName": "문지예",
-   "title": "TODO(형님): 페이즈 제목",
-   "enemies": { "ids": ["10111", "10224", "10265"] },
-   "lines": {
-    "default": [
-     { "speaker": "TODO", "text": "TODO(형님): 전투 전 대사 1" },
-     { "speaker": "TODO", "text": "TODO(형님): 전투 전 대사 2" }
-    ]
-   },
+   "title": "교섭",
+   "enemies": { "ids": ["10111", "10224", "10265"], "levels": { "10111": 2, "10224": 2, "10265": 2 } },
+   "lines": { "default": [
+    {
+     "speaker": "임유리",
+     "text": "자, 그럼 이 몸이 직접 하나 더 알려줄게.",
+     "expr": "야비"
+    },
+    {
+     "speaker": "임유리",
+     "text": "감사히 익히도록 해.",
+     "expr": "웃음"
+    },
+    {
+     "speaker": "오유나",
+     "text": "뭐..뭔가요...유리님?",
+     "expr": "놀람"
+    },
+    {
+     "speaker": "임유리",
+     "text": "그냥 들으렴.",
+     "expr": "하품"
+    },
+    {
+     "speaker": "오유나",
+     "text": "네..네....",
+     "expr": "당황"
+    }
+   ] },
    "after": [
-    { "speaker": "TODO", "text": "TODO(형님): 승리 후 대사" },
-    { "speaker": "내레이션", "text": "송지은이 동료가 되었다." }
+    {
+     "speaker": "임유리",
+     "text": "모든 스토리 모드는 마나를 갖고 시작해.",
+     "expr": "웃음"
+    },
+    {
+     "speaker": "임유리",
+     "text": "당신이 전략적으로 인재를 써야 하는 거야. 알겠어?",
+     "expr": "야비"
+    },
+    {
+     "speaker": "임유리",
+     "text": "손패(덱)에 나 같은 좋은 인재가 있는데 마나가 고갈돼서 못 뽑으면..뭐다?",
+     "expr": "웃음"
+    },
+    {
+     "speaker": "임유리",
+     "text": "당신이 실수한 거지.",
+     "expr": "야비"
+    },
+    {
+     "speaker": "임유리",
+     "text": "그리고 레벨을 올릴수록 마나 보유량은 많아져."
+    },
+    {
+     "speaker": "임유리",
+     "text": "소탕을 하면 아이템도 얻고 레벨도 올릴 수 있어."
+    },
+    {
+     "speaker": "임유리",
+     "text": "그러니 열심히 해봐~",
+     "expr": "웃음"
+    },
+    {
+     "speaker": "임유리",
+     "text": "아케이드, 시련의 탑, PVP는 전투방식이 다르니까 참고해!"
+    }
    ],
    "tutorial": "ch0_p4",
    "party": {
