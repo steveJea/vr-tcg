@@ -44,7 +44,7 @@
     ov = document.createElement('div'); ov.className = 'gd-ov'; ov.innerHTML = '<div class="gd-page"><div class="gd-loading">…</div></div>';
     ov.addEventListener('click', e => { if (e.target === ov || e.target.closest('[data-close]')) close(); });
     document.body.appendChild(ov); window.VRSound?.scope?.(ov, window.VR_BGM?.guildHome);
-    await status(); paint();
+    await status(); paint(); if (st?.guild) lendNotices();
   }
   const card = g => `<button class="gd-card" data-gid="${g.id}">${emb(g.emblem)}<span class="gd-card-m"><b>${esc(g.name)}</b><small>${esc(g.intro || '')}</small></span><span class="gd-card-r"><b>Lv.${g.level}</b><small>${gi('ic_members', '👥')} ${g.members}/${g.max_members} ${MODE[g.join_mode]?.[0] || ''}</small></span></button>`;
   function paint() {
@@ -284,5 +284,15 @@
   document.addEventListener('click', e => { if (e.target.closest('[data-guild-open]')) { e.preventDefault(); window.VRMyPage?.close?.(); open(); } });
   const mount = () => { const b = document.getElementById('main-guild'); if (b) b.addEventListener('click', () => { if (window.VRCloud?.user || window.__GUILD_MOCK) open(); }); };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount); else mount();
+  // 대여 알림: 내 인재를 누가 빌렸으면 한 번 보여 줌 (게임 시작 로그인 후 · 조직 홈 열 때). SQL(guild_lend_notice.sql) 전이면 조용히 건너뜀
+  let noticeBusy = false;
+  async function lendNotices() {
+    if (noticeBusy || window.__GUILD_MOCK || !window.VRCloud?.user) return; noticeBusy = true;
+    try { const L = await rpc('guild_lend_notices'); if (Array.isArray(L) && L.length) {
+      const nm = id => window.VRStory?.api?.card?.(id)?.name || '인재';
+      const m = pop(`<div class="gd-h big">${gi('tile_lend', '🤝')} 대여 알림</div><div class="gd-lnl">${L.map(x => `<div class="gd-ln"><img src="${IMG}${x.card_id}.webp" alt="" loading="lazy" onerror="this.style.visibility='hidden'"><span><b>${esc(x.borrower_name)}</b>님이 <b>${esc(nm(x.card_id))}</b>를 빌렸어요 · ${LOYI} 충성 +${n(x.reward)}</span></div>`).join('')}</div>`);
+      void m; } } catch {} finally { noticeBusy = false; }
+  }
+  { let tries = 0; const t = setInterval(() => { if (window.VRCloud?.user) { clearInterval(t); setTimeout(lendNotices, 2500); } else if (++tries > 60) clearInterval(t); }, 1000); }
   window.VRGuild = { open, close, status, myCard, EMB, get now() { return st; } };
 })();
