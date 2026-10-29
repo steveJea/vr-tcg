@@ -2,7 +2,7 @@
 -- 저장 위치: story_progress.data.decks = [{name, uids[]}], owned[i].fav, owned[i].locked(+dlk: 덱 자동 잠금 표시)
 -- 모두 SECURITY DEFINER + auth.uid() 본인 행만. 여러 번 실행해도 안전(idempotent).
 
--- 1) 마이 덱 저장: 최대 10개, 덱당 최대 5장, 내가 가진 카드만. 덱에 든 카드는 locked+dlk, 빠지면 dlk 잠금만 해제(수동 잠금 유지)
+-- 1) 마이 덱 저장: 최대 10개, 덱당 최대 10장 (story_decks10.sql), 내가 가진 카드만. 덱에 든 카드는 locked+dlk, 빠지면 dlk 잠금만 해제(수동 잠금 유지)
 create or replace function public.story_set_decks(p_decks jsonb) returns jsonb language plpgsql security definer set search_path = public as $$
 declare uid uuid := auth.uid(); d jsonb; owned jsonb; clean jsonb := '[]'::jsonb; x jsonb; ids jsonb; u text; nm text;
         alluids text[] := '{}'; mine text[]; i int; e jsonb;
