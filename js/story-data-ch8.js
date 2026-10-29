@@ -2205,5 +2205,6 @@ window.STORY_DATA.chapters.push({
    "image": "img/story/ch8-01.webp"
   }
  ],
- "ending": []
+ "ending": [],
+ "endingVideo": "hZVw28WEYHY"
 });
