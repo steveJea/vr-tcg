@@ -1,3 +1,4 @@
+-- ⚠ 다시 돌리지 마세요, 최신 아님 (일부): 이 파일의 _player_add_xp, _player_xp_need, story_complete_phase 는 뒤 파일에서 다시 정의됨. 이 파일을 다시 돌리면 예전 것으로 되돌아가요. supabase/README.md 참고
 -- =====================================================================
 -- 단계 E-2: 플레이어 레벨 + 행동력 — Supabase SQL Editor 에서 실행. 여러 번 실행해도 안전
 -- 선행: story_*.sql 전부, admin.sql, phaseE_1.sql (레벨업 골드 보상에 지갑 사용)

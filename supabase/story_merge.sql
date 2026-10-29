@@ -1,3 +1,4 @@
+-- ⚠ 다시 돌리지 마세요, 최신 아님 (일부): 이 파일의 _story_lock, _story_new_card, story_allocate, story_complete_phase, story_discard, story_discard_many, story_merge 는 뒤 파일에서 다시 정의됨. 이 파일을 다시 돌리면 예전 것으로 되돌아가요. supabase/README.md 참고
 -- =====================================================================
 -- VR: Abyss Gate - 스토리 카드 개별 인스턴스 + EX 합성 (스토리 모드 전용, 아케이드와 무관)
 -- 사용법: story_level_stats.sql 이후 Supabase SQL Editor 에 이 파일 전체를 붙여넣고 Run. 여러 번 실행해도 안전.

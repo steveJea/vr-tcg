@@ -1,3 +1,4 @@
+-- ⚠ 다시 돌리지 마세요, 최신 아님 (일부): 이 파일의 _gear_grant, mail_claim 는 뒤 파일에서 다시 정의됨. 이 파일을 다시 돌리면 예전 것으로 되돌아가요. supabase/README.md 참고
 -- ===== 장비 시스템 v1 (PR1: DB 기반만, UI 없음) =====
 -- 설계: 장비 시스템 초안 v4 Page. 여러 번 실행해도 안전 (if not exists / on conflict / create or replace)
 -- 의존: phaseE_1.sql (player_wallet, wallet_log), gem.sql (_gem_spend), story_progress (owned[].id)

@@ -1,3 +1,4 @@
+-- ⚠ 다시 돌리지 마세요, 최신 아님 (일부): 이 파일의 admin_user_quest, quest_complete, quest_start, quest_status 는 뒤 파일에서 다시 정의됨. 이 파일을 다시 돌리면 예전 것으로 되돌아가요. supabase/README.md 참고
 -- =====================================================================
 -- 퀘스트 모드 (시련의 탑) — Supabase SQL Editor 에서 실행. 여러 번 실행해도 안전
 -- 필요: story_gacha.sql(소환권), story_server.sql(_story_min_battle_secs), admin.sql(관리자 상세용, 선택)

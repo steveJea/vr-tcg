@@ -1,3 +1,4 @@
+-- ⚠ 다시 돌리지 마세요, 최신 아님 (일부): 이 파일의 _guild_feed, guild_shop_buy 는 뒤 파일에서 다시 정의됨. 이 파일을 다시 돌리면 예전 것으로 되돌아가요. supabase/README.md 참고
 -- =====================================================================
 -- [조직] 1단계 (길드 코어) — Supabase SQL Editor 에서 실행. 여러 번 실행해도 안전
 -- 선행: phaseE_1.sql(지갑) · phaseE_2.sql(레벨·행동력) · gem.sql(심연석) · admin.sql · pvp.sql · pvp_tier.sql
