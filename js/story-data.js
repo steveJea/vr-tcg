@@ -963,7 +963,10 @@ window.STORY_DATA.exprSlug = { '기본': 'base', '보통': 'base', '화남': 'an
 // 챕터 0 전용: 새 임유리 초상화 (im_yuri_c0_*). 챕터 4·6 은 기존 im_yuri_* 그대로
 // 황보예: 챕터 0 전용 (hwangbo_ye_c0_*). 챕터 4 는 기존대로 카드 그림
 // 송지아: 챕터 0 전용 (song_jia_c0_*). 다른 챕터는 그대로
-window.STORY_DATA.chapterPortraits = { 0: { '임유리': 'im_yuri_c0', '황보예': 'hwangbo_ye_c0', '송지아': 'song_jia_c0' } };
+// 챕터 8 「주홍글씨」 전용: 안지윤 3버전(교복·10세·중딩) · [염원] 안지윤 · 안소라 · 학부모1~6(=가해자 부모, 주홍글씨1~6) · 친구1~2. 하급/상급 몽마는 카드 그림
+window.STORY_DATA.chapterPortraits = { 0: { '임유리': 'im_yuri_c0', '황보예': 'hwangbo_ye_c0', '송지아': 'song_jia_c0' },
+  8: { '안지윤': 'an_jiyun', '초등학생 안지윤': 'an_jiyun_c10', '중학생 안지윤': 'an_jiyun_ms', '[염원] 안지윤': 'an_jiyun_wish', '안소라': 'an_sora',
+    ...Object.fromEntries([1, 2, 3, 4, 5, 6].flatMap(i => [[`학부모${i}`, `scarlet${i}`], [`가해자 부모${i}`, `scarlet${i}`]])), '친구1': 'an_jiyun_friend1', '친구2': 'an_jiyun_friend2', '친구3': 'an_jiyun_friend3' } };
 window.STORY_DATA.exprAlt = { smile: 'playful', playful: 'smile', crazy: 'playful', cold: 'angry', sneer: 'playful', yawn: 'base', hurt: 'sad' };
 
 // ===== 일일 카드 뽑기 확률 (서버 supabase/gacha.sql 과 동일하게 유지) =====
