@@ -109,7 +109,7 @@
     try {
       const sm = await window.VRStory?.summary?.(), c = sm?.current;
       if (c) { const im = document.querySelector('#story-btn [data-alt]'); if (im) { const i = new Image(); i.onload = () => { im.src = i.src; }; i.src = `img/ui/main/story_banner_ch${c.i | 0}.webp`; } }
-      if (c) $('main-cta-sub').textContent = `CHAPTER ${c.i} · ${c.phase ? 'PHASE ' + c.phase : `${c.done}/${c.total}`}${c.title ? ' · ' + c.title : ''}`;
+      if (c) $('main-cta-sub').textContent = `CHAPTER ${c.i} · ${c.phase ? 'PHASE ' + c.phase : `${c.done}/${c.total}`}${c.title && !new RegExp('^\\s*(CHAPTER|CH\\.?|챕터)\\s*0*' + c.i + '\\s*$', 'i').test(c.title) ? ' · ' + c.title : ''}`;
     } catch {}
   }
   $('tab-talent').addEventListener('click', () => { if (user()) window.VRStory?.openCards?.(); });
