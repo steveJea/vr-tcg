@@ -1,3 +1,4 @@
+-- ⚠ 다시 돌리지 마세요, 최신 아님 (일부): 이 파일의 _story_cap, _story_gain, _story_norm, story_allocate, story_complete_phase, story_discard 는 뒤 파일에서 다시 정의됨. 이 파일을 다시 돌리면 예전 것으로 되돌아가요. supabase/README.md 참고
 -- =====================================================================
 -- VR: Abyss Gate - 스토리 카드 레벨 + 폐기 (추가분)
 -- 사용법: story.sql → gacha.sql → story_server.sql 실행 후 붙여넣고 Run. 여러 번 실행해도 안전.

@@ -1,3 +1,4 @@
+-- ⚠ 다시 돌리지 마세요, 최신 아님 (일부): 이 파일의 story_sweep 는 뒤 파일에서 다시 정의됨. 이 파일을 다시 돌리면 예전 것으로 되돌아가요. supabase/README.md 참고
 -- phaseE_5.sql — 소탕 (스토리 반복 클리어 자동 정산)
 -- 실행 순서: phaseE_2 → phaseE_3 → (phaseE_4) → phaseE_5. 여러 번 실행해도 안전.
 -- 조건: 플레이어 Lv5 이상(_player_unlock_level('sweep')), 이미 클리어한 스토리 페이즈만, 1/5/10회.

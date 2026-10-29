@@ -1,3 +1,4 @@
+-- ⚠ 다시 돌리지 마세요, 최신 아님 (일부): 이 파일의 _war_lock, _war_npc_deck, _war_numbers 는 뒤 파일에서 다시 정의됨. 이 파일을 다시 돌리면 예전 것으로 되돌아가요. supabase/README.md 참고
 -- 조직 4단계: 「구역 전쟁」 (조직 대 조직). 여러 번 실행해도 안전.
 -- 선행: guild.sql · guild2.sql(_guild_reward · guild_claims) · pvp.sql(_pvp_snap · pvp_card_meta) · gem.sql · admin.sql
 -- 시즌: 매달 셋째 수요일 ~ 일요일 (KST, 5일). 매일 09:00~23:00 전투, 하루 1경기 = 상대 5개 조직.

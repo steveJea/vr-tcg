@@ -1,3 +1,4 @@
+-- ⚠ 다시 돌리지 마세요, 최신 아님 (일부): 이 파일의 _story_new_card 는 뒤 파일에서 다시 정의됨. 이 파일을 다시 돌리면 예전 것으로 되돌아가요. supabase/README.md 참고
 -- ===== 거래 PR1: 인재 출처(src)·귀속(bound) 기록 =====
 -- 선행: story_merge.sql(_story_new_card) · gacha.sql(story_gacha_log). 여러 번 실행해도 안전. 화면 거래 기능은 아직 없음
 -- 새 인재는 모두 _story_new_card 한 곳에서 만들어짐 → 여기서 호출한 함수(PG_CONTEXT)를 보고 출처를 붙임

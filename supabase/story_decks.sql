@@ -1,3 +1,4 @@
+-- ⚠ 다시 돌리지 마세요, 최신 아님 (일부): 이 파일의 story_set_decks 는 뒤 파일에서 다시 정의됨. 이 파일을 다시 돌리면 예전 것으로 되돌아가요. supabase/README.md 참고
 -- 마이 덱(최대 10개) · 덱 카드 자동 잠금 · 카드 즐겨찾기
 -- 저장 위치: story_progress.data.decks = [{name, uids[]}], owned[i].fav, owned[i].locked(+dlk: 덱 자동 잠금 표시)
 -- 모두 SECURITY DEFINER + auth.uid() 본인 행만. 여러 번 실행해도 안전(idempotent).

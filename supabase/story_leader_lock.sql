@@ -1,3 +1,4 @@
+-- ⚠ 다시 돌리지 마세요, 최신 아님 (일부): 이 파일의 story_discard_many, story_merge, story_set_lock 는 뒤 파일에서 다시 정의됨. 이 파일을 다시 돌리면 예전 것으로 되돌아가요. supabase/README.md 참고
 -- ===== 스토리: 리더 변경 + 분해 잠금 (supabase/story_leader_lock.sql) =====
 -- SQL Editor 에서 그대로 실행 (여러 번 실행해도 안전). service_role 필요 없음.
 -- 저장 형식: data.owned[i].locked = true (잠금), data.leader = 리더 인스턴스 uid (리더는 항상 잠금 취급, 따로 저장 안 함)

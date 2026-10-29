@@ -1,3 +1,4 @@
+-- ⚠ 다시 돌리지 마세요, 최신 아님 (일부): 이 파일의 _pvp_extra, _pvp_snap, pvp_rankings, pvp_report, pvp_start, pvp_status 는 뒤 파일에서 다시 정의됨. 이 파일을 다시 돌리면 예전 것으로 되돌아가요. supabase/README.md 참고
 -- ===== 비동기 PvP (리그: 무제한 open / HR급 이하 hr · 모드: 1v1 / 3v3 · 주간 시즌 · 하루 10회) =====
 -- 실행: Supabase SQL Editor 에서 전체 실행. 여러 번 실행해도 안전(idempotent).
 -- 서버 권한: 덱 소유·등급·코스트 검사, 상대 선택, seed 발급, 하루 횟수, 레이팅 계산은 모두 SECURITY DEFINER RPC 에서.

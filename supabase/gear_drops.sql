@@ -1,3 +1,4 @@
+-- ⚠ 다시 돌리지 마세요, 최신 아님 (일부): 이 파일의 _gear_raid_claim_trg, mail_claim, story_sweep 는 뒤 파일에서 다시 정의됨. 이 파일을 다시 돌리면 예전 것으로 되돌아가요. supabase/README.md 참고
 -- ===== 장비 PR4: 드롭 (소탕·탑·조직 토벌) + 토벌 상자 + 우편함 =====
 -- 선행: gear_v1.sql · guild2.sql · guild3.sql · tower_v2.sql · phaseE_5.sql. 여러 번 실행해도 안전
 -- · 등급: gear_tier_gate (챕터·층 대역, 희귀는 챕터 11부터 2%, 일반 콘텐츠 최대 5 영웅). 전설·심연은 _gear_grant 가 이벤트 외 거부
