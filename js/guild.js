@@ -154,6 +154,13 @@
   const lerr = e => { const m = String(e?.message || e); const k = Object.keys(LERR).find(x => m.includes(x)); return k ? LERR[k] : /function|does not exist/.test(m) ? '대여 준비 중이에요' : errText(e); };
   const left = t => { const ms = Math.max(0, new Date(t) - Date.now()), m = Math.ceil(ms / 60000); return m >= 60 ? `${Math.floor(m / 60)}시간 ${m % 60}분` : `${m}분`; };
   const lcard = (id, lv, sub = '', attr = '', cls = '') => `<button class="gd-lc ${cls}" ${attr}><img src="${IMG}${id}.webp" alt="" loading="lazy" onerror="this.style.visibility='hidden'"><b>Lv.${lv | 0}</b>${sub ? `<small>${sub}</small>` : ''}</button>`;
+  // 정렬 탭 (스토리 덱 고르기와 같은 탭 · 기본 레벨 높은 순 · 이 창에서만 기억)
+  let lendSortSt = { k: 'level', desc: true };
+  function paintSort(box, again) {
+    const T = window.VRStory?.sortTool; if (!box || !T) return;
+    box.innerHTML = T.bar(lendSortSt);
+    box.querySelectorAll('[data-sort]').forEach(b => b.onclick = () => { lendSortSt = T.next(lendSortSt, b.dataset.sort); again(); });
+  }
   async function lendPop() {
     let L; try { L = await rpc('guild_lend_status'); } catch (e) { return toast(lerr(e)); }
     const nm = id => window.VRStory?.api?.card?.(id)?.name || '';
@@ -161,17 +168,25 @@
       <div class="gd-h">📥 빌린 인재</div>${L.loan ? `<div class="gd-lrow">${lcard(L.loan.card_id, L.loan.snap?.level, `${esc(L.loan.lender_name)} · ${left(L.loan.expires_at)} 남음`)}<small class="gd-lnote">${esc(nm(L.loan.card_id))} · 스토리·시련의 탑 출전 고르기에서 [대여]로 써요</small></div>`
         : `<div class="gd-lnote">${L.borrowed_today ? '오늘은 이미 빌렸어요. 내일 다시 빌릴 수 있어요.' : `하루 1명 · ${L.hours}시간 동안 · 원주인 레벨 그대로`}</div>`}
       <div class="gd-h">📤 내 대여 인재 <small>${L.mine.length}/${L.max} · 빌려줄 때마다 ${LOYI}${L.reward}</small></div><div class="gd-lrow">${L.mine.map(x => lcard(x.id, x.level)).join('')}<button class="gd-lc add" data-lset>✏️<small>바꾸기</small></button></div>
-      <div class="gd-h">🤝 조직원 인재</div><div class="gd-lgrid">${L.others.length ? L.others.map((x, i) => lcard(x.id, x.level, esc(x.owner_name), `data-lb="${i}" ${L.loan || L.borrowed_today ? 'disabled' : ''}`)).join('') : '<div class="gd-lnote">아직 등록된 인재가 없어요</div>'}</div>`, 'wide');
+      <div class="gd-h">🤝 조직원 인재</div>${L.others.length ? '<div data-sb></div>' : ''}<div class="gd-lgrid" data-og></div>`, 'wide');
+    L.others.forEach((x, i) => { x._i = i; x.uid = x.uid || ''; });
+    const drawO = () => { const g = m.querySelector('[data-og]'), y = g.scrollTop, T = window.VRStory?.sortTool;
+      paintSort(m.querySelector('[data-sb]'), drawO);
+      g.innerHTML = L.others.length ? (T ? T.sort(L.others, lendSortSt) : L.others).map(x => lcard(x.id, x.level, esc(x.owner_name), `data-lb="${x._i}" ${L.loan || L.borrowed_today ? 'disabled' : ''}`)).join('') : '<div class="gd-lnote">아직 등록된 인재가 없어요</div>';
+      g.scrollTop = y; bindO(); };
     m.querySelector('[data-lset]').onclick = () => { m.remove(); lendSetPop(L); };
-    m.querySelectorAll('[data-lb]').forEach(b => b.onclick = () => { const x = L.others[+b.dataset.lb];
+    const bindO = () => m.querySelectorAll('[data-lb]').forEach(b => b.onclick = () => { const x = L.others[+b.dataset.lb];
       const c = pop(`<div class="gd-h big">🤝 빌리기</div><div class="gd-lrow">${lcard(x.id, x.level, esc(x.owner_name))}</div><div class="gd-lnote">${esc(nm(x.id))} Lv.${x.level}을(를) ${L.hours}시간 빌릴까요? (하루 1명)</div><button class="gd-big" data-go>빌리기</button>`);
       c.querySelector('[data-go]').onclick = async () => { try { await rpc('guild_lend_borrow', { p_owner: x.owner, p_uid: x.uid }); toast('🤝 빌렸어요! 스토리·시련의 탑에서 써 보세요'); window.VRStory?.reloadLend?.(); c.remove(); m.remove(); lendPop(); } catch (e) { toast(lerr(e)); } }; });
+    drawO();
   }
   async function lendSetPop(L) {
     const list = await window.VRStory?.lendCards?.() || []; let sel = L.mine.map(x => x.uid).filter(u => list.some(o => o.uid === u));
-    const m = pop(`<div class="gd-h big">📤 대여 등록 <small data-cnt></small></div><div class="gd-lnote">최대 ${L.max}명 · 빌려줘도 내가 계속 쓸 수 있어요</div><div class="gd-lgrid" data-g></div><button class="gd-big" data-save>저장</button>`, 'wide');
+    const m = pop(`<div class="gd-h big">📤 대여 등록 <small data-cnt></small></div><div class="gd-lnote">최대 ${L.max}명 · 빌려줘도 내가 계속 쓸 수 있어요</div><div data-sb></div><div class="gd-lgrid" data-g></div><button class="gd-big" data-save>저장</button>`, 'wide');
+    const T = window.VRStory?.sortTool;
     const draw = () => { m.querySelector('[data-cnt]').textContent = `${sel.length}/${L.max}`; const g = m.querySelector('[data-g]'), y = g.scrollTop;
-      g.innerHTML = list.map(o => lcard(o.id, o.level, sel.includes(o.uid) ? '✔ 등록' : '', `data-u="${o.uid}"`, sel.includes(o.uid) ? 'on' : '')).join('') || '<div class="gd-lnote">스토리 인재가 없어요</div>'; g.scrollTop = y;
+      paintSort(m.querySelector('[data-sb]'), draw);
+      g.innerHTML = (T ? T.sort(list, lendSortSt) : list).map(o => lcard(o.id, o.level, sel.includes(o.uid) ? '✔ 등록' : '', `data-u="${o.uid}"`, sel.includes(o.uid) ? 'on' : '')).join('') || '<div class="gd-lnote">스토리 인재가 없어요</div>'; g.scrollTop = y;
       g.querySelectorAll('[data-u]').forEach(b => b.onclick = () => { const u = b.dataset.u; if (sel.includes(u)) sel = sel.filter(x => x !== u); else if (sel.length < L.max) sel.push(u); else return toast(`최대 ${L.max}명`); draw(); }); };
     draw();
     m.querySelector('[data-save]').onclick = async () => { try { await rpc('guild_lend_set', { p_uids: sel }); toast('📤 저장했어요'); m.remove(); lendPop(); } catch (e) { toast(lerr(e)); } };

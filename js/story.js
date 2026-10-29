@@ -1074,7 +1074,7 @@
   }
   const leaderUnlocked = () => chapterDone(D.chapters[CH1()]);   // 리더 변경: 챕터 1 클리어 후
   const canMerge = o => exOf(o) < maxEx(o) && materialsOf(o).length > 0;
-  const idxOf = o => save.owned.indexOf(o);
+  const idxOf = o => o?._i ?? save.owned.indexOf(o);   // _i: 다른 창(조직 대여)에 넘긴 사본의 보유 순서
   let openGroups = new Set();
   function groups() {
     const m = new Map();
@@ -1768,6 +1768,12 @@
   };
   const openPage = async fn => { if ((await enter()) === 'gate') return; if (save?.starter) fn(); };   // 오프닝·챕터 0·강제 영입·캐릭터 고르기 중이면 그 화면 유지 (위에 다른 화면 덮지 않음)
   /** 조직 대여 등록용: 내 인재 목록 (카드마다 1장) */
-  async function lendCards() { if (!user()) return []; if (!save) await load(); return (save ? deckInstances() : []).map(o => ({ uid: o.uid, id: o.id, name: card(o.id)?.name || o.id, level: o.level | 0, grade: card(o.id)?.grade })); }
-  window.VRStory = { skBadge, lendCards, reloadLend: () => loadLend(true), partyOf, pickDeck, openMap: i => openPage(() => renderMap(i)), openCards: () => openPage(renderCards), openDecks: () => openPage(renderDecks), openShop: () => openPage(renderShop), api, bgm, BGM, endingVideo, videoOf, conditionsOf, battleRules, summary, enter, openGacha, renderHub, renderShop, drawOnce, kstDay, get save() { return save; }, renderMap, renderCards, openStats, renderSelect, playLines };
+  async function lendCards() { if (!user()) return []; if (!save) await load(); return (save ? deckInstances() : []).map(o => ({ uid: o.uid, id: o.id, name: card(o.id)?.name || o.id, level: o.level | 0, grade: card(o.id)?.grade, _i: save.owned.indexOf(o) })); }
+  /** 다른 창(조직 대여)용 정렬 탭: 상태 st = { k, desc } 를 따로 들고 (스토리 저장 정렬은 안 바꿈) */
+  const sortTool = {
+    bar: st => { const k0 = cardSort; cardSort = st; try { return sortBar(); } finally { cardSort = k0; } },
+    sort: (list, st) => { const k0 = cardSort; cardSort = st; try { return sortInst(list); } finally { cardSort = k0; } },
+    next: (st, k) => st.k === k ? { k, desc: !st.desc } : { k, desc: true },
+  };
+  window.VRStory = { sortTool, skBadge, lendCards, reloadLend: () => loadLend(true), partyOf, pickDeck, openMap: i => openPage(() => renderMap(i)), openCards: () => openPage(renderCards), openDecks: () => openPage(renderDecks), openShop: () => openPage(renderShop), api, bgm, BGM, endingVideo, videoOf, conditionsOf, battleRules, summary, enter, openGacha, renderHub, renderShop, drawOnce, kstDay, get save() { return save; }, renderMap, renderCards, openStats, renderSelect, playLines };
 })();
