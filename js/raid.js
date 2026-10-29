@@ -47,7 +47,7 @@ async function decks() {
   return [{ key: 'top', name: '⚡ 전투력 상위', cards: top }, ...sum.decks.map((d, i) => ({ key: 'd' + i, name: d.name, cards: uniq(d.uids) })).filter(d => d.cards.length)];
 }
 const pickDeck = list => list.find(d => d.key === localStorage.getItem(DECK_KEY)) || list[0];
-const thumbs = cards => cards.map(o => `<span class="rd-th"><img src="${IMG}${o.id}.webp" alt="" loading="lazy" onerror="this.remove()"><small>Lv.${o.level}</small></span>`).join('');
+const thumbs = cards => cards.map(o => `<span class="rd-th"><img src="${IMG}${o.id}.webp" alt="" loading="lazy" onerror="this.remove()"><small>Lv.${o.level}</small>${window.VRStory?.skBadge?.(o.id, 'sm') || ''}</span>`).join('');
 
 let S = null, M = null, DL = [];
 export async function open() {

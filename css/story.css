@@ -718,3 +718,4 @@ span.story-lvpct { background: rgba(251,191,36,.12); border: 1px solid rgba(251,
 .story-lend{position:absolute;right:4px;top:4px;font-size:9px;font-weight:900;padding:1px 4px;border-radius:5px;background:#38bdf8;color:#082f49}
 .story-stars{display:inline-flex;gap:1px;line-height:1}.story-stars i{font-style:normal;color:#52525b}.story-stars i.on{color:#fbbf24;text-shadow:0 0 6px rgba(251,191,36,.6)}
 .story-stars.node{font-size:10px;margin-top:1px}.story-stars.big{font-size:34px;gap:6px}.story-star-res{margin-top:6px}
+.pvp-th,.rd-th{position:relative}.story-skn.sm{top:2px;right:2px;font-size:9px;padding:1px 4px;border-radius:5px}

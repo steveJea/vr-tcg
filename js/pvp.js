@@ -29,7 +29,7 @@ function modal(id, html, cls = '') {
   m.addEventListener('click', e => { if (e.target === m || e.target.closest('[data-x]')) m.remove(); });
   document.body.appendChild(m); return m;
 }
-const thumb = (c, extra = '') => c ? `<div class="pvp-th g-${GS[c.grade] || 'N'}" title="${esc(c.name)}"><img src="${IMG}${c.id}.webp" alt="${esc(c.name)}" loading="lazy" onerror="this.style.visibility='hidden'"><i>${c.level ? 'Lv' + c.level : GS[c.grade] || ''}</i>${extra}</div>` : '';
+const thumb = (c, extra = '') => c ? `<div class="pvp-th g-${GS[c.grade] || 'N'}" title="${esc(c.name)}"><img src="${IMG}${c.id}.webp" alt="${esc(c.name)}" loading="lazy" onerror="this.style.visibility='hidden'"><i>${c.level ? 'Lv' + c.level : GS[c.grade] || ''}</i>${window.VRStory?.skBadge?.(c.id, 'sm') || ''}${extra}</div>` : '';   // ✦ 기술 배지 (탭하면 기술 보기)
 const snapThumbs = list => (list || []).map(o => { const c = card(o.id); return thumb(c && { ...c, level: o.level }); }).join('');
 // ---- 티어 (서버 pvp_tier_table 과 같은 경계) · 엠블럼은 그림순이 그림 전까지 CSS+이모지 (img/ui/tier/<key>.webp 가 생기면 자동 사용) ----
 export const TIERS = [
