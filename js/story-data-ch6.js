@@ -24,19 +24,23 @@ window.STORY_DATA.chapters.push({
     "default": [
      {
       "speaker": "문지예",
-      "text": "오빠 그만!!! 그러다 사람 죽어요!!!"
+      "text": "오빠 그만!!! 그러다 사람 죽어요!!!",
+      "expr": "angry"
      },
      {
       "speaker": "문지철",
-      "text": "오..그런데 저 친구는 좀 치는데? 재밌어~"
+      "text": "오..그런데 저 친구는 좀 치는데? 재밌어~",
+      "expr": "playful"
      },
      {
       "speaker": "문지예",
-      "text": "저기요~ 죽으면 안 됩니다!!"
+      "text": "저기요~ 죽으면 안 됩니다!!",
+      "expr": "base"
      },
      {
       "speaker": "수상한 남자",
-      "text": "미친..."
+      "text": "미친...",
+      "expr": "hurt"
      }
     ]
    },
@@ -69,7 +73,8 @@ window.STORY_DATA.chapters.push({
     "default": [
      {
       "speaker": "문지예",
-      "text": "도대체 이 USB가 뭐라고 이렇게 난리지?"
+      "text": "도대체 이 USB가 뭐라고 이렇게 난리지?",
+      "expr": "base"
      },
      {
       "speaker": "내레이션",
@@ -81,7 +86,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "문지예",
-      "text": "이..이걸...그 귀족 임유리가 작성했다고? 왜? 우리를??"
+      "text": "이..이걸...그 귀족 임유리가 작성했다고? 왜? 우리를??",
+      "expr": "surprised"
      },
      {
       "speaker": "내레이션",
@@ -98,7 +104,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "문지예",
-      "text": "그래...걔들을 좀 더 파보자."
+      "text": "그래...걔들을 좀 더 파보자.",
+      "expr": "base"
      },
      {
       "speaker": "내레이션",
@@ -106,15 +113,18 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "문지예",
-      "text": "거기요~~ 저 또 왔어요~"
+      "text": "거기요~~ 저 또 왔어요~",
+      "expr": "playful"
      },
      {
       "speaker": "불량배-K",
-      "text": "야!! 왜 또??????"
+      "text": "야!! 왜 또??????",
+      "expr": "angry"
      },
      {
       "speaker": "불량배-D",
-      "text": "저 꼬맹이..진짜 이번엔 가만두지 않는다!"
+      "text": "저 꼬맹이..진짜 이번엔 가만두지 않는다!",
+      "expr": "angry"
      }
     ]
    },
@@ -146,15 +156,18 @@ window.STORY_DATA.chapters.push({
     "default": [
      {
       "speaker": "불량배-K",
-      "text": "아..언니..진짜 우리가 아는 건 그게 다에요."
+      "text": "아..언니..진짜 우리가 아는 건 그게 다에요.",
+      "expr": "hurt"
      },
      {
       "speaker": "불량배-D",
-      "text": "거기...갈 수는 있는데, 잘못하면 진짜 죽어요. 그냥...모른 척 하시는 게..."
+      "text": "거기...갈 수는 있는데, 잘못하면 진짜 죽어요. 그냥...모른 척 하시는 게...",
+      "expr": "base"
      },
      {
       "speaker": "문지예",
-      "text": "아뇨. 가는 방법 알려주세요."
+      "text": "아뇨. 가는 방법 알려주세요.",
+      "expr": "base"
      },
      {
       "speaker": "내레이션",
@@ -171,11 +184,13 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "불량배-J",
-      "text": "거기! 너 뭐야?"
+      "text": "거기! 너 뭐야?",
+      "expr": "surprised"
      },
      {
       "speaker": "문지예",
-      "text": "아...들켰네...."
+      "text": "아...들켰네....",
+      "expr": "surprised"
      }
     ]
    },
@@ -211,7 +226,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "문지예",
-      "text": "세상에...이런 곳은 진짜 처음 봐..아니다 정신 차리자 지예야. 빨리 임유리라는 사람을 찾아보자."
+      "text": "세상에...이런 곳은 진짜 처음 봐..아니다 정신 차리자 지예야. 빨리 임유리라는 사람을 찾아보자.",
+      "expr": "surprised"
      },
      {
       "speaker": "내레이션",
@@ -231,19 +247,23 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "불량배-U",
-      "text": "너 뭐니? 보아하니 이 동네 사람은 아닌데?"
+      "text": "너 뭐니? 보아하니 이 동네 사람은 아닌데?",
+      "expr": "playful"
      },
      {
       "speaker": "문지예",
-      "text": "아..죄송해요. 저 갈 길 갈게요."
+      "text": "아..죄송해요. 저 갈 길 갈게요.",
+      "expr": "base"
      },
      {
       "speaker": "불량배-U",
-      "text": "거기 서봐 이년아!"
+      "text": "거기 서봐 이년아!",
+      "expr": "angry"
      },
      {
       "speaker": "문지예",
-      "text": "왜 다짜고짜 욕이에요?"
+      "text": "왜 다짜고짜 욕이에요?",
+      "expr": "surprised"
      }
     ]
    },
@@ -262,7 +282,8 @@ window.STORY_DATA.chapters.push({
    "after": [
     {
      "speaker": "임유리",
-     "text": "에? 귀여운 게 걸렸네..후후"
+     "text": "에? 귀여운 게 걸렸네..후후",
+     "expr": "playful"
     }
    ],
    "afterTitle": "전투 후"
@@ -293,7 +314,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "문지아",
-      "text": "지예야..도대체..어디에 있는 거야..."
+      "text": "지예야..도대체..어디에 있는 거야...",
+      "expr": "sad"
      },
      {
       "speaker": "내레이션",
@@ -305,7 +327,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "문지아",
-      "text": "혹시..이런 아이를 보신 적이 있나요?"
+      "text": "혹시..이런 아이를 보신 적이 있나요?",
+      "expr": "sad"
      },
      {
       "speaker": "내레이션",
@@ -317,7 +340,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "문지아",
-      "text": "어...어? 저..저게...뭐지?"
+      "text": "어...어? 저..저게...뭐지?",
+      "expr": "surprised"
      },
      {
       "speaker": "내레이션",
@@ -326,15 +350,18 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "문지아",
-      "text": "아..안돼!!! 지예야!!!!!!!!!!!!!!!!!!!!!!!!"
+      "text": "아..안돼!!! 지예야!!!!!!!!!!!!!!!!!!!!!!!!",
+      "expr": "sad"
      },
      {
       "speaker": "불량배-U",
-      "text": "어라? 저년 행색이 배척지에서 온 건데...신고하자!"
+      "text": "어라? 저년 행색이 배척지에서 온 건데...신고하자!",
+      "expr": "surprised"
      },
      {
       "speaker": "문지아",
-      "text": "아아아악!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+      "text": "아아아악!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!",
+      "expr": "sad"
      }
     ]
    },
@@ -381,7 +408,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "문지아",
-      "text": "도저히..이런 일은....이건..말도..안..돼.....흑.."
+      "text": "도저히..이런 일은....이건..말도..안..돼.....흑..",
+      "expr": "sad"
      },
      {
       "speaker": "내레이션",
@@ -389,19 +417,23 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "문지아",
-      "text": "너...네가 배후냐?"
+      "text": "너...네가 배후냐?",
+      "expr": "angry"
      },
      {
       "speaker": "임유리",
-      "text": "흐응....누구?"
+      "text": "흐응....누구?",
+      "expr": "base"
      },
      {
       "speaker": "문지아",
-      "text": "네가 내 동생 죽였냐고!!!!!!!!!!!!!"
+      "text": "네가 내 동생 죽였냐고!!!!!!!!!!!!!",
+      "expr": "angry"
      },
      {
       "speaker": "임유리",
-      "text": "무슨 말인지 모르겠는데요? 후흥..."
+      "text": "무슨 말인지 모르겠는데요? 후흥...",
+      "expr": "playful"
      },
      {
       "speaker": "내레이션",
@@ -409,7 +441,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "불량배-X",
-      "text": "이게 죽으려고 미쳤나...누구 앞에서 소릴 질러?"
+      "text": "이게 죽으려고 미쳤나...누구 앞에서 소릴 질러?",
+      "expr": "angry"
      }
     ]
    },
@@ -429,7 +462,8 @@ window.STORY_DATA.chapters.push({
    "after": [
     {
      "speaker": "임유리",
-     "text": "언니 좀 하네요? ㅋㅋ"
+     "text": "언니 좀 하네요? ㅋㅋ",
+     "expr": "playful"
     },
     {
      "speaker": "내레이션",
@@ -437,11 +471,13 @@ window.STORY_DATA.chapters.push({
     },
     {
      "speaker": "임유리",
-     "text": "나 보고 싶으면 일루 와. 이거 보여주면 언니라도 올 수 있어요."
+     "text": "나 보고 싶으면 일루 와. 이거 보여주면 언니라도 올 수 있어요.",
+     "expr": "playful"
     },
     {
      "speaker": "문지아",
-     "text": "너....내가....기필코.."
+     "text": "너....내가....기필코..",
+     "expr": "hurt"
     }
    ],
    "afterTitle": "전투 후"
@@ -468,7 +504,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "문지아",
-      "text": "이걸..또 쓰게 될 줄은 몰랐는데..."
+      "text": "이걸..또 쓰게 될 줄은 몰랐는데...",
+      "expr": "hurt"
      },
      {
       "speaker": "내레이션",
@@ -477,7 +514,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "문지아",
-      "text": "저 덩치만 큰 바보는..그래..두고 나 혼자 간다."
+      "text": "저 덩치만 큰 바보는..그래..두고 나 혼자 간다.",
+      "expr": "sad"
      },
      {
       "speaker": "내레이션",
@@ -489,11 +527,13 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "최진규",
-      "text": "와..진짜 왔네? 그렇게 빨리 죽고 싶은 거야?"
+      "text": "와..진짜 왔네? 그렇게 빨리 죽고 싶은 거야?",
+      "expr": "playful"
      },
      {
       "speaker": "문지아",
-      "text": "와라!"
+      "text": "와라!",
+      "expr": "angry"
      }
     ]
    },
@@ -530,7 +570,8 @@ window.STORY_DATA.chapters.push({
     "default": [
      {
       "speaker": "문지아",
-      "text": "하악..하악...."
+      "text": "하악..하악....",
+      "expr": "hurt"
      },
      {
       "speaker": "내레이션",
@@ -539,11 +580,13 @@ window.STORY_DATA.chapters.push({
      {
       "speaker": "곽진영",
       "text": "하하하..누님...대단한데? 진규형을 저렇게..ㅋㅋㅋ",
+      "expr": "playful",
       "image": "img/story/ch6-07.webp"
      },
      {
       "speaker": "문지아",
-      "text": "하아...하악...그래..너도..와봐!!!!!!!!!!"
+      "text": "하아...하악...그래..너도..와봐!!!!!!!!!!",
+      "expr": "angry"
      }
     ]
    },
@@ -588,15 +631,18 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "인창수",
-      "text": "아....진짜....저런 거 건들이기 싫은데...누님. 그냥 가면 안 될까?"
+      "text": "아....진짜....저런 거 건들이기 싫은데...누님. 그냥 가면 안 될까?",
+      "expr": "base"
      },
      {
       "speaker": "문지아",
-      "text": "으아아아아아아악!!!! 너도...와봐!!!!!!!"
+      "text": "으아아아아아아악!!!! 너도...와봐!!!!!!!",
+      "expr": "angry"
      },
      {
       "speaker": "인창수",
-      "text": "하아...진짜...이건..좀..아닌데?"
+      "text": "하아...진짜...이건..좀..아닌데?",
+      "expr": "surprised"
      }
     ]
    },
@@ -633,7 +679,8 @@ window.STORY_DATA.chapters.push({
     "default": [
      {
       "speaker": "인창수",
-      "text": "컥..컥.......와..누님..강하네...."
+      "text": "컥..컥.......와..누님..강하네....",
+      "expr": "hurt"
      },
      {
       "speaker": "내레이션",
@@ -646,19 +693,23 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "임유리",
-      "text": "후흥..진짜 여기까지 왔네요? 언니 장해요~"
+      "text": "후흥..진짜 여기까지 왔네요? 언니 장해요~",
+      "expr": "playful"
      },
      {
       "speaker": "문지아",
-      "text": "너..너...진짜..왜..왜 그런..거야!!!!!!!!!!!!!!!"
+      "text": "너..너...진짜..왜..왜 그런..거야!!!!!!!!!!!!!!!",
+      "expr": "angry"
      },
      {
       "speaker": "임유리",
-      "text": "지금 그런 게 궁금해요? 헤헤.."
+      "text": "지금 그런 게 궁금해요? 헤헤..",
+      "expr": "playful"
      },
      {
       "speaker": "문지아",
-      "text": "으아아악!!!!!"
+      "text": "으아아악!!!!!",
+      "expr": "angry"
      }
     ]
    },
@@ -680,7 +731,8 @@ window.STORY_DATA.chapters.push({
    "after": [
     {
      "speaker": "임유리",
-     "text": "헤헤헤...언니. 언니는 100년 지나도 나한테 안 된다니까~"
+     "text": "헤헤헤...언니. 언니는 100년 지나도 나한테 안 된다니까~",
+     "expr": "playful"
     },
     {
      "speaker": "내레이션",
@@ -689,19 +741,23 @@ window.STORY_DATA.chapters.push({
     },
     {
      "speaker": "문지아",
-     "text": "헉..헉....너.....도대체..왜..."
+     "text": "헉..헉....너.....도대체..왜...",
+     "expr": "hurt"
     },
     {
      "speaker": "임유리",
-     "text": "사실...음...언니네한테는 별로 관심 없어."
+     "text": "사실...음...언니네한테는 별로 관심 없어.",
+     "expr": "base"
     },
     {
      "speaker": "문지아",
-     "text": ".....근데.....왜..."
+     "text": ".....근데.....왜...",
+     "expr": "hurt"
     },
     {
      "speaker": "임유리",
-     "text": "언니...옆에 나리라는 년 알아? 임나리. 나 같이 생긴 년.."
+     "text": "언니...옆에 나리라는 년 알아? 임나리. 나 같이 생긴 년..",
+     "expr": "base"
     },
     {
      "speaker": "내레이션",
@@ -714,19 +770,23 @@ window.STORY_DATA.chapters.push({
     },
     {
      "speaker": "임유리",
-     "text": "그년이..내 사촌동생인데....내가 그거...좀 잡으려고 하거든여."
+     "text": "그년이..내 사촌동생인데....내가 그거...좀 잡으려고 하거든여.",
+     "expr": "base"
     },
     {
      "speaker": "임유리",
-     "text": "근데, 언니네가 좀 방해가 되더라고..먼지만큼? 후흥.."
+     "text": "근데, 언니네가 좀 방해가 되더라고..먼지만큼? 후흥..",
+     "expr": "playful"
     },
     {
      "speaker": "문지아",
-     "text": "그...그래서....이러는..거야?"
+     "text": "그...그래서....이러는..거야?",
+     "expr": "hurt"
     },
     {
      "speaker": "임유리",
-     "text": "아..지겹다. 언니도 이제 재미없어졌어. 잘 가요~"
+     "text": "아..지겹다. 언니도 이제 재미없어졌어. 잘 가요~",
+     "expr": "playful"
     }
    ],
    "afterTitle": "전투 후"
@@ -767,15 +827,18 @@ window.STORY_DATA.chapters.push({
   },
   {
    "speaker": "문지아",
-   "text": "지예야~ 너희 오빠 또 사고 칠라.."
+   "text": "지예야~ 너희 오빠 또 사고 칠라..",
+   "expr": "playful"
   },
   {
    "speaker": "문지예",
-   "text": "에공...네, 언니. 제가 말릴게요.."
+   "text": "에공...네, 언니. 제가 말릴게요..",
+   "expr": "base"
   },
   {
    "speaker": "문지아",
-   "text": "부탁해 우리 예쁜이~~"
+   "text": "부탁해 우리 예쁜이~~",
+   "expr": "playful"
   }
  ],
  "ending": [],
