@@ -530,6 +530,7 @@
     pop.close(true);
     if (error) { const m = error.message || ''; toast(/bag full/.test(m) ? '🎒 장비 가방이 꽉 찼어요. 정리하거나 칸을 늘린 뒤 소탕해 주세요' : /stamina/.test(m) ? '🔋 행동력이 부족해요' : /locked/.test(m) ? `⚡ 소탕은 플레이어 Lv.${SWEEP_LV}부터` : /not cleared/.test(m) ? '클리어한 페이즈만 소탕할 수 있어요' : `⚠️ 소탕 실패: ${m}`); window.VRPlayer?.status(true).then(() => window.VRPlayer.paint()); return; }
     if (r.player) window.VRPlayer?.set(r.player); window.VRPlayer?.setWallet(r.wallet);
+    const againCost = n * (window.VRPlayer?.cost ?? 6), againSt = window.VRPlayer?.now?.()?.stamina, againOk = againSt == null || againSt >= againCost;
     const d = r.drops || {}, line = (k, ic2, nm) => d[k] ? `<div class="story-sweep-get">${ic2} ${nm} <b>+${fmt(d[k])}</b></div>` : '';
     const res = popup(`<div class="text-lg font-black text-center">${SW()} 소탕 완료 ×${r.runs}</div>
       <div class="text-xs text-center text-zinc-400">${esc(ch.title)} Phase.${ph.no} · 🔋 −${r.stamina}</div>
@@ -537,8 +538,10 @@
         <div class="story-sweep-get">⭐ 플레이어 경험치 <b>+${fmt(r.player?.gained_xp || 0)}</b></div></div>
       ${r.player?.levelups ? `<div class="text-center text-amber-300 font-bold mt-2">LEVEL UP! Lv.${r.player.level}${r.player.levelup_gold ? ` · 🪙 +${fmt(r.player.levelup_gold)}` : ''}</div>` : ''}
       <div class="text-[11px] text-zinc-500 text-center mt-2">회차별: ${(r.per_run || []).map(x => x.shard ? '💠' : '·').join(' ')}</div>
-      <div class="text-center mt-3"><button class="story-btn" data-x>확인</button></div>`, () => renderMap());
+      <div class="story-phpop-a mt-3"><button class="story-btn ghost" data-x>확인</button><button class="story-btn story-btn-sw" data-again ${againOk ? '' : 'disabled'} title="${againOk ? '' : '행동력이 부족해요'}">${SW()} 소탕하기 ×${n}<small> 🔋 ${againCost}</small></button></div>`, () => renderMap());
     res.el.querySelector('[data-x]').onclick = () => res.close();
+    // 같은 페이즈·같은 횟수로 바로 다시 소탕 (한 번만 눌리게 잠금 → 결과 팝업 새로 뜸)
+    res.el.querySelector('[data-again]').onclick = e => { const b = e.currentTarget; if (b.disabled) return; res.el.querySelectorAll('button').forEach(x => x.disabled = true); doSweep(ch, ph, n, res); };
     if (r.player?.levelups) levelUpFx(`PLAYER LEVEL UP! Lv.${r.player.level}`);
     if (r.gear?.length || r.sigil?.length) window.VRGear?.showDrops?.();   // 장비 PR4: 획득 장비 (그림)
   }
