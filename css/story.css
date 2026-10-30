@@ -727,7 +727,7 @@ span.story-lvpct { background: rgba(251,191,36,.12); border: 1px solid rgba(251,
 }
 /* 스토리 제한 마나: 출전 카드가 손패에서 시작 → 손패 보이기 · 남은 마나 크게 */
 #game.story-field.story-pool #me-hand { display: flex !important; }
-#game.story-field.story-pool #hand-sort { display: flex !important; }   /* 아케이드처럼 정렬 탭 + 한 줄 가로 스크롤 손패 */
+#game.story-field.story-pool #hand-sort:not(.hidden) { display: flex !important; }   /* 아케이드처럼 정렬 탭 + 한 줄 가로 스크롤 손패 */
 #game.story-pool .mana-line { font-size: 13px; }
 #game.story-pool .pool-mana { font-size: 18px; color: #7dd3fc; }
 #game.story-pool .pool-note { color: #a1a1aa; font-weight: 500; }
@@ -809,3 +809,13 @@ body.story-media-on .story-dlg-skip { left: 4px; right: auto; top: calc(4px + en
 @keyframes tkFlip{from{transform:rotateY(0)}to{transform:rotateY(180deg)}}
 @keyframes tkShine{from{background-position:100% 0,center,0 0}to{background-position:-150% 0,center,0 0}}
 @media (prefers-reduced-motion:reduce){.tk-flip .tk-back.tkb-sr,.tk-flip .tk-back.tkb-ur{animation:none}}
+
+/* 정렬 버튼 토글 활성 표시 */
+#action-bar #act-sort[aria-expanded="true"] { background: rgba(16,185,129,.25); border-color: #34d399; box-shadow: 0 0 8px rgba(52,211,153,.5); }
+/* 스토리 제한 마나: 정렬·공격업 버튼을 작은 알약 한 줄로 */
+#game.story-pool #action-bar.act-row { justify-content: flex-end; gap: 6px; }
+#game.story-pool #action-bar .act-btn { flex: 0 0 auto; flex-direction: row; gap: 4px; height: 36px; padding: 0 12px; border-radius: 999px; font-size: 12px; }
+#game.story-pool #action-bar .act-btn .ui-ic { width: 18px; height: 18px; }
+#game.story-pool #action-bar .act-btn .act-ico { font-size: 14px; line-height: 18px; }
+#game.story-pool #action-bar .act-btn > span:not(.act-ico) { font-size: 11px; }
+#game.story-pool #action-bar .act-btn > span .ui-ic { width: 12px; height: 12px; }
