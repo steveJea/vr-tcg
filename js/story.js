@@ -677,11 +677,17 @@
   function startPhase(ch, ph) {
     const enemies = pickEnemies(ph);
     show(`<div class="story-intro" id="story-intro"><div class="story-chapter-sub">${esc(ch.title)}</div><div class="story-chapter-big">Phase.${ph.no}</div><div class="story-chapter-name">${esc(ph.title)}${ph.type === 'boss' ? ' · BOSS' : ''}</div><div class="text-xs text-zinc-500 mt-8">화면을 누르면 계속</div></div>`);
-    $('story-intro').onclick = () => dialogue(ch, ph, enemies);
+    // 재도전·이미 본 페이즈: 시작 전 대사 생략하고 바로 전투 준비 (첫 관람·튜토리얼 페이즈 첫 진입은 대사 그대로)
+    const skip = phaseSeen(ch, ph);
+    $('story-intro').onclick = () => skip ? pickDeck(ch, ph, enemies) : dialogue(ch, ph, enemies);
   }
-
+  const PS_KEY = (ch, ph) => `vr-story-phseen-${ch.id}-${save.starter || ''}-${ph.no}`;
+  function phaseSeen(ch, ph) {
+    if (clearedOf(ch).includes(ph.no)) return true;
+    try { return !!localStorage.getItem(PS_KEY(ch, ph)); } catch { return false; }
+  }
   function dialogue(ch, ph, enemies) {
-    playLines(ph.lines?.[save.starter] || ph.lines?.default || [], enemies, () => pickDeck(ch, ph, enemies), 'story', ph.hero || ch.hero);
+    playLines(ph.lines?.[save.starter] || ph.lines?.default || [], enemies, () => { try { localStorage.setItem(PS_KEY(ch, ph), '1'); } catch {} pickDeck(ch, ph, enemies); }, 'story', ph.hero || ch.hero);
   }
   // 대사 초상화: 스토리 전용 NPC 카드는 이 저장소 img/npc/<id>.webp, 나머지는 bt_img (없으면 img-fallback.js 가 img/npc 로 재시도)
   const picOf = c => (window.TCG?.NPC || []).some(n => String(n.id) === String(c.id)) ? `img/npc/${c.id}.webp` : `${IMG}${c.id}.webp`;
