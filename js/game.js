@@ -431,7 +431,10 @@ function turnScroll(who) {
   const el = who === 'me' ? $('me-field') : (!$('ai-boss').classList.contains('hidden') ? $('ai-boss') : $('ai-field'));
   setTimeout(() => { try { el?.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: who === 'me' ? 'center' : 'start' }); } catch {} }, 60);
 }
-const heroEl = who => $(`${who}-hero`);
+/** 진영 = 둥근 진영 칸 (보이면). 진영 피해·회복 연출은 진영 칸에, 없으면 위/아래 정보 상자 */
+const heroEl = who => { const b = $(`${who}-boss`); return (S && !S[who]?.noBase && b && !b.classList.contains('hidden') && (b.querySelector('.base-ring') || b)) || $(`${who}-hero`); };
+/** 진영 칸 아래 진영 HP 바 */
+const baseHpBar = p => { const pct = p.maxHp ? Math.max(0, Math.min(100, p.hp / p.maxHp * 100)) : 0; return `<div class="base-hp" title="진영 HP ${p.hp}/${p.maxHp}"><div class="base-hp-fill" style="width:${pct}%"></div><span>${fmt(Math.max(0, p.hp))}</span></div>`; };
 
 // ===== 아이콘 (js/icons.js) =====
 const ic = (n, o) => window.VRIcon?.icon(n, o) || '';
@@ -1349,6 +1352,7 @@ function render() {
   if (selected != null && (!selU || !myTurn)) selected = null;
   const atkSel = selU?.canAttack ? selU : null;
   const tg = attackTargets(S.me, S.ai, atkSel);
+  $('ai-boss')?.classList.toggle('base-target', !!atkSel && tg.hero);
   $('ai-hero').classList.toggle('ring-4', !!atkSel && tg.hero);
   $('ai-hero').classList.toggle('ring-red-500', !!atkSel && tg.hero);
   $('ai-hero').classList.toggle('opacity-70', S.turn === 'me' && !tg.hero);
@@ -1373,7 +1377,7 @@ function render() {
     if (bossBox) bossBox.classList.toggle('hidden', !S.guardMode && !S[who].field.some(u => u.undying));
     { const slot = !!bossBox && !bossBox.classList.contains('hidden') && !S[who].noBase;   // 진영 칸이 진영 HP를 보여 주면 정보 상자의 진영 HP는 숨김 (중복 제거)
       $(`${who}-hp`).classList.toggle('hidden', S[who].noBase || slot); $(`${who}-hpbar`).parentElement.classList.toggle('hidden', S[who].noBase || slot); }
-    if (bossBox && S.guardMode && !guardOf(S[who])) nbb.innerHTML = `<div class="base-unit base-empty"><div class="base-ring"><div class="base-img base-ph">${ic('def', { alt: '' })}</div></div><div class="base-name">${who === 'me' ? '수비대장 비어 있음' : '수비대장 없음'}</div></div>`;
+    if (bossBox && S.guardMode && !guardOf(S[who])) nbb.innerHTML = `<div class="base-unit base-empty"><div class="base-ring"><div class="base-img base-ph">${ic('def', { alt: '' })}</div></div><div class="base-name">${who === 'me' ? '수비대장 비어 있음' : '수비대장 없음'}</div>${S[who].noBase ? '' : baseHpBar(S[who])}</div>`;
     if (!S[who].field.some(u => !u.undying)) nb.innerHTML = '<div class="text-zinc-600 text-xs self-center">빈 필드</div>';
     S[who].field.forEach(u => {
       const w = document.createElement('div');
@@ -1407,7 +1411,7 @@ function render() {
           (sts.length ? `<div class="status-icons base-sts">${sts.map(x => { const big = isStatusFxKind(x.kind), au = big && statusIconUrl(x.kind); return `<span title="${x.title}"${big ? ` class="st-big ${x.kind}"` : ''}>${au ? `<img class="st-asset" src="${au}" alt="">` : icOf(x)}</span>`; }).join('')}</div>` : '') +
           `<div class="lv-badge base-lv">Lv${u.level}</div></div>` +
           `<div class="base-name">${u.card.name}</div>` + (u.guard && who === 'me' ? `<div class="base-tag">${gw ? `교체 ${gw}턴 뒤` : '교체 가능'}${ready ? ' · 공격 가능' : ''}</div>` : '') +
-          `<div class="hp-bar h-1.5 bg-white/10 rounded-full mt-0.5 overflow-hidden" title="HP ${u.hp}/${u.maxHp}"><div class="hp-fill h-full bg-red-500" data-to="${pct}" style="width:${hpPrev.get(String(u.uid)) ?? pct}%"></div></div>` +
+          (S[who].noBase ? `<div class="hp-bar h-1.5 bg-white/10 rounded-full mt-0.5 overflow-hidden" title="HP ${u.hp}/${u.maxHp}"><div class="hp-fill h-full bg-red-500" data-to="${pct}" style="width:${hpPrev.get(String(u.uid)) ?? pct}%"></div></div>` : baseHpBar(S[who])) +   // 진영 칸 = 진영: 수비대장 HP 대신 진영 HP
           `<div class="mp-bar h-1.5 bg-white/10 rounded-full mt-0.5 overflow-hidden" title="MP ${u.mp}/${u.maxMp} (+${u.mpRegen}/턴)"><div class="h-full bg-blue-500" style="width:${u.maxMp ? Math.min(100, u.mp / u.maxMp * 100) : 0}%"></div></div>`;
         nbb.appendChild(w);
       } else nb.appendChild(w);
@@ -1497,6 +1501,10 @@ function onUnitClick(who, u) {
     if (selected === u.uid) { selected = null; render(); }
     showDetail(u.card, { hp: u.hp, unit: u });
   } else {
+    if (myTurn && selected != null && u.boss && !S.ai.noBase) {   // 진영 칸(보스·수비대장) = 진영 공격
+      const a = S.me.field.find(x => x.uid === selected);
+      if (a?.canAttack) { attack('me', a, null); return; }
+    }
     if (myTurn && selected != null) {
       const a = S.me.field.find(x => x.uid === selected);
       if (a?.canAttack) { attack('me', a, u); return; }
@@ -1682,6 +1690,7 @@ $('attack-all').onclick = attackAll;
 { const rb = $('reserve-btn'); if (rb) rb.onclick = summonReserve; }
 for (const type of Object.keys(ACTIONS)) $(`act-${type}`).onclick = () => { if (S.story && type === 'shuffle') return; if (S.turn === 'me' && !S.busy && !S.over) useAction('me', type); };
 $('ai-hero').onclick = onHeroClick;
+$('ai-boss').addEventListener('click', e => { if (!e.target.closest('[data-uid]')) onHeroClick(); });   // 빈 진영 칸 탭 = 진영 공격
 $('help-btn').onclick = () => showModal('help');
 $('main-help').onclick = () => showModal('help');
 $('main-skip').onclick = () => { skipFx = !skipFx; localStorage.setItem(SKIP_KEY, skipFx ? '1' : '0'); renderSkipBtn(); };

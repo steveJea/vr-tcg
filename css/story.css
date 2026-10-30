@@ -769,3 +769,9 @@ span.story-lvpct { background: rgba(251,191,36,.12); border: 1px solid rgba(251,
 #battle-nav.on { display: block; }
 #battle-nav::before { content: ''; position: absolute; inset: 0 -10px; }
 #battle-nav i { position: absolute; left: 0; right: 0; border-radius: 6px; background: rgba(52,211,153,.7); transition: top .15s; }
+/* 진영 칸 = 진영: 진영 HP 바 · 공격 대상 표시 */
+.base-hp { position: relative; width: 72px; height: 12px; margin-top: 3px; border-radius: 9999px; background: rgba(255,255,255,.12); overflow: hidden; }
+.base-hp-fill { height: 100%; background: linear-gradient(90deg, #dc2626, #f87171); transition: width .4s; }
+.base-hp span { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 900; color: #fff; text-shadow: 0 1px 2px #000; }
+.base-target .base-ring { box-shadow: 0 0 0 3px #ef4444, 0 0 16px rgba(239,68,68,.75); cursor: pointer; }
+@media (min-width: 768px) { .base-hp { width: 100px; height: 14px; } .base-hp span { font-size: 10px; } }
