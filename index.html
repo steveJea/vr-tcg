@@ -379,7 +379,6 @@
       <div class="h-2 bg-white/10 rounded-full mt-1 overflow-hidden"><div id="ai-hpbar" class="h-full bg-red-500 transition-all"></div></div>
       <div class="mana-line flex justify-between text-[11px] text-zinc-400 mt-1"><span><img src="img/ui/mana.webp" alt="마나" class="ui-ic" width="64" height="64"> <span id="ai-mana"></span></span><span class="deck-info">덱 <span id="ai-deck"></span> · 손패 <span id="ai-handcount"></span></span></div>
       <div id="ai-handcards" class="flex gap-1 mt-1 min-w-0 overflow-hidden"></div>
-      <div id="ai-boss" class="hidden mt-1"></div>
       <div id="ai-syn" class="flex flex-wrap gap-1 mt-1 empty:hidden"></div>
     </div>
     <div class="flex items-center gap-1 shrink-0 h-10 px-2 rounded-full bg-zinc-800 border border-white/20"><button id="se-toggle" class="text-base leading-none" title="효과음" aria-label="효과음"><img src="img/ui/se_on.webp" alt="" class="ui-ic" width="64" height="64"></button><button id="voice-toggle" class="text-base leading-none" title="스킬 보이스"><img src="img/ui/sound_on.webp" alt="소리 켜짐" class="ui-ic ui-ic-sound_on" width="64" height="64"></button><input id="voice-vol" type="range" min="0" max="100" step="5" class="hidden min-[400px]:block w-14 md:w-20 accent-emerald-400" title="보이스 볼륨" aria-label="보이스 볼륨"></div>
@@ -391,6 +390,7 @@
 
   <!-- 필드 -->
   <div id="field-box" class="bg-zinc-900/60 border border-white/10 rounded-2xl p-2 flex flex-col gap-2">
+    <div id="ai-boss" class="base-slot hidden"></div>
     <div id="ai-field" class="flex justify-center gap-1.5 md:gap-3 min-h-[110px] md:min-h-[150px]"></div>
     <div class="flex items-center gap-2">
       <div class="flex-1 h-px bg-white/10"></div>
