@@ -793,3 +793,19 @@ body.story-media-on .story-dlg-skip { left: 4px; right: auto; top: calc(4px + en
 .story-media.on img { animation: storyKenBurns 8s ease-out forwards; }
 @keyframes storyKenBurns { from { transform: scale(1); } to { transform: scale(1.06); } }
 @media (prefers-reduced-motion: reduce) { .story-media.on img { animation: none; } }
+
+/* 10회 뽑기 결과: 카드 뒷면 → 낮은 등급부터 차례로 뒤집힘 (--fd = 열리는 시각). SR 자주 · UR 이상 금색 반짝, 나머지 무지 */
+.story-tk-card.tk-flip{opacity:1;animation:none;background:transparent;border-color:transparent;box-shadow:none;overflow:visible;perspective:600px;transition:border-color .2s var(--fd),box-shadow .2s var(--fd)}
+.tk-flip .tk-in{position:relative;transform-style:preserve-3d;animation:tkFlip .45s var(--fd) both}
+.tk-flip .tk-back,.tk-flip .tk-front{backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:6px;overflow:hidden}
+.tk-flip .tk-front{transform:rotateY(180deg);background:#111}
+.tk-flip .tk-back{position:absolute;inset:0;background:url(../img/ui/gacha.webp) center/50% no-repeat,linear-gradient(160deg,#27272a,#09090b);border:2px solid #52525b}
+.tk-flip .tk-back.tkb-sr{border-color:#c084fc;background:linear-gradient(115deg,transparent 30%,rgba(232,180,255,.7) 50%,transparent 70%) 0 0/250% 100%,url(../img/ui/gacha.webp) center/50% no-repeat,linear-gradient(160deg,#4c1d95,#1e1033);animation:tkShine 1.4s linear infinite;box-shadow:0 0 12px #c084fc}
+.tk-flip .tk-back.tkb-ur{border-color:#facc15;background:linear-gradient(115deg,transparent 30%,rgba(255,240,170,.85) 50%,transparent 70%) 0 0/250% 100%,url(../img/ui/gacha.webp) center/50% no-repeat,linear-gradient(160deg,#a16207,#3b2503);animation:tkShine 1.1s linear infinite;box-shadow:0 0 16px #facc15}
+.story-tk-card.tk-flip.g-r,.story-tk-card.tk-flip.g-hr,.story-tk-card.tk-flip.g-sr,.story-tk-card.tk-flip.g-ur,.story-tk-card.tk-flip.g-mr,.story-tk-card.tk-flip.g-lr{border-color:transparent;box-shadow:none}
+.tk-flip .tk-front{border:2px solid #52525b}
+.tk-flip.g-r .tk-front{border-color:#38bdf8}.tk-flip.g-hr .tk-front{border-color:#34d399;box-shadow:0 0 10px #34d39988}.tk-flip.g-sr .tk-front{border-color:#c084fc;box-shadow:0 0 12px #c084fcaa}.tk-flip.g-ur .tk-front{border-color:#facc15;box-shadow:0 0 16px #facc15cc}.tk-flip.g-mr .tk-front{border-color:#ef4444;box-shadow:0 0 30px #f87171}.tk-flip.g-lr .tk-front{border-color:#e879f9;box-shadow:0 0 30px #e879f9}
+.tk-skip .tk-flip .tk-in{animation-delay:0s;animation-duration:.2s}
+@keyframes tkFlip{from{transform:rotateY(0)}to{transform:rotateY(180deg)}}
+@keyframes tkShine{from{background-position:100% 0,center,0 0}to{background-position:-150% 0,center,0 0}}
+@media (prefers-reduced-motion:reduce){.tk-flip .tk-back.tkb-sr,.tk-flip .tk-back.tkb-ur{animation:none}}
