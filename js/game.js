@@ -269,6 +269,7 @@ function startTurn(who) {
 function useAction(who, type) {
   const p = S[who], r = doAction(type, p);
   if (!r.ok) return r;
+  if (who === 'me') S.undo = null;
   const a = ACTIONS[type];
   const detail = type === 'accel' ? `다음 턴부터 매 턴 마나 +${r.n * RULES.ACCEL_BONUS} (${r.n}/${RULES.ACCEL_MAX})` : type === 'shuffle' ? `전체 카드에서 새 카드 ${r.n}장` : type === 'heal' ? `진영 HP +${fmt(r.healed)}` : type === 'fieldheal' ? `필드 ${r.n}장 HP 총 +${fmt(r.healed)}` : `필드 ${r.n}장 이번 턴 ATK +${Math.round(RULES.BUFF_RATIO * 100)}%`;
   log(`${p.name}: ${a.icon} ${a.label} (마나 ${a.cost()}) — ${detail}`, 'text-violet-300');
@@ -283,6 +284,7 @@ function useAction(who, type) {
 function equipItem(who, unit, type) {
   const p = S[who], r = equip(type, unit, p);
   if (!r.ok) return r;
+  if (who === 'me') S.undo = null;
   const it = ITEMS[type];
   log(`${p.name}: ${unit.card.name}에게 ${it.icon} ${it.label} 장착 (마나 ${it.cost()}) — ${type === 'weapon' ? 'ATK' : 'HP'} +${fmt(r.d)}`, 'text-amber-200');
   render();
@@ -298,6 +300,7 @@ function summon(who, card) {
   p.mana -= card.cost;
   p.hand.splice(p.hand.indexOf(card), 1);
   log(`${p.name}: ${card.name} 소환 (코스트 ${card.cost})`);
+  const wasPlayed = S.log.played.has(String(card.id));
   if (who === 'me' && S.story) S.log.played.add(String(card.id));   // 스토리: 참전 카드 기록 (EXP 지급용)
   const u = placeUnit(p, card, makeUnit, true);   // 새로 소환한 카드는 필드 맨 앞
   if (who === 'me' && p.manaPool) { storyMeInit(u, card); refreshAll(p); }
@@ -305,6 +308,34 @@ function summon(who, card) {
   playSe(card.grade === 'MYTHIC RARE' || card.grade === 'LEGENDARY RARE' ? 6 : card.grade === 'ULTRA RARE' ? 5 : 2);
   render();
   onEnter(who, u);
+  if (who === 'me' && !S.view && !S.over) { const must = (S.mustSummon?.ids || []).includes(String(card.id)); if (!must) { S.undo = { u, card, cost: card.cost, wasPlayed, sig: undoSig() }; } }
+  return { ok: true };
+}
+/** 같은 턴 소환 무르기: 소환 직후 상태 서명 (마나·양측 HP/상태·필드 구성). 소환 뒤 무엇이든 바뀌면(패시브·버프 발동, 공격, 스킬 등) 무르기 불가 */
+function undoSig() {
+  const f = p => p.field.map(x => `${x.uid}:${x.hp}:${x.maxHp}:${x.atk ?? ''}:${x.def ?? ''}:${JSON.stringify(x.st || {})}`).join('|');
+  return [S.me.mana, S.me.hp, S.ai.hp, S.me.hand.length, f(S.me), f(S.ai), S.turnNo].join('#');
+}
+function canUndoSummon(unit) {
+  const d = S?.undo;
+  if (!d || d.u !== unit || S.view || S.over || S.busy || S.turn !== 'me') return false;
+  if (unit.boss || unit.guard || !S.me.field.includes(unit)) return false;
+  if (undoSig() !== d.sig) { S.undo = null; return false; }
+  return true;
+}
+/** ↩ 회수 (무료): 이번 턴에 소환하고 아무것도 안 한 카드를 손패로, 마나 전액 환불 */
+function undoSummon(unit) {
+  if (!canUndoSummon(unit)) return { ok: false };
+  const d = S.undo; S.undo = null;
+  S.me.field = S.me.field.filter(x => x !== unit);
+  S.me.hand.push(d.card);
+  S.me.mana += d.cost;
+  if (!d.wasPlayed) S.log.played.delete(String(d.card.id));   // EXP 지급 대상에서 제외
+  (S.undoneIds ||= new Set()).add(String(d.card.id));          // 다시 소환해도 등장 컷인 중복 X
+  if (selected === unit.uid) selected = null;
+  refreshAll(S.me);
+  log(`나: ${d.card.name} 소환 취소 (마나 +${d.cost})`, 'text-sky-300');
+  render();
   return { ok: true };
 }
 
@@ -554,6 +585,7 @@ async function attack(who, unit, target, fromBatch = false) {
   const o = opp(who), p = S[who];
   if (!unit.canAttack || S.over) return;
   if (!fromBatch && who === 'me' && S.busy) return;
+  if (who === 'me') S.undo = null;
   if (!canTarget(p, o, target, unit)) { if (who === 'me') { const r = attackTargets(p, o, unit).reason; log(r, 'text-red-400'); floatText(r, 'text-red-400 text-sm', 'ai'); } return; }
   const prevBusy = S.busy;
   if (who === 'me') S.meActed = true;
@@ -756,7 +788,7 @@ function checkTimeout() {
 function endTurn() {
   if (S?.view) { S.view.ask?.({ k: 'end' }); return; }
   if (S.turn !== 'me' || S.over || S.busy) return;
-  selected = null;
+  selected = null; S.undo = null;
   endTurnXp(S.me); turnEnd(S.me);
   render();
   if (S.mustSummon && S.myTurns >= S.mustSummon.by && mustLeft().length) { S.mustSummonMiss = mustLeft().map(id => S.me.hand.find(c => String(c.id) === id)?.name).filter(Boolean).join('·'); log(`📌 필수 인재 ${S.mustSummonMiss}을(를) ${S.mustSummon.by}턴 안에 소환하지 못했다!`, 'text-red-400'); return finish(false, 'mustsummon'); }
@@ -962,6 +994,7 @@ function onEnter(who, u) {
   if (S.story) return;   // 등장 컷인·이벤트 매칭씬은 아케이드 전용 (스토리·탑·PvP·토벌·전쟁·튜토리얼은 생략)
   const id = String((u.base || u.card).id);
   // 등장 컷인: 등장 보이스(<id>_0) 또는 전용 이미지(events.json entry.fx) 중 하나라도 있으면
+  if (S.undoneIds?.has(id)) { checkEvents(); return; }
   if ((voiceSet?.has(`${id}_0`) || (EVENTS.entry.fx || []).map(String).includes(id)) && !S.fxSeen.has(`entry:${u.uid}`)) {
     S.fxSeen.add(`entry:${u.uid}`);
     fxQueue.push(() => entryCutIn(u, id)); runFxQueue();
@@ -1109,6 +1142,7 @@ async function castSkill(who, u, s) {
   if (S?.view) { if (who === 'me' && S.view.ask && skillState(u, s).ok) S.view.ask({ k: 'skill', i: S.view.A0.indexOf(u), s: s.name }); return; }   // PvP·전쟁 화면: 엔진에 입력만 넘김
   const p = S[who];
   if (S.over || !p.field.includes(u) || !skillState(u, s).ok) return;
+  if (who === 'me') S.undo = null;
   const prevBusy = S.busy; S.busy = true; selected = null; if (who === 'me') S.meActed = true;
   try {
     render();
@@ -1552,6 +1586,9 @@ function showDetail(c, { fromHand = false, hp, unit = null, view = null, power =
       ${unit.skills.length ? `<div class="mt-1 text-xs text-zinc-300">${unit.skills.map(k => `${icOf(SKILLS[k])} ${SKILLS[k]?.label || k}`).join(' · ')}</div>` : ''}
       ${arcadeUi ? `<div class="grid grid-cols-2 gap-2 mt-3">${Object.entries(ITEMS).map(([type, it]) => { const ce = canEquip(type, unit, S.me); return `
         <button data-equip="${type}" ${ce.ok && myTurn ? '' : 'disabled'} class="py-2 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-black text-sm font-bold">${icOf(it)} ${it.label} ${it.desc()} <span class="text-sky-900">${ic('mana')}${it.cost()}</span><div class="text-[10px] font-normal h-3">${unit.items?.[type] ? '장착됨' : (!myTurn || ce.ok ? '' : ce.reason)}</div></button>`; }).join('')}</div>` : ''}` : ''}
+    ${unit && !view && canUndoSummon(unit) ? `
+      <button id="undo-btn" class="mt-4 w-full py-3 rounded-2xl bg-sky-400 hover:bg-sky-300 text-black font-bold">↩ 회수 (무료 · 마나 ${S.undo.cost} 환불)</button>
+      <div class="text-[11px] text-zinc-500 mt-1 text-center">이번 턴에 낸 카드를 아직 아무것도 안 했다면 손패로 되돌릴 수 있어요</div>` : ''}
     ${unit && arcadeUi ? (() => { const rc = canRecall(unit, S.me); return `
       ${rc.ok || !myTurn ? '' : `<div id="recall-reason" class="mt-3 text-sm text-red-400">${rc.reason}</div>`}
       <button id="recall-btn" ${rc.ok && myTurn ? '' : 'disabled'} class="mt-4 w-full py-3 rounded-2xl bg-sky-500 hover:bg-sky-400 disabled:opacity-40 text-black font-bold">회수 (마나 ${rc.cost})</button>
@@ -1571,6 +1608,7 @@ function showDetail(c, { fromHand = false, hp, unit = null, view = null, power =
   if (unit) $('detail-body').querySelectorAll('[data-skinfo]').forEach(b => b.onclick = e => { e.stopPropagation(); skillInfoPop(unit, unit.sk[+b.dataset.skinfo]); });
   if (unit) $('detail-body').querySelectorAll('[data-equip]').forEach(b => b.onclick = () => { const r = equipItem('me', unit, b.dataset.equip); if (r.ok) showDetail(unit.card, { hp: unit.hp, unit }); });
   if (unit && $('sacrifice-btn')) $('sacrifice-btn').onclick = () => { const r = doSacrifice('me', unit); if (r.ok) hideModal('detail'); };
+  if (unit && $('undo-btn')) $('undo-btn').onclick = () => { const r = undoSummon(unit); if (r.ok) hideModal('detail'); };
   if (unit && $('recall-btn')) $('recall-btn').onclick = () => { const r = recall('me', unit); if (r.ok) hideModal('detail'); };
   if (fromHand) $('summon-btn').onclick = () => { const r = summon('me', c); if (r.ok) hideModal('detail'); };
   if (fromHand && $('guard-btn')) $('guard-btn').onclick = () => { const r = placeGuard('me', c); if (r.ok) hideModal('detail'); };
@@ -1934,7 +1972,7 @@ async function viewBattle0({ session, aiName = '상대', bg = 'normal', manual =
     S = null; selected = null;
   }
 }
-window.TCG = { kickoff: () => S?.kickGo?.(), viewBattle, get NPC() { return NPC; }, cardById: id => { id = window.cardIdNew ? window.cardIdNew(id) : id; return POOL.find(c => String(c.id) === String(id)) || NPC.find(c => String(c.id) === String(id)); }, isNpc, cardTitle, cardTags, cardStats, regionShort, playStinger, showCardInfo, skillsOf, combos, arcadeOpts: ArcadeOpts, openArcadeOpts, playSe, onEnter, checkEvents, showEvent, mvpVoice, gachaVoice(id) { return !!playVoiceKey(`${id}_g`); }, hasVoice: k => !!voiceSet?.has(k), get events() { return EVENTS; }, get seOn() { return seOn; }, skillListHTML: (c, lv, opt) => skillListHTML(c, null, false, lv, opt), voiceTest(k) { if (!voiceSet?.has(k)) return false; const a = voiceAudio(k); a.volume = voiceVol; a.currentTime = 0; voiceCur = a; a.play().catch(() => {}); return true; }, get voiceActive() { return voiceActive.size; }, get voice() { return { on: voiceOn, vol: voiceVol, cur: voiceCur && { src: voiceCur.src, paused: voiceCur.paused, t: voiceCur.currentTime }, set: voiceSet && voiceSet.size }; }, openZoom, closeZoom, dupCheck, get errors() { return window.TCG_ERRORS || []; }, cutIn, passiveCutIn, sortedHand, get handSort() { return handSort; }, put: debugPut, castSkill, skillState, get S() { return S; }, RULES, calcPower: c => calcPower(c, skillsOf(c?.id)), skillLvPowerMult: (id, lvMap) => skillLvPowerMult(skillsOf(id), lvMap), elementMultiplier, calcDamage, canSummon, buildDeck, summon, attack, recall, attackAll, endTurn, canRecall, recallCost, makeUnit, resolveAttack, useAction, canAction, startGame, startStory, cardHTML, get ready() { return POOL.length > 0; }, equipItem, doSacrifice, finish, attackTargets, get POOL() { return POOL; }, render, Stats };
+window.TCG = { kickoff: () => S?.kickGo?.(), viewBattle, get NPC() { return NPC; }, cardById: id => { id = window.cardIdNew ? window.cardIdNew(id) : id; return POOL.find(c => String(c.id) === String(id)) || NPC.find(c => String(c.id) === String(id)); }, isNpc, cardTitle, cardTags, cardStats, regionShort, playStinger, showCardInfo, skillsOf, combos, arcadeOpts: ArcadeOpts, openArcadeOpts, playSe, onEnter, checkEvents, showEvent, mvpVoice, gachaVoice(id) { return !!playVoiceKey(`${id}_g`); }, hasVoice: k => !!voiceSet?.has(k), get events() { return EVENTS; }, get seOn() { return seOn; }, skillListHTML: (c, lv, opt) => skillListHTML(c, null, false, lv, opt), voiceTest(k) { if (!voiceSet?.has(k)) return false; const a = voiceAudio(k); a.volume = voiceVol; a.currentTime = 0; voiceCur = a; a.play().catch(() => {}); return true; }, get voiceActive() { return voiceActive.size; }, get voice() { return { on: voiceOn, vol: voiceVol, cur: voiceCur && { src: voiceCur.src, paused: voiceCur.paused, t: voiceCur.currentTime }, set: voiceSet && voiceSet.size }; }, openZoom, closeZoom, dupCheck, get errors() { return window.TCG_ERRORS || []; }, cutIn, passiveCutIn, sortedHand, get handSort() { return handSort; }, put: debugPut, castSkill, skillState, get S() { return S; }, RULES, calcPower: c => calcPower(c, skillsOf(c?.id)), skillLvPowerMult: (id, lvMap) => skillLvPowerMult(skillsOf(id), lvMap), elementMultiplier, calcDamage, canSummon, buildDeck, summon, attack, recall, attackAll, endTurn, canRecall, recallCost, undoSummon, canUndoSummon, makeUnit, resolveAttack, useAction, canAction, startGame, startStory, cardHTML, get ready() { return POOL.length > 0; }, equipItem, doSacrifice, finish, attackTargets, get POOL() { return POOL; }, render, Stats };
 
 // ===== 전투 UI: 정렬 레이어 · 설정(⚙️) 레이어 (바깥 누르면 닫힘) =====
 { const pop = (btnId, popId) => { const b = $(btnId), p = $(popId); if (!b || !p) return;
