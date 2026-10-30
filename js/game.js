@@ -1340,12 +1340,17 @@ function render() {
         if (who === 'me' && myTurn && el.__dragU !== u) { el.__dragU = u; enableDrag(el, u); }
         const sb = el.querySelector('.skill-btn'); if (sb) sb.onclick = ev => { ev.stopPropagation(); showDetail(u.card, { hp: u.hp, unit: u }); };
       }]);
-      if (u.undying && bossBox) {   // 스토리 보스: 진영 안에 표시 (공격 대상 아님, 쓰러지지 않음)
-        w.insertAdjacentHTML('afterbegin', `<div class="boss-crown" title="보스: 진영 안에 있어 공격할 수 없고 쓰러지지 않아요">${ic('crown', { alt: '보스' })}</div>`);
-        const wrap = document.createElement('div'); wrap.className = 'flex items-center gap-2';
-        wrap.appendChild(w);
-        wrap.insertAdjacentHTML('beforeend', `<div class="text-[10px] md:text-xs leading-snug"><div class="font-black text-amber-300">${ic('crown', { alt: '' })} 보스</div><div class="text-zinc-300 font-bold truncate max-w-[64px] md:max-w-[120px]">${u.card.name}</div><div class="text-zinc-400">진영 안 · 불사</div><div class="text-zinc-500 hidden md:block">매 턴 공격·스킬 사용</div></div>`);
-        nbb.appendChild(wrap);
+      if (u.undying && bossBox) {   // 스토리 보스: 진영 칸(위쪽 가운데 원형)에 표시 (공격 대상 아님, 쓰러지지 않음)
+        const pct = u.maxHp ? Math.max(0, Math.min(100, u.hp / u.maxHp * 100)) : 0;
+        w.className += ' base-unit';
+        w.innerHTML = `<div class="boss-crown" title="보스: 진영 안에 있어 공격할 수 없고 쓰러지지 않아요">${ic('crown', { alt: '보스' })}</div>` +
+          `<div class="base-ring relative ${rarityOf(u.card).cls}" data-grade="${rarityOf(u.card).short}"><img src="${IMG}${u.card.id}.webp" data-id="${u.card.id}" class="card-img base-img" alt="${u.card.name}">${statusDecor(u)}` +
+          (sts.length ? `<div class="status-icons base-sts">${sts.map(x => { const big = isStatusFxKind(x.kind), au = big && statusIconUrl(x.kind); return `<span title="${x.title}"${big ? ` class="st-big ${x.kind}"` : ''}>${au ? `<img class="st-asset" src="${au}" alt="">` : icOf(x)}</span>`; }).join('')}</div>` : '') +
+          `<div class="lv-badge base-lv">Lv${u.level}</div></div>` +
+          `<div class="base-name">${u.card.name}</div>` +
+          `<div class="hp-bar h-1.5 bg-white/10 rounded-full mt-0.5 overflow-hidden" title="HP ${u.hp}/${u.maxHp}"><div class="hp-fill h-full bg-red-500" data-to="${pct}" style="width:${hpPrev.get(String(u.uid)) ?? pct}%"></div></div>` +
+          `<div class="mp-bar h-1.5 bg-white/10 rounded-full mt-0.5 overflow-hidden" title="MP ${u.mp}/${u.maxMp} (+${u.mpRegen}/턴)"><div class="h-full bg-blue-500" style="width:${u.maxMp ? Math.min(100, u.mp / u.maxMp * 100) : 0}%"></div></div>`;
+        nbb.appendChild(w);
       } else nb.appendChild(w);
     });
     morphChildren(box, nb); if (bossBox) morphChildren(bossBox, nbb);

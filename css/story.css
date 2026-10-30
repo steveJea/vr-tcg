@@ -198,8 +198,20 @@ span.story-lvpct { background: rgba(251,191,36,.12); border: 1px solid rgba(251,
 #game.story-field #field-box { flex: 1 1 auto; justify-content: space-evenly; }
 #game.story-field #ai-field, #game.story-field #me-field { align-items: center; }
 }
-#ai-boss .boss-unit { position: relative; }
-#ai-boss .boss-unit .card-frame { box-shadow: 0 0 0 2px #fbbf24, 0 0 14px rgba(251,191,36,.55); }
+/* 진영 칸 (수비대장·보스): 필드 위쪽 가운데, 원형 테두리, 다른 인재보다 크게 */
+.base-slot { display: flex; justify-content: center; margin-bottom: -4px; }
+.base-slot.hidden { display: none; }
+.base-unit { position: relative; margin: 0 auto; width: 84px; display: flex; flex-direction: column; align-items: center; }
+.base-ring { position: relative; width: 84px; height: 84px; border-radius: 9999px; padding: 3px; background: conic-gradient(#fde68a, #f59e0b, #b45309, #f59e0b, #fde68a); box-shadow: 0 0 14px rgba(251,191,36,.6); }
+.base-img { width: 100%; height: 100%; border-radius: 9999px; object-fit: cover; object-position: top; display: block; background: #18181b; }
+.base-lv { position: absolute; bottom: -4px; left: 50%; transform: translateX(-50%); padding: 0 6px; border-radius: 9999px; background: #fbbf24; color: #000; font-size: 9px; font-weight: 900; white-space: nowrap; }
+.base-sts { position: absolute; top: 4px; left: -6px; display: flex; flex-direction: column; font-size: 11px; line-height: 1.1; }
+.base-name { margin-top: 5px; max-width: 100%; font-size: 10px; font-weight: 800; color: #fcd34d; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center; }
+.base-unit .hp-bar, .base-unit .mp-bar { width: 72px; }
+@media (min-width: 768px) {
+  .base-unit, .base-ring { width: 120px; } .base-ring { height: 120px; }
+  .base-name { font-size: 12px; } .base-unit .hp-bar, .base-unit .mp-bar { width: 100px; }
+}
 .boss-crown { position: absolute; top: -14px; left: 50%; transform: translateX(-50%); z-index: 5; font-size: 18px; filter: drop-shadow(0 0 4px #f59e0b); pointer-events: none; }
 
 .story-node-dot .story-node-ic { width: 1.6em; height: 1.6em; vertical-align: middle; }
