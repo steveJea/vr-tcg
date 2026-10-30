@@ -6,7 +6,7 @@
 -- 페이즈 수는 설정 행 개수로 정해짐 (10개 제한 없음). 페이즈 열림: 챕터 7 전체 클리어 후 (story_start_phase 의 기존 조건)
 -- =====================================================================
 insert into public.story_phase_config (chapter, phase, type, points, reward_grade, enemy_count) values
-  (8,1,'normal',3,null,5), (8,2,'normal',3,null,5), (8,3,'normal',3,null,5), (8,4,'normal',3,null,5), (8,5,'normal',3,null,5), (8,6,'normal',3,null,5), (8,7,'normal',3,null,5), (8,8,'normal',3,null,5), (8,9,'normal',3,null,5), (8,10,'normal',3,null,5), (8,11,'normal',3,null,5), (8,12,'normal',3,null,5), (8,13,'normal',3,null,5), (8,14,'normal',3,null,5), (8,15,'boss',5,null,5)
+  (8,1,'normal',3,null,5), (8,2,'normal',3,null,5), (8,3,'normal',3,null,5), (8,4,'normal',3,null,5), (8,5,'normal',3,null,5), (8,6,'normal',3,null,5), (8,7,'normal',3,null,5), (8,8,'normal',3,null,5), (8,9,'normal',3,null,5), (8,10,'normal',3,null,5), (8,11,'normal',3,null,5), (8,12,'normal',3,null,5), (8,13,'normal',3,null,5), (8,14,'normal',3,null,5), (8,15,'boss',5,null,1)
 on conflict (chapter, phase) do update set type = excluded.type, points = excluded.points, reward_grade = excluded.reward_grade, enemy_count = excluded.enemy_count;
 
 -- 확인: select chapter, count(*) from public.story_phase_config group by chapter order by chapter;  → 8 | 15
