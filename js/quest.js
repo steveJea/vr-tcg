@@ -45,11 +45,33 @@
   }
   async function loadCfg() { if (!cfg) cfg = await (await fetch('data/quest.json')).json(); return cfg; }
   const floorOf = n => cfg.floors[n - 1];
+  // ===== 10층마다 보스 층: 고정 보스 카드(진영 칸) + 부하 5명, 진영 HP 0 = 승리 =====
+  // 탑별 [10~100층, 110~200층, 210층~] 보스 카드 id. 바꾸려면 여기만 고치면 됨
+  const TOWER_BOSS = {
+    normal: ['10439', '10358', '10311'],   // 하지은(SR) · 정석윤(UR) · 이지영(MR)
+    wind:   ['10439', '10358', '10440'],   // 하지은(SR) · 정석윤(UR) · 하지혜(UR)
+    ice:    ['10045', '10359', '10322'],   // 금어진(SR) · 정아람(UR) · 임규리(UR)
+    fire:   ['10189', '10058', '10323'],   // 선우민철(SR) · 김백중(UR) · 임나리(UR)
+    light:  ['10127', '10331', '10176'],   // 박인영(SR) · 임혜리(UR) · 서성민(UR)
+    dark:   ['10415', '10324', '10304'],   // 최윤희(SR) · 임예리(UR) · 이성호(UR)
+  };
+  const isBossFloor = n => n % 10 === 0;
+  /** 보스 진영 HP: 10층 500 → 10층마다 +50 (350층 2200) */
+  const towerBossHp = n => 500 + 50 * (n / 10 - 1);
+  function towerBoss(n, L) {
+    const ids = TOWER_BOSS[TOWER] || TOWER_BOSS.normal, id = ids[n <= 100 ? 0 : n <= 200 ? 1 : 2];
+    const c = window.TCG?.cardById?.(id); if (!c) return null;
+    return window.VRQuestGen.leveled(c, L + 5);   // 부하보다 5레벨 위
+  }
   function enemiesOf(n) {
     const key = TOWER + ':' + n; if (genCache.has(key)) return genCache.get(key);
     const cls = tCls(), G = window.VRQuestGen;
     const g = cls ? G.generateAttr(cfg, floorOf(n), window.TCG?.POOL || [], { tower: TOWER, cls, npc: window.TCG?.NPC || [], levelOffset: 10 })
                   : G.generate(cfg, floorOf(n), window.TCG?.POOL || [], window.TCG?.combos?.() || []);
+    if (isBossFloor(n) && g.enemies.length) {
+      const b = towerBoss(n, g.level || g.leader?.qLevel || 1);
+      if (b) { g.bossCard = b; g.enemies = [b, ...g.enemies]; }   // 보스(진영 칸) + 부하 5명
+    }
     genCache.set(key, g); return g;
   }
   const rewardOf = n => { const r = window.VRQuestGen.rewardOf(cfg, floorOf(n)); return tCls() ? null : r; };   // 속성 탑: 소환권 없음 (골드·피·조각은 서버 재화)
@@ -150,7 +172,7 @@
     if (!unlocked(n)) return;
     const can = QUEST_HOOKS.canChallenge(n); if (!can.ok) { api.toast(can.reason || '지금은 도전할 수 없어요'); return; }
     if (!deckOk()) return;
-    api.pickDeck(g.enemies, list => battle(n, list), () => render(), `🗼 ${esc(tName())} ${n}층 · 적 5장 (리더 ⚡ ${fmt(g.leader?.power)})${tCls() ? `<br><b class="text-amber-300">${EL[tCls()]} 속성 인재만 출전할 수 있어요</b>` : ''}`, party());
+    api.pickDeck(g.enemies, list => battle(n, list), () => render(), `🗼 ${esc(tName())} ${n}층 · ${g.bossCard ? `👑 보스 ${esc(g.bossCard.name)} + 부하 5장 (진영 HP ${fmt(towerBossHp(n))})` : `적 5장 (리더 ⚡ ${fmt(g.leader?.power)})`}${tCls() ? `<br><b class="text-amber-300">${EL[tCls()]} 속성 인재만 출전할 수 있어요</b>` : ''}`, party());
   }
 // AUTO·X2 로 빨리 끝나도 서버 최소 전투 시간(_quest_min_secs 5초)을 채운 뒤 기록 → 'too fast' 방지. 서버 검사는 그대로
   const MIN_BATTLE_MS = 5600; let startedAt = 0;
@@ -161,9 +183,10 @@
     startedAt = Date.now();
     $('story-screen').classList.add('hidden'); api.bgm(n % 10 === 0 ? 'boss' : 'tower');
     const me = api.battleCards(list);
-    window.TCG.startStory({ me, ai: g.enemies.map(c => ({ ...c })), leader: api.leaderFor(me), win: 'wipe', aiName: `${n}층`, quest: true,
+    const B = g.bossCard;
+    window.TCG.startStory({ me, ai: g.enemies.map(c => ({ ...c })), leader: api.leaderFor(me), win: B ? 'ko' : 'wipe', aiHp: B ? towerBossHp(n) : undefined, bossId: B ? String(B.id) : undefined, aiName: `${n}층`, quest: true,
       onEnd: (win, reason, st) => result(n, win, reason, st) });
-    api.toast(`🗼 ${n}층: 적 인재 5명을 모두 쓰러뜨리세요!`);
+    api.toast(B ? `👑 ${n}층 보스 ${B.name}: 적 진영을 무너뜨리세요!` : `🗼 ${n}층: 적 인재 5명을 모두 쓰러뜨리세요!`);
   }
   async function result(n, win, reason, st = {}) {
     const api = A();
