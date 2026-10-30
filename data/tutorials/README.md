@@ -7,7 +7,7 @@
 ```json
 {
   "title": "챕터0 전투 1 · 공격과 기술",
-  "locks": ["auto", "speed"],          // 진행 중 막을 버튼
+  "locks": ["auto"],                   // 진행 중 막을 버튼
   "prep": { "fullMp": true },          // (선택) 시작 때 내 카드 MP 가득 → 첫 턴부터 기술 연습
   "steps": [ { ... }, { ... } ]
 }
@@ -33,7 +33,7 @@
 - `skill_used`: 내 기술 사용이 끝났을 때 (`skill` = 기술 이름)
 - `battle_end`: 전투가 끝났을 때 (`win` = true/false)
 
-`locks` 값: `auto`(AUTO) · `speed`(2배속) · `skip`(연출 생략) · `attack_all`(일괄 공격) · `end_turn`(턴 종료) · `giveup`(포기)
+`locks` 값: `auto`(AUTO) · `skip`(연출 생략) · `attack_all`(일괄 공격) · `end_turn`(턴 종료) · `giveup`(포기)
 
 `my_card:N` / `enemy_card:N` 은 화면 왼쪽부터 N번째(0부터). `skill_btn:N` 은 내 N번째 카드의 기술 버튼, `skill_use` 는 열린 카드 정보 창의 "사용" 버튼.
 
@@ -42,8 +42,8 @@
 화면 전투(PvP·전쟁·토벌)는 `TCG.viewBattle({ ..., tutorial: '<id>' })`.
 
 ## 시트(튜토리얼 칸) → 단계로 옮기기
-"내 카드를 선택하고 상대 카드를 공격 · 기술 사용 (오토·2배속 비활성화)"
-→ `locks: ["auto","speed"]`, 단계: 정보(tap) → `my_card:0`/`card_selected` → `enemy_card:0`/`attack_done` → `skill_btn:N`/`tap_target` → `skill_use`/`skill_used` → 정보(tap). 예시: `ch0_battle1.json`.
+"내 카드를 선택하고 상대 카드를 공격 · 기술 사용 (오토 비활성화)"
+→ `locks: ["auto"]`, 단계: 정보(tap) → `my_card:0`/`card_selected` → `enemy_card:0`/`attack_done` → `skill_btn:N`/`tap_target` → `skill_use`/`skill_used` → 정보(tap). 예시: `ch0_battle1.json`.
 소환·공격력 UP: `summoned` (`id` = 카드 id, 손패 소환·reserve 소환) · `action_used` (`type` = `buff` 등). 예시: `ch0_p4.json` (챕터 0 P4, 제한 마나 · 손패 `#me-hand .hand-card[data-id="…"]` → `#summon-btn`)
 
 ## 개발용

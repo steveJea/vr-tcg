@@ -2,7 +2,6 @@
   "title": "챕터0 P4 · 마나 소환 전투",
   "locks": [
     "auto",
-    "speed",
     "skip",
     "attack_all",
     "giveup"

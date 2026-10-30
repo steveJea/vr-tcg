@@ -1,6 +1,6 @@
 {
   "title": "챕터0 Phase 2 · 소환·자리 바꾸기·일괄 공격",
-  "locks": ["auto", "speed", "giveup"],
+  "locks": ["auto", "giveup"],
   "steps": [
     { "text": "혼자는 귀찮아. 유나를 불러.", "speaker": "임유리", "face": "card:10325", "wait": "tap" },
     { "target": "reserve_btn", "text": "소환 버튼을 누르면 대기 중인 동료가 나와.", "speaker": "임유리", "face": "card:10325", "wait": "summoned" },

@@ -2,15 +2,15 @@
 // 화면을 어둡게 하고 대상 하나만 밝게(스포트라이트) + 말풍선. 대상만 누를 수 있음(정보 단계는 아무 데나 탭).
 // 게임(js/game.js)이 TUT.emit('card_selected' | 'attack_done' | 'skill_used' | 'battle_end' | 'turn_start') 로 알려 주면 다음 단계로.
 // 단계 옵션: silent(가리지 않고 이벤트만 대기) · unlock:[잠금들](이 단계에서 해제) · 이벤트 추가: summoned · swapped · awaken
-// 잠금(locks): auto · speed(2배속) · skip(연출 생략) · attack_all(일괄 공격) · end_turn · giveup — 진행 중에만 적용.
-const LOCKS = ['auto', 'speed', 'skip', 'attack_all', 'end_turn', 'giveup'];
-const LOCK_SEL = { auto: '#auto-btn', speed: '#spd-btn', skip: '#fx-skip', attack_all: '#attack-all', end_turn: '#end-turn', giveup: '#story-giveup' };
+// 잠금(locks): auto · skip(연출 생략) · attack_all(일괄 공격) · end_turn · giveup — 진행 중에만 적용.
+const LOCKS = ['auto', 'skip', 'attack_all', 'end_turn', 'giveup'];
+const LOCK_SEL = { auto: '#auto-btn', skip: '#fx-skip', attack_all: '#attack-all', end_turn: '#end-turn', giveup: '#story-giveup' };
 const key = id => `vrTut:${window.VRCloud?.user?.id || 'guest'}:${id}`;
 let T = null;
 // face: 'card:<카드id>' → 카드 그림 (없으면 img/cards/<id>.webp) · 그 밖엔 이미지 경로 그대로
 const faceSrc = f => { const m = /^card:(\d+)$/.exec(f); return m ? `https://raw.githubusercontent.com/steveJea/vr-ideal-worldcup/main/img/bt_img/${m[1]}.webp` : f; };   // { id, def, i, locks:Set, el:{ov,ring,bub}, raf, cb }
 
-/** 의미 대상 → DOM 요소. 'my_card:0' 'enemy_card:0' 'skill_btn[:n]' 'skill_use' 'attack_all' 'end_turn' 'auto_btn' 'speed_btn' 또는 CSS 선택자 */
+/** 의미 대상 → DOM 요소. 'my_card:0' 'enemy_card:0' 'skill_btn[:n]' 'skill_use' 'attack_all' 'end_turn' 'auto_btn' 또는 CSS 선택자 */
 function resolve(t) {
   if (!t) return null;
   const [k, n0] = String(t).split(':'), n = +(n0 || 0);
@@ -24,7 +24,6 @@ function resolve(t) {
     case 'attack_all': return document.getElementById('attack-all');
     case 'end_turn': return document.getElementById('end-turn');
     case 'auto_btn': return document.getElementById('auto-btn');
-    case 'speed_btn': return document.getElementById('spd-btn');
     default: try { return document.querySelector(t); } catch { return null; }
   }
 }
@@ -61,7 +60,7 @@ function place() {
 function show() {
   const st = T.def.steps[T.i]; if (!st) return finish(false);
   const { bub, ov } = T.el;
-  if (st.unlock) { for (const k of st.unlock) T.locks.delete(k); applyLocks(true); }   // unlock: 이 단계부터 잠금 해제 (예: 각성 난입 → AUTO·2배속)
+  if (st.unlock) { for (const k of st.unlock) T.locks.delete(k); applyLocks(true); }   // unlock: 이 단계부터 잠금 해제 (예: 각성 난입 → AUTO)
   ov.style.display = st.silent ? 'none' : '';   // silent: 화면을 가리지 않고 이벤트만 기다림 (예: 적 턴 → turn_start, 각성 → awaken)
   bub.querySelector('p').textContent = st.text || '';
   bub.querySelector('.tut-who').textContent = st.speaker || '';

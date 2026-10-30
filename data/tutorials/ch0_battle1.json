@@ -1,6 +1,6 @@
 {
   "title": "챕터0 전투 1 · 공격과 기술",
-  "locks": ["auto", "speed", "skip", "attack_all", "giveup"],
+  "locks": ["auto", "skip", "attack_all", "giveup"],
   "prep": { "fullMp": true },
   "steps": [
     { "text": "첫 전투야. 내가 알려줄게.", "speaker": "임유리", "face": "card:10325", "wait": "tap" },
