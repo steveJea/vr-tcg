@@ -854,3 +854,6 @@ body.story-media-on .story-dlg-skip { left: 4px; right: auto; top: calc(4px + en
 .q-fl-boss{display:block;font-size:.85rem;color:#fbbf24;letter-spacing:.3em;margin-top:4px;text-shadow:0 0 8px #b45309}
 .q-enemies.boss{grid-template-columns:repeat(6,1fr)}
 .q-tower .q-peek{display:none}
+
+/* 스토리 맵: PC는 화면 폭 전체 사용(칸 수는 JS mapCols) */
+@media (min-width:901px){.story-wrap:has(.story-map-screen){max-width:none}}
