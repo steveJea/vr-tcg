@@ -742,3 +742,6 @@ span.story-lvpct { background: rgba(251,191,36,.12); border: 1px solid rgba(251,
 .story-starbar{position:relative;height:18px;border-radius:9px;background:rgba(255,255,255,.08);overflow:hidden;margin:6px 0}.story-starbar i{position:absolute;inset:0 auto 0 0;background:linear-gradient(90deg,#f59e0b,#fde047)}.story-starbar b{position:relative;display:block;text-align:center;font-size:11px;line-height:18px;color:#18181b}
 .story-starm{display:flex;align-items:center;gap:8px;padding:8px;border-radius:10px;background:rgba(255,255,255,.05);margin-top:6px}.story-starm.ready{border:1px solid rgba(251,191,36,.6)}.story-starm.done{opacity:.55}
 .story-starm-n{font-weight:900;color:#fcd34d;min-width:64px}.story-starm-r{flex:1;font-size:12px}.story-starm-go{padding:4px 12px;font-size:12px}.story-starm-ok{color:#34d399;font-weight:900}
+
+/* 전투: 내 패널 고정 (css/hubs.css .story-hub .hub-menu 와 같은 방식). 팝업(z-40↑)은 그대로 위에 */
+#game .me-dock { position: sticky; bottom: 0; z-index: 5; margin: 0 -8px; padding: 8px 8px calc(4px + env(safe-area-inset-bottom)); background: linear-gradient(transparent, rgba(5,2,4,.92) 14px); }
