@@ -17,7 +17,7 @@ async function rpc(name, args) {
   const sb = window.VRCloud?.sb; if (!sb) throw new Error('offline');
   const { data, error } = await sb.rpc(name, args); if (error) throw new Error(error.message); return data;
 }
-const ERR = { 'no attempts left': '오늘 횟수 끝', 'not enough gem': '🔮 부족', 'deck required': '덱 필요', 'card not owned': '없는 인재', 'duplicate card': '중복', 'grade not allowed': 'HR 이하만', 'cost over 150': '코스트 150 초과', 'card used in another deck': '다른 덱에 있음', 'login required': '로그인 필요' };
+const ERR = { 'guard grade': '첫 장(수비대장)은 HR 이하', 'no attempts left': '오늘 횟수 끝', 'not enough gem': '🔮 부족', 'deck required': '덱 필요', 'card not owned': '없는 인재', 'duplicate card': '중복', 'grade not allowed': 'HR 이하만', 'cost over 150': '코스트 150 초과', 'card used in another deck': '다른 덱에 있음', 'login required': '로그인 필요' };
 const errText = e => { const m = String(e?.message || e); const k = Object.keys(ERR).find(x => m.includes(x)); return k ? ERR[k] : m.slice(0, 40); };
 function toast(t) { const el = document.createElement('div'); el.className = 'pvp-toast'; el.textContent = t; document.body.appendChild(el); setTimeout(() => el.remove(), 1800); }
 
@@ -63,7 +63,7 @@ function paint() {
     <button class="pvp-x" data-x aria-label="닫기">✕</button>
     <div class="pvp-h">⚔️ PvP <small>${dleft()}</small></div>
     <div class="pvp-tabs">${Object.entries(LEAGUES).map(([k, L]) => `<button data-league="${k}" class="${view.league === k ? 'on' : ''}">${L.label}</button>`).join('')}
-      <span class="pvp-sep"></span>${Object.keys(MODES).map(k => `<button data-mode="${k}" class="${view.mode === k ? 'on' : ''}">${k}</button>`).join('')}</div>
+      <span class="pvp-sep"></span>${Object.keys(MODES).map(k => `<button data-mode="${k}" class="${view.mode === k ? 'on' : ''}">${MODES[k].label ? `👑 ${MODES[k].label}` : k}</button>`).join('')}</div>
     ${myRank()}
     <div class="pvp-decks">${decks.map((d, i) => `<button class="pvp-deck ${d ? '' : 'empty'}" data-edit="${i}">
       <span class="pvp-deck-no">${n > 1 ? i + 1 : '🛡'}</span><span class="pvp-deck-row">${d ? d.uids.map(u => thumb(byUid.get(u) && { ...card(byUid.get(u).id), level: byUid.get(u).level })).join('') : '<span class="pvp-plus">＋</span>'}</span>
@@ -145,9 +145,9 @@ function editDeck(slot) {
   const pool = [...new Map(owned.filter(o => !L.grades || L.grades.includes(card(o.id)?.grade)).sort((a, b) => b.power - a.power).map(o => [o.id, o])).values()];   // 같은 카드는 가장 센 1장
   const m = modal('pvp-edit', '', 'pvp-sub');
   const draw = () => {
-    const cards = sel.map(u => card(owned.find(o => o.uid === u)?.id)).filter(Boolean), bad = deckCheck(cards, view.league), cost = cards.reduce((a, c) => a + (+c.cost || 0), 0);
+    const cards = sel.map(u => card(owned.find(o => o.uid === u)?.id)).filter(Boolean), bad = deckCheck(cards, view.league, view.mode), cost = cards.reduce((a, c) => a + (+c.cost || 0), 0);
     m.querySelector('.pvp-panel').innerHTML = `<button class="pvp-x" data-x>✕</button>
-      <div class="pvp-h">${MODES[view.mode].decks > 1 ? `덱 ${slot + 1}` : '🛡 덱'} <small>${sel.length}/5${L.costCap ? ` · ${cost}/${L.costCap}` : ''}</small></div>
+      <div class="pvp-h">${MODES[view.mode].decks > 1 ? `덱 ${slot + 1}` : '🛡 덱'} <small>${sel.length}/5${L.costCap ? ` · ${cost}/${L.costCap}` : ''}</small></div>${MODES[view.mode].boss ? '<div class="pvp-boss-tip">👑 보스리그: 첫 번째로 고른 카드가 수비대장(HR 이하, 진영 칸 · 쓰러지지 않음). 상대 진영 HP를 0으로 만들면 승리</div>' : ''}
       ${myDecks.length ? `<div class="pvp-chips">${myDecks.map((d, i) => `<button data-load="${i}">🗂 ${esc(d.name)}</button>`).join('')}</div>` : ''}
       ${pool.length > 1 ? sortChips() : ''}<div class="pvp-pick">${sortPool(pool).map(o => { const c = card(o.id), on = sel.includes(o.uid), dis = usedElsewhere.has(o.id); return c ? `<button data-u="${o.uid}" class="${on ? 'on' : ''}" ${dis ? 'disabled' : ''}>${thumb({ ...c, level: o.level }, on ? `<b class="pvp-n">${sel.indexOf(o.uid) + 1}</b>` : '')}</button>` : ''; }).join('') || '<div class="pvp-empty">없음</div>'}</div>
       <div class="pvp-acts">${cur ? '<button data-del class="pvp-ghost">🗑</button>' : ''}<button data-ok class="pvp-go" ${bad ? 'disabled' : ''}>${bad ? esc(bad) : '저장'}</button></div>`;
@@ -174,7 +174,7 @@ function editDeck(slot) {
       <div class="pvp-acts"><button class="pvp-ghost" data-x>취소</button><button class="pvp-go" data-pick ${full ? 'disabled' : ''}>${on ? '빼기' : full ? '5/5' : '선택'}</button></div>`, 'pvp-sub pvp-top');
     z.querySelector('[data-pick]').onclick = () => {
       sel = on ? sel.filter(x => x !== uid) : [...sel, uid]; z.remove(); drawAll();
-      if (!on && sel.length === 5 && !deckCheck(sel.map(u => card(owned.find(x => x.uid === u)?.id)).filter(Boolean), view.league)) askSave();
+      if (!on && sel.length === 5 && !deckCheck(sel.map(u => card(owned.find(x => x.uid === u)?.id)).filter(Boolean), view.league, view.mode)) askSave();
     };
   };
   const askSave = () => {
@@ -216,10 +216,10 @@ async function viewSeries(s, toCards, manual) {
   for (let i = 0; i < M.decks; i++) {
     const log = [], ttl = `${M.decks > 1 ? `${i + 1}판 · ` : ''}⚔️ PvP vs ${s.opp_name}${s.bot ? ' 🤖' : ''}`;
     let r, ses;
-    if (VIEW()) { ses = manualMatch(toCards(s.me[i]), toCards(s.opp[i]), roundSeed(s.seed, i), log, { view: true, manual: true });
+    if (VIEW()) { ses = manualMatch(toCards(s.me[i]), toCards(s.opp[i]), roundSeed(s.seed, i), log, { view: true, manual: true, boss: !!M.boss });
       if (!manual) ses = autoFeed(ses);
       r = await VIEW()({ session: ses, aiName: `${s.opp_name}${s.bot ? ' 🤖' : ''}`, manual, maxTurns: 40, music: window.VR_BGM?.pvpBattle, title: ttl, bg: 'normal' }); }
-    else { ses = manualMatch(toCards(s.me[i]), toCards(s.opp[i]), roundSeed(s.seed, i), log); r = await playManual({ session: ses, rec: log, title: `${s.opp_name}${s.bot ? ' 🤖' : ''}`, maxTurns: 40, round: M.decks > 1 ? `${i + 1}판` : '' }); }
+    else { ses = manualMatch(toCards(s.me[i]), toCards(s.opp[i]), roundSeed(s.seed, i), log, { boss: !!M.boss }); r = await playManual({ session: ses, rec: log, title: `${s.opp_name}${s.bot ? ' 🤖' : ''}`, maxTurns: 40, round: M.decks > 1 ? `${i + 1}판` : '' }); }
     r.log = log; rounds.push(r); acts.push(ses.acts); r.win ? w++ : l++;
     if (w >= M.need || l >= M.need) break;
   }

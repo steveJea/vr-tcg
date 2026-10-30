@@ -8,7 +8,10 @@ import { autoNext, noteUsed } from './auto-ai.js';
 
 export const MAX_TURNS = 40;
 export const LEAGUES = { open: { label: '무제한', grades: null, costCap: null }, hr: { label: 'HR↓', grades: ['NORMAL', 'RARE', 'HIGH RARE'], costCap: 150 } };
-export const MODES = { '1v1': { decks: 1, need: 1 }, '3v3': { decks: 3, need: 2 } };
+export const MODES = { '1v1': { decks: 1, need: 1 }, '3v3': { decks: 3, need: 2 }, 'boss': { decks: 1, need: 1, boss: true, label: '보스리그' } };
+// 보스리그: 양쪽 진영 HP 있음, 덱 첫 장 = 수비대장(HR 이하, 진영 칸 · 쓰러지지 않음). 상대 진영 HP 0 = 승리
+export const BOSS_BASE_HP = 800;
+export const GUARD_GRADES = ['NORMAL', 'RARE', 'HIGH RARE'];
 // 스토리 카드 스탯 규칙 (js/story.js boosted 와 같음)
 const LV_RATE = { 'NORMAL': 0.01, 'RARE': 0.02, 'HIGH RARE': 0.03, 'SUPER RARE': 0.04, 'ULTRA RARE': 0.05, 'MYTHIC RARE': 0.06, 'LEGENDARY RARE': 0.05 };
 const PER_PT = { ATK: 1, HP: 5, DEF: 1 }, PT_FULL = 5;
@@ -22,8 +25,9 @@ export function snapCard(o, cardById, mode = 'pvp') {   // mode: pvp·war(장비
     ...(o.skillLv && typeof o.skillLv === 'object' ? { skillLv: { ...o.skillLv } } : {}) }, { gear: o.gear, sigil: o.sigil ?? null }, mode);   // 장비·증표 = 서버 스냅샷(_pvp_snap)이 붙여 준 값만
 }
 /** 덱 규칙 검사 (서버 _pvp_check 와 같은 규칙, 화면 안내용) */
-export function deckCheck(cards, league) {
+export function deckCheck(cards, league, mode = null) {
   const L = LEAGUES[league]; if (!L) return '리그';
+  if (MODES[mode]?.boss && cards.length && !GUARD_GRADES.includes(cards[0].grade)) return '첫 장(수비대장)은 HR 이하';
   if (!cards.length || cards.length > 5) return '1~5장';
   if (new Set(cards.map(c => String(c.id))).size !== cards.length) return '중복';
   if (L.grades && cards.some(c => !L.grades.includes(c.grade))) return 'HR 이하만';
@@ -52,6 +56,7 @@ export function resolveAct(inp, me, op, A0, B0, turn, autoPick) {
   if (inp.k === 'auto') { const a = autoPick(me, op, turn); return a ? { ...a, rec: a.kind === 'skill' ? { k: 'skill', i: A0.indexOf(a.u), s: a.s.name } : { k: 'atk', i: A0.indexOf(a.u), t: a.t ? B0.indexOf(a.t) : -1 } } : { none: true }; }
   const u = A0[inp.i | 0]; if (!u || u.hp <= 0 || !me.field.includes(u) || !u.canAttack) return false;
   if (inp.k === 'skill') { const s = u.sk.find(x => x.name === inp.s); if (!s || !skillState(u, s).ok) return false; return { kind: 'skill', u, s, rec: { k: 'skill', i: inp.i | 0, s: s.name } }; }
+  if (inp.k === 'atk' && (inp.t | 0) === -1) { if (!attackTargets(me, op, u).hero) return false; return { kind: 'attack', u, t: null, rec: { k: 'atk', i: inp.i | 0, t: -1 } }; }   // 진영 공격 (보스리그)
   if (inp.k === 'atk') { const t = B0[inp.t | 0]; if (!t || t.hp <= 0 || !attackTargets(me, op, u).units.includes(t)) return false; return { kind: 'attack', u, t, rec: { k: 'atk', i: inp.i | 0, t: inp.t | 0 } }; }
   return false;
 }
@@ -60,11 +65,13 @@ export function resolveAct(inp, me, op, A0, B0, turn, autoPick) {
  *  opt.put(p, c): 카드 배치 (구역 전쟁: 현재 HP) · opt.maxTurns · opt.out(A, B, win, turns, aFirst)
  *  PvP·구역 전쟁은 마나 없음: 플레이어 마나는 항상 0 (소환·패 섞기·강화·아이템·용병 등 마나 행동 없음, 처치 마나도 0) */
 export function* matchGen(deckA, deckB, r, rec = null, manual = false, acts = null, opt = {}) {
-    const mk = name => ({ name, hp: 1, maxHp: 1, deck: [], hand: [], field: [], mana: 0, maxMana: 0, noBase: true, once: {}, grave: [], noMana: true });
+    const BOSS = !!opt.boss, BH = BOSS ? (opt.baseHp || BOSS_BASE_HP) : 1;
+    const mk = name => ({ name, hp: BH, maxHp: BH, deck: [], hand: [], field: [], mana: 0, maxMana: 0, noBase: !BOSS, once: {}, grave: [], noMana: true });
     const A = mk('A'), B = mk('B'), aFirst = r() < 0.5, view = !!opt.view, MAXT = opt.maxTurns || MAX_TURNS;
     initPlayers(A, B, aFirst ? A : B);
     const put = opt.put || ((p, c) => placeUnit(p, { ...c }, makeUnit));
     deckA.forEach(c => put(A, c)); deckB.forEach(c => put(B, c));
+    if (BOSS) for (const p of [A, B]) { const g = p.field[0]; if (g && GUARD_GRADES.includes(g.base?.grade || g.card.grade)) { g.guard = g.boss = g.undying = true; g.guardAt = 0; } }   // 첫 장 = 수비대장
     refreshAll(A); refreshAll(B);
     const A0 = [...A.field], B0 = [...B.field];
     const noMana = () => { A.mana = B.mana = 0; A.maxMana = B.maxMana = 0; A.bonusMana = B.bonusMana = 0; };
@@ -73,7 +80,7 @@ export function* matchGen(deckA, deckB, r, rec = null, manual = false, acts = nu
     const push = rec ? (x = {}) => rec.push({ ...x, A: hpOf(A), B: hpOf(B) }) : () => {};
     if (rec) { rec.roster = { A: A.field.map(u => ({ uid: u.uid, id: u.base.id, max: u.maxHp })), B: B.field.map(u => ({ uid: u.uid, id: u.base.id, max: u.maxHp })) }; rec.aFirst = aFirst; push({ k: 'start' }); }
     const live = p => p.field.filter(u => u.hp > 0).length;
-    const end = () => !live(B) ? 1 : !live(A) ? 0 : -1;
+    const end = BOSS ? () => B.hp <= 0 ? 1 : A.hp <= 0 ? 0 : -1 : () => !live(B) ? 1 : !live(A) ? 0 : -1;
     const out = (w, t) => opt.out ? opt.out(A, B, !!w, t, aFirst) : ({ win: !!w, turns: t, aLeft: live(A), bLeft: live(B), aFirst });
     for (let t = 0; t < MAXT; t++) {
       const cur = (t % 2 === 0) === aFirst ? A : B, op = cur.foe;
@@ -94,7 +101,7 @@ export function* matchGen(deckA, deckB, r, rec = null, manual = false, acts = nu
           acts?.push(a.rec);
         } else { a = autoNext(cur, op, turn); if (!a) break; }
         let hits = null;
-        if (a.kind === 'skill') { noteUsed(turn, a.s); useSkill(a.u, a.s); } else if (a.t) hits = resolveAttack(cur, op, a.u, a.t);
+        if (a.kind === 'skill') { noteUsed(turn, a.s); useSkill(a.u, a.s); } else if (a.t || BOSS) hits = resolveAttack(cur, op, a.u, a.t || null);
         noMana();
         push({ k: a.kind === 'skill' ? 'skill' : 'atk', side: cur === A ? 'A' : 'B', u: a.u.uid, to: a.t?.uid, s: a.kind === 'skill' ? (a.s?.label || a.s?.name || '') : '' });
         a.u.canAttack = false;
@@ -108,8 +115,8 @@ export function* matchGen(deckA, deckB, r, rec = null, manual = false, acts = nu
     return out(0, MAXT);   // 시간 초과 = 공격 측 패배 (방어 유리)
 }
 /** 한 판: A(공격) vs B(방어). actions 없으면 둘 다 자동 AI, 있으면 A 는 그 기록대로(수동 판 재검증). 반환 { win: A 승리?, turns, aLeft, bLeft } */
-export function runMatch(deckA, deckB, seed, rec = null, actions = null) {
-  const r = rngOf(seed), st = stepper(matchGen(deckA, deckB, r, rec, !!actions), r);
+export function runMatch(deckA, deckB, seed, rec = null, actions = null, opt = {}) {
+  const r = rngOf(seed), st = stepper(matchGen(deckA, deckB, r, rec, !!actions, null, opt), r);
   return actions ? replay(st, actions) : st.next().value;
 }
 /** 수동 한 판 세션: s.next(입력) 으로 진행, s.acts 가 기록 */
@@ -122,7 +129,7 @@ export function runSeries(mode, decksA, decksB, seed, withLog = false, actions =
   const M = MODES[mode], rounds = []; let w = 0, l = 0;
   for (let i = 0; i < M.decks; i++) {
     const log = withLog ? [] : null;
-    const m = runMatch(decksA[i], decksB[i], roundSeed(seed, i), log, actions ? actions[i] || [] : null); if (log) m.log = log; rounds.push(m); m.win ? w++ : l++;
+    const m = runMatch(decksA[i], decksB[i], roundSeed(seed, i), log, actions ? actions[i] || [] : null, M.boss ? { boss: true } : {}); if (log) m.log = log; rounds.push(m); m.win ? w++ : l++;
     if (w >= M.need || l >= M.need) break;
   }
   return { win: w >= M.need, wins: w, losses: l, rounds };

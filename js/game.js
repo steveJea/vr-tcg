@@ -552,7 +552,7 @@ async function lunge(el, targetEl) {
 /** 연출(돌진→충돌→복귀) 후 상태 반영. 전투 결과는 resolveAttack 그대로라 로직은 동일.
  *  예외가 나도 finally에서 연출·busy를 되돌려 게임이 멈추지 않게 함 */
 async function attack(who, unit, target, fromBatch = false) {
-  if (S?.view) { if (who === 'me' && S.view.ask && target) S.view.ask({ k: 'atk', i: S.view.A0.indexOf(unit), t: S.view.B0.indexOf(target) }); return; }
+  if (S?.view) { if (who === 'me' && S.view.ask && (target || !S.ai.noBase)) S.view.ask({ k: 'atk', i: S.view.A0.indexOf(unit), t: target ? S.view.B0.indexOf(target) : -1 }); return; }   // target 없음 = 진영 공격 (보스리그)
   const o = opp(who), p = S[who];
   if (!unit.canAttack || S.over) return;
   if (!fromBatch && who === 'me' && S.busy) return;
@@ -1839,6 +1839,7 @@ async function viewBattle0({ session, aiName = '상대', bg = 'normal', manual =
   S = { me: x.value.A, ai: x.value.B, view: V, story: { win: 'wipe', view: true, aiName }, maxTurns: mt, first: 'me', turn: 'me', turnNo: 0, totalTurns: 0, myTurns: 0, over: false, busy: true, fxSeen: new Set(), mercBought: 0, mercHired: null, mercOffer: [], limitedAids: true,
     log: { dmg: new Map(), total: 0, skills: 0, merc: null, played: new Set(), kills: {} } };
   S.me.name = '나'; S.ai.name = aiName;
+  for (const w of ['me', 'ai']) { $(`${w}-hp`).classList.toggle('hidden', S[w].noBase); $(`${w}-hpbar`).parentElement.classList.toggle('hidden', S[w].noBase); }   // 보스리그: 진영 HP 표시
   selected = null; $('log').innerHTML = ''; fxQueue.length = 0; vidGate = Promise.resolve(); hpPrev.clear();
   $('end-screen').classList.add('hidden'); $('start-screen').classList.add('hidden'); $('game').classList.remove('hidden');
   $('game').classList.add('story-field', 'view-battle'); $('game').classList.toggle('view-raid', !!raid);

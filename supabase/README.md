@@ -84,6 +84,7 @@ SQL Editor 에서 형님이 직접 실행하는 파일들. **같은 함수를 �
 74. `story_level_gate.sql` (2026-10-29) — 챕터 입장 레벨 제한. ⚠ 이후 `phaseE_2.sql` 다시 돌리지 마세요
 75. `lr_grade_align.sql` (2026-10-29)
 76. `story_ch0_jieun.sql` (2026-10-29) — 챕0 강제 10회 영입 하지은 확정
+77. `pvp_boss_league.sql` (2026-10-30) — PvP 보스리그 (mode boss). `_pvp_ok` 최신 = 이 파일
 
 ## 여러 파일에 정의된 함수 → 최신 정의 파일
 
@@ -97,6 +98,7 @@ SQL Editor 에서 형님이 직접 실행하는 파일들. **같은 함수를 �
 | `_player_add_xp` | `guild.sql` | `phaseE_2.sql` |
 | `_player_xp_need` | `player_xp_x3.sql` | `phaseE_2.sql` |
 | `_pvp_extra` | `gem.sql` | `pvp.sql` |
+| `_pvp_ok` | `pvp_boss_league.sql` | `pvp.sql` |
 | `_pvp_grant` | `gem.sql` | `pvp_tier.sql` |
 | `_pvp_snap` | `gear_snap.sql` | `pvp.sql` |
 | `_raid_numbers` | `manual_battle.sql` | `guild3.sql` |
