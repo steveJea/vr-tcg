@@ -185,6 +185,7 @@ function startGame(story = null) {
   S.me.clearFirst = S.ai.clearFirst = !story && !!ao.clearFirst;   // 카드 먼저 제거: 양측 공통 규칙
   // 스토리: 내 진영 없음(일반·보스 공통). 상대 진영은 보스전에만 존재
   S.me.noBase = !!story; S.ai.noBase = story?.win === 'wipe';
+  S.ai.heroGuard = story?.heroGuard || 0;   // 진영 방어 장수 덮어쓰기 (탑 보스 층)
   S.guardMode = !story;   // 아케이드(AI 상대): 진영 칸에 수비대장 1명 (HR 이하)
   S.me.noActs = S.ai.noActs = !!story;   // 스토리: 마나 가속기·필드 회복 없음 (공격력 강화는 가능)
   S.me.limitedAids = S.ai.limitedAids = S.limitedAids;

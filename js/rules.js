@@ -239,7 +239,8 @@ export function attackTargets(me, opp, attacker = null) {
   if (opp.noBase) return { units: field, hero: false, reason: '일반전: 상대 카드를 모두 쓰러뜨리세요' };
   if (me.clearFirst && field.length) return { units: field, hero: false, reason: '카드 먼저 제거: 상대 카드를 모두 쓰러뜨린 뒤 진영을 공격할 수 있어요' };
   if (heroLocked(me)) return { units: field, hero: false, reason: `첫 ${RULES.HERO_LOCK_TURNS}턴에는 진영을 공격할 수 없습니다` };
-  if (field.length >= RULES.HERO_GUARD_FIELD) return { units: field, hero: false, reason: `상대 필드에 ${RULES.HERO_GUARD_FIELD}장 이상 있으면 카드만 공격할 수 있습니다` };
+  const guardN = opp.heroGuard || RULES.HERO_GUARD_FIELD;   // 탑 보스 층(부하 5명): 5 → 부하 1명 쓰러뜨리면 진영 공격 (스토리 보스전 부하 4명과 같은 조건)
+  if (field.length >= guardN) return { units: field, hero: false, reason: `상대 필드에 ${guardN}장 이상 있으면 카드만 공격할 수 있습니다` };
   return { units: field, hero: true, reason: '' };
 }
 export function canTarget(me, opp, target, attacker = null) {
