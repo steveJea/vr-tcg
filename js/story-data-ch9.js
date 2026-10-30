@@ -305,7 +305,8 @@ window.STORY_DATA.chapters.push({
     "default": [
      {
       "speaker": "내레이션",
-      "text": "주말. 지역 테니스 대회 결승전. 관중석 맨 앞줄에 윤희와 윤정이 앉아 있었다."
+      "text": "주말. 지역 테니스 대회 결승전. 관중석 맨 앞줄에 윤희와 윤정이 앉아 있었다.",
+      "image": "img/story/ch9-05.webp"
      },
      {
       "speaker": "최윤희",
@@ -336,11 +337,12 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "내레이션",
-      "text": "윤아의 서브가 코트에 꽂혔다. 경기는 일방적이었다."
+      "text": "윤아의 서브가 코트에 꽂혔다. 경기는 일방적이었다.",
+      "image": "img/story/ch9-06.webp"
      },
      {
       "speaker": "내레이션",
-      "text": "시상식이 끝나고, 정장 차림의 남자 둘이 윤아에게 다가왔다. 가슴엔 계엄 정부의 배지가 반짝였다."
+      "text": "시상식이 끝나고, 정장 차림의 남자 둘이 윤아에게 다가왔다. 가슴엔 정부의 배지가 반짝였다."
      },
      {
       "speaker": "최윤아",
@@ -475,7 +477,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "내레이션",
-      "text": "그때, 2층 계단에서 작은 발소리가 났다."
+      "text": "그때, 2층 계단에서 작은 발소리가 났다.",
+      "image": "img/story/ch9-07.webp"
      },
      {
       "speaker": "최윤희",
@@ -730,7 +733,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "내레이션",
-      "text": "그 아래, 반듯한 글씨의 카드 한 장. [너를 위해 준비했어. 예쁘지? 좋아해서 그래.]"
+      "text": "그 아래, 반듯한 글씨의 카드 한 장. [너를 위해 준비했어. 예쁘지? 좋아해서 그래.]",
+      "image": "img/story/ch9-08.webp"
      },
      {
       "speaker": "최윤희",
@@ -858,7 +862,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "내레이션",
-      "text": "뒤를 돌아보면 아무도 없었다. 가로등 아래 길게 늘어진 자신의 그림자뿐."
+      "text": "뒤를 돌아보면 아무도 없었다. 가로등 아래 길게 늘어진 자신의 그림자뿐.",
+      "image": "img/story/ch9-09.webp"
      },
      {
       "speaker": "최윤희",
@@ -1007,7 +1012,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "내레이션",
-      "text": "윤희는 웃었다. 언니들이 걱정하는 얼굴을, 더는 보고 싶지 않았다."
+      "text": "윤희는 웃었다. 언니들이 걱정하는 얼굴을, 더는 보고 싶지 않았다.",
+      "image": "img/story/ch9-10.webp"
      },
      {
       "speaker": "최윤정",
@@ -1375,7 +1381,8 @@ window.STORY_DATA.chapters.push({
      {
       "speaker": "최윤아",
       "text": "우리 동생이 3주째 스토킹을 당하고 있다고요. 이번엔 사진도 있어요. 이 남자예요.",
-      "expr": "분노"
+      "expr": "분노",
+      "image": "img/story/ch9-11.webp"
      },
      {
       "speaker": "내레이션",
@@ -1557,7 +1564,8 @@ window.STORY_DATA.chapters.push({
       "speaker": "최윤희",
       "text": "(...보고 있어. 지금, 이 순간에도.)",
       "expr": "놀람",
-      "slug": "choi_yunhee_home"
+      "slug": "choi_yunhee_home",
+      "image": "img/story/ch9-12.webp"
      }
     ]
    },
@@ -1685,7 +1693,8 @@ window.STORY_DATA.chapters.push({
       "speaker": "최윤희",
       "text": "...헤헤.",
       "expr": "기쁨",
-      "slug": "choi_yunhee_school"
+      "slug": "choi_yunhee_school",
+      "image": "img/story/ch9-13.webp"
      }
     ]
    },
@@ -2047,7 +2056,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "내레이션",
-      "text": "또 다른 손이 윤희의 입을 틀어막았다. 숨이 막혔다."
+      "text": "또 다른 손이 윤희의 입을 틀어막았다. 숨이 막혔다.",
+      "image": "img/story/ch9-14.webp"
      },
      {
       "speaker": "최윤희",
@@ -2317,7 +2327,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "내레이션",
-      "text": "윤아는 윤희를 끌어안고 울었다. 윤정은 떨리는 손으로 윤희의 얼굴을 감쌌다."
+      "text": "윤아는 윤희를 끌어안고 울었다. 윤정은 떨리는 손으로 윤희의 얼굴을 감쌌다.",
+      "image": "img/story/ch9-15.webp"
      },
      {
       "speaker": "최윤아",
@@ -2379,7 +2390,8 @@ window.STORY_DATA.chapters.push({
       "speaker": "최윤희",
       "text": "...다음엔...나도 가만히 있지 않을 거야.",
       "expr": "분노",
-      "slug": "choi_yunhee_home"
+      "slug": "choi_yunhee_home",
+      "image": "img/story/ch9-16.webp"
      }
     ]
    },
@@ -2400,6 +2412,14 @@ window.STORY_DATA.chapters.push({
    ],
    "bossId": "10475",
    "after": [
+    {
+     "speaker": "내레이션",
+     "text": "..."
+    },
+    {
+     "speaker": "내레이션",
+     "text": "...!!!"
+    },
     {
      "speaker": "내레이션",
      "text": "Chapter 9. fin"
@@ -2424,7 +2444,8 @@ window.STORY_DATA.chapters.push({
    "speaker": "최윤희",
    "text": "저는...그냥 평범하게 웃으면서 살고 싶었을 뿐이에요.",
    "expr": "보통",
-   "slug": "choi_yunhee_school"
+   "slug": "choi_yunhee_school",
+   "video": "video/story/ch9-01.mp4"
   },
   {
    "speaker": "내레이션",
@@ -2432,15 +2453,18 @@ window.STORY_DATA.chapters.push({
   },
   {
    "speaker": "내레이션",
-   "text": "첫째 최윤정. '얼음공주'라 불리는, 차갑고 비상한 머리의 맏언니."
+   "text": "첫째 최윤정. '얼음공주'라 불리는, 차갑고 비상한 머리의 맏언니.",
+   "image": "img/story/ch9-02.webp"
   },
   {
    "speaker": "내레이션",
-   "text": "둘째 최윤아. 코트 위의 천재. 라켓 하나로 모든 시선을 빼앗는 테니스 선수."
+   "text": "둘째 최윤아. 코트 위의 천재. 라켓 하나로 모든 시선을 빼앗는 테니스 선수.",
+   "image": "img/story/ch9-03.webp"
   },
   {
    "speaker": "내레이션",
-   "text": "그리고 막내 최윤희."
+   "text": "그리고 막내 최윤희.",
+   "image": "img/story/ch9-04.webp"
   },
   {
    "speaker": "내레이션",
