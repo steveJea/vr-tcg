@@ -247,6 +247,7 @@ const mustLeft = () => S?.mustSummon ? S.mustSummon.ids.filter(id => !S.log.play
 const affordable = () => (S.me.hand || []).filter(c => { try { return canSummon(c, S.me, S.ai).ok; } catch { return false; } });
 
 function startTurn(who) {
+  turnScroll(who);
   const p = S[who];
   S.turn = who; if (who === S.first) S.turnNo++; S.totalTurns++;
   if (S.pairShield && S.turnNo > S.pairShield.turns) { const u = S.pairShield.u; S.pairShield = null; u.noDamage = false; delete u.pairShield; log(`🛡️ 자매의 가호가 사라졌다: ${u.card.name}`, 'text-zinc-400'); }
@@ -424,6 +425,12 @@ initStatusFx({ off: () => !!(window.TCG_FAST || SWEEPING()), quick: () => !!(ski
 const fxMs = ms => (FX_OFF() ? 0 : REDUCED() ? Math.round(ms * 0.3 * FX_SPEED) : Math.round(ms * FX_SPEED));
 const cutinMs = ms => (FX_OFF() ? 0 : REDUCED() ? Math.round(ms * 0.3) : ms);
 const unitEl = (who, u) => document.querySelector(`#${who}-field [data-uid="${u.uid}"], #${who}-boss [data-uid="${u.uid}"]`);
+/** 턴이 바뀔 때만: 내 턴 = 내 진영 칸(필드) 쪽, 상대 턴 = 상대 진영 칸 쪽으로 부드럽게 스크롤. 화면이 다 보이면 안 움직임 */
+function turnScroll(who) {
+  if (window.TCG_FAST || document.documentElement.scrollHeight <= window.innerHeight + 40) return;
+  const el = who === 'me' ? $('me-field') : (!$('ai-boss').classList.contains('hidden') ? $('ai-boss') : $('ai-field'));
+  setTimeout(() => { try { el?.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: who === 'me' ? 'center' : 'start' }); } catch {} }, 60);
+}
 /** 진영 = 둥근 진영 칸 (보이면). 진영 피해·회복 연출은 진영 칸에, 없으면 위/아래 정보 상자 */
 const heroEl = who => { const b = $(`${who}-boss`); return (S && !S[who]?.noBase && b && !b.classList.contains('hidden') && (b.querySelector('.base-ring') || b)) || $(`${who}-hero`); };
 /** 진영 칸 아래 진영 HP 바 */
@@ -1368,6 +1375,8 @@ function render() {
     // 깜빡임 방지: 새로 만든 뒤 기존 DOM 에 차이만 반영(morph, 카드 uid 기준). 바뀌지 않은 노드·그림·애니메이션은 그대로 유지
     const nb = document.createElement('div'), nbb = document.createElement('div'), binds = [];
     if (bossBox) bossBox.classList.toggle('hidden', !S.guardMode && !S[who].field.some(u => u.undying));
+    { const slot = !!bossBox && !bossBox.classList.contains('hidden') && !S[who].noBase;   // 진영 칸이 진영 HP를 보여 주면 정보 상자의 진영 HP는 숨김 (중복 제거)
+      $(`${who}-hp`).classList.toggle('hidden', S[who].noBase || slot); $(`${who}-hpbar`).parentElement.classList.toggle('hidden', S[who].noBase || slot); }
     if (bossBox && S.guardMode && !guardOf(S[who])) nbb.innerHTML = `<div class="base-unit base-empty"><div class="base-ring"><div class="base-img base-ph">${ic('def', { alt: '' })}</div></div><div class="base-name">${who === 'me' ? '수비대장 비어 있음' : '수비대장 없음'}</div>${S[who].noBase ? '' : baseHpBar(S[who])}</div>`;
     if (!S[who].field.some(u => !u.undying)) nb.innerHTML = '<div class="text-zinc-600 text-xs self-center">빈 필드</div>';
     S[who].field.forEach(u => {
@@ -1876,7 +1885,7 @@ async function viewBattle0({ session, aiName = '상대', bg = 'normal', manual =
         const a = v.anim, who = a.side === 'A' ? 'me' : 'ai', evs = drain();
         fastForward = false;   // 탭 빨리감기는 그 행동 하나만 (스토리처럼) — 안 풀면 한 번 탭 뒤 전투 전체가 연출 없이 순식간에 끝남
         if (a.k === 'turn' && !S.totalTurns) { $('me-order').textContent = who === 'me' ? '선공' : '후공'; $('ai-order').textContent = who === 'ai' ? '선공' : '후공'; }
-        if (a.k === 'turn') { S.turn = who; S.totalTurns++; if (who === 'me') { S.myTurns++; S.meActed = false; } S.busy = true; render(); if (raid && who === 'me') floatText(`T${a.t}/${mt / 2}`, 'text-amber-200 text-2xl', 'me'); await play(evs, 160); if (raid) { bossNum(v.damage - (S.vDmg || 0)); S.vDmg = v.damage; raidPaint(v.damage, 1); } await sleep(AI_DELAY()); }
+        if (a.k === 'turn') { turnScroll(who); S.turn = who; S.totalTurns++; if (who === 'me') { S.myTurns++; S.meActed = false; } S.busy = true; render(); if (raid && who === 'me') floatText(`T${a.t}/${mt / 2}`, 'text-amber-200 text-2xl', 'me'); await play(evs, 160); if (raid) { bossNum(v.damage - (S.vDmg || 0)); S.vDmg = v.damage; raidPaint(v.damage, 1); } await sleep(AI_DELAY()); }
         else if (a.k === 'skill') { S.busy = true; selected = null;   /* 컷인 전엔 다시 그리지 않음: 엔진은 이미 스킬 결과(처치 포함)를 반영 → 그리면 맞을 카드가 먼저 사라짐 */ if (!(await mrVideo(a.u, a.s))) await withTimeout(cutIn(a.u, a.s.name, a.s.fx), 3000); pendingDying = []; await play(evs, 160); if (raid) { bossNum(a.d, a.weak); S.vDmg = v.damage; raidPaint(v.damage, a.d); } if (who === 'me') S.log.skills++; render(); await sleep(fxMs(450)); await withTimeout(fadeDying(), 750); if (who === 'me') TUT('skill_used', { skill: a.s?.name }); }
         else if (a.k === 'atk') {
           S.busy = true; const oWho = who === 'me' ? 'ai' : 'me', aEl = unitEl(who, a.u), tEl = a.t ? unitEl(oWho, a.t) : null;
@@ -1919,3 +1928,23 @@ async function viewBattle0({ session, aiName = '상대', bg = 'normal', manual =
   }
 }
 window.TCG = { kickoff: () => S?.kickGo?.(), viewBattle, get NPC() { return NPC; }, cardById: id => { id = window.cardIdNew ? window.cardIdNew(id) : id; return POOL.find(c => String(c.id) === String(id)) || NPC.find(c => String(c.id) === String(id)); }, isNpc, cardTitle, cardTags, cardStats, regionShort, playStinger, showCardInfo, skillsOf, combos, arcadeOpts: ArcadeOpts, openArcadeOpts, playSe, onEnter, checkEvents, showEvent, mvpVoice, get events() { return EVENTS; }, get seOn() { return seOn; }, skillListHTML: (c, lv, opt) => skillListHTML(c, null, false, lv, opt), voiceTest(k) { if (!voiceSet?.has(k)) return false; const a = voiceAudio(k); a.volume = voiceVol; a.currentTime = 0; voiceCur = a; a.play().catch(() => {}); return true; }, get voiceActive() { return voiceActive.size; }, get voice() { return { on: voiceOn, vol: voiceVol, cur: voiceCur && { src: voiceCur.src, paused: voiceCur.paused, t: voiceCur.currentTime }, set: voiceSet && voiceSet.size }; }, openZoom, closeZoom, dupCheck, get errors() { return window.TCG_ERRORS || []; }, cutIn, passiveCutIn, sortedHand, get handSort() { return handSort; }, put: debugPut, castSkill, skillState, get S() { return S; }, RULES, calcPower: c => calcPower(c, skillsOf(c?.id)), skillLvPowerMult: (id, lvMap) => skillLvPowerMult(skillsOf(id), lvMap), elementMultiplier, calcDamage, canSummon, buildDeck, summon, attack, recall, attackAll, endTurn, canRecall, recallCost, makeUnit, resolveAttack, useAction, canAction, startGame, startStory, cardHTML, get ready() { return POOL.length > 0; }, equipItem, doSacrifice, finish, attackTargets, get POOL() { return POOL; }, render, Stats };
+
+// ===== 전투 UI: 정렬 레이어 · 설정(⚙️) 레이어 (바깥 누르면 닫힘) =====
+{ const pop = (btnId, popId) => { const b = $(btnId), p = $(popId); if (!b || !p) return;
+    b.addEventListener('click', e => { e.stopPropagation(); const open = p.classList.contains('hidden'); document.querySelectorAll('.sort-pop, .bset-pop').forEach(x => x.classList.add('hidden')); p.classList.toggle('hidden', !open); p.classList.toggle('flex', open && popId === 'hand-sort'); b.setAttribute('aria-expanded', String(open)); });
+    p.addEventListener('click', e => e.stopPropagation());
+    document.addEventListener('click', () => { if (!p.classList.contains('hidden')) { p.classList.add('hidden'); p.classList.remove('flex'); b.setAttribute('aria-expanded', 'false'); } }); };
+  pop('act-sort', 'hand-sort'); pop('bset-btn', 'bset-pop');
+  // 아이콘 버튼 이름: 길게 누르기·마우스 올리기 (title)
+  document.querySelectorAll('#action-bar .act-btn').forEach(b => { if (!b.title) b.title = (b.textContent || '').replace(/\d+|회/g, '').trim(); });
+}
+// ===== 전투 화면 오른쪽 위치 바 (어디를 보고 있는지 · 누르면 그 위치로) =====
+{ const nav = document.createElement('div'); nav.id = 'battle-nav'; nav.innerHTML = '<i></i>'; nav.setAttribute('aria-hidden', 'true'); document.body.appendChild(nav);
+  const thumb = nav.firstChild;
+  const paint = () => { const g = $('game'), H = document.documentElement.scrollHeight, vh = window.innerHeight;
+    const on = g && !g.classList.contains('hidden') && H > vh + 40; nav.classList.toggle('on', !!on); if (!on) return;
+    thumb.style.top = (window.scrollY / H * 100) + '%'; thumb.style.height = Math.max(8, vh / H * 100) + '%'; };
+  window.addEventListener('scroll', paint, { passive: true }); window.addEventListener('resize', paint); setInterval(paint, 500);
+  nav.addEventListener('click', e => { const r = nav.getBoundingClientRect(), H = document.documentElement.scrollHeight, vh = window.innerHeight;
+    window.scrollTo({ top: Math.max(0, (e.clientY - r.top) / r.height * H - vh / 2), behavior: 'smooth' }); });
+}
