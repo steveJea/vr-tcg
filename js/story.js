@@ -513,6 +513,10 @@
       p.close(true); starPop(base, data.status); starBox(base);
     });
   }
+  // PC(901px+)는 화면 폭에 맞춰 한 줄 칸 수를 늘림. 노드+연결선 ≈ 120px
+  const mapCols = () => innerWidth < 901 ? 5 : Math.max(5, Math.floor((innerWidth - 80) / 120));
+  let mapColsNow = 0, mapRsT;
+  addEventListener('resize', () => { clearTimeout(mapRsT); mapRsT = setTimeout(() => { if (document.querySelector('.story-map-screen') && mapCols() !== mapColsNow) renderMap(); }, 200); });
   function renderMap(idx) {
     if (pullPending()) return forcedPull();
     if (typeof idx === 'number') curCh = idx;
@@ -529,7 +533,7 @@
     const node = (p, i) => { const st = done.includes(p.no) ? 'done' : p.no === nextNo ? 'next' : 'lock', boss = p.type === 'boss';
       const dot = boss ? ic('crown', { alt: '보스', cls: 'story-node-ic' }) : st === 'done' ? '✔' : st === 'lock' ? '🔒' : p.no;
       return `${i ? `<div class="story-path ${st !== 'lock' ? 'on' : ''}"></div>` : ''}<span class="story-node-wrap"><button class="story-node ${st} ${p.type}" data-phase="${p.no}" ${st === 'lock' ? 'disabled' : ''} aria-label="Phase ${p.no}${boss ? ' 보스' : ''}${st === 'done' ? ' 다시 하기' : ''}"><span class="story-node-dot">${dot}${boss && st === 'done' ? '<i class="story-node-ok">✔</i>' : ''}</span><span class="story-node-label">${boss ? 'BOSS' : p.no}</span>${st === 'done' ? starHtml(starsOf(ch.id, p.no), 'node') : ''}</button></span>`; };
-    const rows = []; for (let k = 0; k < ch.phases.length; k += 5) rows.push(ch.phases.slice(k, k + 5));   // 5칸씩 한 줄
+    const per = mapColsNow = mapCols(); const rows = []; for (let k = 0; k < ch.phases.length; k += per) rows.push(ch.phases.slice(k, k + per));   // 모바일 5칸, PC는 화면 폭만큼
     // 챕터 탭 대신 제목 옆 ‹ › : 방향으로 가장 가까운 열린 챕터로 이동, 없으면 흐리게
     const seekCh = d => { for (let i = curCh + d; i >= 0 && i < D.chapters.length; i += d) if (chapterOpen(i)) return i; return -1; };
     const prevI = seekCh(-1), nextI = seekCh(1);
