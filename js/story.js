@@ -858,6 +858,7 @@
     const me = (picked || deckInstances()).slice(0, pickMax(ch, ph)).map(o => gearOn(mul({ ...boosted(o), uid: o.uid }), 'story')).filter(x => x.id);
     deckUid = Object.fromEntries(me.map(c => [String(c.id), c.uid]));
     const bc = boss ? bossOf(ph, enemies) : null;
+    if (bc && ph.bossCdMinus) bc.gear = { ...(bc.gear || {}), cd: (bc.gear?.cd || 0) + (ph.bossCdMinus | 0) };   // 페이즈 bossCdMinus: 보스 스킬 쿨타임 -N (장비 쿨타임과 같은 경로, 최소 1)
     // 보스 카드를 맨 앞에 (진영 안 표시), 나머지는 그대로
     const ai = bc ? [bc, ...enemies.filter(c => c !== bc)] : enemies;
     window.TCG.startStory({
@@ -907,6 +908,7 @@
     lose.push(['☠️', mp ? '아군 <b>전멸</b> (남은 마나로 소환 불가)' : '아군 <b>전멸</b>', '']);
     if (mp) info.push(['💧', `시작 마나 <b>${storyMana(ch, ph, deckInstances())}</b> · 다시 차지 않아요 (소환·공격력 강화에 사용)`]);
     lose.push(['⌛', `<b>${RULES_MAX_MY()}턴</b> 안에 못 이김`, '']);
+    if (boss && ph.bossCdMinus) info.push(['⏱️', `보스 스킬 쿨타임 <b>-${ph.bossCdMinus | 0}</b>`]);
     if (R.invuln != null) info.push(['🛡️', `${nm(R.invuln)}: 피해를 입지 않음`]);
     for (const r of R.revive || []) info.push(['🩸', `${nm(r.id)}: 쓰러지면 <b>${Math.max(1, r.delay | 0 || 1)}턴 후</b> 부활 (${r.level === 'keep' ? '레벨 유지' : 'Lv1'})${r.times ? ` · ${r.times}회` : ''}`]);
     if ((R.revive || []).length && !(R.expire && R.invuln != null)) info.push(['✨', '부활 전에 적을 모두 쓰러뜨리면 승리']);
