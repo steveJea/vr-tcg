@@ -1792,9 +1792,25 @@
         root().querySelectorAll('.story-ticket b').forEach(x => x.textContent = tickets);
         await playGate(bestG);
         if (!$('tk-result')) return;
-        const uids = newUids(before, r.cards.map(x => x.card_id));
-        $('tk-result').innerHTML = r.cards.map((x, i) => { const c = card(x.card_id); return `<div class="story-tk-card g-${GLOW[x.grade]}" data-pulled="${esc(uids[i] || '')}" data-pid="${esc(c.id)}" role="button" tabindex="0" style="animation-delay:${i * 0.08}s"><img src="${IMG}${c.id}.webp" alt="${esc(c.name)}"><span class="story-rar">${RAR[x.grade]}</span><div>${esc(c.name)}</div></div>`; }).join('');
-        $('tk-result').className = `story-tk-result n${r.cards.length}`;
+        const uids0 = newUids(before, r.cards.map(x => x.card_id));
+        // 10회: 낮은 등급부터 열림 (N → R → HR → SR → UR → MR/LR). 뒷면: SR 자주 반짝 · UR 이상 금색 반짝 · 나머지 무지
+        const multi = r.cards.length > 1, gi = g => { const k = GORDER.indexOf(g); return k < 0 ? 0 : k; };
+        const rows = r.cards.map((x, i) => ({ x, u: uids0[i] })); if (multi) rows.sort((a, b) => gi(a.x.grade) - gi(b.x.grade));
+        const fxOff = localStorage.getItem('vrTcgSkipFx') === '1', STEP = 0.32;
+        const backCls = g => gi(g) >= gi('ULTRA RARE') ? ' tkb-ur' : g === 'SUPER RARE' ? ' tkb-sr' : '';
+        $('tk-result').innerHTML = rows.map(({ x, u }, i) => { const c = card(x.card_id);
+          const face = `<img src="${IMG}${c.id}.webp" alt="${esc(c.name)}"><span class="story-rar">${RAR[x.grade]}</span><div>${esc(c.name)}</div>`;
+          if (!multi) return `<div class="story-tk-card g-${GLOW[x.grade]}" data-pulled="${esc(u || '')}" data-pid="${esc(c.id)}" role="button" tabindex="0">${face}</div>`;
+          return `<div class="story-tk-card tk-flip g-${GLOW[x.grade]}" data-pulled="${esc(u || '')}" data-pid="${esc(c.id)}" role="button" tabindex="0" style="--fd:${(0.25 + i * STEP).toFixed(2)}s"><div class="tk-in"><div class="tk-back${backCls(x.grade)}"></div><div class="tk-front">${face}</div></div></div>`; }).join('');
+        $('tk-result').className = `story-tk-result n${r.cards.length}${multi && fxOff ? ' tk-skip' : ''}`;
+        if (multi && !fxOff) {   // 연출 중 탭 → 남은 카드 한 번에 열기
+          const box = $('tk-result'); let done = false;
+          const fin = () => { if (done) return; done = true; box.classList.add('tk-skip'); box.removeEventListener('click', skip, true); };
+          const skip = e => { if (done) return; e.stopPropagation(); fin(); };
+          box.addEventListener('click', skip, true);
+          await new Promise(res => { const t = setTimeout(res, (0.25 + rows.length * STEP + 0.5) * 1000); box.addEventListener('click', () => { clearTimeout(t); res(); }, { once: true, capture: true }); });
+          fin(); if (!$('tk-result')) return;
+        }
         $('gacha-msg').innerHTML = `+${r.cards.length} · <span class="g-text-${GLOW[bestG]}">최고 ${RAR[bestG]}</span>`;
         if (forcedPullOn && r.cards.length === 10) { forcedPullOn = false; await markPullDone();
           const nb = document.createElement('button'); nb.className = 'gr-go gr-forced-next'; nb.id = 'forced-pull-next'; nb.textContent = save.starter ? '계속 ▶' : '함께할 캐릭터 고르기 ▶';
