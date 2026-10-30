@@ -744,3 +744,28 @@ span.story-lvpct { background: rgba(251,191,36,.12); border: 1px solid rgba(251,
 
 /* 전투: 내 패널 고정 (css/hubs.css .story-hub .hub-menu 와 같은 방식). 팝업(z-40↑)은 그대로 위에 */
 #game .me-dock { position: sticky; bottom: 0; z-index: 5; margin: 0 -8px; padding: 8px 8px calc(4px + env(safe-area-inset-bottom)); background: linear-gradient(transparent, rgba(5,2,4,.92) 14px); }
+
+/* ===== 전투 UI 다듬기 ===== */
+/* 액션 7개 한 줄 (아이콘 + 작은 마나) */
+#action-bar.act-row { display: flex; gap: 4px; }
+#action-bar .act-btn { flex: 1 1 0; min-width: 0; font-size: 0; padding: 4px 1px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; }
+#action-bar .act-btn.hidden { display: none; }
+#action-bar .act-btn .ui-ic { width: 24px; height: 24px; margin: 0; }
+#action-bar .act-btn .act-ico { font-size: 18px; line-height: 24px; }
+#action-bar .act-btn > span:not(.act-ico) { font-size: 9px; line-height: 1; white-space: nowrap; }
+#action-bar .act-btn > span .ui-ic { width: 10px; height: 10px; }
+#action-bar .act-btn .reason { display: none; }
+@media (min-width: 768px) { #action-bar .act-btn .ui-ic { width: 30px; height: 30px; } #action-bar .act-btn > span:not(.act-ico) { font-size: 11px; } }
+/* 정렬 레이어: 버튼 줄 위에 */
+#me-dock { position: sticky; }
+.sort-pop { position: absolute; left: 8px; right: 8px; bottom: calc(100% + 4px); z-index: 30; padding: 8px; border-radius: 14px; background: rgba(24,24,27,.97); border: 1px solid rgba(52,211,153,.4); box-shadow: 0 8px 24px rgba(0,0,0,.6); }
+#action-bar { position: relative; }
+/* 설정 레이어 (볼륨 · 연출 · 도움말) */
+.bset-pop { position: absolute; right: 0; top: calc(100% + 6px); z-index: 30; display: flex; flex-direction: column; align-items: stretch; gap: 8px; padding: 10px; border-radius: 16px; background: rgba(24,24,27,.97); border: 1px solid rgba(255,255,255,.2); box-shadow: 0 8px 24px rgba(0,0,0,.6); }
+.bset-pop.hidden { display: none; }
+.bset-pop #voice-vol { display: block; }
+/* 오른쪽 위치 바 */
+#battle-nav { position: fixed; right: 2px; top: 12vh; bottom: 12vh; width: 6px; border-radius: 6px; background: rgba(255,255,255,.08); z-index: 6; display: none; cursor: pointer; }
+#battle-nav.on { display: block; }
+#battle-nav::before { content: ''; position: absolute; inset: 0 -10px; }
+#battle-nav i { position: absolute; left: 0; right: 0; border-radius: 6px; background: rgba(52,211,153,.7); transition: top .15s; }

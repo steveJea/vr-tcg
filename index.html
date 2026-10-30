@@ -373,7 +373,7 @@
 <div id="battle-bg" aria-hidden="true"></div>
 <section id="game" class="hidden max-w-5xl mx-auto px-2 py-2 flex flex-col gap-2 min-h-screen">
   <!-- 상대 진영 -->
-  <div id="top-bar" class="flex items-center gap-2">
+  <div id="top-bar" class="relative flex items-center gap-2">
     <div id="ai-hero" class="flex-1 min-w-0 bg-black/60 border border-red-500/40 rounded-2xl px-3 py-2 cursor-pointer">
       <div class="flex justify-between text-xs md:text-sm"><span class="font-bold text-red-400">🤖 컴퓨터 <span id="ai-order" class="ml-1 px-1.5 py-0.5 rounded bg-white/10 text-[10px] text-zinc-300"></span></span><span id="ai-hp" class="font-bold"></span></div>
       <div class="h-2 bg-white/10 rounded-full mt-1 overflow-hidden"><div id="ai-hpbar" class="h-full bg-red-500 transition-all"></div></div>
@@ -381,10 +381,13 @@
       <div id="ai-handcards" class="flex gap-1 mt-1 min-w-0 overflow-hidden"></div>
       <div id="ai-syn" class="flex flex-wrap gap-1 mt-1 empty:hidden"></div>
     </div>
-    <div class="flex items-center gap-1 shrink-0 h-10 px-2 rounded-full bg-zinc-800 border border-white/20"><button id="se-toggle" class="text-base leading-none" title="효과음" aria-label="효과음"><img src="img/ui/se_on.webp" alt="" class="ui-ic" width="64" height="64"></button><button id="voice-toggle" class="text-base leading-none" title="스킬 보이스"><img src="img/ui/sound_on.webp" alt="소리 켜짐" class="ui-ic ui-ic-sound_on" width="64" height="64"></button><input id="voice-vol" type="range" min="0" max="100" step="5" class="hidden min-[400px]:block w-14 md:w-20 accent-emerald-400" title="보이스 볼륨" aria-label="보이스 볼륨"></div>
     <button id="auto-btn" class="hidden h-10 shrink-0 px-2 rounded-full bg-zinc-800 border border-white/20 hover:border-emerald-400 text-xs font-black whitespace-nowrap" title="자동 전투" aria-label="자동 전투" aria-pressed="false">▶ AUTO</button>
+    <button id="bset-btn" class="w-10 h-10 shrink-0 rounded-full bg-zinc-800 border border-white/20 hover:border-emerald-400 text-lg leading-none" title="설정" aria-label="전투 설정" aria-expanded="false">⚙️</button>
+    <div id="bset-pop" class="bset-pop hidden" role="dialog" aria-label="전투 설정">
+    <div class="flex items-center gap-1 shrink-0 h-10 px-2 rounded-full bg-zinc-800 border border-white/20"><button id="se-toggle" class="text-base leading-none" title="효과음" aria-label="효과음"><img src="img/ui/se_on.webp" alt="" class="ui-ic" width="64" height="64"></button><button id="voice-toggle" class="text-base leading-none" title="스킬 보이스"><img src="img/ui/sound_on.webp" alt="소리 켜짐" class="ui-ic ui-ic-sound_on" width="64" height="64"></button><input id="voice-vol" type="range" min="0" max="100" step="5" class="hidden min-[400px]:block w-14 md:w-20 accent-emerald-400" title="보이스 볼륨" aria-label="보이스 볼륨"></div>
     <button id="fx-skip" class="h-10 shrink-0 px-2 rounded-full bg-zinc-800 border border-white/20 hover:border-emerald-400 text-xs font-bold whitespace-nowrap" title="공격 연출을 생략합니다 (연출 중 화면을 누르면 빨리 감기)"><img src="img/ui/opening.webp" alt="연출" class="ui-ic ui-ic-opening" width="64" height="64"><span class="hidden min-[400px]:inline"> 연출</span></button>
     <button id="help-btn" class="w-10 h-10 shrink-0 rounded-full bg-zinc-800 border border-white/20 hover:border-emerald-400 font-bold" title="속성 상성">?</button>
+    </div>
   </div>
 
   <!-- 필드 -->
@@ -421,7 +424,8 @@
   </div>
 
   <!-- 마나 액션 -->
-  <div id="action-bar" class="grid grid-cols-3 md:grid-cols-6 gap-1.5">
+  <div id="action-bar" class="act-row">
+    <button id="act-sort" class="act-btn bg-zinc-900 border border-emerald-500/40 hover:border-emerald-400 rounded-xl px-1 py-1.5 font-bold leading-tight" title="정렬" aria-label="손패 정렬" aria-expanded="false"><span class="act-ico">↕️</span> 정렬</button>
     <button id="act-shuffle" class="act-btn bg-zinc-900 border border-violet-500/40 hover:border-violet-400 disabled:opacity-40 rounded-xl px-1 py-1.5 text-[11px] md:text-sm font-bold leading-tight"><img src="img/ui/shuffle.webp" alt="패 섞기" class="ui-ic ui-ic-shuffle" width="64" height="64"> 패 섞기 <span class="text-sky-300"><img src="img/ui/mana.webp" alt="마나" class="ui-ic" width="64" height="64">50</span><div class="reason text-[9px] md:text-[10px] text-red-400 font-normal h-3"></div></button>
     <button id="act-heal" class="act-btn bg-zinc-900 border border-violet-500/40 hover:border-violet-400 disabled:opacity-40 rounded-xl px-1 py-1.5 text-[11px] md:text-sm font-bold leading-tight"><img src="img/ui/base.webp" alt="진영" class="ui-ic ui-ic-base" width="64" height="64"> 기지 보강 <span class="text-sky-300"><img src="img/ui/mana.webp" alt="마나" class="ui-ic" width="64" height="64">20</span><div class="reason text-[9px] md:text-[10px] text-red-400 font-normal h-3"></div></button>
     <button id="act-buff" class="act-btn bg-zinc-900 border border-violet-500/40 hover:border-violet-400 disabled:opacity-40 rounded-xl px-1 py-1.5 text-[11px] md:text-sm font-bold leading-tight"><img src="img/ui/atk.webp" alt="" class="ui-ic" width="64" height="64"> 공격력 강화 <span class="text-sky-300"><img src="img/ui/mana.webp" alt="마나" class="ui-ic" width="64" height="64">30</span><div class="reason text-[9px] md:text-[10px] text-red-400 font-normal h-3"></div></button>
@@ -431,7 +435,7 @@
   </div>
 
   <!-- 손패 -->
-  <div id="hand-sort" class="flex flex-wrap items-center gap-1 px-1 pt-2 text-[10px] md:text-xs font-bold"></div>
+  <div id="hand-sort" class="sort-pop hidden flex-wrap items-center gap-1 text-[11px] md:text-xs font-bold"></div>
   <div id="me-hand" class="flex gap-2 overflow-x-auto pb-2 pt-3 px-1"></div>
   </div>
 
