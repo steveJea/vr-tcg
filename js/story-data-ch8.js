@@ -127,7 +127,8 @@ window.STORY_DATA.chapters.push({
     {
      "speaker": "안소라",
      "text": ".....?",
-     "expr": "놀람"
+     "expr": "놀람",
+     "image": "img/story/ch8-02.webp"
     }
    ],
    "afterTitle": "전투 후"
@@ -316,7 +317,8 @@ window.STORY_DATA.chapters.push({
      {
       "speaker": "중학생 안지윤",
       "text": "(아...진짜 들어가기 싫어...)",
-      "expr": "슬픔"
+      "expr": "슬픔",
+      "image": "img/story/ch8-07.webp"
      },
      {
       "speaker": "내레이션",
@@ -334,7 +336,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "내레이션",
-      "text": "누군가가 그녀의 책상을 엉망으로 만들었다."
+      "text": "누군가가 그녀의 책상을 엉망으로 만들었다.",
+      "image": "img/story/ch8-03.webp"
      },
      {
       "speaker": "중학생 안지윤",
@@ -446,7 +449,8 @@ window.STORY_DATA.chapters.push({
     {
      "speaker": "중학생 안지윤",
      "text": "제발...제발....이런 악몽은...",
-     "expr": "슬픔"
+     "expr": "슬픔",
+     "image": "img/story/ch8-04.webp"
     }
    ],
    "afterTitle": "전투 후"
@@ -543,7 +547,8 @@ window.STORY_DATA.chapters.push({
      {
       "speaker": "안지윤",
       "text": "제발...오늘도 무사히...",
-      "expr": "슬픔"
+      "expr": "슬픔",
+      "image": "img/story/ch8-05.webp"
      },
      {
       "speaker": "내레이션",
@@ -740,7 +745,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "불량배-K",
-      "text": "조금만 기다려 봐~ 쟤 화장실에서 맨날 운대. ㅋㅋ"
+      "text": "조금만 기다려 봐~ 쟤 화장실에서 맨날 운대. ㅋㅋ",
+      "image": "img/story/ch8-06.webp"
      },
      {
       "speaker": "내레이션",
@@ -995,7 +1001,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "내레이션",
-      "text": "...어둠. 끝없이 질척한 어둠 속에서 익숙한 웃음소리가 들려왔다."
+      "text": "...어둠. 끝없이 질척한 어둠 속에서 익숙한 웃음소리가 들려왔다.",
+      "image": "img/story/ch8-08.webp"
      },
      {
       "speaker": "하급 몽마",
@@ -1114,7 +1121,8 @@ window.STORY_DATA.chapters.push({
      {
       "speaker": "안소라",
       "text": "우리 지윤이...또 불도 안 끄고 잠들었네. 하여간 애기라니까.",
-      "expr": "기쁨"
+      "expr": "기쁨",
+      "image": "img/story/ch8-16.webp"
      },
      {
       "speaker": "내레이션",
@@ -1127,7 +1135,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "내레이션",
-      "text": "한 장, 또 한 장. 소라는 숨을 쉬는 것도 잊은 채 일기를 넘겼다."
+      "text": "한 장, 또 한 장. 소라는 숨을 쉬는 것도 잊은 채 일기를 넘겼다.",
+      "image": "img/story/ch8-09.webp"
      },
      {
       "speaker": "내레이션",
@@ -1323,7 +1332,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "내레이션",
-      "text": "새벽의 B급 안전지대는 죽은 도시 같았다. 꺼진 가로등, 젖은 전단지, 멀리서 들리는 개 짖는 소리."
+      "text": "새벽의 B급 안전지대는 죽은 도시 같았다. 꺼진 가로등, 젖은 전단지, 멀리서 들리는 개 짖는 소리.",
+      "image": "img/story/ch8-10.webp"
      },
      {
       "speaker": "안지윤",
@@ -1670,7 +1680,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "내레이션",
-      "text": "엄마의 글씨를 닮은, 그러나 어딘가 낯선 글씨."
+      "text": "엄마의 글씨를 닮은, 그러나 어딘가 낯선 글씨.",
+      "image": "img/story/ch8-11.webp"
      },
      {
       "speaker": "내레이션",
@@ -1706,7 +1717,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "내레이션",
-      "text": "지윤은 신발도 제대로 신지 못한 채 뒷산을 향해 뛰었다."
+      "text": "지윤은 신발도 제대로 신지 못한 채 뒷산을 향해 뛰었다.",
+      "image": "img/story/ch8-12.webp"
      },
      {
       "speaker": "불량배-B",
@@ -1783,7 +1795,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "내레이션",
-      "text": "그리고...그곳에 엄마가 있었다. 아주 조용히. 마치 잠든 것처럼."
+      "text": "그리고...그곳에 엄마가 있었다. 아주 조용히. 마치 잠든 것처럼.",
+      "image": "img/story/ch8-14.webp"
      },
      {
       "speaker": "안지윤",
@@ -1819,7 +1832,8 @@ window.STORY_DATA.chapters.push({
      {
       "speaker": "안소라",
       "text": "우리 지윤이, 오늘 유치원에서 뭐하고 놀았어?",
-      "expr": "기쁨"
+      "expr": "기쁨",
+      "image": "img/story/ch8-15.webp"
      },
      {
       "speaker": "안지윤",
@@ -1872,7 +1886,7 @@ window.STORY_DATA.chapters.push({
    "after": [
     {
      "speaker": "내레이션",
-     "text": "엄마의 미소가 하나, 둘, 일그러지며 여러 개의 그림자로 갈라졌다."
+     "text": "엄마는 슬픈 미소를 지으며...서서히 사라졌다."
     }
    ],
    "afterTitle": "전투 후"
@@ -1936,7 +1950,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "내레이션",
-      "text": "작은 장례식장. 영정 사진 속 엄마는 아이돌 시절처럼 환하게 웃고 있었다."
+      "text": "작은 장례식장. 영정 사진 속 엄마는 아이돌 시절처럼 환하게 웃고 있었다.",
+      "image": "img/story/ch8-17.webp"
      },
      {
       "speaker": "내레이션",
@@ -1950,7 +1965,8 @@ window.STORY_DATA.chapters.push({
      {
       "speaker": "안지윤",
       "text": "(엄마는 아니야. 엄마는 절대 나를 두고 혼자 가지 않아. 그 편지도...엄마 글씨가 아니었어.)",
-      "expr": "슬픔"
+      "expr": "슬픔",
+      "image": "img/story/ch8-18.webp"
      },
      {
       "speaker": "내레이션",
@@ -1993,7 +2009,8 @@ window.STORY_DATA.chapters.push({
      {
       "speaker": "학부모2",
       "text": "어머, 얘가 무슨 소리를...",
-      "expr": "놀람"
+      "expr": "놀람",
+      "image": "img/story/ch8-19.webp"
      },
      {
       "speaker": "학부모1",
@@ -2159,6 +2176,28 @@ window.STORY_DATA.chapters.push({
      {
       "speaker": "내레이션",
       "text": "지윤의 가슴에 새겨진 붉은 글씨는, 끝내 지워지지 않았다."
+     },
+     {
+      "speaker": "안지윤",
+      "text": "하하하...나의 의지도 이렇게...보잘 것 없었구나.",
+      "expr": "슬픔",
+      "image": "img/story/ch8-20.webp"
+     },
+     {
+      "speaker": "안지윤",
+      "text": "엄마...나...엄마....한테...갈래요....",
+      "expr": "슬픔"
+     },
+     {
+      "speaker": "안지윤",
+      "text": "엄마...미안해요...하지만...나..엄마 없으면....",
+      "expr": "슬픔"
+     },
+     {
+      "speaker": "안지윤",
+      "text": "...아무것도...못해....사랑해 엄마..",
+      "expr": "슬픔",
+      "image": "img/story/ch8-21.webp"
      }
     ]
    },
