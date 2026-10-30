@@ -1390,7 +1390,7 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "내레이션",
-      "text": "사진을 본 P2의 얼굴이 하얗게 질렸다."
+      "text": "사진을 본 구태만의 얼굴이 하얗게 질렸다."
      },
      {
       "speaker": "구태만",
@@ -2368,7 +2368,7 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "최윤희",
-      "text": "좋아해서 그래.' '그냥 호감일 뿐이야.'...그 말이, 이제 제일 무서워요.",
+      "text": "'좋아해서 그래.' '그냥 호감일 뿐이야.'...그 말이, 이제 제일 무서워요.",
       "expr": "슬픔",
       "slug": "choi_yunhee_home"
      },
@@ -2449,7 +2449,7 @@ window.STORY_DATA.chapters.push({
   },
   {
    "speaker": "내레이션",
-   "text": "계엄 정부가 들어선 지 몇 년. B급 안전지대의 낡은 2층 주택에 세 자매가 산다."
+   "text": "정부가 들어선 지 몇 년. B급 안전지대의 낡은 2층 주택에 세 자매가 산다."
   },
   {
    "speaker": "내레이션",
