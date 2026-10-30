@@ -213,14 +213,24 @@
   }
   /** 대사와 함께 보이는 미디어 (그림·영상): 대사 상자 위쪽 패널에 계속 떠 있고, 다음 미디어가 나오거나 장면(대사 묶음)이 끝나면 사라짐.
    *  탭은 대사로 넘어감 (패널은 클릭 통과). 영상은 소리 켜고 재생 시도 → 막히면 소리 끄고 재생, 끝나면 마지막 장면에 멈춤. 엔딩 영상(endingVideo)은 그대로 */
+  /** 돋보기: 원본 그림 전체 화면 보기 (contain). 바깥 탭·X 로 닫힘. 열려 있는 동안 대사 안 넘어감 (대사 상자 밖 레이어) */
+  function zoom(src) {
+    document.getElementById('story-zoom')?.remove();
+    const z = document.createElement('div'); z.id = 'story-zoom'; z.className = 'story-zoom';
+    z.innerHTML = `<img src="${esc(src)}" alt=""><button type="button" class="story-zoom-x" aria-label="닫기">✕</button>`;
+    const close = e => { e?.stopPropagation(); z.remove(); removeEventListener('keydown', key, true); };
+    const key = e => { e.stopPropagation(); e.preventDefault(); if (e.key === 'Escape') close(); };
+    z.onclick = e => { if (e.target.tagName !== 'IMG') close(e); else e.stopPropagation(); };
+    addEventListener('keydown', key, true); document.body.appendChild(z);
+  }
   function storyMedia() {
     let el = null, v = null, held = false, cur = '';
     const snd = window.VRSound;
     const unhold = () => { if (held) { held = false; snd?.hold?.(false); } };
     const clear = () => {   // 디졸브(페이드 아웃) 후 제거. 영상 소리도 함께 줄이고 BGM 복귀
-      const e = el, vv = v; el = null; v = null; cur = ''; document.body.classList.remove('story-media-on');
+      const e = el, vv = v; el = null; v = null; cur = ''; document.body.classList.remove('story-media-on'); document.getElementById('story-zoom')?.remove();
       if (!e) return unhold();
-      e.classList.remove('on');
+      e._zb?.remove(); e.classList.remove('on');
       if (vv) { const t0 = vv.volume; let k = 0; const fade = setInterval(() => { k++; try { vv.volume = Math.max(0, t0 * (1 - k / 8)); } catch {} if (k >= 8) clearInterval(fade); }, 50); }
       setTimeout(() => { if (vv) { try { vv.pause(); vv.removeAttribute('src'); vv.load(); } catch {} } e.remove(); }, 420);
       unhold();
@@ -229,7 +239,11 @@
       const key = kind + ':' + src; if (key === cur) return; clear(); cur = key;
       el = document.createElement('div'); el.className = 'story-media'; el.setAttribute('aria-hidden', 'true');
       el.innerHTML = kind === 'video' ? `<video playsinline preload="auto" src="${esc(src)}"></video>` : `<img src="${esc(src)}" alt="">`;
-      document.body.appendChild(el); document.body.classList.add('story-media-on');
+      document.body.appendChild(el); document.body.classList.add('story-media-on'); fit();
+      if (kind !== 'video') {   // 돋보기 버튼은 대사 화면보다 위 레이어 (미디어 패널은 대사 화면 뒤)
+        const zb = document.createElement('button'); zb.type = 'button'; zb.className = 'story-media-zoom'; zb.setAttribute('aria-label', '크게 보기'); zb.textContent = '🔍';
+        zb.onclick = e => { e.stopPropagation(); zoom(src); }; el._zb = zb; document.body.appendChild(zb);
+      }
       requestAnimationFrame(() => el?.classList.add('on'));
       if (kind === 'video') {
         v = el.querySelector('video'); snd?.hold?.(true); held = true;
@@ -237,7 +251,14 @@
         v.play().catch(() => { if (!v) return; v.muted = true; unhold(); v.play().catch(() => {}); });
       } else { const im = el.querySelector('img'); im.onerror = () => clear(); }
     };
-    const api = { set, clear }; storyMedia.cur?.clear(); storyMedia.cur = api; return api;
+    /** 미디어 패널 = 화면 위 ~ 대사 상자 바로 위까지 꽉 채움 (cover, 좌우 잘려도 됨) */
+    function fit() {
+      if (!el) return; const box = document.querySelector('#story-dlg .story-dlg-box');
+      const top = box ? box.getBoundingClientRect().top : innerHeight * 0.6;
+      el.style.height = Math.max(120, top - 34) + 'px';
+    }
+    addEventListener('resize', fit);
+    const api = { set, clear, fit }; storyMedia.cur?.clear(); storyMedia.cur = api; return api;
   }
   function storyCutin(src, done) {
     const el = document.createElement('div'); el.className = 'story-cutin';
@@ -701,6 +722,7 @@
         <div class="story-dlg-stage">${pc || slug ? (slug ? `<img class="story-portrait sp ${left ? 'left' : 'right'}" src="img/story/portraits/${slug}_${ex}.webp" alt="${esc(pc?.name || sp)}" data-fb="${[...[D.exprAlt?.[ex]].filter(Boolean).map(x => `${slug}_${x}`), ...(slug0 && slug0 !== slug && ex !== 'base' ? [ex, D.exprAlt?.[ex]].filter(Boolean).map(x => `${slug0}_${x}`) : []), ex !== 'base' && `${slug}_base`].filter(Boolean).map(x => `img/story/portraits/${x}.webp`).join('|')}" onerror="const q=(this.dataset.fb||'').split('|').filter(Boolean);if(q.length){this.dataset.fb=q.slice(1).join('|');this.src=q[0]}else{this.onerror=null;this.classList.remove('sp');${pc ? `this.src='${picOf(pc)}'` : `this.remove()`}}">` : `<img class="story-portrait ${left ? 'left' : 'right'}" src="${picOf(pc)}" alt="${esc(pc?.name || sp)}">`) : ''}</div>
         <div class="story-dlg-box">${sp ? `<div class="story-dlg-name">${esc(sp)}</div>` : ''}<div class="story-dlg-text">${esc(L.text)}</div><div class="story-dlg-next">▼ ${i + 1}/${lines.length}</div></div>
         <button class="story-dlg-skip" id="story-dlg-skip">건너뛰기 ⏭</button></div>`, track);
+      media.fit();
       $('story-dlg').onclick = e => { if (e.target.id === 'story-dlg-skip') { i = lines.length; } else i++; step(); };
     };
     step();

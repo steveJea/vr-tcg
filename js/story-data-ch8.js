@@ -385,19 +385,19 @@ window.STORY_DATA.chapters.push({
      "10500"
     ],
     "boost": {
-     "10501": {
-      "HP": 458,
-      "ATK": 82,
-      "DEF": 82,
-      "storyLv": 40,
-      "power": 28432
-     },
      "10500": {
       "HP": 217,
       "ATK": 48,
       "DEF": 48,
       "storyLv": 40,
       "power": 9293
+     },
+     "10501": {
+      "HP": 458,
+      "ATK": 82,
+      "DEF": 82,
+      "storyLv": 40,
+      "power": 28432
      }
     }
    },
@@ -469,13 +469,6 @@ window.STORY_DATA.chapters.push({
      "10155"
     ],
     "boost": {
-     "10154": {
-      "HP": 99,
-      "ATK": 16,
-      "DEF": 11,
-      "storyLv": 42,
-      "power": 1226
-     },
      "10144": {
       "HP": 70,
       "ATK": 17,
@@ -496,6 +489,13 @@ window.STORY_DATA.chapters.push({
       "DEF": 10,
       "storyLv": 42,
       "power": 1066
+     },
+     "10154": {
+      "HP": 99,
+      "ATK": 16,
+      "DEF": 11,
+      "storyLv": 42,
+      "power": 1226
      },
      "10155": {
       "HP": 113,
@@ -793,13 +793,6 @@ window.STORY_DATA.chapters.push({
      "10156"
     ],
     "boost": {
-     "10157": {
-      "HP": 149,
-      "ATK": 21,
-      "DEF": 16,
-      "storyLv": 50,
-      "power": 1892
-     },
      "10144": {
       "HP": 74,
       "ATK": 18,
@@ -827,6 +820,13 @@ window.STORY_DATA.chapters.push({
       "DEF": 15,
       "storyLv": 50,
       "power": 1713
+     },
+     "10157": {
+      "HP": 149,
+      "ATK": 21,
+      "DEF": 16,
+      "storyLv": 50,
+      "power": 1892
      }
     }
    },
@@ -1075,6 +1075,20 @@ window.STORY_DATA.chapters.push({
      "10145"
     ],
     "boost": {
+     "10144": {
+      "HP": 76,
+      "ATK": 18,
+      "DEF": 14,
+      "storyLv": 54,
+      "power": 1079
+     },
+     "10145": {
+      "HP": 92,
+      "ATK": 20,
+      "DEF": 15,
+      "storyLv": 54,
+      "power": 1247
+     },
      "10494": {
       "HP": 122,
       "ATK": 18,
@@ -1095,20 +1109,6 @@ window.STORY_DATA.chapters.push({
       "DEF": 65,
       "storyLv": 54,
       "power": 23122
-     },
-     "10144": {
-      "HP": 76,
-      "ATK": 18,
-      "DEF": 14,
-      "storyLv": 54,
-      "power": 1079
-     },
-     "10145": {
-      "HP": 92,
-      "ATK": 20,
-      "DEF": 15,
-      "storyLv": 54,
-      "power": 1247
      }
     }
    },
@@ -1257,13 +1257,6 @@ window.STORY_DATA.chapters.push({
      "10157"
     ],
     "boost": {
-     "10156": {
-      "HP": 140,
-      "ATK": 20,
-      "DEF": 16,
-      "storyLv": 56,
-      "power": 1798
-     },
      "10153": {
       "HP": 93,
       "ATK": 16,
@@ -1277,6 +1270,13 @@ window.STORY_DATA.chapters.push({
       "DEF": 12,
       "storyLv": 56,
       "power": 1329
+     },
+     "10156": {
+      "HP": 140,
+      "ATK": 20,
+      "DEF": 16,
+      "storyLv": 56,
+      "power": 1798
      },
      "10157": {
       "HP": 155,
@@ -1617,13 +1617,6 @@ window.STORY_DATA.chapters.push({
      "10157"
     ],
     "boost": {
-     "10155": {
-      "HP": 126,
-      "ATK": 19,
-      "DEF": 14,
-      "storyLv": 59,
-      "power": 1536
-     },
      "10144": {
       "HP": 79,
       "ATK": 19,
@@ -1644,6 +1637,13 @@ window.STORY_DATA.chapters.push({
       "DEF": 13,
       "storyLv": 59,
       "power": 1368
+     },
+     "10155": {
+      "HP": 126,
+      "ATK": 19,
+      "DEF": 14,
+      "storyLv": 59,
+      "power": 1536
      },
      "10157": {
       "HP": 158,
@@ -1905,6 +1905,20 @@ window.STORY_DATA.chapters.push({
      "10156"
     ],
     "boost": {
+     "10153": {
+      "HP": 95,
+      "ATK": 16,
+      "DEF": 11,
+      "storyLv": 60,
+      "power": 1195
+     },
+     "10156": {
+      "HP": 143,
+      "ATK": 21,
+      "DEF": 16,
+      "storyLv": 60,
+      "power": 1843
+     },
      "10494": {
       "HP": 127,
       "ATK": 19,
@@ -1925,20 +1939,6 @@ window.STORY_DATA.chapters.push({
       "DEF": 69,
       "storyLv": 60,
       "power": 24657
-     },
-     "10153": {
-      "HP": 95,
-      "ATK": 16,
-      "DEF": 11,
-      "storyLv": 60,
-      "power": 1195
-     },
-     "10156": {
-      "HP": 143,
-      "ATK": 21,
-      "DEF": 16,
-      "storyLv": 60,
-      "power": 1843
      }
     }
    },
@@ -2164,36 +2164,6 @@ window.STORY_DATA.chapters.push({
       "speaker": "안지윤",
       "text": "...안 돼. 너한테는...엄마가 사랑한 나를...안 넘겨!!!",
       "expr": "분노"
-     },
-     {
-      "speaker": "내레이션",
-      "text": "차가운 빈소. 영정 사진 속 엄마만이 여전히 웃고 있었다."
-     },
-     {
-      "speaker": "내레이션",
-      "text": "지윤의 가슴에 새겨진 붉은 글씨는, 끝내 지워지지 않았다."
-     },
-     {
-      "speaker": "안지윤",
-      "text": "하하하...나의 의지도 이렇게...보잘 것 없었구나.",
-      "expr": "슬픔",
-      "image": "img/story/ch8-20.webp"
-     },
-     {
-      "speaker": "안지윤",
-      "text": "엄마...나...엄마....한테...갈래요....",
-      "expr": "슬픔"
-     },
-     {
-      "speaker": "안지윤",
-      "text": "엄마...미안해요...하지만...나..엄마 없으면....",
-      "expr": "슬픔"
-     },
-     {
-      "speaker": "안지윤",
-      "text": "...아무것도...못해....사랑해 엄마..",
-      "expr": "슬픔",
-      "image": "img/story/ch8-21.webp"
      }
     ]
    },
@@ -2214,6 +2184,36 @@ window.STORY_DATA.chapters.push({
    ],
    "bossId": "10502",
    "after": [
+    {
+     "speaker": "내레이션",
+     "text": "차가운 빈소. 영정 사진 속 엄마만이 여전히 웃고 있었다."
+    },
+    {
+     "speaker": "내레이션",
+     "text": "지윤의 가슴에 새겨진 붉은 글씨는, 끝내 지워지지 않았다."
+    },
+    {
+     "speaker": "안지윤",
+     "text": "하하하...나의 의지도 이렇게...보잘 것 없었구나.",
+     "expr": "슬픔",
+     "image": "img/story/ch8-20.webp"
+    },
+    {
+     "speaker": "안지윤",
+     "text": "엄마...나...엄마....한테...갈래요....",
+     "expr": "슬픔"
+    },
+    {
+     "speaker": "안지윤",
+     "text": "엄마...미안해요...하지만...나..엄마 없으면....",
+     "expr": "슬픔"
+    },
+    {
+     "speaker": "안지윤",
+     "text": "...아무것도...못해....사랑해 엄마..",
+     "expr": "슬픔",
+     "image": "img/story/ch8-21.webp"
+    },
     {
      "speaker": "내레이션",
      "text": "Chapter 8. fin"
