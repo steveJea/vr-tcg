@@ -1022,15 +1022,16 @@
     // 서버가 첫 클리어 여부·보상(카드·포인트)을 결정. 재클리어는 보상 없음
     let first = !clearedOf(ch).includes(ph.no), reward = null, pts = 0;
     // 전투 EXP: 이번 전투에 낸 내 카드 + 처치 수 (서버가 보유 여부·처치 상한·배율을 다시 계산)
-    const kills = st.kills || {}, p_stats = [...new Set(st.played || [])].filter(id => !isGuest({ uid: deckUid[id] })).slice(0, 30).map(id => ({ uid: deckUid[id], id, kills: kills[id] | 0 }));
+    const kills = st.kills || {}, blocks = st.blocks || {}, p_stats = [...new Set(st.played || [])].filter(id => !isGuest({ uid: deckUid[id] })).slice(0, 30).map(id => ({ uid: deckUid[id], id, kills: kills[id] | 0, blocks: blocks[id] | 0 }));
     const res = await act('story_complete_phase', { p_chapter: ch.id, p_phase: ph.no, p_stats }, () => {
-      const exp = [], cap = Math.max(0, (ph.enemies?.ids?.length || ph.enemies?.count || 99) - (ph.type === 'boss' ? 1 : 0)); let ksum = 0;   // 보스 카드는 쓰러지지 않음
+      const exp = [], cap = Math.max(0, (ph.enemies?.ids?.length || ph.enemies?.count || 99) - (ph.type === 'boss' ? 1 : 0)); let ksum = 0, bsum = 0; const bcap = Math.max(0, (ph.enemies?.ids?.length || ph.enemies?.count || 99)) * 2;   // 보스 카드는 쓰러지지 않음
       for (const s of p_stats) {
         const o = byUid(s.uid) || save.owned.find(x => x.id === s.id); if (!o) continue;
         const k = Math.min(s.kills, Math.max(0, cap - ksum)); ksum += k;
-        const gain = (60 + 20 * k) * (ph.type === 'boss' ? 2 : 1), from = norm(o).level, g = gainCalc(o, gain);
+        const b = Math.min(s.blocks | 0, 3, Math.max(0, bcap - bsum)); bsum += b;
+        const gain = (60 + 20 * k + 10 * b) * (ph.type === 'boss' ? 2 : 1), from = norm(o).level, g = gainCalc(o, gain);
         Object.assign(o, { level: g.level, exp: g.exp, totalExp: g.totalExp, cpts: g.cpts });
-        exp.push({ uid: o.uid, id: o.id, kills: k, exp: gain, from, level: g.level });
+        exp.push({ uid: o.uid, id: o.id, kills: k, blocks: b, exp: gain, from, level: g.level });
       }
       if (!first) return { exp };
       const have = new Set(save.owned.map(o => o.id));
@@ -1090,7 +1091,7 @@
   function expList(list) {
     if (!list?.length) return '';
     return `<div class="story-explist">${list.map(e => { const c = card(e.id), o = (e.uid && byUid(e.uid)) || save.owned.find(x => x.id === e.id) || { id: e.id, level: e.level }, up = e.level > e.from;
-      return `<div class="story-exprow ${up ? 'up' : ''}"><img src="${IMG}${e.id}.webp" alt=""><div class="flex-1 min-w-0"><div class="flex justify-between text-xs"><b class="truncate">${esc(c?.name)}</b><span class="text-sky-300">EXP +${e.exp}${e.kills ? ` · 처치 ${e.kills}` : ''}</span></div>${lvBar(o)}${up ? `<div class="story-lvup-tag">LEVEL UP! Lv.${e.from} → Lv.${e.level} · 스탯 +${lvPct({ id: e.id, level: e.level })}%</div>` : ''}</div></div>`; }).join('')}</div>`;
+      return `<div class="story-exprow ${up ? 'up' : ''}"><img src="${IMG}${e.id}.webp" alt=""><div class="flex-1 min-w-0"><div class="flex justify-between text-xs"><b class="truncate">${esc(c?.name)}</b><span class="text-sky-300">EXP +${e.exp}${e.kills ? ` · 처치 ${e.kills}` : ''}${e.blocks ? ` · 막기 ${e.blocks}` : ''}</span></div>${lvBar(o)}${up ? `<div class="story-lvup-tag">LEVEL UP! Lv.${e.from} → Lv.${e.level} · 스탯 +${lvPct({ id: e.id, level: e.level })}%</div>` : ''}</div></div>`; }).join('')}</div>`;
   }
   function levelUpFx(text = 'LEVEL UP!') {
     const el = document.createElement('div'); el.className = 'story-lvup-fx'; el.innerHTML = `<span>${text}</span>`;

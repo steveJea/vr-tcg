@@ -22,7 +22,8 @@ export const RULES = {
   XP_BASE: 5.5, XP_EXP: 1.3,  // Lv1→2: 6, Lv5→6: 45, Lv9→10: 96 (누적 약 430)
   KILL_XP_LEVEL_BONUS: 0.2,   // 처치 XP = round(처치 카드 코스트 × (1 + 처치 카드 레벨 × 0.2))
   ATTACK_XP: 5,               // 공격할 때마다 (살아남으면) 공격 카드 XP
-  TURN_END_XP: 4,             // 내 턴 종료 시 필드에 살아있는 카드마다 XP
+  TURN_END_XP: 4,
+  BLOCK_XP: 3,                // 막기(반격 피해 > 0)마다 막은 카드 XP             // 내 턴 종료 시 필드에 살아있는 카드마다 XP
   LEVEL_UP_RATIO: 0.1,        // Lv2~5: 레벨업마다 원본 ATK·HP의 +10%
   LEVEL_UP_RATIO_HIGH: 0.05,  // Lv6~10: 원본의 +5% (체감)
   LEVEL_HIGH_FROM: 6,
@@ -342,6 +343,7 @@ export function resolveAttack(me, opp, unit, target) {
   const r2 = counterHit(unit, d2x, target);
   if (r2 > 0 && target.st.bleedCounter && unit.hp > 0) bleedOn(unit, target);   // 장서현 [왜 그러는 건디...]: 반격 후 출혈 100%
   if (r2 > 0 && target.st.thorns?.leech) heal(target, Math.round(r2 * target.st.thorns.leech), '반격 흡혈');   // 고정태 [불을 훔친 자]
+  if (r2 > 0 && target.hp > 0) { const lv = gainXp(target, RULES.BLOCK_XP); if (lv) ev.push({ type: 'levelup', unit: target, ...lv }); emit({ type: 'block', unit: target }); }   // 막기: 반격한 카드 XP
   ev.push({ type: 'hit', unit, target, d1: r1, d2: r2, mult: elementMultiplier(unit.card.class, target.card.class), killed, survived: r2 > 0 && unit.hp === 1 });
   const tDead = target.hp <= 0, uDead = unit.hp <= 0;
   if (!uDead) gainXp(unit, RULES.ATTACK_XP);
