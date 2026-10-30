@@ -1,5 +1,6 @@
 // ===== 스토리 챕터 10 「마지막 랠리」 (시트 CH10 → python3 tools/ch9_11_import.py <csv9> <csv10> <csv11> 로 생성. 직접 고쳐도 됨) =====
-// 단일 루트(single) · 페이즈 18개 (마지막 보스). 최윤희 복장 = 대사 slug. 적 레벨은 시트 값 → enemies.boost
+// 단일 루트(single) · 페이즈 16개 (마지막 보스). 최윤희 복장 = 대사 slug. 적 레벨은 시트 값 → enemies.boost · maxGrade (P4 UR 이상 금지, 나머지 SR 이상 금지, 필수 카드 예외) · 보스 bossCdMinus 1 (스킬 쿨타임 -1)
+// 10/30 시트 개정: 시트 P14(거실)는 전투 없음 → P13 전투 후 대사로 이어 붙임, P17 없음 → 페이즈 16개 (시트 15·16·18 → 14·15·16)
 window.STORY_DATA.chapters.push({
  "id": 10,
  "title": "CHAPTER 10",
@@ -91,7 +92,8 @@ window.STORY_DATA.chapters.push({
      {
       "speaker": "최윤아",
       "text": "싫어! 언니는 아무렇지도 않지? 엄마 아빠 없어졌는데 울지도 않잖아!",
-      "expr": "분노"
+      "expr": "분노",
+      "image": "img/story/ch10-01.webp"
      },
      {
       "speaker": "최윤정",
@@ -105,7 +107,8 @@ window.STORY_DATA.chapters.push({
      {
       "speaker": "최윤정",
       "text": "공 100개만 쳐. 그다음에 밥 먹어. 내일은 200개.",
-      "expr": "보통"
+      "expr": "보통",
+      "image": "img/story/ch10-02.webp"
      },
      {
       "speaker": "최윤아",
@@ -138,7 +141,8 @@ window.STORY_DATA.chapters.push({
     ],
     "levels": {
      "10413": 45
-    }
+    },
+    "maxGrade": "HIGH RARE"
    },
    "hero": [
     "10413"
@@ -200,7 +204,7 @@ window.STORY_DATA.chapters.push({
     "default": [
      {
       "speaker": "내레이션",
-      "text": "현재. 전국 오픈 대회. 성별 구분 없이 치러지는 계엄 정부의 '통합 리그'."
+      "text": "현재. 전국 오픈 대회. 성별 구분 없이 치러지는 정부의 '통합 리그'."
      },
      {
       "speaker": "내레이션",
@@ -214,7 +218,8 @@ window.STORY_DATA.chapters.push({
      {
       "speaker": "최윤아",
       "text": "코치님, 저 버티러 온 거 아닌데요? 이기러 왔지.",
-      "expr": "기쁨"
+      "expr": "기쁨",
+      "image": "img/story/ch10-03.webp"
      },
      {
       "speaker": "권명호",
@@ -238,7 +243,8 @@ window.STORY_DATA.chapters.push({
       "speaker": "최윤희",
       "text": "최윤아!!! 최고야!!!",
       "expr": "기쁨",
-      "slug": "choi_yunhee_casual"
+      "slug": "choi_yunhee_casual",
+      "image": "img/story/ch10-04.webp"
      },
      {
       "speaker": "최윤아",
@@ -271,7 +277,8 @@ window.STORY_DATA.chapters.push({
     ],
     "levels": {
      "10413": 46
-    }
+    },
+    "maxGrade": "HIGH RARE"
    },
    "hero": [
     "10413"
@@ -380,7 +387,7 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "내레이션",
-      "text": "윤아는 봉투를 내려다봤다. 금박 위에 계엄 정부의 문장이 새겨져 있었다. 아빠를 데려간 그 문장."
+      "text": "윤아는 봉투를 내려다봤다. 금박 위에 정부의 문장이 새겨져 있었다. 아빠를 데려간 그 문장."
      },
      {
       "speaker": "최윤아",
@@ -404,7 +411,8 @@ window.STORY_DATA.chapters.push({
     ],
     "levels": {
      "10413": 48
-    }
+    },
+    "maxGrade": "HIGH RARE"
    },
    "hero": [
     "10413"
@@ -477,7 +485,8 @@ window.STORY_DATA.chapters.push({
      {
       "speaker": "최윤아",
       "text": "언니. 나 어떡해? 가면...우리 다 편해질 수 있어. 윤희도 S급 학교 갈 수 있고.",
-      "expr": "슬픔"
+      "expr": "슬픔",
+      "image": "img/story/ch10-05.webp"
      },
      {
       "speaker": "최윤정",
@@ -496,7 +505,7 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "내레이션",
-      "text": "윤정은 오래 말이 없었다. 시계 초침 소리만 거실을 채웠다. Tick-tack. Tick-tack."
+      "text": "윤정은 오래 말이 없었다. 시계 초침 소리만 거실을 채웠다. 똑딱똑딱"
      },
      {
       "speaker": "최윤정",
@@ -545,7 +554,8 @@ window.STORY_DATA.chapters.push({
     ],
     "levels": {
      "10414": 49
-    }
+    },
+    "maxGrade": "SUPER RARE"
    },
    "hero": [
     "10414"
@@ -619,7 +629,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "내레이션",
-      "text": "[최윤정, 최윤아, 최윤희. 위 3인을 '위험인물 관리 등급'으로 지정함.]"
+      "text": "[최윤정, 최윤아, 최윤희. 위 3인을 '위험인물 관리 등급'으로 지정함.]",
+      "image": "img/story/ch10-06.webp"
      },
      {
       "speaker": "최윤아",
@@ -676,7 +687,8 @@ window.STORY_DATA.chapters.push({
     ],
     "levels": {
      "10413": 51
-    }
+    },
+    "maxGrade": "HIGH RARE"
    },
    "hero": [
     "10413"
@@ -778,7 +790,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "내레이션",
-      "text": "윤희가 2층으로 올라가자, 두 언니의 웃음이 동시에 꺼졌다."
+      "text": "윤희가 2층으로 올라가자, 두 언니의 웃음이 동시에 꺼졌다.",
+      "image": "img/story/ch10-07.webp"
      },
      {
       "speaker": "최윤아",
@@ -802,7 +815,8 @@ window.STORY_DATA.chapters.push({
     ],
     "levels": {
      "10413": 52
-    }
+    },
+    "maxGrade": "HIGH RARE"
    },
    "hero": [
     "10413"
@@ -926,7 +940,8 @@ window.STORY_DATA.chapters.push({
     ],
     "levels": {
      "10413": 54
-    }
+    },
+    "maxGrade": "HIGH RARE"
    },
    "hero": [
     "10413"
@@ -998,7 +1013,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "내레이션",
-      "text": "골목 끝. 흙투성이가 된 작은 몸이 웅크리고 있었다."
+      "text": "골목 끝. 흙투성이가 된 작은 몸이 웅크리고 있었다.",
+      "image": "img/story/ch10-08.webp"
      },
      {
       "speaker": "최윤아",
@@ -1013,7 +1029,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "내레이션",
-      "text": "윤희의 무릎은 까져 피가 배어 있었고, 교복은 흙으로 엉망이었다. 윤희는 언니 품에서 아이처럼 흐느꼈다."
+      "text": "윤희의 무릎은 까져 피가 배어 있었고, 교복은 흙으로 엉망이었다. 윤희는 언니 품에서 아이처럼 흐느꼈다.",
+      "image": "img/story/ch10-09.webp"
      },
      {
       "speaker": "최윤희",
@@ -1047,7 +1064,8 @@ window.STORY_DATA.chapters.push({
     ],
     "levels": {
      "10413": 55
-    }
+    },
+    "maxGrade": "HIGH RARE"
    },
    "hero": [
     "10413"
@@ -1146,7 +1164,8 @@ window.STORY_DATA.chapters.push({
      {
       "speaker": "최윤아",
       "text": "지금 그걸 말이라고 해요!?",
-      "expr": "분노"
+      "expr": "분노",
+      "image": "img/story/ch10-10.webp"
      },
      {
       "speaker": "구태만",
@@ -1180,7 +1199,8 @@ window.STORY_DATA.chapters.push({
     ],
     "levels": {
      "10413": 57
-    }
+    },
+    "maxGrade": "HIGH RARE"
    },
    "hero": [
     "10413"
@@ -1299,7 +1319,8 @@ window.STORY_DATA.chapters.push({
     ],
     "levels": {
      "10413": 58
-    }
+    },
+    "maxGrade": "HIGH RARE"
    },
    "hero": [
     "10413"
@@ -1426,7 +1447,8 @@ window.STORY_DATA.chapters.push({
     ],
     "levels": {
      "10413": 60
-    }
+    },
+    "maxGrade": "HIGH RARE"
    },
    "hero": [
     "10413"
@@ -1444,24 +1466,17 @@ window.STORY_DATA.chapters.push({
   {
    "no": 12,
    "type": "normal",
-   "enemyName": "도강혁",
-   "title": "문이 부서지던 밤",
+   "enemyName": "독곰",
+   "title": "소리 없는 손님",
    "enemies": {
     "ids": [
-     "10489",
      "10482",
      "10483",
      "10484",
-     "10152"
+     "10143",
+     "10144"
     ],
     "boost": {
-     "10489": {
-      "HP": 591,
-      "ATK": 112,
-      "DEF": 118,
-      "storyLv": 61,
-      "power": 39134
-     },
      "10482": {
       "HP": 560,
       "ATK": 134,
@@ -1483,12 +1498,19 @@ window.STORY_DATA.chapters.push({
       "storyLv": 61,
       "power": 37871
      },
-     "10152": {
-      "HP": 644,
-      "ATK": 126,
-      "DEF": 126,
+     "10143": {
+      "HP": 80,
+      "ATK": 18,
+      "DEF": 13,
       "storyLv": 61,
-      "power": 41504
+      "power": 1094
+     },
+     "10144": {
+      "HP": 80,
+      "ATK": 19,
+      "DEF": 14,
+      "storyLv": 61,
+      "power": 1126
      }
     }
    },
@@ -1496,75 +1518,116 @@ window.STORY_DATA.chapters.push({
     "default": [
      {
       "speaker": "내레이션",
-      "text": "새벽 2시. 쾅. 쾅. 쾅."
+      "text": "새벽 2시. 현관문은 부서지지 않았다. 누군가 열쇠로, 아주 조용히 열었다."
      },
      {
       "speaker": "내레이션",
-      "text": "현관문이 부서지는 소리에 윤정이 눈을 떴다."
+      "text": "거실의 시계만이 그 발소리를 들었다. 똑딱. 똑딱."
      },
      {
-      "speaker": "최윤정",
-      "text": "...벌써...!",
+      "speaker": "최윤아",
+      "text": "(...뭐지. 이 시간에 계단 밑에서...)",
       "expr": "놀람"
      },
      {
-      "speaker": "도강혁",
-      "text": "최윤정, 최윤아, 최윤희. 국가안전 위해 혐의로 연행한다. 저항하면 즉결 처리한다.",
+      "speaker": "내레이션",
+      "text": "물을 마시러 내려온 윤아의 눈앞에, 검은 옷의 거인 셋이 서 있었다."
+     },
+     {
+      "speaker": "독곰",
+      "text": "...깼네. 운도 없지.",
       "expr": "보통"
      },
      {
-      "speaker": "최윤정",
-      "text": "영장 보여 주세요.",
+      "speaker": "최윤아",
+      "text": "누구야...! 우리 집에서 나가!!",
       "expr": "분노"
      },
      {
-      "speaker": "도강혁",
-      "text": "영장? 위험인물한테 그런 게 왜 필요하지?",
+      "speaker": "최윤정",
+      "text": "윤아야? 무슨 소리...",
+      "expr": "놀람"
+     },
+     {
+      "speaker": "내레이션",
+      "text": "윤정이 계단을 내려왔다. 그리고 단번에 모든 걸 알아챘다. 윤정은 가장 먼저, 2층으로 이어지는 계단을 등 뒤에 두었다."
+     },
+     {
+      "speaker": "최윤정",
+      "text": "...윤아야. 소리 지르지 마. 윤희 깨.",
+      "expr": "보통"
+     },
+     {
+      "speaker": "최윤아",
+      "text": "언니, 뒤로 가! 내가 막을게!",
+      "expr": "분노"
+     },
+     {
+      "speaker": "쇳덩이",
+      "text": "막아? 그 조그만 손으로?",
       "expr": "기쁨"
      },
      {
       "speaker": "내레이션",
-      "text": "거대한 그림자 셋이 계단을 올라오려 했다. 윤정은 계단 입구를 막아섰다."
-     },
-     {
-      "speaker": "최윤정",
-      "text": "윤아야!!! 윤희 데리고 가!!!",
-      "expr": "분노"
+      "text": "윤아는 벽에 기대 있던 라켓을 움켜쥐었다. 내일 새벽 4시, 들고 나가려던 단 하나의 짐이었다."
      },
      {
       "speaker": "최윤아",
-      "text": "언니!!!",
-      "expr": "놀람"
+      "text": "...베이스라인이야. 여기서부터는 한 발짝도 못 넘어가.",
+      "expr": "분노",
+      "image": "img/story/ch10-11.webp"
+     },
+     {
+      "speaker": "내레이션",
+      "text": "라켓이 바닥에 떨어지는 소리. 그리고 시계 소리만 남았다."
+     },
+     {
+      "speaker": "내레이션",
+      "text": "윤아는 마지막까지 윤정의 앞을 막아서 있었다. 윤정은 마지막까지 계단 앞을 비키지 않았다."
      },
      {
       "speaker": "최윤정",
-      "text": "가. 뒤돌아보지 마. ...윤아야, 윤희 잘 부탁해.",
+      "text": "...윤...희는...건드리지...마...",
+      "expr": "다침"
+     },
+     {
+      "speaker": "바위",
+      "text": "2층 막내는? 같이 정리해?",
       "expr": "보통"
+     },
+     {
+      "speaker": "독곰",
+      "text": "뭐...얘들만 처리하고 막내는 천천히 말려 죽이는 걸...각하가 더 좋아하실걸?",
+      "expr": "기쁨"
+     },
+     {
+      "speaker": "쇳덩이",
+      "text": "하긴. 아침에 일어나서 이거 보면...그게 더 재밌겠네.",
+      "expr": "기쁨"
      }
     ]
    },
    "party": {
     "forced": [
-     "10414"
-    ],
-    "exclude": [
      "10413"
     ],
+    "noMale": true,
     "mustLive": [
-     "10414"
+     "10413"
     ],
     "levels": {
-     "10414": 61
-    }
+     "10413": 61
+    },
+    "maxGrade": "HIGH RARE"
    },
    "hero": [
-    "10414"
+    "10413"
    ],
-   "bossId": "10489",
+   "bossId": "10482",
    "after": [
     {
      "speaker": "내레이션",
-     "text": "얼음공주는 마지막까지 웃지 않았다. 하지만 그 목소리는, 처음으로 떨리고 있었다."
+     "text": "문이 다시, 아주 조용히 닫혔다. 2층에서는 작은 숨소리만이 고르게 이어지고 있었다."
     }
    ],
    "afterTitle": "전투 후"
@@ -1572,51 +1635,30 @@ window.STORY_DATA.chapters.push({
   {
    "no": 13,
    "type": "normal",
-   "enemyName": "쇳덩이",
-   "title": "Run, run, run",
+   "enemyName": "상급 몽마",
+   "title": "악몽",
    "enemies": {
     "ids": [
-     "10483",
-     "10484",
-     "10489",
-     "10152",
-     "10163"
+     "10501",
+     "10500",
+     "10500",
+     "10500",
+     "10500"
     ],
     "boost": {
-     "10483": {
-      "HP": 635,
-      "ATK": 129,
-      "DEF": 86,
-      "storyLv": 63,
-      "power": 33883
-     },
-     "10484": {
-      "HP": 686,
-      "ATK": 143,
-      "DEF": 72,
-      "storyLv": 63,
-      "power": 38703
-     },
-     "10489": {
+     "10501": {
       "HP": 603,
-      "ATK": 114,
-      "DEF": 120,
+      "ATK": 109,
+      "DEF": 109,
       "storyLv": 63,
-      "power": 39877
+      "power": 37593
      },
-     "10152": {
-      "HP": 658,
-      "ATK": 129,
-      "DEF": 129,
+     "10500": {
+      "HP": 273,
+      "ATK": 60,
+      "DEF": 60,
       "storyLv": 63,
-      "power": 42446
-     },
-     "10163": {
-      "HP": 515,
-      "ATK": 86,
-      "DEF": 74,
-      "storyLv": 63,
-      "power": 28437
+      "power": 11654
      }
     }
    },
@@ -1624,86 +1666,159 @@ window.STORY_DATA.chapters.push({
     "default": [
      {
       "speaker": "내레이션",
-      "text": "윤아는 윤희의 손목을 잡고 뒷창문으로 뛰었다."
+      "text": "윤희는 꿈을 꾸고 있었다. 끝없는 테니스 코트. 하얀 선이 어둠 속으로 이어져 있었다."
      },
      {
       "speaker": "최윤희",
-      "text": "언니! 윤정 언니는!? 윤정 언니!!!",
-      "expr": "슬픔",
+      "text": "윤아 언니! 윤정 언니! 기다려!",
+      "expr": "기쁨",
       "slug": "choi_yunhee_home"
      },
      {
-      "speaker": "최윤아",
-      "text": "뛰어! 뒤돌아보지 마! 뛰어, 윤희야!!",
-      "expr": "분노"
-     },
-     {
       "speaker": "내레이션",
-      "text": "아래층에서 무언가 부서지는 소리. 그리고...갑자기, 고요해졌다."
+      "text": "두 언니의 뒷모습이 멀어졌다. 아무리 뛰어도 거리는 줄어들지 않았다."
      },
      {
       "speaker": "최윤희",
-      "text": "...언니...? 왜 조용해...?",
+      "text": "언니...왜 대답을 안 해...? 나 여기 있어...!",
+      "expr": "슬픔",
+      "slug": "choi_yunhee_home",
+      "image": "img/story/ch10-12.webp"
+     },
+     {
+      "speaker": "내레이션",
+      "text": "코트 바닥이 검게 물들었다. 그 안에서 무언가가 기어 올라왔다. 얼굴 없는 그림자, 몽마."
+     },
+     {
+      "speaker": "몽마",
+      "text": "막내야...막내야...언니들은 이제 안 와...",
+      "expr": "기쁨"
+     },
+     {
+      "speaker": "최윤희",
+      "text": "...거짓말. 언니들이 내일 새벽에 같이 가자고 했어. 이사 가는 거야.",
       "expr": "놀람",
       "slug": "choi_yunhee_home"
      },
      {
-      "speaker": "최윤아",
-      "text": "(...언니.)",
-      "expr": "슬픔"
+      "speaker": "몽마",
+      "text": "이사? 그래, 멀리 갔지. 아주 멀리. 너만 두고.",
+      "expr": "기쁨"
      },
      {
-      "speaker": "최윤아",
-      "text": "뛰어!!! Run, run, run!!!",
+      "speaker": "몽마",
+      "text": "네가 제일 약하니까. 네가 제일 쓸모없으니까. 다들 너 때문에 끝났어.",
       "expr": "분노"
      },
      {
-      "speaker": "내레이션",
-      "text": "두 자매는 맨발로 골목을 달렸다. 뒤에서 군화 소리가 따라왔다."
-     },
-     {
-      "speaker": "쇳덩이",
-      "text": "저기다. 둘 다 잡아.",
-      "expr": "보통"
-     },
-     {
-      "speaker": "내레이션",
-      "text": "막다른 골목. 낡은 창고 옆, 아이 하나가 겨우 들어갈 만한 배수구 틈이 보였다."
-     },
-     {
-      "speaker": "최윤아",
-      "text": "윤희야. 여기 들어가.",
-      "expr": "보통"
-     },
-     {
       "speaker": "최윤희",
-      "text": "싫어...언니도 같이...",
+      "text": "아니야...아니야...!",
       "expr": "슬픔",
       "slug": "choi_yunhee_home"
+     },
+     {
+      "speaker": "내레이션",
+      "text": "몽마들이 하나, 둘, 다섯으로 늘어났다. 모두 윤희의 얼굴을 하고 웃고 있었다.",
+      "image": "img/story/ch10-13.webp"
      }
     ]
    },
    "party": {
     "forced": [
-     "10413"
+     "10415"
     ],
     "noMale": true,
     "mustLive": [
-     "10413"
+     "10415"
     ],
     "levels": {
-     "10413": 63
-    }
+     "10415": 63
+    },
+    "maxGrade": "HIGH RARE"
    },
    "hero": [
-    "10413"
+    "10415"
    ],
-   "bossId": "10483",
+   "bossId": "10501",
    "after": [
     {
-     "speaker": "최윤아",
-     "text": "언니는 몸이 커서 안 들어가잖아. ㅎㅎ 금방 데리러 올게.",
-     "expr": "기쁨"
+     "speaker": "최윤희",
+     "text": "...저리 가. 언니들이 그랬어. 웃으면서 살라고. 너희 같은 거한테 안 져.",
+     "expr": "분노",
+     "slug": "choi_yunhee_home"
+    },
+    {
+     "speaker": "내레이션",
+     "text": "윤희는 숨을 헐떡이며 눈을 떴다. 새벽 5시. 전등은 켜져 있었다. 늘 그랬듯이."
+    },
+    {
+     "speaker": "최윤희",
+     "text": "(...4시에 나간다고 했는데. 왜 아무도 안 깨웠지.)",
+     "expr": "놀람",
+     "slug": "choi_yunhee_home"
+    },
+    {
+     "speaker": "내레이션",
+     "text": "집이 너무 조용했다. 윤정의 잔소리도, 윤아의 투덜거림도 들리지 않았다.",
+     "image": "img/story/ch10-14.webp"
+    },
+    {
+     "speaker": "최윤희",
+     "text": "(이상해...가슴이 너무 답답해. 꿈 때문일 거야. 그냥 꿈...)",
+     "expr": "슬픔",
+     "slug": "choi_yunhee_home"
+    },
+    {
+     "speaker": "내레이션",
+     "text": "계단을 한 칸씩 내려갔다. 차가운 바닥이 맨발에 닿았다.",
+     "image": "img/story/ch10-15-1.webp"
+    },
+    {
+     "speaker": "내레이션",
+     "text": "시계 소리만 들렸다. 똑딱. 똑딱.",
+     "image": "img/story/ch10-15-2.webp"
+    },
+    {
+     "speaker": "최윤희",
+     "text": "언니...? 윤아 언니...? 윤정 언니...?",
+     "expr": "보통",
+     "slug": "choi_yunhee_home",
+     "image": "img/story/ch10-16.webp"
+    },
+    {
+     "speaker": "내레이션",
+     "text": "거실. 두 사람은 거기 있었다. 서로를 감싸듯 나란히, 다시는 일어나지 않을 모습으로."
+    },
+    {
+     "speaker": "내레이션",
+     "text": "바닥엔 윤아의 라켓과, 풀어진 머리끈 하나가 떨어져 있었다."
+    },
+    {
+     "speaker": "최윤희",
+     "text": "...언니...? 장난이지...? 일어나...4시 지났어...",
+     "expr": "놀람",
+     "slug": "choi_yunhee_home"
+    },
+    {
+     "speaker": "최윤희",
+     "text": "언니...윤정 언니...눈 떠 봐...윤아 언니...대답해...제발...",
+     "expr": "슬픔",
+     "slug": "choi_yunhee_home"
+    },
+    {
+     "speaker": "내레이션",
+     "text": "대답은 없었다. 식탁 위에는 어젯밤 남은 된장국이 식어 있었다."
+    },
+    {
+     "speaker": "최윤희",
+     "text": "아...아아...아아아아아...!!!",
+     "expr": "슬픔",
+     "slug": "choi_yunhee_home"
+    },
+    {
+     "speaker": "내레이션",
+     "text": "윤희는 떨리는 손으로 윤아의 머리끈을 움켜쥐었다. 그리고, 그 집에서 도망쳤다.",
+     "image": "img/story/ch10-17.webp"
     }
    ],
    "afterTitle": "전투 후"
@@ -1711,51 +1826,44 @@ window.STORY_DATA.chapters.push({
   {
    "no": 14,
    "type": "normal",
-   "enemyName": "도강혁",
-   "title": "내 몫까지",
+   "enemyName": "불량배-C",
+   "title": "맨발",
    "enemies": {
     "ids": [
-     "10489",
-     "10482",
-     "10483",
-     "10484",
-     "10475"
+     "10145",
+     "10146",
+     "10153",
+     "10153",
+     "10154"
     ],
     "boost": {
-     "10489": {
-      "HP": 610,
-      "ATK": 116,
-      "DEF": 121,
-      "storyLv": 64,
-      "power": 40370
+     "10145": {
+      "HP": 98,
+      "ATK": 21,
+      "DEF": 16,
+      "storyLv": 65,
+      "power": 1323
      },
-     "10482": {
-      "HP": 578,
-      "ATK": 139,
-      "DEF": 116,
-      "storyLv": 64,
-      "power": 35627
+     "10146": {
+      "HP": 115,
+      "ATK": 23,
+      "DEF": 18,
+      "storyLv": 65,
+      "power": 1586
      },
-     "10483": {
-      "HP": 642,
-      "ATK": 130,
-      "DEF": 87,
-      "storyLv": 64,
-      "power": 34229
+     "10153": {
+      "HP": 98,
+      "ATK": 16,
+      "DEF": 11,
+      "storyLv": 65,
+      "power": 1219
      },
-     "10484": {
-      "HP": 694,
-      "ATK": 144,
-      "DEF": 72,
-      "storyLv": 64,
-      "power": 39046
-     },
-     "10475": {
-      "HP": 845,
-      "ATK": 155,
-      "DEF": 134,
-      "storyLv": 64,
-      "power": 77145
+     "10154": {
+      "HP": 115,
+      "ATK": 18,
+      "DEF": 13,
+      "storyLv": 65,
+      "power": 1417
      }
     }
    },
@@ -1763,81 +1871,75 @@ window.STORY_DATA.chapters.push({
     "default": [
      {
       "speaker": "내레이션",
-      "text": "윤아는 배수구 틈에 윤희를 밀어 넣고, 그 앞을 낡은 판자로 가렸다."
+      "text": "맨발. 잠옷 차림. 윤희는 어디로 가는지도 모른 채 새벽 골목을 달렸다."
      },
      {
       "speaker": "최윤희",
-      "text": "언니...가지 마...제발...",
+      "text": "(어디로...어디로 가야 해...경찰은 안 도와줘...아무도 안 도와줘...)",
       "expr": "슬픔",
       "slug": "choi_yunhee_home"
      },
      {
-      "speaker": "최윤아",
-      "text": "윤희야. 잘 들어. 무슨 소리가 나도, 절대 나오지 마. 해가 뜰 때까지.",
-      "expr": "슬픔"
+      "speaker": "내레이션",
+      "text": "발이 돌부리에 걸렸다. 윤희는 차가운 아스팔트 위로 그대로 쓰러졌다. 무릎에서 피가 배어 나왔다."
      },
      {
       "speaker": "최윤희",
-      "text": "언니...무서워...",
-      "expr": "슬픔",
+      "text": "...아...",
+      "expr": "다침",
       "slug": "choi_yunhee_home"
      },
      {
-      "speaker": "최윤아",
-      "text": "Little one, don't cry. 언니가 있잖아. 윤정 언니도...같이 있을 거야.",
-      "expr": "기쁨"
-     },
-     {
-      "speaker": "최윤아",
-      "text": "그리고 윤희야...언니 몫까지 살아. 꼭. 웃으면서.",
-      "expr": "슬픔"
-     },
-     {
       "speaker": "내레이션",
-      "text": "윤아는 판자 너머로 손가락을 넣어, 윤희의 손끝을 한 번 꼭 쥐었다. 그리고 놓았다."
+      "text": "고개를 들자, 밤새 놀다 돌아가던 무리가 그녀를 내려다보고 있었다."
      },
      {
-      "speaker": "내레이션",
-      "text": "골목 입구에 군화 소리가 멈췄다. 금테 안경이 가로등 불빛에 반짝였다."
+      "speaker": "불량배-C",
+      "text": "뭐야, 이 시간에 맨발로? 너 그 위험인물 집 막내 아냐?"
      },
      {
-      "speaker": "백시훈",
-      "text": "최윤아 선수. 이제라도 각하께 가시죠. 동생분 위치만 알려 주시면.",
-      "expr": "기쁨"
+      "speaker": "불량배-K",
+      "text": "어머, 진짜네. 얼굴만 예쁘면 뭐 해. 꼴이 이게 뭐야."
      },
      {
-      "speaker": "최윤아",
-      "text": "...저기요. 저 테니스 선수인 거 아시죠?",
-      "expr": "기쁨"
+      "speaker": "불량배-D",
+      "text": "야, 그 손에 쥔 거 뭐야? 내놔 봐."
      },
      {
-      "speaker": "백시훈",
-      "text": "...?",
-      "expr": "놀람"
+      "speaker": "최윤희",
+      "text": "...만지지 마. 이건...이건 언니 거야.",
+      "expr": "분노",
+      "slug": "choi_yunhee_home"
+     },
+     {
+      "speaker": "불량배-L",
+      "text": "언니? 걔네 다 잡혀갔다며? 아직 모르나 봐. ㅋㅋ"
      }
     ]
    },
    "party": {
     "forced": [
-     "10413"
+     "10415"
     ],
     "noMale": true,
     "mustLive": [
-     "10413"
+     "10415"
     ],
     "levels": {
-     "10413": 64
-    }
+     "10415": 65
+    },
+    "maxGrade": "HIGH RARE"
    },
    "hero": [
-    "10413"
+    "10415"
    ],
-   "bossId": "10489",
+   "bossId": "10145",
    "after": [
     {
-     "speaker": "최윤아",
-     "text": "공은요, 끝까지 쫓아가는 거예요. 아웃되기 전까진.",
-     "expr": "분노"
+     "speaker": "최윤희",
+     "text": "...비켜. 제발...비켜 줘...!",
+     "expr": "분노",
+     "slug": "choi_yunhee_home"
     }
    ],
    "afterTitle": "전투 후"
@@ -1845,281 +1947,21 @@ window.STORY_DATA.chapters.push({
   {
    "no": 15,
    "type": "normal",
-   "enemyName": "백시훈",
-   "title": "마지막 랠리",
-   "enemies": {
-    "ids": [
-     "10475",
-     "10489",
-     "10482",
-     "10483",
-     "10484"
-    ],
-    "boost": {
-     "10475": {
-      "HP": 864,
-      "ATK": 158,
-      "DEF": 137,
-      "storyLv": 66,
-      "power": 78818
-     },
-     "10489": {
-      "HP": 622,
-      "ATK": 118,
-      "DEF": 124,
-      "storyLv": 66,
-      "power": 41184
-     },
-     "10482": {
-      "HP": 590,
-      "ATK": 142,
-      "DEF": 118,
-      "storyLv": 66,
-      "power": 36350
-     },
-     "10483": {
-      "HP": 655,
-      "ATK": 133,
-      "DEF": 88,
-      "storyLv": 66,
-      "power": 34903
-     },
-     "10484": {
-      "HP": 708,
-      "ATK": 148,
-      "DEF": 74,
-      "storyLv": 66,
-      "power": 39956
-     }
-    }
-   },
-   "lines": {
-    "default": [
-     {
-      "speaker": "내레이션",
-      "text": "낡은 각목 하나. 윤아는 그것을 라켓처럼 쥐었다."
-     },
-     {
-      "speaker": "내레이션",
-      "text": "첫 번째 거인이 다가왔다. 윤아는 몸을 낮췄다. 수천 번 연습한 스텝."
-     },
-     {
-      "speaker": "최윤아",
-      "text": "하나.",
-      "expr": "분노"
-     },
-     {
-      "speaker": "내레이션",
-      "text": "두 번째. 백핸드. 윤정 언니가 늦다고 했던 그 백핸드는, 오늘 늦지 않았다."
-     },
-     {
-      "speaker": "최윤아",
-      "text": "둘...!",
-      "expr": "분노"
-     },
-     {
-      "speaker": "독곰",
-      "text": "이 꼬맹이가...!",
-      "expr": "분노"
-     },
-     {
-      "speaker": "최윤아",
-      "text": "하아...하아...셋...",
-      "expr": "다침"
-     },
-     {
-      "speaker": "내레이션",
-      "text": "숨이 끊어질 것 같았다. 하지만 공은 아직 코트 안에 있었다. 랠리는 끝나지 않았다."
-     },
-     {
-      "speaker": "도강혁",
-      "text": "뭐 해! 고작 여자애 하나야!",
-      "expr": "분노"
-     },
-     {
-      "speaker": "최윤아",
-      "text": "(윤정 언니...봤어? 오늘은...칭찬해 줘야 돼...)",
-      "expr": "다침"
-     },
-     {
-      "speaker": "최윤아",
-      "text": "(윤희야...조금만...조금만 더 숨어 있어...)",
-      "expr": "다침"
-     },
-     {
-      "speaker": "내레이션",
-      "text": "베이스라인. 넘으면 안 되는 선. 윤아는 마지막까지 그 선 안에 서 있었다."
-     }
-    ]
-   },
-   "party": {
-    "forced": [
-     "10413"
-    ],
-    "noMale": true,
-    "mustLive": [
-     "10413"
-    ],
-    "levels": {
-     "10413": 66
-    }
-   },
-   "hero": [
-    "10413"
-   ],
-   "bossId": "10475",
-   "after": [
-    {
-     "speaker": "내레이션",
-     "text": "그리고...마지막 공이, 조용히 떨어졌다."
-    }
-   ],
-   "afterTitle": "전투 후"
-  },
-  {
-   "no": 16,
-   "type": "normal",
-   "enemyName": "바위",
-   "title": "해가 뜰 때까지",
-   "enemies": {
-    "ids": [
-     "10484",
-     "10489",
-     "10152",
-     "10163",
-     "10163"
-    ],
-    "boost": {
-     "10484": {
-      "HP": 715,
-      "ATK": 149,
-      "DEF": 74,
-      "storyLv": 67,
-      "power": 40266
-     },
-     "10489": {
-      "HP": 629,
-      "ATK": 119,
-      "DEF": 125,
-      "storyLv": 67,
-      "power": 41591
-     },
-     "10152": {
-      "HP": 685,
-      "ATK": 134,
-      "DEF": 134,
-      "storyLv": 67,
-      "power": 44143
-     },
-     "10163": {
-      "HP": 536,
-      "ATK": 89,
-      "DEF": 77,
-      "storyLv": 67,
-      "power": 29555
-     }
-    }
-   },
-   "lines": {
-    "default": [
-     {
-      "speaker": "내레이션",
-      "text": "배수구 틈. 윤희는 두 손으로 입을 막고 있었다."
-     },
-     {
-      "speaker": "내레이션",
-      "text": "밖에서 들려오던 소리가 하나, 둘 사라졌다. 그리고 군화 소리가 멀어졌다."
-     },
-     {
-      "speaker": "최윤희",
-      "text": "(언니...언니가 나오지 말랬어...해가 뜰 때까지...)",
-      "expr": "슬픔",
-      "slug": "choi_yunhee_home"
-     },
-     {
-      "speaker": "내레이션",
-      "text": "차가운 물이 무릎까지 차올랐다. 윤희는 이를 딱딱 부딪치며 버텼다."
-     },
-     {
-      "speaker": "최윤희",
-      "text": "(Tick-tack...Tick-tack...언니, 시계 소리만 들려...)",
-      "expr": "슬픔",
-      "slug": "choi_yunhee_home"
-     },
-     {
-      "speaker": "내레이션",
-      "text": "새벽빛이 판자 틈으로 스며들었다. 윤희는 천천히 판자를 밀었다."
-     },
-     {
-      "speaker": "내레이션",
-      "text": "골목엔 아무도 없었다. 부러진 각목 하나와, 윤아의 머리끈만이 남아 있었다."
-     },
-     {
-      "speaker": "최윤희",
-      "text": "...언니...?",
-      "expr": "놀람",
-      "slug": "choi_yunhee_home"
-     },
-     {
-      "speaker": "최윤희",
-      "text": "언니...윤아 언니...윤정 언니...대답해...",
-      "expr": "슬픔",
-      "slug": "choi_yunhee_home"
-     },
-     {
-      "speaker": "내레이션",
-      "text": "대답은 없었다. 초겨울의 새벽 바람만 텅 빈 골목을 지나갔다."
-     }
-    ]
-   },
-   "party": {
-    "forced": [
-     "10415"
-    ],
-    "exclude": [
-     "10413"
-    ],
-    "mustLive": [
-     "10415"
-    ],
-    "levels": {
-     "10415": 67
-    }
-   },
-   "hero": [
-    "10415"
-   ],
-   "bossId": "10484",
-   "after": [
-    {
-     "speaker": "최윤희",
-     "text": "아...아아...아아아아아...!!!",
-     "expr": "슬픔",
-     "slug": "choi_yunhee_home"
-    }
-   ],
-   "afterTitle": "전투 후"
-  },
-  {
-   "no": 17,
-   "type": "normal",
    "enemyName": "[염원] 최윤아",
-   "title": "차가운 창문",
+   "title": "떨리는 손",
    "enemies": {
     "ids": [
-     "10490",
-     "10490",
      "10490",
      "10490",
      "10490"
     ],
     "boost": {
      "10490": {
-      "HP": 1488,
-      "ATK": 242,
-      "DEF": 242,
-      "storyLv": 69,
-      "power": 174416
+      "HP": 1440,
+      "ATK": 234,
+      "DEF": 234,
+      "storyLv": 66,
+      "power": 168731
      }
     }
    },
@@ -2127,16 +1969,40 @@ window.STORY_DATA.chapters.push({
     "default": [
      {
       "speaker": "내레이션",
-      "text": "...어디일까. 몸이 가볍다. 아프지도 않다."
+      "text": "무리가 흩어진 뒤. 윤희는 무너진 담벼락 아래 주저앉았다.",
+      "image": "img/story/ch10-18.webp"
      },
      {
       "speaker": "내레이션",
-      "text": "윤아는 낯선 창문 앞에 서 있었다. 차가운 유리창에 떨고 있는 작은 그림자가 비쳤다."
+      "text": "하늘이 조금씩 밝아 오고 있었다. 언니들이 기다리던 새벽이었다."
      },
      {
-      "speaker": "최윤아",
-      "text": "...윤희야?",
-      "expr": "놀람"
+      "speaker": "최윤희",
+      "text": "(언니들이 해가 뜨면 같이 가자고 했는데...해는 뜨는데...)",
+      "expr": "슬픔",
+      "slug": "choi_yunhee_home"
+     },
+     {
+      "speaker": "최윤희",
+      "text": "(나 혼자 어떻게 웃어...나 혼자 어떻게 살아...)",
+      "expr": "슬픔",
+      "slug": "choi_yunhee_home"
+     },
+     {
+      "speaker": "내레이션",
+      "text": "윤희는 머리끈을 쥔 두 손을 가슴 앞에 모았다. 손이 멈추지 않고 떨렸다."
+     },
+     {
+      "speaker": "최윤희",
+      "text": "신이시여 제발..",
+      "expr": "슬픔",
+      "slug": "choi_yunhee_home"
+     },
+     {
+      "speaker": "최윤희",
+      "text": "제 목소리가 들린다면 부디 이 떨리는 손을 잡아주세요..",
+      "expr": "슬픔",
+      "slug": "choi_yunhee_home"
      },
      {
       "speaker": "내레이션",
@@ -2151,7 +2017,8 @@ window.STORY_DATA.chapters.push({
      {
       "speaker": "최윤아",
       "text": "윤희야! 언니 여기 있어! 윤희야!!",
-      "expr": "슬픔"
+      "expr": "슬픔",
+      "image": "img/story/ch10-19.webp"
      },
      {
       "speaker": "내레이션",
@@ -2175,48 +2042,46 @@ window.STORY_DATA.chapters.push({
    },
    "party": {
     "forced": [
-     "10413"
+     "10415"
     ],
     "noMale": true,
     "mustLive": [
-     "10413"
+     "10415"
     ],
     "levels": {
-     "10413": 69
-    }
+     "10415": 66
+    },
+    "maxGrade": "HIGH RARE"
    },
    "hero": [
-    "10413"
+    "10415"
    ],
    "bossId": "10490",
    "after": [
     {
      "speaker": "내레이션",
-     "text": "창문에 비친 자신의 모습이 일렁였다. 그건 윤아가 아니라, 윤아의 미련이었다."
+     "text": "창문에 비친 자신의 모습이 일렁였다. 그건 윤아가 아니라, 윤아의 미련이었다.",
+     "image": "img/story/ch10-20.webp"
     }
    ],
    "afterTitle": "전투 후"
   },
   {
-   "no": 18,
+   "no": 16,
    "type": "boss",
    "enemyName": "[염원] 최윤아",
    "title": "곁에 있는 그림자",
    "enemies": {
     "ids": [
-     "10490",
-     "10490",
-     "10490",
-     "10490",
      "10490"
     ],
     "boost": {
      "10490": {
-      "HP": 1504,
-      "ATK": 244,
-      "DEF": 244,
-      "storyLv": 70,
-      "power": 176110
+      "HP": 1664,
+      "ATK": 270,
+      "DEF": 270,
+      "storyLv": 80,
+      "power": 194858
      }
     }
    },
@@ -2234,7 +2099,8 @@ window.STORY_DATA.chapters.push({
       "speaker": "최윤희",
       "text": "하느님...우리 언니들, 춥지 않게 해 주세요.",
       "expr": "슬픔",
-      "slug": "choi_yunhee_home"
+      "slug": "choi_yunhee_home",
+      "image": "img/story/ch10-21.webp"
      },
      {
       "speaker": "최윤아",
@@ -2270,11 +2136,12 @@ window.STORY_DATA.chapters.push({
      {
       "speaker": "최윤아",
       "text": "그럼 우리...끝까지 같이 있자. 윤희 옆에.",
-      "expr": "기쁨"
+      "expr": "기쁨",
+      "image": "img/story/ch10-22.webp"
      },
      {
       "speaker": "최윤아",
-      "text": "We'll be there. 마지막까지.",
+      "text": "마지막까지.",
       "expr": "기쁨"
      },
      {
@@ -2293,7 +2160,8 @@ window.STORY_DATA.chapters.push({
     ],
     "levels": {
      "10413": 70
-    }
+    },
+    "maxGrade": "HIGH RARE"
    },
    "hero": [
     "10413"
@@ -2306,7 +2174,8 @@ window.STORY_DATA.chapters.push({
     }
    ],
    "afterTitle": "전투 후",
-   "final": true
+   "final": true,
+   "bossCdMinus": 1
   }
  ],
  "tagline": "",
