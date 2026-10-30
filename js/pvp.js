@@ -228,8 +228,8 @@ async function viewSeries(s, toCards, manual) {
 /** AUTO 보기: 내 차례 입력을 항상 AUTO 로 (화면의 AUTO 버튼으로 수동 전환 불가 · 이미 보고한 결과와 같아야 함) */
 const autoFeed = ses => ({ events: ses.events, acts: ses.acts, next: inp => { let x = ses.next(inp); while (!x.done && x.value.ask) x = ses.next({ k: 'auto' }); return x; } });
 // ---- 전투 재생 (계산된 전투 기록 그대로 · SKIP = 결과로) ----
-const STEP = 420, SPD_KEY = 'vrTcgSpd2';
-const spd = () => localStorage.getItem(SPD_KEY) === '1' ? 2 : 1;
+const STEP = 420;
+const spd = () => 1;   // 2배속 없음 (2026-10-30)
 function playback(s, res) {
   return new Promise(done => {
     let stop = false, timer = 0;
@@ -242,10 +242,9 @@ function playback(s, res) {
       if (ri >= res.rounds.length) return end();
       const R = res.rounds[ri], log = R.log || [];
       const n = res.rounds.length > 1 || view.mode === '3v3' ? `${ri + 1}판` : '';
-      m.querySelector('.pvp-panel').innerHTML = `<div class="pvp-pb-top"><span>${esc(s.opp_name)}${s.bot ? ' 🤖' : ''}</span><small class="pvp-pb-t">${n}</small><button class="pvp-spd ${spd() > 1 ? 'on' : ''}" data-spd aria-label="2배속">X2</button><button class="pvp-skip" data-skip>SKIP ⏭</button></div>
+      m.querySelector('.pvp-panel').innerHTML = `<div class="pvp-pb-top"><span>${esc(s.opp_name)}${s.bot ? ' 🤖' : ''}</span><small class="pvp-pb-t">${n}</small><button class="pvp-skip" data-skip>SKIP ⏭</button></div>
         ${side(log.roster?.B || [], 'foe')}<div class="pvp-pb-fx"></div>${side(log.roster?.A || [], 'me')}`;
       m.querySelector('[data-skip]').onclick = end;
-      m.querySelector('[data-spd]').onclick = e => { const on = spd() < 2; localStorage.setItem(SPD_KEY, on ? '1' : '0'); e.currentTarget.classList.toggle('on', on); };
       const U = (sd, uid) => m.querySelector(`.pvp-pb-side.${sd === 'A' ? 'me' : 'foe'} [data-uid="${uid}"]`);
       const maxOf = {}; ['A', 'B'].forEach(k => (log.roster?.[k] || []).forEach(r => maxOf[k + r.uid] = r.max));
       const paintHp = f => ['A', 'B'].forEach(k => (log.roster?.[k] || []).forEach(r => { const el = U(k, r.uid); if (!el) return; const hp = f[k][r.uid] ?? 0; el.querySelector('b').style.width = `${Math.max(0, Math.min(100, hp / r.max * 100))}%`; el.classList.toggle('dead', hp <= 0); }));

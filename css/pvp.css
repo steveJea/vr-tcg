@@ -59,7 +59,6 @@
 @keyframes pvpHit{0%,100%{transform:translateX(0)}30%{transform:translateX(-4px)}60%{transform:translateX(4px)}}
 .pvp-pb-fx{height:44px;display:flex;align-items:center;justify-content:center;font-weight:800;color:#fde68a}
 .pvp-pb-fx.big{font-size:28px}.pvp-pb-fx.win{color:#4ade80}.pvp-pb-fx.lose{color:#f87171}
-.pvp-spd{border:1px solid rgba(245,201,106,.5);border-radius:999px;padding:3px 9px;font-weight:800;font-size:12px}.pvp-spd.on{background:#78350f;color:#fde68a}
 /* ===== 티어 · 내 랭크 카드 · 연승 · VS (엠블럼은 img/ui/tier/<티어>.webp 가 오면 그림, 없으면 CSS+이모지) ===== */
 .pvp-emb{--tc:#a16207;position:relative;display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;flex:none;border-radius:50%;background:radial-gradient(circle at 35% 30%,color-mix(in srgb,var(--tc) 70%,#fff),var(--tc) 55%,#0b0b0f);box-shadow:0 0 0 1px rgba(255,255,255,.25),0 0 8px color-mix(in srgb,var(--tc) 60%,transparent);font-size:14px}
 .pvp-emb i{font-style:normal;filter:drop-shadow(0 1px 1px #000)}.pvp-emb img{position:absolute;inset:-12%;width:124%;height:124%;object-fit:contain}

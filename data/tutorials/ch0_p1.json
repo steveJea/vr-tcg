@@ -1,6 +1,6 @@
 {
   "title": "챕터0 Phase 1 · 선택·공격·기술",
-  "locks": ["auto", "speed", "giveup", "attack_all"],
+  "locks": ["auto", "giveup", "attack_all"],
   "prep": { "fullMp": true },
   "steps": [
     { "text": "하아암… 귀찮지만 알려줄게.", "speaker": "임유리", "face": "card:10325", "wait": "tap" },
