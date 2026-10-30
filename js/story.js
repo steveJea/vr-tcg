@@ -217,7 +217,14 @@
     let el = null, v = null, held = false, cur = '';
     const snd = window.VRSound;
     const unhold = () => { if (held) { held = false; snd?.hold?.(false); } };
-    const clear = () => { unhold(); if (v) { try { v.pause(); v.removeAttribute('src'); v.load(); } catch {} v = null; } el?.remove(); el = null; cur = ''; document.body.classList.remove('story-media-on'); };
+    const clear = () => {   // 디졸브(페이드 아웃) 후 제거. 영상 소리도 함께 줄이고 BGM 복귀
+      const e = el, vv = v; el = null; v = null; cur = ''; document.body.classList.remove('story-media-on');
+      if (!e) return unhold();
+      e.classList.remove('on');
+      if (vv) { const t0 = vv.volume; let k = 0; const fade = setInterval(() => { k++; try { vv.volume = Math.max(0, t0 * (1 - k / 8)); } catch {} if (k >= 8) clearInterval(fade); }, 50); }
+      setTimeout(() => { if (vv) { try { vv.pause(); vv.removeAttribute('src'); vv.load(); } catch {} } e.remove(); }, 420);
+      unhold();
+    };
     const set = (kind, src) => {
       const key = kind + ':' + src; if (key === cur) return; clear(); cur = key;
       el = document.createElement('div'); el.className = 'story-media'; el.setAttribute('aria-hidden', 'true');
@@ -680,8 +687,11 @@
     const step = () => {
       if (i >= lines.length) { media.clear(); return next(); }
       // 대사 줄의 video·image: 따로 넘기는 단계 없이 그 대사와 함께 표시 (다음 미디어 / 장면 끝까지 유지)
-      if (lines[i].video) media.set('video', lines[i].video); else if (lines[i].image) media.set('image', lines[i].image);
-      if ((lines[i].video || lines[i].image) && !String(lines[i].text || '').trim()) { i++; return step(); }   // 글 없는 미디어 줄 = 다음 대사에 붙임
+      // 그 대사 한 줄에서만 표시 → 다음 줄로 넘어가면 디졸브. 글 없는 미디어 줄은 바로 다음 대사 한 줄에 붙임
+      const own = lines[i].video ? ['video', lines[i].video] : lines[i].image ? ['image', lines[i].image] : null;
+      if (own && !String(lines[i].text || '').trim()) { step.carry = own; i++; return step(); }
+      const m = own || step.carry; step.carry = null;
+      if (m) media.set(m[0], m[1]); else media.clear();
       const L0 = lines[i], tag = /^(.+?)\s*\(([^()]+)\)$/.exec(L0.speaker || ''), tagOk = tag && D.exprSlug?.[tag[2].trim()], L = tagOk ? { ...L0, speaker: tag[1], expr: L0.expr || L0.face || tag[2].trim() } : { ...L0, expr: L0.expr || L0.face };
       const pc = who(L), sp = L.speaker === 'starter' ? starter?.name : L.speaker === 'enemy' ? enemy?.name : (L.speaker === '내레이션' ? null : L.speaker);
       const nm = pc ? pc.name : sp, slug = L.slug || pslug(nm), slug0 = nm && D.portraits?.[nm];   // 카드 없는 화자(CH7 유연 아버지·어머니)도 초상화 지정 가능
