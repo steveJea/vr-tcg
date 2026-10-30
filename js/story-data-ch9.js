@@ -1,5 +1,5 @@
 // ===== 스토리 챕터 9 「기도」 (시트 CH9 → python3 tools/ch9_11_import.py <csv9> <csv10> <csv11> 로 생성. 직접 고쳐도 됨) =====
-// 단일 루트(single) · 페이즈 18개 (마지막 보스). 최윤희 복장 = 대사 slug. 적 레벨은 시트 값 → enemies.boost
+// 단일 루트(single) · 페이즈 18개 (마지막 보스). 최윤희 복장 = 대사 slug. 적 레벨은 시트 값 → enemies.boost · 전 페이즈 maxGrade HIGH RARE (SR 이상 출전 불가, 필수 카드 최윤희 등은 예외)
 window.STORY_DATA.chapters.push({
  "id": 9,
  "title": "CHAPTER 9",
@@ -108,6 +108,7 @@ window.STORY_DATA.chapters.push({
     ]
    },
    "party": {
+    "maxGrade": "HIGH RARE",
     "forced": [
      "10415"
     ],
@@ -241,6 +242,7 @@ window.STORY_DATA.chapters.push({
     ]
    },
    "party": {
+    "maxGrade": "HIGH RARE",
     "forced": [
      "10415"
     ],
@@ -376,6 +378,7 @@ window.STORY_DATA.chapters.push({
     ]
    },
    "party": {
+    "maxGrade": "HIGH RARE",
     "forced": [
      "10413"
     ],
@@ -513,6 +516,7 @@ window.STORY_DATA.chapters.push({
     ]
    },
    "party": {
+    "maxGrade": "HIGH RARE",
     "forced": [
      "10414"
     ],
@@ -636,6 +640,7 @@ window.STORY_DATA.chapters.push({
     ]
    },
    "party": {
+    "maxGrade": "HIGH RARE",
     "forced": [
      "10415"
     ],
@@ -770,6 +775,7 @@ window.STORY_DATA.chapters.push({
     ]
    },
    "party": {
+    "maxGrade": "HIGH RARE",
     "forced": [
      "10415"
     ],
@@ -907,6 +913,7 @@ window.STORY_DATA.chapters.push({
     ]
    },
    "party": {
+    "maxGrade": "HIGH RARE",
     "forced": [
      "10415"
     ],
@@ -1041,6 +1048,7 @@ window.STORY_DATA.chapters.push({
     ]
    },
    "party": {
+    "maxGrade": "HIGH RARE",
     "forced": [
      "10415"
     ],
@@ -1163,6 +1171,7 @@ window.STORY_DATA.chapters.push({
     ]
    },
    "party": {
+    "maxGrade": "HIGH RARE",
     "forced": [
      "10415"
     ],
@@ -1303,6 +1312,7 @@ window.STORY_DATA.chapters.push({
     ]
    },
    "party": {
+    "maxGrade": "HIGH RARE",
     "forced": [
      "10415"
     ],
@@ -1446,6 +1456,7 @@ window.STORY_DATA.chapters.push({
     ]
    },
    "party": {
+    "maxGrade": "HIGH RARE",
     "forced": [
      "10415"
     ],
@@ -1570,6 +1581,7 @@ window.STORY_DATA.chapters.push({
     ]
    },
    "party": {
+    "maxGrade": "HIGH RARE",
     "forced": [
      "10415"
     ],
@@ -1699,6 +1711,7 @@ window.STORY_DATA.chapters.push({
     ]
    },
    "party": {
+    "maxGrade": "HIGH RARE",
     "forced": [
      "10415"
     ],
@@ -1825,6 +1838,7 @@ window.STORY_DATA.chapters.push({
     ]
    },
    "party": {
+    "maxGrade": "HIGH RARE",
     "forced": [
      "10414"
     ],
@@ -1957,6 +1971,7 @@ window.STORY_DATA.chapters.push({
     ]
    },
    "party": {
+    "maxGrade": "HIGH RARE",
     "forced": [
      "10415"
     ],
@@ -2101,6 +2116,7 @@ window.STORY_DATA.chapters.push({
     ]
    },
    "party": {
+    "maxGrade": "HIGH RARE",
     "forced": [
      "10415"
     ],
@@ -2233,6 +2249,7 @@ window.STORY_DATA.chapters.push({
     ]
    },
    "party": {
+    "maxGrade": "HIGH RARE",
     "forced": [
      "10415"
     ],
@@ -2396,6 +2413,7 @@ window.STORY_DATA.chapters.push({
     ]
    },
    "party": {
+    "maxGrade": "HIGH RARE",
     "forced": [
      "10415"
     ],
