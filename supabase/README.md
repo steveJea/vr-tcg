@@ -86,6 +86,7 @@ SQL Editor 에서 형님이 직접 실행하는 파일들. **같은 함수를 �
 76. `story_ch0_jieun.sql` (2026-10-29) — 챕0 강제 10회 영입 하지은 확정
 77. `pvp_boss_league.sql` (2026-10-30) — PvP 보스리그 (mode boss). `_pvp_ok` 최신 = 이 파일
 78. `story_ch0_p5.sql` (2026-10-30) — 챕0 P5 보스전 튜토리얼 (보상 주예린)
+79. `story_ch8_boss_one.sql` (2026-10-30) — 챕8 P15 보스 1명 (enemy_count 1)
 
 ## 여러 파일에 정의된 함수 → 최신 정의 파일
 

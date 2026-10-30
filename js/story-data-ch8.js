@@ -2061,10 +2061,6 @@ window.STORY_DATA.chapters.push({
    "title": "염원",
    "enemies": {
     "ids": [
-     "10502",
-     "10502",
-     "10502",
-     "10502",
      "10502"
     ],
     "boost": {
