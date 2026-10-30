@@ -802,6 +802,7 @@ function showEnding(win, reason) {
     + row('고용한 용병', L.merc ? `${ic('merc')} ${L.merc.name}` : '없음') + row('진영 HP', `나 ${fmt(Math.max(0, S.me.hp))} : ${fmt(Math.max(0, S.ai.hp))} 상대`);
   S.endShare = `VR: Abyss Gate에서 ${sub}${mvp ? ` MVP는 ${mvp.card.name}!` : ''} (${S.turnNo}라운드, 피해 ${fmt(L.total)})`;
   if (kind === 'win' && mvp) setTimeout(() => mvpVoice(mvp.card), FX_OFF() ? 0 : 500);
+  if (kind === 'lose' && mvp && voiceSet?.has(`${mvp.card.id}_8`)) setTimeout(() => playVoiceKey(`${mvp.card.id}_8`), FX_OFF() ? 0 : 500);   // 패배 보이스 <id>_8
 }
 async function shareResult() {
   const url = 'https://tcg.mbbs.kr/', text = S?.endShare || 'VR: Abyss Gate';
@@ -1022,13 +1023,18 @@ function showEvent(ev) {
     let el = $('event-layer'); if (!el) { el = document.createElement('div'); el.id = 'event-layer'; document.body.appendChild(el); }
     const lines = Array.isArray(ev.lines) ? ev.lines : [];
     let i = 0, done = false, timer = null, audio = null;
-    if (ev.voice && voiceOn) { try { if (voiceCur) voiceCur.pause(); audio = new Audio(ev.voice); audio.volume = voiceVol; trackVoice(audio); voiceCur = audio; audio.play().catch(() => {}); } catch {} }
+    const say = src => { try { audio?.pause(); } catch {} audio = null; if (!src || !voiceOn) return; try { if (voiceCur) voiceCur.pause(); audio = new Audio(src); audio.volume = voiceVol; trackVoice(audio); voiceCur = audio; audio.play().catch(() => {}); } catch {} };
+    if (ev.voice) say(ev.voice);   // 예전 형식: 이벤트 전체 음성 1개
     const close = () => { if (done) return; done = true; clearTimeout(timer); el.className = 'hidden'; resetHScroll(); el.innerHTML = ''; try { audio?.pause(); } catch {} resolve(); };
     const draw = () => {
       const L = lines[i];
       el.querySelector('.ev-line').innerHTML = L ? `${L.who && L.who !== 'NA' ? `<b>${escHtml(L.who)}</b>` : ''}<span class="${L.who === 'NA' ? 'ev-na' : ''}">${escHtml(L.text || '')}</span>` : '';
       el.querySelector('.ev-step').textContent = lines.length ? `${i + 1}/${lines.length} · 탭하여 계속` : '탭하여 닫기';
       clearTimeout(timer); timer = window.setTimeout(next, FX_OFF() ? 1600 : 2600);
+      if (L?.voice) {   // 대사별 음성: 재생 길이만큼 다음 대사를 기다림
+        say(L.voice); const a = audio, my = i;
+        a?.addEventListener('loadedmetadata', () => { if (done || i !== my || !isFinite(a.duration)) return; clearTimeout(timer); timer = window.setTimeout(next, Math.max(FX_OFF() ? 1600 : 2600, a.duration * 1000 + 400)); }, { once: true });
+      }
     };
     const next = () => { if (++i >= lines.length) close(); else draw(); };
     el.className = 'ev-layer';
@@ -1927,7 +1933,7 @@ async function viewBattle0({ session, aiName = '상대', bg = 'normal', manual =
     S = null; selected = null;
   }
 }
-window.TCG = { kickoff: () => S?.kickGo?.(), viewBattle, get NPC() { return NPC; }, cardById: id => { id = window.cardIdNew ? window.cardIdNew(id) : id; return POOL.find(c => String(c.id) === String(id)) || NPC.find(c => String(c.id) === String(id)); }, isNpc, cardTitle, cardTags, cardStats, regionShort, playStinger, showCardInfo, skillsOf, combos, arcadeOpts: ArcadeOpts, openArcadeOpts, playSe, onEnter, checkEvents, showEvent, mvpVoice, get events() { return EVENTS; }, get seOn() { return seOn; }, skillListHTML: (c, lv, opt) => skillListHTML(c, null, false, lv, opt), voiceTest(k) { if (!voiceSet?.has(k)) return false; const a = voiceAudio(k); a.volume = voiceVol; a.currentTime = 0; voiceCur = a; a.play().catch(() => {}); return true; }, get voiceActive() { return voiceActive.size; }, get voice() { return { on: voiceOn, vol: voiceVol, cur: voiceCur && { src: voiceCur.src, paused: voiceCur.paused, t: voiceCur.currentTime }, set: voiceSet && voiceSet.size }; }, openZoom, closeZoom, dupCheck, get errors() { return window.TCG_ERRORS || []; }, cutIn, passiveCutIn, sortedHand, get handSort() { return handSort; }, put: debugPut, castSkill, skillState, get S() { return S; }, RULES, calcPower: c => calcPower(c, skillsOf(c?.id)), skillLvPowerMult: (id, lvMap) => skillLvPowerMult(skillsOf(id), lvMap), elementMultiplier, calcDamage, canSummon, buildDeck, summon, attack, recall, attackAll, endTurn, canRecall, recallCost, makeUnit, resolveAttack, useAction, canAction, startGame, startStory, cardHTML, get ready() { return POOL.length > 0; }, equipItem, doSacrifice, finish, attackTargets, get POOL() { return POOL; }, render, Stats };
+window.TCG = { kickoff: () => S?.kickGo?.(), viewBattle, get NPC() { return NPC; }, cardById: id => { id = window.cardIdNew ? window.cardIdNew(id) : id; return POOL.find(c => String(c.id) === String(id)) || NPC.find(c => String(c.id) === String(id)); }, isNpc, cardTitle, cardTags, cardStats, regionShort, playStinger, showCardInfo, skillsOf, combos, arcadeOpts: ArcadeOpts, openArcadeOpts, playSe, onEnter, checkEvents, showEvent, mvpVoice, gachaVoice(id) { return !!playVoiceKey(`${id}_g`); }, hasVoice: k => !!voiceSet?.has(k), get events() { return EVENTS; }, get seOn() { return seOn; }, skillListHTML: (c, lv, opt) => skillListHTML(c, null, false, lv, opt), voiceTest(k) { if (!voiceSet?.has(k)) return false; const a = voiceAudio(k); a.volume = voiceVol; a.currentTime = 0; voiceCur = a; a.play().catch(() => {}); return true; }, get voiceActive() { return voiceActive.size; }, get voice() { return { on: voiceOn, vol: voiceVol, cur: voiceCur && { src: voiceCur.src, paused: voiceCur.paused, t: voiceCur.currentTime }, set: voiceSet && voiceSet.size }; }, openZoom, closeZoom, dupCheck, get errors() { return window.TCG_ERRORS || []; }, cutIn, passiveCutIn, sortedHand, get handSort() { return handSort; }, put: debugPut, castSkill, skillState, get S() { return S; }, RULES, calcPower: c => calcPower(c, skillsOf(c?.id)), skillLvPowerMult: (id, lvMap) => skillLvPowerMult(skillsOf(id), lvMap), elementMultiplier, calcDamage, canSummon, buildDeck, summon, attack, recall, attackAll, endTurn, canRecall, recallCost, makeUnit, resolveAttack, useAction, canAction, startGame, startStory, cardHTML, get ready() { return POOL.length > 0; }, equipItem, doSacrifice, finish, attackTargets, get POOL() { return POOL; }, render, Stats };
 
 // ===== 전투 UI: 정렬 레이어 · 설정(⚙️) 레이어 (바깥 누르면 닫힘) =====
 { const pop = (btnId, popId) => { const b = $(btnId), p = $(popId); if (!b || !p) return;
