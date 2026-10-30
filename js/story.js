@@ -1811,6 +1811,8 @@
           await new Promise(res => { const t = setTimeout(res, (0.25 + rows.length * STEP + 0.5) * 1000); box.addEventListener('click', () => { clearTimeout(t); res(); }, { once: true, capture: true }); });
           fin(); if (!$('tk-result')) return;
         }
+        { const vc = [...r.cards].sort((a, b) => GORDER.indexOf(b.grade) - GORDER.indexOf(a.grade)).find(x => ['SUPER RARE', 'ULTRA RARE'].includes(x.grade) && window.TCG?.hasVoice?.(`${card(x.card_id).id}_g`));
+          if (vc) window.TCG.gachaVoice(card(vc.card_id).id); }   // 영입 보이스: 가장 높은 SR·UR 1명만
         $('gacha-msg').innerHTML = `+${r.cards.length} · <span class="g-text-${GLOW[bestG]}">최고 ${RAR[bestG]}</span>`;
         if (forcedPullOn && r.cards.length === 10) { forcedPullOn = false; await markPullDone();
           const nb = document.createElement('button'); nb.className = 'gr-go gr-forced-next'; nb.id = 'forced-pull-next'; nb.textContent = save.starter ? '계속 ▶' : '함께할 캐릭터 고르기 ▶';
@@ -1837,6 +1839,7 @@
       const el = $('gacha-card'); $('gacha-stage').className = `gacha-stage gr-card g-${g}`;
       el.dataset.pulled = newUids(before, [r.card_id])[0] || ''; el.dataset.pid = c.id;
       requestAnimationFrame(() => el.classList.add('flip'));
+      if (['SUPER RARE', 'ULTRA RARE'].includes(r.grade)) setTimeout(() => window.TCG?.gachaVoice?.(c.id), 600);   // 영입 보이스 (<id>_g)
       setTimeout(() => { const m = $('gacha-msg'); if (m) m.innerHTML = `<b class="g-text-${g}">${RAR[c.grade]} · ${esc(c.name)}</b>${r.count > 1 ? ` <span class="story-dup-inline">x${r.count}</span>` : ''}`; tick(); if ($('gacha-card') === el) resultOn = true; }, 900);
     };
   }

@@ -1,5 +1,5 @@
 {
-  "_doc": "등장 컷인·만남 이벤트 데이터. entry.fx: 등장 컷인 전용 이미지(data/fx/<id>_0.webp)가 있는 카드. 등장 보이스는 data/voice/<id>_0.mp3 가 있으면 자동 사용. events: type 'encounter' = 한쪽 필드에 sides[0] 카드, 반대쪽 필드에 sides[1] 카드가 함께 있을 때(양방향). type 'combo' = 한쪽 필드에 combo(data/combos.json 이름)의 카드가 모두 모였을 때. lines.who 는 카드 이름 또는 'NA'(내레이션). 만남 이벤트 id = 배틀 이벤트 시트 파일명(m0001…), 이미지 data/event/<id>.webp, 음성 data/event/<id>.mp3(있을 때만).",
+  "_doc": "등장 컷인·만남 이벤트 데이터. entry.fx: 등장 컷인 전용 이미지(data/fx/<id>_0.webp)가 있는 카드. 등장 보이스는 data/voice/<id>_0.mp3 가 있으면 자동 사용. events: type 'encounter' = 한쪽 필드에 sides[0] 카드, 반대쪽 필드에 sides[1] 카드가 함께 있을 때(양방향). type 'combo' = 한쪽 필드에 combo(data/combos.json 이름)의 카드가 모두 모였을 때. lines.who 는 카드 이름 또는 'NA'(내레이션). 만남 이벤트 id = 배틀 이벤트 시트 파일명(m0001…), 이미지 data/event/<id>.webp, 음성 data/event/<id>.mp3(있을 때만). 대사별 음성: lines[i].voice (data/event/<id>_<i>.mp3) — 해당 대사가 뜰 때 재생. 인재 보이스: data/voice/<id>_0 등장, _1~_6 스킬, _9 승리, _8 패배, _g 영입(SR·UR 뽑기).",
   "entry": {
     "fx": [
       "10435",
@@ -43,22 +43,25 @@
       "lines": [
         {
           "who": "임유리",
-          "text": "우리 나리 오랜만이네?"
+          "text": "우리 나리 오랜만이네?",
+          "voice": "data/event/m0001_0.mp3"
         },
         {
           "who": "임나리",
-          "text": "...꺼져"
+          "text": "...꺼져",
+          "voice": "data/event/m0001_1.mp3"
         },
         {
           "who": "임유리",
-          "text": "언니한테 말버릇은..."
+          "text": "언니한테 말버릇은...",
+          "voice": "data/event/m0001_2.mp3"
         },
         {
           "who": "임나리",
-          "text": "언니 같은 소리 한다..."
+          "text": "언니 같은 소리 한다...",
+          "voice": "data/event/m0001_3.mp3"
         }
-      ],
-      "voice": "data/event/m0001.mp3"
+      ]
     },
     {
       "id": "m0002",
@@ -76,11 +79,13 @@
       "lines": [
         {
           "who": "진하린",
-          "text": "겨울이 오늘 뭐할거야?"
+          "text": "겨울이 오늘 뭐할거야?",
+          "voice": "data/event/m0002_0.mp3"
         },
         {
           "who": "한겨울",
-          "text": "언니 저랑 뮤지컬 보러 갈래요?"
+          "text": "언니 저랑 뮤지컬 보러 갈래요?",
+          "voice": "data/event/m0002_1.mp3"
         }
       ]
     },
@@ -100,11 +105,13 @@
       "lines": [
         {
           "who": "이지영",
-          "text": "하...이런데서 만나네?"
+          "text": "하...이런데서 만나네?",
+          "voice": "data/event/m0003_0.mp3"
         },
         {
           "who": "김성진",
-          "text": "후후...이번엔 끝을 보자."
+          "text": "후후...이번엔 끝을 보자.",
+          "voice": "data/event/m0003_1.mp3"
         }
       ]
     },
@@ -124,11 +131,13 @@
       "lines": [
         {
           "who": "최윤희",
-          "text": "언니~ 하이~~"
+          "text": "언니~ 하이~~",
+          "voice": "data/event/m0004_0.mp3"
         },
         {
           "who": "최윤아",
-          "text": "아휴..저 철부지.."
+          "text": "아휴..저 철부지..",
+          "voice": "data/event/m0004_1.mp3"
         }
       ]
     },
@@ -148,11 +157,13 @@
       "lines": [
         {
           "who": "최윤희",
-          "text": "언니~ 하이~~"
+          "text": "언니~ 하이~~",
+          "voice": "data/event/m0005_0.mp3"
         },
         {
           "who": "최윤정",
-          "text": "우리 윤희 다치면 안 되는데..."
+          "text": "우리 윤희 다치면 안 되는데...",
+          "voice": "data/event/m0005_1.mp3"
         }
       ]
     },
@@ -172,11 +183,13 @@
       "lines": [
         {
           "who": "정다윤",
-          "text": "너...진짜 죽여버릴거야!"
+          "text": "너...진짜 죽여버릴거야!",
+          "voice": "data/event/m0006_0.mp3"
         },
         {
           "who": "정아람",
-          "text": "네가...할 수 있을까?"
+          "text": "네가...할 수 있을까?",
+          "voice": "data/event/m0006_1.mp3"
         }
       ]
     }
