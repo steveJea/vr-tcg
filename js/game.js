@@ -1,4 +1,4 @@
-import { fieldCount, levelUpOnce, RULES, calcPower, skillLvPowerMult, skillCountMult, ELEMENTS, elementMultiplier, calcDamage, canSummon, buildDeck, parseCSV, aiSummonOrder, aiPickTarget, recallCost, canRecall, aiShouldRecall, makeUnit, resolveAttack, refillMana, ACTIONS, canAction, doAction, clearBuff, aiWantShuffle, aiWantBuff, aiWantHeal, aiWantFieldHeal, aiPickItem, endTurnXp, ITEMS, canEquip, equip, attackTargets, canTarget, autoTarget, heroLocked, xpToNext, SKILLS, gainXp, setCardPool, canSacrifice, sacrifice, aiPickSacrifice, aiWantAccel, judgeTimeout, JUDGE_LABEL, genderMult, GRADES, GRADE_SHORT, allowedGrades, baseEvade, swapField } from './rules.js';
+import { fieldCount, GUARD_GRADES, GUARD_SWAP_TURNS, guardOf, levelUpOnce, RULES, calcPower, skillLvPowerMult, skillCountMult, ELEMENTS, elementMultiplier, calcDamage, canSummon, buildDeck, parseCSV, aiSummonOrder, aiPickTarget, recallCost, canRecall, aiShouldRecall, makeUnit, resolveAttack, refillMana, ACTIONS, canAction, doAction, clearBuff, aiWantShuffle, aiWantBuff, aiWantHeal, aiWantFieldHeal, aiPickItem, endTurnXp, ITEMS, canEquip, equip, attackTargets, canTarget, autoTarget, heroLocked, xpToNext, SKILLS, gainXp, setCardPool, canSacrifice, sacrifice, aiPickSacrifice, aiWantAccel, judgeTimeout, JUDGE_LABEL, genderMult, GRADES, GRADE_SHORT, allowedGrades, baseEvade, swapField } from './rules.js';
 import { autoNext, noteUsed } from './auto-ai.js';
 import { initStatusFx, statusApplyFx, paraSkipFx, confuseAllyFx, tauntPullFx, statusClasses, statusDecor, statusIconUrl, isStatusFxKind } from './status-fx.js';
 import { skillCd, skillMp, setSpare, spareBlocked, setSkillData, setEmitter, initPlayers, placeUnit, turnStart, turnEnd, useSkill, skillState, aiPickSkill, skillLvOf, skillCdAt, skillLvMult, skillLvProb, SKILL_LV_MAX, refreshAll, statusIcons, skillsOf, combos, STATUS, SK, maleLure, checkDeath } from './skills.js';
@@ -185,6 +185,7 @@ function startGame(story = null) {
   S.me.clearFirst = S.ai.clearFirst = !story && !!ao.clearFirst;   // 카드 먼저 제거: 양측 공통 규칙
   // 스토리: 내 진영 없음(일반·보스 공통). 상대 진영은 보스전에만 존재
   S.me.noBase = !!story; S.ai.noBase = story?.win === 'wipe';
+  S.guardMode = !story;   // 아케이드(AI 상대): 진영 칸에 수비대장 1명 (HR 이하)
   S.me.noActs = S.ai.noActs = !!story;   // 스토리: 마나 가속기·필드 회복 없음 (공격력 강화는 가능)
   S.me.limitedAids = S.ai.limitedAids = S.limitedAids;
   for (const t of ['accel', 'buff', 'fieldheal', 'heal']) $(`act-${t}`)?.classList.toggle('hidden', t === 'buff' ? false : t === 'accel' ? !!story : S.limitedAids);
@@ -262,6 +263,7 @@ function startTurn(who) {
   S.turn = who; if (who === S.first) S.turnNo++; S.totalTurns++;
   if (S.pairShield && S.turnNo > S.pairShield.turns) { const u = S.pairShield.u; S.pairShield = null; u.noDamage = false; delete u.pairShield; log(`🛡️ 자매의 가호가 사라졌다: ${u.card.name}`, 'text-zinc-400'); }
   if (S.story?.rules && storyTurnRules(who)) return true;
+  p.ownTurns = (p.ownTurns || 0) + 1;   // 수비대장 교체 대기(내 턴 기준)
   if (who === 'me') { S.meActed = false; S.myTurns++; setTimeout(() => TUT('turn_start', { turn: S.turnNo }), 50); if (myTurnsLeft() === 1) lastTurnToast(); }
   clearBuff(opp(who));                   // 지난 턴 강화 해제
   const bonus = refillMana(p);
@@ -315,6 +317,59 @@ function summon(who, card) {
   render();
   onEnter(who, u);
   return { ok: true };
+}
+
+// ===== 아케이드 수비대장 =====
+/** 손패 → 진영 칸 배치 (소환과 같은 코스트, 턴 소모 없음). HR 이하, 진영 칸이 비어 있을 때만 */
+function canGuard(card, p) {
+  if (!S?.guardMode) return { ok: false, reason: '아케이드 전용' };
+  if (!GUARD_GRADES.has(card.grade)) return { ok: false, reason: '수비대장은 HR 이하만 가능' };
+  if (guardOf(p)) return { ok: false, reason: '이미 수비대장이 있어요' };
+  if (card.cost > p.mana) return { ok: false, reason: `마나가 부족합니다 (${p.mana}/${card.cost})` };
+  return { ok: true };
+}
+function setGuard(u, p) { u.guard = u.boss = u.undying = true; u.guardAt = p.ownTurns || 0; if (u.hp < 1) u.hp = 1; }
+function clearGuard(u) { u.guard = u.boss = u.undying = false; delete u.guardAt; }
+function placeGuard(who, card) {
+  const p = S[who], check = canGuard(card, p);
+  if (!check.ok) return check;
+  if (who === 'me') S.meActed = true;
+  p.mana -= card.cost;
+  p.hand.splice(p.hand.indexOf(card), 1);
+  const u = placeUnit(p, card, makeUnit);
+  setGuard(u, p); refreshAll(p);
+  log(`${p.name}: ${card.name} 수비대장 배치 (코스트 ${card.cost})`, 'text-amber-300');
+  playSe(2); render(); onEnter(who, u);
+  return { ok: true };
+}
+/** 교체까지 남은 내 턴 수 (0 = 지금 가능) */
+const guardWait = (g, p) => Math.max(0, GUARD_SWAP_TURNS - ((p.ownTurns || 0) - (g.guardAt || 0)));
+function canSwapGuard(p, g, f) {
+  if (!S?.guardMode || !g?.guard || !f || f.guard || !p.field.includes(f)) return { ok: false, reason: '' };
+  const w = guardWait(g, p); if (w) return { ok: false, reason: `수비대장 교체는 ${w}턴 뒤에 가능해요` };
+  if (!GUARD_GRADES.has((f.base || f.card).grade)) return { ok: false, reason: '수비대장은 HR 이하만 가능' };
+  if (f.st?.para) return { ok: false, reason: '마비 상태에서는 교체할 수 없어요' };
+  return { ok: true };
+}
+/** 수비대장 ↔ 필드 카드 교체: 턴 소모. 빠진 수비대장은 그 자리(필드)로 */
+function swapGuard(who, g, f) {
+  const p = S[who], r = canSwapGuard(p, g, f); if (!r.ok) return r;
+  const i = p.field.indexOf(f), j = p.field.indexOf(g);
+  p.field[i] = g; p.field[j] = f;
+  clearGuard(g); setGuard(f, p); refreshAll(p);
+  log(`${p.name}: 수비대장 교체 ${g.card.name} → ${f.card.name} (턴 종료)`, 'text-amber-300');
+  playSe(4); render();
+  return { ok: true };
+}
+/** AI: 진영 칸이 비면 HR 이하 중 가장 강한 카드 배치 */
+function aiPickGuard(ai) {
+  if (!S.guardMode || guardOf(ai)) return null;
+  return ai.hand.filter(c => canGuard(c, ai).ok).sort((a, b) => b.power - a.power)[0] || null;
+}
+/** AI: 수비대장 HP 30% 미만이면 필드의 더 튼튼한 HR 이하 카드와 교체 (턴 소모) */
+function aiPickGuardSwap(ai) {
+  const g = guardOf(ai); if (!g || g.hp >= g.maxHp * 0.3) return null;
+  return ai.field.filter(f => f !== g && canSwapGuard(ai, g, f).ok && f.hp > g.hp * 2).sort((a, b) => b.hp - a.hp)[0] || null;
 }
 
 function doSacrifice(who, unit) {
@@ -1127,6 +1182,8 @@ async function aiTurn() {
   for (const c of aiSummonOrder(ai.hand)) {
     if (canSummon(c, ai, me).ok) { summon('ai', c); await sleep(AI_DELAY()); }
   }
+  { const gc = aiPickGuard(ai); if (gc) { placeGuard('ai', gc); await sleep(AI_DELAY()); } }
+  { const sw = aiPickGuardSwap(ai); if (sw) { swapGuard('ai', guardOf(ai), sw); await sleep(AI_DELAY()); throw { guardSwap: true }; } }   // 교체 = 턴 종료
   for (let it; (it = aiPickItem(ai, me));) { equipItem('ai', it[1], it[0]); await sleep(AI_DELAY()); }
   if (aiWantAccel(ai)) { useAction('ai', 'accel'); await sleep(AI_DELAY()); }
   if (aiWantFieldHeal(ai)) { useAction('ai', 'fieldheal'); await sleep(AI_DELAY()); }
@@ -1146,7 +1203,7 @@ async function aiTurn() {
     await sleep(AI_DELAY());
   }
   if (!S.over && aiWantHeal(ai)) { useAction('ai', 'heal'); await sleep(AI_DELAY()); }
-  } catch (err) { reportError('aiTurn', err); }
+  } catch (err) { if (!err?.guardSwap) reportError('aiTurn', err); }
   // 오류가 나도 턴은 반드시 넘어감
   const ai = S.ai;
   try { if (!S.over) { endTurnXp(ai); turnEnd(ai); render(); checkEnd() || checkTimeout(); } } catch (err) { reportError('aiTurnEnd', err); }
@@ -1318,7 +1375,8 @@ function render() {
     const bossBox = $(`${who}-boss`);
     // 깜빡임 방지: 새로 만든 뒤 기존 DOM 에 차이만 반영(morph, 카드 uid 기준). 바뀌지 않은 노드·그림·애니메이션은 그대로 유지
     const nb = document.createElement('div'), nbb = document.createElement('div'), binds = [];
-    if (bossBox) bossBox.classList.toggle('hidden', !S[who].field.some(u => u.undying));
+    if (bossBox) bossBox.classList.toggle('hidden', !S.guardMode && !S[who].field.some(u => u.undying));
+    if (bossBox && S.guardMode && !guardOf(S[who])) nbb.innerHTML = `<div class="base-unit base-empty"><div class="base-ring"><div class="base-img base-ph">${ic('def', { alt: '' })}</div></div><div class="base-name">${who === 'me' ? '수비대장 비어 있음' : '수비대장 없음'}</div></div>`;
     if (!S[who].field.some(u => !u.undying)) nb.innerHTML = '<div class="text-zinc-600 text-xs self-center">빈 필드</div>';
     S[who].field.forEach(u => {
       const w = document.createElement('div');
@@ -1346,11 +1404,12 @@ function render() {
       if (u.undying && bossBox) {   // 스토리 보스: 진영 칸(위쪽 가운데 원형)에 표시 (공격 대상 아님, 쓰러지지 않음)
         const pct = u.maxHp ? Math.max(0, Math.min(100, u.hp / u.maxHp * 100)) : 0;
         w.className += ' base-unit';
-        w.innerHTML = `<div class="boss-crown" title="보스: 진영 안에 있어 공격할 수 없고 쓰러지지 않아요">${ic('crown', { alt: '보스' })}</div>` +
+        const gw = u.guard ? guardWait(u, S[who]) : 0;
+        w.innerHTML = (u.guard ? `<div class="boss-crown" title="수비대장: 진영이 무너지기 전엔 쓰러지지 않아요">${ic('def', { alt: '수비대장' })}</div>` : `<div class="boss-crown" title="보스: 진영 안에 있어 공격할 수 없고 쓰러지지 않아요">${ic('crown', { alt: '보스' })}</div>`) +
           `<div class="base-ring relative ${rarityOf(u.card).cls}" data-grade="${rarityOf(u.card).short}"><img src="${IMG}${u.card.id}.webp" data-id="${u.card.id}" class="card-img base-img" alt="${u.card.name}">${statusDecor(u)}` +
           (sts.length ? `<div class="status-icons base-sts">${sts.map(x => { const big = isStatusFxKind(x.kind), au = big && statusIconUrl(x.kind); return `<span title="${x.title}"${big ? ` class="st-big ${x.kind}"` : ''}>${au ? `<img class="st-asset" src="${au}" alt="">` : icOf(x)}</span>`; }).join('')}</div>` : '') +
           `<div class="lv-badge base-lv">Lv${u.level}</div></div>` +
-          `<div class="base-name">${u.card.name}</div>` +
+          `<div class="base-name">${u.card.name}</div>` + (u.guard && who === 'me' ? `<div class="base-tag">${gw ? `교체 ${gw}턴 뒤` : '교체 가능'}${ready ? ' · 공격 가능' : ''}</div>` : '') +
           `<div class="hp-bar h-1.5 bg-white/10 rounded-full mt-0.5 overflow-hidden" title="HP ${u.hp}/${u.maxHp}"><div class="hp-fill h-full bg-red-500" data-to="${pct}" style="width:${hpPrev.get(String(u.uid)) ?? pct}%"></div></div>` +
           `<div class="mp-bar h-1.5 bg-white/10 rounded-full mt-0.5 overflow-hidden" title="MP ${u.mp}/${u.maxMp} (+${u.mpRegen}/턴)"><div class="h-full bg-blue-500" style="width:${u.maxMp ? Math.min(100, u.mp / u.maxMp * 100) : 0}%"></div></div>`;
         nbb.appendChild(w);
@@ -1431,6 +1490,11 @@ function onUnitClick(who, u) {
   if (who === 'me') {
     // 탭 → 다른 내 카드 탭: 자리 바꾸기 (턴 소모 없음). 같은 카드 다시 탭: 선택 해제 + 정보
     const cur = selected != null ? S.me.field.find(x => x.uid === selected) : null;
+    if (myTurn && cur && cur !== u && (cur.guard || u.guard)) {   // 수비대장 ↔ 필드 카드: 교체 (턴 소모)
+      const g = cur.guard ? cur : u, f = cur.guard ? u : cur, r = swapGuard('me', g, f);
+      selected = null; if (r.ok) { endTurn(); return; } if (r.reason) floatText(r.reason, 'text-red-300 text-sm', 'me'); render(); return;
+    }
+    if (myTurn && u.guard && selected !== u.uid) { selected = u.uid; render(); return; }
     if (myTurn && cur && cur !== u && !u.undying) { if (swapField(S.me, cur, u)) { selected = null; playSe(4); render(); TUT('swapped'); return; } }
     if (myTurn && !u.undying && selected !== u.uid) { selected = u.uid; render(); TUT('card_selected', { index: S.me.field.indexOf(u) }); return; }
     if (selected === u.uid) { selected = null; render(); }
@@ -1468,7 +1532,8 @@ function showDetail(c, { fromHand = false, hp, unit = null, view = null, power =
     ${skillListHTML(c, unit || view, myTurn)}
     ${fromHand ? `
       ${check.ok || !myTurn ? '' : `<div id="summon-reason" class="mt-3 text-sm text-red-400">${check.reason}</div>`}
-      <button id="summon-btn" ${check.ok && myTurn ? '' : 'disabled'} class="mt-4 w-full py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 text-black font-bold">소환하기</button>` : ''}
+      <button id="summon-btn" ${check.ok && myTurn ? '' : 'disabled'} class="mt-4 w-full py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 text-black font-bold">소환하기</button>
+      ${S.guardMode && GUARD_GRADES.has(c.grade) && !guardOf(S.me) ? `<button id="guard-btn" ${myTurn && canGuard(c, S.me).ok ? '' : 'disabled'} class="mt-2 w-full py-3 rounded-2xl bg-amber-400 hover:bg-amber-300 disabled:opacity-40 text-black font-bold">🛡 수비대장 배치</button>` : ''}` : ''}
     ${unit ? `
       <div class="mt-3 flex items-center gap-2 text-sm"><span class="font-black ${unit.level >= RULES.LEVEL_MAX ? 'text-amber-300' : ''}">${unit.level >= RULES.LEVEL_MAX ? ic('crown') + ' 영웅 ' : ''}Lv${unit.level}</span>
         ${unit.level < RULES.LEVEL_MAX ? `<div class="flex-1 h-2 bg-white/10 rounded-full overflow-hidden"><div class="h-full bg-amber-400" style="width:${Math.min(100, unit.xp / xpToNext(unit.level) * 100)}%"></div></div><span class="text-[11px] text-zinc-400">XP ${unit.xp}/${xpToNext(unit.level)}</span>` : '<span class="text-[11px] text-zinc-400">최대 레벨</span>'}</div>
@@ -1496,6 +1561,7 @@ function showDetail(c, { fromHand = false, hp, unit = null, view = null, power =
   if (unit && $('sacrifice-btn')) $('sacrifice-btn').onclick = () => { const r = doSacrifice('me', unit); if (r.ok) hideModal('detail'); };
   if (unit && $('recall-btn')) $('recall-btn').onclick = () => { const r = recall('me', unit); if (r.ok) hideModal('detail'); };
   if (fromHand) $('summon-btn').onclick = () => { const r = summon('me', c); if (r.ok) hideModal('detail'); };
+  if (fromHand && $('guard-btn')) $('guard-btn').onclick = () => { const r = placeGuard('me', c); if (r.ok) hideModal('detail'); };
   showModal('detail');
 }
 
