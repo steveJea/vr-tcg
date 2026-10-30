@@ -34,7 +34,8 @@ window.STORY_DATA.chapters.unshift({
   "1": "10256",
   "2": "10462",
   "3": "10207",
-  "4": "10208"
+  "4": "10208",
+  "5": "10392"
  },
  "phases": [
   {
@@ -349,7 +350,6 @@ window.STORY_DATA.chapters.unshift({
   {
    "no": 4,
    "type": "normal",
-   "late": true,
    "pool": true,
    "mana": 200,
    "mustSummon": ["10207"],
@@ -426,6 +426,97 @@ window.STORY_DATA.chapters.unshift({
    "party": {
     "forced": ["10325", "10256", "10207", "10462"],
     "mustLive": ["10325"],
+    "noExtra": true,
+    "auto": true
+   }
+  },
+  {
+   "no": 5,
+   "type": "boss",
+   "pool": true,
+   "mana": 200,
+   "bossId": "10229",
+   "enemyName": "안지수",
+   "baseHp": 300,
+   "title": "수비대장이라고?",
+   "enemies": {
+    "ids": [
+     "10229",
+     "10391",
+     "10097",
+     "10093",
+     "10103"
+    ],
+    "levels": {
+     "10229": 3,
+     "10391": 2,
+     "10097": 2,
+     "10093": 2,
+     "10103": 2
+    }
+   },
+   "lines": {
+    "default": [
+     {
+      "speaker": "내레이션",
+      "text": "새벽 1시 30분. 유리는 용무를 마치고 귀가했다."
+     },
+     {
+      "speaker": "임유리",
+      "text": "오늘도...허무한 하루네."
+     },
+     {
+      "speaker": "임유리",
+      "text": "왜 뭘 해도 이렇게 허무할까?"
+     },
+     {
+      "speaker": "내레이션",
+      "text": "그때 비서인 오유나에게 연락이 왔다."
+     },
+     {
+      "speaker": "임유리",
+      "text": "왜?"
+     },
+     {
+      "speaker": "오유나",
+      "text": "유리님 다름이 아니고...어떤 소녀가 또 도전을 하겠다고..."
+     },
+     {
+      "speaker": "임유리",
+      "text": "심심했는데 잘 됐네...",
+      "expr": "웃음"
+     }
+    ]
+   },
+   "after": [
+    {
+     "speaker": "임유리",
+     "text": "진짜...개미같네...",
+     "expr": "웃음"
+    },
+    {
+     "speaker": "임유리",
+     "text": "이제 다 알겠지? 튜토리얼 챕터는 항상 열려있으니까 언제든 해보라고!",
+     "expr": "웃음"
+    },
+    {
+     "speaker": "임유리",
+     "text": "심지어 보상도 준단다~",
+     "expr": "웃음"
+    }
+   ],
+   "tutorial": "ch0_p5",
+   "party": {
+    "forced": [
+     "10325",
+     "10256",
+     "10207",
+     "10462",
+     "10208"
+    ],
+    "mustLive": [
+     "10325"
+    ],
     "noExtra": true,
     "auto": true
    }

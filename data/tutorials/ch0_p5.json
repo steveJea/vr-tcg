@@ -1,0 +1,106 @@
+{
+  "title": "챕터0 P5 · 보스전(진영 칸)",
+  "locks": [
+    "auto",
+    "skip",
+    "attack_all",
+    "giveup"
+  ],
+  "steps": [
+    {
+      "text": "어머, 이번엔 보스전이야. 정신 똑바로 차려~",
+      "speaker": "임유리",
+      "face": "card:10325",
+      "wait": "tap"
+    },
+    {
+      "text": "저 위에 동그란 칸 보이지? 저게 진영이자 수비대장 자리야. 안지수가 앉아 있네~",
+      "speaker": "임유리",
+      "face": "card:10325",
+      "wait": "tap",
+      "target": "#ai-boss",
+      "pad": 6
+    },
+    {
+      "text": "저 진영 HP를 0으로 만들면 우리가 이기는 거야. 쉽지?",
+      "speaker": "임유리",
+      "face": "card:10325",
+      "wait": "tap",
+      "target": "#ai-boss .base-hp",
+      "pad": 6
+    },
+    {
+      "text": "근데 수비대장은 아무리 때려도 안 죽어. 대신 마비·혼란 같은 건 다 먹히니까 실컷 괴롭혀 줘~",
+      "speaker": "임유리",
+      "face": "card:10325",
+      "wait": "tap",
+      "target": "#ai-boss",
+      "pad": 6
+    },
+    {
+      "text": "처음 2턴은 진영 공격 금지야. 조급하게 굴지 마, 촌스럽게.",
+      "speaker": "임유리",
+      "face": "card:10325",
+      "wait": "tap"
+    },
+    {
+      "text": "그리고 부하가 4명 이상 남아 있으면 진영은 못 쳐. 부하 하나만 먼저 눕혀 봐.",
+      "speaker": "임유리",
+      "face": "card:10325",
+      "wait": "tap"
+    },
+    {
+      "text": "부하가 쓰러지고 3턴째가 되면 동그란 칸에 빨간 테두리가 생길 거야. 그때 내 카드 고르고 동그란 칸을 탭! 알겠어?",
+      "speaker": "임유리",
+      "face": "card:10325",
+      "wait": "tap"
+    },
+    {
+      "target": "#me-hand .hand-card[data-id=\"10325\"]",
+      "text": "자, 먼저 나부터 꺼내. 당연하지?",
+      "speaker": "임유리",
+      "face": "card:10325",
+      "wait": "tap_target"
+    },
+    {
+      "target": "#summon-btn",
+      "text": "소환!",
+      "speaker": "임유리",
+      "face": "card:10325",
+      "wait": "summoned",
+      "match": {
+        "id": "10325"
+      },
+      "pad": 4
+    },
+    {
+      "text": "마나는 이번에도 다시 안 차. 아껴 쓰라고~ 나 쓰러지면 그냥 지는 거 알지?",
+      "speaker": "임유리",
+      "face": "card:10325",
+      "wait": "tap"
+    },
+    {
+      "text": "그럼 개미 한 마리 밟으러 가 볼까~",
+      "speaker": "임유리",
+      "face": "card:10325",
+      "wait": "tap"
+    }
+  ],
+  "demo": {
+    "me": [
+      "10325",
+      "10256",
+      "10207",
+      "10462",
+      "10208"
+    ],
+    "ai": [
+      "10229",
+      "10391",
+      "10097",
+      "10093",
+      "10103"
+    ],
+    "aiName": "연습 상대"
+  }
+}
