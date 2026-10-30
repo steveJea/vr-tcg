@@ -208,6 +208,12 @@ span.story-lvpct { background: rgba(251,191,36,.12); border: 1px solid rgba(251,
 .base-sts { position: absolute; top: 4px; left: -6px; display: flex; flex-direction: column; font-size: 11px; line-height: 1.1; }
 .base-name { margin-top: 5px; max-width: 100%; font-size: 10px; font-weight: 800; color: #fcd34d; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center; }
 .base-unit .hp-bar, .base-unit .mp-bar { width: 72px; }
+.base-slot-me { margin: -4px 0 0; }
+.base-tag { font-size: 9px; font-weight: 700; color: #a7f3d0; white-space: nowrap; }
+.base-empty { opacity: .55; }
+.base-empty .base-ring { background: repeating-conic-gradient(#52525b 0 10deg, #27272a 10deg 20deg); box-shadow: none; }
+.base-ph { display: flex; align-items: center; justify-content: center; font-size: 22px; }
+.base-unit.swap-sel .base-ring, .base-unit.ready .base-ring { box-shadow: 0 0 0 3px #34d399, 0 0 14px rgba(52,211,153,.6); }
 @media (min-width: 768px) {
   .base-unit, .base-ring { width: 120px; } .base-ring { height: 120px; }
   .base-name { font-size: 12px; } .base-unit .hp-bar, .base-unit .mp-bar { width: 100px; }

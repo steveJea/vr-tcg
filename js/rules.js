@@ -58,6 +58,10 @@ export const RULES = {
 };
 /** 필드 칸을 차지한 카드 수: 진영 칸 보스(u.boss)는 필드 5칸 밖이라 세지 않음 */
 export const fieldCount = p => p.field.reduce((n, u) => n + (u.boss ? 0 : 1), 0);
+/** 아케이드 수비대장: HR 이하만 진영 칸에 배치 가능 */
+export const GUARD_GRADES = new Set(['NORMAL', 'RARE', 'HIGH RARE']);
+export const GUARD_SWAP_TURNS = 3;   // 배치 후 내 턴 3번이 지나야 교체 가능
+export const guardOf = p => p.field.find(u => u.guard) || null;
 export const GRADES = ['NORMAL', 'RARE', 'HIGH RARE', 'SUPER RARE', 'ULTRA RARE', 'MYTHIC RARE'];
 export const GRADE_SHORT = { 'NORMAL': 'N', 'RARE': 'R', 'HIGH RARE': 'HR', 'SUPER RARE': 'SR', 'ULTRA RARE': 'UR', 'MYTHIC RARE': 'MR', 'LEGENDARY RARE': 'LR' };
 // GRADES(아케이드 등급 선택·뽑기 확률)에는 LR 없음: LEGENDARY RARE 는 NPC 전용 (뽑기 확률 없음)
@@ -148,6 +152,7 @@ export function recallCost(card) { return Math.ceil(card.cost * RULES.RECALL_COS
 
 /** 회수 가능 여부와 사유 */
 export function canRecall(unit, me) {
+  if (unit.boss) return { ok: false, cost: 0, reason: '진영 칸 카드는 회수할 수 없습니다' };
   const cost = recallCost(unit.card);
   if (unit.st?.para) return { ok: false, cost, reason: '마비 상태에서는 회수할 수 없습니다' };
   if (unit.st?.disrupt) return { ok: false, cost, reason: '교란 상태에서는 회수할 수 없습니다' };
@@ -418,7 +423,7 @@ export function aiWantAccel(me, early = false) {
 /** 턴 제한 판정: 진영 HP → 필드 카드 수 → 무승부. a,b 플레이어. 반환 { winner: a|b|null, reason } */
 export function judgeTimeout(a, b) {
   if (a.hp !== b.hp) return { winner: a.hp > b.hp ? a : b, reason: 'hp' };
-  if (a.field.length !== b.field.length) return { winner: a.field.length > b.field.length ? a : b, reason: 'cards' };
+  if (fieldCount(a) !== fieldCount(b)) return { winner: fieldCount(a) > fieldCount(b) ? a : b, reason: 'cards' };   // 수비대장(진영 칸)은 세지 않음
   return { winner: null, reason: 'draw' };
 }
 export const JUDGE_LABEL = { ko: 'KO', hp: '진영 HP 우세', cards: '남은 카드 수 우세', draw: '무승부' };
