@@ -942,6 +942,13 @@
     cacheLocal(); starAt = 0;   // 별 보상 상자 다시 불러오기
   }
   const RULES_MAX_MY = () => Math.floor((window.TCG?.RULES?.MAX_TURNS || 40) / 2);
+  /** 조건 창 '⭐ 별 조건' (제한 마나 전투만). 최고 기록은 별 개수만 저장돼서 개수로 표시 */
+  function starCondHtml(ch, ph, row) {
+    const me = window.TCG?.S?.me; if (!me?.manaPool || !me.maxMana) return '';
+    const t = ph.starTurns || STAR_TURNS, k = ph.starMana ?? STAR_MANA, need = Math.ceil(me.maxMana * k), best = starsOf(ch.id, ph.no);
+    return `<div class="sc-sec stars"><div class="sc-t">⭐ 별 조건${best ? ` <span class="text-[11px] text-amber-300">최고 ${starHtml(best)}</span>` : ''}</div>${[
+      ['★', '클리어'], ['★', `내 턴 ${t}턴 이내`], ['★', `남은 마나 ${Math.round(k * 100)}% 이상`, `${need} 이상 / ${me.maxMana}`]].map(row).join('')}</div>`;
+  }
   function showConditions(ch, ph) {
     document.getElementById('story-cond')?.remove();
     const c = conditionsOf(ch, ph), row = ([i, t, sub]) => `<div class="sc-row"><span class="sc-ic">${i}</span><span>${t}${sub ? `<small>${sub}</small>` : ''}</span></div>`;
@@ -951,6 +958,7 @@
       <div class="sc-sec win"><div class="sc-t">🏆 승리</div>${c.win.map(row).join('')}</div>
       <div class="sc-sec lose"><div class="sc-t">💀 패배</div>${c.lose.map(row).join('')}</div>
       ${c.info.length ? `<div class="sc-sec info">${c.info.map(row).join('')}</div>` : ''}
+      ${starCondHtml(ch, ph, row)}
       <button type="button" class="sc-go">⚔️ 전투 시작</button></div>`;
     document.body.appendChild(el);
     const close = () => { el.remove(); window.TCG?.kickoff?.(); };   // 닫으면 전투 시작 (킥오프)
@@ -1071,7 +1079,8 @@
     const nextI = D.chapters.findIndex(c => c.id === ch.id) + 1, nextChB = nextPh ? null : D.chapters[nextI] || null;
     const hasNext = !!(nextPh || nextChB), nextOpen = !!nextPh || (!!nextChB && chapterOpen(nextI));
     const stars = starsCalc(ph, st), bestB = starsOf(ch.id, ph.no); if (stars) await saveStars(ch, ph, stars);
-    const starRow = stars ? `<div class="story-star-res">${starHtml(stars, 'big')}<div class="text-[11px] text-zinc-400 mt-1">${[`★ 클리어`, `${(st.myTurns | 0) <= (ph.starTurns || STAR_TURNS) ? '✔' : '✖'} ${ph.starTurns || STAR_TURNS}턴 이내 (${st.myTurns | 0}턴)`, `${st.mana >= Math.ceil(st.maxMana * (ph.starMana ?? STAR_MANA)) ? '✔' : '✖'} 남은 마나 ${Math.round((ph.starMana ?? STAR_MANA) * 100)}% 이상 (${st.mana}/${st.maxMana})`].join(' · ')}${stars > bestB && bestB ? ' · <b class="text-amber-300">최고 기록!</b>' : ''}</div></div>` : '';
+    const starRow = stars ? `<div class="story-star-res">${starHtml(stars, 'big')}<div class="text-xs text-zinc-300 mt-2 inline-flex flex-col items-start gap-0.5 text-left">${(() => { const t = ph.starTurns || STAR_TURNS, k = ph.starMana ?? STAR_MANA, need = Math.ceil(st.maxMana * k), okT = (st.myTurns | 0) <= t, okM = st.mana >= need, ln = (ok, txt) => `<div><b class="${ok ? 'text-emerald-400' : 'text-red-400'}">${ok ? '✔' : '✖'}</b> ${txt}</div>`;
+      return ln(true, '★ 클리어') + ln(okT, `★ 내 턴 ${t}턴 이내 <span class="text-zinc-500">(${st.myTurns | 0}턴)</span>`) + ln(okM, `★ 남은 마나 ${Math.round(k * 100)}% 이상 <span class="text-zinc-500">(${st.mana}/${st.maxMana}, 필요 ${need})</span>`); })()}${stars > bestB && bestB ? '<div><b class="text-amber-300">최고 기록!</b></div>' : ''}</div></div>` : '';
     show(`<div class="text-center py-6"><div class="story-chapter-sub">Phase.${ph.no} CLEAR</div><div class="story-chapter-big text-emerald-300">VICTORY</div>${starRow}
       ${reward ? `<div class="mt-4 text-amber-200 font-bold">🎁 보상 인재 획득!</div><div class="flex justify-center mt-2 story-reward">${tile(reward)}</div>` : `<div class="mt-4 text-zinc-400 text-sm">${first ? '이번 챕터는 인재 보상 없이 스탯 포인트만 받아요.' : '이미 클리어한 페이즈라 인재 보상은 없어요.'}</div>`}
       ${tk?.added ? `<div class="mt-3 text-amber-200 font-bold">🎟️ 챕터 클리어 보상: 소환권 +${tk.added} <small class="text-zinc-400">(특수 뽑기에서 사용)</small></div>` : ''}
