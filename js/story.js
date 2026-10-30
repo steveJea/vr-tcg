@@ -211,6 +211,27 @@
     v.play().catch(() => tap.classList.remove('hidden'));
     window.__storyVideo = { el, v, close };
   }
+  /** 대사와 함께 보이는 미디어 (그림·영상): 대사 상자 위쪽 패널에 계속 떠 있고, 다음 미디어가 나오거나 장면(대사 묶음)이 끝나면 사라짐.
+   *  탭은 대사로 넘어감 (패널은 클릭 통과). 영상은 소리 켜고 재생 시도 → 막히면 소리 끄고 재생, 끝나면 마지막 장면에 멈춤. 엔딩 영상(endingVideo)은 그대로 */
+  function storyMedia() {
+    let el = null, v = null, held = false, cur = '';
+    const snd = window.VRSound;
+    const unhold = () => { if (held) { held = false; snd?.hold?.(false); } };
+    const clear = () => { unhold(); if (v) { try { v.pause(); v.removeAttribute('src'); v.load(); } catch {} v = null; } el?.remove(); el = null; cur = ''; document.body.classList.remove('story-media-on'); };
+    const set = (kind, src) => {
+      const key = kind + ':' + src; if (key === cur) return; clear(); cur = key;
+      el = document.createElement('div'); el.className = 'story-media'; el.setAttribute('aria-hidden', 'true');
+      el.innerHTML = kind === 'video' ? `<video playsinline preload="auto" src="${esc(src)}"></video>` : `<img src="${esc(src)}" alt="">`;
+      document.body.appendChild(el); document.body.classList.add('story-media-on');
+      requestAnimationFrame(() => el?.classList.add('on'));
+      if (kind === 'video') {
+        v = el.querySelector('video'); snd?.hold?.(true); held = true;
+        v.onended = unhold; v.onerror = unhold;
+        v.play().catch(() => { if (!v) return; v.muted = true; unhold(); v.play().catch(() => {}); });
+      } else { const im = el.querySelector('img'); im.onerror = () => clear(); }
+    };
+    const api = { set, clear }; storyMedia.cur?.clear(); storyMedia.cur = api; return api;
+  }
   function storyCutin(src, done) {
     const el = document.createElement('div'); el.className = 'story-cutin';
     el.innerHTML = `<div class="story-cutin-bg" style="background-image:url('${esc(src)}')"></div><img class="story-cutin-img" src="${esc(src)}" alt="">`;
@@ -256,6 +277,7 @@
   // ----- 화면 -----
   const root = () => $('story-screen');
   function show(html, track = 'story') {
+    if (!String(html).includes('id="story-dlg"')) storyMedia.cur?.clear();   // 대사 화면을 떠나면 미디어 패널도 닫음
     bgm(track);
     const r = root(); r.innerHTML = `<div class="story-wrap">${UI(html)}</div>`;
     r.classList.remove('hidden'); $('start-screen').classList.add('hidden'); $('game').classList.add('hidden');
@@ -654,10 +676,12 @@
         (playLines.cache ||= []).push(im); if (playLines.cache.length > 40) playLines.cache.shift();
       } catch {} } }
     let i = 0;
+    const media = storyMedia();
     const step = () => {
-      if (i >= lines.length) return next();
-      if (lines[i].video && step.vid !== i) { step.vid = i; return storyVideo(lines[i].video, step); }   // 대사 줄의 video: 영상 먼저 재생하고 그 줄 진행
-      if (lines[i].image && step.cut !== i) { step.cut = i; return storyCutin(lines[i].image, step); }   // 대사 줄의 image: 컷인 이미지 먼저 보여주고 그 줄 진행
+      if (i >= lines.length) { media.clear(); return next(); }
+      // 대사 줄의 video·image: 따로 넘기는 단계 없이 그 대사와 함께 표시 (다음 미디어 / 장면 끝까지 유지)
+      if (lines[i].video) media.set('video', lines[i].video); else if (lines[i].image) media.set('image', lines[i].image);
+      if ((lines[i].video || lines[i].image) && !String(lines[i].text || '').trim()) { i++; return step(); }   // 글 없는 미디어 줄 = 다음 대사에 붙임
       const L0 = lines[i], tag = /^(.+?)\s*\(([^()]+)\)$/.exec(L0.speaker || ''), tagOk = tag && D.exprSlug?.[tag[2].trim()], L = tagOk ? { ...L0, speaker: tag[1], expr: L0.expr || L0.face || tag[2].trim() } : { ...L0, expr: L0.expr || L0.face };
       const pc = who(L), sp = L.speaker === 'starter' ? starter?.name : L.speaker === 'enemy' ? enemy?.name : (L.speaker === '내레이션' ? null : L.speaker);
       const nm = pc ? pc.name : sp, slug = L.slug || pslug(nm), slug0 = nm && D.portraits?.[nm];   // 카드 없는 화자(CH7 유연 아버지·어머니)도 초상화 지정 가능
