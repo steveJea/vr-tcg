@@ -822,3 +822,35 @@ body.story-media-on .story-dlg-skip { left: 4px; right: auto; top: calc(4px + en
 #game.story-pool #action-bar .act-btn .act-ico { font-size: 14px; line-height: 18px; }
 #game.story-pool #action-bar .act-btn > span:not(.act-ico) { font-size: 11px; }
 #game.story-pool #action-bar .act-btn > span .ui-ic { width: 12px; height: 12px; }
+
+/* ===== 시련의 탑: 악의 빌딩 1열 네비 (PC·모바일 동일) ===== */
+.q-tower{position:relative;min-height:100%;padding-bottom:16px;isolation:isolate}
+.q-tower::before{content:"";position:fixed;inset:0;z-index:-1;background-size:cover;background-position:center;opacity:.55;pointer-events:none}
+.q-tier-1::before{background-image:url('../img/tower/bg/t1.webp'),linear-gradient(180deg,#1a0f1f,#3b1a1a 60%,#120a0a)}
+.q-tier-2::before{background-image:url('../img/tower/bg/t2.webp'),linear-gradient(180deg,#2a0808,#4a1010 55%,#100505)}
+.q-tier-3::before{background-image:url('../img/tower/bg/t3.webp'),linear-gradient(180deg,#3a0505,#5c0b0b 50%,#0d0303)}
+.q-tier-4::before{background-image:url('../img/tower/bg/t4.webp'),linear-gradient(180deg,#1e0730,#3d0d3d 50%,#0a0310)}
+.q-tier-5::before{background-image:url('../img/tower/bg/t5.webp'),linear-gradient(180deg,#3d0a00,#6b1400 45%,#0a0200)}
+.q-tier-6::before{background-image:url('../img/tower/bg/t6.webp'),linear-gradient(180deg,#05010f,#2a0a3a 45%,#000)}
+.q-tier-7::before{background-image:url('../img/tower/bg/t7.webp'),radial-gradient(circle at 50% 15%,#000 0 12%,#4a0000 13% 15%,#120000 40%,#000)}
+.q-tower .q-wrap{display:flex!important;flex-direction:column;align-items:center;max-width:440px;margin:8px auto 0;grid-template-columns:none}
+.q-spire{width:0;height:0;border-left:70px solid transparent;border-right:70px solid transparent;border-bottom:46px solid #1c0a0f;filter:drop-shadow(0 -6px 14px rgba(220,38,38,.55));animation:qAura 2.4s ease-in-out infinite}
+.q-base{width:108%;height:14px;border-radius:4px;background:linear-gradient(180deg,#1c0a0f,#000);box-shadow:0 0 24px rgba(220,38,38,.35)}
+@keyframes qAura{0%,100%{filter:drop-shadow(0 -4px 10px rgba(168,85,247,.5))}50%{filter:drop-shadow(0 -8px 20px rgba(220,38,38,.8))}}
+.q-tower .q-list{width:100%;max-height:none;overflow:visible;gap:0;padding:6px 10px;background:linear-gradient(90deg,#0d0507,#1f0b10 50%,#0d0507);border-left:3px solid #3f1218;border-right:3px solid #3f1218;box-shadow:0 0 30px rgba(127,29,29,.45),inset 0 0 18px #000}
+.q-tower .q-row{display:grid;grid-template-columns:22px 40px 1fr auto 18px;gap:8px;padding:6px 8px;margin:2px 0;border-radius:4px;border-bottom:1px solid rgba(127,29,29,.4);background:rgba(0,0,0,.35);font-size:.9rem}
+.q-tower .q-row.lock{opacity:.5;filter:saturate(.3)}
+.q-tower .q-row.on{outline:2px solid #ef4444;background:rgba(127,29,29,.35)}
+.q-tower .q-row.boss{border:1px solid #b91c1c;background:linear-gradient(90deg,rgba(127,29,29,.55),rgba(0,0,0,.4))}
+.q-win{width:18px;height:22px;border-radius:2px;background:#27151a;box-shadow:inset 0 0 4px #000}
+.q-row.next .q-win{background:#ef4444;animation:qWin 1.2s ease-in-out infinite}
+@keyframes qWin{50%{background:#7f1d1d;box-shadow:0 0 10px #ef4444}}
+.q-face{width:40px;height:40px;border-radius:6px;object-fit:cover;object-position:top;border:1px solid #57151c;background:#111}
+.q-row.boss .q-face{width:40px;border-color:#f59e0b;box-shadow:0 0 8px rgba(245,158,11,.6)}
+.q-tower .q-no{font-weight:900;color:#fecaca}
+.q-tower .q-cur{width:100%;margin:4px 0;background:rgba(10,2,4,.85);border:1px solid #7f1d1d;border-radius:8px;padding:10px;box-shadow:0 0 18px rgba(220,38,38,.35)}
+.q-fl{text-align:center;font-size:3rem;font-weight:900;line-height:1;color:#ef4444;text-shadow:0 0 14px rgba(239,68,68,.8),0 2px 0 #000;margin:4px 0 10px;letter-spacing:.02em}
+.q-fl small{font-size:1.4rem;margin-left:2px}
+.q-fl-boss{display:block;font-size:.85rem;color:#fbbf24;letter-spacing:.3em;margin-top:4px;text-shadow:0 0 8px #b45309}
+.q-enemies.boss{grid-template-columns:repeat(6,1fr)}
+.q-tower .q-peek{display:none}

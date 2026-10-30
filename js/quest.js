@@ -46,22 +46,39 @@
   async function loadCfg() { if (!cfg) cfg = await (await fetch('data/quest.json')).json(); return cfg; }
   const floorOf = n => cfg.floors[n - 1];
   // ===== 10층마다 보스 층: 고정 보스 카드(진영 칸) + 부하 5명, 진영 HP 0 = 승리 =====
-  // 탑별 [10~100층, 110~200층, 210층~] 보스 카드 id. 바꾸려면 여기만 고치면 됨
+  // 탑별 50층 단위 7단계 보스 카드 id (1~50, 51~100, … 301~350). 바꾸려면 여기만 고치면 됨
   const TOWER_BOSS = {
-    normal: ['10439', '10358', '10311'],   // 하지은(SR) · 정석윤(UR) · 이지영(MR)
-    wind:   ['10439', '10358', '10440'],   // 하지은(SR) · 정석윤(UR) · 하지혜(UR)
-    ice:    ['10045', '10359', '10322'],   // 금어진(SR) · 정아람(UR) · 임규리(UR)
-    fire:   ['10189', '10058', '10323'],   // 선우민철(SR) · 김백중(UR) · 임나리(UR)
-    light:  ['10127', '10331', '10176'],   // 박인영(SR) · 임혜리(UR) · 서성민(UR)
-    dark:   ['10415', '10324', '10304'],   // 최윤희(SR) · 임예리(UR) · 이성호(UR)
+    normal: ['10439', '10331', '10324', '10358', '10062', '10060', '10311'],   // 하지은 · 임혜리 · 임예리 · 정석윤 · 김신현 · 김성진 · 이지영
+    wind:   ['10392', '10399', '10465', '10439', '10440', '10358', '10358'],   // 주예린 · 진하린 · 황예영 · 하지은 · 하지혜 · 정석윤 ×2
+    ice:    ['10024', '10317', '10255', '10341', '10045', '10322', '10359'],   // 고세린 · 이혜경 · 오설화 · 장초롱 · 금어진 · 임규리 · 정아람
+    fire:   ['10118', '10117', '10189', '10051', '10435', '10323', '10058'],   // 민홍기 · 민지은 · 선우민철 · 김기림 · 하승진 · 임나리 · 김백중
+    light:  ['10108', '10127', '10127', '10176', '10176', '10331', '10331'],   // 문유선 · 박인영 ×2 · 서성민 ×2 · 임혜리 ×2
+    dark:   ['10415', '10054', '10325', '10304', '10324', '10291', '10326'],   // 최윤희 · 김동욱 · 임유리 · 이성호 · 임예리 · [각성]윤진아 · [각성]임유리
   };
   const isBossFloor = n => n % 10 === 0;
+  const tierOf = n => Math.min(7, Math.max(1, Math.ceil(n / 50)));
   /** 보스 진영 HP: 10층 500 → 10층마다 +50 (350층 2200) */
   const towerBossHp = n => 500 + 50 * (n / 10 - 1);
   function towerBoss(n, L) {
-    const ids = TOWER_BOSS[TOWER] || TOWER_BOSS.normal, id = ids[n <= 100 ? 0 : n <= 200 ? 1 : 2];
+    const ids = TOWER_BOSS[TOWER] || TOWER_BOSS.normal, id = ids[tierOf(n) - 1];
     const c = window.TCG?.cardById?.(id); if (!c) return null;
     return window.VRQuestGen.leveled(c, L + 5);   // 부하보다 5레벨 위
+  }
+  /** 보스 층 부하 5명: 보스 인연 조합 멤버 → 보스와 같은 속성 카드 우선, 50층마다 1명씩 한 등급 위 (층 시드 고정) */
+  function bossMinions(n, boss, g) {
+    const G = window.VRQuestGen, O = G.ORDER, pool = window.TCG?.POOL || [], r = G.rngOf((n * 7919 + 13) >>> 0);
+    const L = g.level || g.leader?.qLevel || 1, gi = Math.max(0, O.indexOf(g.grade || floorOf(n).grade));
+    const used = new Set([String(boss.id)]), out = [];
+    const take = (c, up) => { if (!c || used.has(String(c.id))) return false; used.add(String(c.id)); out.push(G.leveled(c, L)); return true; };
+    const from = (gr, sameCls) => pool.filter(c => !used.has(String(c.id)) && O.indexOf(c.grade) === gr && (!sameCls || c.class === boss.class));
+    const pickOne = gr => { for (const same of tCls() ? [true] : [true, false]) { const l = from(gr, same); if (l.length) return l[Math.floor(r() * l.length)]; } return null; };
+    const ups = Math.min(5, Math.floor(n / 50));
+    for (let i = 0; i < ups; i++) take(pickOne(Math.min(O.length - 2, gi + 1)) || pickOne(gi));
+    const combo = (window.TCG?.combos?.() || []).find(cb => cb.cards.map(String).includes(String(boss.id)));
+    for (const id of combo?.cards || []) { if (out.length >= 5) break; const c = pool.find(x => String(x.id) === String(id)); if (c && O.indexOf(c.grade) <= gi + 1) take(c); }
+    const keep = g.enemies.filter(c => !used.has(String(c.id)));
+    while (out.length < 5) { const c = pickOne(gi) || keep.shift(); if (!c) break; if (!take(c)) continue; }
+    return out.slice(0, 5);
   }
   function enemiesOf(n) {
     const key = TOWER + ':' + n; if (genCache.has(key)) return genCache.get(key);
@@ -70,7 +87,7 @@
                   : G.generate(cfg, floorOf(n), window.TCG?.POOL || [], window.TCG?.combos?.() || []);
     if (isBossFloor(n) && g.enemies.length) {
       const b = towerBoss(n, g.level || g.leader?.qLevel || 1);
-      if (b) { g.bossCard = b; g.enemies = [b, ...g.enemies]; }   // 보스(진영 칸) + 부하 5명
+      if (b) { g.bossCard = b; const m = bossMinions(n, b, g); g.enemies = [b, ...(m.length === 5 ? m : g.enemies)]; }   // 보스(진영 칸) + 부하 5명
     }
     genCache.set(key, g); return g;
   }
@@ -130,31 +147,28 @@
 
   function enemyTile(c, lead) {
     return `<div class="q-enemy rar-${SHORT[c.grade]}" title="${esc(c.name)}"><img src="${IMG}${c.id}.webp" alt="${esc(c.name)}" loading="lazy" onerror="this.style.visibility='hidden'">
-      <span class="q-rar">${SHORT[c.grade]}</span>${lead ? '<span class="q-lead">👑</span>' : ''}<span class="q-lv">Lv.${c.qLevel}</span>
-      <div class="q-en-cap"><b>${esc(c.name)}</b><small>⚡ ${fmt(c.power)}</small></div></div>`;
+      <span class="q-rar">${SHORT[c.grade]}</span>${lead ? '<span class="q-lead">👑</span>' : ''}<span class="q-lv">Lv.${c.qLevel}</span></div>`;
   }
   function render() {
+    if (sel == null || (sel <= best() && best() < maxF())) sel = Math.min(best() + 1, maxF());
     const api = A(), n = sel, f = floorOf(n), g = enemiesOf(n), rw = rewardOf(n), cleared = n <= best(), open_ = unlocked(n);
     const dailyOut = !!status?.daily && (status.today | 0) >= status.daily, canGo = open_ && !dailyOut;
-    const rows = cfg.floors.slice(0, maxF()).map(x => {
-      const k = x.floor, r = rewardOf(k), st = k <= best() ? 'done' : unlocked(k) ? 'next' : 'lock';
-      return `<button class="q-row ${st} ${k === n ? 'on' : ''}" data-floor="${k}" ${st === 'lock' ? 'disabled' : ''}><span class="q-no">${k}층</span>${tCls() ? `<span class="q-g">${k % 10 === 0 ? '👑' : ''}</span><span class="q-pw">Lv.${window.VRQuestGen.levelOf(cfg, k, 10)}</span>` : `<span class="q-g rar-${SHORT[x.grade]}">${SHORT[x.grade]}</span><span class="q-pw">⚡ ${fmt(x.power)}</span>`}${!tCls() && x.bond ? '<span class="q-bond" title="인연 조합">🤝</span>' : ''}${r ? `<span class="q-rw ${st === 'done' ? 'got' : ''}">${r.tickets ? `🎟️${r.tickets}` : ''}${r.gold ? `🪙` : ''}</span>` : '<span class="q-rw"></span>'}<span class="q-st">${st === 'done' ? '✔' : st === 'next' ? '▶' : '🔒'}</span></button>`;
-    }).reverse().join('');
-    api.show(`<div class="story-top"><button class="story-back" id="q-home">${hub?.towers && !legacy ? '← 탑 목록' : '← 처음으로'}</button><div class="story-top-title">🗼 ${esc(tName())}</div><span></span></div>
-      <div class="q-head"><div>최고 <b>${best()}</b>층 / ${maxF()}층${status?.daily ? ` · 오늘 ${status.today | 0}/${status.daily}` : ''}</div><div class="q-sub" title="적 인재를 모두 쓰러뜨리면 승리 · 내 인재 전멸 또는 ${cfg.maxTurns || 40}턴 초과 시 패배 · 재도전 무제한">적 전멸 = 승리 · ${cfg.maxTurns || 40}턴</div></div>
-      <div class="q-wrap"><div class="q-cur">
-        <div class="q-cur-h" id="q-cur-top"><b>${n}층</b>${n % 10 === 0 ? '<span title="보스 층">👑</span>' : ''}<span class="q-g rar-${SHORT[g.grade || f.grade]}">${SHORT[g.grade || f.grade]}</span><span>적 Lv.${g.level ?? g.leader?.qLevel} · 리더 ⚡ ${fmt(g.leader?.power)}</span></div>
-        <div class="q-cur-sub">${tCls() ? `${EL[tCls()]} 속성 적 · 내 출전도 ${EL[tCls()]} 속성만` : `<span title="${f.others === 'weak' ? '나머지: 리더보다 약함 (60~80%)' : '나머지: 리더와 비슷 (90~100%)'}">${f.others === 'weak' ? '나머지 약함' : '나머지 비슷'}</span>${g.combo ? ` · 🤝 인연 「${esc(g.combo)}」` : ''}`}</div>
-        <div class="q-enemies" id="q-enemies">${g.enemies.map((c, i) => enemyTile(c, i === 0)).join('')}</div>
-        <div class="q-reward">${rw ? (cleared ? `<span class="got">✔ 첫 클리어 보상 받음 (${rewardTxt(rw)})</span>` : `🎁 첫 클리어 보상: <b>${rewardTxt(rw)}</b>`) : '<span class="muted" title="10층마다 보상">보상 없음</span>'}</div>
+    const top = Math.min(best() + 10, maxF()), lo = Math.min(best() + 1, maxF());
+    const panel = `<div class="q-cur" id="q-cur-top"><div class="q-fl">${n}<small>층</small>${isBossFloor(n) ? '<span class="q-fl-boss">👑 BOSS</span>' : ''}</div>
+        <div class="q-enemies${g.bossCard ? ' boss' : ''}" id="q-enemies">${g.enemies.map((c, i) => enemyTile(c, i === 0)).join('')}</div>
+        ${rw ? `<div class="q-reward">${cleared ? `<span class="got">✔ 첫 클리어 보상 받음 (${rewardTxt(rw)})</span>` : `🎁 첫 클리어 보상: <b>${rewardTxt(rw)}</b>`}</div>` : ''}
         <button class="story-btn q-go" id="q-go" ${canGo ? '' : 'disabled'}>${cleared ? '다시 도전' : '도전'} (${n}층)</button>
-        ${sweepBtn()}
-        <button class="q-peek" id="q-peek" type="button">▲ <small>적 덱 보기</small></button>
-      </div>
-      <div class="q-list" id="q-list">${rows}</div></div>`, 'tower');
+        ${sweepBtn()}</div>`;
+    const rows = [];
+    for (let k = top; k >= lo; k--) {
+      const r = rewardOf(k), st = k <= best() ? 'done' : unlocked(k) ? 'next' : 'lock', e = enemiesOf(k), face = e.bossCard || e.leader || e.enemies[0];
+      rows.push(`<button class="q-row ${st} ${isBossFloor(k) ? 'boss' : ''} ${k === n ? 'on' : ''}" data-floor="${k}"><span class="q-win"></span>${face ? `<img class="q-face" src="${IMG}${face.id}.webp" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : '<span class="q-face"></span>'}<span class="q-no">${k}층${isBossFloor(k) ? ' 👑' : ''}</span>${r ? `<span class="q-rw">${r.tickets ? `🎟️${r.tickets}` : ''}${r.gold ? '🪙' : ''}</span>` : '<span class="q-rw"></span>'}<span class="q-st">${st === 'next' ? '▶' : st === 'done' ? '✔' : '🔒'}</span></button>`);
+      if (k === n) rows.push(panel);
+    }
+    api.show(`<div class="q-tower q-tier-${tierOf(n)}"><div class="story-top"><button class="story-back" id="q-home">${hub?.towers && !legacy ? '← 탑 목록' : '← 처음으로'}</button><div class="story-top-title">🗼 ${esc(tName())}</div><span></span></div>
+      <div class="q-wrap"><div class="q-spire"></div><div class="q-list" id="q-list">${rows.join('')}</div><div class="q-base"></div></div></div>`, 'tower');
     $('q-home').onclick = () => hub?.towers && !legacy ? backToHub() : api.home();
     $('q-go').onclick = () => { if (canGo) challenge(n); };
-    $('q-peek').onclick = () => $('q-cur-top')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     const sw = $('q-sweep'); if (sw) sw.onclick = () => sweep();
     $('q-list').querySelectorAll('[data-floor]').forEach(b => b.onclick = () => { sel = +b.dataset.floor; render(); });
     const on = $('q-list').querySelector('.q-row.on'); if (on) on.scrollIntoView({ block: 'center' });
