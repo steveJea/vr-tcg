@@ -788,3 +788,8 @@ body.story-media-on .story-dlg-skip { left: 4px; right: auto; top: calc(4px + en
 .story-zoom { position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,.94); display: flex; align-items: center; justify-content: center; animation: storyFade .25s; }
 .story-zoom img { max-width: 100vw; max-height: 100vh; object-fit: contain; }
 .story-zoom-x { position: absolute; top: calc(10px + env(safe-area-inset-top)); right: 12px; width: 44px; height: 44px; border-radius: 999px; background: rgba(255,255,255,.15); font-size: 20px; color: #fff; }
+/* 대사 그림 켄번즈: 나타날 때 천천히 살짝 확대 (영상·돋보기 화면 제외) */
+.story-media img { transform: scale(1); transform-origin: center; will-change: transform; }
+.story-media.on img { animation: storyKenBurns 8s ease-out forwards; }
+@keyframes storyKenBurns { from { transform: scale(1); } to { transform: scale(1.06); } }
+@media (prefers-reduced-motion: reduce) { .story-media.on img { animation: none; } }
