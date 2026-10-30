@@ -138,5 +138,5 @@
     for (const [k, rw] of (cfg.rewards?.every || [])) if (f.floor % k === 0) return { tickets: rw.tickets | 0, gold: rw.gold | 0 };
     return null;
   }
-  globalThis.VRQuestGen = { generate, generateAttr, levelOf, rewardOf, powerAt, leveled, lvPct, capOf, LV_CAP, LV_RATE };
+  globalThis.VRQuestGen = { rngOf, ORDER, generate, generateAttr, levelOf, rewardOf, powerAt, leveled, lvPct, capOf, LV_CAP, LV_RATE };
 })();
