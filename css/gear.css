@@ -55,7 +55,7 @@
 .gear-sel>button:not(.gear-btn){padding:4px 8px;border-radius:999px;background:#27272a;font-size:12px;font-weight:800;border:1px solid currentColor}
 .gear-cell.pick{outline:3px solid #f59e0b;outline-offset:-1px}.gear-cell.pick::after{content:'✓';position:absolute;top:2px;left:4px;color:#f59e0b;font-weight:900}
 .gear-cell.nopick{opacity:.35}
-.gear-bulk{position:sticky;bottom:-16px;background:#18181b;padding:8px 0;align-items:center}
+.gear-bulk{position:sticky;bottom:-16px;z-index:20;background:#18181b;padding:8px 0;align-items:center}
 .sig-bar{position:relative;height:20px;border-radius:999px;background:#27272a;margin:10px 0;overflow:hidden}.sig-bar i{position:absolute;inset:0 auto 0 0;background:linear-gradient(90deg,#a855f7,#f59e0b)}.sig-bar span{position:relative;font-size:12px;font-weight:800;line-height:20px}
 button.gear-drop{cursor:pointer}
 .shop-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:8px 0}
