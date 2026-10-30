@@ -135,6 +135,7 @@
   }
   function render() {
     const api = A(), n = sel, f = floorOf(n), g = enemiesOf(n), rw = rewardOf(n), cleared = n <= best(), open_ = unlocked(n);
+    const dailyOut = !!status?.daily && (status.today | 0) >= status.daily, canGo = open_ && !dailyOut;
     const rows = cfg.floors.slice(0, maxF()).map(x => {
       const k = x.floor, r = rewardOf(k), st = k <= best() ? 'done' : unlocked(k) ? 'next' : 'lock';
       return `<button class="q-row ${st} ${k === n ? 'on' : ''}" data-floor="${k}" ${st === 'lock' ? 'disabled' : ''}><span class="q-no">${k}층</span>${tCls() ? `<span class="q-g">${k % 10 === 0 ? '👑' : ''}</span><span class="q-pw">Lv.${window.VRQuestGen.levelOf(cfg, k, 10)}</span>` : `<span class="q-g rar-${SHORT[x.grade]}">${SHORT[x.grade]}</span><span class="q-pw">⚡ ${fmt(x.power)}</span>`}${!tCls() && x.bond ? '<span class="q-bond" title="인연 조합">🤝</span>' : ''}${r ? `<span class="q-rw ${st === 'done' ? 'got' : ''}">${r.tickets ? `🎟️${r.tickets}` : ''}${r.gold ? `🪙` : ''}</span>` : '<span class="q-rw"></span>'}<span class="q-st">${st === 'done' ? '✔' : st === 'next' ? '▶' : '🔒'}</span></button>`;
@@ -142,16 +143,18 @@
     api.show(`<div class="story-top"><button class="story-back" id="q-home">${hub?.towers && !legacy ? '← 탑 목록' : '← 처음으로'}</button><div class="story-top-title">🗼 ${esc(tName())}</div><span></span></div>
       <div class="q-head"><div>최고 <b>${best()}</b>층 / ${maxF()}층${status?.daily ? ` · 오늘 ${status.today | 0}/${status.daily}` : ''}</div><div class="q-sub" title="적 인재를 모두 쓰러뜨리면 승리 · 내 인재 전멸 또는 ${cfg.maxTurns || 40}턴 초과 시 패배 · 재도전 무제한">적 전멸 = 승리 · ${cfg.maxTurns || 40}턴</div></div>
       <div class="q-wrap"><div class="q-cur">
-        <div class="q-cur-h"><b>${n}층</b>${n % 10 === 0 ? '<span title="보스 층">👑</span>' : ''}<span class="q-g rar-${SHORT[g.grade || f.grade]}">${SHORT[g.grade || f.grade]}</span><span>적 Lv.${g.level ?? g.leader?.qLevel} · 리더 ⚡ ${fmt(g.leader?.power)}</span></div>
+        <div class="q-cur-h" id="q-cur-top"><b>${n}층</b>${n % 10 === 0 ? '<span title="보스 층">👑</span>' : ''}<span class="q-g rar-${SHORT[g.grade || f.grade]}">${SHORT[g.grade || f.grade]}</span><span>적 Lv.${g.level ?? g.leader?.qLevel} · 리더 ⚡ ${fmt(g.leader?.power)}</span></div>
         <div class="q-cur-sub">${tCls() ? `${EL[tCls()]} 속성 적 · 내 출전도 ${EL[tCls()]} 속성만` : `<span title="${f.others === 'weak' ? '나머지: 리더보다 약함 (60~80%)' : '나머지: 리더와 비슷 (90~100%)'}">${f.others === 'weak' ? '나머지 약함' : '나머지 비슷'}</span>${g.combo ? ` · 🤝 인연 「${esc(g.combo)}」` : ''}`}</div>
-        <div class="q-enemies">${g.enemies.map((c, i) => enemyTile(c, i === 0)).join('')}</div>
+        <div class="q-enemies" id="q-enemies">${g.enemies.map((c, i) => enemyTile(c, i === 0)).join('')}</div>
         <div class="q-reward">${rw ? (cleared ? `<span class="got">✔ 첫 클리어 보상 받음 (${rewardTxt(rw)})</span>` : `🎁 첫 클리어 보상: <b>${rewardTxt(rw)}</b>`) : '<span class="muted" title="10층마다 보상">보상 없음</span>'}</div>
-        <button class="story-btn q-go" id="q-go" ${open_ ? '' : 'disabled'}>${cleared ? '다시 도전' : '도전'} (${n}층)</button>
+        <button class="story-btn q-go" id="q-go" ${canGo ? '' : 'disabled'}>${cleared ? '다시 도전' : '도전'} (${n}층)</button>
         ${sweepBtn()}
+        <button class="q-peek" id="q-peek" type="button">▲ <small>적 덱 보기</small></button>
       </div>
       <div class="q-list" id="q-list">${rows}</div></div>`, 'tower');
     $('q-home').onclick = () => hub?.towers && !legacy ? backToHub() : api.home();
-    $('q-go').onclick = () => challenge(n);
+    $('q-go').onclick = () => { if (canGo) challenge(n); };
+    $('q-peek').onclick = () => $('q-cur-top')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     const sw = $('q-sweep'); if (sw) sw.onclick = () => sweep();
     $('q-list').querySelectorAll('[data-floor]').forEach(b => b.onclick = () => { sel = +b.dataset.floor; render(); });
     const on = $('q-list').querySelector('.q-row.on'); if (on) on.scrollIntoView({ block: 'center' });
@@ -225,7 +228,7 @@
     const f = best() + 1; if (f > maxF()) return '';
     if (isBoss(f)) return `<div class="q-sweep-note">👑 ${f}층 보스는 직접 도전</div>`;
     const left = status?.daily ? Math.max(0, status.daily - (status.today | 0)) : Infinity;
-    if (!left) return `<div class="q-sweep-note">⏳ 오늘 도전 가능한 층을 다 썼어요 (${status.today | 0}/${status.daily})</div>`;
+    if (!left) return '';
     const last = Math.min(Math.ceil(f / 10) * 10 - 1, maxF(), f - 1 + left);
     return `<button class="story-btn q-sweep" id="q-sweep" title="내 덱으로 자동 전투 · 패배 또는 보스 층에서 멈춤">${SW()} 소탕 ${f}~${last}층${Number.isFinite(left) ? ` <small>· 오늘 ${left}층 남음</small>` : ''}</button>`;
   }
