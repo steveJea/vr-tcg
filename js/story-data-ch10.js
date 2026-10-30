@@ -1,6 +1,6 @@
 // ===== 스토리 챕터 10 「마지막 랠리」 (시트 CH10 → python3 tools/ch9_11_import.py <csv9> <csv10> <csv11> 로 생성. 직접 고쳐도 됨) =====
-// 단일 루트(single) · 페이즈 16개 (마지막 보스). 최윤희 복장 = 대사 slug. 적 레벨은 시트 값 → enemies.boost · maxGrade (P4 UR 이상 금지, 나머지 SR 이상 금지, 필수 카드 예외) · 보스 bossCdMinus 1 (스킬 쿨타임 -1)
-// 10/30 시트 개정: 시트 P14(거실)는 전투 없음 → P13 전투 후 대사로 이어 붙임, P17 없음 → 페이즈 16개 (시트 15·16·18 → 14·15·16)
+// 단일 루트(single) · 페이즈 17개 (마지막 보스). 최윤희 복장 = 대사 slug. 적 레벨은 시트 값 → enemies.boost · maxGrade (P4 UR 이상 금지, 나머지 SR 이상 금지, 필수 카드 예외) · 보스 bossCdMinus 1 (스킬 쿨타임 -1)
+// 10/30 시트 개정: 시트 P17 없음 → 페이즈 17개 (시트 18 → 17 보스)
 window.STORY_DATA.chapters.push({
  "id": 10,
  "title": "CHAPTER 10",
@@ -1746,85 +1746,130 @@ window.STORY_DATA.chapters.push({
      "text": "...저리 가. 언니들이 그랬어. 웃으면서 살라고. 너희 같은 거한테 안 져.",
      "expr": "분노",
      "slug": "choi_yunhee_home"
-    },
-    {
-     "speaker": "내레이션",
-     "text": "윤희는 숨을 헐떡이며 눈을 떴다. 새벽 5시. 전등은 켜져 있었다. 늘 그랬듯이."
-    },
-    {
-     "speaker": "최윤희",
-     "text": "(...4시에 나간다고 했는데. 왜 아무도 안 깨웠지.)",
-     "expr": "놀람",
-     "slug": "choi_yunhee_home"
-    },
-    {
-     "speaker": "내레이션",
-     "text": "집이 너무 조용했다. 윤정의 잔소리도, 윤아의 투덜거림도 들리지 않았다.",
-     "image": "img/story/ch10-14.webp"
-    },
-    {
-     "speaker": "최윤희",
-     "text": "(이상해...가슴이 너무 답답해. 꿈 때문일 거야. 그냥 꿈...)",
-     "expr": "슬픔",
-     "slug": "choi_yunhee_home"
-    },
-    {
-     "speaker": "내레이션",
-     "text": "계단을 한 칸씩 내려갔다. 차가운 바닥이 맨발에 닿았다.",
-     "image": "img/story/ch10-15-1.webp"
-    },
-    {
-     "speaker": "내레이션",
-     "text": "시계 소리만 들렸다. 똑딱. 똑딱.",
-     "image": "img/story/ch10-15-2.webp"
-    },
-    {
-     "speaker": "최윤희",
-     "text": "언니...? 윤아 언니...? 윤정 언니...?",
-     "expr": "보통",
-     "slug": "choi_yunhee_home",
-     "image": "img/story/ch10-16.webp"
-    },
-    {
-     "speaker": "내레이션",
-     "text": "거실. 두 사람은 거기 있었다. 서로를 감싸듯 나란히, 다시는 일어나지 않을 모습으로."
-    },
-    {
-     "speaker": "내레이션",
-     "text": "바닥엔 윤아의 라켓과, 풀어진 머리끈 하나가 떨어져 있었다."
-    },
-    {
-     "speaker": "최윤희",
-     "text": "...언니...? 장난이지...? 일어나...4시 지났어...",
-     "expr": "놀람",
-     "slug": "choi_yunhee_home"
-    },
-    {
-     "speaker": "최윤희",
-     "text": "언니...윤정 언니...눈 떠 봐...윤아 언니...대답해...제발...",
-     "expr": "슬픔",
-     "slug": "choi_yunhee_home"
-    },
-    {
-     "speaker": "내레이션",
-     "text": "대답은 없었다. 식탁 위에는 어젯밤 남은 된장국이 식어 있었다."
-    },
-    {
-     "speaker": "최윤희",
-     "text": "아...아아...아아아아아...!!!",
-     "expr": "슬픔",
-     "slug": "choi_yunhee_home"
-    },
-    {
-     "speaker": "내레이션",
-     "text": "윤희는 떨리는 손으로 윤아의 머리끈을 움켜쥐었다. 그리고, 그 집에서 도망쳤다.",
-     "image": "img/story/ch10-17.webp"
     }
    ],
    "afterTitle": "전투 후"
   },
   {
    "no": 14,
+   "type": "normal",
+   "enemyName": "불량배-G",
+   "title": "거실",
+   "enemies": {
+    "ids": [
+     "10149",
+     "10149",
+     "10149",
+     "10149",
+     "10149"
+    ],
+    "boost": {
+     "10149": {
+      "HP": 251,
+      "ATK": 46,
+      "DEF": 34,
+      "storyLv": 65,
+      "power": 8778
+     }
+    }
+   },
+   "lines": {
+    "default": [
+     {
+      "speaker": "내레이션",
+      "text": "윤희는 숨을 헐떡이며 눈을 떴다. 새벽 5시. 전등은 켜져 있었다. 늘 그랬듯이."
+     },
+     {
+      "speaker": "최윤희",
+      "text": "(...4시에 나간다고 했는데. 왜 아무도 안 깨웠지.)",
+      "expr": "놀람",
+      "slug": "choi_yunhee_home"
+     },
+     {
+      "speaker": "내레이션",
+      "text": "집이 너무 조용했다. 윤정의 잔소리도, 윤아의 투덜거림도 들리지 않았다.",
+      "image": "img/story/ch10-14.webp"
+     },
+     {
+      "speaker": "최윤희",
+      "text": "(이상해...가슴이 너무 답답해. 꿈 때문일 거야. 그냥 꿈...)",
+      "expr": "슬픔",
+      "slug": "choi_yunhee_home"
+     },
+     {
+      "speaker": "내레이션",
+      "text": "계단을 한 칸씩 내려갔다. 차가운 바닥이 맨발에 닿았다.",
+      "image": "img/story/ch10-15-1.webp"
+     },
+     {
+      "speaker": "내레이션",
+      "text": "시계 소리만 들렸다. 똑딱. 똑딱.",
+      "image": "img/story/ch10-15-2.webp"
+     },
+     {
+      "speaker": "최윤희",
+      "text": "언니...? 윤아 언니...? 윤정 언니...?",
+      "expr": "보통",
+      "slug": "choi_yunhee_home",
+      "image": "img/story/ch10-16.webp"
+     },
+     {
+      "speaker": "내레이션",
+      "text": "거실. 두 사람은 거기 있었다. 서로를 감싸듯 나란히, 다시는 일어나지 않을 모습으로."
+     },
+     {
+      "speaker": "내레이션",
+      "text": "바닥엔 윤아의 라켓과, 풀어진 머리끈 하나가 떨어져 있었다."
+     },
+     {
+      "speaker": "최윤희",
+      "text": "...언니...? 장난이지...? 일어나...4시 지났어...",
+      "expr": "놀람",
+      "slug": "choi_yunhee_home"
+     },
+     {
+      "speaker": "최윤희",
+      "text": "언니...윤정 언니...눈 떠 봐...윤아 언니...대답해...제발...",
+      "expr": "슬픔",
+      "slug": "choi_yunhee_home"
+     },
+     {
+      "speaker": "내레이션",
+      "text": "대답은 없었다. 식탁 위에는 어젯밤 남은 된장국이 식어 있었다."
+     },
+     {
+      "speaker": "최윤희",
+      "text": "아...아아...아아아아아...!!!",
+      "expr": "슬픔",
+      "slug": "choi_yunhee_home"
+     },
+     {
+      "speaker": "내레이션",
+      "text": "윤희는 떨리는 손으로 윤아의 머리끈을 움켜쥐었다. 그리고, 그 집에서 도망쳤다.",
+      "image": "img/story/ch10-17.webp"
+     }
+    ]
+   },
+   "party": {
+    "forced": [
+     "10415"
+    ],
+    "noMale": true,
+    "mustLive": [
+     "10415"
+    ],
+    "levels": {
+     "10415": 63
+    },
+    "maxGrade": "HIGH RARE"
+   },
+   "hero": [
+    "10415"
+   ],
+   "bossId": "10149"
+  },
+  {
+   "no": 15,
    "type": "normal",
    "enemyName": "불량배-C",
    "title": "맨발",
@@ -1945,7 +1990,7 @@ window.STORY_DATA.chapters.push({
    "afterTitle": "전투 후"
   },
   {
-   "no": 15,
+   "no": 16,
    "type": "normal",
    "enemyName": "[염원] 최윤아",
    "title": "떨리는 손",
@@ -2067,7 +2112,7 @@ window.STORY_DATA.chapters.push({
    "afterTitle": "전투 후"
   },
   {
-   "no": 16,
+   "no": 17,
    "type": "boss",
    "enemyName": "[염원] 최윤아",
    "title": "곁에 있는 그림자",
