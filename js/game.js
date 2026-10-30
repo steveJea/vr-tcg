@@ -1,4 +1,4 @@
-import { levelUpOnce, RULES, calcPower, skillLvPowerMult, skillCountMult, ELEMENTS, elementMultiplier, calcDamage, canSummon, buildDeck, parseCSV, aiSummonOrder, aiPickTarget, recallCost, canRecall, aiShouldRecall, makeUnit, resolveAttack, refillMana, ACTIONS, canAction, doAction, clearBuff, aiWantShuffle, aiWantBuff, aiWantHeal, aiWantFieldHeal, aiPickItem, endTurnXp, ITEMS, canEquip, equip, attackTargets, canTarget, autoTarget, heroLocked, xpToNext, SKILLS, gainXp, setCardPool, canSacrifice, sacrifice, aiPickSacrifice, aiWantAccel, judgeTimeout, JUDGE_LABEL, genderMult, GRADES, GRADE_SHORT, allowedGrades, baseEvade, swapField } from './rules.js';
+import { fieldCount, levelUpOnce, RULES, calcPower, skillLvPowerMult, skillCountMult, ELEMENTS, elementMultiplier, calcDamage, canSummon, buildDeck, parseCSV, aiSummonOrder, aiPickTarget, recallCost, canRecall, aiShouldRecall, makeUnit, resolveAttack, refillMana, ACTIONS, canAction, doAction, clearBuff, aiWantShuffle, aiWantBuff, aiWantHeal, aiWantFieldHeal, aiPickItem, endTurnXp, ITEMS, canEquip, equip, attackTargets, canTarget, autoTarget, heroLocked, xpToNext, SKILLS, gainXp, setCardPool, canSacrifice, sacrifice, aiPickSacrifice, aiWantAccel, judgeTimeout, JUDGE_LABEL, genderMult, GRADES, GRADE_SHORT, allowedGrades, baseEvade, swapField } from './rules.js';
 import { autoNext, noteUsed } from './auto-ai.js';
 import { initStatusFx, statusApplyFx, paraSkipFx, confuseAllyFx, tauntPullFx, statusClasses, statusDecor, statusIconUrl, isStatusFxKind } from './status-fx.js';
 import { skillCd, skillMp, setSpare, spareBlocked, setSkillData, setEmitter, initPlayers, placeUnit, turnStart, turnEnd, useSkill, skillState, aiPickSkill, skillLvOf, skillCdAt, skillLvMult, skillLvProb, SKILL_LV_MAX, refreshAll, statusIcons, skillsOf, combos, STATUS, SK, maleLure, checkDeath } from './skills.js';
@@ -203,7 +203,10 @@ function startGame(story = null) {
     for (const who of ['me', 'ai']) {
       const p = S[who];
       if (who === 'me' && MP) { p.hand = p.deck.splice(0); continue; }   // 제한 마나: 출전 카드는 손패로, 코스트 내고 소환
-      for (const c of p.deck.splice(0, RULES.FIELD_MAX)) {
+      // 보스(bossId·invuln)는 진영 칸 → 필드 5칸과 따로. 보스가 덱 앞 5장 안에 있으면 부하를 1장 더 꺼냄
+      const bossIds = who === 'ai' ? [story.bossId, story.rules?.invuln].filter(x => x != null).map(String) : [];
+      const nb = p.deck.slice(0, RULES.FIELD_MAX + bossIds.length).filter(c => bossIds.includes(String(c.id))).length;
+      for (const c of p.deck.splice(0, RULES.FIELD_MAX + nb)) {
         const u = placeUnit(p, c, makeUnit);
         if (who === 'me') S.log.played.add(String(c.id));
         if (who === 'me') storyMeInit(u, c);
@@ -626,7 +629,7 @@ function storyTurnRules(who) {
   if (p.reviveQ?.length) {
     const q = p.reviveQ.splice(0);
     for (const r of q) {
-      if (--r.wait > 0 || p.field.length >= RULES.FIELD_MAX) { p.reviveQ.push(r); continue; }
+      if (--r.wait > 0 || fieldCount(p) >= RULES.FIELD_MAX) { p.reviveQ.push(r); continue; }
       const u = placeUnit(p, { ...r.card }, makeUnit); u.reviveSlot = r.slot;
       while (u.level < r.level) { const need = xpToNext(u.level) - (u.xp | 0); if (!isFinite(need) || !gainXp(u, Math.max(1, need))) break; }
       log(`🩸 ${u.card.name} 부활! (Lv${u.level})`, 'text-fuchsia-300');

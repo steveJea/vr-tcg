@@ -56,6 +56,8 @@ export const RULES = {
   DARK_DRAIN_P: 0.10, DARK_DRAIN: 0.2, DARK_COUNTER_P: 0.08, DARK_COUNTER_MULT: 2,   // 어둠: 적중 시 10% 흡혈 20% / 8% 반격 2배
   LIGHT_CLEANSE_P: 0.15, LIGHT_NULL_P: 0.10,             // 빛: 적중 시 자기 디버프 1개 해제 / 공격 시 받는 반격 무효
 };
+/** 필드 칸을 차지한 카드 수: 진영 칸 보스(u.boss)는 필드 5칸 밖이라 세지 않음 */
+export const fieldCount = p => p.field.reduce((n, u) => n + (u.boss ? 0 : 1), 0);
 export const GRADES = ['NORMAL', 'RARE', 'HIGH RARE', 'SUPER RARE', 'ULTRA RARE', 'MYTHIC RARE'];
 export const GRADE_SHORT = { 'NORMAL': 'N', 'RARE': 'R', 'HIGH RARE': 'HR', 'SUPER RARE': 'SR', 'ULTRA RARE': 'UR', 'MYTHIC RARE': 'MR', 'LEGENDARY RARE': 'LR' };
 // GRADES(아케이드 등급 선택·뽑기 확률)에는 LR 없음: LEGENDARY RARE 는 NPC 전용 (뽑기 확률 없음)
@@ -134,7 +136,7 @@ export function calcDamageG(attacker, target) {
 
 /** 소환 가능 여부와 사유 */
 export function canSummon(card, me, opp) {
-  if (me.field.length >= RULES.FIELD_MAX) return { ok: false, reason: '필드가 가득 찼습니다 (최대 5장)' };
+  if (fieldCount(me) >= RULES.FIELD_MAX) return { ok: false, reason: '필드가 가득 찼습니다 (최대 5장)' };
   if (card.cost > me.mana) return { ok: false, reason: `마나가 부족합니다 (${me.mana}/${card.cost})` };
   if (card.class === 'ABYSS' && opp.field.some(u => u.card.class === 'LIGHT'))
     return { ok: false, reason: '상대 필드에 빛(LIGHT) 카드가 있어 심연(ABYSS) 카드를 소환할 수 없습니다' };
@@ -486,7 +488,7 @@ export function clearBuff(p) { p.field.forEach(u => { if (u.buff) { u.raw.ATK -=
 // ===== AI 액션 정책 (게임·시뮬레이션 공용) =====
 /** 소환 전: 낼 수 있는 카드가 없고 마나가 넉넉하면 패 섞기 */
 export function aiWantShuffle(me, opp) {
-  if (!canAction('shuffle', me).ok || me.hand.length < 2 || me.field.length >= RULES.FIELD_MAX) return false;
+  if (!canAction('shuffle', me).ok || me.hand.length < 2 || fieldCount(me) >= RULES.FIELD_MAX) return false;
   const playable = me.hand.some(c => canSummon(c, me, opp).ok);
   return !playable && me.mana - RULES.SHUFFLE_COST >= 10;
 }

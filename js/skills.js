@@ -2,7 +2,7 @@
 // 스킬 데이터: data/skills.json (카드 id → 스킬 목록), 조합: data/combos.json
 // 각 스킬 효과는 '효과 내용' 기준으로 아래 ACTIVE / PASSIVE 표에 스킬 이름별로 구현
 import { sigilFor } from './gear-core.js';
-import { critRate, RULES, elementMultiplier, cardElemMult, statusResistHalf, calcDamage, gainXp, heroLocked, killXp, levelDown, levelUpOnce, genderMult, baseEvade } from './rules.js';
+import { critRate, RULES, elementMultiplier, cardElemMult, statusResistHalf, calcDamage, gainXp, heroLocked, killXp, levelDown, levelUpOnce, genderMult, baseEvade, fieldCount } from './rules.js';
 import { poolCard, makeUnit } from './rules.js';
 const YURI_AWAKE_ID = '10326';   // [각성] 임유리
 
@@ -528,7 +528,7 @@ export const ACTIVE = {
   '왜 자꾸 가려는 거야?': (u, p) => live(p).forEach(a => { addStatus(a, 'immune', 3, {}, 'immune'); addStatus(a, '왜 자꾸 가려는 거야?', 3, { atk: 0.2, label: '왜 자꾸 가려는 거야: ATK +20%' }, 'mod'); }),
   '무극': (u, p) => {
     const dead = (p.grave || []).filter(c => !owns(p, c));
-    for (const c of dead) { if (p.field.length >= RULES.FIELD_MAX) break; p.grave.splice(p.grave.indexOf(c), 1); const a = placeUnit(p, c, makeUnit); if (a) emit({ type: 'log', text: `${c.name} 부활 (무극)` }); }
+    for (const c of dead) { if (fieldCount(p) >= RULES.FIELD_MAX) break; p.grave.splice(p.grave.indexOf(c), 1); const a = placeUnit(p, c, makeUnit); if (a) emit({ type: 'log', text: `${c.name} 부활 (무극)` }); }
     for (const a of [...p.field]) { heal(a, a.maxHp, '무극'); addStatus(a, 'immune', 2, {}, 'immune'); }
   },
   // 10/25 신규 액티브
@@ -550,7 +550,7 @@ export const ACTIVE = {
   '반야': (u, p) => live(p).forEach(a => heal(a, a.maxHp * 0.2)),
   '열반': (u, p) => { live(p).forEach(a => heal(a, a.maxHp * 0.1)); healHero(p, (p.maxHp || RULES.HERO_HP) * 0.1); },
   // 이성호
-  'Fiat Lux': (u, p, f) => { const full = f.field.length >= RULES.FIELD_MAX; hitAll(u, f, 2, 0.3); if (!full) heroHit(u, f, 0.3); },
+  'Fiat Lux': (u, p, f) => { const full = fieldCount(f) >= RULES.FIELD_MAX; hitAll(u, f, 2, 0.3); if (!full) heroHit(u, f, 0.3); },
   'Sperandum Est Infestis': (u, p, f) => { const ts = live(f); for (let i = 0; i < 2; i++) ts.forEach(t => damageUnit(t, skillDamage(u, t, 0.2, { extra: t.card.cost < 30 ? 2 : 1 }), u)); ts.forEach(t => checkDeath(t, u)); },
   'Memento Mori': (u, p, f) => { const ts = live(f); hitAll(u, f, 3, 0.2); ts.forEach(t => f.field.includes(t) && sChance(0.2) && addStatus(t, 'para', 1, {}, 'para')); },
   // 임유리
@@ -1068,7 +1068,7 @@ export function aiSkillScores(u, { noSave = false } = {}) {
       case '안타까운 거죠!': sc = n >= 2 ? 86 + n * 3 : 0; break;
       case '있으면 안 되잖아?': sc = n ? 96 + n * 5 + (f.field.some(t => String(t.base.id) === YURI_AWAKE_ID) ? 30 : 0) : 0; break;
       case '왜 자꾸 가려는 거야?': sc = n && p.field.length >= 2 && !canKill ? 80 + p.field.length * 3 : 0; break;
-      case '무극': { const dead = (p.grave || []).filter(c => !owns(p, c)).length, hurt = p.field.filter(a => a.hp < a.maxHp * 0.6).length; sc = dead && p.field.length < RULES.FIELD_MAX ? 110 + dead * 5 : hurt >= 2 ? 90 + hurt * 3 : 0; break; }
+      case '무극': { const dead = (p.grave || []).filter(c => !owns(p, c)).length, hurt = p.field.filter(a => a.hp < a.maxHp * 0.6).length; sc = dead && fieldCount(p) < RULES.FIELD_MAX ? 110 + dead * 5 : hurt >= 2 ? 90 + hurt * 3 : 0; break; }
       case '러시안룰렛': sc = n ? 90 + by(f.field, x => x.card.cost).card.cost : 0; break;
       case '힘들면...죽어': sc = n ? 90 + by(f.field, x => x.mp).card.cost : 0; break;
       case '처음부터...다시.': sc = n && !canKill ? 70 + Math.round(f.field.reduce((a, t) => a + t.mp, 0) / 20) : 0; break;
