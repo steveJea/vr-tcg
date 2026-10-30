@@ -164,7 +164,7 @@ function startGame(story = null) {
   const MP = story && Number.isFinite(story.manaPool) ? Math.max(0, Math.round(story.manaPool)) : null;   // 스토리 제한 마나: 전투 시작에 한 번, 다시 차지 않음 (story.js 에서만 줌)
   const ao = story ? ArcadeOpts.DEF : ArcadeOpts.load(), grades = story ? null : allowedGrades(ao);
   const gPool = grades ? POOL.filter(c => grades.has(c.grade)) : null;
-  S = { me: newPlayer('나', first !== 'me', story?.me, story?.meHp, fs, grades), ai: newPlayer(story?.aiName || '적군', first !== 'ai', story?.ai, story?.aiHp, fs, grades), opts: ao, maxTurns: story ? RULES.MAX_TURNS : (ao.turns || Infinity), first, story, turn: first, turnNo: 0, totalTurns: 0, myTurns: 0, over: false, busy: false, fxSeen: new Set(), mercBought: 0, mercHired: null, mercOffer: [], log: { dmg: new Map(), total: 0, skills: 0, merc: null, played: new Set(), kills: {} } };
+  S = { me: newPlayer('나', first !== 'me', story?.me, story?.meHp, fs, grades), ai: newPlayer(story?.aiName || '적군', first !== 'ai', story?.ai, story?.aiHp, fs, grades), opts: ao, maxTurns: story ? RULES.MAX_TURNS : (ao.turns || Infinity), first, story, turn: first, turnNo: 0, totalTurns: 0, myTurns: 0, over: false, busy: false, fxSeen: new Set(), mercBought: 0, mercHired: null, mercOffer: [], log: { dmg: new Map(), total: 0, skills: 0, merc: null, played: new Set(), kills: {}, blocks: {} } };
   // 아케이드 일반대전(기본 설정)만 기지 보강·필드 회복·용병 고용 가능. 스토리·퀘스트·아케이드 변형 설정은 공격력 강화만
   S.limitedAids = !!story || !ArcadeOpts.isDefault(ao);
   S.mercOffer = S.limitedAids ? [] : Merc.roll(gPool || POOL, S.me);
@@ -635,7 +635,7 @@ function finish(win, reason) {
   if (S.story) {   // 스토리 모드: 아케이드 전적·랭킹·갤러리에 기록하지 않고 스토리 화면으로 결과 전달
     render();
     const cb = S.story.onEnd;
-    setTimeout(() => { $('game').classList.add('hidden'); try { cb?.(win, reason, { turns: S.turnNo, myTurns: S.myTurns, mana: S.me.manaPool ? S.me.mana : null, maxMana: S.me.manaPool ? S.me.maxMana : null, damage: S.log.total, played: [...S.log.played], kills: { ...S.log.kills } }); } catch (err) { reportError('storyEnd', err); } }, FX_OFF() ? 0 : 900);
+    setTimeout(() => { $('game').classList.add('hidden'); try { cb?.(win, reason, { turns: S.turnNo, myTurns: S.myTurns, mana: S.me.manaPool ? S.me.mana : null, maxMana: S.me.manaPool ? S.me.maxMana : null, damage: S.log.total, played: [...S.log.played], kills: { ...S.log.kills }, blocks: { ...(S.log.blocks || {}) } }); } catch (err) { reportError('storyEnd', err); } }, FX_OFF() ? 0 : 900);
     return true;
   }
   const st = Stats.record(win);
@@ -1153,6 +1153,7 @@ function onEngine(e) {
       log(`👑 ${e.p.name}: 리더 ${nm(e.unit)} 쓰러짐! 리더 스킬 해제 · ${e.base ? `진영 HP −${fmt(e.dmg)} (최대의 ${pc}%)` : `아군 진영 HP −${pc}% (남은 아군 ${e.n}장, 총 ${fmt(e.dmg)} 피해)`}`, 'text-red-400 font-bold');
       break; }
     case 'destroy': log(`${nm(e.unit)} 파괴!`, 'text-zinc-400'); pendingDying.push(uEl(e.unit)); if (S.story?.rules) storyOnDeath(e.unit); break;
+    case 'block': if (S.story && S.log.blocks && S.me.field.includes(e.unit)) { const k = String(e.unit.swap?.base.id || e.unit.card.id); S.log.blocks[k] = (S.log.blocks[k] || 0) + 1; } break;
     case 'refund': if (S.story && e.owner === S.me && e.killer?.card) { const k = String(e.killer.swap?.base.id || e.killer.card.id); S.log.kills[k] = (S.log.kills[k] || 0) + 1; }
       log(`${nm(e.killer)} 처치 보상: 마나 +${e.refund}`, 'text-sky-300'); if (e.refund > 0 && !FX_OFF()) dmgNumber(heroEl(whoOf(e.owner)), `${ic('mana')} +${e.refund} 마나`, '#7dd3fc', true); renderHero(whoOf(e.owner)); break;
     case 'levelup': log(`${nm(e.unit)} Lv${e.level}`, 'text-amber-300'); dmgNumber(uEl(e.unit), `⬆ Lv${e.level}`, '#fcd34d'); break;
@@ -1847,7 +1848,7 @@ async function viewBattle0({ session, aiName = '상대', bg = 'normal', manual =
   let x = session.next();
   const V = { auto: !manual, A0: x.value.A0, B0: x.value.B0, ask: null }; fastForward = false;
   S = { me: x.value.A, ai: x.value.B, view: V, story: { win: 'wipe', view: true, aiName }, maxTurns: mt, first: 'me', turn: 'me', turnNo: 0, totalTurns: 0, myTurns: 0, over: false, busy: true, fxSeen: new Set(), mercBought: 0, mercHired: null, mercOffer: [], limitedAids: true,
-    log: { dmg: new Map(), total: 0, skills: 0, merc: null, played: new Set(), kills: {} } };
+    log: { dmg: new Map(), total: 0, skills: 0, merc: null, played: new Set(), kills: {}, blocks: {} } };
   S.me.name = '나'; S.ai.name = aiName;
   for (const w of ['me', 'ai']) { $(`${w}-hp`).classList.toggle('hidden', S[w].noBase); $(`${w}-hpbar`).parentElement.classList.toggle('hidden', S[w].noBase); }   // 보스리그: 진영 HP 표시
   selected = null; $('log').innerHTML = ''; fxQueue.length = 0; vidGate = Promise.resolve(); hpPrev.clear();

@@ -37,7 +37,7 @@ SQL Editor 에서 형님이 직접 실행하는 파일들. **같은 함수를 �
 27. `player_xp_x3.sql` (2026-10-23)
 28. `story_ch6.sql` (2026-10-23)
 29. `tower_v2.sql` (2026-10-25)
-30. `story_ch1_reward.sql` (2026-10-25)
+30. `story_ch1_reward.sql` (2026-10-25) — ⚠ `_story_complete_phase_e0` 최신 아님 (story_block_exp.sql)
 31. `cards_1025.sql` (2026-10-25)
 32. `story_decks.sql` (2026-10-26) — ⚠ 일부 함수 최신 아님
 33. `pvp.sql` (2026-10-26) — ⚠ 일부 함수 최신 아님
@@ -87,6 +87,7 @@ SQL Editor 에서 형님이 직접 실행하는 파일들. **같은 함수를 �
 77. `pvp_boss_league.sql` (2026-10-30) — PvP 보스리그 (mode boss). `_pvp_ok` 최신 = 이 파일
 78. `story_ch0_p5.sql` (2026-10-30) — 챕0 P5 보스전 튜토리얼 (보상 주예린)
 79. `story_ch8_boss_one.sql` (2026-10-30) — 챕8 P15 보스 1명 (enemy_count 1)
+80. `story_block_exp.sql` (2026-10-30) — 막기 전투 EXP (`_story_complete_phase_e0` 최신; `story_ch1_reward.sql` 버전은 옛 것)
 
 ## 여러 파일에 정의된 함수 → 최신 정의 파일
 
