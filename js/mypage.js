@@ -139,7 +139,7 @@
   function ensure() {
     let m = $('mp-modal'); if (m) return m;
     m = document.createElement('div'); m.id = 'mp-modal'; m.className = 'mp-modal hidden';
-    m.innerHTML = `<div class="mp-panel" role="dialog" aria-label="마이페이지"><div class="mp-head"><div class="mp-title">${window.VRIcon?.icon('mypage_btn', { alt: '' }) || '👤'} 마이페이지</div><button class="mp-x" id="mp-close" aria-label="닫기">✕</button></div><div id="mp-body" class="mp-body"></div></div>`;
+    m.innerHTML = `<div class="mp-panel" role="dialog" aria-label="마이페이지"><div class="mp-head"><div class="mp-title">${window.VRIcon?.icon('mypage_btn', { alt: '' }) || '👤'} 마이페이지</div><span data-friendbtn class="mp-friend"></span><button class="mp-x" id="mp-close" aria-label="닫기">✕</button></div><div id="mp-body" class="mp-body"></div></div>`;
     document.body.appendChild(m);
     m.addEventListener('click', e => { if (e.target === m || e.target.closest('#mp-close')) return close();
       const nv = e.target.closest('[data-nav]'); if (nv) { close(); const S = window.VRStory; return nv.dataset.nav === 'story' ? S?.openMap?.(+nv.dataset.ch) : nv.dataset.nav === 'decks' ? S?.openDecks?.() : S?.openCards?.(); }

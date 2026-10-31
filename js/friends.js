@@ -1,5 +1,5 @@
 // ===== 👥 친구 (1단계) — 서버: supabase/friends.sql =====
-// 버튼: [data-friendbtn] (메인 상단·스토리 허브) · 받은 신청 수 뱃지
+// 버튼: [data-friendbtn] (마이페이지 상단) · 받은 신청 수 뱃지: 버튼 + 마이 탭([data-friendbadge])
 // 탭: 친구 목록 / 받은 신청 / 보낸 신청 / 찾기 (닉네임 또는 친구 코드 8자리)
 // 접속 상태: 3분마다 friends_ping, 5분 이내면 🟢 접속 중
 // SQL 실행 전이거나 비로그인이면 버튼이 안 보임
@@ -25,6 +25,7 @@
     return cache; }
 
   function paint() {
+    for (const t of document.querySelectorAll('[data-friendbadge]')) { t.querySelector('.fr-tabbadge')?.remove(); if (!off && window.VRCloud?.user && pending > 0) t.insertAdjacentHTML('beforeend', `<i class="story-badge fr-tabbadge">${pending}</i>`); }
     for (const w of document.querySelectorAll('[data-friendbtn]')) {
       if (off || !window.VRCloud?.user) { w.innerHTML = ''; continue; }
       if (!w.querySelector('.friend-btn')) { w.innerHTML = '<button class="story-mailbtn friend-btn" type="button" aria-label="친구" title="친구">👥<span>친구</span></button>'; w.firstChild.onclick = open; }
@@ -76,5 +77,5 @@
   setTimeout(() => { paint(); ping(); }, 1500); setTimeout(() => { paint(); ping(); }, 4000);
   setInterval(() => { if (!document.hidden) ping(); }, 180000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) ping(); });
-  new MutationObserver(() => { if (document.querySelector('[data-friendbtn]:empty')) paint(); }).observe(document.body, { childList: true, subtree: true });
+  new MutationObserver(() => { if (document.querySelector('[data-friendbtn]:empty') || document.querySelector('[data-friendbadge]:not(:has(.fr-tabbadge))') && pending > 0) paint(); }).observe(document.body, { childList: true, subtree: true });
 })();
