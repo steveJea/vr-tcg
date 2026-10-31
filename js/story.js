@@ -879,6 +879,7 @@
     // party.statMul: { 카드id: { HP: 2, DEF: 2 } } → 이 페이즈에서만 해당 카드 스탯 배율 (최종 스탯 × 배율, 반올림)
     const SM = ph.party?.statMul || {}, mul = c => { const m = SM[String(c.id)]; if (!m) return c; const o = { ...c }; for (const k of Object.keys(m)) if (o[k] != null) o[k] = Math.round(o[k] * m[k]); return o; };
     const me = (picked || deckInstances()).slice(0, pickMax(ch, ph)).map(o => gearOn(mul({ ...boosted(o), uid: o.uid }), 'story')).filter(x => x.id);
+    { const BL = ph.rules?.blind; if (BL) me.forEach(c => { if (BL[String(c.id)]) c.blindP = +BL[String(c.id)]; }); }   // rules.blind: 내 카드 고정 명중 저하 (CH12 P20)
     deckUid = Object.fromEntries(me.map(c => [String(c.id), c.uid]));
     const bc = boss ? bossOf(ph, enemies) : null;
     if (bc && ph.bossCdMinus) bc.gear = { ...(bc.gear || {}), cd: (bc.gear?.cd || 0) + (ph.bossCdMinus | 0) };   // 페이즈 bossCdMinus: 보스 스킬 쿨타임 -N (장비 쿨타임과 같은 경로, 최소 1)
@@ -926,12 +927,14 @@
     if (R.expire && R.invuln != null) win.push(['⏳', `<b>${R.expire}턴</b> 버티기`, `${R.expire}턴 후 ${nm(R.invuln)} 자동 소멸`]);
     else if (boss) win.push(['👑', '상대 진영 HP <b>0</b>', `보스 ${nm(ph.bossId)}는 쓰러지지 않아요`]);
     else win.push(['⚔️', '적 <b>전멸</b>', '']);
+    if (R.survive) win.push(['⏳', `또는 <b>${R.survive}턴</b> 생존`, '']);
     for (const id of R.mustLive || []) lose.push(['💔', `<b>${nm(id)}</b> 쓰러짐`, '']);
     const mp = !ch.tutorial || !!ph.pool, ms = ph.mustSummon || (mp && ch.single ? (ph.party?.forced || ph.party?.mustLive || []) : []);
     if (ms.length) lose.push(['📌', `<b>${ms.map(nm).join('·')}</b> ${ms.length >= 2 ? 3 : 2}턴 안에 소환 못 함`, '']);
     lose.push(['☠️', mp ? '아군 <b>전멸</b> (남은 마나로 소환 불가)' : '아군 <b>전멸</b>', '']);
     if (mp) info.push(['💧', `시작 마나 <b>${storyMana(ch, ph, deckInstances())}</b> · 다시 차지 않아요 (소환·공격력 강화에 사용)`]);
-    lose.push(['⌛', `<b>${RULES_MAX_MY()}턴</b> 안에 못 이김`, '']);
+    if (!R.survive) lose.push(['⌛', `<b>${R.maxTurns ? Math.floor(R.maxTurns / 2) : RULES_MAX_MY()}턴</b> 안에 못 이김`, '']);
+    for (const [id, p] of Object.entries(R.blind || {})) info.push(['🌫️', `${nm(id)}: 기본 공격 명중률 <b>-${Math.round(p * 100)}%</b>`, '스킬은 영향 없음']);
     if (boss && ph.bossCdMinus) info.push(['⏱️', `보스 스킬 쿨타임 <b>-${ph.bossCdMinus | 0}</b>`]);
     if (R.invuln != null) info.push(['🛡️', `${nm(R.invuln)}: 피해를 입지 않음`]);
     for (const r of R.revive || []) info.push(['🩸', `${nm(r.id)}: 쓰러지면 <b>${Math.max(1, r.delay | 0 || 1)}턴 후</b> 부활 (${r.level === 'keep' ? '레벨 유지' : 'Lv1'})${r.times ? ` · ${r.times}회` : ''}`]);
