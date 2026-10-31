@@ -861,3 +861,7 @@ body.story-media-on .story-dlg-skip { left: 4px; right: auto; top: calc(4px + en
 /* 스토리 맵: 상태 박스(레벨·행동력·심연석·별 보상)를 맨 위 한 줄로 */
 .story-map-status{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:6px;margin:6px 0 4px;position:relative;z-index:2}
 .story-map-status .story-player-row,.story-map-status .story-starbox-wrap{margin:0}
+.story-mailbtn{position:relative;display:inline-flex;align-items:center;gap:4px;padding:4px 12px;border-radius:999px;background:rgba(0,0,0,.55);border:1px solid rgba(147,197,253,.45);color:#dbeafe;font-size:13px;min-height:30px;cursor:pointer}
+.story-mailbtn:hover{background:rgba(30,58,138,.55)}
+@media (max-width:480px){.story-mailbtn span{display:none}.story-mailbtn{padding:4px 10px}}
+.story-mailbtn .story-badge{position:absolute;top:-6px;right:-6px;margin:0}
