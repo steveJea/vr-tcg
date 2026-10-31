@@ -139,3 +139,14 @@
 @keyframes stfx-bub { 0% { opacity: 0; transform: translateY(0) scale(.5); } 30% { opacity: .9; } 100% { opacity: 0; transform: translateY(-34px) scale(1); } }
 .fx-dmg-tick { font-size: 1.05rem; }
 @media (prefers-reduced-motion: reduce) { .stfx-bub, .stfx-spk, .stfx-pulse-poison > .relative, .stfx-pulse-curse > .relative, .stfx-pulse-regen > .relative { animation: none; } }
+/* 출혈·화상 틱 */
+.stfx-tick.bleed { width: 6px; height: 10px; border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%; background: #dc2626; --dy: 30px !important; }
+.stfx-tick.burn { width: 6px; height: 6px; background: radial-gradient(circle, #fff7ed, #fb923c 50%, #dc2626); box-shadow: 0 0 8px #f97316; }
+.stfx-pulse-bleed > .relative { animation: stfx-pulse-b .6s ease-out; }
+.stfx-pulse-burn > .relative { animation: stfx-pulse-f .6s ease-out; }
+@keyframes stfx-pulse-b { 0%,100% { filter: none; } 35% { filter: sepia(.5) saturate(3) hue-rotate(-30deg) brightness(.85); } }
+@keyframes stfx-pulse-f { 0%,100% { filter: none; } 35% { filter: sepia(.6) saturate(2.5) hue-rotate(-15deg) brightness(1.15); } }
+.unit.st-burn > .relative { box-shadow: 0 0 0 1px rgba(249,115,22,.55), 0 4px 10px -2px rgba(249,115,22,.6); border-radius: 8px; }
+.stfx-emb { position: absolute; bottom: 6px; left: 30%; width: 5px; height: 5px; border-radius: 50%; background: radial-gradient(circle, #fff7ed, #fb923c); box-shadow: 0 0 6px #f97316; animation: stfx-bub 1.8s ease-in infinite; }
+.stfx-emb.b { left: 64%; animation-delay: .9s; }
+@media (prefers-reduced-motion: reduce) { .stfx-emb, .stfx-pulse-bleed > .relative, .stfx-pulse-burn > .relative { animation: none; } }

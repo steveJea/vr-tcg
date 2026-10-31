@@ -1213,7 +1213,7 @@ function onEngine(e) {
   switch (e.type) {
     case 'skill': if (/^(UR|MR)$/.test(e.unit.card.grade)) bigSkillAt = performance.now(); log(`${e.unit.owner.name}: ${nm(e.unit)} ⚡[${e.skill.name}] (MP ${e.skill.mp})`, 'text-fuchsia-300'); break;
     case 'passive': log(`${e.unit.owner.name}: ${nm(e.unit)} ✨[${e.name}]${e.text ? ' — ' + e.text : ''}`, 'text-fuchsia-200'); if (!FX_OFF()) dmgNumber(uEl(e.unit), `✨${e.name}`, '#f0abfc'); if (!CUT_OFF()) passiveCutIn(e.unit, e.name); break;
-    case 'dmg': if (e.tick) { const el = uEl(e.unit); tickFx(el, e.tick); shake(el, { dmg: 0 }); dmgNumber(el, `-${fmt(e.dmg)}`, e.tick === 'curse' ? '#c084fc' : '#a3e635', false, 'fx-dmg-tick'); break; }   // 지속 피해 틱: 피 대신 독·저주 연출
+    case 'dmg': if (e.tick) { const el = uEl(e.unit); tickFx(el, e.tick); shake(el, { dmg: 0 }); dmgNumber(el, `-${fmt(e.dmg)}`, ({ curse: '#c084fc', bleed: '#f87171', burn: '#fb923c' })[e.tick] || '#a3e635', false, 'fx-dmg-tick'); break; }   // 지속 피해 틱: 피 대신 독·저주 연출
     { playSe(1); const el = uEl(e.unit); shake(el, { dmg: e.dmg, crit: critSet.has(e.unit), big: isBigHit() }); if (typeof e.dmg !== 'number' || e.dmg > 0) hitFx(el, 'blood'); if (typeof e.dmg === 'number') critNum(el, e.dmg, e.unit); else dmgNumber(el, e.dmg); break; }
     case 'hero': { if (e.dmg > 0) playSe(3); const el = heroEl(whoOf(e.p)); shake(el, { dmg: e.dmg, big: isBigHit() }); if (e.dmg > 0) hitFx(el, 'blood'); dmgNumber(el, `-${fmt(e.dmg)}`, e.kind === 'self' ? '#fca5a5' : undefined); log(`${e.p.name} 본진 ${fmt(e.dmg)} 피해${e.kind === 'self' ? ' (자기 공격)' : ''}`, 'text-orange-300'); break; }
     case 'heal': { const el = uEl(e.unit); if (e.why === '재생') tickFx(el, 'regen'); dmgNumber(el, `+${fmt(e.amt)}`, e.why === '재생' ? '#fde68a' : '#6ee7b7'); break; }
