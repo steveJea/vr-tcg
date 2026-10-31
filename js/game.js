@@ -1549,8 +1549,11 @@ const sortVal = { grade: c => GRADE_RANK[c.grade] ?? 0, cost: c => c.cost, atk: 
 let handSort = localStorage.getItem(SORT_KEY) || 'none';
 if (!SORTS[handSort]) handSort = 'none';
 function sortedHand(hand) {
-  const f = sortVal[handSort]; if (!f) return [...hand];
-  return [...hand].sort((a, b) => (f(b) || 0) - (f(a) || 0) || (b.cost || 0) - (a.cost || 0));
+  const f = sortVal[handSort];
+  const out = !f ? [...hand] : [...hand].sort((a, b) => (f(b) || 0) - (f(a) || 0) || (b.cost || 0) - (a.cost || 0));
+  // 필수 출전 인재(아직 안 낸 카드)는 정렬과 상관없이 맨 앞 — 나머지는 고른 정렬 그대로
+  const must = new Set(mustLeft().map(String)); if (!must.size) return out;
+  return [...out.filter(c => must.has(String(c.id))), ...out.filter(c => !must.has(String(c.id)))];
 }
 function renderSortBar() {
   const bar = $('hand-sort'); if (!bar) return;
