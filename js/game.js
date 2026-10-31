@@ -1331,7 +1331,7 @@ function renderHero(who) {
   const p = S[who], max = p.maxHp || RULES.HERO_HP;
   $(`${who}-hp`).textContent = `${fmt(p.hp)} / ${fmt(max)}`;
   $(`${who}-hpbar`).style.width = Math.max(0, p.hp / max * 100) + '%';
-  $(`${who}-mana`).innerHTML = (p.manaPool ? `<b class="pool-mana">${p.mana}</b> / ${p.maxMana} <small class="pool-note">(충전 없음)</small>${(() => { const n = mustLeft().length; if (!n) return ''; const left = Math.max(0, S.mustSummon.by - S.myTurns + (S.turn === 'me' ? 1 : 0)); return ` <span class="pool-must">📌 필수 인재 소환까지 ${left}턴</span>`; })()}` : `${p.mana} / ${p.maxMana}`) + (p.accel ? ` ${ic('gear', { cls: 'ui-ic-sm' })}+${RULES.MANA_PER_TURN + p.accel * RULES.ACCEL_BONUS}/턴` : '');
+  $(`${who}-mana`).innerHTML = (p.manaPool ? `<b class="pool-mana">${p.mana}</b> / ${p.maxMana} <small class="pool-note">(충전 없음)</small>${(() => { const n = mustLeft().length; if (!n) return ''; const left = Math.max(0, S.mustSummon.by - S.myTurns + (S.turn === 'me' ? 1 : 0)); return ` <span class="pool-must">📌 필수 인재 소환까지 ${left}턴</span>`; })()}` : `${p.mana} / ${p.maxMana}`) + (p.accel ? ` ${ic('mana_accel', { cls: 'ui-ic-sm' })}+${RULES.MANA_PER_TURN + p.accel * RULES.ACCEL_BONUS}/턴` : '');
   $(`${who}-deck`).textContent = p.deck.length;
   $(`${who}-handcount`).textContent = p.hand.length;
 }

@@ -378,7 +378,7 @@ export const ACTIONS = {
   heal:    { label: '기지 보강', icon: '🏰', img: 'base', cost: () => RULES.HEAL_COST },
   buff:    { label: '공격력 강화', icon: '⚔️', img: 'atk', cost: () => RULES.BUFF_COST },
   fieldheal: { label: '필드 회복', icon: '💚', img: 'heal', cost: () => RULES.FIELD_HEAL_COST },
-  accel:   { label: '마나 가속기', icon: '⚙️', img: 'gear', cost: () => RULES.ACCEL_COST },
+  accel:   { label: '마나 가속기', icon: '⏩', img: 'mana_accel', cost: () => RULES.ACCEL_COST },
 };
 
 /** 셔플용 전체 카드 풀 */
