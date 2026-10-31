@@ -16,10 +16,10 @@ window.STORY_DATA.chapters.push({
    "enemies": {
     "ids": [
      "10491",
-     "10491",
-     "10491",
-     "10491",
-     "10491"
+     "10163",
+     "10163",
+     "10163",
+     "10163"
     ],
     "boost": {
      "10491": {
@@ -28,6 +28,13 @@ window.STORY_DATA.chapters.push({
       "DEF": 263,
       "storyLv": 70,
       "power": 211427
+     },
+     "10163": {
+      "HP": 558,
+      "ATK": 93,
+      "DEF": 81,
+      "storyLv": 71,
+      "power": 30851
      }
     }
    },
@@ -125,9 +132,9 @@ window.STORY_DATA.chapters.push({
    "enemies": {
     "ids": [
      "10491",
-     "10491",
-     "10491",
-     "10163",
+     "10164",
+     "10164",
+     "10164",
      "10164"
     ],
     "boost": {
@@ -137,13 +144,6 @@ window.STORY_DATA.chapters.push({
       "DEF": 266,
       "storyLv": 71,
       "power": 213738
-     },
-     "10163": {
-      "HP": 558,
-      "ATK": 93,
-      "DEF": 81,
-      "storyLv": 71,
-      "power": 30851
      },
      "10164": {
       "HP": 589,
@@ -248,7 +248,7 @@ window.STORY_DATA.chapters.push({
    "enemies": {
     "ids": [
      "10491",
-     "10163",
+     "10164",
      "10164",
      "10165",
      "10165"
@@ -260,13 +260,6 @@ window.STORY_DATA.chapters.push({
       "DEF": 269,
       "storyLv": 72,
       "power": 216049
-     },
-     "10163": {
-      "HP": 563,
-      "ATK": 94,
-      "DEF": 81,
-      "storyLv": 72,
-      "power": 31093
      },
      "10164": {
       "HP": 595,
@@ -362,23 +355,23 @@ window.STORY_DATA.chapters.push({
   {
    "no": 4,
    "type": "normal",
-   "enemyName": "불량배-W",
+   "enemyName": "[염원] 최윤아",
    "title": "창문 옆의 그림자",
    "enemies": {
     "ids": [
-     "10165",
+     "10490",
      "10166",
      "10166",
      "10163",
      "10164"
     ],
     "boost": {
-     "10165": {
-      "HP": 632,
-      "ATK": 95,
-      "DEF": 95,
+     "10490": {
+      "HP": 1552,
+      "ATK": 252,
+      "DEF": 252,
       "storyLv": 73,
-      "power": 34344
+      "power": 181795
      },
      "10166": {
       "HP": 664,
@@ -487,7 +480,7 @@ window.STORY_DATA.chapters.push({
    "hero": [
     "10491"
    ],
-   "bossId": "10165",
+   "bossId": "10490",
    "after": [
     {
      "speaker": "[염원] 최윤정",
@@ -500,37 +493,27 @@ window.STORY_DATA.chapters.push({
   {
    "no": 5,
    "type": "normal",
-   "enemyName": "불량배-X",
+   "enemyName": "[염원] 최윤정",
    "title": "유리 너머",
    "enemies": {
     "ids": [
-     "10166",
-     "10167",
-     "10167",
-     "10165",
-     "10165"
+     "10491",
+     "10490"
     ],
     "boost": {
-     "10166": {
-      "HP": 670,
-      "ATK": 112,
-      "DEF": 112,
+     "10491": {
+      "HP": 1960,
+      "ATK": 274,
+      "DEF": 274,
       "storyLv": 74,
-      "power": 38034
+      "power": 220365
      },
-     "10167": {
-      "HP": 734,
-      "ATK": 128,
-      "DEF": 128,
+     "10490": {
+      "HP": 1568,
+      "ATK": 255,
+      "DEF": 255,
       "storyLv": 74,
-      "power": 42430
-     },
-     "10165": {
-      "HP": 638,
-      "ATK": 96,
-      "DEF": 96,
-      "storyLv": 74,
-      "power": 34684
+      "power": 183790
      }
     }
    },
@@ -613,7 +596,7 @@ window.STORY_DATA.chapters.push({
    "hero": [
     "10491"
    ],
-   "bossId": "10166",
+   "bossId": "10491",
    "after": [
     {
      "speaker": "내레이션",
