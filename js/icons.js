@@ -140,5 +140,198 @@
   /** 아이콘, 없으면 fb 문자 */
   const or = (name, fb, opts) => icon(name, opts) || fb || '';
   function register(name, def) { ICONS[name] = { alt: name, ...def }; }
-  window.VRIcon = { icon, register, swap, cur, or, ICONS, EMOJI, BASE };
+
+  // ===== set4: 남은 UI 이모지 → 그림 (화면 글자를 자동 치환, 대사·입력칸 제외) =====
+  ICONS["magic_orb_guild"] = ICONS["magic_orb_guild"] || { src: 'magic_orb_guild.webp', alt: "magic orb (guild" };
+  ICONS["drink_item"] = ICONS["drink_item"] || { src: 'drink_item.webp', alt: "drink item" };
+  ICONS["upgrade"] = ICONS["upgrade"] || { src: 'upgrade.webp', alt: "upgrade" };
+  ICONS["pinned"] = ICONS["pinned"] || { src: 'pinned.webp', alt: "pinned" };
+  ICONS["critical"] = ICONS["critical"] || { src: 'critical.webp', alt: "critical" };
+  ICONS["deck"] = ICONS["deck"] || { src: 'deck.webp', alt: "deck" };
+  ICONS["invite"] = ICONS["invite"] || { src: 'invite.webp', alt: "invite" };
+  ICONS["war_flag"] = ICONS["war_flag"] || { src: 'war_flag.webp', alt: "war flag" };
+  ICONS["1st_place"] = ICONS["1st_place"] || { src: '1st_place.webp', alt: "1st place" };
+  ICONS["2nd_place"] = ICONS["2nd_place"] || { src: '2nd_place.webp', alt: "2nd place" };
+  ICONS["3rd_place"] = ICONS["3rd_place"] || { src: '3rd_place.webp', alt: "3rd place" };
+  ICONS["done"] = ICONS["done"] || { src: 'done.webp', alt: "done" };
+  ICONS["ai_opponent"] = ICONS["ai_opponent"] || { src: 'ai_opponent.webp', alt: "AI opponent" };
+  ICONS["shop_cart"] = ICONS["shop_cart"] || { src: 'shop_cart.webp', alt: "shop cart" };
+  ICONS["guild_ritual_candle"] = ICONS["guild_ritual_candle"] || { src: 'guild_ritual_candle.webp', alt: "guild ritual candle" };
+  ICONS["dragon"] = ICONS["dragon"] || { src: 'dragon.webp', alt: "dragon" };
+  ICONS["skip"] = ICONS["skip"] || { src: 'skip.webp', alt: "skip" };
+  ICONS["guild_members"] = ICONS["guild_members"] || { src: 'guild_members.webp', alt: "guild members" };
+  ICONS["mail_received"] = ICONS["mail_received"] || { src: 'mail_received.webp', alt: "mail received" };
+  ICONS["home_base"] = ICONS["home_base"] || { src: 'home_base.webp', alt: "home base" };
+  ICONS["war_jester_event"] = ICONS["war_jester_event"] || { src: 'war_jester_event.webp', alt: "war jester event" };
+  ICONS["void"] = ICONS["void"] || { src: 'void.webp', alt: "void" };
+  ICONS["gear_bag"] = ICONS["gear_bag"] || { src: 'gear_bag.webp', alt: "gear bag" };
+  ICONS["craft"] = ICONS["craft"] || { src: 'craft.webp', alt: "craft" };
+  ICONS["stop"] = ICONS["stop"] || { src: 'stop.webp', alt: "stop" };
+  ICONS["guild_emblem"] = ICONS["guild_emblem"] || { src: 'guild_emblem.webp', alt: "guild emblem" };
+  ICONS["swap"] = ICONS["swap"] || { src: 'swap.webp', alt: "swap" };
+  ICONS["live"] = ICONS["live"] || { src: 'live.webp', alt: "live" };
+  ICONS["medal"] = ICONS["medal"] || { src: 'medal.webp', alt: "medal" };
+  ICONS["star"] = ICONS["star"] || { src: 'star.webp', alt: "star" };
+  ICONS["reject_trade"] = ICONS["reject_trade"] || { src: 'reject_trade.webp', alt: "reject trade" };
+  ICONS["bind"] = ICONS["bind"] || { src: 'bind.webp', alt: "bind" };
+  ICONS["watch"] = ICONS["watch"] || { src: 'watch.webp', alt: "watch" };
+  ICONS["announcement"] = ICONS["announcement"] || { src: 'announcement.webp', alt: "announcement" };
+  ICONS["receive"] = ICONS["receive"] || { src: 'receive.webp', alt: "receive" };
+  ICONS["money"] = ICONS["money"] || { src: 'money.webp', alt: "money" };
+  ICONS["purple_marker"] = ICONS["purple_marker"] || { src: 'purple_marker.webp', alt: "purple marker" };
+  ICONS["pvp_ticket"] = ICONS["pvp_ticket"] || { src: 'pvp_ticket.webp', alt: "pvp ticket" };
+  ICONS["wind"] = ICONS["wind"] || { src: 'wind.webp', alt: "wind" };
+  ICONS["light_element"] = ICONS["light_element"] || { src: 'light_element.webp', alt: "light element" };
+  ICONS["defeat"] = ICONS["defeat"] || { src: 'defeat.webp', alt: "defeat" };
+  ICONS["unlimited"] = ICONS["unlimited"] || { src: 'unlimited.webp', alt: "unlimited" };
+  ICONS["exchange"] = ICONS["exchange"] || { src: 'exchange.webp', alt: "exchange" };
+  ICONS["pause"] = ICONS["pause"] || { src: 'pause.webp', alt: "pause" };
+  ICONS["balance"] = ICONS["balance"] || { src: 'balance.webp', alt: "balance" };
+  ICONS["raid_demon_boss"] = ICONS["raid_demon_boss"] || { src: 'raid_demon_boss.webp', alt: "raid demon boss" };
+  ICONS["guild_rose"] = ICONS["guild_rose"] || { src: 'guild_rose.webp', alt: "guild rose" };
+  ICONS["guild_bird"] = ICONS["guild_bird"] || { src: 'guild_bird.webp', alt: "guild bird" };
+  ICONS["empty_slot"] = ICONS["empty_slot"] || { src: 'empty_slot.webp', alt: "empty slot" };
+  ICONS["guild_fang"] = ICONS["guild_fang"] || { src: 'guild_fang.webp', alt: "guild fang" };
+  ICONS["guild_snake"] = ICONS["guild_snake"] || { src: 'guild_snake.webp', alt: "guild snake" };
+  ICONS["guild_spider"] = ICONS["guild_spider"] || { src: 'guild_spider.webp', alt: "guild spider" };
+  ICONS["moon"] = ICONS["moon"] || { src: 'moon.webp', alt: "moon" };
+  ICONS["search"] = ICONS["search"] || { src: 'search.webp', alt: "search" };
+  ICONS["edit"] = ICONS["edit"] || { src: 'edit.webp', alt: "edit" };
+  ICONS["add"] = ICONS["add"] || { src: 'add.webp', alt: "add" };
+  ICONS["party"] = ICONS["party"] || { src: 'party.webp', alt: "party" };
+  ICONS["fail"] = ICONS["fail"] || { src: 'fail.webp', alt: "fail" };
+  ICONS["dark_heart"] = ICONS["dark_heart"] || { src: 'dark_heart.webp', alt: "dark heart" };
+  ICONS["blue_marker"] = ICONS["blue_marker"] || { src: 'blue_marker.webp', alt: "blue marker" };
+  ICONS["yellow_marker"] = ICONS["yellow_marker"] || { src: 'yellow_marker.webp', alt: "yellow marker" };
+  ICONS["chat"] = ICONS["chat"] || { src: 'chat.webp', alt: "chat" };
+  ICONS["payment"] = ICONS["payment"] || { src: 'payment.webp', alt: "payment" };
+  ICONS["map"] = ICONS["map"] || { src: 'map.webp', alt: "map" };
+  ICONS["tower_tier_mountain"] = ICONS["tower_tier_mountain"] || { src: 'tower_tier_mountain.webp', alt: "tower tier mountain" };
+  ICONS["finish"] = ICONS["finish"] || { src: 'finish.webp', alt: "finish" };
+  ICONS["strength"] = ICONS["strength"] || { src: 'strength.webp', alt: "strength" };
+  ICONS["greeting"] = ICONS["greeting"] || { src: 'greeting.webp', alt: "greeting" };
+  ICONS["male"] = ICONS["male"] || { src: 'male.webp', alt: "male" };
+  ICONS["female"] = ICONS["female"] || { src: 'female.webp', alt: "female" };
+  ICONS["abyss"] = ICONS["abyss"] || { src: 'abyss.webp', alt: "abyss" };
+  ICONS["time_over"] = ICONS["time_over"] || { src: 'time_over.webp', alt: "time over" };
+  ICONS["peace"] = ICONS["peace"] || { src: 'peace.webp', alt: "peace" };
+  ICONS["cloud_save"] = ICONS["cloud_save"] || { src: 'cloud_save.webp', alt: "cloud save" };
+  ICONS["online"] = ICONS["online"] || { src: 'online.webp', alt: "online" };
+  ICONS["orange_marker"] = ICONS["orange_marker"] || { src: 'orange_marker.webp', alt: "orange marker" };
+  ICONS.mailbox = ICONS.mailbox || { src: 'mailbox.webp', alt: '우편함' };
+  const EMOJI2 = {
+    "🔮": "magic_orb_guild",
+    "🥤": "drink_item",
+    "⬆": "upgrade",
+    "📮": "mailbox",
+    "📌": "pinned",
+    "💥": "critical",
+    "🗂": "deck",
+    "📨": "invite",
+    "🏴": "war_flag",
+    "🥇": "1st_place",
+    "🥈": "2nd_place",
+    "🥉": "3rd_place",
+    "✅": "done",
+    "🤖": "ai_opponent",
+    "🛒": "shop_cart",
+    "🕯": "guild_ritual_candle",
+    "🐉": "dragon",
+    "⏭": "skip",
+    "👥": "guild_members",
+    "📬": "mail_received",
+    "🏠": "home_base",
+    "🤡": "war_jester_event",
+    "🌌": "void",
+    "🎒": "gear_bag",
+    "🔨": "craft",
+    "✋": "stop",
+    "⚜": "guild_emblem",
+    "🔄": "swap",
+    "🔴": "live",
+    "🏅": "medal",
+    "⭐": "star",
+    "🙅": "reject_trade",
+    "⛓": "bind",
+    "👁": "watch",
+    "📢": "announcement",
+    "📥": "receive",
+    "💰": "money",
+    "🟣": "purple_marker",
+    "🎫": "pvp_ticket",
+    "🍃": "wind",
+    "☀": "light_element",
+    "💔": "defeat",
+    "♾": "unlimited",
+    "💱": "exchange",
+    "⏸": "pause",
+    "⚖": "balance",
+    "👹": "raid_demon_boss",
+    "🌹": "guild_rose",
+    "🐦": "guild_bird",
+    "⬛": "empty_slot",
+    "🦷": "guild_fang",
+    "🐍": "guild_snake",
+    "🕷": "guild_spider",
+    "🌙": "moon",
+    "🔎": "search",
+    "✏": "edit",
+    "➕": "add",
+    "🧑‍🤝‍🧑": "party",
+    "❌": "fail",
+    "🖤": "dark_heart",
+    "🔵": "blue_marker",
+    "🟡": "yellow_marker",
+    "💬": "chat",
+    "💳": "payment",
+    "🗺": "map",
+    "❤": "hp",
+    "🏔": "tower_tier_mountain",
+    "🏁": "finish",
+    "💪": "strength",
+    "👋": "greeting",
+    "🚹": "male",
+    "🚺": "female",
+    "🕳": "abyss",
+    "⌛": "time_over",
+    "🕊": "peace",
+    "☁": "cloud_save",
+    "🟢": "online",
+    "🟠": "orange_marker"
+  };
+  const norm = s => s.replace(/\uFE0F/g, '');
+  const E2RE = new RegExp(Object.keys(EMOJI2).sort((a, b) => b.length - a.length).map(e => e.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\uFE0F?').join('|'), 'gu');
+  const SKIP_SEL = '.story-dlg, #story-dlg, #event-layer, .ev-line, input, textarea, select, script, style, [contenteditable], [data-noemoji], .stfx-text';
+  function swapText(tn) {
+    const t = tn.nodeValue; E2RE.lastIndex = 0; if (!t || !E2RE.test(t)) return;
+    const p = tn.parentElement; if (!p || p.closest(SKIP_SEL)) return;
+    E2RE.lastIndex = 0;
+    const frag = document.createDocumentFragment(); let last = 0, m;
+    while ((m = E2RE.exec(t))) {
+      if (m.index > last) frag.appendChild(document.createTextNode(t.slice(last, m.index)));
+      const name = EMOJI2[norm(m[0])], d = ICONS[name];
+      if (!d) { frag.appendChild(document.createTextNode(m[0])); last = m.index + m[0].length; continue; }
+      const img = document.createElement('img');
+      img.src = BASE + d.src; img.alt = m[0]; img.className = `ui-ic ui-ic-${name}`; img.width = 64; img.height = 64; img.draggable = false; img.decoding = 'async';
+      img.onerror = () => img.replaceWith(document.createTextNode(m0));   // 그림 못 받으면 이모지로
+      const m0 = m[0]; frag.appendChild(img); last = m.index + m[0].length;
+    }
+    if (last < t.length) frag.appendChild(document.createTextNode(t.slice(last)));
+    tn.replaceWith(frag);
+  }
+  function swapTree(root) {
+    if (!root) return;
+    if (root.nodeType === 3) return swapText(root);
+    if (root.nodeType !== 1 || root.closest?.(SKIP_SEL)) return;
+    const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT), list = [];
+    for (let n; (n = w.nextNode());) list.push(n);
+    list.forEach(swapText);
+  }
+  function startSwap() {
+    swapTree(document.body);
+    new MutationObserver(ms => { for (const mu of ms) { if (mu.type === 'characterData') swapText(mu.target); else mu.addedNodes.forEach(swapTree); } })
+      .observe(document.body, { childList: true, subtree: true, characterData: true });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', startSwap); else startSwap();
+  window.VRIcon = { icon, register, swap, cur, or, ICONS, EMOJI, EMOJI2, BASE, swapTree };
 })();
