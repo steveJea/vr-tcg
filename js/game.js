@@ -1549,6 +1549,7 @@ function render() {
     requestAnimationFrame(() => [...box.querySelectorAll('.hp-fill'), ...(bossBox ? bossBox.querySelectorAll('.hp-fill') : [])].forEach(f => { f.style.width = f.dataset.to + '%'; hpPrev.set(f.closest('[data-uid]').dataset.uid, +f.dataset.to); }));
   }
 
+  closeStaleHandDetail();   // 손패 카드 상세가 떠 있는데 그 카드가 손패에서 빠졌으면(소환·회수·자동·이벤트 등 어떤 경로든) 닫기
   const hand = $('me-hand'); hand.innerHTML = '';
   renderSortBar();
   sortedHand(S.me.hand).forEach(c => {
@@ -1650,7 +1651,15 @@ function onHeroClick() {
   if (a?.canAttack) attack('me', a, null); // 규칙 위반이면 attack()이 사유를 보여줌
 }
 
+// 지금 상세 창에 띄운 손패 카드 (소환하기 버튼). 그 카드가 손패에서 빠지면 창을 닫음
+let detailHandCard = null, detailHandTurn = null;   // detailHandTurn: 내 턴에 연 창이면 그 턴 번호 (턴이 넘어가면 닫음)
+function closeStaleHandDetail() {
+  const c = detailHandCard; if (!c) return;
+  if (!S || S.over || !S.me?.hand?.includes(c) || (detailHandTurn != null && (S.turn !== 'me' || S.totalTurns !== detailHandTurn))) { detailHandCard = null; if (!$('detail').classList.contains('hidden')) hideModal('detail'); }
+}
 function showDetail(c, { fromHand = false, hp, unit = null, view = null, power = false } = {}) {
+  if (fromHand && (!S || !S.me?.hand?.includes(c))) { detailHandCard = null; return; }   // 이미 손패에 없는 카드(늦게 들어온 탭)는 안 엶
+  detailHandCard = fromHand ? c : null; detailHandTurn = fromHand && S.turn === 'me' && !S.over ? S.totalTurns : null;
   const arcadeUi = !S?.story;   // 아케이드만: 아이템 장착·회수·희생 (스토리·탑·PvP·전쟁·토벌은 숨김)
   const e = ELEMENTS[c.class] || ELEMENTS.WIND;
   const check = fromHand ? canSummon(c, S.me, S.ai) : null;
@@ -1699,8 +1708,13 @@ function showDetail(c, { fromHand = false, hp, unit = null, view = null, power =
   if (unit && $('sacrifice-btn')) $('sacrifice-btn').onclick = () => { const r = doSacrifice('me', unit); if (r.ok) hideModal('detail'); };
   if (unit && $('undo-btn')) $('undo-btn').onclick = () => { const r = undoSummon(unit); if (r.ok) hideModal('detail'); };
   if (unit && $('recall-btn')) $('recall-btn').onclick = () => { const r = recall('me', unit); if (r.ok) hideModal('detail'); };
-  if (fromHand) $('summon-btn').onclick = () => { const r = summon('me', c); if (r.ok) hideModal('detail'); };
-  if (fromHand && $('guard-btn')) $('guard-btn').onclick = () => { const r = placeGuard('me', c); if (r.ok) hideModal('detail'); };
+  if (fromHand) $('summon-btn').onclick = e => {
+    const b = e.currentTarget; if (b.dataset.busy || !S || S.turn !== 'me' || S.busy || S.over) return; b.dataset.busy = '1'; b.disabled = true;   // 연타 방지: 한 번만
+    let r = null;
+    try { r = summon('me', c); }
+    finally { if (r?.ok || !S?.me?.hand?.includes(c)) { detailHandCard = null; hideModal('detail'); } else if (b.isConnected) { delete b.dataset.busy; b.disabled = false; } }   // 소환 중 오류가 나도 손패에서 빠졌으면 닫기
+  };
+  if (fromHand && $('guard-btn')) $('guard-btn').onclick = () => { const r = placeGuard('me', c); if (r.ok || !S?.me?.hand?.includes(c)) { detailHandCard = null; hideModal('detail'); } };
   showModal('detail');
 }
 
@@ -1730,7 +1744,7 @@ function skillListHTML(c, unit, myTurn, lv = 1, opt = {}) {
 }
 
 function showModal(id) { $(id).classList.remove('hidden'); $(id).classList.add('flex'); }
-function hideModal(id) { $(id).classList.add('hidden'); $(id).classList.remove('flex'); $(id).style.zIndex = ''; resetHScroll(); }
+function hideModal(id) { if (id === 'detail') detailHandCard = null; $(id).classList.add('hidden'); $(id).classList.remove('flex'); $(id).style.zIndex = ''; resetHScroll(); }
 // 다른 화면(마이페이지 등) 위에서 카드 정보 보기: 전투 중이 아닌 보기 전용 상세
 function showCardInfo(c, opt = {}) { if (!c) return; showDetail(c, { power: !!opt.power }); $('detail').style.zIndex = '130'; showModal('detail'); }
 // 모바일에서 페이지가 옆으로 밀린 채 남지 않게 (컷인·모달 뒤) 가로 스크롤을 0으로
