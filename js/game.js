@@ -460,6 +460,7 @@ const cutinMs = ms => (FX_OFF() ? 0 : REDUCED() ? Math.round(ms * 0.3) : ms);
 const unitEl = (who, u) => document.querySelector(`#${who}-field [data-uid="${u.uid}"], #${who}-boss [data-uid="${u.uid}"]`);
 /** 턴이 바뀔 때만: 내 턴 = 내 진영 칸(필드) 쪽, 상대 턴 = 상대 진영 칸 쪽으로 부드럽게 스크롤. 화면이 다 보이면 안 움직임 */
 function turnScroll(who) {
+  peekReset();
   if (window.TCG_FAST || document.documentElement.scrollHeight <= window.innerHeight + 40) return;
   if (who === 'me') return scrollBottom();   // 내 턴·상대 공격 = 맨 아래 (내 덱·손패)
   const el = who === 'me' ? $('me-field') : (!$('ai-boss').classList.contains('hidden') ? $('ai-boss') : $('ai-field'));
@@ -482,7 +483,22 @@ const escHtml = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').repl
 
 /** 타격 스프라이트: kind 'impact'(일반 타격) | 'blood'(속성 유리·스킬 피해). 대상 카드 위에 확대+페이드. 스킬 컷인(data/fx)과 별개 */
 const HIT_IMG = { impact: 'img/ui/hit_impact.webp', blood: 'img/ui/hit_blood.webp' };
+/** 내가 상대를 칠 때: 맞는 상대 쪽이 화면 밖이면 잠깐 위로 → 마지막 타격 0.9초 뒤 맨 아래로 (연속 타격은 위에 머묾) */
+let peekOn = false, peekT = 0;
+function peekEnemy(el) {
+  if (!el || window.TCG_FAST || !S || S.over || S.turn !== 'me' || !el.isConnected) return;
+  if (!el.closest('#ai-field, #ai-boss') || document.documentElement.scrollHeight <= window.innerHeight + 40) return;
+  const r = el.getBoundingClientRect(), inView = r.top >= 0 && r.bottom <= window.innerHeight * 0.6;
+  if (!peekOn && inView) return;   // 이미 보이면 안 움직임
+  if (!peekOn) { peekOn = true; try { el.scrollIntoView({ behavior: REDUCED() ? 'auto' : 'smooth', block: 'center' }); } catch {} }
+  clearTimeout(peekT);
+  const back = () => { if (S?.busy && !S.over && S.turn === 'me') { peekT = setTimeout(back, 300); return; }   // 일괄공격·스킬 연쇄 중엔 위에 머묾
+    peekOn = false; if (S && !S.over && S.turn === 'me') scrollBottom(); };
+  peekT = setTimeout(back, 900);
+}
+function peekReset() { clearTimeout(peekT); peekOn = false; }
 function hitFx(el, kind = 'impact') {
+  peekEnemy(el);
   if (!el || FX_OFF() || REDUCED() || !el.isConnected) return;
   const r = el.getBoundingClientRect(); if (!r.width) return;
   const img = document.createElement('img');
