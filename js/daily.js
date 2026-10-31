@@ -37,6 +37,11 @@
     catch (e) { toast(errText(e)); }
   }
   function left() { const ms = cache?.next_reset ? new Date(cache.next_reset) - Date.now() : 0; if (ms <= 0) return ''; const h = Math.floor(ms / 3600e3), m = Math.floor(ms % 3600e3 / 60000); return `${h}시간 ${m}분 뒤 초기화`; }
+  // 미션 제목 탭 → 해당 화면으로 (팝업 닫힘). 완료(받음)한 미션은 이동 없음
+  const GO = {
+    arcade: () => window.VRArcadeHub?.open(), win: () => window.VRArcadeHub?.open(), skill: () => window.VRArcadeHub?.open(),
+    story: () => window.VRStory?.enter?.(), tower: () => window.VRQuest?.open?.(),
+  };
   function open() {
     document.querySelector('.daily-pop')?.remove();
     const pop = document.createElement('div'); pop.className = 'gem-pop daily-pop';
@@ -49,12 +54,13 @@
         <button class="daily-claim" data-att ${a.today ? 'disabled' : ''}>${a.today ? '오늘 출석 완료 ✔' : `${nextStep}일째 출석 보상 받기`}</button>
         <h3 class="daily-h">📋 일일 미션 <small>${left()}</small></h3>
         <div class="daily-list">${s.missions.map(m => { const ok = m.prog >= m.goal;
-          return `<div class="daily-m ${m.claimed ? 'done' : ''}"><div class="daily-mt"><b>${m.name}</b><small>${rwText(m.reward)}</small><div class="daily-bar"><i style="width:${Math.round(m.prog / m.goal * 100)}%"></i></div></div>
+          return `<div class="daily-m ${m.claimed ? 'done' : ''}"><div class="daily-mt ${!m.claimed && GO[m.key] ? 'go' : ''}" ${!m.claimed && GO[m.key] ? `data-go="${m.key}" role="button" tabindex="0" title="바로 가기"` : ''}><b>${m.name}${!m.claimed && GO[m.key] ? ' <span class="daily-arrow">›</span>' : ''}</b><small>${rwText(m.reward)}</small><div class="daily-bar"><i style="width:${Math.round(m.prog / m.goal * 100)}%"></i></div></div>
           <button class="daily-claim sm" data-m="${m.key}" ${m.claimed || !ok ? 'disabled' : ''}>${m.claimed ? '완료' : ok ? '받기' : `${m.prog}/${m.goal}`}</button></div>`; }).join('')}
           <div class="daily-m all ${s.all.claimed ? 'done' : ''}"><div class="daily-mt"><b>🎁 모든 미션 완료</b><small>${rwText(s.all.reward)}</small><div class="daily-bar"><i style="width:${Math.round(s.all.done / s.all.goal * 100)}%"></i></div></div>
           <button class="daily-claim sm" data-m="all" ${s.all.claimed || s.all.done < s.all.goal ? 'disabled' : ''}>${s.all.claimed ? '완료' : s.all.done >= s.all.goal ? '받기' : `${s.all.done}/${s.all.goal}`}</button></div></div></div>`;
       pop.querySelector('[data-x]').onclick = () => pop.remove();
       pop.querySelector('[data-att]').onclick = async () => { await claim('attend_claim'); draw(); };
+      pop.querySelectorAll('[data-go]').forEach(el => el.onclick = () => { const f = GO[el.dataset.go]; pop.remove(); f?.(); });
       pop.querySelectorAll('[data-m]').forEach(b => b.onclick = async () => { await claim('daily_claim', { p_key: b.dataset.m }); draw(); });
     };
     pop.onclick = e => { if (e.target === pop) pop.remove(); };
