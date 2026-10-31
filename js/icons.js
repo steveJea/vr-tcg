@@ -13,7 +13,7 @@
     crown:   { src: 'leader_crown.webp', alt: '왕관' },
     merge:   { src: 'merge.webp',   alt: '합성' },
     discard: { src: 'discard.webp', alt: '분해' },
-    merc:    { src: 'merc.webp',    alt: '용병' },
+    merc:    { src: 'merc_hire.webp',    alt: '용병' },
     weapon:  { src: 'merc.webp',    alt: '무기' },
     opening: { src: 'opening.webp', alt: '연출' },
     sound_on:  { src: 'sound_on.webp',  alt: '소리 켜짐' },
@@ -114,7 +114,7 @@
     settings_text: { src: 'gear.webp', alt: '설정' },
   };
   // 이모지 → 아이콘 이름 (UI 라벨용. 대사·본문에는 쓰지 않음)
-  const EMOJI = { '💧': 'mana', '♥': 'hp', '👑': 'crown', '🗑️': 'discard', '🗑': 'discard', '🗡️': 'merc', '🎬': 'opening', '🔊': 'sound_on', '🔇': 'sound_off',
+  const EMOJI = { '💧': 'mana', '♥': 'hp', '👑': 'crown', '🗑️': 'discard', '🗑': 'discard', '🗡️': 'weapon', '🎬': 'opening', '🔊': 'sound_on', '🔇': 'sound_off',
     '🔥': 'el_fire', '🌪️': 'el_wind', '🌪': 'el_wind', '❄️': 'el_ice', '❄': 'el_ice', '🌑': 'el_dark', '💀': 'el_death', '🎯': 'taunt', '🩸': 'bleed', '🔰': 'immune',
     '🔀': 'shuffle', '🏰': 'base', '💚': 'heal', '⚙️': 'gear', '⚙': 'gear', '🏆': 'rank', '🖼️': 'gallery', '🖼': 'gallery', '🔑': 'login',
     // set3. ⚠ 🩸(출혈)·🔥(불 속성)·⚡(마비/소탕/전투력)·✨ 은 뜻이 여러 개라 swap 하지 않음 → 재화는 VRIcon.cur(), 소탕은 icon('sweep') 직접
