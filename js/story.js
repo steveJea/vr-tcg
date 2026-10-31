@@ -663,7 +663,7 @@
       ${hubSlot(c + 1, 'small')}${hubSlot(c, 'big')}${hubSlot(c - 1, 'small')}
       <button class="hub-ch-arr" id="hub-down" ${c > 0 ? '' : 'disabled'} aria-label="이전 챕터 보기">▼</button></div>`;
     show(`<div class="story-hub-bg" aria-hidden="true"></div><div class="story-hub">
-      <div class="story-top"><button class="story-back" data-go="home">← 처음으로</button><div class="story-top-title">스토리 모드</div><span data-friendbtn></span><span data-dailybtn></span><span data-mailbtn></span><span data-vr-player></span></div>
+      <div class="story-top hub-top"><div class="hub-top-r1"><button class="story-back" data-go="home">← 처음으로</button><span data-vr-player></span></div><div class="hub-top-r2"><span data-dailybtn></span><span data-mailbtn></span></div></div>
       ${sel}
       <button class="story-hub-go main-btn" id="story-continue" ${nx ? '' : 'disabled'}><b>▶ 이어하기</b><small>${nx ? `${esc(nx.base.title)} · Phase.${nx.ph.no}${nx.ph.type === 'boss' ? ' · BOSS' : ''}` : '열린 챕터를 모두 클리어했어요'}</small></button>
       <button class="hub-gacha" data-go="gacha"><span class="hub-gacha-t"><b>🎴 인재영입</b><small>${canDraw() ? '오늘의 일반 영입 가능!' : '프리미엄 영입'}</small></span><span class="story-hub-tk">${tickets ? `🎟️ ${tickets}` : ''}</span>${canDraw() ? '<i class="story-badge">1</i>' : ''}</button>
@@ -671,7 +671,7 @@
         <button data-go="cards" title="내 인재 · 스탯 분배"><span>🃏</span>내 인재${save.points ? `<i class="story-badge">${save.points}</i>` : ''}</button>
         <button data-go="bonds" title="인연 조합"><span>🤝</span>인연</button>
         <button id="story-quest" type="button" onclick="window.VRQuest&&VRQuest.open()"><span>🗼</span>시련의 탑</button>
-        <button id="story-mypage" type="button" onclick="window.VRMyPage&&VRMyPage.open()"><span>👤</span>마이</button>
+        <button id="story-mypage" type="button" onclick="window.VRMyPage&&VRMyPage.open()" data-friendbadge><span>👤</span>마이</button>
         <button id="story-trade" type="button" onclick="window.VRTrade&&VRTrade.open()" title="인재·장비 거래"><span><img class="ui-ic" src="img/ui/trade.webp" alt=""></span>거래</button></div>
     </div>`);
     const mv = d => { const n = Math.max(0, Math.min(cur, hubC + d)); if (n !== hubC) { hubC = n; renderHub(); } };

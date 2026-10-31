@@ -948,3 +948,31 @@ body.story-media-on .story-dlg-skip { left: 4px; right: auto; top: calc(4px + en
 #game:not(.story-field):not(.view-battle) #ai-hero .mana-line, #game:not(.story-field):not(.view-battle) #ai-hero .deck-info { font-size: 10px; }
 #game:not(.story-field):not(.view-battle) #ai-name, #game:not(.story-field):not(.view-battle) #ai-hp, #game:not(.story-field):not(.view-battle) #ai-hpbar { display: none !important; }
 #game:not(.story-field):not(.view-battle) #ai-hero > div:nth-child(2) { display: none; }
+/* 스토리 허브 상단 (2026-10-31): 제목 없이 2줄 — 1줄 처음으로 + Lv·행동력·젬 / 2줄 미션·우편 (360px 에서도 안 잘림) */
+.story-top.hub-top{flex-direction:column;align-items:stretch;gap:6px;min-width:0}
+.hub-top-r1{display:flex;align-items:center;justify-content:space-between;gap:6px;min-width:0}
+.hub-top-r1 .story-back{flex:none}
+.hub-top-r1 [data-vr-player]{display:flex;align-items:center;justify-content:flex-end;gap:4px;flex-wrap:wrap;min-width:0}
+.hub-top-r2{display:flex;align-items:center;justify-content:flex-end;gap:6px}
+.hub-top-r2:not(:has(button)){display:none}
+.hub-top [data-mailbtn],.hub-top [data-dailybtn]{margin-left:0!important;flex:none}
+.story-hub{max-width:100%;overflow-x:clip}
+.story-hub .hub-menu{grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+@media (max-width:420px){.story-hub .hub-menu button{padding:8px 0;font-size:.68rem;letter-spacing:-.02em}.story-hub .hub-menu button span{font-size:1.15rem}}
+/* 친구 뱃지: 마이 탭 */
+[data-friendbadge]{position:relative}
+[data-friendbadge] .fr-tabbadge{position:absolute;top:2px;right:8px;margin:0}
+.mp-head .mp-friend{margin-left:auto;margin-right:8px;flex:none}
+.hub-top-r1 [data-vr-player]{flex-wrap:nowrap}
+@media (max-width:420px){.hub-top-r1 .story-back{padding:5px 8px;font-size:11px}.hub-top-r1 [data-vr-player]{gap:3px;font-size:11px}.hub-top-r1 .vrp-st small{display:none}.hub-top-r1 .vrp-lv,.hub-top-r1 .vrp-st{padding:2px 6px}.hub-top-r1 .gem-chip{transform:scale(.92);transform-origin:right center}}
+/* 전투 모바일 (2026-10-31): 내 진영 줄이 버튼 칸을 밀어 겹치던 문제 — 진영 정보는 2줄까지 줄바꿈, 버튼 칸과 같은 높이 */
+@media (max-width:480px){
+  #me-dock > div:first-child{align-items:stretch}
+  #me-hero{display:flex;flex-direction:column;justify-content:center;overflow:hidden}
+  .hud-top{flex-wrap:wrap;row-gap:2px}
+  .hud-top .hud-mana{flex:1 1 auto;min-width:0;white-space:normal;line-height:1.25}
+  .hud-right{margin-left:auto}
+  .hud-btns{align-content:stretch}
+  .hud-btns > #end-turn{padding-top:6px;padding-bottom:6px}
+  #game.story-field #ai-hero{margin-top:4px}
+}
