@@ -896,6 +896,7 @@
       // 제한 마나 (챕터 1~): 시작에 한 번만, 다시 차지 않음. 출전 카드는 손패 → 코스트 내고 소환. 필수 인재는 1명 2턴·2명+ 3턴 안에 소환
       manaPool: ch.tutorial && !ph.pool ? undefined : storyMana(ch, ph, me),   // 챕터 0 은 ph.pool 페이즈(P4 튜토리얼)만
       mustSummon: ph.mustSummon ? ph.mustSummon.map(String) : ch.tutorial || !ch.single ? undefined : (ph.party?.forced || ph.party?.mustLive || []).map(String),
+      joinAlly: ph.joinAlly && card(ph.joinAlly.id) ? { ...ph.joinAlly, card: lvScaled(card(ph.joinAlly.id), ph.joinAlly.storyLevel || 1) } : undefined,   // 턴 난입 아군 (CH11 P15 이지영): 내 afterTurn 번째 턴이 끝난 뒤 다음 내 턴 시작에 합류
       awaken: ph.awaken ? { ...ph.awaken, card: lvScaled(card(ph.awaken.id), ph.awaken.storyLevel || 1) } : undefined,   // 튜토리얼 가이드 id (data/tutorials/<id>.json · README 참고) — 처음 한 번만   // 조윤이는 조윤하를 공격하지 않음 + 페이즈 spare (예: CH3 P6 안지수 → 조윤하)
       onEnd: (win, reason, st) => result(ch, ph, win, reason, st),
     });
