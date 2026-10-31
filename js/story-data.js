@@ -974,7 +974,9 @@ window.STORY_DATA.chapterPortraits = { 0: { '임유리': 'im_yuri_c0', '황보�
   // 챕터 12 「위대한 개츠비」: 김지수 · 김정란(할머니, 시트 화자 '루비에르 회장 김정란') · 김지우 · 안지수 · 안혜진 · 한서린 · 도예나 · 최태석 (그림순이 10/31)
   12: { '김지수': 'kim_jisu', '김정란': 'kim_jeongran', '루비에르 회장 김정란': 'kim_jeongran', '김지우': 'kim_jiwoo', '안지수': 'an_jisu', '안혜진': 'an_hyejin', '한서린': 'han_seorin', '도예나': 'do_yena', '최태석': 'choi_taeseok', '담임 선생님': 'teacher', '선생님': 'teacher' },
   // 챕터 13 「예전의 너로」: 안지수(기본 = 20살 an_jisu) · 강보람 · 관장 안태호(안지수 아버지). 어린 안지수는 대사 줄 slug 로 (P1 = an_jisu_7 · P2 = an_jisu_12, phaseSlug 참고)
-  13: { '안지수': 'an_jisu', '강보람': 'kang_boram', '관장 안태호': 'an_taeho', '안태호': 'an_taeho', '김지우': 'kim_jiwoo', '김지수': 'kim_jisu', '한서린': 'han_seorin', '황보예': 'hwangbo_ye_c0' } };
+  13: { '안지수': 'an_jisu', '강보람': 'kang_boram', '관장 안태호': 'an_taeho', '안태호': 'an_taeho', '김지우': 'kim_jiwoo', '김지수': 'kim_jisu', '한서린': 'han_seorin', '황보예': 'hwangbo_ye_c0' },
+  // 챕터 14 「작은 아씨들」 (lee_hyegyeong_school = 이혜경 교복, 아직 대사에 안 씀)
+  14: { '이혜경': 'lee_hyegyeong', '이진경': 'lee_jingyeong', '김성진': 'kim_seongjin', '설달': 'seol_dal', '서오성': 'seo_oseong', '추나리': 'chu_nari', '윤우람': 'yun_uram', '백천주': 'baek_cheonju', '서진성': 'seo_jinseong', '풍건': 'pung_geon', '문재': 'mun_jae', '강철훈': 'kang_cheolhun', '강철진': 'kang_cheoljin', '김동욱': 'kim_dongwook' } };
 // 페이즈별 화자 초상화 덮어쓰기 (임포트 스크립트가 대사 줄 slug 로 넣음): phaseSlug[챕터][페이즈][화자]
 window.STORY_DATA.phaseSlug = { 13: { 1: { '안지수': 'an_jisu_7' }, 2: { '안지수': 'an_jisu_12' } } };
 window.STORY_DATA.exprAlt = { smile: 'playful', playful: 'smile', crazy: 'playful', cold: 'angry', sneer: 'playful', yawn: 'base', hurt: 'sad' };
