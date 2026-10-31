@@ -972,7 +972,7 @@ window.STORY_DATA.chapterPortraits = { 0: { '임유리': 'im_yuri_c0', '황보�
     '백시훈': 'baek_sihun', '한도겸': 'han_dogyeom', '오세찬': 'oh_sechan', '장민규': 'jang_mingyu', '배현오': 'bae_hyeono', '마동철': 'ma_dongcheol', '구태만': 'gu_taeman', '독곰': 'dokgom',
     '쇳덩이': 'soetdeongi', '바위': 'bawi', '서하늘': 'seo_haneul', '진다솜': 'jin_dasom', '권명호': 'kwon_myeongho', '남궁현': 'namgung_hyeon', '도강혁': 'do_ganghyeok' }])),
   // 챕터 12 「위대한 개츠비」: 김지수 · 김정란(할머니, 시트 화자 '루비에르 회장 김정란') · 김지우 · 안지수 · 안혜진 · 한서린 · 도예나 · 최태석 (그림순이 10/31)
-  12: { '김지수': 'kim_jisu', '김정란': 'kim_jeongran', '루비에르 회장 김정란': 'kim_jeongran', '김지우': 'kim_jiwoo', '안지수': 'an_jisu', '안혜진': 'an_hyejin', '한서린': 'han_seorin', '도예나': 'do_yena', '최태석': 'choi_taeseok' } };
+  12: { '김지수': 'kim_jisu', '김정란': 'kim_jeongran', '루비에르 회장 김정란': 'kim_jeongran', '김지우': 'kim_jiwoo', '안지수': 'an_jisu', '안혜진': 'an_hyejin', '한서린': 'han_seorin', '도예나': 'do_yena', '최태석': 'choi_taeseok', '담임 선생님': 'teacher', '선생님': 'teacher' } };
 window.STORY_DATA.exprAlt = { smile: 'playful', playful: 'smile', crazy: 'playful', cold: 'angry', sneer: 'playful', yawn: 'base', hurt: 'sad' };
 
 // ===== 일일 카드 뽑기 확률 (서버 supabase/gacha.sql 과 동일하게 유지) =====
