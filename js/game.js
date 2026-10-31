@@ -166,7 +166,7 @@ function startGame(story = null) {
   const MP = story && Number.isFinite(story.manaPool) ? Math.max(0, Math.round(story.manaPool)) : null;   // 스토리 제한 마나: 전투 시작에 한 번, 다시 차지 않음 (story.js 에서만 줌)
   const ao = story ? ArcadeOpts.DEF : ArcadeOpts.load(), grades = story ? null : allowedGrades(ao);
   const gPool = grades ? POOL.filter(c => grades.has(c.grade)) : null;
-  S = { me: newPlayer('나', first !== 'me', story?.me, story?.meHp, fs, grades), ai: newPlayer(story?.aiName || '적군', first !== 'ai', story?.ai, story?.aiHp, fs, grades), opts: ao, maxTurns: story ? RULES.MAX_TURNS : (ao.turns || Infinity), first, story, turn: first, turnNo: 0, totalTurns: 0, myTurns: 0, over: false, busy: false, fxSeen: new Set(), mercBought: 0, mercHired: null, mercOffer: [], log: { dmg: new Map(), total: 0, skills: 0, merc: null, played: new Set(), kills: {}, blocks: {} } };
+  S = { me: newPlayer('나', first !== 'me', story?.me, story?.meHp, fs, grades), ai: newPlayer(story?.aiName || '적군', first !== 'ai', story?.ai, story?.aiHp, fs, grades), opts: ao, maxTurns: story ? (story.rules?.maxTurns || RULES.MAX_TURNS) : (ao.turns || Infinity), first, story, turn: first, turnNo: 0, totalTurns: 0, myTurns: 0, over: false, busy: false, fxSeen: new Set(), mercBought: 0, mercHired: null, mercOffer: [], log: { dmg: new Map(), total: 0, skills: 0, merc: null, played: new Set(), kills: {}, blocks: {} } };
   // 아케이드 일반대전(기본 설정)만 기지 보강·필드 회복·용병 고용 가능. 스토리·퀘스트·아케이드 변형 설정은 공격력 강화만
   S.limitedAids = !!story || !ArcadeOpts.isDefault(ao);
   S.mercOffer = S.limitedAids ? [] : Merc.roll(gPool || POOL, S.me);
@@ -835,6 +835,8 @@ function summonReserve() {
 }
 /** 턴 종료 후: 전체 턴 제한 도달 시 판정 */
 function checkTimeout() {
+  const sv = S.story?.rules?.survive;   // 스토리 rules.survive = N: 양쪽이 N턴씩 버티면 승리 (CH12 P20)
+  if (!S.over && sv && S.totalTurns >= sv * 2) return finish(true, 'survive');
   if (S.over || S.totalTurns < Math.min(maxTurns(), 400)) return S.over;   // 무제한도 400턴에서 안전 판정
   if (S.story) return finish(false, 'timeout');   // 스토리(일반·보스): 턴 제한 도달 = 패배
   const j = judgeTimeout(S.me, S.ai);
