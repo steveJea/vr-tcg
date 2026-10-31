@@ -33,6 +33,7 @@
     base:    { src: 'base.webp',    alt: '진영' },
     heal:    { src: 'heal.webp',    alt: '회복' },
     gear:    { src: 'gear.webp',    alt: '가속기' },
+    mana_accel: { src: 'mana_accel.webp', alt: '마나 가속기' },
     rank:    { src: 'rank.webp',    alt: '랭킹' },
     gallery: { src: 'gallery.webp', alt: '갤러리' },
     login:   { src: 'login.webp',   alt: '로그인' },

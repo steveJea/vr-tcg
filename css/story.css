@@ -908,3 +908,10 @@ body.story-media-on .story-dlg-skip { left: 4px; right: auto; top: calc(4px + en
 }
 .hud-btns > #attack-all { flex: 1 1 0; min-width: 0; }
 @media (max-width: 480px) { .hud-btns > #attack-all, .hud-btns > #story-giveup { padding-left: 4px; padding-right: 4px; } .hud-btns > #attack-all { font-size: 11px; } }
+
+/* 전투 ⚙️ 설정 버튼: 화면에 떠 있게 (스크롤해도 오른쪽 위 고정) */
+#game #bset-btn { position: fixed; top: calc(8px + env(safe-area-inset-top)); right: calc(8px + env(safe-area-inset-right)); z-index: 32; box-shadow: 0 2px 10px rgba(0,0,0,.6); }
+#game div:has(> #bset-btn) { padding-right: 48px; }
+#game #bset-pop { position: fixed; top: calc(56px + env(safe-area-inset-top)); right: calc(8px + env(safe-area-inset-right)); z-index: 32; }
+/* 고유기술 버튼 아래 마나 소비량 숨김 (용병 '1회'는 유지) */
+#action-bar .act-btn:not(#act-merc) > span.text-sky-300 { display: none; }
