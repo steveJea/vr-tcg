@@ -78,3 +78,22 @@
 .daily-mt{flex:1;min-width:0;font-size:13px}.daily-mt small{display:block;color:#fcd34d;font-size:11px}
 .daily-bar{height:5px;margin-top:4px;border-radius:9px;background:rgba(255,255,255,.12);overflow:hidden}.daily-bar i{display:block;height:100%;background:#22c55e}
 .main-daily{flex:none}.main-cur:empty+.main-daily{margin-left:auto}
+/* 👥 친구 (js/friends.js) */
+.main-friend{flex:none}.main-cur:empty+.main-friend{margin-left:auto}.main-friend+.main-daily{margin-left:0!important}
+.main-friend .story-mailbtn,.story-top [data-friendbtn] .story-mailbtn{min-height:34px}
+.story-top [data-friendbtn]{margin-left:auto;flex:none}.story-top [data-friendbtn]~[data-mailbtn]{margin-left:0}
+.friend-panel{max-height:86vh;overflow:auto;text-align:left;min-width:min(420px,92vw)}
+.fr-code{color:#fde68a;cursor:pointer;letter-spacing:.05em}
+.fr-tabs{display:flex;gap:4px;margin:4px 0 8px}
+.fr-tab{position:relative;flex:1;padding:6px 4px;border-radius:8px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#d4d4d8;font-size:12px;cursor:pointer}
+.fr-tab.on{background:rgba(251,191,36,.18);border-color:#fbbf24;color:#fde68a;font-weight:700}.fr-tab .story-badge{position:absolute;top:-6px;right:-4px;margin:0}
+.fr-body{display:flex;flex-direction:column;gap:6px}
+.fr-row{display:flex;align-items:center;gap:8px;padding:8px;border-radius:10px;background:rgba(255,255,255,.05)}
+.fr-dot{width:8px;height:8px;border-radius:50%;background:#52525b;flex:none}.fr-dot.on{background:#22c55e;box-shadow:0 0 6px #22c55e}
+.fr-info{flex:1;min-width:0;font-size:13px}.fr-info b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.fr-info small{color:#a1a1aa;font-size:11px}
+.fr-btns{display:flex;gap:4px;flex:none}
+.fr-b{padding:5px 10px;border-radius:8px;background:linear-gradient(#f59e0b,#d97706);color:#1c1917;font-weight:800;font-size:12px;border:0;cursor:pointer}
+.fr-b.ghost{background:#3f3f46;color:#e4e4e7}.fr-b:disabled{opacity:.5}
+.fr-st{font-size:12px;color:#a1a1aa}
+.fr-empty{padding:18px 8px;text-align:center;color:#a1a1aa;font-size:13px}
+.fr-search{display:flex;gap:6px;margin-bottom:4px}.fr-search input{flex:1;min-width:0;padding:7px 10px;border-radius:8px;background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.2);color:#fff}
