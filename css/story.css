@@ -857,3 +857,7 @@ body.story-media-on .story-dlg-skip { left: 4px; right: auto; top: calc(4px + en
 
 /* 스토리 맵: PC는 화면 폭 전체 사용(칸 수는 JS mapCols) */
 @media (min-width:901px){.story-wrap:has(.story-map-screen){max-width:none}}
+
+/* 스토리 맵: 상태 박스(레벨·행동력·심연석·별 보상)를 맨 위 한 줄로 */
+.story-map-status{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:6px;margin:6px 0 4px;position:relative;z-index:2}
+.story-map-status .story-player-row,.story-map-status .story-starbox-wrap{margin:0}
