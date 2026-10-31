@@ -784,6 +784,7 @@
     const rules = [];
     if (pt?.noMale) rules.push({ ok: c => c.gender !== 'MALE', note: '🚹 남성 출전 불가' });
     if (pt?.noFemale) rules.push({ ok: c => c.gender !== 'FEMALE', note: '🚺 여성 출전 불가' });
+    if (pt?.costBelow != null) rules.push({ ok: c => (+c.cost || 0) < pt.costBelow, note: `코스트 ${pt.costBelow} 이상 출전 불가` });   // CH12
     if (pt?.maxMor != null) rules.push({ ok: c => (+c.MOR || 0) <= pt.maxMor, note: `MOR ${pt.maxMor + 1} 이상 출전 불가` });
     const EL = { DARK: '🌑 어둠', LIGHT: '☀️ 빛', FIRE: '🔥 불', ICE: '❄️ 얼음', WIND: '🍃 바람', ABYSS: '🕳️ 심연', VOID: '🌌 공허' };
     for (const el of pt?.banClass || []) rules.push({ ok: c => c.class !== el, note: `${EL[el] || el} 속성 출전 불가` });
