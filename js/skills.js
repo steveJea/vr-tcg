@@ -489,7 +489,8 @@ function jihyeStrike(u, ts) {
   ts.forEach(t => { if (!checkDeath(t, u) && t.owner.field.includes(t) && t.hp < t.maxHp * 0.5) bleedOn(t, u, 1); });
 }
 const pickRandom = arr => arr.length ? arr[Math.floor(rng() * arr.length)] : null;
-const yuriKiss = (u, f, prob, kind, thenBleed) => { if (sChance(prob)) live(f).forEach(t => { if (addStatus(t, kind, 1, {}, kind) && thenBleed) bleedOn(t, u); }); else emit({ type: 'miss', unit: u, text: '확률 실패' }); f.actionLock = Math.max(f.actionLock, 1); emit({ type: 'log', text: `${f.name || '상대'}: 다음 턴 고유기술(셔플·보강·강화·필드 회복) 봉인` }); };
+// 임유리 키스: 혼란·교란 확률은 대상마다 따로 판정 (10/31). 고유기술 봉인(actionLock)은 판정과 상관없이 항상
+const yuriKiss = (u, f, prob, kind, thenBleed) => { live(f).forEach(t => { if (!sChance(prob)) { emit({ type: 'miss', unit: t, text: '확률 실패' }); return; } if (addStatus(t, kind, 1, {}, kind) && thenBleed) bleedOn(t, u); }); f.actionLock = Math.max(f.actionLock, 1); emit({ type: 'log', text: `${f.name || '상대'}: 다음 턴 고유기술(셔플·보강·강화·필드 회복) 봉인` }); };
 
 const WING_R_ID = '10503';
 const wingPoison = (t, u, turns) => addStatus(t, 'dot', turns, { pct: RULES.DOT_BB_PCT, caster: u, label: '중독: 매 턴 HP -3%' }, 'dot');
@@ -650,7 +651,7 @@ export const ACTIVE = {
     else if (m?.on_kill_extra_hits) { const t2 = by(live(f), x => x.card.ATK, -1); if (t2) multiHit(u, t2, m.on_kill_extra_hits, (m.hit_pct ?? 30) / 100); } },
   '껌밟기': (u, p, f) => { const t = by(females(f), x => x.card.cost); if (t) multiHit(u, t, 5, 0.3); },
   '되겠냐?': (u, p, f) => { const t = by(females(f), x => x.card.cost, -1); if (t && multiHit(u, t, 5, 0.4)) gainMp(u, u.maxMp * 0.2, '처치'); },
-  '고갈될 예정입니다.': (u, p, f) => { if (sChance(0.2)) live(f).forEach(t => addStatus(t, 'confuse', 1, {}, 'confuse')); else emit({ type: 'miss', unit: u, text: '확률 실패' }); },
+  '고갈될 예정입니다.': (u, p, f) => live(f).forEach(t => { if (sChance(0.2)) addStatus(t, 'confuse', 1, {}, 'confuse'); else emit({ type: 'miss', unit: t, text: '확률 실패' }); }),   // 대상마다 따로 판정
   '이건 내분입니다.': (u, p, f) => debuffAll(f, '이건 내분입니다.', 2, { atk: -0.05, def: -0.05, label: 'ATK·DEF -5%' }),
   '나 좀 내버려둬': u => addStatus(u, 'decoy', sigilFor(u, '나 좀 내버려둬')?.duration ?? 1, { pick: 'cost', male: true, label: '대신 맞기(코스트 최고)' }, 'decoy'),
   '소녀의 거래': u => addStatus(u, 'decoy', 1, { pick: 'hp', male: true, label: '대신 맞기(HP 최고)' }, 'decoy'),
