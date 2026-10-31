@@ -122,14 +122,14 @@ export function tauntPullFx(fromEl, toEl) {
 /** 렌더 시 유닛 지속 연출 클래스 */
 export function statusClasses(u) {
   const s = u.st || {};
-  return `${s.para ? 'st-para' : ''} ${s.confuse ? 'st-confuse' : ''} ${s.bleed ? 'st-bleed' : ''} ${s.taunt ? 'st-taunt' : ''} ${s.dot ? 'st-poison' : ''} ${s.esoteric ? 'st-curse' : ''} ${s.regen ? 'st-regen' : ''} ${s.burn ? 'st-burn' : ''} ${s.freeze ? 'st-freeze' : ''}`;
+  return `${s.para ? 'st-para' : ''} ${s.confuse || s.disrupt ? 'st-confuse' : ''} ${s.disrupt && !s.confuse ? 'st-disrupt' : ''} ${s.bleed ? 'st-bleed' : ''} ${s.taunt ? 'st-taunt' : ''} ${s.dot ? 'st-poison' : ''} ${s.esoteric ? 'st-curse' : ''} ${s.regen ? 'st-regen' : ''} ${s.burn ? 'st-burn' : ''} ${s.freeze ? 'st-freeze' : ''}`;
 }
 /** 지속 연출용 장식 레이어 HTML (카드 .relative 안에 넣음) */
 export function statusDecor(u) {
   const s = u.st || {};
   let h = '';
   if (s.para) h += '<span class="stfx-p-spark"></span><span class="stfx-p-spark b"></span>';
-  if (s.confuse) h += '<span class="stfx-stars"><i>★</i><i>✦</i><i>★</i></span>';
+  if (s.confuse || s.disrupt) h += '<span class="stfx-stars"><i>★</i><i>✦</i><i>★</i></span>';
   if (s.bleed) h += '<span class="stfx-b-drip"></span><span class="stfx-b-drip b"></span>';
   if (s.dot) h += '<span class="stfx-bub"></span><span class="stfx-bub b"></span>';
   if (s.freeze) h += '<span class="stfx-ice"></span>';
