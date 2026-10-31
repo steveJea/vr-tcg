@@ -433,7 +433,8 @@ async function attackAll() {
   try {
     for (const u of ready) {
       if (S.over) break;
-      if (!S.me.field.includes(u) || !u.canAttack) continue;
+      await passiveWait(); await vidWait();   // 앞 공격에서 뜬 패시브 컷인(부활 등)이 끝난 뒤 다음 공격
+      if (S.over || !S.me.field.includes(u) || !u.canAttack) continue;
       const t = autoTarget(u, S.me, S.ai);
       if (t === undefined) continue;          // 공격할 수 있는 대상 없음 (첫 턴 등)
       await attack('me', u, t, true);
@@ -1140,6 +1141,9 @@ function flushHeldPassives() {
 }
 /** 패시브 발동 연출: 카드별·스킬별 게임당 첫 발동만 큰 이미지(비동기, 턴 진행을 막지 않음), 이후는 작은 글자만 */
 let passiveTimer = null;
+// 패시브 이미지 컷인이 떠 있는 동안 일괄 공격은 다음 공격을 기다림 (가려서 안 보이던 문제) — 끝나는 시각까지 대기
+let passiveUntil = 0;
+const passiveWait = () => { const ms = passiveUntil - performance.now(); return ms > 0 ? sleep(Math.min(ms, 4000)) : Promise.resolve(); };
 // 패시브 MR 영상 대기열: 영상이 끝날 때까지 다음 행동(공격·스킬·AI 행동)이 vidWait() 로 기다림
 let vidGate = Promise.resolve();
 const vidWait = () => withTimeout(vidGate, 30000);
@@ -1167,7 +1171,7 @@ function passiveCutInPlain(u, name, s, key = null) {
   el.style.setProperty('--dur', `${ms}ms`);
   el.className = 'hidden'; resetHScroll(); void el.offsetWidth; // 애니메이션 재시작
   el.className = `cutin cutin-img fixed left-0 right-0 z-40 pointer-events-none text-center ${whoOf(u.owner) === 'me' ? 'cutin-me' : 'cutin-ai'}`;
-  slashImpact(ms);
+  slashImpact(ms); passiveUntil = performance.now() + ms;
   clearTimeout(passiveTimer); passiveTimer = setTimeout(() => { el.className = 'hidden'; resetHScroll(); }, ms);
 }
 
@@ -2003,7 +2007,7 @@ async function viewBattle0({ session, aiName = '상대', bg = 'normal', manual =
             else if (e.type === 'evade') dmgNumber(unitEl(oWho, e.target) || tEl, 'MISS', '#e0f2fe');
           }
           critSet.clear(); if (raid) { bossNum(a.d, a.weak); S.vDmg = v.damage; raidPaint(v.damage, a.d); }
-          await withTimeout(hit?.back?.() ?? Promise.resolve(), 750); resetAnim(aEl); await play(late, 220); render(); await withTimeout(fadeDying(), 750); if (who === 'me') TUT('attack_done'); await sleep(AI_DELAY());
+          await withTimeout(hit?.back?.() ?? Promise.resolve(), 750); resetAnim(aEl); await play(late, 220); render(); await withTimeout(fadeDying(), 750); if (who === 'me') TUT('attack_done'); await sleep(AI_DELAY()); await passiveWait();
         } else { await play(evs, 160); if (raid && a.d) { bossNum(a.d); S.vDmg = v.damage; raidPaint(v.damage, a.d); } render(); }
         x = session.next(); continue;
       }
