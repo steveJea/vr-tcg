@@ -166,7 +166,7 @@
     const draw = () => {
       const list = (st.gear || []).filter(g => filt === 'all' || slotOf(g) === filt).sort((a, b) => (defs[b.def]?.tier || 0) - (defs[a.def]?.tier || 0) || b.plus - a.plus);
       const nx = st.next_expand;
-      m.querySelector('.gear-pop').innerHTML = `<div class="gear-bag-top"><b><img class="ui-ic" src="img/ui/bag.webp" alt="">${st.count}/${st.slots}</b><button class="gear-btn" data-mail><img class="ui-ic" src="img/ui/mailbox.webp" alt="">${(unread ?? st.mail) ? ` <i class="gear-badge">${unread ?? st.mail}</i>` : ''}</button>${nx ? `<button class="gear-btn" data-x>+10칸 ${window.VRGem?.ICON || '💎'} ${nx.gem}</button>` : '<small>최대</small>'}</div>
+      m.querySelector('.gear-pop').innerHTML = `<div class="gear-bag-top"><b><img class="ui-ic" src="img/ui/bag.webp" alt="">${st.count}/${st.slots}</b>${nx ? `<button class="gear-btn" data-x>+10칸 ${window.VRGem?.ICON || '💎'} ${nx.gem}</button>` : '<small>최대</small>'}</div>
         <div class="gear-tabs">${[['all', '전체'], ...SLOTS].map(([k, l]) => `<button data-f="${k}" class="${filt === k ? 'on' : ''}">${k === 'all' ? '' : img(sil(k), k)}${l}</button>`).join('')}</div>
         ${ctx.cardId ? '' : `<div class="gear-sel">${pick ? `${[1, 2, 3, 4, 5].map(t => `<button data-t="${t}" class="gt${t}">${TIER[t]}</button>`).join('')}<button data-pk>취소</button>` : `<small><img class="ui-ic" src="img/ui/cur_dust.webp" alt="">가루 ${fmt(st.dust || 0)}</small><button class="gear-btn" data-pk>☑️ 여러 개 정리</button>`}</div>`}
         <div class="gear-grid">${list.map(g => { const d = defs[g.def]; return `<button class="gear-cell gt${d.tier} ${pick?.has(g.id) ? 'pick' : ''} ${pick && (g.locked || g.card) ? 'nopick' : ''}" data-g="${g.id}">${img(iconOf(d), slotOf(g))}${g.plus ? `<i>+${g.plus}</i>` : ''}${g.card ? '<b class="gear-eq">E</b>' : ''}${g.locked ? '<b class="gear-lk"><img class="ui-ic" src="img/ui/lock.webp" alt=""></b>' : ''}</button>`; }).join('') || '<div class="gear-dim">아직 장비가 없어요. 소탕·탑·토벌에서 얻을 수 있어요</div>'}</div>`;
@@ -186,7 +186,6 @@
         if (pick) { if (g.locked || g.card) return toast('🔒 잠금·장착 중인 장비는 고를 수 없어요'); pick.has(g.id) ? pick.delete(g.id) : pick.add(g.id); return draw(); }
         if (ctx.cardId && !g.card) { rpc('gear_equip', { p_gear: g.id, p_card: String(ctx.cardId) }).then(r => { if (r) { m.remove(); ctx.reopen?.(); } }); return; }
         itemPop(g, { cardId: ctx.cardId, back: () => { if (m.isConnected) draw(); } }); });
-      m.querySelector('[data-mail]').onclick = () => mailbox({ back: () => { if (m.isConnected) refreshUnread().then(draw); } });
       const x = m.querySelector('[data-x]'); if (x) x.onclick = async () => { if (!confirm(`가방을 10칸 늘릴까요? (보석 ${nx.gem})`)) return; x.disabled = true; const r = await rpc('gear_expand', {}); if (r) { window.VRGem?.status?.(true); } if (m.isConnected) draw(); };
     };
     draw();
@@ -211,7 +210,7 @@
   // 우편함: 장비는 받기, 상자는 슬롯 골라 열기
   // --- 메시지 우편 (supabase/mail_v2.sql) ---
   let unread = null;
-  async function refreshUnread() { try { const { data, error } = await sb().rpc('mail_unread'); unread = error ? null : (data | 0); } catch { unread = null; } return unread; }
+  async function refreshUnread() { try { const { data, error } = await sb().rpc('mail_unread'); unread = error ? null : (data | 0); } catch { unread = null; } document.dispatchEvent(new CustomEvent('vr-mail-unread', { detail: unread })); return unread; }
   const CURN = { gold: '🪙 골드', blood: '🩸 순수한 피', shard: '💠 이상한 조각', soul: '🔥 각성자의 혼' };
   const hasAtt = p => !!p && Object.keys(p).length > 0;
   const attTxt = p => { p = p || {}; const a = [];
@@ -234,7 +233,7 @@
     const m = pop('', 'bag');
     const close = () => { ctx.back?.(); };
     const draw = async () => {
-      const { data: list, error } = await sb().rpc('mail_list'); if (error) { m.remove(); return toast(`⚠️ ${error.message}`); }
+      const { data: list, error } = await sb().rpc('mail_list'); refreshUnread(); if (error) { m.remove(); return toast(`⚠️ ${error.message}`); }
       m.querySelector('.gear-pop').innerHTML = `<div class="gear-bag-top"><b><img class="ui-ic" src="img/ui/mailbox.webp" alt="">우편함</b><small><img class="ui-ic" src="img/ui/bag.webp" alt="">${st.count}/${st.slots}</small></div>
         ${list.filter(x => x.kind === 'msg').map(ml => `<button class="gear-msg ${ml.read && !hasAtt(ml.payload) ? 'read' : ''}" data-msg="${ml.id}"><b>${ml.read ? '' : '<i class="gear-badge">N</i> '}${esc(ml.title || '알림')}</b><span>${attTxt(ml.payload) || '메시지'}</span><small>~${esc(fmtExp(ml.expires_at))}</small></button>`).join('')}
         <div class="gear-grid">${list.filter(x => x.kind !== 'msg').map(ml => { const p = ml.payload || {}, d = defs[p.def_id];

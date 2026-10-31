@@ -517,6 +517,15 @@
   const mapCols = () => innerWidth < 901 ? 5 : Math.max(5, Math.floor((innerWidth - 80) / 120));
   let mapColsNow = 0, mapRsT;
   addEventListener('resize', () => { clearTimeout(mapRsT); mapRsT = setTimeout(() => { if (document.querySelector('.story-map-screen') && mapCols() !== mapColsNow) renderMap(); }, 200); });
+  // 📮 우편 버튼 (가방과 분리) — 안 받은 우편 수 뱃지
+  function mailBtn() {
+    const w = root().querySelector('[data-mailbtn]'); if (!w || !serverMode || !window.VRGear || window.VRGear.off) return;
+    w.innerHTML = '<button class="story-mailbtn" type="button" aria-label="우편함">📮<span>우편</span></button>';
+    w.firstChild.onclick = () => window.VRGear.mailbox({ back: () => window.VRGear.unread?.() });
+    window.VRGear.unread?.();
+  }
+  document.addEventListener('vr-mail-unread', e => { const b = document.querySelector('.story-mailbtn'); if (!b) return; b.querySelector('.story-badge')?.remove();
+    if (e.detail > 0) b.insertAdjacentHTML('beforeend', `<i class="story-badge">${e.detail > 99 ? '99+' : e.detail}</i>`); });
   function renderMap(idx) {
     if (pullPending()) return forcedPull();
     if (typeof idx === 'number') curCh = idx;
@@ -540,7 +549,7 @@
     const arr = (i, cls, lbl, t) => `<button class="story-charr ${cls}" ${i >= 0 ? `data-ch="${i}"` : 'disabled'} aria-label="${lbl}">${t}</button>`;
     const nextCh = D.chapters[curCh + 1], nextOpen = nextCh && chapterOpen(curCh + 1);
     show(`<div class="story-map-bg story-map-bg-m" aria-hidden="true" style="background-image:${bgUrl(base)}"></div><div class="story-map-bg story-map-bg-pc" aria-hidden="true" style="background-image:${bgPcUrl(base)}"></div>
-      <div class="story-map-screen"><div class="story-map-top">${topBar('', 'hub')}<div class="story-map-status"><div class="story-player-row" data-vr-player></div><div class="story-starbox-wrap" data-starbox></div></div></div>
+      <div class="story-map-screen"><div class="story-map-top">${topBar('', 'hub')}<div class="story-map-status"><div class="story-player-row" data-vr-player></div><div class="story-starbox-wrap" data-starbox></div><span data-mailbtn></span></div></div>
       <div class="story-map-dock">
       <div class="text-center"><div class="story-chtitle">${arr(prevI, 'l', '이전 챕터', '‹')}<div class="story-chapter-big text-3xl md:text-5xl">${esc(ch.title)}</div>${arr(nextI, 'r', '다음 챕터', '›')}</div><div class="story-chapter-name">${esc(ch.subtitle)}</div>
         ${hero && ch.route ? `<div class="story-route-tag">루트 <b>${esc(hero.name)}</b>${clearedOf(ch).length ? '' : ' <button class="story-mini" data-go="route">루트 바꾸기</button>'}</div>` : ''}</div>
@@ -549,6 +558,7 @@
       ${nextNo ? '' : `<div class="story-clear">✔ CLEAR ${nextOpen ? `<button class="story-btn" data-ch="${curCh + 1}">${esc(nextCh.title)} →</button>` : '<small>다음 챕터 준비 중</small>'}</div>`}
       <div class="text-center mt-2 flex flex-wrap gap-2 justify-center">${chapterDone(base) && videoOf(base) ? `<button class="story-back story-vid-btn" data-go="endvideo" title="엔딩 영상 다시 보기">🎬 엔딩</button>` : ''}${base.id <= 1 ? `<button class="story-back" data-go="opening" title="오프닝 다시 보기">${ic('opening', { alt: '' }) || '🎬'} 오프닝</button>` : ''}</div>
       </div></div>`);
+    mailBtn();
     starBox(base);   // 별 보상 상자 (마나 전투 별 합계 · ★9/★18/전부)
     bind({ stats: () => openStats(renderMap), opening: () => playOpening(renderMap), endvideo: () => endingVideo(base), route: () => renderRouteSelect(curCh),
       rule: () => popup(`<div class="text-lg font-black mb-2">⚔️ 스토리 전투</div><div class="text-sm text-zinc-300 leading-relaxed">출전 인재 최대 ${MAX_PICK()}명이 모두 필드에서 시작해요 (손패·드로우·용병 없음, 내 진영 없음).<br>내 인재가 모두 쓰러지거나 ${RULES_TURNS()}턴이 지나면 패배.<br>일반전은 상대 인재 전멸, 👑 보스전은 상대 진영 HP 0이면 승리.</div><button data-close-pop class="story-btn w-full mt-4">확인</button>`) }); playerPaint();
@@ -1268,7 +1278,6 @@
         return `<div class="story-group ${open ? 'open' : ''}"><div data-uid="${o.uid}" class="story-owned">${ownTile(o, c, `${gr.list.some(x => (x.locked || inDeck(x)) && !isLeader(x)) ? '<div class="story-lockbadge" title="잠금">🔒</div>' : ''}${gr.list.some(isFav) ? '<div class="story-favbadge">★</div>' : ''}`, `${mergeable ? `<button class="story-merge-mini" data-merge="${(gr.list.find(canMerge)).uid}" title="합성" aria-label="합성">${ic('merge', { alt: '합성' }) || '✦'}</button>` : ''}${n > 1 ? `<button class="story-expand" data-expand="${gr.id}" title="${open ? '접기' : `${n}명 보기`}">x${n}${open ? '▴' : '▾'}</button>` : ''}`)}</div>
           ${open ? `<div class="story-copies">${gr.list.map(x => `<button class="story-copy" data-uid="${x.uid}"><span class="font-bold">${isLeader(x) ? ic('crown', { alt: '리더' }) + ' ' : x === o ? '⚔️ ' : ''}${(x.locked || inDeck(x)) && !isLeader(x) ? '🔒 ' : ''}${isFav(x) ? '★ ' : ''}Lv.${x.level}${exOf(x) ? ` <i class="text-red-300 not-italic">EX${exOf(x)}</i>` : ''}</span><span class="text-[10px] text-zinc-400"><b class="text-amber-300">⚡${fmt(powerCalc(x))}</b> ${ic('atk', { cls: 'ui-ic-sm' })}${fmt(statCalc(x, 'ATK'))} ${ic('hp', { cls: 'ui-ic-sm' })}${fmt(statCalc(x, 'HP'))} ${ic('def', { cls: 'ui-ic-sm' })}${fmt(statCalc(x, 'DEF'))}</span></button>`).join('')}</div>` : ''}</div>`; }).join('')}</div>
       ${anyPts ? '<div class="text-center mt-4"><button class="story-btn" data-go="stats">📈 스탯 분배하기</button></div>' : ''}`);
-    window.VRGear?.unread?.().then(n => { const b = document.querySelector('[data-go="gearbag"]'); if (b && n > 0 && !b.querySelector('.gear-badge')) b.insertAdjacentHTML('beforeend', `<i class="gear-badge">📬${n}</i>`); });
     bind({ gearbag: () => window.VRGear?.bag?.(), stats: () => openStats(renderCards), bulk: () => bulkDiscard(), leader: () => pickLeader(), decks: () => renderDecks() });
     bindFilter(renderCards);
     root().querySelectorAll('[data-uid]').forEach(el => el.onclick = () => cardDetail(el.dataset.uid));
