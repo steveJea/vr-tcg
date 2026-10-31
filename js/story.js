@@ -435,7 +435,8 @@
   }
   // 루트 시작 스토리: 루트마다 1번 (본 표시는 이 브라우저에만 저장)
   const RS_KEY = ch => `vrTcgStoryRouteStart:${user()?.id || 'guest'}:${ch.id}:${ch.route || 'main'}`;
-  const routeStartSeen = ch => { try { return localStorage.getItem(RS_KEY(ch)) === '1'; } catch { return true; } };
+  const routeStartSeen = ch => { if (clearedOf(ch).length) return true; try { return localStorage.getItem(RS_KEY(ch)) === '1'; } catch { return true; } };   // 페이즈를 하나라도 깼으면 본 것으로
+  const markRouteStart = ch => { try { localStorage.setItem(RS_KEY(ch), '1'); } catch {} };
   function contentWarn(ch, next) {
     const k = `vr-story-warn-${ch.id}`; let seen = false; try { seen = !!localStorage.getItem(k); } catch {}
     if (!ch.warning || seen) return next();
@@ -471,11 +472,11 @@
     const i = D.chapters.findIndex(c => c.id === 0), ch = chapterFor(D.chapters[i]); curCh = i; hubC = i;
     const ph = ch.phases.find(p => !(save.cleared?.[0] || save.cleared?.['0'] || []).includes(p.no)) || ch.phases[0];
     const go = () => startPhase(ch, ph);
-    if (ch.start?.length && !routeStartSeen(ch)) return playLines(ch.start, [], () => { try { localStorage.setItem(RS_KEY(ch), '1'); } catch {} go(); }, 'story', ch.hero);
+    if (ch.start?.length && !routeStartSeen(ch)) return markRouteStart(ch), playLines(ch.start, [], () => { try { localStorage.setItem(RS_KEY(ch), '1'); } catch {} go(); }, 'story', ch.hero);
     go();
   }
   function routeStart(ch) { contentWarn(ch, () => routeStart0(ch)); }
-  function routeStart0(ch) { playLines([...(ch.single && ch.tagline ? [{ speaker: '내레이션', text: ch.tagline.replace(/\n/g, ' ') }] : []), ...ch.start], [], () => { try { localStorage.setItem(RS_KEY(ch), '1'); } catch {} renderMap(); }, 'story', ch.hero); }
+  function routeStart0(ch) { markRouteStart(ch); playLines([...(ch.single && ch.tagline ? [{ speaker: '내레이션', text: ch.tagline.replace(/\n/g, ' ') }] : []), ...ch.start], [], () => { try { localStorage.setItem(RS_KEY(ch), '1'); } catch {} renderMap(); }, 'story', ch.hero); }
 
   // 시작 스토리: 캐릭터 선택 직후 1번
   function startStory(ch) {
