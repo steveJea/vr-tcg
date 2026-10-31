@@ -74,7 +74,7 @@
     if (!s) return '';
     const fmt = t => { const d = new Date(t); return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
     return `<div class="gem-mp"><button type="button" class="gem-mp-top" data-gem-open><span class="gem-orb">${ICON}</span><b>${n(s.gem)}</b><small>무료 ${n(s.free)} · 유료 ${n(s.paid)}</small></button>
-      <div class="gem-log">${(s.log || []).map(x => `<div class="gem-log-row"><span>${esc(REASON[x.reason] || x.reason)}</span><b class="${x.d > 0 ? 'up' : 'down'}">${x.d > 0 ? '+' : ''}${n(x.d)}</b><small>${fmt(x.at)}</small></div>`).join('') || '<div class="gem-log-empty">아직 기록이 없어요</div>'}</div></div>`;
+      </div>`;
   }
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   window.VRGem = { ICON, NAME, status, buy, chip, open, item, priceBtn, section, toast, get now() { return cache; }, _reset() { cache = null; at = 0; off = false; } };
