@@ -33,7 +33,7 @@
   function playVoice(key) {
     try {
       voiceAudio?.pause();
-      const a = voiceAudio = new Audio(`data/voice/${key}.mp3`);
+      const a = voiceAudio = new Audio(`data/voice/${key}.mp3`); window.VRVoice?.track(a);
       a.addEventListener('playing', () => window.VRSound?.duck?.(true));
       const off = () => setTimeout(() => { if (voiceAudio === a || a.paused) window.VRSound?.duck?.(false); }, 60);
       a.addEventListener('ended', off); a.addEventListener('pause', off); a.addEventListener('error', off);

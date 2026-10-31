@@ -898,6 +898,7 @@ const voiceCache = new Map();
 const voiceActive = new Set();
 function voiceDuckSync() { try { window.VRSound?.duck?.(voiceActive.size > 0); } catch {} }
 function trackVoice(a) {
+  window.VRVoice?.track(a);
   if (a._duckTracked) return; a._duckTracked = true;
   a.addEventListener('playing', () => { voiceActive.add(a); voiceDuckSync(); });
   const off = () => { voiceActive.delete(a); setTimeout(voiceDuckSync, 60); }; // 60ms 유예: 보이스 교체 시 BGM 출렁임 방지
