@@ -1418,7 +1418,7 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "내레이션",
-      "text": "오랜만에 셋이 함께 웃었다. 식탁엔 윤희가 만든 된장국이 김을 피워 올렸다."
+      "text": "오랜만에 셋이 함께 웃었다. 식탁엔 윤희가 만든 국이 김을 피워 올렸다."
      },
      {
       "speaker": "최윤희",
@@ -1835,7 +1835,7 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "내레이션",
-      "text": "대답은 없었다. 식탁 위에는 어젯밤 남은 된장국이 식어 있었다."
+      "text": "대답은 없었다. 식탁 위에는 어젯밤 남은 국이 식어 있었다."
      },
      {
       "speaker": "최윤희",
@@ -2086,17 +2086,8 @@ window.STORY_DATA.chapters.push({
     ]
    },
    "party": {
-    "forced": [
-     "10415"
-    ],
-    "noMale": true,
-    "mustLive": [
-     "10415"
-    ],
-    "levels": {
-     "10415": 66
-    },
-    "maxGrade": "HIGH RARE"
+    "forced": [],
+    "mustLive": []
    },
    "hero": [
     "10415"
@@ -2199,14 +2190,13 @@ window.STORY_DATA.chapters.push({
     "forced": [
      "10413"
     ],
-    "noMale": true,
     "mustLive": [
      "10413"
     ],
     "levels": {
      "10413": 70
     },
-    "maxGrade": "HIGH RARE"
+    "maxGrade": "SUPER RARE"
    },
    "hero": [
     "10413"
