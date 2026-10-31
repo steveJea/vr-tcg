@@ -116,7 +116,7 @@
   // 이모지 → 아이콘 이름 (UI 라벨용. 대사·본문에는 쓰지 않음)
   const EMOJI = { '💧': 'mana', '♥': 'hp', '👑': 'crown', '🗑️': 'discard', '🗑': 'discard', '🗡️': 'merc', '🎬': 'opening', '🔊': 'sound_on', '🔇': 'sound_off',
     '🔥': 'el_fire', '🌪️': 'el_wind', '🌪': 'el_wind', '❄️': 'el_ice', '❄': 'el_ice', '🌑': 'el_dark', '💀': 'el_death', '🎯': 'taunt', '🩸': 'bleed', '🔰': 'immune',
-    '🔀': 'shuffle', '🏰': 'base', '💚': 'heal', '⚙️': 'gear', '⚙': 'gear', '⏩': 'mana_accel', '🏆': 'rank', '🖼️': 'gallery', '🖼': 'gallery', '🔑': 'login',
+    '🔀': 'shuffle', '🏰': 'base', '💚': 'heal', '⚙️': 'gear', '⚙': 'gear', '🏆': 'rank', '🖼️': 'gallery', '🖼': 'gallery', '🔑': 'login',
     // set3. ⚠ 🩸(출혈)·🔥(불 속성)·⚡(마비/소탕/전투력)·✨ 은 뜻이 여러 개라 swap 하지 않음 → 재화는 VRIcon.cur(), 소탕은 icon('sweep') 직접
     '🪙': 'cur_gold', '💠': 'cur_shard', '🔋': 'stamina', '🎟️': 'ticket', '🎟': 'ticket', '🎴': 'gacha', '🃏': 'my_cards', '🎁': 'reward', '📈': 'stat_point',
     '🔒': 'lock', '🔓': 'unlock', '🗼': 'tower', '📜': 'story_mode', '📅': 'event_story', '👤': 'mypage_btn', '🎛️': 'arcade_opts', '🎛': 'arcade_opts', '🔔': 'se_on', '🔕': 'se_off',
