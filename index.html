@@ -118,7 +118,7 @@
     #game.view-raid #ai-field .unit .hp-bar, #game.view-raid #ai-field .unit .mp-bar { display:none; }
     .fx-dmg.fx-dmg-raid { font-size:34px !important; }
     /* PvP·구역 전쟁 화면(TCG.viewBattle): 마나 없음 → 마나 액션·손패·마나 표시 숨김 */
-    #game.view-battle #action-bar, #game.view-battle #me-hand, #game.view-battle #hand-sort, #game.view-battle #story-giveup, #game.view-battle .mana-line, #game.view-battle #act-merc { display: none !important; }
+    #game.view-battle #action-bar, #game.view-battle #me-hand, #game.view-battle #act-sort, #game.view-battle #hand-sort, #game.view-battle #story-giveup, #game.view-battle .mana-line, #game.view-battle #act-merc { display: none !important; }
     @media (min-aspect-ratio: 1/1) {
       #battle-bg[data-bg="normal"] { background-image: url(img/ui/bg_normal_wide.webp); }
       #battle-bg[data-bg="boss"] { background-image: url(img/ui/bg_boss_wide.webp); }
@@ -377,12 +377,10 @@
 <section id="game" class="hidden max-w-5xl mx-auto px-2 py-2 flex flex-col gap-2 min-h-screen">
   <!-- 상대 진영 -->
   <div id="top-bar" class="relative flex items-center gap-2">
-    <div id="ai-hero" class="flex-1 min-w-0 bg-black/60 border border-red-500/40 rounded-2xl px-3 py-2 cursor-pointer">
-      <div class="flex justify-between text-xs md:text-sm"><span class="font-bold text-red-400">🤖 컴퓨터 <span id="ai-order" class="ml-1 px-1.5 py-0.5 rounded bg-white/10 text-[10px] text-zinc-300"></span></span><span id="ai-hp" class="font-bold"></span></div>
-      <div class="h-2 bg-white/10 rounded-full mt-1 overflow-hidden"><div id="ai-hpbar" class="h-full bg-red-500 transition-all"></div></div>
-      <div class="mana-line flex justify-between text-[11px] text-zinc-400 mt-1"><span><img src="img/ui/mana.webp" alt="마나" class="ui-ic" width="64" height="64"> <span id="ai-mana"></span></span><span class="deck-info">덱 <span id="ai-deck"></span> · 손패 <span id="ai-handcount"></span></span></div>
-      <div id="ai-handcards" class="flex gap-1 mt-1 min-w-0 overflow-hidden"></div>
-      <div id="ai-syn" class="flex flex-wrap gap-1 mt-1 empty:hidden"></div>
+    <div id="ai-hero" class="flex-1 min-w-0 bg-black/60 border border-red-500/40 rounded-2xl px-3 py-1.5 cursor-pointer">
+      <div class="flex justify-between items-center gap-2 text-xs md:text-sm"><span class="flex items-center gap-1.5 min-w-0"><span id="ai-name" class="font-bold text-red-400 truncate empty:hidden"></span><span id="ai-order" class="px-1.5 py-0.5 rounded bg-white/10 text-[10px] text-zinc-300 empty:hidden"></span><span class="mana-line text-[11px] text-zinc-400 whitespace-nowrap"><img src="img/ui/mana.webp" alt="마나" class="ui-ic" width="64" height="64"> <span id="ai-mana"></span></span></span><span class="flex items-center gap-2 shrink-0"><span class="deck-info text-[11px] text-zinc-400">덱 <span id="ai-deck"></span> · 손패 <span id="ai-handcount"></span></span><span id="ai-hp" class="font-bold"></span></span></div>
+      <div class="h-1.5 bg-white/10 rounded-full mt-1 overflow-hidden"><div id="ai-hpbar" class="h-full bg-red-500 transition-all"></div></div>
+      <div id="ai-syn" class="hidden"></div>
     </div>
     <button id="auto-btn" class="hidden h-10 shrink-0 px-2 rounded-full bg-zinc-800 border border-white/20 hover:border-emerald-400 text-xs font-black whitespace-nowrap" title="자동 전투" aria-label="자동 전투" aria-pressed="false">▶ AUTO</button>
     <button id="bset-btn" class="w-10 h-10 shrink-0 rounded-full bg-zinc-800 border border-white/20 hover:border-emerald-400 text-lg leading-none" title="설정" aria-label="전투 설정" aria-expanded="false">⚙️</button>
@@ -431,7 +429,6 @@
 
   <!-- 마나 액션 -->
   <div id="action-bar" class="act-row">
-    <button id="act-sort" class="act-btn bg-zinc-900 border border-emerald-500/40 hover:border-emerald-400 rounded-xl px-1 py-1.5 font-bold leading-tight" title="정렬" aria-label="손패 정렬" aria-expanded="false"><span class="act-ico">↕️</span> 정렬</button>
     <button id="act-shuffle" title="패 섞기" aria-label="패 섞기" class="act-btn bg-zinc-900 border border-violet-500/40 hover:border-violet-400 disabled:opacity-40 rounded-xl px-1 py-1.5 text-[11px] md:text-sm font-bold leading-tight"><img src="img/ui/shuffle.webp" alt="패 섞기" class="ui-ic ui-ic-shuffle" width="64" height="64"> 패 섞기 <span class="text-sky-300"><img src="img/ui/mana.webp" alt="마나" class="ui-ic" width="64" height="64">50</span><div class="reason text-[9px] md:text-[10px] text-red-400 font-normal h-3"></div></button>
     <button id="act-heal" title="기지 보강" aria-label="기지 보강" class="act-btn bg-zinc-900 border border-violet-500/40 hover:border-violet-400 disabled:opacity-40 rounded-xl px-1 py-1.5 text-[11px] md:text-sm font-bold leading-tight"><img src="img/ui/base.webp" alt="진영" class="ui-ic ui-ic-base" width="64" height="64"> 기지 보강 <span class="text-sky-300"><img src="img/ui/mana.webp" alt="마나" class="ui-ic" width="64" height="64">20</span><div class="reason text-[9px] md:text-[10px] text-red-400 font-normal h-3"></div></button>
     <button id="act-buff" title="공격력 강화" aria-label="공격력 강화" class="act-btn bg-zinc-900 border border-violet-500/40 hover:border-violet-400 disabled:opacity-40 rounded-xl px-1 py-1.5 text-[11px] md:text-sm font-bold leading-tight"><img src="img/ui/atk.webp" alt="" class="ui-ic" width="64" height="64"> 공격력 강화 <span class="text-sky-300"><img src="img/ui/mana.webp" alt="마나" class="ui-ic" width="64" height="64">30</span><div class="reason text-[9px] md:text-[10px] text-red-400 font-normal h-3"></div></button>
@@ -442,7 +439,10 @@
 
   <!-- 손패 -->
   <div id="hand-sort" class="sort-pop hidden flex-wrap items-center gap-1 text-[11px] md:text-xs font-bold"></div>
+  <div class="hand-wrap relative">
+    <button id="act-sort" class="hand-sort-btn bg-zinc-900/90 border border-emerald-500/40 hover:border-emerald-400 rounded-full font-bold" title="정렬" aria-label="손패 정렬" aria-expanded="false"><span class="act-ico">↕️</span> 정렬</button>
   <div id="me-hand" class="flex gap-2 overflow-x-auto pb-2 pt-3 px-1"></div>
+  </div>
   <button id="log-toggle" class="log-fab" type="button" title="전투 기록" aria-label="전투 기록" aria-haspopup="dialog" aria-controls="log-modal">📜</button>
   </div>
 
