@@ -122,7 +122,7 @@ export function statusIcons(u) {
   const out = [];
   for (const [k, s] of Object.entries(u.st)) {
     if (s.kind === 'mod') out.push({ icon: MOD_ICON(s.atk || 0, s.def || 0), img: MOD_IMG(s.atk || 0, s.def || 0), title: `${s.label || k} (${s.t}턴)` });
-    else if (STATUS[s.kind]) out.push({ kind: s.kind, icon: STATUS[s.kind].icon, img: STATUS[s.kind].img, title: s.kind === 'vow' ? `지킨다: DEF +${(s.def * 100).toFixed(1)}% (이영아와 함께)` : s.kind === 'provoked' ? `도발당함: ${s.by?.card?.name || ''}만 공격 · 스킬 불가 (${s.t}턴)` : `${STATUS[s.kind].label} (${s.t}턴)` });
+    else if (STATUS[s.kind]) out.push({ kind: s.kind, t: ['dot', 'esoteric', 'regen', 'bleed', 'burn'].includes(s.kind) ? s.t : 0, icon: STATUS[s.kind].icon, img: STATUS[s.kind].img, title: s.kind === 'vow' ? `지킨다: DEF +${(s.def * 100).toFixed(1)}% (이영아와 함께)` : s.kind === 'provoked' ? `도발당함: ${s.by?.card?.name || ''}만 공격 · 스킬 불가 (${s.t}턴)` : `${STATUS[s.kind].label} (${s.t}턴)` });
   }
   if (u.curse && foeHasPassive(u.owner, '자수정 눈물의 지옥 교향곡')) out.push({ icon: '🥀', img: 'st_curse', title: `지옥 교향곡 ×${u.curse}` });
   if (u.pairShield) out.push({ icon: '🛡️', title: `자매의 가호: 피해 무효 (${u.pairShield}턴까지)` });
@@ -200,6 +200,7 @@ export const skillCd = (u, s) => { const sg = sigilFor(u, s.name), c = skillCdAt
 export const skillMp = (u, s) => sigilFor(u, s.name)?.mp ?? s.mp;
 /** 스킬 실행 중 배율 ({ u: 시전자, m: 배율 }). 시전자가 주는 피해·자기 편 회복·ATK/DEF 버프/디버프 수치에만 적용 */
 let SKC = null;
+let TICK = null;   // 지속 피해 틱 종류 (poison·curse) → 'dmg' 이벤트에 실어 화면 연출 구분
 const skScale = v => SKC ? v * SKC.m : v;
 
 export function damageUnit(target, dmg, src = null, { silent = false } = {}) {
@@ -223,7 +224,7 @@ export function damageUnit(target, dmg, src = null, { silent = false } = {}) {
   if (target.undying && target.hp < 1) target.hp = 1;   // 스토리 보스: 쓰러지지 않음
   if (target.st.endure && target.hp < 1) target.hp = 1;   // 불사 (언니니까!·카르밀라...사랑해)
   if (src && dmg > 0 && src.owner !== target.owner) emit({ type: 'dealt', src, dmg });
-  if (!silent) emit({ type: 'dmg', unit: target, dmg });
+  if (!silent) emit(TICK ? { type: 'dmg', unit: target, dmg, tick: TICK } : { type: 'dmg', unit: target, dmg });
   if (src && src.hp > 0 && hasPassive(src, '우습네요') && heal(src, Math.round(dmg * 0.3), '흡혈')) stats.count('우습네요');
   if (src && src.hp > 0 && src.owner !== target.owner && hasPassive(src, '플레쉬') && heal(src, Math.round(dmg * 0.1), '플레쉬')) stats.count('플레쉬');
   return dmg;
@@ -924,17 +925,17 @@ export function turnStart(p) {
   const wy = findPassiveUnit(p, '지켜주고 싶어');
   if (wy) { emit({ type: 'passive', unit: wy, name: '지켜주고 싶어' }); stats.count('지켜주고 싶어'); p.field.forEach(a => heal(a, a.maxHp * 0.1, '지켜주고 싶어')); }
   // Esoteric Method: 매 턴 HP -10%, ATK -3% 누적
-  for (const u of [...p.field]) if (u.st.esoteric) { u.st.esoteric.stack = (u.st.esoteric.stack || 0) + 1; damageUnit(u, Math.max(1, Math.round(u.maxHp * 0.1)), null); checkDeath(u, u.st.esoteric.caster || null); }
+  for (const u of [...p.field]) if (u.st.esoteric) { u.st.esoteric.stack = (u.st.esoteric.stack || 0) + 1; TICK = 'curse'; try { damageUnit(u, Math.max(1, Math.round(u.maxHp * 0.1)), null); } finally { TICK = null; } checkDeath(u, u.st.esoteric.caster || null); }
   // v2: 체력 고갈 / 재생
   for (const u of [...p.field]) {
-    const dt = u.st.dot; if (dt) { let d = Math.max(1, Math.round(u.maxHp * dt.pct)); if (dt.minOne) d = Math.min(d, u.hp - 1); if (d > 0) { damageUnit(u, d, null); checkDeath(u, dt.caster || null); } }
+    const dt = u.st.dot; if (dt) { let d = Math.max(1, Math.round(u.maxHp * dt.pct)); if (dt.minOne) d = Math.min(d, u.hp - 1); if (d > 0) { TICK = 'poison'; try { damageUnit(u, d, null); } finally { TICK = null; } checkDeath(u, dt.caster || null); } }
     const rg = u.st.regen; if (rg && p.field.includes(u)) heal(u, u.maxHp * rg.pct, '재생');
   }
   // 윤진아 검은 늪: 가장 많이 다친 아군 20% 회복
   if (findPassiveUnit(p, '검은 늪') && p.field.length) { const a = by(p.field, x => x.hp / x.maxHp); if (heal(a, a.maxHp * 0.2, '검은 늪')) stats.count('검은 늪'); }
   // 임예리 지옥 교향곡 (상대 필드): 매 턴 ATK·DEF -2% 누적, HP -5%
   const yeri = findPassiveUnit(f, '자수정 눈물의 지옥 교향곡');
-  if (yeri) { emit({ type: 'passive', unit: yeri, name: '자수정 눈물의 지옥 교향곡' }); stats.count('자수정 눈물의 지옥 교향곡'); for (const u of [...p.field]) { if (u.st.debuffImmune) continue; u.curse++; damageUnit(u, Math.max(1, Math.round(u.maxHp * 0.05)), null); checkDeath(u, yeri); } }
+  if (yeri) { TICK = 'curse'; try { emit({ type: 'passive', unit: yeri, name: '자수정 눈물의 지옥 교향곡' }); stats.count('자수정 눈물의 지옥 교향곡'); for (const u of [...p.field]) { if (u.st.debuffImmune) continue; u.curse++; damageUnit(u, Math.max(1, Math.round(u.maxHp * 0.05)), null); checkDeath(u, yeri); } } finally { TICK = null; } }
   refreshAll(p);
   // [각성] 임유리 공허의 제왕: 턴 시작 시 적 전체 + 본진 20% 자동 공격
   for (const u of [...p.field]) if (hasPassive(u, '공허의 제왕') && p.field.includes(u)) {

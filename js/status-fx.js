@@ -14,6 +14,9 @@ function probe(n) {
   return undefined;
 }
 Object.values(KIND).forEach(k => { probe(k + '_icon'); probe(k + '_fx'); });
+// 지속 피해(중독·저주)·지속 회복(재생) 틱 이미지 자리 (img/fx/status/<kind>.webp) — 없으면 CSS 거품·반짝이
+const TICK_ASSET = {};
+['poison', 'curse', 'regen'].forEach(k => { const im = new Image(); im.onload = () => { TICK_ASSET[k] = im.src; }; im.onerror = () => { TICK_ASSET[k] = null; }; im.src = `img/fx/status/${k}.webp`; });
 export const isStatusFxKind = k => k in KIND;
 /** 상태 아이콘 이미지 URL (에셋이 있을 때만) */
 export const statusIconUrl = k => (KIND[k] && ASSET[KIND[k] + '_icon']) || null;
@@ -76,6 +79,16 @@ export function bleedTickFx(el) {
   const r = el.getBoundingClientRect(); if (!r.width) return;
   for (let i = 0; i < 3; i++) spawn('stfx-drip', r, 900, d => { d.style.setProperty('--dx', ((i - 1) * r.width * 0.25) + 'px'); d.style.animationDelay = (i * 120 * scale()) + 'ms'; });
 }
+/** 지속 피해/회복 틱: poison(초록·보라 거품) · curse(검보라 연기) · regen(초록·금빛 반짝이) + 카드 맥박 */
+export function tickFx(el, kind) {
+  if (!el || opt.off() || !el.isConnected) return;
+  const r = el.getBoundingClientRect(); if (!r.width) return;
+  const n = opt.quick() ? 3 : kind === 'regen' ? 7 : 6;
+  if (TICK_ASSET[kind]) spawn(`stfx-tick-img ${kind}`, r, 800, d => { d.style.backgroundImage = `url("${TICK_ASSET[kind]}")`; });
+  for (let i = 0; i < n; i++) spawn(`stfx-tick ${kind}`, r, 900, d => { d.style.setProperty('--dx', ((Math.random() - .5) * r.width * .8) + 'px'); d.style.setProperty('--dy', (-(20 + Math.random() * 40)) + 'px'); d.style.animationDelay = Math.round(i * 70 * scale()) + 'ms'; });
+  el.classList.remove('stfx-pulse-poison', 'stfx-pulse-curse', 'stfx-pulse-regen'); void el.offsetWidth; el.classList.add('stfx-pulse-' + kind);
+  setTimeout(() => el.classList.remove('stfx-pulse-' + kind), Math.round(650 * scale()));
+}
 /** 마비로 행동 불가: 지지직 떨림 */
 export function paraSkipFx(el) {
   if (!el || opt.off() || !el.isConnected) return;
@@ -100,7 +113,7 @@ export function tauntPullFx(fromEl, toEl) {
 /** 렌더 시 유닛 지속 연출 클래스 */
 export function statusClasses(u) {
   const s = u.st || {};
-  return `${s.para ? 'st-para' : ''} ${s.confuse ? 'st-confuse' : ''} ${s.bleed ? 'st-bleed' : ''} ${s.taunt ? 'st-taunt' : ''}`;
+  return `${s.para ? 'st-para' : ''} ${s.confuse ? 'st-confuse' : ''} ${s.bleed ? 'st-bleed' : ''} ${s.taunt ? 'st-taunt' : ''} ${s.dot ? 'st-poison' : ''} ${s.esoteric ? 'st-curse' : ''} ${s.regen ? 'st-regen' : ''}`;
 }
 /** 지속 연출용 장식 레이어 HTML (카드 .relative 안에 넣음) */
 export function statusDecor(u) {
@@ -109,6 +122,8 @@ export function statusDecor(u) {
   if (s.para) h += '<span class="stfx-p-spark"></span><span class="stfx-p-spark b"></span>';
   if (s.confuse) h += '<span class="stfx-stars"><i>★</i><i>✦</i><i>★</i></span>';
   if (s.bleed) h += '<span class="stfx-b-drip"></span><span class="stfx-b-drip b"></span>';
+  if (s.dot) h += '<span class="stfx-bub"></span><span class="stfx-bub b"></span>';
+  if (s.regen) h += '<span class="stfx-spk"></span><span class="stfx-spk b"></span>';
   if (s.taunt) h += `<span class="stfx-t-emblem${ASSET.taunt_icon ? ' has-img' : ''}"${ASSET.taunt_icon ? ` style="background-image:url('${ASSET.taunt_icon}')"` : ''}></span>`;
   return h ? `<div class="stfx-decor" aria-hidden="true">${h}</div>` : '';
 }
