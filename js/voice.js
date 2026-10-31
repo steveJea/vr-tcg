@@ -1,9 +1,12 @@
 // 캐릭터 보이스 한곳 관리: 화면이 바뀌면 재생 중인 보이스를 바로 멈춤 (BGM·효과음은 대상 아님)
 (() => {
   const set = new Set();
+  const RATE = 1.15;   // 보이스 재생 속도 (음높이 유지). 여기만 바꾸면 전부 적용
+  function rate(a) { try { a.preservesPitch = a.mozPreservesPitch = a.webkitPreservesPitch = true; a.defaultPlaybackRate = window.VRVoice.RATE; a.playbackRate = window.VRVoice.RATE; } catch {} }
   function track(a) {
-    if (!a || a._vrVoice) return a; a._vrVoice = true; set.add(a);
-    a.addEventListener('play', () => { a._vt = performance.now(); });
+    if (!a || a._vrVoice) return a; a._vrVoice = true; set.add(a); rate(a);
+    a.addEventListener('loadedmetadata', () => rate(a));   // load() 때 속도가 기본값으로 돌아가는 브라우저 대비
+    a.addEventListener('play', () => { a._vt = performance.now(); rate(a); });
     return a;
   }
   /** minAge(ms): 그보다 최근에 시작한 보이스는 남김 (화면 전환과 같은 순간 시작한 새 화면 보이스 보호) */
@@ -11,7 +14,7 @@
     const now = performance.now();
     for (const a of set) { try { if (!a.paused && now - (a._vt || 0) >= minAge) { a.pause(); a.currentTime = 0; } } catch {} }
   }
-  window.VRVoice = { track, stopAll };
+  window.VRVoice = { RATE, track, stopAll };
   const SCREENS = ['intro', 'start-screen', 'game', 'story-screen'];
   const onChange = () => stopAll(150);
   function watch() {

@@ -1101,7 +1101,7 @@ function showEvent(ev) {
       clearTimeout(timer); timer = window.setTimeout(next, FX_OFF() ? 1600 : 2600);
       if (L?.voice) {   // 대사별 음성: 재생 길이만큼 다음 대사를 기다림
         say(L.voice); const a = audio, my = i;
-        a?.addEventListener('loadedmetadata', () => { if (done || i !== my || !isFinite(a.duration)) return; clearTimeout(timer); timer = window.setTimeout(next, Math.max(FX_OFF() ? 1600 : 2600, a.duration * 1000 + 400)); }, { once: true });
+        a?.addEventListener('loadedmetadata', () => { if (done || i !== my || !isFinite(a.duration)) return; clearTimeout(timer); timer = window.setTimeout(next, Math.max(FX_OFF() ? 1600 : 2600, a.duration * 1000 / (a.playbackRate || 1) + 400)); }, { once: true });   // 보이스 속도(VRVoice.RATE) 반영
       }
     };
     const next = () => { if (++i >= lines.length) close(); else draw(); };
