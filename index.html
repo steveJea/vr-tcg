@@ -67,10 +67,12 @@
     .fx-dmg { position: fixed; z-index: 40; pointer-events: none; font-weight: 900; font-size: 1.35rem; color: #f87171; text-shadow: 0 2px 4px #000, 0 0 8px #7f1d1d; transform: translate(-50%, -50%); animation: fxDmg 1.3s cubic-bezier(.22,.8,.3,1) forwards; }
     @keyframes fxDmg { 0% { opacity: 0; margin-top: 0; scale: .5; } 6% { opacity: 1; scale: 1.6; } 14% { scale: .92; } 20% { scale: 1.05; } 26% { scale: 1; } 55% { opacity: 1; margin-top: -26px; } 100% { opacity: 0; margin-top: -58px; } }   /* 천천히 떠오르며 사라짐 */
     /* UI 아이콘 (js/icons.js): 글자 크기에 맞춤 */
-    .log-box{display:flex;align-items:flex-start;gap:6px}
-    .log-toggle{flex:none;width:30px;height:30px;border-radius:999px;background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.15);font-size:15px;line-height:1}
-    .log-toggle[aria-expanded="true"]{border-color:#fbbf24}
-    .log-body{flex:1;background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.1);border-radius:.75rem;padding:.4rem .7rem}
+    .log-fab{position:absolute;right:8px;bottom:calc(100% + 6px);z-index:6;width:34px;height:34px;border-radius:999px;background:rgba(0,0,0,.65);border:1px solid rgba(255,255,255,.2);font-size:16px;line-height:1;box-shadow:0 2px 8px rgba(0,0,0,.5)}
+    .log-fab:hover{border-color:#fbbf24}
+    .log-modal{position:fixed;inset:0;z-index:45;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;padding:16px}
+    .log-modal.hidden{display:none}
+    .log-panel{position:relative;width:100%;max-width:480px;background:#18181b;border:1px solid rgba(255,255,255,.15);border-radius:1.25rem;padding:14px 14px 10px}
+    .log-body{max-height:60vh;overflow-y:auto;background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.08);border-radius:.75rem;padding:.4rem .7rem;margin-top:8px}
     .ui-ic { display: inline-block; width: 1.2em; height: 1.2em; vertical-align: -0.25em; object-fit: contain; pointer-events: none; user-select: none; }
     .ui-ic-sm { width: 1em; height: 1em; vertical-align: -0.15em; }
     /* 어두운 남색 배경에서 어둠 속성 아이콘이 묻히지 않게 옅은 외곽광 */
@@ -438,14 +440,19 @@
   <!-- 손패 -->
   <div id="hand-sort" class="sort-pop hidden flex-wrap items-center gap-1 text-[11px] md:text-xs font-bold"></div>
   <div id="me-hand" class="flex gap-2 overflow-x-auto pb-2 pt-3 px-1"></div>
+  <button id="log-toggle" class="log-fab" type="button" title="전투 기록" aria-label="전투 기록" aria-haspopup="dialog" aria-controls="log-modal">📜</button>
   </div>
 
-  <!-- 로그 -->
-  <div id="log-box" class="log-box text-xs">
-    <button id="log-toggle" class="log-toggle" type="button" title="전투 기록 펼치기/접기" aria-label="전투 기록" aria-expanded="false" aria-controls="log">📜</button>
-    <div id="log" class="log-body hidden max-h-32 overflow-y-auto"></div>
-  </div>
 </section>
+
+<!-- 전투 기록 팝업 -->
+<div id="log-modal" class="log-modal hidden" role="dialog" aria-modal="true" aria-label="전투 기록">
+  <div class="log-panel">
+    <button id="log-close" aria-label="닫기" class="modal-x w-8 h-8 rounded-full bg-zinc-800 hover:bg-zinc-700">✕</button>
+    <div class="text-lg font-black">📜 전투 기록</div>
+    <div id="log" class="log-body text-xs"></div>
+  </div>
+</div>
 
 <!-- 용병 고용 -->
 <div id="merc" class="hidden fixed inset-0 bg-black/80 items-center justify-center z-40 p-4">

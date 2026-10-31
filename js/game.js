@@ -149,7 +149,9 @@ function newPlayer(name, second, deckOverride = null, hp = RULES.HERO_HP, fieldS
 function log(msg, cls = '') {
   const el = document.createElement('div');
   el.className = 'py-0.5 ' + cls; el.textContent = msg;
-  $('log').prepend(el);
+  const lg = $('log'), atEnd = lg.scrollHeight - lg.scrollTop - lg.clientHeight < 24;
+  lg.appendChild(el);
+  if (atEnd && !$('log-modal').classList.contains('hidden')) lg.scrollTop = lg.scrollHeight;
 }
 
 const shuffleArr = a => { a = [...a]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
@@ -1741,11 +1743,12 @@ $('main-help').onclick = () => showModal('help');
 $('main-skip').onclick = () => { skipFx = !skipFx; localStorage.setItem(SKIP_KEY, skipFx ? '1' : '0'); renderSkipBtn(); };
 $('voice-toggle').onclick = e => { e.stopPropagation(); voiceOn = !voiceOn; localStorage.setItem(VOICE_ON_KEY, voiceOn ? '1' : '0'); if (!voiceOn && voiceCur) try { voiceCur.pause(); } catch {} renderVoiceBtn(); };
 $('se-toggle')?.addEventListener('click', e => { e.stopPropagation(); setSeOn(!seOn); });
-// 전투 기록: 기본 접힘, 📜 버튼으로 펼치기 (상태 저장)
-{ const LOG_KEY = 'vrTcgLogOpen', t = $('log-toggle'), lg = $('log');
-  const set = on => { lg?.classList.toggle('hidden', !on); t?.setAttribute('aria-expanded', String(on)); };
-  set(localStorage.getItem(LOG_KEY) === '1');
-  t?.addEventListener('click', e => { e.stopPropagation(); const on = lg.classList.contains('hidden'); set(on); try { localStorage.setItem(LOG_KEY, on ? '1' : '0'); } catch {} }); }
+// 전투 기록: 📜 떠 있는 버튼 → 팝업 (최신이 아래, 열면 맨 아래로)
+{ const m = $('log-modal'), lg = $('log');
+  const set = on => { m.classList.toggle('hidden', !on); if (on) lg.scrollTop = lg.scrollHeight; };
+  $('log-toggle').addEventListener('click', e => { e.stopPropagation(); set(true); });
+  $('log-close').addEventListener('click', e => { e.stopPropagation(); set(false); });
+  m.addEventListener('click', e => { e.stopPropagation(); if (e.target === m) set(false); }); }
 $('main-se')?.addEventListener('click', e => { e.stopPropagation(); setSeOn(!seOn); });
 renderSeBtn();
 $('voice-vol').oninput = e => { voiceVol = (+e.target.value || 0) / 100; localStorage.setItem(VOICE_VOL_KEY, String(voiceVol)); if (voiceCur) voiceCur.volume = voiceVol; };
