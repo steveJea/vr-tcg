@@ -483,22 +483,31 @@ const escHtml = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').repl
 
 /** 타격 스프라이트: kind 'impact'(일반 타격) | 'blood'(속성 유리·스킬 피해). 대상 카드 위에 확대+페이드. 스킬 컷인(data/fx)과 별개 */
 const HIT_IMG = { impact: 'img/ui/hit_impact.webp', blood: 'img/ui/hit_blood.webp' };
-/** 내가 상대를 칠 때: 맞는 상대 쪽이 화면 밖이면 잠깐 위로 → 마지막 타격 0.9초 뒤 맨 아래로 (연속 타격은 위에 머묾) */
+/** 내가 상대를 칠 때: 타격 '전에' 상대 쪽으로 스크롤하고 멈춘 뒤 연출 (연출은 화면 좌표로 그려서, 타격 중에 스크롤하면 이펙트·숫자가 엉뚱한 곳에 남음)
+ *  마지막 타격 0.9초 뒤 + 전투 동작 끝나면 맨 아래로 (일괄공격·연쇄 스킬 중엔 위에 머묾) */
 let peekOn = false, peekT = 0;
-function peekEnemy(el) {
-  if (!el || window.TCG_FAST || !S || S.over || S.turn !== 'me' || !el.isConnected) return;
-  if (!el.closest('#ai-field, #ai-boss') || document.documentElement.scrollHeight <= window.innerHeight + 40) return;
-  const r = el.getBoundingClientRect(), inView = r.top >= 0 && r.bottom <= window.innerHeight * 0.6;
-  if (!peekOn && inView) return;   // 이미 보이면 안 움직임
-  if (!peekOn) { peekOn = true; try { el.scrollIntoView({ behavior: REDUCED() ? 'auto' : 'smooth', block: 'center' }); } catch {} }
+const peekOk = el => !!(el && !window.TCG_FAST && S && !S.over && S.turn === 'me' && el.isConnected && el.closest('#ai-field, #ai-boss') && document.documentElement.scrollHeight > window.innerHeight + 40);
+function peekArm() {
   clearTimeout(peekT);
-  const back = () => { if (S?.busy && !S.over && S.turn === 'me') { peekT = setTimeout(back, 300); return; }   // 일괄공격·스킬 연쇄 중엔 위에 머묾
+  const back = () => { if (S?.busy && !S.over && S.turn === 'me') { peekT = setTimeout(back, 300); return; }
     peekOn = false; if (S && !S.over && S.turn === 'me') scrollBottom(); };
   peekT = setTimeout(back, 900);
 }
+async function peekBefore(el) {
+  if (!peekOk(el)) return;
+  const r = el.getBoundingClientRect(), inView = r.top >= 0 && r.bottom <= window.innerHeight * 0.6;
+  if (!peekOn && inView) return;   // 이미 보이면 안 움직임
+  peekArm();
+  if (inView) return;
+  peekOn = true;
+  try { el.scrollIntoView({ behavior: REDUCED() ? 'auto' : 'smooth', block: 'center' }); } catch {}
+  await new Promise(res => setTimeout(res, REDUCED() ? 30 : 380));   // 스크롤이 멈춘 뒤 타격 연출
+}
+/** 타격 때: 위에 올라가 있으면 복귀 타이머만 연장 (스크롤 안 함) */
+function peekHold(el) { if (peekOn && peekOk(el)) peekArm(); }
 function peekReset() { clearTimeout(peekT); peekOn = false; }
 function hitFx(el, kind = 'impact') {
-  peekEnemy(el);
+  peekHold(el);
   if (!el || FX_OFF() || REDUCED() || !el.isConnected) return;
   const r = el.getBoundingClientRect(); if (!r.width) return;
   const img = document.createElement('img');
@@ -623,6 +632,7 @@ async function attack(who, unit, target, fromBatch = false) {
     const lure = maleLure(unit, o);
     const shown = lure && lure !== target ? lure : target;
     const tEl = shown ? (unitEl(oWho, shown) || heroEl(oWho)) : heroEl(oWho);
+    if (who === 'me') await peekBefore(tEl);
     playSe(7);
     if (shown?.st?.taunt) tauntPullFx(aEl, tEl);
     const hit = await withTimeout(lunge(aEl, tEl), 750);
@@ -1171,6 +1181,7 @@ async function castSkill(who, u, s) {
   try {
     render();
     if (!(await mrVideo(u, s))) await withTimeout(cutIn(u, s.name, s.fx), 3000);
+    if (who === 'me' && S.ai.field.length) await peekBefore(!$('ai-boss').classList.contains('hidden') ? $('ai-boss') : $('ai-field'));   // 상대 쪽 먼저 보이고 타격
     pendingDying = [];
     useSkill(u, s);
     await vidWait();
