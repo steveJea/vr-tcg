@@ -77,6 +77,8 @@ export const STATUS = {
   thorns:  { icon: '🌵', img: 'st_thorns', label: '반격 강화', desc: '받는 피해 감소·반격 배율 증가 (반격으로는 공격자가 쓰러지지 않음)' },
   freeze:  { icon: '🧊', label: '동결', debuff: true, desc: '다음 자기 턴 행동 불가 (공격·스킬 X, 반격은 함). 풀린 뒤 1턴은 다시 안 얼음 (얼음 속성 일반 공격 10%)' },
   burn:    { icon: '🔥', label: '화상', debuff: true, desc: '주는 피해 -5%, 매 턴 시작 시 HP -3% (불 속성 기본 공격, 2턴)' },
+  blind:   { icon: '🌫️', label: '명중 저하', debuff: true, desc: '기본 공격이 확률로 빗나감 (스킬은 영향 없음)' },
+  wingSummon: { icon: '🪽', label: '소환됨', desc: '[암흑 소환]으로 나온 카드. 지속이 끝나면 사라짐 (처치 보상·XP 없음)' },
   sisterSwap: { icon: '🔄', label: '선미영 교체', desc: '선나영 대신 선미영이 전투 (끝나면 선나영 HP 100% 회복, 선미영이 쓰러지면 선나영도 쓰러짐)' },
   evade:   { icon: '💨', img: 'st_evade', label: '회피', desc: '기본 공격을 확률로 회피 (회피 시 피해·반격 없음, 스킬은 회피 불가)' },
   endure:  { icon: '💢', img: 'st_endure', label: '불사', desc: 'HP가 1 아래로 내려가지 않음 (즉사 포함)' },
@@ -123,7 +125,7 @@ export function statusIcons(u) {
   const out = [];
   for (const [k, s] of Object.entries(u.st)) {
     if (s.kind === 'mod') out.push({ icon: MOD_ICON(s.atk || 0, s.def || 0), img: MOD_IMG(s.atk || 0, s.def || 0), title: `${s.label || k} (${s.t}턴)` });
-    else if (STATUS[s.kind]) out.push({ kind: s.kind, t: ['dot', 'esoteric', 'regen', 'bleed', 'burn', 'freeze'].includes(s.kind) ? s.t : 0, icon: STATUS[s.kind].icon, img: STATUS[s.kind].img, title: s.kind === 'vow' ? `지킨다: DEF +${(s.def * 100).toFixed(1)}% (이영아와 함께)` : s.kind === 'provoked' ? `도발당함: ${s.by?.card?.name || ''}만 공격 · 스킬 불가 (${s.t}턴)` : `${STATUS[s.kind].label} (${s.t}턴)` });
+    else if (STATUS[s.kind]) out.push({ kind: s.kind, t: ['dot', 'esoteric', 'regen', 'bleed', 'burn', 'freeze', 'blind', 'wingSummon'].includes(s.kind) ? s.t : 0, icon: STATUS[s.kind].icon, img: STATUS[s.kind].img, title: s.kind === 'vow' ? `지킨다: DEF +${(s.def * 100).toFixed(1)}% (이영아와 함께)` : s.kind === 'provoked' ? `도발당함: ${s.by?.card?.name || ''}만 공격 · 스킬 불가 (${s.t}턴)` : `${STATUS[s.kind].label} (${s.t}턴)` });
   }
   if (u.curse && foeHasPassive(u.owner, '자수정 눈물의 지옥 교향곡')) out.push({ icon: '🥀', img: 'st_curse', title: `지옥 교향곡 ×${u.curse}` });
   if (u.pairShield) out.push({ icon: '🛡️', title: `자매의 가호: 피해 무효 (${u.pairShield}턴까지)` });
@@ -297,6 +299,7 @@ export function checkDeath(u, killer = null) {
     emit({ type: 'heal', unit: u, amt: u.maxHp, why: '제발…그만' }); refreshAll(p);
     return false;
   }
+  if (u.summoned) { unsummon(u); return true; }   // 암흑 소환 카드: 무덤·처치 보상·XP 없음
   if (u.swap) unswap(u, false);   // 선미영이 쓰러지면 선나영이 쓰러진 것으로 처리
   p.field.splice(p.field.indexOf(u), 1);
   p.grave.push(u.base);
@@ -487,10 +490,39 @@ function jihyeStrike(u, ts) {
 const pickRandom = arr => arr.length ? arr[Math.floor(rng() * arr.length)] : null;
 const yuriKiss = (u, f, prob, kind, thenBleed) => { if (sChance(prob)) live(f).forEach(t => { if (addStatus(t, kind, 1, {}, kind) && thenBleed) bleedOn(t, u); }); else emit({ type: 'miss', unit: u, text: '확률 실패' }); f.actionLock = Math.max(f.actionLock, 1); emit({ type: 'log', text: `${f.name || '상대'}: 다음 턴 고유기술(셔플·보강·강화·필드 회복) 봉인` }); };
 
+const WING_R_ID = '10503';
+const wingPoison = (t, u, turns) => addStatus(t, 'dot', turns, { pct: RULES.DOT_BB_PCT, caster: u, label: '중독: 매 턴 HP -3%' }, 'dot');
+/** 왼쪽 날개 [암흑 소환]: 새 [오른쪽 날개] (HP 100%, 시전자와 같은 레벨)를 2턴 소환. 필드가 꽉 찼거나 이미 있으면 실패 */
+function summonRightWing(u, p) {
+  const c = poolCard(WING_R_ID);
+  if (!c || fieldCount(p) >= RULES.FIELD_MAX || p.field.some(x => String(x.base?.id) === WING_R_ID)) { emit({ type: 'miss', unit: u, text: !c ? '소환 실패' : fieldCount(p) >= RULES.FIELD_MAX ? '필드가 가득 참' : '이미 소환됨' }); return false; }
+  const L = Math.max(1, u.base.slv || u.base.qLevel || 1), m = 1 + (LV_RATE[c.grade] || 0.01) * (L - 1);
+  const nb = { ...c, HP: Math.round(+c.HP * m), ATK: Math.round(+c.ATK * m), DEF: Math.round(+c.DEF * m), slv: L, summoned: true };
+  const a = placeUnit(p, nb, makeUnit);
+  while (a.level < Math.min(u.level, RULES.LEVEL_MAX)) levelUpOnce(a);
+  a.hp = a.maxHp; a.summoned = true; a.canAttack = true;
+  addStatus(a, 'wingSummon', 2, {}, 'wingSummon');
+  emit({ type: 'log', text: `${u.card.name} [암흑 소환] → ${a.card.name} (Lv.${a.level}, 2턴)` });
+  refreshAll(p); return true;
+}
+/** 소환 카드 퇴장: 무덤·처치 보상 없이 필드에서 제거 */
+function unsummon(a) {
+  const p = a.owner; if (!p.field.includes(a)) return;
+  p.field.splice(p.field.indexOf(a), 1);
+  emit({ type: 'destroy', unit: a }); emit({ type: 'log', text: `${a.card.name} 소환 종료` });
+  refreshAll(p);
+}
 export const ACTIVE = {
   // [각성] 이민채 (NPC, 챕터 4 보스): 랜덤 2인을 공격력 15%로 5회씩 타격
   // [염원] 이민채 (NPC, 챕터 4 보스 분신): 적 전체 공격력 30%
   '이건 사랑이야': (u, p, f) => { hitAll(u, f, 1, 0.3); },
+  // CH11 날개 (2026-10-31 캐릭터 시트): 오른쪽 날개 10503 · 왼쪽 날개 10504. 중독·화상·출혈 매 턴 -3%
+  '내가 느꼈던 고통': (u, p, f) => { const t = by(live(f), x => x.card.cost, -1); if (!t) return; if (sChance(0.5)) addStatus(t, 'para', 1, {}, 'para'); else emit({ type: 'miss', unit: u, text: '마비 실패' }); wingPoison(t, u, 2); },
+  '네가 느낄 고통': (u, p, f) => live(f).forEach(t => { addStatus(t, 'bleed', 3, { atk: -0.05, def: -0.05 }, 'bleed'); addStatus(t, 'burn', 3, {}, 'burn'); }),
+  '모두가 느끼는 지옥': (u, p, f) => live(f).forEach(t => { addStatus(t, 'para', 1, {}, 'para'); wingPoison(t, u, 3); addStatus(t, 'burn', 3, {}, 'burn'); }),
+  '내가 느꼈던 어둠': (u, p, f) => live(f).forEach(t => { addStatus(t, 'burn', 3, {}, 'burn'); addStatus(t, 'blind', 1, { p: 0.2, label: '명중률 -20%' }, 'blind'); }),
+  '네가 느껴야 하는 고독': (u, p, f) => live(f).forEach(t => { const m = Math.round(t.mp * 0.5); if (m > 0) { t.mp -= m; emit({ type: 'mp', unit: t, amt: -m }); } addStatus(t, 'blind', 2, { p: 0.2, label: '명중률 -20%' }, 'blind'); }),
+  '암흑 소환': (u, p) => summonRightWing(u, p),
   // CH8~11 NPC (2026-10-29 캐릭터 시트): [염원] 최윤아·최윤정, 안소라, [염원] 안지윤
   '사랑한단말야': (u, p, f) => { const ts = live(f); hitAll(u, f, 1, 0.4); ts.forEach(t => f.field.includes(t) && t.hp > 0 && sChance(0.3) && addStatus(t, 'para', 1, {}, 'para')); },
   '왜 우리야!': (u, p, f) => { const ts = live(f); hitAll(u, f, 1, 0.4); ts.forEach(t => { if (f.field.includes(t) && t.hp > 0 && sChance(0.3)) bleedOn(t, u, 1); }); },
@@ -925,6 +957,8 @@ export function turnStart(p) {
   // [염원] 최윤아 지켜주고 싶어: 매 턴 아군 전체 HP 10% 회복
   const wy = findPassiveUnit(p, '지켜주고 싶어');
   if (wy) { emit({ type: 'passive', unit: wy, name: '지켜주고 싶어' }); stats.count('지켜주고 싶어'); p.field.forEach(a => heal(a, a.maxHp * 0.1, '지켜주고 싶어')); }
+  // 왼쪽 날개 [아프지 않아요]: 매 턴 자신 HP 30% 회복
+  for (const u of [...p.field]) if (hasPassive(u, '아프지 않아요')) { emit({ type: 'passive', unit: u, name: '아프지 않아요' }); stats.count('아프지 않아요'); heal(u, u.maxHp * 0.3, '아프지 않아요'); }
   // Esoteric Method: 매 턴 HP -10%, ATK -3% 누적
   for (const u of [...p.field]) if (u.st.esoteric) { u.st.esoteric.stack = (u.st.esoteric.stack || 0) + 1; TICK = 'curse'; try { damageUnit(u, Math.max(1, Math.round(u.maxHp * 0.1)), null); } finally { TICK = null; } checkDeath(u, u.st.esoteric.caster || null); }
   // v2: 체력 고갈 / 재생
@@ -976,6 +1010,7 @@ export function turnStart(p) {
 /** 상태 종료 시 효과: 종료 회복, MP 하락(저기…나랑 갈래?), 고세린 [아..기분좋아~] */
 function onExpire(u, k, s) {
   if (k === 'sisterSwap') unswap(u, true);
+  if (k === 'wingSummon' && u.summoned) unsummon(u);
   if (s.endHeal) heal(u, u.maxHp * s.endHeal, k);
   if (s.mpDrainEnd && u.mp > 0) { const m = Math.round(u.mp * s.mpDrainEnd); if (m > 0) { u.mp -= m; emit({ type: 'mp', unit: u, amt: -m }); emit({ type: 'log', text: `${u.card.name} [${s.label || k}] 종료 · MP -${m}` }); } }
   if (k === '때리지 말라니까!' && hasPassive(u, '아..기분좋아~')) { u.st.regen = { kind: 'regen', pct: 0.07, t: 3 }; emit({ type: 'passive', unit: u, name: '아..기분좋아~', text: '3턴 간 매 턴 HP 7% 회복' }); stats.count('아..기분좋아~'); }
@@ -1078,6 +1113,9 @@ export function aiSkillScores(u, { noSave = false } = {}) {
       case '러시안룰렛': sc = n ? 90 + by(f.field, x => x.card.cost).card.cost : 0; break;
       case '힘들면...죽어': sc = n ? 90 + by(f.field, x => x.mp).card.cost : 0; break;
       case '처음부터...다시.': sc = n && !canKill ? 70 + Math.round(f.field.reduce((a, t) => a + t.mp, 0) / 20) : 0; break;
+      case '암흑 소환': sc = fieldCount(p) < RULES.FIELD_MAX && !p.field.some(x => String(x.base?.id) === WING_R_ID) && poolCard(WING_R_ID) ? 95 : 0; break;
+      case '내가 느꼈던 고통': sc = n ? 84 : 0; break;
+      case '모두가 느끼는 지옥': case '네가 느낄 고통': case '내가 느꼈던 어둠': case '네가 느껴야 하는 고독': sc = n >= 2 ? 88 + n * 3 : n ? 72 : 0; break;
       case '건드리지 마!': case '아무도 없는 곳에서': sc = n && u.hp < u.maxHp * 0.7 ? 86 : 0; break;
       case '깨져버린 세상': case '더 이상 울기 싫어': sc = n >= 2 ? 88 + n * 3 : n ? 70 : 0; break;
       case '그게...최선인가?': sc = n >= 2 && !canKill ? 78 + n * 3 : 0; break;
