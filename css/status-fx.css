@@ -160,3 +160,8 @@
 .stfx-ice-shatter { width: var(--w); height: var(--h); transform: translate(-50%, -50%); border-radius: 10px; background: repeating-linear-gradient(60deg, transparent 0 9px, rgba(224,242,254,.7) 9px 10px), repeating-linear-gradient(-50deg, transparent 0 13px, rgba(224,242,254,.6) 13px 14px); animation: stfx-fade var(--d) ease-out forwards; }
 .stfx-screen.stfx-flash-ice { position: fixed; inset: 0; background: radial-gradient(circle, transparent 40%, rgba(56,189,248,.35)); animation: stfx-fade var(--d) ease-out forwards; }
 .stfx-text-freeze { color: #7dd3fc; } .stfx-text-burn { color: #fb923c; }
+/* 교란(disrupt): 혼란과 같은 흔들림·별 회전, 색만 청록으로 구분 (혼란 = 보라) */
+.unit.st-disrupt > .relative { animation-name: stfx-hue-dis; }
+@keyframes stfx-hue-dis { 0%, 100% { filter: drop-shadow(0 0 4px #22d3ee); transform: rotate(-3deg); } 50% { filter: hue-rotate(-40deg) saturate(1.3) drop-shadow(0 0 8px #67e8f9); transform: rotate(3deg); } }
+.unit.st-disrupt .stfx-stars i { color: #a5f3fc; text-shadow: 0 0 4px #0891b2; }
+@media (prefers-reduced-motion: reduce) { .unit.st-disrupt > .relative { animation: none !important; } }
