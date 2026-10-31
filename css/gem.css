@@ -100,3 +100,6 @@
 .fr-fb{display:flex;align-items:center;gap:4px;font-size:12px;color:#fde68a;margin-bottom:2px}.fr-fb .fr-tab{flex:none;padding:3px 10px}.fr-fb small{margin-left:auto;color:#a1a1aa;font-size:11px}
 /* 마이페이지(z 120) 위에서 연 친구 창은 그 위로 */
 .gem-pop.friend-pop{z-index:130}
+/* 일일 미션: 제목 탭 → 바로 가기 */
+.daily-mt.go{cursor:pointer}.daily-mt.go:hover b,.daily-mt.go:focus-visible b{color:#6ee7b7}
+.daily-arrow{color:#6ee7b7;font-weight:900;margin-left:2px}
