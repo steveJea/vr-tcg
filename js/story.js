@@ -649,7 +649,7 @@
     const why = open ? '' : (i && !chapterDone(D.chapters[i - 1]) ? '이전 챕터 클리어 후' : chLvLock(D.chapters[i]) ? `Lv ${chNeedLv(D.chapters[i])} 필요` : '준비 중');
     const st = !open ? `🔒 ${why}` : done ? '✔ 클리어 · 다시 하기' : n ? `진행 중 ${n}/${tot}` : '새 챕터';
     return `<button class="hub-ch-slot ${size} ${open ? '' : 'locked'} ${done ? 'done' : ''}" data-hubch="${i}" ${open ? '' : 'disabled'}>
-      <span class="hub-ch-img" style="background-image:${cv ? `url(${IMG}${cv}.webp),` : ''}url(img/story/opening_poster.webp)"></span>
+      <span class="hub-ch-img" style="background-image:${cv ? `url(${IMG}${cv}.webp),url(img/npc/${cv}.webp),` : ''}url(img/story/opening_poster.webp)"></span>
       <span class="hub-ch-txt"><small>${esc(base.title)}</small><b>${esc(ch.subtitle || base.title)}</b><i>${st}</i></span>
       ${done && videoOf(base) ? `<span class="story-hub-vid" role="button" data-hubvid="${i}" title="엔딩 영상 다시 보기">🎬</span>` : ''}</button>`;
   }

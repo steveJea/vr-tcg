@@ -976,3 +976,18 @@ body.story-media-on .story-dlg-skip { left: 4px; right: auto; top: calc(4px + en
   .hud-btns > #end-turn{padding-top:6px;padding-bottom:6px}
   #game.story-field #ai-hero{margin-top:4px}
 }
+/* 전투 하단 (2026-10-31 #2): 480px 넘는 화면(넓은 폰·태블릿·PC)에서도 버튼 칸·진영 줄이 겹치지 않게
+   버튼 칸 = 2열 그리드(일괄 공격 | 포기, 턴 종료는 전체 폭), 글자 크기에 맞춰 폭이 늘어남. 진영 정보는 줄바꿈 */
+.hud-btns{display:grid;grid-template-columns:minmax(0,1fr) auto;width:auto;min-width:116px;max-width:220px;gap:4px;align-content:center}
+.hud-btns > #reserve-btn,.hud-btns > #end-turn{grid-column:1/-1}
+.hud-btns > #story-giveup.hidden + #end-turn,.hud-btns > #attack-all:last-of-type{grid-column:1/-1}
+.hud-btns > #attack-all{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.hud-btns > #story-giveup.hidden ~ #end-turn{grid-column:1/-1}
+#game:not(.story-pool) .hud-btns > #attack-all,.hud-btns:not(:has(#story-giveup:not(.hidden))) > #attack-all{grid-column:1/-1}
+@media (min-width:768px){.hud-btns{min-width:168px}}
+@media (max-width:480px){.hud-btns{min-width:96px;max-width:120px}}
+#me-dock > div:first-child{align-items:stretch}
+#me-hero{min-width:0;display:flex;flex-direction:column;justify-content:center;overflow:hidden}
+.hud-top{flex-wrap:wrap;row-gap:2px}
+.hud-top .hud-mana{flex:1 1 auto;min-width:0;white-space:normal;line-height:1.25}
+.hud-right{margin-left:auto;flex:none}
