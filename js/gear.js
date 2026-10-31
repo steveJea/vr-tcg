@@ -166,7 +166,7 @@
     const draw = () => {
       const list = (st.gear || []).filter(g => filt === 'all' || slotOf(g) === filt).sort((a, b) => (defs[b.def]?.tier || 0) - (defs[a.def]?.tier || 0) || b.plus - a.plus);
       const nx = st.next_expand;
-      m.querySelector('.gear-pop').innerHTML = `<div class="gear-bag-top"><b><img class="ui-ic" src="img/ui/bag.webp" alt="">${st.count}/${st.slots}</b><button class="gear-btn" data-mail><img class="ui-ic" src="img/ui/mailbox.webp" alt="">${st.mail ? ` <i class="gear-badge">${st.mail}</i>` : ''}</button>${nx ? `<button class="gear-btn" data-x>+10칸 ${window.VRGem?.ICON || '💎'} ${nx.gem}</button>` : '<small>최대</small>'}</div>
+      m.querySelector('.gear-pop').innerHTML = `<div class="gear-bag-top"><b><img class="ui-ic" src="img/ui/bag.webp" alt="">${st.count}/${st.slots}</b><button class="gear-btn" data-mail><img class="ui-ic" src="img/ui/mailbox.webp" alt="">${(unread ?? st.mail) ? ` <i class="gear-badge">${unread ?? st.mail}</i>` : ''}</button>${nx ? `<button class="gear-btn" data-x>+10칸 ${window.VRGem?.ICON || '💎'} ${nx.gem}</button>` : '<small>최대</small>'}</div>
         <div class="gear-tabs">${[['all', '전체'], ...SLOTS].map(([k, l]) => `<button data-f="${k}" class="${filt === k ? 'on' : ''}">${k === 'all' ? '' : img(sil(k), k)}${l}</button>`).join('')}</div>
         ${ctx.cardId ? '' : `<div class="gear-sel">${pick ? `${[1, 2, 3, 4, 5].map(t => `<button data-t="${t}" class="gt${t}">${TIER[t]}</button>`).join('')}<button data-pk>취소</button>` : `<small><img class="ui-ic" src="img/ui/cur_dust.webp" alt="">가루 ${fmt(st.dust || 0)}</small><button class="gear-btn" data-pk>☑️ 여러 개 정리</button>`}</div>`}
         <div class="gear-grid">${list.map(g => { const d = defs[g.def]; return `<button class="gear-cell gt${d.tier} ${pick?.has(g.id) ? 'pick' : ''} ${pick && (g.locked || g.card) ? 'nopick' : ''}" data-g="${g.id}">${img(iconOf(d), slotOf(g))}${g.plus ? `<i>+${g.plus}</i>` : ''}${g.card ? '<b class="gear-eq">E</b>' : ''}${g.locked ? '<b class="gear-lk"><img class="ui-ic" src="img/ui/lock.webp" alt=""></b>' : ''}</button>`; }).join('') || '<div class="gear-dim">아직 장비가 없어요. 소탕·탑·토벌에서 얻을 수 있어요</div>'}</div>`;
@@ -186,7 +186,7 @@
         if (pick) { if (g.locked || g.card) return toast('🔒 잠금·장착 중인 장비는 고를 수 없어요'); pick.has(g.id) ? pick.delete(g.id) : pick.add(g.id); return draw(); }
         if (ctx.cardId && !g.card) { rpc('gear_equip', { p_gear: g.id, p_card: String(ctx.cardId) }).then(r => { if (r) { m.remove(); ctx.reopen?.(); } }); return; }
         itemPop(g, { cardId: ctx.cardId, back: () => { if (m.isConnected) draw(); } }); });
-      m.querySelector('[data-mail]').onclick = () => mailbox({ back: () => { if (m.isConnected) draw(); } });
+      m.querySelector('[data-mail]').onclick = () => mailbox({ back: () => { if (m.isConnected) refreshUnread().then(draw); } });
       const x = m.querySelector('[data-x]'); if (x) x.onclick = async () => { if (!confirm(`가방을 10칸 늘릴까요? (보석 ${nx.gem})`)) return; x.disabled = true; const r = await rpc('gear_expand', {}); if (r) { window.VRGem?.status?.(true); } if (m.isConnected) draw(); };
     };
     draw();
@@ -209,6 +209,26 @@
     return data;
   }
   // 우편함: 장비는 받기, 상자는 슬롯 골라 열기
+  // --- 메시지 우편 (supabase/mail_v2.sql) ---
+  let unread = null;
+  async function refreshUnread() { try { const { data, error } = await sb().rpc('mail_unread'); unread = error ? null : (data | 0); } catch { unread = null; } return unread; }
+  const CURN = { gold: '🪙 골드', blood: '🩸 순수한 피', shard: '💠 이상한 조각', soul: '🔥 각성자의 혼' };
+  const hasAtt = p => !!p && Object.keys(p).length > 0;
+  const attTxt = p => { p = p || {}; const a = [];
+    if (p.gem) a.push(`${window.VRGem?.ICON || '💎'} 심연석 ${fmt(p.gem)}`); if (p.tickets) a.push(`🎟️ 소환권 ${p.tickets}`);
+    Object.entries(p.cur || {}).forEach(([k, v]) => a.push(`${CURN[k] || k} ${fmt(v)}`)); if (p.gear) a.push(`🛡️ ${esc(defs[p.gear]?.name || '장비')}`); return a.join(' · '); };
+  const fmtExp = t => { const d = new Date(t); return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
+  function msgPop(ml, after) {
+    if (!ml) return; const att = hasAtt(ml.payload);
+    if (!ml.read) sb().rpc('mail_read', { p_id: ml.id }).then(() => refreshUnread());
+    const q = pop(`<b class="gear-msg-t">${esc(ml.title || '알림')}</b><div class="gear-msg-b">${esc(ml.body || '').replace(/\n/g, '<br>')}</div>
+      ${att ? `<div class="gear-msg-a">${attTxt(ml.payload)}</div>` : ''}<div class="gear-dim">기한 ${esc(fmtExp(ml.expires_at))}까지</div>
+      <div class="gear-acts"><button class="gear-btn main" data-c>${att ? '받기' : '확인 (삭제)'}</button></div>`, 'item');
+    q.querySelector('[data-c]').onclick = async e => { e.target.disabled = true; const r = await rpc('mail_msg_claim', { p_id: ml.id }); q.remove();
+      if (r) { if (r.wallet) window.VRPlayer?.setWallet?.(r.wallet); if (r.got?.gem) window.VRGem?.status?.(true); if (att) toast(`📬 받았어요: ${attTxt(ml.payload)}`.replace(/<[^>]+>/g, '')); }
+      await refreshUnread(); after?.(); };
+  }
+
   async function mailbox(ctx = {}) {
     if (!await load()) return toast('장비를 불러오지 못했어요');
     const m = pop('', 'bag');
@@ -216,11 +236,13 @@
     const draw = async () => {
       const { data: list, error } = await sb().rpc('mail_list'); if (error) { m.remove(); return toast(`⚠️ ${error.message}`); }
       m.querySelector('.gear-pop').innerHTML = `<div class="gear-bag-top"><b><img class="ui-ic" src="img/ui/mailbox.webp" alt="">우편함</b><small><img class="ui-ic" src="img/ui/bag.webp" alt="">${st.count}/${st.slots}</small></div>
-        <div class="gear-grid">${list.map(ml => { const p = ml.payload || {}, d = defs[p.def_id];
+        ${list.filter(x => x.kind === 'msg').map(ml => `<button class="gear-msg ${ml.read && !hasAtt(ml.payload) ? 'read' : ''}" data-msg="${ml.id}"><b>${ml.read ? '' : '<i class="gear-badge">N</i> '}${esc(ml.title || '알림')}</b><span>${attTxt(ml.payload) || '메시지'}</span><small>~${esc(fmtExp(ml.expires_at))}</small></button>`).join('')}
+        <div class="gear-grid">${list.filter(x => x.kind !== 'msg').map(ml => { const p = ml.payload || {}, d = defs[p.def_id];
           if (ml.kind === 'sigil_frag') return `<button class="gear-cell" data-m="${ml.id}">${img('', 'sigil')}<i>×${p.n}</i></button>`;
           return ml.kind === 'box' ? `<button class="gear-cell gt${p.tier}" data-m="${ml.id}"><span class="gear-box"><img class="ui-ic" src="img/ui/gear_box.webp" alt=""></span></button>`
-            : d ? `<button class="gear-cell gt${d.tier}" data-m="${ml.id}">${img(iconOf(d), d.slot)}</button>` : ''; }).join('') || '<div class="gear-dim">우편이 없어요</div>'}</div>
-        <div class="gear-dim">보관 7일 · 상자 14일</div>`;
+            : d ? `<button class="gear-cell gt${d.tier}" data-m="${ml.id}">${img(iconOf(d), d.slot)}</button>` : ''; }).join('') || (list.length ? '' : '<div class="gear-dim">우편이 없어요</div>')}</div>
+        <div class="gear-dim">보관 7일 · 상자 14일 · 메시지는 적힌 기한까지</div>`;
+      m.querySelectorAll('[data-msg]').forEach(b => b.onclick = () => msgPop(list.find(x => String(x.id) === b.dataset.msg), () => { if (m.isConnected) draw(); }));
       m.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { const ml = list.find(x => String(x.id) === b.dataset.m), p = ml.payload || {};
         if (ml.kind === 'sigil_frag') {
           const ok = cost.src.filter(x => x.source === (p.pick || 'raid_select')).map(x => x.card_id);
@@ -290,5 +312,5 @@
     const sg = (st?.sigils || []).find(s => s.card === String(cardId));
     return { gear, sigil: sg?.plus ?? null };
   }
-  window.VRGear = { load, forCard, slotsHTML, bind, bag, mailbox, showDrops, pvpShop, ask, shopIcon, get ready() { return !!st; }, get off() { return off; }, _defs: () => defs };
+  window.VRGear = { unread: refreshUnread, load, forCard, slotsHTML, bind, bag, mailbox, showDrops, pvpShop, ask, shopIcon, get ready() { return !!st; }, get off() { return off; }, _defs: () => defs };
 })();
