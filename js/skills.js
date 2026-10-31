@@ -525,6 +525,9 @@ export const ACTIVE = {
   '내가 느꼈던 어둠': (u, p, f) => live(f).forEach(t => { addStatus(t, 'burn', 3, {}, 'burn'); addStatus(t, 'blind', 1, { p: 0.2, label: '명중률 -20%' }, 'blind'); }),
   '네가 느껴야 하는 고독': (u, p, f) => live(f).forEach(t => { const m = Math.round(t.mp * 0.5); if (m > 0) { t.mp -= m; emit({ type: 'mp', unit: t, amt: -m }); } addStatus(t, 'blind', 2, { p: 0.2, label: '명중률 -20%' }, 'blind'); }),
   '암흑 소환': (u, p) => summonRightWing(u, p),
+  // 강보람 10509 (플레이어 카드, 2026-10-31 캐릭터 시트)
+  '한 번 맞아봐!': (u, p, f) => { const t = by(live(f), x => x.card.cost, -1); if (!t) return; if (!multiHit(u, t, 5, 0.15) && sChance(0.2)) addStatus(t, 'para', 1, {}, 'para'); },
+  '휴식도 수련이야': u => { addStatus(u, 'regen', 2, { pct: 0.05 }, 'regen'); addStatus(u, '휴식도 수련이야', 2, { def: 0.05, label: '휴식도 수련이야: DEF +5%' }, 'mod'); },
   // CH12 NPC (2026-10-31 캐릭터 시트): 안혜진 10505 · 한서린 10506 · 도예나 10507 · 최태석 10508
   '이게 답입니다!': (u, p, f) => { const ts = live(f); hitAll(u, f, 1, 0.3); ts.forEach(t => { if (f.field.includes(t) && t.hp > 0 && sChance(0.3)) bleedOn(t, u, 2); }); },
   '불쌍해라..': (u, p, f) => { const t = by(live(f), x => x.card.cost, -1); if (!t) return; if (!multiHit(u, t, 3, 0.4) && sChance(0.1)) addStatus(t, 'para', 1, {}, 'para'); },
@@ -1123,6 +1126,8 @@ export function aiSkillScores(u, { noSave = false } = {}) {
       case '암흑 소환': sc = fieldCount(p) < RULES.FIELD_MAX && !p.field.some(x => String(x.base?.id) === WING_R_ID) && poolCard(WING_R_ID) ? 95 : 0; break;
       case '내가 느꼈던 고통': sc = n ? 84 : 0; break;
       case '불쌍해라..': sc = n ? 82 : 0; break;
+      case '한 번 맞아봐!': sc = n ? 82 : 0; break;
+      case '휴식도 수련이야': sc = u.hp < u.maxHp * 0.7 ? 80 : 0; break;
       case '이게 답입니다!': case '아무렇지 않죠?': case '계약 성사': sc = n >= 2 ? 86 + n * 3 : n ? 72 : 0; break;
       case '모두가 느끼는 지옥': case '네가 느낄 고통': case '내가 느꼈던 어둠': case '네가 느껴야 하는 고독': sc = n >= 2 ? 88 + n * 3 : n ? 72 : 0; break;
       case '건드리지 마!': case '아무도 없는 곳에서': sc = n && u.hp < u.maxHp * 0.7 ? 86 : 0; break;
