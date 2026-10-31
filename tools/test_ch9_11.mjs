@@ -28,7 +28,7 @@ for (const c of [3, 9, 10, 11]) eval(readFileSync(new URL(`../js/story-data-ch${
 const CH = Object.fromEntries(window.STORY_DATA.chapters.map(c => [c.id, c]));
 const csv = f => Object.fromEntries(readFileSync(new URL('../data/' + f, import.meta.url), 'utf8').replace(/^\uFEFF/, '').trim().split(/\r?\n/).slice(1).map(l => l.split(',')).map(v => [v[0], v]));
 const cards = { ...csv('npc_cards.csv'), ...csv('cards.csv') }, nm = id => cards[id]?.[1];
-const N = { 9: 18, 10: 18, 11: 16 }, SUBT = { 9: '기도', 10: '마지막 랠리', 11: '사라지지 않는 약속' };
+const N = { 9: 18, 10: 17, 11: 16 }, SUBT = { 9: '기도', 10: '마지막 랠리', 11: '사라지지 않는 약속' };
 for (const c of [9, 10, 11]) { const ch = CH[c];
   ok(ch && ch.phases.length === N[c] && ch.subtitle === SUBT[c] && ch.single && ch.phases.every((p, i) => p.no === i + 1) && ch.phases.at(-1).type === 'boss' && ch.phases.filter(p => p.type === 'boss').length === 1, `CH${c} · ${N[c]} 페이즈 · 마지막 보스`);
   ok(ch.phases.every(p => p.enemies.ids.length === 5 && p.enemies.ids.every(nm) && Object.values(p.enemies.boost).every(b => b.HP > 0 && b.storyLv >= 40)), `CH${c} 적 카드·레벨`);

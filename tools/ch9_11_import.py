@@ -8,7 +8,7 @@ import csv, json, os, re, sys
 sys.path.insert(0, os.path.dirname(__file__)); from power import card_power
 SUB = {9: '기도', 10: '마지막 랠리', 11: '사라지지 않는 약속'}
 VIDEO = {9: 'SZOOuvc5nak', 10: '1egJLy6rkPw', 11: 'w7kJ9vfJSgo'}   # 챕터 엔딩 영상 (YouTube id)
-ALIAS = {'아빠': '윤희 아버지', 'NA': '내레이션', '나레이션': '내레이션'}
+ALIAS = {'아빠': '윤희 아버지', 'NA': '내레이션', '나레이션': '내레이션', '왼쪽날개': '왼쪽 날개', '내래이션': '내레이션', '오른쪽날개': '오른쪽 날개'}
 # 최윤희 복장 (0 = 챕터 시작 스토리). 없는 페이즈는 교복
 OUT = {'school': {9: [0, 1, 2, 5, 9, 13, 15, 16, 17], 10: [6, 8]},
        'home': {9: [4, 6, 8, 12, 18], 10: [11, 13, 14, 16, 17, 18], 11: [5, 13, 16]},
@@ -22,8 +22,8 @@ for f in ('data/cards.csv', 'data/npc_cards.csv'):
     for row in csv.DictReader(open(f, encoding='utf-8-sig')):
         IDS.setdefault(row['name'], row['id']); CARD.setdefault(row['id'], row)
 def nm(k):
-    n = ALIAS.get(k.strip(), k.strip()); m = re.match(r'^불량배-?([A-Z])$', n)
-    return f'불량배-{m.group(1)}' if m else n
+    n = ALIAS.get(k.strip(), k.strip()); m = re.match(r'^불량배-?([A-Za-z])$', n)
+    return f'불량배-{m.group(1).upper()}' if m else n
 num = lambda x: int(float(x)) if re.fullmatch(r'\d+(\.\d+)?', x.strip() or '-') else None
 RATE = {'NORMAL': 0.01, 'RARE': 0.02, 'HIGH RARE': 0.03, 'SUPER RARE': 0.04, 'ULTRA RARE': 0.05, 'MYTHIC RARE': 0.06}
 
@@ -35,7 +35,9 @@ def party_of(cond, forced, defeat):
         if who in ('남성', '여성'): continue
         ex = [IDS[nm(w)] for w in who.split('·') if nm(w) in IDS]
         if ex: p['exclude'] = sorted(set(p.get('exclude', []) + ex))
-    if '단독출전' in c: p['solo'] = True
+    if '단독출전' in c or '단독출현' in c: p['solo'] = True
+    m = re.search(r'(N|R|HR|SR|UR)이상출전(불가|금지)', c)   # 이 등급 이상 출전 불가 → maxGrade = 한 단계 아래 (필수 카드는 예외)
+    if m: p['maxGrade'] = {'R': 'NORMAL', 'HR': 'RARE', 'SR': 'HIGH RARE', 'UR': 'SUPER RARE'}[m.group(1)]
     m = re.search(r'최대(\d)명', c)
     if m: p['max'] = int(m.group(1))
     p['mustLive'] = [IDS[nm(x.replace('사망', ''))] for x in defeat.split('/') if '사망' in x and nm(x.replace('사망', '')) in IDS]
@@ -73,7 +75,8 @@ def build(chn, path, loan=()):
     phases[-1].update(type='boss', final=True)
     last = 40
     for p in phases:
-        lv = p['enemies'].pop('storyLv') or {k: last for k in p['enemies']['ids']}
+        flv = next(iter(p['party'].get('levels', {}).values()), None)   # 적 레벨 칸이 비면 이 페이즈 필수 카드 레벨
+        lv = p['enemies'].pop('storyLv') or {k: flv or last for k in p['enemies']['ids']}
         last = max(lv.values()); b = {}
         for k, l in lv.items():
             c = CARD[k]; m = 1 + round(RATE[c['grade']] * (l - 1) * 100) / 100
@@ -92,5 +95,8 @@ def build(chn, path, loan=()):
     sps = {L['speaker'] for p in phases for L in p['lines']['default'] + p.get('after', [])} | {L['speaker'] for L in start}
     print('  speakers', sorted(sps))
 
+# 한 챕터만: python3 tools/ch9_11_import.py --ch 11 <csv11>
+if sys.argv[1] == '--ch':
+    c = int(sys.argv[2]); build(c, sys.argv[3], loan=('10491',) if c == 11 else ()); sys.exit()
 for chn, path in zip((9, 10, 11), sys.argv[1:4]):
     build(chn, path, loan=('10491',) if chn == 11 else ())

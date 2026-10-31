@@ -66,7 +66,7 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "내레이션",
-      "text": "기억을 더듬었다. 부서지는 현관문. 계단. 그리고...그 다음이 떠오르지 않았다."
+      "text": "기억을 더듬었다. 조용히 열리던 현관문. 거실. 앞을 막아선 작은 등. 그리고...그 다음이 떠오르지 않았다."
      },
      {
       "speaker": "[염원] 최윤정",
@@ -437,7 +437,7 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "내레이션",
-      "text": "공 100개. 50개 치고 울던 꼬마. 결승전 관중석. 백핸드가 늦었다는 잔소리."
+      "text": "공 100개. 50개 치고 울던 꼬마. 결승전 관중석. 백핸드가 늦었다는 잔소리. 그리고 그 밤, 내 앞을 막아선 작은 등."
      },
      {
       "speaker": "[염원] 최윤정",
@@ -456,7 +456,7 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "[염원] 최윤아",
-      "text": "...미안, 언니. 백핸드는 안 늦었는데, 그래도 공이 떨어졌어.",
+      "text": "...미안, 언니. 라켓 들었는데...한 게임도 못 버텼어.",
       "expr": "슬픔"
      },
      {
@@ -465,21 +465,23 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "[염원] 최윤아",
-      "text": "근데 언니, 지난번에 나 보고 고개 끄덕였잖아. 그거 칭찬이지? 그치?",
+      "text": "근데 언니, 나 마지막에 언니 앞 막아섰잖아. 그거 잘한 거지? 그치?",
       "expr": "기쁨"
      }
     ]
    },
    "party": {
     "forced": [
-     "10491"
+     "10491",
+     "10490"
     ],
     "noMale": true,
     "mustLive": [
      "10491"
     ],
     "levels": {
-     "10491": 73
+     "10491": 73,
+     "10490": 73
     }
    },
    "hero": [
@@ -489,7 +491,7 @@ window.STORY_DATA.chapters.push({
    "after": [
     {
      "speaker": "[염원] 최윤정",
-     "text": "...아니. 그냥 확인한 거야.",
+     "text": "...아니. 바보 같은 짓이었어. ...그래도, 고마워.",
      "expr": "보통"
     }
    ],
@@ -596,6 +598,7 @@ window.STORY_DATA.chapters.push({
    },
    "party": {
     "forced": [
+     "10491",
      "10490"
     ],
     "noMale": true,
@@ -603,12 +606,12 @@ window.STORY_DATA.chapters.push({
      "10490"
     ],
     "levels": {
-     "10490": 74,
-     "10491": 74
+     "10491": 74,
+     "10490": 74
     }
    },
    "hero": [
-    "10490"
+    "10491"
    ],
    "bossId": "10166",
    "after": [
@@ -678,7 +681,7 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "백시훈",
-      "text": "막내가 아직 살아 있다니, 운이 좋네요. 아니, 제가 운이 좋은 건가?",
+      "text": "막내는 일부러 남겨 뒀죠. 언니들 없이 얼마나 버티는지 보고 싶어서요.",
       "expr": "기쁨"
      },
      {
@@ -947,7 +950,7 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "불량배-Y",
-      "text": "쉿. 그 이름 함부로 꺼내지 마. 들으면 귀찮아한대."
+      "text": "쉿. 그 이름 함부로 꺼내지 마. 들으면......"
      },
      {
       "speaker": "[염원] 최윤정",
@@ -1157,23 +1160,30 @@ window.STORY_DATA.chapters.push({
   {
    "no": 10,
    "type": "normal",
-   "enemyName": "이지영",
+   "enemyName": "불량배-Z",
    "title": "이지영",
    "enemies": {
     "ids": [
-     "10311",
-     "10311",
-     "10311",
-     "10311",
-     "10311"
+     "10168",
+     "10166",
+     "10166",
+     "10166",
+     "10166"
     ],
     "boost": {
-     "10311": {
-      "HP": 10508,
-      "ATK": 2556,
-      "DEF": 2556,
+     "10168": {
+      "HP": 835,
+      "ATK": 150,
+      "DEF": 150,
       "storyLv": 79,
-      "power": 2726675
+      "power": 51776
+     },
+     "10166": {
+      "HP": 701,
+      "ATK": 117,
+      "DEF": 117,
+      "storyLv": 79,
+      "power": 39767
      }
     }
    },
@@ -1185,7 +1195,7 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "내레이션",
-      "text": "바람에 흩날리는 머리카락. 따분한 얼굴. 그리고 희미하게 금빛을 띤 왼쪽 눈."
+      "text": "바람에 흩날리는 머리카락. 따분한 얼굴. 그리고 희미하게 금빛을 띤 왼쪽 눈. 그리고 그녀 뒤에 강해보이는 사념 2명.."
      },
      {
       "speaker": "이지영",
@@ -1254,7 +1264,7 @@ window.STORY_DATA.chapters.push({
    "hero": [
     "10491"
    ],
-   "bossId": "10311",
+   "bossId": "10168",
    "after": [
     {
      "speaker": "내레이션",
@@ -1266,23 +1276,30 @@ window.STORY_DATA.chapters.push({
   {
    "no": 11,
    "type": "normal",
-   "enemyName": "이지영",
+   "enemyName": "불량배-Z",
    "title": "거절",
    "enemies": {
     "ids": [
-     "10311",
-     "10311",
-     "10311",
-     "10311",
-     "10311"
+     "10168",
+     "10166",
+     "10166",
+     "10166",
+     "10166"
     ],
     "boost": {
-     "10311": {
-      "HP": 10619,
-      "ATK": 2583,
-      "DEF": 2583,
+     "10168": {
+      "HP": 842,
+      "ATK": 152,
+      "DEF": 152,
       "storyLv": 80,
-      "power": 2755478
+      "power": 52323
+     },
+     "10166": {
+      "HP": 708,
+      "ATK": 118,
+      "DEF": 118,
+      "storyLv": 80,
+      "power": 40140
      }
     }
    },
@@ -1360,7 +1377,7 @@ window.STORY_DATA.chapters.push({
    "hero": [
     "10490"
    ],
-   "bossId": "10311",
+   "bossId": "10168",
    "after": [
     {
      "speaker": "이지영",
@@ -1373,23 +1390,30 @@ window.STORY_DATA.chapters.push({
   {
    "no": 12,
    "type": "normal",
-   "enemyName": "이지영",
+   "enemyName": "불량배-Z",
    "title": "매일 찾아오는 염원",
    "enemies": {
     "ids": [
-     "10311",
-     "10311",
-     "10311",
-     "10311",
-     "10311"
+     "10168",
+     "10166",
+     "10166",
+     "10166",
+     "10166"
     ],
     "boost": {
-     "10311": {
-      "HP": 10730,
-      "ATK": 2610,
-      "DEF": 2610,
+     "10168": {
+      "HP": 850,
+      "ATK": 153,
+      "DEF": 153,
       "storyLv": 81,
-      "power": 2784281
+      "power": 52753
+     },
+     "10166": {
+      "HP": 714,
+      "ATK": 119,
+      "DEF": 119,
+      "storyLv": 81,
+      "power": 40480
      }
     }
    },
@@ -1470,7 +1494,7 @@ window.STORY_DATA.chapters.push({
    "hero": [
     "10491"
    ],
-   "bossId": "10311",
+   "bossId": "10168",
    "after": [
     {
      "speaker": "이지영",
@@ -1483,51 +1507,19 @@ window.STORY_DATA.chapters.push({
   {
    "no": 13,
    "type": "normal",
-   "enemyName": "백시훈",
+   "enemyName": "왼쪽 날개",
    "title": "창밖",
    "enemies": {
     "ids": [
-     "10475",
-     "10489",
-     "10482",
-     "10483",
-     "10484"
+     "10504"
     ],
     "boost": {
-     "10475": {
-      "HP": 1018,
-      "ATK": 187,
-      "DEF": 161,
+     "10504": {
+      "HP": 2778,
+      "ATK": 278,
+      "DEF": 278,
       "storyLv": 82,
-      "power": 92927
-     },
-     "10489": {
-      "HP": 724,
-      "ATK": 137,
-      "DEF": 144,
-      "storyLv": 82,
-      "power": 47884
-     },
-     "10482": {
-      "HP": 686,
-      "ATK": 165,
-      "DEF": 137,
-      "storyLv": 82,
-      "power": 42244
-     },
-     "10483": {
-      "HP": 761,
-      "ATK": 154,
-      "DEF": 103,
-      "storyLv": 82,
-      "power": 40559
-     },
-     "10484": {
-      "HP": 823,
-      "ATK": 172,
-      "DEF": 86,
-      "storyLv": 82,
-      "power": 46442
+      "power": 442353
      }
     }
    },
@@ -1616,7 +1608,7 @@ window.STORY_DATA.chapters.push({
    "hero": [
     "10490"
    ],
-   "bossId": "10475",
+   "bossId": "10504",
    "after": [
     {
      "speaker": "내레이션",
@@ -1628,23 +1620,19 @@ window.STORY_DATA.chapters.push({
   {
    "no": 14,
    "type": "normal",
-   "enemyName": "이지영",
+   "enemyName": "오른쪽 날개",
    "title": "두 언니의 부탁",
    "enemies": {
     "ids": [
-     "10311",
-     "10311",
-     "10311",
-     "10311",
-     "10311"
+     "10503"
     ],
     "boost": {
-     "10311": {
-      "HP": 10952,
-      "ATK": 2664,
-      "DEF": 2664,
+     "10503": {
+      "HP": 2805,
+      "ATK": 280,
+      "DEF": 280,
       "storyLv": 83,
-      "power": 2841886
+      "power": 438481
      }
     }
    },
@@ -1703,19 +1691,22 @@ window.STORY_DATA.chapters.push({
       "text": "이지영은 한참 동안 두 염원을 내려다봤다. 금빛 눈이 흔들렸다."
      },
      {
+      "speaker": "내레이션",
+      "text": "지영의 뒤에서 눈을 감고 있던 두 명의 사념이 눈을 떴다."
+     },
+     {
       "speaker": "이지영",
       "text": "하아...진짜...",
       "expr": "분노"
      },
      {
       "speaker": "이지영",
-      "text": "너네 언니들 너무너무너무 귀찮게 해.....",
+      "text": "이 언니들 너무너무너무 귀찮게 해.....",
       "expr": "분노"
      },
      {
-      "speaker": "[염원] 최윤정",
-      "text": "...",
-      "expr": "놀람"
+      "speaker": "내레이션",
+      "text": "이지영의 등 뒤에 있던 사념들이 이지영의 날개로 변했다."
      }
     ]
    },
@@ -1734,7 +1725,7 @@ window.STORY_DATA.chapters.push({
    "hero": [
     "10491"
    ],
-   "bossId": "10311",
+   "bossId": "10503",
    "after": [
     {
      "speaker": "이지영",
@@ -1844,19 +1835,20 @@ window.STORY_DATA.chapters.push({
    },
    "party": {
     "forced": [
-     "10311"
+     "10415"
     ],
-    "solo": true,
+    "noMale": true,
+    "maxGrade": "RARE",
     "mustLive": [
-     "10311"
+     "10415"
     ],
     "levels": {
-     "10311": 85,
+     "10415": 85,
      "10491": 85
     }
    },
    "hero": [
-    "10311"
+    "10415"
    ],
    "bossId": "10475",
    "after": [
@@ -2030,18 +2022,19 @@ window.STORY_DATA.chapters.push({
    },
    "party": {
     "forced": [
-     "10491"
+     "10311"
     ],
-    "noMale": true,
+    "solo": true,
     "mustLive": [
-     "10491"
+     "10311"
     ],
     "levels": {
+     "10311": 86,
      "10491": 86
     }
    },
    "hero": [
-    "10491"
+    "10311"
    ],
    "bossId": "10475",
    "after": [
@@ -2067,7 +2060,7 @@ window.STORY_DATA.chapters.push({
   },
   {
    "speaker": "내레이션",
-   "text": "그리고 그 밤, 계단 앞에서...얼음은 마침내 깨졌다."
+   "text": "그리고 그 밤, 불 꺼진 거실에서...얼음은 마침내 깨졌다."
   },
   {
    "speaker": "최윤정",
