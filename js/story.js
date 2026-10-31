@@ -333,7 +333,7 @@
     let down = false;
     m.onpointerdown = e => { down = e.target === m; };
     m.onclick = e => { if (down && e.target === m) close(); down = false; };
-    const close = silent => { if (silent === true) { const pos = []; for (const [k, e] of popScrollKeys(m)) if (e.scrollTop || e.scrollLeft) pos.push([k, e.scrollTop, e.scrollLeft]); m._keep = { at: performance.now(), pos }; } m.className = 'hidden'; m.innerHTML = ''; if (silent !== true) onClose?.(); };   // close(true): 다음 팝업으로 넘어갈 때 onClose 생략
+    const close = silent => { if (silent !== true) window.VRVoice?.stopAll(150); if (silent === true) { const pos = []; for (const [k, e] of popScrollKeys(m)) if (e.scrollTop || e.scrollLeft) pos.push([k, e.scrollTop, e.scrollLeft]); m._keep = { at: performance.now(), pos }; } m.className = 'hidden'; m.innerHTML = ''; if (silent !== true) onClose?.(); };   // close(true): 다음 팝업으로 넘어갈 때 onClose 생략
     m.querySelectorAll('[data-close-pop]').forEach(b => b.onclick = () => close());
     return { el: m, close };
   }
