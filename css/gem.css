@@ -62,3 +62,19 @@
 .drink-ask-box button { flex: 1; padding: 7px; border-radius: 9px; font-weight: 800; background: #3f3f46; color: #fff; }
 .drink-ask-box [data-yes] { background: #0ea5e9; }
 .ui-ic{display:inline-block;width:1.2em;height:1.2em;object-fit:contain;vertical-align:-.25em}.drink-ic .ui-ic{width:30px;height:30px}.gear-box .ui-ic{width:1em;height:1em;vertical-align:middle}
+/* 📅 일일 미션·출석 (js/daily.js) */
+.daily-panel{max-height:86vh;overflow:auto;text-align:left}
+.daily-h{margin:6px 0 6px;font-size:15px;font-weight:800;color:#fde68a}.daily-h small{margin-left:6px;font-size:11px;color:#a1a1aa;font-weight:500}
+.daily-att{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.daily-day{position:relative;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 2px;border-radius:8px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);font-size:10px;text-align:center;line-height:1.25}
+.daily-day b{font-size:11px;color:#e4e4e7}.daily-day.big{background:rgba(168,85,247,.18);border-color:rgba(192,132,252,.6)}
+.daily-day.now{border-color:#fbbf24;box-shadow:0 0 10px rgba(251,191,36,.55)}.daily-day.got{opacity:.5}
+.daily-day i{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:22px;color:#4ade80;font-style:normal}
+.daily-claim{display:block;width:100%;margin:8px 0 4px;padding:8px;border-radius:10px;background:linear-gradient(#f59e0b,#d97706);color:#1c1917;font-weight:800;border:0;cursor:pointer}
+.daily-claim:disabled{background:#3f3f46;color:#a1a1aa;cursor:default}
+.daily-claim.sm{width:64px;margin:0;padding:6px 4px;font-size:12px;flex:none}
+.daily-list{display:flex;flex-direction:column;gap:6px}
+.daily-m{display:flex;align-items:center;gap:8px;padding:8px;border-radius:10px;background:rgba(255,255,255,.05)}.daily-m.done{opacity:.55}.daily-m.all{background:rgba(251,191,36,.1)}
+.daily-mt{flex:1;min-width:0;font-size:13px}.daily-mt small{display:block;color:#fcd34d;font-size:11px}
+.daily-bar{height:5px;margin-top:4px;border-radius:9px;background:rgba(255,255,255,.12);overflow:hidden}.daily-bar i{display:block;height:100%;background:#22c55e}
+.main-daily{flex:none}.main-cur:empty+.main-daily{margin-left:auto}
