@@ -56,7 +56,7 @@ export function initUnit(u, p) {
 
 // ---- 상태이상 ----
 export const STATUS = {
-  bleed:   { icon: '🩸', img: 'bleed', label: '출혈', debuff: true, desc: 'ATK·DEF -5%, 걸릴 때 최대 HP 5% 손실' },
+  bleed:   { icon: '🩸', img: 'bleed', label: '출혈', debuff: true, desc: 'ATK·DEF -5%, 걸릴 때 최대 HP 5% 손실, 매 턴 시작 시 HP -3%' },
   para:    { icon: '⚡', img: 'st_para', label: '마비', debuff: true, desc: '행동 불가 (연속 2턴 마비 불가)' },
   confuse: { icon: '💫', img: 'st_confuse', label: '혼란', debuff: true, desc: '자기 턴에 아군을 강제 공격' },
   disrupt: { icon: '🌀', img: 'st_disrupt', label: '교란', debuff: true, desc: '자기 턴에 자기 본진을 강제 공격' },
@@ -75,7 +75,7 @@ export const STATUS = {
   notweak: { icon: '😤', img: 'taunt', label: '나는 약하지 않아', desc: '도발 효과가 끝나면 최대 HP 30% 회복' },
   vow:     { icon: '🛡️', img: 'def', label: '지킨다', desc: '이영아가 같은 필드에 있는 동안 매 턴 DEF +0.4% 누적, 최대 HP 2% 회복' },
   thorns:  { icon: '🌵', img: 'st_thorns', label: '반격 강화', desc: '받는 피해 감소·반격 배율 증가 (반격으로는 공격자가 쓰러지지 않음)' },
-  burn:    { icon: '🔥', label: '화상', debuff: true, desc: '주는 피해 -5% (불 속성 기본 공격, 2턴)' },
+  burn:    { icon: '🔥', label: '화상', debuff: true, desc: '주는 피해 -5%, 매 턴 시작 시 HP -3% (불 속성 기본 공격, 2턴)' },
   sisterSwap: { icon: '🔄', label: '선미영 교체', desc: '선나영 대신 선미영이 전투 (끝나면 선나영 HP 100% 회복, 선미영이 쓰러지면 선나영도 쓰러짐)' },
   evade:   { icon: '💨', img: 'st_evade', label: '회피', desc: '기본 공격을 확률로 회피 (회피 시 피해·반격 없음, 스킬은 회피 불가)' },
   endure:  { icon: '💢', img: 'st_endure', label: '불사', desc: 'HP가 1 아래로 내려가지 않음 (즉사 포함)' },
@@ -929,6 +929,8 @@ export function turnStart(p) {
   // v2: 체력 고갈 / 재생
   for (const u of [...p.field]) {
     const dt = u.st.dot; if (dt) { let d = Math.max(1, Math.round(u.maxHp * dt.pct)); if (dt.minOne) d = Math.min(d, u.hp - 1); if (d > 0) { TICK = 'poison'; try { damageUnit(u, d, null); } finally { TICK = null; } checkDeath(u, dt.caster || null); } }
+    // 출혈·화상: 매 턴 최대 HP 3% (중독과 같은 타이밍, 최소 1)
+    for (const k of ['bleed', 'burn']) if (u.st[k] && p.field.includes(u)) { TICK = k; try { damageUnit(u, Math.max(1, Math.round(u.maxHp * RULES.DOT_BB_PCT)), null); } finally { TICK = null; } checkDeath(u, null); }
     const rg = u.st.regen; if (rg && p.field.includes(u)) heal(u, u.maxHp * rg.pct, '재생');
   }
   // 윤진아 검은 늪: 가장 많이 다친 아군 20% 회복
