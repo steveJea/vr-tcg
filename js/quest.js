@@ -202,7 +202,7 @@
     const me = api.battleCards(list);
     const B = g.bossCard;
     window.TCG.startStory({ me, ai: g.enemies.map(c => ({ ...c })), leader: api.leaderFor(me), win: B ? 'ko' : 'wipe', aiHp: B ? towerBossHp(n) : undefined, bossId: B ? String(B.id) : undefined, heroGuard: B ? 5 : undefined, aiName: `${n}층`, quest: true,
-      onEnd: (win, reason, st) => result(n, win, reason, st) });
+      dailyMode: 'tower', onEnd: (win, reason, st) => result(n, win, reason, st) });
     api.toast(B ? `👑 ${n}층 보스 ${B.name}: 적 진영을 무너뜨리세요!` : `🗼 ${n}층: 적 인재 5명을 모두 쓰러뜨리세요!`);
   }
   async function result(n, win, reason, st = {}) {

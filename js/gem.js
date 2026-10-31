@@ -17,7 +17,7 @@
   const ERR = { 'not enough gem': `${ICON} ${NAME}이 부족해요`, 'daily limit': '오늘은 더 살 수 없어요', 'stamina full': '🔋 행동력이 가득해요', 'login required': '로그인이 필요해요' };
   const errText = e => { const m = String(e?.message || e); const k = Object.keys(ERR).find(x => m.includes(x)); return k ? ERR[k] : m.slice(0, 60); };
   function toast(t) { const el = document.createElement('div'); el.className = 'gem-toast'; el.textContent = t; document.body.appendChild(el); setTimeout(() => el.remove(), 2600); }
-  const REASON = { chapter_clear: '챕터 첫 클리어', login_7: '7일 연속 접속', pvp_tier: 'PvP 시즌 보상', pvp_streak: 'PvP 10연승', admin: '운영 지급', iap: '충전', refund: '환불',
+  const REASON = { chapter_clear: '챕터 첫 클리어', login_7: '7일 연속 접속', pvp_tier: 'PvP 시즌 보상', pvp_streak: 'PvP 10연승', admin: '운영 지급', daily: '일일 미션', attend: '출석 보상', iap: '충전', refund: '환불',
     'buy:ticket': '소환권 1장', 'buy:pull10': '소환권 10장', 'buy:stamina': '행동력 충전', 'buy:pvp_try': 'PvP 추가 도전', 'buy:gold10k': '골드 10,000' };
   const ITEM = { ticket: ['🎟️', '×1'], pull10: ['🎟️', '×10'], stamina: ['🔋', 'MAX'], pvp_try: ['⚔️', '+1'], gold10k: ['🪙', '10,000'] };
   function set(s) {

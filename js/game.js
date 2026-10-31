@@ -697,6 +697,7 @@ function floatText(text, cls, side = 'me', html = false) {
 
 function finish(win, reason) {
   S.over = true; hideModal('detail'); TUT('battle_end', { win: !!win });
+  try { window.dispatchEvent(new CustomEvent('vr:daily', { detail: { k: 'battle', win: !!win, mode: S.story ? (S.story.tutorial || S.story.view ? null : S.story.dailyMode || 'story') : 'arcade' } })); } catch {}   // 📅 일일 미션 (js/daily.js)
   try { window.VRSound?.jingle?.(win === null ? 'draw' : win ? 'victory' : 'defeat'); } catch {}   // 전투 종료 징글 (전 모드, 1회)
   if (S.story) {   // 스토리 모드: 아케이드 전적·랭킹·갤러리에 기록하지 않고 스토리 화면으로 결과 전달
     render();
@@ -1186,7 +1187,7 @@ async function castSkill(who, u, s) {
     pendingDying = [];
     useSkill(u, s);
     await vidWait();
-    if (who === 'me') S.log.skills++;
+    if (who === 'me') { S.log.skills++; try { window.dispatchEvent(new CustomEvent('vr:daily', { detail: { k: 'skill' } })); } catch {} }
     renderHero('me'); renderHero('ai');
     await sleep(fxMs(450));
     await withTimeout(fadeDying(), 750);
