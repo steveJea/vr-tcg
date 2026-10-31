@@ -67,6 +67,7 @@
   const gearTile = (g, extra = '') => { const d = defOf(g.def_id || g.def); return `<div class="tr-it gear t-${d?.tier || 0}" ${extra}><img src="${gearIcon(d)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'"><b>${esc(d?.name || '장비')}${g.plus ? ` +${g.plus}` : ''}</b><small>${TIER[d?.tier] || ''}</small></div>`; };
   const itemsHTML = (cards, gear) => (cards || []).map(x => cardTile(x.card || x)).join('') + (gear || []).map(x => gearTile(x.row || x)).join('');
   const left = t => { const s = Math.max(0, (new Date(t) - Date.now()) / 1000); return s >= 3600 ? `${Math.floor(s / 3600)}시간` : `${Math.ceil(s / 60)}분`; };
+  const cfRow = (label, items, cur) => `<div class="tr-cf-row"><div class="tr-cf-l">${label}</div><div class="tr-items tr-cf-items">${items || ''}${cur ? `<div class="tr-cur">${cur}</div>` : ''}${!items && !cur ? '<span class="tr-cf-none">없음</span>' : ''}</div></div>`;
   const curTxt = (d, g) => [d ? `${I('cur_drink')}${n(d)}` : '', g ? `${I('cur_gold')}${n(g)}` : ''].filter(Boolean).join(' + ');
 
   // ---- 메인: 게시판 / 내 거래
@@ -186,7 +187,8 @@
     };
     draw();
     const keys = () => [...[...sel.cards].map(u => cardKey(save.owned.find(o => o.uid === u)?.id)), ...[...sel.gear].map(id => gearKey(defOf(gs.find(g => g.id === id)?.def)?.tier || 1))];
-    return { sel, count, keys };
+    const tiles = () => [...sel.cards].map(u => save.owned.find(o => o.uid === u)).filter(Boolean).map(cardTile).join('') + [...sel.gear].map(id => gs.find(g => g.id === id)).filter(Boolean).map(gearTile).join('');
+    return { sel, count, keys, tiles };
   }
 
   // ---- 판매 글 올리기
@@ -198,7 +200,7 @@
     const p = await picker(m.querySelector('.tr-pickwrap'), () => { m.querySelector('.tr-cnt').textContent = `${p.count()} / ${cfg.max_items || 5}`; m.querySelector('[data-ok]').disabled = !p.count(); });
     m.querySelector('[data-ok]').onclick = async () => {
       const deckN = [...p.sel.cards].filter(u => (S()?.save?.decks || []).some(d => (d?.uids || []).includes(u))).length;
-      if (!await ask(`${p.count()}개를 올릴까요?<br><small>보관 중에는 쓸 수 없어요${deckN ? ` · 덱에 든 인재 ${deckN}명은 덱에서 빠져요` : ''}${p.sel.cards.size ? ' · 마지막 같은 인재면 장착 장비는 해제돼 내 가방에 남아요' : ''}</small>`)) return;
+      if (!await ask(`${p.count()}개를 올릴까요?<div class="tr-cf">${cfRow('올릴 물건', p.tiles())}</div><small>보관 중에는 쓸 수 없어요${deckN ? ` · 덱에 든 인재 ${deckN}명은 덱에서 빠져요` : ''}${p.sel.cards.size ? ' · 마지막 같은 인재면 장착 장비는 해제돼 내 가방에 남아요' : ''}</small>`)) return;
       const r = await rpc('trade_list', { p_cards: [...p.sel.cards], p_gear: [...p.sel.gear], p_want: m.querySelector('.tr-input').value.trim() });
       if (r) { toast('📤 판매 글을 올렸어요'); m.remove(); refreshMine(); after?.(); }
     };
@@ -241,7 +243,7 @@
     m.querySelector('[data-ok]').onclick = async () => {
       const i = upd(); if (i.err) return toast(i.err);
       const d = val('[data-d]'), g = val('[data-g]');
-      if (!await ask(`이 조건으로 제안할까요?<br><b>${[p.count() ? `물건 ${p.count()}개` : '', curTxt(d, g), i.fix ? `수수료 ${I('cur_gold')}${n(i.fix)}` : ''].filter(Boolean).join(' + ')}</b><br><small>보낸 것은 바로 보관되고, 거절·취소·만료되면 그대로 돌아와요</small>`)) return;
+      if (!await ask(`이 조건으로 제안할까요?<div class="tr-cf">${cfRow('내가 주는 것', p.tiles(), curTxt(d, g))}${cfRow('상대가 주는 것', itemsHTML(l.cards, l.gear))}</div>${i.fix ? `<b>수수료 ${I('cur_gold')}${n(i.fix)}</b>` : ''}`)) return;
       const r = await rpc('trade_offer', { p_listing: l.id, p_cards: [...p.sel.cards], p_gear: [...p.sel.gear], p_drinks: d, p_gold: g });
       if (r) { toast('📨 제안을 보냈어요'); m.remove(); refreshMine(); after?.(); }
     };
@@ -273,7 +275,7 @@
         body(m).querySelectorAll('[data-sel]').forEach(c => c.onchange = () => c.checked ? sel.add(+c.dataset.sel) : sel.delete(+c.dataset.sel));
         body(m).querySelectorAll('[data-ac]').forEach(b => b.onclick = async () => { const o = offs.find(x => x.id === +b.dataset.ac);
           const fee = cfg.fee_pct || 10, recv = curTxt(o.drinks - Math.ceil(o.drinks * fee / 100), o.gold - Math.ceil(o.gold * fee / 100));
-          if (!await ask(`<b>${esc(o.nick || '익명')}</b>님의 제안을 수락할까요?<br>${offTxt(o)}<br><small>${recv ? `수수료 ${fee}% 뒤 ${recv} 받아요 · ` : '물건끼리: 받는 물건 등급별 골드 수수료 · '}나머지 제안은 모두 자동 환불돼요</small>`)) return;
+          if (!await ask(`<b>${esc(o.nick || '익명')}</b>님의 제안을 수락할까요?<div class="tr-cf">${cfRow('받는 것', itemsHTML(o.cards, o.gear), curTxt(o.drinks, o.gold))}</div><small>${recv ? `수수료 ${fee}% 뒤 ${recv} 받아요 · ` : '물건끼리: 받는 물건 등급별 골드 수수료 · '}나머지 제안은 모두 자동 환불돼요</small>`)) return;
           const r2 = await rpc('trade_accept', { p_listing: id, p_offer: o.id }); if (r2) { toast(`🤝 거래 완료!${r2.mailed ? ' 장비 일부는 우편함으로 갔어요' : ''}`); refreshMine(); m.remove(); after?.(); } });
         body(m).querySelectorAll('[data-rj]').forEach(b => b.onclick = async () => { if (!await ask('이 제안을 거절할까요?<br><small>제안자에게 바로 돌려줘요</small>')) return;
           if (await rpc('trade_reject', { p_listing: id, p_offers: [+b.dataset.rj] })) { toast('🙅 거절했어요'); draw(); } });
