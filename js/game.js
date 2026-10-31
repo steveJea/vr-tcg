@@ -184,7 +184,7 @@ function startGame(story = null) {
   for (const w of ['me', 'ai']) { $(`${w}-hp`).classList.toggle('hidden', S[w].noBase); $(`${w}-hpbar`).parentElement.classList.toggle('hidden', S[w].noBase); }
   $('game').classList.toggle('story-field', !!story);
   setBattleBg(story?.win === 'ko' ? 'boss' : 'normal'); preloadHit();
-  { const lbl = $('ai-order').parentElement.firstChild; if (lbl?.nodeType === 3) lbl.textContent = story ? `${story.aiName || '적군'} ` : '🤖 컴퓨터 '; }
+  $('ai-name').textContent = story ? (story.aiName || '적군') : '';   // 아케이드: 이름·아이콘 없음
   preloadFx([...S.me.deck, ...S.me.hand, ...S.ai.deck, ...S.ai.hand]);
   selected = null; $('log').innerHTML = ''; fxQueue.length = 0; vidGate = Promise.resolve();
   $('end-screen').classList.add('hidden'); $('start-screen').classList.add('hidden'); $('game').classList.remove('hidden');
@@ -461,8 +461,14 @@ const unitEl = (who, u) => document.querySelector(`#${who}-field [data-uid="${u.
 /** 턴이 바뀔 때만: 내 턴 = 내 진영 칸(필드) 쪽, 상대 턴 = 상대 진영 칸 쪽으로 부드럽게 스크롤. 화면이 다 보이면 안 움직임 */
 function turnScroll(who) {
   if (window.TCG_FAST || document.documentElement.scrollHeight <= window.innerHeight + 40) return;
+  if (who === 'me') return scrollBottom();   // 내 턴·상대 공격 = 맨 아래 (내 덱·손패)
   const el = who === 'me' ? $('me-field') : (!$('ai-boss').classList.contains('hidden') ? $('ai-boss') : $('ai-field'));
   setTimeout(() => { try { el?.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: who === 'me' ? 'center' : 'start' }); } catch {} }, 60);
+}
+/** 맨 아래(내 덱·손패)로 부드럽게. 단계가 바뀔 때만 호출 */
+function scrollBottom() {
+  if (window.TCG_FAST || document.documentElement.scrollHeight <= window.innerHeight + 40) return;
+  setTimeout(() => { try { window.scrollTo({ top: document.documentElement.scrollHeight, behavior: REDUCED() ? 'auto' : 'smooth' }); } catch {} }, 60);
 }
 /** 진영 = 둥근 진영 칸 (보이면). 진영 피해·회복 연출은 진영 칸에, 없으면 위/아래 정보 상자 */
 const heroEl = who => { const b = $(`${who}-boss`); return (S && !S[who]?.noBase && b && !b.classList.contains('hidden') && (b.querySelector('.base-ring') || b)) || $(`${who}-hero`); };
@@ -1231,6 +1237,7 @@ async function aiTurn() {
   if (aiWantBuff(ai)) { useAction('ai', 'buff'); await sleep(AI_DELAY()); }
   // 2) 스킬 또는 공격: 쓸 만한 스킬이 있으면 스킬(공격 대신), 아니면 유리한 교환 우선 공격
   await vidWait();
+  if (ai.field.some(u => u.canAttack)) scrollBottom();   // 준비 끝 → 공격은 내 쪽에서 보기
   for (const u of [...ai.field]) {
     await vidWait();
     if (S.over) break;
@@ -1477,7 +1484,7 @@ function render() {
     hand.appendChild(w);
   });
   fixImages(hand);
-  patchHTML($('ai-handcards'), S.ai.hand.map(() => '<div class="flex-1 min-w-[3px] max-w-4 md:max-w-5 h-6 md:h-7 rounded bg-gradient-to-br from-zinc-700 to-zinc-900 border border-white/20"></div>').join(''));
+  // 상대 손패는 비공개라 썸네일 표시 안 함 (장수만 ai-handcount)
 }
 
 // ===== 손패 정렬 =====
@@ -1915,7 +1922,7 @@ async function viewBattle0({ session, aiName = '상대', bg = 'normal', manual =
     raidPaint(0);
   }
   for (const w of ['me', 'ai']) { $(`${w}-hp`).classList.add('hidden'); $(`${w}-hpbar`).parentElement.classList.add('hidden'); }
-  { const lbl = $('ai-order').parentElement.firstChild; if (lbl?.nodeType === 3) lbl.textContent = `${aiName} `; }
+  $('ai-name').textContent = aiName || '';
   setBattleBg(bg); preloadHit(); preloadFx([...S.me.field, ...S.ai.field].map(u => u.base || u.card));
   if (title) log(title, 'text-amber-300');
   log(raid ? `🐉 균열 토벌 · 내 턴 ${mt / 2}번 동안 최대한 큰 피해를 (행동 1번 상한 ${fmt(raid.cap)})` : '⚔️ 마나 없음 · 상대를 모두 쓰러뜨리면 승리', 'text-amber-300');
