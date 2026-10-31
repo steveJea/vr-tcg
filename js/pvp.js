@@ -116,8 +116,8 @@ function vsScreen(s) {
   const lead = d => d?.[0]?.[0]?.id, me = lead(s.me), op = lead(s.opp), ot = tierOf(s.opp_rating), mt = tierOf(s.rating);
   return new Promise(done => {
     const el = document.createElement('div'); el.className = 'pvp-vsx'; el.setAttribute('role', 'button'); el.setAttribute('aria-label', '탭하여 넘기기');
-    el.innerHTML = `<div class="pvp-vsx-side me">${me ? `<img src="${IMG}${me}.webp" alt="">` : ''}<div class="pvp-vsx-tag">${emb(mt)}<b>${esc((document.querySelector('.acct-name')?.textContent || '나').replace(/님$/, ''))}</b><small>${s.rating}</small></div></div>
-      <div class="pvp-vsx-side op">${op ? `<img src="${IMG}${op}.webp" alt="">` : ''}<div class="pvp-vsx-tag">${emb(ot)}<b>${esc(s.opp_name)}${s.bot ? ' 🤖' : ''}</b><small>${s.opp_rating}</small></div></div>
+    el.innerHTML = `<div class="pvp-vsx-side me">${me ? `<img src="${IMG}${me}.webp" alt="">` : ''}<div class="pvp-vsx-tag">${emb(mt)}<b>${esc((document.querySelector('.acct-name')?.textContent || '나').replace(/님$/, ''))}</b><small>${s.rating ?? ''}</small></div></div>
+      <div class="pvp-vsx-side op">${op ? `<img src="${IMG}${op}.webp" alt="">` : ''}<div class="pvp-vsx-tag">${emb(ot)}<b>${esc(s.opp_name)}${s.bot ? ' 🤖' : ''}</b><small>${s.opp_rating ?? ''}</small></div></div>
       <div class="pvp-vsx-vs">VS</div>`;
     let t = 0; const end = () => { clearTimeout(t); el.classList.add('out'); setTimeout(() => { el.remove(); done(); }, 180); };
     el.addEventListener('click', end, { once: true }); document.body.appendChild(el); t = setTimeout(end, 1500);
@@ -212,9 +212,9 @@ async function fight() {
 async function manualSeries(s, toCards) { return viewSeries(s, toCards, true); }
 /** 판마다 전투 화면. manual=false 면 AUTO 로 보여 주기만 (결과는 runSeries 와 같음) */
 async function viewSeries(s, toCards, manual) {
-  const M = MODES[view.mode], rounds = [], acts = []; let w = 0, l = 0;
+  const M = MODES[s.mode || view.mode], rounds = [], acts = []; let w = 0, l = 0;
   for (let i = 0; i < M.decks; i++) {
-    const log = [], ttl = `${M.decks > 1 ? `${i + 1}판 · ` : ''}⚔️ PvP vs ${s.opp_name}${s.bot ? ' 🤖' : ''}`;
+    const log = [], ttl = `${M.decks > 1 ? `${i + 1}판 · ` : ''}${s.tag || '⚔️ PvP'} vs ${s.opp_name}${s.bot ? ' 🤖' : ''}`;
     let r, ses;
     if (VIEW()) { ses = manualMatch(toCards(s.me[i]), toCards(s.opp[i]), roundSeed(s.seed, i), log, { view: true, manual: true, boss: !!M.boss });
       if (!manual) ses = autoFeed(ses);
@@ -241,7 +241,7 @@ function playback(s, res) {
       if (stop) return;
       if (ri >= res.rounds.length) return end();
       const R = res.rounds[ri], log = R.log || [];
-      const n = res.rounds.length > 1 || view.mode === '3v3' ? `${ri + 1}판` : '';
+      const n = res.rounds.length > 1 || (s.mode || view.mode) === '3v3' ? `${ri + 1}판` : '';
       m.querySelector('.pvp-panel').innerHTML = `<div class="pvp-pb-top"><span>${esc(s.opp_name)}${s.bot ? ' 🤖' : ''}</span><small class="pvp-pb-t">${n}</small><button class="pvp-skip" data-skip>SKIP ⏭</button></div>
         ${side(log.roster?.B || [], 'foe')}<div class="pvp-pb-fx"></div>${side(log.roster?.A || [], 'me')}`;
       m.querySelector('[data-skip]').onclick = end;
@@ -289,6 +289,28 @@ async function who(pos) {
     <div class="pvp-who-h">🛡 PvP 덱 · ${LEAGUES[view.league].label} ${view.mode}</div>${decks}`;
 }
 
+// ---- 👥 친구 대전 (supabase/friend_battle.sql) — PvP 와 같은 비동기 방식: 친구의 무제한 리그 방어 덱 · 레이팅/보상 없음 ----
+const FB_ERR = { 'not friends': '친구가 아니에요', 'friend deck missing': '친구가 PvP 무제한 방어 덱을 등록하지 않았어요', 'deck required': '내 PvP 무제한 덱을 먼저 등록해 주세요', 'no attempts left': '오늘 친구 대전 횟수(20회)를 다 썼어요' };
+export async function friendFight(friend, mode = '1v1') {
+  let s; try { s = await rpc('friend_battle_start', { p_friend: friend, p_mode: mode }); }
+  catch (e) { const m = String(e?.message || e), k = Object.keys(FB_ERR).find(x => m.includes(x)); toast(k ? FB_ERR[k] : errText(e)); return null; }
+  s.tag = '👥 친구 대전';
+  await vsScreen(s);
+  const toCards = d => d.map(o => snapCard(o, card)).filter(Boolean);
+  const manual = battleMode() === 'manual';
+  const res = manual ? await viewSeries(s, toCards, true) : runSeries(s.mode, s.me.map(toCards), s.opp.map(toCards), s.seed, true);
+  let rep = null; try { rep = await rpc('friend_battle_report', { p_id: s.id, p_wins: res.wins, p_losses: res.losses, p_actions: manual ? res.acts : null }); } catch (e) { toast(errText(e)); }
+  if (!manual) { if (VIEW()) await viewSeries(s, toCards, false); else await playback(s, res); }
+  try { window.dispatchEvent(new CustomEvent('vr:daily', { detail: { k: 'battle', mode: 'friend', win: !!res.win } })); } catch {}
+  modal('pvp-result', `<button class="pvp-x" data-x>✕</button>
+    <div class="pvp-res ${res.win ? 'win' : 'lose'}">${res.win ? 'WIN' : 'LOSE'}</div>
+    <div class="pvp-vs"><span>👥 ${esc(s.opp_name)}</span><small>${s.mode}</small></div>
+    ${res.rounds.map((r, i) => `<div class="pvp-round ${r.win ? 'win' : 'lose'}"><div class="pvp-side">${snapThumbs(s.me[i])}</div><b>${r.win ? '○' : '✕'}</b><div class="pvp-side foe">${snapThumbs(s.opp[i])}</div></div>`).join('')}
+    ${rep?.record ? `<div class="pvp-delta up">상대 전적 ${rep.record.w}승 ${rep.record.l}패</div>` : ''}
+    <div class="pvp-acts"><button class="pvp-go" data-x>확인</button></div>`, 'pvp-sub');
+  return rep;
+}
+
 const bind = () => { const b = $('main-pvp'); if (b) b.onclick = open; };
 bind(); document.addEventListener('DOMContentLoaded', bind);
-window.VRPvp = { open, tierOf };
+window.VRPvp = { open, tierOf, friendFight };
