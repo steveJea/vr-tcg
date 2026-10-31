@@ -5,7 +5,7 @@
 // SQL 실행 전이거나 비로그인이면 버튼이 안 보임
 (() => {
   const missing = e => /PGRST202|PGRST205|42883|42P01|Could not find|does not exist/i.test(`${e?.code} ${e?.message}`);
-  let cache = null, off = false, pending = 0, tab = 'list', found = null, lastQ = '';
+  let cache = null, rec = null, fbMode = '1v1', off = false, pending = 0, tab = 'list', found = null, lastQ = '';
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   async function rpc(name, args) {
     const c = window.VRCloud, sb = c?.sb; if (!sb || !c?.user) return null;
@@ -20,7 +20,9 @@
   const ago = t => { if (!t) return '기록 없음'; const m = (Date.now() - new Date(t)) / 6e4; return m < 5 ? '접속 중' : m < 60 ? `${Math.floor(m)}분 전` : m < 1440 ? `${Math.floor(m / 60)}시간 전` : `${Math.floor(m / 1440)}일 전`; };
 
   async function ping() { if (off || !window.VRCloud?.user) return; try { const r = await rpc('friends_ping'); if (r) { pending = r.pending | 0; paint(); } } catch (e) { console.warn('[friends]', e?.message); } }
-  async function load() { if (off) return null; try { const r = await rpc('friends_list'); if (r?.ok) { cache = r; pending = r.incoming.length; paint(); } } catch (e) { console.warn('[friends]', e?.message); } return cache; }
+  async function load() { if (off) return null; try { const r = await rpc('friends_list'); if (r?.ok) { cache = r; pending = r.incoming.length; paint(); } } catch (e) { console.warn('[friends]', e?.message); }
+    try { const h = await window.VRCloud.sb.rpc('friend_battle_history', { p_friend: null }); rec = h.error ? null : h.data; } catch { rec = null; }   // friend_battle.sql 전이면 null
+    return cache; }
 
   function paint() {
     for (const w of document.querySelectorAll('[data-friendbtn]')) {
@@ -43,7 +45,7 @@
       const tabs = [['list', `친구 ${s ? s.friends.length : ''}${s ? '/' + s.cap : ''}`], ['in', `받은 신청${s?.incoming.length ? ` <i class="story-badge">${s.incoming.length}</i>` : ''}`], ['out', '보낸 신청'], ['find', '🔍 찾기']];
       let body = '';
       if (!s) body = empty('불러오는 중...');
-      else if (tab === 'list') body = s.friends.length ? s.friends.map(f => row(f, `<button class="fr-b ghost" data-rm="${f.user_id}" data-nm="${esc(f.name)}">삭제</button>`)).join('') : empty('아직 친구가 없어요. 🔍 찾기에서 친구를 추가해 보세요!');
+      else if (tab === 'list') body = s.friends.length ? (rec ? `<div class="fr-fb">⚔️ 친구 대전 <button class="fr-tab ${fbMode === '1v1' ? 'on' : ''}" data-fbm="1v1">1v1</button><button class="fr-tab ${fbMode === '3v3' ? 'on' : ''}" data-fbm="3v3">3v3</button><small>오늘 ${rec.left}회 · 무제한 리그 덱</small></div>` : '') + s.friends.map(f => row(f, `${rec ? `${rec.records?.[f.user_id] ? `<span class="fr-st">${rec.records[f.user_id].w}승 ${rec.records[f.user_id].l}패</span>` : ''}<button class="fr-b" data-fb="${f.user_id}">⚔️ 대전</button>` : ''}<button class="fr-b ghost" data-rm="${f.user_id}" data-nm="${esc(f.name)}">삭제</button>`)).join('') : empty('아직 친구가 없어요. 🔍 찾기에서 친구를 추가해 보세요!');
       else if (tab === 'in') body = s.incoming.length ? s.incoming.map(r => row(r, `<button class="fr-b" data-acc="${r.req_id}">수락</button><button class="fr-b ghost" data-dec="${r.req_id}">거절</button>`)).join('') : empty('받은 신청이 없어요');
       else if (tab === 'out') body = s.outgoing.length ? s.outgoing.map(r => row(r, `<button class="fr-b ghost" data-cancel="${r.req_id}">취소</button>`)).join('') : empty('보낸 신청이 없어요');
       else body = `<form class="fr-search"><input name="q" maxlength="20" placeholder="닉네임 또는 친구 코드" value="${esc(lastQ)}" autocomplete="off"><button class="fr-b">검색</button></form>
@@ -60,6 +62,8 @@
       pop.querySelectorAll('[data-acc]').forEach(b => b.onclick = () => act('friend_respond', { p_req: +b.dataset.acc, p_accept: true }, '친구가 되었어요 🎉'));
       pop.querySelectorAll('[data-dec]').forEach(b => b.onclick = () => act('friend_respond', { p_req: +b.dataset.dec, p_accept: false }, '신청을 거절했어요'));
       pop.querySelectorAll('[data-cancel]').forEach(b => b.onclick = () => act('friend_cancel', { p_req: +b.dataset.cancel }, '신청을 취소했어요'));
+      pop.querySelectorAll('[data-fbm]').forEach(b => b.onclick = () => { fbMode = b.dataset.fbm; draw(); });
+      pop.querySelectorAll('[data-fb]').forEach(b => b.onclick = async () => { if (!window.VRPvp?.friendFight) return; b.disabled = true; pop.remove(); await window.VRPvp.friendFight(b.dataset.fb, fbMode); load(); });
       pop.querySelectorAll('[data-rm]').forEach(b => b.onclick = () => { if (confirm(`${b.dataset.nm}님을 친구에서 삭제할까요?`)) act('friend_remove', { p_user: b.dataset.rm }, '친구를 삭제했어요'); });
       pop.querySelectorAll('[data-req]').forEach(b => b.onclick = async () => { b.disabled = true; try { const r = await rpc('friend_request', { p_user: b.dataset.req }); toast(r?.state === 'friend' ? '친구가 되었어요 🎉' : '친구 신청을 보냈어요'); } catch (e) { toast(errText(e)); } await load(); await search(lastQ, true); draw(); });
       const f = pop.querySelector('.fr-search');
