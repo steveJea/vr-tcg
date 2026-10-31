@@ -10,7 +10,7 @@ let fail = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); i
 const card = (cls, grade = 'SUPER RARE', id = 'x') => ({ id: 't' + cls + id, name: cls + id, gender: 'MALE', grade, class: cls, attribute: 'CHARGE', HP: 5000, ATK: 100, DEF: 40, cost: 30 });
 const base = { ...RULES, CRIT_RATE: { ...RULES.CRIT_RATE }, EVADE_BASE: { ...RULES.EVADE_BASE } };
 function setup(a, b, over = {}) {
-  Object.assign(RULES, base, { CRIT_RATE: Object.fromEntries(Object.keys(base.CRIT_RATE).map(k => [k, 0])), EVADE_ON: false, FIRE_BURN_P: 0, ICE_GUARD_P: 0, DARK_DRAIN_P: 0, DARK_COUNTER_P: 0, LIGHT_CLEANSE_P: 0, LIGHT_NULL_P: 0 }, over);
+  Object.assign(RULES, base, { CRIT_RATE: Object.fromEntries(Object.keys(base.CRIT_RATE).map(k => [k, 0])), EVADE_ON: false, ELEM_FIRE_BURN_PCT: 0, ELEM_ICE_FREEZE_PCT: 0, ICE_GUARD_P: 0, DARK_DRAIN_P: 0, DARK_COUNTER_P: 0, LIGHT_CLEANSE_P: 0, LIGHT_NULL_P: 0 }, over);
   const mk = n => ({ name: n, hp: 1, maxHp: 1, deck: [], hand: [], field: [], mana: 0, maxMana: 0, noBase: true });
   const P = [mk('A'), mk('B')]; initPlayers(P[0], P[1]);
   const u = placeUnit(P[0], a, makeUnit), t = placeUnit(P[1], b, makeUnit); refreshAll(P[0]); refreshAll(P[1]); evs.length = 0;
@@ -19,7 +19,7 @@ function setup(a, b, over = {}) {
 ok(JSON.stringify(base.CRIT_RATE) === JSON.stringify({ 'NORMAL': 0.03, 'RARE': 0.04, 'HIGH RARE': 0.05, 'SUPER RARE': 0.06, 'ULTRA RARE': 0.08, 'MYTHIC RARE': 0.10, 'LEGENDARY RARE': 0.12 }) && base.CRIT_MULT === 1.5, '등급별 치명 확률·150%');
 { const s = setup(card('WIND'), card('WIND', 'SUPER RARE', 'b')); const n = s.hit(); const s2 = setup(card('WIND'), card('WIND', 'SUPER RARE', 'b'), { CRIT_RATE: { 'SUPER RARE': 1 } }); const c = s2.hit();
   ok(c.d1 === Math.round(n.d1 * 1.5) && evs.some(e => e.type === 'crit'), `기본 공격 치명 ×1.5 (${n.d1} → ${c.d1})`); ok(c.d2 === Math.round(n.d2 * 1.5), `반격 치명 ×1.5 (${n.d2} → ${c.d2})`); }
-{ const s = setup(card('FIRE'), card('ICE', 'SUPER RARE', 'b'), { FIRE_BURN_P: 1 }); s.hit(); ok(s.t.st.burn?.t >= 2, '불: 적중 시 화상 2턴');
+{ const s = setup(card('FIRE'), card('ICE', 'SUPER RARE', 'b'), { ELEM_FIRE_BURN_PCT: 1 }); s.hit(); ok(s.t.st.burn?.t >= 2, '불: 적중 시 화상 2턴');
   const base2 = setup(card('ICE', 'SUPER RARE', 'c'), card('WIND', 'SUPER RARE', 'd')); const d = base2.hit().d1; const b = setup(card('ICE', 'SUPER RARE', 'c'), card('WIND', 'SUPER RARE', 'd')); b.u.st.burn = { kind: 'burn', t: 2 }; ok(b.hit().d1 === Math.round(d * 0.95), '화상: 주는 피해 -5%');
   b.u.st.bleed = { kind: 'bleed', t: 2 }; ok(b.u.st.burn && b.u.st.bleed, '화상·출혈 공존'); }
 { const n = setup(card('WIND'), card('ICE', 'SUPER RARE', 'b')).hit(); const s = setup(card('WIND'), card('ICE', 'SUPER RARE', 'b'), { ICE_GUARD_P: 1 }); const h = s.hit();

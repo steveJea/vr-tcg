@@ -75,6 +75,7 @@ export const STATUS = {
   notweak: { icon: '😤', img: 'taunt', label: '나는 약하지 않아', desc: '도발 효과가 끝나면 최대 HP 30% 회복' },
   vow:     { icon: '🛡️', img: 'def', label: '지킨다', desc: '이영아가 같은 필드에 있는 동안 매 턴 DEF +0.4% 누적, 최대 HP 2% 회복' },
   thorns:  { icon: '🌵', img: 'st_thorns', label: '반격 강화', desc: '받는 피해 감소·반격 배율 증가 (반격으로는 공격자가 쓰러지지 않음)' },
+  freeze:  { icon: '🧊', label: '동결', debuff: true, desc: '다음 자기 턴 행동 불가 (공격·스킬 X, 반격은 함). 풀린 뒤 1턴은 다시 안 얼음 (얼음 속성 일반 공격 10%)' },
   burn:    { icon: '🔥', label: '화상', debuff: true, desc: '주는 피해 -5%, 매 턴 시작 시 HP -3% (불 속성 기본 공격, 2턴)' },
   sisterSwap: { icon: '🔄', label: '선미영 교체', desc: '선나영 대신 선미영이 전투 (끝나면 선나영 HP 100% 회복, 선미영이 쓰러지면 선나영도 쓰러짐)' },
   evade:   { icon: '💨', img: 'st_evade', label: '회피', desc: '기본 공격을 확률로 회피 (회피 시 피해·반격 없음, 스킬은 회피 불가)' },
@@ -122,7 +123,7 @@ export function statusIcons(u) {
   const out = [];
   for (const [k, s] of Object.entries(u.st)) {
     if (s.kind === 'mod') out.push({ icon: MOD_ICON(s.atk || 0, s.def || 0), img: MOD_IMG(s.atk || 0, s.def || 0), title: `${s.label || k} (${s.t}턴)` });
-    else if (STATUS[s.kind]) out.push({ kind: s.kind, t: ['dot', 'esoteric', 'regen', 'bleed', 'burn'].includes(s.kind) ? s.t : 0, icon: STATUS[s.kind].icon, img: STATUS[s.kind].img, title: s.kind === 'vow' ? `지킨다: DEF +${(s.def * 100).toFixed(1)}% (이영아와 함께)` : s.kind === 'provoked' ? `도발당함: ${s.by?.card?.name || ''}만 공격 · 스킬 불가 (${s.t}턴)` : `${STATUS[s.kind].label} (${s.t}턴)` });
+    else if (STATUS[s.kind]) out.push({ kind: s.kind, t: ['dot', 'esoteric', 'regen', 'bleed', 'burn', 'freeze'].includes(s.kind) ? s.t : 0, icon: STATUS[s.kind].icon, img: STATUS[s.kind].img, title: s.kind === 'vow' ? `지킨다: DEF +${(s.def * 100).toFixed(1)}% (이영아와 함께)` : s.kind === 'provoked' ? `도발당함: ${s.by?.card?.name || ''}만 공격 · 스킬 불가 (${s.t}턴)` : `${STATUS[s.kind].label} (${s.t}턴)` });
   }
   if (u.curse && foeHasPassive(u.owner, '자수정 눈물의 지옥 교향곡')) out.push({ icon: '🥀', img: 'st_curse', title: `지옥 교향곡 ×${u.curse}` });
   if (u.pairShield) out.push({ icon: '🛡️', title: `자매의 가호: 피해 무효 (${u.pairShield}턴까지)` });
@@ -794,7 +795,7 @@ const REQ = { '나? 폭격기야~': f => bomberTargets(f).length, '약해보이�
 /** 남성 기본 공격 유도: [나 좀 내버려둬]/[소녀의 거래] 시전 중(decoy.male)인 카드 중 코스트 최고. 마비·혼란 시 미발동 */
 export function maleLure(attacker, side) {
   if (attacker.base.gender !== 'MALE') return null;
-  const c = side.field.filter(x => x.st.decoy?.male && !x.st.para && !x.st.confuse);
+  const c = side.field.filter(x => x.st.decoy?.male && !x.st.para && !x.st.freeze && !x.st.confuse);
   return c.length ? by(c, x => x.card.cost, -1) : null;
 }
 /** 기본 공격 대상 재지정: 대신 맞기(decoy) → 수호(사랑하는 친구거든!·튀 므 망크). 반환 { target, ratio, proxyOf } */
@@ -809,17 +810,17 @@ export function redirectAttack(attacker, target) {
     if (proxy) { emit({ type: 'passive', unit: target, name: '대신 맞기', text: `${proxy.card.name}이(가) 대신 맞음` }); stats.count('대신 맞기'); return { target: proxy, decoyOf: target }; }
   }
   // 황예영 [내 동생 건드리지마!]: 예은·준태 대신 맞기
-  const gd = tp.field.find(x => x !== target && x.st.guard?.ids?.includes(String(target.base.id)) && !x.st.para && !x.st.confuse);
+  const gd = tp.field.find(x => x !== target && x.st.guard?.ids?.includes(String(target.base.id)) && !x.st.para && !x.st.freeze && !x.st.confuse);
   if (gd) { emit({ type: 'passive', unit: gd, name: '내 동생 건드리지마!', text: `${target.card.name} 대신 피격` }); stats.count('내 동생 건드리지마!'); return { target: gd }; }
   // 하지은 [내가 지켜준다]: 코스트가 가장 낮은 아군 여성을 대신 맞고 MP 20%
   if (target.base.gender === 'FEMALE') {
-    const je = tp.field.find(x => x !== target && hasPassive(x, '내가 지켜준다') && !x.st.para && !x.st.confuse);
+    const je = tp.field.find(x => x !== target && hasPassive(x, '내가 지켜준다') && !x.st.para && !x.st.freeze && !x.st.confuse);
     const low = je && by(tp.field.filter(x => x !== je && x.base.gender === 'FEMALE'), x => x.card.cost);
     if (je && low === target) { emit({ type: 'passive', unit: je, name: '내가 지켜준다', text: `${target.card.name} 대신 피격` }); stats.count('내가 지켜준다'); gainMp(je, je.maxMp * 0.2, '내가 지켜준다'); return { target: je }; }
   }
   for (const [name, protectId] of Object.entries(GUARD)) {
     if (String(target.base.id) !== protectId) continue;
-    const g = tp.field.find(x => x !== target && hasPassive(x, name) && !x.st.para && !x.st.confuse);
+    const g = tp.field.find(x => x !== target && hasPassive(x, name) && !x.st.para && !x.st.freeze && !x.st.confuse);
     const nc = name === '사랑하는 친구거든!';   // 유가을: 반격 없음
     if (g) { emit({ type: 'passive', unit: g, name, text: `${target.card.name} 대신 피격${nc ? '' : ' 후 반격'}` }); stats.count(name); return { target: g, ratio: 0.7, noCounter: nc }; }
   }
@@ -885,7 +886,7 @@ export function afterBasicHit(attacker, target) {
     if (roseCounter(target, attacker)) { emit({ type: 'passive', unit: target, name: '장미가시 반격', text: '일반 반격 대신 기본 공격 100%' }); stats.count('장미가시 반격'); }
     // 하지혜 [너도 언젠간 죽어]: 아군 여성이 기본 공격을 받으면 공격자에게 [죽지 않으려면 죽여] (MP·쿨타임 무관)
     if (target.base.gender === 'FEMALE' && attacker.owner.field.includes(attacker)) {
-      const jh = tp.field.find(x => x !== target && hasPassive(x, '너도 언젠간 죽어') && !x.st.para && !x.st.confuse);
+      const jh = tp.field.find(x => x !== target && hasPassive(x, '너도 언젠간 죽어') && !x.st.para && !x.st.freeze && !x.st.confuse);
       if (jh) { emit({ type: 'passive', unit: jh, name: '너도 언젠간 죽어', text: `${attacker.card.name}에게 [죽지 않으려면 죽여] 반격` }); stats.count('너도 언젠간 죽어'); jihyeStrike(jh, [attacker]); }
     }
     // 정다윤 영혼을 강탈합니다: 기본 공격한 상대 MP 20% 제거
@@ -954,6 +955,7 @@ export function turnStart(p) {
   // 마비 / 혼란 / 교란 → 강제 행동
   for (const u of [...p.field]) {
     if (!p.field.includes(u)) continue;
+    if (u.st.freeze) { u.canAttack = false; emit({ type: 'log', text: `${u.card.name} 동결! 행동 불가` }); emit({ type: 'paraSkip', unit: u, freeze: true }); continue; }
     if (u.st.para) { u.canAttack = false; emit({ type: 'log', text: `${u.card.name} 마비! 행동 불가` }); emit({ type: 'paraSkip', unit: u }); continue; }
     if (u.st.confuse || u.st.disrupt) {
       u.canAttack = false;
@@ -991,6 +993,7 @@ export function turnEnd(p) {
   // 상태 지속 감소 (자기 턴 종료 기준)
   for (const u of p.field) {
     if (u.paraBlock) u.paraBlock--;
+    if (u.freezeBlock) u.freezeBlock--;
     for (const [k, s] of Object.entries(u.st)) if (--s.t <= 0) { delete u.st[k]; if (k === 'seed') heal(u, u.maxHp * 0.05, '쾌락의 씨앗'); if (k === 'pleading') heal(u, u.maxHp * 0.3, '꼭 이래야해?'); if (k === 'para') u.paraBlock = 2; emit({ type: 'expire', unit: u, key: k }); onExpire(u, k, s); }
   }
   for (const [k, s] of Object.entries(p.st)) if (--s.t <= 0) {

@@ -150,3 +150,13 @@
 .stfx-emb { position: absolute; bottom: 6px; left: 30%; width: 5px; height: 5px; border-radius: 50%; background: radial-gradient(circle, #fff7ed, #fb923c); box-shadow: 0 0 6px #f97316; animation: stfx-bub 1.8s ease-in infinite; }
 .stfx-emb.b { left: 64%; animation-delay: .9s; }
 @media (prefers-reduced-motion: reduce) { .stfx-emb, .stfx-pulse-bleed > .relative, .stfx-pulse-burn > .relative { animation: none; } }
+/* 동결 */
+.unit.st-freeze > .relative { filter: saturate(.55) brightness(1.08); box-shadow: 0 0 0 1px rgba(125,211,252,.8), 0 0 12px rgba(56,189,248,.7); border-radius: 8px; }
+.stfx-ice { position: absolute; inset: 0; border-radius: 8px; pointer-events: none; background: linear-gradient(135deg, rgba(224,242,254,.35), rgba(56,189,248,.15) 40%, rgba(224,242,254,.3)), url("../img/fx/status/freeze.webp") center/70% no-repeat; box-shadow: inset 0 0 14px rgba(186,230,253,.8); }
+.stfx-ice::before, .stfx-ice::after { content: "❄"; position: absolute; color: #e0f2fe; text-shadow: 0 0 6px #38bdf8; font-size: 14px; top: 18%; left: 12%; }
+.stfx-ice::after { top: auto; left: auto; bottom: 22%; right: 12%; font-size: 11px; }
+.stfx-tick.freeze { width: 7px; height: 7px; border-radius: 1px; transform: rotate(45deg); background: linear-gradient(135deg, #fff, #7dd3fc); box-shadow: 0 0 6px #38bdf8; }
+.stfx-ice-burst { width: var(--w); height: var(--h); transform: translate(-50%, -50%); border-radius: 10px; box-shadow: inset 0 0 30px #bae6fd, 0 0 24px #38bdf8; animation: stfx-fade var(--d) ease-out forwards; }
+.stfx-ice-shatter { width: var(--w); height: var(--h); transform: translate(-50%, -50%); border-radius: 10px; background: repeating-linear-gradient(60deg, transparent 0 9px, rgba(224,242,254,.7) 9px 10px), repeating-linear-gradient(-50deg, transparent 0 13px, rgba(224,242,254,.6) 13px 14px); animation: stfx-fade var(--d) ease-out forwards; }
+.stfx-screen.stfx-flash-ice { position: fixed; inset: 0; background: radial-gradient(circle, transparent 40%, rgba(56,189,248,.35)); animation: stfx-fade var(--d) ease-out forwards; }
+.stfx-text-freeze { color: #7dd3fc; } .stfx-text-burn { color: #fb923c; }

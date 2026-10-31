@@ -1237,7 +1237,7 @@ function onEngine(e) {
     case 'miss': log(`${nm(e.unit)}: ${e.text}`, 'text-zinc-400'); dmgNumber(uEl(e.unit), 'MISS', '#a1a1aa'); break;
     case 'mp': if (typeof e.amt === 'string' || e.amt > 0) dmgNumber(uEl(e.unit), `MP +${e.amt}`, '#60a5fa'); else dmgNumber(uEl(e.unit), `MP ${e.amt}`, '#60a5fa'); break;
     case 'forced': log(e.text, 'text-purple-300'); shake(uEl(e.unit)); if (e.target && e.unit.st?.confuse) confuseAllyFx(uEl(e.target)); break;
-    case 'paraSkip': paraSkipFx(uEl(e.unit)); break;
+    case 'paraSkip': paraSkipFx(uEl(e.unit), e.freeze ? 'freeze' : 'para'); break;
     case 'revive': log(`${e.p.name}: ${e.card.name} 부활 → 손패`, 'text-emerald-300'); break;
     case 'log': log(e.text, 'text-zinc-300'); break;
   }
@@ -1729,7 +1729,7 @@ const CONFIRM_KEY = 'tcg_skip_endturn_confirm';
 function idleUnits() {
   const tg = attackTargets(S.me, S.ai);
   if (!tg.hero && !tg.units.length) return [];
-  return S.me.field.filter(u => u.canAttack && !u.st?.para && !u.st?.confuse && !u.st?.stun);
+  return S.me.field.filter(u => u.canAttack && !u.st?.para && !u.st?.freeze && !u.st?.confuse && !u.st?.stun);
 }
 // 아케이드 외 전투(스토리·탑·튜토리얼·PvP·구역 전쟁·토벌): 이번 턴에 한 번이라도 행동한 뒤
 // 더 할 수 있는 게 없으면 자동 턴 종료. 아케이드는 S.story 가 없음 → 제외
