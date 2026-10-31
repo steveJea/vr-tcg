@@ -16,7 +16,7 @@
 // ===== 프로필 교체 (이 저장소 img/npc/<id>.webp 가 우선) =====
 // vr-ideal-worldcup 의 bt_img 를 이 저장소에서 바꿀 수 없어서, 여기 적은 id 는 화면에 붙는 순간 img/npc 로 바꿔 끼움 (<img src>, style background-image).
 (function () {
-  const OVERRIDE = new Set(['10266']);   // 용지효 (2026-10 새 프로필)
+  const OVERRIDE = new Set(['10266', '10509']);   // 용지효 (2026-10 새 프로필) · 강보람 10509 (bt_img 없음, img/npc)
   const RE = /https?:\/\/raw\.githubusercontent\.com\/steveJea\/vr-ideal-worldcup\/main\/img\/bt_img\/(\d+)\.webp/g;
   const swap = str => str.replace(RE, (m, id) => OVERRIDE.has(id) ? 'img/npc/' + id + '.webp' : m);
   window.cardImgOverride = swap;
