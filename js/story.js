@@ -540,11 +540,10 @@
     const arr = (i, cls, lbl, t) => `<button class="story-charr ${cls}" ${i >= 0 ? `data-ch="${i}"` : 'disabled'} aria-label="${lbl}">${t}</button>`;
     const nextCh = D.chapters[curCh + 1], nextOpen = nextCh && chapterOpen(curCh + 1);
     show(`<div class="story-map-bg story-map-bg-m" aria-hidden="true" style="background-image:${bgUrl(base)}"></div><div class="story-map-bg story-map-bg-pc" aria-hidden="true" style="background-image:${bgPcUrl(base)}"></div>
-      <div class="story-map-screen"><div class="story-map-top">${topBar(esc(ch.title), 'hub')}</div>
+      <div class="story-map-screen"><div class="story-map-top">${topBar('', 'hub')}<div class="story-map-status"><div class="story-player-row" data-vr-player></div><div class="story-starbox-wrap" data-starbox></div></div></div>
       <div class="story-map-dock">
       <div class="text-center"><div class="story-chtitle">${arr(prevI, 'l', '이전 챕터', '‹')}<div class="story-chapter-big text-3xl md:text-5xl">${esc(ch.title)}</div>${arr(nextI, 'r', '다음 챕터', '›')}</div><div class="story-chapter-name">${esc(ch.subtitle)}</div>
         ${hero && ch.route ? `<div class="story-route-tag">루트 <b>${esc(hero.name)}</b>${clearedOf(ch).length ? '' : ' <button class="story-mini" data-go="route">루트 바꾸기</button>'}</div>` : ''}</div>
-      <div class="story-player-row" data-vr-player></div><div class="story-starbox-wrap" data-starbox></div>
       ${rows.map(r => `<div class="story-map ${rows.length > 1 ? 'story-map-row' : ''}">${r.map(node).join('')}</div>`).join('')}
       ${!serverMode && !window.__STORY_MOCK_USER ? '<div class="text-[11px] text-amber-400 text-center">⚠️ 서버 저장 준비 중이라 이 브라우저에만 저장돼요</div>' : ''}
       ${nextNo ? '' : `<div class="story-clear">✔ CLEAR ${nextOpen ? `<button class="story-btn" data-ch="${curCh + 1}">${esc(nextCh.title)} →</button>` : '<small>다음 챕터 준비 중</small>'}</div>`}
