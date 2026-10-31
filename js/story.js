@@ -311,7 +311,7 @@
     r.classList.remove('hidden'); $('start-screen').classList.add('hidden'); $('game').classList.add('hidden');
     r.scrollTop = 0;
   }
-  function home() { bgm('main'); root().classList.add('hidden'); $('start-screen').classList.remove('hidden'); }
+  function home() { bgm('main'); root().classList.add('hidden'); $('start-screen').classList.remove('hidden'); mailBtn(); }
   const topBar = (title, back = 'home', nav = true) => (back === 'hub' && !save?.starter && (back = 'home'), nav && !save?.starter && (nav = false), 0) || `<div class="story-top"><button class="story-back" data-go="${back}">← ${back === 'home' ? '처음으로' : back === 'hub' ? '스토리 메인' : '돌아가기'}</button><div class="story-top-title">${title}</div>${nav ? `<span class="flex gap-1.5"><button class="story-mycards story-gacha-btn" data-go="gacha">🎴 인재영입${canDraw() ? '<i class="story-badge">1</i>' : ''}</button><button class="story-mycards" data-go="cards">🃏 보유 인재</button><button class="story-mycards" data-go="decks">🗂 덱</button></span>` : '<span></span>'}</div>`;
   function bind(extra = {}) {
     root().querySelectorAll('[data-go]').forEach(b => b.onclick = () => ({ home, hub: renderHub, map: renderMap, cards: renderCards, decks: renderDecks, gacha: renderShop, bonds: renderBonds, ...extra })[b.dataset.go]?.());
@@ -520,13 +520,16 @@
   addEventListener('resize', () => { clearTimeout(mapRsT); mapRsT = setTimeout(() => { if (document.querySelector('.story-map-screen') && mapCols() !== mapColsNow) renderMap(); }, 200); });
   // 📮 우편 버튼 (가방과 분리) — 안 받은 우편 수 뱃지
   function mailBtn() {
-    const w = root().querySelector('[data-mailbtn]'); if (!w) return;   // 우편 유무와 상관없이 항상 표시
-    w.innerHTML = '<button class="story-mailbtn" type="button" aria-label="우편함">📮<span>우편</span></button>';
-    w.firstChild.onclick = () => { const G = window.VRGear; if (!G || G.off) return toast('📮 우편함을 불러올 수 없어요. 잠시 후 다시 시도해 주세요'); G.mailbox({ back: () => G.unread?.() }); };
+    const ws = document.querySelectorAll('[data-mailbtn]'); if (!ws.length) return;   // 우편 유무와 상관없이 항상 표시 (메인 상단·허브·챕터 맵)
+    for (const w of ws) { if (w.querySelector('.story-mailbtn')) continue;
+    w.innerHTML = '<button class="story-mailbtn" type="button" aria-label="우편함" title="우편함">📮<span>우편</span></button>';
+    w.firstChild.onclick = () => { const G = window.VRGear; if (!G || G.off) return toast('📮 우편함을 불러올 수 없어요. 잠시 후 다시 시도해 주세요'); G.mailbox({ back: () => G.unread?.() }); }; }
     window.VRGear?.unread?.(); setTimeout(() => window.VRGear?.unread?.(), 1500);
   }
-  document.addEventListener('vr-mail-unread', e => { const b = document.querySelector('.story-mailbtn'); if (!b) return; b.querySelector('.story-badge')?.remove();
-    if (e.detail > 0) b.insertAdjacentHTML('beforeend', `<i class="story-badge">${e.detail > 99 ? '99+' : e.detail}</i>`); });
+  document.addEventListener('vr-mail-unread', e => { document.querySelectorAll('.story-mailbtn').forEach(b => { b.querySelector('.story-badge')?.remove();
+    if (e.detail > 0) b.insertAdjacentHTML('beforeend', `<i class="story-badge">${e.detail > 99 ? '99+' : e.detail}</i>`); }); });
+  // 메인 화면 상단 📮: 처음 로드 · 로그인 뒤(장비 모듈 준비) · 처음으로 돌아올 때
+  setTimeout(mailBtn, 0); setTimeout(mailBtn, 3000);
   function renderMap(idx) {
     if (pullPending()) return forcedPull();
     if (typeof idx === 'number') curCh = idx;
@@ -660,7 +663,7 @@
       ${hubSlot(c + 1, 'small')}${hubSlot(c, 'big')}${hubSlot(c - 1, 'small')}
       <button class="hub-ch-arr" id="hub-down" ${c > 0 ? '' : 'disabled'} aria-label="이전 챕터 보기">▼</button></div>`;
     show(`<div class="story-hub-bg" aria-hidden="true"></div><div class="story-hub">
-      <div class="story-top"><button class="story-back" data-go="home">← 처음으로</button><div class="story-top-title">스토리 모드</div><span data-vr-player></span></div>
+      <div class="story-top"><button class="story-back" data-go="home">← 처음으로</button><div class="story-top-title">스토리 모드</div><span data-mailbtn></span><span data-vr-player></span></div>
       ${sel}
       <button class="story-hub-go main-btn" id="story-continue" ${nx ? '' : 'disabled'}><b>▶ 이어하기</b><small>${nx ? `${esc(nx.base.title)} · Phase.${nx.ph.no}${nx.ph.type === 'boss' ? ' · BOSS' : ''}` : '열린 챕터를 모두 클리어했어요'}</small></button>
       <button class="hub-gacha" data-go="gacha"><span class="hub-gacha-t"><b>🎴 인재영입</b><small>${canDraw() ? '오늘의 일반 영입 가능!' : '프리미엄 영입'}</small></span><span class="story-hub-tk">${tickets ? `🎟️ ${tickets}` : ''}</span>${canDraw() ? '<i class="story-badge">1</i>' : ''}</button>
@@ -675,7 +678,7 @@
     $('hub-up').onclick = () => mv(1); $('hub-down').onclick = () => mv(-1);
     { const el = $('hub-ch'); let y0 = null; el.addEventListener('touchstart', e => { y0 = e.touches[0].clientY; }, { passive: true });
       el.addEventListener('touchend', e => { if (y0 == null) return; const dy = e.changedTouches[0].clientY - y0; y0 = null; if (Math.abs(dy) > 40) mv(dy < 0 ? -1 : 1); }); }
-    bind(); playerPaint();
+    bind(); playerPaint(); mailBtn();
     if (tickets == null) syncTickets().then(r => { if (r.added) toast(`🎟️ 소환권 +${r.added} (챕터 클리어 보상)`); const el = root().querySelector('.story-hub-tk'); if (el) el.textContent = tickets ? `🎟️ ${tickets}` : ''; });
     root().querySelectorAll('[data-hubch]').forEach(b => b.onclick = () => renderMap(+b.dataset.hubch));
     root().querySelectorAll('[data-hubvid]').forEach(b => b.onclick = e => { e.stopPropagation(); endingVideo(D.chapters[+b.dataset.hubvid]); });

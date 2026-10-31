@@ -935,3 +935,7 @@ body.story-media-on .story-dlg-skip { left: 4px; right: auto; top: calc(4px + en
 #game.story-pool #me-hand { padding-top: 34px !important; }
 #game.story-field:not(.story-pool) #act-sort { display: none; }
 #game.story-pool .hand-sort-btn { top: 4px; height: 26px; }
+/* 📮 우편: 메인 상단(설정 옆)·스토리 허브 상단에도 */
+.main-mail{flex:none}.main-cur:empty+.main-mail{margin-left:auto}
+.main-mail .story-mailbtn,.story-top [data-mailbtn] .story-mailbtn{min-height:34px}
+.story-top [data-mailbtn]{margin-left:auto;flex:none}
