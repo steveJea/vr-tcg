@@ -324,6 +324,8 @@ export function resolveAttack(me, opp, unit, target) {
   }
   const ratio = rd.ratio || 1; target = rd.target;
   if (spares(unit, target)) return ev;   // 보호 대상으로 유도됐으면 공격 안 함
+  // 명중 저하 (왼쪽 날개): 기본 공격이 확률로 빗나감 (피해·반격 없음, 스킬은 영향 없음)
+  if (unit.st?.blind && chance(unit.st.blind.p || 0.2)) { ev.push({ type: 'evade', unit, target, blind: true }); emit({ type: 'miss', unit, text: '빗나감 (명중 저하)' }); return ev; }
   // 회피(정치욱 [그렇게 느려도 되겠어?]): 피해·반격 없음
   if (rollEvade(target, unit)) { ev.push({ type: 'evade', unit, target }); gainXp(unit, RULES.ATTACK_XP); return ev; }
   const d1 = Math.max(1, Math.round(calcDamage(unit.card, target.card) * ratio));

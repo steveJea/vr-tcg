@@ -3605,5 +3605,114 @@
    "fx": "10502_3.webp",
    "note": ""
   }
+ ],
+ "10503": [
+  {
+   "card": "오른쪽 날개",
+   "name": "내가 느꼈던 고통",
+   "type": "디버프",
+   "mode": "active",
+   "target": "적 단일",
+   "desc": "가장 코스트가 높은 대상을 1턴 간 50% 확률로 마비. 2턴 간 중독.",
+   "value": "50%/100%",
+   "duration": 2,
+   "mp": 30,
+   "cooldown": 3,
+   "unlock": 2,
+   "fx": "10503_1.webp",
+   "note": ""
+  },
+  {
+   "card": "오른쪽 날개",
+   "name": "네가 느낄 고통",
+   "type": "디버프",
+   "mode": "active",
+   "target": "적 전체",
+   "desc": "상대방 전체 3턴 간 출혈 + 3턴 간 화상.",
+   "value": "100%/100%",
+   "duration": 3,
+   "mp": 50,
+   "cooldown": 3,
+   "unlock": 5,
+   "fx": "10503_2.webp",
+   "note": ""
+  },
+  {
+   "card": "오른쪽 날개",
+   "name": "모두가 느끼는 지옥",
+   "type": "디버프",
+   "mode": "active",
+   "target": "적 전체",
+   "desc": "100% 확률로 1턴 간 마비 + 3턴 간 중독 + 3턴 간 화상",
+   "value": "100%/100%/100%",
+   "duration": 3,
+   "mp": 70,
+   "cooldown": 5,
+   "unlock": 7,
+   "fx": "10503_3.webp",
+   "note": ""
+  }
+ ],
+ "10504": [
+  {
+   "card": "왼쪽 날개",
+   "name": "아프지 않아요",
+   "type": "버프",
+   "mode": "passive",
+   "target": "자신",
+   "desc": "매 턴 HP 30% 회복",
+   "value": "30%",
+   "duration": 99,
+   "mp": 0,
+   "cooldown": 0,
+   "unlock": 1,
+   "fx": "10504_1.webp",
+   "note": ""
+  },
+  {
+   "card": "왼쪽 날개",
+   "name": "내가 느꼈던 어둠",
+   "type": "디버프",
+   "mode": "active",
+   "target": "적 전체",
+   "desc": "상대방 전체 3턴 간 화상 + 1턴 간 명중률 20% 저하.",
+   "value": "100%/100%(-20%)",
+   "duration": 3,
+   "mp": 30,
+   "cooldown": 3,
+   "unlock": 2,
+   "fx": "10504_2.webp",
+   "note": ""
+  },
+  {
+   "card": "왼쪽 날개",
+   "name": "네가 느껴야 하는 고독",
+   "type": "디버프",
+   "mode": "active",
+   "target": "적 전체",
+   "desc": "상대방 전체 MP 50% 소멸 + 2턴 간 명중률 20% 저하",
+   "value": "100%(-50%)/100%(-20%)",
+   "duration": 2,
+   "mp": 50,
+   "cooldown": 5,
+   "unlock": 5,
+   "fx": "10504_3.webp",
+   "note": ""
+  },
+  {
+   "card": "왼쪽 날개",
+   "name": "암흑 소환",
+   "type": "버프",
+   "mode": "active",
+   "target": "-",
+   "desc": "2턴 간 [오른쪽 날개]를 소환해 전투에 참여 시킨다.",
+   "value": "-",
+   "duration": 2,
+   "mp": 50,
+   "cooldown": 8,
+   "unlock": 7,
+   "fx": "10504_4.webp",
+   "note": ""
+  }
  ]
 }
