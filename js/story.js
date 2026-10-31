@@ -519,10 +519,10 @@
   addEventListener('resize', () => { clearTimeout(mapRsT); mapRsT = setTimeout(() => { if (document.querySelector('.story-map-screen') && mapCols() !== mapColsNow) renderMap(); }, 200); });
   // 📮 우편 버튼 (가방과 분리) — 안 받은 우편 수 뱃지
   function mailBtn() {
-    const w = root().querySelector('[data-mailbtn]'); if (!w || !serverMode || !window.VRGear || window.VRGear.off) return;
+    const w = root().querySelector('[data-mailbtn]'); if (!w) return;   // 우편 유무와 상관없이 항상 표시
     w.innerHTML = '<button class="story-mailbtn" type="button" aria-label="우편함">📮<span>우편</span></button>';
-    w.firstChild.onclick = () => window.VRGear.mailbox({ back: () => window.VRGear.unread?.() });
-    window.VRGear.unread?.();
+    w.firstChild.onclick = () => { const G = window.VRGear; if (!G || G.off) return toast('📮 우편함을 불러올 수 없어요. 잠시 후 다시 시도해 주세요'); G.mailbox({ back: () => G.unread?.() }); };
+    window.VRGear?.unread?.(); setTimeout(() => window.VRGear?.unread?.(), 1500);
   }
   document.addEventListener('vr-mail-unread', e => { const b = document.querySelector('.story-mailbtn'); if (!b) return; b.querySelector('.story-badge')?.remove();
     if (e.detail > 0) b.insertAdjacentHTML('beforeend', `<i class="story-badge">${e.detail > 99 ? '99+' : e.detail}</i>`); });
