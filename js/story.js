@@ -1841,10 +1841,12 @@
         $('tk-result').className = `story-tk-result n${r.cards.length}${multi && fxOff ? ' tk-skip' : ''}`;
         if (multi && !fxOff) {   // 연출 중 탭 → 남은 카드 한 번에 열기
           const box = $('tk-result'); let done = false;
-          const fin = () => { if (done) return; done = true; box.classList.add('tk-skip'); box.removeEventListener('click', skip, true); };
-          const skip = e => { if (done) return; e.stopPropagation(); fin(); };
-          box.addEventListener('click', skip, true);
-          await new Promise(res => { const t = setTimeout(res, (0.25 + rows.length * STEP + 0.5) * 1000); box.addEventListener('click', () => { clearTimeout(t); res(); }, { once: true, capture: true }); });
+          // 화면 어디를 탭해도(카드 밖 포함) 남은 카드를 한꺼번에 뒤집음. 이 탭은 다른 버튼으로 넘기지 않음
+          let wake = null;
+          const fin = () => { if (done) return; done = true; box.classList.add('tk-skip'); document.removeEventListener('click', skip, true); };
+          const skip = e => { if (done) return; e.stopPropagation(); e.preventDefault(); fin(); wake?.(); };
+          document.addEventListener('click', skip, true);
+          await new Promise(res => { const t = setTimeout(res, (0.25 + rows.length * STEP + 0.5) * 1000); wake = () => { clearTimeout(t); setTimeout(res, 250); }; });
           fin(); if (!$('tk-result')) return;
         }
         { const vc = [...r.cards].sort((a, b) => GORDER.indexOf(b.grade) - GORDER.indexOf(a.grade)).find(x => ['SUPER RARE', 'ULTRA RARE'].includes(x.grade) && window.TCG?.hasVoice?.(`${card(x.card_id).id}_g`));

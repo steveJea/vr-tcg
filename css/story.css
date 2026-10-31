@@ -991,3 +991,5 @@ body.story-media-on .story-dlg-skip { left: 4px; right: auto; top: calc(4px + en
 .hud-top{flex-wrap:wrap;row-gap:2px}
 .hud-top .hud-mana{flex:1 1 auto;min-width:0;white-space:normal;line-height:1.25}
 .hud-right{margin-left:auto;flex:none}
+/* 10회 뽑기 뒤집기: .story-tk-card div{overflow:hidden}(#73)이 .tk-in에도 걸려 3D가 평면화 → 180° 돌아도 뒷면이 보이던 문제 (최근 Chrome은 overflow≠visible이면 preserve-3d를 무시) */
+.tk-flip .tk-in{overflow:visible;padding:0;white-space:normal}
