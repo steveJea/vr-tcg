@@ -1,7 +1,7 @@
 import { fieldCount, GUARD_GRADES, GUARD_SWAP_TURNS, guardOf, levelUpOnce, RULES, calcPower, skillLvPowerMult, skillCountMult, ELEMENTS, elementMultiplier, calcDamage, canSummon, buildDeck, parseCSV, aiSummonOrder, aiPickTarget, recallCost, canRecall, aiShouldRecall, makeUnit, resolveAttack, refillMana, ACTIONS, canAction, doAction, clearBuff, aiWantShuffle, aiWantBuff, aiWantHeal, aiWantFieldHeal, aiPickItem, endTurnXp, ITEMS, canEquip, equip, attackTargets, canTarget, autoTarget, heroLocked, xpToNext, SKILLS, gainXp, setCardPool, canSacrifice, sacrifice, aiPickSacrifice, aiWantAccel, judgeTimeout, JUDGE_LABEL, genderMult, GRADES, GRADE_SHORT, allowedGrades, baseEvade, swapField } from './rules.js';
 import { autoNext, noteUsed } from './auto-ai.js';
 import { initStatusFx, tickFx, statusApplyFx, paraSkipFx, confuseAllyFx, tauntPullFx, statusClasses, statusDecor, statusIconUrl, isStatusFxKind } from './status-fx.js';
-import { skillCd, skillMp, setSpare, spareBlocked, setSkillData, setEmitter, initPlayers, placeUnit, turnStart, turnEnd, useSkill, skillState, aiPickSkill, skillLvOf, skillCdAt, skillLvMult, skillLvProb, SKILL_LV_MAX, refreshAll, statusIcons, skillsOf, combos, STATUS, SK, maleLure, checkDeath } from './skills.js';
+import { skillCd, skillMp, setSpare, spareBlocked, setSkillData, setEmitter, initPlayers, placeUnit, turnStart, turnEnd, useSkill, forceSkill, skillState, aiPickSkill, skillLvOf, skillCdAt, skillLvMult, skillLvProb, SKILL_LV_MAX, refreshAll, statusIcons, skillsOf, combos, STATUS, SK, maleLure, checkDeath } from './skills.js';
 
 const IMG = 'https://raw.githubusercontent.com/steveJea/vr-ideal-worldcup/main/img/bt_img/';
 const NF = new Intl.NumberFormat('ko-KR');
@@ -1200,10 +1200,10 @@ function mrVideo(u, s) {
   });
 }
 
-async function castSkill(who, u, s) {
+async function castSkill(who, u, s, force = false) {
   if (S?.view) { if (who === 'me' && S.view.ask && skillState(u, s).ok) S.view.ask({ k: 'skill', i: S.view.A0.indexOf(u), s: s.name }); return; }   // PvP·전쟁 화면: 엔진에 입력만 넘김
   const p = S[who];
-  if (S.over || !p.field.includes(u) || !skillState(u, s).ok) return;
+  if (S.over || !p.field.includes(u) || !(force || skillState(u, s).ok)) return;
   if (who === 'me') S.undo = null;
   const prevBusy = S.busy; S.busy = true; selected = null; if (who === 'me') S.meActed = true;
   try {
@@ -1211,7 +1211,7 @@ async function castSkill(who, u, s) {
     if (!(await mrVideo(u, s))) await withTimeout(cutIn(u, s.name, s.fx), 3000);
     if (who === 'me' && S.ai.field.length) await peekBefore(!$('ai-boss').classList.contains('hidden') ? $('ai-boss') : $('ai-field'));   // 상대 쪽 먼저 보이고 타격
     pendingDying = [];
-    useSkill(u, s);
+    force ? forceSkill(u, s) : useSkill(u, s);
     await vidWait();
     if (who === 'me') { S.log.skills++; try { window.dispatchEvent(new CustomEvent('vr:daily', { detail: { k: 'skill' } })); } catch {} }
     renderHero('me'); renderHero('ai');
@@ -1271,11 +1271,32 @@ function onEngine(e) {
 }
 
 // ===== 간단한 AI =====
+// ===== 스토리 적 턴 대본 (story.rules.aiScript) =====
+// [{ turn: 적의 N번째 턴, unit: 카드 id(없으면 첫 카드), say: ['대사', …], skill: '스킬 이름'(해금·MP 무시), end: true(그 턴 다른 행동 없이 종료) }]
+// 대사는 그 카드 위 말풍선 (탭하면 다음, 자동 2.4초). 대본 없는 턴은 평소 AI
+function aiScriptStep() { const L = S.story?.rules?.aiScript; return L ? L.find(x => x.turn === (S.ai.ownTurns | 0)) : null; }
+function sayBubble(u, text) {
+  return new Promise(res => {
+    const host = u && unitEl('ai', u); const b = document.createElement('div'); b.className = 'ai-say pop'; b.textContent = text;
+    document.body.appendChild(b);
+    const r = host?.getBoundingClientRect(); if (r) { b.style.left = Math.max(8, Math.min(innerWidth - 268, r.left + r.width / 2 - 130)) + 'px'; b.style.top = Math.max(8, r.bottom + 8) + 'px'; } else b.classList.add('ai-say-center');
+    let done = false; const fin = () => { if (done) return; done = true; b.remove(); document.removeEventListener('pointerdown', fin, true); res(); };
+    setTimeout(() => document.addEventListener('pointerdown', fin, true), 200); setTimeout(fin, FX_OFF() ? 0 : 2400);
+  });
+}
+async function runAiScript(st) {
+  const ai = S.ai, u = (st.unit && ai.field.find(x => String(x.card.id) === String(st.unit))) || ai.field[0];
+  for (const t of st.say || []) { if (S.over) return; log(`${u?.card.name || ai.name}: “${t}”`, 'text-rose-200'); await sleep(AI_DELAY()); await sayBubble(u, t); }
+  if (st.skill && u && !S.over) { const s = (u.sk || []).find(x => x.name === st.skill) || { name: st.skill, mode: 'active' }; await castSkill('ai', u, s, true); await sleep(AI_DELAY()); }
+  if (st.end !== false) ai.field.forEach(x => { x.canAttack = false; });
+}
+
 async function aiTurn() {
   try {
   S.busy = true; render();
   await sleep(AI_DELAY());
   const ai = S.ai, me = S.me;
+  { const st = aiScriptStep(); if (st) { await runAiScript(st); if (st.end !== false) throw { scripted: true }; } }   // 대본 턴: 다른 행동 없이 종료
   // 1) 비싼 카드부터 낼 수 있는 만큼 소환
   // 0) 위험한 고코스트 카드 회수
   for (const u of [...ai.field]) if (aiShouldRecall(u, ai, me)) { recall('ai', u); await sleep(AI_DELAY()); }
@@ -1307,7 +1328,7 @@ async function aiTurn() {
     await sleep(AI_DELAY());
   }
   if (!S.over && aiWantHeal(ai)) { useAction('ai', 'heal'); await sleep(AI_DELAY()); }
-  } catch (err) { if (!err?.guardSwap) reportError('aiTurn', err); }
+  } catch (err) { if (!err?.guardSwap && !err?.scripted) reportError('aiTurn', err); }
   // 오류가 나도 턴은 반드시 넘어감
   const ai = S.ai;
   try { if (!S.over) { endTurnXp(ai); turnEnd(ai); render(); checkEnd() || checkTimeout(); } } catch (err) { reportError('aiTurnEnd', err); }

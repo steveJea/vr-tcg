@@ -914,6 +914,15 @@ export function useSkill(u, s) {
   return { ok: true };
 }
 
+/** 대본 스킬 (스토리 rules.aiScript): 해금·MP·쿨타임 무시하고 바로 사용 (MP·쿨타임 소모 없음) */
+export function forceSkill(u, s) {
+  const p = u.owner; u.canAttack = false;
+  emit({ type: 'skill', unit: u, skill: s }); stats.count(s.name); refreshAll(p);
+  const prevA = ACTOR; ACTOR = u;
+  try { ACTIVE[s.name](u, p, p.foe, s); } finally { ACTOR = prevA; }
+  refreshAll(p); return { ok: true };
+}
+
 // ---- 기본 공격 시 반격 패시브 ----
 export function afterBasicHit(attacker, target) {
   if (noCounter) return;
