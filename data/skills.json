@@ -3714,5 +3714,73 @@
    "fx": "10504_4.webp",
    "note": ""
   }
+ ],
+ "10505": [
+  {
+   "card": "안혜진",
+   "name": "이게 답입니다!",
+   "type": "공격",
+   "mode": "active",
+   "target": "적 전체",
+   "desc": "전체 적에게 공격력 30% 데미지 부여. 30% 확률로 2턴 간 출혈",
+   "value": "30%/30%",
+   "duration": 2,
+   "mp": 40,
+   "cooldown": 3,
+   "unlock": 2,
+   "fx": "",
+   "note": ""
+  }
+ ],
+ "10506": [
+  {
+   "card": "한서린",
+   "name": "불쌍해라..",
+   "type": "공격",
+   "mode": "active",
+   "target": "적 단일",
+   "desc": "가장 COST가 높은 적을 공격력 40%로 3회 타격. 10% 확률로 마비",
+   "value": "40%*3/10%",
+   "duration": 1,
+   "mp": 50,
+   "cooldown": 3,
+   "unlock": 2,
+   "fx": "",
+   "note": ""
+  }
+ ],
+ "10507": [
+  {
+   "card": "도예나",
+   "name": "아무렇지 않죠?",
+   "type": "공격",
+   "mode": "active",
+   "target": "적 전체",
+   "desc": "전체 적에게 공격력 20% 데미지를 2회 부여. 10% 확률로 1턴 간 동결",
+   "value": "20%*2/10%",
+   "duration": 1,
+   "mp": 50,
+   "cooldown": 3,
+   "unlock": 2,
+   "fx": "",
+   "note": ""
+  }
+ ],
+ "10508": [
+  {
+   "card": "최태석",
+   "name": "계약 성사",
+   "type": "디버프",
+   "mode": "active",
+   "target": "적 전체",
+   "desc": "20% 확률로 마비 + 2턴 간 중독.",
+   "value": "20%/100%",
+   "duration": 2,
+   "mp": 60,
+   "cooldown": 3,
+   "unlock": 2,
+   "fx": "",
+   "note": ""
+  }
  ]
 }

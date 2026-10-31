@@ -523,6 +523,11 @@ export const ACTIVE = {
   '내가 느꼈던 어둠': (u, p, f) => live(f).forEach(t => { addStatus(t, 'burn', 3, {}, 'burn'); addStatus(t, 'blind', 1, { p: 0.2, label: '명중률 -20%' }, 'blind'); }),
   '네가 느껴야 하는 고독': (u, p, f) => live(f).forEach(t => { const m = Math.round(t.mp * 0.5); if (m > 0) { t.mp -= m; emit({ type: 'mp', unit: t, amt: -m }); } addStatus(t, 'blind', 2, { p: 0.2, label: '명중률 -20%' }, 'blind'); }),
   '암흑 소환': (u, p) => summonRightWing(u, p),
+  // CH12 NPC (2026-10-31 캐릭터 시트): 안혜진 10505 · 한서린 10506 · 도예나 10507 · 최태석 10508
+  '이게 답입니다!': (u, p, f) => { const ts = live(f); hitAll(u, f, 1, 0.3); ts.forEach(t => { if (f.field.includes(t) && t.hp > 0 && sChance(0.3)) bleedOn(t, u, 2); }); },
+  '불쌍해라..': (u, p, f) => { const t = by(live(f), x => x.card.cost, -1); if (!t) return; if (!multiHit(u, t, 3, 0.4) && sChance(0.1)) addStatus(t, 'para', 1, {}, 'para'); },
+  '아무렇지 않죠?': (u, p, f) => { const ts = live(f); hitAll(u, f, 2, 0.2); ts.forEach(t => { if (f.field.includes(t) && t.hp > 0 && !t.st.freeze && !t.boss && sChance(0.1)) addStatus(t, 'freeze', 1, {}, 'freeze'); }); },
+  '계약 성사': (u, p, f) => live(f).forEach(t => { if (sChance(0.2)) addStatus(t, 'para', 1, {}, 'para'); wingPoison(t, u, 2); }),
   // CH8~11 NPC (2026-10-29 캐릭터 시트): [염원] 최윤아·최윤정, 안소라, [염원] 안지윤
   '사랑한단말야': (u, p, f) => { const ts = live(f); hitAll(u, f, 1, 0.4); ts.forEach(t => f.field.includes(t) && t.hp > 0 && sChance(0.3) && addStatus(t, 'para', 1, {}, 'para')); },
   '왜 우리야!': (u, p, f) => { const ts = live(f); hitAll(u, f, 1, 0.4); ts.forEach(t => { if (f.field.includes(t) && t.hp > 0 && sChance(0.3)) bleedOn(t, u, 1); }); },
@@ -1115,6 +1120,8 @@ export function aiSkillScores(u, { noSave = false } = {}) {
       case '처음부터...다시.': sc = n && !canKill ? 70 + Math.round(f.field.reduce((a, t) => a + t.mp, 0) / 20) : 0; break;
       case '암흑 소환': sc = fieldCount(p) < RULES.FIELD_MAX && !p.field.some(x => String(x.base?.id) === WING_R_ID) && poolCard(WING_R_ID) ? 95 : 0; break;
       case '내가 느꼈던 고통': sc = n ? 84 : 0; break;
+      case '불쌍해라..': sc = n ? 82 : 0; break;
+      case '이게 답입니다!': case '아무렇지 않죠?': case '계약 성사': sc = n >= 2 ? 86 + n * 3 : n ? 72 : 0; break;
       case '모두가 느끼는 지옥': case '네가 느낄 고통': case '내가 느꼈던 어둠': case '네가 느껴야 하는 고독': sc = n >= 2 ? 88 + n * 3 : n ? 72 : 0; break;
       case '건드리지 마!': case '아무도 없는 곳에서': sc = n && u.hp < u.maxHp * 0.7 ? 86 : 0; break;
       case '깨져버린 세상': case '더 이상 울기 싫어': sc = n >= 2 ? 88 + n * 3 : n ? 70 : 0; break;
