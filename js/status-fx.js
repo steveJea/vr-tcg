@@ -1,7 +1,7 @@
 // 상태이상(마비·혼란·출혈·도발) 연출 — 걸리는 순간 큰 연출 + 걸려 있는 동안 은은한 지속 연출
 // 이미지 에셋(img/effects/{paralyze,confuse,bleed}_{icon,fx}.webp)이 있으면 사용, 없으면 CSS 로 대체
-const KIND = { para: 'paralyze', confuse: 'confuse', bleed: 'bleed', taunt: 'taunt' };
-const LABEL = { para: '마비!', confuse: '혼란!', bleed: '출혈!', taunt: '도발!' };
+const KIND = { para: 'paralyze', confuse: 'confuse', bleed: 'bleed', taunt: 'taunt', freeze: 'freeze', burn: 'burn' };
+const LABEL = { para: '마비!', confuse: '혼란!', bleed: '출혈!', taunt: '도발!', freeze: '동결!', burn: '화상!' };
 const ASSET = {};   // 'paralyze_icon' → url | null(없음) | undefined(확인 중)
 const url = n => `img/effects/${n}.webp`;
 function probe(n) {
@@ -16,7 +16,7 @@ function probe(n) {
 Object.values(KIND).forEach(k => { probe(k + '_icon'); probe(k + '_fx'); });
 // 지속 피해(중독·저주)·지속 회복(재생) 틱 이미지 자리 (img/fx/status/<kind>.webp) — 없으면 CSS 거품·반짝이
 const TICK_ASSET = {};
-['poison', 'curse', 'regen', 'bleed', 'burn'].forEach(k => { const im = new Image(); im.onload = () => { TICK_ASSET[k] = im.src; }; im.onerror = () => { TICK_ASSET[k] = null; }; im.src = `img/fx/status/${k}.webp`; });
+['poison', 'curse', 'regen', 'bleed', 'burn', 'freeze'].forEach(k => { const im = new Image(); im.onload = () => { TICK_ASSET[k] = im.src; }; im.onerror = () => { TICK_ASSET[k] = null; }; im.src = `img/fx/status/${k}.webp`; });
 export const isStatusFxKind = k => k in KIND;
 /** 상태 아이콘 이미지 URL (에셋이 있을 때만) */
 export const statusIconUrl = k => (KIND[k] && ASSET[KIND[k] + '_icon']) || null;
@@ -63,6 +63,13 @@ export function statusApplyFx(el, kind) {
     spawn('stfx-slash', r, 600, d => sprite(d, fx));
     for (let i = 0; i < 7; i++) spawn('stfx-blood', r, 700, d => { const a = Math.random() * Math.PI * 2, s = 30 + Math.random() * 50; d.style.setProperty('--dx', Math.cos(a) * s + 'px'); d.style.setProperty('--dy', Math.sin(a) * s + 'px'); });
     bleedTickFx(el);
+  } else if (kind === 'freeze') {
+    if (TICK_ASSET.freeze) spawn('stfx-tick-img freeze', r, 700, d => { d.style.backgroundImage = `url("${TICK_ASSET.freeze}")`; });
+    spawn('stfx-ice-burst', r, 650);
+    for (let i = 0; i < 8; i++) spawn('stfx-tick freeze', r, 800, d => { const a = Math.random() * Math.PI * 2, s = 25 + Math.random() * 40; d.style.setProperty('--dx', Math.cos(a) * s + 'px'); d.style.setProperty('--dy', Math.sin(a) * s + 'px'); });
+    screen('stfx-flash-ice', 260);
+  } else if (kind === 'burn') {
+    for (let i = 0; i < 6; i++) spawn('stfx-tick burn', r, 800, d => { d.style.setProperty('--dx', ((Math.random() - .5) * r.width * .8) + 'px'); d.style.setProperty('--dy', (-(20 + Math.random() * 40)) + 'px'); });
   } else if (kind === 'taunt') {
     spawn('stfx-aura-burst', r, 700, d => sprite(d, fx));
     spawn('stfx-shield-slam', r, 600, d => sprite(d, 'taunt_icon'));
@@ -91,8 +98,9 @@ export function tickFx(el, kind) {
   setTimeout(() => el.classList.remove('stfx-pulse-' + kind), Math.round(650 * scale()));
 }
 /** 마비로 행동 불가: 지지직 떨림 */
-export function paraSkipFx(el) {
+export function paraSkipFx(el, kind = 'para') {
   if (!el || opt.off() || !el.isConnected) return;
+  if (kind === 'freeze') { const r = el.getBoundingClientRect(); if (r.width) { spawn('stfx-ice-shatter', r, 600); for (let i = 0; i < 6; i++) spawn('stfx-tick freeze', r, 700, d => { const a = Math.random() * Math.PI * 2, s = 30 + Math.random() * 40; d.style.setProperty('--dx', Math.cos(a) * s + 'px'); d.style.setProperty('--dy', Math.sin(a) * s + 'px'); }); textPop(r, 'freeze'); } return; }
   el.classList.remove('stfx-jitter'); void el.offsetWidth; el.classList.add('stfx-jitter');
   setTimeout(() => el.classList.remove('stfx-jitter'), Math.round(600 * scale()));
   const r = el.getBoundingClientRect(); if (r.width) spawn('stfx-spark', r, 400);
@@ -114,7 +122,7 @@ export function tauntPullFx(fromEl, toEl) {
 /** 렌더 시 유닛 지속 연출 클래스 */
 export function statusClasses(u) {
   const s = u.st || {};
-  return `${s.para ? 'st-para' : ''} ${s.confuse ? 'st-confuse' : ''} ${s.bleed ? 'st-bleed' : ''} ${s.taunt ? 'st-taunt' : ''} ${s.dot ? 'st-poison' : ''} ${s.esoteric ? 'st-curse' : ''} ${s.regen ? 'st-regen' : ''} ${s.burn ? 'st-burn' : ''}`;
+  return `${s.para ? 'st-para' : ''} ${s.confuse ? 'st-confuse' : ''} ${s.bleed ? 'st-bleed' : ''} ${s.taunt ? 'st-taunt' : ''} ${s.dot ? 'st-poison' : ''} ${s.esoteric ? 'st-curse' : ''} ${s.regen ? 'st-regen' : ''} ${s.burn ? 'st-burn' : ''} ${s.freeze ? 'st-freeze' : ''}`;
 }
 /** 지속 연출용 장식 레이어 HTML (카드 .relative 안에 넣음) */
 export function statusDecor(u) {
@@ -124,6 +132,7 @@ export function statusDecor(u) {
   if (s.confuse) h += '<span class="stfx-stars"><i>★</i><i>✦</i><i>★</i></span>';
   if (s.bleed) h += '<span class="stfx-b-drip"></span><span class="stfx-b-drip b"></span>';
   if (s.dot) h += '<span class="stfx-bub"></span><span class="stfx-bub b"></span>';
+  if (s.freeze) h += '<span class="stfx-ice"></span>';
   if (s.burn) h += '<span class="stfx-emb"></span><span class="stfx-emb b"></span>';
   if (s.regen) h += '<span class="stfx-spk"></span><span class="stfx-spk b"></span>';
   if (s.taunt) h += `<span class="stfx-t-emblem${ASSET.taunt_icon ? ' has-img' : ''}"${ASSET.taunt_icon ? ` style="background-image:url('${ASSET.taunt_icon}')"` : ''}></span>`;
