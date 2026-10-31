@@ -23,7 +23,7 @@
   }
   const SHORT = { 'NORMAL': 'N', 'RARE': 'R', 'HIGH RARE': 'HR', 'SUPER RARE': 'SR', 'ULTRA RARE': 'UR', 'MYTHIC RARE': 'MR', 'LEGENDARY RARE': 'LR' };
   const CUR = [['gold', '🪙', '골드'], ['blood', '🩸', '순수한 피'], ['shard', '💠', '이상한 조각'], ['soul', '🔥', '각성자의 혼']];
-  const ACT = { reset_account: '계정 초기화', trade_void_listing: '거래 글 강제 내림', trade_refund_offer: '거래 제안 강제 환불', grant_drink: '드링크 지급', grant_tickets: '소환권 지급', grant_gold: '골드 지급', grant_blood: '순수한 피 지급', grant_shard: '이상한 조각 지급', grant_soul: '각성자의 혼 지급' };
+  const ACT = { reset_account: '계정 초기화', trade_void_listing: '거래 글 강제 내림', trade_refund_offer: '거래 제안 강제 환불', grant_drink: '드링크 지급', grant_tickets: '소환권 지급', grant_gold: '골드 지급', grant_blood: '순수한 피 지급', grant_shard: '이상한 조각 지급', grant_soul: '각성자의 혼 지급', mail_send: '📮 우편 보내기', mail_broadcast: '📮 전체 우편' };
   const cname = id => names.get(String(id))?.name || id;
 
   async function waitCloud() {
@@ -48,9 +48,9 @@
   }
 
   function render() {
-    root().innerHTML = `<div class="ad-tabs"><button class="ad-btn sub ${tab === 'users' ? 'on' : ''}" data-tab="users">가입 유저</button><button class="ad-btn sub ${tab === 'logs' ? 'on' : ''}" data-tab="logs">관리자 기록</button><button class="ad-btn sub ${tab === 'notices' ? 'on' : ''}" data-tab="notices">공지</button><button class="ad-btn sub ${tab === 'trade' ? 'on' : ''}" data-tab="trade">거래</button></div><div id="ad-view"></div>`;
+    root().innerHTML = `<div class="ad-tabs"><button class="ad-btn sub ${tab === 'users' ? 'on' : ''}" data-tab="users">가입 유저</button><button class="ad-btn sub ${tab === 'logs' ? 'on' : ''}" data-tab="logs">관리자 기록</button><button class="ad-btn sub ${tab === 'notices' ? 'on' : ''}" data-tab="notices">공지</button><button class="ad-btn sub ${tab === 'trade' ? 'on' : ''}" data-tab="trade">거래</button><button class="ad-btn sub ${tab === 'mail' ? 'on' : ''}" data-tab="mail">📮 전체 우편</button></div><div id="ad-view"></div>`;
     root().querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { tab = b.dataset.tab; render(); });
-    tab === 'users' ? renderUsers() : tab === 'notices' ? renderNotices() : tab === 'trade' ? renderTrade() : renderLogs();
+    tab === 'users' ? renderUsers() : tab === 'mail' ? renderMail() : tab === 'notices' ? renderNotices() : tab === 'trade' ? renderTrade() : renderLogs();
   }
   async function renderUsers(q = '') {
     const v = $('ad-view');
@@ -169,6 +169,7 @@
       <div class="ad-sec"><h3>💰 재화 지급 / 회수</h3>${wl ? `<div class="ad-grant"><select id="ad-ck">${CUR.map(([k, ic, nm]) => `<option value="${k}">${ic} ${nm}</option>`).join('')}</select><input type="number" id="ad-camt" min="-1000000" max="1000000" value="100"><input type="text" id="ad-creason" maxlength="200" placeholder="사유 (필수, 기록됨 · 음수 = 회수)"><button class="ad-btn" id="ad-cgive">적용</button></div><div id="ad-cmsg" style="margin-top:4px"></div>` : '<div class="ad-msg">supabase/phaseE_1.sql 을 실행하면 사용할 수 있어요</div>'}</div>
       <div class="ad-sec"><h3>🔮 심연석 <b id="ad-gem">${gm ? Number(gm.gem).toLocaleString('ko-KR') : '-'}</b> <small>${gm ? `무료 ${gm.free} · 유료 ${gm.paid}` : ''}</small></h3>${gm ? `<div class="ad-grant"><input type="number" id="ad-gamt" min="-1000000" max="1000000" value="100"><input type="text" id="ad-greason" maxlength="200" placeholder="사유 (필수, 기록됨 · 음수 = 회수 · 무료분)"><button class="ad-btn" id="ad-ggive">적용</button></div><div id="ad-gmsg2" style="margin-top:4px"></div>
         <div class="ad-cards" style="max-height:180px;overflow:auto;display:block">${gm.log.map(x => `<div style="font-size:12px">${esc(fmt(x.at))} · ${esc(x.reason)} · <b>${x.d_free + x.d_paid > 0 ? '+' : ''}${x.d_free + x.d_paid}</b>${x.d_paid ? ` (유료 ${x.d_paid})` : ''} → ${x.free_after + x.paid_after} <small style="opacity:.6">${esc(x.ref)}</small></div>`).join('') || '기록 없음'}</div>` : '<div class="ad-msg">supabase/gem.sql 을 실행하면 사용할 수 있어요</div>'}</div>
+      <div class="ad-sec"><h3>📮 우편 보내기</h3>${mailForm('u')}</div>
       <div class="ad-sec ad-danger"><h3>⚠️ 계정 초기화</h3><div style="font-size:13px;opacity:.8;margin-bottom:6px">인재·스토리 진행·재화·장비·퀘스트·PvP·탑 기록을 새 계정 상태로 되돌려요. 아케이드 기록·도감도 지워지고, 닉네임·프로필 사진은 가입 때(구글 이름·사진)로 돌아가요. 로그인, 유료 심연석·유료 드링크, 소환권은 유지돼요. 열린 거래는 취소·환불되고 조직은 탈퇴(보스면 승계/해산)돼요.</div><button class="ad-btn ad-del" id="ad-reset">계정 초기화</button><div id="ad-rmsg"></div></div>
       <div class="ad-sec"><h3>보유 카드 (${owned.length}장)</h3><div class="ad-cards">${ownedSorted.map(o => `<span class="ad-chip ${o.uid === d.leader ? 'lead' : ''}">${o.uid === d.leader ? '👑 ' : ''}${esc(SHORT[names.get(String(o.id))?.grade] || '')} ${esc(cname(o.id))} Lv.${o.level | 0}${o.ex ? ` EX${o.ex}` : ''}</span>`).join('') || '없음'}</div></div>
       <div class="ad-sec"><h3>최근 아케이드 판</h3><div class="ad-wrap"><table class="ad-table"><thead><tr><th>시각</th><th>결과</th><th>턴</th><th>피해</th><th>MVP</th></tr></thead><tbody>${(d.recent || []).map(x => `<tr><td>${fmt(x.created_at)}</td><td>${({ win: '승', lose: '패', draw: '무' })[x.result] || esc(x.result)}</td><td>${x.turns ?? ''}</td><td>${x.damage ?? ''}</td><td>${esc(x.mvp_name)}</td></tr>`).join('') || '<tr><td colspan="5">기록 없음</td></tr>'}</tbody></table></div></div>
@@ -183,7 +184,41 @@
       catch (e) { msg.innerHTML = `<span class="ad-err">${esc(e?.message)}</span>`; }
       finally { $('ad-give').disabled = false; }
     };
-    bindCurrency(id, d); bindGem(id, d); bindReset(id, d);
+    bindCurrency(id, d); bindGem(id, d); bindReset(id, d); bindMail('u', id, d.email);
+  }
+  // --- 📮 우편 (supabase/mail_v2.sql): 한 명 = 유저 상세, 전체 = 탭 ---
+  function mailForm(px) {
+    return `<div class="ad-grant" style="flex-wrap:wrap"><input type="text" id="ad-${px}mt" maxlength="60" placeholder="제목 (필수)" style="flex:1 1 100%"></div>
+      <textarea id="ad-${px}mb" maxlength="1000" rows="3" placeholder="메시지 (선택)" style="width:100%;box-sizing:border-box;margin:4px 0"></textarea>
+      <div class="ad-grant" style="flex-wrap:wrap">🔮<input type="number" id="ad-${px}m-gem" min="0" max="1000000" value="0" title="심연석(무료)">🎟️<input type="number" id="ad-${px}m-tk" min="0" max="1000" value="0" title="소환권">
+        ${CUR.map(([k, ic, nm]) => `${ic}<input type="number" id="ad-${px}m-${k}" min="0" max="1000000" value="0" title="${nm}">`).join('')}
+        <input type="text" id="ad-${px}m-gear" placeholder="장비 def_id (선택, 영웅 이하)"> 기한<input type="number" id="ad-${px}m-days" min="1" max="30" value="7">일
+        <button class="ad-btn" id="ad-${px}m-go">보내기</button></div><div id="ad-${px}m-msg" style="margin-top:4px"></div>`;
+  }
+  function bindMail(px, uid, who) {
+    const btn = $(`ad-${px}m-go`); if (!btn) return;
+    btn.onclick = async () => {
+      const v = k => Math.trunc(+$(`ad-${px}m-${k}`).value || 0), msg = $(`ad-${px}m-msg`), title = $(`ad-${px}mt`).value.trim(), body = $(`ad-${px}mb`).value.trim(), days = v('days');
+      const cur = {}; CUR.forEach(([k]) => { if (v(k) > 0) cur[k] = v(k); });
+      const payload = { gem: v('gem'), tickets: v('tk'), cur, gear: $(`ad-${px}m-gear`).value.trim() || null };
+      if (!title) { msg.innerHTML = '<span class="ad-err">제목을 적어 주세요</span>'; return; }
+      if (days < 1 || days > 30) { msg.innerHTML = '<span class="ad-err">기한은 1~30일</span>'; return; }
+      if (!confirm(`${uid ? who : '전체 유저'} 에게 우편 「${title}」을 보낼까요?`)) return;
+      btn.disabled = true;
+      try { const r = uid ? await rpc('admin_mail_send', { p_user: uid, p_title: title, p_body: body, p_payload: payload, p_days: days })
+          : await rpc('admin_mail_broadcast', { p_title: title, p_body: body, p_payload: payload, p_days: days });
+        msg.innerHTML = '<span class="ad-ok">보냈어요</span>'; $(`ad-${px}mt`).value = ''; $(`ad-${px}mb`).value = ''; if (!uid) renderMail(); }
+      catch (e) { msg.innerHTML = `<span class="ad-err">${esc(/mail_send|mail_broadcast/.test(e?.message || '') ? 'supabase/mail_v2.sql 을 실행해 주세요' : e?.message)}</span>`; }
+      finally { btn.disabled = false; }
+    };
+  }
+  async function renderMail() {
+    const v = $('ad-view');
+    v.innerHTML = `<div class="ad-sec"><h3>📮 전체 유저에게 우편</h3><div style="font-size:12px;opacity:.75;margin-bottom:4px">한 번만 저장되고, 유저가 우편함을 열 때 받아요. 기한 안에 가입한 새 유저도 받아요.</div>${mailForm('b')}</div><div class="ad-sec"><h3>보낸 전체 우편</h3><div id="ad-bl" class="ad-msg">불러오는 중...</div></div>`;
+    bindMail('b', null, null);
+    try { const rows = await rpc('admin_mail_broadcasts', { p_limit: 30 }) || [];
+      $('ad-bl').outerHTML = `<div class="ad-wrap"><table class="ad-table"><thead><tr><th>보낸 시각</th><th>제목</th><th>첨부</th><th>만료</th><th>받은 수</th></tr></thead><tbody>${rows.map(r => `<tr><td>${fmt(r.created_at)}</td><td>${esc(r.title)}</td><td><small>${esc(JSON.stringify(r.payload))}</small></td><td>${fmt(r.expires_at)}</td><td>${r.claimed}</td></tr>`).join('') || '<tr><td colspan="5">없음</td></tr>'}</tbody></table></div>`; }
+    catch (e) { $('ad-bl').innerHTML = `<span class="ad-err">${esc(e?.message)}</span>`; }
   }
   function bindGem(id, d) {
     const btn = $('ad-ggive'); if (!btn) return;

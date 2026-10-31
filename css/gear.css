@@ -63,3 +63,12 @@ button.gear-drop{cursor:pointer}
 .shop-it.done{opacity:.4}.shop-ic img{width:56px;height:56px;object-fit:contain}.shop-ic .gear-box{font-size:2.4rem;line-height:56px;height:56px}
 .shop-nm{font-size:11px;font-weight:700;line-height:1.2}.shop-p{font-size:12px;font-weight:800;color:#fbbf24}.shop-it small{font-size:10px;opacity:.7}
 .gear-big .gear-box{font-size:4rem;line-height:1.5;height:auto}
+/* 메시지 우편 (mail_v2) */
+.gear-msg { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; margin: 0 0 6px; padding: 8px 10px; border-radius: 10px; border: 1px solid rgba(255, 210, 120, .45); background: rgba(255, 200, 90, .08); color: inherit; text-align: left; cursor: pointer; }
+.gear-msg.read { opacity: .65; border-color: rgba(255, 255, 255, .15); }
+.gear-msg b { font-size: 14px; } .gear-msg span { font-size: 12px; opacity: .85; } .gear-msg small { font-size: 11px; opacity: .6; }
+.gear-msg .gear-badge { position: static; display: inline-block; }
+.gear-msg-t { display: block; font-size: 16px; margin-bottom: 6px; }
+.gear-msg-b { white-space: normal; font-size: 13px; line-height: 1.5; max-height: 40vh; overflow: auto; text-align: left; margin-bottom: 8px; }
+.gear-msg-a { font-size: 13px; padding: 6px 8px; border-radius: 8px; background: rgba(255, 255, 255, .06); margin-bottom: 6px; }
+.story-mini .gear-badge { position: static; display: inline-block; margin-left: 3px; }
