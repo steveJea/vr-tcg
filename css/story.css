@@ -865,3 +865,46 @@ body.story-media-on .story-dlg-skip { left: 4px; right: auto; top: calc(4px + en
 .story-mailbtn:hover{background:rgba(30,58,138,.55)}
 @media (max-width:480px){.story-mailbtn span{display:none}.story-mailbtn{padding:4px 10px}}
 .story-mailbtn .story-badge{position:absolute;top:-6px;right:-6px;margin:0}
+
+/* ===== 전투 HUD 압축 (모든 모드 공통) ===== */
+/* 1줄: 나·선공 | 마나 | 버프칩(가로 스크롤) | 남은 턴·진영 HP */
+.hud-top { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.hud-who, .hud-mana, .hud-right { flex: none; white-space: nowrap; }
+.hud-right { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+.hud-syn { flex: 1 1 0; min-width: 44px; display: flex; gap: 4px; overflow-x: auto; white-space: nowrap; scrollbar-width: none; }
+.hud-syn::-webkit-scrollbar { display: none; }
+.hud-syn > * { flex: none; }
+.hud-hp { height: 4px; margin-top: 3px; }
+#game.story-pool .hud-mana { font-size: 12px; }
+#game.story-pool .hud-mana .pool-mana { font-size: 15px; }
+@media (max-width: 480px) {
+  .hud-mana .deck-info, #game.story-pool .pool-note { display: none; }
+  #game.story-pool .pool-must { font-size: 10px; padding: 0 4px; }
+}
+/* 오른쪽 버튼: 일괄공격 + 포기 한 줄, 턴 종료는 아래 크게 */
+.hud-btns { display: flex; flex-wrap: wrap; gap: 4px; width: 116px; align-content: center; }
+.hud-btns > button { flex: 1 1 auto; white-space: nowrap; }
+.hud-btns > #reserve-btn, .hud-btns > #end-turn { flex-basis: 100%; justify-content: center; }
+.hud-btns > #story-giveup { flex: 0 0 auto; }
+@media (max-width: 480px) { .hud-btns { width: 104px; } .hud-btns .gu-t { display: none; } }
+@media (min-width: 768px) { .hud-btns { width: 168px; } }
+/* 아케이드 액션 줄 높이 ~44px */
+#action-bar .act-btn { height: 44px; padding: 2px 1px; }
+#action-bar .act-btn .ui-ic { width: 22px; height: 22px; }
+@media (min-width: 768px) { #action-bar .act-btn .ui-ic { width: 24px; height: 24px; } }
+/* 스토리·시탑: 정렬·공격력 강화 줄 없애고 손패 줄 오른쪽 위에 작은 알약으로 */
+#game.story-pool #action-bar.act-row { height: 0; margin-bottom: -8px; z-index: 7; overflow: visible; }
+#game.story-pool #action-bar .act-btn { position: relative; top: 4px; height: 26px; padding: 0 10px; font-size: 11px; }
+#game.story-pool #action-bar { display: flex; justify-content: flex-end; align-items: flex-start; padding-right: 4px; }
+#game.story-pool #me-hand { padding-top: 34px; }
+@media (max-width: 480px) {
+  .hud-top { gap: 4px; }
+  .hud-right { gap: 4px; }
+  .hud-syn { min-width: 32px; }
+  #my-turns { padding: 1px 5px; }
+  #my-turns::before { content: none !important; }
+  .hud-btns { width: 96px; }
+  #me-hero.hud-me { padding-left: 8px; padding-right: 8px; }
+}
+.hud-btns > #attack-all { flex: 1 1 0; min-width: 0; }
+@media (max-width: 480px) { .hud-btns > #attack-all, .hud-btns > #story-giveup { padding-left: 4px; padding-right: 4px; } .hud-btns > #attack-all { font-size: 11px; } }

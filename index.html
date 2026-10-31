@@ -234,7 +234,7 @@
 .turns-warn{color:#fdba74;border-color:#f97316;background:#7c2d1299}
 .turns-crit{color:#fff;border-color:#ef4444;background:#b91c1c;animation:turnPulse 1s ease-in-out infinite}
 @keyframes turnPulse{0%,100%{box-shadow:0 0 0 0 #ef4444aa;transform:scale(1)}50%{box-shadow:0 0 12px 4px #ef4444aa;transform:scale(1.08)}}
-#my-turns-pips{display:flex;gap:2px}#my-turns-pips i{flex:1;height:4px;border-radius:2px;background:#ffffff1a}
+#my-turns-pips{display:flex;gap:2px;margin-top:3px!important}#my-turns-pips i{flex:1;height:3px;border-radius:2px;background:#ffffff1a}
 #my-turns-pips i.on{background:#34d399}
 .turns-warn-p i.on{background:#fb923c!important}.turns-crit-p i.on{background:#ef4444!important}
 .last-turn-toast{position:fixed;left:50%;top:40%;transform:translate(-50%,-50%);z-index:60;padding:14px 28px;border-radius:18px;background:linear-gradient(135deg,#dc2626,#f97316);color:#fff;font-weight:900;font-size:clamp(22px,6vw,40px);box-shadow:0 0 40px #ef4444;pointer-events:none;animation:toastIn 2.2s ease forwards}
@@ -409,18 +409,21 @@
   <div id="me-dock" class="me-dock flex flex-col gap-2">
   <!-- 내 진영 + 턴 종료 -->
   <div class="flex items-center gap-2">
-    <div id="me-hero" class="flex-1 bg-black/60 border border-emerald-500/40 rounded-2xl px-3 py-2">
-      <div class="flex justify-between text-xs md:text-sm"><span class="font-bold text-emerald-400"><img src="img/ui/me.webp" alt="" class="ui-ic" width="64" height="64"> 나 <span id="me-order" class="ml-1 px-1.5 py-0.5 rounded bg-white/10 text-[10px] text-zinc-300"></span></span><span class="flex items-center gap-2"><span id="my-turns" title="내 턴 남은 횟수 (현재 턴 포함)"><span class="lbl">내 턴 남은 횟수</span> <b id="my-turns-n"></b><span class="of" id="my-turns-max">/20</span></span><span id="me-hp" class="font-bold"></span></span></div>
+    <div id="me-hero" class="hud-me flex-1 min-w-0 bg-black/60 border border-emerald-500/40 rounded-2xl px-2.5 py-1.5">
+      <div class="hud-top text-xs md:text-sm">
+        <span class="hud-who font-bold text-emerald-400"><img src="img/ui/me.webp" alt="" class="ui-ic" width="64" height="64"> 나 <span id="me-order" class="ml-0.5 px-1.5 py-0.5 rounded bg-white/10 text-[10px] text-zinc-300"></span></span>
+        <span class="mana-line hud-mana text-[11px] md:text-xs text-zinc-400"><span class="text-sky-300 font-bold"><img src="img/ui/mana.webp" alt="마나" class="ui-ic" width="64" height="64"> <span id="me-mana"></span></span><span class="deck-info"> · 덱 <span id="me-deck"></span> · 손패 <span id="me-handcount"></span></span></span>
+        <span id="me-syn" class="hud-syn empty:hidden"></span>
+        <span class="hud-right"><span id="my-turns" title="내 턴 남은 횟수 (현재 턴 포함)"><span class="lbl">내 턴 남은 횟수</span> <b id="my-turns-n"></b><span class="of" id="my-turns-max">/20</span></span><span id="me-hp" class="font-bold"></span></span>
+      </div>
+      <div class="hud-hp bg-white/10 rounded-full overflow-hidden"><div id="me-hpbar" class="h-full bg-emerald-400 transition-all"></div></div>
       <div id="my-turns-pips" class="mt-1"></div>
-      <div class="h-2 bg-white/10 rounded-full mt-1 overflow-hidden"><div id="me-hpbar" class="h-full bg-emerald-400 transition-all"></div></div>
-      <div id="me-syn" class="flex flex-wrap gap-1 mt-1 empty:hidden"></div>
-      <div class="mana-line flex justify-between text-[11px] text-zinc-400 mt-1"><span class="text-sky-300 font-bold"><img src="img/ui/mana.webp" alt="" class="ui-ic" width="64" height="64"> 마나 <span id="me-mana"></span></span><span class="deck-info">덱 <span id="me-deck"></span> · 손패 <span id="me-handcount"></span></span></div>
     </div>
-    <div class="shrink-0 flex flex-col gap-1.5">
+    <div class="hud-btns shrink-0">
       <button id="reserve-btn" class="hidden px-2 py-1.5 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white text-xs font-bold flex items-center gap-1" title="소환"><img alt="" class="w-7 h-7 rounded-md object-cover object-top"><span>소환</span></button>
-      <button id="attack-all" class="px-3 md:px-6 py-2 rounded-xl bg-red-600 hover:bg-red-500 disabled:opacity-40 text-white text-sm font-bold">일괄 공격</button>
-      <button id="story-giveup" class="hidden px-3 md:px-6 py-1.5 rounded-xl bg-zinc-800 border border-red-500/50 hover:bg-red-900/60 text-red-200 text-xs md:text-sm font-bold" title="도전 포기"><img src="img/ui/give_up.webp" alt="" class="ui-ic" width="64" height="64"> 포기</button>
-      <button id="end-turn" class="px-3 md:px-6 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 text-black font-bold">턴 종료</button>
+      <button id="attack-all" class="px-2 md:px-4 py-1.5 rounded-xl bg-red-600 hover:bg-red-500 disabled:opacity-40 text-white text-xs md:text-sm font-bold">일괄 공격</button>
+      <button id="story-giveup" class="hidden px-2 md:px-3 py-1.5 rounded-xl bg-zinc-800 border border-red-500/50 hover:bg-red-900/60 text-red-200 text-xs md:text-sm font-bold" title="도전 포기" aria-label="도전 포기"><img src="img/ui/give_up.webp" alt="" class="ui-ic" width="64" height="64"><span class="gu-t"> 포기</span></button>
+      <button id="end-turn" class="px-3 md:px-6 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 text-black font-bold">턴 종료</button>
     </div>
   </div>
 
