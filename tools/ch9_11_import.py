@@ -64,6 +64,8 @@ def build(chn, path, loan=()):
                 if x: elv[k] = max(elv.get(k, 0), x)
             cur = {'no': no, 'type': 'normal', 'enemyName': CARD[ids[0]]['name'], 'title': r[1].strip(), 'enemies': {'ids': ids, 'storyLv': elv},
                    'lines': {'default': []}, 'party': party, 'hero': forced[:1], 'bossId': ids[0]}
+            m = re.search(r'(\d+)턴\s*후\s*(?:배틀레벨\s*(\d+)\s*)?(.+?)\s*\(\s*LV\s*(\d+)\s*\)\s*난입', r[16], re.I)   # 비고: N턴 후 [배틀레벨 B] 이름(LV L) 난입 → 아군 합류
+            if m and nm(m.group(3)) in IDS: cur['joinAlly'] = {'id': IDS[nm(m.group(3))], 'afterTurn': int(m.group(1)), 'storyLevel': int(m.group(4)), 'battleLevel': int(m.group(2) or 1)}
             phases.append(cur); after = False
         if not r[3].strip() or not r[5].strip(): continue
         if r[6].strip() == '후' and cur: after = True; cur.setdefault('after', []); cur['afterTitle'] = '전투 후'

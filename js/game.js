@@ -255,6 +255,7 @@ function startTurn(who) {
   if (S.pairShield && S.turnNo > S.pairShield.turns) { const u = S.pairShield.u; S.pairShield = null; u.noDamage = false; delete u.pairShield; log(`🛡️ 자매의 가호가 사라졌다: ${u.card.name}`, 'text-zinc-400'); }
   if (S.story?.rules && storyTurnRules(who)) return true;
   p.ownTurns = (p.ownTurns || 0) + 1;   // 수비대장 교체 대기(내 턴 기준)
+  if (who === 'me') joinAllyCheck();
   if (who === 'me') { S.meActed = false; S.myTurns++; setTimeout(() => TUT('turn_start', { turn: S.turnNo }), 50); if (myTurnsLeft() === 1) lastTurnToast(); }
   clearBuff(opp(who));                   // 지난 턴 강화 해제
   const bonus = refillMana(p);
@@ -786,6 +787,25 @@ function awakenCheck() {
     document.body.appendChild(t); setTimeout(() => t.remove(), 2600);
     await withTimeout(cutIn(u, '각성', null), 2500);
     TUT('awaken', { id: A.card.id });
+  });
+  runFxQueue();
+}
+/** 턴 난입 아군 (story.joinAlly = { id, card, afterTurn, battleLevel, line }): 내 턴 afterTurn 번이 지난 뒤 내 턴 시작에 내 필드로 합류 (한 번).
+ *  필드가 가득 차면 다음 내 턴에 다시 시도. 손패·출전 조건·필수 인재와 무관, 플레이 기록(played)에 넣지 않음 */
+function joinAllyCheck() {
+  const J = S.story?.joinAlly;
+  if (!J || S.allyJoined || !J.card || S.myTurns < (J.afterTurn || 1)) return;
+  if (fieldCount(S.me) >= RULES.FIELD_MAX) { if (!S.allyWait) { S.allyWait = true; log(`⏳ ${J.card.name} 난입 대기 (필드가 가득 참)`, 'text-zinc-400'); } return; }
+  S.allyJoined = true;
+  const u = placeUnit(S.me, { ...J.card }, makeUnit, true);
+  while (u.level < Math.min(J.battleLevel || 1, RULES.LEVEL_MAX)) levelUpOnce(u);
+  u.hp = u.maxHp; u.canAttack = true; u.joinedAlly = true;
+  log(`⚡ ${J.card.name} 난입! 아군으로 합류`, 'text-fuchsia-300');
+  render(); playSe(6);
+  fxQueue.push(async () => {
+    const t = document.createElement('div'); t.className = 'awaken-toast'; t.innerHTML = `<b>⚡ 난입</b><span>${escHtml(J.line || J.card.name)}</span>`;
+    document.body.appendChild(t); setTimeout(() => t.remove(), 2600);
+    await withTimeout(cutIn(u, '난입', null), 2500);
   });
   runFxQueue();
 }

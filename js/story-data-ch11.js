@@ -1851,6 +1851,12 @@ window.STORY_DATA.chapters.push({
     "10415"
    ],
    "bossId": "10475",
+   "joinAlly": {
+    "id": "10311",
+    "afterTurn": 1,
+    "storyLevel": 100,
+    "battleLevel": 10
+   },
    "after": [
     {
      "speaker": "내레이션",
