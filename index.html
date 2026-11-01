@@ -298,12 +298,12 @@
 
 <section id="start-screen" class="main-screen fixed inset-0 overflow-hidden text-center">
   <picture class="main-bg">
-    <source media="(orientation: portrait), (max-aspect-ratio: 4/5)" srcset="img/main-portrait.webp" type="image/webp">
-    <source media="(orientation: portrait), (max-aspect-ratio: 4/5)" srcset="img/main-portrait.jpg">
-    <source srcset="img/main-landscape.webp" type="image/webp">
-    <img src="img/main-landscape.jpg" alt="" class="w-full h-full object-cover">
+    <source media="(orientation: portrait), (max-aspect-ratio: 4/5)" srcset="img/main-portrait_v2.webp" type="image/webp">
+    <source media="(orientation: portrait), (max-aspect-ratio: 4/5)" srcset="img/main-portrait_v2.jpg">
+    <source srcset="img/main-landscape_v2.webp" type="image/webp">
+    <img src="img/main-landscape_v2.jpg" alt="" class="w-full h-full object-cover">
   </picture>
-  <video id="main-video" class="main-video absolute inset-0 w-full h-full object-cover hidden" muted loop playsinline autoplay preload="auto" poster="img/main-portrait-video-poster.jpg" aria-hidden="true"></video>
+  <video id="main-video" class="main-video absolute inset-0 w-full h-full object-cover hidden" muted loop playsinline autoplay preload="auto" aria-hidden="true"></video>
   <canvas id="embers" class="absolute inset-0 w-full h-full pointer-events-none"></canvas>
   <div class="main-vignette absolute inset-0 pointer-events-none"></div>
   <div class="main-top absolute top-0 inset-x-0 z-20 flex items-center justify-between gap-2">
