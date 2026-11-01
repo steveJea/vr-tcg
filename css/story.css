@@ -1026,3 +1026,5 @@ body.story-media-on .story-dlg-skip { left: 4px; right: auto; top: calc(4px + en
 .story-skn-dot{padding:1px 5px}
 .story-pick-stars .ps-y{color:#facc15}
 .story-pick-stars .ps-ex{color:#ef4444}
+/* 출전 고르기: 등급 배지 없이 별만 위쪽 가운데 */
+.story-deckpick .story-pick-stars{top:5px;bottom:auto;left:5px;right:auto;transform:none;justify-content:flex-start;font-size:11px;gap:0}
