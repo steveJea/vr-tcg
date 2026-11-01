@@ -525,6 +525,30 @@ insert into public.dispatch_card_meta (id, grade, el, cls) values
 ('10510',2,'FIRE','CHARGE')
 on conflict (id) do update set grade = excluded.grade, el = excluded.el, cls = excluded.cls;
 
+
+-- 1-b) 새 카드 자동 반영: 새 카드 SQL은 늘 pvp_card_meta · story_card_pool 에 등급을 넣으므로,
+--      거기 들어오는 순간 파견 표에도 등급이 들어감 (dispatch.sql 다시 실행 필요 없음).
+--      속성·클래스는 그 표들에 없어서 '-' 로 들어감 → 파견은 가능, 속성·클래스 보너스만 없음 (다음 dispatch.sql 실행 때 채워짐)
+create or replace function public._dsp_grade(g text) returns int language sql immutable as $$
+  select array_position(array['NORMAL','RARE','HIGH RARE','SUPER RARE','ULTRA RARE','MYTHIC RARE','LEGENDARY RARE'], g) - 1 $$;
+create or replace function public._dsp_meta_sync() returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  if _dsp_grade(new.grade) is not null then
+    insert into dispatch_card_meta (id, grade, el, cls) values (new.id, _dsp_grade(new.grade), '-', '-')
+      on conflict (id) do update set grade = excluded.grade;
+  end if;
+  return new;
+end $$;
+drop trigger if exists dsp_meta_sync on public.pvp_card_meta;
+create trigger dsp_meta_sync after insert or update of grade on public.pvp_card_meta for each row execute function public._dsp_meta_sync();
+drop trigger if exists dsp_meta_sync on public.story_card_pool;
+create trigger dsp_meta_sync after insert or update of grade on public.story_card_pool for each row execute function public._dsp_meta_sync();
+-- 지금 있는 카드 중 위 목록에 없는 것도 채움
+insert into public.dispatch_card_meta (id, grade, el, cls)
+select id, public._dsp_grade(grade), '-', '-' from public.pvp_card_meta where public._dsp_grade(grade) is not null
+union select id, public._dsp_grade(grade), '-', '-' from public.story_card_pool where public._dsp_grade(grade) is not null
+on conflict (id) do nothing;
+
 -- 2) 파견지. rw = 1시간 기본 보상 (소수점은 그 확률로 1개 더: 0.3 → 30% 확률로 1)
 create table if not exists public.dispatch_zones (
   id text primary key, grp text not null check (grp in ('exile', 'safe')), name text not null, ord int not null,
