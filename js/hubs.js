@@ -22,7 +22,7 @@
       if (e.target === ov || e.target.closest('[data-x]')) return close();
       const a = e.target.closest('[data-a]')?.dataset.a; if (!a) return;
       if (a === 'play') { close(); window.TCG?.startGame?.(); }
-      else if (a === 'rank') window.VRRanking?.open();
+      else if (a === 'rank') window.VRRanking?.open('arcade');
       else if (a === 'opts') window.TCG?.openArcadeOpts?.();
     });
     document.body.appendChild(ov);
