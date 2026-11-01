@@ -250,7 +250,7 @@
     const old = btn?.textContent; if (btn) { btn.disabled = true; btn.textContent = '만드는 중...'; }
     try {
       const cv = await VRShareCard.render(info);
-      const { r, copied } = await VRShareCard.share(cv, `vr-abyss-gate_${id}.png`, `${info.name} (${info.short}) · VR: Abyss Gate`);
+      const { r, copied } = await VRShareCard.share(cv, `violence-royale_${id}.png`, `${info.name} (${info.short}) · Violence Royale : The Abyss Gate`);
       if (btn && r === 'downloaded') { btn.textContent = '✅ 저장됨'; setTimeout(() => { btn.textContent = old; }, 1600); }
       else if (btn) btn.textContent = old;
       if (r === 'downloaded') galToast(copied ? '이미지를 저장하고 게임 링크를 복사했어요' : `이미지를 저장했어요 · 게임 링크: ${VRShareCard.GAME_URL}`);
@@ -264,8 +264,8 @@
     const old = btn?.textContent; if (btn) { btn.disabled = true; btn.textContent = '준비 중...'; }
     try {
       if (!window.VRKakaoShare) throw new Error('no kakao');
-      const cv = await VRShareCard.render(info), file = await VRShareCard.toFile(cv, `vr-abyss-gate_${id}.png`);
-      await VRKakaoShare.share({ title: info.name, description: `${info.short} · VR: Abyss Gate`, file });
+      const cv = await VRShareCard.render(info), file = await VRShareCard.toFile(cv, `violence-royale_${id}.png`);
+      await VRKakaoShare.share({ title: info.name, description: `${info.short} · Violence Royale : The Abyss Gate`, file });
     } catch (e) {
       console.warn('[gallery] kakao share failed', e, (() => { try { return JSON.stringify(e); } catch { return ''; } })());
       const why = window.VRKakaoShare?.describe?.(e);

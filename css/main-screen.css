@@ -1,4 +1,4 @@
-/* ===== 메인 화면: VR: Abyss Gate ===== */
+/* ===== 메인 화면: Violence Royale : The Abyss Gate ===== */
 .main-screen { background: #0a0204; z-index: 20; }
 .main-screen.hidden { display: none; }
 .main-bg { position: absolute; inset: 0; display: block; }
@@ -224,7 +224,7 @@
 .intro-video.hidden { display: none; }
 .intro-shade { position: absolute; inset: 0; background: linear-gradient(rgba(0,0,0,.25), transparent 35%, rgba(0,0,0,.85)); }
 .intro-body { position: relative; z-index: 1; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 1.6rem; padding: 0 1.5rem 12vh; }
-.intro-logo { width: min(86vw, 560px); filter: drop-shadow(0 4px 8px #000); }
+.intro-logo { width: min(84vw, 520px, 76svh); height: auto; filter: drop-shadow(0 4px 8px #000); }
 .intro-acts { display: flex; flex-direction: column; align-items: center; gap: .7rem; width: min(80vw, 320px); }
 .intro-btn { width: 100%; padding: .7rem 1rem; font-size: 1.05rem; }
 .intro-guest { background: none; border: 0; color: rgba(253,231,176,.75); text-decoration: underline; font-size: .9rem; cursor: pointer; }
@@ -264,7 +264,7 @@
 #start-screen .main-gear::after { display: none; }
 #start-screen .main-gear img { width: 24px; height: 24px; }
 .main-body { padding: 0 20px calc(92px + env(safe-area-inset-bottom)); gap: 12px; }
-#start-screen .main-logo-wrap { width: min(80vw, 420px); }
+#start-screen .main-logo-wrap { width: min(72vw, 360px, 46svh); }   /* 새 로고(약 2:1): 버튼 안 가리게 화면 높이로도 제한 */
 #start-screen .notice-line { width: 100%; max-width: 520px; margin: 0; background: rgba(0,0,0,.45); border: 1px solid rgba(245,201,106,.25); font-size: .78rem; color: #fde7b0; }
 #start-screen .main-grid { grid-template-columns: 1fr 1fr; gap: 10px; max-width: 520px; width: 100%; margin: 0 auto; }
 #start-screen .main-tile { aspect-ratio: auto; height: clamp(84px, 11svh, 110px); border: 1px solid var(--gold); border-radius: 14px; box-shadow: 0 8px 24px rgba(0,0,0,.6); }
