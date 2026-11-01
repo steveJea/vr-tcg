@@ -12,6 +12,7 @@
       m.onclick = e => { const yn = e.target.closest('[data-yn]')?.dataset.yn; if (yn) done(yn === 'y'); else if (e.target === m) done(false); };
     });
   }
+  window.VRConfirm = confirmYN;   // 다른 화면에서도 같은 Y/N 확인창 (예: 인재 상세 버튼)
   const login = () => window.VRCloud?.login ? window.VRCloud.login() : alert('로그인 서버 연결 중이에요. 잠시 뒤 다시 눌러 주세요.');
 
   // --- 인트로: 처음 방문(로그인 안 됨)일 때만 ---

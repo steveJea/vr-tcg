@@ -298,3 +298,8 @@
   .main-body { padding-bottom: 96px; }
   .main-tabs { left: 50%; right: auto; transform: translateX(-50%); width: min(560px, 100%); border-radius: 18px 18px 0 0; border: 1px solid rgba(245,201,106,.3); border-bottom: 0; }
 }
+#vr-confirm{z-index:300}
+/* 로비 좌상단 계정 칩: 파이어폭스에서 칸이 0까지 줄어 얇은 금색 막대로 보이던 문제 → 최소 폭 보장, 좁은 화면은 아바타만 */
+#start-screen .acct-box { flex: 0 1 auto; min-width: 38px; }
+#start-screen .acct-chip { min-width: 0; overflow: hidden; }
+@media (max-width: 480px) { #start-screen .acct-box { flex: none; } #start-screen .acct-chip { padding: 3px; } #start-screen .acct-chip .acct-name, #start-screen .acct-chip .acct-lv { display: none; } }
