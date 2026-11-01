@@ -11,7 +11,7 @@ const STATS_KEY = 'vrTcgStats.v1';
 // 아케이드 전적은 동기화하지 않음 (게스트 기록이 계정에 섞이지 않게). 계정 전적은 서버 matches 에서 집계
 const SYNC_KEYS = ['vrTcgSkipFx', 'vrTcgVoiceOn', 'vrTcgVoiceVol', 'vrTcgSound', 'tcg_hand_sort', 'tcg_skip_endturn_confirm', 'vrTutorialDone'];
 
-let sb = null, user = null, ready = false, pushTimer = null, applying = false;
+let sb = null, user = null, profile = null, ready = false, pushTimer = null, applying = false;
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -78,7 +78,8 @@ async function loadProfile() {
   const meta = user.user_metadata || {};
   let p = { nickname: meta.name || meta.full_name || (user.email || '').split('@')[0] || '플레이어', avatar_url: meta.avatar_url };
   try {
-    const { data } = await sb.from('profiles').select('nickname, avatar_url').eq('id', user.id).maybeSingle();
+    let { data, error } = await sb.from('profiles').select('nickname, avatar_url, nick_set').eq('id', user.id).maybeSingle();
+    if (error) ({ data } = await sb.from('profiles').select('nickname, avatar_url').eq('id', user.id).maybeSingle());   // nickname.sql 실행 전
     if (data) p = data;
     else await sb.from('profiles').upsert({ id: user.id, nickname: p.nickname.slice(0, 20), avatar_url: p.avatar_url });
   } catch {}
@@ -140,7 +141,8 @@ async function init() {
       loadRecord();
       render({ nickname: '불러오는 중...' });
       if (isNew) await syncOnLogin();
-      render(await loadProfile());
+      profile = await loadProfile(); render(profile);
+      if (profile && profile.nick_set === false) askNickname(true);
     };
     await onUser(data?.session?.user);
     sb.auth.onAuthStateChange((_ev, session) => { if ((session?.user?.id || null) !== (user?.id || null)) onUser(session?.user); });
@@ -151,5 +153,49 @@ async function init() {
     sb = null; ready = false; render();
   }
 }
-window.VRCloud = { get user() { return user; }, get sb() { return sb; }, get ready() { return ready; }, login, logout, push };
+// ===== 닉네임 (supabase/nickname.sql: set_nickname / nickname_check) =====
+const NICK_ERR = { short: '2글자 이상 입력해 주세요', long: '12글자까지 가능해요', bad: '한글·영문·숫자·공백·_ . - 만 쓸 수 있어요', taken: '이미 누가 쓰고 있는 닉네임이에요' };
+const nickErr = m => { const k = (/nick (\w+)/.exec(m || '') || [])[1]; return NICK_ERR[k] || '저장하지 못했어요. 잠시 후 다시 시도해 주세요'; };
+function askNickname(first) {
+  if (!user || document.getElementById('nick-ov')) return Promise.resolve(null);
+  if (!document.getElementById('nick-css')) { const c = document.createElement('style'); c.id = 'nick-css'; c.textContent = `
+  #nick-ov{position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,.78);display:flex;align-items:center;justify-content:center;padding:16px}
+  #nick-box{width:100%;max-width:360px;background:linear-gradient(#1e1530,#0e0a18);border:1px solid rgba(251,191,36,.45);border-radius:16px;color:#fde68a;padding:18px 16px 14px;box-shadow:0 10px 40px rgba(0,0,0,.6)}
+  #nick-box h3{margin:0 0 6px;font-size:18px}#nick-box p{margin:0 0 12px;font-size:12px;opacity:.85;line-height:1.5}
+  #nick-box input{width:100%;box-sizing:border-box;padding:11px 12px;border-radius:10px;border:1px solid rgba(251,191,36,.45);background:rgba(0,0,0,.35);color:#fff;font-size:16px}
+  #nick-box .nk-msg{min-height:18px;margin:6px 2px 10px;font-size:12px}#nick-box .nk-msg.bad{color:#fca5a5}#nick-box .nk-msg.good{color:#86efac}
+  #nick-box .nk-btns{display:flex;gap:8px}#nick-box button{flex:1;padding:11px;border-radius:10px;border:1px solid rgba(251,191,36,.35);background:rgba(0,0,0,.3);color:#fde68a;font-weight:800;font-size:15px;cursor:pointer}
+  #nick-box button.go{background:#f59e0b;color:#1a1200}#nick-box button:disabled{opacity:.5}`; document.head.appendChild(c); }
+  const cur = profile?.nick_set ? profile.nickname : '';
+  const ov = document.createElement('div'); ov.id = 'nick-ov';
+  ov.innerHTML = `<div id="nick-box" role="dialog" aria-label="닉네임"><h3>${first ? '닉네임을 정해 주세요' : '닉네임 변경'}</h3>
+    <p>${first ? '랭킹·PvP·친구 목록에 이 이름으로 나와요.<br>' : ''}2~12글자 · 다른 사람과 겹칠 수 없어요</p>
+    <input maxlength="12" autocomplete="off" spellcheck="false" placeholder="닉네임" value="${esc(cur)}"><div class="nk-msg"></div>
+    <div class="nk-btns">${first ? '' : '<button class="no" type="button">취소</button>'}<button class="go" type="button">${first ? '시작하기' : '저장'}</button></div></div>`;
+  document.body.appendChild(ov);
+  const inp = ov.querySelector('input'), msg = ov.querySelector('.nk-msg'), go = ov.querySelector('.go');
+  const say = (t, cls) => { msg.textContent = t; msg.className = 'nk-msg ' + (cls || ''); };
+  let tmr = 0;
+  inp.oninput = () => { clearTimeout(tmr); const v = inp.value.trim(); if (!v) return say('');
+    const loc = v.length < 2 ? 'short' : v.length > 12 ? 'long' : !/^[0-9A-Za-z가-힣ㄱ-ㅎㅏ-ㅣ _.\-]+$/.test(v) ? 'bad' : null;
+    if (loc) return say(NICK_ERR[loc], 'bad');
+    tmr = setTimeout(async () => { try { const { data } = await sb.rpc('nickname_check', { p_nick: v }); if (inp.value.trim() === v) say(data === 'ok' ? '사용할 수 있어요' : NICK_ERR[data] || '', data === 'ok' ? 'good' : 'bad'); } catch {} }, 350); };
+  return new Promise(res => {
+    const done = v => { ov.remove(); res(v); };
+    const no = ov.querySelector('.no'); if (no) no.onclick = () => done(null);
+    if (!first) ov.addEventListener('click', e => { if (e.target === ov) done(null); });
+    const save = async () => {
+      const v = inp.value.trim(); go.disabled = true;
+      const { data, error } = await sb.rpc('set_nickname', { p_nick: v });
+      go.disabled = false;
+      if (error) return say(nickErr(error.message), 'bad');
+      profile = { ...(profile || {}), nickname: data?.nickname || v, nick_set: true }; render(profile);
+      window.dispatchEvent(new CustomEvent('vr:nickname', { detail: profile.nickname })); done(profile.nickname);
+    };
+    go.onclick = save; inp.onkeydown = e => { if (e.key === 'Enter') save(); };
+    setTimeout(() => inp.focus(), 50);
+  });
+}
+
+window.VRCloud = { get profile() { return profile; }, askNickname: () => askNickname(false), get user() { return user; }, get sb() { return sb; }, get ready() { return ready; }, login, logout, push };
 init();

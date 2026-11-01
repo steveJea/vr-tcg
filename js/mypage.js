@@ -161,9 +161,10 @@
     body.innerHTML = '<div class="mp-note">…</div>';
     const ctx = await gather();
     const meta = ctx.user.user_metadata || {};
-    body.innerHTML = `<div class="mp-who">${meta.avatar_url ? `<img src="${esc(meta.avatar_url)}" referrerpolicy="no-referrer" alt="" class="mp-av" onerror="this.src='img/ui/profile.webp'">` : '<img src="img/ui/profile.webp" alt="" class="mp-av">'}<b>${esc(meta.name || meta.full_name || (ctx.user.email || '').split('@')[0] || '플레이어')}</b></div>`
+    body.innerHTML = `<div class="mp-who">${meta.avatar_url ? `<img src="${esc(meta.avatar_url)}" referrerpolicy="no-referrer" alt="" class="mp-av" onerror="this.src='img/ui/profile.webp'">` : '<img src="img/ui/profile.webp" alt="" class="mp-av">'}<b class="mp-nick">${esc(cloud()?.profile?.nickname || meta.name || meta.full_name || (ctx.user.email || '').split('@')[0] || '플레이어')}</b><button id="mp-nick-edit" class="mp-nick-edit" type="button">닉네임 변경</button></div>`
       + sections.map(s => { let h = ''; try { h = s.render(ctx) || ''; } catch (e) { console.warn('[mypage] section', s.id, e); }
         return h ? `<section class="mp-sec" data-sec="${s.id}">${s.title ? `<h3>${s.title}</h3>` : ''}${h}</section>` : ''; }).join('');
+    const ne = $('mp-nick-edit'); if (ne) ne.onclick = async () => { const n = await cloud()?.askNickname?.(); if (n) { const b = body.querySelector('.mp-nick'); if (b) b.textContent = n; } };
     const lb = $('mp-leader'); if (lb) movieFor(lb.dataset.id).then(u => bindLeaderVideo(lb, u));
     return ctx;
   }
