@@ -1,7 +1,8 @@
 -- =====================================================================
 -- 고급 소환(소환권 뽑기) UR 고정 목록. 새 UR 카드는 자동으로 들어가지 않음 (이 표에 넣어야 나옴)
 -- 제외(2026-11-01 형님 결정): [각성] 윤진아 10291 · 이성호 10304 · 임규리 10322 · 하승진 10435 · 하지혜 10440 · 정아람 10359
--- 일반 뽑기(하루 1회 무료)·확률은 그대로. story_ticket_draw 만 교체 (story_ch0_jieun.sql 최신본 + UR 목록). 여러 번 실행해도 안전
+-- 하루 1회 무료 뽑기 UR도 같은 목록 사용 (확률은 그대로). story_daily_draw 도 교체.
+-- story_ticket_draw 교체 (story_ch0_jieun.sql 최신본 + UR 목록). 여러 번 실행해도 안전
 -- =====================================================================
 create table if not exists public.story_premium_ur (id text primary key, name text);
 alter table public.story_premium_ur enable row level security;
@@ -57,6 +58,34 @@ begin
 end $$;
 revoke all on function public.story_ticket_draw(int) from public, anon;
 grant execute on function public.story_ticket_draw(int) to authenticated;
+
+
+create or replace function public.story_daily_draw() returns jsonb language plpgsql security definer set search_path = public as $$
+declare uid uuid := auth.uid(); today date := (now() at time zone 'Asia/Seoul')::date; last date; r double precision; g text; cid text; d jsonb; owned jsonb; e jsonb; cnt int;
+begin
+  if uid is null then raise exception 'login required'; end if;
+  insert into story_gacha (user_id, last_draw) values (uid, today - 1) on conflict (user_id) do nothing;
+  select last_draw into last from story_gacha where user_id = uid for update;
+  if last >= today then return jsonb_build_object('ok', false, 'reason', 'already', 'day', today); end if;
+  r := random();
+  g := case when r < 0.70 then 'NORMAL' when r < 0.90 then 'RARE' when r < 0.965 then 'HIGH RARE' when r < 0.995 then 'SUPER RARE' else 'ULTRA RARE' end;
+  if g = 'ULTRA RARE' then   -- 무료 뽑기 UR도 고급 소환과 같은 목록(story_premium_ur)에서만
+    select p.id into cid from story_card_pool p join story_premium_ur w on w.id = p.id where p.grade = g order by random() limit 1;
+  else
+    select id into cid from story_card_pool where grade = g and coalesce(gacha, true) order by random() limit 1;
+  end if;
+  if cid is null then raise exception 'empty pool for %', g; end if;
+  d := _story_lock(uid);
+  e := _story_new_card(cid);
+  owned := _story_owned(d) || jsonb_build_array(e);
+  select count(*) into cnt from jsonb_array_elements(owned) o where o->>'id' = cid;
+  d := jsonb_set(jsonb_set(d, '{owned}', owned), '{gachaLast}', to_jsonb(today::text));
+  d := _story_save(uid, d);
+  update story_gacha set last_draw = today, updated_at = now() where user_id = uid;
+  insert into story_gacha_log (user_id, card_id, grade) values (uid, cid, g);
+  return jsonb_build_object('ok', true, 'card_id', cid, 'uid', e->>'uid', 'grade', g, 'count', cnt, 'day', today);
+end $$;
+grant execute on function public.story_daily_draw() to authenticated;
 
 -- 확인용: 고급 소환에서 나올 수 있는 UR (11명)
 select w.id, w.name, p.grade from public.story_premium_ur w left join public.story_card_pool p on p.id = w.id order by w.id;
