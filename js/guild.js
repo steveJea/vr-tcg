@@ -228,8 +228,8 @@
     pop(`<div class="gd-h big">${gi('tile_log', '📜')} 기록</div><div class="gd-log">${st.log.map(l => `<div><span>${esc(A[l.action] || l.action)}${l.action === 'level_up' ? ` Lv.${l.meta?.level}` : ''}</span><b>${esc(l.actor || '')}${l.target && l.target !== l.actor ? ` → ${esc(l.target)}` : ''}</b><small>${new Date(l.at).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' })}</small></div>`).join('') || '<div class="gd-empty">기록 없음</div>'}</div>`);
   }
   // ---- 2단계: 집결 · 의뢰 (guild2.sql) ----
-  const QIC = { phase: '🗡️', stamina: '🔋', pvp_win: '⚔️', tower: '🗼', draw: '🎴', boss: '💀', levelup: '⬆️', checkin: '🕯️' };
-  const QIMG = { pvp_win: 'pvp', draw: 'gacha', checkin: 'gold' };
+  const QIC = { phase: '🗡️', stamina: '🔋', pvp_win: '⚔️', tower: '🗼', draw: '🎴', boss: '💀', raid: '🐉', levelup: '⬆️', checkin: '🕯️' };
+  const QIMG = { pvp_win: 'pvp', draw: 'gacha', checkin: 'gold', raid: 'boss' };
   const qic = (ev, fb) => `<span class="gd-qic"><i>${QIC[ev] || fb || gi('tile_log', '📜')}</i><img src="img/ui/guild/quest_${QIMG[ev] || ev}.webp" alt="" onerror="this.remove()"></span>`;
   // 의뢰 제목 누르면 관련 메뉴로 (팝업·조직 화면 닫고 이동). 집결은 조직 안 집결 팝업
   const QGO = {

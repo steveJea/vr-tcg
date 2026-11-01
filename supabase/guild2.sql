@@ -27,7 +27,7 @@ insert into public.guild_quest_pool (key, kind, event, goal, reward, label, icon
   ('d_pvp',     'daily', 'pvp_win', 2,  '{"loyalty":20,"gold":1000,"exp":15}', 'PvP 승리',     '⚔️'),
   ('d_tower',   'daily', 'tower',   1,  '{"loyalty":15,"gold":800,"exp":10}',  '탑 오르기',    '🗼'),
   ('d_draw',    'daily', 'draw',    1,  '{"loyalty":10,"gold":500,"exp":5}',   '소환',         '🎴'),
-  ('d_boss',    'daily', 'boss',    1,  '{"loyalty":20,"gold":1000,"exp":15}', '보스 처치',    '💀'),
+  ('d_boss',    'daily', 'raid',    1,  '{"loyalty":20,"gold":1000,"exp":15}', '균열 토벌',    '🐉'),   -- guild_quest_raid.sql
   ('d_levelup', 'daily', 'levelup', 1,  '{"loyalty":10,"gold":500,"exp":5}',   '카드 강화',    '⬆️'),
   ('d_checkin', 'daily', 'checkin', 1,  '{"loyalty":10,"exp":5}',              '집결',         '🕯️'),
   ('w_phase',   'weekly', 'phase',   30,  '{}', '균열 정리',   '🗡️'),

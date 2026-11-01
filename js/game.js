@@ -2037,7 +2037,7 @@ async function viewBattle0({ session, aiName = '상대', bg = 'normal', manual =
   // SKIP: 남은 전투를 AUTO 로 연출 없이 끝까지 (같은 엔진·같은 seed → 결과는 끝까지 본 것과 같음. 수동이면 AUTO 행동도 기록돼 재생 검증 그대로). 3vs3 은 판마다
   const SKB = document.createElement('button'); SKB.id = 'vb-skip'; SKB.type = 'button'; SKB.textContent = 'SKIP ⏭';
   SKB.onclick = e => { e.stopPropagation(); if (V.skip || S?.over) return; V.skip = true; V.auto = true; V.batch = null; fastForward = true; SKB.disabled = true; SKB.textContent = '결과 계산 중…'; if (V.ask) V.ask({ k: 'auto' }); };
-  $('game').appendChild(SKB);
+  document.body.appendChild(SKB);   // #game 밖(body)에 고정: 화면 배치가 바뀌어도 자리 그대로
   const drain = () => { const ev = session.events || []; const out = ev.splice(0, ev.length); return out; };
   // 마나 없음: 처치 마나(refund) 연출 생략. 같은 카드에 숫자가 겹치지 않게 조금씩 띄워 보여 줌
   const bossNum = (d, weak) => { if (!raid || !(d > 0)) return; const el = unitEl('ai', V.B0[0]); shake(el, { dmg: d, crit: d >= raid.cap }); hitFx(el, 'blood'); dmgNumber(el, `-${fmt(d)}`, d >= raid.cap ? '#f97316' : '#fde047', false, 'fx-dmg-crit fx-dmg-raid'); if (weak) dmgNumber(el, '약점!', '#fca5a5', false, 'fx-dmg-mini'); if (d >= raid.cap) dmgNumber(el, 'MAX', '#fb923c', false, 'fx-dmg-mini'); };

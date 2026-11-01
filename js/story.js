@@ -1413,19 +1413,19 @@
       ${(() => { const le = leaderEff(o.id); return le ? `<div class="cd-leader ${isLeader(o) ? 'on' : ''}" title="${isLeader(o) ? '리더 스킬 적용 중' : '이 인재를 리더로 하면 적용돼요'}">${ic('crown', { alt: '리더 스킬' })} <span>${esc(le.text)}</span></div>` : ''; })()}
       <div class="cd-acts"><button id="story-d-stats" class="cd-ic stats" title="스탯 분배" aria-label="스탯 분배" ${save.points || o.cpts ? '' : 'disabled'}>📈</button>
       <button id="story-d-discard" class="cd-ic discard" title="분해" aria-label="분해" ${canDiscard(o) ? '' : 'disabled'}>${ic('discard', { alt: '분해' }) || '분해'}</button>
-      ${canMerge(o) ? `<button id="story-d-merge" class="cd-sm merge" title="합성 (EX${exOf(o)} → EX${exOf(o) + 1})${serverMode ? ` · 이상한 조각 ${shardCost(o)}` : ''}">${ic('merge', { alt: '합성' })} EX${exOf(o) + 1}</button>` : ''}
+      ${canMerge(o) ? `<button id="story-d-merge" class="cd-sm merge" title="합성 (EX${exOf(o)} → EX${exOf(o) + 1})${serverMode ? ` · 이상한 조각 ${shardCost(o)}` : ''}">${ic('merge', { alt: '합성' })}</button>` : ''}
       <button id="story-d-fav" class="cd-sm fav ${isFav(o) ? 'on' : ''}" title="즐겨찾기" aria-pressed="${isFav(o)}">${isFav(o) ? '★' : '☆'}</button>
-      <button id="story-d-lock" class="cd-sm" title="${isLeader(o) ? '리더' : inDeck(o) ? '덱 인재' : '잠금'}" ${isLeader(o) || inDeck(o) ? 'disabled' : ''}>${isLeader(o) ? '🔒 리더' : inDeck(o) ? '🔒 덱' : o.locked ? '🔓 해제' : '🔒 잠금'}</button>
-      ${isLeader(o) ? '' : `<button id="story-d-leader" class="cd-sm lead" title="${leaderUnlocked() ? '리더로 지정' : '리더 변경: 챕터 1 클리어 후'}" ${leaderUnlocked() ? '' : 'disabled'}>${ic('crown', { alt: '' })} 리더 지정</button>`}</div>
+      <button id="story-d-lock" class="cd-sm" aria-label="잠금" title="${isLeader(o) ? '리더' : inDeck(o) ? '덱 인재' : '잠금'}" ${isLeader(o) || inDeck(o) ? 'disabled' : ''}>${o.locked && !isLeader(o) && !inDeck(o) ? '🔓' : '🔒'}</button>
+      ${isLeader(o) ? '' : `<button id="story-d-leader" class="cd-sm lead" title="${leaderUnlocked() ? '리더로 지정' : '리더 변경: 챕터 1 클리어 후'}" ${leaderUnlocked() ? '' : 'disabled'}>${ic('crown', { alt: '리더 지정' })}</button>`}</div>
       ${skillsOf(o.id).length ? `<div class="story-detail-skills"><div class="text-sm font-black mt-4">${window.VRIcon?.or?.('skill_count', '📜') || '📜'} ${skillsOf(o.id).length}</div>${window.TCG?.skillListHTML?.(c, o.level, { skillLv: o.skillLv, up: serverMode, compact: true }) || ''}</div>` : ''}`, renderCards);
     { const zb = p.el.querySelector('.cd-zoom'); if (zb) zb.onclick = e => { e.stopPropagation(); zoomImg(`${IMG}${c.id}.webp`); }; }
     { const st = p.el.querySelector('.cd-stats'); if (st) { const t = () => st.classList.toggle('open'); st.onclick = t; st.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); t(); } }; } }
     { const gw = $('story-d-gear'), gb = () => window.VRGear?.bind?.(gw, o.id, c.grade, () => cardDetail(o.uid));   // 장비 칸 (gear.js)
       if (gw && window.VRGear && serverMode) { if (window.VRGear.ready) gb(); else window.VRGear.load().then(r => { if (r && gw.isConnected) { gw.innerHTML = window.VRGear.slotsHTML(o.id, c.grade); gb(); } }); } }
-    $('story-d-lock').onclick = () => { p.close(true); setLock(o.uid, !o.locked); };
-    $('story-d-fav').onclick = () => { p.close(true); setFav(o.uid, !isFav(o)); };
+    $('story-d-lock').onclick = () => askYN(o.locked ? '잠금을 해제하시겠습니까?' : '잠금하시겠습니까?', () => { p.close(true); setLock(o.uid, !o.locked); });
+    $('story-d-fav').onclick = () => askYN(isFav(o) ? '즐겨찾기를 해제하시겠습니까?' : '즐겨찾기에 추가하시겠습니까?', () => { p.close(true); setFav(o.uid, !isFav(o)); });
     { const lb = $('story-d-leader'); if (lb) lb.onclick = () => { p.close(true); confirmLeader(o.uid, () => cardDetail(o.uid)); }; }
-    $('story-d-stats').onclick = () => { p.close(true); openStats(renderCards, idxOf(o)); };
+    $('story-d-stats').onclick = () => askYN('스탯 분배를 하시겠습니까?', () => { p.close(true); openStats(renderCards, idxOf(o)); });   // 분해·합성·리더는 원래 확인창이 있어 그대로
     $('story-d-discard').onclick = () => { p.close(true); pickTarget(o.uid); };
     const mb = $('story-d-merge'); if (mb) mb.onclick = () => { p.close(true); mergePreview(o.uid); };
     document.querySelectorAll('#story-pop [data-skup]').forEach(b => b.onclick = e => { e.preventDefault(); e.stopPropagation(); p.close(true); skillUp(o.uid, +b.dataset.skup); });
@@ -1641,6 +1641,8 @@
     $('bulk-yes').onclick = async () => { $('bulk-yes').disabled = true; p.close(true); await doDismantle(f.ids, f.n, renderCards); };
   }
   // ----- 1장 분해 (대상 카드 없음) -----
+  /** Y/N 확인 뒤 실행 (main-menu.js 확인창, 없으면 브라우저 confirm) */
+  const askYN = (msg, fn) => Promise.resolve(window.VRConfirm ? window.VRConfirm(esc(msg)) : confirm(msg)).then(ok => { if (ok) fn(); });
   function pickTarget(su) { confirmDiscard(su); }
   function confirmDiscard(su) {
     const src = byUid(su), sc = card(src.id), d = disCalc(src);
@@ -1833,6 +1835,7 @@
         ? `<div class="gacha-stage gr-card" id="gacha-stage"><div class="gacha-card" id="gacha-card"><div class="gacha-face gacha-back"></div><div class="gacha-face gacha-front" id="gacha-front"></div></div></div>`
         : `<div id="tk-result" class="story-tk-result"></div>`}</div>
       <div id="gacha-msg" class="gr-msg"></div>
+      ${daily ? '' : `<div class="gr-own" id="gr-own">보유 소환권 ${ICN('ticket', '🎟️', '소환권')} <b>${tickets ?? '…'}</b></div>`}
       <div class="gr-actions">${daily
         ? `${avail ? `<button id="gacha-go" class="gr-go">${ICN('gacha', '🎴')} 뽑기</button>` : ''}<div id="gacha-next" class="gr-next"></div>`
         : `<button class="gr-go" data-draw="1" ${(tickets | 0) >= 1 ? '' : 'disabled'}>1회 <small>${ICN('ticket', '🎟️')}1</small></button><button class="gr-go gr-go10" data-draw="10" ${(tickets | 0) >= 10 ? '' : 'disabled'} title="HR 이상 1장 보장">10회 <small>${ICN('ticket', '🎟️')}10</small></button>`}</div>
@@ -1850,6 +1853,7 @@
         root().querySelectorAll('[data-draw]').forEach(x => x.disabled = true); $('gacha-msg').textContent = ''; $('tk-result').innerHTML = ''; resultOn = false;
         const before = new Set(save.owned.map(o => o.uid));
         const r = await drawTickets(+b.dataset.draw);
+        { const ob = $('gr-own')?.querySelector('b'); if (ob) ob.textContent = tickets | 0; }
         if (!r.ok && forcedPullOn && r.reason === 'tickets') { forcedPullOn = false; await markPullDone(); toast('소환권이 부족해 강제 영입을 건너뛰어요.'); return enter(); }   // 막힘 방지
         if (!r.ok && forcedPullOn) root().querySelector('.story-shop')?.classList.remove('gr-forced');   // 다른 오류: 나가기 허용 (다음 접속 때 다시 안내)
         if (!r.ok) { $('gacha-msg').textContent = r.reason === 'tickets' ? '소환권이 부족해요.' : `뽑기에 실패했어요: ${r.msg || ''}`; root().querySelectorAll('[data-draw]').forEach(x => x.disabled = (tickets | 0) < +x.dataset.draw); return; }
@@ -1884,7 +1888,7 @@
         if (forcedPullOn && r.cards.length === 10) { forcedPullOn = false; await markPullDone();
           const nb = document.createElement('button'); nb.className = 'gr-go gr-forced-next'; nb.id = 'forced-pull-next'; nb.textContent = save.starter ? '계속 ▶' : '함께할 캐릭터 고르기 ▶';
           nb.onclick = () => enter(); root().querySelector('.gr-actions')?.replaceChildren(nb); return; }   // 강제 영입 결과: 탭 이동 없음 (계속 버튼만)
-        root().querySelectorAll('[data-draw]').forEach(x => x.disabled = (tickets | 0) < +x.dataset.draw);
+        root().querySelectorAll('[data-draw]').forEach(x => x.disabled = (tickets | 0) < +x.dataset.draw); { const ob = $('gr-own')?.querySelector('b'); if (ob) ob.textContent = tickets | 0; }   // 보유 소환권 갱신
         if (!forcedPullOn) resultOn = true;
       });
       return;
