@@ -134,3 +134,7 @@
 .pvp-empty{padding:16px;opacity:.6;font-size:13px;text-align:center}
 .pvp-panel .pvp-ghost{width:auto;min-width:52px;padding:0 12px;white-space:nowrap;font-size:14px;font-weight:800}.pvp-panel .pvp-ghost[data-del]{font-size:20px;padding:0}
 .pvp-dstat [data-auto]{white-space:nowrap;min-height:36px}
+
+/* 전투 화면 SKIP (PvP·구역 전쟁·토벌) */
+#vb-skip{position:fixed;right:10px;top:calc(env(safe-area-inset-top) + 64px);z-index:60;padding:6px 12px;border-radius:999px;background:rgba(24,24,27,.85);border:1.5px solid #fbbf24;color:#fde68a;font-weight:900;font-size:13px;box-shadow:0 2px 8px rgba(0,0,0,.5)}
+#vb-skip:disabled{opacity:.7}
