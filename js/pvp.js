@@ -137,9 +137,10 @@ export function sortPool(list, cardOf = card, all = owned, s = psort) {
   return list.slice().sort((a, b) => { if (s.k === 'name') { const v = nm(a).localeCompare(nm(b), 'ko'); if (v) return v * d; } for (const f of key) { const v = f(a) - f(b); if (v) return v * d; } return 0; });
 }
 const sortChips = () => `<div class="pvp-chips pvp-sort">${Object.entries(PSORTS).map(([k, l]) => `<button data-srt="${k}" class="${psort.k === k ? 'on' : ''}" aria-pressed="${psort.k === k}">${l}${psort.k === k ? (psort.desc ? ' ▼' : ' ▲') : ''}</button>`).join('')}</div>`;
-function editDeck(slot) {
+function editDeck(slot, keep) {
   const cur = st.decks.find(d => d.slot === slot);
-  let sel = cur ? [...cur.uids] : [];
+  let sel = keep ? keep.sel.filter(u => owned.some(o => o.uid === u)) : cur ? [...cur.uids] : [];
+  if (keep && sel.length < keep.sel.length) toast('합성 등으로 빠진 인재가 있어요');
   const L = LEAGUES[view.league];
   const usedElsewhere = new Set(st.decks.filter(d => d.slot !== slot).flatMap(d => d.uids.map(u => owned.find(o => o.uid === u)?.id)));
   const pool = [...new Map(owned.filter(o => !L.grades || L.grades.includes(card(o.id)?.grade)).sort((a, b) => b.power - a.power).map(o => [o.id, o])).values()];   // 같은 카드는 가장 센 1장
@@ -147,12 +148,57 @@ function editDeck(slot) {
   // 보스리그: ① 리더(수비대장 1장 · HR 이하) → ② 멤버(1~5장) → ③ 확인 (sel[0] = 리더)
   const BOSS = !!MODES[view.mode].boss, gradeOf = u => card(owned.find(o => o.uid === u)?.id)?.grade;
   const isGuard = u => GUARD_GRADES.includes(gradeOf(u));
-  let step = BOSS ? (sel.length && isGuard(sel[0]) ? (sel.length > 1 ? 'confirm' : 'members') : 'leader') : null;
-  if (BOSS && step === 'leader') sel = [];
+  let step = BOSS ? (keep?.step && (keep.step === 'leader' || (sel.length && isGuard(sel[0]))) ? keep.step : sel.length && isGuard(sel[0]) ? (sel.length > 1 ? 'confirm' : 'members') : 'leader') : null;
+  if (BOSS && !(sel.length && isGuard(sel[0]))) { sel = []; step = 'leader'; }
+  const oOf = u => owned.find(o => o.uid === u);
+  const fire = u => window.VRStory?.canMergeUid?.(u) ? '<b class="pvp-fire" title="합성 가능">🔥</b>' : '';
+  const pickBtn = (o, on, badge) => { const c = card(o.id); return c ? `<button data-u="${o.uid}" class="g-${GS[c.grade] || 'N'} ${on ? 'on' : ''}" ${usedElsewhere.has(o.id) ? 'disabled' : ''}>${thumb({ ...c, level: o.level }, (on ? badge : '') + fire(o.uid))}</button>` : ''; };
+  // 맨 윗줄 (화면 위 고정): 현재 덱 칸 · 전투력 합 · HR 코스트 · 자동 채우기 · 덱 설정 완료
+  const topRow = bad => {
+    const cards = sel.map(oOf).filter(Boolean), pw = cards.reduce((a, o) => a + (+o.power || 0), 0), cost = cards.reduce((a, o) => a + (+card(o.id)?.cost || 0), 0);
+    const slotTh = (u, lab) => { const o = u && oOf(u), c = o && card(o.id); return c ? `<button class="pvp-slot g-${GS[c.grade] || 'N'}" data-rm="${u}" title="빼기">${thumb({ ...c, level: o.level })}${lab ? `<b class="pvp-n">${lab}</b>` : ''}</button>` : `<span class="pvp-slot empty">${lab || '＋'}</span>`; };
+    const slots = BOSS ? [slotTh(sel[0], '👑'), ...Array.from({ length: BOSS_MEMBERS[1] }, (_, i) => slotTh(sel[i + 1]))] : Array.from({ length: 5 }, (_, i) => slotTh(sel[i]));
+    return `<div class="pvp-deckbar"><div class="pvp-slots">${slots.join('')}</div>
+      <div class="pvp-dstat"><span class="pvp-pw">⚡ ${pw.toLocaleString('ko-KR')}</span>${L.costCap ? `<span class="pvp-cst ${cost > L.costCap ? 'over' : ''}">💰 ${cost}/${L.costCap}</span>` : ''}
+        <button class="pvp-ghost" data-auto title="전투력 순 자동 채우기">⚡ 자동 채우기</button><button data-ok class="pvp-go" ${bad ? 'disabled' : ''}>${bad ? esc(bad) : '덱 설정 완료'}</button></div></div>`;
+  };
+  // 전투력 순 자동 채우기: 지금 고른 것 유지 · 리그 등급/코스트 · 보스는 리더(HR 이하) 먼저 + 멤버 최대 5장
+  const autoFill = () => {
+    const byPw = pool.filter(o => !usedElsewhere.has(o.id)).sort((a, b) => (+b.power || 0) - (+a.power || 0));
+    const costOf = u => +card(oOf(u)?.id)?.cost || 0, max = BOSS ? 1 + BOSS_MEMBERS[1] : 5;
+    let cost = sel.reduce((a, u) => a + costOf(u), 0);
+    const ok = o => !sel.includes(o.uid) && !sel.some(u => oOf(u)?.id === o.id) && (!L.costCap || cost + costOf(o.uid) <= L.costCap);
+    if (BOSS && !sel.length) { const g = byPw.find(o => GUARD_GRADES.includes(card(o.id)?.grade) && ok(o)); if (!g) return toast('HR 이하 리더 없음'); sel = [g.uid]; cost += costOf(g.uid); }
+    for (const o of byPw) { if (sel.length >= max) break; if (ok(o)) { sel.push(o.uid); cost += costOf(o.uid); } }
+    if (BOSS) step = sel.length > 1 ? 'confirm' : 'members';
+    drawAll();
+  };
+  // 인재 육성: PvP 창 잠깐 숨김 → 보유 인재 상세 (레벨업·합성·장비) → 돌아오면 최신 정보로 다시 열기
+  const train = async uid => {
+    const S = window.VRStory; if (!S?.trainCard) return toast('인재 화면 없음');
+    const hid = [...document.querySelectorAll('.pvp-modal')]; hid.forEach(e => e.style.display = 'none');
+    const back = async () => { hid.forEach(e => e.remove()); await open(); if ($('pvp-modal')) editDeck(slot, { sel, step }); };
+    const ran = await S.trainCard(uid, back, 'PvP 덱으로');
+    if (!ran) hid.forEach(e => e.style.display = '');
+  };
+  // 꾹 누르기 = 바로 인재 육성 · 짧게 = 카드 정보(덱 배치 / 인재 육성)
+  const bindPick = () => m.querySelectorAll('.pvp-pick [data-u]').forEach(b => {
+    let t = 0, long = false;
+    const clear = () => { clearTimeout(t); t = 0; };
+    b.onpointerdown = () => { long = false; clear(); t = setTimeout(() => { long = true; train(b.dataset.u); }, 550); };
+    b.onpointerup = b.onpointerleave = b.onpointercancel = clear;
+    b.oncontextmenu = e => e.preventDefault();
+    b.onclick = e => { if (long) { e.preventDefault(); long = false; return; } cardInfo(b.dataset.u); };
+  });
+  const bindTop = () => {
+    m.querySelectorAll('[data-rm]').forEach(b => b.onclick = () => { const u = b.dataset.rm; if (BOSS && u === sel[0]) { sel = []; step = 'leader'; } else sel = sel.filter(x => x !== u); if (BOSS && step === 'confirm' && sel.length < 2) step = 'members'; drawAll(); });
+    m.querySelector('[data-auto]')?.addEventListener('click', autoFill);
+    m.querySelector('[data-ok]')?.addEventListener('click', () => commit());
+  };
   const draw = () => BOSS ? drawBoss() : drawNormal();
   const drawBoss = () => {
     const cards = sel.map(u => card(owned.find(o => o.uid === u)?.id)).filter(Boolean), bad = deckCheck(cards, view.league, view.mode), cost = cards.reduce((a, c) => a + (+c.cost || 0), 0);
-    const lead = sel[0], mem = sel.slice(1), oOf = u => owned.find(o => o.uid === u);
+    const lead = sel[0], mem = sel.slice(1);
     const th = u => { const o = oOf(u), c = o && card(o.id); return c ? thumb({ ...c, level: o.level }) : ''; };
     const stepBar = `<div class="pvp-steps">${[['leader', '① 리더'], ['members', '② 멤버'], ['confirm', '③ 확인']].map(([k, l]) => `<button data-step="${k}" class="${step === k ? 'on' : ''}" ${k !== 'leader' && !lead ? 'disabled' : k === 'confirm' && !mem.length ? 'disabled' : ''}>${l}</button>`).join('')}</div>`;
     const head = `<button class="pvp-x" data-x>✕</button><div class="pvp-h">👑 보스리그 덱 <small>리더 ${lead ? 1 : 0}/1 · 멤버 ${mem.length}/${BOSS_MEMBERS[1]}${L.costCap ? ` · ${cost}/${L.costCap}` : ''}</small></div>${stepBar}`;
@@ -161,32 +207,30 @@ function editDeck(slot) {
       body = `<div class="pvp-boss-tip">리더는 진영 칸의 수비대장이 돼요 (쓰러지지 않음 · 내 턴 3번 뒤 필드의 HR 이하 카드와 교체 가능)</div>
         <div class="pvp-sec">👑 리더</div><div class="pvp-pick pvp-lead">${th(lead)}</div><button class="pvp-ghost" data-step="leader">리더 바꾸기</button>
         <div class="pvp-sec">멤버 ${mem.length}</div><div class="pvp-pick">${mem.map(th).join('')}</div><button class="pvp-ghost" data-step="members">멤버 바꾸기</button>`;
-      acts = `${cur ? '<button data-del class="pvp-ghost">🗑</button>' : ''}<button data-ok class="pvp-go" ${bad ? 'disabled' : ''}>${bad ? esc(bad) : '저장'}</button>`;
+      acts = `${cur ? '<button data-del class="pvp-ghost">🗑</button>' : ''}<button class="pvp-ghost" data-step="members">← 멤버</button>`;
     } else {
       const list = step === 'leader' ? pool.filter(o => GUARD_GRADES.includes(card(o.id)?.grade)) : pool.filter(o => o.uid !== lead);
       body = `<div class="pvp-boss-tip">${step === 'leader' ? '① 리더(수비대장) 1장을 고르세요 · HR 이하만' : `② 멤버를 고르세요 · ${BOSS_MEMBERS[0]}~${BOSS_MEMBERS[1]}장`}</div>
         ${myDecks.length && step === 'members' ? `<div class="pvp-chips">${myDecks.map((d, i) => `<button data-load="${i}">🗂 ${esc(d.name)}</button>`).join('')}</div>` : ''}
-        ${list.length > 1 ? sortChips() : ''}<div class="pvp-pick">${sortPool(list).map(o => { const c = card(o.id), on = step === 'leader' ? o.uid === lead : mem.includes(o.uid), dis = usedElsewhere.has(o.id); return c ? `<button data-u="${o.uid}" class="${on ? 'on' : ''}" ${dis ? 'disabled' : ''}>${thumb({ ...c, level: o.level }, on ? `<b class="pvp-n">${step === 'leader' ? '👑' : mem.indexOf(o.uid) + 1}</b>` : '')}</button>` : ''; }).join('') || '<div class="pvp-empty">고를 수 있는 카드가 없어요</div>'}</div>`;
+        ${list.length > 1 ? sortChips() : ''}<div class="pvp-pick">${sortPool(list).map(o => pickBtn(o, step === 'leader' ? o.uid === lead : mem.includes(o.uid), `<b class="pvp-n">${step === 'leader' ? '👑' : mem.indexOf(o.uid) + 1}</b>`)).join('') || '<div class="pvp-empty">고를 수 있는 카드가 없어요</div>'}</div>`;
       acts = step === 'leader' ? `<button class="pvp-go" data-step="members" ${lead ? '' : 'disabled'}>다음: 멤버</button>` : `<button class="pvp-ghost" data-step="leader">← 리더</button><button class="pvp-go" data-step="confirm" ${mem.length ? '' : 'disabled'}>다음: 확인</button>`;
     }
-    m.querySelector('.pvp-panel').innerHTML = `${head}${body}<div class="pvp-acts">${acts}</div>`;
+    m.querySelector('.pvp-panel').innerHTML = `${head}${topRow(bad)}${body}<div class="pvp-acts">${acts}</div>`;
     m.querySelectorAll('[data-step]').forEach(b => b.onclick = () => { step = b.dataset.step; drawAll(); });
-    m.querySelectorAll('[data-u]').forEach(b => b.onclick = () => cardInfo(b.dataset.u));
+    bindPick(); bindTop();
     m.querySelectorAll('[data-load]').forEach(b => b.onclick = () => { const d = myDecks[+b.dataset.load]; const ok = new Set(pool.map(o => o.uid)); const ms = d.uids.filter(u => ok.has(u) && u !== lead).slice(0, BOSS_MEMBERS[1]); sel = [lead, ...ms]; if (ms.length < d.uids.length) toast('일부 제외'); drawAll(); });
     m.querySelectorAll('[data-srt]').forEach(b => b.onclick = () => { const sc = m.querySelector('.pvp-pick')?.scrollTop || 0; setPSort(b.dataset.srt); drawAll(); const g = m.querySelector('.pvp-pick'); if (g) g.scrollTop = sc; });
-    m.querySelector('[data-ok]')?.addEventListener('click', () => commit());
   };
   const drawNormal = () => {
     const cards = sel.map(u => card(owned.find(o => o.uid === u)?.id)).filter(Boolean), bad = deckCheck(cards, view.league, view.mode), cost = cards.reduce((a, c) => a + (+c.cost || 0), 0);
     m.querySelector('.pvp-panel').innerHTML = `<button class="pvp-x" data-x>✕</button>
       <div class="pvp-h">${MODES[view.mode].decks > 1 ? `덱 ${slot + 1}` : '🛡 덱'} <small>${sel.length}/5${L.costCap ? ` · ${cost}/${L.costCap}` : ''}</small></div>${MODES[view.mode].boss ? '<div class="pvp-boss-tip">👑 보스리그: 첫 번째로 고른 카드가 수비대장(HR 이하, 진영 칸 · 쓰러지지 않음). 상대 진영 HP를 0으로 만들면 승리</div>' : ''}
-      ${myDecks.length ? `<div class="pvp-chips">${myDecks.map((d, i) => `<button data-load="${i}">🗂 ${esc(d.name)}</button>`).join('')}</div>` : ''}
-      ${pool.length > 1 ? sortChips() : ''}<div class="pvp-pick">${sortPool(pool).map(o => { const c = card(o.id), on = sel.includes(o.uid), dis = usedElsewhere.has(o.id); return c ? `<button data-u="${o.uid}" class="${on ? 'on' : ''}" ${dis ? 'disabled' : ''}>${thumb({ ...c, level: o.level }, on ? `<b class="pvp-n">${sel.indexOf(o.uid) + 1}</b>` : '')}</button>` : ''; }).join('') || '<div class="pvp-empty">없음</div>'}</div>
-      <div class="pvp-acts">${cur ? '<button data-del class="pvp-ghost">🗑</button>' : ''}<button data-ok class="pvp-go" ${bad ? 'disabled' : ''}>${bad ? esc(bad) : '저장'}</button></div>`;
-    m.querySelectorAll('[data-u]').forEach(b => b.onclick = () => cardInfo(b.dataset.u));
+      ${topRow(bad)}${myDecks.length ? `<div class="pvp-chips">${myDecks.map((d, i) => `<button data-load="${i}">🗂 ${esc(d.name)}</button>`).join('')}</div>` : ''}
+      ${pool.length > 1 ? sortChips() : ''}<div class="pvp-pick">${sortPool(pool).map(o => pickBtn(o, sel.includes(o.uid), `<b class="pvp-n">${sel.indexOf(o.uid) + 1}</b>`)).join('') || '<div class="pvp-empty">없음</div>'}</div>
+      <div class="pvp-acts">${cur ? '<button data-del class="pvp-ghost">🗑</button>' : ''}</div>`;
+    bindPick(); bindTop();
     m.querySelectorAll('[data-load]').forEach(b => b.onclick = () => { const d = myDecks[+b.dataset.load]; const ok = new Set(pool.map(o => o.uid)); sel = d.uids.filter(u => ok.has(u)).slice(0, 5); if (sel.length < d.uids.length) toast('일부 제외'); drawAll(); });
     m.querySelectorAll('[data-srt]').forEach(b => b.onclick = () => { const sc = m.querySelector('.pvp-pick')?.scrollTop || 0; setPSort(b.dataset.srt); drawAll(); const g = m.querySelector('.pvp-pick'); if (g) g.scrollTop = sc; });
-    m.querySelector('[data-ok]').onclick = () => commit();
   };
   const commit = async () => { try { await rpc('pvp_set_deck', { p_league: view.league, p_mode: view.mode, p_slot: slot, p_uids: sel }); m.remove(); open(); } catch (e) { toast(errText(e)); } };
   const redraw = () => {
@@ -203,7 +247,8 @@ function editDeck(slot) {
       <div class="pvp-ci-name">${esc(c.name)} <small>${GS[c.grade] || ''} · Lv${o.level || 1}${L.costCap ? ` · 💰${c.cost}` : ''}</small></div>
       <div class="pvp-ci-st"><span>⚔️ ${sc.ATK}</span><span>❤️ ${sc.HP}</span><span>🛡 ${sc.DEF}</span></div>
       ${sk ? `<div class="pvp-ci-sk">${sk}</div>` : ''}
-      <div class="pvp-acts"><button class="pvp-ghost" data-x>취소</button><button class="pvp-go" data-pick ${full ? 'disabled' : ''}>${on ? (BOSS && step === 'leader' ? '리더 ✔' : '빼기') : full ? (BOSS ? `${BOSS_MEMBERS[1]}/${BOSS_MEMBERS[1]}` : '5/5') : BOSS && step === 'leader' ? '리더로' : '선택'}</button></div>`, 'pvp-sub pvp-top');
+      <div class="pvp-acts"><button class="pvp-ghost" data-x>취소</button><button class="pvp-ghost pvp-train" data-train>🌱 인재 육성</button><button class="pvp-go" data-pick ${full ? 'disabled' : ''}>${on ? (BOSS && step === 'leader' ? '리더 ✔' : '빼기') : full ? (BOSS ? `${BOSS_MEMBERS[1]}/${BOSS_MEMBERS[1]}` : '5/5') : BOSS && step === 'leader' ? '👑 리더로 배치' : '덱 배치'}</button></div>`, 'pvp-sub pvp-top');
+    z.querySelector('[data-train]').onclick = () => { z.remove(); train(uid); };
     z.querySelector('[data-pick]').onclick = () => {
       if (BOSS) {
         if (step === 'leader') { if (!on) { sel = [uid, ...sel.slice(1).filter(x => x !== uid)]; step = 'members'; } z.remove(); drawAll(); return; }

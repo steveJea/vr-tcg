@@ -17,7 +17,19 @@
 .pvp-cost{position:absolute;right:8px;bottom:4px;font-size:10px;color:#a1a1aa}
 .pvp-th{position:relative;width:46px;aspect-ratio:3/4;border-radius:8px;overflow:hidden;background:#000;border:2px solid #52525b;flex:none}
 .pvp-th img{width:100%;height:100%;object-fit:cover}.pvp-th i{position:absolute;left:0;right:0;bottom:0;font-size:9px;font-style:normal;text-align:center;background:rgba(0,0,0,.65);color:#fff}
-.pvp-th.g-R{border-color:#60a5fa}.pvp-th.g-HR{border-color:#a78bfa}.pvp-th.g-SR{border-color:#f472b6}.pvp-th.g-UR{border-color:#fbbf24}.pvp-th.g-MR{border-color:#f87171}
+/* 등급 색 (전 화면 공통): MR·LR 붉은색 · UR 금색 · SR 보라 · HR 파랑 · R 녹색 · N 회색 */
+.g-N{--gc:#9ca3af}.g-R{--gc:#84cc16}.g-HR{--gc:#3b82f6}.g-SR{--gc:#a855f7}.g-UR{--gc:#eab308}.g-MR,.g-LR{--gc:#ef4444}
+.pvp-th[class*="g-"]{border-color:var(--gc)}.pvp-th[class*="g-"] i{background:color-mix(in srgb,var(--gc) 70%,#000)}
+.pvp-pick button[class*="g-"],.pvp-slot[class*="g-"]{background:color-mix(in srgb,var(--gc) 28%,transparent);padding:3px}
+.pvp-fire{position:absolute;top:1px;right:1px;font-size:12px;line-height:1;filter:drop-shadow(0 0 2px #000)}
+.pvp-th .pvp-n{z-index:2}
+.pvp-deckbar{position:sticky;top:-1px;z-index:6;margin:6px -4px 8px;padding:8px;border-radius:12px;background:rgba(9,9,11,.96);border:1px solid #3f3f46;box-shadow:0 6px 14px rgba(0,0,0,.5)}
+.pvp-slots{display:flex;gap:4px}.pvp-slot{position:relative;flex:1;min-width:0;border-radius:9px}.pvp-slot .pvp-th{width:100%}
+.pvp-slot.empty{display:flex;align-items:center;justify-content:center;aspect-ratio:3/4;border:2px dashed #52525b;color:#71717a;font-weight:900}
+.pvp-dstat{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:6px}
+.pvp-pw{font-size:20px;font-weight:900;color:#fbbf24}.pvp-cst{font-size:18px;font-weight:900;color:#a7f3d0}.pvp-cst.over{color:#f87171}
+.pvp-dstat [data-auto]{margin-left:auto;padding:6px 10px;font-size:12px}.pvp-dstat [data-ok]{padding:8px 12px;font-size:13px}
+.pvp-train{color:#86efac}
 .pvp-n{position:absolute;top:2px;right:2px;background:#10b981;color:#000;border-radius:999px;font-size:10px;width:16px;height:16px;display:flex;align-items:center;justify-content:center}
 .pvp-acts{display:flex;gap:8px;margin-top:12px}
 .pvp-go{flex:1;padding:12px;border-radius:14px;background:linear-gradient(180deg,#fbbf24,#f59e0b);color:#111;font-weight:900;font-size:15px}.pvp-go:disabled{opacity:.4}
@@ -120,3 +132,5 @@
 .pvp-steps .on{background:#f5c96a;color:#111}.pvp-steps button:disabled{opacity:.4}
 .pvp-sec{margin:10px 0 4px;font-size:12px;font-weight:800;opacity:.8}.pvp-lead{justify-content:center}
 .pvp-empty{padding:16px;opacity:.6;font-size:13px;text-align:center}
+.pvp-panel .pvp-ghost{width:auto;min-width:52px;padding:0 12px;white-space:nowrap;font-size:14px;font-weight:800}.pvp-panel .pvp-ghost[data-del]{font-size:20px;padding:0}
+.pvp-dstat [data-auto]{white-space:nowrap;min-height:36px}
