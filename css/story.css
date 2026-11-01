@@ -1012,3 +1012,9 @@ body.story-media-on .story-dlg-skip { left: 4px; right: auto; top: calc(4px + en
 .story-cp-merge{display:inline-flex;align-items:center;gap:3px;padding:0 10px;border-radius:10px;background:#b91c1c;color:#fff;font-weight:800;font-size:12px}
 .story-cp-merge img{width:16px;height:16px}
 .story-extback{position:sticky;top:0;z-index:5;display:block;width:100%;margin-bottom:6px;padding:10px;border-radius:12px;background:#f59e0b;color:#111;font-weight:900}
+
+/* 아케이드 상대 정보 박스: 기본 접힘 (작은 칩), 탭하면 박스 열림 */
+#ai-hero .ai-fold-chip { display: none; }
+#game:not(.story-field):not(.view-battle) #ai-hero.folded { padding: 4px 9px; }
+#game:not(.story-field):not(.view-battle) #ai-hero.folded > :not(.ai-fold-chip) { display: none !important; }
+#game:not(.story-field):not(.view-battle) #ai-hero.folded .ai-fold-chip { display: block; font-size: 11px; font-weight: 700; color: #fca5a5; white-space: nowrap; }
