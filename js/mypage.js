@@ -127,7 +127,7 @@
     const s = ctx.story; if (!s) return '';
     const by = new Map(s.owned.map(o => [o.uid, o])), ds = (s.decks || []).filter(d => d.uids.length);
     if (!ds.length) return `<button type="button" class="mp-note mp-navlink" data-nav="decks">＋</button>`;
-    return ds.map(d => `<div class="mp-deck"><div class="mp-deck-h">${esc(d.name)}</div><div class="mp-row">${d.uids.map(u => by.get(u)).filter(Boolean).map(o => thumb(o, o.fav ? 'fav' : '')).join('')}</div></div>`).join('');
+    return ds.map(d => `<div class="mp-deck mp-deck-go" data-nav="decks" role="button" title="덱 설정"><div class="mp-deck-h">${esc(d.name)}</div><div class="mp-row">${d.uids.map(u => by.get(u)).filter(Boolean).map(o => thumb(o, o.fav ? 'fav' : '')).join('')}</div></div>`).join('');
   } });
   addSection({ id: 'fav', order: 45, title: '즐겨찾기', render: ctx => {
     const s = ctx.story; if (!s) return '';

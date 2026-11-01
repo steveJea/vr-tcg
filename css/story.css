@@ -993,3 +993,9 @@ body.story-media-on .story-dlg-skip { left: 4px; right: auto; top: calc(4px + en
 .hud-right{margin-left:auto;flex:none}
 /* 10회 뽑기 뒤집기: .story-tk-card div{overflow:hidden}(#73)이 .tk-in에도 걸려 3D가 평면화 → 180° 돌아도 뒷면이 보이던 문제 (최근 Chrome은 overflow≠visible이면 preserve-3d를 무시) */
 .tk-flip .tk-in{overflow:visible;padding:0;white-space:normal}
+
+/* 시련의 탑 층 목록: 줄 배경 투명 · 리더 썸네일 크게 (모바일 가독성: 글자 그림자) */
+.q-tower .q-row,.q-tower .q-row.boss{background:transparent;grid-template-columns:22px 52px 1fr auto 18px;text-shadow:0 1px 2px #000,0 0 4px rgba(0,0,0,.8)}
+.q-tower .q-row.on{background:rgba(127,29,29,.25)}
+.q-tower .q-face,.q-tower .q-row.boss .q-face{width:52px;height:52px}
+.q-tower .q-list,.q-tower[class*="q-tier-"] .q-list{background:transparent}

@@ -71,6 +71,7 @@
   const curTxt = (d, g) => [d ? `${I('cur_drink')}${n(d)}` : '', g ? `${I('cur_gold')}${n(g)}` : ''].filter(Boolean).join(' + ');
 
   // ---- 메인: 게시판 / 내 거래
+  let myView = 'live';   // 내 거래: 진행중 / 종료 탭
   async function open(tab = 'board') {
     document.querySelector('.tr-bg.main')?.remove();
     const m = pop('<div class="tr-load">불러오는 중…</div>', 'wide'); m.classList.add('main');
@@ -93,10 +94,16 @@
       } else {
         const r = await rpc('trade_my'); if (!r) return;
         const ST = { open: '열림', done: '거래 완료', cancelled: '내림', expired: '만료', pending: '대기', accepted: '수락됨', rejected: '거절됨', refunded: '환불됨' };
-        L.innerHTML = `<div class="tr-sec">내 판매 글</div>${r.listings.map(l => `<button class="tr-row" data-ml="${l.id}"><div class="tr-items">${itemsHTML(l.cards, l.gear)}</div>
-            <div class="tr-meta"><span class="tr-tag s-${l.status}">${ST[l.status]}</span>${l.status === 'open' ? `<span>${I('timer')}${left(l.expires_at)}</span><span>${I('trade_offer')}제안 ${l.offers.filter(o => o.status === 'pending').length}</span>` : ''}</div></button>`).join('') || '<div class="tr-empty">판매 글이 없어요</div>'}
-          <div class="tr-sec">내 제안</div>${r.offers.map(o => `<div class="tr-row"><div class="tr-items">${itemsHTML(o.cards, o.gear)}${curTxt(o.drinks, o.gold) ? `<div class="tr-cur">${curTxt(o.drinks, o.gold)}</div>` : ''}</div>
-            <div class="tr-meta"><span class="tr-tag s-${o.status}">${ST[o.status]}</span>${o.reoffer_at && new Date(o.reoffer_at) > Date.now() ? `<span>다시 제안: ${left(o.reoffer_at)} 뒤</span>` : ''}${o.status === 'pending' ? `<button class="tr-btn" data-oc="${o.id}">제안 취소</button>` : ''}</div></div>`).join('') || '<div class="tr-empty">제안한 글이 없어요</div>'}`;
+        // 진행중 = 판매 글 열림 · 제안 대기 / 종료 = 그 밖 (거래 완료·내림·만료·수락됨·거절됨·환불됨) → 회색
+        const liveL = l => l.status === 'open', liveO = o => o.status === 'pending', end = myView === 'end';
+        const Ls = r.listings.filter(l => liveL(l) !== end), Os = r.offers.filter(o => liveO(o) !== end);
+        const nEnd = r.listings.filter(l => !liveL(l)).length + r.offers.filter(o => !liveO(o)).length, nLive = r.listings.length + r.offers.length - nEnd;
+        L.innerHTML = `<div class="tr-tabs tr-subtabs"><button data-mv="live" class="${end ? '' : 'on'}">진행중 ${nLive}</button><button data-mv="end" class="${end ? 'on' : ''}">종료 ${nEnd}</button></div>
+          <div class="tr-sec">내 판매 글</div>${Ls.map(l => `<button class="tr-row ${liveL(l) ? '' : 'tr-ended'}" data-ml="${l.id}"><div class="tr-items">${itemsHTML(l.cards, l.gear)}</div>
+            <div class="tr-meta"><span class="tr-tag s-${l.status}">${ST[l.status]}</span>${l.status === 'open' ? `<span>${I('timer')}${left(l.expires_at)}</span><span>${I('trade_offer')}제안 ${l.offers.filter(o => o.status === 'pending').length}</span>` : ''}</div></button>`).join('') || `<div class="tr-empty">${end ? '끝난 판매 글이 없어요' : '진행 중인 판매 글이 없어요'}</div>`}
+          <div class="tr-sec">내 제안</div>${Os.map(o => `<div class="tr-row ${liveO(o) ? '' : 'tr-ended'}"><div class="tr-items">${itemsHTML(o.cards, o.gear)}${curTxt(o.drinks, o.gold) ? `<div class="tr-cur">${curTxt(o.drinks, o.gold)}</div>` : ''}</div>
+            <div class="tr-meta"><span class="tr-tag s-${o.status}">${ST[o.status]}</span>${o.reoffer_at && new Date(o.reoffer_at) > Date.now() ? `<span>다시 제안: ${left(o.reoffer_at)} 뒤</span>` : ''}${o.status === 'pending' ? `<button class="tr-btn" data-oc="${o.id}">제안 취소</button>` : ''}</div></div>`).join('') || `<div class="tr-empty">${end ? '끝난 제안이 없어요' : '진행 중인 제안이 없어요'}</div>`}`;
+        L.querySelectorAll('[data-mv]').forEach(b => b.onclick = () => { myView = b.dataset.mv; draw(tab); });
         L.querySelectorAll('[data-ml]').forEach(b => b.onclick = () => manage(+b.dataset.ml, () => draw(tab)));
         L.querySelectorAll('[data-oc]').forEach(b => b.onclick = async () => { if (!await ask('제안을 취소할까요?<br><small>보관된 인재·장비·재화가 바로 돌아와요</small>')) return;
           if (await rpc('trade_offer_cancel', { p_offer: +b.dataset.oc })) { toast('↩️ 제안을 취소했어요'); refreshMine(); draw(tab); } });

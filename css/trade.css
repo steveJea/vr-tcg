@@ -53,3 +53,7 @@
 .tr-cf-l { font-size: 12px; opacity: .75; font-weight: 700; }
 .tr-cf-items { flex-wrap: wrap; gap: 4px; max-height: 40vh; overflow-y: auto; }
 .tr-cf-none { font-size: 12px; opacity: .6; }
+
+/* 내 거래: 진행중/종료 탭 · 끝난 거래는 회색 */
+.tr-subtabs{margin:2px 0 4px}.tr-subtabs button{padding:5px;font-size:12px}
+.tr-row.tr-ended{opacity:.5;filter:grayscale(1)}
