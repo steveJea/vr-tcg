@@ -1,7 +1,7 @@
 // ===== 비동기 PvP 화면 =====
 // 서버: supabase/pvp.sql (pvp_status / pvp_set_deck / pvp_start / pvp_report / pvp_rankings). 전투 계산: js/pvp-core.js (양쪽 자동 AI)
 // 리그: 무제한(open) · HR 이하(hr, 코스트 150) / 모드: 1v1 · 3v3(3덱 2선승) / 하루 10회 · 주간 시즌(월 00:00 KST)
-import { LEAGUES, MODES, snapCard, deckCheck, runSeries, manualMatch, roundSeed } from './pvp-core.js';
+import { LEAGUES, MODES, snapCard, deckCheck, runSeries, manualMatch, roundSeed, GUARD_GRADES, BOSS_MEMBERS } from './pvp-core.js';
 const VIEW = () => window.TCG?.viewBattle;   // 스토리·탑과 같은 전투 화면 (js/game.js)
 import { modeToggle, bindMode, battleMode, playManual } from './manual-ui.js';
 const IMG = 'https://raw.githubusercontent.com/steveJea/vr-ideal-worldcup/main/img/bt_img/';
@@ -17,7 +17,7 @@ async function rpc(name, args) {
   const sb = window.VRCloud?.sb; if (!sb) throw new Error('offline');
   const { data, error } = await sb.rpc(name, args); if (error) throw new Error(error.message); return data;
 }
-const ERR = { 'guard grade': '첫 장(수비대장)은 HR 이하', 'no attempts left': '오늘 횟수 끝', 'not enough gem': '🔮 부족', 'deck required': '덱 필요', 'card not owned': '없는 인재', 'duplicate card': '중복', 'grade not allowed': 'HR 이하만', 'cost over 150': '코스트 150 초과', 'card used in another deck': '다른 덱에 있음', 'login required': '로그인 필요' };
+const ERR = { 'guard grade': '리더(수비대장)는 HR 이하', 'boss members': '멤버 1장 이상', 'no attempts left': '오늘 횟수 끝', 'not enough gem': '🔮 부족', 'deck required': '덱 필요', 'card not owned': '없는 인재', 'duplicate card': '중복', 'grade not allowed': 'HR 이하만', 'cost over 150': '코스트 150 초과', 'card used in another deck': '다른 덱에 있음', 'login required': '로그인 필요' };
 const errText = e => { const m = String(e?.message || e); const k = Object.keys(ERR).find(x => m.includes(x)); return k ? ERR[k] : m.slice(0, 40); };
 function toast(t) { const el = document.createElement('div'); el.className = 'pvp-toast'; el.textContent = t; document.body.appendChild(el); setTimeout(() => el.remove(), 1800); }
 
@@ -144,7 +144,39 @@ function editDeck(slot) {
   const usedElsewhere = new Set(st.decks.filter(d => d.slot !== slot).flatMap(d => d.uids.map(u => owned.find(o => o.uid === u)?.id)));
   const pool = [...new Map(owned.filter(o => !L.grades || L.grades.includes(card(o.id)?.grade)).sort((a, b) => b.power - a.power).map(o => [o.id, o])).values()];   // 같은 카드는 가장 센 1장
   const m = modal('pvp-edit', '', 'pvp-sub');
-  const draw = () => {
+  // 보스리그: ① 리더(수비대장 1장 · HR 이하) → ② 멤버(1~5장) → ③ 확인 (sel[0] = 리더)
+  const BOSS = !!MODES[view.mode].boss, gradeOf = u => card(owned.find(o => o.uid === u)?.id)?.grade;
+  const isGuard = u => GUARD_GRADES.includes(gradeOf(u));
+  let step = BOSS ? (sel.length && isGuard(sel[0]) ? (sel.length > 1 ? 'confirm' : 'members') : 'leader') : null;
+  if (BOSS && step === 'leader') sel = [];
+  const draw = () => BOSS ? drawBoss() : drawNormal();
+  const drawBoss = () => {
+    const cards = sel.map(u => card(owned.find(o => o.uid === u)?.id)).filter(Boolean), bad = deckCheck(cards, view.league, view.mode), cost = cards.reduce((a, c) => a + (+c.cost || 0), 0);
+    const lead = sel[0], mem = sel.slice(1), oOf = u => owned.find(o => o.uid === u);
+    const th = u => { const o = oOf(u), c = o && card(o.id); return c ? thumb({ ...c, level: o.level }) : ''; };
+    const stepBar = `<div class="pvp-steps">${[['leader', '① 리더'], ['members', '② 멤버'], ['confirm', '③ 확인']].map(([k, l]) => `<button data-step="${k}" class="${step === k ? 'on' : ''}" ${k !== 'leader' && !lead ? 'disabled' : k === 'confirm' && !mem.length ? 'disabled' : ''}>${l}</button>`).join('')}</div>`;
+    const head = `<button class="pvp-x" data-x>✕</button><div class="pvp-h">👑 보스리그 덱 <small>리더 ${lead ? 1 : 0}/1 · 멤버 ${mem.length}/${BOSS_MEMBERS[1]}${L.costCap ? ` · ${cost}/${L.costCap}` : ''}</small></div>${stepBar}`;
+    let body = '', acts = '';
+    if (step === 'confirm') {
+      body = `<div class="pvp-boss-tip">리더는 진영 칸의 수비대장이 돼요 (쓰러지지 않음 · 내 턴 3번 뒤 필드의 HR 이하 카드와 교체 가능)</div>
+        <div class="pvp-sec">👑 리더</div><div class="pvp-pick pvp-lead">${th(lead)}</div><button class="pvp-ghost" data-step="leader">리더 바꾸기</button>
+        <div class="pvp-sec">멤버 ${mem.length}</div><div class="pvp-pick">${mem.map(th).join('')}</div><button class="pvp-ghost" data-step="members">멤버 바꾸기</button>`;
+      acts = `${cur ? '<button data-del class="pvp-ghost">🗑</button>' : ''}<button data-ok class="pvp-go" ${bad ? 'disabled' : ''}>${bad ? esc(bad) : '저장'}</button>`;
+    } else {
+      const list = step === 'leader' ? pool.filter(o => GUARD_GRADES.includes(card(o.id)?.grade)) : pool.filter(o => o.uid !== lead);
+      body = `<div class="pvp-boss-tip">${step === 'leader' ? '① 리더(수비대장) 1장을 고르세요 · HR 이하만' : `② 멤버를 고르세요 · ${BOSS_MEMBERS[0]}~${BOSS_MEMBERS[1]}장`}</div>
+        ${myDecks.length && step === 'members' ? `<div class="pvp-chips">${myDecks.map((d, i) => `<button data-load="${i}">🗂 ${esc(d.name)}</button>`).join('')}</div>` : ''}
+        ${list.length > 1 ? sortChips() : ''}<div class="pvp-pick">${sortPool(list).map(o => { const c = card(o.id), on = step === 'leader' ? o.uid === lead : mem.includes(o.uid), dis = usedElsewhere.has(o.id); return c ? `<button data-u="${o.uid}" class="${on ? 'on' : ''}" ${dis ? 'disabled' : ''}>${thumb({ ...c, level: o.level }, on ? `<b class="pvp-n">${step === 'leader' ? '👑' : mem.indexOf(o.uid) + 1}</b>` : '')}</button>` : ''; }).join('') || '<div class="pvp-empty">고를 수 있는 카드가 없어요</div>'}</div>`;
+      acts = step === 'leader' ? `<button class="pvp-go" data-step="members" ${lead ? '' : 'disabled'}>다음: 멤버</button>` : `<button class="pvp-ghost" data-step="leader">← 리더</button><button class="pvp-go" data-step="confirm" ${mem.length ? '' : 'disabled'}>다음: 확인</button>`;
+    }
+    m.querySelector('.pvp-panel').innerHTML = `${head}${body}<div class="pvp-acts">${acts}</div>`;
+    m.querySelectorAll('[data-step]').forEach(b => b.onclick = () => { step = b.dataset.step; drawAll(); });
+    m.querySelectorAll('[data-u]').forEach(b => b.onclick = () => cardInfo(b.dataset.u));
+    m.querySelectorAll('[data-load]').forEach(b => b.onclick = () => { const d = myDecks[+b.dataset.load]; const ok = new Set(pool.map(o => o.uid)); const ms = d.uids.filter(u => ok.has(u) && u !== lead).slice(0, BOSS_MEMBERS[1]); sel = [lead, ...ms]; if (ms.length < d.uids.length) toast('일부 제외'); drawAll(); });
+    m.querySelectorAll('[data-srt]').forEach(b => b.onclick = () => { const sc = m.querySelector('.pvp-pick')?.scrollTop || 0; setPSort(b.dataset.srt); drawAll(); const g = m.querySelector('.pvp-pick'); if (g) g.scrollTop = sc; });
+    m.querySelector('[data-ok]')?.addEventListener('click', () => commit());
+  };
+  const drawNormal = () => {
     const cards = sel.map(u => card(owned.find(o => o.uid === u)?.id)).filter(Boolean), bad = deckCheck(cards, view.league, view.mode), cost = cards.reduce((a, c) => a + (+c.cost || 0), 0);
     m.querySelector('.pvp-panel').innerHTML = `<button class="pvp-x" data-x>✕</button>
       <div class="pvp-h">${MODES[view.mode].decks > 1 ? `덱 ${slot + 1}` : '🛡 덱'} <small>${sel.length}/5${L.costCap ? ` · ${cost}/${L.costCap}` : ''}</small></div>${MODES[view.mode].boss ? '<div class="pvp-boss-tip">👑 보스리그: 첫 번째로 고른 카드가 수비대장(HR 이하, 진영 칸 · 쓰러지지 않음). 상대 진영 HP를 0으로 만들면 승리</div>' : ''}
@@ -165,14 +197,20 @@ function editDeck(slot) {
   // 카드 정보 (확대) → 선택 / 빼기 / 취소. 5장이 되면 저장 여부를 묻는다
   const cardInfo = uid => {
     const o = owned.find(x => x.uid === uid), c = o && card(o.id); if (!c) return;
-    const on = sel.includes(uid), full = !on && sel.length >= 5, sc = snapCard(o, card) || c;
+    const on = BOSS ? (step === 'leader' ? sel[0] === uid : sel.slice(1).includes(uid)) : sel.includes(uid), full = !on && (BOSS ? step === 'members' && sel.length - 1 >= BOSS_MEMBERS[1] : sel.length >= 5), sc = snapCard(o, card) || c;
     const sk = window.TCG?.skillListHTML ? window.TCG.skillListHTML(c, o.level) : '';
     const z = modal('pvp-card', `<div class="pvp-ci g-${GS[c.grade] || 'N'}"><img src="${IMG}${c.id}.webp" alt="${esc(c.name)}"></div>
       <div class="pvp-ci-name">${esc(c.name)} <small>${GS[c.grade] || ''} · Lv${o.level || 1}${L.costCap ? ` · 💰${c.cost}` : ''}</small></div>
       <div class="pvp-ci-st"><span>⚔️ ${sc.ATK}</span><span>❤️ ${sc.HP}</span><span>🛡 ${sc.DEF}</span></div>
       ${sk ? `<div class="pvp-ci-sk">${sk}</div>` : ''}
-      <div class="pvp-acts"><button class="pvp-ghost" data-x>취소</button><button class="pvp-go" data-pick ${full ? 'disabled' : ''}>${on ? '빼기' : full ? '5/5' : '선택'}</button></div>`, 'pvp-sub pvp-top');
+      <div class="pvp-acts"><button class="pvp-ghost" data-x>취소</button><button class="pvp-go" data-pick ${full ? 'disabled' : ''}>${on ? (BOSS && step === 'leader' ? '리더 ✔' : '빼기') : full ? (BOSS ? `${BOSS_MEMBERS[1]}/${BOSS_MEMBERS[1]}` : '5/5') : BOSS && step === 'leader' ? '리더로' : '선택'}</button></div>`, 'pvp-sub pvp-top');
     z.querySelector('[data-pick]').onclick = () => {
+      if (BOSS) {
+        if (step === 'leader') { if (!on) { sel = [uid, ...sel.slice(1).filter(x => x !== uid)]; step = 'members'; } z.remove(); drawAll(); return; }
+        sel = on ? sel.filter(x => x !== uid) : [...sel, uid]; z.remove();
+        if (!on && sel.length - 1 >= BOSS_MEMBERS[1]) step = 'confirm';   // 멤버 5장 = 확인 화면으로
+        drawAll(); return;
+      }
       sel = on ? sel.filter(x => x !== uid) : [...sel, uid]; z.remove(); drawAll();
       if (!on && sel.length === 5 && !deckCheck(sel.map(u => card(owned.find(x => x.uid === u)?.id)).filter(Boolean), view.league, view.mode)) askSave();
     };

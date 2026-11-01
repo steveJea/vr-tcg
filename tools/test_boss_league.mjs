@@ -18,4 +18,28 @@ ok(deckCheck([byId(pick('SUPER RARE')[0].id)], 'open', 'boss').includes('HR'), '
 let same = 0; for (let i = 1; i <= 10; i++) { const s = manualMatch(deck(0, 30), deck(2, 30), i, null, { boss: true }); let x = s.next(); while (!x.done) x = s.next(x.value?.ask ? { k: 'auto' } : undefined);
   same += JSON.stringify(runMatch(deck(0, 30), deck(2, 30), i, null, s.acts, { boss: true })) === JSON.stringify(x.value); }
 ok(same === 10, `수동 기록 재생 일치 (${same}/10)`);
+
+// 리더 1 + 멤버 1~5 (10/31)
+const HR = pick('HIGH RARE'), SR = pick('SUPER RARE');
+ok(deckCheck([HR[0]], 'open', 'boss').includes('멤버'), 'HR 리더 1장만 → 거절 (멤버 1장 이상)');
+ok(deckCheck([HR[0], ...SR.slice(0, 5)], 'open', 'boss') === '', '리더 + 멤버 5장 = 통과');
+ok(deckCheck([HR[0], ...SR.slice(0, 6)], 'open', 'boss').includes('최대'), '멤버 6장 → 거절');
+ok(deckCheck([HR[0], SR[0], SR[1]], 'open', '1v1') === '' && deckCheck([...SR.slice(0, 6)], 'open', '1v1') === '1~5장', '1v1 규칙 그대로');
+// 수비대장 교체: 내 턴 3번 뒤 · HR 이하 · 턴 소모 · 기록 재생 일치
+{ const dA = [HR[3], HR[4], SR[0]].map(c => snapCard({ id: c.id, level: 60 }, byId)), dB = deck(1, 1);
+  let swapped = 0, early = 0;
+  for (let seed = 1; seed <= 8; seed++) {
+    const s = manualMatch(dA, dB, seed, null, { boss: true }); let x = s.next(), tried = 0;
+    while (!x.done) {
+      if (x.value?.ask) { const { A, A0 } = x.value, g = A.field.find(u => u.guard), fi = A0.findIndex(u => u !== g && !u.guard && A.field.includes(u) && u.hp > 0 && ['NORMAL', 'RARE', 'HIGH RARE'].includes(u.card.grade)), f = A0[fi];
+        if (!tried && g && f) { const before = A.ownTurns; x = s.next({ k: 'swap', g: A0.indexOf(g), f: fi });
+          if (x.value?.ask && x.value.A === A && A.ownTurns === before) { early++; x = s.next({ k: 'auto' }); continue; }   // 3턴 전: 거절 → 다시 물음
+          tried = 1; swapped += A.field.find(u => u.guard) === f ? 1 : 0; continue; }
+        x = s.next({ k: 'auto' }); }
+      else x = s.next();
+    }
+    ok(JSON.stringify(runMatch(dA, dB, seed, null, s.acts, { boss: true })) === JSON.stringify(x.value), `교체 기록 재생 일치 seed ${seed}`);
+  }
+  ok(early > 0, `3턴 전 교체 거절 (${early}회)`); ok(swapped > 0, `교체 성공 (${swapped}판)`);
+}
 console.log(fails ? `${fails} FAIL` : 'ALL PASS'); process.exit(fails ? 1 : 0);

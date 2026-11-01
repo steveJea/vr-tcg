@@ -365,10 +365,14 @@ function placeGuard(who, card) {
   playSe(2); render(); onEnter(who, u);
   return { ok: true };
 }
+/** PvP 보스리그 전투 화면 (엔진 pvp-core 가 진행 · 진영 HP 있음) */
+const bossView = () => !!(S?.view && !S.ai?.noBase);
+/** 교체할 수 있는 카드(HR 이하 · 살아 있음)가 필드에 있는지 — 없으면 교체 안내를 숨김 */
+const guardSwapPool = p => p.field.filter(f => !f.guard && f.hp > 0 && GUARD_GRADES.has((f.base || f.card).grade));
 /** 교체까지 남은 내 턴 수 (0 = 지금 가능) */
 const guardWait = (g, p) => Math.max(0, GUARD_SWAP_TURNS - ((p.ownTurns || 0) - (g.guardAt || 0)));
 function canSwapGuard(p, g, f) {
-  if (!S?.guardMode || !g?.guard || !f || f.guard || !p.field.includes(f)) return { ok: false, reason: '' };
+  if (!(S?.guardMode || bossView()) || !g?.guard || !f || f.guard || f.hp <= 0 || !p.field.includes(f)) return { ok: false, reason: '' };
   const w = guardWait(g, p); if (w) return { ok: false, reason: `수비대장 교체는 ${w}턴 뒤에 가능해요` };
   if (!GUARD_GRADES.has((f.base || f.card).grade)) return { ok: false, reason: '수비대장은 HR 이하만 가능' };
   if (f.st?.para) return { ok: false, reason: '마비 상태에서는 교체할 수 없어요' };
@@ -377,6 +381,7 @@ function canSwapGuard(p, g, f) {
 /** 수비대장 ↔ 필드 카드 교체: 턴 소모. 빠진 수비대장은 그 자리(필드)로 */
 function swapGuard(who, g, f) {
   const p = S[who], r = canSwapGuard(p, g, f); if (!r.ok) return r;
+  if (S.view) { if (who === 'me' && S.view.ask) S.view.ask({ k: 'swap', g: S.view.A0.indexOf(g), f: S.view.A0.indexOf(f) }); return { ok: true, view: true }; }   // 보스리그: 엔진에 입력만 (엔진이 교체 후 턴 종료)
   const i = p.field.indexOf(f), j = p.field.indexOf(g);
   p.field[i] = g; p.field[j] = f;
   clearGuard(g); setGuard(f, p); refreshAll(p);
@@ -615,8 +620,11 @@ async function lunge(el, targetEl) {
 
 /** 연출(돌진→충돌→복귀) 후 상태 반영. 전투 결과는 resolveAttack 그대로라 로직은 동일.
  *  예외가 나도 finally에서 연출·busy를 되돌려 게임이 멈추지 않게 함 */
+/** 공격 거절 사유를 짧게 (보스리그 안내) */
+const rejectText = r => /첫 \d+턴/.test(r || '') ? `첫 ${RULES.HERO_LOCK_TURNS}턴 진영 공격 불가` : /장 이상 있으면/.test(r || '') ? `카드가 ${RULES.HERO_GUARD_FIELD}장 이상이면 카드만 공격` : (r || '지금은 공격할 수 없어요');
 async function attack(who, unit, target, fromBatch = false) {
-  if (S?.view) { if (who === 'me' && S.view.ask && (target || !S.ai.noBase)) S.view.ask({ k: 'atk', i: S.view.A0.indexOf(unit), t: target ? S.view.B0.indexOf(target) : -1 }); return; }   // target 없음 = 진영 공격 (보스리그)
+  if (S?.view) { if (who === 'me' && S.view.ask && (target || !S.ai.noBase) && !canTarget(S.me, S.ai, target, unit)) { const r = rejectText(attackTargets(S.me, S.ai, unit).reason); log(r, 'text-red-400'); floatText(r, 'text-red-400 text-sm', 'ai'); return; }
+    if (who === 'me' && S.view.ask && (target || !S.ai.noBase)) S.view.ask({ k: 'atk', i: S.view.A0.indexOf(unit), t: target ? S.view.B0.indexOf(target) : -1 }); return; }   // target 없음 = 진영 공격 (보스리그)
   const o = opp(who), p = S[who];
   if (!unit.canAttack || S.over) return;
   if (!fromBatch && who === 'me' && S.busy) return;
@@ -1242,7 +1250,7 @@ function onEngine(e) {
     case 'passive': log(`${e.unit.owner.name}: ${nm(e.unit)} ✨[${e.name}]${e.text ? ' — ' + e.text : ''}`, 'text-fuchsia-200'); if (!FX_OFF()) dmgNumber(uEl(e.unit), `✨${e.name}`, '#f0abfc'); if (!CUT_OFF()) passiveCutIn(e.unit, e.name); break;
     case 'dmg': if (e.tick) { const el = uEl(e.unit); tickFx(el, e.tick); shake(el, { dmg: 0 }); dmgNumber(el, `-${fmt(e.dmg)}`, ({ curse: '#c084fc', bleed: '#f87171', burn: '#fb923c' })[e.tick] || '#a3e635', false, 'fx-dmg-tick'); break; }   // 지속 피해 틱: 피 대신 독·저주 연출
     { playSe(1); const el = uEl(e.unit); shake(el, { dmg: e.dmg, crit: critSet.has(e.unit), big: isBigHit() }); if (typeof e.dmg !== 'number' || e.dmg > 0) hitFx(el, 'blood'); if (typeof e.dmg === 'number') critNum(el, e.dmg, e.unit); else dmgNumber(el, e.dmg); break; }
-    case 'hero': { if (e.dmg > 0) playSe(3); const el = heroEl(whoOf(e.p)); shake(el, { dmg: e.dmg, big: isBigHit() }); if (e.dmg > 0) hitFx(el, 'blood'); dmgNumber(el, `-${fmt(e.dmg)}`, e.kind === 'self' ? '#fca5a5' : undefined); log(`${e.p.name} 본진 ${fmt(e.dmg)} 피해${e.kind === 'self' ? ' (자기 공격)' : ''}`, 'text-orange-300'); break; }
+    case 'hero': { if (e.dmg > 0) playSe(3); const el = heroEl(whoOf(e.p)); if (bossView() && e.dmg > 0) floatText(`진영 -${fmt(e.dmg)}`, 'text-red-300 text-3xl font-black', whoOf(e.p)); shake(el, { dmg: e.dmg, big: isBigHit() }); if (e.dmg > 0) hitFx(el, 'blood'); dmgNumber(el, `-${fmt(e.dmg)}`, e.kind === 'self' ? '#fca5a5' : undefined); log(`${e.p.name} 본진 ${fmt(e.dmg)} 피해${e.kind === 'self' ? ' (자기 공격)' : ''}`, 'text-orange-300'); break; }
     case 'heal': { const el = uEl(e.unit); if (e.why === '재생') tickFx(el, 'regen'); dmgNumber(el, `+${fmt(e.amt)}`, e.why === '재생' ? '#fde68a' : '#6ee7b7'); break; }
     case 'heroHeal': dmgNumber(heroEl(whoOf(e.p)), `+${fmt(e.amt)}`, '#6ee7b7'); log(`${e.p.name} 본진 HP +${fmt(e.amt)}`, 'text-emerald-300'); break;
     case 'leaderDown': {
@@ -1503,7 +1511,7 @@ function render() {
     const nb = document.createElement('div'), nbb = document.createElement('div'), binds = [];
     if (bossBox) bossBox.classList.toggle('hidden', !S.guardMode && !S[who].field.some(u => u.undying));
     { const slot = !!bossBox && !bossBox.classList.contains('hidden') && !S[who].noBase;   // 진영 칸이 진영 HP를 보여 주면 정보 상자의 진영 HP는 숨김 (중복 제거)
-      $(`${who}-hp`).classList.toggle('hidden', S[who].noBase || slot); $(`${who}-hpbar`).parentElement.classList.toggle('hidden', S[who].noBase || slot); }
+      $(`${who}-hp`).classList.toggle('hidden', S[who].noBase || (slot && !bossView())); $(`${who}-hpbar`).parentElement.classList.toggle('hidden', S[who].noBase || (slot && !bossView())); }
     if (bossBox && S.guardMode && !guardOf(S[who])) nbb.innerHTML = `<div class="base-unit base-empty"><div class="base-ring"><div class="base-img base-ph">${ic('def', { alt: '' })}</div></div><div class="base-name">${who === 'me' ? '수비대장 비어 있음' : '수비대장 없음'}</div>${S[who].noBase ? '' : baseHpBar(S[who])}</div>`;
     if (!S[who].field.some(u => !u.undying)) nb.innerHTML = '<div class="text-zinc-600 text-xs self-center">빈 필드</div>';
     S[who].field.forEach(u => {
@@ -1537,7 +1545,7 @@ function render() {
           `<div class="base-ring relative ${rarityOf(u.card).cls}" data-grade="${rarityOf(u.card).short}"><img src="${IMG}${u.card.id}.webp" data-id="${u.card.id}" class="card-img base-img" alt="${u.card.name}">${statusDecor(u)}` +
           (sts.length ? `<div class="status-icons base-sts">${sts.map(x => { const big = isStatusFxKind(x.kind), au = big && statusIconUrl(x.kind); return `<span title="${x.title}"${big ? ` class="st-big ${x.kind}"` : ''}>${au ? `<img class="st-asset" src="${au}" alt="">` : icOf(x)}</span>`; }).join('')}</div>` : '') +
           `<div class="lv-badge base-lv">Lv${u.level}</div></div>` +
-          `<div class="base-name">${u.card.name}</div>` + (u.guard && who === 'me' ? `<div class="base-tag">${gw ? `교체 ${gw}턴 뒤` : '교체 가능'}${ready ? ' · 공격 가능' : ''}</div>` : '') +
+          `<div class="base-name">${u.card.name}</div>` + (u.guard && who === 'me' ? `<div class="base-tag">${guardSwapPool(S[who]).length ? (gw ? `교체 ${gw}턴 뒤` : '교체 가능') + (ready ? ' · ' : '') : ''}${ready ? '공격 가능' : ''}</div>` : '') +
           (S[who].noBase ? `<div class="hp-bar h-1.5 bg-white/10 rounded-full mt-0.5 overflow-hidden" title="HP ${u.hp}/${u.maxHp}"><div class="hp-fill h-full bg-red-500" data-to="${pct}" style="width:${hpPrev.get(String(u.uid)) ?? pct}%"></div></div>` : baseHpBar(S[who])) +   // 진영 칸 = 진영: 수비대장 HP 대신 진영 HP
           `<div class="mp-bar h-1.5 bg-white/10 rounded-full mt-0.5 overflow-hidden" title="MP ${u.mp}/${u.maxMp} (+${u.mpRegen}/턴)"><div class="h-full bg-blue-500" style="width:${u.maxMp ? Math.min(100, u.mp / u.maxMp * 100) : 0}%"></div></div>`;
         nbb.appendChild(w);
@@ -1624,7 +1632,7 @@ function onUnitClick(who, u) {
     const cur = selected != null ? S.me.field.find(x => x.uid === selected) : null;
     if (myTurn && cur && cur !== u && (cur.guard || u.guard)) {   // 수비대장 ↔ 필드 카드: 교체 (턴 소모)
       const g = cur.guard ? cur : u, f = cur.guard ? u : cur, r = swapGuard('me', g, f);
-      selected = null; if (r.ok) { endTurn(); return; } if (r.reason) floatText(r.reason, 'text-red-300 text-sm', 'me'); render(); return;
+      selected = null; if (r.ok) { if (!r.view) endTurn(); return; } if (r.reason) floatText(r.reason, 'text-red-300 text-sm', 'me'); render(); return;
     }
     if (myTurn && u.guard && selected !== u.uid) { selected = u.uid; render(); return; }
     if (myTurn && cur && cur !== u && !u.undying) { if (swapField(S.me, cur, u)) { selected = null; playSe(4); render(); TUT('swapped'); return; } }
@@ -1995,7 +2003,7 @@ async function viewBattle0({ session, aiName = '상대', bg = 'normal', manual =
   for (const w of ['me', 'ai']) { $(`${w}-hp`).classList.toggle('hidden', S[w].noBase); $(`${w}-hpbar`).parentElement.classList.toggle('hidden', S[w].noBase); }   // 보스리그: 진영 HP 표시
   selected = null; $('log').innerHTML = ''; fxQueue.length = 0; vidGate = Promise.resolve(); hpPrev.clear();
   $('end-screen').classList.add('hidden'); $('start-screen').classList.add('hidden'); $('game').classList.remove('hidden');
-  $('game').classList.add('story-field', 'view-battle'); $('game').classList.toggle('view-raid', !!raid);
+  $('game').classList.add('story-field', 'view-battle'); $('game').classList.toggle('view-raid', !!raid); $('game').classList.toggle('view-boss', !S.ai.noBase);
   // ---- 균열 토벌: 보스 배너 (그림 · 단계 · 공유 HP 바 · 이번 판 피해 · 남은 시간) ----
   let RB = null, tick = 0;
   const raidPaint = (dmg, d = 0) => {
@@ -2048,7 +2056,7 @@ async function viewBattle0({ session, aiName = '상대', bg = 'normal', manual =
           }
           critSet.clear(); if (raid) { bossNum(a.d, a.weak); S.vDmg = v.damage; raidPaint(v.damage, a.d); }
           await withTimeout(hit?.back?.() ?? Promise.resolve(), 750); resetAnim(aEl); await play(late, 220); render(); await withTimeout(fadeDying(), 750); if (who === 'me') TUT('attack_done'); await sleep(AI_DELAY()); await passiveWait();
-        } else { await play(evs, 160); if (raid && a.d) { bossNum(a.d); S.vDmg = v.damage; raidPaint(v.damage, a.d); } render(); }
+        } else { if (a.k === 'swap') { log(`${who === 'me' ? '나' : aiName}: 수비대장 교체 ${a.t?.card?.name} → ${a.u?.card?.name} (턴 종료)`, 'text-amber-300'); playSe(4); } await play(evs, 160); if (raid && a.d) { bossNum(a.d); S.vDmg = v.damage; raidPaint(v.damage, a.d); } render(); }
         x = session.next(); continue;
       }
       if (v.ask) {
@@ -2070,7 +2078,7 @@ async function viewBattle0({ session, aiName = '상대', bg = 'normal', manual =
     return x.value;
   } finally {
     clearInterval(tick); RB?.remove();
-    $('game').classList.remove('view-battle', 'view-raid', 'story-field'); $('game').classList.add('hidden');
+    $('game').classList.remove('view-battle', 'view-raid', 'view-boss', 'story-field'); $('game').classList.add('hidden');
     hid.forEach(e => { e.style.display = e.dataset.vbHide || ''; delete e.dataset.vbHide; });
     if (hubWasOn) $('start-screen').classList.remove('hidden');
     S = null; selected = null;

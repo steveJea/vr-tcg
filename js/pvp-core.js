@@ -9,9 +9,14 @@ import { autoNext, noteUsed } from './auto-ai.js';
 export const MAX_TURNS = 40;
 export const LEAGUES = { open: { label: '무제한', grades: null, costCap: null }, hr: { label: 'HR↓', grades: ['NORMAL', 'RARE', 'HIGH RARE'], costCap: 150 } };
 export const MODES = { '1v1': { decks: 1, need: 1 }, '3v3': { decks: 3, need: 2 }, 'boss': { decks: 1, need: 1, boss: true, label: '보스리그' } };
-// 보스리그: 양쪽 진영 HP 있음, 덱 첫 장 = 수비대장(HR 이하, 진영 칸 · 쓰러지지 않음). 상대 진영 HP 0 = 승리
+// 보스리그: 양쪽 진영 HP 있음, 덱 첫 장 = 수비대장(리더 1장 · HR 이하, 진영 칸 · 쓰러지지 않음) + 멤버 1~5장. 상대 진영 HP 0 = 승리
+// 수비대장 교체: 내 턴 GUARD_SWAP_TURNS 번이 지나면 필드의 HR 이하 카드와 교체 (턴 소모) · 입력 { k:'swap', g, f } (A0 번호)
 export const BOSS_BASE_HP = 800;
 export const GUARD_GRADES = ['NORMAL', 'RARE', 'HIGH RARE'];
+export const BOSS_MEMBERS = [1, 5];   // 보스리그 멤버 장수 (리더 제외)
+export const GUARD_SWAP = 3;   // rules.js GUARD_SWAP_TURNS 와 같은 값 (내 턴 기준)
+const guardWaitOf = (g, p) => Math.max(0, GUARD_SWAP - ((p.ownTurns || 0) - (g.guardAt || 0)));
+export { guardWaitOf };
 // 스토리 카드 스탯 규칙 (js/story.js boosted 와 같음)
 const LV_RATE = { 'NORMAL': 0.01, 'RARE': 0.02, 'HIGH RARE': 0.03, 'SUPER RARE': 0.04, 'ULTRA RARE': 0.05, 'MYTHIC RARE': 0.06, 'LEGENDARY RARE': 0.05 };
 const PER_PT = { ATK: 1, HP: 5, DEF: 1 }, PT_FULL = 5;
@@ -27,8 +32,12 @@ export function snapCard(o, cardById, mode = 'pvp') {   // mode: pvp·war(장비
 /** 덱 규칙 검사 (서버 _pvp_check 와 같은 규칙, 화면 안내용) */
 export function deckCheck(cards, league, mode = null) {
   const L = LEAGUES[league]; if (!L) return '리그';
-  if (MODES[mode]?.boss && cards.length && !GUARD_GRADES.includes(cards[0].grade)) return '첫 장(수비대장)은 HR 이하';
-  if (!cards.length || cards.length > 5) return '1~5장';
+  if (MODES[mode]?.boss) {
+    if (!cards.length) return '리더를 고르세요';
+    if (!GUARD_GRADES.includes(cards[0].grade)) return '리더(수비대장)는 HR 이하';
+    if (cards.length - 1 < BOSS_MEMBERS[0]) return `멤버 ${BOSS_MEMBERS[0]}장 이상`;
+    if (cards.length - 1 > BOSS_MEMBERS[1]) return `멤버 최대 ${BOSS_MEMBERS[1]}장`;
+  } else if (!cards.length || cards.length > 5) return '1~5장';
   if (new Set(cards.map(c => String(c.id))).size !== cards.length) return '중복';
   if (L.grades && cards.some(c => !L.grades.includes(c.grade))) return 'HR 이하만';
   if (L.costCap && cards.reduce((a, c) => a + (+c.cost || 0), 0) > L.costCap) return `코스트 ${L.costCap} 초과`;
@@ -54,6 +63,12 @@ export function replay(st, acts) {
 export function resolveAct(inp, me, op, A0, B0, turn, autoPick) {
   if (!inp || inp.k === 'end') return null;
   if (inp.k === 'auto') { const a = autoPick(me, op, turn); return a ? { ...a, rec: a.kind === 'skill' ? { k: 'skill', i: A0.indexOf(a.u), s: a.s.name } : { k: 'atk', i: A0.indexOf(a.u), t: a.t ? B0.indexOf(a.t) : -1 } } : { none: true }; }
+  if (inp.k === 'swap') {   // 수비대장 교체 (보스리그 · 턴 소모)
+    const g = A0[inp.g | 0], f = A0[inp.f | 0];
+    if (!g?.guard || !f || f === g || f.guard || f.hp <= 0 || !me.field.includes(g) || !me.field.includes(f)) return false;
+    if (guardWaitOf(g, me) || !GUARD_GRADES.includes((f.base || f.card).grade) || f.st?.para) return false;
+    return { kind: 'swap', g, f, rec: { k: 'swap', g: inp.g | 0, f: inp.f | 0 } };
+  }
   const u = A0[inp.i | 0]; if (!u || u.hp <= 0 || !me.field.includes(u) || !u.canAttack) return false;
   if (inp.k === 'skill') { const s = u.sk.find(x => x.name === inp.s); if (!s || !skillState(u, s).ok) return false; return { kind: 'skill', u, s, rec: { k: 'skill', i: inp.i | 0, s: s.name } }; }
   if (inp.k === 'atk' && (inp.t | 0) === -1) { if (!attackTargets(me, op, u).hero) return false; return { kind: 'attack', u, t: null, rec: { k: 'atk', i: inp.i | 0, t: -1 } }; }   // 진영 공격 (보스리그)
@@ -84,6 +99,7 @@ export function* matchGen(deckA, deckB, r, rec = null, manual = false, acts = nu
     const out = (w, t) => opt.out ? opt.out(A, B, !!w, t, aFirst) : ({ win: !!w, turns: t, aLeft: live(A), bLeft: live(B), aFirst });
     for (let t = 0; t < MAXT; t++) {
       const cur = (t % 2 === 0) === aFirst ? A : B, op = cur.foe;
+      cur.ownTurns = (cur.ownTurns || 0) + 1;   // 수비대장 교체 대기 (내 턴 기준 · 아케이드 startTurn 과 같음)
       clearBuff(op); refillMana(cur); noMana(); cur.field.forEach(u => u.canAttack = true); turnStart(cur);
       push({ k: 'turn', side: cur === A ? 'A' : 'B', t: t + 1 });
       if (view) yield { anim: { k: 'turn', side: cur === A ? 'A' : 'B', t: t + 1 }, A, B, A0, B0 };
@@ -100,6 +116,14 @@ export function* matchGen(deckA, deckB, r, rec = null, manual = false, acts = nu
           if (a.none) { acts?.push({ k: 'end' }); break; }
           acts?.push(a.rec);
         } else { a = autoNext(cur, op, turn); if (!a) break; }
+        if (a.kind === 'swap') {   // 자리 바꾸고 새 수비대장 지정 → 턴 종료
+          const i = cur.field.indexOf(a.f), j = cur.field.indexOf(a.g); cur.field[i] = a.g; cur.field[j] = a.f;
+          a.g.guard = a.g.boss = a.g.undying = false; delete a.g.guardAt;
+          a.f.guard = a.f.boss = a.f.undying = true; a.f.guardAt = cur.ownTurns || 0; if (a.f.hp < 1) a.f.hp = 1;
+          refreshAll(cur); push({ k: 'swap', side: 'A', u: a.f.uid, to: a.g.uid });
+          if (view) yield { anim: { k: 'swap', side: 'A', u: a.f, t: a.g }, A, B, A0, B0 };
+          break;
+        }
         let hits = null;
         if (a.kind === 'skill') { noteUsed(turn, a.s); useSkill(a.u, a.s); } else if (a.t || BOSS) hits = resolveAttack(cur, op, a.u, a.t || null);
         noMana();
