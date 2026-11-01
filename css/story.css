@@ -1018,3 +1018,11 @@ body.story-media-on .story-dlg-skip { left: 4px; right: auto; top: calc(4px + en
 #game:not(.story-field):not(.view-battle) #ai-hero.folded { padding: 4px 9px; }
 #game:not(.story-field):not(.view-battle) #ai-hero.folded > :not(.ai-fold-chip) { display: none !important; }
 #game:not(.story-field):not(.view-battle) #ai-hero.folded .ai-fold-chip { display: block; font-size: 11px; font-weight: 700; color: #fca5a5; white-space: nowrap; }
+
+/* 출전 고르기 타일: 이름 없이 레벨·코스트 한 줄 */
+.story-pick-meta{display:flex;justify-content:center;align-items:center;gap:6px;margin-top:3px;font-size:11px;font-weight:800;color:#d4d4d8;white-space:nowrap}
+.story-pick-meta img{width:12px;height:12px;vertical-align:middle}
+.story-pick-cost{color:#7dd3fc}
+.story-skn-dot{padding:1px 5px}
+.story-pick-stars .ps-y{color:#facc15}
+.story-pick-stars .ps-ex{color:#ef4444}
