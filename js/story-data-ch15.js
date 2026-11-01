@@ -73,12 +73,14 @@ window.STORY_DATA.chapters.push({
      {
       "speaker": "윤진아",
       "text": "(아빠...또 아빠 찾으시네.)",
-      "expr": "슬픔"
+      "expr": "슬픔",
+      "slug": "yun_jina_school"
      },
      {
       "speaker": "윤진아",
       "text": "할머니, 저 학교 다녀올게요! 밥은 냉장고에 있어요. 꼭 데워 드세요~ 흥흥~",
-      "expr": "기쁨"
+      "expr": "기쁨",
+      "slug": "yun_jina_school"
      },
      {
       "speaker": "내레이션",
@@ -95,7 +97,8 @@ window.STORY_DATA.chapters.push({
      {
       "speaker": "윤진아",
       "text": "에이~ 저 진짜 돈 없어요. 대신 웃어 드릴까요? 헤헤.",
-      "expr": "기쁨"
+      "expr": "기쁨",
+      "slug": "yun_jina_school"
      },
      {
       "speaker": "불량배-L",
@@ -132,12 +135,14 @@ window.STORY_DATA.chapters.push({
     {
      "speaker": "윤진아",
      "text": "(지각하면 안 되는데...오늘 윤이가 수학 알려 주기로 했는데.)",
-     "expr": "슬픔"
+     "expr": "슬픔",
+     "slug": "yun_jina_school"
     },
     {
      "speaker": "윤진아",
      "text": "...죄송한데요, 저 지금 진짜 바빠요!",
-     "expr": "분노"
+     "expr": "분노",
+     "slug": "yun_jina_school"
     },
     {
      "speaker": "내레이션",
@@ -167,7 +172,8 @@ window.STORY_DATA.chapters.push({
     {
      "speaker": "윤진아",
      "text": "저기요! 고맙습니다! 진짜 진짜 고마워요! 저 윤진아예요. 다음에 꼭 바나나우유 살게요~ 흥흥~",
-     "expr": "기쁨"
+     "expr": "기쁨",
+     "slug": "yun_jina_school"
     },
     {
      "speaker": "최국선",
@@ -400,7 +406,8 @@ window.STORY_DATA.chapters.push({
      {
       "speaker": "윤진아",
       "text": "ㅋㅋㅋ 세린이 천재다 진짜~ 흥흥~ 아 맞다, 나 오늘 아침에 노란머리 남자애가 구해 줬다?",
-      "expr": "기쁨"
+      "expr": "기쁨",
+      "slug": "yun_jina_school"
      },
      {
       "speaker": "고세린",
@@ -410,7 +417,8 @@ window.STORY_DATA.chapters.push({
      {
       "speaker": "윤진아",
       "text": "헤헤...근데 착하던데? 얼굴 빨개져서 도망갔어.",
-      "expr": "기쁨"
+      "expr": "기쁨",
+      "slug": "yun_jina_school"
      },
      {
       "speaker": "조윤이",
@@ -420,7 +428,8 @@ window.STORY_DATA.chapters.push({
      {
       "speaker": "윤진아",
       "text": "당연하지! 나 진짜 많이 먹었어. 배 터질 것 같아~",
-      "expr": "기쁨"
+      "expr": "기쁨",
+      "slug": "yun_jina_school"
      },
      {
       "speaker": "동지선",
@@ -439,7 +448,8 @@ window.STORY_DATA.chapters.push({
      {
       "speaker": "윤진아",
       "text": "...",
-      "expr": "슬픔"
+      "expr": "슬픔",
+      "slug": "yun_jina_school"
      },
      {
       "speaker": "동지선",
@@ -536,7 +546,8 @@ window.STORY_DATA.chapters.push({
      {
       "speaker": "윤진아",
       "text": "윤이야, 너 잠은 언제 자? 혹시 로봇이야?",
-      "expr": "놀람"
+      "expr": "놀람",
+      "slug": "yun_jina_school"
      },
      {
       "speaker": "조윤이",
@@ -556,7 +567,8 @@ window.STORY_DATA.chapters.push({
      {
       "speaker": "윤진아",
       "text": "으앙...윤이 선생님, 저 머리가 안 좋아요...",
-      "expr": "슬픔"
+      "expr": "슬픔",
+      "slug": "yun_jina_school"
      },
      {
       "speaker": "조윤이",
