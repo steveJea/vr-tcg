@@ -898,14 +898,14 @@ function showEnding(win, reason) {
   $('end-mvp-wrap').innerHTML = mvpHTML;
   $('end-stats').innerHTML = row('진행 턴', `${S.myTurns || S.turnNo}턴 (${S.turnNo}라운드)`) + row('준 피해 합계', fmt(L.total)) + row('사용한 스킬', `${L.skills}회`)
     + row('고용한 용병', L.merc ? `${ic('merc')} ${L.merc.name}` : '없음') + row('진영 HP', `나 ${fmt(Math.max(0, S.me.hp))} : ${fmt(Math.max(0, S.ai.hp))} 상대`);
-  S.endShare = `VR: Abyss Gate에서 ${sub}${mvp ? ` MVP는 ${mvp.card.name}!` : ''} (${S.turnNo}라운드, 피해 ${fmt(L.total)})`;
+  S.endShare = `Violence Royale : The Abyss Gate에서 ${sub}${mvp ? ` MVP는 ${mvp.card.name}!` : ''} (${S.turnNo}라운드, 피해 ${fmt(L.total)})`;
   if (kind === 'win' && mvp) setTimeout(() => mvpVoice(mvp.card), FX_OFF() ? 0 : 500);
   if (kind === 'lose' && mvp && voiceSet?.has(`${mvp.card.id}_8`)) setTimeout(() => playVoiceKey(`${mvp.card.id}_8`), FX_OFF() ? 0 : 500);   // 패배 보이스 <id>_8
 }
 async function shareResult() {
-  const url = 'https://tcg.mbbs.kr/', text = S?.endShare || 'VR: Abyss Gate';
+  const url = 'https://tcg.mbbs.kr/', text = S?.endShare || 'Violence Royale : The Abyss Gate';
   const msg = $('end-share-msg');
-  try { if (navigator.share) { await navigator.share({ title: 'VR: Abyss Gate', text, url }); return; } } catch (e) { if (e?.name === 'AbortError') return; }
+  try { if (navigator.share) { await navigator.share({ title: 'Violence Royale : The Abyss Gate', text, url }); return; } } catch (e) { if (e?.name === 'AbortError') return; }
   try { await navigator.clipboard.writeText(`${text} ${url}`); msg.textContent = '링크를 복사했어요!'; }
   catch { msg.textContent = `${text} ${url}`; }
 }

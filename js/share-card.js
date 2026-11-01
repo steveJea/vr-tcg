@@ -49,7 +49,7 @@
     });
     g.fillStyle = '#e2e8f0'; g.font = '600 34px system-ui, sans-serif'; g.textAlign = 'center';
     g.fillText(`수집 ${info.count ?? 0}회 · MVP ${info.mvp ?? 0}회${info.first ? ` · 처음 수집 ${info.first}` : ''}`, W / 2, 1320);
-    g.fillStyle = '#94a3b8'; g.font = '700 34px system-ui, sans-serif'; g.fillText(`VR: Abyss Gate  ·  ${info.site || 'tcg.mbbs.kr'}`, W / 2, 1420);
+    g.fillStyle = '#94a3b8'; g.font = '700 34px system-ui, sans-serif'; g.fillText(`Violence Royale : The Abyss Gate  ·  ${info.site || 'tcg.mbbs.kr'}`, W / 2, 1420);
     return cv;
   }
   const toBlob = cv => new Promise((res, rej) => cv.toBlob(b => b ? res(b) : rej(new Error('toBlob failed')), 'image/png'));
@@ -64,7 +64,7 @@
     const body = `${text}\n${url}`;
     if (navigator.canShare && navigator.share && navigator.canShare({ files: [file] })) {
       // url 은 파일과 함께 못 받는 브라우저가 있어 text 안에만 넣고, 지원하면 url 도 함께
-      const data = navigator.canShare({ files: [file], text: body, url }) ? { files: [file], title: 'VR: Abyss Gate', text: body, url } : { files: [file], title: 'VR: Abyss Gate', text: body };
+      const data = navigator.canShare({ files: [file], text: body, url }) ? { files: [file], title: 'Violence Royale : The Abyss Gate', text: body, url } : { files: [file], title: 'Violence Royale : The Abyss Gate', text: body };
       try { await navigator.share(data); return { r: 'shared', copied: await copyLink(url) }; }
       catch (e) { if (e?.name === 'AbortError') return { r: 'cancelled', copied: false }; }
     }

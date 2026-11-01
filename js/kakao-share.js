@@ -27,7 +27,7 @@
     const link = { mobileWebUrl: GAME_URL, webUrl: GAME_URL };
     K.Share.sendDefault({
       objectType: 'feed',
-      content: { title, description: description || 'VR: Abyss Gate', imageUrl, imageWidth: 1080, imageHeight: 1500, link },
+      content: { title, description: description || 'Violence Royale : The Abyss Gate', imageUrl, imageWidth: 1080, imageHeight: 1500, link },
       buttons: [{ title: '게임하러 가기', link }],
     });
     return true;
