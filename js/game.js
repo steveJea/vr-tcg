@@ -1674,7 +1674,7 @@ function showDetail(c, { fromHand = false, hp, unit = null, view = null, power =
   const myTurn = !!S && S.turn === 'me' && !S.over && !S.busy;
   $('detail-body').innerHTML = `
     <div class="flex gap-4">
-      <div class="relative shrink-0"><img src="${IMG}${c.id}.webp" data-id="${c.id}" class="card-img w-32 md:w-40 aspect-[3/4] object-cover rounded-xl ring-2 ${e.ring}">${window.rarityStars?.(c, c.ex ? 'ex' : 'base', 'rstars-over') || ''}<button type="button" class="zoom-btn absolute bottom-1 right-1" data-zoom="${c.id}"${c.ex ? ` data-ex="${c.ex}" data-name="${String(c.name).replace(/[&"<>]/g, ch => `&#${ch.charCodeAt(0)};`)}"` : ''}${hp != null ? ` data-hp="${hp}"` : ''} title="크게 보기" aria-label="크게 보기">🔍</button></div>
+      <div class="relative shrink-0"><img src="${IMG}${c.id}.webp" data-id="${c.id}" class="card-img w-32 md:w-40 aspect-[3/4] object-cover rounded-xl ring-2 ${e.ring}">${window.rarityStars?.(c, S?.story || c.ex ? 'story' : 'base', 'rstars-over', c.ex) || ''}<button type="button" class="zoom-btn absolute bottom-1 right-1" data-zoom="${c.id}"${S?.story || c.ex ? ' data-st="1"' : ''}${c.ex ? ` data-ex="${c.ex}" data-name="${String(c.name).replace(/[&"<>]/g, ch => `&#${ch.charCodeAt(0)};`)}"` : ''}${hp != null ? ` data-hp="${hp}"` : ''} title="크게 보기" aria-label="크게 보기">🔍</button></div>
       <div class="flex-1 min-w-0">
         <div class="text-xl font-black leading-tight">${cardTitle(c)}</div>
         ${cardTags(c, [power ? '' : `⚡${fmt(c.power)}`, `${ic('mana', { alt: '코스트' })}${c.cost}`])}
@@ -1970,7 +1970,7 @@ function closeZoom() { const ov = $('zoom-view'); if (ov) ov.classList.remove('o
 function zoomFromBtn(b) {
   const c = POOL.find(x => String(x.id) === b.dataset.zoom) || NPC.find(x => String(x.id) === b.dataset.zoom); if (!c) return;   // 스토리 NPC(불량배 등)도 같은 정보창
   const r = rarityOf(c), e = ELEMENTS[c.class] || ELEMENTS.WIND, hp = b.dataset.hp;
-  openZoom({ src: `${IMG}${c.id}.webp`, stars: window.rarityStars?.(c, b.dataset.ex ? 'ex' : 'base', 'rstars-lg') || '',   // 스토리 EX 카드: 빨간 별
+  openZoom({ src: `${IMG}${c.id}.webp`, stars: window.rarityStars?.(c, b.dataset.st || b.dataset.ex ? 'story' : 'base', 'rstars-lg', +b.dataset.ex || 0) || '',   // 스토리 EX 카드: 빨간 별
     title: cardTitle({ ...c, name: b.dataset.name || c.name }),
     sub: cardTags(c, [`⚡${fmt(c.power)}`, `${ic('mana', { alt: '코스트' })}${c.cost}`]),
     stats: cardStats(c, hp != null ? +hp : null) });

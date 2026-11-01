@@ -120,7 +120,7 @@
   const lvPct = o => { const c = card(o.id); return c ? Math.round((LV_RATE[c.grade] || 0.01) * (Math.max(1, o.level | 0 || 1) - 1) * 100) : 0; };
   // EX 합성: 기본 스탯 × (1 + EX 보너스 합계%) 가 새 기본 스탯 → 그 위에 레벨 % → 반올림 → 포인트 강화 더하기
   const exOf = o => Math.max(0, o?.ex | 0), exbOf = o => Math.max(0, +o?.exb || 0);
-  const exName = (o, name) => exOf(o) ? `[EX${exOf(o)}] ${name}` : name;
+  const exName = (o, name) => name;   // EX 단계는 별 색으로만 표시 (이름표에 [EXn] 안 붙임). 표시 전용
   // ----- 스탯 포인트 규칙 (서버 story_statpt.sql 과 같음) -----
   /** 한 스탯에 n 포인트 넣었을 때 오르는 양: statFull 개까지 1당 statPerPoint, 그 뒤로는 절반 (버림) */
   const ptGain = (s, n) => { n = Math.max(0, n | 0); const k = D.statPerPoint[s], f = D.statFull ?? Infinity; return k * Math.min(n, f) + Math.floor(k * Math.max(0, n - f) / 2); };
@@ -847,7 +847,7 @@
     /** 출전 카드 타일 (이름·기술 수 없이): 등급·별(EX는 별 색)·스킬 유무·레벨·코스트 */
     const skDot = id => skillsOf(id).length ? `<span class="story-skn story-skn-dot" data-skid="${esc(String(id))}" role="button" tabindex="0" aria-label="기술 보기" title="기술 보기">✦</span>` : '';
     /** 출전 고르기 별: EX 단계 수만큼 앞쪽 별을 빨강, 나머지는 노랑 */
-    const pickStars = (c, o) => { const n = window.rarityStars?.count?.(c.grade) || 0; if (!n) return ''; const r = Math.min(n, exOf(o)); return `<div class="rstars rstars-over rstars-sm story-pick-stars" aria-label="별 ${n}개${r ? ` · EX${r}` : ''}">${'<span class="ps-ex">★</span>'.repeat(r)}${'<span class="ps-y">★</span>'.repeat(n - r)}</div>`; };
+    // pickStars: 모듈 공용 (아래 exStars)
     const pickTile = o => { const c = boosted(o); return `<div class="story-card story-pick-tile ${rcls(c)}" title="${esc(c.name)}"><div class="story-card-img"><img src="${IMG}${c.id}.webp" alt="${esc(c.name)}" loading="lazy" onerror="this.style.visibility='hidden'">${pickStars(c, o)}${skDot(o.id)}${deck0.has(o.uid) ? '<span class="story-curdeck">현재 덱</span>' : ''}${lendBadge(o)}</div><div class="story-pick-meta"><span>Lv.${norm({ ...o }).level}</span><span class="story-pick-cost">C${+c.cost || 0}</span>${isLeader(o) ? `<span>${ic('crown', { alt: '리더' })}</span>` : ''}</div></div>`; };
     const boss = ph.type === 'boss';
     const fTile = o => { return `<div class="story-pick-card on locked" title="이번 페이즈 필수 출전">${pickTile(o).replace('</div><div class="story-pick-meta">', `</div><div class="story-pick-meta">${isGuest(o) ? '<span class="text-sky-300">게스트</span>' : ''}`)}<i class="story-pick-check">🔒</i></div>`; };
@@ -1285,7 +1285,9 @@
   }
   // 캡처 단계에서 먼저 받아 카드(button) 선택 클릭으로 안 넘어가게
   for (const t of ['click', 'keydown']) document.addEventListener(t, e => { const b = e.target.closest?.('[data-skid]'); if (!b || (t === 'keydown' && e.key !== 'Enter' && e.key !== ' ')) return; e.preventDefault(); e.stopPropagation(); skillPop(b.dataset.skid, b); }, true);
-  const ownTile = (o, c, badges = '', after = '') => `<div class="story-card story-own-tile ${rcls(c)}"><div class="story-card-img"><img src="${IMG}${c.id}.webp" alt="${esc(c.name)}" loading="lazy" onerror="this.style.visibility='hidden'">${window.rarityStars?.(c, exOf(o) ? 'ex' : 'base', 'rstars-over rstars-sm') || ''}${isLeader(o) ? `<span class="story-own-leader" title="리더">${ic('crown', { alt: '리더' })}</span>` : ''}${o.cpts ? `<div class="story-cpts">+${o.cpts}</div>` : ''}${badges}${after ? `<div class="story-own-acts">${after}</div>` : ''}</div><div class="story-card-name">${esc(exName(o, c.name.replace(/^\[EX\d+\] /, '')))}</div><div class="story-own-lv">Lv.${o.level}</div></div>`;
+  const exStars = (c, o, cls = 'rstars-over rstars-sm story-pick-stars') => window.rarityStars?.(c, 'story', cls, exOf(o)) || '';
+  const pickStars = exStars;
+  const ownTile = (o, c, badges = '', after = '') => `<div class="story-card story-own-tile ${rcls(c)}"><div class="story-card-img"><img src="${IMG}${c.id}.webp" alt="${esc(c.name)}" loading="lazy" onerror="this.style.visibility='hidden'">${exStars(c, o)}${isLeader(o) ? `<span class="story-own-leader" title="리더">${ic('crown', { alt: '리더' })}</span>` : ''}${o.cpts ? `<div class="story-cpts">+${o.cpts}</div>` : ''}${badges}${after ? `<div class="story-own-acts">${after}</div>` : ''}</div><div class="story-card-name">${esc(c.name.replace(/^\[EX\d+\] /, ''))}</div><div class="story-own-lv">Lv.${o.level}</div></div>`;
   /** 같은 인재 여러 장 (x2 배지): 작은 팝업 · 상세 / 합성 (합성은 기존 미리보기 → 레벨 MAX 아니면 임유리 확인 그대로) */
   function copiesPop(id) {
     const list = copiesOf(id).slice().sort((a, b) => isLeader(b) - isLeader(a) || exOf(b) - exOf(a) || b.level - a.level), c = card(id); if (!list.length || !c) return;
@@ -1398,12 +1400,12 @@
   function cardDetail(u) {
     const o = byUid(u); if (!o) return renderCards(); norm(o);
     const c = boosted(o), cap = lvCap(o), n = copiesOf(o.id).length, rep = repOf(o.id) === o;
-    const p = popup(`<div class="flex gap-3"><div class="cd-img relative shrink-0 self-start"><img src="${IMG}${c.id}.webp" class="w-full aspect-[3/4] object-cover rounded-xl" alt="">${window.rarityStars?.(c, exOf(o) ? 'ex' : 'base', 'rstars-over') || ''}<button type="button" class="cd-zoom" aria-label="이미지 확대" title="이미지 확대"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/></svg></button></div><div class="flex-1 min-w-0">
+    const p = popup(`<div class="flex gap-3"><div class="cd-img relative shrink-0 self-start"><img src="${IMG}${c.id}.webp" class="w-full aspect-[3/4] object-cover rounded-xl" alt="">${exStars(c, o, 'rstars-over')}<button type="button" class="cd-zoom" aria-label="이미지 확대" title="이미지 확대"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/></svg></button></div><div class="flex-1 min-w-0">
         <div class="text-lg font-black truncate">${window.TCG?.cardTitle ? TCG.cardTitle(c, isLeader(o) ? ic('crown', { alt: '리더' }) + ' ' : '') : `${isLeader(o) ? ic('crown', { alt: '리더' }) + ' ' : ''}${esc(c.name)} <span class="text-xs text-zinc-400">${RAR[c.grade] || 'N'}</span>`}</div>${window.TCG?.cardTags?.(c, [n > 1 ? `×${n}${rep ? ' ⚔️' : ''}` : '']) || ''}
         ${o.bound === true ? `<div class="text-[10px] font-bold text-amber-300/90" title="스토리 보상 인재는 거래할 수 없어요"><img class="ui-ic" src="img/ui/bound.webp" alt=""> 귀속</div>` : ""}
         ${lvBar(o)}
         <div class="cd-stats" role="button" tabindex="0" title="눌러서 기본 + 레벨 보기"><div class="cd-power"><span>⚡ POWER</span><b>${fmt(c.power)}</b><small class="cd-brk">기본 ${fmt(card(o.id).power)}</small></div>${STATS.map(s => { const base = card(o.id)[s], exB = Math.round(base * (1 + exbOf(o) / 100)) - base, lvB = Math.round(base * (1 + exbOf(o) / 100) * (1 + lvPct(o) / 100)) - base - exB, pt = ptGain(s, o.boost?.[s]);
-          return `<div><span>${STAT_LABEL[s]}</span><b>${fmt(c[s])}</b><small class="cd-brk">기본 ${fmt(base)}${exB ? ` <i class="text-red-300">+${fmt(exB)} EX</i>` : ''}${lvB ? ` <i class="text-amber-300">+${fmt(lvB)} 레벨</i>` : ''}${pt ? ` <i class="text-emerald-300">+${fmt(pt)} 포인트</i>` : ''}</small></div>`; }).join('')}
+          return `<div><span>${STAT_LABEL[s]}</span><b>${fmt(c[s])}</b><small class="cd-brk">기본 ${fmt(base)}${exB ? ` <i class="text-red-300">+${fmt(exB)} EX</i>` : ''}${lvB ? ` <i class="text-amber-300">+${fmt(lvB)} 레벨</i>` : ''}${pt ? ` <i class="text-emerald-300">+${fmt(pt)} 포인트</i>` : ''}</small></div>`; }).join('')}<div><span>💠 COST</span><b>${+c.cost || 0}</b></div>
           <div class="cd-brk cd-more">최대 Lv.${cap} · 누적 EXP ${fmt(o.totalExp)}${exOf(o) ? ` · <span class="text-red-300">EX${exOf(o)} +${exbOf(o)}%</span> (${exOf(o)}/${maxEx(o)}${exOf(o) >= maxEx(o) ? ' 최대 합성' : ''})` : ''}${n > 1 ? `<br>같은 인재 ${n}명 중 1명${rep ? ' (⚔️ 전투 출전)' : ''} · 전투에는 1장만 나가요 (리더 · 없으면 레벨이 가장 높은 장)` : ''}</div></div>
         ${o.cpts ? `<div class="text-xs mt-1">남은 인재 전용 포인트 <b class="text-sky-300">${o.cpts}</b></div>` : ''}</div></div>
       <div id="story-d-lvwrap">${lvUpBox(o)}</div>
@@ -1440,8 +1442,8 @@
     const mats = materialsOf(o); if (!mats.length) return cardDetail(tu);
     const mat = mats.find(x => x.uid === mu) || mats[0], c = card(o.id), m = mergeCalc(o, mat), after = { ...o, ex: m.ex, exb: m.exb, level: 1, exp: 0 };
     const p = popup(`<div class="text-lg font-black mb-1">${ic('merge', { alt: '' })} 합성 미리보기</div>
-      <div class="flex gap-3 items-center"><div class="relative shrink-0"><img src="${IMG}${c.id}.webp" class="w-20 aspect-[3/4] object-cover rounded-lg" alt="">${window.rarityStars?.(c, 'ex', 'rstars-over') || ''}</div>
-        <div class="flex-1 min-w-0 text-sm"><div class="font-black">${esc(exName(o, c.name))} → <span class="text-red-300">${esc(exName(after, c.name))}</span></div>
+      <div class="flex gap-3 items-center"><div class="relative shrink-0"><img src="${IMG}${c.id}.webp" class="w-20 aspect-[3/4] object-cover rounded-lg" alt="">${exStars(c, after, 'rstars-over')}</div>
+        <div class="flex-1 min-w-0 text-sm"><div class="font-black">${esc(c.name)} <span class="text-red-300">EX${exOf(o)} → EX${exOf(after)}</span></div>
         <div class="mt-1">합성 보너스 <b class="text-red-300">+${m.bonus}%</b> <span class="text-xs text-zinc-400">(누적 ${exbOf(o)}% → ${m.exb}%)</span></div></div></div>
       <div class="text-xs font-bold mt-3 mb-1 text-left">재료로 쓸 인재 (사라져요)</div>
       <div class="story-mat-list">${mats.map(x => `<button class="story-mat ${x === mat ? 'on' : ''}" data-mat="${x.uid}">Lv.${x.level}${exOf(x) ? ` · EX${exOf(x)}` : ''}<small>${Math.round(Math.min(1, x.level / lvCap(x)) * 100)}%</small></button>`).join('')}</div>
@@ -1468,7 +1470,7 @@
   function mergeConfirm(tu, mu, m) {
     const o = byUid(tu), mat = byUid(mu), c = card(o.id);
     const p = popup(`<div class="text-lg font-black mb-2">정말 합성할까요?</div>
-      <div class="text-sm"><b>${esc(exName(o, c.name))}</b> Lv.${o.level} 이 <b class="text-red-300">${esc(exName({ ex: m.ex }, c.name))}</b> <b class="text-amber-300">Lv.1</b> 이 돼요. (+${m.bonus}%)</div>
+      <div class="text-sm"><b>${esc(c.name)}</b> Lv.${o.level} 이 <b class="text-red-300">EX${m.ex}</b> <b class="text-amber-300">Lv.1</b> 이 돼요. (+${m.bonus}%)</div>
       <div class="text-xs text-zinc-400 mt-1">재료: ${esc(c.name)} Lv.${mat.level} 1장${serverMode ? ` + 💠 이상한 조각 ${shardCost(o)}` : ''}</div>
       <div class="story-warn">⚠️ 레벨이 1로 초기화되고 재료 인재가 사라져요. 되돌릴 수 없어요.</div>
       <div class="flex gap-2 mt-4"><button data-close-pop class="flex-1 py-2.5 rounded-xl bg-zinc-700 font-bold">취소</button><button id="merge-yes" class="flex-1 py-2.5 rounded-xl bg-red-500 font-bold">합성</button></div>`, renderCards);

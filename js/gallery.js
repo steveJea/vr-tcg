@@ -133,7 +133,7 @@
       z = document.createElement('div'); z.id = 'gal-zoom'; z.className = 'gal-zoom hidden'; document.body.appendChild(z);
       z.addEventListener('click', e => { if (!e.target.closest('.gal-zimg') || e.target.closest('.gal-zx')) z.classList.add('hidden'); });
     }
-    z.innerHTML = `<button class="gal-x gal-zx" aria-label="닫기">✕</button>${grade ? (window.rarityStars?.(grade, 'base', 'rstars-lg') || '') : ''}<img class="gal-zimg" src="${src}" alt="${esc(title)}"><div class="gal-zcap"><b>${esc(title)}</b>${sub ? `<div>${esc(sub)}</div>` : ''}</div>`;
+    z.innerHTML = `<button class="gal-x gal-zx" aria-label="닫기">✕</button>${grade ? (window.rarityStars?.(grade, 'story', 'rstars-lg') || '') : ''}<img class="gal-zimg" src="${src}" alt="${esc(title)}"><div class="gal-zcap"><b>${esc(title)}</b>${sub ? `<div>${esc(sub)}</div>` : ''}</div>`;
     z.classList.remove('hidden');
   }
 
@@ -226,7 +226,7 @@
     const el = $('gal-detail');
     el.innerHTML = `<div class="gal-dbox rar-${s} ${deco}">
       <button class="gal-x gal-dx" aria-label="닫기">✕</button><button class="gal-share" data-share="${c.id}" aria-label="이미지로 공유">📤 공유</button><button class="gal-share gal-kakao" data-kshare="${c.id}" aria-label="카카오톡으로 공유">💬 카카오톡</button>
-      <div class="gal-dimg"><img src="${portrait}" alt="${esc(c.name)}" data-zsrc="${portrait}" data-ztitle="${esc(c.name)}" data-zsub="${LABEL[s]}" data-zgrade="${s}" onerror="this.style.visibility='hidden'">${window.rarityStars?.(s, 'base', 'rstars-over') || ''}${crownHtml(t, true)}
+      <div class="gal-dimg"><img src="${portrait}" alt="${esc(c.name)}" data-zsrc="${portrait}" data-ztitle="${esc(c.name)}" data-zsub="${LABEL[s]}" data-zgrade="${s}" onerror="this.style.visibility='hidden'">${window.rarityStars?.(s, 'story', 'rstars-over') || ''}${crownHtml(t, true)}
         <button class="gal-zbtn" data-zsrc="${portrait}" data-ztitle="${esc(c.name)}" data-zsub="${LABEL[s]}" data-zgrade="${s}" aria-label="크게 보기">🔍</button></div>
       <div class="gal-dname">${window.TCG?.cardTitle ? TCG.cardTitle(c) : esc(c.name)}</div>
       <div class="gal-drar">${window.TCG?.cardTags ? TCG.cardTags(c, t ? [`<span class="gal-tname vip-${TIERS[t].k}">${TE(t)}</span>`] : []) : `<span class="gal-rar inline">${s}</span>`}</div>
