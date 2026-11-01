@@ -2,7 +2,7 @@
 // 카드 상세를 canvas 로 PNG 로 그린 뒤, 지원하면 Web Share API(파일), 아니면 다운로드.
 // 스킬 컷인 이미지는 비공개라 절대 그리지 않음: 이 파일은 프로필 이미지(bt_img) 하나만 불러옴.
 (() => {
-  const RC = { N: '#9ca3af', R: '#3b82f6', HR: '#22c55e', SR: '#a855f7', UR: '#f59e0b', MR: '#ef4444' };
+  const RC = { N: '#9ca3af', R: '#84cc16', HR: '#3b82f6', SR: '#a855f7', UR: '#f59e0b', MR: '#ef4444' };
   const W = 1080, H = 1500;
   /** 공유 이미지에 허용하는 이미지 주소인지 (프로필만). 스킬 이미지 data/fx/ 는 거부 */
   const allowedSrc = src => /\/img\/bt_img\/[^/]+\.webp$/.test(String(src)) && !/data\/fx\//.test(String(src));
