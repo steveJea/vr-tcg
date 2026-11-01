@@ -847,7 +847,7 @@
     /** 출전 카드 타일 (이름·기술 수 없이): 등급·별(EX는 별 색)·스킬 유무·레벨·코스트 */
     const skDot = id => skillsOf(id).length ? `<span class="story-skn story-skn-dot" data-skid="${esc(String(id))}" role="button" tabindex="0" aria-label="기술 보기" title="기술 보기">✦</span>` : '';
     /** 출전 고르기 별: EX 단계 수만큼 앞쪽 별을 빨강, 나머지는 노랑 */
-    const pickStars = (c, o) => { const n = window.rarityStars?.count?.(c.grade) || 0; if (!n) return ''; const r = Math.min(n, exOf(o)); return `<div class="rstars rstars-over rstars-sm story-pick-stars" aria-label="별 ${n}개${r ? ` · EX${r}` : ''}">${'<span class="ps-ex">★</span>'.repeat(r)}${'<span class="ps-y">★</span>'.repeat(n - r)}</div>`; };
+    // pickStars: 모듈 공용 (아래 exStars)
     const pickTile = o => { const c = boosted(o); return `<div class="story-card story-pick-tile ${rcls(c)}" title="${esc(c.name)}"><div class="story-card-img"><img src="${IMG}${c.id}.webp" alt="${esc(c.name)}" loading="lazy" onerror="this.style.visibility='hidden'">${pickStars(c, o)}${skDot(o.id)}${deck0.has(o.uid) ? '<span class="story-curdeck">현재 덱</span>' : ''}${lendBadge(o)}</div><div class="story-pick-meta"><span>Lv.${norm({ ...o }).level}</span><span class="story-pick-cost">C${+c.cost || 0}</span>${isLeader(o) ? `<span>${ic('crown', { alt: '리더' })}</span>` : ''}</div></div>`; };
     const boss = ph.type === 'boss';
     const fTile = o => { return `<div class="story-pick-card on locked" title="이번 페이즈 필수 출전">${pickTile(o).replace('</div><div class="story-pick-meta">', `</div><div class="story-pick-meta">${isGuest(o) ? '<span class="text-sky-300">게스트</span>' : ''}`)}<i class="story-pick-check">🔒</i></div>`; };
@@ -1285,7 +1285,9 @@
   }
   // 캡처 단계에서 먼저 받아 카드(button) 선택 클릭으로 안 넘어가게
   for (const t of ['click', 'keydown']) document.addEventListener(t, e => { const b = e.target.closest?.('[data-skid]'); if (!b || (t === 'keydown' && e.key !== 'Enter' && e.key !== ' ')) return; e.preventDefault(); e.stopPropagation(); skillPop(b.dataset.skid, b); }, true);
-  const ownTile = (o, c, badges = '', after = '') => `<div class="story-card story-own-tile ${rcls(c)}"><div class="story-card-img"><img src="${IMG}${c.id}.webp" alt="${esc(c.name)}" loading="lazy" onerror="this.style.visibility='hidden'">${window.rarityStars?.(c, exOf(o) ? 'ex' : 'base', 'rstars-over rstars-sm') || ''}${isLeader(o) ? `<span class="story-own-leader" title="리더">${ic('crown', { alt: '리더' })}</span>` : ''}${o.cpts ? `<div class="story-cpts">+${o.cpts}</div>` : ''}${badges}${after ? `<div class="story-own-acts">${after}</div>` : ''}</div><div class="story-card-name">${esc(exName(o, c.name.replace(/^\[EX\d+\] /, '')))}</div><div class="story-own-lv">Lv.${o.level}</div></div>`;
+  const exStars = (c, o) => { const n = window.rarityStars?.count?.(c.grade) || 0; if (!n) return ''; const r = Math.min(n, exOf(o)); return `<div class="rstars rstars-over rstars-sm story-pick-stars" aria-label="별 ${n}개${r ? ` · EX${r}` : ''}">${'<span class="ps-ex">★</span>'.repeat(r)}${'<span class="ps-y">★</span>'.repeat(n - r)}</div>`; };
+  const pickStars = exStars;
+  const ownTile = (o, c, badges = '', after = '') => `<div class="story-card story-own-tile ${rcls(c)}"><div class="story-card-img"><img src="${IMG}${c.id}.webp" alt="${esc(c.name)}" loading="lazy" onerror="this.style.visibility='hidden'">${exStars(c, o)}${isLeader(o) ? `<span class="story-own-leader" title="리더">${ic('crown', { alt: '리더' })}</span>` : ''}${o.cpts ? `<div class="story-cpts">+${o.cpts}</div>` : ''}${badges}${after ? `<div class="story-own-acts">${after}</div>` : ''}</div><div class="story-card-name">${esc(c.name.replace(/^\[EX\d+\] /, ''))}</div><div class="story-own-lv">Lv.${o.level}</div></div>`;
   /** 같은 인재 여러 장 (x2 배지): 작은 팝업 · 상세 / 합성 (합성은 기존 미리보기 → 레벨 MAX 아니면 임유리 확인 그대로) */
   function copiesPop(id) {
     const list = copiesOf(id).slice().sort((a, b) => isLeader(b) - isLeader(a) || exOf(b) - exOf(a) || b.level - a.level), c = card(id); if (!list.length || !c) return;
