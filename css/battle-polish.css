@@ -1,0 +1,13 @@
+/* ===== 전투 화면 부드럽게 1차 (보이는 것만 · 전투 로직·속도 그대로) ===== */
+/* #1 잔상 HP 바: 빨간 바가 먼저 줄고, 밝은 잔상이 잠깐 뒤 따라 줄어듦 */
+.hp-bar { position: relative; }
+.hp-bar .hp-fill, .hud-hp > [id$="-hpbar"] { position: relative; z-index: 1; }
+.hp-ghost { position: absolute; left: 0; top: 0; bottom: 0; background: rgba(254, 240, 138, .75); border-radius: inherit; transition: width .45s ease-out .3s; pointer-events: none; }
+/* #3 새 카드 등장: 위에서 살짝 떨어지며 통통 */
+/* #5 턴 배너: 가운데로 스윽 지나감 (누르기 막지 않음) */
+#turn-banner { position: fixed; left: 0; right: 0; top: 42%; z-index: 45; pointer-events: none; display: flex; justify-content: center; animation: tbIn .62s ease-in-out forwards; }
+#turn-banner span { padding: 8px 40px; font-weight: 900; font-size: 22px; letter-spacing: .1em; color: #fff; text-shadow: 0 2px 6px #000;
+  background: linear-gradient(90deg, transparent, rgba(16, 185, 129, .85) 20%, rgba(16, 185, 129, .85) 80%, transparent); }
+#turn-banner.ai span { background: linear-gradient(90deg, transparent, rgba(220, 38, 38, .85) 20%, rgba(220, 38, 38, .85) 80%, transparent); }
+@keyframes tbIn { 0% { opacity: 0; translate: -40px 0; } 20% { opacity: 1; translate: 0 0; } 75% { opacity: 1; translate: 0 0; } 100% { opacity: 0; translate: 40px 0; } }
+@media (prefers-reduced-motion: reduce) { .hp-ghost { transition: none; } #turn-banner { animation: none; } #turn-banner { display: none; } }

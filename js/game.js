@@ -1419,10 +1419,20 @@ function fixImages(root) {
   });
 }
 
+/** 진영 HP 글자: 줄어들 때 0.3초 동안 숫자가 내려감 (보이는 글자만 · 값·로직 그대로). 연출 끄기·모션 줄이기면 바로 */
+function countTo(el, to, max) {
+  if (!el) return; const txt = v => `${fmt(v)} / ${fmt(max)}`, from = el._hp;
+  el._hp = to; cancelAnimationFrame(el._raf);
+  if (from == null || to >= from || FX_OFF() || REDUCED()) { el.textContent = txt(to); return; }
+  const t0 = performance.now(), D = 300;
+  const step = t => { const k = Math.min(1, (t - t0) / D), v = Math.round(from + (to - from) * (1 - (1 - k) * (1 - k))); el.textContent = txt(v); if (k < 1) el._raf = requestAnimationFrame(step); };
+  el._raf = requestAnimationFrame(step);
+}
 function renderHero(who) {
   const p = S[who], max = p.maxHp || RULES.HERO_HP;
-  $(`${who}-hp`).textContent = `${fmt(p.hp)} / ${fmt(max)}`;
-  $(`${who}-hpbar`).style.width = Math.max(0, p.hp / max * 100) + '%';
+  countTo($(`${who}-hp`), p.hp, max);
+  { const bar = $(`${who}-hpbar`), w = Math.max(0, p.hp / max * 100) + '%'; bar.style.width = w;
+    let g = bar.parentElement.querySelector('.hp-ghost'); if (!g) { g = document.createElement('div'); g.className = 'hp-ghost hud-ghost'; g.style.width = w; bar.parentElement.classList.add('hp-bar'); bar.parentElement.prepend(g); } g.style.width = w; }
   $(`${who}-mana`).innerHTML = (p.manaPool ? `<b class="pool-mana">${p.mana}</b> / ${p.maxMana} <small class="pool-note">(충전 없음)</small>${(() => { const n = mustLeft().length; if (!n) return ''; const left = Math.max(0, S.mustSummon.by - S.myTurns + (S.turn === 'me' ? 1 : 0)); return ` <span class="pool-must">📌 필수 인재 소환까지 ${left}턴</span>`; })()}` : `${p.mana} / ${p.maxMana}`) + (p.accel ? ` ${ic('mana_accel', { cls: 'ui-ic-sm' })}+${RULES.MANA_PER_TURN + p.accel * RULES.ACCEL_BONUS}/턴` : '');
   $(`${who}-deck`).textContent = p.deck.length;
   $(`${who}-handcount`).textContent = p.hand.length;
@@ -1461,15 +1471,27 @@ function skillInfoPop(unit, s) {
   el.addEventListener('contextmenu', e => e.preventDefault());
   document.body.appendChild(el);
 }
+let fieldSeen = { me: null, ai: null }, lastTurnKey = null, fxOwner = null;   // 연출용 (전투 시작 때 초기화)
+function turnBanner(mine) {
+  document.getElementById('turn-banner')?.remove();
+  const b = document.createElement('div'); b.id = 'turn-banner'; b.className = mine ? 'me' : 'ai'; b.setAttribute('aria-hidden', 'true');
+  b.innerHTML = `<span>${mine ? '내 턴' : '상대 턴'}</span>`; document.body.appendChild(b);
+  setTimeout(() => b.remove(), 650);
+}
 function render() {
   renderAutoBtn();
   maybeAutoEndTurn();
   if (S) preloadFx([...S.me.field, ...S.ai.field].map(u => u.base || u.card));
   renderTurnsLeft();
   if (!S) return;
+  if (fxOwner !== S) { fxOwner = S; fieldSeen = { me: null, ai: null }; lastTurnKey = null; }   // 새 전투: 등장·턴 배너 기준 초기화
   renderHero('me'); renderHero('ai');
   const myTurn = !!S && S.turn === 'me' && !S.over && !S.busy;
   const tl = isFinite(maxTurns()) ? `${Math.min(S.totalTurns, maxTurns())}/${maxTurns()}턴` : `${S.totalTurns}턴 (무제한)`;
+  { // 턴 바뀜 배너 (0.6초 · 기다리지 않음 · 스킵/빨리감기/연출 스킵/모션 줄이기면 없음)
+    const key = `${S.turn}:${S.totalTurns}`;
+    if ((S.turn === 'me' || S.turn === 'ai') && !S.over && key !== lastTurnKey) { const first = lastTurnKey === null; lastTurnKey = key; if (!first && !FX_OFF() && !REDUCED() && !S.view?.skip) turnBanner(S.turn === 'me'); }
+  }
   $('turn-info').textContent = S.over ? '게임 종료' : S.turn === 'wait' ? '⚔️ 전투 준비' : (S.turn === 'me' ? `내 턴 · ${tl}` : `상대 턴 · ${tl}...`);
   $('end-turn').disabled = !myTurn;
   for (const type of Object.keys(ACTIONS)) {
@@ -1528,7 +1550,7 @@ function render() {
         `<div class="lv-badge absolute -top-1.5 left-1/2 -translate-x-1/2 px-1.5 rounded-full ${hero ? 'bg-gradient-to-r from-yellow-300 to-amber-500 shadow-[0_0_8px_#fbbf24]' : u.level > 1 ? 'bg-amber-400' : 'bg-zinc-600 text-white'} text-black text-[9px] md:text-[10px] font-black whitespace-nowrap">${hero ? ic('crown', { cls: 'ui-ic-sm' }) + ' ' : ''}Lv${u.level}</div>` +
         (icons.length ? `<div class="item-icons absolute top-7 right-0.5 flex flex-col text-[11px] md:text-sm leading-tight drop-shadow">${icons.map(x => `<span>${x}</span>`).join('')}</div>` : '') +
         (sts.length ? `<div class="status-icons absolute top-7 left-0.5 flex flex-col text-[11px] md:text-sm leading-tight drop-shadow">${sts.map(x => { const big = isStatusFxKind(x.kind), au = big && statusIconUrl(x.kind); return `<span title="${x.title}"${big ? ` class="st-big ${x.kind}"` : ''}>${au ? `<img class="st-asset" src="${au}" alt="">` : icOf(x)}${x.t > 0 ? `<b class="st-turns">${x.t}</b>` : ''}</span>`; }).join('')}</div>` : '') + `</div>` +
-        `<div class="hp-bar h-1.5 bg-white/10 rounded-full mt-0.5 overflow-hidden" title="HP ${u.hp}/${u.maxHp}"><div class="hp-fill h-full bg-red-500" data-to="${u.maxHp ? Math.max(0, Math.min(100, u.hp / u.maxHp * 100)) : 0}" style="width:${hpPrev.get(String(u.uid)) ?? (u.maxHp ? Math.max(0, Math.min(100, u.hp / u.maxHp * 100)) : 0)}%"></div></div>` +
+        `<div class="hp-bar h-1.5 bg-white/10 rounded-full mt-0.5 overflow-hidden" title="HP ${u.hp}/${u.maxHp}"><div class="hp-ghost" style="width:${hpPrev.get(String(u.uid)) ?? (u.maxHp ? Math.max(0, Math.min(100, u.hp / u.maxHp * 100)) : 0)}%"></div><div class="hp-fill h-full bg-red-500" data-to="${u.maxHp ? Math.max(0, Math.min(100, u.hp / u.maxHp * 100)) : 0}" style="width:${hpPrev.get(String(u.uid)) ?? (u.maxHp ? Math.max(0, Math.min(100, u.hp / u.maxHp * 100)) : 0)}%"></div></div>` +
         `<div class="mp-bar h-1.5 bg-white/10 rounded-full mt-0.5 overflow-hidden" title="MP ${u.mp}/${u.maxMp} (+${u.mpRegen}/턴)"><div class="h-full bg-blue-500" style="width:${u.maxMp ? Math.min(100, u.mp / u.maxMp * 100) : 0}%"></div></div>` +
         // 상태 줄: 카드 너비를 넘지 않게 (width:0 + min-width:100% → 이 줄이 유닛 너비를 늘리지 않음). 둘 다면 '공격 가능'을 ⚔ 로 줄여 한 줄 유지
         `<div class="unit-tags flex justify-center items-center gap-1 h-4 whitespace-nowrap overflow-hidden" style="width:0;min-width:100%">${ready ? `<span class="text-[10px] text-emerald-400 font-bold" title="공격 가능">${skReady ? '⚔' : '공격 가능'}</span>` : ''}${skReady ? '<button class="skill-btn text-[10px] px-1 rounded bg-fuchsia-600 hover:bg-fuchsia-500 font-bold leading-4">✦스킬</button>' : ''}</div>`;
@@ -1546,15 +1568,19 @@ function render() {
           (sts.length ? `<div class="status-icons base-sts">${sts.map(x => { const big = isStatusFxKind(x.kind), au = big && statusIconUrl(x.kind); return `<span title="${x.title}"${big ? ` class="st-big ${x.kind}"` : ''}>${au ? `<img class="st-asset" src="${au}" alt="">` : icOf(x)}</span>`; }).join('')}</div>` : '') +
           `<div class="lv-badge base-lv">Lv${u.level}</div></div>` +
           `<div class="base-name">${u.card.name}</div>` + (u.guard && who === 'me' ? `<div class="base-tag">${guardSwapPool(S[who]).length ? (gw ? `교체 ${gw}턴 뒤` : '교체 가능') + (ready ? ' · ' : '') : ''}${ready ? '공격 가능' : ''}</div>` : '') +
-          (S[who].noBase ? `<div class="hp-bar h-1.5 bg-white/10 rounded-full mt-0.5 overflow-hidden" title="HP ${u.hp}/${u.maxHp}"><div class="hp-fill h-full bg-red-500" data-to="${pct}" style="width:${hpPrev.get(String(u.uid)) ?? pct}%"></div></div>` : baseHpBar(S[who])) +   // 진영 칸 = 진영: 수비대장 HP 대신 진영 HP
+          (S[who].noBase ? `<div class="hp-bar h-1.5 bg-white/10 rounded-full mt-0.5 overflow-hidden" title="HP ${u.hp}/${u.maxHp}"><div class="hp-ghost" style="width:${hpPrev.get(String(u.uid)) ?? pct}%"></div><div class="hp-fill h-full bg-red-500" data-to="${pct}" style="width:${hpPrev.get(String(u.uid)) ?? pct}%"></div></div>` : baseHpBar(S[who])) +   // 진영 칸 = 진영: 수비대장 HP 대신 진영 HP
           `<div class="mp-bar h-1.5 bg-white/10 rounded-full mt-0.5 overflow-hidden" title="MP ${u.mp}/${u.maxMp} (+${u.mpRegen}/턴)"><div class="h-full bg-blue-500" style="width:${u.maxMp ? Math.min(100, u.mp / u.maxMp * 100) : 0}%"></div></div>`;
         nbb.appendChild(w);
       } else nb.appendChild(w);
     });
     morphChildren(box, nb); if (bossBox) morphChildren(bossBox, nbb);
+    { // 새로 나온 카드: 위에서 살짝 떨어지며 등장 (보이는 것만 · 전투 첫 그리기·연출 끄기면 없음)
+      const now = new Set(S[who].field.map(u => String(u.uid))), prev = fieldSeen[who];
+      if (prev && !FX_OFF() && !REDUCED()) for (const uid of now) if (!prev.has(uid)) { const el = box.querySelector(`[data-uid="${uid}"]`); el?.animate?.([{ opacity: 0, translate: '0 -18px', scale: '.9' }, { opacity: 1, translate: '0 2px', scale: '1.03', offset: .6 }, { opacity: 1, translate: '0 0', scale: '1' }], { duration: 380, easing: 'cubic-bezier(.2,.9,.3,1.2)' }); }   // 클래스는 다시 그리기에 덮이므로 Web Animations 로 }
+      fieldSeen[who] = now; }
     for (const [uid, fn] of binds) { const el = (box.querySelector(`[data-uid="${uid}"]`) || bossBox?.querySelector(`[data-uid="${uid}"]`)); if (el) fn(el); }
     fixImages(box); if (bossBox) fixImages(bossBox);
-    requestAnimationFrame(() => [...box.querySelectorAll('.hp-fill'), ...(bossBox ? bossBox.querySelectorAll('.hp-fill') : [])].forEach(f => { f.style.width = f.dataset.to + '%'; hpPrev.set(f.closest('[data-uid]').dataset.uid, +f.dataset.to); }));
+    requestAnimationFrame(() => [...box.querySelectorAll('.hp-fill'), ...(bossBox ? bossBox.querySelectorAll('.hp-fill') : [])].forEach(f => { f.style.width = f.dataset.to + '%'; const g = f.previousElementSibling; if (g?.classList.contains('hp-ghost')) g.style.width = f.dataset.to + '%';   /* 잔상 바: CSS 로 늦게 따라옴 */ hpPrev.set(f.closest('[data-uid]').dataset.uid, +f.dataset.to); }));
   }
 
   closeStaleHandDetail();   // 손패 카드 상세가 떠 있는데 그 카드가 손패에서 빠졌으면(소환·회수·자동·이벤트 등 어떤 경로든) 닫기
