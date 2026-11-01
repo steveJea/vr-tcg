@@ -1285,7 +1285,7 @@
   }
   // 캡처 단계에서 먼저 받아 카드(button) 선택 클릭으로 안 넘어가게
   for (const t of ['click', 'keydown']) document.addEventListener(t, e => { const b = e.target.closest?.('[data-skid]'); if (!b || (t === 'keydown' && e.key !== 'Enter' && e.key !== ' ')) return; e.preventDefault(); e.stopPropagation(); skillPop(b.dataset.skid, b); }, true);
-  const exStars = (c, o) => { const n = window.rarityStars?.count?.(c.grade) || 0; if (!n) return ''; const r = Math.min(n, exOf(o)); return `<div class="rstars rstars-over rstars-sm story-pick-stars" aria-label="별 ${n}개${r ? ` · EX${r}` : ''}">${'<span class="ps-ex">★</span>'.repeat(r)}${'<span class="ps-y">★</span>'.repeat(n - r)}</div>`; };
+  const exStars = (c, o, cls = 'rstars-over rstars-sm story-pick-stars') => window.rarityStars?.(c, 'story', cls, exOf(o)) || '';
   const pickStars = exStars;
   const ownTile = (o, c, badges = '', after = '') => `<div class="story-card story-own-tile ${rcls(c)}"><div class="story-card-img"><img src="${IMG}${c.id}.webp" alt="${esc(c.name)}" loading="lazy" onerror="this.style.visibility='hidden'">${exStars(c, o)}${isLeader(o) ? `<span class="story-own-leader" title="리더">${ic('crown', { alt: '리더' })}</span>` : ''}${o.cpts ? `<div class="story-cpts">+${o.cpts}</div>` : ''}${badges}${after ? `<div class="story-own-acts">${after}</div>` : ''}</div><div class="story-card-name">${esc(c.name.replace(/^\[EX\d+\] /, ''))}</div><div class="story-own-lv">Lv.${o.level}</div></div>`;
   /** 같은 인재 여러 장 (x2 배지): 작은 팝업 · 상세 / 합성 (합성은 기존 미리보기 → 레벨 MAX 아니면 임유리 확인 그대로) */
@@ -1400,7 +1400,7 @@
   function cardDetail(u) {
     const o = byUid(u); if (!o) return renderCards(); norm(o);
     const c = boosted(o), cap = lvCap(o), n = copiesOf(o.id).length, rep = repOf(o.id) === o;
-    const p = popup(`<div class="flex gap-3"><div class="cd-img relative shrink-0 self-start"><img src="${IMG}${c.id}.webp" class="w-full aspect-[3/4] object-cover rounded-xl" alt="">${window.rarityStars?.(c, exOf(o) ? 'ex' : 'base', 'rstars-over') || ''}<button type="button" class="cd-zoom" aria-label="이미지 확대" title="이미지 확대"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/></svg></button></div><div class="flex-1 min-w-0">
+    const p = popup(`<div class="flex gap-3"><div class="cd-img relative shrink-0 self-start"><img src="${IMG}${c.id}.webp" class="w-full aspect-[3/4] object-cover rounded-xl" alt="">${exStars(c, o, 'rstars-over')}<button type="button" class="cd-zoom" aria-label="이미지 확대" title="이미지 확대"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/></svg></button></div><div class="flex-1 min-w-0">
         <div class="text-lg font-black truncate">${window.TCG?.cardTitle ? TCG.cardTitle(c, isLeader(o) ? ic('crown', { alt: '리더' }) + ' ' : '') : `${isLeader(o) ? ic('crown', { alt: '리더' }) + ' ' : ''}${esc(c.name)} <span class="text-xs text-zinc-400">${RAR[c.grade] || 'N'}</span>`}</div>${window.TCG?.cardTags?.(c, [n > 1 ? `×${n}${rep ? ' ⚔️' : ''}` : '']) || ''}
         ${o.bound === true ? `<div class="text-[10px] font-bold text-amber-300/90" title="스토리 보상 인재는 거래할 수 없어요"><img class="ui-ic" src="img/ui/bound.webp" alt=""> 귀속</div>` : ""}
         ${lvBar(o)}
@@ -1442,7 +1442,7 @@
     const mats = materialsOf(o); if (!mats.length) return cardDetail(tu);
     const mat = mats.find(x => x.uid === mu) || mats[0], c = card(o.id), m = mergeCalc(o, mat), after = { ...o, ex: m.ex, exb: m.exb, level: 1, exp: 0 };
     const p = popup(`<div class="text-lg font-black mb-1">${ic('merge', { alt: '' })} 합성 미리보기</div>
-      <div class="flex gap-3 items-center"><div class="relative shrink-0"><img src="${IMG}${c.id}.webp" class="w-20 aspect-[3/4] object-cover rounded-lg" alt="">${window.rarityStars?.(c, 'ex', 'rstars-over') || ''}</div>
+      <div class="flex gap-3 items-center"><div class="relative shrink-0"><img src="${IMG}${c.id}.webp" class="w-20 aspect-[3/4] object-cover rounded-lg" alt="">${exStars(c, after, 'rstars-over')}</div>
         <div class="flex-1 min-w-0 text-sm"><div class="font-black">${esc(exName(o, c.name))} → <span class="text-red-300">${esc(exName(after, c.name))}</span></div>
         <div class="mt-1">합성 보너스 <b class="text-red-300">+${m.bonus}%</b> <span class="text-xs text-zinc-400">(누적 ${exbOf(o)}% → ${m.exb}%)</span></div></div></div>
       <div class="text-xs font-bold mt-3 mb-1 text-left">재료로 쓸 인재 (사라져요)</div>
