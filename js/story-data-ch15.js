@@ -188,23 +188,23 @@ window.STORY_DATA.chapters.push({
   {
    "no": 2,
    "type": "normal",
-   "enemyName": "불량배-Z",
+   "enemyName": "평가관",
    "title": "예비 각성자",
    "enemies": {
     "ids": [
-     "10168",
+     "10510",
      "10145",
      "10146",
      "10156",
      "10157"
     ],
     "boost": {
-     "10168": {
-      "HP": 812,
-      "ATK": 146,
-      "DEF": 146,
+     "10510": {
+      "HP": 650,
+      "ATK": 98,
+      "DEF": 98,
       "storyLv": 76,
-      "power": 50370
+      "power": 37320
      },
      "10145": {
       "HP": 105,
@@ -265,7 +265,7 @@ window.STORY_DATA.chapters.push({
       "text": "그리고 만 13세. 마지막 판정일."
      },
      {
-      "speaker": "불량배-Z",
+      "speaker": "평가관",
       "text": "윤진아. 발현 반응 없음. 만 13세 이후 각성 사례는 보고된 바 없습니다.",
       "expr": "보통"
      },
@@ -275,7 +275,7 @@ window.STORY_DATA.chapters.push({
       "expr": "놀람"
      },
      {
-      "speaker": "불량배-Z",
+      "speaker": "평가관",
       "text": "열심히? 우성인자는 노력으로 생기는 게 아니란다, 꼬마야. 등급 조정 서류 보내 줄게.",
       "expr": "기쁨"
      }
@@ -296,7 +296,7 @@ window.STORY_DATA.chapters.push({
    "hero": [
     "10290"
    ],
-   "bossId": "10168",
+   "bossId": "10510",
    "mana": 80,
    "starTurns": 9,
    "starMana": 0.25,
@@ -324,23 +324,23 @@ window.STORY_DATA.chapters.push({
   {
    "no": 3,
    "type": "normal",
-   "enemyName": "하장미",
+   "enemyName": "윤미리내",
    "title": "노란 띠",
    "enemies": {
     "ids": [
-     "10437",
+     "10280",
      "10147",
      "10148",
      "10158",
      "10159"
     ],
     "boost": {
-     "10437": {
-      "HP": 307,
-      "ATK": 66,
-      "DEF": 40,
+     "10280": {
+      "HP": 123,
+      "ATK": 18,
+      "DEF": 11,
       "storyLv": 77,
-      "power": 11001
+      "power": 1514
      },
      "10147": {
       "HP": 141,
@@ -429,10 +429,10 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "내레이션",
-      "text": "계단 아래에서 비웃음 소리가 들렸다. 하장미 무리였다."
+      "text": "계단 아래에서 비웃음 소리가 들렸다. 윤미리내 무리였다."
      },
      {
-      "speaker": "하장미",
+      "speaker": "윤미리내",
       "text": "어머, 전교 부회장님~ 노란 띠 부회장님~ 배척지 냄새 여기까지 난다~",
       "expr": "기쁨"
      },
@@ -443,7 +443,7 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "동지선",
-      "text": "야, 하장미. 그 입 다물어. 배척지 냄새 어떤 건지 내가 직접 맡게 해 줄까?",
+      "text": "야, 윤미리내. 그 입 다물어. 배척지 냄새 어떤 건지 내가 직접 맡게 해 줄까?",
       "expr": "분노"
      }
     ]
@@ -463,7 +463,7 @@ window.STORY_DATA.chapters.push({
    "hero": [
     "10097"
    ],
-   "bossId": "10437",
+   "bossId": "10280",
    "mana": 80,
    "starTurns": 9,
    "starMana": 0.25,

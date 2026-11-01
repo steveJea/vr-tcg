@@ -164,11 +164,11 @@ window.STORY_DATA.chapters.push({
   {
    "no": 3,
    "type": "normal",
-   "enemyName": "하장미",
+   "enemyName": "윤미리내",
    "title": "내 동생 건드리지 마!",
    "enemies": {
     "ids": [
-     "10437",
+     "10280",
      "10160",
      "10159",
      "10158",
@@ -191,10 +191,10 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "조윤이",
-      "text": "하장미!! 너 내 동생 건드렸어?"
+      "text": "윤미리내!! 너 내 동생 건드렸어?"
      },
      {
-      "speaker": "하장미",
+      "speaker": "윤미리내",
       "expr": "화남",
       "text": "저… 저X이 미쳤나?"
      },
@@ -228,7 +228,7 @@ window.STORY_DATA.chapters.push({
    "hero": [
     "10383"
    ],
-   "bossId": "10437"
+   "bossId": "10280"
   },
   {
    "no": 4,
