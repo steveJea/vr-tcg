@@ -1,0 +1,22 @@
+/* ===== 앱 같은 손맛 (js/polish.js 와 짝). transform·opacity 만, 게임 로직·전투 속도는 그대로 ===== */
+html { -webkit-tap-highlight-color: transparent; }
+button, a, [role="button"], [data-go], .story-chip, .main-tile, .gr-go { touch-action: manipulation; }   /* 더블탭 확대 지연 없앰 */
+button, [role="button"], .main-tile, .gr-go, .story-chip, .set-toggle, .cd-sm, .cd-ic { transition: scale .12s ease, filter .12s ease; }
+button:not(:disabled):active, [role="button"]:active, .main-tile:active, .story-chip:active { scale: .96; filter: brightness(1.08); }   /* scale 속성: 원래 transform(가운데 정렬 등)과 겹쳐도 안 틀어짐 */
+/* 카드 타일: 누르면 살짝 눌림 · 마우스면 살짝 뜸 (전투 카드 #game 은 제외) */
+.story-card, .story-pick-card, .story-own-tile { transition: scale .14s ease, translate .14s ease; }
+.story-pick-card:active .story-card, .story-owned:active .story-own-tile { scale: .97; }
+@media (hover: hover) { .story-owned:hover .story-own-tile, .story-pick-card:not(.locked):hover .story-card { translate: 0 -3px; } }
+/* 팝업 열기: 바탕은 페이드, 안쪽 판은 살짝 커지며 */
+@keyframes uiFadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes uiPopIn { from { opacity: 0; translate: 0 10px; scale: .96; } to { opacity: 1; translate: none; scale: none; } }
+@keyframes uiScreenIn { from { opacity: 0; translate: 0 8px; } to { opacity: 1; translate: none; } }
+.ui-pop-in { animation: uiFadeIn .16s ease-out; }
+.ui-pop-in > * { animation: uiPopIn .2s cubic-bezier(.2, .9, .3, 1.15); }
+.ui-screen-in { animation: uiScreenIn .2s ease-out; }
+/* 스크롤: 관성 · 팝업 안에서 바깥 화면까지 끌려가지 않게 */
+#story-pop, .main-pop, .pvp-modal, .gd-pop, .gd-ov, .story-pop-panel { -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+@media (prefers-reduced-motion: reduce) {
+  .ui-pop-in, .ui-pop-in > *, .ui-screen-in { animation: none !important; }
+  button:active, [role="button"]:active, .main-tile:active, .story-chip:active, .story-pick-card:active .story-card, .story-owned:active .story-own-tile { scale: none !important; translate: none !important; }
+}
