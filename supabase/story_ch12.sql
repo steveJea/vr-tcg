@@ -6,7 +6,7 @@
 -- enemy_count: 시트 적 수 (P17 4 · P20 3 · P21 3, 나머지 5)
 -- =====================================================================
 insert into public.story_phase_config (chapter, phase, type, points, reward_grade, enemy_count) values
-  (12,1,'normal',3,null,5), (12,2,'normal',3,null,5), (12,3,'normal',3,null,5), (12,4,'normal',3,null,5), (12,5,'normal',3,null,5), (12,6,'normal',3,null,5), (12,7,'normal',3,null,5), (12,8,'normal',3,null,5), (12,9,'normal',3,null,5), (12,10,'normal',3,null,5), (12,11,'normal',3,null,5), (12,12,'normal',3,null,5), (12,13,'normal',3,null,5), (12,14,'normal',3,null,5), (12,15,'normal',3,null,5), (12,16,'normal',3,null,5), (12,17,'normal',3,null,4), (12,18,'normal',3,null,5), (12,19,'normal',3,null,5), (12,20,'normal',3,null,3), (12,21,'normal',5,null,3)
+  (12,1,'normal',3,null,5), (12,2,'normal',3,null,5), (12,3,'normal',3,null,5), (12,4,'normal',3,null,5), (12,5,'normal',3,null,5), (12,6,'normal',3,null,5), (12,7,'normal',3,null,5), (12,8,'normal',3,null,5), (12,9,'normal',3,null,5), (12,10,'normal',3,null,5), (12,11,'normal',3,null,5), (12,12,'normal',3,null,5), (12,13,'normal',3,null,5), (12,14,'normal',3,null,5), (12,15,'normal',3,null,5), (12,16,'normal',3,null,5), (12,17,'normal',3,null,4), (12,18,'normal',3,null,5), (12,19,'normal',3,null,5), (12,20,'normal',3,null,1), (12,21,'normal',5,null,3)
 on conflict (chapter, phase) do update set type = excluded.type, points = excluded.points, reward_grade = excluded.reward_grade, enemy_count = excluded.enemy_count;
 
 -- 입장 레벨: story_level_gate.sql 과 같은 함수에 chapter_12 = 22 만 추가
