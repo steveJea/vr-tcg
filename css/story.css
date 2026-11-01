@@ -999,3 +999,9 @@ body.story-media-on .story-dlg-skip { left: 4px; right: auto; top: calc(4px + en
 .q-tower .q-row.on{background:rgba(127,29,29,.25)}
 .q-tower .q-face,.q-tower .q-row.boss .q-face{width:52px;height:52px}
 .q-tower .q-list,.q-tower[class*="q-tier-"] .q-list{background:transparent}
+
+/* PvP 보스리그: 진영 HP 바 크게 */
+#game.view-boss #ai-hpbar, #game.view-boss #me-hpbar { min-height: 10px; }
+#game.view-boss #ai-hpbar { box-shadow: 0 0 6px rgba(239,68,68,.7); }
+#game.view-boss .hud-hp, #game.view-boss div:has(> #ai-hpbar) { height: 10px; }
+#game.view-boss #ai-hp, #game.view-boss #me-hp { font-size: 1rem; font-weight: 900; }

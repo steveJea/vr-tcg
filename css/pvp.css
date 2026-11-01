@@ -114,3 +114,9 @@
 .pvp-who-h{font-size:13px;font-weight:800;color:#d4d4d8;margin:6px 0}
 .pvp-who-deck{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px}
 .pvp-sort button{border:1px solid transparent;cursor:pointer;font-size:11px;padding:3px 9px}.pvp-sort button.on{background:#065f46;border-color:#34d399;color:#fff}
+
+/* 보스리그 덱: 리더 → 멤버 → 확인 */
+.pvp-steps{display:flex;gap:6px;margin:6px 0}.pvp-steps button{flex:1;padding:6px;border-radius:10px;background:rgba(255,255,255,.06);font-weight:800;font-size:12px}
+.pvp-steps .on{background:#f5c96a;color:#111}.pvp-steps button:disabled{opacity:.4}
+.pvp-sec{margin:10px 0 4px;font-size:12px;font-weight:800;opacity:.8}.pvp-lead{justify-content:center}
+.pvp-empty{padding:16px;opacity:.6;font-size:13px;text-align:center}
