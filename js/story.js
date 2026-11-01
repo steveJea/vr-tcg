@@ -779,10 +779,12 @@
   }
   // 스토리 게스트·대여 인재(보유 X, guest: uid)의 시트 레벨: 등급 최대 레벨 예외 (CH8 안소라 Lv80 · CH11 [염원] 최윤정 Lv70~86). 플레이어 보유 카드는 기존 최대 레벨 그대로
   const guestLv = lv => Math.max(1, Math.min(100, lv | 0));
+  // 보유 카드인데 시트 레벨보다 낮으면 이번 전투만 시트 레벨로 올린 사본 (EX·강화·스킬 그대로, 같은 uid → EXP는 실제 카드에). 저장하지 않음
+  const floorLv = (o, lv) => { if (!o || !lv) return o; const want = guestLv(lv); return norm({ ...o }).level >= want ? o : { ...o, level: want, floored: true, overCap: (lv | 0) > lvCap(o) }; };
   function partyOf(ch, ph) {
     const pt = ph.party || (ch.hero ? { forced: [ch.hero] } : null);
     // party.levels { id: Lv }: 보유하지 않은 필수 카드(게스트)의 레벨 (CH7: 시트 강제배정 레벨)
-    const forced = (pt?.forced || []).map(id => (pt?.fixedLevel?.[id] ? null : repOf(id)) || (g => { const lv = pt?.fixedLevel?.[id] ?? pt?.levels?.[id]; return lv ? { ...g, level: guestLv(lv), overCap: (lv | 0) > lvCap(g) } : g; })(guestOf(id))).filter(o => card(o.id));
+    const forced = (pt?.forced || []).map(id => (pt?.fixedLevel?.[id] ? null : floorLv(repOf(id), pt?.levels?.[id])) || (g => { const lv = pt?.fixedLevel?.[id] ?? pt?.levels?.[id]; return lv ? { ...g, level: guestLv(lv), overCap: (lv | 0) > lvCap(g) } : g; })(guestOf(id))).filter(o => card(o.id));
     // 추가 조건 (챕터 3~): noMale · maxMor(필수 카드 제외) · maxGrade. 필수 카드는 조건 예외
     const GO = ['NORMAL', 'RARE', 'HIGH RARE', 'SUPER RARE', 'ULTRA RARE', 'MYTHIC RARE', 'LEGENDARY RARE'], gi = pt?.maxGrade ? GO.indexOf(pt.maxGrade) : -1;
     const rules = [];
@@ -803,7 +805,7 @@
     // party.guests: 고를 수 있는 게스트(보유 안 해도 출전 후보, 필수 아님). 보유 중이면 내 카드로
     // chapter.loan: 그 챕터에서만 빌려 쓰는 인재 (보유 X, 게스트로 출전 후보 · 챕터 끝나면 회수 = 저장 안 함). 보유 중이면 내 카드. 출전 금지·필수와 겹치면 제외
     const loanLv = id => ch.loanLevel?.[id] ?? pt?.levels?.[id];
-    const loans = (ch.loan || []).filter(id => !(pt?.guests || []).map(String).includes(String(id))).map(id => repOf(id) || (g => ({ ...g, loan: true, ...(loanLv(id) ? { level: guestLv(loanLv(id)), overCap: (loanLv(id) | 0) > lvCap(g) } : {}) }))(guestOf(id)));
+    const loans = (ch.loan || []).filter(id => !(pt?.guests || []).map(String).includes(String(id))).map(id => floorLv(repOf(id), loanLv(id)) || (g => ({ ...g, loan: true, ...(loanLv(id) ? { level: guestLv(loanLv(id)), overCap: (loanLv(id) | 0) > lvCap(g) } : {}) }))(guestOf(id)));
     const guests = [...(pt?.guests || []).map(id => repOf(id) || guestOf(id)), ...loans].filter(o => card(o.id));
     return { forced, guests, exclude: new Set([...(pt?.exclude || []), ...(pt?.forced || [])].map(String)), allow, notes: [...rules.map(r => r.note), ...banNotes], max: pt?.solo ? Math.max(1, forced.length) : pt?.max };
   }
@@ -829,7 +831,7 @@
     if (!opts?.noLend && serverMode && Date.now() - lendAt >= 30000) return loadLend().then(() => pickDeck(ch, ph, enemies, opts));
     const { forced, guests = [], exclude, allow, notes, max } = partyOf(ch, ph), pm = opts ? MAX_PICK() : pickMax(ch, ph), slots = Math.max(0, Math.min(pm, max || pm) - forced.length);   // party.max: 필수 포함 최대 장수
     const ln = opts?.noLend ? null : lendInst(), lend = ln && !exclude.has(ln.id) && allow(ln) && !guests.some(g => g.id === ln.id) ? [ln] : [];
-    const all = [...new Map([...lend, ...guests.filter(o => !exclude.has(o.id) && (!o.loan || allow(o))), ...deckInstances().filter(o => !exclude.has(o.id) && allow(o))].map(o => [o.uid, o])).values()];
+    const all = [...new Map([...deckInstances().filter(o => !exclude.has(o.id) && allow(o)), ...lend, ...guests.filter(o => !exclude.has(o.id) && (!o.loan || allow(o)))].map(o => [o.uid, o])).values()];   // 같은 uid면 뒤(대여 인재의 시트 레벨 사본)가 이김
     const go = opts?.onGo || (list => battle(ch, ph, enemies, list));
     if (all.length <= slots && !forced.length) return go(all);
     if (ph.party?.auto && !opts) return go(forced);   // party.auto: 고르기 창 없이 필수 카드만 (챕터 0 튜토리얼)
