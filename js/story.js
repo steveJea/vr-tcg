@@ -311,7 +311,11 @@
     r.classList.remove('hidden'); $('start-screen').classList.add('hidden'); $('game').classList.add('hidden');
     r.scrollTop = 0;
   }
-  function home() { bgm('main'); root().classList.add('hidden'); $('start-screen').classList.remove('hidden'); mailBtn(); }
+  function home() { if (ext) { const e = ext; ext = null; $('story-pop')?.classList.add('hidden'); root().classList.add('hidden'); $('start-screen').classList.remove('hidden'); e.done?.(); return; }
+    bgm('main'); root().classList.add('hidden'); $('start-screen').classList.remove('hidden'); mailBtn(); }
+  /** 바깥 화면에서 인재 육성 (레벨업·합성·장비): 보유 인재 + 상세 열기 → 돌아가기/처음으로 = done() */
+  const trainCard = (uid, done, label) => openPage(() => { ext = { done, label }; renderCards(); if (byUid(uid)) cardDetail(uid); });
+  const canMergeUid = uid => { const o = save?.owned?.find(x => x.uid === uid); return !!o && canMerge(o); };
   const topBar = (title, back = 'home', nav = true) => (back === 'hub' && !save?.starter && (back = 'home'), nav && !save?.starter && (nav = false), 0) || `<div class="story-top"><button class="story-back" data-go="${back}">← ${back === 'home' ? '처음으로' : back === 'hub' ? '스토리 메인' : '돌아가기'}</button><div class="story-top-title">${title}</div>${nav ? `<span class="flex gap-1.5"><button class="story-mycards story-gacha-btn" data-go="gacha">🎴 인재영입${canDraw() ? '<i class="story-badge">1</i>' : ''}</button><button class="story-mycards" data-go="cards">🃏 보유 인재</button><button class="story-mycards" data-go="decks">🗂 덱</button></span>` : '<span></span>'}</div>`;
   function bind(extra = {}) {
     root().querySelectorAll('[data-go]').forEach(b => b.onclick = () => ({ home, hub: renderHub, map: renderMap, cards: renderCards, decks: renderDecks, gacha: renderShop, bonds: renderBonds, ...extra })[b.dataset.go]?.());
@@ -1208,7 +1212,7 @@
   const leaderUnlocked = () => chapterDone(D.chapters[CH1()]);   // 리더 변경: 챕터 1 클리어 후
   const canMerge = o => exOf(o) < maxEx(o) && materialsOf(o).length > 0;
   const idxOf = o => o?._i ?? save.owned.indexOf(o);   // _i: 다른 창(조직 대여)에 넘긴 사본의 보유 순서
-  let openGroups = new Set();
+  let ext = null;   // 바깥 화면(PvP 덱 편성)에서 '인재 육성'으로 들어옴 → 나가면 ext.done()
   function groups() {
     const m = new Map();
     for (const o of save.owned) { if (!m.has(o.id)) m.set(o.id, []); m.get(o.id).push(norm(o)); }
@@ -1275,24 +1279,36 @@
   // 캡처 단계에서 먼저 받아 카드(button) 선택 클릭으로 안 넘어가게
   for (const t of ['click', 'keydown']) document.addEventListener(t, e => { const b = e.target.closest?.('[data-skid]'); if (!b || (t === 'keydown' && e.key !== 'Enter' && e.key !== ' ')) return; e.preventDefault(); e.stopPropagation(); skillPop(b.dataset.skid, b); }, true);
   const ownTile = (o, c, badges = '', after = '') => `<div class="story-card story-own-tile ${rcls(c)}"><div class="story-card-img"><img src="${IMG}${c.id}.webp" alt="${esc(c.name)}" loading="lazy" onerror="this.style.visibility='hidden'">${window.rarityStars?.(c, exOf(o) ? 'ex' : 'base', 'rstars-over rstars-sm') || ''}${isLeader(o) ? `<span class="story-own-leader" title="리더">${ic('crown', { alt: '리더' })}</span>` : ''}${o.cpts ? `<div class="story-cpts">+${o.cpts}</div>` : ''}${badges}${after ? `<div class="story-own-acts">${after}</div>` : ''}</div><div class="story-card-name">${esc(exName(o, c.name.replace(/^\[EX\d+\] /, '')))}</div><div class="story-own-lv">Lv.${o.level}</div></div>`;
+  /** 같은 인재 여러 장 (x2 배지): 작은 팝업 · 상세 / 합성 (합성은 기존 미리보기 → 레벨 MAX 아니면 임유리 확인 그대로) */
+  function copiesPop(id) {
+    const list = copiesOf(id).slice().sort((a, b) => isLeader(b) - isLeader(a) || exOf(b) - exOf(a) || b.level - a.level), c = card(id); if (!list.length || !c) return;
+    const rep0 = repOf(id);
+    const p = popup(`<div class="story-cp-h"><b>${esc(c.name)}</b> <small>${list.length}명</small><button class="story-cp-x" data-close-pop aria-label="닫기">✕</button></div>
+      <div class="story-cp-list">${list.map(x => `<div class="story-cp-row"><button class="story-cp-info" data-cd="${x.uid}"><span class="font-bold">${isLeader(x) ? ic('crown', { alt: '리더' }) + ' ' : x === rep0 ? '⚔️ ' : ''}${(x.locked || inDeck(x)) && !isLeader(x) ? '🔒 ' : ''}${isFav(x) ? '★ ' : ''}Lv.${x.level}${exOf(x) ? ` <i class="text-red-300 not-italic">EX${exOf(x)}</i>` : ''}</span><small class="text-amber-300">⚡${fmt(powerCalc(x))}</small></button>
+        ${canMerge(x) ? `<button class="story-cp-merge" data-mg="${x.uid}" title="이 인재에 합성">${ic('merge', { alt: '' }) || ''}합성</button>` : ''}</div>`).join('')}</div>
+      <button class="story-btn ghost w-full mt-3" data-close-pop>닫기</button>`);
+    p.el.querySelectorAll('[data-cd]').forEach(b => b.onclick = () => { p.close(true); cardDetail(b.dataset.cd); });
+    p.el.querySelectorAll('[data-mg]').forEach(b => b.onclick = () => { p.close(true); mergePreview(b.dataset.mg); });
+  }
   function renderCards() {
     const k = D.statPerPoint; save.owned.forEach(norm);
     const anyPts = save.points || cptsTotal(), all = groups(), gs = all.filter(g => passFilter(g.id, g.list));
-    show(`${topBar('🃏 보유 인재', 'hub')}<div class="story-cards-meta">${all.length}종 · ${save.owned.length}명 · P ${save.points}${cptsTotal() ? ` · 전용 ${cptsTotal()}` : ''}
+    show(`${ext ? `<button class="story-extback" data-pvpback>← ${esc(ext.label || '돌아가기')}</button>` : ''}${topBar('🃏 보유 인재', 'hub')}<div class="story-cards-meta">${all.length}종 · ${save.owned.length}명 · P ${save.points}${cptsTotal() ? ` · 전용 ${cptsTotal()}` : ''}
       <span class="story-cards-acts"><button class="story-mini" data-go="decks">🗂 덱</button>${serverMode && window.VRGear && !window.VRGear.off ? '<button class="story-mini" data-go="gearbag">🎒 장비</button>' : ''}${save.owned.length > 1 ? '<button class="story-mini story-mini-red" data-go="bulk">' + ic('discard', { alt: '' }) + ' 일괄 분해</button>' : ''}</span></div>
       ${(() => { const lo = byUid(save.leader), le = lo && leaderEff(lo.id); return le ? `<div class="story-leader-bar" title="${esc(le.text)}"><div class="min-w-0">${ic('crown', { alt: '' })} <b>${esc(exName(lo, card(lo.id)?.name))}</b> <small>${esc(le.label)}</small></div><button class="story-mini" data-go="leader" ${leaderUnlocked() ? '' : 'disabled title="챕터 1 클리어 후"'}>${leaderUnlocked() ? '변경' : '🔒 CH1'}</button></div>` : ''; })()}
-      ${all.length > 1 ? sortBar() + filterBar() : ''}${gs.length ? '' : '<div class="story-empty">없음</div>'}<div class="story-grid">${gs.map(gr => { const o = gr.rep, c = boosted(o); if (!c) return ''; const b = o.boost || {}, n = gr.list.length, open = openGroups.has(gr.id);
+      ${all.length > 1 ? sortBar() + filterBar() : ''}${gs.length ? '' : '<div class="story-empty">없음</div>'}<div class="story-grid">${gs.map(gr => { const o = gr.rep, c = boosted(o); if (!c) return ''; const b = o.boost || {}, n = gr.list.length;
         const up = STATS.filter(s => b[s]).map(s => `${s} +${ptGain(s, b[s])}`).join(' · ');
         const mergeable = gr.list.some(canMerge);
-        return `<div class="story-group ${open ? 'open' : ''}"><div data-uid="${o.uid}" class="story-owned">${ownTile(o, c, `${gr.list.some(x => (x.locked || inDeck(x)) && !isLeader(x)) ? '<div class="story-lockbadge" title="잠금">🔒</div>' : ''}${gr.list.some(isFav) ? '<div class="story-favbadge">★</div>' : ''}`, `${mergeable ? `<button class="story-merge-mini" data-merge="${(gr.list.find(canMerge)).uid}" title="합성" aria-label="합성">${ic('merge', { alt: '합성' }) || '✦'}</button>` : ''}${n > 1 ? `<button class="story-expand" data-expand="${gr.id}" title="${open ? '접기' : `${n}명 보기`}">x${n}${open ? '▴' : '▾'}</button>` : ''}`)}</div>
-          ${open ? `<div class="story-copies">${gr.list.map(x => `<button class="story-copy" data-uid="${x.uid}"><span class="font-bold">${isLeader(x) ? ic('crown', { alt: '리더' }) + ' ' : x === o ? '⚔️ ' : ''}${(x.locked || inDeck(x)) && !isLeader(x) ? '🔒 ' : ''}${isFav(x) ? '★ ' : ''}Lv.${x.level}${exOf(x) ? ` <i class="text-red-300 not-italic">EX${exOf(x)}</i>` : ''}</span><span class="text-[10px] text-zinc-400"><b class="text-amber-300">⚡${fmt(powerCalc(x))}</b> ${ic('atk', { cls: 'ui-ic-sm' })}${fmt(statCalc(x, 'ATK'))} ${ic('hp', { cls: 'ui-ic-sm' })}${fmt(statCalc(x, 'HP'))} ${ic('def', { cls: 'ui-ic-sm' })}${fmt(statCalc(x, 'DEF'))}</span></button>`).join('')}</div>` : ''}</div>`; }).join('')}</div>
+        return `<div class="story-group"><div data-uid="${o.uid}" class="story-owned">${ownTile(o, c, `${gr.list.some(x => (x.locked || inDeck(x)) && !isLeader(x)) ? '<div class="story-lockbadge" title="잠금">🔒</div>' : ''}${gr.list.some(isFav) ? '<div class="story-favbadge">★</div>' : ''}`, `${mergeable ? `<button class="story-merge-mini" data-merge="${(gr.list.find(canMerge)).uid}" title="합성" aria-label="합성">${ic('merge', { alt: '합성' }) || '✦'}</button>` : ''}${n > 1 ? `<button class="story-expand" data-expand="${gr.id}" title="${n}명 보기" aria-label="같은 인재 ${n}명 보기">x${n}</button>` : ''}`)}</div>
+          </div>`; }).join('')}</div>
       ${anyPts ? '<div class="text-center mt-4"><button class="story-btn" data-go="stats">📈 스탯 분배하기</button></div>' : ''}`);
     bind({ gearbag: () => window.VRGear?.bag?.(), stats: () => openStats(renderCards), bulk: () => bulkDiscard(), leader: () => pickLeader(), decks: () => renderDecks() });
     bindFilter(renderCards);
     root().querySelectorAll('[data-uid]').forEach(el => el.onclick = () => cardDetail(el.dataset.uid));
     root().querySelectorAll('[data-merge]').forEach(b => b.onclick = e => { e.stopPropagation(); mergePreview(b.dataset.merge); });
     root().querySelectorAll('[data-sort]').forEach(b => b.onclick = () => { setSort(b.dataset.sort); renderCards(); });
-    root().querySelectorAll('[data-expand]').forEach(b => b.onclick = e => { e.stopPropagation(); const g = b.dataset.expand; openGroups.has(g) ? openGroups.delete(g) : openGroups.add(g); renderCards(); });
+    root().querySelectorAll('[data-expand]').forEach(b => b.onclick = e => { e.stopPropagation(); copiesPop(b.dataset.expand); });
+    if (ext) { const pb = root().querySelector('[data-pvpback]'); if (pb) pb.onclick = () => home(); }
   }
   // ----- 카드 레벨업 (단계 E-4, 서버 story_card_levelup): L → L+1 = 순수한 피 ceil(b×L×0.5), 골드 ceil(g×L×10×0.5) -----
   const LV_B = { 'NORMAL': 2, 'RARE': 3, 'HIGH RARE': 5, 'SUPER RARE': 8, 'ULTRA RARE': 12, 'MYTHIC RARE': 18, 'LEGENDARY RARE': 27 };
@@ -1933,5 +1949,5 @@
     sort: (list, st) => { const k0 = cardSort; cardSort = st; try { return sortInst(list); } finally { cardSort = k0; } },
     next: (st, k) => st.k === k ? { k, desc: !st.desc } : { k, desc: true },
   };
-  window.VRStory = { sortTool, skBadge, lendCards, reloadLend: () => loadLend(true), partyOf, pickDeck, openMap: i => openPage(() => renderMap(i)), openCards: () => openPage(renderCards), openDecks: () => openPage(renderDecks), openShop: () => openPage(renderShop), api, bgm, BGM, endingVideo, videoOf, conditionsOf, battleRules, summary, enter, openGacha, renderHub, renderShop, drawOnce, kstDay, get save() { return save; }, renderMap, renderCards, openStats, renderSelect, playLines };
+  window.VRStory = { trainCard, canMergeUid, sortTool, skBadge, lendCards, reloadLend: () => loadLend(true), partyOf, pickDeck, openMap: i => openPage(() => renderMap(i)), openCards: () => openPage(renderCards), openDecks: () => openPage(renderDecks), openShop: () => openPage(renderShop), api, bgm, BGM, endingVideo, videoOf, conditionsOf, battleRules, summary, enter, openGacha, renderHub, renderShop, drawOnce, kstDay, get save() { return save; }, renderMap, renderCards, openStats, renderSelect, playLines };
 })();
