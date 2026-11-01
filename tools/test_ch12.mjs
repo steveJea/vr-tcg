@@ -32,7 +32,7 @@ ok(ch && ch.phases.length === 21 && ch.subtitle === '위대한 개츠비' && ch.
 ok(ch.phases.every(p => p.enemies.ids.every(id => cards[id])), '적 카드 모두 존재');
 const P = n => ch.phases[n - 1];
 ok(P(1).party.costBelow === 35 && P(5).party.costBelow === 40 && P(6).party.costBelow === 45, '코스트 제한');
-ok(P(7).party.solo && P(7).party.forced[0] === '10505', 'P7 안혜진 단독');
+ok([7, 8].every(n => !P(n).party.solo && P(n).party.maxGrade === 'HIGH RARE' && P(n).party.forced[0] === '10505'), 'P7·P8 안혜진 필수 + SR 이상 출전 금지');
 ok(P(12).party.maxGrade === 'SUPER RARE' && P(16).party.maxGrade === 'HIGH RARE' && P(14).party.noMale, '등급·남성 제한');
 ok(P(13).rules?.maxTurns === 6, 'P13 총 6턴');
 ok(P(20).rules?.survive === 10 && P(20).rules.blind['10072'] === 0.4 && P(20).enemies.ids.length === 3, 'P20 10턴 생존 · 김지수 명중 -40% · 염원 이민채 3');

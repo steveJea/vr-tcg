@@ -903,7 +903,7 @@ window.STORY_DATA.chapters.push({
     "forced": [
      "10505"
     ],
-    "solo": true,
+    "maxGrade": "HIGH RARE",
     "mustLive": [
      "10505"
     ],
@@ -992,7 +992,7 @@ window.STORY_DATA.chapters.push({
     "forced": [
      "10505"
     ],
-    "solo": true,
+    "maxGrade": "HIGH RARE",
     "mustLive": [
      "10505"
     ],
