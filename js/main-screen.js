@@ -3,16 +3,17 @@
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const screen = document.getElementById('start-screen');
 
-  // --- 로비 배경 영상: 세로(모바일) = main-portrait_v2 · 가로(PC) = main-landscape_v2. 지금 방향 것만 받음. 포스터 = 그 방향 첫 장면 ---
+  // --- 로비 배경 영상: 세로(모바일) = main-portrait_v3 · 가로(PC) = main-landscape_v2. 지금 방향 것만 받음. 포스터 = 그 방향 첫 장면 ---
   const vid = document.getElementById('main-video');
   const portraitMq = matchMedia('(orientation: portrait), (max-aspect-ratio: 4/5)');
   const syncVideo = () => {
     if (!vid || reduce) return;                 // 동작 줄이기: 영상 대신 정지 이미지
     const k = portraitMq.matches ? 'portrait' : 'landscape';
+    const ver = k === 'portrait' ? 'v3' : 'v2';
     if (vid.dataset.loaded !== k) {
       vid.dataset.loaded = k;
-      vid.poster = `img/main-${k}_v2.jpg`;
-      vid.innerHTML = `<source src="video/main-${k}_v2.mp4" type="video/mp4">`;
+      vid.poster = `img/main-${k}_${ver}.jpg`;
+      vid.innerHTML = `<source src="video/main-${k}_${ver}.mp4" type="video/mp4">`;
       vid.load();
     }
     vid.classList.remove('hidden');
