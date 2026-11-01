@@ -2034,6 +2034,10 @@ async function viewBattle0({ session, aiName = '상대', bg = 'normal', manual =
   if (title) log(title, 'text-amber-300');
   log(raid ? `🐉 균열 토벌 · 내 턴 ${mt / 2}번 동안 최대한 큰 피해를 (행동 1번 상한 ${fmt(raid.cap)})` : '⚔️ 마나 없음 · 상대를 모두 쓰러뜨리면 승리', 'text-amber-300');
   render();
+  // SKIP: 남은 전투를 AUTO 로 연출 없이 끝까지 (같은 엔진·같은 seed → 결과는 끝까지 본 것과 같음. 수동이면 AUTO 행동도 기록돼 재생 검증 그대로). 3vs3 은 판마다
+  const SKB = document.createElement('button'); SKB.id = 'vb-skip'; SKB.type = 'button'; SKB.textContent = 'SKIP ⏭';
+  SKB.onclick = e => { e.stopPropagation(); if (V.skip || S?.over) return; V.skip = true; V.auto = true; V.batch = null; fastForward = true; SKB.disabled = true; SKB.textContent = '결과 계산 중…'; if (V.ask) V.ask({ k: 'auto' }); };
+  $('game').appendChild(SKB);
   const drain = () => { const ev = session.events || []; const out = ev.splice(0, ev.length); return out; };
   // 마나 없음: 처치 마나(refund) 연출 생략. 같은 카드에 숫자가 겹치지 않게 조금씩 띄워 보여 줌
   const bossNum = (d, weak) => { if (!raid || !(d > 0)) return; const el = unitEl('ai', V.B0[0]); shake(el, { dmg: d, crit: d >= raid.cap }); hitFx(el, 'blood'); dmgNumber(el, `-${fmt(d)}`, d >= raid.cap ? '#f97316' : '#fde047', false, 'fx-dmg-crit fx-dmg-raid'); if (weak) dmgNumber(el, '약점!', '#fca5a5', false, 'fx-dmg-mini'); if (d >= raid.cap) dmgNumber(el, 'MAX', '#fb923c', false, 'fx-dmg-mini'); };
@@ -2043,6 +2047,7 @@ async function viewBattle0({ session, aiName = '상대', bg = 'normal', manual =
   try {
     for (let g = 0; !x.done && g < 20000; g++) {
       const v = x.value;
+      if (V.skip) { drain(); x = v.ask ? session.next({ k: 'auto' }) : session.next(); continue; }   // SKIP 뒤: 연출 없이 엔진만
       if (v.anim) {
         const a = v.anim, who = a.side === 'A' ? 'me' : 'ai', evs = drain();
         fastForward = false;   // 탭 빨리감기는 그 행동 하나만 (스토리처럼) — 안 풀면 한 번 탭 뒤 전투 전체가 연출 없이 순식간에 끝남
@@ -2074,7 +2079,7 @@ async function viewBattle0({ session, aiName = '상대', bg = 'normal', manual =
       }
       x = session.next();
     }
-    await play(drain());
+    if (V.skip) { drain(); fastForward = false; SKB.remove(); } else await play(drain());
     S.over = true; render(); TUT('battle_end', { win: !!(x.value && x.value.win) });
     if (raid) { raidPaint(x.value?.damage || 0, 1); try { window.VRSound?.jingle?.('victory'); } catch {} floatText(`총 피해 ${fmt(x.value?.damage || 0)}`, 'text-amber-300 text-3xl', 'ai'); }
     else { try { window.VRSound?.jingle?.(x.value?.win ? 'victory' : 'defeat'); } catch {}
@@ -2082,7 +2087,7 @@ async function viewBattle0({ session, aiName = '상대', bg = 'normal', manual =
     await sleep(window.TCG_FAST ? 0 : 1200);
     return x.value;
   } finally {
-    clearInterval(tick); RB?.remove();
+    clearInterval(tick); RB?.remove(); SKB.remove();
     $('game').classList.remove('view-battle', 'view-raid', 'view-boss', 'story-field'); $('game').classList.add('hidden');
     hid.forEach(e => { e.style.display = e.dataset.vbHide || ''; delete e.dataset.vbHide; });
     if (hubWasOn) $('start-screen').classList.remove('hidden');
