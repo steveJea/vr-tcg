@@ -54,7 +54,7 @@
     .unit.target > div:first-child { box-shadow: 0 0 0 2px #ef4444; border-radius: .75rem; }
     .unit.swap-sel > div:first-child { box-shadow: 0 0 0 2px #38bdf8; border-radius: .75rem; }
     .float-text { animation: floatUp 1.2s ease-out forwards; transform: translate(-50%, 0); }
-    @keyframes floatUp { from { opacity: 1; margin-top: 0; } to { opacity: 0; margin-top: -48px; } }
+    @keyframes floatUp { from { opacity: 1; translate: 0 0; } to { opacity: 0; translate: 0 -48px; } }
     .fx-shake { animation: fxShake .16s linear; }
     @keyframes fxShake { 0%,100% { translate: 0 0; } 15% { translate: -6px 0; } 30% { translate: 6px 0; } 45% { translate: -5px 0; } 60% { translate: 4px 0; } 75% { translate: -2px 0; } }
     .fx-hitflash { filter: brightness(2.6) saturate(.4) contrast(1.1); }   /* 하얀 섬광 */
@@ -65,7 +65,7 @@
     .fx-screen { animation: fxScreen .22s linear; }
     @keyframes fxScreen { 0%,100% { translate: 0 0; } 20% { translate: calc(var(--amp) * -1) calc(var(--amp) * .5); } 40% { translate: var(--amp) calc(var(--amp) * -.4); } 60% { translate: calc(var(--amp) * -.6) calc(var(--amp) * .3); } 80% { translate: calc(var(--amp) * .3) 0; } }
     .fx-dmg { position: fixed; z-index: 40; pointer-events: none; font-weight: 900; font-size: 1.35rem; color: #f87171; text-shadow: 0 2px 4px #000, 0 0 8px #7f1d1d; transform: translate(-50%, -50%); animation: fxDmg 1.3s cubic-bezier(.22,.8,.3,1) forwards; }
-    @keyframes fxDmg { 0% { opacity: 0; margin-top: 0; scale: .5; } 6% { opacity: 1; scale: 1.6; } 14% { scale: .92; } 20% { scale: 1.05; } 26% { scale: 1; } 55% { opacity: 1; margin-top: -26px; } 100% { opacity: 0; margin-top: -58px; } }   /* 천천히 떠오르며 사라짐 */
+    @keyframes fxDmg { 0% { opacity: 0; translate: 0 0; scale: .5; } 6% { opacity: 1; scale: 1.6; } 14% { scale: .92; } 20% { scale: 1.05; } 26% { scale: 1; } 55% { opacity: 1; translate: 0 -26px; } 100% { opacity: 0; translate: 0 -58px; } }   /* 천천히 떠오르며 사라짐 */
     /* UI 아이콘 (js/icons.js): 글자 크기에 맞춤 */
     .log-fab{position:absolute;right:8px;bottom:calc(100% + 6px);z-index:6;width:34px;height:34px;border-radius:999px;background:rgba(0,0,0,.65);border:1px solid rgba(255,255,255,.2);font-size:16px;line-height:1;box-shadow:0 2px 8px rgba(0,0,0,.5)}
     .log-fab:hover{border-color:#fbbf24}
@@ -275,6 +275,7 @@
 <link rel="stylesheet" href="css/tutorial.css">
 <link rel="stylesheet" href="css/status-fx.css">
 <link rel="stylesheet" href="css/polish.css">
+<link rel="stylesheet" href="css/battle-polish.css">
 <script>document.addEventListener("contextmenu",function(e){var t=e.target;if(t&&t.closest&&t.closest("input,textarea,[contenteditable]"))return;e.preventDefault()},true)</script>
 </head>
 <body class="bg-zinc-950 text-white min-h-screen select-none">
