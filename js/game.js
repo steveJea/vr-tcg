@@ -1845,7 +1845,12 @@ $('end-turn').onclick = requestEndTurn;
 $('attack-all').onclick = attackAll;
 { const rb = $('reserve-btn'); if (rb) rb.onclick = summonReserve; }
 for (const type of Object.keys(ACTIONS)) $(`act-${type}`).onclick = () => { if (S.story && type === 'shuffle') return; if (S.turn === 'me' && !S.busy && !S.over) useAction('me', type); };
-$('ai-hero').onclick = onHeroClick;
+// 아케이드: 상대 정보 박스는 접힌 상태가 기본 → 탭하면 열고 다시 탭하면 닫힘 (공격할 카드를 고른 상태면 기존처럼 진영 공격)
+$('ai-hero').onclick = () => {
+  const h = $('ai-hero'), atk = selected != null && S?.turn === 'me' && S.me.field.find(x => x.uid === selected)?.canAttack;
+  if (atk || $('game').classList.contains('story-field')) return onHeroClick();
+  const f = h.classList.toggle('folded'); h.setAttribute('aria-expanded', String(!f));
+};
 $('ai-boss').addEventListener('click', e => { if (!e.target.closest('[data-uid]')) onHeroClick(); });   // 빈 진영 칸 탭 = 진영 공격
 $('help-btn').onclick = () => showModal('help');
 $('main-help').onclick = () => showModal('help');

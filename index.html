@@ -380,10 +380,11 @@
 <section id="game" class="hidden max-w-5xl mx-auto px-2 py-2 flex flex-col gap-2 min-h-screen">
   <!-- 상대 진영 -->
   <div id="top-bar" class="relative flex items-center gap-2">
-    <div id="ai-hero" class="flex-1 min-w-0 bg-black/60 border border-red-500/40 rounded-2xl px-3 py-1.5 cursor-pointer">
+    <div id="ai-hero" class="flex-1 min-w-0 bg-black/60 border border-red-500/40 rounded-2xl px-3 py-1.5 cursor-pointer folded" aria-expanded="false">
       <div class="flex justify-between items-center gap-2 text-xs md:text-sm"><span class="flex items-center gap-1.5 min-w-0"><span id="ai-name" class="font-bold text-red-400 truncate empty:hidden"></span><span id="ai-order" class="px-1.5 py-0.5 rounded bg-white/10 text-[10px] text-zinc-300 empty:hidden"></span><span class="mana-line text-[11px] text-zinc-400 whitespace-nowrap"><img src="img/ui/mana.webp" alt="마나" class="ui-ic" width="64" height="64"> <span id="ai-mana"></span></span></span><span class="flex items-center gap-2 shrink-0"><span class="deck-info text-[11px] text-zinc-400">덱 <span id="ai-deck"></span> · 손패 <span id="ai-handcount"></span></span><span id="ai-hp" class="font-bold"></span></span></div>
       <div class="h-1.5 bg-white/10 rounded-full mt-1 overflow-hidden"><div id="ai-hpbar" class="h-full bg-red-500 transition-all"></div></div>
       <div id="ai-syn" class="hidden"></div>
+      <span class="ai-fold-chip" aria-label="상대 정보 열기">상대 정보 ▾</span>
     </div>
     <button id="auto-btn" class="hidden h-10 shrink-0 px-2 rounded-full bg-zinc-800 border border-white/20 hover:border-emerald-400 text-xs font-black whitespace-nowrap" title="자동 전투" aria-label="자동 전투" aria-pressed="false">▶ AUTO</button>
     <button id="bset-btn" class="w-10 h-10 shrink-0 rounded-full bg-zinc-800 border border-white/20 hover:border-emerald-400 text-lg leading-none" title="설정" aria-label="전투 설정" aria-expanded="false">⚙️</button>
