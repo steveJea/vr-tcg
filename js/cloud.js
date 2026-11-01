@@ -154,7 +154,8 @@ async function init() {
   }
 }
 // ===== 닉네임 (supabase/nickname.sql: set_nickname / nickname_check) =====
-const NICK_ERR = { short: '2글자 이상 입력해 주세요', long: '12글자까지 가능해요', bad: '한글·영문·숫자·공백·_ . - 만 쓸 수 있어요', taken: '이미 누가 쓰고 있는 닉네임이에요' };
+const NICK_ERR = { short: '2글자 이상 입력해 주세요', long: '12글자까지 가능해요', bad: '한글·영문·숫자·공백·_ . - 만 쓸 수 있어요', taken: '이미 누가 쓰고 있는 닉네임이에요', banned: '쓸 수 없는 단어가 들어 있어요', same: '지금 닉네임과 같아요', gem: '심연석이 부족해요 (변경 1회 200개)' };
+const NICK_PRICE = 200;   // supabase/nickname_v2.sql _nick_price() 와 같은 값 (첫 설정은 무료)
 const nickErr = m => { const k = (/nick (\w+)/.exec(m || '') || [])[1]; return NICK_ERR[k] || '저장하지 못했어요. 잠시 후 다시 시도해 주세요'; };
 function askNickname(first) {
   if (!user || document.getElementById('nick-ov')) return Promise.resolve(null);
@@ -166,18 +167,18 @@ function askNickname(first) {
   #nick-box .nk-msg{min-height:18px;margin:6px 2px 10px;font-size:12px}#nick-box .nk-msg.bad{color:#fca5a5}#nick-box .nk-msg.good{color:#86efac}
   #nick-box .nk-btns{display:flex;gap:8px}#nick-box button{flex:1;padding:11px;border-radius:10px;border:1px solid rgba(251,191,36,.35);background:rgba(0,0,0,.3);color:#fde68a;font-weight:800;font-size:15px;cursor:pointer}
   #nick-box button.go{background:#f59e0b;color:#1a1200}#nick-box button:disabled{opacity:.5}`; document.head.appendChild(c); }
-  const cur = profile?.nick_set ? profile.nickname : '';
+  const cur = profile?.nick_set ? profile.nickname : '', paid = !first && !!profile?.nick_set;
   const ov = document.createElement('div'); ov.id = 'nick-ov';
   ov.innerHTML = `<div id="nick-box" role="dialog" aria-label="닉네임"><h3>${first ? '닉네임을 정해 주세요' : '닉네임 변경'}</h3>
-    <p>${first ? '랭킹·PvP·친구 목록에 이 이름으로 나와요.<br>' : ''}2~12글자 · 다른 사람과 겹칠 수 없어요</p>
+    <p>${first ? '랭킹·PvP·친구 목록에 이 이름으로 나와요.<br>' : ''}2~12글자 · 다른 사람과 겹칠 수 없어요${paid ? `<br><b>변경할 때마다 🔮 심연석 ${NICK_PRICE}개가 들어요</b>` : first ? '<br>처음 한 번은 무료예요' : ''}</p>
     <input maxlength="12" autocomplete="off" spellcheck="false" placeholder="닉네임" value="${esc(cur)}"><div class="nk-msg"></div>
-    <div class="nk-btns">${first ? '' : '<button class="no" type="button">취소</button>'}<button class="go" type="button">${first ? '시작하기' : '저장'}</button></div></div>`;
+    <div class="nk-btns">${first ? '' : '<button class="no" type="button">취소</button>'}<button class="go" type="button">${first ? '시작하기' : paid ? `🔮${NICK_PRICE} 변경` : '저장'}</button></div></div>`;
   document.body.appendChild(ov);
   const inp = ov.querySelector('input'), msg = ov.querySelector('.nk-msg'), go = ov.querySelector('.go');
   const say = (t, cls) => { msg.textContent = t; msg.className = 'nk-msg ' + (cls || ''); };
   let tmr = 0;
   inp.oninput = () => { clearTimeout(tmr); const v = inp.value.trim(); if (!v) return say('');
-    const loc = v.length < 2 ? 'short' : v.length > 12 ? 'long' : !/^[0-9A-Za-z가-힣ㄱ-ㅎㅏ-ㅣ _.\-]+$/.test(v) ? 'bad' : null;
+    const loc = paid && v === cur ? 'same' : v.length < 2 ? 'short' : v.length > 12 ? 'long' : !/^[0-9A-Za-z가-힣ㄱ-ㅎㅏ-ㅣ _.\-]+$/.test(v) ? 'bad' : null;
     if (loc) return say(NICK_ERR[loc], 'bad');
     tmr = setTimeout(async () => { try { const { data } = await sb.rpc('nickname_check', { p_nick: v }); if (inp.value.trim() === v) say(data === 'ok' ? '사용할 수 있어요' : NICK_ERR[data] || '', data === 'ok' ? 'good' : 'bad'); } catch {} }, 350); };
   return new Promise(res => {
@@ -185,11 +186,14 @@ function askNickname(first) {
     const no = ov.querySelector('.no'); if (no) no.onclick = () => done(null);
     if (!first) ov.addEventListener('click', e => { if (e.target === ov) done(null); });
     const save = async () => {
-      const v = inp.value.trim(); go.disabled = true;
+      const v = inp.value.trim();
+      if (paid && !confirm(`심연석 ${NICK_PRICE}개를 써서 '${v}'(으)로 바꿀까요?`)) return;
+      go.disabled = true;
       const { data, error } = await sb.rpc('set_nickname', { p_nick: v });
       go.disabled = false;
       if (error) return say(nickErr(error.message), 'bad');
       profile = { ...(profile || {}), nickname: data?.nickname || v, nick_set: true }; render(profile);
+      if (data?.cost) try { window.VRGem?.status?.(true); } catch {}
       window.dispatchEvent(new CustomEvent('vr:nickname', { detail: profile.nickname })); done(profile.nickname);
     };
     go.onclick = save; inp.onkeydown = e => { if (e.key === 'Enter') save(); };
