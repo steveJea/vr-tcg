@@ -2468,6 +2468,9 @@ window.STORY_DATA.chapters.push({
      "expr": "기쁨"
     }
    ],
+   "rules": {
+    "survive": 5
+   },
    "afterTitle": "전투 후"
   },
   {
@@ -2610,6 +2613,9 @@ window.STORY_DATA.chapters.push({
      "expr": "슬픔"
     }
    ],
+   "rules": {
+    "survive": 7
+   },
    "afterTitle": "전투 후"
   },
   {
@@ -2619,8 +2625,6 @@ window.STORY_DATA.chapters.push({
    "title": "어둠 속의 그림자",
    "enemies": {
     "ids": [
-     "10302",
-     "10302",
      "10302"
     ],
     "boost": {

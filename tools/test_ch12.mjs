@@ -35,7 +35,8 @@ ok(P(1).party.costBelow === 35 && P(5).party.costBelow === 40 && P(6).party.cost
 ok([7, 8].every(n => !P(n).party.solo && P(n).party.maxGrade === 'HIGH RARE' && P(n).party.forced[0] === '10505'), 'P7·P8 안혜진 필수 + SR 이상 출전 금지');
 ok(P(12).party.maxGrade === 'SUPER RARE' && P(16).party.maxGrade === 'HIGH RARE' && P(14).party.noMale, '등급·남성 제한');
 ok(P(13).rules?.maxTurns === 6, 'P13 총 6턴');
-ok(P(20).rules?.survive === 10 && P(20).rules.blind['10072'] === 0.4 && P(20).enemies.ids.length === 3, 'P20 10턴 생존 · 김지수 명중 -40% · 염원 이민채 3');
+ok(P(20).rules?.survive === 10 && P(20).rules.blind['10072'] === 0.4 && P(20).enemies.ids.length === 1, 'P20 10턴 생존 · 김지수 명중 -40% · 염원 이민채 1');
+ok(P(18).rules?.survive === 5 && P(19).rules?.survive === 7, 'P18 5턴 · P19 7턴 생존');
 ok(P(21).type === 'normal' && P(21).final && Object.values(P(21).enemies.boost).every(b => b.storyLv === 91), 'P21 일반 전투 Lv91 · 마지막');
 const sp = new Set(ch.phases.flatMap(p => [...p.lines.default, ...(p.after || [])]).concat(ch.start).map(L => L.speaker));
 for (const n of ['김지수', '루비에르 회장 김정란', '김지우', '안지수', '안혜진', '한서린', '도예나', '최태석']) if (sp.has(n)) { const s = D.chapterPortraits[12][n]; ok(s && ['base', 'playful', 'angry', 'sad', 'surprised', 'hurt'].every(x => { try { readFileSync(new URL(`../img/story/portraits/${s}_${x}.webp`, import.meta.url)); return true; } catch { return false; } }), `초상화 ${n} → ${s}`); }
