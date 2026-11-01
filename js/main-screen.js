@@ -3,20 +3,20 @@
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const screen = document.getElementById('start-screen');
 
-  // --- 세로 화면 배경 영상: 세로일 때만 src를 넣어 데스크톱은 다운로드하지 않음 ---
+  // --- 로비 배경 영상: 세로(모바일) = main-portrait_v2 · 가로(PC) = main-landscape_v2. 지금 방향 것만 받음. 포스터 = 그 방향 첫 장면 ---
   const vid = document.getElementById('main-video');
   const portraitMq = matchMedia('(orientation: portrait), (max-aspect-ratio: 4/5)');
   const syncVideo = () => {
     if (!vid || reduce) return;                 // 동작 줄이기: 영상 대신 정지 이미지
-    if (portraitMq.matches) {
-      if (!vid.dataset.loaded) {
-        vid.dataset.loaded = '1';
-        vid.innerHTML = '<source src="video/main-portrait.webm" type="video/webm"><source src="video/main-portrait.mp4" type="video/mp4">';
-        vid.load();
-      }
-      vid.classList.remove('hidden');
-      vid.play().catch(() => {});
-    } else { vid.classList.add('hidden'); vid.pause(); }
+    const k = portraitMq.matches ? 'portrait' : 'landscape';
+    if (vid.dataset.loaded !== k) {
+      vid.dataset.loaded = k;
+      vid.poster = `img/main-${k}_v2.jpg`;
+      vid.innerHTML = `<source src="video/main-${k}_v2.mp4" type="video/mp4">`;
+      vid.load();
+    }
+    vid.classList.remove('hidden');
+    vid.play().catch(() => {});
   };
   syncVideo();
   portraitMq.addEventListener?.('change', syncVideo);
