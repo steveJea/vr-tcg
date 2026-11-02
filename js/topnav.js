@@ -49,13 +49,18 @@
     if (vis(SS())) { const s = SS(); if (s.querySelector('.hub-top')) return 'hub'; if (s.querySelector('.gr-banners, #gacha-stage, #tk-result')) return 'gacha'; if (s.querySelector('.story-map-screen')) return 'map'; return 'story'; }
     return 'lobby';
   }
+  // 지금 보이는 요소만 읽음 (숨은 화면에 남은 예전 제목을 읽지 않게)
+  // (story-top-title 은 바가 대신 보여 주려고 CSS로 숨겨 두었으니, 그 화면 칸(.story-top 의 부모)이 보이는지로 판단)
+  const onScreen = e => { const h = e.closest('.story-top')?.parentElement || e; return h.getClientRects().length > 0; };
+  const shown = q => [...document.querySelectorAll(q)].find(onScreen);
   function title(w) {
+    if (w === 'lobby') return '';   // 로비: 제목 없음 (왼쪽 계정 칩만)
     if (w === 'page') return document.querySelector('#vr-page .vr-page-title')?.textContent?.trim() || '';
     if (w === 'hub') return SS()?.querySelector('.hub-title')?.textContent?.trim() || '📜 스토리';
     if (w === 'gacha') return '🎴 인재 영입';
-    const t = SS()?.querySelector('.story-top-title')?.textContent?.trim();
+    const t = shown('#story-screen .story-top-title')?.textContent?.trim();
     if (t) return t;
-    if (w === 'map') { const c = SS()?.querySelector('.story-map-ch b, .story-map-title, .smap-title')?.textContent?.trim(); return c || '챕터 지도'; }
+    if (w === 'map') { const c = shown('#story-screen .story-map-ch b, #story-screen .story-map-title, #story-screen .smap-title')?.textContent?.trim(); return c || '챕터 지도'; }
     return '';
   }
   function back() {
