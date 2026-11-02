@@ -33,3 +33,10 @@ body.vr-page-on .gear-pop-bg:not(.vr-in-page) { z-index: 9100 !important; }
 #vr-page .vr-quest-body { position: relative; padding: 0; overflow: hidden; }
 #vr-page .vr-quest-body > #story-screen { position: absolute; inset: 0; z-index: 0; clip-path: inset(0); }   /* 탑 고정 배경(::before)이 머리줄까지 덮지 않게 잘라냄 */
 #vr-page:has(.vr-quest-body > #story-screen.hidden) { display: none; }
+/* 6단계: 토벌·구역 전쟁 (조직 창 위에서도 열림) */
+body.vr-page-on .gd-pop:not(.vr-in-page):not([data-vr-under]) { z-index: 9100 !important; }
+#vr-page .gd-pop.vr-in-page { position: static !important; inset: auto !important; background: none !important; padding: 0 !important; display: block !important; }
+#vr-page .gd-pop.vr-in-page > .gd-pop-panel { width: 100% !important; max-width: 640px; max-height: none !important; margin: 0 auto; box-shadow: none !important; overflow: visible !important; }
+#vr-page .gd-pop.vr-in-page > .gd-pop-panel > .gd-x { display: none !important; }
+/* 전투 중엔 페이지 숨김 (전투 화면 = #game, 또는 페이지 안 창을 숨겼을 때) */
+body.vr-page-on:has(#game:not(.hidden)) #vr-page, #vr-page:has(.vr-in-page[style*="display: none"]) { display: none !important; }

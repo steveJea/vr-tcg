@@ -28,7 +28,7 @@ function toast(t) { const el = document.createElement('div'); el.className = 'gd
 function pop(html, cls = '') {
   const m = document.createElement('div'); m.className = 'gd-pop wr-pop';
   m.innerHTML = `<div class="gd-pop-panel ${cls}"><button class="gd-x" data-x aria-label="닫기">${gi('ic_close', '✕')}</button>${html}</div>`;
-  m.addEventListener('click', e => { if (e.target === m || e.target.closest('[data-x]')) m.remove(); });
+  m.addEventListener('click', e => { if ((e.target === m && !m.classList.contains('vr-in-page')) || e.target.closest('[data-x]')) m.remove(); });
   document.body.appendChild(m); return m;
 }
 const roleIc = r => `<span class="wr-ric"><img src="${UI}war_role_${r}.webp" alt="" onerror="this.remove()"><i>${WAR_ROLES[r].icon}</i></span>`;
@@ -43,6 +43,7 @@ const face = (uid, fb) => { const id = (uid && U.cards?.[uid]) || fb; return id 
 const loadUi = async () => { try { const r = await rpc('war_ui'); if (r?.ok) U = r; } catch {} };
 export async function open() {
   M?.remove(); M = pop('<div class="gd-loading">…</div>', 'wide wr');
+  window.VRPages?.host?.('war', '🏴 구역 전쟁', M);   // 페이지 시스템 (실패하면 예전 팝업)
   try { S = await rpc('war_status'); } catch (e) { toast(errText(e)); M.remove(); return; }
   await loadUi(); paint();
 }

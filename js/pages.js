@@ -23,7 +23,7 @@
     const top = stack[stack.length - 1];
     if (shown && el) { try { REG[shown.name]?.leave?.(el.querySelector('.vr-page-body'), shown.params || {}); } catch (e) { console.error('[pages] leave', e); } } shown = top || null;
     document.body.classList.toggle('vr-page-on', !!top);   // 페이지 위에 떠야 하는 팝업(카드 상세·확인창 등) 층 올림 (css/pages.css)
-    if (!top) { if (el) { el.classList.add('hidden'); el.querySelector('.vr-page-body').innerHTML = ''; } return; }
+    if (!top) { document.querySelectorAll('[data-vr-under]').forEach(x => x.removeAttribute('data-vr-under')); if (el) { el.classList.add('hidden'); el.querySelector('.vr-page-body').innerHTML = ''; } return; }
     const p = REG[top.name], m = mount(), body = m.querySelector('.vr-page-body');
     m.querySelector('.vr-page-title').textContent = typeof p.title === 'function' ? p.title(top.params) : (p.title || '');
     body.innerHTML = ''; body.scrollTop = 0; m.classList.remove('hidden');
@@ -53,7 +53,7 @@
     if ((e = vis('.gal-detail'))) { e.classList.add('hidden'); return true; }
     if ((e = vis('#story-pop'))) { const x = e.querySelector('[data-close-pop]'); if (x) x.click(); else e.classList.add('hidden'); return true; }
     if ((e = vis('#vr-help'))) { e.remove(); return true; }
-    { const g = [...document.querySelectorAll('.gear-pop-bg:not(.vr-in-page)')].pop(); if (g) { g.remove(); return true; } }   // 장비 작은 창 (아이템·문장·교환 등)
+    { const g = [...document.querySelectorAll('.gear-pop-bg:not(.vr-in-page):not([data-vr-under]), .gd-pop:not(.vr-in-page):not([data-vr-under])')].pop(); if (g) { g.remove(); return true; } }   // 장비·조직/토벌/전쟁 작은 창 (페이지 밑에 깔린 창은 제외)   // 장비 작은 창 (아이템·문장·교환 등)
     { const t = stack[stack.length - 1]; try { if (t && REG[t.name]?.onBack?.()) return true; } catch (e) { console.error('[pages] onBack', e); } }   // 페이지 안 한 단계 뒤로 (예: 탑 → 탑 목록)
     return false;
   }
@@ -90,6 +90,7 @@
   function host(name, title, pop, leave) {   // leave: 페이지를 떠날 때 정리 (타이머 등)
     try {
       REG[name] = { title, render: body => { const p = REG[name]._pop; if (p) body.appendChild(p); }, leave };
+      document.querySelectorAll('.gd-pop:not(.vr-in-page), .gear-pop-bg:not(.vr-in-page)').forEach(x => { if (x !== pop) x.setAttribute('data-vr-under', ''); });   // 이미 떠 있던 창(예: 조직) = 페이지 밑. 뒤로가기로 안 닫히고 페이지 닫으면 다시 보임
       REG[name]._pop = pop; pop.classList.add('vr-in-page'); pop.onclick = null;
       const rm = pop.remove.bind(pop);
       pop.remove = () => { if (REG[name]._pop === pop && stack[stack.length - 1]?.name === name) closeNow(); else rm(); };

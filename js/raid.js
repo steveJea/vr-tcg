@@ -30,7 +30,7 @@ function toast(t) { const el = document.createElement('div'); el.className = 'gd
 function pop(html, cls = '') {
   const m = document.createElement('div'); m.className = 'gd-pop rd-pop';
   m.innerHTML = `<div class="gd-pop-panel ${cls}"><button class="gd-x" data-x aria-label="닫기">${gi('ic_close', '✕')}</button>${html}</div>`;
-  m.addEventListener('click', e => { if (e.target === m || e.target.closest('[data-x]')) m.remove(); });
+  m.addEventListener('click', e => { if ((e.target === m && !m.classList.contains('vr-in-page')) || e.target.closest('[data-x]')) m.remove(); });
   document.body.appendChild(m); return m;
 }
 const bossImg = (b, cls = '') => { const meta = RAID_BOSSES.find(x => x.name === b?.name); return b?.id ? `<img class="${cls}" src="${IMG}${b.id}.webp" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'rd-bfb',textContent:'${meta?.icon || '👹'}'}))">` : `<span class="rd-bfb">${meta?.icon || gi('raid_boss_fb', '👹', 'big')}</span>`; };
@@ -53,6 +53,7 @@ let S = null, M = null, DL = [];
 export async function open() {
   M?.remove();
   M = pop('<div class="gd-loading">…</div>', 'wide rd'); window.VRSound?.scope?.(M, window.VR_BGM?.raid);
+  window.VRPages?.host?.('raid', '🐉 균열 토벌', M);   // 페이지 시스템 (실패하면 예전 팝업)
   try { [S, DL] = await Promise.all([rpc('raid_status'), decks()]); } catch (e) { toast(errText(e)); M.remove(); return; }
   paint();
 }
