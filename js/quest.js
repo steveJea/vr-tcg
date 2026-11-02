@@ -97,6 +97,18 @@
   const maxF = () => Math.min(cfg.floors.length, status?.max_floor || cfg.floors.length);
   const unlocked = n => n <= Math.min(best() + 1, maxF());
 
+  // ----- 페이지 시스템: 탑 화면(#story-screen)을 페이지 몸통으로 옮김. 전투 중엔 페이지가 숨고(css), 끝나면 결과 화면으로 다시 보임 -----
+  let view = null, ssHome = null;   // view: hub | tower | result
+  const inPage = () => window.VRPages?.current === 'quest';
+  const goHome = () => inPage() ? window.VRPages.back() : A().home();
+  if (window.VRPages) window.VRPages.register('quest', {
+    title: '🗼 시련의 탑',
+    render: body => { const ss = $('story-screen'); if (!ss) return; if (!ssHome) ssHome = { p: ss.parentNode, n: ss.nextSibling }; body.classList.add('vr-quest-body'); body.appendChild(ss); },
+    leave: body => { body?.classList.remove('vr-quest-body'); const ss = $('story-screen'); if (ss && ssHome) { ssHome.p.insertBefore(ss, ssHome.n?.parentNode === ssHome.p ? ssHome.n : null); ssHome = null; } view = null; if (!ss?.classList.contains('hidden')) A()?.home(); },
+    onBack: () => { if (view === 'result') { render(); return true; } if (view === 'tower' && hub?.towers && !legacy) { backToHub(); return true; } return false; },
+  });
+  const enterPage = () => { try { if (window.VRPages && !inPage()) window.VRPages.open('quest'); } catch (e) { console.error('[quest] page', e); } };
+
   async function open() {
     const api = A();
     if (!api || !window.TCG?.ready) return;
@@ -110,6 +122,7 @@
     if (!api.ownedCount()) { api.popup(`<div class="text-lg font-black mb-2">🗼 시련의 탑</div><div class="text-sm text-zinc-300 mb-4">보유 인재가 없어요. 스토리 모드에서 먼저 인재를 골라 주세요.</div><button data-close-pop class="w-full py-2 rounded-xl bg-zinc-700">닫기</button>`); return; }
     try { status = await trpc('quest_status'); }
     catch (e) { status = null; api.popup(`<div class="text-lg font-black mb-2">🗼 시련의 탑</div><div class="text-sm text-zinc-300 mb-4">${/quest_status|function/.test(e?.message || '') ? '퀘스트 서버가 아직 준비 중이에요.' : '진행 상황을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.'}</div><button data-close-pop class="w-full py-2 rounded-xl bg-zinc-700">닫기</button>`); return; }
+    enterPage();   // 실패하면 예전처럼 전체 화면
     if (legacy || !hub?.towers) { TOWER = 'normal'; sel = Math.min(best() + 1, maxF()); return render(); }
     renderHub();
   }
@@ -132,7 +145,7 @@
           <div class="th-meta"><span title="최고 층">🏔 ${s.best_floor | 0}층</span><span title="오늘 이긴 층 / 하루 제한">⏳ ${s.today | 0}/${s.daily | 0}</span></div></div></button>`; }).join('');
     api.show(`<div class="story-top"><button class="story-back" id="q-home">← 처음으로</button><div class="story-top-title">🗼 탑</div><span class="th-lv">Lv.${hub?.level | 0}</span></div>
       <div class="th-grid">${cards}</div><div class="th-foot">하루 제한·요일은 한국 시간 자정 기준</div>`, 'tower');
-    $('q-home').onclick = () => api.home();
+    $('q-home').onclick = goHome; view = 'hub';
     document.querySelectorAll('.th-card').forEach(b => b.onclick = () => enterTower(b.dataset.tower));
   }
   async function enterTower(id) {
@@ -167,7 +180,7 @@
     }
     api.show(`<div class="q-tower q-tier-${tierOf(n)}"><div class="story-top"><button class="story-back" id="q-home">${hub?.towers && !legacy ? '← 탑 목록' : '← 처음으로'}</button><div class="story-top-title">🗼 ${esc(tName())}</div><span></span></div>
       <div class="q-wrap"><div class="q-spire"></div><div class="q-list" id="q-list">${rows.join('')}</div><div class="q-base"></div></div></div>`, 'tower');
-    $('q-home').onclick = () => hub?.towers && !legacy ? backToHub() : api.home();
+    $('q-home').onclick = () => hub?.towers && !legacy ? backToHub() : goHome(); view = 'tower';
     $('q-go').onclick = () => { if (canGo) challenge(n); };
     const sw = $('q-sweep'); if (sw) sw.onclick = () => sweep();
     $('q-list').querySelectorAll('[data-floor]').forEach(b => b.onclick = () => { sel = +b.dataset.floor; render(); });
@@ -206,7 +219,7 @@
     api.toast(B ? `👑 ${n}층 보스 ${B.name}: 적 진영을 무너뜨리세요!` : `🗼 ${n}층: 적 인재 5명을 모두 쓰러뜨리세요!`);
   }
   async function result(n, win, reason, st = {}) {
-    const api = A();
+    const api = A(); view = 'result';
     if (!win) {
       api.show(`<div class="text-center py-10"><div class="story-chapter-big text-red-400">DEFEAT</div><div class="text-zinc-300 mt-2">${n}층 · ${reason === 'giveup' ? '도전을 포기했어요.' : reason === 'timeout' ? `${cfg.maxTurns || 40}턴 안에 적을 모두 쓰러뜨리지 못했어요.` : '내 인재가 모두 쓰러졌어요.'}</div>
         <div class="flex flex-col gap-2 max-w-xs mx-auto mt-6"><button class="story-btn" id="q-retry">다시 도전</button><button class="story-back" id="q-back">탑으로</button></div></div>`, 'tower');
