@@ -22,12 +22,21 @@ const errText = e => { const m = String(e?.message || e); const k = Object.keys(
 function toast(t) { const el = document.createElement('div'); el.className = 'pvp-toast'; el.textContent = t; document.body.appendChild(el); setTimeout(() => el.remove(), 1800); }
 
 // ---- 공통 창 (바깥 누르면 닫힘) ----
+// 페이지 시스템: PvP 로비 = 페이지 'pvp', 덱 편집·랭킹·시즌 보상 = 하위 페이지. 카드·상대 정보·확인·결과·재생은 작은 창 그대로
+const PAGES = { 'pvp-modal': ['pvp', '⚔️ PvP'], 'pvp-edit': ['pvp-edit', '🛡️ PvP 덱'], 'pvp-ranking': ['pvp-ranking', '🏅 랭킹'], 'pvp-tiers': ['pvp-tiers', '🏆 시즌 보상'] };
+let editBack = null;   // 덱 편집(보스리그) 단계 뒤로: 확인 → 멤버 → 리더
+const inPvp = () => /^pvp/.test(window.VRPages?.current || '');
 function modal(id, html, cls = '') {
-  $(id)?.remove();
+  const old = $(id);
+  if (id === 'pvp-modal' && old?.classList.contains('vr-in-page') && window.VRPages?.current === 'pvp') {   // 로비 새로 그리기 = 같은 페이지 재사용 (기록·전환 그대로)
+    old.className = `pvp-modal vr-in-page ${cls}`; old.innerHTML = `<div class="pvp-panel" role="dialog">${html}</div>`; return old; }
+  old?.remove();
   const m = document.createElement('div'); m.id = id; m.className = `pvp-modal ${cls}`;
   m.innerHTML = `<div class="pvp-panel" role="dialog">${html}</div>`;
-  m.addEventListener('click', e => { if (e.target === m || e.target.closest('[data-x]')) m.remove(); });
-  document.body.appendChild(m); return m;
+  m.addEventListener('click', e => { if ((e.target === m && !m.classList.contains('vr-in-page')) || e.target.closest('[data-x]')) m.remove(); });
+  document.body.appendChild(m);
+  const pg = PAGES[id]; if (pg && window.VRPages && (id === 'pvp-modal' || inPvp())) window.VRPages.host(pg[0], pg[1], m, null, null, id === 'pvp-edit' ? () => !!editBack?.() : null);   // 실패하면 예전 팝업
+  return m;
 }
 const thumb = (c, extra = '') => c ? `<div class="pvp-th g-${GS[c.grade] || 'N'}" title="${esc(c.name)}"><img src="${IMG}${c.id}.webp" alt="${esc(c.name)}" loading="lazy" onerror="this.style.visibility='hidden'"><i>${c.level ? 'Lv' + c.level : GS[c.grade] || ''}</i>${window.VRStory?.skBadge?.(c.id, 'sm') || ''}${extra}</div>` : '';   // ✦ 기술 배지 (탭하면 기술 보기)
 const snapThumbs = list => (list || []).map(o => { const c = card(o.id); return thumb(c && { ...c, level: o.level }); }).join('');
@@ -46,7 +55,8 @@ const dleft = () => { const e = st?.season_end ? new Date(st.season_end) : null;
 // ---- 메인 ----
 export async function open() {
   if (!window.VRCloud?.user && !window.__PVP_MOCK) return modal('pvp-modal', `<button class="pvp-x" data-x>✕</button><div class="pvp-h">⚔️ PvP</div><div class="pvp-empty">🔒 로그인</div>`);
-  const m = modal('pvp-modal', `<div class="pvp-empty">…</div>`); window.VRSound?.scope?.(m, window.VR_BGM?.pvpLobby);
+  const again = $('pvp-modal')?.classList.contains('vr-in-page') && window.VRPages?.current === 'pvp';
+  const m = modal('pvp-modal', `<div class="pvp-empty">…</div>`); if (!again) window.VRSound?.scope?.(m, window.VR_BGM?.pvpLobby);
   try {
     const S = window.VRStory; const s = S?.summary ? await S.summary() : null;
     owned = s?.ok ? s.owned : []; myDecks = s?.ok ? (s.decks || []).filter(d => d.uids.length) : [];
@@ -264,6 +274,7 @@ function editDeck(slot, keep) {
     const q = modal('pvp-ask', `<div class="pvp-h">저장할까요?</div><div class="pvp-acts yn"><button class="pvp-ghost" data-x>N</button><button class="pvp-go" data-yes>Y</button></div>`, 'pvp-sub pvp-top');
     q.querySelector('[data-yes]').onclick = () => { q.remove(); commit(); };
   };
+  editBack = () => { if (!BOSS || step === 'leader' || !m.isConnected) return false; step = step === 'confirm' ? 'members' : 'leader'; drawAll(); return true; };
   drawAll();
 }
 

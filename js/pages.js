@@ -8,7 +8,7 @@
   let el = null, guardOn = false, shown = null;   // shown: 지금 그려진 페이지 (떠날 때 leave 호출)
   const reduce = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
   const oauth = () => /[?&]code=|access_token=/.test(location.search + location.hash);
-  const busy = () => { const g = document.getElementById('game'); return (g && !g.classList.contains('hidden')) || !!document.querySelector('.story-vcut, .story-ovp, #story-video') || !!window.__storyVideo?.el?.isConnected; };
+  const busy = () => { const g = document.getElementById('game'); return (g && !g.classList.contains('hidden')) || !!document.querySelector('.story-vcut, .story-ovp, #story-video, .pvp-vsx, #pvp-play') || !!window.__storyVideo?.el?.isConnected; };
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
   function mount() {
@@ -54,6 +54,7 @@
     if ((e = vis('#story-pop'))) { const x = e.querySelector('[data-close-pop]'); if (x) x.click(); else e.classList.add('hidden'); return true; }
     if ((e = vis('#vr-help'))) { e.remove(); return true; }
     { const g = [...document.querySelectorAll('.gear-pop-bg:not(.vr-in-page):not([data-vr-under]), .gd-pop:not(.vr-in-page):not([data-vr-under])')].pop(); if (g) { g.remove(); return true; } }   // 장비·조직/토벌/전쟁 작은 창 (페이지 밑에 깔린 창은 제외)   // 장비 작은 창 (아이템·문장·교환 등)
+    { const p = [...document.querySelectorAll('.pvp-modal:not(.vr-in-page):not(#pvp-play)')].pop(); if (p) { (p.querySelector('[data-x]') || p).click(); if (p.isConnected) p.remove(); return true; } }   // PvP 작은 창 (카드·상대·확인·결과)
     { const t = stack[stack.length - 1]; try { if (t && REG[t.name]?.onBack?.()) return true; } catch (e) { console.error('[pages] onBack', e); } }   // 페이지 안 한 단계 뒤로 (예: 탑 → 탑 목록)
     return false;
   }
@@ -88,9 +89,9 @@
   }
   if (document.readyState === 'complete') boot(); else addEventListener('load', () => boot());
   /** 예전 팝업을 그대로 페이지 안에 담기: pop(바탕+판) 을 페이지 몸통으로 옮기고, pop.remove() = 뒤로가기. 실패하면 false → 예전 팝업 */
-  function host(name, title, pop, leave, show) {   // show: 다시 보일 때 (위 페이지에서 돌아옴)   // leave: 페이지를 떠날 때 정리 (타이머 등)
+  function host(name, title, pop, leave, show, onBack) {   // onBack: 페이지 안 한 단계 뒤로 (처리했으면 true)   // show: 다시 보일 때 (위 페이지에서 돌아옴)   // leave: 페이지를 떠날 때 정리 (타이머 등)
     try {
-      REG[name] = { title, render: body => { const p = REG[name]._pop; if (p) { body.appendChild(p); try { show?.(p); } catch {} } }, leave };
+      REG[name] = { title, render: body => { const p = REG[name]._pop; if (p) { body.appendChild(p); try { show?.(p); } catch {} } }, leave, onBack };
       document.querySelectorAll('.gd-pop:not(.vr-in-page), .gear-pop-bg:not(.vr-in-page)').forEach(x => { if (x !== pop) x.setAttribute('data-vr-under', ''); });   // 이미 떠 있던 창(예: 조직) = 페이지 밑. 뒤로가기로 안 닫히고 페이지 닫으면 다시 보임
       REG[name]._pop = pop; pop.classList.add('vr-in-page'); pop.onclick = null;
       const rm = pop.remove.bind(pop);

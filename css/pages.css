@@ -44,3 +44,9 @@ body.vr-page-on:has(#game:not(.hidden)) #vr-page, #vr-page:has(.vr-in-page[style
 #vr-page .gd-ov.vr-in-page { position: static !important; inset: auto !important; z-index: auto !important; background: none !important; padding: 0 !important; overflow: visible !important; display: flex; }
 #vr-page .gd-ov.vr-in-page > .gd-page { margin: 0 auto; }
 #vr-page .gd-ov.vr-in-page .gd-page > .gd-x[data-close] { display: none !important; }
+/* 8단계: PvP 로비 + 하위 페이지(덱 편집·랭킹·시즌 보상). 작은 창·재생·VS 화면은 페이지 위 */
+body.vr-page-on .pvp-modal:not(.vr-in-page) { z-index: 9100 !important; }
+body.vr-page-on .pvp-modal.pvp-top:not(.vr-in-page), body.vr-page-on .pvp-vsx { z-index: 9150 !important; }
+#vr-page .pvp-modal.vr-in-page { position: static !important; inset: auto !important; z-index: auto !important; background: none !important; padding: 0 !important; display: block !important; }
+#vr-page .pvp-modal.vr-in-page > .pvp-panel { width: 100% !important; max-width: 640px; max-height: none !important; margin: 0 auto; overflow: visible !important; }
+#vr-page .pvp-modal.vr-in-page > .pvp-panel > .pvp-x { display: none !important; }
