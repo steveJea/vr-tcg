@@ -17,8 +17,9 @@
   const TILES = '.story-group, .story-pick-card, .story-own-tile, .gal-card, .pvp-card';
   const stagger = root => { if (!root || root.closest?.('#game')) return; let i = 0; for (const t of root.querySelectorAll(TILES)) { if (i >= 24) break; if (t.parentElement?.closest(TILES)) continue; t.style.setProperty('--si', i++); t.classList.remove('ui-stagger'); void t.offsetWidth; t.classList.add('ui-stagger'); setTimeout(() => t.classList.remove('ui-stagger'), 700); } };
   // --- 재화 숫자: 골드·심연석이 바뀌면 이전 값에서 새 값까지 0.5초 동안 올라감/내려감 ---
-  const CUR = [['.gem-chip b, .gem-big b, .gem-mp-top b, [title="심연석"]', 'gem'], ['[title="골드"]', 'gold']];
-  const lastCur = {}, numOf = t => { const m = /[\d,]+(?!.*\d)/.exec(t || ''); return m ? +m[0].replace(/,/g, '') : null; };
+  // 숫자만 담긴 칸만 본다: 칩 버튼 전체(+ 포함)나 '100k' 같은 줄임 표기는 제외 (줄임 '100k'를 100으로 읽어 100→100,720 으로 계속 다시 올라가던 문제)
+  const CUR = [['.gem-chip b, .gem-big b, .gem-mp-top b, [title="심연석"]:not(.gem-chip)', 'gem'], ['[title="골드"]', 'gold']];
+  const lastCur = {}, numOf = t => { t = t || ''; if (/\d\s*[kKmM만억]/.test(t)) return null; const m = /[\d,]+(?!.*\d)/.exec(t); return m ? +m[0].replace(/,/g, '') : null; };
   const countUp = (el, from, to) => {
     const txt = el.textContent, m = /[\d,]+(?!.*\d)/.exec(txt); if (!m) return;
     const pre = txt.slice(0, m.index), post = txt.slice(m.index + m[0].length), t0 = performance.now(), D = 500;
