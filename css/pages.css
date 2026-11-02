@@ -25,3 +25,7 @@ body.vr-page-on .gem-toast, body.vr-page-on .story-toast { z-index: 9300 !import
 /* 3단계: 마이페이지 · 갤러리 판을 페이지 안에 */
 #vr-page .mp-panel, #vr-page .gal-panel { width: 100% !important; max-width: 640px; max-height: none !important; margin: 0 auto; border: 0 !important; background: none !important; box-shadow: none !important; position: static !important; overflow: visible !important; }
 #vr-page .mp-title, #vr-page .mp-x, #vr-page .gal-title, #vr-page .gal-x:not(.gal-detail .gal-x) { display: none !important; }
+/* 4단계: 파견 · 장비(가방·우편함·PvP 상점) */
+body.vr-page-on .gear-pop-bg:not(.vr-in-page) { z-index: 9100 !important; }
+#vr-page #dsp-box, #vr-page .gear-pop { width: 100% !important; max-width: 640px; max-height: none !important; margin: 0 auto; border: 0 !important; background: none !important; box-shadow: none !important; position: static !important; overflow: visible !important; }
+#vr-page #dsp-box .dx { display: none !important; }

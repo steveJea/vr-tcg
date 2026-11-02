@@ -61,7 +61,8 @@
 
   function shell(title, sub) {
     let ov = document.getElementById('dsp-ov');
-    if (!ov) { ov = document.createElement('div'); ov.id = 'dsp-ov'; document.body.appendChild(ov); ov.addEventListener('click', e => { if (e.target === ov) close(); }); }
+    if (!ov) { ov = document.createElement('div'); ov.id = 'dsp-ov'; document.body.appendChild(ov); ov.addEventListener('click', e => { if (e.target === ov && !ov.classList.contains('vr-in-page')) close(); });
+      window.VRPages?.host?.('dispatch', '🧭 파견', ov, () => { clearInterval(tick); paint(); }); }   // 페이지 시스템 (실패하면 예전 팝업 그대로)
     ov.innerHTML = `<div id="dsp-box" role="dialog" aria-label="파견"><div class="dh"><span>${title}</span><button class="dx" aria-label="닫기">×</button></div><div class="dsub">${sub || ''}</div><div class="dbody"></div></div>`;
     ov.querySelector('.dx').onclick = close;
     return ov.querySelector('#dsp-box');

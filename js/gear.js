@@ -43,7 +43,7 @@
     m.innerHTML = `<div class="gear-pop ${cls}">${html}</div>`;
     let down = false;
     m.onpointerdown = e => { down = e.target === m; };
-    m.onclick = e => { if (down && e.target === m) m.remove(); down = false; };   // 바깥 누르면 닫힘
+    m.onclick = e => { if (down && e.target === m && !m.classList.contains('vr-in-page')) m.remove(); down = false; };   // 바깥 누르면 닫힘 (페이지일 땐 X)
     document.body.appendChild(m); return m;
   }
   const fmt = n => Number(n || 0).toLocaleString('ko-KR');
@@ -163,6 +163,7 @@
     if (!await load()) return toast('장비를 불러오지 못했어요');
     let filt = ctx.slot || 'all', pick = null;   // pick: 여러 개 선택 모드 (Set)
     const m = pop('', 'bag');
+    if (!ctx.cardId) window.VRPages?.host?.('gearbag', '🎒 장비 가방', m);   // 가방 메뉴 = 페이지 (인재 장착 칸에서 열 땐 예전처럼 작은 창)
     const draw = () => {
       const list = (st.gear || []).filter(g => filt === 'all' || slotOf(g) === filt).sort((a, b) => (defs[b.def]?.tier || 0) - (defs[a.def]?.tier || 0) || b.plus - a.plus);
       const nx = st.next_expand;
@@ -231,6 +232,7 @@
   async function mailbox(ctx = {}) {
     if (!await load()) return toast('장비를 불러오지 못했어요');
     const m = pop('', 'bag');
+    if (!ctx.back) window.VRPages?.host?.('mailbox', '📮 우편함', m);   // 우편함 = 페이지 (다른 창에서 이어 열 땐 작은 창)
     const close = () => { ctx.back?.(); };
     const draw = async () => {
       const { data: list, error } = await sb().rpc('mail_list'); refreshUnread(); if (error) { m.remove(); return toast(`⚠️ ${error.message}`); }
@@ -286,6 +288,7 @@
     if (!sb() || !window.VRCloud?.user) return toast('로그인이 필요해요');
     await load();
     const m = pop('<div class="gear-dim">불러오는 중…</div>', 'bag');
+    window.VRPages?.host?.('pvpshop', '🛒 PvP 상점', m);   // 페이지 시스템
     const draw = async () => {
       const { data: S, error } = await sb().rpc('pvp_shop_status'); if (error) { m.remove(); return toast(/pvp_shop|schema cache|Could not find/.test(error.message) ? '🛒 PvP 상점은 준비 중이에요' : `⚠️ ${error.message}`); }
       const shown = new Set();
