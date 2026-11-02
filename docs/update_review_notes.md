@@ -153,3 +153,11 @@
 - 검증: tools/test_trade_buynow_sql.mjs (PGlite, 38개 통과, 보존량 확인) · 기존 tools/test_trade_board_sql.mjs 통과
 - 화면: 마켓 카드에 ⚡ 즉시 구매가, '⚡ 즉시 구매만' 필터·'낮은 가격' 정렬, 필터는 서버 검색으로(SQL 전이면 자동으로 예전처럼 불러온 글 안에서). 글 상세에 즉시 구매 상자 + 확인. 판매 3단계에 즉시 구매가(선택, 통화 선택, 범위·받을 양 안내, 범위 밖이면 올리기 막음)
 - 정한 기본값: 즉시 구매가는 드링크/골드 중 하나. 내 제안이 걸린 글은 먼저 제안 취소 후 구매. 가격 정렬은 골드 100 ≈ 드링크 1로 비교
+
+## 거래소 6단계: 📈 시세 (feat/exchange-trends)
+- 새 SQL `supabase/trade_price_history.sql` (추가만, 다시 돌려도 됨, 읽기 전용): `trade_price_board(p_days, p_kind, p_gkey, p_limit)`, `trade_price_history(p_kind, p_id)`. 로그인 사용자만 실행. 내부 `_trade_sales`/`_trade_stats`는 권한 회수.
+- 시세에 들어가는 거래: trade_log 중 **물건 1개를 드링크만 또는 골드만으로** 판 거래 (묶음·물물교환·섞인 재화는 제외). 드링크·골드 따로 중앙/최저/최고, 즉시 구매·제안 수락 건수. 판매자·구매자 정보는 내보내지 않음.
+- `#/exchange`에 📈 시세 탭 (7일/30일, 전체/인재/장비) → 물건 누르면 `#/exchange-price` (7·30일 요약, 날짜별 선, 최근 20건).
+- 글 상세·판매 3단계: 물건이 1개면 한 줄 시세(누르면 상세). 기록 없으면 흐린 안내, SQL 전이면 숨김.
+- 거래 적을 때: "아직 거래가 거의 없어요" 빈 화면, 5건 미만이면 "참고용" 표시. SQL 전이면 "시세는 곧 열려요".
+- 테스트: `tools/test_trade_price_sql.mjs` (PGlite, 두 번 실행), test_trade_admin/buynow 다시 돌림 ALL OK. 화면: `/workspace/exchange/p6_*` (390, Chromium·Firefox, 모의 데이터).
