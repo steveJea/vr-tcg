@@ -35,13 +35,16 @@
     return data;
   }
   // 팝업 (바깥 누르면 닫힘)
-  function pop(html, cls = '') {
+  // page: [이름, 제목] 이면 페이지(#/이름)로 띄움 (js/pages.js). 페이지 시스템이 없거나 실패하면 예전 팝업
+  function pop(html, cls = '', page = null) {
     const m = document.createElement('div'); m.className = 'tr-bg';
     m.innerHTML = `<div class="tr-pop ${cls}" role="dialog"><button class="tr-x" data-x aria-label="닫기">✕</button><div class="tr-in">${html}</div></div>`;
     let down = false;
     m.onpointerdown = e => { down = e.target === m; };
     m.onclick = e => { if ((down && e.target === m) || e.target.closest('[data-x]')) m.remove(); down = false; };
-    document.body.appendChild(m); return m;
+    document.body.appendChild(m);
+    if (page && window.VRPages?.host) { m.classList.add('tr-page'); window.VRPages.host(page[0], page[1], m); }
+    return m;
   }
   const body = m => m.querySelector('.tr-in');
   function ask(html, danger) {
@@ -73,8 +76,9 @@
   // ---- 메인: 게시판 / 내 거래
   let myView = 'live';   // 내 거래: 진행중 / 종료 탭
   async function open(tab = 'board') {
+    if (window.VRPages?.current?.startsWith('exchange') && window.VRPages.current !== 'exchange') while (window.VRPages.current?.startsWith('exchange-')) window.VRPages.closeNow();
     document.querySelector('.tr-bg.main')?.remove();
-    const m = pop('<div class="tr-load">불러오는 중…</div>', 'wide'); m.classList.add('main');
+    const m = pop('<div class="tr-load">불러오는 중…</div>', 'wide', ['exchange', '💱 거래소']); m.classList.add('main');
     if (window.VRGear?.load) await window.VRGear.load().catch(() => {});
     if (!await loadCfg()) { m.remove(); return; }
     const draw = async t => {
@@ -125,7 +129,7 @@
       <p><b>함께 넘어가는 것</b> 인재의 레벨·성장, 그리고 그 인재가 내 마지막 사본이면 💠 증표. 장착 장비는 해제돼 내 가방에 남아요. 덱에 든 인재는 덱에서 빠져요.</p>
       <p><b>한도</b> Lv.${c.min_level || 20}·가입 ${c.min_account_days || 7}일부터 · 열린 글 ${c.max_open_listings || 5}개 · 대기 제안 ${c.max_open_offers || 10}개 · 하루 거래 ${c.daily_trades || 5}번 · 같은 상대 7일 ${c.same_partner_7d || 3}번 · 드링크 하루 보내기·받기 각각 ${n(c.daily_drink_send || 10000)} · 거절된 글엔 ${c.reoffer_cooldown_hours || 24}시간 뒤 다시 제안 · 받은 물건은 ${c.resale_hours || 72}시간 뒤 다시 올리기</p>
       <p><b>1개당 가격 범위</b><br>인재 N·R ${rng('card_nr')}<br>인재 HR ${rng('card_hr')}<br>인재 SR ${rng('card_sr')}<br>인재 UR ${rng('card_ur')}<br>인재 MR·LR ${rng('card_mlr')}<br>장비 낡은~고급 ${rng('gear_low')}<br>장비 희귀 ${rng('gear_rare')}<br>장비 영웅 ${rng('gear_hero')}</p>
-      <p class="tr-note">이상한 거래는 운영자가 확인할 수 있어요.</p></div>`);
+      <p class="tr-note">이상한 거래는 운영자가 확인할 수 있어요.</p></div>`, '', ['exchange-help', '❓ 거래 도움말']);
   }
 
   // ---- 글 상세 (남의 글)
@@ -133,7 +137,7 @@
     const m = pop(`<div class="tr-head"><b>판매 글</b><span>${I('timer')}${left(l.expires_at)} · ${I('trade_offer')}제안 ${l.offers}</span></div>
       <div class="tr-items big">${itemsHTML(l.cards, l.gear)}</div>${l.want ? `<div class="tr-want">${I('trade_want')}${esc(l.want)}</div>` : ''}
       <div class="tr-note">다른 사람의 제안 내용은 보이지 않아요</div>
-      <div class="tr-acts">${l.my_offer ? '<button class="tr-btn" data-c>내 제안 취소</button>' : '<button class="tr-btn main" data-o>제안하기</button>'}</div>`);
+      <div class="tr-acts">${l.my_offer ? '<button class="tr-btn" data-c>내 제안 취소</button>' : '<button class="tr-btn main" data-o>제안하기</button>'}</div>`, '', ['exchange-post', '판매 글']);
     m.querySelector('[data-o]')?.addEventListener('click', () => { m.remove(); makeOffer(l, after); });
     m.querySelector('[data-c]')?.addEventListener('click', async () => { if (!await ask('제안을 취소할까요?')) return; if (await rpc('trade_offer_cancel', { p_offer: l.my_offer })) { toast('↩️ 제안을 취소했어요'); m.remove(); refreshMine(); after?.(); } });
   }
@@ -203,7 +207,7 @@
     const m = pop(`<div class="tr-head"><b>＋ 판매 글 올리기</b><span class="tr-cnt">0 / ${cfg.max_items || 5}</span></div>
       <div class="tr-note">팔 인재·장비를 골라 주세요. 올리는 순간 보관되고 ${cfg.listing_hours || 72}시간 열려요. 흐린 것은 올릴 수 없어요.</div>
       <div class="tr-pickwrap"></div><input class="tr-input" maxlength="100" placeholder="희망 조건 (선택, 예: 드링크 2,000 이상)">
-      <div class="tr-acts"><button class="tr-btn main" data-ok disabled>올리기</button></div>`, 'wide');
+      <div class="tr-acts"><button class="tr-btn main" data-ok disabled>올리기</button></div>`, 'wide', ['exchange-new', '＋ 판매 글 올리기']);
     const p = await picker(m.querySelector('.tr-pickwrap'), () => { m.querySelector('.tr-cnt').textContent = `${p.count()} / ${cfg.max_items || 5}`; m.querySelector('[data-ok]').disabled = !p.count(); });
     m.querySelector('[data-ok]').onclick = async () => {
       const deckN = [...p.sel.cards].filter(u => (S()?.save?.decks || []).some(d => (d?.uids || []).includes(u))).length;
@@ -241,7 +245,7 @@
       <div class="tr-cur-in"><label>🥤 드링크 <input type="number" min="0" step="1" value="0" data-d><small>거래 가능 ${n((dr?.tradable || 0) - (dr?.locked || 0))}</small></label>
         <label>${I('cur_gold')}골드 <input type="number" min="0" step="100" value="0" data-g>${gold != null ? `<small>보유 ${n(gold)}</small>` : ''}</label></div>
       <div class="tr-info"></div><div class="tr-pickwrap"></div>
-      <div class="tr-acts"><button class="tr-btn main" data-ok>제안 보내기</button></div>`, 'wide');
+      <div class="tr-acts"><button class="tr-btn main" data-ok>제안 보내기</button></div>`, 'wide', ['exchange-offer', '📨 제안하기']);
     const val = s => Math.max(0, Math.floor(+m.querySelector(s).value || 0));
     let p = null;
     const upd = () => { const i = priceInfo(lKeys, p ? p.keys() : [], val('[data-d]'), val('[data-g]')); m.querySelector('.tr-info').innerHTML = i.html; m.querySelector('[data-ok]').disabled = !!i.err; return i; };
@@ -258,7 +262,7 @@
 
   // ---- 내 글 관리: 제안 목록 · 수락 · 거절 · 조건 거절 · 내리기
   async function manage(id, after) {
-    const m = pop('<div class="tr-load">불러오는 중…</div>', 'wide');
+    const m = pop('<div class="tr-load">불러오는 중…</div>', 'wide', ['exchange-mine', '📦 내 판매 글']);
     const draw = async () => {
       const r = await rpc('trade_my'); if (!r) return m.remove();
       const l = r.listings.find(x => x.id === id); if (!l) { m.remove(); return toast(ERR['listing not found']); }
