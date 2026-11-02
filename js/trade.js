@@ -74,7 +74,8 @@
   const curTxt = (d, g) => [d ? `${I('cur_drink')}${n(d)}` : '', g ? `${I('cur_gold')}${n(g)}` : ''].filter(Boolean).join(' + ');
 
   // ---- 메인: 게시판 / 내 거래
-  let myView = 'live';   // 내 거래: 진행중 / 종료 탭
+  let myView = 'live', mSort = 'new';   // mSort: 마켓 정렬
+  const GO = ['N', 'R', 'HR', 'SR', 'UR', 'MR', 'LR'];   // 내 거래: 진행중 / 종료 탭
   async function open(tab = 'board') {
     if (window.VRPages?.current?.startsWith('exchange') && window.VRPages.current !== 'exchange') while (window.VRPages.current?.startsWith('exchange-')) window.VRPages.closeNow();
     document.querySelector('.tr-bg.main')?.remove();
@@ -90,11 +91,33 @@
       body(m).querySelector('[data-help]').onclick = help;
       const L = body(m).querySelector('.tr-list');
       if (t === 'board') {
-        const r = await rpc('trade_board', { p_limit: 50 }); if (!r) return;
-        L.innerHTML = r.listings.length ? r.listings.map(l => `<button class="tr-row" data-l="${l.id}"><div class="tr-items">${itemsHTML(l.cards, l.gear)}</div>
-          <div class="tr-meta">${l.want ? `<span class="tr-want">${I('trade_want')}${esc(l.want)}</span>` : ''}<span>${I('timer')}${left(l.expires_at)}</span><span>${I('trade_offer')}제안 ${l.offers}</span>${l.mine ? '<span class="tr-tag">내 글</span>' : l.my_offer ? '<span class="tr-tag">제안함</span>' : ''}</div></button>`).join('')
-          : '<div class="tr-empty">아직 올라온 글이 없어요</div>';
-        L.querySelectorAll('[data-l]').forEach(b => b.onclick = () => { const l = r.listings.find(x => x.id === +b.dataset.l); l.mine ? manage(l.id, () => draw(tab)) : detail(l, () => draw(tab)); });
+        // 마켓 (PR2): 카드 격자 · 정렬(최신/마감 임박/제안 많은) · 더 보기(p_before) · 빈/불러오는 중. 정렬은 불러온 글 안에서
+        const PAGE = 30, SORT = { new: ['최신', (a, b) => b.id - a.id], end: ['마감 임박', (a, b) => new Date(a.expires_at) - new Date(b.expires_at)], hot: ['제안 많은', (a, b) => b.offers - a.offers || b.id - a.id] };
+        let all = [], more = true, busy = false;
+        L.className = 'tr-list tr-market';
+        L.innerHTML = `<div class="tr-sort" role="group" aria-label="정렬">${Object.entries(SORT).map(([k, [lb]]) => `<button data-sort="${k}" class="${k === mSort ? 'on' : ''}">${lb}</button>`).join('')}</div>
+          <div class="tr-grid">${'<div class="tr-gc ui-skel"></div>'.repeat(4)}</div><div class="tr-more-w"></div>`;
+        const G = L.querySelector('.tr-grid'), M = L.querySelector('.tr-more-w');
+        const gIdx = l => Math.max(0, ...(l.cards || []).map(c => GO.indexOf(gradeOf(c.id))), ...(l.gear || []).map(g => (defOf(g.def_id || g.def)?.tier || 0) - 2));
+        const cardHTML = l => { const c0 = (l.cards || [])[0], g0 = !c0 && (l.gear || [])[0], d = g0 && defOf(g0.def_id || g0.def), m0 = c0 && cardOf(c0.id), cnt = (l.cards?.length || 0) + (l.gear?.length || 0);
+          const secs = (new Date(l.expires_at) - Date.now()) / 1000, gr = GO[Math.min(GO.length - 1, gIdx(l))];
+          return `<button class="tr-gc g-${gr}" data-l="${l.id}"><span class="tr-gc-img">${c0 ? `<img src="${IMG}${c0.id}.webp" alt="" loading="lazy">` : d ? `<img class="gear" src="${gearIcon(d)}" alt="" loading="lazy">` : ''}
+            <i class="tr-gc-gr">${c0 ? gradeOf(c0.id) : d ? TIER[d.tier] : ''}</i>${cnt > 1 ? `<i class="tr-gc-n">+${cnt - 1}</i>` : ''}${l.mine ? '<i class="tr-gc-tag">내 글</i>' : l.my_offer ? '<i class="tr-gc-tag">제안함</i>' : ''}</span>
+            <b>${esc(m0?.name || d?.name || '판매 글')}${c0?.level ? ` <small>Lv.${c0.level}</small>` : ''}</b>${l.want ? `<span class="tr-gc-want">${esc(l.want)}</span>` : '<span class="tr-gc-want dim">희망 조건 없음</span>'}
+            <span class="tr-gc-meta"><span class="${secs < 3 * 3600 ? 'soon' : ''}">${I('timer')}${left(l.expires_at)}</span><span>${I('trade_offer')}${l.offers}</span></span></button>`; };
+        const paintG = () => { const list = all.slice().sort(SORT[mSort][1]);
+          G.innerHTML = list.length ? list.map(cardHTML).join('') : `<div class="tr-empty">${I('trade')}<b>아직 올라온 글이 없어요</b><small>첫 판매 글을 올려 보세요</small><button class="tr-btn main" data-new2>＋ 판매 글</button></div>`;
+          G.querySelector('[data-new2]')?.addEventListener('click', () => createListing(() => draw('my')));
+          G.querySelectorAll('[data-l]').forEach(b => b.onclick = () => { const l = all.find(x => x.id === +b.dataset.l); l.mine ? manage(l.id, () => draw(tab)) : detail(l, () => draw(tab)); });
+          M.innerHTML = more && all.length ? '<button class="tr-btn tr-more">더 보기</button>' : all.length ? '<div class="tr-end">마지막 글이에요</div>' : '';
+          M.querySelector('.tr-more')?.addEventListener('click', load); };
+        async function load() { if (busy || !more) return; busy = true; const b = M.querySelector('.tr-more'); if (b) { b.disabled = true; b.textContent = '불러오는 중…'; }
+          const before = all.length ? Math.min(...all.map(x => x.id)) : null;
+          const r = await rpc('trade_board', { p_limit: PAGE, ...(before ? { p_before: before } : {}) }); busy = false;
+          if (!r) { if (!all.length) G.innerHTML = '<div class="tr-empty"><b>불러오지 못했어요</b></div>'; else paintG(); return; }
+          const seen = new Set(all.map(x => x.id)); all = all.concat(r.listings.filter(x => !seen.has(x.id))); more = r.listings.length >= PAGE; paintG(); }
+        L.querySelectorAll('[data-sort]').forEach(b => b.onclick = () => { mSort = b.dataset.sort; L.querySelectorAll('[data-sort]').forEach(x => x.classList.toggle('on', x === b)); if (!busy) paintG(); });
+        await load();
       } else {
         const r = await rpc('trade_my'); if (!r) return;
         const ST = { open: '열림', done: '거래 완료', cancelled: '내림', expired: '만료', pending: '대기', accepted: '수락됨', rejected: '거절됨', refunded: '환불됨' };
@@ -138,7 +161,7 @@
       <div class="tr-items big">${itemsHTML(l.cards, l.gear)}</div>${l.want ? `<div class="tr-want">${I('trade_want')}${esc(l.want)}</div>` : ''}
       <div class="tr-note">다른 사람의 제안 내용은 보이지 않아요</div>
       <div class="tr-acts">${l.my_offer ? '<button class="tr-btn" data-c>내 제안 취소</button>' : '<button class="tr-btn main" data-o>제안하기</button>'}</div>`, '', ['exchange-post', '판매 글']);
-    m.querySelector('[data-o]')?.addEventListener('click', () => { m.remove(); makeOffer(l, after); });
+    m.querySelector('[data-o]')?.addEventListener('click', () => { const inPage = m.classList.contains('vr-in-page'); if (!inPage) m.remove(); makeOffer(l, inPage ? () => { if (m.isConnected) m.remove(); after?.(); } : after); });   // 페이지: 제안 화면 뒤로 = 글 상세
     m.querySelector('[data-c]')?.addEventListener('click', async () => { if (!await ask('제안을 취소할까요?')) return; if (await rpc('trade_offer_cancel', { p_offer: l.my_offer })) { toast('↩️ 제안을 취소했어요'); m.remove(); refreshMine(); after?.(); } });
   }
 
