@@ -51,7 +51,7 @@
   }
   function title(w) {
     if (w === 'page') return document.querySelector('#vr-page .vr-page-title')?.textContent?.trim() || '';
-    if (w === 'hub') return '📖 스토리';
+    if (w === 'hub') return SS()?.querySelector('.hub-title')?.textContent?.trim() || '📜 스토리';
     if (w === 'gacha') return '🎴 인재 영입';
     const t = SS()?.querySelector('.story-top-title')?.textContent?.trim();
     if (t) return t;

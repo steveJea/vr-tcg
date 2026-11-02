@@ -95,3 +95,4 @@ body.tnb-on #start-screen .main-top .main-mail, body.tnb-on #start-screen .main-
   .tnb-lv { padding: 0 6px; font-size: 11px; } .tnb-r2 { gap: 2px; padding: 0 4px 4px; } .tnb-st em { font-size: 9px; } }
 #vr-tnb .acct-login { max-height: 36px; padding: 4px 10px !important; font-size: 12px !important; }
 body.tnb-on #story-screen .story-map-top [data-mailbtn] { display: none !important; }
+body.tnb-on #story-screen .hub-top .hub-title { display: none; }

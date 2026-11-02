@@ -193,4 +193,4 @@
 - 예전 머리줄은 CSS로 정리 (story.js·quest.js·pages.js 코드는 안 바꿈): `.vr-page-head` 숨김, 스토리·탑 `.story-top` 의 뒤로·제목·Lv·행동력은 숨기고 남는 버튼(내 인재·인연·인재영입·덱·출석)은 본문 맨 위 칩 줄로, 로비 `.main-top` 의 재화·설정·우편은 바로 옮기고 출석·파견은 바 아래 오른쪽 바로가기 아이콘으로.
 - 그림: 그림순이 v1 에셋 `img/ui/topnav/*_v1.webp` (바 배경 모바일/PC, 칩 테두리 9-slice, + 버튼, 뒤로·홈·우편·설정 normal/pressed, 숫자 뱃지, Lv 배지, 심연석·행동력 아이콘). 그림을 못 읽으면 이모지·CSS로 대신 보여 줌. 파일 표는 css/topnav.css 맨 위와 js/topnav.js `ART`. (badge_dot, profile_ring, *_128 은 같이 올렸지만 아직 안 씀)
 - 끄기: `localStorage.vrTnb = '0'` → 예전 머리줄 그대로.
-- 테스트: Chromium·Firefox × 390·360·PC, 로비·스토리 허브·지도·영입·탑·거래소·마이페이지·전투(숨김) + ← 동작·심연석 + 칩 (`/workspace/topnav/impl_*`, 모의 데이터).
+- 테스트: Chromium·Firefox × 390·360·PC, 로비·스토리 이어하기(#417)·스토리 허브(📜 스토리 버튼)·지도·영입·탑·거래소·마이페이지·전투(숨김) + ← 동작·심연석 + 칩 (`/workspace/topnav/impl_*`, 모의 데이터).
