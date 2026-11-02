@@ -50,3 +50,7 @@ body.vr-page-on .pvp-modal.pvp-top:not(.vr-in-page), body.vr-page-on .pvp-vsx { 
 #vr-page .pvp-modal.vr-in-page { position: static !important; inset: auto !important; z-index: auto !important; background: none !important; padding: 0 !important; display: block !important; }
 #vr-page .pvp-modal.vr-in-page > .pvp-panel { width: 100% !important; max-width: 640px; max-height: none !important; margin: 0 auto; overflow: visible !important; }
 #vr-page .pvp-modal.vr-in-page > .pvp-panel > .pvp-x { display: none !important; }
+/* 9단계: 스토리 큰 팝업(#story-pop) = 페이지 */
+#vr-page .story-pop-body { position: relative; padding: 0; overflow: hidden; }
+#vr-page .story-pop-body > #story-pop.story-pop-page { position: absolute !important; inset: 0 !important; z-index: 0 !important; background: none !important; padding: 8px !important; display: block !important; overflow: hidden; }
+#vr-page .story-pop-body > #story-pop.story-pop-page > .story-pop-panel { max-width: 640px; width: 100%; margin: 0 auto; height: 100%; max-height: 100% !important; }   /* 스크롤은 예전처럼 판(panel)이 맡음 → close(true) 스크롤 유지 그대로 */

@@ -328,16 +328,43 @@
   // 바깥 클릭으로 닫히는 팝업
   /** 팝업 안 요소 → '클래스#순번' 키 (다시 그려도 같은 스크롤 상자를 찾게) */
   const popScrollKeys = m => { const map = new Map(), n = {}; for (const e of [m, m.querySelector('.story-pop-panel'), ...m.querySelectorAll('.story-pop-panel *')]) { if (!e) continue; const c = e.tagName + '.' + e.className; n[c] = (n[c] | 0) + 1; map.set(c + '#' + n[c], e); } return map; };
+  // ----- 페이지 시스템: 큰 팝업(출전 고르기·스탯 분배·합성 미리보기·일괄 분해·소탕)은 #story-pop 을 페이지 몸통으로 옮겨 페이지로. 작은 확인·상세는 예전 팝업 -----
+  // 쓰는 법: popPage('story-pick', '출전 고르기'); popup(...)  → 다음 popup 한 번만 페이지. 뒤로가기 = 닫기(취소, onClose 실행). close(true)→바로 popup 은 같은 페이지 유지
+  let nextPage = null, popClosing = false;
+  const popPage = (name, title) => { nextPage = window.VRPages ? [name, title] : null; };
+  const PP = window.VRPages;
+  function popToBody(m) { if (m.parentNode !== document.body) document.body.appendChild(m); m.classList.remove('story-pop-page'); }
+  function popPageOpen(m, name, title) {
+    try {
+      if (!PP.has?.(name)) PP.register(name, { title, render: body => { const e = $('story-pop'); if (e) { body.classList.add('story-pop-body'); body.appendChild(e); } },
+        leave: body => { body?.classList.remove('story-pop-body'); const e = $('story-pop'); if (!e || e.parentNode !== body) return; popToBody(e); if (!popClosing && !PP.inStack?.(name)) e._close?.(); } });   // 뒤로가기로 빠짐 = 닫기
+      if (PP.current !== name) { if (/^story-p/.test(PP.current || '') && PP.current !== name) { popClosing = true; try { PP.closeNow(); } finally { popClosing = false; } } PP.open(name); }
+      else { const b = document.querySelector('#vr-page .vr-page-body'); if (b && m.parentNode !== b) { b.classList.add('story-pop-body'); b.appendChild(m); } }
+      m.classList.add('story-pop-page'); return true;
+    } catch (e) { console.error('[story] page', e); popToBody(m); return false; }
+  }
+  // 스토리 화면(지도·인재·덱·상점 등)에서 폰 뒤로가기 = 그 화면의 '←' 버튼 (없으면 처음으로). 대사·영상·전투 중엔 무시 (pages.js busy)
+  PP?.onLobbyBack?.(() => { const r = root(); if (!r || r.classList.contains('hidden') || $('game') && !$('game').classList.contains('hidden')) return false;
+    if (r.querySelector('#story-dlg, .story-vcut')) return true;
+    const b = [...r.querySelectorAll('.story-back[data-go]')].find(x => /^\s*←/.test(x.textContent) && !x.disabled); if (b) { b.click(); return true; }
+    home(); return true; });
   function popup(html, onClose) {
+    const pg = nextPage; nextPage = null;
     let m = $('story-pop'); if (!m) { m = document.createElement('div'); m.id = 'story-pop'; document.body.appendChild(m); }
     m.className = 'fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-4';
+    if (pg && PP) popPageOpen(m, pg[0], pg[1]);
+    else if (m.parentNode !== document.body) { popToBody(m); const cur = PP?.current; if (/^story-p/.test(cur || '')) { popClosing = true; try { PP.closeNow(); } finally { popClosing = false; } } }   // 페이지였던 창 위에 작은 창 → 페이지는 닫고 작은 창만
     m.innerHTML = `<div class="story-pop-panel">${UI(html)}</div>`;
     const keep = m._keep; m._keep = null;   // 같은 팝업 다시 그리기(close(true) → 바로 popup): 스크롤 위치 유지 (출전 고르기·덱 편집에서 인재 탭)
     if (keep && performance.now() - keep.at < 1000) { const ks = popScrollKeys(m); for (const [k, t, l] of keep.pos) { const e = ks.get(k); if (e) { e.scrollTop = t; e.scrollLeft = l; } } }
     let down = false;
     m.onpointerdown = e => { down = e.target === m; };
     m.onclick = e => { if (down && e.target === m) close(); down = false; };
-    const close = silent => { if (silent !== true) window.VRVoice?.stopAll(150); if (silent === true) { const pos = []; for (const [k, e] of popScrollKeys(m)) if (e.scrollTop || e.scrollLeft) pos.push([k, e.scrollTop, e.scrollLeft]); m._keep = { at: performance.now(), pos }; } m.className = 'hidden'; m.innerHTML = ''; if (silent !== true) onClose?.(); };   // close(true): 다음 팝업으로 넘어갈 때 onClose 생략
+    const close = silent => { if (silent !== true) window.VRVoice?.stopAll(150); if (silent === true) { const pos = []; for (const [k, e] of popScrollKeys(m)) if (e.scrollTop || e.scrollLeft) pos.push([k, e.scrollTop, e.scrollLeft]); m._keep = { at: performance.now(), pos }; } m.className = 'hidden'; m.innerHTML = '';
+      if (m.parentNode !== document.body) { const cur = PP?.current; const shut = () => { if (m.classList.contains('story-pop-page') || PP?.current !== cur) return; popToBody(m); popClosing = true; try { PP.closeNow(); } finally { popClosing = false; } };
+        if (silent === true) queueMicrotask(shut); else shut(); }   // 페이지였으면 페이지도 닫음 (close(true) 뒤 바로 다시 그리면 유지)
+      if (silent !== true) onClose?.(); };
+    m._close = () => close();   // close(true): 다음 팝업으로 넘어갈 때 onClose 생략
     m.querySelectorAll('[data-close-pop]').forEach(b => b.onclick = () => close());
     return { el: m, close };
   }
@@ -588,6 +615,7 @@
   const SWEEP_LV = 5, SWEEP_RUNS = [1, 5, 10];
   function sweepPop(ch, ph) {
     const P = window.VRPlayer?.now?.(), cost = window.VRPlayer?.cost ?? 6, st = P?.stamina ?? 0;
+    popPage('story-psweep', '소탕');
     const p = popup(`<div class="text-lg font-black">${SW()} 소탕 · ${esc(ch.title)} Phase.${ph.no}${ph.type === 'boss' ? ' BOSS' : ''}</div>
       <div class="text-xs text-zinc-400 mt-1">전투 없이 반복 클리어 보상을 바로 받아요 (골드 · 순수한 피 · 이상한 조각 확률 · 플레이어 경험치). 인재 경험치·첫 클리어 보상은 없어요.</div>
       <div class="story-sweep-runs">${SWEEP_RUNS.map(n => { const c = n * cost, okk = st >= c; return `<button class="story-btn ${okk ? '' : 'short'}" data-runs="${n}" ${okk ? '' : 'disabled'}>${n}회<small>🔋 ${c}</small></button>`; }).join('')}</div>
@@ -871,6 +899,7 @@
     const boss = ph.type === 'boss';
     const fTile = o => { return `<div class="story-pick-card on locked" title="이번 페이즈 필수 출전">${pickTile(o).replace('</div><div class="story-pick-meta">', `</div><div class="story-pick-meta">${isGuest(o) ? '<span class="text-sky-300">게스트</span>' : ''}`)}<i class="story-pick-check">🔒</i></div>`; };
     const draw = () => {
+      popPage('story-pick', '출전 고르기');
       const p = popup(`<div class="story-pop-title">출전 인재 선택 <span class="text-emerald-300">${forced.length + sel.length}/${forced.length + slots}</span></div>
         <div class="text-xs text-zinc-400 mb-2">${opts?.note ? `${opts.note}<br>` : ''}${!opts && isPool(ch, ph) ? `고른 인재 ${forced.length + slots}장이 손패가 돼요. 마나로 소환하고, 마나는 다시 차지 않아요. (필드 최대 5장 · 시작 마나 <b class="text-sky-300">${storyMana(ch, ph, deckInstances())}</b>)` : '고른 인재가 모두 필드에서 시작해요. 손패·드로우는 없고, 내 인재가 모두 쓰러지면 패배예요.'}${boss ? '<br>👑 보스전: 보스는 진영 안에서 쓰러지지 않아요. 상대 진영 HP를 0으로!' : ''}</div>
         ${forced.length ? `<div class="story-forced-h">${ic('crown', { alt: '' })} 필수 출전 ${forced.length}장 <small>(게스트는 정해진 레벨(없으면 리더 레벨)로 함께 싸우고, 전투 EXP는 받지 않아요)</small></div><div class="story-grid story-deckpick story-forced">${forced.map(fTile).join('')}</div>
@@ -1179,6 +1208,7 @@
     const added = i => STATS.reduce((a, st) => a + (temp[i][st] || 0) - (save.owned[i].boost?.[st] || 0), 0);
     const draw = () => {
       const o = save.owned[sel], c = boosted({ ...o, boost: temp[sel] }), k = D.statPerPoint, avail = left + cleft[sel];
+      popPage('story-pstat', '📈 스탯 분배');
       const p = popup(`<div class="text-lg font-black mb-1">📈 스탯 분배</div><div class="text-xs text-zinc-400 mb-3">공용 포인트 <b class="text-emerald-300 text-base">${left}</b>${cleft[sel] ? ` · 이 인재 전용 <b class="text-sky-300 text-base" id="story-cpts">${cleft[sel]}</b>` : ''} · 포인트 1당 ATK +${k.ATK}, HP +${k.HP}, DEF +${k.DEF}
           <div class="text-[11px] text-zinc-500 mt-0.5">같은 스탯 ${D.statFull + 1}번째 포인트부터는 절반 · 한 스탯에는 이 인재 포인트 합계의 절반(올림)까지</div>${cleft.some(Boolean) ? '<div class="text-[11px] text-zinc-500">예전에 받은 인재 전용 포인트를 먼저 써요</div>' : ''}</div>
         <div class="story-tabwrap"><button class="story-tab-arr l" aria-label="왼쪽">‹</button><div class="story-tabs">${save.owned.map((x, i) => { const cc = card(x.id); return `<button data-sel="${i}" class="story-chip ${i === sel ? 'on' : ''}">${x.uid === save.leader ? ic('crown', { alt: '리더' }) + ' ' : ''}${esc(exName(x, cc?.name))} <small>Lv.${x.level}</small>${cleft[i] ? ` <b class="text-sky-300">+${cleft[i]}</b>` : ''}</button>`; }).join('')}</div><button class="story-tab-arr r" aria-label="오른쪽">›</button></div>
@@ -1464,6 +1494,7 @@
     if (serverMode && window.VRPlayer && !W()) { window.VRPlayer.wallet().then(() => mergePreview(tu, mu)); return; }
     const mats = materialsOf(o); if (!mats.length) return cardDetail(tu);
     const mat = mats.find(x => x.uid === mu) || mats[0], c = card(o.id), m = mergeCalc(o, mat), after = { ...o, ex: m.ex, exb: m.exb, level: 1, exp: 0 };
+    popPage('story-pmerge', '합성');
     const p = popup(`<div class="text-lg font-black mb-1">${ic('merge', { alt: '' })} 합성 미리보기</div>
       <div class="flex gap-3 items-center"><div class="relative shrink-0"><img src="${IMG}${c.id}.webp" class="w-20 aspect-[3/4] object-cover rounded-lg" alt="">${exStars(c, after, 'rstars-over')}</div>
         <div class="flex-1 min-w-0 text-sm"><div class="font-black">${esc(c.name)} <span class="text-red-300">EX${exOf(o)} → EX${exOf(after)}</span></div>
@@ -1634,6 +1665,7 @@
     const list = sortInst(save.owned);
     const grades = Object.keys(RAR).filter(gr => save.owned.some(o => !disLocked(o) && card(o.id)?.grade === gr));
     const spare = o => !disLocked(o) && copiesOf(o.id).length > 1 && repOf(o.id) !== o;
+    popPage('story-pdis', '일괄 분해');
     const p = popup(`<div class="text-lg font-black mb-1">${ic('discard', { alt: '' })} 일괄 분해</div>
       <div class="text-xs text-zinc-400 mb-1">고른 인재를 모두 분해하고 <b class="text-amber-200">재화</b>(골드 · 순수한 피 · 각성자의 혼)를 받아요</div>
       <div class="flex flex-wrap gap-1.5 my-2"><button class="story-chip" data-q="all">전체 선택</button>${save.owned.some(spare) ? '<button class="story-chip" data-q="spare">출전 안 하는 중복만</button>' : ''}${grades.map(gr => `<button class="story-chip" data-q="${gr}">${RAR[gr]} 전체</button>`).join('')}<button class="story-chip" data-q="none">선택 해제</button></div>
