@@ -134,8 +134,8 @@
     let prev = src; if (prev === next) { const o = scopes.find(x => x.src === next); if (o) prev = o.prev; }
     scopes.push({ el, src: next, prev }); setTrack(next);
   };
-  new MutationObserver(() => { for (let i = scopes.length - 1; i >= 0; i--) { const x = scopes[i]; if (x.el.isConnected) continue;
-    scopes.splice(i, 1); if (src === x.src && !scopes.some(y => y.src === x.src)) setTrack(x.prev); } }).observe(document.body, { childList: true });
+  new MutationObserver(() => { for (let i = scopes.length - 1; i >= 0; i--) { const x = scopes[i]; if (x.el.isConnected || window.VRPages?.holds?.(x.el)) continue;   // 위 페이지에 가려 잠시 떼어진 페이지는 아직 열린 것
+    scopes.splice(i, 1); if (src === x.src && !scopes.some(y => y.src === x.src)) setTrack(x.prev); } }).observe(document.body, { childList: true, subtree: true });   // 페이지 안에 들어간 화면이 빠져도 감지
   btn?.addEventListener('click', e => { e.stopPropagation(); soundOn = !soundOn; localStorage.setItem(KEY, soundOn ? '1' : '0'); soundOn ? play() : stop(); renderBtn(); });
   // 브라우저 자동재생 정책: 첫 사용자 입력 후 재생
   const first = () => { play(); removeEventListener('pointerdown', first); removeEventListener('keydown', first); };

@@ -22,7 +22,7 @@ create table if not exists public.guild_quest_pool (
   key text primary key, kind text not null check (kind in ('daily', 'weekly')), event text not null, goal int not null check (goal > 0),
   reward jsonb not null default '{}'::jsonb, weight int not null default 1, label text not null, icon text not null default '📜', active boolean not null default true);
 insert into public.guild_quest_pool (key, kind, event, goal, reward, label, icon) values
-  ('d_phase',   'daily', 'phase',   5,  '{"loyalty":15,"gold":800,"exp":10}',  '페이즈 정리',  '🗡️'),
+  ('d_phase',   'daily', 'draw',    1,  '{"loyalty":15,"gold":800,"exp":10}',  '인재 소환 1회', '🎴'),   -- guild_quest_draw.sql (예전 '페이즈 정리 5')
   ('d_stamina', 'daily', 'stamina', 60, '{"loyalty":15,"gold":800,"exp":10}',  '행동력 소모',  '🔋'),
   ('d_pvp',     'daily', 'pvp_win', 2,  '{"loyalty":20,"gold":1000,"exp":15}', 'PvP 승리',     '⚔️'),
   ('d_tower',   'daily', 'tower',   1,  '{"loyalty":15,"gold":800,"exp":10}',  '탑 오르기',    '🗼'),

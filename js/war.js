@@ -43,6 +43,7 @@ const face = (uid, fb) => { const id = (uid && U.cards?.[uid]) || fb; return id 
 const loadUi = async () => { try { const r = await rpc('war_ui'); if (r?.ok) U = r; } catch {} };
 export async function open() {
   M?.remove(); M = pop('<div class="gd-loading">…</div>', 'wide wr');
+  window.VRSound?.scope?.(M, window.VR_BGM?.guildHome);   // 전쟁 화면 = 조직 음악 (전투만 guildBattle)
   window.VRPages?.host?.('war', '🏴 구역 전쟁', M);   // 페이지 시스템 (실패하면 예전 팝업)
   try { S = await rpc('war_status'); } catch (e) { toast(errText(e)); M.remove(); return; }
   await loadUi(); paint();

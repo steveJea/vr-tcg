@@ -41,14 +41,14 @@
   function close() { ov?.remove(); ov = null; }
   // ----- 페이지 시스템: 조직 = 페이지, 큰 안쪽 창(대여·상점·신청·설정·기록·집결·의뢰) = 하위 페이지. 조직원/조직 정보·만들기·확인창은 작은 창 그대로 -----
   const inGuild = () => /^guild/.test(window.VRPages?.current || '');
-  function subPop(name, title, html, cls) { const m = pop(html, cls); if (inGuild()) window.VRPages.host('guild-' + name, title, m); return m; }
+  function subPop(name, title, html, cls) { const m = pop(html, cls); window.VRSound?.scope?.(m, window.VR_BGM?.guildHome); if (inGuild()) window.VRPages.host('guild-' + name, title, m); return m; }
   let gone = false;   // 조직 페이지가 위 페이지(토벌 등)에 가려졌다 돌아오면 BGM 다시
   async function open() {
     close();
     ov = document.createElement('div'); ov.className = 'gd-ov'; ov.innerHTML = '<div class="gd-page"><div class="gd-loading">…</div></div>';
     ov.addEventListener('click', e => { if ((e.target === ov && !ov.classList.contains('vr-in-page')) || e.target.closest('[data-close]')) close(); });
     document.body.appendChild(ov); window.VRSound?.scope?.(ov, window.VR_BGM?.guildHome);
-    gone = false; window.VRPages?.host?.('guild', '🩸 조직', ov, () => { gone = true; }, p => { if (gone && p === ov) { gone = false; window.VRSound?.scope?.(ov, window.VR_BGM?.guildHome); dots(); } });   // 실패하면 예전 전체 창
+    gone = false; window.VRPages?.host?.('guild', '🩸 조직', ov, () => { gone = true; }, p => { if (gone && p === ov) { gone = false; setTimeout(() => { const S = window.VRSound, t = window.VR_BGM?.guildHome; if (ov && S && t && S.track !== t) S.setTrack(t); }, 0); dots(); } });   // 실패하면 예전 전체 창
     await status(); paint(); if (st?.guild) lendNotices();
   }
   const card = g => `<button class="gd-card" data-gid="${g.id}">${emb(g.emblem)}<span class="gd-card-m"><b>${esc(g.name)}</b><small>${esc(g.intro || '')}</small></span><span class="gd-card-r"><b>Lv.${g.level}</b><small>${gi('ic_members', '👥')} ${g.members}/${g.max_members} ${MODE[g.join_mode]?.[0] || ''}</small></span></button>`;
@@ -245,11 +245,16 @@
   const qic = (ev, fb) => `<span class="gd-qic"><i>${QIC[ev] || fb || gi('tile_log', '📜')}</i><img src="img/ui/guild/quest_${QIMG[ev] || ev}.webp" alt="" onerror="this.remove()"></span>`;
   // 의뢰 제목 누르면 관련 메뉴로 (팝업·조직 화면 닫고 이동). 집결은 조직 안 집결 팝업
   const QGO = {
-    phase: () => window.VRStory?.openMap?.(), stamina: () => window.VRStory?.openMap?.(), boss: () => window.VRStory?.openMap?.(),
+    phase: () => window.VRStory?.play?.(), stamina: () => window.VRStory?.play?.(),   // 페이즈·행동력 = 로비 '스토리 이어하기'와 같은 곳
+    boss: () => window.VRStory?.openMap?.(),
     tower: () => window.VRQuest?.open?.(), draw: () => window.VRStory?.openShop?.(), levelup: () => window.VRStory?.openCards?.(),
     pvp_win: () => window.VRPvp?.open?.(), raid: () => window.VRRaid?.open?.(), checkin: 'rally' };
   const qt = q => QGO[q.event] ? `<button class="gd-qt" data-go="${esc(q.event)}">${esc(q.label)}<i>›</i></button>` : `<b>${esc(q.label)}</b>`;
-  function qGo(m, ev) { const g = QGO[ev]; if (!g) return; m.remove(); if (g === 'rally') return rallyPop(); if (!inGuild()) close(); g(); }   // 페이지면 조직은 그대로 두고 위에 쌓음 (뒤로 = 조직)
+  // 스토리 화면(이어하기·소환·카드)은 페이지가 아니라 조직 페이지 밑에 깔림 → 하단 메뉴처럼 페이지를 다 닫고 연다 (예전: 조직 홈만 보였음)
+  const QSTORY = new Set(['phase', 'stamina', 'boss', 'draw', 'levelup', 'tower']);   // 탑도 하단 메뉴처럼
+  function qGo(m, ev) { const g = QGO[ev]; if (!g) return; m.remove(); if (g === 'rally') return rallyPop();
+    if (QSTORY.has(ev)) { const P = window.VRPages; while (P?.depth) P.closeNow(); close(); return g(); }
+    if (!inGuild()) close(); g(); }   // 그 밖(탑·PvP·토벌)은 조직 위에 쌓음 (뒤로 = 조직)   // 페이지면 조직은 그대로 두고 위에 쌓음 (뒤로 = 조직)
   const RWT = { loyalty: LOY, gold: '🪙', gem: '🔮', tickets: '🎟️', exp: '⚜️' };
   const RW = { loyalty: LOYI, gold: gi('cur_gold', '🪙'), gem: gi('cur_gem', '🔮'), tickets: gi('cur_ticket', '🎟️'), exp: gi('cur_exp', '⚜️') };
   const rwTxt = rw => Object.entries(rw || {}).filter(([k, v]) => RW[k] && v).map(([k, v]) => `<span>${RW[k]}${n(v)}</span>`).join('');

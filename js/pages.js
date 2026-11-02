@@ -106,5 +106,5 @@
   }
   /** 게임 Y/N 확인 (글자 그대로 · 폰 뒤로가기 = 아니오). 브라우저 confirm() 대신. VRConfirm 없으면 예전 confirm */
   window.VRAsk = t => window.VRConfirm ? Promise.resolve(window.VRConfirm(esc(t))).then(Boolean) : Promise.resolve(confirm(t));
-  window.VRPages = { host, closeNow, closeOverlays, register: (name, def) => { REG[name] = def; }, has: name => !!REG[name], inStack: name => stack.some(s => s.name === name), onLobbyBack: f => lobbyBack.push(f), open, back, get current() { return stack[stack.length - 1]?.name || null; }, get depth() { return stack.length; }, esc };
+  window.VRPages = { host, closeNow, closeOverlays, register: (name, def) => { REG[name] = def; }, has: name => !!REG[name], inStack: name => stack.some(s => s.name === name), holds: el => stack.some(s => REG[s.name]?._pop === el), onLobbyBack: f => lobbyBack.push(f), open, back, get current() { return stack[stack.length - 1]?.name || null; }, get depth() { return stack.length; }, esc };
 })();

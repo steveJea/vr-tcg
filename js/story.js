@@ -2088,5 +2088,5 @@
     sort: (list, st) => { const k0 = cardSort; cardSort = st; try { return sortInst(list); } finally { cardSort = k0; } },
     next: (st, k) => st.k === k ? { k, desc: !st.desc } : { k, desc: true },
   };
-  window.VRStory = { hubSections: HUB_SECTIONS, canDraw: () => canDraw(), trainCard, canMergeUid, sortTool, skBadge, lendCards, reloadLend: () => loadLend(true), partyOf, pickDeck, openMap: i => openPage(() => renderMap(i)), openCards: () => openPage(renderCards), openDecks: () => openPage(renderDecks), openShop: () => openPage(renderShop), api, bgm, BGM, endingVideo, videoOf, conditionsOf, battleRules, summary, enter, openGacha, renderHub, renderShop, drawOnce, kstDay, get save() { return save; }, renderMap, renderCards, openStats, renderSelect, playLines };
+  window.VRStory = { hubSections: HUB_SECTIONS, play: () => enter('go'), canDraw: () => canDraw(), trainCard, canMergeUid, sortTool, skBadge, lendCards, reloadLend: () => loadLend(true), partyOf, pickDeck, openMap: i => openPage(() => renderMap(i)), openCards: () => openPage(renderCards), openDecks: () => openPage(renderDecks), openShop: () => openPage(renderShop), api, bgm, BGM, endingVideo, videoOf, conditionsOf, battleRules, summary, enter, openGacha, renderHub, renderShop, drawOnce, kstDay, get save() { return save; }, renderMap, renderCards, openStats, renderSelect, playLines };
 })();
