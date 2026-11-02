@@ -115,14 +115,14 @@
       $('.rl').innerHTML = '<div class="empty">불러오는 중...</div>'; $('.mine').innerHTML = '';
       const logged = !!window.VRCloud?.user, cur = key();
       $('.rf').innerHTML = logged ? '' : `로그인하면 랭킹에 참여할 수 있어요!<button id="rank-login">${IC('login')} 구글로 로그인</button>`;
-      const lb = $('#rank-login'); if (lb) lb.onclick = () => window.VRCloud ? window.VRCloud.login() : alert('지금은 로그인 서버에 연결할 수 없어요.');
+      const lb = $('#rank-login'); if (lb) lb.onclick = () => window.VRCloud ? window.VRCloud.login() : (window.VRGem?.toast || alert)('지금은 로그인 서버에 연결할 수 없어요.');
       return loadOther(cur, logged ? await token() : null);
     }
     $('.rn').textContent = tab === 'weekly' ? '주간 랭킹은 매주 월요일 0시(한국 시간)에 초기화돼요 · 승 3점, 무 1점' : '서비스 시작부터 누적된 점수예요 · 승 3점, 무 1점';
     $('.rl').innerHTML = '<div class="empty">불러오는 중...</div>'; $('.mine').innerHTML = '';
     const logged = !!window.VRCloud?.user;
     $('.rf').innerHTML = logged ? '' : `로그인하면 랭킹에 참여할 수 있어요!<button id="rank-login">${IC('login')} 구글로 로그인</button>`;
-    const lb = $('#rank-login'); if (lb) lb.onclick = () => window.VRCloud ? window.VRCloud.login() : alert('지금은 로그인 서버에 연결할 수 없어요.');
+    const lb = $('#rank-login'); if (lb) lb.onclick = () => window.VRCloud ? window.VRCloud.login() : (window.VRGem?.toast || alert)('지금은 로그인 서버에 연결할 수 없어요.');
     const view = tab === 'weekly' ? 'rankings_weekly' : 'rankings_all', cur = key();
     const tok = logged ? await token() : null;
     let rows;

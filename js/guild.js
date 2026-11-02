@@ -94,7 +94,7 @@
     m.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { mode = b.dataset.m; m.querySelectorAll('[data-m]').forEach(x => x.classList.toggle('on', x === b)); });
     m.querySelectorAll('[data-pay]').forEach(b => b.onclick = async () => {
       const name = m.querySelector('#gd-cn').value.trim(); if (!/^[가-힣A-Za-z0-9]{2,8}$/.test(name)) return toast(ERR['bad name']);
-      if (!confirm(`${b.dataset.pay === 'gold' ? `🪙 ${n(st.cost.gold)}` : `🔮 ${n(st.cost.gem)}`} 을 써서 [${name}] 을 세울까요?`)) return;
+      if (!await window.VRAsk(`${b.dataset.pay === 'gold' ? `🪙 ${n(st.cost.gold)}` : `🔮 ${n(st.cost.gem)}`} 을 써서 [${name}] 을 세울까요?`)) return;
       b.disabled = true;
       const r = await act('guild_create', { p_name: name, p_emblem: e, p_intro: m.querySelector('#gd-ci').value, p_join: mode, p_pay: b.dataset.pay }, `🩸 [${name}] 창설!`);
       if (r) { m.remove(); window.VRPlayer?.wallet?.(true); window.VRGem?.status?.(true); } else b.disabled = false;
@@ -134,7 +134,7 @@
     p.querySelector('[data-t="set"]')?.addEventListener('click', setPop);
     p.querySelectorAll('[data-u]').forEach(b => b.onclick = () => memberPop(st.members.find(x => x.user_id === b.dataset.u)));
     p.querySelector('[data-claim]')?.addEventListener('click', () => act('guild_claim_boss', {}, '👑 보스가 되었어요'));
-    p.querySelector('[data-leave]').onclick = () => { if (confirm(me.role === 'boss' ? '조직을 해산할까요?' : '조직을 나갈까요? 24시간 동안 다른 조직에 들어갈 수 없어요')) act('guild_leave', {}, '조직을 떠났어요'); };
+    p.querySelector('[data-leave]').onclick = async () => { if (await window.VRAsk(me.role === 'boss' ? '조직을 해산할까요?' : '조직을 나갈까요? 24시간 동안 다른 조직에 들어갈 수 없어요')) act('guild_leave', {}, '조직을 떠났어요'); };
   }
   function memberPop(x) {
     if (!x) return;
@@ -150,8 +150,8 @@
         <span><small>PvP</small><b>${d.pvp ? `${esc(d.pvp.tier)} ${n(d.pvp.rating)}` : '-'}</b></span><span><small>접속</small><b>${ago(d.seen_at)}</b></span></div>
         ${d.top?.length ? `<div class="gd-mp-top">${d.top.map(c => `<span><img src="${IMG}${c.id}.webp" alt="" loading="lazy" onerror="this.remove()"><small>Lv.${c.level}</small></span>`).join('')}</div>` : ''}`; }).catch(() => { const el = m.querySelector('.gd-mp-d'); if (el) el.remove(); });
     m.querySelector('[data-role]')?.addEventListener('click', async e => { if (await act('guild_set_role', { p_user: x.user_id, p_role: e.currentTarget.dataset.role }, '역할을 바꿨어요')) m.remove(); });
-    m.querySelector('[data-tr]')?.addEventListener('click', async () => { if (confirm(`${x.name} 에게 보스를 이관할까요?`) && await act('guild_transfer', { p_user: x.user_id }, '👑 보스를 이관했어요')) m.remove(); });
-    m.querySelector('[data-kick]')?.addEventListener('click', async () => { if (confirm(`${x.name} 을(를) 추방할까요? 72시간 동안 다시 들어올 수 없어요`) && await act('guild_kick', { p_user: x.user_id }, '추방했어요')) m.remove(); });
+    m.querySelector('[data-tr]')?.addEventListener('click', async () => { if (await window.VRAsk(`${x.name} 에게 보스를 이관할까요?`) && await act('guild_transfer', { p_user: x.user_id }, '👑 보스를 이관했어요')) m.remove(); });
+    m.querySelector('[data-kick]')?.addEventListener('click', async () => { if (await window.VRAsk(`${x.name} 을(를) 추방할까요? 72시간 동안 다시 들어올 수 없어요`) && await act('guild_kick', { p_user: x.user_id }, '추방했어요')) m.remove(); });
   }
   const gearName = g => g?.sigil ? `임유리 증표 조각 ×${g.sigil.n}` : g?.gear_box ? `${['', '낡은', '일반', '고급', '희귀', '영웅'][g.gear_box.tier]} 장비 상자` : g?.dust ? `장비 가루 ×${g.dust}` : '';
   // ---- 인재 대여 (guild_lend.sql): 내 인재 3명 등록 · 조직원 인재 하루 1명 12시간 (원주인 레벨) · 스토리·시련의 탑에서만 ----
@@ -226,7 +226,7 @@
     m.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { mode = b.dataset.m; m.querySelectorAll('[data-m]').forEach(x => x.classList.toggle('on', x === b)); });
     m.querySelector('[data-save]').onclick = async () => { const patch = { notice: m.querySelector('#gd-sn').value }; if (boss) Object.assign(patch, { intro: m.querySelector('#gd-si').value, emblem: e, join_mode: mode });
       if (await act('guild_update', { p_patch: patch }, '저장했어요')) m.remove(); };
-    m.querySelector('[data-rn]')?.addEventListener('click', async () => { const v = m.querySelector('#gd-rn').value.trim(); if (!v || !confirm(`🔮 500 을 써서 [${v}] 로 바꿀까요?`)) return; if (await act('guild_update', { p_patch: { name: v } }, '이름을 바꿨어요')) { m.remove(); window.VRGem?.status?.(true); } });
+    m.querySelector('[data-rn]')?.addEventListener('click', async () => { const v = m.querySelector('#gd-rn').value.trim(); if (!v || !await window.VRAsk(`🔮 500 을 써서 [${v}] 로 바꿀까요?`)) return; if (await act('guild_update', { p_patch: { name: v } }, '이름을 바꿨어요')) { m.remove(); window.VRGem?.status?.(true); } });
   }
   function logPop() {
     const A = { create: '창설', join: '가입', leave: '탈퇴', kick: '추방', role: '역할 변경', transfer: '보스 넘김', claim_boss: '보스 승계', invite: '초대', update: '설정 변경', level_up: '레벨 업', disband: '해산' };

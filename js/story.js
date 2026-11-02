@@ -1842,7 +1842,7 @@
   function bindGem() {
     root().querySelectorAll('#gr-gem [data-gem-buy]').forEach(b => b.onclick = async () => {
       const k = b.dataset.gemBuy, it = window.VRGem.item(k);
-      if (!it || !confirm(`${window.VRGem.ICON} ${it.price.toLocaleString('ko-KR')} 을 써서 ${k === 'pull10' ? '10회 뽑을까요?' : '소환권 1장을 살까요?'}`)) return;
+      if (!it || !await window.VRAsk(`${window.VRGem.ICON} ${it.price.toLocaleString('ko-KR')} 을 써서 ${k === 'pull10' ? '10회 뽑을까요?' : '소환권 1장을 살까요?'}`)) return;
       b.disabled = true;
       const r = await window.VRGem.buy(k); if (!r) { b.disabled = false; return; }
       tickets = r.tickets | 0;

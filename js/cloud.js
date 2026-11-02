@@ -104,9 +104,9 @@ function render(p) {
 }
 
 async function login() {
-  if (!sb) return alert('지금은 로그인 서버에 연결할 수 없어요. 게스트로 플레이해 주세요.');
+  if (!sb) return (window.VRGem?.toast || alert)('지금은 로그인 서버에 연결할 수 없어요. 게스트로 플레이해 주세요.');
   const { error } = await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: REDIRECT } });
-  if (error) alert('로그인을 시작하지 못했어요: ' + error.message);
+  if (error) (window.VRGem?.toast || alert)('로그인을 시작하지 못했어요: ' + error.message);
 }
 async function logout() {
   try { await push(); await sb.auth.signOut(); } catch {}
@@ -187,7 +187,7 @@ function askNickname(first) {
     if (!first) ov.addEventListener('click', e => { if (e.target === ov) done(null); });
     const save = async () => {
       const v = inp.value.trim();
-      if (paid && !confirm(`심연석 ${NICK_PRICE}개를 써서 '${v}'(으)로 바꿀까요?`)) return;
+      if (paid && !await window.VRAsk(`심연석 ${NICK_PRICE}개를 써서 '${v}'(으)로 바꿀까요?`)) return;
       go.disabled = true;
       const { data, error } = await sb.rpc('set_nickname', { p_nick: v });
       go.disabled = false;

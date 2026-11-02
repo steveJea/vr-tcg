@@ -74,7 +74,7 @@ function paint() {
   q('[data-tab]').forEach(b => b.onclick = () => { tab = b.dataset.tab; paint(); });
   q('[data-aj]').forEach(b => b.onclick = () => ajitPop(+b.dataset.aj, b.dataset.foe === '1'));
   q('[data-enter]').forEach(b => b.onclick = async () => { try { S = await rpc('war_enter'); toast('참가 신청 완료'); } catch (er) { toast(errText(er)); } paint(); });
-  q('[data-withdraw]').forEach(b => b.onclick = async () => { if (!confirm('참가를 취소할까요?')) return; try { S = await rpc('war_withdraw'); } catch (er) { toast(errText(er)); } paint(); });
+  q('[data-withdraw]').forEach(b => b.onclick = async () => { if (!await window.VRAsk('참가를 취소할까요?')) return; try { S = await rpc('war_withdraw'); } catch (er) { toast(errText(er)); } paint(); });
   q('[data-slot]').forEach(b => b.onclick = () => slotPop(+b.dataset.slot));
   q('[data-mesign]').forEach(b => b.onclick = async () => { try { const r = await rpc('war_signup', { p_on: !U.me_signed }); if (r?.ok) U = r; } catch (er) { toast(errText(er)); } paint(); });
 }

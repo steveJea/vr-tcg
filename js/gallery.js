@@ -259,7 +259,7 @@
       else if (btn) btn.textContent = old;
       if (r === 'downloaded') galToast(copied ? '이미지를 저장하고 게임 링크를 복사했어요' : `이미지를 저장했어요 · 게임 링크: ${VRShareCard.GAME_URL}`);
       else if (r === 'shared' && copied) galToast('게임 링크도 복사해 뒀어요 · 링크가 빠졌다면 붙여넣기 하세요');
-    } catch (e) { console.warn('[gallery] share failed', e); if (btn) btn.textContent = old; alert('이미지를 만들지 못했어요. 잠시 후 다시 시도해 주세요.'); }
+    } catch (e) { console.warn('[gallery] share failed', e); if (btn) btn.textContent = old; (window.VRGem?.toast || alert)('이미지를 만들지 못했어요. 잠시 후 다시 시도해 주세요.'); }
     finally { if (btn) btn.disabled = false; }
   }
   // 카카오톡 공유 (js/kakao-share.js): 공유 이미지를 카카오에 올려 피드로. SDK·업로드 실패 시 기존 공유(파일 공유·저장)로
