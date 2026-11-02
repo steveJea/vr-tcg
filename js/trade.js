@@ -88,7 +88,7 @@
     const draw = async t => {
       tab = t;
       body(m).innerHTML = `<div class="tr-head"><b>${I('trade')}거래 게시판</b><span><button class="tr-btn" data-help>${I('help')}도움말</button> <button class="tr-btn main" data-new>＋ 판매 글</button></span></div>
-        <div class="tr-tabs"><button data-tab="board" class="${t === 'board' ? 'on' : ''}">게시판</button><button data-tab="my" class="${t === 'my' ? 'on' : ''}">내 거래</button></div><div class="tr-list"><div class="tr-load">불러오는 중…</div></div>`;
+        <div class="tr-tabs"><button data-tab="board" class="${t === 'board' ? 'on' : ''}">게시판</button><button data-tab="price" class="${t === 'price' ? 'on' : ''}">📈 시세</button><button data-tab="my" class="${t === 'my' ? 'on' : ''}">내 거래</button></div><div class="tr-list"><div class="tr-load">불러오는 중…</div></div>`;
       body(m).querySelectorAll('[data-tab]').forEach(b => b.onclick = () => draw(b.dataset.tab));
       body(m).querySelector('[data-new]').onclick = () => createListing(() => draw('my'));
       body(m).querySelector('[data-help]').onclick = help;
@@ -145,6 +145,7 @@
         L.querySelectorAll('[data-fgr]').forEach(b => b.onclick = () => { const g = b.dataset.fgr; mF.gr.has(g) ? mF.gr.delete(g) : mF.gr.add(g); b.classList.toggle('on', mF.gr.has(g)); refilter(); });
         L.querySelectorAll('[data-sort]').forEach(b => b.onclick = () => { mSort = b.dataset.sort; L.querySelectorAll('[data-sort]').forEach(x => x.classList.toggle('on', x === b)); refilter(); });
         await load();
+      } else if (t === 'price') { await priceTab(L);
       } else {
         const r = await rpc('trade_my'); if (!r) return;
         const ST = { open: '열림', done: '거래 완료', cancelled: '내림', expired: '만료', pending: '대기', accepted: '수락됨', rejected: '거절됨', refunded: '환불됨' };
@@ -167,6 +168,49 @@
   }
   const refreshMine = () => { S()?.load?.(); window.VRGear?.load?.(true); window.VRDrink?.status?.(); window.VRPlayer?.wallet?.(true); };
 
+  // ---- 📈 시세 (PR6): trade_price_board / trade_price_history — 한 가지 물건을 재화로만 판 거래만, 판매자·구매자 정보 없음
+  let pDays = 7, pKind = 'all';
+  const itemName = (k, id) => k === 'card' ? (cardOf(id)?.name || '인재') : (defOf(id)?.name || '장비');
+  const itemImg = (k, id) => k === 'card' ? `<img src="${IMG}${id}.webp" alt="" loading="lazy">` : defOf(id) ? `<img class="gear" src="${gearIcon(defOf(id))}" alt="" loading="lazy">` : '';
+  const statTxt = st => [st?.drink && `${I('cur_drink')}${n(st.drink.median)}`, st?.gold && `${I('cur_gold')}${n(st.gold.median)}`].filter(Boolean).join(' · ');
+  const PSOON = '<div class="tr-empty">📈<b>시세는 곧 열려요</b><small>서버 준비가 끝나면 최근 거래 가격을 볼 수 있어요</small></div>';
+  function spark(daily, f) { const v = (daily || []).map(d => d[f]).filter(x => x != null); if (v.length < 2) return '';
+    const lo = Math.min(...v), hi = Math.max(...v), W = 100, H = 24, pts = v.map((x, i) => `${(i / (v.length - 1) * W).toFixed(1)},${(H - 2 - (hi === lo ? 0.5 : (x - lo) / (hi - lo)) * (H - 4)).toFixed(1)}`).join(' ');
+    return `<svg class="tr-spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true"><polyline points="${pts}"/></svg>`; }
+  async function priceTab(L) {
+    L.className = 'tr-list tr-prices';
+    L.innerHTML = `<div class="tr-filter"><div class="tr-fchips" role="group" aria-label="기간">${[7, 30].map(d => `<button data-pd="${d}" class="${pDays === d ? 'on' : ''}">${d}일</button>`).join('')}</div>
+      <div class="tr-fchips" role="group" aria-label="종류">${[['all', '전체'], ['card', '인재'], ['gear', '장비']].map(([k, lb]) => `<button data-pk="${k}" class="${pKind === k ? 'on' : ''}">${lb}</button>`).join('')}</div></div>
+      <div class="tr-note">한 가지 물건을 드링크나 골드로만 판 거래의 중앙값이에요. 누가 사고팔았는지는 보이지 않아요.</div><div class="tr-plist">${'<div class="tr-prow ui-skel"></div>'.repeat(3)}</div>`;
+    L.querySelectorAll('[data-pd]').forEach(b => b.onclick = () => { pDays = +b.dataset.pd; priceTab(L); });
+    L.querySelectorAll('[data-pk]').forEach(b => b.onclick = () => { pKind = b.dataset.pk; priceTab(L); });
+    const P = L.querySelector('.tr-plist'), r = await rpc('trade_price_board', { p_days: pDays, p_kind: pKind, p_limit: 30 }, true);
+    if (r === 'missing') { P.innerHTML = PSOON; return; }
+    if (!r) { P.innerHTML = '<div class="tr-empty"><b>불러오지 못했어요</b></div>'; return; }
+    const it = r.items || [];
+    if (!it.length) { P.innerHTML = `<div class="tr-empty">🌱<b>아직 거래가 거의 없어요</b><small>최근 ${pDays}일 동안 시세를 낼 만한 거래가 없어요.${pDays === 7 ? ' 30일로 넓혀 보세요.' : ''} 거래가 쌓이면 여기에 가격이 보여요</small></div>`; return; }
+    P.innerHTML = (r.total < 5 ? `<div class="tr-fcount">최근 ${pDays}일 거래 ${r.total}건 · 아직 적어서 참고용이에요</div>` : '') + it.map(x => `<button class="tr-prow" data-pi="${x.kind}:${esc(x.id)}"><span class="tr-pimg">${itemImg(x.kind, x.id)}</span>
+      <span class="tr-pmain"><b>${esc(itemName(x.kind, x.id))}</b><small>${x.n}건${x.buy_now ? ` · ⚡ ${x.buy_now}` : ''} · ${left0(x.last_at)}</small></span><span class="tr-pval">${statTxt(x) || '-'}</span></button>`).join('');
+    P.querySelectorAll('[data-pi]').forEach(b => b.onclick = () => { const [k, ...id] = b.dataset.pi.split(':'); priceHistory(k, id.join(':')); });
+  }
+  const left0 = t => { const h = Math.floor((Date.now() - new Date(t)) / 3600e3); return h < 1 ? '방금' : h < 24 ? `${h}시간 전` : `${Math.floor(h / 24)}일 전`; };
+  async function priceHistory(k, id) {
+    const m = pop('<div class="tr-load">불러오는 중…</div>', '', ['exchange-price', '📈 시세']);
+    const r = await rpc('trade_price_history', { p_kind: k, p_id: id }, true), B = body(m);
+    if (r === 'missing') { B.innerHTML = PSOON; return; } if (!r) { m.remove(); return; }
+    const box = (lb, st) => `<div class="tr-pbox"><b>${lb}</b>${st?.n ? `<span>${st.n}건 (⚡${st.buy_now} · 제안 ${st.offer})</span>${['drink', 'gold'].filter(f => st[f]).map(f => `<div class="tr-prng">${I('cur_' + f)}중앙 <b>${n(st[f].median)}</b> <small>${n(st[f].min)}~${n(st[f].max)}</small></div>`).join('')}` : '<span class="dim">거래 없음</span>'}</div>`;
+    B.innerHTML = `<div class="tr-phead"><span class="tr-pimg">${itemImg(k, id)}</span><b>${esc(itemName(k, id))}</b></div>
+      ${r.d30?.n ? `<div class="tr-pgrid">${box('7일', r.d7)}${box('30일', r.d30)}</div>${spark(r.daily, 'drink') || spark(r.daily, 'gold')}
+      <div class="tr-sec">최근 거래</div>${r.recent.map(x => `<div class="tr-prec"><span>${left0(x.at)}</span><span>${x.buy_now ? '⚡ 즉시 구매' : '제안 수락'}</span><b>${curTxt(x.drinks, x.gold)}</b></div>`).join('')}`
+        : '<div class="tr-empty">🌱<b>아직 거래 기록이 없어요</b><small>30일 안에 이 물건만 재화로 판 거래가 없어요</small></div>'}`;
+  }
+  async function trendLine(el, k, id) {   // 글 상세·판매 3단계 한 줄 요약 (조용히: SQL 전·거래 없음이면 숨김)
+    if (!el || !id) return; const r = await rpc('trade_price_history', { p_kind: k, p_id: String(id) }, true);
+    if (!r || r === 'missing' || !el.isConnected) return; const st = r.d7?.n ? r.d7 : r.d30, d = r.d7?.n ? 7 : 30;
+    el.innerHTML = st?.n ? `<button class="tr-trend" type="button">📈 최근 ${d}일 ${st.n}건 · 중앙 ${statTxt(st)}${spark(r.daily, st.drink ? 'drink' : 'gold')}<i>›</i></button>` : '<div class="tr-trend dim">📈 최근 30일 시세 기록이 아직 없어요</div>';
+    el.querySelector('button')?.addEventListener('click', () => priceHistory(k, String(id)));
+  }
+
   // ---- 도움말 (규칙 요약, 값은 서버 조절표 기준)
   function help() {
     const c = cfg || {}, B = bands || {}, rng = k => B[k] ? `${I('cur_drink')}${n(B[k].d_min)}~${n(B[k].d_max)}${B[k].g_max != null ? ` · ${I('cur_gold')}${n(B[k].g_min)}~${n(B[k].g_max)}` : ` · ${I('cur_gold')}불가`}` : '-';
@@ -185,9 +229,10 @@
   // ---- 글 상세 (남의 글)
   function detail(l, after) {
     const m = pop(`<div class="tr-head"><b>판매 글</b><span>${I('timer')}${left(l.expires_at)} · ${I('trade_offer')}제안 ${l.offers}</span></div>
-      <div class="tr-items big">${itemsHTML(l.cards, l.gear)}</div>${l.want ? `<div class="tr-want">${I('trade_want')}${esc(l.want)}</div>` : ''}
+      <div class="tr-items big">${itemsHTML(l.cards, l.gear)}</div>${l.want ? `<div class="tr-want">${I('trade_want')}${esc(l.want)}</div>` : ''}<div class="tr-trend-w"></div>
       <div class="tr-note">다른 사람의 제안 내용은 보이지 않아요</div>
       <div class="tr-acts">${l.my_offer ? '<button class="tr-btn" data-c>내 제안 취소</button>' : '<button class="tr-btn main" data-o>제안하기</button>'}</div>`.replace('<div class="tr-acts">', buyTxt(l) && !l.my_offer ? `<div class="tr-buybox"><div><b>⚡ 즉시 구매</b><span>${buyTxt(l)}</span></div><small>이 가격으로 바로 거래돼요. 판매자는 ${cfg.fee_pct || 10}% 수수료를 뺀 만큼 받아요</small><button class="tr-btn main tr-buy" data-buy>⚡ ${buyTxt(l)}에 바로 사기</button></div><div class="tr-acts">` : '<div class="tr-acts">'), '', ['exchange-post', '판매 글']);
+    if ((l.cards?.length || 0) + (l.gear?.length || 0) === 1) trendLine(m.querySelector('.tr-trend-w'), l.cards?.length ? 'card' : 'gear', l.cards?.length ? l.cards[0].id : (l.gear[0].def_id || l.gear[0].def));
     m.querySelector('[data-buy]')?.addEventListener('click', async e => {
       if (!await ask(`<b>⚡ 즉시 구매</b><div class="tr-cf">${cfRow('받을 물건', itemsHTML(l.cards, l.gear))}${cfRow('낼 재화', '', buyTxt(l))}</div><small>확인하면 바로 거래가 끝나요 (되돌릴 수 없어요)</small>`)) return;
       e.target.disabled = true;
@@ -271,7 +316,7 @@
     draw();
     const keys = () => [...[...sel.cards].map(u => cardKey(save.owned.find(o => o.uid === u)?.id)), ...[...sel.gear].map(id => gearKey(defOf(gs.find(g => g.id === id)?.def)?.tier || 1))];
     const tiles = () => [...sel.cards].map(u => save.owned.find(o => o.uid === u)).filter(Boolean).map(cardTile).join('') + [...sel.gear].map(id => gs.find(g => g.id === id)).filter(Boolean).map(gearTile).join('');
-    return { sel, count, keys, tiles };
+    return { sel, count, keys, tiles, defOf: id => gs.find(g => g.id === id)?.def };
   }
 
   // ---- 판매 글 올리기 (PR3: 단계식) 1 물건 고르기 → 2 희망 조건 → 3 미리보기(가격 범위·수수료) · 뒤로 = 한 단계씩
@@ -315,13 +360,13 @@
       if (k === 2) B.querySelector('.tr-sel2').innerHTML = p.tiles();
       if (k === 3) { want = ta.value.trim();
         B.querySelector('[data-step="3"] .tr-cf').innerHTML = `${cfRow('올릴 물건', p.tiles())}<div class="tr-cf-row"><div class="tr-cf-l">희망 조건</div><div>${want ? esc(want) : '<span class="tr-cf-none">없음</span>'}</div></div>
-          <div class="tr-sec">허용 가격 범위 (등급별 · 서버 기준)</div>${bandRows(p.keys())}
+          <div class="tr-trend-w"></div><div class="tr-sec">허용 가격 범위 (등급별 · 서버 기준)</div>${bandRows(p.keys())}
           <div class="tr-buyset"><label class="tr-buy-on"><input type="checkbox" data-buyon ${buy.on ? 'checked' : ''}> ⚡ 즉시 구매가 정하기 <small>(선택)</small></label>
             <div class="tr-buy-in" ${buy.on ? '' : 'hidden'}>${goldOk() ? `<div class="tr-fchips"><button type="button" data-bcur="d" class="${buy.cur === 'd' ? 'on' : ''}">🥤 드링크</button><button type="button" data-bcur="g" class="${buy.cur === 'g' ? 'on' : ''}">🪙 골드</button></div>` : ''}
             <input type="number" inputmode="numeric" min="1" step="1" class="tr-input" data-bamt value="${buy.amt || ''}" placeholder="가격"><small class="tr-buy-hint"></small></div></div>
           <div class="tr-note">올리는 순간 보관돼 게임에서 쓸 수 없고, ${H}시간 뒤 팔리지 않으면 돌아와요.${deckN() ? ` 덱에 든 인재 ${deckN()}명은 덱에서 빠져요.` : ''}${p.sel.cards.size ? ' 마지막 같은 인재면 장착 장비는 해제돼 내 가방에 남아요.' : ''}</div>
           ${gates.length ? `<div class="tr-gate">${gates.map(g => `<p>⛔ ${esc(g)}</p>`).join('')}</div>` : ''}`; }
-      if (k === 3) bindBuy();
+      if (k === 3) { bindBuy(); if (p.count() === 1) { const u = [...p.sel.cards][0], g = [...p.sel.gear][0]; trendLine(B.querySelector('[data-step="3"] .tr-trend-w'), u ? 'card' : 'gear', u ? S()?.save?.owned?.find(o => o.uid === u)?.id : p.defOf(g)); } }
       B.closest('.vr-page-body, .tr-pop')?.scrollTo?.(0, 0);
     }
     const buy = { on: false, cur: 'd', amt: 0 };

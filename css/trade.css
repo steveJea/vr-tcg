@@ -144,3 +144,20 @@
 .tr-buy-on small{color:#71717a;font-weight:600}
 .tr-buy-in{display:flex;flex-direction:column;gap:6px;margin-top:8px}
 .tr-buy-hint{font-size:11px;color:#a1a1aa}.tr-buy-hint.bad,.tr-buy-hint .bad{color:#f87171}
+
+/* 📈 시세 (PR6) */
+.tr-plist{display:flex;flex-direction:column;gap:6px}
+.tr-prow{display:flex;align-items:center;gap:10px;width:100%;min-height:56px;padding:6px 10px;border-radius:12px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);color:inherit;text-align:left}
+.tr-prow.ui-skel{height:56px}
+.tr-pimg{display:inline-flex;width:40px;height:40px;flex:none;border-radius:8px;overflow:hidden;background:rgba(0,0,0,.25);vertical-align:middle;margin-right:6px}
+.tr-pimg img{width:100%;height:100%;object-fit:cover}.tr-pimg img.gear{object-fit:contain;padding:4px}
+.tr-pmain{flex:1;min-width:0;display:flex;flex-direction:column}.tr-pmain b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tr-pmain small{opacity:.65}
+.tr-pval{font-weight:700;white-space:nowrap}
+.tr-pgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0}
+.tr-pbox{padding:10px;border-radius:12px;background:rgba(255,255,255,.05);display:flex;flex-direction:column;gap:4px}.tr-pbox span{font-size:12px;opacity:.7}.tr-pbox .dim{opacity:.5}
+.tr-prng small{opacity:.6;margin-left:4px}
+.tr-prec{display:flex;gap:8px;justify-content:space-between;padding:6px 2px;border-bottom:1px solid rgba(255,255,255,.06);font-size:13px}.tr-prec span:first-child{opacity:.6;min-width:64px}
+.tr-spark{display:block;width:100%;height:28px;margin:6px 0}.tr-spark polyline{fill:none;stroke:#7fd3ff;stroke-width:1.6;vector-effect:non-scaling-stroke}
+.tr-trend{display:flex;align-items:center;gap:6px;flex-wrap:wrap;width:100%;margin:8px 0;padding:8px 10px;border-radius:10px;background:rgba(127,211,255,.08);border:1px solid rgba(127,211,255,.2);color:inherit;font-size:13px;text-align:left}
+.tr-trend .tr-spark{width:60px;height:18px;margin:0 0 0 auto}.tr-trend i{font-style:normal;opacity:.6}.tr-trend.dim{opacity:.6;background:none;border-style:dashed}
+.tr-phead{display:flex;align-items:center;gap:8px;font-size:17px;margin:4px 0}
