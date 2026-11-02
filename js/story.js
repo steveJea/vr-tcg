@@ -564,11 +564,11 @@
       ${rows.map(r => `<div class="story-map ${rows.length > 1 ? 'story-map-row' : ''}">${r.map(node).join('')}</div>`).join('')}
       ${!serverMode && !window.__STORY_MOCK_USER ? '<div class="text-[11px] text-amber-400 text-center">⚠️ 서버 저장 준비 중이라 이 브라우저에만 저장돼요</div>' : ''}
       ${nextNo ? '' : `<div class="story-clear">✔ CLEAR ${nextOpen ? `<button class="story-btn" data-ch="${curCh + 1}">${esc(nextCh.title)} →</button>` : '<small>다음 챕터 준비 중</small>'}</div>`}
-      <div class="text-center mt-2 flex flex-wrap gap-2 justify-center">${chapterDone(base) && videoOf(base) ? `<button class="story-back story-vid-btn" data-go="endvideo" title="엔딩 영상 다시 보기">🎬 엔딩</button>` : ''}${base.id <= 1 ? `<button class="story-back" data-go="opening" title="오프닝 다시 보기">${ic('opening', { alt: '' }) || '🎬'} 오프닝</button>` : ''}</div>
+      <div class="text-center mt-2 flex flex-wrap gap-2 justify-center">${chapterDone(base) && videoOf(base) ? `<button class="story-back story-vid-btn" data-go="endvideo" title="엔딩 영상 다시 보기">🎬 엔딩</button>` : ''}${chapterDone(base) ? `<button class="story-back story-replay-btn" data-go="replay" title="P1부터 마지막 페이즈까지 대사만 다시 보기 (전투 없음)">📖 스토리 다시보기</button>` : ''}${base.id <= 1 ? `<button class="story-back" data-go="opening" title="오프닝 다시 보기">${ic('opening', { alt: '' }) || '🎬'} 오프닝</button>` : ''}</div>
       </div></div>`);
     mailBtn();
     starBox(base);   // 별 보상 상자 (마나 전투 별 합계 · ★9/★18/전부)
-    bind({ stats: () => openStats(renderMap), opening: () => playOpening(renderMap), endvideo: () => endingVideo(base), route: () => renderRouteSelect(curCh),
+    bind({ stats: () => openStats(renderMap), opening: () => playOpening(renderMap), endvideo: () => endingVideo(base), replay: () => replayStory(base), route: () => renderRouteSelect(curCh),
       rule: () => popup(`<div class="text-lg font-black mb-2">⚔️ 스토리 전투</div><div class="text-sm text-zinc-300 leading-relaxed">출전 인재 최대 ${MAX_PICK()}명이 모두 필드에서 시작해요 (손패·드로우·용병 없음, 내 진영 없음).<br>내 인재가 모두 쓰러지거나 ${RULES_TURNS()}턴이 지나면 패배.<br>일반전은 상대 인재 전멸, 👑 보스전은 상대 진영 HP 0이면 승리.</div><button data-close-pop class="story-btn w-full mt-4">확인</button>`) }); playerPaint();
     root().querySelectorAll('[data-ch]').forEach(b => b.onclick = () => renderMap(+b.dataset.ch));
     // 페이즈 누르면 팝업: 안 깬 페이즈 = [도전하기], 깬 페이즈 = [도전하기][소탕하기]
@@ -695,6 +695,25 @@
     };
   }
 
+  // ----- 스토리 다시보기 (클리어한 챕터): 시작 대사 → P1~마지막 페이즈의 전·후 대사(멀티미디어 포함)를 순서대로. 전투·보상·EXP·행동력·진행 저장 없음 -----
+  // 페이즈마다 제목 화면(누르면 계속 · 나가기). 대사 화면의 '건너뛰기'는 그 장면만 넘김. 엔딩 영상은 자동 재생 안 함 (지도 '🎬 엔딩' 버튼 따로)
+  function replayStory(base) {
+    const ch = chapterFor(base), list = ch.phases || [];
+    const exit = () => renderMap(curCh);
+    const card0 = (sub, big, name, go, last) => {
+      show(`<div class="story-intro" id="story-intro"><div class="story-chapter-sub">${esc(ch.title)} · 스토리 다시보기</div><div class="story-chapter-big">${big}</div><div class="story-chapter-name">${name}</div><div class="text-xs text-zinc-500 mt-8">${last ? '' : '화면을 누르면 계속'}</div>
+        <div class="flex gap-2 justify-center mt-6">${last ? '<button class="story-btn" id="story-rp-done">지도로</button>' : '<button class="story-back" id="story-rp-exit">나가기</button>'}</div></div>`);
+      $('story-intro').onclick = e => { if (e.target.closest('#story-rp-exit, #story-rp-done')) return exit(); if (!last) go(); };
+    };
+    const phase = k => {
+      const ph = list[k]; if (!ph) return card0('', 'THE END', esc(ch.subtitle || ''), null, true);
+      const pre = ph.lines?.[save.starter] || ph.lines?.default || [], enemies = ph.enemies?.ids ? pickEnemies(ph) : [], after = ph.after || [];
+      const next = () => phase(k + 1), aft = () => after.length ? playLines(after, [], next, /엔딩/.test(ph.afterTitle || '') ? 'ending' : 'story', ph.hero || ch.hero) : next();
+      card0('', `Phase.${ph.no}`, `${esc(ph.title || '')}${ph.type === 'boss' ? ' · BOSS' : ''}`, () => pre.length ? playLines(pre, enemies, aft, 'story', ph.hero || ch.hero) : aft());
+    };
+    const start = [...(ch.single && ch.tagline ? [{ speaker: '내레이션', text: ch.tagline.replace(/\n/g, ' ') }] : []), ...(ch.start || [])];
+    card0('', esc(ch.title), esc(ch.subtitle || ''), () => start.length ? playLines(start, [], () => phase(0), 'story', ch.hero) : phase(0));
+  }
   function startPhase(ch, ph) {
     const enemies = pickEnemies(ph);
     show(`<div class="story-intro" id="story-intro"><div class="story-chapter-sub">${esc(ch.title)}</div><div class="story-chapter-big">Phase.${ph.no}</div><div class="story-chapter-name">${esc(ph.title)}${ph.type === 'boss' ? ' · BOSS' : ''}</div><div class="text-xs text-zinc-500 mt-8">화면을 누르면 계속</div></div>`);
