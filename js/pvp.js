@@ -322,7 +322,7 @@ async function viewSeries(s, toCards, manual) {
 /** AUTO 보기: 내 차례 입력을 항상 AUTO 로 (화면의 AUTO 버튼으로 수동 전환 불가 · 이미 보고한 결과와 같아야 함) */
 const autoFeed = ses => ({ events: ses.events, acts: ses.acts, next: inp => { let x = ses.next(inp); while (!x.done && x.value.ask) x = ses.next({ k: 'auto' }); return x; } });
 // ---- 전투 재생 (계산된 전투 기록 그대로 · SKIP = 결과로) ----
-const STEP = 420;
+const STEP = 336;   // 재생 한 칸 (2026-11-03: 420 → 336, 일반 전투와 같이 약 20% 빠르게)
 const spd = () => 1;   // 2배속 없음 (2026-10-30)
 function playback(s, res) {
   return new Promise(done => {
