@@ -43,7 +43,7 @@
     story: () => window.VRStory?.enter?.(), tower: () => window.VRQuest?.open?.(),
   };
   function open() {
-    document.querySelector('.daily-pop')?.remove();
+    document.querySelector('.daily-pop:not(.vr-in-page)')?.remove();
     const pop = document.createElement('div'); pop.className = 'gem-pop daily-pop';
     const draw = () => { const s = cache; if (!s) { pop.innerHTML = '<div class="gem-panel daily-panel">불러오는 중...</div>'; return; }
       const a = s.attend, nextStep = a.today ? a.step : a.step + 1;
@@ -64,7 +64,8 @@
       pop.querySelectorAll('[data-m]').forEach(b => b.onclick = async () => { await claim('daily_claim', { p_key: b.dataset.m }); draw(); });
     };
     pop.onclick = e => { if (e.target === pop) pop.remove(); };
-    document.body.appendChild(pop); draw(); status().then(draw);
+    if (!window.VRPages?.host?.('daily', '🗓️ 출석 · 일일 미션', pop)) document.body.appendChild(pop);   // 페이지 시스템 (없거나 실패하면 예전 팝업)
+    draw(); status().then(draw);
   }
   async function track(kind, k = 1) { if (off || !window.VRCloud?.user) return; try { await rpc('daily_track', { p_kind: kind, p_n: k }); } catch (e) { console.warn('[daily]', e?.message); } }
   window.addEventListener('vr:daily', async e => {

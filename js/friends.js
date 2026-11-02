@@ -37,7 +37,7 @@
   const empty = t => `<div class="fr-empty">${t}</div>`;
 
   function open() {
-    document.querySelector('.friend-pop')?.remove();
+    document.querySelector('.friend-pop:not(.vr-in-page)')?.remove();
     const pop = document.createElement('div'); pop.className = 'gem-pop friend-pop';
     const act = async (fn, args, msg) => { try { await rpc(fn, args); if (msg) toast(msg); } catch (e) { toast(errText(e)); } await load(); if (found && lastQ) await search(lastQ, true); draw(); };
     async function search(q, quiet) { lastQ = q; try { found = await rpc('friends_search', { p_q: q }) || []; } catch (e) { found = null; if (!quiet) toast(errText(e)); } }
@@ -71,7 +71,8 @@
       if (f) f.onsubmit = async e => { e.preventDefault(); const q = f.q.value.trim(); if (q.length < 2) { toast(ERR['query too short']); return; } await search(q); draw(); };
     };
     pop.onclick = e => { if (e.target === pop) pop.remove(); };
-    document.body.appendChild(pop); draw(); load().then(draw);
+    if (!window.VRPages?.host?.('friends', '👥 친구', pop)) document.body.appendChild(pop);   // 페이지 시스템 (없거나 실패하면 예전 팝업)
+    draw(); load().then(draw);
   }
   window.VRFriends = { open, load, ping, paint, get data() { return cache; } };
   setTimeout(() => { paint(); ping(); }, 1500); setTimeout(() => { paint(); ping(); }, 4000);
