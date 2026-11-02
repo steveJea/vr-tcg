@@ -15,7 +15,7 @@
     if (el?.isConnected) return el;
     el = document.createElement('div'); el.id = 'vr-page'; el.className = 'vr-page hidden'; el.setAttribute('role', 'dialog');
     el.innerHTML = `<header class="vr-page-head"><button type="button" class="vr-page-back" aria-label="뒤로">←</button><h2 class="vr-page-title"></h2><div class="vr-page-cur"><span data-vr-player></span><span class="vr-page-gem"></span></div></header><div class="vr-page-body"></div>`;
-    el.querySelector('.vr-page-back').onclick = () => back();
+    el.querySelector('.vr-page-back').onclick = () => { if (!closeTopOverlay()) back(); };
     document.body.appendChild(el); return el;
   }
   function paintCur() { if (!el) return; try { window.VRPlayer?.paint?.(); } catch {} const g = el.querySelector('.vr-page-gem'); if (g) g.innerHTML = window.VRGem?.chip?.() || ''; }
@@ -42,6 +42,19 @@
   }
   /** 뒤로: 기록을 한 칸 되돌림 → popstate 에서 화면 정리 */
   function back() { if (stack.length) history.back(); }
+  /** 맨 위 작은 창 먼저 닫기 (뒤로가기·← 공통): Y/N 확인(= 아니오) → 확대 → 갤러리 상세 → 카드 상세 → 스토리 팝업 → 음료 확인 → 도움말 팝업. 닫았으면 true */
+  const vis = q => { const e = document.querySelector(q); return e && !e.classList.contains('hidden') && getComputedStyle(e).display !== 'none' ? e : null; };
+  function closeTopOverlay() {
+    let e;
+    if ((e = vis('#vr-confirm'))) { (e.querySelector('[data-yn=n]') || e).click(); if (!e.classList.contains('hidden')) e.classList.add('hidden'); return true; }
+    if ((e = vis('.drink-ask'))) { (e.querySelector('[data-no]') || e).click(); return true; }
+    if ((e = vis('.gal-zoom'))) { e.classList.add('hidden'); return true; }
+    if ((e = vis('#detail'))) { e.classList.add('hidden'); e.classList.remove('flex'); e.style.zIndex = ''; return true; }
+    if ((e = vis('.gal-detail'))) { e.classList.add('hidden'); return true; }
+    if ((e = vis('#story-pop'))) { const x = e.querySelector('[data-close-pop]'); if (x) x.click(); else e.classList.add('hidden'); return true; }
+    if ((e = vis('#vr-help'))) { e.remove(); return true; }
+    return false;
+  }
   /** 바로 닫기 (코드에서 닫을 때: 화면은 즉시 정리하고 기록은 뒤에서 한 칸 되돌림 → 그 popstate 는 무시) */
   let skipPop = 0;
   function closeNow() { if (!stack.length) return; stack.pop(); draw(-1); skipPop++; history.back(); }
@@ -54,9 +67,11 @@
     const st = e.state || {};
     if (busy()) { history.go(1); return; }   // 전투·영상 중: 뒤로가기 무시 (방금 빠진 칸으로 다시 앞으로)
     const depth = st.vrPage ? (st.depth | 0) : 0;
+    if (depth < stack.length && closeTopOverlay()) { const t = stack[stack.length - 1]; history.pushState({ vrPage: t.name, depth: stack.length }, '', '#/' + t.name); return; }   // 페이지 위 작은 창부터 닫고 페이지는 그대로
     if (depth < stack.length) { stack.length = depth; draw(-1); return; }   // 페이지에서 뒤로
     if (st.vrGuard) return;   // 다른 칸으로 이동(앞으로 가기 등)
     // 로비 칸까지 빠짐: 열린 로비 팝업이 있으면 그것만 닫고, 아니면 나갈지 물어봄
+    if (closeTopOverlay()) { armGuard(); return; }   // 로비에서도 작은 창(확인창 등) 먼저
     const pops = [...document.querySelectorAll('.main-pop:not(.hidden), #main-menu-pop:not(.hidden)')];
     if (pops.length) { pops.forEach(p => p.classList.add('hidden')); armGuard(); return; }
     const ok = await (window.VRConfirm ? window.VRConfirm('<b>게임을 나갈까요?</b>') : Promise.resolve(confirm('게임을 나갈까요?')));
