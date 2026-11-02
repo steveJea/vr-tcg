@@ -161,3 +161,13 @@
 - 글 상세·판매 3단계: 물건이 1개면 한 줄 시세(누르면 상세). 기록 없으면 흐린 안내, SQL 전이면 숨김.
 - 거래 적을 때: "아직 거래가 거의 없어요" 빈 화면, 5건 미만이면 "참고용" 표시. SQL 전이면 "시세는 곧 열려요".
 - 테스트: `tools/test_trade_price_sql.mjs` (PGlite, 두 번 실행), test_trade_admin/buynow 다시 돌림 ALL OK. 화면: `/workspace/exchange/p6_*` (390, Chromium·Firefox, 모의 데이터).
+
+## 영입 영상 (feat/summon-video)
+- 형님이 만든 등급별 영상 10개(normal·hr·sr·ur·mr × 세로 _mo / 가로 _pc)를 `img/gacha/video/v1/` 에 넣음. 소리 트랙 제거·앞쪽 재생 정보(faststart)만 손봄(화질 그대로). 첫 장면 그림 `<이름>.webp` 같이
+- 뽑기(일반 1회·프리미엄 1회·10회): 이번 뽑기 **최고 등급 영상 1개만** 재생 (N·R→normal, HR, SR, UR, MR, LR→MR). 화면이 세로면 _mo, 가로면 _pc. 소리 없음(muted playsinline), 오른쪽 위 SKIP
+- 끝나거나 SKIP → 기존 카드 공개 그대로. 영상을 보여줬으면 예전 게이트 연출(fx 이미지)은 안 나오고, 카드 공개 때 UR 이상 화면 전체 섬광도 뺌(카드 빛만)
+- 효과음: SR(gacha_sr)·UR/MR/LR(gacha_ur) 스팅어를 영상 안 빛이 커지는 순간에 맞춰 재생 (SKIP 하면 그때 바로). N·HR 은 예전처럼 없음
+- 실패 대비: 2.5초 안에 재생 시작 못 하면(느린 망·파일 오류·자동재생 막힘) 예전 게이트 연출로. 재생 중 2초 넘게 멈추면 바로 카드 공개. 데이터 절약 모드거나 `localStorage vrGachaVideo=0` 이면 영상 안 씀
+- 영상 중 하단 메뉴(GNB) 숨김. 영입 화면 들어갈 때 normal·hr 영상만 미리 받고 나머지는 정보만
+- 나중에 고화질로 바꿀 때: 같은 이름으로 v1 파일만 덮어쓰기 (캐시 걱정되면 v2 폴더 만들고 story.js `GVID` 한 줄만 변경)
+- 테스트: Chromium·Firefox, 390·1280, 등급별 가짜 결과(1회·10회), SKIP, 영상 차단 시 예전 연출. 화면 `/workspace/gacha/shots/*`
