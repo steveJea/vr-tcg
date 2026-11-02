@@ -1037,3 +1037,12 @@ body.story-media-on .story-dlg-skip { left: 4px; right: auto; top: calc(4px + en
 .gr-vid-skip:active{transform:scale(.96)}
 /* 스토리 허브 제목 */
 .hub-top-r1 .hub-title{flex:1;min-width:0;text-align:center;font-weight:900;color:#f5c96a;font-size:15px;white-space:nowrap;text-shadow:0 1px 4px #000}
+/* 높이 맞춤 (2026-11-03): #story-screen 위·아래에 상단 바(--tnb-pad)·하단 메뉴(--gnb-pad) 여백이 붙은 만큼
+   안쪽 '화면 높이 채우기'에서 빼 줌 → 내용이 짧으면 스크롤 안 생김 (길면 그대로 스크롤) */
+#story-screen { --ss-used: calc(var(--tnb-pad, 0px) + var(--gnb-pad, 0px)); --wrap-pb: 40px; }
+body.gnb-on:not(.gnb-hidden) #story-screen { --wrap-pb: 12px; }   /* 하단 메뉴 여백이 이미 있으니 맨 아래 40px 여백은 줄임 */
+#story-screen .story-wrap { padding-bottom: var(--wrap-pb); }
+#story-screen .story-map-screen { min-height: calc(100vh - var(--ss-used) - 12px - var(--wrap-pb)); min-height: calc(100dvh - var(--ss-used) - 12px - var(--wrap-pb)); }
+#story-screen .gr-ui { min-height: calc(100vh - var(--ss-used) - 12px - var(--wrap-pb) - 16px); min-height: calc(100dvh - var(--ss-used) - 12px - var(--wrap-pb) - 16px); }
+/* PC 진행(루트 고르기): 카드 3장이 화면 폭만큼 커져 세로로 넘치던 것 → 폭을 줄여 한 화면에 들어가게 */
+@media (min-width: 768px) { #story-screen .story-select { max-width: 600px; margin-left: auto; margin-right: auto; } }

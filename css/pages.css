@@ -87,3 +87,4 @@ body.gnb-on .hub-menu, body.gnb-on .hub-gacha { display: none !important; }   /*
 .hub-chip .story-badge { position: absolute; top: -6px; right: -6px; }
 .tile-trade { grid-column: 1 / -1; aspect-ratio: 3 / 1; max-height: 110px; width: 100%; }
 .tile-trade .main-tile-img { object-position: right center; }
+body.gnb-on:not(.gnb-hidden) { --gnb-pad: var(--gnb-safe); }
