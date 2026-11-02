@@ -180,4 +180,6 @@ function playback(st, res, log, t0) {
     tick();
   });
 }
-window.VRRaid = { open, claimable: () => rpc('raid_claimable').catch(() => 0) };
+// 조직 홈 토벌 점: 받을 보상이 있거나, 이번 주 토벌 중이고 오늘 횟수가 남았을 때만
+const dot = () => rpc('raid_status').then(s => !!s && (+s.claimable > 0 || (+s.attempts_left > 0 && !s.ended))).catch(() => false);
+window.VRRaid = { open, dot, claimable: () => rpc('raid_claimable').catch(() => 0) };

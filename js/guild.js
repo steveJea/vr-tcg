@@ -48,7 +48,7 @@
     ov = document.createElement('div'); ov.className = 'gd-ov'; ov.innerHTML = '<div class="gd-page"><div class="gd-loading">…</div></div>';
     ov.addEventListener('click', e => { if ((e.target === ov && !ov.classList.contains('vr-in-page')) || e.target.closest('[data-close]')) close(); });
     document.body.appendChild(ov); window.VRSound?.scope?.(ov, window.VR_BGM?.guildHome);
-    gone = false; window.VRPages?.host?.('guild', '🩸 조직', ov, () => { gone = true; }, p => { if (gone && p === ov) { gone = false; window.VRSound?.scope?.(ov, window.VR_BGM?.guildHome); } });   // 실패하면 예전 전체 창
+    gone = false; window.VRPages?.host?.('guild', '🩸 조직', ov, () => { gone = true; }, p => { if (gone && p === ov) { gone = false; window.VRSound?.scope?.(ov, window.VR_BGM?.guildHome); dots(); } });   // 실패하면 예전 전체 창
     await status(); paint(); if (st?.guild) lendNotices();
   }
   const card = g => `<button class="gd-card" data-gid="${g.id}">${emb(g.emblem)}<span class="gd-card-m"><b>${esc(g.name)}</b><small>${esc(g.intro || '')}</small></span><span class="gd-card-r"><b>Lv.${g.level}</b><small>${gi('ic_members', '👥')} ${g.members}/${g.max_members} ${MODE[g.join_mode]?.[0] || ''}</small></span></button>`;
@@ -100,6 +100,15 @@
       if (r) { m.remove(); window.VRPlayer?.wallet?.(true); window.VRGem?.status?.(true); } else b.disabled = false;
     });
   }
+  // 타일 빨간 점: 할 일이 있을 때만. 토벌·전쟁에서 보상 받고 돌아오거나 vr:guild 때마다 다시 계산
+  function dots(p = ov?.querySelector('.gd-page')) {
+    if (!p?.querySelector('[data-dot]')) return;
+    const set = (k, on) => { const el = p.querySelector(`[data-dot="${k}"]`); if (el) el.hidden = !on; };
+    window.VRWar?.claimable().then(c => set('war', c));
+    (window.VRRaid?.dot || window.VRRaid?.claimable)?.().then(c => set('raid', c));
+    rpc('guild_dots').then(d => { if (d) for (const k of ['rally', 'quest']) set(k, d[k]); }).catch(() => {});
+  }
+  window.addEventListener('vr:guild', () => { if (ov) dots(); });
   // ---- 조직 홈 ----
   function paintHome(p) {
     const g = st.guild, me = st.me, staff = me.role !== 'member';
@@ -125,9 +134,7 @@
     p.querySelector('[data-t="quest"]').onclick = questPop;
     p.querySelector('[data-t="raid"]').onclick = () => window.VRRaid?.open();
     p.querySelector('[data-t="war"]').onclick = () => window.VRWar?.open();
-    window.VRWar?.claimable().then(c => { const el = p.querySelector('[data-dot="war"]'); if (el) el.hidden = !c; });
-    window.VRRaid?.claimable().then(c => { const el = p.querySelector('[data-dot="raid"]'); if (el) el.hidden = !c; });
-    rpc('guild_dots').then(d => { if (!d) return; for (const k of ['rally', 'quest']) { const el = p.querySelector(`[data-dot="${k}"]`); if (el) el.hidden = !d[k]; } }).catch(() => {});
+    dots(p);
     p.querySelector('[data-t="log"]').onclick = logPop;
     p.querySelector('[data-t="lend"]').onclick = lendPop;
     p.querySelector('[data-t="req"]')?.addEventListener('click', reqPop);
