@@ -1,0 +1,14 @@
+/* ===== 페이지 시스템 (js/pages.js) ===== */
+.vr-page { position: fixed; inset: 0; z-index: 9000; display: flex; flex-direction: column; background: linear-gradient(#1c0a0e, #0b0305); color: #f4f4f5; }
+.vr-page.hidden { display: none; }
+.vr-page-head { display: flex; align-items: center; gap: 8px; padding: max(8px, env(safe-area-inset-top)) 10px 8px; border-bottom: 1px solid rgba(245, 201, 106, .3); background: rgba(0, 0, 0, .35); }
+.vr-page-back { width: 36px; height: 36px; border-radius: 50%; border: 1px solid rgba(245, 201, 106, .5); color: #f5c96a; font: 900 20px/1 sans-serif; background: rgba(0, 0, 0, .4); flex: none; }
+.vr-page-title { flex: 1; min-width: 0; font-weight: 900; font-size: 17px; color: #f5c96a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vr-page-cur { display: flex; align-items: center; gap: 6px; flex: none; font-size: 12px; }
+.vr-page-body { flex: 1; overflow: auto; padding: 12px; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; padding-bottom: max(12px, env(safe-area-inset-bottom)); }
+.vr-page-err { padding: 40px 0; text-align: center; color: #a1a1aa; }
+@keyframes vrInR { from { translate: 28% 0; opacity: .4; } to { translate: none; opacity: 1; } }
+@keyframes vrInL { from { translate: -18% 0; opacity: .5; } to { translate: none; opacity: 1; } }
+.vr-in-r { animation: vrInR .24s cubic-bezier(.2, .8, .3, 1); }
+.vr-in-l { animation: vrInL .22s ease-out; }
+@media (prefers-reduced-motion: reduce) { .vr-in-r, .vr-in-l { animation: none !important; } }
