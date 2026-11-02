@@ -54,6 +54,7 @@
     if ((e = vis('#story-pop'))) { const x = e.querySelector('[data-close-pop]'); if (x) x.click(); else e.classList.add('hidden'); return true; }
     if ((e = vis('#vr-help'))) { e.remove(); return true; }
     { const g = [...document.querySelectorAll('.gear-pop-bg:not(.vr-in-page)')].pop(); if (g) { g.remove(); return true; } }   // 장비 작은 창 (아이템·문장·교환 등)
+    { const t = stack[stack.length - 1]; try { if (t && REG[t.name]?.onBack?.()) return true; } catch (e) { console.error('[pages] onBack', e); } }   // 페이지 안 한 단계 뒤로 (예: 탑 → 탑 목록)
     return false;
   }
   /** 바로 닫기 (코드에서 닫을 때: 화면은 즉시 정리하고 기록은 뒤에서 한 칸 되돌림 → 그 popstate 는 무시) */
