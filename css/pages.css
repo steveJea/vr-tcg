@@ -17,3 +17,11 @@
 .vr-in-page > .gem-panel { width: 100% !important; max-width: 560px; max-height: none !important; margin: 0 auto; border: 0 !important; background: none !important; box-shadow: none !important; padding: 0 !important; }
 .vr-in-page .gem-x, #vr-page #rank-box .rh { display: none !important; }
 #vr-page #rank-box { width: 100% !important; max-width: 560px; max-height: none !important; margin: 0 auto; border: 0 !important; background: none !important; box-shadow: none !important; position: static !important; }
+/* 페이지가 열려 있을 때: 페이지 위에 떠야 하는 팝업(카드 상세 · Y/N 확인 · 갤러리 상세·확대 · 알림)은 더 위로 */
+body.vr-page-on #detail, body.vr-page-on .gal-detail, body.vr-page-on #story-pop, body.vr-page-on .drink-ask { z-index: 9100 !important; }
+body.vr-page-on .gal-zoom { z-index: 9150 !important; }
+body.vr-page-on #vr-confirm { z-index: 9200 !important; }
+body.vr-page-on .gem-toast, body.vr-page-on .story-toast { z-index: 9300 !important; }
+/* 3단계: 마이페이지 · 갤러리 판을 페이지 안에 */
+#vr-page .mp-panel, #vr-page .gal-panel { width: 100% !important; max-width: 640px; max-height: none !important; margin: 0 auto; border: 0 !important; background: none !important; box-shadow: none !important; position: static !important; overflow: visible !important; }
+#vr-page .mp-title, #vr-page .mp-x, #vr-page .gal-title, #vr-page .gal-x:not(.gal-detail .gal-x) { display: none !important; }
