@@ -1,0 +1,97 @@
+/* ===== 통합 상단 바 (js/topnav.js) — 하단 GNB(#vr-gnb)와 같은 톤. 끄기: localStorage vrTnb=0 =====
+   그림 넣는 곳 (그림순이): img/ui/topnav/
+     topbar_bg_mobile_v1.webp (1080x168)      바 배경 모바일 (늘림)        · 못 읽으면 어두운 그라데이션
+     topbar_bg_pc_9slice_v1.webp (96x120)     바 배경 PC (가로 반복, 아래 금선)
+     chip_frame_9slice_v1.webp (160x64)       재화·Lv 칩 테두리 (좌우 30px)  · 못 읽으면 갈색 테두리 칩
+     chip_plus_v1.webp (48)                   칩 + 버튼 (JS)                · 못 읽으면 금색 원 '+'
+     btn_{back,home,mail,settings}_{normal,pressed}_v1.webp (112)  둥근 버튼 (JS, 누르면 pressed) · 못 읽으면 이모지 + CSS 원
+     badge_number_9slice_v1.webp (48x36)      우편 숫자 뱃지 바탕 (숫자는 글자) · badge_dot_v1.webp (28) 빨간 점
+     cur_abyss_48/128_v1 · cur_stamina_48/128_v1  심연석·행동력 아이콘 (JS)    · 못 읽으면 🔮 🔋
+     lv_badge_frame_v1.webp (120x40)          Lv 배지 바탕 · profile_ring_v1.webp (128) 로비 프로필 테두리
+   새 그림이 오면 _v2 로 올리고 이 파일·js/topnav.js ART 표의 이름만 바꾸면 됨 */
+:root { --tnb-r1: 48px; --tnb-r2: 30px; --tnb-h: calc(var(--tnb-r1) + var(--tnb-r2) + env(safe-area-inset-top)); --tnb-gold: #f5c96a; --tnb-ink: #170f0c;
+  --tnb-bg: linear-gradient(#22160f, #170f0c); --tnb-line: linear-gradient(90deg, transparent, #8a6a2f 12%, #f5c96a 50%, #8a6a2f 88%, transparent);
+  --tnb-btn: radial-gradient(#2a1b12, #140c08); --tnb-chip: rgba(0, 0, 0, .55); }
+@media (min-width: 768px) { :root { --tnb-r1: 56px; --tnb-r2: 0px; } }
+#vr-tnb { position: fixed; top: 0; left: 0; right: 0; z-index: 9050; padding-top: env(safe-area-inset-top); background: var(--tnb-bg); color: #f3e6c8; box-shadow: 0 3px 8px rgba(0,0,0,.55);
+  transition: transform .2s ease; font-family: inherit; }
+#vr-tnb::after { content: ''; position: absolute; left: 0; right: 0; bottom: -2px; height: 2px; background: var(--tnb-line); pointer-events: none; }
+#vr-tnb.tnb-hide { transform: translateY(calc(-100% - 8px)); pointer-events: none; visibility: hidden; transition: transform .2s ease, visibility 0s .2s; }
+.tnb-r1 { height: var(--tnb-r1); display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 6px; padding: 0 8px; }
+.tnb-l { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.tnb-r { display: flex; justify-content: flex-end; gap: 6px; }
+.tnb-t { margin: 0; font-size: 17px; font-weight: 800; color: var(--tnb-gold); letter-spacing: -.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center; text-shadow: 0 1px 0 #000; max-width: 52vw; }
+.tnb-btn { position: relative; width: 36px; height: 36px; flex: none; padding: 0; border-radius: 50%; border: 1.5px solid #8a6a2f; background: var(--tnb-btn); color: var(--tnb-gold);
+  display: grid; place-items: center; font-size: 18px; line-height: 1; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.tnb-btn:active { transform: scale(.94); } .tnb-btn[hidden] { display: none; }
+.tnb-btn img { width: 24px; height: 24px; object-fit: contain; } .tnb-em { font-size: 18px; line-height: 1; }
+.tnb-back .tnb-em { font-size: 20px; font-weight: 900; }
+.tnb-badge { position: absolute; top: -4px; right: -6px; min-width: 16px; height: 16px; padding: 0 3px; border-radius: 8px; background: #ef4444; color: #fff; border: 1.5px solid var(--tnb-ink);
+  font: 700 10px/13px system-ui, sans-serif; font-style: normal; text-align: center; }
+.tnb-badge[hidden] { display: none; }
+.tnb-acct { min-width: 0; } .tnb-acct[hidden] { display: none; }
+#vr-tnb .acct-box { min-width: 0; } #vr-tnb .acct-chip { max-width: 100%; }
+#vr-tnb .acct-login { padding: 4px 10px; font-size: 12px; min-height: 0; }
+.tnb-r2 { height: var(--tnb-r2); display: flex; align-items: center; gap: 5px; padding: 0 8px 4px; overflow: hidden; }
+.tnb-sp { flex: 1; }
+.tnb-chip { height: 24px; flex: none; display: inline-flex; align-items: center; gap: 3px; padding: 0 3px 0 5px; border-radius: 12px; background: var(--tnb-chip); border: 1px solid #5a4422;
+  font-size: 12px; font-weight: 700; color: #f3e6c8; white-space: nowrap; line-height: 1; font-family: inherit; }
+.tnb-chip[hidden] { display: none; }
+.tnb-chip img { width: 17px; height: 17px; object-fit: contain; } .tnb-chip .tnb-em { font-size: 13px; }
+button.tnb-chip { cursor: pointer; }
+.tnb-plus { width: 17px; height: 17px; border-radius: 50%; background: linear-gradient(#f5c96a, #b8862f); color: #2a1a08; display: grid; place-items: center; font: 900 13px/1 system-ui; font-style: normal; }
+.tnb-plus img { width: 17px; height: 17px; } .tnb-plus .tnb-em { font-size: 13px; color: #2a1a08; }
+.tnb-lv { color: var(--tnb-gold); padding: 0 8px; }
+.tnb-st small { opacity: .6; font-weight: 600; } .tnb-st em { font-style: normal; font-size: 10px; color: #9cd3ff; margin-left: 3px; font-variant-numeric: tabular-nums; }   /* 390에서 줄바꿈 없이 한 줄 */
+.tnb-st.low b { color: #fca5a5; }
+@media (max-width: 374px) { .tnb-chip { padding: 0 2px 0 4px; gap: 2px; font-size: 11px; } .tnb-r2 { gap: 3px; padding: 0 5px 4px; } .tnb-st small { display: none; } .tnb-lv { padding: 0 6px; } }
+@media (min-width: 768px) {
+  #vr-tnb { display: flex; align-items: center; height: calc(var(--tnb-r1) + env(safe-area-inset-top)); padding: env(safe-area-inset-top) 12px 0; }
+  .tnb-r1 { flex: 1; display: flex; padding: 0; min-width: 0; } .tnb-t { text-align: left; max-width: none; font-size: 19px; } .tnb-r { order: 3; margin-left: 8px; }
+  .tnb-r2 { order: 2; height: auto; padding: 0; gap: 6px; } .tnb-sp { display: none; }
+  #vr-tnb { flex-direction: row; } #vr-tnb > .tnb-r1 { order: 1; } #vr-tnb > .tnb-r2 { order: 2; }
+  .tnb-chip { height: 30px; font-size: 14px; padding: 0 4px 0 7px; } .tnb-chip img { width: 22px; height: 22px; } .tnb-plus { width: 20px; height: 20px; } }
+/* PC 한 줄에서 우편·설정을 재화 오른쪽으로: r1 안의 .tnb-r 를 바 맨 끝으로 */
+@media (min-width: 768px) { #vr-tnb .tnb-r1 { display: contents; } #vr-tnb .tnb-l { order: 1; margin-right: 8px; } #vr-tnb .tnb-t { order: 1; flex: 1; } #vr-tnb .tnb-r { order: 3; } }
+
+/* ---- 예전 머리줄 정리 (바가 대신함) ---- */
+body.tnb-on .vr-page-head { display: none; }
+body.tnb-on .vr-page { padding-top: var(--tnb-h); }
+body.tnb-on > #story-screen { padding-top: var(--tnb-h); }
+/* 스토리·탑·영입: 뒤로·제목·레벨 칸은 바로, 화면 전용 버튼(내 인재·인연·영입·덱·출석·우편)은 본문 맨 위 칩 줄로 */
+body.tnb-on #story-screen .story-top .story-back, body.tnb-on #story-screen .story-top #q-home, body.tnb-on #story-screen .story-top .story-top-title,
+body.tnb-on #story-screen .story-top .th-lv, body.tnb-on #story-screen .story-top [data-vr-player], body.tnb-on #story-screen .story-top [data-mailbtn] { display: none !important; }
+body.tnb-on #story-screen .story-top { justify-content: flex-start; gap: 6px; flex-wrap: wrap; min-height: 0; }
+body.tnb-on #story-screen .story-top:not(:has(button:not(.story-back):not(#q-home))) { display: none; }
+body.tnb-on #story-screen .hub-top .hub-top-r1 { display: none; }
+body.tnb-on #story-screen .hub-top .hub-top-r2 { justify-content: flex-start; flex-wrap: wrap; }
+/* 로비: 계정·재화·설정·우편은 바로. 출석·파견은 바 아래 오른쪽 바로가기 아이콘 */
+body.tnb-on #start-screen .main-top { top: var(--tnb-h); justify-content: flex-end; padding-top: 8px; pointer-events: none; }
+body.tnb-on #start-screen .main-top > * { pointer-events: auto; }
+body.tnb-on #start-screen #main-cur, body.tnb-on #start-screen #main-settings, body.tnb-on #start-screen .main-top [data-mailbtn] { display: none !important; }
+body.tnb-on #start-screen .main-top .main-mail, body.tnb-on #start-screen .main-top .main-daily { flex: none; }
+@media (prefers-reduced-motion: reduce) { #vr-tnb { transition: none; } }
+
+/* ---- 그림순이 에셋 적용 (v1). 배경 그림은 못 읽어도 아래 색이 남음 ---- */
+#vr-tnb { background: url(../img/ui/topnav/topbar_bg_mobile_v1.webp) center bottom / 100% 100% no-repeat, var(--tnb-bg); }
+#vr-tnb::after { display: none; }   /* 금선은 배경 그림에 포함 */
+@media (min-width: 768px) { #vr-tnb { background: url(../img/ui/topnav/topbar_bg_pc_9slice_v1.webp) left bottom / auto 100% repeat-x, var(--tnb-bg); } }
+.tnb-btn:not(.noart) { border: 0; background: none; }
+.tnb-btn .tnb-art { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.tnb-btn .tnb-pr { opacity: 0; } .tnb-btn:active .tnb-pr { opacity: 1; } .tnb-btn:active { transform: none; }
+.tnb-btn:not(.noart) > .tnb-em { display: none; }
+.tnb-ici { display: inline-grid; place-items: center; width: 17px; height: 17px; } .tnb-ici img { width: 100%; height: 100%; object-fit: contain; }
+.tnb-ici:not(.noart) > .tnb-em { display: none; }
+.tnb-chip { border: 0; border-style: solid; border-width: 0 12px; border-image: url(../img/ui/topnav/chip_frame_9slice_v1.webp) 0 30 fill / 0 12px stretch; background: none; padding: 0 0; }
+.tnb-lv { border-image: none; border: 0; background: url(../img/ui/topnav/lv_badge_frame_v1.webp) center / 100% 100% no-repeat, var(--tnb-chip); border-radius: 0; padding: 0 12px; height: 24px; }
+.tnb-plus { background: none; width: 18px; height: 18px; } .tnb-plus .tnb-ici { width: 18px; height: 18px; }
+.tnb-plus .tnb-ici.noart { border-radius: 50%; background: linear-gradient(#f5c96a, #b8862f); }
+.tnb-badge { border: 0; background: url(../img/ui/topnav/badge_number_9slice_v1.webp) center / 100% 100% no-repeat, #ef4444; border-radius: 8px; padding: 0 5px; line-height: 16px; }
+#vr-tnb .acct-chip { position: relative; } #vr-tnb .acct-avatar { box-shadow: 0 0 0 2px #8a6a2f; border-radius: 50%; }
+@media (min-width: 768px) { .tnb-chip { border-width: 0 15px; border-image-width: 0 15px; } .tnb-ici { width: 22px; height: 22px; } .tnb-plus, .tnb-plus .tnb-ici { width: 22px; height: 22px; } .tnb-lv { height: 30px; } }
+/* 폰: 칩(Lv·행동력·재화 3개)이 한 줄에 들어가게 테두리·간격을 줄임. 360 등 더 좁으면 한 번 더 */
+@media (max-width: 767px) { .tnb-chip { border-width: 0 8px; border-image-width: 0 8px; gap: 2px; } .tnb-r2 { gap: 3px; padding: 0 6px 4px; } .tnb-lv { padding: 0 8px; } .tnb-st em { margin-left: 2px; } }
+@media (max-width: 460px) { .tnb-chip { border-width: 0 6px; border-image-width: 0 6px; font-size: 11px; } .tnb-chip img, .tnb-ici, .tnb-plus, .tnb-plus .tnb-ici { width: 14px; height: 14px; }
+  .tnb-lv { padding: 0 6px; font-size: 11px; } .tnb-r2 { gap: 2px; padding: 0 4px 4px; } .tnb-st em { font-size: 9px; } }
+#vr-tnb .acct-login { max-height: 36px; padding: 4px 10px !important; font-size: 12px !important; }
+body.tnb-on #story-screen .story-map-top [data-mailbtn] { display: none !important; }
