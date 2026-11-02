@@ -54,6 +54,7 @@
     if ((e = vis('#story-pop:not(.story-pop-page)'))) { const x = e.querySelector('[data-close-pop]'); if (x) x.click(); else e.classList.add('hidden'); return true; }
     if ((e = vis('#vr-help'))) { e.remove(); return true; }
     { const g = [...document.querySelectorAll('.gear-pop-bg:not(.vr-in-page):not([data-vr-under]), .gd-pop:not(.vr-in-page):not([data-vr-under])')].pop(); if (g) { g.remove(); return true; } }   // 장비·조직/토벌/전쟁 작은 창 (페이지 밑에 깔린 창은 제외)   // 장비 작은 창 (아이템·문장·교환 등)
+    { const t = [...document.querySelectorAll('.tr-bg:not(.vr-in-page)')].pop(); if (t) { (t.querySelector('[data-n]') || t.querySelector('[data-x]'))?.click(); if (t.isConnected) t.remove(); return true; } }   // 거래소 작은 창 (확인·도움말 등)
     { const p = [...document.querySelectorAll('.pvp-modal:not(.vr-in-page):not(#pvp-play)')].pop(); if (p) { (p.querySelector('[data-x]') || p).click(); if (p.isConnected) p.remove(); return true; } }   // PvP 작은 창 (카드·상대·확인·결과)
     { const t = stack[stack.length - 1]; try { if (t && REG[t.name]?.onBack?.()) return true; } catch (e) { console.error('[pages] onBack', e); } }   // 페이지 안 한 단계 뒤로 (예: 탑 → 탑 목록)
     return false;

@@ -57,3 +57,8 @@
 /* 내 거래: 진행중/종료 탭 · 끝난 거래는 회색 */
 .tr-subtabs{margin:2px 0 4px}.tr-subtabs button{padding:5px;font-size:12px}
 .tr-row.tr-ended{opacity:.5;filter:grayscale(1)}
+/* 거래소 페이지 (#/exchange · js/pages.js): 팝업 틀을 풀어 페이지 몸통에 꽉 차게. 확인·도움말 같은 작은 창은 페이지 위로 */
+.tr-bg:not(.vr-in-page){z-index:9200}
+.tr-bg.vr-in-page{position:static;inset:auto;background:none;padding:0;display:block}
+.tr-bg.vr-in-page .tr-pop{width:100%;max-width:560px;max-height:none;margin:0 auto;border:0;background:none;border-radius:0}
+.tr-bg.vr-in-page .tr-x{display:none}
