@@ -31,5 +31,6 @@
     try { const sv = JSON.parse(localStorage.getItem('vrTcgStory.v1:' + u.id) || 'null'); return !!sv?.starter && sv.gachaLast !== S.kstDay(); } catch { return false; } };
   function paint() { const d = nav.querySelector('.gnb-dot'); if (d) d.hidden = !freeDraw(); const hide = busy(); nav.classList.toggle('gnb-hide', hide); document.body.classList.toggle('gnb-hidden', hide); const a = active(); nav.dataset.last = a;
     nav.querySelectorAll('[data-gnb]').forEach(b => { const on = b.dataset.gnb === a; b.classList.toggle('on', on); b.toggleAttribute('aria-current', on); }); }
+  window.VRGnb = { busy };
   paint(); setInterval(paint, 250);
 })();
