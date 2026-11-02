@@ -887,7 +887,7 @@
         p.close(true); draw();
       });
       p.el.querySelectorAll('[data-sort]').forEach(b => b.onclick = () => { setSort(b.dataset.sort); list = sortInst(all, deck0); p.close(true); draw(); });
-      p.el.querySelector('[data-pickreset]')?.addEventListener('click', () => { sel = []; p.close(true); draw(); });   // 리셋: 고른 인재 전부 해제 (필수 출전은 그대로)
+      p.el.querySelector('[data-pickreset]')?.addEventListener('click', () => { sel = []; deck0.clear(); list = sortInst(all, deck0); p.close(true); draw(); });   // 리셋: 고른 인재 전부 해제 (필수 출전은 그대로) + 덱에 있던 카드도 지금 정렬 순서 자리로
       p.el.querySelectorAll('[data-pf]').forEach(b => b.onclick = () => { pf[b.dataset.pf] = !pf[b.dataset.pf]; p.close(true); draw(); });
       p.el.querySelectorAll('[data-usedeck]').forEach(b => b.onclick = () => { const v = new Set(all.map(o => o.uid)); sel = (decksOf()[+b.dataset.usedeck]?.uids || []).filter(u => v.has(u)).slice(0, slots); deck0.clear(); sel.forEach(u => deck0.add(u)); list = sortInst(all, deck0); p.close(true); draw(); });
       $('story-deck-ok').onclick = () => { if (!sel.length && !forced.length) return; try { localStorage.setItem(PICK_KEY(), JSON.stringify(sel)); } catch {} p.close(true); go([...forced, ...list.filter(o => sel.includes(o.uid))]); };
@@ -1251,7 +1251,7 @@
       .sort((a, b) => (isLeader(b.rep) - isLeader(a.rep)) || sortCmp(a, b));
   }
   // ----- 보유 카드 정렬: 등급순 · 레벨순 · 획득순 (기본 획득순 최신 먼저, 같은 버튼 다시 누르면 오름/내림 전환, localStorage 기억) -----
-  const SORT_KEY = 'vr-story-card-sort', SORTS = { new: '획득', grade: '등급', level: '레벨', cls: '속성', region: '지역', skill: '스킬', name: '이름' }, GRADE_ORD = Object.keys(RAR);
+  const SORT_KEY = 'vr-story-card-sort', SORTS = { new: '획득', grade: '등급', level: '레벨', cls: '속성', region: '지역', skill: '스킬', cost: '코스트', name: '이름' }, GRADE_ORD = Object.keys(RAR);
   let cardSort = (() => { try { const v = JSON.parse(localStorage.getItem(SORT_KEY)); if (v && SORTS[v.k]) return { k: v.k, desc: v.desc !== false }; } catch {} return { k: 'new', desc: true }; })();
   const setSort = k => { cardSort = cardSort.k === k ? { k, desc: !cardSort.desc } : { k, desc: true }; try { localStorage.setItem(SORT_KEY, JSON.stringify(cardSort)); } catch {} };
   /** 그룹 정렬 키: 획득 = 그 카드의 가장 최근 장(보유 목록 순서), 등급 = 등급 순위, 레벨 = 대표 장 레벨. 동점은 등급 → 레벨 → 최신 순 */
@@ -1263,14 +1263,14 @@
   function sortCmp(a, b) {
     const nw = g => Math.max(...g.list.map(idxOf)), gr = g => GRADE_ORD.indexOf(card(g.id)?.grade || 'NORMAL'), lv = g => g.rep?.level || 0;
     if (cardSort.k === 'name') { const d = nameCmp(a.id, b.id); return cardSort.desc ? d : -d; }
-    const key = { new: [nw], grade: [gr, lv, nw], level: [lv, gr, nw], cls: [g => -clsI(g.id), gr, lv], region: [g => -regI(g.id), gr, lv], skill: [g => skillsOf(g.id).length, gr, lv] }[cardSort.k];
+    const key = { new: [nw], grade: [gr, lv, nw], level: [lv, gr, nw], cls: [g => -clsI(g.id), gr, lv], region: [g => -regI(g.id), gr, lv], skill: [g => skillsOf(g.id).length, gr, lv], cost: [g => +card(g.id)?.cost || 0, gr, lv, nw] }[cardSort.k];
     for (const f of key) { const d = f(a) - f(b); if (d) return cardSort.desc ? -d : d; }
     return 0;
   }
   /** 인스턴스 목록 정렬 (모든 카드 목록 창 공용): 리더 → pin(현재 덱 등) → 고른 정렬 */
   function sortInst(list, pin = null) {
     const nw = o => idxOf(o), gr = o => GRADE_ORD.indexOf(card(o.id)?.grade || 'NORMAL'), lv = o => o.level | 0;
-    const key = { new: [nw], grade: [gr, lv, nw], level: [lv, gr, nw], cls: [o => -clsI(o.id), gr, lv], region: [o => -regI(o.id), gr, lv], skill: [o => skillsOf(o.id).length, gr, lv], name: [] }[cardSort.k];
+    const key = { new: [nw], grade: [gr, lv, nw], level: [lv, gr, nw], cls: [o => -clsI(o.id), gr, lv], region: [o => -regI(o.id), gr, lv], skill: [o => skillsOf(o.id).length, gr, lv], cost: [o => +card(o.id)?.cost || 0, gr, lv, nw], name: [] }[cardSort.k];
     return list.slice().sort((a, b) => (isLeader(b) - isLeader(a)) || (pin ? (pin.has(b.uid) - pin.has(a.uid)) : 0) || (cardSort.k === 'name' ? (cardSort.desc ? nameCmp(a.id, b.id) : -nameCmp(a.id, b.id)) : 0) || (() => { for (const f of key) { const d = f(a) - f(b); if (d) return cardSort.desc ? -d : d; } return 0; })());
   }
   /** 팝업 안 정렬 버튼: 누르면 팝업을 다시 그림 */
