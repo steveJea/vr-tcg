@@ -74,7 +74,7 @@
   const curTxt = (d, g) => [d ? `${I('cur_drink')}${n(d)}` : '', g ? `${I('cur_gold')}${n(g)}` : ''].filter(Boolean).join(' + ');
 
   // ---- 메인: 게시판 / 내 거래
-  let myView = 'live', mSort = 'new';   // mSort: 마켓 정렬
+  let myView = 'live', mSort = 'new', mF = { type: 'all', gr: new Set(), q: '' };   // mF: 마켓 필터 (화면 안에서 유지)   // mSort: 마켓 정렬
   const GO = ['N', 'R', 'HR', 'SR', 'UR', 'MR', 'LR'];   // 내 거래: 진행중 / 종료 탭
   async function open(tab = 'board') {
     if (window.VRPages?.current?.startsWith('exchange') && window.VRPages.current !== 'exchange') while (window.VRPages.current?.startsWith('exchange-')) window.VRPages.closeNow();
@@ -95,7 +95,10 @@
         const PAGE = 30, SORT = { new: ['최신', (a, b) => b.id - a.id], end: ['마감 임박', (a, b) => new Date(a.expires_at) - new Date(b.expires_at)], hot: ['제안 많은', (a, b) => b.offers - a.offers || b.id - a.id] };
         let all = [], more = true, busy = false;
         L.className = 'tr-list tr-market';
-        L.innerHTML = `<div class="tr-sort" role="group" aria-label="정렬">${Object.entries(SORT).map(([k, [lb]]) => `<button data-sort="${k}" class="${k === mSort ? 'on' : ''}">${lb}</button>`).join('')}</div>
+        L.innerHTML = `<div class="tr-filter"><input type="search" class="tr-input tr-q" placeholder="🔍 이름으로 찾기" value="${esc(mF.q)}" aria-label="이름 검색">
+            <div class="tr-fchips" role="group" aria-label="종류">${[['all', '전체'], ['card', '인재'], ['gear', '장비']].map(([k, lb]) => `<button data-ftype="${k}" class="${mF.type === k ? 'on' : ''}">${lb}</button>`).join('')}</div>
+            <div class="tr-fchips tr-fgr" role="group" aria-label="등급">${['N', 'R', 'HR', 'SR', 'UR', 'MR', 'LR'].map(g => `<button data-fgr="${g}" class="g-${g} ${mF.gr.has(g) ? 'on' : ''}">${g}</button>`).join('')}</div></div>
+          <div class="tr-sort" role="group" aria-label="정렬">${Object.entries(SORT).map(([k, [lb]]) => `<button data-sort="${k}" class="${k === mSort ? 'on' : ''}">${lb}</button>`).join('')}</div>
           <div class="tr-grid">${'<div class="tr-gc ui-skel"></div>'.repeat(4)}</div><div class="tr-more-w"></div>`;
         const G = L.querySelector('.tr-grid'), M = L.querySelector('.tr-more-w');
         const gIdx = l => Math.max(0, ...(l.cards || []).map(c => GO.indexOf(gradeOf(c.id))), ...(l.gear || []).map(g => (defOf(g.def_id || g.def)?.tier || 0) - 2));
@@ -105,8 +108,15 @@
             <i class="tr-gc-gr">${c0 ? gradeOf(c0.id) : d ? TIER[d.tier] : ''}</i>${cnt > 1 ? `<i class="tr-gc-n">+${cnt - 1}</i>` : ''}${l.mine ? '<i class="tr-gc-tag">내 글</i>' : l.my_offer ? '<i class="tr-gc-tag">제안함</i>' : ''}</span>
             <b>${esc(m0?.name || d?.name || '판매 글')}${c0?.level ? ` <small>Lv.${c0.level}</small>` : ''}</b>${l.want ? `<span class="tr-gc-want">${esc(l.want)}</span>` : '<span class="tr-gc-want dim">희망 조건 없음</span>'}
             <span class="tr-gc-meta"><span class="${secs < 3 * 3600 ? 'soon' : ''}">${I('timer')}${left(l.expires_at)}</span><span>${I('trade_offer')}${l.offers}</span></span></button>`; };
-        const paintG = () => { const list = all.slice().sort(SORT[mSort][1]);
-          G.innerHTML = list.length ? list.map(cardHTML).join('') : `<div class="tr-empty">${I('trade')}<b>아직 올라온 글이 없어요</b><small>첫 판매 글을 올려 보세요</small><button class="tr-btn main" data-new2>＋ 판매 글</button></div>`;
+        // 필터 (PR4): 불러온 글 안에서만 — 종류(인재/장비 포함)·등급(글 안 물건 중 하나라도)·이름(물건 이름 일부)
+        const itemGr = l => [...(l.cards || []).map(c => gradeOf(c.id)), ...(l.gear || []).map(g => GO[Math.max(0, Math.min(6, (defOf(g.def_id || g.def)?.tier || 0) - 2))])];
+        const names = l => [...(l.cards || []).map(c => cardOf(c.id)?.name || ''), ...(l.gear || []).map(g => defOf(g.def_id || g.def)?.name || '')].join(' ').toLowerCase();
+        const pass = l => (mF.type === 'all' || (mF.type === 'card' ? l.cards?.length : l.gear?.length)) && (!mF.gr.size || itemGr(l).some(g => mF.gr.has(g))) && (!mF.q || names(l).includes(mF.q.trim().toLowerCase()));
+        const fOn = () => mF.type !== 'all' || mF.gr.size || mF.q.trim();
+        const paintG = () => { const list = all.filter(pass).sort(SORT[mSort][1]);
+          G.innerHTML = list.length ? list.map(cardHTML).join('') : all.length && fOn() ? `<div class="tr-empty"><b>조건에 맞는 글이 없어요</b><small>불러온 ${all.length}개 중에서 찾았어요${more ? ' · 더 보기로 더 불러올 수 있어요' : ''}</small><button class="tr-btn" data-freset>필터 지우기</button></div>` : `<div class="tr-empty">${I('trade')}<b>아직 올라온 글이 없어요</b><small>첫 판매 글을 올려 보세요</small><button class="tr-btn main" data-new2>＋ 판매 글</button></div>`;
+          G.querySelector('[data-freset]')?.addEventListener('click', () => { mF.type = 'all'; mF.gr.clear(); mF.q = ''; L.querySelector('.tr-q').value = ''; L.querySelectorAll('[data-ftype]').forEach(x => x.classList.toggle('on', x.dataset.ftype === 'all')); L.querySelectorAll('[data-fgr]').forEach(x => x.classList.remove('on')); paintG(); });
+          L.querySelector('.tr-fcount')?.remove(); if (fOn() && list.length) G.insertAdjacentHTML('beforebegin', `<div class="tr-fcount">${list.length} / ${all.length}개</div>`);
           G.querySelector('[data-new2]')?.addEventListener('click', () => createListing(() => draw('my')));
           G.querySelectorAll('[data-l]').forEach(b => b.onclick = () => { const l = all.find(x => x.id === +b.dataset.l); l.mine ? manage(l.id, () => draw(tab)) : detail(l, () => draw(tab)); });
           M.innerHTML = more && all.length ? '<button class="tr-btn tr-more">더 보기</button>' : all.length ? '<div class="tr-end">마지막 글이에요</div>' : '';
@@ -116,6 +126,9 @@
           const r = await rpc('trade_board', { p_limit: PAGE, ...(before ? { p_before: before } : {}) }); busy = false;
           if (!r) { if (!all.length) G.innerHTML = '<div class="tr-empty"><b>불러오지 못했어요</b></div>'; else paintG(); return; }
           const seen = new Set(all.map(x => x.id)); all = all.concat(r.listings.filter(x => !seen.has(x.id))); more = r.listings.length >= PAGE; paintG(); }
+        L.querySelector('.tr-q').oninput = e => { mF.q = e.target.value; if (!busy) paintG(); };
+        L.querySelectorAll('[data-ftype]').forEach(b => b.onclick = () => { mF.type = b.dataset.ftype; L.querySelectorAll('[data-ftype]').forEach(x => x.classList.toggle('on', x === b)); if (!busy) paintG(); });
+        L.querySelectorAll('[data-fgr]').forEach(b => b.onclick = () => { const g = b.dataset.fgr; mF.gr.has(g) ? mF.gr.delete(g) : mF.gr.add(g); b.classList.toggle('on', mF.gr.has(g)); if (!busy) paintG(); });
         L.querySelectorAll('[data-sort]').forEach(b => b.onclick = () => { mSort = b.dataset.sort; L.querySelectorAll('[data-sort]').forEach(x => x.classList.toggle('on', x === b)); if (!busy) paintG(); });
         await load();
       } else {

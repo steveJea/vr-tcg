@@ -119,3 +119,14 @@
 .tr-fee{font-size:12px;padding:8px 10px;border-radius:10px;background:#18181b;border:1px solid #3f3f46;margin-bottom:8px}
 .tr-fee ul{margin:4px 0 0;padding-left:16px;color:#d4d4d8}
 .tr-fee .tr-ic{width:13px;height:13px;vertical-align:-2px}
+/* 마켓 필터 (PR4) */
+.tr-filter{display:flex;flex-direction:column;gap:6px;margin:0 0 8px}
+.tr-q{width:100%;padding:8px 12px;border-radius:10px}
+.tr-fchips{display:flex;gap:5px;overflow-x:auto;scrollbar-width:none}
+.tr-fchips::-webkit-scrollbar{display:none}
+.tr-fchips button{flex:0 0 auto;padding:5px 11px;border-radius:999px;border:1px solid #3f3f46;background:#18181b;color:#d4d4d8;font-size:12px;font-weight:700;white-space:nowrap}
+.tr-fchips button.on{border-color:#f5c96a;color:#f5c96a;background:rgba(245,201,106,.1)}
+.tr-fgr button{--gc:#a1a1aa;color:var(--gc)}
+.tr-fgr .g-R{--gc:#84cc16}.tr-fgr .g-HR{--gc:#3b82f6}.tr-fgr .g-SR{--gc:#c084fc}.tr-fgr .g-UR{--gc:#f5c96a}.tr-fgr .g-MR{--gc:#ef4444}.tr-fgr .g-LR{--gc:#e879f9}
+.tr-fgr button.on{border-color:var(--gc);background:color-mix(in srgb,var(--gc) 18%,#18181b);color:#fff}
+.tr-fcount{font-size:11px;color:#a1a1aa;margin:-4px 0 6px;text-align:right}
