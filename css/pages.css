@@ -54,3 +54,36 @@ body.vr-page-on .pvp-modal.pvp-top:not(.vr-in-page), body.vr-page-on .pvp-vsx { 
 #vr-page .story-pop-body { position: relative; padding: 0; overflow: hidden; }
 #vr-page .story-pop-body > #story-pop.story-pop-page { position: absolute !important; inset: 0 !important; z-index: 0 !important; background: none !important; padding: 8px !important; display: block !important; overflow: hidden; }
 #vr-page .story-pop-body > #story-pop.story-pop-page > .story-pop-panel { max-width: 640px; width: 100%; margin: 0 auto; height: 100%; max-height: 100% !important; }   /* 스크롤은 예전처럼 판(panel)이 맡음 → close(true) 스크롤 유지 그대로 */
+/* ===== 시안: 전역 하단 탭 (js/gnb.js) ===== */
+#vr-gnb { position: fixed; left: 0; right: 0; bottom: 0; z-index: 9100; display: flex; align-items: flex-end; height: calc(64px + env(safe-area-inset-bottom)); padding: 0 4px env(safe-area-inset-bottom);
+  background: url(../img/ui/gnb/nav_bar_bg_v1.webp) center top / 100% 100% no-repeat, #170f0c; transition: transform .2s ease; }
+#vr-gnb.gnb-hide { transform: translateY(calc(100% + 48px)); pointer-events: none; visibility: hidden; transition: transform .2s ease, visibility 0s .2s; }   /* 떠 있는 소환 원까지 완전히 내려감 */
+.gnb-t { position: relative; flex: 1 1 0; min-width: 0; height: 64px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; background: none; border: 0; color: #c9b38a; cursor: pointer;
+  font-size: .68rem; font-weight: 700; white-space: nowrap; letter-spacing: -.02em; -webkit-tap-highlight-color: transparent; }
+.gnb-t i { position: relative; width: 30px; height: 30px; display: block; }
+.gnb-t i img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.gnb-t .gnb-on, .gnb-t.on .gnb-off { opacity: 0; } .gnb-t.on .gnb-on { opacity: 1; }
+.gnb-t.on { color: #f5c96a; }
+/* 소환: 바 위로 떠 있는 원형 버튼 (디자인 PNG, 빛 포함) */
+.gnb-summon i { width: 76px; height: 76px; margin: -38px 0 -6px; }
+.gnb-summon i img.gnb-off, .gnb-summon i img.gnb-on { inset: 22px; width: 32px; height: 32px; }
+.gnb-summon i .gnb-sb, .gnb-summon i .gnb-sb-p { filter: none; }
+.gnb-summon .gnb-sb-p { opacity: 0; } .gnb-summon:active .gnb-sb-p { opacity: 1; } .gnb-summon:active .gnb-sb { opacity: 0; }
+.gnb-summon span { color: #f5c96a; }
+.gnb-dot { position: absolute; top: -30px; left: calc(50% + 16px); width: 12px; height: 12px; border-radius: 50%; background: #ef4444; border: 2px solid #170f0c; box-shadow: 0 0 6px rgba(239,68,68,.8); }
+.gnb-dot[hidden] { display: none; }
+@media (prefers-reduced-motion: reduce) { #vr-gnb { transition: none; } }
+@media (min-width: 768px) { #vr-gnb { left: 50%; right: auto; transform: translateX(-50%); width: min(560px, 100%); border-radius: 18px 18px 0 0;
+  background: url(../img/ui/gnb/nav_bar_bg_9slice_v1.webp) left top / auto 100% no-repeat, url(../img/ui/gnb/nav_bar_bg_9slice_v1.webp) right top / auto 100% no-repeat, url(../img/ui/gnb/nav_bar_bg_v1.webp) center top / 100% 100% no-repeat, #170f0c; }
+  #vr-gnb.gnb-hide { transform: translate(-50%, calc(100% + 48px)); } }
+body.gnb-on .main-tabs { display: none !important; }
+/* 바닥 여백: 탭 64px + 떠 있는 소환 원(22px) 만큼 더 → 맨 아래 버튼이 가려지지 않게 */
+body.gnb-on { --gnb-safe: calc(86px + env(safe-area-inset-bottom)); }
+body.gnb-on:not(.gnb-hidden) .vr-page, body.gnb-on:not(.gnb-hidden) #story-screen { padding-bottom: var(--gnb-safe); }
+body.gnb-on .gr-actions { padding-bottom: 30px; }   /* 소환 화면 뽑기 버튼을 위로 */
+body.gnb-on #start-screen .main-body { padding-bottom: calc(110px + env(safe-area-inset-bottom)); }
+body.gnb-on .hub-menu, body.gnb-on .hub-gacha { display: none !important; }   /* 스토리 허브 하단 메뉴 → GNB·상단 칩으로 이동 */
+.hub-chip { display: inline-flex; align-items: center; gap: 3px; padding: 4px 9px; border-radius: 999px; border: 1px solid rgba(245,201,106,.45); background: rgba(18,8,10,.75); color: #fde7b0; font-size: .72rem; font-weight: 700; position: relative; white-space: nowrap; }
+.hub-chip .story-badge { position: absolute; top: -6px; right: -6px; }
+.tile-trade { grid-column: 1 / -1; aspect-ratio: 3 / 1; max-height: 110px; width: 100%; }
+.tile-trade .main-tile-img { object-position: right center; }
