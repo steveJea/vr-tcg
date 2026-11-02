@@ -96,3 +96,26 @@
 .tr-more-w{display:flex;justify-content:center;padding:14px 0}
 .tr-more{min-width:60%}
 .tr-end{font-size:12px;color:#71717a}
+/* 판매 글 올리기 단계 (PR3) */
+.tr-steps{display:flex;gap:4px;margin:0 0 10px}
+.tr-steps span{flex:1;display:flex;align-items:center;justify-content:center;gap:4px;padding:6px 2px;border-radius:999px;background:#18181b;border:1px solid #3f3f46;color:#71717a;font-size:11.5px;font-weight:700;white-space:nowrap}
+.tr-steps i{font-style:normal;display:grid;place-items:center;width:16px;height:16px;border-radius:50%;background:#3f3f46;color:#fff;font-size:10px}
+.tr-steps .on{border-color:#f5c96a;color:#f5c96a}.tr-steps .on i{background:#f5c96a;color:#111}
+.tr-steps .done{color:#a3e635}.tr-steps .done i{background:#65a30d}
+.tr-gate{margin:0 0 10px;padding:8px 10px;border-radius:10px;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.5);font-size:12px;color:#fecaca}
+.tr-gate p{margin:2px 0}
+.tr-step-acts{position:sticky;bottom:0;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 0;background:linear-gradient(transparent,#141418 30%)}
+.tr-bg.vr-in-page .tr-step-acts{background:linear-gradient(transparent,#12070a 30%)}
+.tr-step-acts .tr-btn{min-width:96px}
+.tr-want-in{width:100%;resize:vertical;min-height:72px}
+.tr-wc{display:block;text-align:right;color:#71717a;font-size:11px}
+.tr-sel2{margin:4px 0 8px}
+.tr-band{width:100%;border-collapse:collapse;font-size:12px;margin:4px 0 8px}
+.tr-band th,.tr-band td{padding:6px 4px;border-bottom:1px solid #27272a;text-align:left;white-space:nowrap}
+.tr-band th{color:#a1a1aa;font-weight:700}
+.tr-band tfoot td{font-weight:800;color:#f5c96a;border-bottom:0}
+.tr-band .tr-ic{width:14px;height:14px;vertical-align:-2px}
+.tr-band .dim{color:#71717a}
+.tr-fee{font-size:12px;padding:8px 10px;border-radius:10px;background:#18181b;border:1px solid #3f3f46;margin-bottom:8px}
+.tr-fee ul{margin:4px 0 0;padding-left:16px;color:#d4d4d8}
+.tr-fee .tr-ic{width:13px;height:13px;vertical-align:-2px}

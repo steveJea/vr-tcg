@@ -43,7 +43,7 @@
     m.onpointerdown = e => { down = e.target === m; };
     m.onclick = e => { if ((down && e.target === m) || e.target.closest('[data-x]')) m.remove(); down = false; };
     document.body.appendChild(m);
-    if (page && window.VRPages?.host) { m.classList.add('tr-page'); window.VRPages.host(page[0], page[1], m); }
+    if (page && window.VRPages?.host) { m.classList.add('tr-page'); window.VRPages.host(page[0], page[1], m, null, null, page[2] || null); }
     return m;
   }
   const body = m => m.querySelector('.tr-in');
@@ -178,6 +178,22 @@
     if (g.card) return '장착 중'; if (g.locked) return I('lock') + '잠금'; if ((d?.tier || 0) > 5) return '거래 불가 등급';
     return '';
   }
+  // 못 올리는 이유 (자세히)
+  function whyLong(x, isCard, save) {
+    if (!x) return '이 물건은 올릴 수 없어요';
+    if (isCard) {
+      if (x.uid === save?.leader) return '👑 리더는 올릴 수 없어요. 마이에서 리더를 바꾸면 올릴 수 있어요';
+      if (x.bound !== false) return '🔗 스토리 보상으로 받은 인재는 거래할 수 없어요';
+      if (x.locked && !x.dlk) return '🔒 잠긴 인재예요. 잠금을 풀면 올릴 수 있어요';
+      if (x.traded_at) { const h = Math.ceil((x.traded_at * 1000 + (cfg.resale_hours || 72) * 3600e3 - Date.now()) / 3600e3); if (h > 0) return `⏳ 거래로 받은 인재는 ${cfg.resale_hours || 72}시간 뒤에 다시 올릴 수 있어요 (약 ${h}시간 남음)`; }
+    } else {
+      if (x.card) return '장착 중인 장비예요. 먼저 해제해 주세요';
+      if (x.locked) return '🔒 잠긴 장비예요. 잠금을 풀면 올릴 수 있어요';
+      if ((defOf(x.def)?.tier || 0) > 5) return '전설·심연 장비는 거래할 수 없어요';
+      if (x.traded_at) return `⏳ 거래로 받은 장비는 ${cfg.resale_hours || 72}시간 뒤에 다시 올릴 수 있어요`;
+    }
+    return '이 물건은 올릴 수 없어요';
+  }
   // ---- 정렬 (인재: 등급·레벨·이름·획득 / 장비: 등급·강화·이름). 같은 버튼 다시 누르면 ▼▲ 전환, 기억함. 못 올리는 것도 제자리(흐리게)
   const G_ORD = ['N', 'R', 'HR', 'SR', 'UR', 'MR', 'LR'];
   const CSORT = { grade: '등급', level: '레벨', name: '이름', new: '획득' }, GSORT = { tier: '등급', plus: '강화', name: '이름' };
@@ -213,7 +229,7 @@
         <div class="tr-sec-row"><div class="tr-sec">장비</div>${gear.length > 1 ? sortBar('g', GSORT) : ''}</div><div class="tr-pick">${sortGear(gear).map(({ g, why }) => `<div class="tr-pk ${why ? 'no' : ''} ${sel.gear.has(g.id) ? 'on' : ''}" data-pg="${g.id}">${gearTile(g)}${why ? `<i>${why}</i>` : ''}</div>`).join('') || '<div class="tr-empty">장비가 없어요</div>'}</div>`;
       host.querySelectorAll('[data-srt]').forEach(b => b.onclick = () => { const [w, k] = b.dataset.srt.split(':'); setSrt(w, k); draw(); });
       host.querySelectorAll('[data-pc],[data-pg]').forEach(el => el.onclick = () => {
-        if (el.classList.contains('no')) return toast(`이 물건은 올릴 수 없어요: ${el.querySelector('i')?.textContent || ''}`);
+        if (el.classList.contains('no')) { const k = 'pc' in el.dataset ? save.owned.find(o => o.uid === el.dataset.pc) : gs.find(g => g.id === +el.dataset.pg); return toast(whyLong(k, 'pc' in el.dataset, save)); }
         const isC = 'pc' in el.dataset, set = isC ? sel.cards : sel.gear, k = isC ? el.dataset.pc : +el.dataset.pg;
         if (set.has(k)) set.delete(k); else { if (count() >= max) return toast(`한쪽에 최대 ${max}개까지예요`); set.add(k); }
         el.classList.toggle('on', set.has(k)); onChange?.();
@@ -225,19 +241,63 @@
     return { sel, count, keys, tiles };
   }
 
-  // ---- 판매 글 올리기
+  // ---- 판매 글 올리기 (PR3: 단계식) 1 물건 고르기 → 2 희망 조건 → 3 미리보기(가격 범위·수수료) · 뒤로 = 한 단계씩
+  function gateMsg(myOpen) {   // 서버 규칙을 미리 안내 (최종 판단은 서버)
+    const c = cfg || {}, st = window.VRPlayer?.now?.(), u = window.VRCloud?.user, out = [];
+    if (st?.level != null && st.level < (c.min_level || 20)) out.push(`계정 Lv.${c.min_level || 20}부터 거래할 수 있어요 (지금 Lv.${st.level})`);
+    if (u?.created_at) { const d = Math.ceil((new Date(u.created_at).getTime() + (c.min_account_days || 7) * 864e5 - Date.now()) / 864e5); if (d > 0) out.push(`가입 ${c.min_account_days || 7}일 뒤부터 거래할 수 있어요 (${d}일 남음)`); }
+    if (myOpen >= (c.max_open_listings || 5)) out.push(`열린 판매 글이 ${myOpen}개예요. 최대 ${c.max_open_listings || 5}개까지라 하나를 내리거나 끝나야 올릴 수 있어요`);
+    return out;
+  }
+  function bandRows(keys) {
+    const pct = cfg.fee_pct || 10, cnt = {}; keys.forEach(k => { cnt[k] = (cnt[k] || 0) + 1; });
+    const rows = Object.entries(cnt).map(([k, c]) => { const b = bands[k] || {};
+      return `<tr><td>${esc(b.label || k)}${c > 1 ? ` ×${c}` : ''}</td><td>${I('cur_drink')}${n(b.d_min * c)}~${n(b.d_max * c)}</td><td>${b.g_max != null ? `${I('cur_gold')}${n(b.g_min * c)}~${n(b.g_max * c)}` : '<span class="dim">골드 불가</span>'}</td></tr>`; }).join('');
+    const B = k => bands[k] || {}, sum = f => keys.reduce((a, k) => a + (+B(k)[f] || 0), 0), goldOk = keys.every(k => B(k).g_max != null);
+    return `<table class="tr-band"><thead><tr><th>물건</th><th>드링크</th><th>골드</th></tr></thead><tbody>${rows}</tbody>
+      <tfoot><tr><td>합계</td><td>${I('cur_drink')}${n(sum('d_min'))}~${n(sum('d_max'))}</td><td>${goldOk ? `${I('cur_gold')}${n(sum('g_min'))}~${n(sum('g_max'))}` : '<span class="dim">골드 불가</span>'}</td></tr></tfoot></table>
+      <div class="tr-fee"><b>예상 수수료</b><ul><li>재화(드링크·골드)를 받으면 받는 양의 ${pct}%가 사라져요 (올림). 예: ${I('cur_drink')}${n(sum('d_max'))} → 실제 ${n(sum('d_max') - Math.ceil(sum('d_max') * pct / 100))}</li>
+      <li>물건만 받고 바꾸면 받는 물건 등급별로 고정 골드 수수료를 내요</li>${goldOk ? '' : '<li>SR 이상 인재·영웅 장비가 있어 골드 제안은 받을 수 없어요 (드링크만)</li>'}</ul></div>`;
+  }
   async function createListing(after) {
-    const m = pop(`<div class="tr-head"><b>＋ 판매 글 올리기</b><span class="tr-cnt">0 / ${cfg.max_items || 5}</span></div>
-      <div class="tr-note">팔 인재·장비를 골라 주세요. 올리는 순간 보관되고 ${cfg.listing_hours || 72}시간 열려요. 흐린 것은 올릴 수 없어요.</div>
-      <div class="tr-pickwrap"></div><input class="tr-input" maxlength="100" placeholder="희망 조건 (선택, 예: 드링크 2,000 이상)">
-      <div class="tr-acts"><button class="tr-btn main" data-ok disabled>올리기</button></div>`, 'wide', ['exchange-new', '＋ 판매 글 올리기']);
-    const p = await picker(m.querySelector('.tr-pickwrap'), () => { m.querySelector('.tr-cnt').textContent = `${p.count()} / ${cfg.max_items || 5}`; m.querySelector('[data-ok]').disabled = !p.count(); });
-    m.querySelector('[data-ok]').onclick = async () => {
-      const deckN = [...p.sel.cards].filter(u => (S()?.save?.decks || []).some(d => (d?.uids || []).includes(u))).length;
-      if (!await ask(`${p.count()}개를 올릴까요?<div class="tr-cf">${cfRow('올릴 물건', p.tiles())}</div><small>보관 중에는 쓸 수 없어요${deckN ? ` · 덱에 든 인재 ${deckN}명은 덱에서 빠져요` : ''}${p.sel.cards.size ? ' · 마지막 같은 인재면 장착 장비는 해제돼 내 가방에 남아요' : ''}</small>`)) return;
-      const r = await rpc('trade_list', { p_cards: [...p.sel.cards], p_gear: [...p.sel.gear], p_want: m.querySelector('.tr-input').value.trim() });
-      if (r) { toast('📤 판매 글을 올렸어요'); m.remove(); refreshMine(); after?.(); }
+    const max = cfg.max_items || 5, H = cfg.listing_hours || 72;
+    let step = 1, want = '', p = null;
+    const m = pop('<div class="tr-load">불러오는 중…</div>', 'wide', ['exchange-new', '＋ 판매 글 올리기', () => { if (step > 1) { go(step - 1); return true; } return false; }]);
+    const mine = await rpc('trade_my'); const myOpen = (mine?.listings || []).filter(l => l.status === 'open').length;
+    const gates = gateMsg(myOpen);
+    const B = body(m);
+    B.innerHTML = `<div class="tr-steps">${['물건 고르기', '희망 조건', '확인'].map((t, i) => `<span data-st="${i + 1}"><i>${i + 1}</i>${t}</span>`).join('')}</div>
+      ${gates.length ? `<div class="tr-gate">${gates.map(g => `<p>⛔ ${esc(g)}</p>`).join('')}</div>` : ''}
+      <section data-step="1"><div class="tr-note">팔 인재·장비를 골라 주세요 (최대 ${max}개). 흐린 것은 눌러 보면 이유가 나와요.</div><div class="tr-pickwrap"></div></section>
+      <section data-step="2" hidden><div class="tr-note">원하는 조건을 적어 주세요 (선택, 100자). 다른 사람이 제안할 때 참고해요.</div>
+        <div class="tr-items tr-sel2"></div><textarea class="tr-input tr-want-in" maxlength="100" rows="3" placeholder="예: 드링크 2,000 이상 · SR 인재와 교환"></textarea><small class="tr-wc">0 / 100</small></section>
+      <section data-step="3" hidden><div class="tr-cf"></div></section>
+      <div class="tr-acts tr-step-acts"><button class="tr-btn" data-prev>이전</button><span class="tr-cnt">0 / ${max}</span><button class="tr-btn main" data-next disabled>다음</button></div>`;
+    const next = B.querySelector('[data-next]'), prev = B.querySelector('[data-prev]'), cnt = B.querySelector('.tr-cnt'), ta = B.querySelector('.tr-want-in');
+    function go(k) {
+      step = k; B.querySelectorAll('[data-step]').forEach(x => { x.hidden = +x.dataset.step !== k; });
+      B.querySelectorAll('[data-st]').forEach(x => { x.classList.toggle('on', +x.dataset.st === k); x.classList.toggle('done', +x.dataset.st < k); });
+      prev.style.visibility = k > 1 ? 'visible' : 'hidden'; cnt.hidden = k !== 1;
+      next.textContent = k === 3 ? '📤 올리기' : '다음'; next.disabled = !p?.count() || (k === 3 && gates.length > 0);
+      if (k === 2) B.querySelector('.tr-sel2').innerHTML = p.tiles();
+      if (k === 3) { want = ta.value.trim();
+        B.querySelector('[data-step="3"] .tr-cf').innerHTML = `${cfRow('올릴 물건', p.tiles())}<div class="tr-cf-row"><div class="tr-cf-l">희망 조건</div><div>${want ? esc(want) : '<span class="tr-cf-none">없음</span>'}</div></div>
+          <div class="tr-sec">허용 가격 범위 (등급별 · 서버 기준)</div>${bandRows(p.keys())}
+          <div class="tr-note">올리는 순간 보관돼 게임에서 쓸 수 없고, ${H}시간 뒤 팔리지 않으면 돌아와요.${deckN() ? ` 덱에 든 인재 ${deckN()}명은 덱에서 빠져요.` : ''}${p.sel.cards.size ? ' 마지막 같은 인재면 장착 장비는 해제돼 내 가방에 남아요.' : ''}</div>
+          ${gates.length ? `<div class="tr-gate">${gates.map(g => `<p>⛔ ${esc(g)}</p>`).join('')}</div>` : ''}`; }
+      B.closest('.vr-page-body, .tr-pop')?.scrollTo?.(0, 0);
+    }
+    const deckN = () => [...p.sel.cards].filter(u => (S()?.save?.decks || []).some(d => (d?.uids || []).includes(u))).length;
+    ta.oninput = () => { B.querySelector('.tr-wc').textContent = `${ta.value.length} / 100`; };
+    prev.onclick = () => go(step - 1);
+    next.onclick = async () => {
+      if (step < 3) return go(step + 1);
+      next.disabled = true;
+      const r = await rpc('trade_list', { p_cards: [...p.sel.cards], p_gear: [...p.sel.gear], p_want: want });
+      if (r) { toast('📤 판매 글을 올렸어요'); m.remove(); refreshMine(); after?.(); } else next.disabled = false;
     };
+    p = await picker(B.querySelector('.tr-pickwrap'), () => { cnt.textContent = `${p.count()} / ${max}`; next.disabled = !p.count(); });
+    go(1);
   }
 
   // ---- 가격·골드 미리보기
