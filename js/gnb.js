@@ -17,7 +17,7 @@
   const G = 'img/ui/gnb/';
   const nav = document.createElement('nav');
   nav.id = 'vr-gnb'; nav.setAttribute('aria-label', '하단 메뉴');
-  nav.innerHTML = T.map(([k, l, img, em]) => `<button type="button" class="gnb-t gnb-${k}" data-gnb="${k}"${k === 'my' ? ' data-friendbadge' : ''}><i>${k === 'summon' ? `<img class="gnb-sb" src="${G}summon_button_v1.webp" alt=""><img class="gnb-sb-p" src="${G}summon_button_pressed_v1.webp" alt="">` : ''}<img class="gnb-off" src="${G}icon_${k}_off_v1.webp" alt=""><img class="gnb-on" src="${G}icon_${k}_on_v1.webp" alt=""></i><span>${l}</span>${k === 'summon' ? '<b class="gnb-dot" hidden aria-label="무료 영입 가능"></b>' : ''}</button>`).join('');
+  nav.innerHTML = T.map(([k, l, img, em]) => `<button type="button" class="gnb-t gnb-${k}" data-gnb="${k}"${k === 'my' ? ' data-friendbadge' : ''}><i>${k === 'summon' ? `<img class="gnb-sb" src="${G}summon_button_v2.webp" alt=""><img class="gnb-sb-p" src="${G}summon_button_pressed_v2.webp" alt="">` : ''}<img class="gnb-off" src="${G}icon_${k}_off_v2.webp" alt=""><img class="gnb-on" src="${G}icon_${k}_on_v2.webp" alt=""></i><span>${l}</span>${k === 'summon' ? '<b class="gnb-dot" hidden aria-label="무료 영입 가능"></b>' : ''}</button>`).join('');
   document.body.appendChild(nav); document.body.classList.add('gnb-on');
   nav.addEventListener('click', e => { const b = e.target.closest('[data-gnb]'); if (!b) return; if (b.classList.contains('lock')) return; T.find(t => t[0] === b.dataset.gnb)[4](); setTimeout(paint, 60); });
   // 홈 로비에 거래소 타일 (하단 탭에서 빠진 대신)

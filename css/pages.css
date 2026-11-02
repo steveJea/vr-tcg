@@ -61,7 +61,7 @@ body.vr-page-on .pvp-modal.pvp-top:not(.vr-in-page), body.vr-page-on .pvp-vsx { 
 .gnb-t { position: relative; flex: 1 1 0; min-width: 0; height: 64px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; background: none; border: 0; color: #c9b38a; cursor: pointer;
   font-size: .68rem; font-weight: 700; white-space: nowrap; letter-spacing: -.02em; -webkit-tap-highlight-color: transparent; }
 .gnb-t i { position: relative; width: 30px; height: 30px; display: block; }
-.gnb-t i img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 0 .6px currentColor); }   /* 48px 이하에서 얇은 선을 살짝 두껍게 */
+.gnb-t i img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
 .gnb-t .gnb-on, .gnb-t.on .gnb-off { opacity: 0; } .gnb-t.on .gnb-on { opacity: 1; }
 .gnb-t.on { color: #f5c96a; }
 /* 소환: 바 위로 떠 있는 원형 버튼 (디자인 PNG, 빛 포함) */
