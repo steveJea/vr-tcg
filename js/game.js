@@ -1047,10 +1047,15 @@ async function cutIn(u, name, fx, passive = false) {
   const ms = FX_OFF() ? CUT_QUICK : cutinMs(fx ? 1300 : passive ? 500 : 750);
   el.style.setProperty('--dur', `${ms}ms`);
   el.className = `cutin ${fx ? 'cutin-img' : ''} fixed left-0 right-0 z-40 pointer-events-none text-center ${whoOf(u.owner) === 'me' ? 'cutin-me' : 'cutin-ai'}`;
+  // 폴리시4 #9: 피해는 컷인이 반대쪽으로 '베고 나가는' 순간(85%)에 들어가고, 남은 꼬리(15%)는 피해 연출과 겹쳐 사라짐. 연출 끔(SKIP·빨리감기·연출 스킵)이면 예전 그대로
+  const hitAt = FX_OFF() || REDUCED() ? ms : Math.round(ms * 0.85), tok = ++cutTok;
   slashImpact(ms);
-  await sleep(ms);
-  el.className = 'hidden'; resetHScroll();
+  await sleep(hitAt);
+  if (hitAt >= ms) { el.className = 'hidden'; resetHScroll(); return; }
+  el.classList.add('cutin-hit');
+  setTimeout(() => { if (tok === cutTok && el.classList.contains('cutin')) { el.className = 'hidden'; resetHScroll(); } }, ms - hitAt);
 }
+let cutTok = 0;
 // ===== 등장 컷인 (data/voice/<id>_0 보이스 + data/fx/<id>_0 이미지, 없으면 프로필) · 만남/인연 이벤트 (data/events.json) =====
 let EVENTS = { entry: { fx: [] }, events: [] };
 fetch('data/events.json').then(r => r.ok ? r.json() : null).then(d => { if (d) EVENTS = { entry: { fx: [], ...(d.entry || {}) }, events: Array.isArray(d.events) ? d.events : [] }; }).catch(() => {});

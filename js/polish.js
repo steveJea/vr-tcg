@@ -43,6 +43,14 @@
     if (p && p.id === id && p.v !== v && el.dataset.curSeen !== String(v)) countUp(el, p.v, v); el.dataset.curSeen = String(v); } };
   const scanAll = () => { scanCur(); try { scanPow(); } catch {} };
   if (!reduce) new MutationObserver(() => { if (!curQ) curQ = requestAnimationFrame(scanAll); }).observe(document.body, { childList: true, subtree: true, characterData: true });
+  // ===== 폴리시 4: 등급별 영입 빛 (R 초록 · HR 파랑 · SR 보라 링 · UR/MR/LR 화면 전체 섬광). 보이는 것만 =====
+  const SUM = { 'RARE': ['r', 1], 'HIGH RARE': ['hr', 2], 'SUPER RARE': ['sr', 3], 'ULTRA RARE': ['ur', 4], 'MYTHIC RARE': ['mr', 4], 'LEGENDARY RARE': ['lr', 4] };
+  const summon = (grade, el, delay = 0) => { const g = SUM[grade]; if (!g || !el) return; const [k, lv] = g;
+    setTimeout(() => { if (!el.isConnected) return;
+      const b = document.createElement('i'); b.className = `sfx-burst sfx-${k} sfx-lv${lv}`; b.setAttribute('aria-hidden', 'true'); el.appendChild(b); setTimeout(() => b.remove(), 1200); el.classList.add('sfx-glow', `sfx-${k}`); setTimeout(() => el.classList.remove('sfx-glow'), 900);
+      if (lv >= 4) { const f = document.createElement('div'); f.className = `sfx-screen sfx-${k}`; f.setAttribute('aria-hidden', 'true'); document.body.appendChild(f); setTimeout(() => f.remove(), reduce ? 400 : 1100); }
+    }, Math.max(0, delay)); };
+  window.VRPolish = { ...(window.VRPolish || {}), summon };
   if (reduce) return;
   const replay = (el, cls) => { el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); setTimeout(() => el.classList.remove(cls), 260); };
   // --- 팝업: 숨김(hidden) → 보임 으로 바뀔 때만 (같은 팝업 다시 그리기는 애니메이션 없음) ---
