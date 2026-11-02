@@ -33,17 +33,22 @@
   function pop(html, cls = '') {
     const m = document.createElement('div'); m.className = 'gd-pop';
     m.innerHTML = `<div class="gd-pop-panel ${cls}"><button class="gd-x" data-x aria-label="닫기">${gi('ic_close', '✕')}</button>${html}</div>`;
-    m.addEventListener('click', e => { if (e.target === m || e.target.closest('[data-x]')) m.remove(); });
+    m.addEventListener('click', e => { if ((e.target === m && !m.classList.contains('vr-in-page')) || e.target.closest('[data-x]')) m.remove(); });
     document.body.appendChild(m); return m;
   }
   async function act(name, args, okMsg) { try { const r = await rpc(name, args); if (okMsg) toast(typeof okMsg === 'function' ? okMsg(r) : okMsg); await refresh(); return r || true; } catch (e) { toast(errText(e)); return null; } }
   async function refresh() { await status(); if (ov) paint(); window.dispatchEvent(new Event('vr:guild')); }
   function close() { ov?.remove(); ov = null; }
+  // ----- 페이지 시스템: 조직 = 페이지, 큰 안쪽 창(대여·상점·신청·설정·기록·집결·의뢰) = 하위 페이지. 조직원/조직 정보·만들기·확인창은 작은 창 그대로 -----
+  const inGuild = () => /^guild/.test(window.VRPages?.current || '');
+  function subPop(name, title, html, cls) { const m = pop(html, cls); if (inGuild()) window.VRPages.host('guild-' + name, title, m); return m; }
+  let gone = false;   // 조직 페이지가 위 페이지(토벌 등)에 가려졌다 돌아오면 BGM 다시
   async function open() {
     close();
     ov = document.createElement('div'); ov.className = 'gd-ov'; ov.innerHTML = '<div class="gd-page"><div class="gd-loading">…</div></div>';
-    ov.addEventListener('click', e => { if (e.target === ov || e.target.closest('[data-close]')) close(); });
+    ov.addEventListener('click', e => { if ((e.target === ov && !ov.classList.contains('vr-in-page')) || e.target.closest('[data-close]')) close(); });
     document.body.appendChild(ov); window.VRSound?.scope?.(ov, window.VR_BGM?.guildHome);
+    gone = false; window.VRPages?.host?.('guild', '🩸 조직', ov, () => { gone = true; }, p => { if (gone && p === ov) { gone = false; window.VRSound?.scope?.(ov, window.VR_BGM?.guildHome); } });   // 실패하면 예전 전체 창
     await status(); paint(); if (st?.guild) lendNotices();
   }
   const card = g => `<button class="gd-card" data-gid="${g.id}">${emb(g.emblem)}<span class="gd-card-m"><b>${esc(g.name)}</b><small>${esc(g.intro || '')}</small></span><span class="gd-card-r"><b>Lv.${g.level}</b><small>${gi('ic_members', '👥')} ${g.members}/${g.max_members} ${MODE[g.join_mode]?.[0] || ''}</small></span></button>`;
@@ -164,7 +169,7 @@
   async function lendPop() {
     let L; try { L = await rpc('guild_lend_status'); } catch (e) { return toast(lerr(e)); }
     const nm = id => window.VRStory?.api?.card?.(id)?.name || '';
-    const m = pop(`<div class="gd-h big">${gi('tile_lend', '🤝')} 인재 대여</div>
+    const m = subPop('lend', '🤝 인재 대여', `<div class="gd-h big">${gi('tile_lend', '🤝')} 인재 대여</div>
       <div class="gd-h">📥 빌린 인재</div>${L.loan ? `<div class="gd-lrow">${lcard(L.loan.card_id, L.loan.snap?.level, `${esc(L.loan.lender_name)} · ${left(L.loan.expires_at)} 남음`)}<small class="gd-lnote">${esc(nm(L.loan.card_id))} · 스토리·시련의 탑 출전 고르기에서 [대여]로 써요</small></div>`
         : `<div class="gd-lnote">${L.borrowed_today ? '오늘은 이미 빌렸어요. 내일 다시 빌릴 수 있어요.' : `하루 1명 · ${L.hours}시간 동안 · 원주인 레벨 그대로`}</div>`}
       <div class="gd-h">📤 내 대여 인재 <small>${L.mine.length}/${L.max} · 빌려줄 때마다 ${LOYI}${L.reward} (하루 3번)</small></div><div class="gd-lrow">${L.mine.map(x => lcard(x.id, x.level)).join('')}<button class="gd-lc add" data-lset>✏️<small>바꾸기</small></button></div>
@@ -174,7 +179,7 @@
       paintSort(m.querySelector('[data-sb]'), drawO);
       g.innerHTML = L.others.length ? (T ? T.sort(L.others, lendSortSt) : L.others).map(x => lcard(x.id, x.level, esc(x.owner_name), `data-lb="${x._i}" ${L.loan || L.borrowed_today ? 'disabled' : ''}`)).join('') : '<div class="gd-lnote">아직 등록된 인재가 없어요</div>';
       g.scrollTop = y; bindO(); };
-    m.querySelector('[data-lset]').onclick = () => { m.remove(); lendSetPop(L); };
+    m.querySelector('[data-lset]').onclick = () => { if (!inGuild()) m.remove(); lendSetPop(L); };   // 페이지면 대여 위에 쌓음 (뒤로 = 대여)
     const bindO = () => m.querySelectorAll('[data-lb]').forEach(b => b.onclick = () => { const x = L.others[+b.dataset.lb];
       const c = pop(`<div class="gd-h big">🤝 빌리기</div><div class="gd-lrow">${lcard(x.id, x.level, esc(x.owner_name))}</div><div class="gd-lnote">${esc(nm(x.id))} Lv.${x.level}을(를) ${L.hours}시간 빌릴까요? (하루 1명)</div><button class="gd-big" data-go>빌리기</button>`);
       c.querySelector('[data-go]').onclick = async () => { try { await rpc('guild_lend_borrow', { p_owner: x.owner, p_uid: x.uid }); toast('🤝 빌렸어요! 스토리·시련의 탑에서 써 보세요'); window.VRStory?.reloadLend?.(); c.remove(); m.remove(); lendPop(); } catch (e) { toast(lerr(e)); } }; });
@@ -182,7 +187,7 @@
   }
   async function lendSetPop(L) {
     const list = await window.VRStory?.lendCards?.() || []; let sel = L.mine.map(x => x.uid).filter(u => list.some(o => o.uid === u));
-    const m = pop(`<div class="gd-h big">📤 대여 등록 <small data-cnt></small></div><div class="gd-lnote">최대 ${L.max}명 · 빌려줘도 내가 계속 쓸 수 있어요</div><div data-sb></div><div class="gd-lgrid" data-g></div><button class="gd-big" data-save>저장</button>`, 'wide');
+    const m = subPop('lendset', '📤 대여 등록', `<div class="gd-h big">📤 대여 등록 <small data-cnt></small></div><div class="gd-lnote">최대 ${L.max}명 · 빌려줘도 내가 계속 쓸 수 있어요</div><div data-sb></div><div class="gd-lgrid" data-g></div><button class="gd-big" data-save>저장</button>`, 'wide');
     const T = window.VRStory?.sortTool;
     const draw = () => { m.querySelector('[data-cnt]').textContent = `${sel.length}/${L.max}`; const g = m.querySelector('[data-g]'), y = g.scrollTop;
       paintSort(m.querySelector('[data-sb]'), draw);
@@ -198,11 +203,11 @@
       m.querySelectorAll('[data-buy]').forEach(b => b.onclick = async () => { const s = st.shop.find(x => x.item === b.dataset.buy), [ic, l] = SHOP[s.item] || [window.VRGear?.shopIcon?.(s.gives) || '🎁', gearName(s.gives)];
         if (window.VRGear?.ask && !await window.VRGear.ask(`<div class="gear-big">${ic}</div><b>${l}</b><div>${LOYI} 충성 ${n(s.price)}로 살까요?</div>`)) return;   // 장비 PR7: 구매 전 확인
         b.disabled = true; const r = await act('guild_shop_buy', { p_item: b.dataset.buy }, r0 => r0?.box_mail ? '📬 우편함으로 보냈어요' : `${SHOP[b.dataset.buy]?.[0] || ''} 구매 완료`); if (r?.wallet) window.VRPlayer?.setWallet?.(r.wallet); if (r) window.VRGear?.load?.(true); if (m.isConnected) draw(m); }); };
-    const m = pop(`<div class="gd-h big">${gi('tile_shop', '🛒')} 조직 상점 <span class="gd-loy">${LOYI} <b></b></span></div><div class="gd-shop"></div>`, 'wide');
+    const m = subPop('shop', '🛒 조직 상점', `<div class="gd-h big">${gi('tile_shop', '🛒')} 조직 상점 <span class="gd-loy">${LOYI} <b></b></span></div><div class="gd-shop"></div>`, 'wide');
     draw(m);
   }
   function reqPop() {
-    const m = pop(`<div class="gd-h big">${gi('ic_invite', '📨')} 가입 신청</div><div class="gd-reqs">${st.requests.map(r => `<div class="gd-rq"><b>${esc(r.name)}</b><small>Lv.${r.level}</small><button class="gd-ok" data-a="${r.id}">승인</button><button data-r="${r.id}">거절</button></div>`).join('') || '<div class="gd-empty">신청이 없어요</div>'}</div>
+    const m = subPop('req', '📨 가입 신청', `<div class="gd-h big">${gi('ic_invite', '📨')} 가입 신청</div><div class="gd-reqs">${st.requests.map(r => `<div class="gd-rq"><b>${esc(r.name)}</b><small>Lv.${r.level}</small><button class="gd-ok" data-a="${r.id}">승인</button><button data-r="${r.id}">거절</button></div>`).join('') || '<div class="gd-empty">신청이 없어요</div>'}</div>
       <div class="gd-h">➕ 초대</div><div class="gd-search"><input id="gd-inv" maxlength="20" placeholder="닉네임"><button id="gd-invgo">초대</button></div>`);
     m.querySelectorAll('[data-a]').forEach(b => b.onclick = async () => { if (await act('guild_respond', { p_req: +b.dataset.a, p_accept: true }, '🩸 새 조직원')) b.closest('.gd-rq').remove(); });
     m.querySelectorAll('[data-r]').forEach(b => b.onclick = async () => { if (await act('guild_respond', { p_req: +b.dataset.r, p_accept: false })) b.closest('.gd-rq').remove(); });
@@ -210,7 +215,7 @@
   }
   function setPop() {
     const g = st.guild, boss = st.me.role === 'boss'; let e = g.emblem, mode = g.join_mode;
-    const m = pop(`<div class="gd-h big">${gi('tile_settings', '⚙️')} 조직 설정</div>
+    const m = subPop('set', '⚙️ 조직 설정', `<div class="gd-h big">${gi('tile_settings', '⚙️')} 조직 설정</div>
       <label class="gd-l">${gi('ic_notice', '📢')} 공지</label><textarea id="gd-sn" maxlength="100" rows="2">${esc(g.notice || '')}</textarea>
       ${boss ? `<label class="gd-l">소개</label><input id="gd-si" maxlength="60" value="${esc(g.intro || '')}">
       <div class="gd-embs">${EMB.map((_, i) => `<button data-e="${i + 1}" class="${i + 1 === e ? 'on' : ''}">${emb(i + 1)}</button>`).join('')}</div>
@@ -225,7 +230,7 @@
   }
   function logPop() {
     const A = { create: '창설', join: '가입', leave: '탈퇴', kick: '추방', role: '역할 변경', transfer: '보스 넘김', claim_boss: '보스 승계', invite: '초대', update: '설정 변경', level_up: '레벨 업', disband: '해산' };
-    pop(`<div class="gd-h big">${gi('tile_log', '📜')} 기록</div><div class="gd-log">${st.log.map(l => `<div><span>${esc(A[l.action] || l.action)}${l.action === 'level_up' ? ` Lv.${l.meta?.level}` : ''}</span><b>${esc(l.actor || '')}${l.target && l.target !== l.actor ? ` → ${esc(l.target)}` : ''}</b><small>${new Date(l.at).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' })}</small></div>`).join('') || '<div class="gd-empty">기록 없음</div>'}</div>`);
+    subPop('log', '📜 기록', `<div class="gd-h big">${gi('tile_log', '📜')} 기록</div><div class="gd-log">${st.log.map(l => `<div><span>${esc(A[l.action] || l.action)}${l.action === 'level_up' ? ` Lv.${l.meta?.level}` : ''}</span><b>${esc(l.actor || '')}${l.target && l.target !== l.actor ? ` → ${esc(l.target)}` : ''}</b><small>${new Date(l.at).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' })}</small></div>`).join('') || '<div class="gd-empty">기록 없음</div>'}</div>`);
   }
   // ---- 2단계: 집결 · 의뢰 (guild2.sql) ----
   const QIC = { phase: '🗡️', stamina: '🔋', pvp_win: '⚔️', tower: '🗼', draw: '🎴', boss: '💀', raid: '🐉', levelup: '⬆️', checkin: '🕯️' };
@@ -237,7 +242,7 @@
     tower: () => window.VRQuest?.open?.(), draw: () => window.VRStory?.openShop?.(), levelup: () => window.VRStory?.openCards?.(),
     pvp_win: () => window.VRPvp?.open?.(), raid: () => window.VRRaid?.open?.(), checkin: 'rally' };
   const qt = q => QGO[q.event] ? `<button class="gd-qt" data-go="${esc(q.event)}">${esc(q.label)}<i>›</i></button>` : `<b>${esc(q.label)}</b>`;
-  function qGo(m, ev) { const g = QGO[ev]; if (!g) return; m.remove(); if (g === 'rally') return rallyPop(); close(); g(); }
+  function qGo(m, ev) { const g = QGO[ev]; if (!g) return; m.remove(); if (g === 'rally') return rallyPop(); if (!inGuild()) close(); g(); }   // 페이지면 조직은 그대로 두고 위에 쌓음 (뒤로 = 조직)
   const RWT = { loyalty: LOY, gold: '🪙', gem: '🔮', tickets: '🎟️', exp: '⚜️' };
   const RW = { loyalty: LOYI, gold: gi('cur_gold', '🪙'), gem: gi('cur_gem', '🔮'), tickets: gi('cur_ticket', '🎟️'), exp: gi('cur_exp', '⚜️') };
   const rwTxt = rw => Object.entries(rw || {}).filter(([k, v]) => RW[k] && v).map(([k, v]) => `<span>${RW[k]}${n(v)}</span>`).join('');
@@ -249,7 +254,7 @@
     catch (e) { toast(err2(e)); return null; }
   }
   async function rallyPop() {
-    const m = pop('<div class="gd-loading">…</div>', 'wide rally');
+    const m = subPop('rally', '🕯️ 집결', '<div class="gd-loading">…</div>', 'wide rally');
     const draw = R => {
       const W = ['월', '화', '수', '목', '금', '토', '일'];
       m.querySelector('.gd-pop-panel').innerHTML = `<button class="gd-x" data-x aria-label="닫기">${gi('ic_close', '✕')}</button>
@@ -269,7 +274,7 @@
   }
   async function questPop() {
     let tab = 'daily';
-    const m = pop('<div class="gd-loading">…</div>', 'wide quest');
+    const m = subPop('quest', '📜 조직 의뢰', '<div class="gd-loading">…</div>', 'wide quest');
     const draw = Q => {
       const bar = (p, g) => `<div class="gd-qbar"><i style="width:${Math.min(100, p / g * 100).toFixed(1)}%"></i></div>`;
       const left = Math.max(0, Math.ceil((new Date(Q.week_end) - Date.now()) / 864e5));
