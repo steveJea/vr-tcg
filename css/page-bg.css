@@ -1,0 +1,32 @@
+/* 페이지 배경 (js/page-bg.js가 #vr-page[data-bg] 설정). 세로=_m, 가로=_pc. 그림 위 어두운 막 50% · 못 불러오면 원래 그라데이션 */
+#vr-page[data-bg] { background-color: #0b0305; background-repeat: no-repeat; background-position: center; background-size: cover; }
+@media (orientation: portrait) { #vr-page[data-bg="exchange"] { background-image: linear-gradient(rgba(8,3,5,.5), rgba(8,3,5,.55)), url('../img/ui/pagebg/exchange_m.webp'), linear-gradient(#1c0a0e, #0b0305); } }
+@media (orientation: landscape) { #vr-page[data-bg="exchange"] { background-image: linear-gradient(rgba(8,3,5,.5), rgba(8,3,5,.55)), url('../img/ui/pagebg/exchange_pc.webp'), linear-gradient(#1c0a0e, #0b0305); } }
+@media (orientation: portrait) { #vr-page[data-bg="pvp"] { background-image: linear-gradient(rgba(8,3,5,.5), rgba(8,3,5,.55)), url('../img/ui/pagebg/pvp_m.webp'), linear-gradient(#1c0a0e, #0b0305); } }
+@media (orientation: landscape) { #vr-page[data-bg="pvp"] { background-image: linear-gradient(rgba(8,3,5,.5), rgba(8,3,5,.55)), url('../img/ui/pagebg/pvp_pc.webp'), linear-gradient(#1c0a0e, #0b0305); } }
+@media (orientation: portrait) { #vr-page[data-bg="guild"] { background-image: linear-gradient(rgba(8,3,5,.5), rgba(8,3,5,.55)), url('../img/ui/pagebg/guild_m.webp'), linear-gradient(#1c0a0e, #0b0305); } }
+@media (orientation: landscape) { #vr-page[data-bg="guild"] { background-image: linear-gradient(rgba(8,3,5,.5), rgba(8,3,5,.55)), url('../img/ui/pagebg/guild_pc.webp'), linear-gradient(#1c0a0e, #0b0305); } }
+@media (orientation: portrait) { #vr-page[data-bg="raid"] { background-image: linear-gradient(rgba(8,3,5,.5), rgba(8,3,5,.55)), url('../img/ui/pagebg/raid_m.webp'), linear-gradient(#1c0a0e, #0b0305); } }
+@media (orientation: landscape) { #vr-page[data-bg="raid"] { background-image: linear-gradient(rgba(8,3,5,.5), rgba(8,3,5,.55)), url('../img/ui/pagebg/raid_pc.webp'), linear-gradient(#1c0a0e, #0b0305); } }
+@media (orientation: portrait) { #vr-page[data-bg="war"] { background-image: linear-gradient(rgba(8,3,5,.5), rgba(8,3,5,.55)), url('../img/ui/pagebg/war_m.webp'), linear-gradient(#1c0a0e, #0b0305); } }
+@media (orientation: landscape) { #vr-page[data-bg="war"] { background-image: linear-gradient(rgba(8,3,5,.5), rgba(8,3,5,.55)), url('../img/ui/pagebg/war_pc.webp'), linear-gradient(#1c0a0e, #0b0305); } }
+@media (orientation: portrait) { #vr-page[data-bg="common"] { background-image: linear-gradient(rgba(8,3,5,.5), rgba(8,3,5,.55)), url('../img/ui/pagebg/common_m.webp'), linear-gradient(#1c0a0e, #0b0305); } }
+@media (orientation: landscape) { #vr-page[data-bg="common"] { background-image: linear-gradient(rgba(8,3,5,.5), rgba(8,3,5,.55)), url('../img/ui/pagebg/common_pc.webp'), linear-gradient(#1c0a0e, #0b0305); } }
+@media (orientation: portrait) { #vr-page[data-bg="social"] { background-image: linear-gradient(rgba(8,3,5,.5), rgba(8,3,5,.55)), url('../img/ui/pagebg/social_m.webp'), linear-gradient(#1c0a0e, #0b0305); } }
+@media (orientation: landscape) { #vr-page[data-bg="social"] { background-image: linear-gradient(rgba(8,3,5,.5), rgba(8,3,5,.55)), url('../img/ui/pagebg/social_pc.webp'), linear-gradient(#1c0a0e, #0b0305); } }
+@media (orientation: portrait) { #vr-page[data-bg="ranking"] { background-image: linear-gradient(rgba(8,3,5,.5), rgba(8,3,5,.55)), url('../img/ui/pagebg/ranking_m.webp'), linear-gradient(#1c0a0e, #0b0305); } }
+@media (orientation: landscape) { #vr-page[data-bg="ranking"] { background-image: linear-gradient(rgba(8,3,5,.5), rgba(8,3,5,.55)), url('../img/ui/pagebg/ranking_pc.webp'), linear-gradient(#1c0a0e, #0b0305); } }
+@media (orientation: portrait) { #vr-page[data-bg="daily"] { background-image: linear-gradient(rgba(8,3,5,.5), rgba(8,3,5,.55)), url('../img/ui/pagebg/daily_m.webp'), linear-gradient(#1c0a0e, #0b0305); } }
+@media (orientation: landscape) { #vr-page[data-bg="daily"] { background-image: linear-gradient(rgba(8,3,5,.5), rgba(8,3,5,.55)), url('../img/ui/pagebg/daily_pc.webp'), linear-gradient(#1c0a0e, #0b0305); } }
+@media (orientation: portrait) { #vr-page[data-bg="shop"] { background-image: linear-gradient(rgba(8,3,5,.5), rgba(8,3,5,.55)), url('../img/ui/pagebg/shop_m.webp'), linear-gradient(#1c0a0e, #0b0305); } }
+@media (orientation: landscape) { #vr-page[data-bg="shop"] { background-image: linear-gradient(rgba(8,3,5,.5), rgba(8,3,5,.55)), url('../img/ui/pagebg/shop_pc.webp'), linear-gradient(#1c0a0e, #0b0305); } }
+@media (orientation: portrait) { #vr-page[data-bg="mypage"] { background-image: linear-gradient(rgba(8,3,5,.5), rgba(8,3,5,.55)), url('../img/ui/pagebg/mypage_m.webp'), linear-gradient(#1c0a0e, #0b0305); } }
+@media (orientation: landscape) { #vr-page[data-bg="mypage"] { background-image: linear-gradient(rgba(8,3,5,.5), rgba(8,3,5,.55)), url('../img/ui/pagebg/mypage_pc.webp'), linear-gradient(#1c0a0e, #0b0305); } }
+@media (orientation: portrait) { #vr-page[data-bg="gallery"] { background-image: linear-gradient(rgba(8,3,5,.5), rgba(8,3,5,.55)), url('../img/ui/pagebg/gallery_m.webp'), linear-gradient(#1c0a0e, #0b0305); } }
+@media (orientation: landscape) { #vr-page[data-bg="gallery"] { background-image: linear-gradient(rgba(8,3,5,.5), rgba(8,3,5,.55)), url('../img/ui/pagebg/gallery_pc.webp'), linear-gradient(#1c0a0e, #0b0305); } }
+@media (orientation: portrait) { #vr-page[data-bg="dispatch"] { background-image: linear-gradient(rgba(8,3,5,.5), rgba(8,3,5,.55)), url('../img/ui/pagebg/dispatch_m.webp'), linear-gradient(#1c0a0e, #0b0305); } }
+@media (orientation: landscape) { #vr-page[data-bg="dispatch"] { background-image: linear-gradient(rgba(8,3,5,.5), rgba(8,3,5,.55)), url('../img/ui/pagebg/dispatch_pc.webp'), linear-gradient(#1c0a0e, #0b0305); } }
+@media (orientation: portrait) { #vr-page[data-bg="gear"] { background-image: linear-gradient(rgba(8,3,5,.5), rgba(8,3,5,.55)), url('../img/ui/pagebg/gear_m.webp'), linear-gradient(#1c0a0e, #0b0305); } }
+@media (orientation: landscape) { #vr-page[data-bg="gear"] { background-image: linear-gradient(rgba(8,3,5,.5), rgba(8,3,5,.55)), url('../img/ui/pagebg/gear_pc.webp'), linear-gradient(#1c0a0e, #0b0305); } }
+@media (orientation: portrait) { #vr-page[data-bg="story"] { background-image: linear-gradient(rgba(8,3,5,.5), rgba(8,3,5,.55)), url('../img/ui/pagebg/story_m.webp'), linear-gradient(#1c0a0e, #0b0305); } }
+@media (orientation: landscape) { #vr-page[data-bg="story"] { background-image: linear-gradient(rgba(8,3,5,.5), rgba(8,3,5,.55)), url('../img/ui/pagebg/story_pc.webp'), linear-gradient(#1c0a0e, #0b0305); } }
