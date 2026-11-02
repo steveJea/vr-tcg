@@ -65,7 +65,7 @@
       pop.querySelectorAll('[data-cancel]').forEach(b => b.onclick = () => act('friend_cancel', { p_req: +b.dataset.cancel }, '신청을 취소했어요'));
       pop.querySelectorAll('[data-fbm]').forEach(b => b.onclick = () => { fbMode = b.dataset.fbm; draw(); });
       pop.querySelectorAll('[data-fb]').forEach(b => b.onclick = async () => { if (!window.VRPvp?.friendFight) return; b.disabled = true; pop.remove(); await window.VRPvp.friendFight(b.dataset.fb, fbMode); load(); });
-      pop.querySelectorAll('[data-rm]').forEach(b => b.onclick = () => { if (confirm(`${b.dataset.nm}님을 친구에서 삭제할까요?`)) act('friend_remove', { p_user: b.dataset.rm }, '친구를 삭제했어요'); });
+      pop.querySelectorAll('[data-rm]').forEach(b => b.onclick = async () => { if (await window.VRAsk(`${b.dataset.nm}님을 친구에서 삭제할까요?`)) act('friend_remove', { p_user: b.dataset.rm }, '친구를 삭제했어요'); });
       pop.querySelectorAll('[data-req]').forEach(b => b.onclick = async () => { b.disabled = true; try { const r = await rpc('friend_request', { p_user: b.dataset.req }); toast(r?.state === 'friend' ? '친구가 되었어요 🎉' : '친구 신청을 보냈어요'); } catch (e) { toast(errText(e)); } await load(); await search(lastQ, true); draw(); });
       const f = pop.querySelector('.fr-search');
       if (f) f.onsubmit = async e => { e.preventDefault(); const q = f.q.value.trim(); if (q.length < 2) { toast(ERR['query too short']); return; } await search(q); draw(); };

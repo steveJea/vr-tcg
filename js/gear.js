@@ -187,7 +187,7 @@
         if (pick) { if (g.locked || g.card) return toast('🔒 잠금·장착 중인 장비는 고를 수 없어요'); pick.has(g.id) ? pick.delete(g.id) : pick.add(g.id); return draw(); }
         if (ctx.cardId && !g.card) { rpc('gear_equip', { p_gear: g.id, p_card: String(ctx.cardId) }).then(r => { if (r) { m.remove(); ctx.reopen?.(); } }); return; }
         itemPop(g, { cardId: ctx.cardId, back: () => { if (m.isConnected) draw(); } }); });
-      const x = m.querySelector('[data-x]'); if (x) x.onclick = async () => { if (!confirm(`가방을 10칸 늘릴까요? (보석 ${nx.gem})`)) return; x.disabled = true; const r = await rpc('gear_expand', {}); if (r) { window.VRGem?.status?.(true); } if (m.isConnected) draw(); };
+      const x = m.querySelector('[data-x]'); if (x) x.onclick = async () => { if (!await window.VRAsk(`가방을 10칸 늘릴까요? (보석 ${nx.gem})`)) return; x.disabled = true; const r = await rpc('gear_expand', {}); if (r) { window.VRGem?.status?.(true); } if (m.isConnected) draw(); };
     };
     draw();
   }

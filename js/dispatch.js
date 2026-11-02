@@ -95,11 +95,11 @@
     box.querySelectorAll('[data-h]').forEach(b => b.onclick = () => { hours = +b.dataset.h; localStorage.setItem('vr:dsp_h', hours); draw(); });
     box.querySelectorAll('.dsp-off:not(.taken)').forEach(b => b.onclick = () => pick(st.offers.find(o => o.slot === +b.dataset.slot)));
     box.querySelectorAll('[data-claim]').forEach(b => b.onclick = () => claim(+b.dataset.claim));
-    box.querySelectorAll('[data-recall]').forEach(b => b.onclick = async () => { if (!confirm('지금 부르면 보상 없이 돌아와요. 귀환할까요?')) return; try { st = await rpc('dispatch_recall', { p_run: +b.dataset.recall }); draw(); } catch (e) { toast(errText(e)); } });
+    box.querySelectorAll('[data-recall]').forEach(b => b.onclick = async () => { if (!await window.VRAsk('지금 부르면 보상 없이 돌아와요. 귀환할까요?')) return; try { st = await rpc('dispatch_recall', { p_run: +b.dataset.recall }); draw(); } catch (e) { toast(errText(e)); } });
     box.querySelector('[data-all]').onclick = () => claim(null);
     box.querySelector('[data-auto]').onclick = auto;
     box.querySelector('[data-ref]').onclick = async () => {
-      if (st.refresh_cost > 0 && !confirm(`심연석 ${st.refresh_cost}개로 의뢰를 새로고침할까요? (보낸 의뢰는 그대로)`)) return;
+      if (st.refresh_cost > 0 && !await window.VRAsk(`심연석 ${st.refresh_cost}개로 의뢰를 새로고침할까요? (보낸 의뢰는 그대로)`)) return;
       try { st = await rpc('dispatch_refresh'); if (st.spent) window.VRGem?.status?.(true); draw(); } catch (e) { toast(errText(e)); }
     };
     clearInterval(tick); tick = setInterval(() => { if (!document.getElementById('dsp-ov')) return clearInterval(tick);

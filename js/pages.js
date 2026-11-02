@@ -63,7 +63,6 @@
   const lobbyBack = [];   // 페이지 없이 뒤로가기(로비 칸): 처리했으면 true → '나갈까요?' 안 물음
   function closeNow() { if (!stack.length) return; stack.pop(); draw(-1); pendBack++; setTimeout(flushBack, 0); }   // 기록 되돌리기는 한 박자 뒤 (그 사이 open 하면 그 칸을 재사용)
   function flushBack() { if (pendBack <= 0) return; const n = pendBack; pendBack = 0; skipPop++; history.go(-n); }
-  function closeAll() { const n = stack.length; if (n) history.go(-n); }
 
   // --- 로비 뒤로가기 가드: 로비 상태 위에 빈 칸 하나를 쌓아 두고, 뒤로가기로 그 칸이 빠지면 '나갈까요?' ---
   function armGuard() { if (oauth()) return; history.pushState({ vrGuard: 1 }, '', location.pathname + location.search); guardOn = true; }
@@ -101,5 +100,7 @@
       return open(name);
     } catch (e) { console.error('[pages] host', e); return false; }
   }
-  window.VRPages = { host, closeNow, register: (name, def) => { REG[name] = def; }, has: name => !!REG[name], inStack: name => stack.some(s => s.name === name), onLobbyBack: f => lobbyBack.push(f), open, back, closeAll, get current() { return stack[stack.length - 1]?.name || null; }, get depth() { return stack.length; }, esc };
+  /** 게임 Y/N 확인 (글자 그대로 · 폰 뒤로가기 = 아니오). 브라우저 confirm() 대신. VRConfirm 없으면 예전 confirm */
+  window.VRAsk = t => window.VRConfirm ? Promise.resolve(window.VRConfirm(esc(t))).then(Boolean) : Promise.resolve(confirm(t));
+  window.VRPages = { host, closeNow, register: (name, def) => { REG[name] = def; }, has: name => !!REG[name], inStack: name => stack.some(s => s.name === name), onLobbyBack: f => lobbyBack.push(f), open, back, get current() { return stack[stack.length - 1]?.name || null; }, get depth() { return stack.length; }, esc };
 })();
