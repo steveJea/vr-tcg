@@ -141,18 +141,22 @@
     m = document.createElement('div'); m.id = 'mp-modal'; m.className = 'mp-modal hidden';
     m.innerHTML = `<div class="mp-panel" role="dialog" aria-label="마이페이지"><div class="mp-head"><div class="mp-title">${window.VRIcon?.icon('mypage_btn', { alt: '' }) || '👤'} 마이페이지</div><span data-friendbtn class="mp-friend"></span><button class="mp-x" id="mp-close" aria-label="닫기">✕</button></div><div id="mp-body" class="mp-body"></div></div>`;
     document.body.appendChild(m);
-    m.addEventListener('click', e => { if (e.target === m || e.target.closest('#mp-close')) return close();
+    m.addEventListener('click', e => { if (e.target === m) close(); });   // 바깥 클릭 = 닫기 (팝업일 때)
+    m.querySelector('.mp-panel').addEventListener('click', e => { if (e.target.closest('#mp-close')) return close();   // 판에 달아 둠: 페이지로 옮겨가도 동작
       const nv = e.target.closest('[data-nav]'); if (nv) { close(); const S = window.VRStory; return nv.dataset.nav === 'story' ? S?.openMap?.(+nv.dataset.ch) : nv.dataset.nav === 'decks' ? S?.openDecks?.() : S?.openCards?.(); }
       const t = e.target.closest('.mp-card[data-uid]'); if (t) openCard(t.dataset.uid, t.dataset.id); });   // 바깥 클릭 = 닫기
     document.addEventListener('keydown', e => { if (e.key === 'Escape' && !m.classList.contains('hidden')) close(); });
     return m;
   }
-  function close() { if (prevTrack !== null) { const t = prevTrack; prevTrack = null; if (t) try { window.VRSound?.setTrack?.(t); } catch {} } const m = $('mp-modal'); if (!m) return; m.classList.add('hidden'); document.body.classList.remove('gal-lock'); m.querySelectorAll('video').forEach(v => v.pause()); }
+  function cleanup() { if (prevTrack !== null) { const t = prevTrack; prevTrack = null; if (t) try { window.VRSound?.setTrack?.(t); } catch {} } document.body.classList.remove('gal-lock'); document.querySelectorAll('.mp-panel video').forEach(v => v.pause()); }
+  function close() { if (window.VRPages?.current === 'mypage') return window.VRPages.closeNow(); cleanup(); const m = $('mp-modal'); if (!m) return; m.classList.add('hidden'); }
+  // 페이지 시스템: 마이페이지 판을 페이지로 옮겼다가 떠날 때 돌려놓음 (BGM 복귀·영상 정지 포함). 없거나 실패하면 예전 팝업
+  window.VRPages?.register?.('mypage', { title: '👤 마이페이지', render: body => { const p = ensure().querySelector('.mp-panel'); if (p) body.appendChild(p); }, leave: () => { const p = document.querySelector('#vr-page .mp-panel'); if (p) $('mp-modal')?.appendChild(p); cleanup(); } });
   let prevTrack = null;   // 열 때 mypage BGM, 닫으면 이전 트랙 복귀
   async function open() {
     if (prevTrack === null) { prevTrack = window.VRSound?.track || ''; try { window.VRSound?.setTrack?.('audio/mypage.mp3'); } catch {} }
     const m = ensure(), body = $('mp-body');
-    m.classList.remove('hidden'); document.body.classList.add('gal-lock');
+    if (!(window.VRPages?.current === 'mypage' || window.VRPages?.open?.('mypage'))) { m.classList.remove('hidden'); document.body.classList.add('gal-lock'); }
     if (!user()) {
       body.innerHTML = `<div class="mp-guest"><img src="img/ui/profile.webp" alt="" width="72" height="72"><b>로그인 필요</b>${cloud()?.sb ? '<button id="mp-login" class="main-btn mp-login">구글 로그인</button>' : '<small>오프라인</small>'}</div>`;
       if ($('mp-login')) $('mp-login').onclick = () => cloud().login();

@@ -22,6 +22,7 @@
   function draw(dir) {
     const top = stack[stack.length - 1];
     if (shown && el) { try { REG[shown.name]?.leave?.(el.querySelector('.vr-page-body'), shown.params || {}); } catch (e) { console.error('[pages] leave', e); } } shown = top || null;
+    document.body.classList.toggle('vr-page-on', !!top);   // 페이지 위에 떠야 하는 팝업(카드 상세·확인창 등) 층 올림 (css/pages.css)
     if (!top) { if (el) { el.classList.add('hidden'); el.querySelector('.vr-page-body').innerHTML = ''; } return; }
     const p = REG[top.name], m = mount(), body = m.querySelector('.vr-page-body');
     m.querySelector('.vr-page-title').textContent = typeof p.title === 'function' ? p.title(top.params) : (p.title || '');

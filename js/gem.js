@@ -50,7 +50,7 @@
   const priceBtn = (k, cls = '', label = '') => { const s = item(k); if (!s) return ''; const [ic, q] = ITEM[k] || ['', ''];
     return `<button type="button" class="gem-buy ${cls}" data-gem-buy="${k}" ${s.left === 0 ? 'disabled' : ''}><span class="gem-buy-get">${label || `${ic}<b>${q}</b>`}</span><span class="gem-buy-p">${ICON}${n(s.price)}</span>${s.left != null ? `<small>${s.left}</small>` : ''}</button>`; };
   function open() {
-    document.querySelector('.gem-pop')?.remove();
+    document.querySelector('.gem-pop:not(.vr-in-page):not(.friend-pop):not(.daily-pop)')?.remove();
     const m = document.createElement('div'); m.className = 'gem-pop';
     const draw = () => { m.innerHTML = `<div class="gem-panel" role="dialog" aria-label="${NAME}"><button class="gem-x" data-x aria-label="닫기">✕</button>
       <div class="gem-big"><span class="gem-orb">${ICON}</span><b>${n(cache?.gem)}</b></div>
@@ -64,8 +64,8 @@
       window.VRDrink?.bind?.(m, draw);
     };
     draw();
-    m.addEventListener('click', e => { if (e.target === m || e.target.closest('[data-x]')) m.remove(); });   // 바깥 누르면 닫힘
-    document.body.appendChild(m);
+    m.addEventListener('click', e => { if ((e.target === m && !m.classList.contains('vr-in-page')) || e.target.closest('[data-x]')) m.remove(); });   // 바깥 누르면 닫힘 (페이지일 땐 X)
+    if (!window.VRPages?.host?.('gem', `${ICON} ${NAME} 상점`, m)) document.body.appendChild(m);   // 페이지 시스템 (실패하면 예전 팝업)
     Promise.all([status(true), window.VRDrink?.status?.()]).then(() => { if (m.isConnected) draw(); });
   }
   document.addEventListener('click', e => { if (e.target.closest('[data-gem-open]')) { e.preventDefault(); e.stopPropagation(); open(); } }, true);

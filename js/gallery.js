@@ -164,13 +164,17 @@
     document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('gal-zoom') && !$('gal-zoom').classList.contains('hidden')) { $('gal-zoom').classList.add('hidden'); return; }
       if (e.key === 'Escape' && !m.classList.contains('hidden')) { $('gal-detail').classList.contains('hidden') ? close() : $('gal-detail').classList.add('hidden'); } });
   }
-  function close() { if (prevTrack !== null) { const t = prevTrack; prevTrack = null; if (t) try { window.VRSound?.setTrack?.(t); } catch {} } $('gal-modal').classList.add('hidden'); document.body.classList.remove('gal-lock'); }
+  function cleanup() { if (prevTrack !== null) { const t = prevTrack; prevTrack = null; if (t) try { window.VRSound?.setTrack?.(t); } catch {} } document.body.classList.remove('gal-lock'); }
+  // 페이지 시스템: 갤러리 판(+상세 창)을 페이지로 옮겼다가 떠날 때 돌려놓음. 없거나 실패하면 예전 팝업
+  window.VRPages?.register?.('gallery', { title: '🖼️ 인재 갤러리', render: body => { ensureModal(); const m = $('gal-modal'); body.append(m.querySelector('.gal-panel'), $('gal-detail')); },
+    leave: () => { const m = $('gal-modal'), p = document.querySelector('#vr-page .gal-panel'), d = $('gal-detail'); if (m && p) m.append(p); if (m && d) { d.classList.add('hidden'); m.append(d); } cleanup(); } });
+  function close() { if (window.VRPages?.current === 'gallery') return window.VRPages.closeNow(); cleanup(); $('gal-modal').classList.add('hidden'); }
 
   let prevTrack = null;   // 열 때 mypage BGM, 닫으면 이전 트랙 복귀
   async function open() {
     if (prevTrack === null) { prevTrack = window.VRSound?.track || ''; try { window.VRSound?.setTrack?.('audio/mypage.mp3'); } catch {} }
     ensureModal();
-    $('gal-modal').classList.remove('hidden'); document.body.classList.add('gal-lock');
+    if (!(window.VRPages?.current === 'gallery' || window.VRPages?.open?.('gallery'))) { $('gal-modal').classList.remove('hidden'); document.body.classList.add('gal-lock'); }
     $('gal-detail').classList.add('hidden');
     $('gal-msg').textContent = '불러오는 중...'; $('gal-grid').innerHTML = '';
     try { await loadCards(); await loadSkills(); } catch { $('gal-msg').textContent = '인재 목록을 불러오지 못했어요. 인터넷 연결을 확인해 주세요.'; return; }
