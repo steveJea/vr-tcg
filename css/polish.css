@@ -25,3 +25,25 @@ button:not(:disabled):active, [role="button"]:active, .main-tile:active, .story-
 .ui-stagger { animation: uiStagger .26s ease-out both; animation-delay: calc(var(--si, 0) * 22ms); }
 .ui-cur-tick { color: #fde68a; text-shadow: 0 0 8px rgba(253, 230, 138, .6); transition: color .2s, text-shadow .2s; }
 @media (prefers-reduced-motion: reduce) { .ui-stagger { animation: none !important; } .ui-cur-tick { text-shadow: none; } }
+
+/* ===== 폴리시 3 ===== */
+/* (a) 맞은 카드 하얀 섬광 (기존 밝기 필터 + 흰 테두리 빛) */
+.fx-hitflash { box-shadow: 0 0 0 2px rgba(255,255,255,.95), 0 0 22px 4px rgba(255,255,255,.75) !important; }
+/* (b) 결과: 글자 쾅 + 보상 줄 차례로 */
+.ui-slam { display: inline-block; animation: uiSlam .42s cubic-bezier(.2,1.4,.4,1) both; }
+@keyframes uiSlam { 0% { opacity: 0; transform: scale(2.4); filter: blur(4px); } 60% { opacity: 1; transform: scale(.92); filter: none; } 100% { transform: scale(1); } }
+.ui-rise { animation: uiRise .32s ease-out both; animation-delay: calc(.38s + var(--ri, 0) * .12s); }
+@keyframes uiRise { from { opacity: 0; transform: translateY(10px) scale(.96); } to { opacity: 1; transform: none; } }
+/* (c) 불러오는 중: 뼈대 막대 반짝 */
+.ui-skel { position: relative; color: transparent !important; min-height: 132px; border-radius: 12px; overflow: hidden;
+  background: linear-gradient(rgba(255,255,255,.07) 0 0) 16px 18px / 55% 14px no-repeat, linear-gradient(rgba(255,255,255,.07) 0 0) 16px 46px / 80% 12px no-repeat,
+    linear-gradient(rgba(255,255,255,.07) 0 0) 16px 70px / 70% 12px no-repeat, linear-gradient(rgba(255,255,255,.07) 0 0) 16px 94px / 40% 12px no-repeat; }
+.ui-skel::after { content: ''; position: absolute; inset: 0; background: linear-gradient(100deg, transparent 20%, rgba(255,255,255,.08) 45%, transparent 70%); background-size: 220% 100%; animation: uiShim 1.1s linear infinite; }
+@keyframes uiShim { from { background-position: 120% 0; } to { background-position: -120% 0; } }
+/* (d) 빨간 점 톡 */
+.ui-dot-pop { animation: uiDotPop .36s cubic-bezier(.2,1.6,.4,1) both; }
+@keyframes uiDotPop { 0% { transform: scale(0); } 70% { transform: scale(1.3); } 100% { transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) {
+  .ui-slam, .ui-rise, .ui-dot-pop { animation: none !important; }
+  .ui-skel::after { animation: none; }
+}

@@ -33,7 +33,15 @@
       for (const el of document.querySelectorAll(sel)) { if (el.dataset.cnt) continue; const v = numOf(el.textContent); if (v == null) continue; v1 = v;
         if (prev != null && prev !== v && el.dataset.curSeen !== String(v)) countUp(el, prev, v); el.dataset.curSeen = String(v); }
       if (v1 != null) lastCur[k] = v1; } };
-  if (!reduce) new MutationObserver(() => { if (!curQ) curQ = requestAnimationFrame(scanCur); }).observe(document.body, { childList: true, subtree: true, characterData: true });
+  // --- 폴리시3 (e) 전투력: 같은 화면(같은 카드 상세·같은 PvP 덱·같은 마이페이지 리더)에서 숫자가 바뀌면 올라감/내려감. 다른 카드로 바뀌면 그냥 표시 ---
+  const POW = [['.cd-power b', el => [document.getElementById('story-pop'), el.closest('.story-pop-panel')?.querySelector('img')?.getAttribute('src')]],
+    ['.pvp-pw', el => [el.closest('.pvp-modal'), el.closest('.pvp-modal')?.id]], ['.mp-leader-cap small', el => [el.closest('.mp-panel'), el.closest('.mp-leader-cap')?.querySelector('b')?.textContent]], ['.ci-power b', el => [document.getElementById('detail'), document.querySelector('#detail img')?.getAttribute('src')]]];
+  const powSeen = new WeakMap();
+  const scanPow = () => { for (const [sel, ctxOf] of POW) for (const el of document.querySelectorAll(sel)) { if (el.dataset.cnt) continue; const v = numOf(el.textContent); if (v == null) continue;
+    const [ctx, id] = ctxOf(el); if (!ctx) continue; const p = powSeen.get(ctx); powSeen.set(ctx, { id, v });
+    if (p && p.id === id && p.v !== v && el.dataset.curSeen !== String(v)) countUp(el, p.v, v); el.dataset.curSeen = String(v); } };
+  const scanAll = () => { scanCur(); try { scanPow(); } catch {} };
+  if (!reduce) new MutationObserver(() => { if (!curQ) curQ = requestAnimationFrame(scanAll); }).observe(document.body, { childList: true, subtree: true, characterData: true });
   if (reduce) return;
   const replay = (el, cls) => { el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); setTimeout(() => el.classList.remove(cls), 260); };
   // --- 팝업: 숨김(hidden) → 보임 으로 바뀔 때만 (같은 팝업 다시 그리기는 애니메이션 없음) ---
@@ -57,4 +65,28 @@
     const t = sr.querySelector('.story-top-title')?.textContent || sr.firstElementChild?.className || '';
     if (t === last) return; last = t; const w = sr.firstElementChild; if (w) { replay(w, 'ui-screen-in'); stagger(w); }
   }).observe(sr, { childList: true }); }
+  // ===== 폴리시 3 =====
+  const fxOff = () => !!(window.TCG?.fxOff || localStorage.getItem('vrTcgSkipFx') === '1');
+  // (b) 결과 화면: 승리/패배 글자가 쾅 → 보상 줄이 하나씩 (연출만 · 버튼은 바로 누를 수 있음)
+  const RES_T = '.story-chapter-big, .end-big, .pvp-res';
+  const resultFx = t => { if (fxOff() || t.dataset.slam) return; if (!/VICTORY|DEFEAT|DRAW|CLEAR|WIN|LOSE/.test(t.textContent)) return; t.dataset.slam = '1';
+    t.classList.add('ui-slam');
+    const box = t.closest('#end-screen') || t.closest('.pvp-panel') || t.closest('.text-center') || t.parentElement; if (!box) return;
+    const rows = [...box.querySelectorAll('.story-reward, .story-drops, .story-explist > *, #end-mvp-wrap > *, #end-stats > *, .pvp-round, .pvp-delta, .pvp-res-streak, .text-amber-200, .story-stars, .sc-stars')].filter(x => !x.closest('button')).slice(0, 14);
+    rows.forEach((r, i) => { r.style.setProperty('--ri', i); r.classList.add('ui-rise'); }); };
+  // (c) 불러오는 중 자리: 반짝이는 뼈대 막대 (글자 '…' · '불러오는 중' 인 자리만)
+  const SKEL = '.gd-loading, .pvp-empty, .dsp-empty, .gear-dim, .gd-empty, .vr-page-body > div, .story-pop-panel > div';
+  const skelFx = n => { const t = (n.textContent || '').trim(); if (n.children.length > 1 || !(t === '…' || t === '...' || /^불러오는 중/.test(t))) return; n.classList.add('ui-skel'); n.setAttribute('aria-busy', 'true'); };
+  // (d) 빨간 알림 점: 처음 나타날 때 톡 (같은 점이 다시 그려질 땐 없음)
+  const DOTS = '.gd-dot, .gd-badge, .gear-badge, .story-badge, .fr-tabbadge';
+  const dotKey = d => (d.closest('[data-t],[data-go],[data-tab],button')?.outerHTML.slice(0, 80) || '') + '|' + d.textContent;
+  const dotSeen = new Set();
+  const dotFx = d => { if (d.hidden || d.closest('#game')) return; const k = dotKey(d); if (dotSeen.has(k)) return; dotSeen.add(k); replay(d, 'ui-dot-pop'); };
+  let p3q = 0;
+  const scan3 = () => { p3q = 0;
+    for (const t of document.querySelectorAll(RES_T)) if (t.offsetParent || t.closest('#end-screen')) resultFx(t);
+    for (const n of document.querySelectorAll(SKEL)) if (!n.classList.contains('ui-skel')) skelFx(n);
+    for (const n of document.querySelectorAll('.ui-skel')) { const t = (n.textContent || '').trim(); if (n.children.length > 1 || !(t === '…' || t === '...' || /^불러오는 중/.test(t))) { n.classList.remove('ui-skel'); n.removeAttribute('aria-busy'); } }   // 같은 자리에 글(오류 등)이 들어오면 원래대로
+    for (const d of document.querySelectorAll(DOTS)) if (d.offsetParent) dotFx(d); };
+  new MutationObserver(() => { if (!p3q) p3q = requestAnimationFrame(scan3); }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['hidden', 'class'] });
 })();
