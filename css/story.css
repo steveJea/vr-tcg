@@ -1029,5 +1029,11 @@ body.story-media-on .story-dlg-skip { left: 4px; right: auto; top: calc(4px + en
 /* 출전 고르기: 등급 배지 없이 별만 위쪽 가운데 */
 .story-deckpick .story-pick-stars{top:5px;bottom:auto;left:5px;right:auto;transform:none;justify-content:flex-start;font-size:11px;gap:0}
 .gr-own{text-align:center;font-size:13px;font-weight:800;color:#fde7b0;margin:2px 0 6px;text-shadow:0 1px 3px #000}.gr-own .ui-ic,.gr-own img{width:16px;height:16px;vertical-align:-3px}.gr-own b{color:#fbbf24}
+/* 영입 영상 (story.js playGachaVideo): 화면 가득, 위에 SKIP. 끝나면 살짝 사라짐 */
+.gr-vid{position:fixed;inset:0;z-index:9000;background:#07060c;display:flex;align-items:center;justify-content:center;transition:opacity .2s}
+.gr-vid.out{opacity:0;pointer-events:none}
+.gr-vid-v{width:100%;height:100%;object-fit:cover;background:#07060c}
+.gr-vid-skip{position:absolute;right:max(14px,env(safe-area-inset-right));top:max(14px,env(safe-area-inset-top));padding:8px 16px;border-radius:999px;background:rgba(0,0,0,.55);color:#fff;font-weight:800;font-size:14px;letter-spacing:.04em;border:1px solid rgba(255,255,255,.35);backdrop-filter:blur(4px);z-index:1}
+.gr-vid-skip:active{transform:scale(.96)}
 /* 스토리 허브 제목 */
 .hub-top-r1 .hub-title{flex:1;min-width:0;text-align:center;font-weight:900;color:#f5c96a;font-size:15px;white-space:nowrap;text-shadow:0 1px 4px #000}

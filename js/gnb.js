@@ -24,7 +24,7 @@
   const grid = document.querySelector('#start-screen .main-grid');
   if (grid && !$('main-trade-tile')) grid.insertAdjacentHTML('beforeend', `<button id="main-trade-tile" class="main-tile tile-trade" type="button" data-auth title="거래소"><img src="img/ui/gnb/banner_exchange_v1.webp" alt="" class="main-tile-img"><b class="main-tile-t">⚖️ 거래소</b></button>`);
   $('main-trade-tile')?.addEventListener('click', () => $('main-trade') ? $('main-trade').click() : window.VRTrade?.open?.());
-  const busy = () => vis($('game')) || !!document.querySelector('.story-vcut, .story-ovp, #story-video, .pvp-vsx, #pvp-play, #story-screen:not(.hidden) #story-dlg, #vr-confirm:not(.hidden), .gr-forced') || !!window.__storyVideo?.el?.isConnected || vis($('story-intro')) || vis($('intro'));
+  const busy = () => vis($('game')) || !!document.querySelector('#gr-vid, .story-vcut, .story-ovp, #story-video, .pvp-vsx, #pvp-play, #story-screen:not(.hidden) #story-dlg, #vr-confirm:not(.hidden), .gr-forced') || !!window.__storyVideo?.el?.isConnected || vis($('story-intro')) || vis($('intro'));
   const active = () => { const c = V()?.current || ''; if (c === 'quest') return 'tower'; if (/^pvp/.test(c)) return 'pvp'; if (/^guild|^raid|^war/.test(c)) return 'guild'; if (/^mypage|^talent|^gallery|^friends/.test(c)) return 'my';
     if (c) return nav.dataset.last || 'home'; if (vis($('story-screen'))) return document.querySelector('#story-screen .gr-banners, #story-screen #gacha-stage, #story-screen #tk-result') ? 'summon' : 'home'; return 'home'; };
   const freeDraw = () => { const S = window.VRStory; if (S?.canDraw && S.save) return S.canDraw(); const u = window.VRCloud?.user || (window.__STORY_MOCK_USER); if (!u || !S?.kstDay) return false;
