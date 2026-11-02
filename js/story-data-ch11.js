@@ -42,7 +42,8 @@ window.STORY_DATA.chapters.push({
     "default": [
      {
       "speaker": "내레이션",
-      "text": "눈을 뜬 순간, 세상은 너무 어두웠다. 소리도, 온기도 없는 차가운 밤."
+      "text": "눈을 뜬 순간, 세상은 너무 어두웠다. 소리도, 온기도 없는 차가운 밤.",
+      "video": "video/story/ch11-02.mp4"
      },
      {
       "speaker": "내레이션",
@@ -119,7 +120,8 @@ window.STORY_DATA.chapters.push({
     {
      "speaker": "[염원] 최윤정",
      "text": "...아직이야. 아직 끝낼 수 없어. 지켜야 할 사람이 있어.",
-     "expr": "분노"
+     "expr": "분노",
+     "image": "img/story/ch11-03.webp"
     }
    ],
    "afterTitle": "전투 후"
@@ -211,7 +213,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "내레이션",
-      "text": "하지만 시간은 조용히 윤정을 지워 가고 있었다. 기억이 한 겹씩, 얇아졌다."
+      "text": "하지만 시간은 조용히 윤정을 지워 가고 있었다. 기억이 한 겹씩, 얇아졌다.",
+      "image": "img/story/ch11-04.webp"
      }
     ]
    },
@@ -422,7 +425,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "내레이션",
-      "text": "말은 필요 없었다. 같은 밤을 건너온 두 사람이, 다시 하나가 되는 데에는."
+      "text": "말은 필요 없었다. 같은 밤을 건너온 두 사람이, 다시 하나가 되는 데에는.",
+      "image": "img/story/ch11-05.webp"
      },
      {
       "speaker": "내레이션",
@@ -533,7 +537,8 @@ window.STORY_DATA.chapters.push({
       "speaker": "최윤희",
       "text": "근데 맛이 하나도 없어. 언니 계란말이는 맨날 짰는데, 그게 더 맛있었나 봐.",
       "expr": "슬픔",
-      "slug": "choi_yunhee_home"
+      "slug": "choi_yunhee_home",
+      "image": "img/story/ch11-06.webp"
      },
      {
       "speaker": "[염원] 최윤아",
@@ -737,8 +742,9 @@ window.STORY_DATA.chapters.push({
    "after": [
     {
      "speaker": "[염원] 최윤정",
-     "text": "윤희를 혼자 둘 순 없어. 그 작은 손을 남겨 두고, 우리만 사라질 순 없어.",
-     "expr": "보통"
+     "text": "윤희를 혼자 둘 순 없어. 그 가녀린 아이만 남겨 두고, 우리만 사라질 순 없어.",
+     "expr": "보통",
+     "image": "img/story/ch11-07.webp"
     }
    ],
    "afterTitle": "전투 후"
@@ -988,7 +994,8 @@ window.STORY_DATA.chapters.push({
    "after": [
     {
      "speaker": "내레이션",
-     "text": "윤정의 눈동자 속 차가운 불꽃이, 처음으로 뜨겁게 일렁였다."
+     "text": "윤정의 눈동자 속 차가운 불꽃이, 처음으로 뜨겁게 일렁였다.",
+     "image": "img/story/ch11-08.webp"
     }
    ],
    "afterTitle": "전투 후"
@@ -1062,7 +1069,8 @@ window.STORY_DATA.chapters.push({
      {
       "speaker": "[염원] 최윤정",
       "text": "알아. 세고 있었어. 4번째부터는 오른쪽으로 꺾자.",
-      "expr": "보통"
+      "expr": "보통",
+      "image": "img/story/ch11-09.webp"
      },
      {
       "speaker": "[염원] 최윤아",
@@ -1178,7 +1186,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "내레이션",
-      "text": "바람에 흩날리는 머리카락. 따분한 얼굴. 그리고 희미하게 금빛을 띤 왼쪽 눈. 그리고 그녀 뒤에 강해보이는 사념 2명.."
+      "text": "바람에 흩날리는 머리카락. 따분한 얼굴. 그리고 희미하게 금빛을 띤 왼쪽 눈. 그리고 그녀 뒤에 강해보이는 사념 2명..",
+      "image": "img/story/ch11-10.webp"
      },
      {
       "speaker": "이지영",
@@ -1414,7 +1423,8 @@ window.STORY_DATA.chapters.push({
      {
       "speaker": "이지영",
       "text": "...또 왔어?",
-      "expr": "분노"
+      "expr": "분노",
+      "image": "img/story/ch11-11.webp"
      },
      {
       "speaker": "[염원] 최윤정",
@@ -1568,10 +1578,6 @@ window.STORY_DATA.chapters.push({
       "speaker": "[염원] 최윤정",
       "text": "(남은 시간이 얼마 없어. 마음이 실처럼 풀려 가. 그래도...포기 못 해. 혼자 둘 수 없어.)",
       "expr": "슬픔"
-     },
-     {
-      "speaker": "내레이션",
-      "text": "윤정은 어둠 속으로 몸을 던졌다. 흩어지는 몸을 끌어모아, 멀리 보이는 종탑의 문을 향해."
      }
     ]
    },
@@ -1593,6 +1599,10 @@ window.STORY_DATA.chapters.push({
    ],
    "bossId": "10504",
    "after": [
+    {
+     "speaker": "내레이션",
+     "text": "윤정은 어둠 속으로 몸을 던졌다. 흩어지는 몸을 끌어모아, 멀리 보이는 종탑의 문을 향해."
+    },
     {
      "speaker": "내레이션",
      "text": "저 문 너머에 신이 있다면...무엇이든 내어 줄 수 있었다."
@@ -1628,7 +1638,8 @@ window.STORY_DATA.chapters.push({
      {
       "speaker": "이지영",
       "text": "...너 몸이 반밖에 없잖아. 무리하면 진짜 사라져.",
-      "expr": "놀람"
+      "expr": "놀람",
+      "image": "img/story/ch11-12.webp"
      },
      {
       "speaker": "[염원] 최윤정",
@@ -1689,7 +1700,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "내레이션",
-      "text": "이지영의 등 뒤에 있던 사념들이 이지영의 날개로 변했다."
+      "text": "이지영의 등 뒤에 있던 사념들이 이지영의 날개로 변했다.",
+      "image": "img/story/ch11-13.webp"
      }
     ]
    },
@@ -1813,6 +1825,10 @@ window.STORY_DATA.chapters.push({
       "speaker": "이지영",
       "text": "백시훈이지? 네 주변 시끄러워서 잠을 못 자. 오늘은 좀 조용히 해 줄래?",
       "expr": "분노"
+     },
+     {
+      "speaker": "내레이션",
+      "text": "금빛 왼쪽 눈이 밝게 타올랐다. 골목의 공기가 얼어붙었다."
      }
     ]
    },
@@ -1839,14 +1855,7 @@ window.STORY_DATA.chapters.push({
     "afterTurn": 1,
     "storyLevel": 100,
     "battleLevel": 10
-   },
-   "after": [
-    {
-     "speaker": "내레이션",
-     "text": "금빛 왼쪽 눈이 밝게 타올랐다. 골목의 공기가 얼어붙었다."
-    }
-   ],
-   "afterTitle": "전투 후"
+   }
   },
   {
    "no": 16,
@@ -1921,7 +1930,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "내레이션",
-      "text": "문이 열렸다. 윤희가 머리끈을 쥔 채 이지영을 올려다봤다."
+      "text": "문이 열렸다. 윤희가 머리끈을 쥔 채 이지영을 올려다봤다.",
+      "image": "img/story/ch11-14.webp"
      },
      {
       "speaker": "최윤희",
@@ -1953,7 +1963,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "내레이션",
-      "text": "윤희는 영문도 모른 채, 눈물 젖은 얼굴로 아주 조금 웃었다. 왼쪽 볼에만 보조개가 생겼다."
+      "text": "윤희는 영문도 모른 채, 눈물 젖은 얼굴로 아주 조금 웃었다. 왼쪽 볼에만 보조개가 생겼다.",
+      "image": "img/story/ch11-15.webp"
      },
      {
       "speaker": "이지영",
@@ -1995,17 +2006,18 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "[염원] 최윤정",
-      "text": "윤희야. 언니가 약속했잖아. 동생들은 내가 지킨다고.",
+      "text": "윤희야. 윤정아...언니가 약속했잖아. 동생들은 내가 지킨다고.",
       "expr": "기쁨"
      },
      {
       "speaker": "[염원] 최윤정",
-      "text": "이번에야말로...반드시 지킬 테니까.",
+      "text": "이번에야말로...반드시......",
       "expr": "기쁨"
      },
      {
       "speaker": "내레이션",
-      "text": "얼음공주는 그날 처음으로, 동생들 앞에서 웃었다."
+      "text": "얼음공주는 그날 처음으로, 동생들 앞에서 웃었다.",
+      "image": "img/story/ch11-16.webp"
      }
     ]
    },
@@ -2054,7 +2066,8 @@ window.STORY_DATA.chapters.push({
   {
    "speaker": "최윤정",
    "text": "약속했어. 아빠한테도, 엄마한테도. 동생들은 내가 지킨다고.",
-   "expr": "보통"
+   "expr": "보통",
+   "image": "img/story/ch11-01.webp"
   },
   {
    "speaker": "최윤정",

@@ -103,7 +103,8 @@ window.STORY_DATA.chapters.push({
      {
       "speaker": "김지수",
       "text": "(와...쟤 대단하네.)",
-      "expr": "기쁨"
+      "expr": "기쁨",
+      "image": "img/story/ch12-02.webp"
      }
     ]
    },
@@ -184,7 +185,8 @@ window.STORY_DATA.chapters.push({
      {
       "speaker": "임유리",
       "text": "너, 김지수지? 루비에르 회장 손녀.",
-      "expr": "기쁨"
+      "expr": "기쁨",
+      "image": "img/story/ch12-03.webp"
      },
      {
       "speaker": "김지수",
@@ -330,7 +332,8 @@ window.STORY_DATA.chapters.push({
      {
       "speaker": "임유리",
       "text": "어머, 예쁘다. 나 주는 거야?",
-      "expr": "기쁨"
+      "expr": "기쁨",
+      "image": "img/story/ch12-04.webp"
      },
      {
       "speaker": "김지수",
@@ -442,7 +445,8 @@ window.STORY_DATA.chapters.push({
      {
       "speaker": "김지수",
       "text": "엄마 아빠는 내가 8살 때 사고로...할머니는 그때부터 회사만 지키셨어. 나 지키려고 그러시는 거 알아. 근데...",
-      "expr": "슬픔"
+      "expr": "슬픔",
+      "image": "img/story/ch12-05.webp"
      },
      {
       "speaker": "임유리",
@@ -452,7 +456,8 @@ window.STORY_DATA.chapters.push({
      {
       "speaker": "김지수",
       "text": "...사촌언니가 하나 있었어. 지우 언니. 안전지대 B에... 이모네랑 살아. 초록색 머리에, 누구한테나 다정한 사람. 이번에 고등학교 졸업하고, 발레로 대학 붙었대.",
-      "expr": "슬픔"
+      "expr": "슬픔",
+      "image": "img/story/ch12-06.webp"
      },
      {
       "speaker": "김지수",
@@ -576,49 +581,13 @@ window.STORY_DATA.chapters.push({
      {
       "speaker": "이민채",
       "text": "너...유리랑...무슨...관계야?",
-      "expr": "분노"
+      "expr": "분노",
+      "image": "img/story/ch12-07.webp"
      },
      {
       "speaker": "김지수",
       "text": "...",
       "expr": "보통"
-     },
-     {
-      "speaker": "이민채",
-      "text": "유리가 요즘 나 안 봐. 연락도 안 받아. 다 너 때문이지? 그치?",
-      "expr": "슬픔"
-     },
-     {
-      "speaker": "김지수",
-      "text": "...응.",
-      "expr": "기쁨"
-     },
-     {
-      "speaker": "내레이션",
-      "text": "김지수는 차갑게 웃으며 민채를 밀쳤다. 민채가 바닥에 쓰러졌다."
-     },
-     {
-      "speaker": "김지수",
-      "text": "너랑은 다른 관계.",
-      "expr": "기쁨"
-     },
-     {
-      "speaker": "이민채",
-      "text": "...다른...관계...?",
-      "expr": "슬픔"
-     },
-     {
-      "speaker": "내레이션",
-      "text": "복도 끝에서 검은 정장의 여자들이 걸어왔다. 유리의 비서들이었다."
-     },
-     {
-      "speaker": "도예나",
-      "text": "이민채 학생. 유리 님께 접근하지 말라고 몇 번 말씀드렸습니다.",
-      "expr": "보통"
-     },
-     {
-      "speaker": "내레이션",
-      "text": "비서들이 민채를 막아섰다. 그날 이후, 학교에서 민채를 본 사람은 없었다."
      }
     ]
    },
@@ -639,6 +608,43 @@ window.STORY_DATA.chapters.push({
    ],
    "bossId": "10300",
    "after": [
+    {
+     "speaker": "이민채",
+     "text": "유리가 요즘 나 안 봐. 연락도 안 받아. 다 너 때문이지? 그치?",
+     "expr": "슬픔"
+    },
+    {
+     "speaker": "김지수",
+     "text": "...응.",
+     "expr": "기쁨"
+    },
+    {
+     "speaker": "내레이션",
+     "text": "김지수는 차갑게 웃으며 민채를 밀쳤다. 민채가 바닥에 쓰러졌다."
+    },
+    {
+     "speaker": "김지수",
+     "text": "너랑은 다른 관계.",
+     "expr": "기쁨"
+    },
+    {
+     "speaker": "이민채",
+     "text": "...다른...관계...?",
+     "expr": "슬픔"
+    },
+    {
+     "speaker": "내레이션",
+     "text": "복도 끝에서 검은 정장의 여자들이 걸어왔다. 유리의 비서들이었다."
+    },
+    {
+     "speaker": "도예나",
+     "text": "이민채 학생. 유리 님께 접근하지 말라고 몇 번 말씀드렸습니다.",
+     "expr": "보통"
+    },
+    {
+     "speaker": "내레이션",
+     "text": "비서들이 민채를 막아섰다. 그날 이후, 학교에서 민채를 본 사람은 없었다."
+    },
     {
      "speaker": "김지수",
      "text": "(...이상하다. 하나도 안 미안해.)",
@@ -896,6 +902,10 @@ window.STORY_DATA.chapters.push({
       "speaker": "안혜진",
       "text": "물어볼 것만 묻고 가겠습니다. 길을 비켜 주세요.",
       "expr": "보통"
+     },
+     {
+      "speaker": "불량배-X",
+      "text": "싫은데? 유리님한테 이르기 전에 좀 맞고 가."
      }
     ]
    },
@@ -914,14 +924,7 @@ window.STORY_DATA.chapters.push({
    "hero": [
     "10505"
    ],
-   "bossId": "10165",
-   "after": [
-    {
-     "speaker": "불량배-X",
-     "text": "싫은데? 유리님한테 이르기 전에 좀 맞고 가."
-    }
-   ],
-   "afterTitle": "전투 후"
+   "bossId": "10165"
   },
   {
    "no": 8,
@@ -984,7 +987,8 @@ window.STORY_DATA.chapters.push({
      {
       "speaker": "안혜진",
       "text": "...그 아이가 보냈군요. 그럼 더더욱 물러날 수 없겠네요.",
-      "expr": "분노"
+      "expr": "분노",
+      "image": "img/story/ch12-08.webp"
      }
     ]
    },
@@ -1080,7 +1084,8 @@ window.STORY_DATA.chapters.push({
     },
     {
      "speaker": "내레이션",
-     "text": "안혜진은 깊이 고개를 숙였다. 그 눈동자 깊은 곳에서, 무언가가 아주 잠깐 흔들렸다."
+     "text": "안혜진은 깊이 고개를 숙였다. 그 눈동자 깊은 곳에서, 무언가가 아주 잠깐 흔들렸다.",
+     "image": "img/story/ch12-09.webp"
     }
    ],
    "afterTitle": "전투 후"
@@ -1297,11 +1302,12 @@ window.STORY_DATA.chapters.push({
      {
       "speaker": "임유리",
       "text": "(할망구, 이제 치울 때가 됐나 보네.)",
-      "expr": "기쁨"
+      "expr": "기쁨",
+      "video": "video/story/ch12-10.mp4"
      },
      {
       "speaker": "내레이션",
-      "text": "유리는 아버지를 잃고 무너져 있던 안혜진에게 의도적으로 다가갔다. 매일 밤 전화하고, 위로하고, 속삭였다."
+      "text": "유리는 안혜진에게 의도적으로 다가갔다. 그녀를 위로하고, 속삭였다."
      },
      {
       "speaker": "임유리",
@@ -1322,10 +1328,6 @@ window.STORY_DATA.chapters.push({
       "speaker": "안혜진",
       "text": "...네. 주인님...",
       "expr": "보통"
-     },
-     {
-      "speaker": "내레이션",
-      "text": "그 후, 안혜진은 구속·기소되었다. 그리고 재판을 앞두고, 감쪽같이 행방불명되었다."
      }
     ]
    },
@@ -1346,6 +1348,10 @@ window.STORY_DATA.chapters.push({
    ],
    "bossId": "10505",
    "after": [
+    {
+     "speaker": "내레이션",
+     "text": "그 후, 안혜진은 구속·기소되었다. 그리고 재판을 앞두고, 감쪽같이 행방불명되었다."
+    },
     {
      "speaker": "내레이션",
      "text": "경찰도, 언론도 더 이상 그 이름을 입에 올리지 않았다. SDK홀딩스의 이름이 닿는 곳에선, 늘 그랬다."
@@ -1412,7 +1418,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "내레이션",
-      "text": "김지수는 상주 자리에 앉아 기계적으로 고개를 숙였다. 눈물은 나오지 않았다."
+      "text": "김지수는 상주 자리에 앉아 기계적으로 고개를 숙였다. 눈물은 나오지 않았다.",
+      "video": "video/story/ch12-11.mp4"
      },
      {
       "speaker": "내레이션",
@@ -1421,7 +1428,8 @@ window.STORY_DATA.chapters.push({
      {
       "speaker": "김지우",
       "text": "지수야...할머니가...미안해. 너무 늦게 와서.",
-      "expr": "슬픔"
+      "expr": "슬픔",
+      "image": "img/story/ch12-12.webp"
      },
      {
       "speaker": "김지수",
@@ -1468,7 +1476,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "내레이션",
-      "text": "발인날. 장례식장 입구에 검은 정장을 입은 소녀가 나타났다."
+      "text": "발인날. 장례식장 입구에 검은 정장을 입은 소녀가 나타났다.",
+      "image": "img/story/ch12-13.webp"
      },
      {
       "speaker": "김지수",
@@ -1497,6 +1506,10 @@ window.STORY_DATA.chapters.push({
       "speaker": "임유리",
       "text": "(저 언니가 김지우구나. 예쁘네.)",
       "expr": "기쁨"
+     },
+     {
+      "speaker": "내레이션",
+      "text": "유리의 입에서 짧은 웃음이 새어 나왔다. 피식."
      }
     ]
    },
@@ -1515,14 +1528,7 @@ window.STORY_DATA.chapters.push({
    "hero": [
     "10072"
    ],
-   "bossId": "10153",
-   "after": [
-    {
-     "speaker": "내레이션",
-     "text": "유리의 입에서 짧은 웃음이 새어 나왔다. 피식."
-    }
-   ],
-   "afterTitle": "전투 후"
+   "bossId": "10153"
   },
   {
    "no": 12,
@@ -1641,6 +1647,11 @@ window.STORY_DATA.chapters.push({
       "speaker": "한서린",
       "text": "(...저 아이도 오래 못 가겠네.)",
       "expr": "보통"
+     },
+     {
+      "speaker": "도예나",
+      "text": "(쉿. 들리면 우리가 먼저 사라져.)",
+      "expr": "보통"
      }
     ]
    },
@@ -1659,15 +1670,7 @@ window.STORY_DATA.chapters.push({
    "hero": [
     "10072"
    ],
-   "bossId": "10506",
-   "after": [
-    {
-     "speaker": "도예나",
-     "text": "(쉿. 들리면 우리가 먼저 사라져.)",
-     "expr": "보통"
-    }
-   ],
-   "afterTitle": "전투 후"
+   "bossId": "10506"
   },
   {
    "no": 13,
@@ -1728,7 +1731,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "내레이션",
-      "text": "안지수. 20살. 김지우의 고등학교 단짝. 헝클어진 짧은 짙은 보라색 머리, 갈색 눈, 늘 찌푸린 날카로운 얼굴. 헐렁한 짙은 회색 후드티에, 두 손엔 핸드랩이 감겨 있었다."
+      "text": "안지수. 20살. 김지우의 고등학교 단짝. 헝클어진 짧은 짙은 보라색 머리, 갈색 눈, 늘 찌푸린 날카로운 얼굴. 헐렁한 짙은 회색 후드티에, 두 손엔 핸드랩이 감겨 있었다.",
+      "image": "img/story/ch12-14.webp"
      },
      {
       "speaker": "안지수",
@@ -1771,6 +1775,11 @@ window.STORY_DATA.chapters.push({
      {
       "speaker": "내레이션",
       "text": "유리의 사람들이 안지수를 둘러쌌다. 안지수는 손에 감긴 핸드랩을 꽉 조였다."
+     },
+     {
+      "speaker": "안지수",
+      "text": "비켜. 나 주먹부터 나가는 사람이야.",
+      "expr": "분노"
      }
     ]
    },
@@ -1792,64 +1801,24 @@ window.STORY_DATA.chapters.push({
    "bossId": "10229",
    "rules": {
     "maxTurns": 6
-   },
-   "after": [
-    {
-     "speaker": "안지수",
-     "text": "비켜. 나 주먹부터 나가는 사람이야.",
-     "expr": "분노"
-    }
-   ],
-   "afterTitle": "전투 후"
+   }
   },
   {
    "no": 14,
    "type": "normal",
-   "enemyName": "한서린",
+   "enemyName": "임유리",
    "title": "하얀 핸드랩",
    "enemies": {
     "ids": [
-     "10506",
-     "10507",
-     "10157",
-     "10158",
-     "10159"
+     "10325"
     ],
     "boost": {
-     "10506": {
-      "HP": 628,
-      "ATK": 115,
-      "DEF": 147,
+     "10325": {
+      "HP": 2832,
+      "ATK": 360,
+      "DEF": 360,
       "storyLv": 84,
-      "power": 45312
-     },
-     "10507": {
-      "HP": 733,
-      "ATK": 147,
-      "DEF": 119,
-      "storyLv": 84,
-      "power": 49316
-     },
-     "10157": {
-      "HP": 183,
-      "ATK": 26,
-      "DEF": 20,
-      "storyLv": 84,
-      "power": 2333
-     },
-     "10158": {
-      "HP": 183,
-      "ATK": 27,
-      "DEF": 27,
-      "storyLv": 84,
-      "power": 2467
-     },
-     "10159": {
-      "HP": 266,
-      "ATK": 53,
-      "DEF": 43,
-      "storyLv": 84,
-      "power": 9220
+      "power": 332457
      }
     }
    },
@@ -1901,50 +1870,51 @@ window.STORY_DATA.chapters.push({
       "speaker": "임유리",
       "text": "알아요. 그래서 문 다 잠가 놨는데.",
       "expr": "기쁨"
-     },
-     {
-      "speaker": "내레이션",
-      "text": "문이 닫혔다. 그날 밤, 김지수는 유리의 성 복도에서 찢어진 하얀 핸드랩 한 조각을 주웠다."
-     },
-     {
-      "speaker": "김지수",
-      "text": "...유리야, 아까 그 언니는?",
-      "expr": "놀람"
-     },
-     {
-      "speaker": "임유리",
-      "text": "갔어. 멀리. ...왜, 궁금해?",
-      "expr": "기쁨"
-     },
-     {
-      "speaker": "김지수",
-      "text": "...아니. 안 궁금해.",
-      "expr": "보통"
-     },
-     {
-      "speaker": "내레이션",
-      "text": "안지수의 휴대폰은 다음 날부터 꺼져 있었다. 그녀는 유리 주변에서 끊겨 나간 18번째 이름이 되었다."
      }
     ]
    },
    "party": {
     "forced": [
-     "10072"
+     "10229"
     ],
     "noMale": true,
     "maxGrade": "SUPER RARE",
     "mustLive": [
-     "10072"
+     "10229"
     ],
     "levels": {
-     "10072": 84
+     "10229": 84
     }
    },
    "hero": [
-    "10072"
+    "10229"
    ],
-   "bossId": "10506",
+   "bossId": "10325",
+   "loseClears": true,
    "after": [
+    {
+     "speaker": "내레이션",
+     "text": "문이 닫혔다. 그날 밤, 김지수는 유리의 성 복도에서 찢어진 하얀 핸드랩 한 조각을 주웠다."
+    },
+    {
+     "speaker": "김지수",
+     "text": "...유리야, 아까 그 언니는?",
+     "expr": "놀람"
+    },
+    {
+     "speaker": "임유리",
+     "text": "갔어. 멀리. ...왜, 궁금해?",
+     "expr": "기쁨"
+    },
+    {
+     "speaker": "김지수",
+     "text": "...아니. 안 궁금해.",
+     "expr": "보통"
+    },
+    {
+     "speaker": "내레이션",
+     "text": "안지수의 휴대폰은 다음 날부터 꺼져 있었다. 그녀는 유리 주변에서 끊겨 나간 18번째 이름이 되었다."
+    },
     {
      "speaker": "내레이션",
      "text": "김지수는 그 핸드랩 조각을 주머니에 넣었다. 왜 그랬는지는 스스로도 몰랐다."
@@ -2028,25 +1998,6 @@ window.STORY_DATA.chapters.push({
       "speaker": "최태석",
       "text": "...내용은 읽어 보셨습니까? 이건 루비에르 그룹 그 자체입니다.",
       "expr": "놀람"
-     },
-     {
-      "speaker": "김지수",
-      "text": "괜찮아요. 주인님이 원하시는 거니까.",
-      "expr": "기쁨"
-     },
-     {
-      "speaker": "내레이션",
-      "text": "김지수의 펜이 종이 위를 미끄러졌다. 할머니가 평생을 바쳐 지킨 이름이, 단 몇 초 만에 넘어갔다."
-     },
-     {
-      "speaker": "김지수",
-      "text": "할머니가 주신 거...주인님께 드렸어요.",
-      "expr": "기쁨"
-     },
-     {
-      "speaker": "임유리",
-      "text": "착하네, 우리 지수....",
-      "expr": "기쁨"
      }
     ]
    },
@@ -2068,6 +2019,26 @@ window.STORY_DATA.chapters.push({
    ],
    "bossId": "10508",
    "after": [
+    {
+     "speaker": "김지수",
+     "text": "괜찮아요. 주인님이 원하시는 거니까.",
+     "expr": "기쁨"
+    },
+    {
+     "speaker": "내레이션",
+     "text": "김지수의 펜이 종이 위를 미끄러졌다. 할머니가 평생을 바쳐 지킨 이름이, 단 몇 초 만에 넘어갔다."
+    },
+    {
+     "speaker": "김지수",
+     "text": "할머니가 주신 거...주인님께 드렸어요.",
+     "expr": "기쁨"
+    },
+    {
+     "speaker": "임유리",
+     "text": "착하네, 우리 지수....",
+     "expr": "기쁨",
+     "video": "video/story/ch12-15.mp4"
+    },
     {
      "speaker": "내레이션",
      "text": "유리는 김지수의 머리를 두 번 토닥였다. 그리고 다시는 김지수를 돌아보지 않았다."
@@ -2157,7 +2128,7 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "내레이션",
-      "text": "원피스 한 벌과 레더 재킷 한 벌. 그것이 루비에르 회장 손녀의 전 재산이었다."
+      "text": "그것이 루비에르 회장 손녀의 전 재산이었다."
      },
      {
       "speaker": "김지수",
@@ -2178,6 +2149,11 @@ window.STORY_DATA.chapters.push({
       "speaker": "김지수",
       "text": "(유리라면 해결해 줄 거야! 유리는 날 사랑하니까!)",
       "expr": "기쁨"
+     },
+     {
+      "speaker": "내레이션",
+      "text": "김지수는 레더 재킷을 걸치고 달렸다. 장미향이 나던 그 성을 향해.",
+      "image": "img/story/ch12-16.webp"
      }
     ]
    },
@@ -2197,14 +2173,7 @@ window.STORY_DATA.chapters.push({
    "hero": [
     "10072"
    ],
-   "bossId": "10163",
-   "after": [
-    {
-     "speaker": "내레이션",
-     "text": "김지수는 레더 재킷을 걸치고 달렸다. 장미향이 나던 그 성을 향해."
-    }
-   ],
-   "afterTitle": "전투 후"
+   "bossId": "10163"
   },
   {
    "no": 17,
@@ -2288,6 +2257,12 @@ window.STORY_DATA.chapters.push({
       "speaker": "한서린",
       "text": "마지막으로 말씀드립니다. 돌아가십시오.",
       "expr": "보통"
+     },
+     {
+      "speaker": "김지수",
+      "text": "너희들 뭐 하는 거야! 나 지수라고! 유리의 애인 김지수!!!!",
+      "expr": "분노",
+      "image": "img/story/ch12-17.webp"
      }
     ]
    },
@@ -2307,15 +2282,7 @@ window.STORY_DATA.chapters.push({
    "hero": [
     "10072"
    ],
-   "bossId": "10506",
-   "after": [
-    {
-     "speaker": "김지수",
-     "text": "너희들 뭐 하는 거야! 나 지수라고! 유리의 애인 김지수!!!!",
-     "expr": "분노"
-    }
-   ],
-   "afterTitle": "전투 후"
+   "bossId": "10506"
   },
   {
    "no": 18,
@@ -2428,19 +2395,6 @@ window.STORY_DATA.chapters.push({
       "speaker": "임유리",
       "text": "약속했잖아. 이제 나만 보라고. 그러니까...지수가 마지막으로 보는 건, 나야.",
       "expr": "기쁨"
-     },
-     {
-      "speaker": "내레이션",
-      "text": "붉은 눈이 웃었다. 그것이 김지수가 본 마지막 빛이었다."
-     },
-     {
-      "speaker": "내레이션",
-      "text": "그리고...어둠."
-     },
-     {
-      "speaker": "김지수",
-      "text": "아...아아...안 보여...유리야...아무것도 안 보여...!",
-      "expr": "다침"
      }
     ]
    },
@@ -2461,16 +2415,30 @@ window.STORY_DATA.chapters.push({
     "10072"
    ],
    "bossId": "10325",
+   "rules": {
+    "survive": 5
+   },
    "after": [
+    {
+     "speaker": "내레이션",
+     "text": "붉은 눈이 웃었다. 그것이 김지수가 본 마지막 빛이었다."
+    },
+    {
+     "speaker": "내레이션",
+     "text": "그리고...어둠."
+    },
+    {
+     "speaker": "김지수",
+     "text": "아...아아...안 보여...유리야...아무것도 안 보여...!",
+     "expr": "다침",
+     "image": "img/story/ch12-18.webp"
+    },
     {
      "speaker": "임유리",
      "text": "쉿. 이제 진짜로 나만 기억하겠네. 착하지.",
      "expr": "기쁨"
     }
    ],
-   "rules": {
-    "survive": 5
-   },
    "afterTitle": "전투 후"
   },
   {
@@ -2549,43 +2517,6 @@ window.STORY_DATA.chapters.push({
       "speaker": "임유리",
       "text": "그래서 재미없어. 이제 너한테 뺏을 게 하나도 안 남았거든.",
       "expr": "보통"
-     },
-     {
-      "speaker": "임유리",
-      "text": "버려.",
-      "expr": "보통"
-     },
-     {
-      "speaker": "한서린",
-      "text": "예, 유리 님.",
-      "expr": "보통"
-     },
-     {
-      "speaker": "김지수",
-      "text": "싫어...싫어! 주인님! 주인님!! 나 버리지 마!!!",
-      "expr": "슬픔"
-     },
-     {
-      "speaker": "내레이션",
-      "text": "문이 닫히는 소리. 그리고 다시는 열리지 않았다."
-     },
-     {
-      "speaker": "내레이션",
-      "text": "비서들은 김지수를 차에 태워 낯선 거리 한복판에 내려놓았다."
-     },
-     {
-      "speaker": "도예나",
-      "text": "이건 유리 님의 마지막 배려입니다.",
-      "expr": "보통"
-     },
-     {
-      "speaker": "내레이션",
-      "text": "비서가 김지수의 손에 무언가를 쥐여 주었다. 김지수의 낡은 지갑. 잔고는 여전히 48,200원이었다."
-     },
-     {
-      "speaker": "김지수",
-      "text": "(...안 보여. 여기가 어딘지도 모르겠어. 할머니...지우 언니...)",
-      "expr": "슬픔"
      }
     ]
    },
@@ -2606,16 +2537,53 @@ window.STORY_DATA.chapters.push({
     "10072"
    ],
    "bossId": "10325",
+   "rules": {
+    "survive": 7
+   },
    "after": [
+    {
+     "speaker": "임유리",
+     "text": "버려.",
+     "expr": "보통"
+    },
+    {
+     "speaker": "한서린",
+     "text": "예, 유리 님.",
+     "expr": "보통"
+    },
+    {
+     "speaker": "김지수",
+     "text": "싫어...싫어! 주인님! 주인님!! 나 버리지 마!!!",
+     "expr": "슬픔"
+    },
+    {
+     "speaker": "내레이션",
+     "text": "문이 닫히는 소리. 그리고 다시는 열리지 않았다."
+    },
+    {
+     "speaker": "내레이션",
+     "text": "비서들은 김지수를 차에 태워 낯선 거리 한복판에 내려놓았다."
+    },
+    {
+     "speaker": "도예나",
+     "text": "이건 유리 님의 마지막 배려입니다.",
+     "expr": "보통"
+    },
+    {
+     "speaker": "내레이션",
+     "text": "비서가 김지수의 손에 무언가를 쥐여 주었다. 김지수의 낡은 지갑. 잔고는 여전히 48,200원이었다."
+    },
+    {
+     "speaker": "김지수",
+     "text": "(...안 보여. 여기가 어딘지도 모르겠어. 할머니...지우 언니...)",
+     "expr": "슬픔"
+    },
     {
      "speaker": "김지수",
      "text": "(아...다 내가 버렸구나.)",
      "expr": "슬픔"
     }
    ],
-   "rules": {
-    "survive": 7
-   },
    "afterTitle": "전투 후"
   },
   {
@@ -2689,7 +2657,12 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "내레이션",
-      "text": "어둠 속에서 민채의 그림자가 하나, 둘, 다섯으로 갈라졌다. 김지수의 보이지 않는 눈앞을 에워쌌다."
+      "text": "어둠 속에서 민채의 그림자가 웃으며 김지수의 보이지 않는 눈앞을 에워쌌다."
+     },
+     {
+      "speaker": "김지수",
+      "text": "...오지 마. 나는...나는 아직...!",
+      "expr": "분노"
      }
     ]
    },
@@ -2714,15 +2687,7 @@ window.STORY_DATA.chapters.push({
      "10072": 0.4
     },
     "survive": 10
-   },
-   "after": [
-    {
-     "speaker": "김지수",
-     "text": "...오지 마. 나는...나는 아직...!",
-     "expr": "분노"
-    }
-   ],
-   "afterTitle": "전투 후"
+   }
   },
   {
    "no": 21,
@@ -2767,7 +2732,7 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "내레이션",
-      "text": "레더 재킷 한 벌로는 겨울을 막을 수 없었다. 손끝부터 감각이 사라져 갔다."
+      "text": "교복 한벌로는 추위를 막을 수 없었다. 손끝부터 감각이 사라져 갔다."
      },
      {
       "speaker": "김지수",
@@ -2864,7 +2829,8 @@ window.STORY_DATA.chapters.push({
   },
   {
    "speaker": "내레이션",
-   "text": "그리고 그녀는, 그 한 사람을 만났다. 장미향이 나는 소녀를."
+   "text": "그리고 그녀는, 그 한 사람을 만났다. 장미향이 나는 소녀를.",
+   "image": "img/story/ch12-01.webp"
   }
  ],
  "ending": [],

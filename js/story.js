@@ -940,6 +940,7 @@
     else if (boss) win.push(['👑', '상대 진영 HP <b>0</b>', `보스 ${nm(ph.bossId)}는 쓰러지지 않아요`]);
     else win.push(['⚔️', '적 <b>전멸</b>', '']);
     if (R.survive) win.push(['⏳', `또는 <b>${R.survive}턴</b> 생존`, '']);
+    if (ph.loseClears) win.push(['📖', '<b>져도 클리어</b> (별 3개 · 다음 페이즈로)', '포기는 제외']);   // 페이즈 loseClears: 패배해도 클리어 (CH12 P14)
     for (const id of R.mustLive || []) lose.push(['💔', `<b>${nm(id)}</b> 쓰러짐`, '']);
     const mp = !ch.tutorial || !!ph.pool, ms = ph.mustSummon || (mp && ch.single ? (ph.party?.forced || ph.party?.mustLive || []) : []);
     if (ms.length) lose.push(['📌', `<b>${ms.map(nm).join('·')}</b> ${ms.length >= 2 ? 3 : 2}턴 안에 소환 못 함`, '']);
@@ -1060,7 +1061,9 @@
     });
   }
   async function result(ch, ph, win, reason, st = {}) {
-    if (!win) {
+    // 페이즈 loseClears (CH12 P14 안지수 vs 임유리): 져도(포기 제외) 승리와 같은 길로 클리어 처리 + 별 3개. 이 플래그 없는 페이즈는 그대로
+    const lostOk = !win && !!ph.loseClears && reason !== 'giveup';
+    if (!win && !lostOk) {
       const ab = serverMode && window.VRPlayer ? await window.VRPlayer.abort() : null;
       show(`<div class="text-center py-10"><div class="story-chapter-big text-red-400">DEFEAT</div><div class="text-zinc-300 mt-2">${reason === 'giveup' ? '도전을 포기했어요.' : reason === 'wipe' ? (window.TCG?.S?.me?.manaPool ? '아군 전멸! 남은 마나로 소환할 수 없어요.' : '아군 전멸!') : reason === 'mustsummon' ? `필수 인재 ${esc(window.TCG?.S?.mustSummonMiss || '')}을(를) 제때 소환하지 못했어요.` : reason === 'mustlive' ? `${esc(window.TCG?.S?.mustLiveDown || card((battleRules(ch, ph)?.mustLive || [])[0])?.name || '필수 출전')} 인재가 쓰러졌어요.` : reason === 'timeout' ? (ph.type === 'boss' ? '턴 제한 안에 상대 진영을 무너뜨리지 못했어요.' : '턴 제한 안에 적을 모두 쓰러뜨리지 못했어요.') : '패배했어요.'} 스탯을 올리고 다시 도전해 보세요!</div>${ab?.refunded ? `<div class="mt-2 text-emerald-300 text-sm">🔋 행동력 ${ab.refunded} 반환 (보유 ${ab.stamina}/${ab.stamina_max})</div>` : ''}
         <div class="flex flex-col gap-2 max-w-xs mx-auto mt-6"><button class="story-btn" id="story-retry">다시 도전</button><button class="story-back" data-go="map">챕터 지도로</button></div></div>`);
@@ -1100,7 +1103,7 @@
     if (first && ph.after?.length) await new Promise(ok => {
       const go = () => playLines(ph.after, [], ok, /엔딩/.test(ph.afterTitle || '') ? 'ending' : 'story', ph.hero || ch.hero);
       if (!ph.afterTitle) return go();
-      show(`<div class="story-intro" id="story-intro"><div class="story-chapter-sub">${esc(ch.title)} · Phase.${ph.no} 승리 후</div><div class="story-chapter-name">${esc(ph.afterTitle)}</div><div class="text-xs text-zinc-500 mt-8">화면을 누르면 계속</div></div>`);
+      show(`<div class="story-intro" id="story-intro"><div class="story-chapter-sub">${esc(ch.title)} · Phase.${ph.no} ${lostOk ? '전투' : '승리'} 후</div><div class="story-chapter-name">${esc(ph.afterTitle)}</div><div class="text-xs text-zinc-500 mt-8">화면을 누르면 계속</div></div>`);
       $('story-intro').onclick = go;
     });
     if (first && (ph.type === 'boss' || ph.final) && ch.ending?.length) await new Promise(ok => playLines(ch.ending, [], ok, 'ending', ph.hero || ch.hero));
@@ -1111,10 +1114,10 @@
     const nextPh = ch.phases[ch.phases.findIndex(p => p.no === ph.no) + 1] || null;
     const nextI = D.chapters.findIndex(c => c.id === ch.id) + 1, nextChB = nextPh ? null : D.chapters[nextI] || null;
     const hasNext = !!(nextPh || nextChB), nextOpen = !!nextPh || (!!nextChB && chapterOpen(nextI));
-    const stars = starsCalc(ph, st), bestB = starsOf(ch.id, ph.no); if (stars) await saveStars(ch, ph, stars);
-    const starRow = stars ? `<div class="story-star-res">${starHtml(stars, 'big')}<div class="text-xs text-zinc-300 mt-2 inline-flex flex-col items-start gap-0.5 text-left">${(() => { const t = ph.starTurns || STAR_TURNS, k = ph.starMana ?? STAR_MANA, need = Math.ceil(st.maxMana * k), okT = (st.myTurns | 0) <= t, okM = st.mana >= need, ln = (ok, txt) => `<div><b class="${ok ? 'text-emerald-400' : 'text-red-400'}">${ok ? '✔' : '✖'}</b> ${txt}</div>`;
+    const stars = lostOk ? 3 : starsCalc(ph, st), bestB = starsOf(ch.id, ph.no); if (stars) await saveStars(ch, ph, stars);
+    const starRow = stars ? `<div class="story-star-res">${starHtml(stars, 'big')}<div class="text-xs text-zinc-300 mt-2 inline-flex flex-col items-start gap-0.5 text-left">${lostOk ? '<div><b class="text-emerald-400">✔</b> 패배해도 클리어되는 페이즈 (별 3개)</div>' : ''}${lostOk ? '' : (() => { const t = ph.starTurns || STAR_TURNS, k = ph.starMana ?? STAR_MANA, need = Math.ceil(st.maxMana * k), okT = (st.myTurns | 0) <= t, okM = st.mana >= need, ln = (ok, txt) => `<div><b class="${ok ? 'text-emerald-400' : 'text-red-400'}">${ok ? '✔' : '✖'}</b> ${txt}</div>`;
       return ln(true, '★ 클리어') + ln(okT, `★ 내 턴 ${t}턴 이내 <span class="text-zinc-500">(${st.myTurns | 0}턴)</span>`) + ln(okM, `★ 남은 마나 ${Math.round(k * 100)}% 이상 <span class="text-zinc-500">(${st.mana}/${st.maxMana}, 필요 ${need})</span>`); })()}${stars > bestB && bestB ? '<div><b class="text-amber-300">최고 기록!</b></div>' : ''}</div></div>` : '';
-    show(`<div class="text-center py-6"><div class="story-chapter-sub">Phase.${ph.no} CLEAR</div><div class="story-chapter-big text-emerald-300">VICTORY</div>${starRow}
+    show(`<div class="text-center py-6"><div class="story-chapter-sub">Phase.${ph.no} CLEAR</div><div class="story-chapter-big text-emerald-300">${lostOk ? 'STORY CLEAR' : 'VICTORY'}</div>${lostOk ? '<div class="text-zinc-300 text-sm mt-1">졌지만 이야기는 계속돼요.</div>' : ''}${starRow}
       ${reward ? `<div class="mt-4 text-amber-200 font-bold">🎁 보상 인재 획득!</div><div class="flex justify-center mt-2 story-reward">${tile(reward)}</div>` : `<div class="mt-4 text-zinc-400 text-sm">${first ? '이번 챕터는 인재 보상 없이 스탯 포인트만 받아요.' : '이미 클리어한 페이즈라 인재 보상은 없어요.'}</div>`}
       ${tk?.added ? `<div class="mt-3 text-amber-200 font-bold">🎟️ 챕터 클리어 보상: 소환권 +${tk.added} <small class="text-zinc-400">(특수 뽑기에서 사용)</small></div>` : ''}
       ${r.drops ? `<div class="story-drops mt-3">${first ? '🎁 첫 클리어 ' : ''}획득 ${curTxt(r.drops)}</div>` : ''}
