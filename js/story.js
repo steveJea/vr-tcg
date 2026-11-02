@@ -369,7 +369,7 @@
     return { el: m, close };
   }
 
-  async function enter() {
+  async function enter(mode) {   // mode 'go' = 로비 '이어하기' 타일: 첫 진입 흐름이 끝났으면 허브를 거치지 않고 바로 다음 페이즈
     if (!user()) {
       popup(`<div class="text-xl font-black mb-2">📜 스토리 모드</div><div class="text-sm text-zinc-300 mb-4">스토리 모드는 로그인한 플레이어만 할 수 있어요.<br>구글로 로그인하면 진행 상황과 보유 인재가 저장돼요.</div>
         <button id="story-login" class="w-full py-3 rounded-xl bg-amber-400 text-black font-bold">${ic('login', { alt: '' })} 구글로 로그인</button><button data-close-pop class="w-full mt-2 py-2 rounded-xl bg-white/10">닫기</button>`);
@@ -385,6 +385,7 @@
     if (pullPending()) { forcedPull(); return 'gate'; }   // 챕터 0 클리어 후 강제 10회 프리미엄 영입 (끝낼 때까지 매번)   // 챕터 0 미클리어(새·기존 사용자 모두): 목록 대신 바로 시작 (클리어 기록 = 서버 진행, 비로그인 모의는 localStorage)
     if (!save.starter) { renderSelect(); return 'gate'; }
     renderHub();
+    if (mode === 'go' && nextPlay()) goContinue();
     // 스탯 규칙 변경 안내 (한 번만)
     const RF = `vrTcgStatRefundSeen:${user()?.id || 'guest'}:${D.statRuleV || 1}`;
     if (save.statRefunded && !localStorage.getItem(RF)) {
@@ -695,8 +696,8 @@
       ${hubSlot(c + 1, 'small')}${hubSlot(c, 'big')}${hubSlot(c - 1, 'small')}
       <button class="hub-ch-arr" id="hub-down" ${c > 0 ? '' : 'disabled'} aria-label="이전 챕터 보기">▼</button></div>`;
     show(`<div class="story-hub-bg" aria-hidden="true"></div><div class="story-hub">
-      <div class="story-top hub-top"><div class="hub-top-r1"><button class="story-back" data-go="home">← 처음으로</button><span data-vr-player></span></div><div class="hub-top-r2">${document.body.classList.contains('gnb-on') ? `<button class="hub-chip" data-go="cards" title="내 인재 · 스탯 분배">🃏 내 인재${save.points ? `<i class="story-badge">${save.points}</i>` : ''}</button><button class="hub-chip" data-go="bonds" title="인연 조합">🤝 인연</button>` : ''}<span data-dailybtn></span><span data-mailbtn></span></div></div>
-      ${sel}
+      <div class="story-top hub-top"><div class="hub-top-r1"><button class="story-back" data-go="home">← 처음으로</button><b class="hub-title">📜 스토리</b><span data-vr-player></span></div><div class="hub-top-r2">${document.body.classList.contains('gnb-on') ? `<button class="hub-chip" data-go="cards" title="내 인재 · 스탯 분배">🃏 내 인재${save.points ? `<i class="story-badge">${save.points}</i>` : ''}</button><button class="hub-chip" data-go="bonds" title="인연 조합">🤝 인연</button>` : ''}<span data-dailybtn></span><span data-mailbtn></span></div></div>
+      ${HUB_SECTIONS.map(f => { try { return f() || ''; } catch { return ''; } }).join('')}${sel}
       <button class="story-hub-go main-btn" id="story-continue" ${nx ? '' : 'disabled'}><b>▶ 이어하기</b><small>${nx ? `${esc(nx.base.title)} · Phase.${nx.ph.no}${nx.ph.type === 'boss' ? ' · BOSS' : ''}` : '열린 챕터를 모두 클리어했어요'}</small></button>
       <button class="hub-gacha" data-go="gacha"><span class="hub-gacha-t"><b>🎴 인재영입</b><small>${canDraw() ? '오늘의 일반 영입 가능!' : '프리미엄 영입'}</small></span><span class="story-hub-tk">${tickets ? `🎟️ ${tickets}` : ''}</span>${canDraw() ? '<i class="story-badge">1</i>' : ''}</button>
       <div class="hub-menu">
@@ -714,7 +715,11 @@
     if (tickets == null) syncTickets().then(r => { if (r.added) toast(`🎟️ 소환권 +${r.added} (챕터 클리어 보상)`); const el = root().querySelector('.story-hub-tk'); if (el) el.textContent = tickets ? `🎟️ ${tickets}` : ''; });
     root().querySelectorAll('[data-hubch]').forEach(b => b.onclick = () => renderMap(+b.dataset.hubch));
     root().querySelectorAll('[data-hubvid]').forEach(b => b.onclick = e => { e.stopPropagation(); endingVideo(D.chapters[+b.dataset.hubvid]); });
-    $('story-continue').onclick = () => {
+    $('story-continue').onclick = goContinue;
+  }
+  /** 이어하기: 허브 큰 버튼 · 로비 타일 공용 */
+  function goContinue() {
+    const nx = nextPlay(); {
       if (!nx) return;
       curCh = nx.i;
       // 루트 선택·시작 대사가 남았으면 지도 쪽 흐름으로, 아니면 바로 다음 페이즈
@@ -1975,8 +1980,12 @@
     };
   }
 
+  // 허브 추가 섹션 훅 (예: 이벤트 스토리). 함수가 HTML 문자열을 돌려주면 챕터 목록 위에 표시, 빈 문자열이면 아무것도 안 그림
+  const HUB_SECTIONS = [];
   function mountButton() {
-    const ex = $('story-btn'); if (ex) { ex.disabled = !window.TCG?.ready; ex.onclick = enter; window.addEventListener('tcg:ready', () => { ex.disabled = false; }); return; }   // 메인 4버튼(index.html)
+    const ex = $('story-btn'); if (ex) { ex.disabled = !window.TCG?.ready; ex.onclick = () => enter('go'); window.addEventListener('tcg:ready', () => { ex.disabled = false; });
+      if (!$('story-hub-btn')) { ex.insertAdjacentHTML('beforeend', '<span id="story-hub-btn" class="main-story-hub" role="button" tabindex="0" title="스토리 챕터 목록">📜 스토리</span>'); const hb = $('story-hub-btn'); const go = e => { e.stopPropagation(); e.preventDefault(); if (!ex.disabled) enter(); }; hb.addEventListener('click', go); hb.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') go(e); }); }
+      return; }   // 메인 4버튼(index.html)
     const start = $('start-btn'); if (!start || $('story-btn')) return;
     const b = document.createElement('button'); b.id = 'story-btn'; b.type = 'button'; b.className = 'main-banner banner-story'; b.title = '스토리 모드 · 캐릭터별 챕터 · 인재 수집';
     b.innerHTML = '<img src="img/ui/main/banner_story.webp" srcset="img/ui/main/banner_story_600.webp 600w, img/ui/main/banner_story.webp 1200w" sizes="(max-width: 520px) 92vw, 460px" alt="" class="main-banner-img" width="1200" height="360" decoding="async"><span class="main-banner-text"><b class="main-banner-title">스토리 모드</b></span>';
@@ -2022,5 +2031,5 @@
     sort: (list, st) => { const k0 = cardSort; cardSort = st; try { return sortInst(list); } finally { cardSort = k0; } },
     next: (st, k) => st.k === k ? { k, desc: !st.desc } : { k, desc: true },
   };
-  window.VRStory = { canDraw: () => canDraw(), trainCard, canMergeUid, sortTool, skBadge, lendCards, reloadLend: () => loadLend(true), partyOf, pickDeck, openMap: i => openPage(() => renderMap(i)), openCards: () => openPage(renderCards), openDecks: () => openPage(renderDecks), openShop: () => openPage(renderShop), api, bgm, BGM, endingVideo, videoOf, conditionsOf, battleRules, summary, enter, openGacha, renderHub, renderShop, drawOnce, kstDay, get save() { return save; }, renderMap, renderCards, openStats, renderSelect, playLines };
+  window.VRStory = { hubSections: HUB_SECTIONS, canDraw: () => canDraw(), trainCard, canMergeUid, sortTool, skBadge, lendCards, reloadLend: () => loadLend(true), partyOf, pickDeck, openMap: i => openPage(() => renderMap(i)), openCards: () => openPage(renderCards), openDecks: () => openPage(renderDecks), openShop: () => openPage(renderShop), api, bgm, BGM, endingVideo, videoOf, conditionsOf, battleRules, summary, enter, openGacha, renderHub, renderShop, drawOnce, kstDay, get save() { return save; }, renderMap, renderCards, openStats, renderSelect, playLines };
 })();

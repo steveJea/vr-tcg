@@ -1029,3 +1029,5 @@ body.story-media-on .story-dlg-skip { left: 4px; right: auto; top: calc(4px + en
 /* 출전 고르기: 등급 배지 없이 별만 위쪽 가운데 */
 .story-deckpick .story-pick-stars{top:5px;bottom:auto;left:5px;right:auto;transform:none;justify-content:flex-start;font-size:11px;gap:0}
 .gr-own{text-align:center;font-size:13px;font-weight:800;color:#fde7b0;margin:2px 0 6px;text-shadow:0 1px 3px #000}.gr-own .ui-ic,.gr-own img{width:16px;height:16px;vertical-align:-3px}.gr-own b{color:#fbbf24}
+/* 스토리 허브 제목 */
+.hub-top-r1 .hub-title{flex:1;min-width:0;text-align:center;font-weight:900;color:#f5c96a;font-size:15px;white-space:nowrap;text-shadow:0 1px 4px #000}

@@ -303,3 +303,8 @@
 #start-screen .acct-box { flex: 0 1 auto; min-width: 38px; }
 #start-screen .acct-chip { min-width: 0; overflow: hidden; }
 @media (max-width: 480px) { #start-screen .acct-box { flex: none; } #start-screen .acct-chip { padding: 3px; } #start-screen .acct-chip .acct-name, #start-screen .acct-chip .acct-lv { display: none; } }
+/* 로비 스토리 타일: 누르면 바로 이어하기 · 오른쪽 위 '📜 스토리' = 스토리 허브(챕터 목록) */
+#story-btn{position:relative}
+.main-story-hub{position:absolute;top:8px;right:8px;z-index:3;padding:5px 11px;border-radius:999px;border:1px solid rgba(245,201,106,.6);background:rgba(18,8,10,.82);color:#f5c96a;font-weight:800;font-size:12px;line-height:1.2;box-shadow:0 2px 8px rgba(0,0,0,.6);cursor:pointer}
+.main-story-hub:active{transform:scale(.95)}
+#story-btn:disabled .main-story-hub{display:none}
