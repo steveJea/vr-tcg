@@ -138,7 +138,7 @@ async function autoTurn() {
   } catch (err) { reportError('autoTurn', err); }
   finally { autoRunning = false; }
 }
-const AI_DELAY = () => (window.TCG_FAST ? 0 : (skipFx || fastForward) ? 60 : 325);
+const AI_DELAY = () => (window.TCG_FAST ? 0 : (skipFx || fastForward) ? 60 : 260);   // 보통 속도 행동 사이 간격 (2026-11-03: 325 → 260)
 
 function newPlayer(name, second, deckOverride = null, hp = RULES.HERO_HP, fieldStart = false, grades = null) {
   const deck = deckOverride ? (fieldStart ? [...deckOverride] : shuffleArr(deckOverride)) : buildDeck(POOL, Math.random, grades);
@@ -460,7 +460,7 @@ function renderSkipBtn() {
 
 // ===== 공격 연출 =====
 const REDUCED = () => !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
-const FX_SPEED = 0.5; // 공격·피격·사망 연출 2배속 (컷인은 cutinMs로 원래 속도 유지)
+const FX_SPEED = 0.4; // 공격·피격·사망 연출 2.5배속 (2026-11-03: 0.5 → 0.4, 약 20% 빠르게). 컷인은 cutinMs로 원래 속도 유지
 initStatusFx({ off: () => !!(window.TCG_FAST || SWEEPING()), quick: () => !!(skipFx || fastForward) });
 const fxMs = ms => (FX_OFF() ? 0 : REDUCED() ? Math.round(ms * 0.3 * FX_SPEED) : Math.round(ms * FX_SPEED));
 const cutinMs = ms => (FX_OFF() ? 0 : REDUCED() ? Math.round(ms * 0.3) : ms);
@@ -927,7 +927,7 @@ async function fadeDying() {
   const els = pendingDying.filter(Boolean); pendingDying = [];
   if (els.length && !FX_OFF()) {
     els.forEach(el => { el.classList.add('fx-dying'); if (!REDUCED() && el.isConnected) deathShards(el); });   // #6 붉은 섬광 → 흑백 → 가라앉음 + 파편
-    await sleep(fxMs(300)); }   // 기다리는 시간은 예전 그대로
+    await sleep(fxMs(300)); }   // fxMs 라서 FX_SPEED 따라 같이 빨라짐
 }
 const TYPE_COLOR = { '공격': 'bg-red-600', '도발': 'bg-orange-500', '회복': 'bg-emerald-600', '버프': 'bg-sky-600', '디버프': 'bg-purple-600' };
 
