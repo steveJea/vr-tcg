@@ -45,14 +45,17 @@
     <div class="rm">${MAIN.map(([k, l]) => `<button data-m="${k}">${l}</button>`).join('')}</div><div class="rsub"></div>
     <div class="rn"></div><div class="rl"></div><div class="mine"></div><div class="rf"></div></div>`;
   document.body.appendChild(ov);
-  const $ = s => ov.querySelector(s);
+  const $ = s => document.getElementById('rank-box').querySelector(s);   // 판이 페이지로 옮겨가도 찾게
   ov.addEventListener('click', e => { if (e.target === ov) close(); });
   $('.rx').onclick = close;
   ov.querySelectorAll('.rm button').forEach(b => b.onclick = () => { main = b.dataset.m; load(); });
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && ov.classList.contains('on')) close(); });
 
-  function close() { ov.classList.remove('on'); }
-  function open(m) { main = typeof m === 'string' && MAIN.some(x => x[0] === m) ? m : 'arcade'; ov.classList.add('on'); load(); }
+  // 페이지 시스템: 랭킹 판(#rank-box)을 페이지 몸통으로 옮겼다가 떠날 때 돌려놓음. 없거나 실패하면 예전 팝업
+  const box = ov.querySelector('#rank-box');
+  window.VRPages?.register?.('ranking', { title: '🏆 랭킹', render: body => body.appendChild(box), leave: () => ov.appendChild(box) });
+  function close() { if (window.VRPages?.current === 'ranking') return window.VRPages.closeNow(); ov.classList.remove('on'); }
+  function open(m) { main = typeof m === 'string' && MAIN.some(x => x[0] === m) ? m : 'arcade'; if (!window.VRPages?.open?.('ranking')) ov.classList.add('on'); load(); }
 
   async function token() {
     try { const sb = window.VRCloud?.sb; if (!sb || !window.VRCloud.user) return null; const { data } = await sb.auth.getSession(); return data?.session?.access_token || null; } catch { return null; }
@@ -102,7 +105,7 @@
   const key = () => [main, tab, tower, league, pmode].join('|');
 
   async function load() {
-    ov.querySelectorAll('.rm button').forEach(b => b.classList.toggle('on', b.dataset.m === main));
+    box.querySelectorAll('.rm button').forEach(b => b.classList.toggle('on', b.dataset.m === main));
     const sub = $('.rsub');
     sub.innerHTML = main === 'arcade' ? subBar([['weekly', '주간'], ['all', '전체']], tab, 't')
       : main === 'tower' ? subBar(TOWERS, tower, 'tw')

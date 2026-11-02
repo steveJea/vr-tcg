@@ -5,7 +5,7 @@
 // - 공용 머리말: ← · 제목 · 재화 칩(행동력·심연석). 들어갈 때 오른쪽에서, 뒤로 갈 때 왼쪽으로 (css/pages.css · 동작 줄이기면 없음)
 (() => {
   const REG = {}, stack = [];   // stack: 열린 페이지 [{ name, params }]
-  let el = null, guardOn = false;
+  let el = null, guardOn = false, shown = null;   // shown: 지금 그려진 페이지 (떠날 때 leave 호출)
   const reduce = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
   const oauth = () => /[?&]code=|access_token=/.test(location.search + location.hash);
   const busy = () => { const g = document.getElementById('game'); return (g && !g.classList.contains('hidden')) || !!document.querySelector('.story-vcut, .story-ovp, #story-video') || !!window.__storyVideo?.el?.isConnected; };
@@ -21,6 +21,7 @@
   function paintCur() { if (!el) return; try { window.VRPlayer?.paint?.(); } catch {} const g = el.querySelector('.vr-page-gem'); if (g) g.innerHTML = window.VRGem?.chip?.() || ''; }
   function draw(dir) {
     const top = stack[stack.length - 1];
+    if (shown && el) { try { REG[shown.name]?.leave?.(el.querySelector('.vr-page-body'), shown.params || {}); } catch (e) { console.error('[pages] leave', e); } } shown = top || null;
     if (!top) { if (el) { el.classList.add('hidden'); el.querySelector('.vr-page-body').innerHTML = ''; } return; }
     const p = REG[top.name], m = mount(), body = m.querySelector('.vr-page-body');
     m.querySelector('.vr-page-title').textContent = typeof p.title === 'function' ? p.title(top.params) : (p.title || '');
@@ -40,11 +41,15 @@
   }
   /** 뒤로: 기록을 한 칸 되돌림 → popstate 에서 화면 정리 */
   function back() { if (stack.length) history.back(); }
+  /** 바로 닫기 (코드에서 닫을 때: 화면은 즉시 정리하고 기록은 뒤에서 한 칸 되돌림 → 그 popstate 는 무시) */
+  let skipPop = 0;
+  function closeNow() { if (!stack.length) return; stack.pop(); draw(-1); skipPop++; history.back(); }
   function closeAll() { const n = stack.length; if (n) history.go(-n); }
 
   // --- 로비 뒤로가기 가드: 로비 상태 위에 빈 칸 하나를 쌓아 두고, 뒤로가기로 그 칸이 빠지면 '나갈까요?' ---
   function armGuard() { if (oauth()) return; history.pushState({ vrGuard: 1 }, '', location.pathname + location.search); guardOn = true; }
   addEventListener('popstate', async e => {
+    if (skipPop) { skipPop--; return; }
     const st = e.state || {};
     if (busy()) { history.go(1); return; }   // 전투·영상 중: 뒤로가기 무시 (방금 빠진 칸으로 다시 앞으로)
     const depth = st.vrPage ? (st.depth | 0) : 0;
@@ -63,5 +68,15 @@
     armGuard();
   }
   if (document.readyState === 'complete') boot(); else addEventListener('load', () => boot());
-  window.VRPages = { register: (name, def) => { REG[name] = def; }, open, back, closeAll, get current() { return stack[stack.length - 1]?.name || null; }, get depth() { return stack.length; }, esc };
+  /** 예전 팝업을 그대로 페이지 안에 담기: pop(바탕+판) 을 페이지 몸통으로 옮기고, pop.remove() = 뒤로가기. 실패하면 false → 예전 팝업 */
+  function host(name, title, pop) {
+    try {
+      REG[name] = { title, render: body => { const p = REG[name]._pop; if (p) body.appendChild(p); } };
+      REG[name]._pop = pop; pop.classList.add('vr-in-page'); pop.onclick = null;
+      const rm = pop.remove.bind(pop);
+      pop.remove = () => { if (REG[name]._pop === pop && stack[stack.length - 1]?.name === name) closeNow(); else rm(); };
+      return open(name);
+    } catch (e) { console.error('[pages] host', e); return false; }
+  }
+  window.VRPages = { host, closeNow, register: (name, def) => { REG[name] = def; }, open, back, closeAll, get current() { return stack[stack.length - 1]?.name || null; }, get depth() { return stack.length; }, esc };
 })();
