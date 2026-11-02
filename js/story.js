@@ -369,7 +369,7 @@
     return { el: m, close };
   }
 
-  async function enter() {
+  async function enter(mode) {   // mode 'go' = 로비 '이어하기' 타일: 첫 진입 흐름이 끝났으면 허브를 거치지 않고 바로 다음 페이즈
     if (!user()) {
       popup(`<div class="text-xl font-black mb-2">📜 스토리 모드</div><div class="text-sm text-zinc-300 mb-4">스토리 모드는 로그인한 플레이어만 할 수 있어요.<br>구글로 로그인하면 진행 상황과 보유 인재가 저장돼요.</div>
         <button id="story-login" class="w-full py-3 rounded-xl bg-amber-400 text-black font-bold">${ic('login', { alt: '' })} 구글로 로그인</button><button data-close-pop class="w-full mt-2 py-2 rounded-xl bg-white/10">닫기</button>`);
@@ -385,6 +385,7 @@
     if (pullPending()) { forcedPull(); return 'gate'; }   // 챕터 0 클리어 후 강제 10회 프리미엄 영입 (끝낼 때까지 매번)   // 챕터 0 미클리어(새·기존 사용자 모두): 목록 대신 바로 시작 (클리어 기록 = 서버 진행, 비로그인 모의는 localStorage)
     if (!save.starter) { renderSelect(); return 'gate'; }
     renderHub();
+    if (mode === 'go' && nextPlay()) goContinue();
     // 스탯 규칙 변경 안내 (한 번만)
     const RF = `vrTcgStatRefundSeen:${user()?.id || 'guest'}:${D.statRuleV || 1}`;
     if (save.statRefunded && !localStorage.getItem(RF)) {
@@ -695,8 +696,8 @@
       ${hubSlot(c + 1, 'small')}${hubSlot(c, 'big')}${hubSlot(c - 1, 'small')}
       <button class="hub-ch-arr" id="hub-down" ${c > 0 ? '' : 'disabled'} aria-label="이전 챕터 보기">▼</button></div>`;
     show(`<div class="story-hub-bg" aria-hidden="true"></div><div class="story-hub">
-      <div class="story-top hub-top"><div class="hub-top-r1"><button class="story-back" data-go="home">← 처음으로</button><span data-vr-player></span></div><div class="hub-top-r2">${document.body.classList.contains('gnb-on') ? `<button class="hub-chip" data-go="cards" title="내 인재 · 스탯 분배">🃏 내 인재${save.points ? `<i class="story-badge">${save.points}</i>` : ''}</button><button class="hub-chip" data-go="bonds" title="인연 조합">🤝 인연</button>` : ''}<span data-dailybtn></span><span data-mailbtn></span></div></div>
-      ${sel}
+      <div class="story-top hub-top"><div class="hub-top-r1"><button class="story-back" data-go="home">← 처음으로</button><b class="hub-title">📜 스토리</b><span data-vr-player></span></div><div class="hub-top-r2">${document.body.classList.contains('gnb-on') ? `<button class="hub-chip" data-go="cards" title="내 인재 · 스탯 분배">🃏 내 인재${save.points ? `<i class="story-badge">${save.points}</i>` : ''}</button><button class="hub-chip" data-go="bonds" title="인연 조합">🤝 인연</button>` : ''}<span data-dailybtn></span><span data-mailbtn></span></div></div>
+      ${HUB_SECTIONS.map(f => { try { return f() || ''; } catch { return ''; } }).join('')}${sel}
       <button class="story-hub-go main-btn" id="story-continue" ${nx ? '' : 'disabled'}><b>▶ 이어하기</b><small>${nx ? `${esc(nx.base.title)} · Phase.${nx.ph.no}${nx.ph.type === 'boss' ? ' · BOSS' : ''}` : '열린 챕터를 모두 클리어했어요'}</small></button>
       <button class="hub-gacha" data-go="gacha"><span class="hub-gacha-t"><b>🎴 인재영입</b><small>${canDraw() ? '오늘의 일반 영입 가능!' : '프리미엄 영입'}</small></span><span class="story-hub-tk">${tickets ? `🎟️ ${tickets}` : ''}</span>${canDraw() ? '<i class="story-badge">1</i>' : ''}</button>
       <div class="hub-menu">
@@ -714,7 +715,11 @@
     if (tickets == null) syncTickets().then(r => { if (r.added) toast(`🎟️ 소환권 +${r.added} (챕터 클리어 보상)`); const el = root().querySelector('.story-hub-tk'); if (el) el.textContent = tickets ? `🎟️ ${tickets}` : ''; });
     root().querySelectorAll('[data-hubch]').forEach(b => b.onclick = () => renderMap(+b.dataset.hubch));
     root().querySelectorAll('[data-hubvid]').forEach(b => b.onclick = e => { e.stopPropagation(); endingVideo(D.chapters[+b.dataset.hubvid]); });
-    $('story-continue').onclick = () => {
+    $('story-continue').onclick = goContinue;
+  }
+  /** 이어하기: 허브 큰 버튼 · 로비 타일 공용 */
+  function goContinue() {
+    const nx = nextPlay(); {
       if (!nx) return;
       curCh = nx.i;
       // 루트 선택·시작 대사가 남았으면 지도 쪽 흐름으로, 아니면 바로 다음 페이즈
@@ -1831,6 +1836,63 @@
     await wait(['ur', 'mr'].includes(g) ? 1300 : g === 'sr' ? 1050 : 800);
     room.classList.remove('busy'); fx.classList.add('settle');
   }
+  // ----- 영입 영상 (img/gacha/video/v1/<등급>_<mo|pc>.mp4, 소리 없음). 이번 뽑기 최고 등급 영상 1개만 → 끝나거나 SKIP 하면 카드 공개.
+  // 파일만 같은 이름으로 바꾸면 교체 끝 (새 버전 폴더면 GVID 만 v2 로). 못 불러오거나 느리면 예전 게이트 연출(playGate)로
+  const GVID = 'img/gacha/video/v1/';
+  const GVKEY = { 'NORMAL': 'normal', 'RARE': 'normal', 'HIGH RARE': 'hr', 'SUPER RARE': 'sr', 'ULTRA RARE': 'ur', 'MYTHIC RARE': 'mr', 'LEGENDARY RARE': 'mr' };
+  // 등급 스팅어(gacha_sr/ur)를 영상 안 빛이 커지는 순간에 맞춤 (초). N·HR 은 예전처럼 스팅어 없음
+  const GVSTING = { sr_mo: 1.5, sr_pc: 2.5, ur_mo: 0.8, ur_pc: 3.0, mr_mo: 2.0, mr_pc: 1.5 };
+  const gvForm = () => (innerWidth / Math.max(1, innerHeight) < 1 ? 'mo' : 'pc');   // 화면이 세로면 모바일 영상, 가로면 PC 영상
+  const gvOff = () => localStorage.getItem('vrGachaVideo') === '0' || !!navigator.connection?.saveData || !!window.TCG_FAST;
+  const gvCache = {};
+  /** 영입 화면 들어올 때: 첫 장면 그림 + 가장 자주 나오는 일반 영상만 미리 받아 둠 (나머지는 정보만) */
+  function preloadGachaVideo() {
+    if (gvOff()) return; const f = gvForm();
+    ['normal', 'hr', 'sr', 'ur', 'mr'].forEach(k => { const n = `${k}_${f}`; if (gvCache[n]) return;
+      const v = document.createElement('video'); v.muted = true; v.playsInline = true; v.setAttribute('playsinline', ''); v.setAttribute('muted', '');
+      v.preload = k === 'normal' || k === 'hr' ? 'auto' : 'metadata'; v.poster = `${GVID}${n}.webp`; v.src = `${GVID}${n}.mp4`; gvCache[n] = v; });
+  }
+  /** 영상 재생. 성공해서 끝까지(또는 SKIP) 보여줬으면 true, 못 틀었으면 false (→ 예전 연출) */
+  async function playGachaVideo(grade) {
+    if (gvOff()) return false;
+    const n = `${GVKEY[grade] || 'normal'}_${gvForm()}`;
+    let v = gvCache[n]; delete gvCache[n];
+    if (!v) { v = document.createElement('video'); v.preload = 'auto'; v.src = `${GVID}${n}.mp4`; }
+    v.muted = true; v.defaultMuted = true; v.playsInline = true; v.setAttribute('playsinline', ''); v.setAttribute('muted', ''); v.poster = `${GVID}${n}.webp`;
+    v.className = 'gr-vid-v'; v.controls = false; v.disablePictureInPicture = true;
+    const ov = document.createElement('div'); ov.className = 'gr-vid'; ov.id = 'gr-vid'; ov.setAttribute('aria-label', '영입 연출');
+    const sk = document.createElement('button'); sk.type = 'button'; sk.className = 'gr-vid-skip'; sk.textContent = 'SKIP ▶▶';
+    ov.append(v, sk); document.body.appendChild(ov);
+    const sAt = GVSTING[n], g = GLOW[grade] || 'n', sting = g === 'sr' ? 'gacha_sr' : ['ur', 'mr', 'lr'].includes(g) ? 'gacha_ur' : null;
+    let stung = !sting; const fire = () => { if (stung) return; stung = true; window.TCG?.playStinger?.(`audio/${sting}.mp3`); };
+    const ok = await new Promise(res => {
+      let started = false, over = false;
+      const end = r => { if (over) return; over = true; clearTimeout(slow); clearTimeout(cap); clearInterval(dog); res(r); };
+      // 재생 중 멈춤(데이터 끊김) 감시: 2초 넘게 안 움직이면 바로 카드 공개로
+      let lastT = -1, still = 0; const dog = setInterval(() => { if (!started) return; if (v.currentTime !== lastT) { lastT = v.currentTime; still = 0; } else if ((still += 500) >= 2000) end(true); }, 500);
+      // 2.5초 안에 재생이 안 시작되면 (느린 망·오류·자동재생 막힘) 포기
+      const slow = setTimeout(() => { if (!started) end(false); }, 2500);
+      const cap = setTimeout(() => end(true), 15000);   // 혹시 멈춰도 15초 뒤엔 넘어감
+      v.addEventListener('playing', () => { started = true; }, { once: true });
+      v.addEventListener('error', () => end(started));
+      v.addEventListener('ended', () => end(true));
+      v.addEventListener('timeupdate', () => { if (sAt != null && v.currentTime >= sAt) fire(); });
+      sk.onclick = e => { e.stopPropagation(); if (!started) return end(false); fire(); end(true); };
+      ov.addEventListener('click', e => e.stopPropagation());
+      try { v.currentTime = 0; } catch {}
+      const p = v.play(); if (p?.catch) p.catch(() => end(false));
+    });
+    if (ok) fire();
+    try { v.pause(); } catch {}
+    ov.classList.add('out'); setTimeout(() => ov.remove(), ok ? 220 : 0);
+    return ok;
+  }
+  /** 영상 → 실패하면 예전 게이트 연출. 영상이었으면 true (카드 공개 때 큰 섬광 빼기) */
+  async function playSummonFx(grade) {
+    $('gr-room')?.querySelectorAll('.gr-fx-img').forEach(x => x.remove());
+    if (await playGachaVideo(grade)) { return true; }
+    await playGate(grade); return false;
+  }
   const ticketBadge = n => `<span class="story-ticket" title="소환권">${ICN('ticket', '🎟️', '소환권')} <b>${n ?? '…'}</b></span>`;
   const pct = p => `${+(p * 100).toFixed(1)}%`;
   function showRates() {
@@ -1895,7 +1957,7 @@
         ? `${avail ? `<button id="gacha-go" class="gr-go">${ICN('gacha', '🎴')} 뽑기</button>` : ''}<div id="gacha-next" class="gr-next"></div>`
         : `<button class="gr-go" data-draw="1" ${(tickets | 0) >= 1 ? '' : 'disabled'}>1회 <small>${ICN('ticket', '🎟️')}1</small></button><button class="gr-go gr-go10" data-draw="10" ${(tickets | 0) >= 10 ? '' : 'disabled'} title="HR 이상 1장 보장">10회 <small>${ICN('ticket', '🎟️')}10</small></button>`}</div>
       ${daily ? '' : `<div class="gr-gem" id="gr-gem">${gemRow()}</div>`}</div>`, 'gacha');
-    gateLayout();
+    gateLayout(); preloadGachaVideo();
     if (forcedPullOn) root().querySelector('.story-shop')?.classList.add('gr-forced');   // 강제 영입: 나가기·탭·1회·젬 숨김
     bind(); resultOn = false; bindResultTap();
     root().querySelectorAll('[data-tab]').forEach(b => b.onclick = () => renderShop(b.dataset.tab));
@@ -1914,7 +1976,7 @@
         if (!r.ok) { $('gacha-msg').textContent = r.reason === 'tickets' ? '소환권이 부족해요.' : `뽑기에 실패했어요: ${r.msg || ''}`; root().querySelectorAll('[data-draw]').forEach(x => x.disabled = (tickets | 0) < +x.dataset.draw); return; }
         const bestG = r.cards.reduce((a, c) => GORDER.indexOf(c.grade) > GORDER.indexOf(a) ? c.grade : a, 'NORMAL');
         root().querySelectorAll('.story-ticket b').forEach(x => x.textContent = tickets);
-        await playGate(bestG);
+        const vid = await playSummonFx(bestG);
         if (!$('tk-result')) return;
         const uids0 = newUids(before, r.cards.map(x => x.card_id));
         // 10회: 낮은 등급부터 열림 (N → R → HR → SR → UR → MR/LR). 뒷면: SR 자주 반짝 · UR 이상 금색 반짝 · 나머지 무지
@@ -1930,7 +1992,7 @@
         { const cards = [...$('tk-result').children], best = gi(bestG);   // 폴리시4: 카드가 열리는 순간 등급별 빛 (UR 이상 화면 섬광은 가장 높은 등급 첫 장만)
           let flashed = false; rows.forEach(({ x }, i) => { const top = gi(x.grade) === best && gi(x.grade) >= gi('ULTRA RARE') && !flashed; if (top) flashed = true;
             const g = gi(x.grade) >= gi('ULTRA RARE') && !top ? 'SUPER RARE' : x.grade;
-            window.VRPolish?.summon?.(g, cards[i], !multi || fxOff ? 80 : (0.25 + i * STEP) * 1000 + 300); }); }
+            window.VRPolish?.summon?.(g, cards[i], !multi || fxOff ? 80 : (0.25 + i * STEP) * 1000 + 300, { noScreen: vid }); }); }   // 영상 뒤엔 화면 섬광 빼고 카드 빛만
         if (multi && !fxOff) {   // 연출 중 탭 → 남은 카드 한 번에 열기
           const box = $('tk-result'); let done = false;
           // 화면 어디를 탭해도(카드 밖 포함) 남은 카드를 한꺼번에 뒤집음. 이 탭은 다른 버튼으로 넘기지 않음
@@ -1963,20 +2025,24 @@
       const c = card(r.card_id), g = GLOW[r.grade] || 'n';
       go.remove();
       root().querySelectorAll('.story-gacha-btn .story-badge, [data-tab="daily"] .story-badge').forEach(x => x.remove());
-      await playGate(r.grade);
+      const vid = await playSummonFx(r.grade);
       if (!$('gacha-front')) return;
       $('gacha-front').innerHTML = `<img src="${IMG}${c.id}.webp" alt="${esc(c.name)}"><span class="story-rar">${RAR[c.grade]}</span><div class="gacha-name">${esc(c.name)}</div>`;
       const el = $('gacha-card'); $('gacha-stage').className = `gacha-stage gr-card g-${g}`;
       el.dataset.pulled = newUids(before, [r.card_id])[0] || ''; el.dataset.pid = c.id;
       requestAnimationFrame(() => el.classList.add('flip'));
-      window.VRPolish?.summon?.(r.grade, $('gacha-stage'), 450);   // 폴리시4: 뒤집히는 순간 등급별 빛
+      window.VRPolish?.summon?.(r.grade, $('gacha-stage'), 450, { noScreen: vid });   // 폴리시4: 뒤집히는 순간 등급별 빛
       if (['SUPER RARE', 'ULTRA RARE'].includes(r.grade)) setTimeout(() => window.TCG?.gachaVoice?.(c.id), 600);   // 영입 보이스 (<id>_g)
       setTimeout(() => { const m = $('gacha-msg'); if (m) m.innerHTML = `<b class="g-text-${g}">${RAR[c.grade]} · ${esc(c.name)}</b>${r.count > 1 ? ` <span class="story-dup-inline">x${r.count}</span>` : ''}`; tick(); if ($('gacha-card') === el) resultOn = true; }, 900);
     };
   }
 
+  // 허브 추가 섹션 훅 (예: 이벤트 스토리). 함수가 HTML 문자열을 돌려주면 챕터 목록 위에 표시, 빈 문자열이면 아무것도 안 그림
+  const HUB_SECTIONS = [];
   function mountButton() {
-    const ex = $('story-btn'); if (ex) { ex.disabled = !window.TCG?.ready; ex.onclick = enter; window.addEventListener('tcg:ready', () => { ex.disabled = false; }); return; }   // 메인 4버튼(index.html)
+    const ex = $('story-btn'); if (ex) { ex.disabled = !window.TCG?.ready; ex.onclick = () => enter('go'); window.addEventListener('tcg:ready', () => { ex.disabled = false; });
+      if (!$('story-hub-btn')) { ex.insertAdjacentHTML('beforeend', '<span id="story-hub-btn" class="main-story-hub" role="button" tabindex="0" title="스토리 챕터 목록">📜 스토리</span>'); const hb = $('story-hub-btn'); const go = e => { e.stopPropagation(); e.preventDefault(); if (!ex.disabled) enter(); }; hb.addEventListener('click', go); hb.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') go(e); }); }
+      return; }   // 메인 4버튼(index.html)
     const start = $('start-btn'); if (!start || $('story-btn')) return;
     const b = document.createElement('button'); b.id = 'story-btn'; b.type = 'button'; b.className = 'main-banner banner-story'; b.title = '스토리 모드 · 캐릭터별 챕터 · 인재 수집';
     b.innerHTML = '<img src="img/ui/main/banner_story.webp" srcset="img/ui/main/banner_story_600.webp 600w, img/ui/main/banner_story.webp 1200w" sizes="(max-width: 520px) 92vw, 460px" alt="" class="main-banner-img" width="1200" height="360" decoding="async"><span class="main-banner-text"><b class="main-banner-title">스토리 모드</b></span>';
@@ -2022,5 +2088,5 @@
     sort: (list, st) => { const k0 = cardSort; cardSort = st; try { return sortInst(list); } finally { cardSort = k0; } },
     next: (st, k) => st.k === k ? { k, desc: !st.desc } : { k, desc: true },
   };
-  window.VRStory = { canDraw: () => canDraw(), trainCard, canMergeUid, sortTool, skBadge, lendCards, reloadLend: () => loadLend(true), partyOf, pickDeck, openMap: i => openPage(() => renderMap(i)), openCards: () => openPage(renderCards), openDecks: () => openPage(renderDecks), openShop: () => openPage(renderShop), api, bgm, BGM, endingVideo, videoOf, conditionsOf, battleRules, summary, enter, openGacha, renderHub, renderShop, drawOnce, kstDay, get save() { return save; }, renderMap, renderCards, openStats, renderSelect, playLines };
+  window.VRStory = { hubSections: HUB_SECTIONS, canDraw: () => canDraw(), trainCard, canMergeUid, sortTool, skBadge, lendCards, reloadLend: () => loadLend(true), partyOf, pickDeck, openMap: i => openPage(() => renderMap(i)), openCards: () => openPage(renderCards), openDecks: () => openPage(renderDecks), openShop: () => openPage(renderShop), api, bgm, BGM, endingVideo, videoOf, conditionsOf, battleRules, summary, enter, openGacha, renderHub, renderShop, drawOnce, kstDay, get save() { return save; }, renderMap, renderCards, openStats, renderSelect, playLines };
 })();
