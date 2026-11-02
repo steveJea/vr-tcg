@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """CH12 「위대한 개츠비」 시트(csv) → js/story-data-ch12.js  (tools/ch9_11_import.py 기반)
-사용: python3 tools/ch12_import.py <story__CH12.csv>
+사용: python3 tools/ch12_import.py <story__CH12.csv>  (그다음 python3 tools/story_media.py 12 <csv> <원본폴더> 로 멀티미디어)
 추가 조건: 코스트 N 이상 출전 불가(costBelow) · SR 이하만 출전 가능 / UR 출전 금지(maxGrade) · 이름(명중률 N% 하락)(rules.blind)
 승리 조건: X턴 내 적 전멸(총 T턴)(rules.maxTurns) · 또는 N턴 생존(rules.survive). P21 은 시트가 비어 사용자 결정(10/31): Lv91 · 적 전멸 · 아군 전멸/턴 오버
 --- 아래는 원본 설명 ---
@@ -81,6 +81,7 @@ def build(chn, path, loan=()):
                    'lines': {'default': []}, 'party': party, 'hero': forced[:1], 'bossId': ids[0]}
             m = re.search(r'(\d+)턴\s*후\s*(?:배틀레벨\s*(\d+)\s*)?(.+?)\s*\(\s*LV\s*(\d+)\s*\)\s*난입', r[16], re.I)   # 비고: N턴 후 [배틀레벨 B] 이름(LV L) 난입 → 아군 합류
             if m and nm(m.group(3)) in IDS: cur['joinAlly'] = {'id': IDS[nm(m.group(3))], 'afterTurn': int(m.group(1)), 'storyLevel': int(m.group(4)), 'battleLevel': int(m.group(2) or 1)}
+            if re.search(r'패배해도\s*다음', r[16]): cur['loseClears'] = True   # 비고 '패배해도 다음 phase로 이동. 성급3개 부여' → 져도 클리어 + 별 3개 (사용자 결정 11/02, P14)
             if rules: cur['rules'] = rules
             if no == 21 and not elv: elv = {k: 91 for k in ids}   # P21 시트 레벨 비어 있음 → 91 (사용자 결정 10/31)
             cur['enemies']['storyLv'] = elv
