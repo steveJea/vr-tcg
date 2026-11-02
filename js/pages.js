@@ -44,7 +44,7 @@
   function back() { if (stack.length) history.back(); }
   /** 맨 위 작은 창 먼저 닫기 (뒤로가기·← 공통): Y/N 확인(= 아니오) → 확대 → 갤러리 상세 → 카드 상세 → 스토리 팝업 → 음료 확인 → 도움말 팝업. 닫았으면 true */
   const vis = q => { const e = document.querySelector(q); return e && !e.classList.contains('hidden') && getComputedStyle(e).display !== 'none' ? e : null; };
-  function closeTopOverlay() {
+  function closeTopOverlay(noPage) {
     let e;
     if ((e = vis('#vr-confirm'))) { (e.querySelector('[data-yn=n]') || e).click(); if (!e.classList.contains('hidden')) e.classList.add('hidden'); return true; }
     if ((e = vis('.drink-ask'))) { (e.querySelector('[data-no]') || e).click(); return true; }
@@ -56,9 +56,12 @@
     { const g = [...document.querySelectorAll('.gear-pop-bg:not(.vr-in-page):not([data-vr-under]), .gd-pop:not(.vr-in-page):not([data-vr-under])')].pop(); if (g) { g.remove(); return true; } }   // 장비·조직/토벌/전쟁 작은 창 (페이지 밑에 깔린 창은 제외)   // 장비 작은 창 (아이템·문장·교환 등)
     { const t = [...document.querySelectorAll('.tr-bg:not(.vr-in-page)')].pop(); if (t) { (t.querySelector('[data-n]') || t.querySelector('[data-x]'))?.click(); if (t.isConnected) t.remove(); return true; } }   // 거래소 작은 창 (확인·도움말 등)
     { const p = [...document.querySelectorAll('.pvp-modal:not(.vr-in-page):not(#pvp-play)')].pop(); if (p) { (p.querySelector('[data-x]') || p).click(); if (p.isConnected) p.remove(); return true; } }   // PvP 작은 창 (카드·상대·확인·결과)
+    if (noPage) return false;
     { const t = stack[stack.length - 1]; try { if (t && REG[t.name]?.onBack?.()) return true; } catch (e) { console.error('[pages] onBack', e); } }   // 페이지 안 한 단계 뒤로 (예: 탑 → 탑 목록)
     return false;
   }
+  /** 떠 있는 작은 창을 모두 닫기 (하단·상단 메뉴로 다른 화면에 갈 때). 페이지 안 단계(onBack)는 건드리지 않음 */
+  function closeOverlays() { let k = 0; while (k < 12 && closeTopOverlay(true)) k++; return k; }
   /** 바로 닫기 (코드에서 닫을 때: 화면은 즉시 정리하고 기록은 뒤에서 한 칸 되돌림 → 그 popstate 는 무시) */
   let skipPop = 0, pendBack = 0;
   const lobbyBack = [];   // 페이지 없이 뒤로가기(로비 칸): 처리했으면 true → '나갈까요?' 안 물음
@@ -103,5 +106,5 @@
   }
   /** 게임 Y/N 확인 (글자 그대로 · 폰 뒤로가기 = 아니오). 브라우저 confirm() 대신. VRConfirm 없으면 예전 confirm */
   window.VRAsk = t => window.VRConfirm ? Promise.resolve(window.VRConfirm(esc(t))).then(Boolean) : Promise.resolve(confirm(t));
-  window.VRPages = { host, closeNow, register: (name, def) => { REG[name] = def; }, has: name => !!REG[name], inStack: name => stack.some(s => s.name === name), onLobbyBack: f => lobbyBack.push(f), open, back, get current() { return stack[stack.length - 1]?.name || null; }, get depth() { return stack.length; }, esc };
+  window.VRPages = { host, closeNow, closeOverlays, register: (name, def) => { REG[name] = def; }, has: name => !!REG[name], inStack: name => stack.some(s => s.name === name), onLobbyBack: f => lobbyBack.push(f), open, back, get current() { return stack[stack.length - 1]?.name || null; }, get depth() { return stack.length; }, esc };
 })();
