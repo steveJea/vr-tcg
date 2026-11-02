@@ -59,6 +59,7 @@
     return '';
   }
   function back() {
+    if (V()?.closeOverlays?.()) return;   // 떠 있는 작은 창이 있으면 그것부터 닫음 (뒤로가기와 같은 순서)
     const w = where();
     if (w === 'page') { const b = document.querySelector('#vr-page .vr-page-back'); if (b) return b.click(); return V().back(); }
     // 스토리 화면: 그 화면의 뒤로 버튼(처음으로 / 스토리 메인 / 탑 목록 / 돌아가기)을 그대로 누름
