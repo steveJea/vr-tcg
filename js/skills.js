@@ -323,6 +323,14 @@ export function checkDeath(u, killer = null) {
   if (p.foe && hasPassive(u, '지아는 약하지 않아!')) { emit({ type: 'passive', unit: u, name: '지아는 약하지 않아!' }); stats.count('지아는 약하지 않아!'); live(p.foe).forEach(t => addStatus(t, '지아는 약하지 않아!', 1, { atk: -0.7, label: 'ATK -70%' }, 'mod')); }
   if (p.foe && hasPassive(u, '나는 멈춘다')) { emit({ type: 'passive', unit: u, name: '나는 멈춘다' }); stats.count('나는 멈춘다'); live(p.foe).forEach(t => addStatus(t, 'para', 1, {}, 'para')); }
   if (p.foe && hasPassive(u, '더는 나를 밀지마')) { emit({ type: 'passive', unit: u, name: '더는 나를 밀지마' }); stats.count('더는 나를 밀지마'); live(p.foe).forEach(t => bleedOn(t, u, 2)); }
+  // 2026-11-02 시트 신규 사망 패시브 (지유현·황보예·예유나)
+  if (p.foe && hasPassive(u, '이렇게 사라질 수는 없어..')) { emit({ type: 'passive', unit: u, name: '이렇게 사라질 수는 없어..', text: '저주: 마비 1턴 · DEF -40% 2턴' }); stats.count('이렇게 사라질 수는 없어..');
+    live(p.foe).forEach(t => { addStatus(t, 'para', 1, {}, 'para'); addStatus(t, '이렇게 사라질 수는 없어..', 2, { def: -0.4, label: 'DEF -40%' }, 'mod'); }); }
+  if (hasPassive(u, '나 가거든')) { const t = by(p.field.filter(x => x !== u && x.hp > 0 && gradeIdx(x) <= gradeIdx('HIGH RARE')), x => x.card.cost, -1);
+    if (t) { emit({ type: 'passive', unit: u, name: '나 가거든', text: `${t.card.name} 2턴 피해 면역` }); stats.count('나 가거든'); addStatus(t, 'immune', 2, {}, 'immune'); } }
+  if (p.foe && hasPassive(u, '더 이상은 싫어!')) { emit({ type: 'passive', unit: u, name: '더 이상은 싫어!', text: 'SR 미만 적 HP -70%' }); stats.count('더 이상은 싫어!');
+    for (const t of live(p.foe)) { if (gradeIdx(t) >= gradeIdx('SUPER RARE') || t.hp <= 1) continue;   // 현재 HP 70% 고정 피해 (피해 면역·불사는 뚫지 않음, 이 효과로는 죽지 않음)
+      damageUnit(t, Math.floor(t.hp * 0.7), null); } }
   emit({ type: 'destroy', unit: u });
   // 이명진 지킨다: 맹세 중 이영아가 쓰러지면 쿨타임 전부 초기화 + 3턴 ATK +60%
   if (String(u.base.id) === YOUNGA_ID) for (const a of p.field) if (a.st.vow) vowBroken(a);
