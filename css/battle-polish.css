@@ -11,3 +11,15 @@
 #turn-banner.ai span { background: linear-gradient(90deg, transparent, rgba(220, 38, 38, .85) 20%, rgba(220, 38, 38, .85) 80%, transparent); }
 @keyframes tbIn { 0% { opacity: 0; translate: -40px 0; } 20% { opacity: 1; translate: 0 0; } 75% { opacity: 1; translate: 0 0; } 100% { opacity: 0; translate: 40px 0; } }
 @media (prefers-reduced-motion: reduce) { .hp-ghost { transition: none; } #turn-banner { animation: none; } #turn-banner { display: none; } }
+/* ===== 2차 (#6 사망 연출 · 파편) — 기다리는 시간은 예전 그대로(150ms) 안에서 끝남, 파편만 따로 0.6초 ===== */
+.fx-dying { transition: none !important; animation: fxDie .15s ease-in forwards; }
+@keyframes fxDie {
+  0% { filter: brightness(1.6) sepia(1) saturate(6) hue-rotate(-30deg); opacity: 1; translate: 0 0; scale: 1; }
+  30% { filter: brightness(1.2) sepia(1) saturate(5) hue-rotate(-30deg); opacity: 1; }
+  100% { filter: grayscale(1) brightness(.5); opacity: 0; translate: 0 14px; scale: .9; }
+}
+.fx-shards { position: fixed; z-index: 35; pointer-events: none; width: 0; height: 0; }
+.fx-shards i { position: absolute; width: 6px; height: 6px; margin: -3px; background: linear-gradient(135deg, #fecaca, #7f1d1d); clip-path: polygon(50% 0, 100% 60%, 30% 100%, 0 40%); animation: fxShard .6s cubic-bezier(.2,.7,.4,1) forwards; }
+@keyframes fxShard { from { opacity: 1; translate: 0 0; rotate: 0deg; } to { opacity: 0; translate: var(--dx) var(--dy); rotate: var(--rot); } }
+#field-box.fx-screen { animation: fxScreen .2s linear; }
+@media (prefers-reduced-motion: reduce) { .fx-dying { animation: none !important; transition: opacity .15s ease !important; opacity: 0; } .fx-shards { display: none; } }

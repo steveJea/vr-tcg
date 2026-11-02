@@ -562,9 +562,11 @@ function shake(el, o = {}) {
     el.classList.add('fx-knock', 'fx-shake');
     setTimeout(() => el.classList.remove('fx-knock', 'fx-shake', 'fx-hitflash'), Math.round(200 * k));
     if (amp >= 3.5 || crit || big) {   // 약한 잔타는 화면까지 흔들지 않음
-      root.style.setProperty('--amp', `${amp.toFixed(1)}px`);
-      root.classList.remove('fx-screen'); void root.offsetWidth; root.classList.add('fx-screen');
-      clearTimeout(screenTimer); screenTimer = setTimeout(() => root.classList.remove('fx-screen'), Math.round((crit || big ? 260 : 180) * k));
+      const sh = crit || big ? root : (document.getElementById('field-box') || root);   // #8 보통 타격은 전장만, 치명타·궁극기(UR/MR)만 화면 전체
+      if (sh !== root) root.classList.remove('fx-screen'); else document.getElementById('field-box')?.classList.remove('fx-screen');
+      sh.style.setProperty('--amp', `${amp.toFixed(1)}px`);
+      sh.classList.remove('fx-screen'); void sh.offsetWidth; sh.classList.add('fx-screen');
+      clearTimeout(screenTimer); screenTimer = setTimeout(() => sh.classList.remove('fx-screen'), Math.round((crit || big ? 260 : 180) * k));
     }
   }, stop);
 }
@@ -913,9 +915,19 @@ async function shareResult() {
 // ===== 스킬 =====
 const whoOf = p => (p === S.me ? 'me' : 'ai');
 let pendingDying = [];
+/** 사망 파편: 카드 자리에서 작은 조각 8개가 흩어짐 (화면 고정 층 · 끝나면 삭제 · 연출만) */
+function deathShards(el) {
+  const r = el.getBoundingClientRect(); if (!r.width) return;
+  const box = document.createElement('div'); box.className = 'fx-shards'; box.setAttribute('aria-hidden', 'true');
+  box.style.cssText = `left:${r.left + r.width / 2}px;top:${r.top + r.height / 2}px`;
+  for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2 + 0.3, d = 26 + (i % 3) * 12; const b = document.createElement('i'); b.style.setProperty('--dx', `${Math.round(Math.cos(a) * d)}px`); b.style.setProperty('--dy', `${Math.round(Math.sin(a) * d + 14)}px`); b.style.setProperty('--rot', `${i * 47}deg`); box.appendChild(b); }
+  document.body.appendChild(box); setTimeout(() => box.remove(), 700);
+}
 async function fadeDying() {
   const els = pendingDying.filter(Boolean); pendingDying = [];
-  if (els.length && !FX_OFF()) { els.forEach(el => el.classList.add('fx-dying')); await sleep(fxMs(300)); }
+  if (els.length && !FX_OFF()) {
+    els.forEach(el => { el.classList.add('fx-dying'); if (!REDUCED() && el.isConnected) deathShards(el); });   // #6 붉은 섬광 → 흑백 → 가라앉음 + 파편
+    await sleep(fxMs(300)); }   // 기다리는 시간은 예전 그대로
 }
 const TYPE_COLOR = { '공격': 'bg-red-600', '도발': 'bg-orange-500', '회복': 'bg-emerald-600', '버프': 'bg-sky-600', '디버프': 'bg-purple-600' };
 
@@ -1573,7 +1585,9 @@ function render() {
         nbb.appendChild(w);
       } else nb.appendChild(w);
     });
+    const flip = !FX_OFF() && !REDUCED() && fieldSeen[who] ? new Map([...box.children].map(el => [el.dataset.uid, el.getBoundingClientRect().left])) : null;   // #4 남은 카드가 빈자리로 미끄러지게 (위치 기억)
     morphChildren(box, nb); if (bossBox) morphChildren(bossBox, nbb);
+    if (flip) for (const el of box.children) { const x0 = flip.get(el.dataset.uid); if (x0 == null) continue; const dx = x0 - el.getBoundingClientRect().left; if (Math.abs(dx) > 2) el.animate?.([{ translate: `${dx}px 0` }, { translate: '0 0' }], { duration: 260, easing: 'cubic-bezier(.2,.8,.3,1)' }); }
     { // 새로 나온 카드: 위에서 살짝 떨어지며 등장 (보이는 것만 · 전투 첫 그리기·연출 끄기면 없음)
       const now = new Set(S[who].field.map(u => String(u.uid))), prev = fieldSeen[who];
       if (prev && !FX_OFF() && !REDUCED()) for (const uid of now) if (!prev.has(uid)) { const el = box.querySelector(`[data-uid="${uid}"]`); el?.animate?.([{ opacity: 0, translate: '0 -18px', scale: '.9' }, { opacity: 1, translate: '0 2px', scale: '1.03', offset: .6 }, { opacity: 1, translate: '0 0', scale: '1' }], { duration: 380, easing: 'cubic-bezier(.2,.9,.3,1.2)' }); }   // 클래스는 다시 그리기에 덮이므로 Web Animations 로 }
