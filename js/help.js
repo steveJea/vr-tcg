@@ -15,7 +15,17 @@
       '<span class="vh-c" style="--c:#f59e0b"></span>방어조 <span class="vh-c" style="--c:#ef4444"></span>돌격조 <span class="vh-c" style="--c:#a855f7"></span>중간보스 <span class="vh-c" style="--c:#facc15"></span>보스 <span class="vh-c" style="--c:#3b82f6"></span>조직원']],
     ['mypage', '👤', '마이페이지', ['리더 · 재화 · 기록 · 덱', '스토리 카드를 누르면 바로 스토리 맵']],
   ];
+  // 페이지 시스템 첫 적용: 도움말 = 페이지 (VRPages 없으면 예전 팝업)
+  function renderPage(body, params) {
+    body.innerHTML = `<div class="vh-page"><div class="vh-tabs">${H.map(([k, ic, t]) => `<button data-k="${k}">${ic}<span>${t}</span></button>`).join('')}</div><div class="vh-body"></div></div>`;
+    const b = body.querySelector('.vh-body');
+    const show = k => { const h = H.find(x => x[0] === k) || H[0]; body.querySelectorAll('[data-k]').forEach(x => x.classList.toggle('on', x.dataset.k === h[0]));
+      b.innerHTML = `<div class="vh-t">${h[1]} ${h[2]}</div><ul>${h[3].map(x => `<li>${x}</li>`).join('')}</ul>`; };
+    body.onclick = e => { const x = e.target.closest('[data-k]'); if (x) show(x.dataset.k); };
+    show(params.key);
+  }
   function open(key) {
+    if (window.VRPages?.open('help', { key })) return;
     document.getElementById('vr-help')?.remove();
     const m = document.createElement('div'); m.id = 'vr-help'; m.className = 'vh-pop';
     m.innerHTML = `<div class="vh-panel" role="dialog" aria-label="도움말"><button class="vh-x" data-x aria-label="닫기">✕</button><div class="vh-h">도움말</div>
@@ -35,7 +45,8 @@
 .vh-x{position:absolute;right:10px;top:8px;font-size:18px;opacity:.7}.vh-h{font-weight:900;font-size:17px;color:#f5c96a;margin-bottom:8px}
 .vh-tabs{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin-bottom:10px}.vh-tabs button{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 2px;border-radius:10px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);font-size:18px}
 .vh-tabs button span{font-size:10px;font-weight:700}.vh-tabs button.on{border-color:#f5c96a;background:rgba(245,201,106,.15)}
-.vh-t{font-weight:900;margin-bottom:6px}.vh-body ul{display:flex;flex-direction:column;gap:6px;font-size:13px;line-height:1.45}.vh-body li{padding:7px 9px;border-radius:9px;background:rgba(255,255,255,.05)}`;
+.vh-page{max-width:520px;margin:0 auto}.vh-t{font-weight:900;margin-bottom:6px}.vh-body ul{display:flex;flex-direction:column;gap:6px;font-size:13px;line-height:1.45}.vh-body li{padding:7px 9px;border-radius:9px;background:rgba(255,255,255,.05)}`;
   document.head.appendChild(css);
+  window.VRPages?.register('help', { title: '📖 가이드', render: renderPage });
   window.VRHelp = { open, items: H };
 })();
