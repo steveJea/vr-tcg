@@ -20,3 +20,8 @@ button:not(:disabled):active, [role="button"]:active, .main-tile:active, .story-
   .ui-pop-in, .ui-pop-in > *, .ui-screen-in { animation: none !important; }
   button:active, [role="button"]:active, .main-tile:active, .story-chip:active, .story-pick-card:active .story-card, .story-owned:active .story-own-tile { scale: none !important; translate: none !important; }
 }
+/* 2차: 카드 목록 차례로 등장 · 재화 숫자 바뀔 때 살짝 빛남 (js/polish.js) */
+@keyframes uiStagger { from { opacity: 0; translate: 0 10px; } to { opacity: 1; translate: none; } }
+.ui-stagger { animation: uiStagger .26s ease-out both; animation-delay: calc(var(--si, 0) * 22ms); }
+.ui-cur-tick { color: #fde68a; text-shadow: 0 0 8px rgba(253, 230, 138, .6); transition: color .2s, text-shadow .2s; }
+@media (prefers-reduced-motion: reduce) { .ui-stagger { animation: none !important; } .ui-cur-tick { text-shadow: none; } }
