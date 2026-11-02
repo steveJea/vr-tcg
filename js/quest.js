@@ -56,6 +56,7 @@
     dark:   ['10415', '10054', '10325', '10304', '10324', '10291', '10326'],   // 최윤희 · 김동욱 · 임유리 · 이성호 · 임예리 · [각성]윤진아 · [각성]임유리
   };
   const isBossFloor = n => n % 10 === 0;
+  // 배경: 탑마다 50층 구간 그림 img/tower/bg/{탑id}_t{구간}.webp (시련의 탑 normal = t1~t7). 파일이 없으면 밑에 깔린 공용 t{구간}이 보임 (css/story.css .q-tier-*)
   const tierOf = n => Math.min(7, Math.max(1, Math.ceil(n / 50)));
   /** 보스 진영 HP: 10층 500 → 10층마다 +50 (350층 2200) */
   const towerBossHp = n => 500 + 50 * (n / 10 - 1);
@@ -178,7 +179,7 @@
       rows.push(`<button class="q-row ${st} ${isBossFloor(k) ? 'boss' : ''} ${k === n ? 'on' : ''}" data-floor="${k}"><span class="q-win"></span>${face ? `<img class="q-face" src="${IMG}${face.id}.webp" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : '<span class="q-face"></span>'}<span class="q-no">${k}층${isBossFloor(k) ? ' 👑' : ''}</span>${r ? `<span class="q-rw">${r.tickets ? `🎟️${r.tickets}` : ''}${r.gold ? '🪙' : ''}</span>` : '<span class="q-rw"></span>'}<span class="q-st">${st === 'next' ? '▶' : st === 'done' ? '✔' : '🔒'}</span></button>`);
       if (k === n) rows.push(panel);
     }
-    api.show(`<div class="q-tower q-tier-${tierOf(n)}"><div class="story-top"><button class="story-back" id="q-home">${hub?.towers && !legacy ? '← 탑 목록' : '← 처음으로'}</button><div class="story-top-title">🗼 ${esc(tName())}</div><span></span></div>
+    api.show(`<div class="q-tower q-tier-${tierOf(n)}"${TOWER !== 'normal' && /^[a-z]+$/.test(TOWER) ? ` style="--q-own:url('${new URL(`img/tower/bg/${TOWER}_t${tierOf(n)}.webp`, location.href).href}')"` : ''}><div class="story-top"><button class="story-back" id="q-home">${hub?.towers && !legacy ? '← 탑 목록' : '← 처음으로'}</button><div class="story-top-title">🗼 ${esc(tName())}</div><span></span></div>
       <div class="q-wrap"><div class="q-spire"></div><div class="q-list" id="q-list">${rows.join('')}</div><div class="q-base"></div></div></div>`, 'tower');
     $('q-home').onclick = () => hub?.towers && !legacy ? backToHub() : goHome(); view = 'tower';
     $('q-go').onclick = () => { if (canGo) challenge(n); };
