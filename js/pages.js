@@ -37,7 +37,7 @@
     const top = stack[stack.length - 1];
     if (top?.name === name) { top.params = params; draw(0); return true; }
     stack.push({ name, params });
-    if (!oauth()) history.pushState({ vrPage: name, depth: stack.length }, '', '#/' + name);
+    if (!oauth()) { if (pendBack > 0) { pendBack--; history.replaceState({ vrPage: name, depth: stack.length }, '', '#/' + name); } else history.pushState({ vrPage: name, depth: stack.length }, '', '#/' + name); }   // 방금 코드로 닫은 칸 자리에 바로 열면 = 바꿔 끼우기
     draw(1); return true;
   }
   /** 뒤로: 기록을 한 칸 되돌림 → popstate 에서 화면 정리 */
@@ -58,8 +58,9 @@
     return false;
   }
   /** 바로 닫기 (코드에서 닫을 때: 화면은 즉시 정리하고 기록은 뒤에서 한 칸 되돌림 → 그 popstate 는 무시) */
-  let skipPop = 0;
-  function closeNow() { if (!stack.length) return; stack.pop(); draw(-1); skipPop++; history.back(); }
+  let skipPop = 0, pendBack = 0;
+  function closeNow() { if (!stack.length) return; stack.pop(); draw(-1); pendBack++; setTimeout(flushBack, 0); }   // 기록 되돌리기는 한 박자 뒤 (그 사이 open 하면 그 칸을 재사용)
+  function flushBack() { if (pendBack <= 0) return; const n = pendBack; pendBack = 0; skipPop++; history.go(-n); }
   function closeAll() { const n = stack.length; if (n) history.go(-n); }
 
   // --- 로비 뒤로가기 가드: 로비 상태 위에 빈 칸 하나를 쌓아 두고, 뒤로가기로 그 칸이 빠지면 '나갈까요?' ---
@@ -87,9 +88,9 @@
   }
   if (document.readyState === 'complete') boot(); else addEventListener('load', () => boot());
   /** 예전 팝업을 그대로 페이지 안에 담기: pop(바탕+판) 을 페이지 몸통으로 옮기고, pop.remove() = 뒤로가기. 실패하면 false → 예전 팝업 */
-  function host(name, title, pop, leave) {   // leave: 페이지를 떠날 때 정리 (타이머 등)
+  function host(name, title, pop, leave, show) {   // show: 다시 보일 때 (위 페이지에서 돌아옴)   // leave: 페이지를 떠날 때 정리 (타이머 등)
     try {
-      REG[name] = { title, render: body => { const p = REG[name]._pop; if (p) body.appendChild(p); }, leave };
+      REG[name] = { title, render: body => { const p = REG[name]._pop; if (p) { body.appendChild(p); try { show?.(p); } catch {} } }, leave };
       document.querySelectorAll('.gd-pop:not(.vr-in-page), .gear-pop-bg:not(.vr-in-page)').forEach(x => { if (x !== pop) x.setAttribute('data-vr-under', ''); });   // 이미 떠 있던 창(예: 조직) = 페이지 밑. 뒤로가기로 안 닫히고 페이지 닫으면 다시 보임
       REG[name]._pop = pop; pop.classList.add('vr-in-page'); pop.onclick = null;
       const rm = pop.remove.bind(pop);
