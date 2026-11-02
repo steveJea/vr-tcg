@@ -74,7 +74,11 @@ body.vr-page-on .pvp-modal.pvp-top:not(.vr-in-page), body.vr-page-on .pvp-vsx { 
 @media (min-width: 768px) { #vr-gnb { left: 50%; right: auto; transform: translateX(-50%); width: min(560px, 100%); border-radius: 18px 18px 0 0; border: 1px solid rgba(245,201,106,.3); border-bottom: 0; }
   #vr-gnb.gnb-hide { transform: translate(-50%, 110%); } }
 body.gnb-on .main-tabs { display: none !important; }
-body.gnb-on:not(.gnb-hidden) .vr-page, body.gnb-on:not(.gnb-hidden) #story-screen { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
+/* 바닥 여백: 탭 64px + 떠 있는 소환 원(22px) 만큼 더 → 맨 아래 버튼이 가려지지 않게 */
+body.gnb-on { --gnb-safe: calc(86px + env(safe-area-inset-bottom)); }
+body.gnb-on:not(.gnb-hidden) .vr-page, body.gnb-on:not(.gnb-hidden) #story-screen { padding-bottom: var(--gnb-safe); }
+body.gnb-on .gr-actions { padding-bottom: 30px; }   /* 소환 화면 뽑기 버튼을 위로 */
+body.gnb-on #start-screen .main-body { padding-bottom: calc(110px + env(safe-area-inset-bottom)); }
 body.gnb-on .hub-menu, body.gnb-on .hub-gacha { display: none !important; }   /* 스토리 허브 하단 메뉴 → GNB·상단 칩으로 이동 */
 .hub-chip { display: inline-flex; align-items: center; gap: 3px; padding: 4px 9px; border-radius: 999px; border: 1px solid rgba(245,201,106,.45); background: rgba(18,8,10,.75); color: #fde7b0; font-size: .72rem; font-weight: 700; position: relative; white-space: nowrap; }
 .hub-chip .story-badge { position: absolute; top: -6px; right: -6px; }
