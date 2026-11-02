@@ -8,7 +8,7 @@
   let el = null, guardOn = false, shown = null;   // shown: 지금 그려진 페이지 (떠날 때 leave 호출)
   const reduce = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
   const oauth = () => /[?&]code=|access_token=/.test(location.search + location.hash);
-  const busy = () => { const g = document.getElementById('game'); return (g && !g.classList.contains('hidden')) || !!document.querySelector('.story-vcut, .story-ovp, #story-video, .pvp-vsx, #pvp-play') || !!window.__storyVideo?.el?.isConnected; };
+  const busy = () => { const g = document.getElementById('game'); return (g && !g.classList.contains('hidden')) || !!document.querySelector('.story-vcut, .story-ovp, #story-video, .pvp-vsx, #pvp-play, #story-screen:not(.hidden) #story-dlg') || !!window.__storyVideo?.el?.isConnected; };
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
   function mount() {
@@ -51,7 +51,7 @@
     if ((e = vis('.gal-zoom'))) { e.classList.add('hidden'); return true; }
     if ((e = vis('#detail'))) { e.classList.add('hidden'); e.classList.remove('flex'); e.style.zIndex = ''; return true; }
     if ((e = vis('.gal-detail'))) { e.classList.add('hidden'); return true; }
-    if ((e = vis('#story-pop'))) { const x = e.querySelector('[data-close-pop]'); if (x) x.click(); else e.classList.add('hidden'); return true; }
+    if ((e = vis('#story-pop:not(.story-pop-page)'))) { const x = e.querySelector('[data-close-pop]'); if (x) x.click(); else e.classList.add('hidden'); return true; }
     if ((e = vis('#vr-help'))) { e.remove(); return true; }
     { const g = [...document.querySelectorAll('.gear-pop-bg:not(.vr-in-page):not([data-vr-under]), .gd-pop:not(.vr-in-page):not([data-vr-under])')].pop(); if (g) { g.remove(); return true; } }   // 장비·조직/토벌/전쟁 작은 창 (페이지 밑에 깔린 창은 제외)   // 장비 작은 창 (아이템·문장·교환 등)
     { const p = [...document.querySelectorAll('.pvp-modal:not(.vr-in-page):not(#pvp-play)')].pop(); if (p) { (p.querySelector('[data-x]') || p).click(); if (p.isConnected) p.remove(); return true; } }   // PvP 작은 창 (카드·상대·확인·결과)
@@ -60,6 +60,7 @@
   }
   /** 바로 닫기 (코드에서 닫을 때: 화면은 즉시 정리하고 기록은 뒤에서 한 칸 되돌림 → 그 popstate 는 무시) */
   let skipPop = 0, pendBack = 0;
+  const lobbyBack = [];   // 페이지 없이 뒤로가기(로비 칸): 처리했으면 true → '나갈까요?' 안 물음
   function closeNow() { if (!stack.length) return; stack.pop(); draw(-1); pendBack++; setTimeout(flushBack, 0); }   // 기록 되돌리기는 한 박자 뒤 (그 사이 open 하면 그 칸을 재사용)
   function flushBack() { if (pendBack <= 0) return; const n = pendBack; pendBack = 0; skipPop++; history.go(-n); }
   function closeAll() { const n = stack.length; if (n) history.go(-n); }
@@ -69,13 +70,14 @@
   addEventListener('popstate', async e => {
     if (skipPop) { skipPop--; return; }
     const st = e.state || {};
-    if (busy()) { history.go(1); return; }   // 전투·영상 중: 뒤로가기 무시 (방금 빠진 칸으로 다시 앞으로)
+    if (busy()) { const t = stack[stack.length - 1]; if (t) history.pushState({ vrPage: t.name, depth: stack.length }, '', '#/' + t.name); else armGuard(); return; }   // 전투·영상·대사 중: 뒤로가기 무시 (빠진 칸을 다시 쌓음 · 앞으로 가기 기록에 기대지 않음)   // 전투·영상 중: 뒤로가기 무시 (방금 빠진 칸으로 다시 앞으로)
     const depth = st.vrPage ? (st.depth | 0) : 0;
     if (depth < stack.length && closeTopOverlay()) { const t = stack[stack.length - 1]; history.pushState({ vrPage: t.name, depth: stack.length }, '', '#/' + t.name); return; }   // 페이지 위 작은 창부터 닫고 페이지는 그대로
     if (depth < stack.length) { stack.length = depth; draw(-1); return; }   // 페이지에서 뒤로
-    if (st.vrGuard) return;   // 다른 칸으로 이동(앞으로 가기 등)
+    if (st.vrGuard) { if (!stack.length) { try { closeTopOverlay() || lobbyBack.some(f => f()); } catch (er) { console.error(er); } } return; }   // 예전 가드 칸에 내려앉음 = 그래도 뒤로가기 한 번 (작은 창·스토리 화면만, 나갈까요는 안 물음)
     // 로비 칸까지 빠짐: 열린 로비 팝업이 있으면 그것만 닫고, 아니면 나갈지 물어봄
     if (closeTopOverlay()) { armGuard(); return; }   // 로비에서도 작은 창(확인창 등) 먼저
+    try { if (lobbyBack.some(f => f())) { armGuard(); return; } } catch (e) { console.error('[pages] lobbyBack', e); }   // 스토리 화면 등: 이전 화면으로
     const pops = [...document.querySelectorAll('.main-pop:not(.hidden), #main-menu-pop:not(.hidden)')];
     if (pops.length) { pops.forEach(p => p.classList.add('hidden')); armGuard(); return; }
     const ok = await (window.VRConfirm ? window.VRConfirm('<b>게임을 나갈까요?</b>') : Promise.resolve(confirm('게임을 나갈까요?')));
@@ -99,5 +101,5 @@
       return open(name);
     } catch (e) { console.error('[pages] host', e); return false; }
   }
-  window.VRPages = { host, closeNow, register: (name, def) => { REG[name] = def; }, open, back, closeAll, get current() { return stack[stack.length - 1]?.name || null; }, get depth() { return stack.length; }, esc };
+  window.VRPages = { host, closeNow, register: (name, def) => { REG[name] = def; }, has: name => !!REG[name], inStack: name => stack.some(s => s.name === name), onLobbyBack: f => lobbyBack.push(f), open, back, closeAll, get current() { return stack[stack.length - 1]?.name || null; }, get depth() { return stack.length; }, esc };
 })();
