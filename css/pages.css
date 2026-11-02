@@ -54,3 +54,29 @@ body.vr-page-on .pvp-modal.pvp-top:not(.vr-in-page), body.vr-page-on .pvp-vsx { 
 #vr-page .story-pop-body { position: relative; padding: 0; overflow: hidden; }
 #vr-page .story-pop-body > #story-pop.story-pop-page { position: absolute !important; inset: 0 !important; z-index: 0 !important; background: none !important; padding: 8px !important; display: block !important; overflow: hidden; }
 #vr-page .story-pop-body > #story-pop.story-pop-page > .story-pop-panel { max-width: 640px; width: 100%; margin: 0 auto; height: 100%; max-height: 100% !important; }   /* 스크롤은 예전처럼 판(panel)이 맡음 → close(true) 스크롤 유지 그대로 */
+/* ===== 시안: 전역 하단 탭 (js/gnb.js) ===== */
+#vr-gnb { position: fixed; left: 0; right: 0; bottom: 0; z-index: 9100; display: flex; align-items: flex-end; height: calc(64px + env(safe-area-inset-bottom)); padding: 0 4px env(safe-area-inset-bottom);
+  background: rgba(18,8,10,.97); border-top: 1px solid rgba(245,201,106,.3); transition: transform .2s ease; }
+#vr-gnb.gnb-hide { transform: translateY(110%); pointer-events: none; }
+.gnb-t { flex: 1 1 0; min-width: 0; height: 64px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; background: none; border: 0; color: #fde7b0; opacity: .7; cursor: pointer;
+  font-size: .68rem; font-weight: 700; white-space: nowrap; letter-spacing: -.02em; }
+.gnb-t i { font-style: normal; font-size: 1.25rem; height: 24px; display: grid; place-items: center; line-height: 1; }
+.gnb-t i img { width: 24px; height: 24px; object-fit: contain; }
+.gnb-t.on { opacity: 1; color: #f5c96a; }
+.gnb-t.on span { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 3px; }
+/* 소환 강조: 살짝 떠 있는 금색 원 + 은은한 빛 */
+.gnb-summon { opacity: 1; position: relative; }
+.gnb-summon i { width: 50px; height: 50px; margin-top: -22px; border-radius: 50%; font-size: 1.5rem; background: radial-gradient(circle at 50% 35%, #7f1d1d, #2a0b10 70%); border: 2px solid #f5c96a;
+  box-shadow: 0 0 0 3px rgba(18,8,10,.97), 0 0 14px 2px rgba(245,201,106,.55); animation: gnbGlow 2.4s ease-in-out infinite; }
+.gnb-summon span { color: #f5c96a; }
+@keyframes gnbGlow { 50% { box-shadow: 0 0 0 3px rgba(18,8,10,.97), 0 0 22px 6px rgba(245,201,106,.8); } }
+@media (prefers-reduced-motion: reduce) { .gnb-summon i { animation: none; } #vr-gnb { transition: none; } }
+@media (min-width: 768px) { #vr-gnb { left: 50%; right: auto; transform: translateX(-50%); width: min(560px, 100%); border-radius: 18px 18px 0 0; border: 1px solid rgba(245,201,106,.3); border-bottom: 0; }
+  #vr-gnb.gnb-hide { transform: translate(-50%, 110%); } }
+body.gnb-on .main-tabs { display: none !important; }
+body.gnb-on:not(.gnb-hidden) .vr-page, body.gnb-on:not(.gnb-hidden) #story-screen { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
+body.gnb-on .hub-menu, body.gnb-on .hub-gacha { display: none !important; }   /* 스토리 허브 하단 메뉴 → GNB·상단 칩으로 이동 */
+.hub-chip { display: inline-flex; align-items: center; gap: 3px; padding: 4px 9px; border-radius: 999px; border: 1px solid rgba(245,201,106,.45); background: rgba(18,8,10,.75); color: #fde7b0; font-size: .72rem; font-weight: 700; position: relative; white-space: nowrap; }
+.hub-chip .story-badge { position: absolute; top: -6px; right: -6px; }
+.tile-trade { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 56px; grid-column: 1 / -1; }
+.tile-trade .main-tile-ic { width: 28px; height: 28px; }

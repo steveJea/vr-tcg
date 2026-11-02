@@ -695,7 +695,7 @@
       ${hubSlot(c + 1, 'small')}${hubSlot(c, 'big')}${hubSlot(c - 1, 'small')}
       <button class="hub-ch-arr" id="hub-down" ${c > 0 ? '' : 'disabled'} aria-label="이전 챕터 보기">▼</button></div>`;
     show(`<div class="story-hub-bg" aria-hidden="true"></div><div class="story-hub">
-      <div class="story-top hub-top"><div class="hub-top-r1"><button class="story-back" data-go="home">← 처음으로</button><span data-vr-player></span></div><div class="hub-top-r2"><span data-dailybtn></span><span data-mailbtn></span></div></div>
+      <div class="story-top hub-top"><div class="hub-top-r1"><button class="story-back" data-go="home">← 처음으로</button><span data-vr-player></span></div><div class="hub-top-r2">${document.body.classList.contains('gnb-on') ? `<button class="hub-chip" data-go="cards" title="내 인재 · 스탯 분배">🃏 내 인재${save.points ? `<i class="story-badge">${save.points}</i>` : ''}</button><button class="hub-chip" data-go="bonds" title="인연 조합">🤝 인연</button>` : ''}<span data-dailybtn></span><span data-mailbtn></span></div></div>
       ${sel}
       <button class="story-hub-go main-btn" id="story-continue" ${nx ? '' : 'disabled'}><b>▶ 이어하기</b><small>${nx ? `${esc(nx.base.title)} · Phase.${nx.ph.no}${nx.ph.type === 'boss' ? ' · BOSS' : ''}` : '열린 챕터를 모두 클리어했어요'}</small></button>
       <button class="hub-gacha" data-go="gacha"><span class="hub-gacha-t"><b>🎴 인재영입</b><small>${canDraw() ? '오늘의 일반 영입 가능!' : '프리미엄 영입'}</small></span><span class="story-hub-tk">${tickets ? `🎟️ ${tickets}` : ''}</span>${canDraw() ? '<i class="story-badge">1</i>' : ''}</button>
