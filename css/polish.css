@@ -47,3 +47,30 @@ button:not(:disabled):active, [role="button"]:active, .main-tile:active, .story-
   .ui-slam, .ui-rise, .ui-dot-pop { animation: none !important; }
   .ui-skel::after { animation: none; }
 }
+
+/* ===== 폴리시 4 ===== */
+/* #9 컷인이 베고 나가는 순간 = 피해 순간: 하얀 섬광 한 번 더 */
+.cutin.cutin-hit::before { content: ''; position: absolute; inset: 0; background: #fff; pointer-events: none; mix-blend-mode: screen; animation: cutHit .18s ease-out both; z-index: 2; }
+@keyframes cutHit { from { opacity: .8; } to { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .cutin.cutin-hit::before { display: none; } }
+/* 등급별 영입 빛 */
+.sfx-burst { position: absolute; left: 50%; top: 50%; width: 100%; aspect-ratio: 1; border-radius: 50%; pointer-events: none; z-index: 5; translate: -50% -50%;
+  background: radial-gradient(circle, var(--sc) 0%, transparent 62%); animation: sfxBurst .7s ease-out both; }
+.sfx-r { --sc: rgba(132,204,22,.55); } .sfx-hr { --sc: rgba(59,130,246,.65); } .sfx-sr { --sc: rgba(192,132,252,.85); }
+.sfx-ur { --sc: rgba(253,224,71,.95); } .sfx-mr { --sc: rgba(239,68,68,.95); } .sfx-lr { --sc: rgba(232,121,249,.95); }
+.sfx-lv1 { scale: .8; } .sfx-lv2 { scale: 1.1; } .sfx-lv3 { scale: 1.6; box-shadow: 0 0 0 3px rgba(192,132,252,.7); } .sfx-lv4 { scale: 2.2; }
+@keyframes sfxBurst { from { opacity: 1; transform: scale(.2); } to { opacity: 0; transform: scale(1.4); } }
+.sfx-screen { position: fixed; inset: 0; z-index: 9500; pointer-events: none; animation: sfxScreen 1s ease-out both; }
+.sfx-screen.sfx-ur { background: radial-gradient(circle at 50% 45%, #fff 0%, rgba(253,224,71,.9) 30%, rgba(245,158,11,.55) 60%, transparent 85%); }
+.sfx-screen.sfx-mr { background: radial-gradient(circle at 50% 45%, #fff 0%, rgba(248,113,113,.9) 30%, rgba(153,27,27,.55) 60%, transparent 85%); }
+.sfx-screen.sfx-lr { background: radial-gradient(circle at 50% 45%, #fff 0%, rgba(232,121,249,.9) 28%, rgba(34,211,238,.6) 58%, transparent 85%); }
+@keyframes sfxScreen { 0% { opacity: 0; } 12% { opacity: 1; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .sfx-burst { animation: none; display: none; }
+  .sfx-screen { animation: sfxScreenR .4s ease-out both; }
+  @keyframes sfxScreenR { from { opacity: .45; } to { opacity: 0; } }
+}
+.sfx-glow { animation: sfxGlow .9s ease-out; }
+@keyframes sfxGlow { 0% { box-shadow: 0 0 0 0 var(--sc); } 30% { box-shadow: 0 0 22px 8px var(--sc); } 100% { box-shadow: 0 0 0 0 transparent; } }
+.sfx-glow.sfx-lv3, .sfx-glow.sfx-sr { animation-duration: 1.1s; }
+@media (prefers-reduced-motion: reduce) { .sfx-glow { animation: none; } }

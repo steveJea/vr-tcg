@@ -1927,6 +1927,10 @@
           if (!multi) return `<div class="story-tk-card g-${GLOW[x.grade]}" data-pulled="${esc(u || '')}" data-pid="${esc(c.id)}" role="button" tabindex="0">${face}</div>`;
           return `<div class="story-tk-card tk-flip g-${GLOW[x.grade]}" data-pulled="${esc(u || '')}" data-pid="${esc(c.id)}" role="button" tabindex="0" style="--fd:${(0.25 + i * STEP).toFixed(2)}s"><div class="tk-in"><div class="tk-back${backCls(x.grade)}"></div><div class="tk-front">${face}</div></div></div>`; }).join('');
         $('tk-result').className = `story-tk-result n${r.cards.length}${multi && fxOff ? ' tk-skip' : ''}`;
+        { const cards = [...$('tk-result').children], best = gi(bestG);   // 폴리시4: 카드가 열리는 순간 등급별 빛 (UR 이상 화면 섬광은 가장 높은 등급 첫 장만)
+          let flashed = false; rows.forEach(({ x }, i) => { const top = gi(x.grade) === best && gi(x.grade) >= gi('ULTRA RARE') && !flashed; if (top) flashed = true;
+            const g = gi(x.grade) >= gi('ULTRA RARE') && !top ? 'SUPER RARE' : x.grade;
+            window.VRPolish?.summon?.(g, cards[i], !multi || fxOff ? 80 : (0.25 + i * STEP) * 1000 + 300); }); }
         if (multi && !fxOff) {   // 연출 중 탭 → 남은 카드 한 번에 열기
           const box = $('tk-result'); let done = false;
           // 화면 어디를 탭해도(카드 밖 포함) 남은 카드를 한꺼번에 뒤집음. 이 탭은 다른 버튼으로 넘기지 않음
@@ -1965,6 +1969,7 @@
       const el = $('gacha-card'); $('gacha-stage').className = `gacha-stage gr-card g-${g}`;
       el.dataset.pulled = newUids(before, [r.card_id])[0] || ''; el.dataset.pid = c.id;
       requestAnimationFrame(() => el.classList.add('flip'));
+      window.VRPolish?.summon?.(r.grade, $('gacha-stage'), 450);   // 폴리시4: 뒤집히는 순간 등급별 빛
       if (['SUPER RARE', 'ULTRA RARE'].includes(r.grade)) setTimeout(() => window.TCG?.gachaVoice?.(c.id), 600);   // 영입 보이스 (<id>_g)
       setTimeout(() => { const m = $('gacha-msg'); if (m) m.innerHTML = `<b class="g-text-${g}">${RAR[c.grade]} · ${esc(c.name)}</b>${r.count > 1 ? ` <span class="story-dup-inline">x${r.count}</span>` : ''}`; tick(); if ($('gacha-card') === el) resultOn = true; }, 900);
     };
