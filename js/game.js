@@ -1162,7 +1162,7 @@ function preloadFx(cards) {
 function cutInHTML(u, name, fx, passive) {
   const media = fx ? (/\.(mp4|webm)$/i.test(fx) ? `<video src="data/fx/${fx}" autoplay muted playsinline class="cutin-media"></video>` : `<img src="data/fx/${fx}" class="cutin-media" alt="" onerror="this.remove()">`) : '';
   const bands = BFX() ? '<i class="cut-band cut-band-t" aria-hidden="true"></i><i class="cut-band cut-band-b" aria-hidden="true"></i><i class="cut-speed" aria-hidden="true"></i>' : '';
-  return `${bands}${media}<div class="cutin-text"><div class="text-[11px] md:text-xs text-zinc-200">${u.owner.name} · ${u.card.name}${passive ? ' · 패시브' : ''}</div><div class="text-xl md:text-3xl font-black tracking-tight">${passive ? '✨ ' : ic('skill', { alt: '스킬' }) + ' '}${name}</div></div>`;
+  return `${bands}${media}<div class="cutin-text cutin-text-bottom"><div class="cutin-skill text-xl md:text-3xl font-black tracking-tight">${passive ? '✨ ' : ic('skill', { alt: '스킬' }) + ' '}${name}</div></div>`;
 }
 /** 슬래시 착지 순간(약 19%) 화면 살짝 흔들기 — 모션 줄이기 설정이면 생략 */
 let impactTimer;
@@ -1349,7 +1349,7 @@ function mrVideo(u, s) {
   return new Promise(res => {
     const ov = document.createElement('div'); ov.className = 'mr-vid'; ov.setAttribute('role', 'button'); ov.setAttribute('aria-label', '탭하여 넘기기');
     const v = document.createElement('video'); v.muted = true; v.defaultMuted = true; v.playsInline = true; v.setAttribute('playsinline', ''); v.setAttribute('muted', ''); v.preload = 'auto';
-    ov.innerHTML = `<div class="mr-vid-cap"><small>${escHtml(u.card.name)}</small><b>${escHtml(s.name)}</b></div><div class="mr-vid-skip">탭하여 넘기기</div>`; ov.prepend(v);
+    ov.innerHTML = `<div class="mr-vid-cap"><b>${escHtml(s.name)}</b></div><div class="mr-vid-skip">탭하여 넘기기</div>`; ov.prepend(v);
     let done = false, shown = false, t0, t1;
     const end = ok => { if (done) return; done = true; clearTimeout(t0); clearTimeout(t1); try { v.pause(); } catch {} ov.remove(); res(ok); };
     v.onerror = () => end(shown);
@@ -2182,7 +2182,7 @@ async function viewBattle(o = {}) {
   if (mu) try { snd?.setTrack?.(mu); } catch {}
   try { return await viewBattle0(o); } finally { if (mu && snd?.track === mu && prev) try { snd.setTrack(prev); } catch {} }
 }
-async function viewBattle0({ session, aiName = '상대', bg = 'normal', bgKey = null, manual = false, maxTurns: mt = 40, title = '', raid = null, tutorial = null } = {}) {
+async function viewBattle0({ session, aiName = '상대', bg = 'normal', bgKey = null, manual = false, auto = null, maxTurns: mt = 40, title = '', raid = null, tutorial = null } = {}) {
   if (tutorial) setTimeout(() => window.VRTutorial?.start(tutorial), 900);   // 튜토리얼 가이드 (js/tutorial.js)
   // 전투 화면을 띄운 팝업 층(조직 .gd-ov · 토벌/전쟁 .gd-pop · PvP · 마이페이지 등)은 전투 동안 숨겼다가 끝나면 그대로 복원
   const LAYERS = '.pvp-modal, .pvp-vsx, .gd-ov, .gd-pop, .mp-modal, .gal-modal, .ad-modal, #start-screen, #story-screen';
@@ -2190,7 +2190,7 @@ async function viewBattle0({ session, aiName = '상대', bg = 'normal', bgKey = 
   hid.forEach(e => { e.dataset.vbHide = e.style.display; e.style.display = 'none'; });
   const hubWasOn = !$('start-screen').classList.contains('hidden');   // 메인 허브: 전투 후 class 'hidden' 도 원래대로 (조직 닫으면 검은 화면 방지)
   let x = session.next();
-  const V = { auto: !manual, A0: x.value.A0, B0: x.value.B0, ask: null }; fastForward = false;
+  const V = { auto: auto ?? !manual, A0: x.value.A0, B0: x.value.B0, ask: null }; fastForward = false;
   S = { me: x.value.A, ai: x.value.B, view: V, story: { win: 'wipe', view: true, aiName }, maxTurns: mt, first: 'me', turn: 'me', turnNo: 0, totalTurns: 0, myTurns: 0, over: false, busy: true, fxSeen: new Set(), mercBought: 0, mercHired: null, mercOffer: [], limitedAids: true,
     log: { dmg: new Map(), total: 0, skills: 0, merc: null, played: new Set(), kills: {}, blocks: {} } };
   S.me.name = '나'; S.ai.name = aiName;
@@ -2226,7 +2226,7 @@ async function viewBattle0({ session, aiName = '상대', bg = 'normal', bgKey = 
   // SKIP: 남은 전투를 AUTO 로 연출 없이 끝까지 (같은 엔진·같은 seed → 결과는 끝까지 본 것과 같음. 수동이면 AUTO 행동도 기록돼 재생 검증 그대로). 3vs3 은 판마다
   const SKB = document.createElement('button'); SKB.id = 'vb-skip'; SKB.type = 'button'; SKB.textContent = 'SKIP ⏭';
   SKB.onclick = e => { e.stopPropagation(); if (V.skip || S?.over) return; V.skip = true; V.auto = true; V.batch = null; fastForward = true; SKB.disabled = true; SKB.textContent = '결과 계산 중…'; if (V.ask) V.ask({ k: 'auto' }); };
-  document.body.appendChild(SKB);   // #game 밖(body)에 고정: 화면 배치가 바뀌어도 자리 그대로
+  { const ab = $('auto-btn'); if (ab?.parentElement) ab.before(SKB); else document.body.appendChild(SKB); }   // 오른쪽 위 AUTO 바로 왼쪽 (SKIP · AUTO 나란히)
   const drain = () => { const ev = session.events || []; const out = ev.splice(0, ev.length); return out; };
   // 마나 없음: 처치 마나(refund) 연출 생략. 같은 카드에 숫자가 겹치지 않게 조금씩 띄워 보여 줌
   const bossNum = (d, weak) => { if (!raid || !(d > 0)) return; const el = unitEl('ai', V.B0[0]); shake(el, { dmg: d, crit: d >= raid.cap }); hitFx(el, 'blood'); dmgNumber(el, `-${fmt(d)}`, d >= raid.cap ? '#f97316' : '#fde047', false, 'fx-dmg-crit fx-dmg-raid'); if (weak) dmgNumber(el, '약점!', '#fca5a5', false, 'fx-dmg-mini'); if (d >= raid.cap) dmgNumber(el, 'MAX', '#fb923c', false, 'fx-dmg-mini'); };

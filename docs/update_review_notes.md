@@ -277,3 +277,9 @@
 - 휴대폰(≤767px): #field-box flex:1 로 상단~하단 고정 조작 사이를 채움, 상대·내 필드 행이 각각 남는 높이를 나눠 가운데 정렬.
 - 빈 수비대장 칸: 가운데 반원 (내 쪽 = 필드 아래 가장자리에서 위로, 상대 = 위 가장자리에서 아래로), 'EMPTY' + HP. 적 돌진은 #432 대로 이 칸(.base-unit)으로.
 - 전체 화면: 터치 휴대폰(pointer:coarse, ≤767px)에서 전투 시작 탭 안에서만 documentElement.requestFullscreen, 실패는 무시, 전투 화면이 숨겨지면 해제. vrBfx=0 이면 시도 안 함.
+
+## 전투 피드백 3 (battle-dbg3)
+- 스킬 컷인(그림·MR 영상): 시전자 줄('나 · 이름') 삭제, 스킬명은 컷인 아래쪽. 등장 컷인은 그대로.
+- PvP AUTO→PLAY 버그: AUTO 보기는 이미 보고한 결과(runSeries)를 다시 보여 주는 재생이라, pvp.js autoFeed 가 내 차례 입력을 세션 안에서 항상 'auto' 로 채움 → 화면은 입력 요청(ask)을 받지 못해 AUTO 버튼을 꺼도 끝까지 자동. 수정: 전투 화면이 있으면 AUTO 도 실제 판(manual 세션, viewBattle auto:true 로 시작)으로 치르고, 결과·행동 기록(pvp_log / friend_battle_report p_actions)을 화면 판 기준으로 보고 (수동과 같은 경로). 전투 화면이 없을 때만 예전 계산 + 재생. 구역 전쟁(war.js)은 그대로.
+- PC 아케이드: 고유기술 6개를 '내 턴 남은 횟수' 패널과 일괄 공격·턴 종료 사이로 (휴대폰은 그대로).
+- SKIP 버튼: 왼쪽 위 → 오른쪽 위 AUTO 왼쪽 (SKIP · AUTO 나란히, #top-bar 안).

@@ -284,12 +284,12 @@ async function fight() {
   let s; try { s = await rpc('pvp_start', { p_league: view.league, p_mode: view.mode }); } catch (e) { toast(errText(e)); if (go) go.disabled = false; return; }
   await vsScreen(s);
   const toCards = d => d.map(o => snapCard(o, card)).filter(Boolean);
-  const manual = battleMode() === 'manual';
-  const res = manual ? await manualSeries(s, toCards) : runSeries(view.mode, s.me.map(toCards), s.opp.map(toCards), s.seed, true);
+  const manual = battleMode() === 'manual', live = manual || !!VIEW();   // 전투 화면이 있으면 AUTO 도 실제 판 (AUTO→PLAY 로 중간에 직접 조작 가능) — 결과·행동 기록은 화면 판 기준
+  const res = live ? await viewSeries(s, toCards, manual) : runSeries(view.mode, s.me.map(toCards), s.opp.map(toCards), s.seed, true);
   // 결과는 재생 전에 먼저 1회 보고 (재생 중 이탈해도 결과 동일 · 중복 보고 없음). 수동은 행동 기록을 먼저 남김 (tools/pvp_verify.mjs 재생 검증)
-  if (manual) { try { await rpc('pvp_log', { p_id: s.id, p_actions: res.acts }); } catch (e) { toast(errText(e)); } }
+  if (live) { try { await rpc('pvp_log', { p_id: s.id, p_actions: res.acts }); } catch (e) { toast(errText(e)); } }
   let rep = null; try { rep = await rpc('pvp_report', { p_id: s.id, p_wins: res.wins, p_losses: res.losses }); } catch (e) { toast(errText(e)); }
-  if (!manual) { if (VIEW()) await viewSeries(s, toCards, false); else await playback(s, res); }
+  if (!live) await playback(s, res);
   const delta = rep ? rep.delta : -s.dl;
   const m = modal('pvp-result', `<button class="pvp-x" data-x>✕</button>
     <div class="pvp-res ${res.win ? 'win' : 'lose'}">${res.win ? 'WIN' : 'LOSE'}</div>
@@ -311,16 +311,13 @@ async function viewSeries(s, toCards, manual) {
     const log = [], ttl = `${M.decks > 1 ? `${i + 1}판 · ` : ''}${s.tag || '⚔️ PvP'} vs ${s.opp_name}${s.bot ? ' 🤖' : ''}`;
     let r, ses;
     if (VIEW()) { ses = manualMatch(toCards(s.me[i]), toCards(s.opp[i]), roundSeed(s.seed, i), log, { view: true, manual: true, boss: !!M.boss });
-      if (!manual) ses = autoFeed(ses);
-      r = await VIEW()({ session: ses, aiName: `${s.opp_name}${s.bot ? ' 🤖' : ''}`, manual, maxTurns: 40, music: window.VR_BGM?.pvpBattle, title: ttl, bg: 'normal', bgKey: 'pvp' }); }
+      r = await VIEW()({ session: ses, aiName: `${s.opp_name}${s.bot ? ' 🤖' : ''}`, manual: true, auto: !manual, maxTurns: 40, music: window.VR_BGM?.pvpBattle, title: ttl, bg: 'normal', bgKey: 'pvp' }); }
     else { ses = manualMatch(toCards(s.me[i]), toCards(s.opp[i]), roundSeed(s.seed, i), log, { boss: !!M.boss }); r = await playManual({ session: ses, rec: log, title: `${s.opp_name}${s.bot ? ' 🤖' : ''}`, maxTurns: 40, round: M.decks > 1 ? `${i + 1}판` : '' }); }
     r.log = log; rounds.push(r); acts.push(ses.acts); r.win ? w++ : l++;
     if (w >= M.need || l >= M.need) break;
   }
   return { win: w >= M.need, wins: w, losses: l, rounds, acts };
 }
-/** AUTO 보기: 내 차례 입력을 항상 AUTO 로 (화면의 AUTO 버튼으로 수동 전환 불가 · 이미 보고한 결과와 같아야 함) */
-const autoFeed = ses => ({ events: ses.events, acts: ses.acts, next: inp => { let x = ses.next(inp); while (!x.done && x.value.ask) x = ses.next({ k: 'auto' }); return x; } });
 // ---- 전투 재생 (계산된 전투 기록 그대로 · SKIP = 결과로) ----
 const STEP = 336;   // 재생 한 칸 (2026-11-03: 420 → 336, 일반 전투와 같이 약 20% 빠르게)
 const spd = () => 1;   // 2배속 없음 (2026-10-30)
@@ -391,10 +388,10 @@ export async function friendFight(friend, mode = '1v1') {
   s.tag = '👥 친구 대전';
   await vsScreen(s);
   const toCards = d => d.map(o => snapCard(o, card)).filter(Boolean);
-  const manual = battleMode() === 'manual';
-  const res = manual ? await viewSeries(s, toCards, true) : runSeries(s.mode, s.me.map(toCards), s.opp.map(toCards), s.seed, true);
-  let rep = null; try { rep = await rpc('friend_battle_report', { p_id: s.id, p_wins: res.wins, p_losses: res.losses, p_actions: manual ? res.acts : null }); } catch (e) { toast(errText(e)); }
-  if (!manual) { if (VIEW()) await viewSeries(s, toCards, false); else await playback(s, res); }
+  const manual = battleMode() === 'manual', live = manual || !!VIEW();
+  const res = live ? await viewSeries(s, toCards, manual) : runSeries(s.mode, s.me.map(toCards), s.opp.map(toCards), s.seed, true);
+  let rep = null; try { rep = await rpc('friend_battle_report', { p_id: s.id, p_wins: res.wins, p_losses: res.losses, p_actions: live ? res.acts : null }); } catch (e) { toast(errText(e)); }
+  if (!live) await playback(s, res);
   try { window.dispatchEvent(new CustomEvent('vr:daily', { detail: { k: 'battle', mode: 'friend', win: !!res.win } })); } catch {}
   modal('pvp-result', `<button class="pvp-x" data-x>✕</button>
     <div class="pvp-res ${res.win ? 'win' : 'lose'}">${res.win ? 'WIN' : 'LOSE'}</div>
