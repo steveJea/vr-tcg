@@ -21,7 +21,7 @@
 .bfx-vs { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; gap: 4vw; cursor: pointer; background: radial-gradient(circle at 50% 50%, rgba(24,24,27,.6), rgba(0,0,0,.88)); animation: vsBg .85s ease both; }
 .bfx-vs.vs-out { opacity: 0; transition: opacity .15s; }
 @keyframes vsBg { 0% { opacity: 0; } 12%, 85% { opacity: 1; } 100% { opacity: .9; } }
-.bfx-vs::before, .bfx-vs::after { content: ''; position: absolute; left: 0; right: 0; height: 12%; background: #000; }
+.bfx-vs::before, .bfx-vs::after { content: ''; position: absolute; left: 0; right: 0; height: 8%; background: rgba(0,0,0,.45); }
 .bfx-vs::before { top: 0; box-shadow: 0 2px 0 #34d399; } .bfx-vs::after { bottom: 0; box-shadow: 0 -2px 0 #f87171; }
 .vs-side { display: flex; flex-direction: column; align-items: center; gap: 6px; color: #fff; text-shadow: 0 2px 6px #000; }
 .vs-side b { font-size: clamp(14px, 3.6vw, 24px); font-weight: 900; } .vs-side small { font-size: 12px; opacity: .8; }

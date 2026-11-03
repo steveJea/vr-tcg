@@ -241,7 +241,7 @@ function startGame(story = null) {
 }
 /** 3-2 VS 인트로 (BFX): 양쪽 대표 카드(리더 → 가장 강한 카드) 0.85초, 탭하면 바로 넘김. 연출 스킵·모션 줄이기면 없음 */
 function vsIntro() {
-  if (!BFX() || FX_OFF() || REDUCED() || window.TCG_NO_VS || S.story?.tutorial || S.tutorial) return null;
+  if (!BFX() || FX_OFF() || REDUCED() || window.TCG_NO_VS || !S.story || S.story?.tutorial || S.tutorial) return null;   // 아케이드는 끔 (사용자 요청), 탑 등 kickoff 없는 스토리 계열만
   const lead = p => { const all = [...p.field.map(u => u.card), ...p.hand, ...p.deck].filter(Boolean); return p.field.find(u => u.isLeader)?.card || all.reduce((a, c) => (!a || (c.power || 0) > (a.power || 0) ? c : a), null); };
   const a = lead(S.me), b = lead(S.ai); if (!a || !b) return null;
   document.getElementById('bfx-vs')?.remove();
@@ -495,7 +495,11 @@ function scrollBottom() {
   setTimeout(() => { try { window.scrollTo({ top: document.documentElement.scrollHeight, behavior: REDUCED() ? 'auto' : 'smooth' }); } catch {} }, 60);
 }
 /** 진영 = 둥근 진영 칸 (보이면). 진영 피해·회복 연출은 진영 칸에, 없으면 위/아래 정보 상자 */
-const heroEl = who => { const b = $(`${who}-boss`); return (S && !S[who]?.noBase && b && !b.classList.contains('hidden') && (b.querySelector('.base-ring') || b)) || $(`${who}-hero`); };
+const heroEl = who => {   // 진영 칸: 동그라미가 안 보이면(빈 수비대장 = 얇은 칸) 칸 자체를 목표로 (0×0 → 화면 위쪽으로 돌진하던 문제)
+  const b = $(`${who}-boss`); if (!(S && !S[who]?.noBase && b && !b.classList.contains('hidden'))) return $(`${who}-hero`);
+  const ring = b.querySelector('.base-ring'); if (ring && ring.getClientRects().length && ring.getBoundingClientRect().width) return ring;
+  return b.querySelector('.base-unit') || b;
+};
 /** 진영 칸 아래 진영 HP 바 */
 const baseHpBar = p => { const pct = p.maxHp ? Math.max(0, Math.min(100, p.hp / p.maxHp * 100)) : 0; return `<div class="base-hp" title="진영 HP ${p.hp}/${p.maxHp}"><div class="base-hp-fill" style="width:${pct}%"></div><span>${fmt(Math.max(0, p.hp))}</span></div>`; };
 
