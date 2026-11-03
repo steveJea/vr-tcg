@@ -13,6 +13,8 @@ button:not(:disabled):active, [role="button"]:active, .main-tile:active, .story-
 @keyframes uiScreenIn { from { opacity: 0; translate: 0 8px; } to { opacity: 1; translate: none; } }
 .ui-pop-in { animation: uiFadeIn .16s ease-out; }
 .ui-pop-in > * { animation: uiPopIn .2s cubic-bezier(.2, .9, .3, 1.15); }
+/* 게임설정 등 .main-pop: 판(.main-pop-card)은 자기 popIn 이 있음 → .ui-pop-in 이 260ms 뒤 빠질 때 애니메이션 이름이 바뀌어 판이 한 번 더 사라졌다 나타남(깜빡임). 같은 이름을 써서 다시 재생 안 되게 */
+.ui-pop-in > .main-pop-card { animation: popIn .16s ease-out; }
 .ui-screen-in { animation: uiScreenIn .2s ease-out; }
 /* 스크롤: 관성 · 팝업 안에서 바깥 화면까지 끌려가지 않게 */
 #story-pop, .main-pop, .pvp-modal, .gd-pop, .gd-ov, .story-pop-panel { -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
