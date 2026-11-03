@@ -248,3 +248,7 @@
 - 3-1 `setBattleBg(kind, {story, key})`: img/battle/bg/{key}_m|_pc.webp 를 미리 불러 보고 있으면 사용, 없으면 기존 그림. 키 목록 img/battle/bg/README.txt. story.js 가 chapter, pvp.js 가 bgKey 'pvp', quest.js(탑)가 'tower'/'tower_boss' 전달.
 - 2-2 필드 카드: 카드 아래 HP 숫자 크게(`.u-hpnum`), 카드 안 작은 HP 숨김, 왼쪽 위 = 비용·등급 / 오른쪽 위 = 속성·스킬 수, 상태·장비 아이콘은 그 아래.
 - 스크린샷: /workspace/battle_top5/ (before_/after_ × board, crit, lowhp, victory × chromium/firefox × 390/pc)
+
+## 전투 배경 그림 적용 (battle-bg-art)
+- 그림순이 최종본 img/battle/bg/{arcade,pvp,boss,tower,tower_boss}_{m,pc}.webp (1080x1920 / 1920x1080, 각 ≤400KB). 코드 변경 없음: #427 연결(아케이드 = arcade, pvp.js bgKey 'pvp', 스토리·보스 ko = boss, quest.js 탑 = tower/tower_boss) 그대로 사용.
+- 확인: 크롬·파이어폭스 390x844·1280x800에서 4종 모두 해당 그림 로드, 상단 HUD(상대 이름 바·AUTO·⚙)는 보스 붉은 눈·탑 보스 일식 위에서도 읽힘. 스크린샷 /workspace/battle_bg_impl/
