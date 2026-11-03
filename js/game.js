@@ -187,7 +187,7 @@ function startGame(story = null) {
   $('ai-name').textContent = story ? (story.aiName || '적군') : '';   // 아케이드: 이름·아이콘 없음
   preloadFx([...S.me.deck, ...S.me.hand, ...S.ai.deck, ...S.ai.hand]);
   selected = null; $('log').innerHTML = ''; fxQueue.length = 0; vidGate = Promise.resolve();
-  $('end-screen').classList.add('hidden'); $('start-screen').classList.add('hidden'); $('game').classList.remove('hidden');
+  $('end-screen').classList.add('hidden'); $('start-screen').classList.add('hidden'); $('game').classList.remove('hidden', 'bfx-final', 'bfx-lose'); fitBoardSoon();
   initPlayers(S.me, S.ai, S[first]);   // 0턴 배치 상태(불사·회피 등) 지속 턴 기준 = 선공
   if (fs) {   // 스토리: 양측 카드 전부 필드에 배치 (최대 FIELD_MAX)
     S.holdPassive = [];   // 0턴 패시브 컷인은 UR 등장 컷인 뒤로 미룸 (아래 onEnter 뒤에 재생)
@@ -558,7 +558,7 @@ function setBattleBg(kind, o = {}) {
   bg.style.backgroundImage = ''; delete bg.dataset.bgKey;
   bg.dataset.bg = kind; bg.classList.add('on');
   tryBgArt(bg, [o.key, ...battleBgKeys(kind, o.story)].filter(Boolean));
-  if (!bg._watch) { bg._watch = new MutationObserver(() => bg.classList.toggle('on', !$('game').classList.contains('hidden'))); bg._watch.observe($('game'), { attributes: true, attributeFilter: ['class'] }); }
+  if (!bg._watch) { bg._watch = new MutationObserver(() => document.body.classList.toggle('bfx-battle', !$('game').classList.contains('hidden'))); bg._watch.observe($('game'), { attributes: true, attributeFilter: ['class'] }); bg._watch2 = new MutationObserver(() => bg.classList.toggle('on', !$('game').classList.contains('hidden'))); bg._watch2.observe($('game'), { attributes: true, attributeFilter: ['class'] }); }
 }
 
 /** 타격감: 히트스톱(피격 순간 정지) → 하얀 섬광 + 넉백(밀려났다 복귀) + 화면 흔들림(피해량 비례).
@@ -620,14 +620,46 @@ function critFx(el) {
 }
 const critNum = (el, n, unit) => { const c = critSet.delete(unit); dmgNumber(el, `-${fmt(n)}`, c ? '#fde047' : undefined, false, c ? 'fx-dmg-crit' : ''); };
 const EL_FX = { guard: ['🛡️', '#7dd3fc', '얼음 방어: 피해 절반'], drain: ['🩸', '#f0abfc', '어둠 흡혈'], cleanse: ['✨', '#fef08a', '빛 정화: 디버프 해제'], darkCounter: ['🌑×2', '#c4b5fd', '어둠 반격 2배'], nullCounter: ['🚫', '#fef9c3', '빛: 반격 무효'] };
+/** 2-4 PC 가로 화면: 남는 세로 공간만큼 필드 카드를 키우고(최대 1.35배), 넘치면 줄여서(최소 0.8배) 손패가 잘리지 않게 */
+let fitTimer = 0;
+function fitBoard() {
+  const g = $('game'), fb = $('field-box'); if (!g || !fb) return;
+  const on = BFX() && innerWidth >= 1024 && innerWidth > innerHeight && !g.classList.contains('hidden');
+  if (!on) { g.classList.remove('bfx-fit'); g.style.removeProperty('--bz'); return; }
+  const z0 = +g.style.getPropertyValue('--bz') || 1;
+  g.classList.add('bfx-fit');
+  const kids = [...g.children].filter(e => e.getClientRects().length && getComputedStyle(e).position !== 'fixed');
+  const bottom = Math.max(...kids.map(e => e.getBoundingClientRect().bottom)) + scrollY, top = g.getBoundingClientRect().top + scrollY;
+  const units = fb.querySelectorAll('.unit'); if (!units.length) return;
+  const rows = new Set([...units].map(u => Math.round(u.getBoundingClientRect().top))).size || 1, uh = units[0].getBoundingClientRect().height;
+  const free = innerHeight - (bottom - top) - 16;
+  const z = Math.max(0.8, Math.min(1.35, z0 * (1 + free / (uh * rows))));
+  if (Math.abs(z - z0) > 0.02) g.style.setProperty('--bz', z.toFixed(3));
+}
+function fitBoardSoon() { clearTimeout(fitTimer); fitTimer = setTimeout(() => { try { fitBoard(); } catch {} }, 120); }
+addEventListener('resize', fitBoardSoon);
+
+/** 1-3 겹침 정리 (BFX): 같은 대상 위 글자는 위로 차례로 쌓고, 0.9초 안에 같은 글자가 또 나오면 '×n' 으로 합침 */
+const fxStacks = new Map();
+function fxStackSlot(key, text) {
+  const now = performance.now(), st = (fxStacks.get(key) || []).filter(x => x.d.isConnected && now - x.t < 900);
+  fxStacks.set(key, st);
+  for (const k of fxStacks.keys()) if (k !== key && !(fxStacks.get(k) || []).some(x => x.d.isConnected)) fxStacks.delete(k);
+  const same = text && st.find(x => x.text === text);
+  if (same) { same.n++; same.t = now; same.d.dataset.n = `×${same.n}`; same.d.classList.remove('fx-merged'); void same.d.offsetWidth; same.d.classList.add('fx-merged'); return { merged: true }; }
+  return { merged: false, i: st.length, push: d => st.push({ d, text, n: 1, t: now }) };
+}
 function dmgNumber(el, text, color, html = false, extra = '') {
   if (!el || FX_OFF()) return;
   const r = el.getBoundingClientRect();
+  const slot = BFX() ? fxStackSlot(el, html ? null : text) : null;
+  if (slot?.merged) return;
   const d = document.createElement('div');
   d.className = 'fx-dmg' + (extra ? ' ' + extra : ''); if (html) d.innerHTML = text; else d.textContent = text;
   if (color) d.style.color = color;
-  d.style.left = (r.left + r.width / 2 + (Math.random() - 0.5) * 16) + 'px';
-  d.style.top = (r.top + r.height * 0.4) + 'px';
+  d.style.left = (r.left + r.width / 2 + (slot ? 0 : (Math.random() - 0.5) * 16)) + 'px';
+  d.style.top = (r.top + r.height * 0.4 - (slot ? Math.min(slot.i, 4) * 26 : 0)) + 'px';
+  slot?.push(d);
   document.body.appendChild(d);
   d.addEventListener('animationend', () => d.remove(), { once: true }); setTimeout(() => d.remove(), 1800);   // 천천히 사라짐 (CSS fxDmg 1.3s · 크리 1.5s)
 }
@@ -737,14 +769,34 @@ function floatText(text, cls, side = 'me', html = false) {
   const el = document.createElement('div');
   el.className = `float-text fixed z-30 pointer-events-none font-black text-lg drop-shadow ${cls}`;
   if (html) el.innerHTML = text; else el.textContent = text;
-  el.style.left = (r.left + r.width / 2 + (Math.random() - 0.5) * 80) + 'px';
-  el.style.top = (r.top + r.height / 2) + 'px';
+  const slot = BFX() ? fxStackSlot('side-' + side, html ? null : text) : null;
+  if (slot?.merged) return;
+  el.style.left = (r.left + r.width / 2 + (slot ? 0 : (Math.random() - 0.5) * 80)) + 'px';
+  el.style.top = (r.top + r.height / 2 - (slot ? Math.min(slot.i, 4) * 28 : 0)) + 'px';
+  slot?.push(el);
   document.body.appendChild(el);
   setTimeout(() => el.remove(), 1200);
 }
 
+/** 3-3 승패 연출 (BFX): 마지막 일격 슬로모션(전장 확대·밝기) → 결과 화면. 패배는 흑백. 모션 줄이기·연출 스킵이면 바로 */
+const endFx = () => BFX() && !FX_OFF() && !REDUCED();
+function finishFx(win) {
+  if (!BFX()) return 0;
+  $('game').classList.toggle('bfx-lose', win === false);
+  if (!endFx()) return 0;
+  $('game').classList.add('bfx-final'); return 600;
+}
+function countUp(root) {
+  if (!endFx()) return;
+  root.querySelectorAll('[data-count]').forEach(el => {
+    const to = +el.dataset.count || 0, suf = el.dataset.suf || '', t0 = performance.now(), dur = 700;
+    const step = now => { const k = Math.min(1, (now - t0) / dur), v = Math.round(to * (1 - Math.pow(1 - k, 3))); el.textContent = fmt(v) + suf; if (k < 1 && el.isConnected) requestAnimationFrame(step); };
+    el.textContent = '0' + suf; requestAnimationFrame(step);
+  });
+}
 function finish(win, reason) {
   S.over = true; hideModal('detail'); TUT('battle_end', { win: !!win });
+  const fxWait = finishFx(win);
   try { window.dispatchEvent(new CustomEvent('vr:daily', { detail: { k: 'battle', win: !!win, mode: S.story ? (S.story.tutorial || S.story.view ? null : S.story.dailyMode || 'story') : 'arcade' } })); } catch {}   // 📅 일일 미션 (js/daily.js)
   try { window.VRSound?.jingle?.(win === null ? 'draw' : win ? 'victory' : 'defeat'); } catch {}   // 전투 종료 징글 (전 모드, 1회)
   if (S.story) {   // 스토리 모드: 아케이드 전적·랭킹·갤러리에 기록하지 않고 스토리 화면으로 결과 전달
@@ -760,7 +812,8 @@ function finish(win, reason) {
   $('end-text').innerHTML = `<div id="end-reason" class="font-bold text-amber-300">${why}</div>${detail}<div class="mt-2">${S.turnNo}라운드 · 아케이드 전적 ${st.wins}승 ${st.losses}패${st.draws ? ` ${st.draws}무` : ''}</div>`;
   try { showEnding(win, reason); } catch (err) { reportError('ending', err); }
   try { const mvp = pickMvp(); window.dispatchEvent(new CustomEvent('vr:match', { detail: { result: win === null ? 'draw' : win ? 'win' : 'lose', reason, turns: S.turnNo, damage: S.log.total, skills: S.log.skills, mvpId: mvp?.card.id, mvpName: mvp?.card.name, mercId: S.log.merc?.id, fieldIds: S.me.field.map(u => (u.base || u.card).id) } })); } catch {}
-  $('end-screen').classList.remove('hidden');
+  const showEnd = () => { if (!S.over) return; $('end-screen').classList.remove('hidden'); countUp($('end-screen')); };
+  if (fxWait) setTimeout(showEnd, fxWait); else showEnd();
   render();
   return true;
 }
@@ -928,13 +981,13 @@ function showEnding(win, reason) {
   const sub = { win: '승리!', lose: '패배...', draw: '무승부' }[kind];
   const box = $('end-screen');
   box.className = `end-${kind} hidden fixed inset-0 flex items-center justify-center z-50 p-3 overflow-y-auto`;
-  const mvpHTML = mvp ? `<div class="end-mvp ${kind === 'win' ? 'end-mvp-big' : ''}">
+  const mvpHTML = mvp ? `<div class="end-mvp ${kind === 'win' ? 'end-mvp-big' : ''}${endFx() ? ' bfx-flip' : ''}">
       <img src="${IMG}${mvp.card.id}.webp" alt="${mvp.card.name}" onerror="this.style.visibility='hidden'">
       <div class="end-mvp-tag">MVP · ${mvp.card.name}${mvp.dmg ? ` · 피해 ${fmt(mvp.dmg)}` : ''}</div></div>` : '';
   const row = (k, v) => `<div class="flex justify-between gap-3 py-1 border-b border-white/10"><span class="text-zinc-400">${k}</span><span class="font-bold text-zinc-100">${v}</span></div>`;
   $('end-title').innerHTML = `<div class="end-slash"><div class="end-big">${title}</div></div><div class="text-base font-bold mt-1 ${kind === 'win' ? 'text-emerald-300' : kind === 'lose' ? 'text-red-400' : 'text-zinc-200'}">${sub}</div>`;
   $('end-mvp-wrap').innerHTML = mvpHTML;
-  $('end-stats').innerHTML = row('진행 턴', `${S.myTurns || S.turnNo}턴 (${S.turnNo}라운드)`) + row('준 피해 합계', fmt(L.total)) + row('사용한 스킬', `${L.skills}회`)
+  $('end-stats').innerHTML = row('진행 턴', `${S.myTurns || S.turnNo}턴 (${S.turnNo}라운드)`) + row('준 피해 합계', BFX() ? `<span data-count="${L.total || 0}">${fmt(L.total)}</span>` : fmt(L.total)) + row('사용한 스킬', BFX() ? `<span data-count="${L.skills || 0}" data-suf="회">${L.skills}회</span>` : `${L.skills}회`)
     + row('고용한 용병', L.merc ? `${ic('merc')} ${L.merc.name}` : '없음') + row('진영 HP', `나 ${fmt(Math.max(0, S.me.hp))} : ${fmt(Math.max(0, S.ai.hp))} 상대`);
   S.endShare = `Violence Royale : The Abyss Gate에서 ${sub}${mvp ? ` MVP는 ${mvp.card.name}!` : ''} (${S.turnNo}라운드, 피해 ${fmt(L.total)})`;
   if (kind === 'win' && mvp) setTimeout(() => mvpVoice(mvp.card), FX_OFF() ? 0 : 500);
@@ -1062,7 +1115,8 @@ function preloadFx(cards) {
 }
 function cutInHTML(u, name, fx, passive) {
   const media = fx ? (/\.(mp4|webm)$/i.test(fx) ? `<video src="data/fx/${fx}" autoplay muted playsinline class="cutin-media"></video>` : `<img src="data/fx/${fx}" class="cutin-media" alt="" onerror="this.remove()">`) : '';
-  return `${media}<div class="cutin-text"><div class="text-[11px] md:text-xs text-zinc-200">${u.owner.name} · ${u.card.name}${passive ? ' · 패시브' : ''}</div><div class="text-xl md:text-3xl font-black tracking-tight">${passive ? '✨ ' : ic('skill', { alt: '스킬' }) + ' '}${name}</div></div>`;
+  const bands = BFX() ? '<i class="cut-band cut-band-t" aria-hidden="true"></i><i class="cut-band cut-band-b" aria-hidden="true"></i><i class="cut-speed" aria-hidden="true"></i>' : '';
+  return `${bands}${media}<div class="cutin-text"><div class="text-[11px] md:text-xs text-zinc-200">${u.owner.name} · ${u.card.name}${passive ? ' · 패시브' : ''}</div><div class="text-xl md:text-3xl font-black tracking-tight">${passive ? '✨ ' : ic('skill', { alt: '스킬' }) + ' '}${name}</div></div>`;
 }
 /** 슬래시 착지 순간(약 19%) 화면 살짝 흔들기 — 모션 줄이기 설정이면 생략 */
 let impactTimer;
@@ -1532,6 +1586,7 @@ function turnBanner(mine) {
   setTimeout(() => b.remove(), 650);
 }
 function render() {
+  fitBoardSoon();
   renderAutoBtn();
   maybeAutoEndTurn();
   if (S) preloadFx([...S.me.field, ...S.ai.field].map(u => u.base || u.card));
@@ -2094,7 +2149,7 @@ async function viewBattle0({ session, aiName = '상대', bg = 'normal', bgKey = 
   S.me.name = '나'; S.ai.name = aiName;
   for (const w of ['me', 'ai']) { $(`${w}-hp`).classList.toggle('hidden', S[w].noBase); $(`${w}-hpbar`).parentElement.classList.toggle('hidden', S[w].noBase); }   // 보스리그: 진영 HP 표시
   selected = null; $('log').innerHTML = ''; fxQueue.length = 0; vidGate = Promise.resolve(); hpPrev.clear();
-  $('end-screen').classList.add('hidden'); $('start-screen').classList.add('hidden'); $('game').classList.remove('hidden');
+  $('end-screen').classList.add('hidden'); $('start-screen').classList.add('hidden'); $('game').classList.remove('hidden', 'bfx-final', 'bfx-lose'); fitBoardSoon();
   $('game').classList.add('story-field', 'view-battle'); $('game').classList.toggle('view-raid', !!raid); $('game').classList.toggle('view-boss', !S.ai.noBase);
   // ---- 균열 토벌: 보스 배너 (그림 · 단계 · 공유 HP 바 · 이번 판 피해 · 남은 시간) ----
   let RB = null, tick = 0;

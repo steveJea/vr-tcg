@@ -252,3 +252,10 @@
 ## 전투 배경 그림 적용 (battle-bg-art)
 - 그림순이 최종본 img/battle/bg/{arcade,pvp,boss,tower,tower_boss}_{m,pc}.webp (1080x1920 / 1920x1080, 각 ≤400KB). 코드 변경 없음: #427 연결(아케이드 = arcade, pvp.js bgKey 'pvp', 스토리·보스 ko = boss, quest.js 탑 = tower/tower_boss) 그대로 사용.
 - 확인: 크롬·파이어폭스 390x844·1280x800에서 4종 모두 해당 그림 로드, 상단 HUD(상대 이름 바·AUTO·⚙)는 보스 붉은 눈·탑 보스 일식 위에서도 읽힘. 스크린샷 /workspace/battle_bg_impl/
+
+## 전투 개선 PR A (battle-rest-a) — 1-3 · 3-3 · 3-4 · 2-4
+- 모두 BFX (localStorage vrBfx=0 이면 끔), 모션 줄이기면 애니메이션 없음. FX_SPEED 0.4 / AI_DELAY 260 그대로.
+- 1-3 `fxStackSlot`: 같은 카드(또는 같은 진영 floatText) 위 글자는 26px씩 위로 쌓고, 0.9초 안에 같은 글자면 새로 띄우지 않고 '×n'.
+- 3-3 `finishFx`/`countUp`: 아케이드 결과 화면을 0.6초 늦춰 마지막 일격 슬로모션(전장 1.06배·밝기), MVP 카드 뒤집혀 등장, 피해 합계·스킬 수 0→값 카운트, 패배는 전장·결과 뒤 흑백. 스토리는 흑백만 (결과는 스토리 화면).
+- 3-4 컷인: 위·아래 검은 띠(내 편 초록·상대 빨강 선) + CSS 속도선, 길이(--dur) 그대로, 그림 컷인 높이 세로 32vh·가로 40vh 로 축소.
+- 2-4 `fitBoard`: PC 가로(≥1024)에서 남는 높이만큼 필드 카드 zoom(0.8~1.35), 넘치면 줄여서 손패 안 잘림. 1440px 이상이면 전투 기록을 왼쪽에 상시 표시.
