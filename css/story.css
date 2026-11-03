@@ -1052,3 +1052,9 @@ body.gnb-on:not(.gnb-hidden) #story-screen { --wrap-pb: 12px; }   /* 하단 메�
 #story-screen .gr-ui { min-height: calc(100vh - var(--ss-used) - 12px - var(--wrap-pb) - 16px); min-height: calc(100dvh - var(--ss-used) - 12px - var(--wrap-pb) - 16px); }
 /* PC 진행(루트 고르기): 카드 3장이 화면 폭만큼 커져 세로로 넘치던 것 → 폭을 줄여 한 화면에 들어가게 */
 @media (min-width: 768px) { #story-screen .story-select { max-width: 600px; margin-left: auto; margin-right: auto; } }
+/* 폰: 대사 화면 높이 = 보이는 화면 (92vh 는 안드로이드 크롬 주소창을 빼지 않아 아래 대사창이 잘렸음) · 출전 고르기 창 = 위에 붙임 */
+@media (max-width: 767px) {
+  #story-screen .story-dlg { min-height: 92vh; min-height: calc(100dvh - var(--ss-used, 0px) - 24px); }
+  #story-pop:has(.story-deckpick) { align-items: flex-start; padding: max(8px, env(safe-area-inset-top)) 8px 8px; }
+  #story-pop:has(.story-deckpick) > .story-pop-panel { max-height: calc(100vh - 16px); max-height: calc(100dvh - 16px); }
+}

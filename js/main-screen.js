@@ -87,8 +87,13 @@
   const fading = new Set();
   const kill = o => { fading.delete(o); try { o.pause(); o.removeAttribute('src'); o.load(); } catch {} };
   const killFading = () => { for (const o of [...fading]) if (o !== audio) kill(o); };
+  // 화면 전용 트랙(조직·토벌·PvP 대기실 등 scope 로 튼 곡): 그 화면이 이미 닫혔으면 틀지 않고 메인으로.
+  // 원인: 마이페이지·갤러리·전투는 열 때 '이전 트랙'을 기억했다 닫을 때 되돌림 → 조직에서 열고 하단 메뉴로 조직을 떠난 뒤 닫으면 조직 음악이 되살아났음
+  const SCOPED = new Set(), BASE = 'audio/main.mp3';
+  const scopeLive = t => { try { return scopes.some(x => x.src === t && (x.el.isConnected || window.VRPages?.holds?.(x.el))); } catch { return true; } };
   const setTrack = (next, ms = 900) => {
     if (!next) return;
+    if (SCOPED.has(next) && !scopeLive(next)) next = BASE;
     if (jingleA) { if (next !== src) { src = next; const o = audio; audio = null; missing = false; if (o) { o.pause(); o.removeAttribute('src'); o.load(); } } return; }   // 징글 중: 끝나면 새 트랙 재생
     if (next === src) return;
     src = next;
@@ -132,7 +137,7 @@
   const scope = (el, next) => {
     if (!el || !next) return;
     let prev = src; if (prev === next) { const o = scopes.find(x => x.src === next); if (o) prev = o.prev; }
-    scopes.push({ el, src: next, prev }); setTrack(next);
+    SCOPED.add(next); scopes.push({ el, src: next, prev }); setTrack(next);
   };
   new MutationObserver(() => { for (let i = scopes.length - 1; i >= 0; i--) { const x = scopes[i]; if (x.el.isConnected || window.VRPages?.holds?.(x.el)) continue;   // 위 페이지에 가려 잠시 떼어진 페이지는 아직 열린 것
     scopes.splice(i, 1); if (src === x.src && !scopes.some(y => y.src === x.src)) setTrack(x.prev); } }).observe(document.body, { childList: true, subtree: true });   // 페이지 안에 들어간 화면이 빠져도 감지
