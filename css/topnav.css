@@ -96,3 +96,4 @@ body.tnb-on #start-screen .main-top .main-mail, body.tnb-on #start-screen .main-
 #vr-tnb .acct-login { max-height: 36px; padding: 4px 10px !important; font-size: 12px !important; }
 body.tnb-on #story-screen .story-map-top [data-mailbtn] { display: none !important; }
 body.tnb-on #story-screen .hub-top .hub-title { display: none; }
+body.tnb-on { --tnb-pad: var(--tnb-h); }
