@@ -1,0 +1,36 @@
+/* 전투 개선 PR B (js/game.js BFX): 속성 타격 입자 · VS 인트로. 새 그림 없음 (CSS 만). vrBfx=0 이면 생성 안 됨 */
+
+/* 1-1 속성 입자: 상자 가운데에서 --dx/--dy(카드 크기 비율)만큼 흩어짐 */
+.fx-el { position: fixed; width: 0; height: 0; z-index: 31; pointer-events: none; }
+.fx-el i { position: absolute; left: 0; top: 0; width: 9px; height: 9px; margin: -4.5px; border-radius: 50%; animation: fxElOut .5s cubic-bezier(.2,.8,.3,1) forwards; animation-delay: calc(var(--i) * 12ms); }
+@keyframes fxElOut { 0% { transform: translate(0,0) scale(.4) rotate(var(--rot)); opacity: 1; } 100% { transform: translate(calc(var(--dx) * var(--s)), calc(var(--dy) * var(--s))) scale(1) rotate(var(--rot)); opacity: 0; } }
+.fx-el-fire i { background: radial-gradient(circle, #fff7ed 0 20%, #fb923c 45%, rgba(220,38,38,0) 72%); width: 12px; height: 12px; animation-name: fxElFire; }
+@keyframes fxElFire { 0% { transform: translate(0,0) scale(.5); opacity: 1; } 100% { transform: translate(calc(var(--dx) * var(--s)), calc(var(--dy) * var(--s) - 22px)) scale(1.2); opacity: 0; } }
+.fx-el-ice i { border-radius: 2px; width: 5px; height: 14px; margin: -7px -2.5px; background: linear-gradient(#f0f9ff, #7dd3fc); box-shadow: 0 0 6px #38bdf8; }
+.fx-el-wind i { border-radius: 9999px; width: 22px; height: 3px; margin: -1.5px -11px; background: linear-gradient(90deg, transparent, #99f6e4, transparent); }
+.fx-el-light i { border-radius: 0; width: 4px; height: 26px; margin: -13px -2px; background: linear-gradient(#fff, #fde047); box-shadow: 0 0 8px #facc15; clip-path: polygon(50% 0, 100% 40%, 60% 45%, 100% 100%, 0 55%, 40% 50%, 0 0); animation-duration: .3s; }
+.fx-el-dark i, .fx-el-drain i { background: radial-gradient(circle, #f5d0fe 0 20%, #a855f7 50%, rgba(88,28,135,0) 72%); animation-name: fxElIn; }
+.fx-el-drain i { background: radial-gradient(circle, #fecdd3 0 20%, #e11d48 50%, rgba(136,19,55,0) 72%); }
+@keyframes fxElIn { 0% { transform: translate(calc(var(--dx) * var(--s)), calc(var(--dy) * var(--s))) scale(1); opacity: 0; } 30% { opacity: 1; } 100% { transform: translate(0,0) scale(.3); opacity: 0; } }
+.fx-el-abyss i { background: radial-gradient(circle at 35% 35%, #ecfccb 0 15%, #84cc16 40%, #3f6212 70%, transparent 72%); width: 11px; height: 11px; animation-name: fxElBubble; }
+@keyframes fxElBubble { 0% { transform: translate(0,0) scale(.3); opacity: 1; } 100% { transform: translate(calc(var(--dx) * var(--s) * .6), calc(var(--dy) * var(--s) * .4 - 26px)) scale(1.1); opacity: 0; } }
+.fx-el-void i { width: 20px; height: 20px; margin: -10px; background: none; border: 2px solid #f0abfc; box-shadow: 0 0 8px #e879f9; animation-name: fxElRing; animation-delay: calc(var(--i) * 70ms); }
+@keyframes fxElRing { 0% { transform: scale(.3); opacity: 1; } 100% { transform: scale(4); opacity: 0; } }
+
+/* 3-2 VS 인트로 (0.85초, 탭하면 넘김) */
+.bfx-vs { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; gap: 4vw; cursor: pointer; background: radial-gradient(circle at 50% 50%, rgba(24,24,27,.6), rgba(0,0,0,.88)); animation: vsBg .85s ease both; }
+.bfx-vs.vs-out { opacity: 0; transition: opacity .15s; }
+@keyframes vsBg { 0% { opacity: 0; } 12%, 85% { opacity: 1; } 100% { opacity: .9; } }
+.bfx-vs::before, .bfx-vs::after { content: ''; position: absolute; left: 0; right: 0; height: 12%; background: #000; }
+.bfx-vs::before { top: 0; box-shadow: 0 2px 0 #34d399; } .bfx-vs::after { bottom: 0; box-shadow: 0 -2px 0 #f87171; }
+.vs-side { display: flex; flex-direction: column; align-items: center; gap: 6px; color: #fff; text-shadow: 0 2px 6px #000; }
+.vs-side b { font-size: clamp(14px, 3.6vw, 24px); font-weight: 900; } .vs-side small { font-size: 12px; opacity: .8; }
+.vs-card { width: clamp(110px, 30vw, 220px); aspect-ratio: 3/4; border-radius: 14px; overflow: hidden; padding: 3px; }
+.vs-card img { width: 100%; height: 100%; object-fit: cover; border-radius: 11px; display: block; }
+.vs-me .vs-card { background: linear-gradient(135deg, #6ee7b7, #047857); box-shadow: 0 0 24px rgba(52,211,153,.6); animation: vsInL .35s cubic-bezier(.2,1.3,.4,1) both; }
+.vs-ai .vs-card { background: linear-gradient(135deg, #fca5a5, #b91c1c); box-shadow: 0 0 24px rgba(248,113,113,.6); animation: vsInR .35s cubic-bezier(.2,1.3,.4,1) both; }
+@keyframes vsInL { from { transform: translateX(-60vw) rotate(-8deg); } to { transform: none; } }
+@keyframes vsInR { from { transform: translateX(60vw) rotate(8deg); } to { transform: none; } }
+.vs-mark { font-size: clamp(36px, 10vw, 80px); font-weight: 900; font-style: italic; color: #fde047; -webkit-text-stroke: 2px #000; text-shadow: 0 0 18px rgba(250,204,21,.8); animation: vsMark .4s .18s cubic-bezier(.2,1.6,.4,1) both; }
+@keyframes vsMark { from { transform: scale(3); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .fx-el, .bfx-vs { display: none !important; } }
