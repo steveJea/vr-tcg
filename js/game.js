@@ -585,13 +585,26 @@ function tryBgArt(bg, keys) {
 }
 /** 전투 배경: 전투가 시작될 때만 이미지를 받음 (CSS data-bg). 아케이드·스토리 일반 = normal, 스토리 보스 = boss.
  *  o.story(챕터) / o.key 로 상황별 그림을 먼저 시도하고, 없으면 data-bg 그림 */
+/** 휴대폰 전투 전체 화면 (BFX): 전투 시작 탭 안에서만 시도, 실패·미지원은 조용히 무시. 전투 화면을 떠나면 해제 */
+let bfxFs = false;
+function battleFullscreen(on) {
+  try {
+    const d = document, el = d.documentElement;
+    if (on) {
+      if (!BFX() || bfxFs || d.fullscreenElement || !el.requestFullscreen || !matchMedia('(pointer: coarse) and (max-width: 767px)').matches) return;
+      if (navigator.userActivation && !navigator.userActivation.isActive) return;
+      const pr = el.requestFullscreen({ navigationUI: 'hide' }); bfxFs = true; pr?.catch?.(() => { bfxFs = false; });
+    } else if (bfxFs) { bfxFs = false; if (d.fullscreenElement && d.exitFullscreen) d.exitFullscreen().catch(() => {}); }
+  } catch { bfxFs = false; }
+}
 function setBattleBg(kind, o = {}) {
   const bg = $('battle-bg'); if (!bg) return;
+  battleFullscreen(true);
   document.body.classList.toggle('bfx', BFX());
   bg.style.backgroundImage = ''; delete bg.dataset.bgKey;
   bg.dataset.bg = kind; bg.classList.add('on');
   tryBgArt(bg, [o.key, ...battleBgKeys(kind, o.story)].filter(Boolean));
-  if (!bg._watch) { bg._watch = new MutationObserver(() => document.body.classList.toggle('bfx-battle', !$('game').classList.contains('hidden'))); bg._watch.observe($('game'), { attributes: true, attributeFilter: ['class'] }); bg._watch2 = new MutationObserver(() => bg.classList.toggle('on', !$('game').classList.contains('hidden'))); bg._watch2.observe($('game'), { attributes: true, attributeFilter: ['class'] }); }
+  if (!bg._watch) { bg._watch = new MutationObserver(() => { const vis = !$('game').classList.contains('hidden'); document.body.classList.toggle('bfx-battle', vis); if (!vis) battleFullscreen(false); }); bg._watch.observe($('game'), { attributes: true, attributeFilter: ['class'] }); bg._watch2 = new MutationObserver(() => bg.classList.toggle('on', !$('game').classList.contains('hidden'))); bg._watch2.observe($('game'), { attributes: true, attributeFilter: ['class'] }); }
 }
 
 /** 타격감: 히트스톱(피격 순간 정지) → 하얀 섬광 + 넉백(밀려났다 복귀) + 화면 흔들림(피해량 비례).
@@ -1681,7 +1694,7 @@ function render() {
     if (bossBox) bossBox.classList.toggle('hidden', !S.guardMode && !S[who].field.some(u => u.undying));
     { const slot = !!bossBox && !bossBox.classList.contains('hidden') && !S[who].noBase;   // 진영 칸이 진영 HP를 보여 주면 정보 상자의 진영 HP는 숨김 (중복 제거)
       $(`${who}-hp`).classList.toggle('hidden', S[who].noBase || (slot && !bossView())); $(`${who}-hpbar`).parentElement.classList.toggle('hidden', S[who].noBase || (slot && !bossView())); }
-    if (bossBox && S.guardMode && !guardOf(S[who])) nbb.innerHTML = `<div class="base-unit base-empty${BFX() ? ' base-thin' : ''}"><div class="base-ring"><div class="base-img base-ph">${ic('def', { alt: '' })}</div></div><div class="base-name">${who === 'me' ? '수비대장 비어 있음' : '수비대장 없음'}</div>${S[who].noBase ? '' : baseHpBar(S[who])}</div>`;
+    if (bossBox && S.guardMode && !guardOf(S[who])) nbb.innerHTML = `<div class="base-unit base-empty${BFX() ? ' base-thin' : ''}"><div class="base-ring"><div class="base-img base-ph">${ic('def', { alt: '' })}</div></div><div class="base-name" title="${who === 'me' ? '수비대장 비어 있음' : '수비대장 없음'}">${BFX() ? 'EMPTY' : who === 'me' ? '수비대장 비어 있음' : '수비대장 없음'}</div>${S[who].noBase ? '' : baseHpBar(S[who])}</div>`;
     if (!S[who].field.some(u => !u.undying)) nb.innerHTML = '<div class="text-zinc-600 text-xs self-center">빈 필드</div>';
     S[who].field.forEach(u => {
       const w = document.createElement('div');

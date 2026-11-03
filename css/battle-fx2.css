@@ -40,15 +40,22 @@
 }
 @media (prefers-reduced-motion: reduce) { .bfx #game.bfx-low::before, .bfx #game.bfx-low #me-hpbar { animation: none; opacity: .8; } .bfx #field-box.bfx-zoom { animation: none; } }
 
-/* 내 빈 수비대장 칸: 얇은 줄 대신 살짝 볼록한 자리 표시 (방패 + 이름 + HP) */
-.bfx .base-slot-me .base-unit.base-thin { padding: 4px 12px 4px 4px; opacity: .9; background: linear-gradient(180deg, rgba(63,63,70,.55), rgba(24,24,27,.7)); border: 1px dashed rgba(52,211,153,.45); box-shadow: 0 3px 10px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.12); transform: translateY(-2px); }
-.bfx .base-slot-me .base-unit.base-thin .base-ring { display: block; width: 34px; height: 34px; padding: 2px; opacity: .8; }
-.bfx .base-slot-me .base-unit.base-thin .base-img { display: flex; align-items: center; justify-content: center; }
-.bfx .base-slot-me .base-unit.base-thin .base-img img { width: 18px; height: 18px; opacity: .7; }
+/* 빈 수비대장 칸: 가운데 반원 (내 쪽 = 필드 아래 가장자리에서 위로 볼록, 상대 = 위 가장자리에서 아래로) · EMPTY + HP */
+.bfx .base-unit.base-thin { width: 136px; height: 64px; padding: 0; gap: 4px; flex-direction: column; justify-content: center; opacity: .9; border: 1px dashed rgba(255,255,255,.28); background: radial-gradient(ellipse at 50% 100%, rgba(63,63,70,.6), rgba(24,24,27,.75)); box-shadow: inset 0 1px 0 rgba(255,255,255,.1); }
+.bfx .base-slot-me .base-unit.base-thin { border-radius: 68px 68px 0 0; border-bottom: 0; padding-top: 10px; border-color: rgba(52,211,153,.5); box-shadow: 0 -3px 10px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.12); }
+.bfx .base-slot:not(.base-slot-me) .base-unit.base-thin { border-radius: 0 0 68px 68px; border-top: 0; padding-bottom: 10px; border-color: rgba(248,113,113,.45); }
+.bfx .base-slot-me:has(.base-thin) { margin: auto 0 -8px; }
+.bfx .base-slot:not(.base-slot-me):has(.base-thin) { margin: -8px 0 auto; }
+.bfx .base-unit.base-thin .base-ring { display: none; }
+.bfx .base-unit.base-thin .base-name { font-size: 12px; letter-spacing: .2em; font-weight: 900; color: #a1a1aa; }
 .bfx .base-slot-me .base-unit.base-thin .base-name { color: #a7f3d0; }
+.bfx .base-unit.base-thin .base-hp { width: 96px; height: 12px; }
+@media (min-width: 768px) { .bfx .base-unit.base-thin { width: 180px; height: 84px; } .bfx .base-unit.base-thin .base-hp { width: 130px; } }
 
 /* 휴대폰: 아래 조작 영역(마나·턴 종료·행동 아이콘·손패)을 화면 맨 아래에 붙임 */
 @media (max-width: 767px) {
   .bfx #game:not(.hidden) { min-height: 100dvh; }
+  .bfx #game:not(.hidden) > #field-box { flex: 1 1 auto; justify-content: space-between; }
+  .bfx #field-box > #ai-field, .bfx #field-box > #me-field { flex: 1 1 0; align-items: center; }
   .bfx #game > #me-dock { margin-top: auto; position: sticky; bottom: 0; z-index: 20; padding-bottom: env(safe-area-inset-bottom); background: linear-gradient(180deg, rgba(9,9,11,0), rgba(9,9,11,.85) 18px); }
 }
