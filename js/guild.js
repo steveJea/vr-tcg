@@ -104,7 +104,7 @@
   function dots(p = ov?.querySelector('.gd-page')) {
     if (!p?.querySelector('[data-dot]')) return;
     const set = (k, on) => { const el = p.querySelector(`[data-dot="${k}"]`); if (el) el.hidden = !on; };
-    window.VRWar?.claimable().then(c => set('war', c));
+    (window.VRWar?.dot || window.VRWar?.claimable)?.().then(c => set('war', c));
     (window.VRRaid?.dot || window.VRRaid?.claimable)?.().then(c => set('raid', c));
     rpc('guild_dots').then(d => { if (d) for (const k of ['rally', 'quest']) set(k, d[k]); }).catch(() => {});
   }
@@ -124,7 +124,7 @@
         <button data-t="log"><span>${gi('tile_log', '📜')}</span>기록</button><button data-t="lend"><span>${gi('tile_lend', '🤝')}</span>대여</button>
         <button data-t="rally"><span>${gi('tile_rally', '🕯️')}</span>집결<i class="gd-dot" data-dot="rally" hidden></i></button><button data-t="quest"><span>${gi('tile_quest', '📜')}</span>의뢰<i class="gd-dot" data-dot="quest" hidden></i></button>
         <button data-t="raid"><span class="gd-tic"><img src="img/ui/guild/raid_icon.webp" alt="" onerror="this.remove()"><i>🐉</i></span>토벌<i class="gd-dot" data-dot="raid" hidden></i></button>
-        <button data-t="war"><span class="gd-tic"><img src="img/ui/guild/war_icon.webp" alt="" onerror="this.remove()"><i>🏴</i></span>전쟁<i class="gd-dot" data-dot="war" hidden></i></button></div>
+        <button data-t="war"><span class="gd-tic"><img src="img/ui/guild/war_icon.webp" alt="" onerror="this.remove()"><i>🏴</i></span>전쟁<i class="gd-dot" data-dot="war" title="보상 · 전쟁 덱 편성하기" hidden></i></button></div>
       <div class="gd-h">${gi('ic_members', '👥')} 조직원</div>
       <div class="gd-mem">${st.members.map(x => `<button class="gd-m r-${x.role}" data-u="${x.user_id}">${x.card ? `<img src="${IMG}${x.card}.webp" alt="" loading="lazy" onerror="this.remove()">` : '<span class="gd-m-no">👤</span>'}
         ${x.role !== 'member' ? `<i class="gd-m-role">${ROLE[x.role][0]}</i>` : ''}<span class="gd-m-n">${esc(x.name)}</span><small>${LOYI}${n(x.loyalty_total)}</small></button>`).join('')}</div>
