@@ -922,6 +922,12 @@ body.story-media-on .story-dlg-skip { left: 4px; right: auto; top: calc(4px + en
   #game:not(.story-field) #action-bar.act-row { grid-column: 1; grid-row: 1; position: static; display: grid; grid-template-columns: repeat(3, 38px); grid-auto-rows: 38px; gap: 4px; align-content: center; }
   #game:not(.story-field) #action-bar .act-btn { width: 38px; height: 38px; padding: 0; border-radius: 10px; line-height: 0; }
   #game:not(.story-field) #action-bar .act-btn .ui-ic { width: 24px; height: 24px; }
+  /* 고유기술 버튼: '내 턴 남은 횟수' 패널과 일괄 공격·턴 종료 사이 (패널 오른쪽) */
+  #game:not(.story-field) #me-dock { grid-template-columns: minmax(0, 1fr) auto auto; }
+  #game:not(.story-field) #me-dock > div:first-child { display: contents; }
+  #game:not(.story-field) #me-dock #me-hero { grid-column: 1; grid-row: 1; }
+  #game:not(.story-field) #action-bar.act-row { grid-column: 2; }
+  #game:not(.story-field) #me-dock .hud-btns { grid-column: 3; grid-row: 1; }
 }
 #game:not(.story-pool) #action-bar .act-btn { line-height: 0; }
 
