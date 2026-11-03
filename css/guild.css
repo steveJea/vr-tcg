@@ -223,3 +223,10 @@ img.gi{position:static!important;inset:auto!important;display:inline-block;width
 .gd-lc.on{border-color:#34d399;box-shadow:0 0 0 2px rgba(52,211,153,.45)}.gd-lc:disabled{opacity:.45}.gd-lc.add{justify-content:center;min-height:100px;font-size:22px}
 .gd-lnote{font-size:12px;color:#a1a1aa;margin:2px 0 8px}
 .gd-lnl{display:flex;flex-direction:column;gap:8px;max-height:50vh;overflow-y:auto}.gd-ln{display:flex;gap:8px;align-items:center;font-size:13px}.gd-ln img{width:40px;aspect-ratio:3/4;object-fit:cover;border-radius:6px}
+/* 구역 전쟁 자동 참가·배치 (war_auto.sql) */
+.wr-mydeck .wr-dot{top:-3px;right:-3px}
+.wr-needdeck{position:relative;display:flex;align-items:center;gap:6px;width:100%;margin:8px 0;padding:10px 12px;border-radius:12px;border:1px solid #ef444488;background:rgba(239,68,68,.12);color:#fff;font-weight:800;text-align:left}
+.wr-needdeck{white-space:nowrap}.wr-needdeck small{margin-left:auto;white-space:normal;font-weight:500;opacity:.75;font-size:11px}
+.wr-needdeck .wr-dot{position:static;flex:none}
+.wr-slot.ajit .wr-face{outline:2px solid #fbbf24;outline-offset:1px}
+.wr-ajit14{display:block;margin:6px auto}
