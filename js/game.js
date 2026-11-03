@@ -183,7 +183,7 @@ function startGame(story = null) {
   $('story-giveup')?.classList.toggle('hidden', !story);
   for (const w of ['me', 'ai']) { $(`${w}-hp`).classList.toggle('hidden', S[w].noBase); $(`${w}-hpbar`).parentElement.classList.toggle('hidden', S[w].noBase); }
   $('game').classList.toggle('story-field', !!story);
-  setBattleBg(story?.win === 'ko' ? 'boss' : 'normal'); preloadHit();
+  setBattleBg(story?.win === 'ko' ? 'boss' : 'normal', { story, key: story?.bgKey }); preloadHit();
   $('ai-name').textContent = story ? (story.aiName || '적군') : '';   // 아케이드: 이름·아이콘 없음
   preloadFx([...S.me.deck, ...S.me.hand, ...S.ai.deck, ...S.ai.hand]);
   selected = null; $('log').innerHTML = ''; fxQueue.length = 0; vidGate = Promise.resolve();
@@ -529,10 +529,35 @@ function hitFx(el, kind = 'impact') {
 let hitPreloaded = false;
 function preloadHit() { if (hitPreloaded) return; hitPreloaded = true; for (const src of Object.values(HIT_IMG)) { const i = new Image(); i.src = src; } }
 
-/** 전투 배경: 전투가 시작될 때만 이미지를 받음 (CSS data-bg). 아케이드·스토리 일반 = normal, 스토리 보스 = boss */
-function setBattleBg(kind) {
+/** 새 전투 연출 (빈 진영 칸 얇게·체력 위기 경고·치명타 섬광/줌/진동·카드 HP 크게). localStorage vrBfx=0 이면 전부 끔 */
+const BFX = () => { try { return localStorage.getItem('vrBfx') !== '0'; } catch { return true; } };
+/** 상황별 전투 배경: img/battle/bg/{key}_m.webp(세로) · _pc.webp(가로). 파일이 없으면 기존 normal/boss 그림 그대로 (CSS data-bg) */
+const BG_DIR = 'img/battle/bg/', bgOk = new Map();
+function battleBgKeys(kind, story) {   // 앞에서부터 있는 그림을 씀 (없으면 다음 키 → 끝까지 없으면 CSS data-bg)
+  const boss = kind === 'boss';
+  if (story) { const ch = story.chapter, c = ch != null && ch !== '' ? `story_ch${ch}` : null; return [c && boss && `${c}_boss`, c, boss && 'boss'].filter(Boolean); }
+  const k = { normal: 'arcade', boss: 'boss', war: 'war', raid: 'raid', pvp: 'pvp' }[kind]; return k ? [k] : [];
+}
+function tryBgArt(bg, keys) {
+  if (!keys.length || !BFX()) return;
+  const wide = matchMedia('(orientation: landscape)').matches, id = keys.join('|'); bg.dataset.bgKey = id;
+  const next = i => {
+    if (i >= keys.length || bg.dataset.bgKey !== id) return;
+    const src = `${BG_DIR}${keys[i]}_${wide ? 'pc' : 'm'}.webp`, ok = bgOk.get(src);
+    if (ok === true) { bg.style.backgroundImage = `url(${src})`; return; }
+    if (ok === false) return next(i + 1);
+    const im = new Image(); im.onload = () => { bgOk.set(src, true); next(i); }; im.onerror = () => { bgOk.set(src, false); next(i + 1); }; im.src = src;
+  };
+  next(0);
+}
+/** 전투 배경: 전투가 시작될 때만 이미지를 받음 (CSS data-bg). 아케이드·스토리 일반 = normal, 스토리 보스 = boss.
+ *  o.story(챕터) / o.key 로 상황별 그림을 먼저 시도하고, 없으면 data-bg 그림 */
+function setBattleBg(kind, o = {}) {
   const bg = $('battle-bg'); if (!bg) return;
+  document.body.classList.toggle('bfx', BFX());
+  bg.style.backgroundImage = ''; delete bg.dataset.bgKey;
   bg.dataset.bg = kind; bg.classList.add('on');
+  tryBgArt(bg, [o.key, ...battleBgKeys(kind, o.story)].filter(Boolean));
   if (!bg._watch) { bg._watch = new MutationObserver(() => bg.classList.toggle('on', !$('game').classList.contains('hidden'))); bg._watch.observe($('game'), { attributes: true, attributeFilter: ['class'] }); }
 }
 
@@ -561,6 +586,7 @@ function shake(el, o = {}) {
     if (!el.isConnected) return;
     el.classList.add('fx-knock', 'fx-shake');
     setTimeout(() => el.classList.remove('fx-knock', 'fx-shake', 'fx-hitflash'), Math.round(200 * k));
+    if (BFX() && (crit || big || d >= 1000)) bigHitFx(crit || big);
     if (amp >= 3.5 || crit || big) {   // 약한 잔타는 화면까지 흔들지 않음
       const sh = crit || big ? root : (document.getElementById('field-box') || root);   // #8 보통 타격은 전장만, 치명타·궁극기(UR/MR)만 화면 전체
       if (sh !== root) root.classList.remove('fx-screen'); else document.getElementById('field-box')?.classList.remove('fx-screen');
@@ -569,6 +595,16 @@ function shake(el, o = {}) {
       clearTimeout(screenTimer); screenTimer = setTimeout(() => sh.classList.remove('fx-screen'), Math.round((crit || big ? 260 : 180) * k));
     }
   }, stop);
+}
+
+/** 치명타·큰 피해: 화면 가장자리 섬광 + 전장 살짝 줌 + 휴대폰 짧은 진동. CSS 애니메이션만 (턴 길이 그대로) */
+let bigHitTimer;
+function bigHitFx(strong) {
+  const g = $('game'), fb = $('field-box'); if (!g) return;
+  g.classList.remove('bfx-hit', 'bfx-hit-strong'); fb?.classList.remove('bfx-zoom'); void g.offsetWidth;
+  g.classList.add('bfx-hit'); if (strong) g.classList.add('bfx-hit-strong'); fb?.classList.add('bfx-zoom');
+  clearTimeout(bigHitTimer); bigHitTimer = setTimeout(() => { g.classList.remove('bfx-hit', 'bfx-hit-strong'); fb?.classList.remove('bfx-zoom'); }, 320);
+  try { if (navigator.vibrate && matchMedia('(pointer: coarse)').matches) navigator.vibrate(strong ? 35 : 20); } catch {}
 }
 
 /** 치명타 연출: 노란 섬광 + 방사선 링 (속성 유리 피 튀김과 별개, 짧게) */
@@ -1404,7 +1440,7 @@ function cardHTML(c, { hp, size = 'md', dim = false } = {}) {
       <div class="text-[10px] md:text-xs font-bold truncate">${c.name}</div>
       <div class="text-[9px] md:text-[10px] text-amber-400 font-bold">⚡${fmt(c.power)}</div>
       <div class="flex justify-between whitespace-nowrap tracking-tighter ${small ? 'text-[8px]' : 'text-[9px]'} md:text-[11px] font-bold">
-        <span class="text-orange-400">${ic('atk', { cls: 'ui-ic-sm' })}${fmt(c.ATK)}</span><span class="text-red-400">${ic('hp', { cls: 'ui-ic-sm' })}${fmt(hp ?? c.HP)}</span><span class="text-sky-400">${ic('def', { cls: 'ui-ic-sm' })}${fmt(c.DEF)}</span>
+        <span class="text-orange-400">${ic('atk', { cls: 'ui-ic-sm' })}${fmt(c.ATK)}</span><span class="st-hp text-red-400">${ic('hp', { cls: 'ui-ic-sm' })}${fmt(hp ?? c.HP)}</span><span class="text-sky-400">${ic('def', { cls: 'ui-ic-sm' })}${fmt(c.DEF)}</span>
       </div>
     </div>
   </div>`;
@@ -1533,6 +1569,11 @@ function render() {
   $('hero-hint').innerHTML = S.story && S.over ? '' : S.ai.noBase ? (S.over ? '' : $('game').classList.contains('view-raid') ? '🐉 균열 토벌: 15턴 동안 보스에게 최대한 큰 피해를!' : '⚔️ 일반전: 상대 카드를 모두 쓰러뜨리면 승리') : S.turn === 'me' && !S.over ? (tg.hero ? `${ic('taunt', { alt: '' })} 상대 진영 공격 가능` : `${ic('def', { alt: '' })} ${escHtml(tg.reason)}`) : '';
   $('hero-hint').className = `text-center text-[11px] md:text-xs font-bold ${tg.hero ? 'text-emerald-400' : 'text-amber-300'}`;
 
+  { // 체력 위기 (30% 이하): 화면 가장자리 붉은 깜빡임 + 체력바 색. 진영이 없으면(스토리) 필드 전체 HP 비율
+    const p = S.me, f = p.field.filter(u => !u.undying), mx = f.reduce((a, u) => a + (u.maxHp || 0), 0);
+    const r = !p.noBase ? (p.maxHp ? p.hp / p.maxHp : 1) : mx ? f.reduce((a, u) => a + Math.max(0, u.hp), 0) / mx : 1;
+    $('game').classList.toggle('bfx-low', BFX() && !S.over && r > 0 && r <= 0.3);
+  }
   for (const who of ['ai', 'me']) {
     const p = S[who];
     const lsk = p.leaderSkill, lAlive = lsk && p.field.some(x => x.isLeader);
@@ -1551,7 +1592,7 @@ function render() {
     if (bossBox) bossBox.classList.toggle('hidden', !S.guardMode && !S[who].field.some(u => u.undying));
     { const slot = !!bossBox && !bossBox.classList.contains('hidden') && !S[who].noBase;   // 진영 칸이 진영 HP를 보여 주면 정보 상자의 진영 HP는 숨김 (중복 제거)
       $(`${who}-hp`).classList.toggle('hidden', S[who].noBase || (slot && !bossView())); $(`${who}-hpbar`).parentElement.classList.toggle('hidden', S[who].noBase || (slot && !bossView())); }
-    if (bossBox && S.guardMode && !guardOf(S[who])) nbb.innerHTML = `<div class="base-unit base-empty"><div class="base-ring"><div class="base-img base-ph">${ic('def', { alt: '' })}</div></div><div class="base-name">${who === 'me' ? '수비대장 비어 있음' : '수비대장 없음'}</div>${S[who].noBase ? '' : baseHpBar(S[who])}</div>`;
+    if (bossBox && S.guardMode && !guardOf(S[who])) nbb.innerHTML = `<div class="base-unit base-empty${BFX() ? ' base-thin' : ''}"><div class="base-ring"><div class="base-img base-ph">${ic('def', { alt: '' })}</div></div><div class="base-name">${who === 'me' ? '수비대장 비어 있음' : '수비대장 없음'}</div>${S[who].noBase ? '' : baseHpBar(S[who])}</div>`;
     if (!S[who].field.some(u => !u.undying)) nb.innerHTML = '<div class="text-zinc-600 text-xs self-center">빈 필드</div>';
     S[who].field.forEach(u => {
       const w = document.createElement('div');
@@ -1567,7 +1608,8 @@ function render() {
         `<div class="lv-badge absolute -top-1.5 left-1/2 -translate-x-1/2 px-1.5 rounded-full ${hero ? 'bg-gradient-to-r from-yellow-300 to-amber-500 shadow-[0_0_8px_#fbbf24]' : u.level > 1 ? 'bg-amber-400' : 'bg-zinc-600 text-white'} text-black text-[9px] md:text-[10px] font-black whitespace-nowrap">${hero ? ic('crown', { cls: 'ui-ic-sm' }) + ' ' : ''}Lv${u.level}</div>` +
         (icons.length ? `<div class="item-icons absolute top-7 right-0.5 flex flex-col text-[11px] md:text-sm leading-tight drop-shadow">${icons.map(x => `<span>${x}</span>`).join('')}</div>` : '') +
         (sts.length ? `<div class="status-icons absolute top-7 left-0.5 flex flex-col text-[11px] md:text-sm leading-tight drop-shadow">${sts.map(x => { const big = isStatusFxKind(x.kind), au = big && statusIconUrl(x.kind); return `<span title="${x.title}"${big ? ` class="st-big ${x.kind}"` : ''}>${au ? `<img class="st-asset" src="${au}" alt="">` : icOf(x)}${x.t > 0 ? `<b class="st-turns">${x.t}</b>` : ''}</span>`; }).join('')}</div>` : '') + `</div>` +
-        `<div class="hp-bar h-1.5 bg-white/10 rounded-full mt-0.5 overflow-hidden" title="HP ${u.hp}/${u.maxHp}"><div class="hp-ghost" style="width:${hpPrev.get(String(u.uid)) ?? (u.maxHp ? Math.max(0, Math.min(100, u.hp / u.maxHp * 100)) : 0)}%"></div><div class="hp-fill h-full bg-red-500" data-to="${u.maxHp ? Math.max(0, Math.min(100, u.hp / u.maxHp * 100)) : 0}" style="width:${hpPrev.get(String(u.uid)) ?? (u.maxHp ? Math.max(0, Math.min(100, u.hp / u.maxHp * 100)) : 0)}%"></div></div>` +
+        (BFX() ? `<div class="u-hpnum${u.maxHp && u.hp / u.maxHp <= 0.3 ? ' low' : ''}" title="HP ${u.hp}/${u.maxHp}">${fmt(Math.max(0, u.hp))}</div>` : '') +
+        `<div class="hp-bar h-1.5 bg-white/10 rounded-full mt-0.5 overflow-hidden${u.maxHp && u.hp / u.maxHp <= 0.3 ? ' hp-low' : ''}" title="HP ${u.hp}/${u.maxHp}"><div class="hp-ghost" style="width:${hpPrev.get(String(u.uid)) ?? (u.maxHp ? Math.max(0, Math.min(100, u.hp / u.maxHp * 100)) : 0)}%"></div><div class="hp-fill h-full bg-red-500" data-to="${u.maxHp ? Math.max(0, Math.min(100, u.hp / u.maxHp * 100)) : 0}" style="width:${hpPrev.get(String(u.uid)) ?? (u.maxHp ? Math.max(0, Math.min(100, u.hp / u.maxHp * 100)) : 0)}%"></div></div>` +
         `<div class="mp-bar h-1.5 bg-white/10 rounded-full mt-0.5 overflow-hidden" title="MP ${u.mp}/${u.maxMp} (+${u.mpRegen}/턴)"><div class="h-full bg-blue-500" style="width:${u.maxMp ? Math.min(100, u.mp / u.maxMp * 100) : 0}%"></div></div>` +
         // 상태 줄: 카드 너비를 넘지 않게 (width:0 + min-width:100% → 이 줄이 유닛 너비를 늘리지 않음). 둘 다면 '공격 가능'을 ⚔ 로 줄여 한 줄 유지
         `<div class="unit-tags flex justify-center items-center gap-1 h-4 whitespace-nowrap overflow-hidden" style="width:0;min-width:100%">${ready ? `<span class="text-[10px] text-emerald-400 font-bold" title="공격 가능">${skReady ? '⚔' : '공격 가능'}</span>` : ''}${skReady ? '<button class="skill-btn text-[10px] px-1 rounded bg-fuchsia-600 hover:bg-fuchsia-500 font-bold leading-4">✦스킬</button>' : ''}</div>`;
@@ -2038,7 +2080,7 @@ async function viewBattle(o = {}) {
   if (mu) try { snd?.setTrack?.(mu); } catch {}
   try { return await viewBattle0(o); } finally { if (mu && snd?.track === mu && prev) try { snd.setTrack(prev); } catch {} }
 }
-async function viewBattle0({ session, aiName = '상대', bg = 'normal', manual = false, maxTurns: mt = 40, title = '', raid = null, tutorial = null } = {}) {
+async function viewBattle0({ session, aiName = '상대', bg = 'normal', bgKey = null, manual = false, maxTurns: mt = 40, title = '', raid = null, tutorial = null } = {}) {
   if (tutorial) setTimeout(() => window.VRTutorial?.start(tutorial), 900);   // 튜토리얼 가이드 (js/tutorial.js)
   // 전투 화면을 띄운 팝업 층(조직 .gd-ov · 토벌/전쟁 .gd-pop · PvP · 마이페이지 등)은 전투 동안 숨겼다가 끝나면 그대로 복원
   const LAYERS = '.pvp-modal, .pvp-vsx, .gd-ov, .gd-pop, .mp-modal, .gal-modal, .ad-modal, #start-screen, #story-screen';
@@ -2075,7 +2117,7 @@ async function viewBattle0({ session, aiName = '상대', bg = 'normal', manual =
   }
   for (const w of ['me', 'ai']) { $(`${w}-hp`).classList.add('hidden'); $(`${w}-hpbar`).parentElement.classList.add('hidden'); }
   $('ai-name').textContent = aiName || '';
-  setBattleBg(bg); preloadHit(); preloadFx([...S.me.field, ...S.ai.field].map(u => u.base || u.card));
+  setBattleBg(bg, { key: bgKey }); preloadHit(); preloadFx([...S.me.field, ...S.ai.field].map(u => u.base || u.card));
   if (title) log(title, 'text-amber-300');
   log(raid ? `🐉 균열 토벌 · 내 턴 ${mt / 2}번 동안 최대한 큰 피해를 (행동 1번 상한 ${fmt(raid.cap)})` : '⚔️ 마나 없음 · 상대를 모두 쓰러뜨리면 승리', 'text-amber-300');
   render();

@@ -239,3 +239,12 @@
 - 고침 (css만): 하단 메뉴가 보일 땐 안쪽 맨 아래 여백 40 → 12px, 지도·소환의 '화면 높이 채우기'에서 상단 바·하단 메뉴 여백을 뺌(`--tnb-pad`, `--gnb-pad` 변수, dvh 우선), PC 진행 화면 카드 줄 폭 600px.
 - 결과 (scrollHeight / 화면): 360·390·PC 모두 지도·소환 = 화면 높이 그대로(스크롤 없음), 진행 390·PC = 화면 그대로, 360 진행은 840/740 (카드·소개글이 실제로 길어서 스크롤 유지). Chromium·Firefox 같음. 전투 시작 정상.
 - 화면: `/workspace/heightfix/{before,after}_{map,play,summon}_{390,pc}.png`, 숫자 `*_metrics.json`.
+
+## 전투 화면 개선 Top 5 (battle-top5)
+- 끄기: `localStorage.vrBfx = '0'` → 아래 전부 끔 (body.bfx 없음). 속도 값(FX_SPEED 0.4, AI_DELAY 260)은 그대로, 새 연출은 CSS 애니메이션만이라 턴이 길어지지 않음.
+- 2-1 수비대장이 없을 때 빈 진영 칸 → 한 줄 (이름 + HP 바). `.base-thin` (css/battle-fx2.css)
+- 2-5 내 체력 30% 이하 (진영 없으면 필드 HP 합) → `#game.bfx-low`: 가장자리 붉은 깜빡임, 진영 HP 바 주황·깜빡임, 카드 HP 30% 이하는 주황 바. 새 소리 없음.
+- 1-2 치명타 / UR·MR 스킬 / 피해 1000+ → `bigHitFx`: 가장자리 섬광, #field-box 살짝 줌(scale 1.025, 0.26초), 터치 기기만 navigator.vibrate 20~35ms.
+- 3-1 `setBattleBg(kind, {story, key})`: img/battle/bg/{key}_m|_pc.webp 를 미리 불러 보고 있으면 사용, 없으면 기존 그림. 키 목록 img/battle/bg/README.txt. story.js 가 chapter, pvp.js 가 bgKey 'pvp', quest.js(탑)가 'tower'/'tower_boss' 전달.
+- 2-2 필드 카드: 카드 아래 HP 숫자 크게(`.u-hpnum`), 카드 안 작은 HP 숨김, 왼쪽 위 = 비용·등급 / 오른쪽 위 = 속성·스킬 수, 상태·장비 아이콘은 그 아래.
+- 스크린샷: /workspace/battle_top5/ (before_/after_ × board, crit, lowhp, victory × chromium/firefox × 390/pc)
