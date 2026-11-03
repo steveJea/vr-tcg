@@ -263,3 +263,12 @@
 ## 전투 개선 PR B (battle-rest-b, PR A 위에서 분기) — 1-1 · 3-2
 - 1-1 `elemFx`: 맞는 순간 공격자 속성별 CSS 입자 (불=불씨 위로 · 얼음=조각 · 바람=칼바람 · 빛=번개 · 어둠=흡수 · 심연=독 거품 · 공허=파문), 어둠 흡혈(elfx drain)=붉은 흡수. 스킬 피해는 최근 2.5초 안 시전자 속성. 0.5초 뒤 삭제, 턴 길이 영향 없음.
 - 3-2 `vsIntro`: 아케이드·탑 등 kickoff 없는 전투 시작에 양쪽 대표 카드(리더 → 가장 강한 카드) VS 0.85초, 탭하면 바로 시작, 효과음은 기존 SE 7. 튜토리얼·kickoff 스토리·연출 스킵·모션 줄이기·vrBfx=0 이면 없음. PvP(viewBattle) 에는 없음.
+
+## 전투 실기기 피드백 (battle-dbg1)
+- 휴대폰(≤767px): #me-dock 을 margin-top:auto + sticky bottom 으로 화면 맨 아래에 고정, #game min-height 100dvh.
+- 내 빈 수비대장 칸: 얇은 줄 → 살짝 볼록한 점선 자리(방패 동그라미 + 이름 + HP).
+- 적 공격 방향 버그: heroEl 이 숨긴(0×0) .base-ring 을 목표로 잡아 화면 위로 돌진 → 보이는 칸(.base-unit)으로. 확인: 돌진 dy −177px → +181px.
+- 노란 세로 막대: #427 의 `.unit .lv-badge { top:-9px }` 가 진영 칸(.base-unit 도 .unit)의 `.base-lv { bottom:-4px }` 와 겹쳐 늘어난 Lv 뱃지. #427 카드 규칙을 `.unit:not(.base-unit)` 로 한정.
+- 컷인 위·아래 띠 14% 검정 → 8% 반투명(.42), VS 띠도 8% 반투명.
+- VS 인트로: 아케이드는 끔 (스토리 계열 kickoff 없는 전투만).
+- MR 영상 지지직: 사용자가 좋아해서 그대로 (변경 없음).
