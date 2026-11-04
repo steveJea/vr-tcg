@@ -16,6 +16,7 @@
       <div class="hub-acts">
         <button class="hub-big" data-a="play"><img src="img/ui/battle.webp" alt=""><span>게임플레이</span></button>
         <button class="hub-big" data-a="rank"><img src="img/ui/v2/icon_ranking.webp" alt=""><span>아케이드 랭킹</span></button></div>
+      <button class="hub-sub yt-hub" data-a="tut">📖 유리의 특강${window.VRArcadeTut && !window.VRArcadeTut.cleared(1) ? ' <b class="yt-new">NEW</b>' : ''}</button>
       <button class="hub-sub" data-a="opts"><img src="img/ui/v2/icon_arcade_settings.webp" alt="" class="ui-ic"> 아케이드 설정</button>
     </div>`;
     ov.addEventListener('click', e => {
@@ -23,6 +24,7 @@
       const a = e.target.closest('[data-a]')?.dataset.a; if (!a) return;
       if (a === 'play') { close(); window.TCG?.startGame?.(); }
       else if (a === 'rank') window.VRRanking?.open('arcade');
+      else if (a === 'tut') { close(); window.VRArcadeTut?.open(); }
       else if (a === 'opts') window.TCG?.openArcadeOpts?.();
     });
     document.body.appendChild(ov);

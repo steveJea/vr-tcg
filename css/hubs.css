@@ -22,3 +22,19 @@
 .pvp-top .pvp-rk-row{padding:5px 8px}
 /* 아케이드 허브(z 55) 위에 아케이드 설정 레이어 */
 #arcade-opts{z-index:60}
+/* 유리의 특강 (js/arcade-tut.js) */
+.yt-hub{border-color:rgba(232,121,249,.45);color:#f5d0fe}
+.yt-new{margin-left:4px;padding:0 5px;border-radius:6px;background:#e11d48;color:#fff;font-size:.65rem}
+.yt-ov{z-index:9500}
+.yt-page{max-width:420px}
+.yt-head{display:flex;gap:10px;align-items:center;margin:4px 28px 12px 0}
+.yt-head img{width:64px;height:64px;flex:none;object-fit:cover;object-position:top;border-radius:14px;border:2px solid #f5c96a;background:#000}
+.yt-head b{color:#f5c96a;font-size:1.05rem}.yt-head p{margin:2px 0 0;color:#e4e4e7;font-size:.85rem;line-height:1.35}
+.yt-list{display:flex;flex-direction:column;gap:8px}
+.yt-st{display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto;column-gap:10px;text-align:left;padding:10px 12px;border-radius:14px;background:linear-gradient(180deg,#2a1530,#120a14);border:1px solid rgba(245,201,106,.45);color:#fff}
+.yt-st b{grid-row:1/3;align-self:center;font-size:1.05rem;color:#f5c96a}.yt-st span{font-size:.85rem;font-weight:700}.yt-st i{font-style:normal;font-size:.72rem;color:#a1a1aa}
+.yt-st.done{border-color:#34d399}.yt-st.done i{color:#34d399}.yt-st:disabled{opacity:.45}
+.yt-note{display:block;margin-top:10px;text-align:center;color:#71717a;font-size:.7rem}
+.yt-btns{display:flex;gap:8px;margin-top:12px}.yt-btns button{flex:1;padding:10px;border-radius:12px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:#fff;font-weight:700}
+.yt-btns .yt-main{background:#f5c96a;color:#1a1a1a;border-color:#f5c96a}
+.yt-reward:empty{display:none}.yt-reward{margin-top:6px;padding:10px;border-radius:12px;background:rgba(245,201,106,.12);border:1px solid rgba(245,201,106,.4);text-align:center;color:#fde68a;font-weight:700}

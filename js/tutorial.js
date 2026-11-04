@@ -23,6 +23,11 @@ function resolve(t) {
     case 'reserve_btn': return document.getElementById('reserve-btn');
     case 'attack_all': return document.getElementById('attack-all');
     case 'end_turn': return document.getElementById('end-turn');
+    case 'hand': return document.querySelector(`#me-hand .hand-card[data-id="${n0}"]`);   // hand:<카드 id>
+    case 'ai_hero': { const b = document.getElementById('ai-boss'); return b && !b.classList.contains('hidden') && b.offsetParent ? b : document.getElementById('ai-hero'); }   // 진영 칸(아케이드) 또는 진영 HP
+    case 'act': return document.getElementById(`act-${n0}`);   // act:buff · act:accel · act:merc …
+    case 'merc': return document.querySelector(`#merc-list [data-merc="${n0}"]`);
+    case 'my_id': return [...document.querySelectorAll(`#me-field [data-uid], #me-boss [data-uid]`)].find(e => e.offsetParent && e.querySelector(`img[data-id="${n0}"]`)) || null;   // my_id:<카드 id>
     case 'auto_btn': return document.getElementById('auto-btn');
     default: try { return document.querySelector(t); } catch { return null; }
   }
