@@ -300,7 +300,13 @@
     "🟠": "orange_marker"
   };
   const norm = s => s.replace(/\uFE0F/g, '');
-  const E2RE = new RegExp(Object.keys(EMOJI2).sort((a, b) => b.length - a.length).map(e => e.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\uFE0F?').join('|'), 'gu');
+  // 자동 교체 표 = EMOJI(예전 표) + EMOJI2. 예전엔 EMOJI2 만 봐서 소환 제목 '🎴 인재 영입' 같은 글자가 이모지로 남았음 (2026-11-04)
+  // 뜻이 여러 개라 일부러 이모지로 두는 것(⚡✨★⏩☆)은 빼고, 이름이 같으면 EMOJI2 우선
+  const NO_AUTO = new Set(['⚡', '✨', '★', '⏩', '☆']);
+  const AUTO = {};
+  for (const [e, k] of Object.entries(EMOJI)) { const n = norm(e); if (!NO_AUTO.has(n)) AUTO[n] = k; }
+  for (const [e, k] of Object.entries(EMOJI2)) { const n = norm(e); if (!NO_AUTO.has(n)) AUTO[n] = k; }
+  const E2RE = new RegExp(Object.keys(AUTO).sort((a, b) => b.length - a.length).map(e => e.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\uFE0F?').join('|'), 'gu');
   const SKIP_SEL = '.story-dlg, #story-dlg, #event-layer, .ev-line, input, textarea, select, script, style, [contenteditable], [data-noemoji], .stfx-text';
   function swapText(tn) {
     const t = tn.nodeValue; E2RE.lastIndex = 0; if (!t || !E2RE.test(t)) return;
@@ -309,7 +315,7 @@
     const frag = document.createDocumentFragment(); let last = 0, m;
     while ((m = E2RE.exec(t))) {
       if (m.index > last) frag.appendChild(document.createTextNode(t.slice(last, m.index)));
-      const name = EMOJI2[norm(m[0])], d = ICONS[name];
+      const name = AUTO[norm(m[0])], d = ICONS[name];
       if (!d) { frag.appendChild(document.createTextNode(m[0])); last = m.index + m[0].length; continue; }
       const img = document.createElement('img');
       img.src = BASE + d.src; img.alt = m[0]; img.className = `ui-ic ui-ic-${name}`; img.width = 64; img.height = 64; img.draggable = false; img.decoding = 'async';
