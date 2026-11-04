@@ -20,3 +20,12 @@ VR 캐릭터 카드로 즐기는 1:1 카드 배틀 (컴퓨터 AI 상대). 정적
 - 연출 파일: 엑셀 '연출 파일' 칸에 파일명을 쓰고 `data/fx/`에 넣으면 컷인에 표시 (이미지 또는 mp4/webm)
 - MR 스킬 영상: `data/fx/mr/<카드id>_<스킬번호>.mp4` (H.264 720p 이하, 오디오 없음, faststart). MR 카드가 전투에서 그 스킬을 처음 쓸 때 1회 재생, 이후·파일 없음은 기존 컷인
 - 시뮬: `SIM_DETAIL=1 node tools/sim.mjs 3000` (스킬 사용 횟수·카드별 승률), `SIM_FORCE=<카드id> node tools/sim.mjs 300` (그 카드를 덱에 넣었을 때 승률)
+
+## 카드 썸네일 (img/thumb)
+작은 칸(전투 손패/필드, 덱·목록·교환·길드 등)은 `img/thumb/<id>.webp`(가로 300px)를 쓰고, 큰 화면(상세·확대·컷인)은 원본을 씁니다.
+썸네일이 없으면 자동으로 원본을 불러옵니다(`js/img-fallback.js`). 새 캐릭터를 추가하거나 그림을 바꾸면 다시 만드세요:
+
+```
+git clone --depth 1 --filter=blob:none --sparse https://github.com/steveJea/vr-ideal-worldcup ../viw && (cd ../viw && git sparse-checkout set img/bt_img)
+python3 tools/make_thumbs.py --bt-img ../viw/img/bt_img   # 바뀐 것만, --force 면 전부
+```

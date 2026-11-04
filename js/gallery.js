@@ -107,7 +107,7 @@
       const nNew = items.filter(x => x.r?.is_new).length;
       box.innerHTML = `<div class="gal-end-title">${IC('gallery')} 갤러리 수집 ${items.length}장${nNew ? ` · <span class="gal-new-txt">NEW ${nNew}</span>` : ''}</div>
         <div class="gal-end-row">${items.map(({ c, r }) => `<div class="gal-end-card rar-${SHORT[c.grade]}">
-          <img src="${IMG}${c.id}.webp" alt="${esc(c.name)}" onerror="this.style.visibility='hidden'">
+          <img src="${cardThumb(c.id)}" alt="${esc(c.name)}" onerror="this.style.visibility='hidden'">
           ${r?.is_new ? '<span class="gal-new">NEW!</span>' : `<span class="gal-cnt">×${r?.count ?? ''}</span>`}
           ${crownHtml(crownTier(r))}
           <div class="gal-end-name">${esc(c.name)}</div></div>`).join('')}</div>${promoNote(items, mvp)}`;
@@ -199,7 +199,7 @@
       if (!o) return `<div class="gal-card locked rar-${s}"><div class="gal-q">?</div><span class="gal-rar">${s}</span></div>`;
       const t = crownTier(o);
       return `<button class="gal-card rar-${s} ${t ? 'vip vip-' + TIERS[t].k : ''}" data-cid="${c.id}">
-        <img loading="lazy" src="${IMG}${c.id}.webp" alt="${esc(c.name)}" onerror="this.style.visibility='hidden'">
+        <img loading="lazy" src="${cardThumb(c.id)}" alt="${esc(c.name)}" onerror="this.style.visibility='hidden'">
         <span class="gal-rar">${s}</span>${crownHtml(t)}
         <div class="gal-name">${esc(c.name)}</div></button>`;
     }).join('');

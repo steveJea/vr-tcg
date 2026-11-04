@@ -30,7 +30,7 @@
     let host = document.getElementById('gn-toasts');
     if (!host) { host = document.createElement('div'); host.id = 'gn-toasts'; document.body.appendChild(host); }
     const t = document.createElement('div'); t.className = 'gn-toast';
-    t.innerHTML = `<img src="${IMG}${esc(n.card_id)}.webp" alt=""><span>📢 ${ns.length > 1 ? `${nameBtn(n)}님이 ${ns.map(x => `<em class="gn-g g-${esc(x.grade)}">${esc(x.grade)}</em> <b>${esc(cardName(x.card_id))}</b>`).join(', ')} 획득!` : line(n)}</span>`;
+    t.innerHTML = `<img src="${cardThumb(esc(n.card_id))}" alt=""><span>📢 ${ns.length > 1 ? `${nameBtn(n)}님이 ${ns.map(x => `<em class="gn-g g-${esc(x.grade)}">${esc(x.grade)}</em> <b>${esc(cardName(x.card_id))}</b>`).join(', ')} 획득!` : line(n)}</span>`;
     bindNames(t); t.onclick = () => { t.remove(); openLog(); };
     host.appendChild(t); while (host.children.length > 2) host.firstChild.remove();
     setTimeout(() => { t.classList.add('out'); setTimeout(() => t.remove(), 400); }, 6000);
@@ -54,7 +54,7 @@
     document.querySelector('.gn-log')?.remove(); unseen = 0; badge();
     const m = document.createElement('div'); m.className = 'gn-log';
     m.innerHTML = `<div class="gn-panel" role="dialog" aria-label="전체 소식"><div class="gn-head"><b>📢 전체 소식</b><small>UR 이상 획득 · 이름을 누르면 지정 거래</small><button class="gn-x" aria-label="닫기">✕</button></div>
-      <div class="gn-list">${list.length ? list.map(n => `<div class="gn-row"><img src="${IMG}${esc(n.card_id)}.webp" alt="" loading="lazy"><div><span>${line(n)}</span><small>${esc(SRC[n.src] || n.src || '')} · ${ago(n.created_at)}</small></div></div>`).join('') : '<div class="gn-empty">아직 소식이 없어요</div>'}</div></div>`;
+      <div class="gn-list">${list.length ? list.map(n => `<div class="gn-row"><img src="${cardThumb(esc(n.card_id))}" alt="" loading="lazy"><div><span>${line(n)}</span><small>${esc(SRC[n.src] || n.src || '')} · ${ago(n.created_at)}</small></div></div>`).join('') : '<div class="gn-empty">아직 소식이 없어요</div>'}</div></div>`;
     m.onclick = e => { if (e.target === m || e.target.closest('.gn-x')) m.remove(); };
     bindNames(m); document.body.appendChild(m);
   }

@@ -126,7 +126,7 @@
         <button data-t="raid"><span class="gd-tic"><img src="img/ui/guild/raid_icon.webp" alt="" onerror="this.remove()"><i>🐉</i></span>토벌<i class="gd-dot" data-dot="raid" hidden></i></button>
         <button data-t="war"><span class="gd-tic"><img src="img/ui/guild/war_icon.webp" alt="" onerror="this.remove()"><i>🏴</i></span>전쟁<i class="gd-dot" data-dot="war" title="보상 · 전쟁 덱 편성하기" hidden></i></button></div>
       <div class="gd-h">${gi('ic_members', '👥')} 조직원</div>
-      <div class="gd-mem">${st.members.map(x => `<button class="gd-m r-${x.role}" data-u="${x.user_id}">${x.card ? `<img src="${IMG}${x.card}.webp" alt="" loading="lazy" onerror="this.remove()">` : '<span class="gd-m-no">👤</span>'}
+      <div class="gd-mem">${st.members.map(x => `<button class="gd-m r-${x.role}" data-u="${x.user_id}">${x.card ? `<img src="${cardThumb(x.card)}" alt="" loading="lazy" onerror="this.remove()">` : '<span class="gd-m-no">👤</span>'}
         ${x.role !== 'member' ? `<i class="gd-m-role">${ROLE[x.role][0]}</i>` : ''}<span class="gd-m-n">${esc(x.name)}</span><small>${LOYI}${n(x.loyalty_total)}</small></button>`).join('')}</div>
       <div class="gd-foot">${me.can_claim ? '<button data-claim>👑 보스 승계</button>' : ''}<button data-leave>${me.role === 'boss' && g.members <= 1 ? '조직 해산' : '조직 나가기'}</button></div>`;
     p.querySelector('[data-t="shop"]').onclick = shopPop;
@@ -148,14 +148,14 @@
     const me = st.me;
     const canKick = (me.role === 'boss' && x.role !== 'boss') || (me.role === 'officer' && x.role === 'member');
     const boss = me.role === 'boss' && x.role !== 'boss';
-    const m = pop(`<div class="gd-mp">${x.card ? `<img class="gd-mp-img" src="${IMG}${x.card}.webp" alt="" onerror="this.remove()">` : '<div class="gd-mp-no">👤</div>'}
+    const m = pop(`<div class="gd-mp">${x.card ? `<img class="gd-mp-img" src="${cardThumb(x.card)}" alt="" onerror="this.remove()">` : '<div class="gd-mp-no">👤</div>'}
       <div class="gd-mp-n">${ROLE[x.role][0]} ${esc(x.name)}</div><div class="gd-mp-s">${ROLE[x.role][1]} · ${new Date(x.joined_at).toLocaleDateString('ko-KR')} 가입</div><div class="gd-mp-d">…</div>
       <div class="gd-mp-a">${boss ? `<button data-role="${x.role === 'officer' ? 'member' : 'officer'}">${x.role === 'officer' ? '간부 해제' : (gi('role_officer', '⚔️') + ' 간부 임명')}</button><button data-tr>${gi('role_boss', '👑')} 보스 이관</button>` : ''}${canKick ? '<button class="bad" data-kick>추방</button>' : ''}</div></div>`);
     const ago = t => { const h = (Date.now() - new Date(t)) / 36e5; return h < 1 ? '방금' : h < 24 ? `${Math.floor(h)}시간 전` : `${Math.floor(h / 24)}일 전`; };
     rpc('guild_member_info', { p_user: x.user_id }).then(d => { const el = m.querySelector('.gd-mp-d'); if (!el || !d) return;
       el.innerHTML = `<div class="gd-mp-g"><span><small>레벨</small><b>Lv.${d.level}</b></span><span><small>충성 누적</small><b>${LOYI}${n(d.loyalty_total)}</b></span><span><small>이번 주</small><b>${LOYI}${n(d.loyalty_week)}</b></span>
         <span><small>PvP</small><b>${d.pvp ? `${esc(d.pvp.tier)} ${n(d.pvp.rating)}` : '-'}</b></span><span><small>접속</small><b>${ago(d.seen_at)}</b></span></div>
-        ${d.top?.length ? `<div class="gd-mp-top">${d.top.map(c => `<span><img src="${IMG}${c.id}.webp" alt="" loading="lazy" onerror="this.remove()"><small>Lv.${c.level}</small></span>`).join('')}</div>` : ''}`; }).catch(() => { const el = m.querySelector('.gd-mp-d'); if (el) el.remove(); });
+        ${d.top?.length ? `<div class="gd-mp-top">${d.top.map(c => `<span><img src="${cardThumb(c.id)}" alt="" loading="lazy" onerror="this.remove()"><small>Lv.${c.level}</small></span>`).join('')}</div>` : ''}`; }).catch(() => { const el = m.querySelector('.gd-mp-d'); if (el) el.remove(); });
     m.querySelector('[data-role]')?.addEventListener('click', async e => { if (await act('guild_set_role', { p_user: x.user_id, p_role: e.currentTarget.dataset.role }, '역할을 바꿨어요')) m.remove(); });
     m.querySelector('[data-tr]')?.addEventListener('click', async () => { if (await window.VRAsk(`${x.name} 에게 보스를 이관할까요?`) && await act('guild_transfer', { p_user: x.user_id }, '👑 보스를 이관했어요')) m.remove(); });
     m.querySelector('[data-kick]')?.addEventListener('click', async () => { if (await window.VRAsk(`${x.name} 을(를) 추방할까요? 72시간 동안 다시 들어올 수 없어요`) && await act('guild_kick', { p_user: x.user_id }, '추방했어요')) m.remove(); });
@@ -165,7 +165,7 @@
   const LERR = { 'already borrowed today': '오늘은 이미 빌렸어요 (내일 다시)', 'joined too recently': '조직에 들어온 지 24시간이 지나야 빌릴 수 있어요', 'level too low': '계정 Lv.10부터 빌릴 수 있어요', 'already own card': '이미 가진 인재는 빌릴 수 없어요', 'own card': '내 인재는 빌릴 수 없어요', 'not lendable': '지금은 빌릴 수 없는 인재예요', 'not guildmate': '같은 조직원만 빌릴 수 있어요', 'too many': '최대 3명까지 등록할 수 있어요', 'not owned': '내 인재만 등록할 수 있어요' };
   const lerr = e => { const m = String(e?.message || e); const k = Object.keys(LERR).find(x => m.includes(x)); return k ? LERR[k] : /function|does not exist/.test(m) ? '대여 준비 중이에요' : errText(e); };
   const left = t => { const ms = Math.max(0, new Date(t) - Date.now()), m = Math.ceil(ms / 60000); return m >= 60 ? `${Math.floor(m / 60)}시간 ${m % 60}분` : `${m}분`; };
-  const lcard = (id, lv, sub = '', attr = '', cls = '') => `<button class="gd-lc ${cls}" ${attr}><img src="${IMG}${id}.webp" alt="" loading="lazy" onerror="this.style.visibility='hidden'"><b>Lv.${lv | 0}</b>${sub ? `<small>${sub}</small>` : ''}</button>`;
+  const lcard = (id, lv, sub = '', attr = '', cls = '') => `<button class="gd-lc ${cls}" ${attr}><img src="${cardThumb(id)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'"><b>Lv.${lv | 0}</b>${sub ? `<small>${sub}</small>` : ''}</button>`;
   // 정렬 탭 (스토리 덱 고르기와 같은 탭 · 기본 레벨 높은 순 · 이 창에서만 기억)
   let lendSortSt = { k: 'level', desc: true };
   function paintSort(box, again) {
@@ -277,7 +277,7 @@
           <div class="gd-rt">${R.tiers.map(t => `<button data-tier="${t.tier}" class="${t.claimed ? 'done' : t.reached ? 'ready' : ''}" ${t.reached && !t.claimed && R.checked ? '' : 'disabled'}><b>${t.tier}%</b><span>${rwTxt(t.reward)}</span><small>${t.claimed ? gi('ic_check', '✔') : `${gi('cur_exp', '⚜️')}${t.exp}`}</small></button>`).join('')}</div></div>
         <div class="gd-wk">${R.week.map((on, i) => `<span class="${on ? 'on' : ''}">${on ? gi('tile_rally', '🕯️') : '·'}<small>${W[i]}</small></span>`).join('')}
           <button data-tier="7" class="${R.week_claimed ? 'done' : R.week_claimable ? 'ready' : ''}" ${R.week_claimable && !R.week_claimed ? '' : 'disabled'}>7/7 ${rwTxt(R.week_reward)}</button></div>
-        <div class="gd-rm">${(st?.members || []).map(x => `<span class="${R.checked_users.includes(x.user_id) ? 'on' : ''}" title="${esc(x.name)}">${x.card ? `<img src="${IMG}${x.card}.webp" alt="" onerror="this.remove()">` : gi('ic_noavatar', '👤')}</span>`).join('')}</div>
+        <div class="gd-rm">${(st?.members || []).map(x => `<span class="${R.checked_users.includes(x.user_id) ? 'on' : ''}" title="${esc(x.name)}">${x.card ? `<img src="${cardThumb(x.card)}" alt="" onerror="this.remove()">` : gi('ic_noavatar', '👤')}</span>`).join('')}</div>
         ${R.checked_other ? '<small class="gd-hint">오늘은 다른 조직에서 집결했어요</small>' : ''}`;
       m.querySelector('[data-in]').onclick = e => { e.currentTarget.disabled = true; act2(m, 'guild_checkin', {}, draw); };
       m.querySelectorAll('[data-tier]').forEach(b => b.onclick = () => { b.disabled = true; act2(m, 'guild_rally_claim', { p_tier: +b.dataset.tier }, draw); });
@@ -322,7 +322,7 @@
     if (noticeBusy || window.__GUILD_MOCK || !window.VRCloud?.user) return; noticeBusy = true;
     try { const L = await rpc('guild_lend_notices'); if (Array.isArray(L) && L.length) {
       const nm = id => window.VRStory?.api?.card?.(id)?.name || '인재';
-      const m = pop(`<div class="gd-h big">${gi('tile_lend', '🤝')} 대여 알림</div><div class="gd-lnl">${L.map(x => `<div class="gd-ln"><img src="${IMG}${x.card_id}.webp" alt="" loading="lazy" onerror="this.style.visibility='hidden'"><span><b>${esc(x.borrower_name)}</b>님이 <b>${esc(nm(x.card_id))}</b>를 빌렸어요${x.reward ? ` · ${LOYI} 충성 +${n(x.reward)}` : ' · 오늘 대여 보상(3번)은 다 받았어요'}</span></div>`).join('')}</div>`);
+      const m = pop(`<div class="gd-h big">${gi('tile_lend', '🤝')} 대여 알림</div><div class="gd-lnl">${L.map(x => `<div class="gd-ln"><img src="${cardThumb(x.card_id)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'"><span><b>${esc(x.borrower_name)}</b>님이 <b>${esc(nm(x.card_id))}</b>를 빌렸어요${x.reward ? ` · ${LOYI} 충성 +${n(x.reward)}` : ' · 오늘 대여 보상(3번)은 다 받았어요'}</span></div>`).join('')}</div>`);
       void m; } } catch {} finally { noticeBusy = false; }
   }
   { let tries = 0; const t = setInterval(() => { if (window.VRCloud?.user) { clearInterval(t); setTimeout(lendNotices, 2500); } else if (++tries > 60) clearInterval(t); }, 1000); }

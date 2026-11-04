@@ -1576,7 +1576,7 @@ function cardHTML(c, { hp, size = 'md', dim = false } = {}) {
   const rar = rarityOf(c), nSk = skillsOf(c.id).length;
   return `
   <div class="card-frame ${rar.cls} relative ${small ? 'w-[64px] md:w-[96px]' : 'w-[78px] md:w-[110px]'} bg-zinc-900 rounded-xl overflow-hidden ${dim ? 'opacity-50' : ''} shadow-lg" data-grade="${rar.short}">
-    <img src="${IMG}${c.id}.webp" data-id="${c.id}" class="card-img w-full aspect-[3/4] object-cover" alt="${c.name}">
+    <img src="${cardThumb(c.id)}" data-id="${c.id}" class="card-img w-full aspect-[3/4] object-cover" alt="${c.name}">
     <button type="button" class="zoom-btn absolute bottom-[46px] md:bottom-[58px] right-1" data-zoom="${c.id}"${hp != null ? ` data-hp="${hp}"` : ''} title="크게 보기" aria-label="크게 보기">🔍</button>
     <div class="absolute top-1 left-1 w-6 h-6 md:w-7 md:h-7 rounded-full bg-sky-600 text-white text-[11px] md:text-xs font-black flex items-center justify-center border border-white/40">${c.cost}</div>
     <div class="absolute top-1 right-1 text-sm md:text-base" title="${e.label}">${icOf(e)}</div>
@@ -1662,7 +1662,7 @@ function skillInfoPop(unit, s) {
   if (!s) return; document.getElementById('sk-pop')?.remove();
   const slv = s.mode === 'active' && unit ? skillLvOf(unit, s) : 1, cd = s.mode === 'active' ? (unit?.cd ? skillCd(unit, s) : skillCdAt(s.cooldown, slv)) : 0, smp = unit?.cd ? skillMp(unit, s) : s.mp;   // 증표·장비 반영
   const el = document.createElement('div'); el.id = 'sk-pop'; el.className = 'sk-pop';
-  el.innerHTML = `<div class="sk-pop-c" role="dialog" aria-label="스킬 설명"><div class="sk-pop-h">${unit?.card ? `<img src="${IMG}${unit.card.id}.webp" alt="">` : ''}<div><span class="px-1.5 rounded text-[10px] font-bold text-white ${TYPE_COLOR[s.type] || 'bg-zinc-600'}">${s.type || ''}</span>
+  el.innerHTML = `<div class="sk-pop-c" role="dialog" aria-label="스킬 설명"><div class="sk-pop-h">${unit?.card ? `<img src="${cardThumb(unit.card.id)}" alt="">` : ''}<div><span class="px-1.5 rounded text-[10px] font-bold text-white ${TYPE_COLOR[s.type] || 'bg-zinc-600'}">${s.type || ''}</span>
     <b>${s.name}</b><small>${s.mode === 'active' ? `MP ${smp} · 쿨 ${cd}${slv > 1 ? ` · Lv${slv}` : ''}` : '패시브'}</small></div></div>
     <div class="sk-pop-d">${hpText(s.desc) || '설명 없음'}${s.note ? `<div class="sk-pop-n">${hpText(s.note)}</div>` : ''}</div>
     ${unit ? `<div class="sk-pop-mp">MP ${unit.mp}/${unit.maxMp}</div>` : ''}</div>`;
@@ -1704,7 +1704,7 @@ function render() {
     btn.querySelector('.reason').textContent = S.limitedAids ? '일반대전 전용' : myTurn && done ? '이번 판 고용 완료' : ''; }
   if (S.story) { const b = $('act-shuffle'); b.disabled = true; b.querySelector('.reason').textContent = '스토리 불가'; }
   $('attack-all').disabled = !myTurn || !S.me.field.some(u => u.canAttack);
-  { const rb = $('reserve-btn'), r = S.reserve?.[0]; if (rb) { rb.classList.toggle('hidden', !r || !!S.view); if (r) { rb.querySelector('img').src = `${IMG}${r.card.id}.webp`; rb.disabled = !myTurn || (r.cost || 0) > S.me.mana; } } }
+  { const rb = $('reserve-btn'), r = S.reserve?.[0]; if (rb) { rb.classList.toggle('hidden', !r || !!S.view); if (r) { rb.querySelector('img').src = `${cardThumb(r.card.id)}`; rb.disabled = !myTurn || (r.cost || 0) > S.me.mana; } } }
   const selU = selected != null ? S.me.field.find(x => x.uid === selected) : null;
   if (selected != null && (!selU || !myTurn)) selected = null;
   const atkSel = selU?.canAttack ? selU : null;
@@ -1770,7 +1770,7 @@ function render() {
         w.className += ' base-unit';
         const gw = u.guard ? guardWait(u, S[who]) : 0;
         w.innerHTML = (u.guard ? `<div class="boss-crown" title="수비대장: 진영이 무너지기 전엔 쓰러지지 않아요">${ic('def', { alt: '수비대장' })}</div>` : `<div class="boss-crown" title="보스: 진영 안에 있어 공격할 수 없고 쓰러지지 않아요">${ic('crown', { alt: '보스' })}</div>`) +
-          `<div class="base-ring relative ${rarityOf(u.card).cls}" data-grade="${rarityOf(u.card).short}"><img src="${IMG}${u.card.id}.webp" data-id="${u.card.id}" class="card-img base-img" alt="${u.card.name}">${statusDecor(u)}` +
+          `<div class="base-ring relative ${rarityOf(u.card).cls}" data-grade="${rarityOf(u.card).short}"><img src="${cardThumb(u.card.id)}" data-id="${u.card.id}" class="card-img base-img" alt="${u.card.name}">${statusDecor(u)}` +
           (sts.length ? `<div class="status-icons base-sts">${sts.map(x => { const big = isStatusFxKind(x.kind), au = big && statusIconUrl(x.kind); return `<span title="${x.title}"${big ? ` class="st-big ${x.kind}"` : ''}>${au ? `<img class="st-asset" src="${au}" alt="">` : icOf(x)}</span>`; }).join('')}</div>` : '') +
           `<div class="lv-badge base-lv">Lv${u.level}</div></div>` +
           `<div class="base-name">${u.card.name}</div>` + (u.guard && who === 'me' ? `<div class="base-tag">${guardSwapPool(S[who]).length ? (gw ? `교체 ${gw}턴 뒤` : '교체 가능') + (ready ? ' · ' : '') : ''}${ready ? '공격 가능' : ''}</div>` : '') +

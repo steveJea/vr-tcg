@@ -329,7 +329,7 @@
   let gearPrev = null;   // 장비 바꾼 직전 스탯 → 상세 화면 다시 그릴 때 +N/-N 표시
   const gDelta = (v, p) => p == null || v === p ? '' : `<em class="gear-dlt ${v > p ? 'up' : 'dn'}">${v > p ? '+' : '-'}${fmt(Math.abs(v - p))}</em>`;
   const rcls = c => `rar-${(RAR[c?.grade] || 'N').toLowerCase()}`;
-  const tile = (c, extra = '') => `<div class="story-card ${rcls(c)}"><div class="story-card-img"><img src="${IMG}${c.id}.webp" alt="${esc(c.name)}" loading="lazy" onerror="this.style.visibility='hidden'"><span class="story-rar">${RAR[c.grade] || 'N'}</span></div><div class="story-card-name">${esc(c.name)}</div><div class="story-card-stats"><span class="text-orange-400">${ic('atk', { cls: 'ui-ic-sm' })}${fmt(c.ATK)}</span><span class="text-red-400">${ic('hp', { cls: 'ui-ic-sm' })}${fmt(c.HP)}</span><span class="text-sky-400">${ic('def', { cls: 'ui-ic-sm' })}${fmt(c.DEF)}</span></div>${extra}</div>`;
+  const tile = (c, extra = '') => `<div class="story-card ${rcls(c)}"><div class="story-card-img"><img src="${cardThumb(c.id)}" alt="${esc(c.name)}" loading="lazy" onerror="this.style.visibility='hidden'"><span class="story-rar">${RAR[c.grade] || 'N'}</span></div><div class="story-card-name">${esc(c.name)}</div><div class="story-card-stats"><span class="text-orange-400">${ic('atk', { cls: 'ui-ic-sm' })}${fmt(c.ATK)}</span><span class="text-red-400">${ic('hp', { cls: 'ui-ic-sm' })}${fmt(c.HP)}</span><span class="text-sky-400">${ic('def', { cls: 'ui-ic-sm' })}${fmt(c.DEF)}</span></div>${extra}</div>`;
 
   // 바깥 클릭으로 닫히는 팝업
   /** 팝업 안 요소 → '클래스#순번' 키 (다시 그려도 같은 스크롤 상자를 찾게) */
@@ -906,7 +906,7 @@
     const skDot = id => skillsOf(id).length ? `<span class="story-skn story-skn-dot" data-skid="${esc(String(id))}" role="button" tabindex="0" aria-label="기술 보기" title="기술 보기">✦</span>` : '';
     /** 출전 고르기 별: EX 단계 수만큼 앞쪽 별을 빨강, 나머지는 노랑 */
     // pickStars: 모듈 공용 (아래 exStars)
-    const pickTile = o => { const c = shown(o); return `<div class="story-card story-pick-tile ${rcls(c)}" title="${esc(c.name)}"><div class="story-card-img"><img src="${IMG}${c.id}.webp" alt="${esc(c.name)}" loading="lazy" onerror="this.style.visibility='hidden'">${pickStars(c, o)}${skDot(o.id)}${deck0.has(o.uid) ? '<span class="story-curdeck">현재 덱</span>' : ''}${lendBadge(o)}</div><div class="story-pick-meta"><span>Lv.${norm({ ...o }).level}</span><span class="story-pick-cost">C${+c.cost || 0}</span>${isLeader(o) ? `<span>${ic('crown', { alt: '리더' })}</span>` : ''}</div></div>`; };
+    const pickTile = o => { const c = shown(o); return `<div class="story-card story-pick-tile ${rcls(c)}" title="${esc(c.name)}"><div class="story-card-img"><img src="${cardThumb(c.id)}" alt="${esc(c.name)}" loading="lazy" onerror="this.style.visibility='hidden'">${pickStars(c, o)}${skDot(o.id)}${deck0.has(o.uid) ? '<span class="story-curdeck">현재 덱</span>' : ''}${lendBadge(o)}</div><div class="story-pick-meta"><span>Lv.${norm({ ...o }).level}</span><span class="story-pick-cost">C${+c.cost || 0}</span>${isLeader(o) ? `<span>${ic('crown', { alt: '리더' })}</span>` : ''}</div></div>`; };
     const boss = ph.type === 'boss';
     const fTile = o => { return `<div class="story-pick-card on locked" title="이번 페이즈 필수 출전">${pickTile(o).replace('</div><div class="story-pick-meta">', `</div><div class="story-pick-meta">${isGuest(o) ? '<span class="text-sky-300">게스트</span>' : ''}`)}<i class="story-pick-check">🔒</i></div>`; };
     const draw = () => {
@@ -1204,7 +1204,7 @@
   function expList(list) {
     if (!list?.length) return '';
     return `<div class="story-explist">${list.map(e => { const c = card(e.id), o = (e.uid && byUid(e.uid)) || save.owned.find(x => x.id === e.id) || { id: e.id, level: e.level }, up = e.level > e.from;
-      return `<div class="story-exprow ${up ? 'up' : ''}"><img src="${IMG}${e.id}.webp" alt=""><div class="flex-1 min-w-0"><div class="flex justify-between text-xs"><b class="truncate">${esc(c?.name)}</b><span class="text-sky-300">EXP +${e.exp}${e.kills ? ` · 처치 ${e.kills}` : ''}${e.blocks ? ` · 막기 ${e.blocks}` : ''}</span></div>${lvBar(o)}${up ? `<div class="story-lvup-tag">LEVEL UP! Lv.${e.from} → Lv.${e.level} · 스탯 +${lvPct({ id: e.id, level: e.level })}%</div>` : ''}</div></div>`; }).join('')}</div>`;
+      return `<div class="story-exprow ${up ? 'up' : ''}"><img src="${cardThumb(e.id)}" alt=""><div class="flex-1 min-w-0"><div class="flex justify-between text-xs"><b class="truncate">${esc(c?.name)}</b><span class="text-sky-300">EXP +${e.exp}${e.kills ? ` · 처치 ${e.kills}` : ''}${e.blocks ? ` · 막기 ${e.blocks}` : ''}</span></div>${lvBar(o)}${up ? `<div class="story-lvup-tag">LEVEL UP! Lv.${e.from} → Lv.${e.level} · 스탯 +${lvPct({ id: e.id, level: e.level })}%</div>` : ''}</div></div>`; }).join('')}</div>`;
   }
   function levelUpFx(text = 'LEVEL UP!') {
     const el = document.createElement('div'); el.className = 'story-lvup-fx'; el.innerHTML = `<span>${text}</span>`;
@@ -1225,7 +1225,7 @@
       const p = popup(`<div class="text-lg font-black mb-1">📈 스탯 분배</div><div class="text-xs text-zinc-400 mb-3">공용 포인트 <b class="text-emerald-300 text-base">${left}</b>${cleft[sel] ? ` · 이 인재 전용 <b class="text-sky-300 text-base" id="story-cpts">${cleft[sel]}</b>` : ''} · 포인트 1당 ATK +${k.ATK}, HP +${k.HP}, DEF +${k.DEF}
           <div class="text-[11px] text-zinc-500 mt-0.5">같은 스탯 ${D.statFull + 1}번째 포인트부터는 절반 · 한 스탯에는 이 인재 포인트 합계의 절반(올림)까지</div>${cleft.some(Boolean) ? '<div class="text-[11px] text-zinc-500">예전에 받은 인재 전용 포인트를 먼저 써요</div>' : ''}</div>
         <div class="story-tabwrap"><button class="story-tab-arr l" aria-label="왼쪽">‹</button><div class="story-tabs">${save.owned.map((x, i) => { const cc = card(x.id); return `<button data-sel="${i}" class="story-chip ${i === sel ? 'on' : ''}">${x.uid === save.leader ? ic('crown', { alt: '리더' }) + ' ' : ''}${esc(exName(x, cc?.name))} <small>Lv.${x.level}</small>${cleft[i] ? ` <b class="text-sky-300">+${cleft[i]}</b>` : ''}</button>`; }).join('')}</div><button class="story-tab-arr r" aria-label="오른쪽">›</button></div>
-        <div class="flex gap-3 items-center"><img src="${IMG}${c.id}.webp" class="w-20 aspect-[3/4] object-cover rounded-lg" alt=""><div class="flex-1 space-y-2">${STATS.map(s => { const n = temp[sel][s] | 0, sum = ptSum(temp[sel]), cap = ptCap(sum + 1), canInc = avail && n + 1 <= cap, canDec = n > (o.boost?.[s] || 0) && ptOk({ ...temp[sel], [s]: n - 1 });
+        <div class="flex gap-3 items-center"><img src="${cardThumb(c.id)}" class="w-20 aspect-[3/4] object-cover rounded-lg" alt=""><div class="flex-1 space-y-2">${STATS.map(s => { const n = temp[sel][s] | 0, sum = ptSum(temp[sel]), cap = ptCap(sum + 1), canInc = avail && n + 1 <= cap, canDec = n > (o.boost?.[s] || 0) && ptOk({ ...temp[sel], [s]: n - 1 });
           return `<div class="flex items-center gap-2"><span class="w-16 text-sm font-bold">${STAT_LABEL[s]}</span><span class="flex-1 font-black">${fmt(c[s])}${n ? ` <span class="text-emerald-300 text-xs">(+${fmt(ptGain(s, n))})</span>` : ''}
             <span class="story-ptinfo block text-[10px] font-normal ${n >= D.statFull ? 'text-amber-300' : 'text-zinc-500'}">${n}포인트 (최대 ${ptCap(sum)}) · 다음 +${ptNext(s, n)}${n >= D.statFull ? ' (절반)' : ''}${avail && !canInc ? ' · <i class="not-italic text-red-300">상한</i>' : ''}</span></span><button data-dec="${s}" class="story-pm" ${canDec ? '' : 'disabled'}>−</button><button data-inc="${s}" class="story-pm" ${canInc ? '' : 'disabled'}>＋</button></div>`; }).join('')}</div></div>
         <div class="mt-3 text-[11px] text-zinc-500">🗡️ 무기 · 🛡️ 방어구 장착은 준비 중이에요 (Coming soon)</div>
@@ -1353,7 +1353,7 @@
   for (const t of ['click', 'keydown']) document.addEventListener(t, e => { const b = e.target.closest?.('[data-skid]'); if (!b || (t === 'keydown' && e.key !== 'Enter' && e.key !== ' ')) return; e.preventDefault(); e.stopPropagation(); skillPop(b.dataset.skid, b); }, true);
   const exStars = (c, o, cls = 'rstars-over rstars-sm story-pick-stars') => window.rarityStars?.(c, 'story', cls, exOf(o)) || '';
   const pickStars = exStars;
-  const ownTile = (o, c, badges = '', after = '') => `<div class="story-card story-own-tile ${rcls(c)}"><div class="story-card-img"><img src="${IMG}${c.id}.webp" alt="${esc(c.name)}" loading="lazy" onerror="this.style.visibility='hidden'">${exStars(c, o)}${isLeader(o) ? `<span class="story-own-leader" title="리더">${ic('crown', { alt: '리더' })}</span>` : ''}${o.cpts ? `<div class="story-cpts">+${o.cpts}</div>` : ''}${badges}${after ? `<div class="story-own-acts">${after}</div>` : ''}</div><div class="story-card-name">${esc(c.name.replace(/^\[EX\d+\] /, ''))}</div><div class="story-own-lv">Lv.${o.level}</div></div>`;
+  const ownTile = (o, c, badges = '', after = '') => `<div class="story-card story-own-tile ${rcls(c)}"><div class="story-card-img"><img src="${cardThumb(c.id)}" alt="${esc(c.name)}" loading="lazy" onerror="this.style.visibility='hidden'">${exStars(c, o)}${isLeader(o) ? `<span class="story-own-leader" title="리더">${ic('crown', { alt: '리더' })}</span>` : ''}${o.cpts ? `<div class="story-cpts">+${o.cpts}</div>` : ''}${badges}${after ? `<div class="story-own-acts">${after}</div>` : ''}</div><div class="story-card-name">${esc(c.name.replace(/^\[EX\d+\] /, ''))}</div><div class="story-own-lv">Lv.${o.level}</div></div>`;
   /** 같은 인재 여러 장 (x2 배지): 작은 팝업 · 상세 / 합성 (합성은 기존 미리보기 → 레벨 MAX 아니면 임유리 확인 그대로) */
   function copiesPop(id) {
     const list = copiesOf(id).slice().sort((a, b) => isLeader(b) - isLeader(a) || exOf(b) - exOf(a) || b.level - a.level), c = card(id); if (!list.length || !c) return;
@@ -1432,7 +1432,7 @@
     const c = skCost(o, lv), w = W(), ok = !w || ((w.soul | 0) >= c.soul && (w.gold | 0) >= c.gold);
     const cd0 = skCd(s.cooldown, lv), cd1 = skCd(s.cooldown, lv + 1);
     const p = popup(`<div class="sk-up-pop">
-      <div class="sk-up-img">${s.fx && !/\.(mp4|webm)$/i.test(s.fx) ? `<img src="data/fx/${esc(s.fx)}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('img'),{src:'${IMG}${o.id}.webp'}))">` : `<img src="${IMG}${o.id}.webp" alt="">`}</div>
+      <div class="sk-up-img">${s.fx && !/\.(mp4|webm)$/i.test(s.fx) ? `<img src="data/fx/${esc(s.fx)}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('img'),{src:'${cardThumb(o.id)}'}))">` : `<img src="${cardThumb(o.id)}" alt="">`}</div>
       <div class="sk-up-name">${esc(s.name)}</div>
       <div class="sk-up-lv"><span>Lv${lv}</span><b>→</b><span class="to">Lv${lv + 1}</span></div>
       <div class="sk-up-rows"><div>💥 <span>+${(lv - 1) * SK_STEP}%</span> → <b>+${lv * SK_STEP}%</b></div>${cd1 < cd0 ? `<div>⏱ <span>${cd0}</span> → <b>${cd1}</b></div>` : ''}</div>
@@ -1511,7 +1511,7 @@
     const mat = mats.find(x => x.uid === mu) || mats[0], c = card(o.id), m = mergeCalc(o, mat), after = { ...o, ex: m.ex, exb: m.exb, level: 1, exp: 0 };
     popPage('story-pmerge', '합성');
     const p = popup(`<div class="text-lg font-black mb-1">${ic('merge', { alt: '' })} 합성 미리보기</div>
-      <div class="flex gap-3 items-center"><div class="relative shrink-0"><img src="${IMG}${c.id}.webp" class="w-20 aspect-[3/4] object-cover rounded-lg" alt="">${exStars(c, after, 'rstars-over')}</div>
+      <div class="flex gap-3 items-center"><div class="relative shrink-0"><img src="${cardThumb(c.id)}" class="w-20 aspect-[3/4] object-cover rounded-lg" alt="">${exStars(c, after, 'rstars-over')}</div>
         <div class="flex-1 min-w-0 text-sm"><div class="font-black">${esc(c.name)} <span class="text-red-300">EX${exOf(o)} → EX${exOf(after)}</span></div>
         <div class="mt-1">합성 보너스 <b class="text-red-300">+${m.bonus}%</b> <span class="text-xs text-zinc-400">(누적 ${exbOf(o)}% → ${m.exb}%)</span></div></div></div>
       <div class="text-xs font-bold mt-3 mb-1 text-left">재료로 쓸 인재 (사라져요)</div>
@@ -1584,7 +1584,7 @@
     save.owned.forEach(norm);
     const ds = decksOf(), slot = i => { const d = ds[i], list = (d?.uids || []).map(byUid).filter(Boolean);
       return `<button class="story-deck-slot ${list.length ? '' : 'empty'}" data-deck="${i}"><div class="story-deck-h"><b>${esc(deckName(d, i))}</b><small>${list.length}/${DECK_CARDS}</small></div>
-        <div class="story-deck-row">${list.length ? list.map(o => { const c = shown(o); return c ? `<span class="story-deck-th ${rcls(c)}"><img src="${IMG}${c.id}.webp" alt="${esc(c.name)}" loading="lazy" onerror="this.style.visibility='hidden'"><i>Lv.${o.level}</i></span>` : ''; }).join('') : '<span class="story-deck-plus">＋</span>'}</div></button>`; };
+        <div class="story-deck-row">${list.length ? list.map(o => { const c = shown(o); return c ? `<span class="story-deck-th ${rcls(c)}"><img src="${cardThumb(c.id)}" alt="${esc(c.name)}" loading="lazy" onerror="this.style.visibility='hidden'"><i>Lv.${o.level}</i></span>` : ''; }).join('') : '<span class="story-deck-plus">＋</span>'}</div></button>`; };
     show(`${topBar('🗂 마이 덱', 'cards')}<div class="story-cards-meta">${ds.filter(d => d?.uids?.length).length}/${DECK_MAX} · 🔒 자동 잠금</div>
       <div class="story-decks">${Array.from({ length: DECK_MAX }, (_, i) => slot(i)).join('')}</div>`);
     bind({ cards: () => renderCards() });
@@ -1618,7 +1618,7 @@
     const p = popup(`<div class="text-lg font-black mb-1">${ic('crown', { alt: '' })} 리더 변경</div>${sortBar()}
       <div class="text-xs text-zinc-400 mb-2">리더 스킬(속성 + 클래스)은 리더가 출전해 필드에 있는 동안 아군 전체에 적용돼요. 리더가 쓰러지면 해제되고 아군 진영 HP −${pc(D.leader?.deathPenalty ?? 0.3)}%.</div>
       <div class="story-target-list">${list.map(o => { const c = card(o.id), le = leaderEff(o.id);
-        return `<button data-ld="${o.uid}" class="story-target ${isLeader(o) ? 'cur' : ''}" ${isLeader(o) ? 'disabled' : ''}><img src="${IMG}${o.id}.webp" alt=""><div class="flex-1 min-w-0 text-left"><div class="text-sm font-bold truncate">${isLeader(o) ? ic('crown', { alt: '리더' }) + ' ' : ''}${esc(exName(o, c?.name))} <span class="text-[10px] text-zinc-400">${RAR[c?.grade] || 'N'} · Lv.${o.level}</span></div><div class="text-[11px] text-amber-200">${esc(le?.label || '')} · ${esc(le?.text || '')}</div></div><span class="text-emerald-300 text-sm">${isLeader(o) ? '현재' : '선택 ›'}</span></button>`; }).join('')}</div>
+        return `<button data-ld="${o.uid}" class="story-target ${isLeader(o) ? 'cur' : ''}" ${isLeader(o) ? 'disabled' : ''}><img src="${cardThumb(o.id)}" alt=""><div class="flex-1 min-w-0 text-left"><div class="text-sm font-bold truncate">${isLeader(o) ? ic('crown', { alt: '리더' }) + ' ' : ''}${esc(exName(o, c?.name))} <span class="text-[10px] text-zinc-400">${RAR[c?.grade] || 'N'} · Lv.${o.level}</span></div><div class="text-[11px] text-amber-200">${esc(le?.label || '')} · ${esc(le?.text || '')}</div></div><span class="text-emerald-300 text-sm">${isLeader(o) ? '현재' : '선택 ›'}</span></button>`; }).join('')}</div>
       <button data-close-pop class="w-full mt-3 py-2.5 rounded-xl bg-zinc-700 font-bold">취소</button>`, renderCards);
     p.el.querySelectorAll('[data-ld]').forEach(b => b.onclick = () => { p.close(true); confirmLeader(b.dataset.ld, pickLeader); });
     bindSort(p, pickLeader);
@@ -1685,7 +1685,7 @@
       <div class="text-xs text-zinc-400 mb-1">고른 인재를 모두 분해하고 <b class="text-amber-200">재화</b>(골드 · 순수한 피 · 각성자의 혼)를 받아요</div>
       <div class="flex flex-wrap gap-1.5 my-2"><button class="story-chip" data-q="all">전체 선택</button>${save.owned.some(spare) ? '<button class="story-chip" data-q="spare">출전 안 하는 중복만</button>' : ''}${grades.map(gr => `<button class="story-chip" data-q="${gr}">${RAR[gr]} 전체</button>`).join('')}<button class="story-chip" data-q="none">선택 해제</button></div>
       ${sortBar()}<div class="story-bulk-list" id="bulk-list">${list.map(o => { const c = card(o.id), lk = disLocked(o), on = sel.has(o.uid), d = disCalc(o);
-        return `<div class="story-bulk-row ${lk ? 'lock' : ''} ${on ? 'on' : ''}" ${lk ? '' : `data-row="${o.uid}"`}><input type="checkbox" ${on ? 'checked' : ''} ${lk ? 'disabled' : ''}><img src="${IMG}${o.id}.webp" alt=""><div class="flex-1 min-w-0"><div class="text-sm font-bold truncate">${esc(exName(o, c?.name))} <span class="text-[10px] text-zinc-400">${RAR[c?.grade] || 'N'} · Lv.${o.level}</span></div><div class="text-[10px] text-zinc-500">${lk ? (isLeader(o) ? '리더 · 분해 불가' : '🔒 잠금 · 분해 불가') : `${repOf(o.id) === o ? '⚔️ 출전 인재 · ' : ''}${curTxt(d)}`}</div></div></div>`; }).join('')}</div>
+        return `<div class="story-bulk-row ${lk ? 'lock' : ''} ${on ? 'on' : ''}" ${lk ? '' : `data-row="${o.uid}"`}><input type="checkbox" ${on ? 'checked' : ''} ${lk ? 'disabled' : ''}><img src="${cardThumb(o.id)}" alt=""><div class="flex-1 min-w-0"><div class="text-sm font-bold truncate">${esc(exName(o, c?.name))} <span class="text-[10px] text-zinc-400">${RAR[c?.grade] || 'N'} · Lv.${o.level}</span></div><div class="text-[10px] text-zinc-500">${lk ? (isLeader(o) ? '리더 · 분해 불가' : '🔒 잠금 · 분해 불가') : `${repOf(o.id) === o ? '⚔️ 출전 인재 · ' : ''}${curTxt(d)}`}</div></div></div>`; }).join('')}</div>
       <div class="story-bulk-sum">${f.n ? `<b>${f.n}장</b> 선택 · <span class="story-drops">${curTxt(f)}</span>${f.refund ? `<br><span class="text-emerald-300 text-[11px]">공용 포인트 ${f.refund} 돌려받음</span>` : ''}` : '<span class="text-zinc-500">분해할 인재를 골라 주세요</span>'}</div>
       
       <div class="flex gap-2 mt-3"><button data-close-pop class="flex-1 py-2.5 rounded-xl bg-zinc-700 font-bold">취소</button><button id="bulk-ok" class="flex-1 py-2.5 rounded-xl bg-red-500 font-bold" ${f.n ? '' : 'disabled'}>${f.n ? `${f.n}명 분해` : '분해할 인재를 골라 주세요'}</button></div>`, renderCards);

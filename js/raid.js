@@ -47,7 +47,7 @@ async function decks() {
   return [{ key: 'top', name: '⚡ 전투력 상위', cards: top }, ...sum.decks.map((d, i) => ({ key: 'd' + i, name: d.name, cards: uniq(d.uids) })).filter(d => d.cards.length)];
 }
 const pickDeck = list => list.find(d => d.key === localStorage.getItem(DECK_KEY)) || list[0];
-const thumbs = cards => cards.map(o => `<span class="rd-th"><img src="${IMG}${o.id}.webp" alt="" loading="lazy" onerror="this.remove()"><small>Lv.${o.level}</small>${window.VRStory?.skBadge?.(o.id, 'sm') || ''}</span>`).join('');
+const thumbs = cards => cards.map(o => `<span class="rd-th"><img src="${cardThumb(o.id)}" alt="" loading="lazy" onerror="this.remove()"><small>Lv.${o.level}</small>${window.VRStory?.skBadge?.(o.id, 'sm') || ''}</span>`).join('');
 
 let S = null, M = null, DL = [];
 export async function open() {
@@ -161,7 +161,7 @@ function playback(st, res, log, t0) {
     m.querySelector('.gd-pop-panel').innerHTML = `<div class="rd-pb-top"><span>${esc(st.boss.name)} · ${st.stage}단계</span><small class="rd-pb-t">T1/${RAID_TURNS}</small><button class="rd-skip" data-skip>SKIP ${gi('ic_skip', '⏭')}</button></div>
       <div class="rd-pb-boss"><img class="rd-bg" src="${UI}raid_bg.webp" alt="" onerror="this.remove()">${bossImg(st.boss, 'rd-boss')}<div class="rd-pb-fx"></div></div>
       <div class="rd-pb-dmg">0</div>
-      <div class="rd-pb-me">${ros.map(r => `<div class="rd-pb-u" data-uid="${r.uid}"><img src="${IMG}${r.id}.webp" alt=""><i><b></b></i></div>`).join('')}</div>`;
+      <div class="rd-pb-me">${ros.map(r => `<div class="rd-pb-u" data-uid="${r.uid}"><img src="${cardThumb(r.id)}" alt=""><i><b></b></i></div>`).join('')}</div>`;
     m.querySelector('[data-skip]').onclick = e => { e.stopPropagation(); i = log.length; m.querySelector('.rd-pb-dmg').textContent = n(res.damage); end(); };
     const U = uid => m.querySelector(`.rd-pb-u[data-uid="${uid}"]`);
     const tick = () => {

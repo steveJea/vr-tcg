@@ -75,7 +75,7 @@
 
   // ---- 기본 섹션 ----
   const pct = (a, b) => b ? Math.floor(a / b * 100) : 0;
-  const thumb = (o, cls = '', cnt = 1) => `<button type="button" class="mp-card rar-${SHORT[o.grade] || 'N'} ${cls}" data-uid="${esc(o.uid)}" data-id="${esc(o.id)}" title="${esc(o.name)}${cnt > 1 ? ` x${cnt}` : ''}" aria-label="${esc(o.name)} 인재 정보"><img loading="lazy" src="${IMG}${o.id}.webp" alt="${esc(o.name)}" onerror="this.style.visibility='hidden'">
+  const thumb = (o, cls = '', cnt = 1) => `<button type="button" class="mp-card rar-${SHORT[o.grade] || 'N'} ${cls}" data-uid="${esc(o.uid)}" data-id="${esc(o.id)}" title="${esc(o.name)}${cnt > 1 ? ` x${cnt}` : ''}" aria-label="${esc(o.name)} 인재 정보"><img loading="lazy" src="${cardThumb(o.id)}" alt="${esc(o.name)}" onerror="this.style.visibility='hidden'">
     <span class="mp-rar">${SHORT[o.grade] || ''}</span>${o.leader ? '<span class="mp-lead">👑</span>' : ''}${o.fav ? '<span class="mp-fav">★</span>' : ''}${cnt > 1 ? `<span class="mp-cnt">x${cnt}</span>` : ''}<span class="mp-lv">Lv.${o.level || 1}</span><span class="mp-nm">${esc(o.name)}</span></button>`;
   /** 같은 카드(id) 여러 장은 한 칸으로: 대표 = 리더 > 덱 > 레벨·EX 높은 것, 개수는 x<n> */
   function groupOwned(owned, deck) {
