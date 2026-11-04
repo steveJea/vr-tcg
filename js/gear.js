@@ -122,9 +122,16 @@
   const sigTxt = s => !s ? '' : ['a', 'b', 'also', null].map(k => { const o = k ? s[k] : s; if (!o) return ''; const t = modTxt(o); return t ? `<div>${o.skill ? `<b>${esc(o.skill)}</b> ` : ''}${t}</div>` : ''; }).join('');
 
   // 장비 상세
+  // 장착한 인재: 작은 썸네일만 (테두리 = 그 인재 등급 색, 이름은 title/alt)
+  const RSHORT = { 'NORMAL': 'n', 'RARE': 'r', 'HIGH RARE': 'hr', 'SUPER RARE': 'sr', 'ULTRA RARE': 'ur', 'MYTHIC RARE': 'mr', 'LEGENDARY RARE': 'lr' };
+  function whoHTML(cardId) {
+    if (!cardId) return ''; const c = window.TCG?.cardById?.(cardId);
+    const src = window.cardThumb ? window.cardThumb(cardId) : `https://raw.githubusercontent.com/steveJea/vr-ideal-worldcup/main/img/bt_img/${cardId}.webp`;
+    return `<span class="gear-who rar-${RSHORT[c?.grade] || 'n'}" title="장착: ${esc(c?.name || '')}"><img src="${src}" alt="${esc(c?.name || '장착한 인재')}" loading="lazy"></span>`;
+  }
   function itemPop(g, ctx = {}) {
     const d = defs[g.def], slot = slotOf(g);
-    const m = pop(`<div class="gear-big gt${d.tier}">${img(iconOf(d), slot)}</div>
+    const m = pop(`<div class="gear-big gt${d.tier}">${img(iconOf(d), slot)}${whoHTML(g.card)}</div>
       <div class="gear-name gt${d.tier}"><small>${TIER[d.tier]}</small> ${esc(d.name)}${g.plus ? ` <span class="gear-plus">+${g.plus}</span>` : ''}</div>
       <div class="gear-main">${mainTxt(d)}</div>
       ${(g.opts || []).map(o => `<div class="gear-opt">${esc(OPT[o.opt] || o.opt)} +${o.v}${o.opt === 'cooldown' ? '' : '%'}</div>`).join('')}
