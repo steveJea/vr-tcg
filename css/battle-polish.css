@@ -23,3 +23,15 @@
 @keyframes fxShard { from { opacity: 1; translate: 0 0; rotate: 0deg; } to { opacity: 0; translate: var(--dx) var(--dy); rotate: var(--rot); } }
 #field-box.fx-screen { animation: fxScreen .2s linear; }
 @media (prefers-reduced-motion: reduce) { .fx-dying { animation: none !important; transition: opacity .15s ease !important; opacity: 0; } .fx-shards { display: none; } }
+
+/* 아이폰 사파리 안전망: Tailwind CDN(실행 중 CSS 생성)이 전투 화면 카드 클래스를 놓치면
+   카드 그림이 원본 크기(800px+)로 화면을 덮었음. 크기 관련 핵심 클래스만 같은 값으로 고정해 둔다. */
+#game .w-\[64px\] { width: 64px; }
+#game .w-\[78px\] { width: 78px; }
+#game .aspect-\[3\/4\] { aspect-ratio: 3 / 4; }
+#game .card-frame { overflow: hidden; }
+#game .card-frame > img.card-img { display: block; width: 100%; max-width: 100%; aspect-ratio: 3 / 4; object-fit: cover; }
+@media (min-width: 768px) {
+  #game .md\:w-\[96px\] { width: 96px; }
+  #game .md\:w-\[110px\] { width: 110px; }
+}
