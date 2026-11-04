@@ -49,3 +49,10 @@
 ## 개발용
 - 미리보기: `?tut=ch0_battle1` (연습 전투 + 가이드, 라이브 스토리와 무관 · json 의 `demo` 덱 사용)
 - 다시 보기: `?tut_reset` (전부) 또는 `?tut_reset=ch0_battle1`, 콘솔 `VRTutorial.reset()`
+
+## 아케이드 튜토리얼 「유리의 특강」 (arcade_1~3.json · js/arcade-tut.js)
+아케이드 창 → 📖 유리의 특강 → 초급/중급/상급. json 의 `arcade` = 전투 대본 (아케이드 규칙 그대로, 전적·랭킹·일일 미션 기록 없음, 치명타·회피·속성 확률 끔)
+- `me` 내 덱(순서 고정, 앞 4장 = 시작 손패, 그 뒤 매 턴 1장) · `aiField` 적 시작 필드 · `aiGuard` 적 수비대장 · `aiDeck` 적 덱 · `aiSummon` 적이 손패 소환 · `aiSkills` 적 스킬 사용
+- `first` 선공 · `aiHp`/`meHp` · `wipe` 적 전멸 = 승리 · `levels` {id: Lv}(소환 때) · `fullMp` [id] · `haste` [id](소환 턴에 바로 행동) · `bonus` {내 N번째 턴: 마나} · `mercs` 용병 후보 [id] · `aiScript` (스토리와 같은 형식)
+- 대상 추가: `hand:<id>` 손패 카드 · `ai_hero` 상대 진영 · `act:<buff|accel|heal|fieldheal|merc>` · `merc:<id>` · `my_id:<id>` 내 필드의 그 카드
+- 이벤트 추가: `hero_blocked`(진영 공격 막힘) · `equipped` · `sacrificed` · `recalled` · `guard_set` · `guard_swapped` · `merc_hired` (`id` 로 match)
