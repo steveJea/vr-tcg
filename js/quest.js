@@ -213,6 +213,7 @@
     catch (e) { const m = String(e?.message || ''); api.toast(ERR(m) || (/locked/.test(m) ? '아직 열리지 않은 층이에요' : `⚠️ 시작 실패: ${m}`)); return render(); }
     startedAt = Date.now();
     $('story-screen').classList.add('hidden'); api.bgm(n % 10 === 0 ? 'boss' : 'tower');
+    await api.gearReady?.();
     const me = api.battleCards(list);
     const B = g.bossCard;
     window.TCG.startStory({ me, ai: g.enemies.map(c => ({ ...c })), leader: api.leaderFor(me), win: B ? 'ko' : 'wipe', bgKey: B ? 'tower_boss' : 'tower', aiHp: B ? towerBossHp(n) : undefined, bossId: B ? String(B.id) : undefined, heroGuard: B ? 5 : undefined, aiName: `${n}층`, quest: true,
@@ -271,6 +272,7 @@
     let st; try { st = await trpc('quest_sweep_start'); }
     catch (e) { const m = String(e?.message || ''); api.toast(ERR(m) || (/boss floor/.test(m) ? '보스 층은 직접 도전해야 해요' : /function|quest_sweep/.test(m) ? '소탕 서버가 아직 준비 중이에요' : `⚠️ 소탕 실패: ${m}`)); return render(); }
     let sim; try { sim = window.__QUEST_SIM || await import(new URL('js/quest-sim.js', document.baseURI).href); } catch (e) { api.toast('⚠️ 전투 엔진을 불러오지 못했어요'); return render(); }
+    await api.gearReady?.();
     const me = api.battleCards(list), lead = api.leaderFor(me), from = st.from, lastF = Math.min(st.last, maxF());
     const p = api.popup(`<div class="text-lg font-black text-center">${SW()} 소탕 중…</div><div class="q-sw-prog" id="q-sw-prog"></div><div class="text-xs text-zinc-400 text-center mt-2">내 덱: ${list.map(o => esc(api.card(o.id)?.name || '')).join(' · ')}</div>`);
     const prog = [], turns = []; let to = from - 1, stop = null; const t0 = Date.now();

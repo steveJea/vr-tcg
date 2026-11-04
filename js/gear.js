@@ -314,5 +314,10 @@
     const sg = (st?.sigils || []).find(s => s.card === String(cardId));
     return { gear, sigil: sg?.plus ?? null };
   }
-  window.VRGear = { unread: refreshUnread, load, forCard, slotsHTML, bind, bag, mailbox, showDrops, pvpShop, ask, shopIcon, get ready() { return !!st; }, get off() { return off; }, _defs: () => defs };
+  // 장비 바뀜 → PvP 방어 덱·구역 전쟁 덱은 저장할 때 서버가 장비를 담아 둠 (supabase/gear_snap.sql) → 다시 저장 안내
+  const deckNote = () => toast('🛡️ PvP 방어 덱·구역 전쟁 덱에 넣은 인재라면 덱을 다시 저장해야 반영돼요');
+  // 로그인하면 장비 미리 불러오기 (전투·인재 화면에 바로 장비 반영)
+  const pre = () => { if (window.VRCloud?.user) load().catch(() => {}); };
+  let lastU = null; window.addEventListener('vr:user', () => { const u = window.VRCloud?.user?.id || null; if (u !== lastU) { lastU = u; st = null; pre(); } }); setTimeout(pre, 1500);
+  window.VRGear = { deckNote, unread: refreshUnread, load, forCard, slotsHTML, bind, bag, mailbox, showDrops, pvpShop, ask, shopIcon, get ready() { return !!st; }, get off() { return off; }, _defs: () => defs };
 })();

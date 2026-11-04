@@ -322,6 +322,12 @@
   }
   // 장비·증표 (gear.js 가 불러 둔 내 장비 → gear-core.js applyGear). 서버에 장비가 없거나 아직 못 불렀으면 그대로
   const gearOn = (c, mode) => (c?.id && window.VRGearCore && window.VRGear?.ready && serverMode) ? window.VRGearCore.applyGear(c, window.VRGear.forCard(c.id), mode) : c;
+  // 화면 표시용: 장비 들어간 스탯 (스토리 기준 100%). 전투용 카드는 boosted → gearOn(모드) 그대로
+  const shown = o => { const b = boosted(o); return b ? gearOn(b, 'story') : b; };
+  // 전투 전 장비 불러오기 (로그인 직후·새로고침 뒤 장비 화면을 안 거쳐도 전투에 장비 반영)
+  const gearReady = () => (serverMode && window.VRGear && !window.VRGear.ready && !window.VRGear.off) ? window.VRGear.load().catch(() => null) : null;
+  let gearPrev = null;   // 장비 바꾼 직전 스탯 → 상세 화면 다시 그릴 때 +N/-N 표시
+  const gDelta = (v, p) => p == null || v === p ? '' : `<em class="gear-dlt ${v > p ? 'up' : 'dn'}">${v > p ? '+' : '-'}${fmt(Math.abs(v - p))}</em>`;
   const rcls = c => `rar-${(RAR[c?.grade] || 'N').toLowerCase()}`;
   const tile = (c, extra = '') => `<div class="story-card ${rcls(c)}"><div class="story-card-img"><img src="${IMG}${c.id}.webp" alt="${esc(c.name)}" loading="lazy" onerror="this.style.visibility='hidden'"><span class="story-rar">${RAR[c.grade] || 'N'}</span></div><div class="story-card-name">${esc(c.name)}</div><div class="story-card-stats"><span class="text-orange-400">${ic('atk', { cls: 'ui-ic-sm' })}${fmt(c.ATK)}</span><span class="text-red-400">${ic('hp', { cls: 'ui-ic-sm' })}${fmt(c.HP)}</span><span class="text-sky-400">${ic('def', { cls: 'ui-ic-sm' })}${fmt(c.DEF)}</span></div>${extra}</div>`;
 
@@ -890,7 +896,7 @@
     let last = []; try { last = JSON.parse(localStorage.getItem(PICK_KEY()) || '[]'); } catch {}
     const valid = new Set(all.map(o => o.uid));
     let sel = last.filter(u => valid.has(u)).slice(0, slots);
-    if (!sel.length) sel = all.slice().sort((a, b) => (isLeader(b) - isLeader(a)) || (boosted(b)?.power || 0) - (boosted(a)?.power || 0)).slice(0, slots).map(o => o.uid);
+    if (!sel.length) sel = all.slice().sort((a, b) => (isLeader(b) - isLeader(a)) || (shown(b)?.power || 0) - (shown(a)?.power || 0)).slice(0, slots).map(o => o.uid);
     const deck0 = new Set(sel);   // 현재 덱: 창을 연 순간의 출전 카드 (고르는 동안 자리가 바뀌지 않게)
     let list = sortInst(all, deck0);
     const rec = new Set((ph.recommend || ph.party?.recommend || ch.recommend || []).map(String)), pf = { skill: false, rec: false };
@@ -900,7 +906,7 @@
     const skDot = id => skillsOf(id).length ? `<span class="story-skn story-skn-dot" data-skid="${esc(String(id))}" role="button" tabindex="0" aria-label="기술 보기" title="기술 보기">✦</span>` : '';
     /** 출전 고르기 별: EX 단계 수만큼 앞쪽 별을 빨강, 나머지는 노랑 */
     // pickStars: 모듈 공용 (아래 exStars)
-    const pickTile = o => { const c = boosted(o); return `<div class="story-card story-pick-tile ${rcls(c)}" title="${esc(c.name)}"><div class="story-card-img"><img src="${IMG}${c.id}.webp" alt="${esc(c.name)}" loading="lazy" onerror="this.style.visibility='hidden'">${pickStars(c, o)}${skDot(o.id)}${deck0.has(o.uid) ? '<span class="story-curdeck">현재 덱</span>' : ''}${lendBadge(o)}</div><div class="story-pick-meta"><span>Lv.${norm({ ...o }).level}</span><span class="story-pick-cost">C${+c.cost || 0}</span>${isLeader(o) ? `<span>${ic('crown', { alt: '리더' })}</span>` : ''}</div></div>`; };
+    const pickTile = o => { const c = shown(o); return `<div class="story-card story-pick-tile ${rcls(c)}" title="${esc(c.name)}"><div class="story-card-img"><img src="${IMG}${c.id}.webp" alt="${esc(c.name)}" loading="lazy" onerror="this.style.visibility='hidden'">${pickStars(c, o)}${skDot(o.id)}${deck0.has(o.uid) ? '<span class="story-curdeck">현재 덱</span>' : ''}${lendBadge(o)}</div><div class="story-pick-meta"><span>Lv.${norm({ ...o }).level}</span><span class="story-pick-cost">C${+c.cost || 0}</span>${isLeader(o) ? `<span>${ic('crown', { alt: '리더' })}</span>` : ''}</div></div>`; };
     const boss = ph.type === 'boss';
     const fTile = o => { return `<div class="story-pick-card on locked" title="이번 페이즈 필수 출전">${pickTile(o).replace('</div><div class="story-pick-meta">', `</div><div class="story-pick-meta">${isGuest(o) ? '<span class="text-sky-300">게스트</span>' : ''}`)}<i class="story-pick-check">🔒</i></div>`; };
     const draw = () => {
@@ -935,6 +941,7 @@
   async function battle(ch, ph, enemies, picked) {
     const P = window.VRPlayer, ps = serverMode && P ? await P.status(true) : null;
     if (ps && ps.stamina < P.cost) { staminaShort(ps); return renderMap(); }
+    await gearReady();
     const st = await act('story_start_phase', { p_chapter: ch.id, p_phase: ph.no }, () => {});
     if (!st.ok) { const em = st.error?.message || '', lvM = /level required.*level (\d+)/.exec(em); if (lvM) toast(`🔒 Lv ${lvM[1]} 필요 — 계정 레벨을 올린 뒤 입장할 수 있어요`); else if (/stamina/.test(em)) staminaShort(await P?.status(true)); return renderMap(); }
     if (ps) P.status(true);
@@ -1364,7 +1371,7 @@
     show(`${ext ? `<button class="story-extback" data-pvpback>← ${esc(ext.label || '돌아가기')}</button>` : ''}${topBar('🃏 보유 인재', 'hub')}<div class="story-cards-meta">${all.length}종 · ${save.owned.length}명 · P ${save.points}${cptsTotal() ? ` · 전용 ${cptsTotal()}` : ''}
       <span class="story-cards-acts"><button class="story-mini" data-go="decks">🗂 덱</button>${serverMode && window.VRGear && !window.VRGear.off ? '<button class="story-mini" data-go="gearbag">🎒 장비</button>' : ''}${save.owned.length > 1 ? '<button class="story-mini story-mini-red" data-go="bulk">' + ic('discard', { alt: '' }) + ' 일괄 분해</button>' : ''}</span></div>
       ${(() => { const lo = byUid(save.leader), le = lo && leaderEff(lo.id); return le ? `<div class="story-leader-bar" title="${esc(le.text)}"><div class="min-w-0">${ic('crown', { alt: '' })} <b>${esc(exName(lo, card(lo.id)?.name))}</b> <small>${esc(le.label)}</small></div><button class="story-mini" data-go="leader" ${leaderUnlocked() ? '' : 'disabled title="챕터 1 클리어 후"'}>${leaderUnlocked() ? '변경' : '🔒 CH1'}</button></div>` : ''; })()}
-      ${all.length > 1 ? sortBar() + filterBar() : ''}${gs.length ? '' : '<div class="story-empty">없음</div>'}<div class="story-grid">${gs.map(gr => { const o = gr.rep, c = boosted(o); if (!c) return ''; const b = o.boost || {}, n = gr.list.length;
+      ${all.length > 1 ? sortBar() + filterBar() : ''}${gs.length ? '' : '<div class="story-empty">없음</div>'}<div class="story-grid">${gs.map(gr => { const o = gr.rep, c = shown(o); if (!c) return ''; const b = o.boost || {}, n = gr.list.length;
         const up = STATS.filter(s => b[s]).map(s => `${s} +${ptGain(s, b[s])}`).join(' · ');
         const mergeable = gr.list.some(canMerge);
         return `<div class="story-group"><div data-uid="${o.uid}" class="story-owned">${ownTile(o, c, `${gr.list.some(x => (x.locked || inDeck(x)) && !isLeader(x)) ? '<div class="story-lockbadge" title="잠금">🔒</div>' : ''}${gr.list.some(isFav) ? '<div class="story-favbadge">★</div>' : ''}`, `${mergeable ? `<button class="story-merge-mini" data-merge="${(gr.list.find(canMerge)).uid}" title="합성" aria-label="합성">${ic('merge', { alt: '합성' }) || '✦'}</button>` : ''}${n > 1 ? `<button class="story-expand" data-expand="${gr.id}" title="${n}명 보기" aria-label="같은 인재 ${n}명 보기">x${n}</button>` : ''}`)}</div>
@@ -1458,13 +1465,13 @@
   }
   function cardDetail(u) {
     const o = byUid(u); if (!o) return renderCards(); norm(o);
-    const c = boosted(o), cap = lvCap(o), n = copiesOf(o.id).length, rep = repOf(o.id) === o;
+    const c = shown(o), c0 = boosted(o), dl = gearPrev?.uid === u ? gearPrev : null, cap = lvCap(o), n = copiesOf(o.id).length, rep = repOf(o.id) === o;
     const p = popup(`<div class="flex gap-3"><div class="cd-img relative shrink-0 self-start"><img src="${IMG}${c.id}.webp" class="w-full aspect-[3/4] object-cover rounded-xl" alt="">${exStars(c, o, 'rstars-over')}<button type="button" class="cd-zoom" aria-label="이미지 확대" title="이미지 확대"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/></svg></button></div><div class="flex-1 min-w-0">
         <div class="text-lg font-black truncate">${window.TCG?.cardTitle ? TCG.cardTitle(c, isLeader(o) ? ic('crown', { alt: '리더' }) + ' ' : '') : `${isLeader(o) ? ic('crown', { alt: '리더' }) + ' ' : ''}${esc(c.name)} <span class="text-xs text-zinc-400">${RAR[c.grade] || 'N'}</span>`}</div>${window.TCG?.cardTags?.(c, [n > 1 ? `×${n}${rep ? ' ⚔️' : ''}` : '']) || ''}
         ${o.bound === true ? `<div class="text-[10px] font-bold text-amber-300/90" title="스토리 보상 인재는 거래할 수 없어요"><img class="ui-ic" src="img/ui/bound.webp" alt=""> 귀속</div>` : ""}
         ${lvBar(o)}
-        <div class="cd-stats" role="button" tabindex="0" title="눌러서 기본 + 레벨 보기"><div class="cd-power"><span>⚡ POWER</span><b>${fmt(c.power)}</b><small class="cd-brk">기본 ${fmt(card(o.id).power)}</small></div>${STATS.map(s => { const base = card(o.id)[s], exB = Math.round(base * (1 + exbOf(o) / 100)) - base, lvB = Math.round(base * (1 + exbOf(o) / 100) * (1 + lvPct(o) / 100)) - base - exB, pt = ptGain(s, o.boost?.[s]);
-          return `<div><span>${STAT_LABEL[s]}</span><b>${fmt(c[s])}</b><small class="cd-brk">기본 ${fmt(base)}${exB ? ` <i class="text-red-300">+${fmt(exB)} EX</i>` : ''}${lvB ? ` <i class="text-amber-300">+${fmt(lvB)} 레벨</i>` : ''}${pt ? ` <i class="text-emerald-300">+${fmt(pt)} 포인트</i>` : ''}</small></div>`; }).join('')}<div><span>💠 COST</span><b>${+c.cost || 0}</b></div>
+        <div class="cd-stats" role="button" tabindex="0" title="눌러서 기본 + 레벨 보기"><div class="cd-power"><span>⚡ POWER</span><b>${fmt(c.power)}</b>${gDelta(c.power, dl?.power)}<small class="cd-brk">기본 ${fmt(card(o.id).power)}${c.power !== c0.power ? ` <i class="text-sky-300">+${fmt(c.power - c0.power)} 장비</i>` : ''}</small></div>${STATS.map(s => { const base = card(o.id)[s], exB = Math.round(base * (1 + exbOf(o) / 100)) - base, lvB = Math.round(base * (1 + exbOf(o) / 100) * (1 + lvPct(o) / 100)) - base - exB, pt = ptGain(s, o.boost?.[s]);
+          return `<div><span>${STAT_LABEL[s]}</span><b>${fmt(c[s])}</b>${gDelta(c[s], dl?.[s])}<small class="cd-brk">기본 ${fmt(base)}${exB ? ` <i class="text-red-300">+${fmt(exB)} EX</i>` : ''}${lvB ? ` <i class="text-amber-300">+${fmt(lvB)} 레벨</i>` : ''}${pt ? ` <i class="text-emerald-300">+${fmt(pt)} 포인트</i>` : ''}${c[s] !== c0[s] ? ` <i class="text-sky-300">+${fmt(c[s] - c0[s])} 장비</i>` : ''}</small></div>`; }).join('')}<div><span>💠 COST</span><b>${+c.cost || 0}</b></div>
           <div class="cd-brk cd-more">최대 Lv.${cap} · 누적 EXP ${fmt(o.totalExp)}${exOf(o) ? ` · <span class="text-red-300">EX${exOf(o)} +${exbOf(o)}%</span> (${exOf(o)}/${maxEx(o)}${exOf(o) >= maxEx(o) ? ' 최대 합성' : ''})` : ''}${n > 1 ? `<br>같은 인재 ${n}명 중 1명${rep ? ' (⚔️ 전투 출전)' : ''} · 전투에는 1장만 나가요 (리더 · 없으면 레벨이 가장 높은 장)` : ''}</div></div>
         ${o.cpts ? `<div class="text-xs mt-1">남은 인재 전용 포인트 <b class="text-sky-300">${o.cpts}</b></div>` : ''}</div></div>
       <div id="story-d-lvwrap">${lvUpBox(o)}</div>
@@ -1479,8 +1486,10 @@
       ${skillsOf(o.id).length ? `<div class="story-detail-skills"><div class="text-sm font-black mt-4">${window.VRIcon?.or?.('skill_count', '📜') || '📜'} ${skillsOf(o.id).length}</div>${window.TCG?.skillListHTML?.(c, o.level, { skillLv: o.skillLv, up: serverMode, compact: true }) || ''}</div>` : ''}`, renderCards);
     { const zb = p.el.querySelector('.cd-zoom'); if (zb) zb.onclick = e => { e.stopPropagation(); zoomImg(`${IMG}${c.id}.webp`); }; }
     { const st = p.el.querySelector('.cd-stats'); if (st) { const t = () => st.classList.toggle('open'); st.onclick = t; st.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); t(); } }; } }
-    { const gw = $('story-d-gear'), gb = () => window.VRGear?.bind?.(gw, o.id, c.grade, () => cardDetail(o.uid));   // 장비 칸 (gear.js)
-      if (gw && window.VRGear && serverMode) { if (window.VRGear.ready) gb(); else window.VRGear.load().then(r => { if (r && gw.isConnected) { gw.innerHTML = window.VRGear.slotsHTML(o.id, c.grade); gb(); } }); } }
+    gearPrev = null;
+    { const gw = $('story-d-gear'), gb = () => { window.VRGear?.bind?.(gw, o.id, c.grade, () => { gearPrev = { uid: o.uid, power: c.power, ATK: c.ATK, HP: c.HP, DEF: c.DEF }; cardDetail(o.uid); window.VRGear?.deckNote?.(); });   // 장비 바뀜 → 스탯 즉시 갱신 (+N/-N) · 덱 다시 저장 안내
+        if (!gw.querySelector('.gear-note')) gw.insertAdjacentHTML('beforeend', '<div class="gear-note">장비: 스토리·탑·토벌 100% · PvP·구역 전쟁 50% · <b>아케이드에는 적용되지 않아요</b></div>'); };   // 장비 칸 (gear.js)
+      if (gw && window.VRGear && serverMode) { if (window.VRGear.ready) gb(); else window.VRGear.load().then(r => { if (r && gw.isConnected && byUid(o.uid)) cardDetail(o.uid); }); } }
     $('story-d-lock').onclick = () => askYN(o.locked ? '잠금을 해제하시겠습니까?' : '잠금하시겠습니까?', () => { p.close(true); setLock(o.uid, !o.locked); });
     $('story-d-fav').onclick = () => askYN(isFav(o) ? '즐겨찾기를 해제하시겠습니까?' : '즐겨찾기에 추가하시겠습니까?', () => { p.close(true); setFav(o.uid, !isFav(o)); });
     { const lb = $('story-d-leader'); if (lb) lb.onclick = () => { p.close(true); confirmLeader(o.uid, () => cardDetail(o.uid)); }; }
@@ -1575,7 +1584,7 @@
     save.owned.forEach(norm);
     const ds = decksOf(), slot = i => { const d = ds[i], list = (d?.uids || []).map(byUid).filter(Boolean);
       return `<button class="story-deck-slot ${list.length ? '' : 'empty'}" data-deck="${i}"><div class="story-deck-h"><b>${esc(deckName(d, i))}</b><small>${list.length}/${DECK_CARDS}</small></div>
-        <div class="story-deck-row">${list.length ? list.map(o => { const c = boosted(o); return c ? `<span class="story-deck-th ${rcls(c)}"><img src="${IMG}${c.id}.webp" alt="${esc(c.name)}" loading="lazy" onerror="this.style.visibility='hidden'"><i>Lv.${o.level}</i></span>` : ''; }).join('') : '<span class="story-deck-plus">＋</span>'}</div></button>`; };
+        <div class="story-deck-row">${list.length ? list.map(o => { const c = shown(o); return c ? `<span class="story-deck-th ${rcls(c)}"><img src="${IMG}${c.id}.webp" alt="${esc(c.name)}" loading="lazy" onerror="this.style.visibility='hidden'"><i>Lv.${o.level}</i></span>` : ''; }).join('') : '<span class="story-deck-plus">＋</span>'}</div></button>`; };
     show(`${topBar('🗂 마이 덱', 'cards')}<div class="story-cards-meta">${ds.filter(d => d?.uids?.length).length}/${DECK_MAX} · 🔒 자동 잠금</div>
       <div class="story-decks">${Array.from({ length: DECK_MAX }, (_, i) => slot(i)).join('')}</div>`);
     bind({ cards: () => renderCards() });
@@ -1588,7 +1597,7 @@
     const draw = () => {
       const list = sortInst(all.filter(o => passFilter(o.id, [o])), new Set(sel));
       const p = popup(`<div class="story-pop-title"><input id="dk-name" class="story-deck-name" maxlength="16" placeholder="덱 ${i + 1}" value="${esc(name)}"> <span class="text-emerald-300">${sel.length}/${DECK_CARDS}</span></div>
-        ${sortBar()}${filterBar()}<div class="story-grid story-deckpick">${list.map(o => { const c = boosted(o), on = sel.includes(o.uid); return c ? `<button class="story-pick-card ${on ? 'on' : ''}" data-dk="${o.uid}">${ownTile(o, c, (isFav(o) ? '<div class="story-favbadge">★</div>' : '') + skBadge(o.id))}${on ? `<i class="story-pick-check">${sel.indexOf(o.uid) + 1}</i>` : ''}</button>` : ''; }).join('') || '<div class="story-empty">없음</div>'}</div>
+        ${sortBar()}${filterBar()}<div class="story-grid story-deckpick">${list.map(o => { const c = shown(o), on = sel.includes(o.uid); return c ? `<button class="story-pick-card ${on ? 'on' : ''}" data-dk="${o.uid}">${ownTile(o, c, (isFav(o) ? '<div class="story-favbadge">★</div>' : '') + skBadge(o.id))}${on ? `<i class="story-pick-check">${sel.indexOf(o.uid) + 1}</i>` : ''}</button>` : ''; }).join('') || '<div class="story-empty">없음</div>'}</div>
         <div class="flex gap-2 mt-3 story-pop-actions"><button class="story-back" id="dk-clear" ${ds[i].uids?.length || sel.length ? '' : 'disabled'}>비우기</button><button class="story-back flex-1" data-close-pop>취소</button><button class="story-btn flex-1" id="dk-ok">저장</button></div>`, renderDecks);
       const keep = () => { name = $('dk-name')?.value || name; };
       p.el.querySelectorAll('[data-dk]').forEach(b => b.onclick = () => { keep(); const u = b.dataset.dk;
@@ -2059,8 +2068,8 @@
     let tk = null; try { const r = await syncTickets(); tk = r?.tickets ?? tickets; } catch {}
     const inst = deckInstances(), byUid = new Map(save.owned.map(o => [o.uid, o]));
     let deck = []; try { deck = JSON.parse(localStorage.getItem(PICK_KEY()) || '[]').filter(u => byUid.has(u)); } catch {}
-    if (!deck.length) deck = inst.slice().sort((a, b) => (b.uid === save.leader) - (a.uid === save.leader) || (boosted(b)?.power || 0) - (boosted(a)?.power || 0)).slice(0, MAX_PICK()).map(o => o.uid);
-    const view = o => { const b = boosted(o) || {}; return { uid: o.uid, id: o.id, name: b.name || card(o.id)?.name || o.id, grade: b.grade || card(o.id)?.grade, level: o.level | 0, ex: o.ex | 0, power: b.power || 0, locked: isLocked(o), fav: isFav(o), leader: o.uid === save.leader }; };
+    if (!deck.length) deck = inst.slice().sort((a, b) => (b.uid === save.leader) - (a.uid === save.leader) || (shown(b)?.power || 0) - (shown(a)?.power || 0)).slice(0, MAX_PICK()).map(o => o.uid);
+    const view = o => { const b = shown(o) || {}; return { uid: o.uid, id: o.id, name: b.name || card(o.id)?.name || o.id, grade: b.grade || card(o.id)?.grade, level: o.level | 0, ex: o.ex | 0, power: b.power || 0, locked: isLocked(o), fav: isFav(o), leader: o.uid === save.leader }; };
     return {
       ok: true, serverMode, leaderUid: save.leader || null, deckUids: deck, tickets: tk, decks: decksOf().map((d, i) => ({ name: deckName(d, i), uids: (d?.uids || []).filter(u => byUid.has(u)) })),
       owned: save.owned.map(view), uniq: inst.length,
@@ -2074,6 +2083,7 @@
     load: async () => { if (!user()) return false; await load(); return !!save; }, get save() { return save; }, user, show, home, popup, toast, bgm, tile, esc, IMG, card,
     pickDeck: (enemies, onGo, onCancel, note, party, extra) => pickDeck({}, party ? { party } : {}, enemies, { onGo, onCancel, note, ...(extra || {}) }),   // extra.noLend: 대여 인재 빼기 (소탕)
     instances: () => deckInstances(),
+    gearReady: () => gearReady(),
     battleCards: (list, mode = 'tower') => list.slice(0, MAX_PICK()).map(o => gearOn({ ...boosted(o), uid: o.uid }, mode)).filter(x => x.id),
     leaderFor: me => { const lo = me.find(c => c.uid === save.leader), le = lo && leaderEff(lo.id); return le ? { ...le, uid: lo.uid } : undefined; },
     ownedCount: () => deckInstances().length, syncTickets,
