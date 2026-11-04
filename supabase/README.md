@@ -92,6 +92,7 @@ SQL Editor 에서 형님이 직접 실행하는 파일들. **같은 함수를 �
 82. `trade_wanted.sql` (2026-11-04) — 거래소 원하는 물건(want_ids)·trade_list3·trade_search2 (`_trade_listing_json` 최신)
 83. `trade_direct.sql` (2026-11-04) — 지정 거래(닉네임 찾기·받는 사람만·드링크 보관/정산·우편). ⚠ `trade_wanted.sql` 먼저. `_trade_listing_json`·`trade_board`·`trade_search`·`trade_search2` 최신 = 이 파일
 84. `global_notice.sql` (2026-11-04) — 전체 알림: story_gacha_log 에 UR·MR·LR 들어오면 global_notices (트리거) + `global_notice_list`
+85. `trade_lv10.sql` (2026-11-04) — 거래 계정 레벨 하한 20 → 10 (trade_config.min_level)
 
 ## 여러 파일에 정의된 함수 → 최신 정의 파일
 
