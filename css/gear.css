@@ -72,3 +72,8 @@ button.gear-drop{cursor:pointer}
 .gear-msg-b { white-space: normal; font-size: 13px; line-height: 1.5; max-height: 40vh; overflow: auto; text-align: left; margin-bottom: 8px; }
 .gear-msg-a { font-size: 13px; padding: 6px 8px; border-radius: 8px; background: rgba(255, 255, 255, .06); margin-bottom: 6px; }
 .story-mini .gear-badge { position: static; display: inline-block; margin-left: 3px; }
+
+/* 장비 상세: 장착한 인재 썸네일 (아이콘 오른쪽 아래, 테두리 = 등급 색 --rc) */
+.gear-big{position:relative}
+.gear-who{position:absolute;right:-12px;bottom:-10px;width:44px;height:58px;border-radius:9px;overflow:hidden;border:2px solid var(--rc,#71717a);background:#18181b;box-shadow:0 2px 6px rgba(0,0,0,.6)}
+.gear-who img{width:100%!important;height:100%!important;object-fit:cover;object-position:top;display:block}
