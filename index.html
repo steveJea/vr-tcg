@@ -33,7 +33,6 @@
   <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/main-screen.css">
   <link rel="stylesheet" href="css/howto.css">
-  <script src="https://cdn.tailwindcss.com"></script>
   <script src="js/id-alias.js"></script>   <!-- 카드 ID 변경 대비: 옛 ID → 새 ID (가장 먼저) -->
   <script src="js/img-fallback.js"></script>
   <style>
@@ -284,6 +283,8 @@
 <link rel="stylesheet" href="css/topnav.css">
 <link rel="stylesheet" href="css/page-bg.css">
 <script>document.addEventListener("contextmenu",function(e){var t=e.target;if(t&&t.closest&&t.closest("input,textarea,[contenteditable]"))return;e.preventDefault()},true)</script>
+  <!-- Tailwind: 실행 중 생성(CDN) 대신 미리 만든 CSS. 클래스 추가 시 tools/tailwind/tailwind.config.js 주석대로 다시 빌드 -->
+  <link rel="stylesheet" href="css/tw.css">
 </head>
 <body class="bg-zinc-950 text-white min-h-screen select-none">
 

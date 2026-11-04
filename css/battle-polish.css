@@ -35,3 +35,7 @@
   #game .md\:w-\[96px\] { width: 96px; }
   #game .md\:w-\[110px\] { width: 110px; }
 }
+
+/* 아이폰 끊김 완화: 전투 카드의 Tailwind shadow-lg(어두운 배경이라 거의 안 보임)가 매 렌더마다 큰 흐림 그림자를 다시 그려서
+   WebKit에서 프레임을 가장 많이 잡아먹었음. 등급 테두리/빛(rar-*)은 그대로 둔다. */
+#game .card-frame.shadow-lg { --tw-shadow: 0 0 #0000; --tw-shadow-colored: 0 0 #0000; }
