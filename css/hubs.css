@@ -38,3 +38,4 @@
 .yt-btns{display:flex;gap:8px;margin-top:12px}.yt-btns button{flex:1;padding:10px;border-radius:12px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:#fff;font-weight:700}
 .yt-btns .yt-main{background:#f5c96a;color:#1a1a1a;border-color:#f5c96a}
 .yt-reward:empty{display:none}.yt-reward{margin-top:6px;padding:10px;border-radius:12px;background:rgba(245,201,106,.12);border:1px solid rgba(245,201,106,.4);text-align:center;color:#fde68a;font-weight:700}
+.yt-claim{margin-top:-2px;padding:8px;border-radius:12px;background:#f5c96a;color:#1a1a1a;font-weight:800;border:0}
