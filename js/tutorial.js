@@ -46,6 +46,8 @@ function place() {
   if (T.def.anchor && !document.querySelector(T.def.anchor)) { if (!T.anchorMiss) T.anchorMiss = performance.now(); else if (performance.now() - T.anchorMiss > 600) return abort(); } else T.anchorMiss = 0;   // anchor: 그 화면이 사라지면 가이드 종료 (막힘 방지)
   const st = T.def.steps[T.i], { ring, bub, hand, ov } = T.el;
   const tgt = st && resolve(st.target);
+  // 카드 정보 창이 떠 있는데 이번 단계 대상이 그 창 밖이면 창을 닫음 (창이 대상·손가락을 가리던 문제)
+  { const d = document.getElementById('detail'); if (st?.target && (st.wait !== 'tap_target' || T.fresh) && d && !d.classList.contains('hidden') && !(tgt && d.contains(tgt))) window.TCG?.closeDetail?.(); T.fresh = false; }   // tap_target(그 탭이 창을 여는 단계)은 단계 시작 때만
   ov.classList.toggle('dim', !!st);
   if (tgt) {
     if (T.scrolled !== T.i && tgt.closest?.('#me-hand')) { T.scrolled = T.i; try { tgt.scrollIntoView({ block: 'nearest', inline: 'center' }); } catch {} }   // 가로 스크롤 손패: 대상 카드를 보이게
@@ -54,6 +56,9 @@ function place() {
     hand.style.display = 'block'; hand.style.left = `${r.left + r.width / 2}px`; hand.style.top = `${r.top + r.height * 0.6}px`;
     const below = r.top + r.height / 2 < innerHeight / 2;   // 대상이 위쪽이면 말풍선은 아래
     bub.style.top = below ? `${Math.min(innerHeight - 150, r.bottom + 18)}px` : ''; bub.style.bottom = below ? '' : `${Math.min(innerHeight - 150, innerHeight - r.top + 18)}px`;
+    { const b = bub.getBoundingClientRect(), hit = b.bottom > r.top - 4 && b.top < r.bottom + 4;   // 말풍선이 대상을 가리면 반대쪽 → 그래도 가리면 화면 맨 위/아래
+      if (hit) { const room = r.top > innerHeight - r.bottom; if (room) { bub.style.top = ''; bub.style.bottom = `${innerHeight - r.top + 12}px`; } else { bub.style.bottom = ''; bub.style.top = `${r.bottom + 12}px`; }
+        const b2 = bub.getBoundingClientRect(); if (b2.top < 0 || b2.bottom > innerHeight) { bub.style.bottom = ''; bub.style.top = room ? '8px' : ''; if (!room) bub.style.bottom = '8px'; } } }
   } else {
     ring.style.display = 'none'; hand.style.display = 'none';
     Object.assign(ring.style, { left: '50%', top: '50%', width: '0px', height: '0px' });
@@ -73,14 +78,16 @@ function show() {
   bub.querySelector('.tut-tap').style.display = !st.wait || st.wait === 'tap' ? '' : 'none';
   ov.classList.toggle('info', !st.wait || st.wait === 'tap');
   bub.classList.remove('pop'); void bub.offsetWidth; bub.classList.add('pop');
+  T.fresh = true;   // 단계 첫 place: 남아 있던 정보 창 정리
   T.waitTarget = 0;   // 대상이 아직 없으면(다음 렌더 대기) place 가 계속 찾음
 }
 
-function next() { if (!T) return; T.i++; if (T.i >= T.def.steps.length) finish(false); else show(); }
+function next() { if (!T) return; T.advancing = false; T.i++; if (T.i >= T.def.steps.length) finish(false); else show(); }
 
 /** 정보 단계 탭 · 대상 아닌 곳 탭 막기 (capture 단계) */
 function guard(e) {
   if (!T) return;
+  if (T.advancing && !e.target.closest?.('.tut-skip')) { e.stopPropagation(); if (e.type === 'click') e.preventDefault(); return; }   // 다음 단계로 넘어가는 중(이벤트 뒤 대기): 연타가 다른 동작(정보 창 열기 등)이 되지 않게
   const st = T.def.steps[T.i]; if (!st || st.silent) return;
   if (e.target.closest?.('.tut-skip')) return;
   const info = !st.wait || st.wait === 'tap';
@@ -140,7 +147,9 @@ function emit(ev, detail = {}) {
   if (ev === 'battle_end' && st?.wait !== 'battle_end') return finish(false);   // 가이드 도중 전투가 끝나면 조용히 마침
   if (!st || st.wait !== ev) return;
   if (st.match && Object.entries(st.match).some(([k, v]) => detail[k] !== v)) return;
-  setTimeout(next, st.delay ?? 350);
+  if (T.advancing) return;
+  T.advancing = true; const t0 = T;
+  setTimeout(() => { if (T === t0) { T.advancing = false; next(); } }, st.delay ?? 350);
 }
 
 const locked = k => !!T?.locks.has(k);
