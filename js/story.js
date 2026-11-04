@@ -2084,6 +2084,7 @@
     pickDeck: (enemies, onGo, onCancel, note, party, extra) => pickDeck({}, party ? { party } : {}, enemies, { onGo, onCancel, note, ...(extra || {}) }),   // extra.noLend: 대여 인재 빼기 (소탕)
     instances: () => deckInstances(),
     gearReady: () => gearReady(),
+    statsOf: o => { const b = o && boosted(o); return b && { ...b, cap: lvCap(o), maxEx: maxEx(o) }; },   // 거래소 글 상세: 남의 인재(장비 빼고 기본·레벨·EX)
     battleCards: (list, mode = 'tower') => list.slice(0, MAX_PICK()).map(o => gearOn({ ...boosted(o), uid: o.uid }, mode)).filter(x => x.id),
     leaderFor: me => { const lo = me.find(c => c.uid === save.leader), le = lo && leaderEff(lo.id); return le ? { ...le, uid: lo.uid } : undefined; },
     ownedCount: () => deckInstances().length, syncTickets,
