@@ -160,6 +160,7 @@ const shuffleArr = a => { a = [...a]; for (let i = a.length - 1; i > 0; i--) { c
  *      levels:{id:Lv}(소환 때), fullMp:[id], bonus:{내 N번째 턴: 마나}, mercs:[카드], aiScript:[…], aiSummon, aiSkills, onEnd(win, reason) } · 치명타·회피·속성 확률 끔 · 전적·랭킹·일일 미션 기록 안 함 */
 /** 아케이드 튜토리얼: 적 시작 필드·수비대장 */
 function atSetup(at) {
+  if (at.meHpNow) S.me.hp = Math.min(S.me.maxHp, at.meHpNow);   // 기지 보강 연습: 깎인 채 시작
   for (const c of at.aiField || []) { const u = placeUnit(S.ai, c, makeUnit); atLevel(u); }
   if (at.aiGuard) { const u = placeUnit(S.ai, at.aiGuard, makeUnit); atLevel(u); setGuard(u, S.ai); }
   refreshAll(S.ai);

@@ -4,7 +4,7 @@
 (() => {
   const STAGES = [
     { n: 1, id: 'arcade_1', name: '초급', title: '기본도 모르면 나가 죽어', ready: true },
-    { n: 2, id: 'arcade_2', name: '중급', title: '마나 없으면 넌 그냥 개미야', ready: false },
+    { n: 2, id: 'arcade_2', name: '중급', title: '마나 없으면 넌 그냥 개미야', ready: true },
     { n: 3, id: 'arcade_3', name: '상급', title: '이 정도면 언니랑 놀 자격 있네', ready: false },
   ];
   const FACE = 'https://raw.githubusercontent.com/steveJea/vr-ideal-worldcup/main/img/bt_img/10325.webp';
