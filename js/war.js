@@ -175,7 +175,8 @@ async function deckPop() {
       ${['def1', 'def2', 'atk1', 'atk2'].map(k => `<button class="rd-dk wr-dkrow ${pick === k ? 'on' : ''}" data-k="${k}"><b>${k.startsWith('def') ? (gi('war_role_def', '🛡️') + ' 방어') : (gi('war_role_atk', '⚔️') + ' 공격')} ${k.slice(-1)}${k === 'def2' ? '<small>목숨 +1</small>' : ''}</b><span class="rd-ths">${th(dk[k])}</span>${k.startsWith('def') && locked ? '<small>🔒</small>' : ''}</button>`).join('')}
       <div class="rd-h">${pick.startsWith('def') ? (gi('war_role_def', '🛡️') + ' 방어') : (gi('war_role_atk', '⚔️') + ' 공격')} ${pick.slice(-1)} 에 넣을 덱</div>
       ${list.map(d => `<button class="rd-dk" data-use="${d.key}" ${pick.startsWith('def') && locked ? 'disabled' : ''}><b>${esc(d.name)}</b><span class="rd-ths">${th(d.cards)}</span></button>`).join('')}
-      <button class="rd-dk" data-use="" ${pick.startsWith('def') && locked ? 'disabled' : ''}><b>비우기</b></button>`;
+      <button class="rd-dk" data-use="" ${pick.startsWith('def') && locked ? 'disabled' : ''}><b>비우기</b></button>
+      <small class="rd-note">🛡️ 장비는 덱을 저장할 때 들어가요 — 장비를 바꿨다면 덱을 다시 저장해야 반영돼요 (구역 전쟁 장비 50%)</small>`;
     m.querySelectorAll('[data-k]').forEach(b => b.onclick = () => { pick = b.dataset.k; draw(); });
     m.querySelectorAll('[data-use]').forEach(b => b.onclick = async () => { const d = list.find(x => x.key === b.dataset.use);
       try { const r = await rpc('war_set_deck', { p_kind: pick, p_uids: d ? d.cards.map(o => o.uid) : [] }); S.decks = r.decks; toast('저장했어요'); } catch (er) { toast(errText(er)); } draw(); });
