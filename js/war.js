@@ -166,22 +166,47 @@ async function deckPop() {
   let list = window.__WAR_MOCK_DECKS;
   if (!list) { const sum = await window.VRStory?.summary?.(); if (!sum?.ok) { m.remove(); return toast('스토리 인재가 필요해요'); }
     const by = new Map(sum.owned.map(o => [o.uid, o])), uniq = u => { const seen = new Set(); return u.map(x => by.get(x)).filter(o => o && !seen.has(o.id) && seen.add(o.id)).slice(0, 5); };
-    list = [{ key: 'top', name: '⚡ 전투력 상위', cards: uniq(sum.owned.slice().sort((a, b) => b.power - a.power).map(o => o.uid)) }, ...sum.decks.map((d, i) => ({ key: 'd' + i, name: d.name, cards: uniq(d.uids) })).filter(d => d.cards.length)]; }
-  let pick = 'def1';
+    const ranked = sum.owned.slice().sort((a, b) => b.power - a.power).map(o => o.uid);
+    list = [{ key: 'top', name: '⚡ 전투력 상위', cards: uniq(ranked), ranked: ranked.map(u => by.get(u)).filter(Boolean) }, ...sum.decks.map((d, i) => ({ key: 'd' + i, name: d.name, cards: uniq(d.uids) })).filter(d => d.cards.length)]; }
+  let pick = 'def1', msg = '', busy = false;
+  // 1·2번 덱(방어1↔방어2, 공격1↔공격2)은 같은 인재 불가 → 짝 덱과 겹치는 인재
+  const pair = k => ({ def1: 'def2', def2: 'def1', atk1: 'atk2', atk2: 'atk1' })[k];
+  const clash = d => { const o = new Set(((S.decks || {})[pair(pick)] || []).map(x => x.id)); return d.cards.filter(c => o.has(c.id)); };
+  // 전투력 상위는 짝 덱 인재를 빼고 상위 5장 (같은 캐릭터 1장)
+  const cardsFor = d => { if (d.key !== 'top' || !d.ranked) return d.cards; const o = new Set(((S.decks || {})[pair(pick)] || []).map(x => x.id)), seen = new Set(); return d.ranked.filter(c => !o.has(c.id) && !seen.has(c.id) && seen.add(c.id)).slice(0, 5); };
   const draw = () => {
     const dk = S.decks || {}, locked = S.entry?.locked && !['soon', 'signup', 'ended'].includes(S.phase);
     const th = sn => (sn || []).map(o => `<span class="rd-th"><img src="${IMG}${o.id}.webp" alt="" onerror="this.remove()"><small>Lv.${o.level}</small>${window.VRStory?.skBadge?.(o.id, 'sm') || ''}</span>`).join('') || '<small class="rd-empty">비어 있음</small>';
     m.querySelector('.gd-pop-panel').innerHTML = `<button class="gd-x" data-x aria-label="닫기">${gi('ic_close', '✕')}</button><div class="rd-pt">${gi('war_deck', '🃏')} 전쟁 덱</div>
       ${['def1', 'def2', 'atk1', 'atk2'].map(k => `<button class="rd-dk wr-dkrow ${pick === k ? 'on' : ''}" data-k="${k}"><b>${k.startsWith('def') ? (gi('war_role_def', '🛡️') + ' 방어') : (gi('war_role_atk', '⚔️') + ' 공격')} ${k.slice(-1)}${k === 'def2' ? '<small>목숨 +1</small>' : ''}</b><span class="rd-ths">${th(dk[k])}</span>${k.startsWith('def') && locked ? '<small>🔒</small>' : ''}</button>`).join('')}
       <div class="rd-h">${pick.startsWith('def') ? (gi('war_role_def', '🛡️') + ' 방어') : (gi('war_role_atk', '⚔️') + ' 공격')} ${pick.slice(-1)} 에 넣을 덱</div>
-      ${list.map(d => `<button class="rd-dk" data-use="${d.key}" ${pick.startsWith('def') && locked ? 'disabled' : ''}><b>${esc(d.name)}</b><span class="rd-ths">${th(d.cards)}</span></button>`).join('')}
-      <button class="rd-dk" data-use="" ${pick.startsWith('def') && locked ? 'disabled' : ''}><b>비우기</b></button>
+      ${msg ? `<div class="wr-dkmsg">${esc(msg)}</div>` : ''}
+      ${list.map(d => { const cs = cardsFor(d), cl = d.key === 'top' ? [] : clash({ cards: cs }); return `<button class="rd-dk${cl.length ? ' wr-clash' : ''}" data-use="${d.key}" ${(pick.startsWith('def') && locked) || busy ? 'disabled' : ''}><b>${esc(d.name)}${cl.length ? `<small>${pick.startsWith('def') ? '방어' : '공격'} ${pair(pick).slice(-1)}과 ${cl.length}명 겹침</small>` : ''}</b><span class="rd-ths">${th(cs)}</span></button>`; }).join('')}
+      <button class="rd-dk" data-use="" ${(pick.startsWith('def') && locked) || busy ? 'disabled' : ''}><b>비우기</b></button>
+      <button class="rd-dk wr-goedit" data-edit><b>${gi('war_deck', '🃏')} 덱 편성하러 가기</b><small>편성 후 뒤로 가면 여기로 돌아와요</small></button>
       <small class="rd-note">🛡️ 장비는 덱을 저장할 때 들어가요 — 장비를 바꿨다면 덱을 다시 저장해야 반영돼요 (구역 전쟁 장비 50%)</small>`;
-    m.querySelectorAll('[data-k]').forEach(b => b.onclick = () => { pick = b.dataset.k; draw(); });
-    m.querySelectorAll('[data-use]').forEach(b => b.onclick = async () => { const d = list.find(x => x.key === b.dataset.use);
-      try { const r = await rpc('war_set_deck', { p_kind: pick, p_uids: d ? d.cards.map(o => o.uid) : [] }); S.decks = r.decks; toast('저장했어요'); } catch (er) { toast(errText(er)); } draw(); });
+    m.querySelectorAll('[data-k]').forEach(b => b.onclick = () => { pick = b.dataset.k; msg = ''; draw(); });
+    m.querySelectorAll('[data-use]').forEach(b => b.onclick = async () => { if (busy) return; const d = list.find(x => x.key === b.dataset.use), cs = d ? cardsFor(d) : [];
+      if (d && !cs.length) { msg = '넣을 수 있는 인재가 없어요'; return draw(); }
+      busy = true; msg = '저장 중…'; draw();
+      try { const r = await rpc('war_set_deck', { p_kind: pick, p_uids: cs.map(o => o.uid) }); S.decks = r.decks; msg = d ? `${d.key === 'top' ? '전투력 상위' : d.name} → 저장했어요` : '비웠어요'; toast('저장했어요'); }
+      catch (er) { msg = errText(er); toast(msg); }
+      busy = false; draw(); });
+    m.querySelector('[data-edit]').onclick = () => goEdit(m);
   };
   draw();
+}
+// 마이 덱(편성) 화면으로 갔다가, 뒤로 나오면 전쟁 덱 팝업 다시 열기
+function goEdit(m) {
+  const st = window.VRStory; if (!st?.openDecks) return toast('편성 화면을 열 수 없어요');
+  m.remove(); st.openDecks();
+  const r = document.getElementById('story-screen'); let seen = false, n = 0;
+  const iv = setInterval(() => { n++;
+    const vis = !!(r && !r.classList.contains('hidden'));
+    if (vis && r.querySelector('.story-decks')) seen = true;
+    if (vis && seen) { if (n > 1500) clearInterval(iv); return; }   // 덱 고치는 중 (10분 넘으면 그만 지켜봄)
+    if (seen || n > 20) { clearInterval(iv); if (seen && !vis && !document.querySelector('.wr-pop')) deckPop(); }   // 편성 화면을 닫았을 때만 다시 열기
+  }, 400);
 }
 function slotPop(slot) {
   const x = S.roster.find(r => r.slot === slot);
