@@ -1,0 +1,286 @@
+{
+  "title": "유리의 특강 · 상급: 이 정도면 언니랑 놀 자격 있네",
+  "locks": [
+    "auto",
+    "skip",
+    "attack_all",
+    "giveup"
+  ],
+  "steps": [
+    {
+      "text": "상급까지 왔어? …의외네. 오늘은 고급 기술. 수비대장, 회수, 희생, 용병.",
+      "speaker": "임유리",
+      "face": "card:10325",
+      "wait": "tap"
+    },
+    {
+      "target": "hand:10036",
+      "text": "곽태우 눌러.",
+      "speaker": "임유리",
+      "wait": "tap_target"
+    },
+    {
+      "target": "#guard-btn",
+      "text": "수비대장 배치. 진영 칸을 지키는 애야. HR 이하만 되고, 진영 칸에 있는 동안은 안 쓰러져.",
+      "speaker": "임유리",
+      "wait": "guard_set",
+      "pad": 4
+    },
+    {
+      "target": "end_turn",
+      "text": "턴 종료.",
+      "speaker": "임유리",
+      "wait": "turn_start"
+    },
+    {
+      "target": "hand:10118",
+      "text": "민홍기. SR이야.",
+      "speaker": "임유리",
+      "wait": "tap_target"
+    },
+    {
+      "target": "#summon-btn",
+      "text": "소환.",
+      "speaker": "임유리",
+      "wait": "summoned",
+      "match": {
+        "id": "10118"
+      }
+    },
+    {
+      "target": "my_id:10036",
+      "text": "수비대장도 공격할 수 있어. 곽태우 눌러.",
+      "speaker": "임유리",
+      "wait": "tap_target"
+    },
+    {
+      "target": "enemy_card:0",
+      "text": "저기.",
+      "speaker": "임유리",
+      "wait": "attack_done"
+    },
+    {
+      "target": "end_turn",
+      "text": "턴 종료.",
+      "speaker": "임유리",
+      "wait": "turn_start"
+    },
+    {
+      "text": "민홍기 맞았지? 다친 애 붙잡고 있지 마.",
+      "speaker": "임유리",
+      "face": "card:10325",
+      "wait": "tap"
+    },
+    {
+      "target": "my_id:10118",
+      "text": "민홍기 눌러.",
+      "speaker": "임유리",
+      "wait": "card_selected"
+    },
+    {
+      "target": "my_id:10118",
+      "text": "한 번 더.",
+      "speaker": "임유리",
+      "wait": "tap_target"
+    },
+    {
+      "target": "#recall-btn",
+      "text": "회수. 코스트 절반 내고 손으로. HP는 다 차고, 레벨·장비는 초기화. 방금 낸 카드는 무료로 무를 수 있고.",
+      "speaker": "임유리",
+      "wait": "recalled",
+      "pad": 4
+    },
+    {
+      "target": "hand:10049",
+      "text": "길정재 내. 바로 쓸 거야.",
+      "speaker": "임유리",
+      "wait": "tap_target"
+    },
+    {
+      "target": "#summon-btn",
+      "text": "소환.",
+      "speaker": "임유리",
+      "wait": "summoned",
+      "match": {
+        "id": "10049"
+      }
+    },
+    {
+      "target": "my_id:10049",
+      "text": "이제 길정재.",
+      "speaker": "임유리",
+      "wait": "card_selected"
+    },
+    {
+      "target": "my_id:10049",
+      "text": "한 번 더.",
+      "speaker": "임유리",
+      "wait": "tap_target"
+    },
+    {
+      "target": "#sacrifice-btn",
+      "text": "희생. 버리는 거 아니야. 코스트 절반을 마나로 바꾸는 거지. 턴당 한 번. 냉정해져.",
+      "speaker": "임유리",
+      "wait": "sacrificed",
+      "pad": 4
+    },
+    {
+      "target": "act:merc",
+      "text": "돈 있으면 용병 써.",
+      "speaker": "임유리",
+      "wait": "tap_target"
+    },
+    {
+      "target": "merc:10292",
+      "text": "판마다 HR·SR·UR 하나씩 나와. 한 판에 한 명. 이번엔 윤태민.",
+      "speaker": "임유리",
+      "wait": "merc_hired",
+      "pad": 4
+    },
+    {
+      "target": "hand:10118",
+      "text": "민홍기 다시 내. 쌩쌩하지?",
+      "speaker": "임유리",
+      "wait": "tap_target"
+    },
+    {
+      "target": "#summon-btn",
+      "text": "소환.",
+      "speaker": "임유리",
+      "wait": "summoned",
+      "match": {
+        "id": "10118"
+      }
+    },
+    {
+      "target": "end_turn",
+      "text": "턴 종료.",
+      "speaker": "임유리",
+      "wait": "turn_start"
+    },
+    {
+      "target": "hand:10292",
+      "text": "용병 윤태민 소환.",
+      "speaker": "임유리",
+      "wait": "tap_target"
+    },
+    {
+      "target": "#summon-btn",
+      "text": "소환.",
+      "speaker": "임유리",
+      "wait": "summoned",
+      "match": {
+        "id": "10292"
+      }
+    },
+    {
+      "text": "수비대장은 배치하고 내 턴 3번 지나면 바꿀 수 있어. 지금이야. 대신 바꾸면 턴이 끝나.",
+      "speaker": "임유리",
+      "face": "card:10325",
+      "wait": "tap"
+    },
+    {
+      "target": "my_id:10036",
+      "text": "곽태우(수비대장) 눌러.",
+      "speaker": "임유리",
+      "wait": "tap_target"
+    },
+    {
+      "target": "my_id:10292",
+      "text": "윤태민 눌러. 교체.",
+      "speaker": "임유리",
+      "wait": "guard_swapped"
+    },
+    {
+      "text": "…자, 마지막. 다 쓸어버리자.",
+      "speaker": "임유리",
+      "face": "card:10325",
+      "wait": "turn_start"
+    },
+    {
+      "target": "hand:10311",
+      "text": "이지영. MR. 손 떨지 마.",
+      "speaker": "임유리",
+      "wait": "tap_target"
+    },
+    {
+      "target": "#summon-btn",
+      "text": "소환.",
+      "speaker": "임유리",
+      "wait": "summoned",
+      "match": {
+        "id": "10311"
+      }
+    },
+    {
+      "target": "my_id:10311",
+      "text": "눌러.",
+      "speaker": "임유리",
+      "wait": "card_selected"
+    },
+    {
+      "target": "my_id:10311",
+      "text": "한 번 더.",
+      "speaker": "임유리",
+      "wait": "tap_target"
+    },
+    {
+      "target": "#detail:not(.hidden) [data-skill=\"0\"]",
+      "text": "[Incipit nunc sic]. 필드 전체.",
+      "speaker": "임유리",
+      "wait": "skill_used",
+      "pad": 4
+    },
+    {
+      "text": "…봤어? 이게 아케이드야. 이제 혼자 해 봐. 지면 웃어줄게~",
+      "speaker": "임유리",
+      "face": "card:10325",
+      "wait": "battle_end"
+    }
+  ],
+  "arcade": {
+    "first": "me",
+    "me": [
+      "10036",
+      "10049",
+      "10118",
+      "10445",
+      "10404",
+      "10375",
+      "10080",
+      "10074",
+      "10311",
+      "10083"
+    ],
+    "aiField": [
+      "10115",
+      "10103",
+      "10462",
+      "10256"
+    ],
+    "aiDeck": [],
+    "aiHp": 3000,
+    "wipe": true,
+    "levels": {
+      "10311": 2
+    },
+    "fullMp": [
+      "10311"
+    ],
+    "haste": [
+      "10311"
+    ],
+    "mercs": [
+      "10292",
+      "10183",
+      "10325"
+    ],
+    "bonus": {
+      "1": 0,
+      "2": 20,
+      "3": 80,
+      "4": 10,
+      "5": 50
+    }
+  }
+}
