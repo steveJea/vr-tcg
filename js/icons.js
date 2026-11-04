@@ -5,6 +5,22 @@
 (function () {
   const BASE = 'img/ui/';
   const ICONS = {
+    // set out2 (2026-11-04 그림순이)
+    dispatch: { src: 'dispatch.webp', alt: '파견' },
+    el_freeze: { src: 'el_freeze.webp', alt: '빙결' },
+    attendance: { src: 'attendance.webp', alt: '출석' },
+    celebrate: { src: 'celebrate.webp', alt: '축하' },
+    st_blind: { src: 'st_blind.webp', alt: '실명' },
+    forbidden: { src: 'forbidden.webp', alt: '금지' },
+    daily_mission: { src: 'daily_mission.webp', alt: '일일 임무' },
+    cur_shard_small: { src: 'cur_shard_small.webp', alt: '조각' },
+    emb_crow: { src: 'emb_crow.webp', alt: '까마귀' },
+    st_notweak: { src: 'st_notweak.webp', alt: '약화 면역' },
+    st_summoned: { src: 'st_summoned.webp', alt: '소환됨' },
+    help_q: { src: 'help_q.webp', alt: '도움말' },
+    my_listings: { src: 'my_listings.webp', alt: '내 판매' },
+    vibrate: { src: 'vibrate.webp', alt: '진동' },
+    tut_hand: { src: 'tut_hand.webp', alt: '터치' },
     mana: { src: 'mana.webp', alt: '마나' },
     atk:  { src: 'atk.webp',  alt: 'ATK' },
     def:  { src: 'def.webp',  alt: 'DEF' },
@@ -220,6 +236,20 @@
   ICONS["orange_marker"] = ICONS["orange_marker"] || { src: 'orange_marker.webp', alt: "orange marker" };
   ICONS.mailbox = ICONS.mailbox || { src: 'mailbox.webp', alt: '우편함' };
   const EMOJI2 = {
+    "🧭": "dispatch",
+    "🧊": "el_freeze",
+    "🗓": "attendance",
+    "🎉": "celebrate",
+    "🌫": "st_blind",
+    "⛔": "forbidden",
+    "📋": "daily_mission",
+    "🔹": "cur_shard_small",
+    "🐦‍⬛": "emb_crow",
+    "😤": "st_notweak",
+    "🪽": "st_summoned",
+    "❓": "help_q",
+    "📦": "my_listings",
+    "📳": "vibrate",
     "🔮": "magic_orb_guild",
     "🥤": "drink_item",
     "⬆": "upgrade",
@@ -300,7 +330,13 @@
     "🟠": "orange_marker"
   };
   const norm = s => s.replace(/\uFE0F/g, '');
-  const E2RE = new RegExp(Object.keys(EMOJI2).sort((a, b) => b.length - a.length).map(e => e.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\uFE0F?').join('|'), 'gu');
+  // 자동 교체 표 = EMOJI(예전 표) + EMOJI2. 예전엔 EMOJI2 만 봐서 소환 제목 '🎴 인재 영입' 같은 글자가 이모지로 남았음 (2026-11-04)
+  // 뜻이 여러 개라 일부러 이모지로 두는 것(⚡✨★⏩☆)은 빼고, 이름이 같으면 EMOJI2 우선
+  const NO_AUTO = new Set(['⚡', '✨', '★', '⏩', '☆']);
+  const AUTO = {};
+  for (const [e, k] of Object.entries(EMOJI)) { const n = norm(e); if (!NO_AUTO.has(n)) AUTO[n] = k; }
+  for (const [e, k] of Object.entries(EMOJI2)) { const n = norm(e); if (!NO_AUTO.has(n)) AUTO[n] = k; }
+  const E2RE = new RegExp(Object.keys(AUTO).sort((a, b) => b.length - a.length).map(e => e.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\uFE0F?').join('|'), 'gu');
   const SKIP_SEL = '.story-dlg, #story-dlg, #event-layer, .ev-line, input, textarea, select, script, style, [contenteditable], [data-noemoji], .stfx-text';
   function swapText(tn) {
     const t = tn.nodeValue; E2RE.lastIndex = 0; if (!t || !E2RE.test(t)) return;
@@ -309,7 +345,7 @@
     const frag = document.createDocumentFragment(); let last = 0, m;
     while ((m = E2RE.exec(t))) {
       if (m.index > last) frag.appendChild(document.createTextNode(t.slice(last, m.index)));
-      const name = EMOJI2[norm(m[0])], d = ICONS[name];
+      const name = AUTO[norm(m[0])], d = ICONS[name];
       if (!d) { frag.appendChild(document.createTextNode(m[0])); last = m.index + m[0].length; continue; }
       const img = document.createElement('img');
       img.src = BASE + d.src; img.alt = m[0]; img.className = `ui-ic ui-ic-${name}`; img.width = 64; img.height = 64; img.draggable = false; img.decoding = 'async';

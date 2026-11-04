@@ -88,7 +88,7 @@
     const bk = bar.querySelector('.tnb-back'), bm = w === 'hub' ? 'home' : 'back'; if (bk.dataset.ic !== bm) { bk.dataset.ic = bm; bk.classList.remove('noart'); bk.innerHTML = ic(bm); }
     bar.querySelector('.tnb-back').setAttribute('aria-label', w === 'hub' ? '처음으로' : '뒤로');
     acct.hidden = w !== 'lobby';
-    const t = title(w); const T = bar.querySelector('.tnb-t'); if (T.textContent !== t) T.textContent = t;
+    const t = title(w); const T = bar.querySelector('.tnb-t'); if (T.dataset.t !== t) { T.dataset.t = t; T.textContent = t; }   // 글자 비교 대신 data-t (아이콘으로 바뀐 뒤 textContent 가 달라져 매번 다시 쓰는 것 방지)
     const lv = bar.querySelector('.tnb-lv'); lv.hidden = !P || w === 'lobby'; if (P) lv.textContent = `Lv.${P.level}`;
     const se = bar.querySelector('.tnb-st'); se.hidden = !(P && st);
     if (P && st) { const full = P.stamina >= P.stamina_max, mm = window.VRPlayer.mmss?.(P.next_regen_secs) || '';
