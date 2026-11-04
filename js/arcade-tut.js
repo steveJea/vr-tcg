@@ -8,7 +8,8 @@
     { n: 3, id: 'arcade_3', name: '상급', title: '이 정도면 언니랑 놀 자격 있네', ready: true },
   ];
   const FACE = 'https://raw.githubusercontent.com/steveJea/vr-ideal-worldcup/main/img/bt_img/10325.webp';
-  const key = () => `vrArcTut:${window.VRCloud?.user?.id || 'guest'}`;
+  const GKEY = 'vrArcTut:guest';
+  const key = () => window.VRCloud?.user?.id ? `vrArcTut:${window.VRCloud.user.id}` : GKEY;
   const load = () => { try { return JSON.parse(localStorage.getItem(key()) || '{}') || {}; } catch { return {}; } };
   const save = o => { try { localStorage.setItem(key(), JSON.stringify(o)); } catch {} };
   const cleared = n => !!load()[n];
@@ -24,7 +25,7 @@
     try { const { data, error } = await c.rpc('arcade_tut_claim', { p_stage: n }); if (error) throw error; srv = { ...(srv || {}), claimed: [...new Set([...(srv?.claimed || []), n])] }; try { window.dispatchEvent(new CustomEvent('vr:tickets', { detail: { tickets: data.tickets } })); } catch {} return data; }
     catch (e) { return { error: String(e?.message || e) }; }
   }
-  const rewardText = r => r.login ? `로그인하면 첫 클리어 보상 🎟️ 영입권을 받을 수 있어요` : r.error ? (/previous/.test(r.error) ? '앞 단계 보상을 먼저 받아야 해요' : '보상은 잠시 뒤 다시 받을 수 있어요 (단계 목록에서 받기)') : r.already ? '보상은 이미 받았어요' : `🎟️ 영입권 +${r.gave} (보유 ${r.tickets})`;
+  const rewardText = r => r.login ? `게스트 클리어 기록은 저장됐어요. 로그인하면 첫 클리어 보상 🎟️ 영입권을 받아요` : r.error ? (/previous/.test(r.error) ? '앞 단계 보상을 먼저 받아야 해요' : '보상은 잠시 뒤 다시 받을 수 있어요 (단계 목록에서 받기)') : r.already ? '보상은 이미 받았어요' : `🎟️ 영입권 +${r.gave} (보유 ${r.tickets})`;
   let ov = null;
   const close = () => { ov?.remove(); ov = null; };
   function panel(html, onClick) {
@@ -64,10 +65,57 @@
     const say = win ? (st.n === 3 ? '…봤어? 이게 아케이드야. 이제 혼자 해 봐. 지면 웃어줄게~' : '흥, 이 정도는 개미도 해. 다음 거나 해.') : '…진짜? 정해진 덱으로 졌다고? 다시 해.';
     panel(`<div class="yt-head"><img src="${FACE}" alt=""><div><b>${st.name} ${win ? '클리어!' : '실패'}</b><p>${say}</p></div></div>
       <div class="yt-reward" data-reward="${st.n}" data-first="${first ? 1 : 0}"></div>
+      ${win && !window.VRCloud?.user ? `<button class="yt-login" data-login>🎟️ 로그인하면 영입권 ${REWARD[st.n]}장 받기</button>` : ''}
       <div class="yt-btns">${win && next && unlocked(next) ? `<button data-go="${next.n}" class="yt-main">${next.name} 도전</button>` : ''}${win ? '' : `<button data-go="${st.n}" class="yt-main">다시 하기</button>`}<button data-list>단계 목록</button><button data-x>닫기</button></div>`,
-      e => { const g = e.target.closest('[data-go]'); if (g) return play(+g.dataset.go); if (e.target.closest('[data-list]')) open(); });
+      e => { if (e.target.closest('[data-login]')) { close(); return login(); } const g = e.target.closest('[data-go]'); if (g) return play(+g.dataset.go); if (e.target.closest('[data-list]')) open(); });
     if (win) claim(st.n).then(r => { const el = ov?.querySelector('.yt-reward'); if (el) el.textContent = rewardText(r); });
     try { window.dispatchEvent(new CustomEvent('vr:arcade-tut', { detail: { stage: st.n, win: !!win, first } })); } catch {}
   }
-  window.VRArcadeTut = { open, play, STAGES, cleared, reset: () => save({}) };
+  // 게스트 → 로그인: 게스트로 깬 단계를 계정 기록으로 옮기고, 첫 클리어 보상을 순서대로 받음 (서버가 단계별 1회만 지급)
+  function login() { if (window.VRCloud?.login) window.VRCloud.login(); else (window.VRGem?.toast || alert)('로그인 서버 연결 중이에요. 잠시 뒤 다시 눌러 주세요.'); }
+  let migrating = false;
+  async function migrateGuest() {
+    const u = window.VRCloud?.user; if (!u || migrating) return;
+    let g; try { g = JSON.parse(localStorage.getItem(GKEY) || '{}') || {}; } catch { g = {}; }
+    const stages = Object.keys(g).map(Number).filter(n => REWARD[n]).sort((a, b) => a - b); if (!stages.length) return;
+    migrating = true;
+    try {
+      const mine = load(); for (const n of stages) mine[n] = 1; save(mine);
+      const got = []; let fail = false;
+      for (const n of [1, 2, 3].filter(n => mine[n])) {   // 계정에 이미 있던 클리어도 포함 (앞 단계부터)
+        const r = await claim(n);
+        if (r.error) { fail = true; break; }
+        if (r.gave) got.push(r.gave);
+      }
+      if (!fail) localStorage.removeItem(GKEY);   // 실패하면 남겨 두고 다음 로그인·새로고침 때 다시
+      const sum = got.reduce((a, b) => a + b, 0);
+      if (sum) (window.VRGem?.toast || (t => console.log(t)))(`📖 유리의 특강 게스트 클리어 보상: 🎟️ 영입권 +${sum}`);
+    } finally { migrating = false; }
+  }
+  window.addEventListener('vr:user', () => { if (window.VRCloud?.user && ov?.querySelector('.yt-promo')) close(); setTimeout(migrateGuest, 800); });   // 로그인하면 홍보 창 닫기 + 게스트 보상
+  if (window.VRCloud?.user) setTimeout(migrateGuest, 1500);
+
+  // 첫 방문 게스트 홍보 창: 로그인 안 한 방문자에게 크게. 세션당 한 번 · '다시 보지 않기' 또는 로그인하면 더 안 뜸
+  const PROMO_KEY = 'vrYuriPromoOff', PROMO_SS = 'vrYuriPromoShown';
+  function promo(force) {
+    if (!force && (localStorage.getItem(PROMO_KEY) === '1' || sessionStorage.getItem(PROMO_SS) === '1' || window.VRCloud?.user)) return;
+    try { sessionStorage.setItem(PROMO_SS, '1'); } catch {}
+    panel(`<div class="yt-promo"><img class="yt-promo-img" src="https://raw.githubusercontent.com/steveJea/vr-ideal-worldcup/main/img/bt_img/10325.webp" alt="임유리">
+      <b class="yt-promo-t">📖 유리의 특강</b>
+      <p>"하… 아케이드도 모르면서 들어온 거야? 언니가 딱 한 번만 알려줄게."</p>
+      <ul><li>로그인 없이 바로 플레이</li><li>초급 · 중급 · 상급 3단계, 마지막엔 MR 카드로 싹 쓸어버리기</li><li>로그인하면 첫 클리어 보상 🎟️ 영입권 최대 410장</li></ul>
+      <button class="yt-main yt-promo-go" data-promo-go>바로 시작 (게스트)</button>
+      <label class="yt-promo-off"><input type="checkbox" data-promo-off> 다시 보지 않기</label></div>`,
+      e => { if (e.target.closest('[data-promo-go]')) { offIf(); play(1); } });
+    const offIf = () => { if (ov?.querySelector('[data-promo-off]')?.checked) localStorage.setItem(PROMO_KEY, '1'); };
+    ov.addEventListener('click', e => { if (e.target === ov || e.target.closest('[data-x]')) offIf(); }, true);
+  }
+  // 메인 화면이 보이고(인트로·전투·스토리 아님) 로그인 상태를 안 뒤에만
+  (function waitMain(n = 0) {
+    const vis = id => { const e = document.getElementById(id); return e && !e.classList.contains('hidden') && e.offsetParent !== null; };
+    const ready = window.VRCloud?.ready || n > 60;
+    if (ready && window.TCG?.ready && localStorage.getItem('vrTcgIntroSeen') === '1' && !vis('intro') && !vis('game') && !(window.VRPages?.depth > 0) && !document.querySelector('.hub-ov, #story-screen:not(.hidden), #vr-confirm:not(.hidden), #story-dlg')) return promo();
+    if (n < 600) setTimeout(() => waitMain(n + 1), 500);
+  })();
+  window.VRArcadeTut = { promo: () => promo(true), migrateGuest, open, play, STAGES, cleared, reset: () => save({}) };
 })();
