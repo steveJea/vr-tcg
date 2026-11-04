@@ -154,8 +154,10 @@
   const gear = document.getElementById('main-settings'), pop = document.getElementById('main-settings-pop');
   if (!gear || !pop) return;
   const isOpen = () => !pop.classList.contains('hidden');
-  const open = () => { pop.classList.remove('hidden'); gear.setAttribute('aria-expanded', 'true'); setTimeout(() => document.getElementById('main-skip')?.focus(), 0); };
-  const close = (refocus = true) => { if (!isOpen()) return; pop.classList.add('hidden'); gear.setAttribute('aria-expanded', 'false'); if (refocus) gear?.focus(); };
+  // 탑·페이지 화면처럼 #start-screen 이 숨은 상태에서 열면 창이 안 보이고(부모가 숨김) 상단 메뉴만 사라졌음 → 그땐 body 로 잠시 옮겨 띄움
+  const home = { p: pop.parentNode, n: pop.nextSibling }, ss = document.getElementById('start-screen');
+  const open = () => { if (ss && !ss.getClientRects().length) document.body.appendChild(pop); pop.classList.remove('hidden'); gear.setAttribute('aria-expanded', 'true'); setTimeout(() => document.getElementById('main-skip')?.focus(), 0); };
+  const close = (refocus = true) => { if (!isOpen()) return; pop.classList.add('hidden'); if (pop.parentNode !== home.p) { home.p.insertBefore(pop, home.n?.parentNode === home.p ? home.n : null); } gear.setAttribute('aria-expanded', 'false'); if (refocus) gear?.focus(); };
   // 톱니바퀴는 게임설정 메뉴(js/main-menu.js)를 열고, 거기서 [설정]으로 이 창을 연다
   pop.addEventListener('click', e => { if (e.target === pop || e.target.closest('[data-close-settings]')) close(); });
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && isOpen()) close(); });
