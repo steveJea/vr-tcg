@@ -319,5 +319,5 @@
   // 로그인하면 장비 미리 불러오기 (전투·인재 화면에 바로 장비 반영)
   const pre = () => { if (window.VRCloud?.user) load().catch(() => {}); };
   let lastU = null; window.addEventListener('vr:user', () => { const u = window.VRCloud?.user?.id || null; if (u !== lastU) { lastU = u; st = null; pre(); } }); setTimeout(pre, 1500);
-  window.VRGear = { txt: { main: d => d ? mainTxt(d) : '', opt: o => `${OPT[o.opt] || o.opt} +${o.v}${o.opt === 'cooldown' ? '' : '%'}`, tier: t => TIER[t] || '' }, deckNote, unread: refreshUnread, load, forCard, slotsHTML, bind, bag, mailbox, showDrops, pvpShop, ask, shopIcon, get ready() { return !!st; }, get off() { return off; }, _defs: () => defs };
+  window.VRGear = { myGear: () => st?.gear || [], txt: { main: d => d ? mainTxt(d) : '', opt: o => `${OPT[o.opt] || o.opt} +${o.v}${o.opt === 'cooldown' ? '' : '%'}`, tier: t => TIER[t] || '' }, deckNote, unread: refreshUnread, load, forCard, slotsHTML, bind, bag, mailbox, showDrops, pvpShop, ask, shopIcon, get ready() { return !!st; }, get off() { return off; }, _defs: () => defs };
 })();

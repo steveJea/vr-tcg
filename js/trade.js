@@ -23,7 +23,7 @@
     'card not owned': '이 인재가 없어요', 'gear not owned': '이 장비가 없어요', 'gear locked': '🔒 잠긴 장비예요', 'gear equipped': '장착 중인 장비는 먼저 해제해 주세요',
     'gear not tradable': '전설·심연 장비는 거래할 수 없어요', 'resale cooldown': '거래로 받은 물건은 72시간 뒤에 다시 올릴 수 있어요',
     'daily trade limit': '오늘 거래 한도를 다 썼어요', 'same partner limit': '같은 상대와는 7일에 3번까지예요', 'no condition': '거절 조건을 넣어 주세요',
-    'nothing to reject': '거절할 제안을 골라 주세요', 'duplicate card': '같은 인재를 두 번 골랐어요', 'duplicate gear': '같은 장비를 두 번 골랐어요', 'invalid amount': '수량을 확인해 주세요',
+    'nothing to reject': '거절할 제안을 골라 주세요', 'duplicate card': '같은 인재를 두 번 골랐어요', 'duplicate gear': '같은 장비를 두 번 골랐어요', 'invalid amount': '수량을 확인해 주세요', 'too many wants': '원하는 물건은 5개까지예요', 'invalid want': '원하는 물건을 다시 골라 주세요',
     'cancel limit': '오늘 제안 취소가 너무 많아요. 내일 다시 제안할 수 있어요', 'drink send limit': '🥤 오늘 보낼 수 있는 드링크 양을 넘어요 (하루 10,000)', 'drink recv limit': '🥤 오늘 받을 수 있는 드링크 양을 넘어요 (하루 10,000)'
   };
   const errText = m => { m = String(m || ''); const k = Object.keys(ERR).find(x => m.includes(x)); return k ? ERR[k] : /trade_|schema cache|Could not find/.test(m) ? '💱 거래 게시판은 준비 중이에요' : `⚠️ ${m.slice(0, 60)}`; };
@@ -77,7 +77,7 @@
   const curTxt = (d, g) => [d ? `${I('cur_drink')}${n(d)}` : '', g ? `${I('cur_gold')}${n(g)}` : ''].filter(Boolean).join(' + ');
 
   // ---- 메인: 게시판 / 내 거래
-  let myView = 'live', mSort = 'new', mF = { type: 'all', gr: new Set(), q: '', buy: false }, srvSearch = null;   // mF: 마켓 필터 (화면 안에서 유지)   // mSort: 마켓 정렬
+  let myView = 'live', mSort = 'new', mF = { type: 'all', gr: new Set(), q: '', buy: false, want: false }, srvSearch = null;   // mF: 마켓 필터 (화면 안에서 유지)   // mSort: 마켓 정렬
   const GO = ['N', 'R', 'HR', 'SR', 'UR', 'MR', 'LR'];   // 내 거래: 진행중 / 종료 탭
   async function open(tab = 'board') {
     if (window.VRPages?.current?.startsWith('exchange') && window.VRPages.current !== 'exchange') while (window.VRPages.current?.startsWith('exchange-')) window.VRPages.closeNow();
@@ -102,25 +102,25 @@
         L.innerHTML = `<div class="tr-filter"><input type="search" class="tr-input tr-q" placeholder="🔍 이름으로 찾기" value="${esc(mF.q)}" aria-label="이름 검색">
             <div class="tr-fchips" role="group" aria-label="종류">${[['all', '전체'], ['card', '인재'], ['gear', '장비']].map(([k, lb]) => `<button data-ftype="${k}" class="${mF.type === k ? 'on' : ''}">${lb}</button>`).join('')}</div>
             <div class="tr-fchips tr-fgr" role="group" aria-label="등급">${['N', 'R', 'HR', 'SR', 'UR', 'MR', 'LR'].map(g => `<button data-fgr="${g}" class="g-${g} ${mF.gr.has(g) ? 'on' : ''}">${g}</button>`).join('')}</div>
-            <div class="tr-fchips"><button data-fbuy class="tr-fbuy ${mF.buy ? 'on' : ''}">⚡ 즉시 구매만</button></div></div>
+            <div class="tr-fchips"><button data-fbuy class="tr-fbuy ${mF.buy ? 'on' : ''}">⚡ 즉시 구매만</button><button data-fwant class="tr-fbuy ${mF.want ? 'on' : ''}">🎯 내 물건을 원하는 글</button></div></div>
           <div class="tr-sort" role="group" aria-label="정렬">${Object.entries(SORT).map(([k, [lb]]) => `<button data-sort="${k}" class="${k === mSort ? 'on' : ''}">${lb}</button>`).join('')}</div>
           <div class="tr-grid">${'<div class="tr-gc ui-skel"></div>'.repeat(4)}</div><div class="tr-more-w"></div>`;
-        const G = L.querySelector('.tr-grid'), M = L.querySelector('.tr-more-w');
+        const G = L.querySelector('.tr-grid'), M = L.querySelector('.tr-more-w'); let mineSet = myIds();
         const gIdx = l => Math.max(0, ...(l.cards || []).map(c => GO.indexOf(gradeOf(c.id))), ...(l.gear || []).map(g => (defOf(g.def_id || g.def)?.tier || 0) - 2));
         const cardHTML = l => { const c0 = (l.cards || [])[0], g0 = !c0 && (l.gear || [])[0], d = g0 && defOf(g0.def_id || g0.def), m0 = c0 && cardOf(c0.id), cnt = (l.cards?.length || 0) + (l.gear?.length || 0);
           const secs = (new Date(l.expires_at) - Date.now()) / 1000, gr = GO[Math.min(GO.length - 1, gIdx(l))];
           return `<button class="tr-gc g-${gr}" data-l="${l.id}"><span class="tr-gc-img">${c0 ? `<img src="${IMG}${c0.id}.webp" alt="" loading="lazy">` : d ? `<img class="gear" src="${gearIcon(d)}" alt="" loading="lazy">` : ''}
             <i class="tr-gc-gr">${c0 ? gradeOf(c0.id) : d ? TIER[d.tier] : ''}</i>${cnt > 1 ? `<i class="tr-gc-n">+${cnt - 1}</i>` : ''}${l.mine ? '<i class="tr-gc-tag">내 글</i>' : l.my_offer ? '<i class="tr-gc-tag">제안함</i>' : ''}</span>
-            <b>${esc(m0?.name || d?.name || '판매 글')}${c0?.level ? ` <small>Lv.${c0.level}</small>` : ''}</b>${l.want ? `<span class="tr-gc-want">${esc(l.want)}</span>` : '<span class="tr-gc-want dim">희망 조건 없음</span>'}
+            <b>${esc(m0?.name || d?.name || '판매 글')}${c0?.level ? ` <small>Lv.${c0.level}</small>` : ''}</b>${(l.want_ids || []).length ? `<span class="tr-gc-wid ${l.want_ids.some(w => mineSet.has(String(w.id))) ? 'have' : ''}">🎯 ${esc(itemName(l.want_ids[0].k, l.want_ids[0].id))}${l.want_ids.length > 1 ? ` 외 ${l.want_ids.length - 1}` : ''}</span>` : ''}${l.want ? `<span class="tr-gc-want">${esc(l.want)}</span>` : '<span class="tr-gc-want dim">희망 조건 없음</span>'}
             ${buyTxt(l) ? `<span class="tr-gc-buy">⚡ ${buyTxt(l)}</span>` : ''}<span class="tr-gc-meta"><span class="${secs < 3 * 3600 ? 'soon' : ''}">${I('timer')}${left(l.expires_at)}</span><span>${I('trade_offer')}${l.offers}</span></span></button>`; };
         // 필터 (PR4): 불러온 글 안에서만 — 종류(인재/장비 포함)·등급(글 안 물건 중 하나라도)·이름(물건 이름 일부)
         const itemGr = l => [...(l.cards || []).map(c => gradeOf(c.id)), ...(l.gear || []).map(g => GO[Math.max(0, Math.min(6, (defOf(g.def_id || g.def)?.tier || 0) - 2))])];
         const names = l => [...(l.cards || []).map(c => cardOf(c.id)?.name || ''), ...(l.gear || []).map(g => defOf(g.def_id || g.def)?.name || '')].join(' ').toLowerCase();
-        const pass = l => srvSearch ? true : (!mF.buy || bp(l) != null) && (mF.type === 'all' || (mF.type === 'card' ? l.cards?.length : l.gear?.length)) && (!mF.gr.size || itemGr(l).some(g => mF.gr.has(g))) && (!mF.q || names(l).includes(mF.q.trim().toLowerCase()));
-        const fOn = () => mF.type !== 'all' || mF.gr.size || mF.q.trim() || mF.buy;
+        const pass = l => srvSearch ? true : (!mF.buy || bp(l) != null) && (mF.type === 'all' || (mF.type === 'card' ? l.cards?.length : l.gear?.length)) && (!mF.gr.size || itemGr(l).some(g => mF.gr.has(g))) && (!mF.q || names(l).includes(mF.q.trim().toLowerCase())) && (!mF.want || (l.want_ids || []).some(w => mineSet.has(String(w.id))));
+        const fOn = () => mF.type !== 'all' || mF.gr.size || mF.q.trim() || mF.buy || mF.want;
         const paintG = () => { const list = srvSearch ? all.slice() : all.filter(pass).sort(SORT[mSort][1]);
           G.innerHTML = list.length ? list.map(cardHTML).join('') : all.length && fOn() ? `<div class="tr-empty"><b>조건에 맞는 글이 없어요</b><small>${srvSearch ? '게시판 전체에서 찾았어요' : `불러온 ${all.length}개 중에서 찾았어요${more ? ' · 더 보기로 더 불러올 수 있어요' : ''}`}</small><button class="tr-btn" data-freset>필터 지우기</button></div>` : `<div class="tr-empty">${I('trade')}<b>아직 올라온 글이 없어요</b><small>첫 판매 글을 올려 보세요</small><button class="tr-btn main" data-new2>＋ 판매 글</button></div>`;
-          G.querySelector('[data-freset]')?.addEventListener('click', () => { mF.type = 'all'; mF.gr.clear(); mF.q = ''; mF.buy = false; L.querySelector('[data-fbuy]').classList.remove('on'); L.querySelector('.tr-q').value = ''; L.querySelectorAll('[data-ftype]').forEach(x => x.classList.toggle('on', x.dataset.ftype === 'all')); L.querySelectorAll('[data-fgr]').forEach(x => x.classList.remove('on')); refilter(); });
+          G.querySelector('[data-freset]')?.addEventListener('click', () => { mF.type = 'all'; mF.gr.clear(); mF.q = ''; mF.buy = false; mF.want = false; L.querySelector('[data-fbuy]').classList.remove('on'); L.querySelector('[data-fwant]').classList.remove('on'); L.querySelector('.tr-q').value = ''; L.querySelectorAll('[data-ftype]').forEach(x => x.classList.toggle('on', x.dataset.ftype === 'all')); L.querySelectorAll('[data-fgr]').forEach(x => x.classList.remove('on')); refilter(); });
           L.querySelector('.tr-fcount')?.remove(); if (fOn() && list.length && !srvSearch) G.insertAdjacentHTML('beforebegin', `<div class="tr-fcount">${list.length} / ${all.length}개</div>`);
           G.querySelector('[data-new2]')?.addEventListener('click', () => createListing(() => draw('my')));
           G.querySelectorAll('[data-l]').forEach(b => b.onclick = () => { const l = all.find(x => x.id === +b.dataset.l); l.mine ? manage(l.id, () => draw(tab)) : detail(l, () => draw(tab)); });
@@ -133,13 +133,15 @@
           return { p_q: q, p_card_ids: ids, p_type: mF.type, p_gkeys: mF.gr.size ? [...new Set([...mF.gr].flatMap(g => GK[g]))] : null, p_buy_only: mF.buy, p_sort: mSort, p_limit: PAGE, p_offset: all.length }; };
         async function load() { if (busy || !more) return; busy = true; const b = M.querySelector('.tr-more'); if (b) { b.disabled = true; b.textContent = '불러오는 중…'; }
           let r = null, got;
-          if (srvSearch !== false) { r = await rpc('trade_search', searchArgs(), true); if (r === 'missing') { srvSearch = false; r = null; } else if (r) srvSearch = true; }
+          if (srvSearch !== false && mF.want) { r = await rpc('trade_search2', { ...searchArgs(), p_want_in: [...mineSet].slice(0, 500) }, true); if (r === 'missing') { r = null; mF.want = false; L.querySelector('[data-fwant]').classList.remove('on'); toast('🎯 원하는 물건 검색은 서버 준비 중이에요'); } else if (r) srvSearch = true; }
+          if (srvSearch !== false && !r) { r = await rpc('trade_search', searchArgs(), true); if (r === 'missing') { srvSearch = false; r = null; } else if (r) srvSearch = true; }
           if (srvSearch === false) { const before = all.length ? Math.min(...all.map(x => x.id)) : null; r = await rpc('trade_board', { p_limit: PAGE, ...(before ? { p_before: before } : {}) }); }
           busy = false;
           if (!r) { if (!all.length) G.innerHTML = '<div class="tr-empty"><b>불러오지 못했어요</b></div>'; else paintG(); return; }
           got = r.listings || []; const seen = new Set(all.map(x => x.id)); all = all.concat(got.filter(x => !seen.has(x.id))); more = srvSearch ? !!r.more : got.length >= PAGE; paintG(); }
         const refilter = () => { if (!srvSearch) { if (!busy) paintG(); return; } all = []; more = true; G.innerHTML = '<div class="tr-gc ui-skel"></div>'.repeat(4); M.innerHTML = ''; if (busy) setTimeout(refilter, 150); else load(); };
         L.querySelector('.tr-q').oninput = e => { mF.q = e.target.value; clearTimeout(qT); qT = setTimeout(refilter, srvSearch ? 350 : 0); };
+        L.querySelector('[data-fwant]').onclick = e => { mF.want = !mF.want; mineSet = myIds(); e.currentTarget.classList.toggle('on', mF.want); refilter(); };
         L.querySelector('[data-fbuy]').onclick = e => { mF.buy = !mF.buy; e.currentTarget.classList.toggle('on', mF.buy); refilter(); };
         L.querySelectorAll('[data-ftype]').forEach(b => b.onclick = () => { mF.type = b.dataset.ftype; L.querySelectorAll('[data-ftype]').forEach(x => x.classList.toggle('on', x === b)); refilter(); });
         L.querySelectorAll('[data-fgr]').forEach(b => b.onclick = () => { const g = b.dataset.fgr; mF.gr.has(g) ? mF.gr.delete(g) : mF.gr.add(g); b.classList.toggle('on', mF.gr.has(g)); refilter(); });
@@ -227,6 +229,44 @@
   }
 
   // ---- 글 상세 (남의 글)
+  // ---- 원하는 물건 (want_ids: [{k:'card'|'gear', id}])
+  const myIds = () => new Set([...(S()?.save?.owned || []).map(o => String(o.id)), ...(window.VRGear?.myGear?.() || []).map(g => String(g.def))]);
+  const wantChip = (w, mine) => `<span class="tr-wchip ${mine?.has(String(w.id)) ? 'have' : ''}">${itemImg(w.k, w.id)}<b>${esc(itemName(w.k, w.id))}</b>${w.k === 'card' ? `<i>${gradeOf(w.id)}</i>` : `<i>${TIER[defOf(w.id)?.tier] || ''}</i>`}</span>`;
+  const wantsHTML = (ws, mine) => (ws || []).length ? `<div class="tr-wants">${I('trade_want')}<span>원하는 물건</span>${ws.map(w => wantChip(w, mine)).join('')}</div>` : '';
+  function wantPicker(cur, max = 5) {
+    return new Promise(res => {
+      const sel = (cur || []).map(w => ({ ...w })); let tab = 'card', gr = 'UR', q = '';
+      const m = pop('', 'wide tr-wpick'); const B = body(m);
+      const seen = new Set(), pool = (window.TCG?.POOL || []).filter(c => { const k = String(c.id); if (seen.has(k)) return false; seen.add(k); return true; });
+      const gears = Object.values(window.VRGear?._defs?.() || {}).filter(d => (d.tier || 0) <= 5);
+      const has = (k, id) => sel.some(w => w.k === k && String(w.id) === String(id));
+      const paint = () => {
+        const ql = q.trim().toLowerCase();
+        const list = tab === 'card' ? pool.filter(c => (ql ? (c.name || '').toLowerCase().includes(ql) : GRADE[c.grade] === gr)).slice(0, 120).map(c => ({ k: 'card', id: String(c.id) }))
+          : gears.filter(d => (ql ? (d.name || '').toLowerCase().includes(ql) : String(d.tier) === gr)).slice(0, 120).map(d => ({ k: 'gear', id: d.id }));
+        const chips = tab === 'card' ? ['LR', 'MR', 'UR', 'SR', 'HR', 'R', 'N'] : ['5', '4', '3', '2', '1'];
+        if (!chips.includes(gr)) gr = chips[0];
+        B.innerHTML = `<div class="tr-head"><b>🎯 원하는 물건 고르기</b><span>${sel.length} / ${max}</span></div>
+          <div class="tr-wsel">${sel.length ? sel.map((w, i) => `<button class="tr-wchip on" data-rm="${i}">${itemImg(w.k, w.id)}<b>${esc(itemName(w.k, w.id))}</b><i>✕</i></button>`).join('') : '<small class="tr-cf-none">아직 없어요 · 아래에서 눌러 고르세요</small>'}</div>
+          <div class="tr-tabs tr-subtabs"><button data-wt="card" class="${tab === 'card' ? 'on' : ''}">인재</button><button data-wt="gear" class="${tab === 'gear' ? 'on' : ''}">장비</button></div>
+          <input type="search" class="tr-input tr-wq" placeholder="🔍 이름으로 찾기" value="${esc(q)}">
+          <div class="tr-fchips">${chips.map(g => `<button data-wg="${g}" class="${tab === 'card' ? `g-${g}` : ''} ${gr === g && !ql ? 'on' : ''}">${tab === 'card' ? g : TIER[g]}</button>`).join('')}</div>
+          <div class="tr-wgrid">${list.map(w => `<button class="tr-wit ${has(w.k, w.id) ? 'on' : ''}" data-wk="${w.k}" data-wid="${esc(w.id)}">${itemImg(w.k, w.id)}<b>${esc(itemName(w.k, w.id))}</b></button>`).join('') || '<div class="tr-empty">없어요</div>'}</div>
+          <div class="tr-acts"><button class="tr-btn" data-wc>취소</button><button class="tr-btn main" data-wok>고르기 끝 (${sel.length})</button></div>`;
+        B.querySelectorAll('[data-wt]').forEach(b => b.onclick = () => { tab = b.dataset.wt; gr = ''; q = ''; paint(); });
+        B.querySelectorAll('[data-wg]').forEach(b => b.onclick = () => { gr = b.dataset.wg; q = ''; paint(); });
+        B.querySelectorAll('[data-rm]').forEach(b => b.onclick = () => { sel.splice(+b.dataset.rm, 1); paint(); });
+        B.querySelectorAll('[data-wid]').forEach(b => b.onclick = () => { const k = b.dataset.wk, id = b.dataset.wid, i = sel.findIndex(w => w.k === k && String(w.id) === id);
+          if (i >= 0) sel.splice(i, 1); else if (sel.length >= max) return toast(`원하는 물건은 ${max}개까지예요`); else sel.push({ k, id }); paint(); });
+        const qi = B.querySelector('.tr-wq'); qi.oninput = () => { q = qi.value; const pos = qi.selectionStart; paint(); const n2 = B.querySelector('.tr-wq'); n2.focus(); n2.setSelectionRange(pos, pos); };
+        B.querySelector('[data-wc]').onclick = () => { done = true; m.remove(); res(null); };
+        B.querySelector('[data-wok]').onclick = () => { done = true; m.remove(); res(sel); };
+      };
+      let done = false; const o = new MutationObserver(() => { if (!m.isConnected) { o.disconnect(); if (!done) res(null); } }); o.observe(document.body, { childList: true });
+      paint();
+    });
+  }
+
   // ---- 글 상세: 물건마다 강화·능력치·옵션을 한 줄씩 (서버가 보관한 그대로: 인재 level·ex, 장비 plus·opts)
   const PMUL = [1, 1.10, 1.20, 1.35, 1.50, 1.70];   // gear-core.js PLUS_MULT 와 같음
   const exStars = (ex, max) => max ? `<span class="tr-ex">${'★'.repeat(Math.min(ex, max))}<i>${'☆'.repeat(Math.max(0, max - ex))}</i></span>` : '';
@@ -251,7 +291,7 @@
 
   function detail(l, after) {
     const m = pop(`<div class="tr-head"><b>판매 글</b><span>${I('timer')}${left(l.expires_at)} · ${I('trade_offer')}제안 ${l.offers}</span></div>
-      <div class="tr-dets">${detRows(l.cards, l.gear)}</div>${l.want ? `<div class="tr-want">${I('trade_want')}${esc(l.want)}</div>` : ''}<div class="tr-trend-w"></div>
+      <div class="tr-dets">${detRows(l.cards, l.gear)}</div>${wantsHTML(l.want_ids, myIds())}${l.want ? `<div class="tr-want">${I('trade_want')}${esc(l.want)}</div>` : ''}<div class="tr-trend-w"></div>
       <div class="tr-note">다른 사람의 제안 내용은 보이지 않아요</div>
       <div class="tr-acts">${l.my_offer ? '<button class="tr-btn" data-c>내 제안 취소</button>' : '<button class="tr-btn main" data-o>제안하기</button>'}</div>`.replace('<div class="tr-acts">', buyTxt(l) && !l.my_offer ? `<div class="tr-buybox"><div><b>⚡ 즉시 구매</b><span>${buyTxt(l)}</span></div><small>이 가격으로 바로 거래돼요. 판매자는 ${cfg.fee_pct || 10}% 수수료를 뺀 만큼 받아요</small><button class="tr-btn main tr-buy" data-buy>⚡ ${buyTxt(l)}에 바로 사기</button></div><div class="tr-acts">` : '<div class="tr-acts">'), '', ['exchange-post', '판매 글']);
     if ((l.cards?.length || 0) + (l.gear?.length || 0) === 1) trendLine(m.querySelector('.tr-trend-w'), l.cards?.length ? 'card' : 'gear', l.cards?.length ? l.cards[0].id : (l.gear[0].def_id || l.gear[0].def));
@@ -361,7 +401,7 @@
   }
   async function createListing(after) {
     const max = cfg.max_items || 5, H = cfg.listing_hours || 72;
-    let step = 1, want = '', p = null;
+    let step = 1, want = '', p = null, wantIds = [];
     const m = pop('<div class="tr-load">불러오는 중…</div>', 'wide', ['exchange-new', '＋ 판매 글 올리기', () => { if (step > 1) { go(step - 1); return true; } return false; }]);
     const mine = await rpc('trade_my'); const myOpen = (mine?.listings || []).filter(l => l.status === 'open').length;
     const gates = gateMsg(myOpen);
@@ -370,7 +410,7 @@
       ${gates.length ? `<div class="tr-gate">${gates.map(g => `<p>⛔ ${esc(g)}</p>`).join('')}</div>` : ''}
       <section data-step="1"><div class="tr-note">팔 인재·장비를 골라 주세요 (최대 ${max}개). 흐린 것은 눌러 보면 이유가 나와요.</div><div class="tr-pickwrap"></div></section>
       <section data-step="2" hidden><div class="tr-note">원하는 조건을 적어 주세요 (선택, 100자). 다른 사람이 제안할 때 참고해요.</div>
-        <div class="tr-items tr-sel2"></div><textarea class="tr-input tr-want-in" maxlength="100" rows="3" placeholder="예: 드링크 2,000 이상 · SR 인재와 교환"></textarea><small class="tr-wc">0 / 100</small></section>
+        <div class="tr-items tr-sel2"></div><div class="tr-wbox"><button type="button" class="tr-btn" data-wpick>🎯 원하는 물건 고르기 <small>(선택 · 최대 5)</small></button><div class="tr-wcur"></div></div><textarea class="tr-input tr-want-in" maxlength="100" rows="3" placeholder="예: 드링크 2,000 이상 · SR 인재와 교환"></textarea><small class="tr-wc">0 / 100</small></section>
       <section data-step="3" hidden><div class="tr-cf"></div></section>
       <div class="tr-acts tr-step-acts"><button class="tr-btn" data-prev>이전</button><span class="tr-cnt">0 / ${max}</span><button class="tr-btn main" data-next disabled>다음</button></div>`;
     const next = B.querySelector('[data-next]'), prev = B.querySelector('[data-prev]'), cnt = B.querySelector('.tr-cnt'), ta = B.querySelector('.tr-want-in');
@@ -381,7 +421,7 @@
       next.textContent = k === 3 ? '📤 올리기' : '다음'; next.disabled = !p?.count() || (k === 3 && gates.length > 0);
       if (k === 2) B.querySelector('.tr-sel2').innerHTML = p.tiles();
       if (k === 3) { want = ta.value.trim();
-        B.querySelector('[data-step="3"] .tr-cf').innerHTML = `${cfRow('올릴 물건', p.tiles())}<div class="tr-cf-row"><div class="tr-cf-l">희망 조건</div><div>${want ? esc(want) : '<span class="tr-cf-none">없음</span>'}</div></div>
+        B.querySelector('[data-step="3"] .tr-cf').innerHTML = `${cfRow('올릴 물건', p.tiles())}<div class="tr-cf-row"><div class="tr-cf-l">희망 조건</div><div>${want ? esc(want) : '<span class="tr-cf-none">없음</span>'}</div></div>${wantIds.length ? `<div class="tr-cf-row"><div class="tr-cf-l">원하는 물건</div><div class="tr-wants">${wantIds.map(w => wantChip(w)).join('')}</div></div>` : ''}
           <div class="tr-trend-w"></div><div class="tr-sec">허용 가격 범위 (등급별 · 서버 기준)</div>${bandRows(p.keys())}
           <div class="tr-buyset"><label class="tr-buy-on"><input type="checkbox" data-buyon ${buy.on ? 'checked' : ''}> ⚡ 즉시 구매가 정하기 <small>(선택)</small></label>
             <div class="tr-buy-in" ${buy.on ? '' : 'hidden'}>${goldOk() ? `<div class="tr-fchips"><button type="button" data-bcur="d" class="${buy.cur === 'd' ? 'on' : ''}">🥤 드링크</button><button type="button" data-bcur="g" class="${buy.cur === 'g' ? 'on' : ''}">🪙 골드</button></div>` : ''}
@@ -407,6 +447,8 @@
       upd();
     }
     const deckN = () => [...p.sel.cards].filter(u => (S()?.save?.decks || []).some(d => (d?.uids || []).includes(u))).length;
+    const paintW = () => { B.querySelector('.tr-wcur').innerHTML = wantIds.length ? `<div class="tr-wants">${wantIds.map(w => wantChip(w)).join('')}</div>` : ''; };
+    B.querySelector('[data-wpick]').onclick = async () => { const r = await wantPicker(wantIds); if (r) { wantIds = r; paintW(); } };
     ta.oninput = () => { B.querySelector('.tr-wc').textContent = `${ta.value.length} / 100`; };
     prev.onclick = () => go(step - 1);
     next.onclick = async () => {
@@ -414,7 +456,8 @@
       next.disabled = true;
       const base = { p_cards: [...p.sel.cards], p_gear: [...p.sel.gear], p_want: want };
       let r;
-      if (buy.on) { r = await rpc('trade_list2', { ...base, p_buy_drinks: buy.cur === 'd' ? buy.amt : null, p_buy_gold: buy.cur === 'g' ? buy.amt : null }, true); if (r === 'missing') { r = null; toast('⚡ 즉시 구매는 서버 준비 중이에요. 가격 없이 올리려면 체크를 꺼 주세요'); } }
+      if (wantIds.length) { r = await rpc('trade_list3', { ...base, p_buy_drinks: buy.on && buy.cur === 'd' ? buy.amt : null, p_buy_gold: buy.on && buy.cur === 'g' ? buy.amt : null, p_want_ids: wantIds }, true); if (r === 'missing') { r = null; toast('🎯 원하는 물건 지정은 서버 준비 중이에요. 빼고 올려 주세요'); } }
+      else if (buy.on) { r = await rpc('trade_list2', { ...base, p_buy_drinks: buy.cur === 'd' ? buy.amt : null, p_buy_gold: buy.cur === 'g' ? buy.amt : null }, true); if (r === 'missing') { r = null; toast('⚡ 즉시 구매는 서버 준비 중이에요. 가격 없이 올리려면 체크를 꺼 주세요'); } }
       else r = await rpc('trade_list', base);
       if (r) { toast('📤 판매 글을 올렸어요'); m.remove(); refreshMine(); after?.(); } else next.disabled = false;
     };
@@ -517,5 +560,5 @@
   // 메인 거래소 타일 (게스트는 main-menu.js 가 로그인 확인 먼저)
   const mount = () => document.getElementById('main-trade')?.addEventListener('click', () => { if (window.VRCloud?.user || window.__TRADE_MOCK) open(); });
   if (typeof document !== 'undefined' && document.addEventListener) { if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount); else mount(); }
-  window.VRTrade = { open, _priceInfo: (l, o, d, g, c, b) => { cfg = c; bands = b; return priceInfo(l, o, d, g); }, _errText: errText, _cardBlock: (o, s) => { cfg = cfg || {}; return cardBlock(o, s); }, _sortCards: (list, k, desc) => { srt.c = { k, desc }; return sortCards(list); } };
+  window.VRTrade = { open, _wantPicker: (c, m) => wantPicker(c, m), _priceInfo: (l, o, d, g, c, b) => { cfg = c; bands = b; return priceInfo(l, o, d, g); }, _errText: errText, _cardBlock: (o, s) => { cfg = cfg || {}; return cardBlock(o, s); }, _sortCards: (list, k, desc) => { srt.c = { k, desc }; return sortCards(list); } };
 })();

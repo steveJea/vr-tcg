@@ -173,3 +173,13 @@
 .tr-dstat{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}.tr-dstat span{display:flex;flex-direction:column;padding:3px 4px;border-radius:6px;background:rgba(0,0,0,.25);font-weight:700}.tr-dstat i{font-style:normal;font-size:9px;opacity:.6;font-weight:400}
 .tr-dmain{color:#7fd3ff}.tr-opts{display:flex;flex-wrap:wrap;gap:4px}.tr-opt{font-size:11px;padding:2px 6px;border-radius:6px;background:rgba(251,191,36,.12);color:#fde68a}
 .tr-dnote{opacity:.55;font-size:10px}
+
+/* 원하는 물건 */
+.tr-wants{display:flex;flex-wrap:wrap;align-items:center;gap:6px;width:100%;margin:6px 0}.tr-wants>span{font-size:12px;opacity:.75}
+.tr-wchip{display:inline-flex;align-items:center;gap:4px;padding:3px 8px 3px 3px;border-radius:999px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);font-size:12px;color:inherit}
+.tr-wchip img{width:22px;height:22px;border-radius:50%;object-fit:cover}.tr-wchip i{font-style:normal;font-size:10px;opacity:.6}.tr-wchip.have{border-color:#22c55e;background:rgba(34,197,94,.15)}.tr-wchip.have::after{content:'보유';font-size:10px;color:#4ade80}
+.tr-wchip.on{border-color:#f59e0b;cursor:pointer}.tr-wsel{display:flex;flex-wrap:wrap;gap:6px;min-height:30px;margin:6px 0}
+.tr-wgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:6px;max-height:46vh;overflow:auto;margin:8px 0}
+.tr-wit{display:flex;flex-direction:column;align-items:center;gap:2px;padding:3px;border-radius:10px;background:rgba(255,255,255,.04);border:2px solid transparent;color:inherit;font-size:10px}
+.tr-wit img{width:100%;aspect-ratio:3/4;object-fit:cover;border-radius:6px}.tr-wit img.gear{aspect-ratio:1;object-fit:contain}.tr-wit b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}.tr-wit.on{border-color:#f59e0b;background:#f59e0b33}
+.tr-wbox{margin:6px 0}.tr-gc-wid{font-size:10px;color:#fde68a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tr-gc-wid.have{color:#4ade80}
