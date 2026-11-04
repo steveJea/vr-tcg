@@ -13,6 +13,18 @@
   const save = o => { try { localStorage.setItem(key(), JSON.stringify(o)); } catch {} };
   const cleared = n => !!load()[n];
   const unlocked = st => st.ready && (st.n === 1 || cleared(st.n - 1));
+  // 첫 클리어 보상: 영입권 (서버 supabase/arcade_tut.sql · 계정당 단계별 1회). 로그인 안 하면 안내만
+  const REWARD = { 1: 10, 2: 100, 3: 300 };
+  const sb = () => window.VRCloud?.user ? window.VRCloud.sb : null;
+  let srv = null;   // { claimed:[n] } · false = 서버 함수 없음
+  async function status() { const c = sb(); if (!c) return null; try { const { data, error } = await c.rpc('arcade_tut_status'); if (error) throw error; srv = data; return data; } catch { srv = false; return null; } }
+  const claimedSrv = n => !!srv?.claimed?.includes(n);
+  async function claim(n) {
+    const c = sb(); if (!c) return { login: true };
+    try { const { data, error } = await c.rpc('arcade_tut_claim', { p_stage: n }); if (error) throw error; srv = { ...(srv || {}), claimed: [...new Set([...(srv?.claimed || []), n])] }; try { window.dispatchEvent(new CustomEvent('vr:tickets', { detail: { tickets: data.tickets } })); } catch {} return data; }
+    catch (e) { return { error: String(e?.message || e) }; }
+  }
+  const rewardText = r => r.login ? `로그인하면 첫 클리어 보상 🎟️ 영입권을 받을 수 있어요` : r.error ? (/previous/.test(r.error) ? '앞 단계 보상을 먼저 받아야 해요' : '보상은 잠시 뒤 다시 받을 수 있어요 (단계 목록에서 받기)') : r.already ? '보상은 이미 받았어요' : `🎟️ 영입권 +${r.gave} (보유 ${r.tickets})`;
   let ov = null;
   const close = () => { ov?.remove(); ov = null; };
   function panel(html, onClick) {
@@ -26,11 +38,14 @@
     const rows = STAGES.map(st => {
       const ok = unlocked(st), done = cleared(st.n);
       return `<button class="yt-st ${done ? 'done' : ''}" data-st="${st.n}" ${ok ? '' : 'disabled'}>
-        <b>${st.name}</b><span>${st.title}</span><i>${done ? '✔ 클리어' : !st.ready ? '준비 중' : ok ? '도전' : '🔒 앞 단계 클리어'}</i></button>`;
+        <b>${st.name}</b><span>${st.title}</span><i>${done ? '✔ 클리어' : !st.ready ? '준비 중' : ok ? '도전' : '🔒 앞 단계 클리어'} · 🎟️ 첫 클리어 영입권 ${REWARD[st.n]}${claimedSrv(st.n) ? ' (받음)' : ''}</i></button>
+        ${done && srv && !claimedSrv(st.n) ? `<button class="yt-claim" data-claim="${st.n}">🎟️ 영입권 ${REWARD[st.n]} 받기</button>` : ''}`;
     }).join('');
     panel(`<div class="yt-head"><img src="${FACE}" alt=""><div><b>유리의 특강</b><p>${cleared(1) ? '또 왔어? 복습은 칭찬해 줄게.' : '하… 아케이드도 모르면서 들어온 거야? 언니가 알려줄게.'}</p></div></div>
       <div class="yt-list">${rows}</div><small class="yt-note">정해진 덱으로 진행 · 아케이드 전적에 기록되지 않아요</small>`,
-      e => { const b = e.target.closest('[data-st]'); if (b && !b.disabled) play(+b.dataset.st); });
+      async e => { const c = e.target.closest('[data-claim]'); if (c) { c.disabled = true; const r = await claim(+c.dataset.claim); c.textContent = rewardText(r); if (!r.error) setTimeout(open, 1400); return; }
+        const b = e.target.closest('[data-st]'); if (b && !b.disabled) play(+b.dataset.st); });
+    if (srv === null && sb()) status().then(d => { if (d && ov && document.querySelector('.yt-list')) open(); });
   }
   async function play(n) {
     const st = STAGES.find(x => x.n === n); if (!st || !unlocked(st)) return;
@@ -51,6 +66,7 @@
       <div class="yt-reward" data-reward="${st.n}" data-first="${first ? 1 : 0}"></div>
       <div class="yt-btns">${win && next && unlocked(next) ? `<button data-go="${next.n}" class="yt-main">${next.name} 도전</button>` : ''}${win ? '' : `<button data-go="${st.n}" class="yt-main">다시 하기</button>`}<button data-list>단계 목록</button><button data-x>닫기</button></div>`,
       e => { const g = e.target.closest('[data-go]'); if (g) return play(+g.dataset.go); if (e.target.closest('[data-list]')) open(); });
+    if (win) claim(st.n).then(r => { const el = ov?.querySelector('.yt-reward'); if (el) el.textContent = rewardText(r); });
     try { window.dispatchEvent(new CustomEvent('vr:arcade-tut', { detail: { stage: st.n, win: !!win, first } })); } catch {}
   }
   window.VRArcadeTut = { open, play, STAGES, cleared, reset: () => save({}) };
