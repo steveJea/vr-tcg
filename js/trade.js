@@ -11,7 +11,7 @@
   const toast = t => (window.VRGem?.toast || window.alert)(t);
   const ERR = {
     'no buy price': '즉시 구매가가 없는 글이에요', 'price changed': '가격이 바뀌었어요. 글을 다시 열어 주세요', 'buy one currency': '즉시 구매가는 드링크나 골드 중 하나만 정할 수 있어요',
-    'login required': '로그인이 필요해요', 'trade level': '계정 Lv.20부터 거래할 수 있어요', 'trade account age': '가입 7일 뒤부터 거래할 수 있어요',
+    'login required': '로그인이 필요해요', 'trade level': '계정 Lv.10부터 거래할 수 있어요', 'trade account age': '가입 7일 뒤부터 거래할 수 있어요',
     'nothing to trade': '올릴 인재나 장비를 골라 주세요', 'nothing to offer': '제안할 것을 하나 이상 넣어 주세요', 'too many items': '한쪽에 최대 5개까지예요',
     'too many listings': '열린 판매 글이 너무 많아요 (최대 5개)', 'too many offers': '대기 중인 제안이 너무 많아요', 'listing full': '이 글은 제안이 꽉 찼어요',
     'already offered': '이 글에는 이미 제안했어요. 고치려면 취소 후 다시', 'reoffer cooldown': '거절된 글에는 24시간 뒤에 다시 제안할 수 있어요',
@@ -23,7 +23,7 @@
     'card not owned': '이 인재가 없어요', 'gear not owned': '이 장비가 없어요', 'gear locked': '🔒 잠긴 장비예요', 'gear equipped': '장착 중인 장비는 먼저 해제해 주세요',
     'gear not tradable': '전설·심연 장비는 거래할 수 없어요', 'resale cooldown': '거래로 받은 물건은 72시간 뒤에 다시 올릴 수 있어요',
     'daily trade limit': '오늘 거래 한도를 다 썼어요', 'same partner limit': '같은 상대와는 7일에 3번까지예요', 'no condition': '거절 조건을 넣어 주세요',
-    'nothing to reject': '거절할 제안을 골라 주세요', 'duplicate card': '같은 인재를 두 번 골랐어요', 'duplicate gear': '같은 장비를 두 번 골랐어요', 'invalid amount': '수량을 확인해 주세요', 'too many wants': '원하는 물건은 5개까지예요', 'direct only': '🤝 지정 거래는 받는 사람만 응할 수 있어요', 'target cannot trade': '상대가 아직 거래할 수 없어요 (Lv.20 · 가입 7일)', 'invalid target': '거래 상대를 다시 골라 주세요', 'too many direct': '같은 상대에게 열린 지정 거래는 3개까지예요', 'want required': '드링크만 보낼 땐 원하는 물건을 하나 이상 골라 주세요', 'invalid want': '원하는 물건을 다시 골라 주세요',
+    'nothing to reject': '거절할 제안을 골라 주세요', 'duplicate card': '같은 인재를 두 번 골랐어요', 'duplicate gear': '같은 장비를 두 번 골랐어요', 'invalid amount': '수량을 확인해 주세요', 'too many wants': '원하는 물건은 5개까지예요', 'direct only': '🤝 지정 거래는 받는 사람만 응할 수 있어요', 'target cannot trade': '상대가 아직 거래할 수 없어요 (Lv.10 · 가입 7일)', 'invalid target': '거래 상대를 다시 골라 주세요', 'too many direct': '같은 상대에게 열린 지정 거래는 3개까지예요', 'want required': '드링크만 보낼 땐 원하는 물건을 하나 이상 골라 주세요', 'invalid want': '원하는 물건을 다시 골라 주세요',
     'cancel limit': '오늘 제안 취소가 너무 많아요. 내일 다시 제안할 수 있어요', 'drink send limit': '🥤 오늘 보낼 수 있는 드링크 양을 넘어요', 'drink recv limit': '🥤 오늘 받을 수 있는 드링크 양을 넘어요 (하루 10,000)'
   };
   const errText = m => { m = String(m || ''); const k = Object.keys(ERR).find(x => m.includes(x)); return k ? ERR[k] : /trade_|schema cache|Could not find/.test(m) ? '💱 거래 게시판은 준비 중이에요' : `⚠️ ${m.slice(0, 60)}`; };
@@ -229,7 +229,7 @@
       <p><b>골드</b> HR 이하 인재·희귀 이하 장비만 있을 때 쓸 수 있어요. SR 이상 인재나 영웅 장비가 끼면 드링크만 돼요.</p>
       <p><b>거래할 수 없는 것</b> 🔗 스토리 보상 인재, 👑 리더, 🔒 잠근 인재·장비, 장착 중인 장비, 전설·심연 장비, 이벤트·보상으로 받은 🥤 드링크.</p>
       <p><b>함께 넘어가는 것</b> 인재의 레벨·성장, 그리고 그 인재가 내 마지막 사본이면 💠 증표. 장착 장비는 해제돼 내 가방에 남아요. 덱에 든 인재는 덱에서 빠져요.</p>
-      <p><b>한도</b> Lv.${c.min_level || 20}·가입 ${c.min_account_days || 7}일부터 · 열린 글 ${c.max_open_listings || 5}개 · 대기 제안 ${c.max_open_offers || 10}개 · 하루 거래 ${c.daily_trades || 5}번 · 같은 상대 7일 ${c.same_partner_7d || 3}번 · 드링크 하루 보내기·받기 각각 ${n(c.daily_drink_send || 10000)} · 거절된 글엔 ${c.reoffer_cooldown_hours || 24}시간 뒤 다시 제안 · 받은 물건은 ${c.resale_hours || 72}시간 뒤 다시 올리기</p>
+      <p><b>한도</b> Lv.${c.min_level || 10}·가입 ${c.min_account_days || 7}일부터 · 열린 글 ${c.max_open_listings || 5}개 · 대기 제안 ${c.max_open_offers || 10}개 · 하루 거래 ${c.daily_trades || 5}번 · 같은 상대 7일 ${c.same_partner_7d || 3}번 · 드링크 하루 보내기·받기 각각 ${n(c.daily_drink_send || 10000)} · 거절된 글엔 ${c.reoffer_cooldown_hours || 24}시간 뒤 다시 제안 · 받은 물건은 ${c.resale_hours || 72}시간 뒤 다시 올리기</p>
       <p><b>1개당 가격 범위</b><br>인재 N·R ${rng('card_nr')}<br>인재 HR ${rng('card_hr')}<br>인재 SR ${rng('card_sr')}<br>인재 UR ${rng('card_ur')}<br>인재 MR·LR ${rng('card_mlr')}<br>장비 낡은~고급 ${rng('gear_low')}<br>장비 희귀 ${rng('gear_rare')}<br>장비 영웅 ${rng('gear_hero')}</p>
       <p class="tr-note">이상한 거래는 운영자가 확인할 수 있어요.</p></div>`, '', ['exchange-help', '❓ 거래 도움말']);
   }
@@ -281,8 +281,7 @@
     const st = b ? `<div class="tr-dstat"><span><i>전투력</i>${n(b.power)}</span><span><i>ATK</i>${n(b.ATK)}</span><span><i>HP</i>${n(b.HP)}</span><span><i>DEF</i>${n(b.DEF)}</span></div>` : '';
     return `<div class="tr-det card g-${g}"><img src="${IMG}${c.id}.webp" alt="" loading="lazy"><div class="tr-dinfo">
       <b><em class="tr-gr g-${g}">${g}</em>${esc(m?.name || c.id)}</b>
-      <div class="tr-dsub">Lv.${c.level || 1}${b?.cap ? `<i>/${b.cap}</i>` : ''} · 강화 EX ${ex}${b?.maxEx ? `/${b.maxEx}` : ''} ${exStars(ex, b?.maxEx)}</div>${st}
-      <small class="tr-dnote">장비는 함께 오지 않아요 · 능력치는 장비 빼고</small></div></div>`;
+      <div class="tr-dsub">Lv.${c.level || 1}${b?.cap ? `<i>/${b.cap}</i>` : ''} · 강화 EX ${ex}${b?.maxEx ? `/${b.maxEx}` : ''} ${exStars(ex, b?.maxEx)}</div>${st}</div></div>`;
   }
   function gearRow(r) {
     const d = defOf(r.def_id || r.def), T = window.VRGear?.txt, p = r.plus | 0;
@@ -391,7 +390,7 @@
   // ---- 판매 글 올리기 (PR3: 단계식) 1 물건 고르기 → 2 희망 조건 → 3 미리보기(가격 범위·수수료) · 뒤로 = 한 단계씩
   function gateMsg(myOpen) {   // 서버 규칙을 미리 안내 (최종 판단은 서버)
     const c = cfg || {}, st = window.VRPlayer?.now?.(), u = window.VRCloud?.user, out = [];
-    if (st?.level != null && st.level < (c.min_level || 20)) out.push(`계정 Lv.${c.min_level || 20}부터 거래할 수 있어요 (지금 Lv.${st.level})`);
+    if (st?.level != null && st.level < (c.min_level || 10)) out.push(`계정 Lv.${c.min_level || 10}부터 거래할 수 있어요 (지금 Lv.${st.level})`);
     if (u?.created_at) { const d = Math.ceil((new Date(u.created_at).getTime() + (c.min_account_days || 7) * 864e5 - Date.now()) / 864e5); if (d > 0) out.push(`가입 ${c.min_account_days || 7}일 뒤부터 거래할 수 있어요 (${d}일 남음)`); }
     if (myOpen >= (c.max_open_listings || 5)) out.push(`열린 판매 글이 ${myOpen}개예요. 최대 ${c.max_open_listings || 5}개까지라 하나를 내리거나 끝나야 올릴 수 있어요`);
     return out;
@@ -522,7 +521,7 @@
       <div class="tr-sec">받을 것</div><div class="tr-dets">${detRows(l.cards, l.gear)}</div>
       ${l.give_drinks ? `<div class="tr-dgive">🥤 드링크 <b>${n(l.give_drinks)}</b> <small>(받을 때 ${pct}% 소각 → ${n(l.give_drinks - Math.ceil(l.give_drinks * pct / 100))})</small></div>` : ''}
       ${wantsHTML(l.want_ids, myIds())}${l.want ? `<div class="tr-want">${I('trade_want')}${esc(l.want)}</div>` : ''}
-      <div class="tr-note">수락하면 원하는 물건을 내고 바로 거래가 끝나요. 거래 규칙(Lv.20 · 가입 7일 · 하루 5번 · 같은 상대 7일 3번)은 똑같이 적용돼요.</div>
+      <div class="tr-note">수락하면 원하는 물건을 내고 바로 거래가 끝나요. 거래 규칙(Lv.10 · 가입 7일 · 하루 5번 · 같은 상대 7일 3번)은 똑같이 적용돼요.</div>
       <div class="tr-acts"><button class="tr-btn danger" data-dec>거절</button><button class="tr-btn main" data-acc>수락하기</button></div>`, 'wide', ['exchange-detail', '🤝 지정 거래']);
     m.querySelector('[data-acc]').onclick = () => { const inPage = m.classList.contains('vr-in-page'); if (!inPage) m.remove(); makeOffer(l, inPage ? () => { if (m.isConnected) m.remove(); after?.(); } : after, true); };
     m.querySelector('[data-dec]').onclick = async () => { if (!await ask('지정 거래를 거절할까요?<br><small>보낸 사람에게 물건이 돌아가고 우편으로 알려요</small>', true)) return;
