@@ -1,10 +1,13 @@
 -- ===== 거래소 개편 3/4: 지정 거래 (닉네임으로 상대 찾기 → 그 사람만 받을 수 있는 거래 + 우편 알림) =====
 -- 선행: trade_board.sql · trade_admin.sql · trade_buynow_search.sql · trade_wanted.sql. 여러 번 실행해도 안전. 지우는 것 없음 (열 추가 · 트리거 · 함수 추가/교체만)
--- 흐름: 보내는 사람 = 판매 글(물건 보관) + 드링크(선택, 보관) + 원하는 물건 → 받는 사람에게 우편 → 받는 사람이 원하는 물건을 내고 '수락' 한 번에 끝
+-- 흐름: 보내는 사람 = 판매 글(물건 보관, 없어도 됨) + 드링크(물건 없으면 필수, 보관) + 원하는 물건 → 받는 사람에게 우편 → 받는 사람이 원하는 물건을 내고 '수락' 한 번에 끝
 --  * 받는 사람도 같은 규칙: Lv.20 · 가입 7일 · 하루 거래 5번 · 같은 상대 7일 3번 · 하루 드링크 보내기/받기 한도 (기존 함수·트리거가 그대로 검사)
 --  * 지정 글은 게시판·검색에 보내는 사람·받는 사람에게만 보임. 다른 사람은 제안 불가 (트리거)
 --  * 보낸 드링크: 거래 완료 → 받는 사람에게 (10% 올림 소각, 재화 수수료와 같음) / 내림·만료·거절 → 보낸 사람에게 그대로 환불 (트리거)
 --  * 거래 기록(trade_log.seller_gave)에 보낸 드링크도 남김 → 시세·관리자 화면·의심 표시 그대로
+
+-- 0) 드링크 한도 해제 (형님 결정 2026-11-04): 하루 보내기·받기 · 보관 한도를 사실상 무제한으로 (값만 바꿈, 다시 돌려도 같음)
+update public.trade_config set val = 2000000000 where key in ('daily_drink_send', 'daily_drink_recv', 'escrow_max_drinks') and val <> 2000000000;
 
 alter table public.trade_listings add column if not exists target uuid references auth.users(id) on delete cascade;
 alter table public.trade_listings add column if not exists give_drinks int not null default 0 check (give_drinks >= 0);
@@ -32,7 +35,18 @@ begin
   if (select count(*) from trade_listings where seller = uid and target = p_target and status = 'open') >= 3 then raise exception 'too many direct'; end if;
   if d > 0 and _trade_drinks_today(uid, 'send') + d > _trade_cfg('daily_drink_send') then raise exception 'drink send limit'; end if;
   if d > _trade_cfg('escrow_max_drinks') then raise exception 'escrow limit'; end if;
-  r := trade_list3(p_cards, p_gear, p_want, null, null, p_want_ids);   -- 물건 보관 · 레벨/가입일 · 열린 글 수 · 최대 5개 검사 그대로
+  if coalesce(cardinality(p_cards), 0) + coalesce(cardinality(p_gear), 0) > 0 then
+    r := trade_list3(p_cards, p_gear, p_want, null, null, p_want_ids);   -- 물건 보관 · 레벨/가입일 · 열린 글 수 · 최대 5개 검사 그대로
+  else
+    -- 드링크만: 드링크 > 0 + 원하는 물건 1개 이상 필수 (그냥 주는 선물 거래 방지)
+    if d <= 0 then raise exception 'nothing to trade'; end if;
+    if jsonb_array_length(_trade_want_ids(p_want_ids)) = 0 then raise exception 'want required'; end if;
+    perform _trade_gate(uid); perform _trade_lock_users(array[uid]);
+    if (select count(*) from trade_listings where seller = uid and status = 'open') >= _trade_cfg('max_open_listings') then raise exception 'too many listings'; end if;
+    insert into trade_listings (seller, want, cards, gear, want_ids, expires_at)
+      values (uid, left(coalesce(btrim(p_want), ''), 100), '[]'::jsonb, '[]'::jsonb, _trade_want_ids(p_want_ids), now() + make_interval(hours => _trade_cfg('listing_hours'))) returning id into lid;
+    r := jsonb_build_object('ok', true, 'listing_id', lid);
+  end if;
   lid := (r->>'listing_id')::bigint;
   update trade_listings set target = p_target, give_drinks = d where id = lid and seller = uid returning * into l;
   if d > 0 then perform _item_add(uid, 'drink', -d, 0, 'trade_escrow', null, jsonb_build_object('listing', lid, 'direct', true)); end if;   -- 거래 가능 드링크 부족하면 전체 취소
