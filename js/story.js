@@ -1752,7 +1752,7 @@
     }
     if (!res) { const g = window.rollGachaRarity(); const c = rand(pool().filter(x => x.grade === g)); res = { ok: true, card_id: String(c.id), grade: g, local: true }; }
     if (!res.ok) { if (res.reason === 'already') { save.gachaLast = day; await persist(); } return res; }
-    if (serverMode && !res.local && !window.__GACHA_MOCK) { await reload(); res.count = copiesOf(res.card_id).length || res.count || 1; return res; }
+    if (serverMode && !res.local && !window.__GACHA_MOCK) { try { window.dispatchEvent(new CustomEvent('vr:gacha')); } catch {} await reload(); res.count = copiesOf(res.card_id).length || res.count || 1; return res; }
     res.count = addOwned(res.card_id);
     save.gachaLast = day;
     await persist();
@@ -1790,7 +1790,7 @@
       if (!error) res = data; else if (!ticketMissing(error)) return { ok: false, reason: 'error', msg: error.message }; else ticketSrv = false;
     }
     if (res) {
-      if (res.ok) { tickets = res.tickets | 0; if (!window.__TICKET_MOCK) await reload(); else for (const c of res.cards) addOwned(c.card_id); }
+      if (res.ok) { tickets = res.tickets | 0; try { window.dispatchEvent(new CustomEvent('vr:gacha')); } catch {} if (!window.__TICKET_MOCK) await reload(); else for (const c of res.cards) addOwned(c.card_id); }
       return res;
     }
     // 브라우저 저장 모드 (서버 함수 없음)
