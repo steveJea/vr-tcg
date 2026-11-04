@@ -1,3 +1,19 @@
+// ===== 작은 카드 그림(썸네일) =====
+// 작은 칸(전투 손패/필드, 목록 등)은 img/thumb/<id>.webp (가로 300px, tools/make_thumbs.py 로 생성)를 쓰고,
+// 썸네일이 없으면 원본(bt_img → 아래 대체 경로들)으로 자동 전환. 큰 화면(상세/컷인/확대)은 원본 그대로.
+(function () {
+  const BT = 'https://raw.githubusercontent.com/steveJea/vr-ideal-worldcup/main/img/bt_img/';
+  window.cardThumb = id => 'img/thumb/' + id + '.webp';
+  document.addEventListener('error', e => {
+    const el = e.target;
+    if (!(el instanceof HTMLImageElement)) return;
+    const m = (el.getAttribute('src') || '').match(/(?:^|\/)img\/thumb\/(\d+)\.webp/);
+    if (!m) return;
+    e.stopImmediatePropagation(); e.stopPropagation();   // 인라인 onerror(숨김)가 먼저 돌지 않게
+    el.src = (window.cardImgOverride || (x => x))(BT + m[1] + '.webp');
+  }, true);
+})();
+
 // ===== 카드 프로필 이미지 대체 경로 =====
 // 프로필은 vr-ideal-worldcup/img/bt_img/<id>.webp (raw.githubusercontent). 스토리 전용 NPC 카드(data/npc_cards.csv)는
 // 그 저장소에 없으므로 이 저장소의 img/npc/<id>.webp 로 한 번 더 시도. 그래도 없으면 깨진 이미지 아이콘 대신 숨김.

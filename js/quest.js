@@ -160,7 +160,7 @@
   async function backToHub() { try { status = await trpc('quest_status'); } catch {} renderHub(); }
 
   function enemyTile(c, lead) {
-    return `<div class="q-enemy rar-${SHORT[c.grade]}" title="${esc(c.name)}"><img src="${IMG}${c.id}.webp" alt="${esc(c.name)}" loading="lazy" onerror="this.style.visibility='hidden'">
+    return `<div class="q-enemy rar-${SHORT[c.grade]}" title="${esc(c.name)}"><img src="${cardThumb(c.id)}" alt="${esc(c.name)}" loading="lazy" onerror="this.style.visibility='hidden'">
       <span class="q-rar">${SHORT[c.grade]}</span>${lead ? '<span class="q-lead">👑</span>' : ''}<span class="q-lv">Lv.${c.qLevel}</span></div>`;
   }
   function render() {
@@ -176,7 +176,7 @@
     const rows = [];
     for (let k = top; k >= lo; k--) {
       const r = rewardOf(k), st = k <= best() ? 'done' : unlocked(k) ? 'next' : 'lock', e = enemiesOf(k), face = e.bossCard || e.leader || e.enemies[0];
-      rows.push(`<button class="q-row ${st} ${isBossFloor(k) ? 'boss' : ''} ${k === n ? 'on' : ''}" data-floor="${k}"><span class="q-win"></span>${face ? `<img class="q-face" src="${IMG}${face.id}.webp" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : '<span class="q-face"></span>'}<span class="q-no">${k}층${isBossFloor(k) ? ' 👑' : ''}</span>${r ? `<span class="q-rw">${r.tickets ? `🎟️${r.tickets}` : ''}${r.gold ? '🪙' : ''}</span>` : '<span class="q-rw"></span>'}<span class="q-st">${st === 'next' ? '▶' : st === 'done' ? '✔' : '🔒'}</span></button>`);
+      rows.push(`<button class="q-row ${st} ${isBossFloor(k) ? 'boss' : ''} ${k === n ? 'on' : ''}" data-floor="${k}"><span class="q-win"></span>${face ? `<img class="q-face" src="${cardThumb(face.id)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : '<span class="q-face"></span>'}<span class="q-no">${k}층${isBossFloor(k) ? ' 👑' : ''}</span>${r ? `<span class="q-rw">${r.tickets ? `🎟️${r.tickets}` : ''}${r.gold ? '🪙' : ''}</span>` : '<span class="q-rw"></span>'}<span class="q-st">${st === 'next' ? '▶' : st === 'done' ? '✔' : '🔒'}</span></button>`);
       if (k === n) rows.push(panel);
     }
     api.show(`<div class="q-tower q-tier-${tierOf(n)}"${TOWER !== 'normal' && /^[a-z]+$/.test(TOWER) ? ` style="--q-own:url('${new URL(`img/tower/bg/${TOWER}_t${tierOf(n)}.webp`, location.href).href}')"` : ''}><div class="story-top"><button class="story-back" id="q-home">${hub?.towers && !legacy ? '← 탑 목록' : '← 처음으로'}</button><div class="story-top-title">🗼 ${esc(tName())}</div><span></span></div>

@@ -38,7 +38,7 @@ function modal(id, html, cls = '') {
   const pg = PAGES[id]; if (pg && window.VRPages && (id === 'pvp-modal' || inPvp())) window.VRPages.host(pg[0], pg[1], m, null, null, id === 'pvp-edit' ? () => !!editBack?.() : null);   // 실패하면 예전 팝업
   return m;
 }
-const thumb = (c, extra = '') => c ? `<div class="pvp-th g-${GS[c.grade] || 'N'}" title="${esc(c.name)}"><img src="${IMG}${c.id}.webp" alt="${esc(c.name)}" loading="lazy" onerror="this.style.visibility='hidden'"><i>${c.level ? 'Lv' + c.level : GS[c.grade] || ''}</i>${window.VRStory?.skBadge?.(c.id, 'sm') || ''}${extra}</div>` : '';   // ✦ 기술 배지 (탭하면 기술 보기)
+const thumb = (c, extra = '') => c ? `<div class="pvp-th g-${GS[c.grade] || 'N'}" title="${esc(c.name)}"><img src="${cardThumb(c.id)}" alt="${esc(c.name)}" loading="lazy" onerror="this.style.visibility='hidden'"><i>${c.level ? 'Lv' + c.level : GS[c.grade] || ''}</i>${window.VRStory?.skBadge?.(c.id, 'sm') || ''}${extra}</div>` : '';   // ✦ 기술 배지 (탭하면 기술 보기)
 const snapThumbs = list => (list || []).map(o => { const c = card(o.id); return thumb(c && { ...c, level: o.level }); }).join('');
 // ---- 티어 (서버 pvp_tier_table 과 같은 경계) · 엠블럼은 그림순이 그림 전까지 CSS+이모지 (img/ui/tier/<key>.webp 가 생기면 자동 사용) ----
 export const TIERS = [
@@ -327,7 +327,7 @@ function playback(s, res) {
     const m = modal('pvp-play', '', 'pvp-sub pvp-top');
     const end = () => { if (stop) return; stop = true; clearTimeout(timer); m.remove(); done(); };
     m.addEventListener('click', e => { if (e.target === m) end(); });
-    const side = (ros, cls) => `<div class="pvp-pb-side ${cls}">${ros.map(r => `<div class="pvp-pb-u" data-uid="${r.uid}"><img src="${IMG}${r.id}.webp" alt=""><i><b></b></i></div>`).join('')}</div>`;
+    const side = (ros, cls) => `<div class="pvp-pb-side ${cls}">${ros.map(r => `<div class="pvp-pb-u" data-uid="${r.uid}"><img src="${cardThumb(r.id)}" alt=""><i><b></b></i></div>`).join('')}</div>`;
     const play = (ri) => {
       if (stop) return;
       if (ri >= res.rounds.length) return end();

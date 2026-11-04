@@ -130,7 +130,7 @@ function ajitPop(slot, foe) {
   const atk = mt.me.atk || {}, has = k => !!S.decks?.['atk' + k];
   const m = pop(`<div class="rd-pt">${roleIc(a.role)} ${esc(a.name)} <small>${WAR_ROLES[a.role].label} · ${n(S.numbers.points[a.role])}점</small></div>
     <div class="wr-cards">${a.cards.map(o => { const c = warCard({ uid: 'x', ...o, hp: null }, card), p = !c ? 0 : o.hp == null ? 100 : Math.min(100, o.hp / c.HP * 100);
-      return `<span class="rd-th ${p <= 0 ? 'dead' : ''}"><img src="${IMG}${o.id}.webp" alt="" onerror="this.remove()"><i class="wr-hpb"><b style="width:${p}%"></b></i></span>`; }).join('')}</div>
+      return `<span class="rd-th ${p <= 0 ? 'dead' : ''}"><img src="${cardThumb(o.id)}" alt="" onerror="this.remove()"><i class="wr-hpb"><b style="width:${p}%"></b></i></span>`; }).join('')}</div>
     ${a.decks > 1 ? `<small class="rd-note">방어 덱 ${a.deck}/${a.decks}</small>` : ''}
     ${foe ? `<div class="rd-mode">${modeToggle()}</div><div class="wr-pick">${[1, 2].map(k => `<button data-go="${k}" ${can && has(k) && atk[k]?.alive !== 0 ? '' : 'disabled'}>${gi('role_officer', '⚔️')} 공격 덱 ${k}<small>${!has(k) ? '없음' : atk[k] ? `${atk[k].alive}장 생존` : '처음'}</small></button>`).join('')}</div>` : ''}
     ${foe && !can && !a.destroyed ? `<small class="rd-note">${mt.ended ? '경기 끝' : S.phase !== 'live' ? '전투 시간 09:00~23:00' : !mt.me.alive ? '내 아지트가 무너졌어요' : !mt.me.attacks_left ? '오늘 공격 5회 끝' : '방어조 5곳을 먼저 무너뜨리세요'}</small>` : ''}`);
@@ -176,7 +176,7 @@ async function deckPop() {
   const cardsFor = d => { if (d.key !== 'top' || !d.ranked) return d.cards; const o = new Set(((S.decks || {})[pair(pick)] || []).map(x => x.id)), seen = new Set(); return d.ranked.filter(c => !o.has(c.id) && !seen.has(c.id) && seen.add(c.id)).slice(0, 5); };
   const draw = () => {
     const dk = S.decks || {}, locked = S.entry?.locked && !['soon', 'signup', 'ended'].includes(S.phase);
-    const th = sn => (sn || []).map(o => `<span class="rd-th"><img src="${IMG}${o.id}.webp" alt="" onerror="this.remove()"><small>Lv.${o.level}</small>${window.VRStory?.skBadge?.(o.id, 'sm') || ''}</span>`).join('') || '<small class="rd-empty">비어 있음</small>';
+    const th = sn => (sn || []).map(o => `<span class="rd-th"><img src="${cardThumb(o.id)}" alt="" onerror="this.remove()"><small>Lv.${o.level}</small>${window.VRStory?.skBadge?.(o.id, 'sm') || ''}</span>`).join('') || '<small class="rd-empty">비어 있음</small>';
     m.querySelector('.gd-pop-panel').innerHTML = `<button class="gd-x" data-x aria-label="닫기">${gi('ic_close', '✕')}</button><div class="rd-pt">${gi('war_deck', '🃏')} 전쟁 덱</div>
       ${['def1', 'def2', 'atk1', 'atk2'].map(k => `<button class="rd-dk wr-dkrow ${pick === k ? 'on' : ''}" data-k="${k}"><b>${k.startsWith('def') ? (gi('war_role_def', '🛡️') + ' 방어') : (gi('war_role_atk', '⚔️') + ' 공격')} ${k.slice(-1)}${k === 'def2' ? '<small>목숨 +1</small>' : ''}</b><span class="rd-ths">${th(dk[k])}</span>${k.startsWith('def') && locked ? '<small>🔒</small>' : ''}</button>`).join('')}
       <div class="rd-h">${pick.startsWith('def') ? (gi('war_role_def', '🛡️') + ' 방어') : (gi('war_role_atk', '⚔️') + ' 공격')} ${pick.slice(-1)} 에 넣을 덱</div>
@@ -228,7 +228,7 @@ function playback(res, log, t0) {
     const m = pop('', 'wide rd-pb');
     const end = () => { if (stop) return; stop = true; clearTimeout(timer); setTimeout(() => { m.remove(); done(); }, Math.max(0, 3200 - (Date.now() - t0))); };
     m.addEventListener('click', e => { if (e.target === m || e.target.closest('[data-x]')) end(); }, true);
-    const side = (ros, cls) => `<div class="wr-pb-side ${cls}">${(ros || []).map(r => `<div class="rd-pb-u" data-uid="${r.uid}"><img src="${IMG}${r.id}.webp" alt=""><i><b></b></i></div>`).join('')}</div>`;
+    const side = (ros, cls) => `<div class="wr-pb-side ${cls}">${(ros || []).map(r => `<div class="rd-pb-u" data-uid="${r.uid}"><img src="${cardThumb(r.id)}" alt=""><i><b></b></i></div>`).join('')}</div>`;
     m.querySelector('.gd-pop-panel').innerHTML = `<div class="rd-pb-top"><span>${gi('role_officer', '⚔️')} 아지트 공격</span><small class="rd-pb-t">T1</small><button class="rd-skip" data-skip>SKIP ${gi('ic_skip', '⏭')}</button></div>
       <div class="wr-pb"><img class="rd-bg" src="${UI}war_bg.webp" alt="" onerror="this.remove()">${side(log.roster?.B, 'foe')}<div class="rd-pb-fx"></div>${side(log.roster?.A, 'me')}</div>`;
     m.querySelector('[data-skip]').onclick = e => { e.stopPropagation(); i = log.length; end(); };

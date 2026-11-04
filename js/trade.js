@@ -90,7 +90,7 @@
   async function loadCfg() { if (cfg) return true; const r = await rpc('trade_my'); if (!r) return false; cfg = r.config || {}; bands = Object.fromEntries((r.bands || []).map(b => [b.gkey, b])); return r; }
 
   // 물건 타일 (인재: 그림·등급·레벨 / 장비: 아이콘·등급·+강화)
-  const cardTile = (c, extra = '') => { const m = cardOf(c.id); return `<div class="tr-it card g-${gradeOf(c.id)}" ${extra}><img src="${IMG}${c.id}.webp" alt="" loading="lazy"><b>${esc(m?.name || c.id)}</b><small>${gradeOf(c.id)} · Lv.${c.level || 1}</small></div>`; };
+  const cardTile = (c, extra = '') => { const m = cardOf(c.id); return `<div class="tr-it card g-${gradeOf(c.id)}" ${extra}><img src="${cardThumb(c.id)}" alt="" loading="lazy"><b>${esc(m?.name || c.id)}</b><small>${gradeOf(c.id)} · Lv.${c.level || 1}</small></div>`; };
   const gearTile = (g, extra = '') => { const d = defOf(g.def_id || g.def); return `<div class="tr-it gear t-${d?.tier || 0}" ${extra}><img src="${gearIcon(d)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'"><b>${esc(d?.name || '장비')}${g.plus ? ` +${g.plus}` : ''}</b><small>${TIER[d?.tier] || ''}</small></div>`; };
   const itemsHTML = (cards, gear) => (cards || []).map(x => cardTile(x.card || x)).join('') + (gear || []).map(x => gearTile(x.row || x)).join('');
   const left = t => { const s = Math.max(0, (new Date(t) - Date.now()) / 1000); return s >= 3600 ? `${Math.floor(s / 3600)}시간` : `${Math.ceil(s / 60)}분`; };
@@ -133,7 +133,7 @@
         const gIdx = l => Math.max(0, ...(l.cards || []).map(c => GO.indexOf(gradeOf(c.id))), ...(l.gear || []).map(g => (defOf(g.def_id || g.def)?.tier || 0) - 2));
         const cardHTML = l => { const c0 = (l.cards || [])[0], g0 = !c0 && (l.gear || [])[0], d = g0 && defOf(g0.def_id || g0.def), m0 = c0 && cardOf(c0.id), cnt = (l.cards?.length || 0) + (l.gear?.length || 0);
           const secs = (new Date(l.expires_at) - Date.now()) / 1000, gr = GO[Math.min(GO.length - 1, gIdx(l))];
-          return `<button class="tr-gc g-${gr}" data-l="${l.id}"><span class="tr-gc-img">${c0 ? `<img src="${IMG}${c0.id}.webp" alt="" loading="lazy">` : d ? `<img class="gear" src="${gearIcon(d)}" alt="" loading="lazy">` : ''}
+          return `<button class="tr-gc g-${gr}" data-l="${l.id}"><span class="tr-gc-img">${c0 ? `<img src="${cardThumb(c0.id)}" alt="" loading="lazy">` : d ? `<img class="gear" src="${gearIcon(d)}" alt="" loading="lazy">` : ''}
             <i class="tr-gc-gr">${c0 ? gradeOf(c0.id) : d ? TIER[d.tier] : ''}</i>${cnt > 1 ? `<i class="tr-gc-n">+${cnt - 1}</i>` : ''}${l.to_me ? '<i class="tr-gc-tag dir">🤝 나에게</i>' : l.mine ? `<i class="tr-gc-tag">${l.direct ? `🤝 ${esc(l.target_name || '지정')}` : '내 글'}</i>` : l.my_offer ? '<i class="tr-gc-tag">제안함</i>' : ''}</span>
             <b>${esc(m0?.name || d?.name || '판매 글')}${c0?.level ? ` <small>Lv.${c0.level}</small>` : ''}</b>${(l.want_ids || []).length ? `<span class="tr-gc-wid ${l.want_ids.some(w => mineSet.has(String(w.id))) ? 'have' : ''}">🎯 ${esc(itemName(l.want_ids[0].k, l.want_ids[0].id))}${l.want_ids.length > 1 ? ` 외 ${l.want_ids.length - 1}` : ''}</span>` : ''}${l.want ? `<span class="tr-gc-want">${esc(l.want)}</span>` : '<span class="tr-gc-want dim">희망 조건 없음</span>'}
             ${buyTxt(l) ? `<span class="tr-gc-buy">⚡ ${buyTxt(l)}</span>` : ''}<span class="tr-gc-meta"><span class="${secs < 3 * 3600 ? 'soon' : ''}">${I('timer')}${left(l.expires_at)}</span><span>${I('trade_offer')}${l.offers}</span></span></button>`; };
@@ -201,7 +201,7 @@
   // ---- 📈 시세 (PR6): trade_price_board / trade_price_history — 한 가지 물건을 재화로만 판 거래만, 판매자·구매자 정보 없음
   let pDays = 7, pKind = 'all';
   const itemName = (k, id) => k === 'card' ? (cardOf(id)?.name || '인재') : (defOf(id)?.name || '장비');
-  const itemImg = (k, id) => k === 'card' ? `<img src="${IMG}${id}.webp" alt="" loading="lazy">` : defOf(id) ? `<img class="gear" src="${gearIcon(defOf(id))}" alt="" loading="lazy">` : '';
+  const itemImg = (k, id) => k === 'card' ? `<img src="${cardThumb(id)}" alt="" loading="lazy">` : defOf(id) ? `<img class="gear" src="${gearIcon(defOf(id))}" alt="" loading="lazy">` : '';
   const statTxt = st => [st?.drink && `${I('cur_drink')}${n(st.drink.median)}`, st?.gold && `${I('cur_gold')}${n(st.gold.median)}`].filter(Boolean).join(' · ');
   const PSOON = '<div class="tr-empty">📈<b>시세는 곧 열려요</b><small>서버 준비가 끝나면 최근 거래 가격을 볼 수 있어요</small></div>';
   function spark(daily, f) { const v = (daily || []).map(d => d[f]).filter(x => x != null); if (v.length < 2) return '';
@@ -301,7 +301,7 @@
   function cardRow(c) {
     const m = cardOf(c.id), b = S()?.statsOf?.(c), g = gradeOf(c.id), ex = Math.max(0, c.ex | 0);
     const st = b ? `<div class="tr-dstat"><span><i>전투력</i>${n(b.power)}</span><span><i>ATK</i>${n(b.ATK)}</span><span><i>HP</i>${n(b.HP)}</span><span><i>DEF</i>${n(b.DEF)}</span></div>` : '';
-    return `<div class="tr-det card g-${g}"><img src="${IMG}${c.id}.webp" alt="" loading="lazy"><div class="tr-dinfo">
+    return `<div class="tr-det card g-${g}"><img src="${cardThumb(c.id)}" alt="" loading="lazy"><div class="tr-dinfo">
       <b><em class="tr-gr g-${g}">${g}</em>${esc(m?.name || c.id)}</b>
       <div class="tr-dsub">Lv.${c.level || 1}${b?.cap ? `<i>/${b.cap}</i>` : ''} · 강화 EX ${ex}${b?.maxEx ? `/${b.maxEx}` : ''} ${exStars(ex, b?.maxEx)}</div>${st}</div></div>`;
   }
