@@ -57,6 +57,9 @@
   .dsp-need{font-size:12px;padding:6px 4px;line-height:1.5}.dsp-need .ok{color:#86efac}.dsp-need .no{color:#fca5a5}
   .dsp-pk-acts{display:flex;gap:6px;padding:8px 10px 12px}.dsp-pk-acts button{flex:1;padding:10px}
   .dsp-prev{font-size:12px;line-height:1.5}.dsp-prev div{padding:6px 4px;border-bottom:1px solid rgba(255,255,255,.06)}`;
+  css.textContent += '.dsp-off{position:relative;padding-right:64px!important}.dsp-more{position:absolute;right:8px;top:50%;transform:translateY(-50%);padding:4px 9px;border-radius:999px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#fff;font-size:12px}'+
+    '#dsp-mp{position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px}.dsp-mpb{width:min(340px,100%);background:#18181b;border:1px solid rgba(255,255,255,.15);border-radius:16px;padding:14px;color:#fafafa;font-size:13px}'+
+    '.dsp-mpb>b{display:block;font-size:16px;margin-bottom:8px}.dsp-mpr{display:flex;flex-wrap:wrap;align-items:center;gap:4px;padding:6px 0;border-top:1px solid rgba(255,255,255,.08)}.dsp-mpr>span:first-child{width:46px;opacity:.6;font-size:12px}.dsp-mpr small{opacity:.6}.dsp-mpx{width:100%;margin-top:10px;padding:8px;border-radius:10px;background:#27272a;color:#fff}';
   document.head.appendChild(css);
 
   function shell(title, sub) {
@@ -71,7 +74,17 @@
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.getElementById('dsp-ov')) close(); });
 
   const gBadge = g => `<span class="dsp-g" style="background:${GC[g]}">${GS[g]}↑</span>`;
-  const offHTML = o => { const z = zone(o.zone); if (!z) return ''; return `<div class="dsp-off ${z.grp} ${o.taken ? 'taken' : ''}" data-slot="${o.slot}"><span class="dsp-zn">${esc(z.name)}</span>${gBadge(z.min_grade)}<span class="dsp-tag">👥${z.size}</span><span class="dsp-tag">${EL[o.el] || o.el}</span><span class="dsp-tag">${esc(o.cls)}</span>${o.taken ? '<span class="dsp-tag">보냄</span>' : ''}<div class="dsp-rw">${hours}시간: ${rwText(z.rw, st.mult[hours])}</div></div>`; };
+  // 의뢰 카드: 이름 · 예상 시간 · 필수 등급만. 보상·부가조건(인원·속성·클래스)은 [더보기] 팝업
+  const offHTML = o => { const z = zone(o.zone); if (!z) return ''; return `<div class="dsp-off ${z.grp} ${o.taken ? 'taken' : ''}" data-slot="${o.slot}"><span class="dsp-zn">${esc(z.name)}</span><span class="dsp-tag">⏱ ${hours}시간</span>${gBadge(z.min_grade)}${o.taken ? '<span class="dsp-tag">보냄</span>' : ''}<button type="button" class="dsp-more" data-more="${o.slot}">더보기</button></div>`; };
+  function morePop(o) { const z = zone(o.zone); if (!z) return; document.getElementById('dsp-mp')?.remove();
+    const m = document.createElement('div'); m.id = 'dsp-mp'; m.innerHTML = `<div class="dsp-mpb" role="dialog" aria-label="${esc(z.name)}"><b>${esc(z.name)}</b>
+      <div class="dsp-mpr"><span>필수</span>${gBadge(z.min_grade)} <small>보낸 인재 중 1명 이상</small></div>
+      <div class="dsp-mpr"><span>인원</span>👥 최대 ${z.size}명</div>
+      <div class="dsp-mpr"><span>보너스</span><span class="dsp-tag">${EL[o.el] || o.el}</span><span class="dsp-tag">${esc(o.cls)}</span> <small>맞는 인재 1명당 +15%</small></div>
+      <div class="dsp-mpr"><span>보상</span>${hours}시간: ${rwText(z.rw, st.mult[hours])}</div>
+      <button type="button" class="dsp-mpx">닫기</button></div>`;
+    m.onclick = e => { if (e.target === m || e.target.closest('.dsp-mpx')) m.remove(); };
+    (document.getElementById('dsp-ov') || document.body).appendChild(m); }
   const runHTML = r => { const z = zone(r.zone) || { name: r.zone }; const names = r.uids.map(u => owned.find(o => o.uid === u)?.name || '?').join(', ');
     return `<div class="dsp-run ${r.done ? 'done' : ''}"><div class="grow"><b>${esc(z.name)}</b> <span class="dsp-tag">${r.hours}h</span>${r.bonus ? ` <span class="dsp-tag">+${r.bonus}%</span>` : ''}<small>${esc(names)}</small>
       <small data-left="${r.ends_at}">${r.done ? `🎁 ${r.great ? '대성공! ' : ''}${Object.entries(r.reward || {}).map(([k, v]) => `${RW[k] || k} ${v}`).join(' · ')}` : '⏳ ' + left(r.ends_at)}</small></div>
@@ -93,6 +106,7 @@
       <div class="dsp-empty">필수: 등급(보낸 인재 중 1명 이상) · 속성·클래스가 맞는 인재 1명당 +15% (최대 60%) · 필수보다 높은 등급 +10% · 보너스 최대면 10% 확률 대성공(2배)</div>`;
     box.insertAdjacentHTML('beforeend', `<div class="dsp-acts"><button data-auto ${st.runs.length >= st.slots || st.starts >= st.cap ? 'disabled' : ''}>🤖 자동 보내기</button><button class="go" data-all ${done ? '' : 'disabled'}>🎁 모두 받기${done ? ` (${done})` : ''}</button><button data-ref>🔄 새로고침<br><small>${free ? `무료 ${free}/${st.free}` : `🔮${st.refresh_cost}`}</small></button></div>`);
     box.querySelectorAll('[data-h]').forEach(b => b.onclick = () => { hours = +b.dataset.h; localStorage.setItem('vr:dsp_h', hours); draw(); });
+    box.querySelectorAll('[data-more]').forEach(b => b.onclick = e => { e.stopPropagation(); morePop(st.offers.find(o => o.slot === +b.dataset.more)); });
     box.querySelectorAll('.dsp-off:not(.taken)').forEach(b => b.onclick = () => pick(st.offers.find(o => o.slot === +b.dataset.slot)));
     box.querySelectorAll('[data-claim]').forEach(b => b.onclick = () => claim(+b.dataset.claim));
     box.querySelectorAll('[data-recall]').forEach(b => b.onclick = async () => { if (!await window.VRAsk('지금 부르면 보상 없이 돌아와요. 귀환할까요?')) return; try { st = await rpc('dispatch_recall', { p_run: +b.dataset.recall }); draw(); } catch (e) { toast(errText(e)); } });

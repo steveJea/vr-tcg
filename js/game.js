@@ -157,6 +157,7 @@ function log(msg, cls = '') {
 const shuffleArr = a => { a = [...a]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 /** story: 스토리 모드 전투 설정 { me:[카드], ai:[카드], win:'wipe'|'ko', meHp, aiHp, aiName, first, onEnd(win, reason) }. 없으면 아케이드 */
 function startGame(story = null) {
+  try { window.VRArcadeHub?.close?.(); } catch {}   // 아케이드 설정 [시작]으로 바로 시작하면 허브 창이 전투 위에 남아 있었음
   autoOn = localStorage.getItem(AUTO_KEY()) === '1';
   if (story && typeof story.then === 'function' || story instanceof Event) story = null;
   setSpare(story?.spare);   // 스토리 보호 규칙 (없으면 해제)
