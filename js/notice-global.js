@@ -1,5 +1,5 @@
 // ===== 전체 알림 📢 (UR·MR·LR 획득) — 서버: supabase/global_notice.sql =====
-// 30초마다 새 알림만 받아 위쪽 토스트 · 📢 버튼/토스트 누르면 소식 창(최근 3일 50개) · 이름 누르면 지정 거래(거래소)
+// 5초마다(탭 보일 때) + 뽑기 직후 바로(vr:gacha) 새 알림만 받아 위쪽 토스트 · 📢 버튼/토스트 누르면 소식 창(최근 3일 50개) · 이름 누르면 지정 거래(거래소)
 // SQL 전(함수 없음)이면 조용히 멈춤. 전투 중엔 토스트 대신 쌓아 두었다가 소식 창에서 보기
 (() => {
   const IMG = 'https://raw.githubusercontent.com/steveJea/vr-ideal-worldcup/main/img/bt_img/';
@@ -24,11 +24,13 @@
   }
   function bindNames(root) { root.querySelectorAll('[data-gn-uid]').forEach(b => b.onclick = e => { e.stopPropagation(); direct(b.dataset.gnUid, b.dataset.gnNick); }); }
   const busy = () => !!document.querySelector('#game:not(.hidden)') || !!document.getElementById('story-dlg');
-  function toast(n) {
+  const RANK = { LR: 3, MR: 2, UR: 1 };
+  function toast(ns) {
+    ns = [].concat(ns); const n = ns.reduce((a, b) => (RANK[b.grade] || 0) > (RANK[a.grade] || 0) ? b : a);
     let host = document.getElementById('gn-toasts');
     if (!host) { host = document.createElement('div'); host.id = 'gn-toasts'; document.body.appendChild(host); }
     const t = document.createElement('div'); t.className = 'gn-toast';
-    t.innerHTML = `<img src="${IMG}${esc(n.card_id)}.webp" alt=""><span>📢 ${line(n)}</span>`;
+    t.innerHTML = `<img src="${IMG}${esc(n.card_id)}.webp" alt=""><span>📢 ${ns.length > 1 ? `${nameBtn(n)}님이 ${ns.map(x => `<em class="gn-g g-${esc(x.grade)}">${esc(x.grade)}</em> <b>${esc(cardName(x.card_id))}</b>`).join(', ')} 획득!` : line(n)}</span>`;
     bindNames(t); t.onclick = () => { t.remove(); openLog(); };
     host.appendChild(t); while (host.children.length > 2) host.firstChild.remove();
     setTimeout(() => { t.classList.add('out'); setTimeout(() => t.remove(), 400); }, 6000);
@@ -43,7 +45,10 @@
     const seen = new Set(list.map(x => x.id)); list = [...fresh.filter(x => !seen.has(x.id)), ...list].slice(0, 50);
     if (first) return;   // 처음엔 기록만 (예전 것 토스트 안 함)
     unseen += fresh.filter(x => !x.me).length; badge();
-    if (!busy()) fresh.slice(0, 2).reverse().forEach(toast);
+    if (busy()) return;
+    // 같은 사람 알림은 한 토스트로 묶기 (10연차 UR 2장 → 1개)
+    const g = new Map(); for (const n of [...fresh].reverse()) { const k = n.uid || n.nick; g.has(k) ? g.get(k).push(n) : g.set(k, [n]); }
+    [...g.values()].slice(-2).forEach(toast);
   }
   function openLog() {
     document.querySelector('.gn-log')?.remove(); unseen = 0; badge();
@@ -62,8 +67,10 @@
     const u = window.VRCloud?.user?.id || (window.__NOTICE_MOCK ? 'mock' : null);
     if (u === uid) return; uid = u; last = null; list = []; unseen = 0; clearInterval(timer);
     if (!u) { document.getElementById('gn-btn')?.remove(); return; }
-    mountBtn(); badge(); poll(); timer = setInterval(() => { if (!document.hidden) poll(); }, 30000);
+    mountBtn(); badge(); poll(); timer = setInterval(() => { if (!document.hidden) poll(); }, 5000);
   }
+  window.addEventListener('vr:gacha', () => { poll(); setTimeout(poll, 1500); });   // 뽑기 결과 직후 바로 확인
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) poll(); });
   window.addEventListener('vr:user', start); setTimeout(start, 2000);
   window.VRNotice = { open: openLog, poll, start, _list: () => list };
 })();
