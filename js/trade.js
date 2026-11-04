@@ -87,11 +87,12 @@
     if (!await loadCfg()) { m.remove(); return; }
     const draw = async t => {
       tab = t;
-      body(m).innerHTML = `<div class="tr-head"><b>${I('trade')}거래 게시판</b><span><button class="tr-btn" data-help>${I('help')}도움말</button> <button class="tr-btn" data-direct>🤝 지정 거래</button> <button class="tr-btn main" data-new>＋ 판매 글</button></span></div>
+      body(m).innerHTML = `<div class="tr-head"><b>${I('trade')}거래 게시판</b><span><button class="tr-btn" data-help>${I('help')}도움말</button> <button class="tr-btn" data-direct>🤝 지정 거래</button> <button class="tr-btn" data-gnlog>📢 소식</button> <button class="tr-btn main" data-new>＋ 판매 글</button></span></div>
         <div class="tr-tabs"><button data-tab="board" class="${t === 'board' ? 'on' : ''}">게시판</button><button data-tab="price" class="${t === 'price' ? 'on' : ''}">📈 시세</button><button data-tab="my" class="${t === 'my' ? 'on' : ''}">내 거래</button></div><div class="tr-list"><div class="tr-load">불러오는 중…</div></div>`;
       body(m).querySelectorAll('[data-tab]').forEach(b => b.onclick = () => draw(b.dataset.tab));
       body(m).querySelector('[data-new]').onclick = () => createListing(() => draw('my'));
       body(m).querySelector('[data-help]').onclick = help;
+      body(m).querySelector('[data-gnlog]').onclick = () => window.VRNotice?.open?.();
       body(m).querySelector('[data-direct]').onclick = () => directCreate(null, () => draw('my'));
       const L = body(m).querySelector('.tr-list');
       if (t === 'board') {
