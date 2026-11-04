@@ -5,6 +5,22 @@
 (function () {
   const BASE = 'img/ui/';
   const ICONS = {
+    // set out2 (2026-11-04 그림순이)
+    dispatch: { src: 'dispatch.webp', alt: '파견' },
+    el_freeze: { src: 'el_freeze.webp', alt: '빙결' },
+    attendance: { src: 'attendance.webp', alt: '출석' },
+    celebrate: { src: 'celebrate.webp', alt: '축하' },
+    st_blind: { src: 'st_blind.webp', alt: '실명' },
+    forbidden: { src: 'forbidden.webp', alt: '금지' },
+    daily_mission: { src: 'daily_mission.webp', alt: '일일 임무' },
+    cur_shard_small: { src: 'cur_shard_small.webp', alt: '조각' },
+    emb_crow: { src: 'emb_crow.webp', alt: '까마귀' },
+    st_notweak: { src: 'st_notweak.webp', alt: '약화 면역' },
+    st_summoned: { src: 'st_summoned.webp', alt: '소환됨' },
+    help_q: { src: 'help_q.webp', alt: '도움말' },
+    my_listings: { src: 'my_listings.webp', alt: '내 판매' },
+    vibrate: { src: 'vibrate.webp', alt: '진동' },
+    tut_hand: { src: 'tut_hand.webp', alt: '터치' },
     mana: { src: 'mana.webp', alt: '마나' },
     atk:  { src: 'atk.webp',  alt: 'ATK' },
     def:  { src: 'def.webp',  alt: 'DEF' },
@@ -220,6 +236,20 @@
   ICONS["orange_marker"] = ICONS["orange_marker"] || { src: 'orange_marker.webp', alt: "orange marker" };
   ICONS.mailbox = ICONS.mailbox || { src: 'mailbox.webp', alt: '우편함' };
   const EMOJI2 = {
+    "🧭": "dispatch",
+    "🧊": "el_freeze",
+    "🗓": "attendance",
+    "🎉": "celebrate",
+    "🌫": "st_blind",
+    "⛔": "forbidden",
+    "📋": "daily_mission",
+    "🔹": "cur_shard_small",
+    "🐦‍⬛": "emb_crow",
+    "😤": "st_notweak",
+    "🪽": "st_summoned",
+    "❓": "help_q",
+    "📦": "my_listings",
+    "📳": "vibrate",
     "🔮": "magic_orb_guild",
     "🥤": "drink_item",
     "⬆": "upgrade",
