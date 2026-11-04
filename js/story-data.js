@@ -40,7 +40,7 @@ window.STORY_DATA = {
   bossBaseHp: [500, 750, 1000, 1250, 1500],
   chapters: [
     {
-      id: 1, title: 'CHAPTER 1', subtitle: '(챕터 제목 준비 중)',
+      id: 1, title: 'CHAPTER 1', subtitle: 'THE BRUTAL CITY',
       rewardCard: 'NORMAL',   // 페이즈 첫 클리어 시 무료 카드 등급. 없으면(챕터 2~) 스탯 포인트만
       // 페이즈 첫 클리어 고정 보상 카드 (모든 루트 동일, 이미 있으면 한 장 더). 서버: supabase/story_ch1_reward.sql
       rewardCards: { 1: '10248', 2: '10093', 3: '10185', 4: '10130', 5: '10308' },   // 예유진·남태은·선나영·반지아·이윤이
