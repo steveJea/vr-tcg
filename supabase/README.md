@@ -89,6 +89,7 @@ SQL Editor 에서 형님이 직접 실행하는 파일들. **같은 함수를 �
 79. `story_ch8_boss_one.sql` (2026-10-30) — 챕8 P15 보스 1명 (enemy_count 1)
 80. `story_block_exp.sql` (2026-10-30) — 막기 전투 EXP (`_story_complete_phase_e0` 최신; `story_ch1_reward.sql` 버전은 옛 것)
 81. `war_auto.sql` (2026-11-03) — 구역 전쟁 자동 참가(조직 Lv.3+)·자동 배치·아지트(14) 시즌 중 변경·전쟁 덱 자동 편성 (`_war_tick`·`_war_lock`·`war_set_slot` 최신)
+82. `trade_wanted.sql` (2026-11-04) — 거래소 원하는 물건(want_ids)·trade_list3·trade_search2 (`_trade_listing_json` 최신)
 
 ## 여러 파일에 정의된 함수 → 최신 정의 파일
 
