@@ -17,14 +17,14 @@
     'already offered': '이 글에는 이미 제안했어요. 고치려면 취소 후 다시', 'reoffer cooldown': '거절된 글에는 24시간 뒤에 다시 제안할 수 있어요',
     'own listing': '내 글에는 제안할 수 없어요', 'listing closed': '이미 끝난 글이에요', 'listing not found': '글을 찾을 수 없어요',
     'offer closed': '이미 끝난 제안이에요', 'offer not found': '제안을 찾을 수 없어요', 'gold not allowed': '🪙 SR 이상 인재·영웅 장비가 끼면 골드는 쓸 수 없어요',
-    'price too high': '가격 범위보다 많아요', 'price too low': '가격 범위보다 적어요', 'escrow limit': '보관 한도를 넘어요 (드링크 20,000 · 골드 2,000,000)',
+    'price too high': '가격 범위보다 많아요', 'price too low': '가격 범위보다 적어요', 'escrow limit': '보관 한도를 넘어요',
     'not enough drink': '🥤 거래 가능한 드링크가 부족해요 (귀속 드링크는 못 써요)', 'not enough gold': '🪙 골드가 부족해요',
     'card bound': '🔗 귀속 인재는 거래할 수 없어요', 'card locked': '🔒 잠긴 인재예요', 'cannot trade leader': '👑 리더는 올릴 수 없어요',
     'card not owned': '이 인재가 없어요', 'gear not owned': '이 장비가 없어요', 'gear locked': '🔒 잠긴 장비예요', 'gear equipped': '장착 중인 장비는 먼저 해제해 주세요',
     'gear not tradable': '전설·심연 장비는 거래할 수 없어요', 'resale cooldown': '거래로 받은 물건은 72시간 뒤에 다시 올릴 수 있어요',
     'daily trade limit': '오늘 거래 한도를 다 썼어요', 'same partner limit': '같은 상대와는 7일에 3번까지예요', 'no condition': '거절 조건을 넣어 주세요',
-    'nothing to reject': '거절할 제안을 골라 주세요', 'duplicate card': '같은 인재를 두 번 골랐어요', 'duplicate gear': '같은 장비를 두 번 골랐어요', 'invalid amount': '수량을 확인해 주세요', 'too many wants': '원하는 물건은 5개까지예요', 'direct only': '🤝 지정 거래는 받는 사람만 응할 수 있어요', 'target cannot trade': '상대가 아직 거래할 수 없어요 (Lv.20 · 가입 7일)', 'invalid target': '거래 상대를 다시 골라 주세요', 'too many direct': '같은 상대에게 열린 지정 거래는 3개까지예요', 'invalid want': '원하는 물건을 다시 골라 주세요',
-    'cancel limit': '오늘 제안 취소가 너무 많아요. 내일 다시 제안할 수 있어요', 'drink send limit': '🥤 오늘 보낼 수 있는 드링크 양을 넘어요 (하루 10,000)', 'drink recv limit': '🥤 오늘 받을 수 있는 드링크 양을 넘어요 (하루 10,000)'
+    'nothing to reject': '거절할 제안을 골라 주세요', 'duplicate card': '같은 인재를 두 번 골랐어요', 'duplicate gear': '같은 장비를 두 번 골랐어요', 'invalid amount': '수량을 확인해 주세요', 'too many wants': '원하는 물건은 5개까지예요', 'direct only': '🤝 지정 거래는 받는 사람만 응할 수 있어요', 'target cannot trade': '상대가 아직 거래할 수 없어요 (Lv.20 · 가입 7일)', 'invalid target': '거래 상대를 다시 골라 주세요', 'too many direct': '같은 상대에게 열린 지정 거래는 3개까지예요', 'want required': '드링크만 보낼 땐 원하는 물건을 하나 이상 골라 주세요', 'invalid want': '원하는 물건을 다시 골라 주세요',
+    'cancel limit': '오늘 제안 취소가 너무 많아요. 내일 다시 제안할 수 있어요', 'drink send limit': '🥤 오늘 보낼 수 있는 드링크 양을 넘어요', 'drink recv limit': '🥤 오늘 받을 수 있는 드링크 양을 넘어요 (하루 10,000)'
   };
   const errText = m => { m = String(m || ''); const k = Object.keys(ERR).find(x => m.includes(x)); return k ? ERR[k] : /trade_|schema cache|Could not find/.test(m) ? '💱 거래 게시판은 준비 중이에요' : `⚠️ ${m.slice(0, 60)}`; };
   const MISSING = /schema cache|Could not find the function|does not exist|PGRST202/;
@@ -534,15 +534,16 @@
     const m = pop('', 'wide', ['exchange-direct', '🤝 지정 거래']); const B = body(m);
     B.innerHTML = `<div class="tr-head"><b>🤝 지정 거래 보내기</b></div>
       <div class="tr-sec">1. 받는 사람</div><div class="tr-dwho"></div>
-      <div class="tr-sec">2. 내가 줄 것 (인재·장비 최대 ${max}개 + 드링크 선택)</div>
-      <div class="tr-cur-in"><label>🥤 드링크 <input type="number" min="0" step="1" value="0" data-d><small>거래 가능 ${n((dr?.tradable || 0) - (dr?.locked || 0))} · 하루 ${n(cfg?.daily_drink_send || 10000)}까지</small></label></div>
+      <div class="tr-sec">2. 내가 줄 것 (인재·장비 최대 ${max}개 · 드링크 · 드링크만도 가능)</div>
+      <div class="tr-cur-in"><label>🥤 드링크 <input type="number" min="0" step="1" value="0" data-d><small>거래 가능 ${n((dr?.tradable || 0) - (dr?.locked || 0))}</small></label></div>
       <div class="tr-pickwrap"></div>
       <div class="tr-sec">3. 원하는 것</div><div class="tr-wbox"><button type="button" class="tr-btn" data-wpick>🎯 원하는 물건 고르기 <small>(최대 5)</small></button><div class="tr-wcur"></div></div>
       <div class="tr-sec">4. 메시지 (우편으로 가요)</div><textarea class="tr-input tr-dmsg" maxlength="200" rows="2" placeholder="예: 김성진이랑 바꿔요! UR 5장 + 드링크 드릴게요"></textarea>
       <div class="tr-note">보내면 물건·드링크가 보관되고, 상대가 수락하면 바로 거래가 끝나요. 거절·만료되면 그대로 돌아와요. 받는 사람도 똑같은 거래 규칙이 적용돼요.</div>
       <div class="tr-acts"><button class="tr-btn main" data-send disabled>🤝 보내기</button></div>`;
     const send = B.querySelector('[data-send]'), dIn = B.querySelector('[data-d]');
-    const ok = () => { send.disabled = !who || !p?.count(); };
+    const dv = () => Math.max(0, Math.floor(+dIn.value || 0));
+    const ok = () => { const items = p?.count() || 0; send.disabled = !who || (!items && !(dv() > 0 && wantIds.length)); const h = B.querySelector('.tr-dhint'); if (h) h.textContent = !items && dv() > 0 && !wantIds.length ? '드링크만 보낼 땐 원하는 물건을 하나 이상 골라 주세요' : ''; };
     const paintWho = () => { const W = B.querySelector('.tr-dwho');
       if (who) { W.innerHTML = `<div class="tr-dsel"><b>${esc(who.nick)}</b><button class="tr-btn" data-chg>바꾸기</button></div>`; W.querySelector('[data-chg]').onclick = () => { who = null; paintWho(); ok(); }; return; }
       W.innerHTML = `<input type="search" class="tr-input tr-dq" placeholder="🔍 닉네임으로 찾기"><div class="tr-dres"></div>`;
@@ -554,7 +555,8 @@
     };
     paintWho();
     const paintW = () => { B.querySelector('.tr-wcur').innerHTML = wantIds.length ? `<div class="tr-wants">${wantIds.map(w => wantChip(w)).join('')}</div>` : ''; };
-    B.querySelector('[data-wpick]').onclick = async () => { const r = await wantPicker(wantIds); if (r) { wantIds = r; paintW(); } };
+    B.querySelector('[data-wpick]').onclick = async () => { const r = await wantPicker(wantIds); if (r) { wantIds = r; paintW(); ok(); } };
+    dIn.oninput = ok; B.querySelector('[data-send]').insertAdjacentHTML('beforebegin', '<small class="tr-dhint bad"></small>');
     p = await picker(B.querySelector('.tr-pickwrap'), ok); ok();
     send.onclick = async () => {
       const d = Math.max(0, Math.floor(+dIn.value || 0)), msg = B.querySelector('.tr-dmsg').value.trim();
