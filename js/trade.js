@@ -46,9 +46,31 @@
     m.onclick = e => { if ((down && e.target === m) || e.target.closest('[data-x]')) m.remove(); down = false; };
     document.body.appendChild(m);
     if (page && window.VRPages?.host) { m.classList.add('tr-page'); window.VRPages.host(page[0], page[1], m, null, null, page[2] || null); }
+    if (!cls.includes('small')) scrollGuide(m);
     return m;
   }
   const body = m => m.querySelector('.tr-in');
+  // 긴 화면(지정 거래·판매 글 올리기·제안하기 등): 아래 버튼(.tr-acts)까지 내리라는 금색 화살표
+  // 버튼이 화면에 보이거나 거의 맨 아래거나 스크롤이 필요 없으면 숨김 · 누르면 버튼 쪽으로 부드럽게 내려감
+  function scrollGuide(m) {
+    const g = document.createElement('button'); g.type = 'button'; g.className = 'tr-down'; g.setAttribute('aria-label', '아래로');
+    g.innerHTML = '<i></i><span>아래로</span>'; g.hidden = true; document.body.appendChild(g);
+    const vis = el => !!el && el.getClientRects().length > 0;
+    const target = () => [...m.querySelectorAll('.tr-acts')].filter(vis).pop() || null;
+    const scroller = el => { for (let x = el?.parentElement; x && x !== document.documentElement; x = x.parentElement) { const o = getComputedStyle(x).overflowY; if ((o === 'auto' || o === 'scroll') && x.scrollHeight > x.clientHeight + 4) return x; } return null; };
+    const navTop = () => { const n = document.getElementById('vr-gnb'); if (!n || !vis(n) || n.classList.contains('gnb-hide')) return innerHeight; const r = n.getBoundingClientRect(); return r.top > 0 && r.top < innerHeight ? r.top : innerHeight; };
+    const tick = () => {
+      if (!m.isConnected) { clearInterval(iv); removeEventListener('scroll', tick, true); g.remove(); return; }
+      const t = target(), sc = t && !m.classList.contains('main') ? scroller(t) : null;
+      let show = false;
+      if (sc) { const nt = navTop(), bottom = Math.min(sc.getBoundingClientRect().bottom, nt), tt = t.getBoundingClientRect().top;
+        const nearEnd = sc.scrollTop + sc.clientHeight >= sc.scrollHeight - 40;
+        show = tt > bottom - 8 && !nearEnd; g.style.bottom = `${Math.round(innerHeight - nt + 10)}px`; }
+      g.hidden = !show;
+    };
+    g.onclick = () => { const t = target(); t?.scrollIntoView({ behavior: 'smooth', block: 'center' }); };
+    const iv = setInterval(tick, 300); addEventListener('scroll', tick, true); requestAnimationFrame(tick);
+  }
   function ask(html, danger) {
     return new Promise(res => { let done = false; const fin = v => { if (done) return; done = true; o.disconnect(); m.remove(); res(v); };
       const m = pop(`<div class="tr-ask">${html}</div><div class="tr-acts"><button class="tr-btn" data-n>취소</button><button class="tr-btn main ${danger ? 'danger' : ''}" data-y>확인</button></div>`, 'small');
