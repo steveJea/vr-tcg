@@ -39,3 +39,12 @@
 .yt-btns .yt-main{background:#f5c96a;color:#1a1a1a;border-color:#f5c96a}
 .yt-reward:empty{display:none}.yt-reward{margin-top:6px;padding:10px;border-radius:12px;background:rgba(245,201,106,.12);border:1px solid rgba(245,201,106,.4);text-align:center;color:#fde68a;font-weight:700}
 .yt-claim{margin-top:-2px;padding:8px;border-radius:12px;background:#f5c96a;color:#1a1a1a;font-weight:800;border:0}
+.yt-login{width:100%;margin-top:8px;padding:11px;border-radius:12px;background:linear-gradient(180deg,#fde68a,#f5c96a);color:#1a1a1a;font-weight:900;border:0}
+.yt-promo{display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;padding-top:6px}
+.yt-promo-img{width:min(62vw,240px);aspect-ratio:3/4;object-fit:cover;object-position:top;border-radius:18px;border:2px solid #f5c96a;box-shadow:0 0 30px rgba(232,121,249,.45);background:#000}
+.yt-promo-t{font-size:1.5rem;color:#f5c96a}
+.yt-promo p{margin:0;color:#f5d0fe;font-size:.9rem;line-height:1.4}
+.yt-promo ul{margin:2px 0;padding:0;list-style:none;color:#e4e4e7;font-size:.8rem;line-height:1.6}
+.yt-promo ul li::before{content:'✦ ';color:#f5c96a}
+.yt-promo-go{width:100%;background:#f5c96a;color:#1a1a1a;padding:13px;border-radius:14px;font-size:1.05rem;font-weight:900;border:0}
+.yt-promo-off{display:flex;align-items:center;gap:6px;color:#a1a1aa;font-size:.78rem}
