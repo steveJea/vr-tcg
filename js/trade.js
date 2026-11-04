@@ -227,9 +227,31 @@
   }
 
   // ---- 글 상세 (남의 글)
+  // ---- 글 상세: 물건마다 강화·능력치·옵션을 한 줄씩 (서버가 보관한 그대로: 인재 level·ex, 장비 plus·opts)
+  const PMUL = [1, 1.10, 1.20, 1.35, 1.50, 1.70];   // gear-core.js PLUS_MULT 와 같음
+  const exStars = (ex, max) => max ? `<span class="tr-ex">${'★'.repeat(Math.min(ex, max))}<i>${'☆'.repeat(Math.max(0, max - ex))}</i></span>` : '';
+  function cardRow(c) {
+    const m = cardOf(c.id), b = S()?.statsOf?.(c), g = gradeOf(c.id), ex = Math.max(0, c.ex | 0);
+    const st = b ? `<div class="tr-dstat"><span><i>전투력</i>${n(b.power)}</span><span><i>ATK</i>${n(b.ATK)}</span><span><i>HP</i>${n(b.HP)}</span><span><i>DEF</i>${n(b.DEF)}</span></div>` : '';
+    return `<div class="tr-det card g-${g}"><img src="${IMG}${c.id}.webp" alt="" loading="lazy"><div class="tr-dinfo">
+      <b><em class="tr-gr g-${g}">${g}</em>${esc(m?.name || c.id)}</b>
+      <div class="tr-dsub">Lv.${c.level || 1}${b?.cap ? `<i>/${b.cap}</i>` : ''} · 강화 EX ${ex}${b?.maxEx ? `/${b.maxEx}` : ''} ${exStars(ex, b?.maxEx)}</div>${st}
+      <small class="tr-dnote">장비는 함께 오지 않아요 · 능력치는 장비 빼고</small></div></div>`;
+  }
+  function gearRow(r) {
+    const d = defOf(r.def_id || r.def), T = window.VRGear?.txt, p = r.plus | 0;
+    const main = d ? `${T?.main?.(d) || ''}${p ? ` → <b>+${Math.round(+d.main_pct * (PMUL[p] || 1) * 10) / 10}%</b>` : ''}` : '';
+    const opts = (r.opts || []).map(o => `<span class="tr-opt">${esc(T?.opt?.(o) || `${o.opt} +${o.v}`)}</span>`).join('');
+    return `<div class="tr-det gear t-${d?.tier || 0}"><img src="${gearIcon(d)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'"><div class="tr-dinfo">
+      <b><em class="tr-gr t-${d?.tier || 0}">${TIER[d?.tier] || ''}</em>${esc(d?.name || '장비')}${p ? ` <span class="tr-plus">+${p}</span>` : ''}</b>
+      <div class="tr-dsub">강화 +${p}/5${d?.slot ? ` · ${({ weapon: '무기', armor: '방어구', acc: '장신구' })[d.slot] || d.slot}` : ''}</div>
+      ${main ? `<div class="tr-dmain">주 능력 ${main}</div>` : ''}${opts ? `<div class="tr-opts">${opts}</div>` : '<small class="tr-dnote">추가 옵션 없음</small>'}</div></div>`;
+  }
+  const detRows = (cards, gear) => (cards || []).map(x => cardRow(x.card || x)).join('') + (gear || []).map(x => gearRow(x.row || x)).join('');
+
   function detail(l, after) {
     const m = pop(`<div class="tr-head"><b>판매 글</b><span>${I('timer')}${left(l.expires_at)} · ${I('trade_offer')}제안 ${l.offers}</span></div>
-      <div class="tr-items big">${itemsHTML(l.cards, l.gear)}</div>${l.want ? `<div class="tr-want">${I('trade_want')}${esc(l.want)}</div>` : ''}<div class="tr-trend-w"></div>
+      <div class="tr-dets">${detRows(l.cards, l.gear)}</div>${l.want ? `<div class="tr-want">${I('trade_want')}${esc(l.want)}</div>` : ''}<div class="tr-trend-w"></div>
       <div class="tr-note">다른 사람의 제안 내용은 보이지 않아요</div>
       <div class="tr-acts">${l.my_offer ? '<button class="tr-btn" data-c>내 제안 취소</button>' : '<button class="tr-btn main" data-o>제안하기</button>'}</div>`.replace('<div class="tr-acts">', buyTxt(l) && !l.my_offer ? `<div class="tr-buybox"><div><b>⚡ 즉시 구매</b><span>${buyTxt(l)}</span></div><small>이 가격으로 바로 거래돼요. 판매자는 ${cfg.fee_pct || 10}% 수수료를 뺀 만큼 받아요</small><button class="tr-btn main tr-buy" data-buy>⚡ ${buyTxt(l)}에 바로 사기</button></div><div class="tr-acts">` : '<div class="tr-acts">'), '', ['exchange-post', '판매 글']);
     if ((l.cards?.length || 0) + (l.gear?.length || 0) === 1) trendLine(m.querySelector('.tr-trend-w'), l.cards?.length ? 'card' : 'gear', l.cards?.length ? l.cards[0].id : (l.gear[0].def_id || l.gear[0].def));

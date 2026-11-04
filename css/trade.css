@@ -161,3 +161,15 @@
 .tr-trend{display:flex;align-items:center;gap:6px;flex-wrap:wrap;width:100%;margin:8px 0;padding:8px 10px;border-radius:10px;background:rgba(127,211,255,.08);border:1px solid rgba(127,211,255,.2);color:inherit;font-size:13px;text-align:left}
 .tr-trend .tr-spark{width:60px;height:18px;margin:0 0 0 auto}.tr-trend i{font-style:normal;opacity:.6}.tr-trend.dim{opacity:.6;background:none;border-style:dashed}
 .tr-phead{display:flex;align-items:center;gap:8px;font-size:17px;margin:4px 0}
+
+/* 글 상세: 물건별 강화·능력치·옵션 */
+.tr-dets{display:flex;flex-direction:column;gap:8px;width:100%}
+.tr-det{display:flex;gap:10px;align-items:flex-start;padding:8px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);text-align:left}
+.tr-det>img{width:64px;flex:none;aspect-ratio:3/4;object-fit:cover;border-radius:8px;border:2px solid #52525b;background:#222}.tr-det.gear>img{aspect-ratio:1;object-fit:contain;padding:4px}
+.tr-dinfo{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;font-size:12px}.tr-dinfo>b{font-size:14px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.tr-gr{font-style:normal;font-size:10px;padding:1px 6px;border-radius:6px;background:#3f3f46}.tr-gr.g-UR{background:#b45309}.tr-gr.g-MR{background:#9d174d}.tr-gr.g-LR{background:#7c3aed}.tr-gr.g-SR{background:#1d4ed8}.tr-gr.g-HR{background:#047857}
+.tr-gr.t-4{background:#1d4ed8}.tr-gr.t-5{background:#7c3aed}.tr-plus{color:#fbbf24}
+.tr-dsub{opacity:.85}.tr-dsub i{font-style:normal;opacity:.6}.tr-ex{color:#fbbf24;letter-spacing:-1px}.tr-ex i{font-style:normal;opacity:.35}
+.tr-dstat{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}.tr-dstat span{display:flex;flex-direction:column;padding:3px 4px;border-radius:6px;background:rgba(0,0,0,.25);font-weight:700}.tr-dstat i{font-style:normal;font-size:9px;opacity:.6;font-weight:400}
+.tr-dmain{color:#7fd3ff}.tr-opts{display:flex;flex-wrap:wrap;gap:4px}.tr-opt{font-size:11px;padding:2px 6px;border-radius:6px;background:rgba(251,191,36,.12);color:#fde68a}
+.tr-dnote{opacity:.55;font-size:10px}
