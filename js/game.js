@@ -264,10 +264,7 @@ function startGame(story = null, at = null) {
   else startTurn(first);
   if (at?.tutorial) { const s0 = S; setTimeout(() => { if (S === s0 && !S.over) window.VRTutorial?.start(at.tutorial, { force: true }); }, 900); }   // 특강 가이드
 
-  twRescan();
 }
-// 아이폰 사파리: Tailwind CDN이 전투 화면을 한꺼번에 그릴 때 새 클래스 일부를 놓쳐 카드 그림이 원본 크기로 커졌음 → 전투 시작 뒤 몇 번 전체 다시 스캔
-function twRescan() { [300, 1200, 3000].forEach(ms => setTimeout(() => { try { if (window.tailwind) window.tailwind.config = { ...(window.tailwind.config || {}) }; } catch {} }, ms)); }
 /** 3-2 VS 인트로 (BFX): 양쪽 대표 카드(리더 → 가장 강한 카드) 0.85초, 탭하면 바로 넘김. 연출 스킵·모션 줄이기면 없음 */
 function vsIntro() {
   if (!BFX() || FX_OFF() || REDUCED() || window.TCG_NO_VS || !S.story || S.story?.tutorial || S.tutorial) return null;   // 아케이드는 끔 (사용자 요청), 탑 등 kickoff 없는 스토리 계열만
