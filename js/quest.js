@@ -203,7 +203,7 @@
     if (!unlocked(n)) return;
     const can = QUEST_HOOKS.canChallenge(n); if (!can.ok) { api.toast(can.reason || '지금은 도전할 수 없어요'); return; }
     if (!deckOk()) return;
-    api.pickDeck(g.enemies, list => battle(n, list), () => render(), `🗼 ${esc(tName())} ${n}층 · ${g.bossCard ? `👑 보스 ${esc(g.bossCard.name)} + 부하 5장 (진영 HP ${fmt(towerBossHp(n))})` : `적 5장 (리더 ⚡ ${fmt(g.leader?.power)})`}${tCls() ? `<br><b class="text-amber-300">${EL[tCls()]} 속성 인재만 출전할 수 있어요</b>` : ''}`, party());
+    api.pickDeck(g.enemies, list => battle(n, list), () => render(), `🗼 ${esc(tName())} ${n}층 · ${g.bossCard ? `👑 보스 ${esc(g.bossCard.name)} + 부하 5장 (진영 HP ${fmt(towerBossHp(n))})` : `적 5장 (리더 ⚡ ${fmt(g.leader?.power)})`}${tCls() ? `<br><b class="text-amber-300">${EL[tCls()]} 속성 인재만 출전할 수 있어요</b>` : ''}`, party(), { mode: 'tower' });
   }
 // AUTO·X2 로 빨리 끝나도 서버 최소 전투 시간(_quest_min_secs 5초)을 채운 뒤 기록 → 'too fast' 방지. 서버 검사는 그대로
   const MIN_BATTLE_MS = 5600; let startedAt = 0;
@@ -264,7 +264,7 @@
   async function sweep() {
     if (!deckOk()) return;
     const api = A(), c = tCls(), deck = (api.lastDeck?.() || []).filter(o => !c || api.card(o.id)?.class === c);
-    if (!deck.length) { api.toast('출전 인재를 먼저 골라 주세요'); return api.pickDeck([], list => runSweep(list), () => render(), `${SW()} 소탕에 쓸 덱${tCls() ? ` · ${EL[tCls()]} 속성만` : ''}`, party(), { noLend: true }); }
+    if (!deck.length) { api.toast('출전 인재를 먼저 골라 주세요'); return api.pickDeck([], list => runSweep(list), () => render(), `${SW()} 소탕에 쓸 덱${tCls() ? ` · ${EL[tCls()]} 속성만` : ''}`, party(), { noLend: true, mode: 'tower' }); }
     runSweep(deck);
   }
   async function runSweep(list) {

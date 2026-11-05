@@ -1073,3 +1073,46 @@ body.gnb-on:not(.gnb-hidden) #story-screen { --wrap-pb: 12px; }   /* 하단 메�
 .mp-cosmo .ui-btn-ic{width:16px;height:16px;margin-right:4px;vertical-align:-.25em}
 #bset-btn .ui-btn-ic{width:22px;height:22px;display:block;margin:auto}
 #bset-btn{display:inline-flex;align-items:center;justify-content:center;padding:0}
+
+/* ===== 2026-11-05 batch: 탑·스토리 전투 하단 4버튼 · 턴 바 얇게 · 보스 왕관 축소 ===== */
+#game.story-field #my-turns-pips { margin-top: 1px !important; }
+#game.story-field #my-turns-pips i { height: 2px; }
+/* act-buff 가 hud-btns 로 옮겨진 스토리·탑만 4열 */
+#game.story-field .hud-btns:has(#act-buff) {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px;
+  width: 100%; max-width: none; min-width: 0; flex: 1 1 100%; margin-top: 4px;
+}
+#game.story-field #me-dock:has(.hud-btns #act-buff) > div:first-child { flex-wrap: wrap; align-items: stretch; }
+#game.story-field #me-dock:has(.hud-btns #act-buff) #me-hero { flex: 1 1 100%; }
+#game.story-field .hud-btns:has(#act-buff) > #reserve-btn,
+#game.story-field .hud-btns:has(#act-buff) > #attack-all,
+#game.story-field .hud-btns:has(#act-buff) > #end-turn,
+#game.story-field .hud-btns:has(#act-buff) > #story-giveup,
+#game.story-field .hud-btns:has(#act-buff) > #act-buff { grid-column: auto; width: 100%; min-width: 0; padding: 8px 4px; font-size: 12px; justify-content: center; }
+#game.story-field .hud-btns:has(#act-buff) > #story-giveup { display: inline-flex; align-items: center; justify-content: center; gap: 2px; }
+#game.story-field .hud-btns:has(#act-buff) > #story-giveup .gu-t { display: inline; }
+#game.story-field .hud-btns > #act-buff { height: auto; flex-direction: row; gap: 2px; line-height: 1.1; }
+#game.story-field .hud-btns > #act-buff .ui-ic { width: 16px; height: 16px; }
+#game.story-field .hud-btns > #act-buff > span.text-sky-300,
+#game.story-field .hud-btns > #act-buff .reason { display: none; }
+#game.story-field .hud-btns > #act-buff .act-buff-lbl { display: none; }
+#game.story-field .hud-btns > #act-buff::after { content: '공업'; font-weight: 800; }
+#game.story-field #action-bar.act-row:not(:has(.act-btn:not(.hidden))) { display: none; }
+@media (max-width: 480px) {
+  #game.story-field .hud-btns:has(#act-buff) > #attack-all,
+  #game.story-field .hud-btns:has(#act-buff) > #end-turn,
+  #game.story-field .hud-btns:has(#act-buff) > #story-giveup,
+  #game.story-field .hud-btns:has(#act-buff) > #act-buff { font-size: 11px; padding: 7px 2px; }
+}
+
+
+#game.story-field .hud-btns:has(#act-buff) { max-width: none !important; width: 100% !important; min-width: 0 !important; }
+@media (max-width: 480px) {
+  #game.story-field .hud-btns:has(#act-buff) { width: 100% !important; max-width: none !important; }
+  #game.story-field .hud-btns:has(#act-buff) .gu-t { display: inline !important; }
+}
+
+/* 탑 층 미리보기 보스 왕관: 얼굴 가리지 않게 오른쪽 위 작게 */
+.q-lead { position: absolute; top: 1px; right: 1px; font-size: 10px; line-height: 0; z-index: 2; pointer-events: none; filter: drop-shadow(0 0 2px #000); }
+.q-lead .ui-ic { width: 12px !important; height: 12px !important; vertical-align: top; }
+.q-lv { top: 15px; }

@@ -210,3 +210,6 @@ body:has(#game:not(.hidden)) #gn-btn,body:has(#story-dlg) #gn-btn{display:none}
 .tr-down i{width:0;height:0;border-left:14px solid transparent;border-right:14px solid transparent;border-top:15px solid #f5c96a;filter:drop-shadow(0 0 4px rgba(245,201,106,.8))}
 @keyframes tr-bob{0%,100%{transform:translate(-50%,0)}50%{transform:translate(-50%,6px)}}
 @media (prefers-reduced-motion:reduce){.tr-down{animation:none}}
+
+/* 마켓 카드: 올린 사람 닉네임 */
+.tr-gc-seller{display:block;margin-top:2px;font-size:10px;font-weight:700;color:#fde68a;opacity:.9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
