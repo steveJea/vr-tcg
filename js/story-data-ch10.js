@@ -1798,13 +1798,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "내레이션",
-      "text": "계단을 한 칸씩 내려갔다. 차가운 바닥이 맨발에 닿았다.",
+      "text": "계단을 한 칸씩 내려갔다. 차가운 바닥이 맨발에 닿았다. 시계 소리만 들렸다. 똑딱. 똑딱.",
       "image": "img/story/ch10-15-1.webp"
-     },
-     {
-      "speaker": "내레이션",
-      "text": "시계 소리만 들렸다. 똑딱. 똑딱.",
-      "image": "img/story/ch10-15-2.webp"
      },
      {
       "speaker": "최윤희",
@@ -1815,7 +1810,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "내레이션",
-      "text": "거실. 두 사람은 거기 있었다. 서로를 감싸듯 나란히, 다시는 일어나지 않을 모습으로."
+      "text": "거실. 두 사람은 거기 있었다. 서로를 감싸듯 나란히, 다시는 일어나지 않을 모습으로.",
+      "image": "img/story/ch10-15-2.webp"
      },
      {
       "speaker": "내레이션",
