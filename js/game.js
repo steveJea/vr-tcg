@@ -361,7 +361,7 @@ function summon(who, card) {
 }
 /** 같은 턴 소환 무르기: 소환 직후 상태 서명 (마나·양측 HP/상태·필드 구성). 소환 뒤 무엇이든 바뀌면(패시브·버프 발동, 공격, 스킬 등) 무르기 불가 */
 function undoSig() {
-  const f = p => p.field.map(x => `${x.uid}:${x.hp}:${x.maxHp}:${x.atk ?? ''}:${x.def ?? ''}:${JSON.stringify(x.st || {})}`).join('|');
+  const f = p => p.field.map(x => `${x.uid}:${x.hp}:${x.maxHp}:${x.atk ?? ''}:${x.def ?? ''}:${JSON.stringify(x.st || {}, (k, v) => k && v && typeof v === 'object' && v.uid != null ? `u${v.uid}` : v)}`).join('|');
   return [S.me.mana, S.me.hp, S.ai.hp, S.me.hand.length, f(S.me), f(S.ai), S.turnNo].join('#');
 }
 function canUndoSummon(unit) {
@@ -1593,6 +1593,18 @@ function cardHTML(c, { hp, size = 'md', dim = false } = {}) {
 }
 
 // ===== DOM 차이 반영 (깜빡임 방지): 같은 자리의 같은 태그면 속성·글자만 고치고, 카드는 data-uid 로 짝을 맞춤 =====
+/** 다시 그리기 줄이기: 같은 카드(uid)의 새 모습(클래스+내용)이 지난번과 같고, 그 사이 다른 코드가 건드리지 않았으면 내용 만들기·비교를 건너뜀 */
+function sameCheck(w, container) {
+  const sig = w.className + '\u0001' + w.__h; w.__sig = sig;
+  const cur = container && [...container.children].find(el => el.dataset.uid === String(w.dataset.uid));
+  if (cur && cur.__sig === sig && cur.className === w.className && cur.__len === cur.innerHTML.length && (cur.getAttribute('style') || '') === (cur.__style || '')) w.__same = true;
+  else w.innerHTML = w.__h;   // 바뀐 카드만 HTML 만들기
+}
+function stampSigs(o, n) {
+  const m = new Map([...n.childNodes].filter(x => x.__sig).map(x => [String(x.dataset.uid), x.__sig]));
+  for (const el of o.children) { const sg = m.get(el.dataset.uid); if (sg == null) continue; el.__sig = sg; el.__len = el.innerHTML.length; el.__style = el.getAttribute('style') || ''; }
+}
+function restampLen(...bs) { for (const b of bs) if (b) for (const el of b.children) if (el.__sig) el.__len = el.innerHTML.length; }
 function morphNode(o, n) {
   if (o.nodeType !== n.nodeType || o.nodeName !== n.nodeName || (o.nodeType === 1 && (o.dataset.uid || '') !== (n.dataset.uid || ''))) { o.replaceWith(n); return n; }
   if (o.nodeType === 3 || o.nodeType === 8) { if (o.nodeValue !== n.nodeValue) o.nodeValue = n.nodeValue; return o; }
@@ -1607,6 +1619,7 @@ function morphChildren(o, n) {
     let cur = o.childNodes[i];
     const k = nc.nodeType === 1 && nc.dataset.uid;
     if (k && keyed.has(k) && keyed.get(k) !== cur) { const m = keyed.get(k); o.insertBefore(m, cur || null); cur = m; }   // 카드 순서가 바뀌어도 같은 노드 재사용
+    if (nc.__same && cur === keyed.get(k)) return;   // 바뀐 게 없는 카드: 그대로 둠 (다시 그리기 생략)
     if (!cur) o.appendChild(nc); else morphNode(cur, nc);
   });
   while (o.childNodes.length > want.length) o.lastChild.remove();
@@ -1751,7 +1764,7 @@ function render() {
       const sts = statusIcons(u);
       const skReady = who === 'me' && myTurn && u.sk.some(s => skillState(u, s).ok);
       const icons = [u.items?.weapon && icOf(ITEMS.weapon), u.items?.armor && icOf(ITEMS.armor), ...u.skills.map(k => icOf(SKILLS[k]))].filter(Boolean);
-      w.innerHTML = `<div class="relative ${hero ? 'hero-card' : ''}">${cardHTML(u.card, { hp: u.hp, size: 'sm', dim: who === 'me' && !u.canAttack && myTurn })}${statusDecor(u)}` +
+      w.__h = `<div class="relative ${hero ? 'hero-card' : ''}">${cardHTML(u.card, { hp: u.hp, size: 'sm', dim: who === 'me' && !u.canAttack && myTurn })}${statusDecor(u)}` +
         `<div class="lv-badge absolute -top-1.5 left-1/2 -translate-x-1/2 px-1.5 rounded-full ${hero ? 'bg-gradient-to-r from-yellow-300 to-amber-500 shadow-[0_0_8px_#fbbf24]' : u.level > 1 ? 'bg-amber-400' : 'bg-zinc-600 text-white'} text-black text-[9px] md:text-[10px] font-black whitespace-nowrap">${hero ? ic('crown', { cls: 'ui-ic-sm' }) + ' ' : ''}Lv${u.level}</div>` +
         (icons.length ? `<div class="item-icons absolute top-7 right-0.5 flex flex-col text-[11px] md:text-sm leading-tight drop-shadow">${icons.map(x => `<span>${x}</span>`).join('')}</div>` : '') +
         (sts.length ? `<div class="status-icons absolute top-7 left-0.5 flex flex-col text-[11px] md:text-sm leading-tight drop-shadow">${sts.map(x => { const big = isStatusFxKind(x.kind), au = big && statusIconUrl(x.kind); return `<span title="${x.title}"${big ? ` class="st-big ${x.kind}"` : ''}>${au ? `<img class="st-asset" src="${au}" alt="">` : icOf(x)}${x.t > 0 ? `<b class="st-turns">${x.t}</b>` : ''}</span>`; }).join('')}</div>` : '') + `</div>` +
@@ -1769,17 +1782,18 @@ function render() {
         const pct = u.maxHp ? Math.max(0, Math.min(100, u.hp / u.maxHp * 100)) : 0;
         w.className += ' base-unit';
         const gw = u.guard ? guardWait(u, S[who]) : 0;
-        w.innerHTML = (u.guard ? `<div class="boss-crown" title="수비대장: 진영이 무너지기 전엔 쓰러지지 않아요">${ic('def', { alt: '수비대장' })}</div>` : `<div class="boss-crown" title="보스: 진영 안에 있어 공격할 수 없고 쓰러지지 않아요">${ic('crown', { alt: '보스' })}</div>`) +
+        w.__h = (u.guard ? `<div class="boss-crown" title="수비대장: 진영이 무너지기 전엔 쓰러지지 않아요">${ic('def', { alt: '수비대장' })}</div>` : `<div class="boss-crown" title="보스: 진영 안에 있어 공격할 수 없고 쓰러지지 않아요">${ic('crown', { alt: '보스' })}</div>`) +
           `<div class="base-ring relative ${rarityOf(u.card).cls}" data-grade="${rarityOf(u.card).short}"><img src="${cardThumb(u.card.id)}" data-id="${u.card.id}" class="card-img base-img" alt="${u.card.name}">${statusDecor(u)}` +
           (sts.length ? `<div class="status-icons base-sts">${sts.map(x => { const big = isStatusFxKind(x.kind), au = big && statusIconUrl(x.kind); return `<span title="${x.title}"${big ? ` class="st-big ${x.kind}"` : ''}>${au ? `<img class="st-asset" src="${au}" alt="">` : icOf(x)}</span>`; }).join('')}</div>` : '') +
           `<div class="lv-badge base-lv">Lv${u.level}</div></div>` +
           `<div class="base-name">${u.card.name}</div>` + (u.guard && who === 'me' ? `<div class="base-tag">${guardSwapPool(S[who]).length ? (gw ? `교체 ${gw}턴 뒤` : '교체 가능') + (ready ? ' · ' : '') : ''}${ready ? '공격 가능' : ''}</div>` : '') +
           (S[who].noBase ? `<div class="hp-bar h-1.5 bg-white/10 rounded-full mt-0.5 overflow-hidden" title="HP ${u.hp}/${u.maxHp}"><div class="hp-ghost" style="width:${hpPrev.get(String(u.uid)) ?? pct}%"></div><div class="hp-fill h-full bg-red-500" data-to="${pct}" style="width:${hpPrev.get(String(u.uid)) ?? pct}%"></div></div>` : baseHpBar(S[who])) +   // 진영 칸 = 진영: 수비대장 HP 대신 진영 HP
           `<div class="mp-bar h-1.5 bg-white/10 rounded-full mt-0.5 overflow-hidden" title="MP ${u.mp}/${u.maxMp} (+${u.mpRegen}/턴)"><div class="h-full bg-blue-500" style="width:${u.maxMp ? Math.min(100, u.mp / u.maxMp * 100) : 0}%"></div></div>`;
-        nbb.appendChild(w);
-      } else nb.appendChild(w);
+        sameCheck(w, bossBox); nbb.appendChild(w);
+      } else { sameCheck(w, box); nb.appendChild(w); }
     });
-    const flip = !FX_OFF() && !REDUCED() && fieldSeen[who] ? new Map([...box.children].map(el => [el.dataset.uid, el.getBoundingClientRect().left])) : null;   // #4 남은 카드가 빈자리로 미끄러지게 (위치 기억)
+    const oldOrder = [...box.children].map(el => el.dataset.uid || '').join(','), newOrder = [...nb.childNodes].map(el => (el.dataset && el.dataset.uid) || '').join(',');
+    const flip = !FX_OFF() && !REDUCED() && fieldSeen[who] && oldOrder !== newOrder ? new Map([...box.children].map(el => [el.dataset.uid, el.getBoundingClientRect().left])) : null;   // #4 남은 카드가 빈자리로 미끄러지게 (위치 기억)
     morphChildren(box, nb); if (bossBox) morphChildren(bossBox, nbb);
     if (flip) for (const el of box.children) { const x0 = flip.get(el.dataset.uid); if (x0 == null) continue; const dx = x0 - el.getBoundingClientRect().left; if (Math.abs(dx) > 2) el.animate?.([{ translate: `${dx}px 0` }, { translate: '0 0' }], { duration: 260, easing: 'cubic-bezier(.2,.8,.3,1)' }); }
     { // 새로 나온 카드: 위에서 살짝 떨어지며 등장 (보이는 것만 · 전투 첫 그리기·연출 끄기면 없음)
@@ -1788,22 +1802,30 @@ function render() {
       fieldSeen[who] = now; }
     for (const [uid, fn] of binds) { const el = (box.querySelector(`[data-uid="${uid}"]`) || bossBox?.querySelector(`[data-uid="${uid}"]`)); if (el) fn(el); }
     fixImages(box); if (bossBox) fixImages(bossBox);
-    requestAnimationFrame(() => [...box.querySelectorAll('.hp-fill'), ...(bossBox ? bossBox.querySelectorAll('.hp-fill') : [])].forEach(f => { f.style.width = f.dataset.to + '%'; const g = f.previousElementSibling; if (g?.classList.contains('hp-ghost')) g.style.width = f.dataset.to + '%';   /* 잔상 바: CSS 로 늦게 따라옴 */ hpPrev.set(f.closest('[data-uid]').dataset.uid, +f.dataset.to); }));
+    stampSigs(box, nb); if (bossBox) stampSigs(bossBox, nbb);
+    requestAnimationFrame(() => [...box.querySelectorAll('.hp-fill'), ...(bossBox ? bossBox.querySelectorAll('.hp-fill') : [])].forEach(f => { const to = f.dataset.to + '%'; if (f.style.width !== to) f.style.width = to; const g = f.previousElementSibling; if (g?.classList.contains('hp-ghost') && g.style.width !== to) g.style.width = to;   /* 잔상 바: CSS 로 늦게 따라옴 */ hpPrev.set(f.closest('[data-uid]').dataset.uid, +f.dataset.to); }) || restampLen(box, bossBox));
   }
 
   closeStaleHandDetail();   // 손패 카드 상세가 떠 있는데 그 카드가 손패에서 빠졌으면(소환·회수·자동·이벤트 등 어떤 경로든) 닫기
-  const hand = $('me-hand'); hand.innerHTML = '';
+  const hand = $('me-hand');
   renderSortBar();
-  sortedHand(S.me.hand).forEach(c => {
-    const w = document.createElement('div');
-    const ok = myTurn && canSummon(c, S.me, S.ai).ok;
-    w.className = `hand-card shrink-0 cursor-pointer transition hover:-translate-y-2 ${ok ? '' : 'opacity-60'}`;
-    w.dataset.id = c.id;
-    w.innerHTML = cardHTML(c);
-    w.onclick = () => showDetail(c, { fromHand: true });
-    hand.appendChild(w);
-  });
-  fixImages(hand);
+  const hcs = sortedHand(S.me.hand).map(c => { const ok = myTurn && canSummon(c, S.me, S.ai).ok; return { c, cls: `hand-card shrink-0 cursor-pointer transition hover:-translate-y-2 ${ok ? '' : 'opacity-60'}`, html: cardHTML(c) }; });
+  const hsig = hcs.map(h => h.c.id + '|' + h.cls + '|' + h.html).join('\n');
+  if (hand.__sig === hsig && hand.childElementCount === hcs.length && hand.__len === hand.innerHTML.length) {   // 손패가 그대로면 다시 만들지 않고 눌렀을 때 카드만 최신으로
+    hcs.forEach((h, i) => { hand.children[i].onclick = () => showDetail(h.c, { fromHand: true }); });
+  } else {
+    hand.innerHTML = '';
+    hcs.forEach(h => {
+      const w = document.createElement('div');
+      w.className = h.cls;
+      w.dataset.id = h.c.id;
+      w.innerHTML = h.html;
+      w.onclick = () => showDetail(h.c, { fromHand: true });
+      hand.appendChild(w);
+    });
+    fixImages(hand);
+    hand.__sig = hsig; hand.__len = hand.innerHTML.length;
+  }
   // 상대 손패는 비공개라 썸네일 표시 안 함 (장수만 ai-handcount)
 }
 
@@ -1823,6 +1845,7 @@ function sortedHand(hand) {
 }
 function renderSortBar() {
   const bar = $('hand-sort'); if (!bar) return;
+  if (bar.__sort === handSort && bar.childElementCount) return; bar.__sort = handSort;   // 정렬이 그대로면 버튼 다시 만들지 않음
   bar.innerHTML = '<span class="text-zinc-400 mr-1">정렬</span>' + Object.entries(SORTS).map(([k, v]) =>
     `<button data-sort="${k}" class="px-2 py-0.5 rounded-full border ${k === handSort ? 'bg-emerald-600 border-emerald-400 text-white' : 'bg-zinc-800 border-white/15 text-zinc-300'}">${v}</button>`).join('');
   bar.querySelectorAll('[data-sort]').forEach(b => b.onclick = () => { handSort = b.dataset.sort; localStorage.setItem(SORT_KEY, handSort); render(); });
