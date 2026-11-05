@@ -745,26 +745,57 @@ function dmgNumber(el, text, color, html = false, extra = '') {
   d.addEventListener('animationend', () => d.remove(), { once: true }); setTimeout(() => d.remove(), 1800);   // 천천히 사라짐 (CSS fxDmg 1.3s · 크리 1.5s)
 }
 
-/** 공격자를 대상 쪽으로 돌진(getBoundingClientRect 차이 → transform). back()으로 제자리 복귀 */
+/** 공격자를 대상 쪽으로 돌진(getBoundingClientRect 차이 → translate3d). back()으로 제자리 복귀.
+ *  CSS transition+setTimeout 중간 갈아끼우기는 아이폰에서 1~2프레임만 나와 워프처럼 보임
+ *  → Web Animations(translate3d)로 한 번에, 아이폰은 최소 시간 보장. */
+const IS_IOS = () => document.documentElement.classList.contains('ios');
+const lungeMs = ms => {
+  const v = fxMs(ms);
+  // 아이폰: FX_SPEED(0.4)만 쓰면 돌진 ~60ms → 프레임 거의 없음. 설계값의 75%는 확보
+  return IS_IOS() ? Math.max(v, Math.round(ms * 0.75)) : v;
+};
+function lungeAnim(el, from, to, ms, easing) {
+  const dur = Math.max(1, ms | 0);
+  if (typeof el.animate === 'function') {
+    const anim = el.animate(
+      [{ transform: from }, { transform: to }],
+      { duration: dur, easing, fill: 'forwards' }
+    );
+    return anim.finished.then(
+      () => { try { anim.commitStyles(); } catch { el.style.transform = to; } try { anim.cancel(); } catch {} },
+      () => { try { el.style.transform = to; anim.cancel(); } catch { el.style.transform = to; } }
+    );
+  }
+  el.style.transition = `transform ${dur}ms ${easing}`;
+  el.style.transform = to;
+  return sleep(dur);
+}
 async function lunge(el, targetEl) {
   if (!el || !targetEl || FX_OFF()) return { back: async () => {} };
   const a = el.getBoundingClientRect(), b = targetEl.getBoundingClientRect();
   const dx = (b.left + b.width / 2) - (a.left + a.width / 2);
   const dy = (b.top + b.height / 2) - (a.top + a.height / 2);
   const k = 0.78;
+  const pull = REDUCED() ? 0.06 : 0.13, ps = REDUCED() ? 1.06 : 0.96;
+  const wind = lungeMs(90), dash = lungeMs(150), backMs = lungeMs(160);
+  const id0 = 'translate3d(0px, 0px, 0) scale(1)';
+  const prep = `translate3d(${(dx * -pull).toFixed(1)}px, ${(dy * -pull).toFixed(1)}px, 0) scale(${ps})`;
+  const hit = `translate3d(${(dx * k).toFixed(1)}px, ${(dy * k).toFixed(1)}px, 0) scale(1.1)`;
   el.classList.add('fx-attacker');
-  el.style.transition = `transform ${fxMs(90)}ms ease-out`;
-  el.style.transform = REDUCED() ? `translate(${dx * -0.06}px, ${dy * -0.06}px) scale(1.06)` : `translate(${dx * -0.13}px, ${dy * -0.13}px) scale(.96)`;   // 폴리시3 (a): 살짝 뒤로 당겼다가 (같은 90ms) → 돌진
-  await sleep(fxMs(90));
-  el.style.transition = `transform ${fxMs(150)}ms cubic-bezier(.5,0,1,1)`;
-  el.style.transform = `translate(${dx * k}px, ${dy * k}px) scale(1.1)`;
-  await sleep(fxMs(150));
+  el.style.willChange = 'transform';
+  el.style.transition = 'none';
+  // 선택 해제 때 -translate-y-2 가 빠지며 살짝 뛰어 보이는 것 방지: 현재 합성 transform에서 시작
+  const cur = getComputedStyle(el).transform;
+  const from0 = (!cur || cur === 'none') ? id0 : cur;
+  await lungeAnim(el, from0, prep, wind, 'ease-out');
+  if (!el.isConnected) return { back: async () => {} };
+  await lungeAnim(el, prep, hit, dash, 'cubic-bezier(.5, 0, 1, 1)');
   return {
     back: async () => {
-      el.style.transition = `transform ${fxMs(160)}ms ease-out`;
-      el.style.transform = '';
-      await sleep(fxMs(160));
-      el.classList.remove('fx-attacker'); el.style.transition = '';
+      if (!el.isConnected) return;
+      await lungeAnim(el, hit, id0, backMs, 'ease-out');
+      el.classList.remove('fx-attacker');
+      el.style.transition = ''; el.style.transform = ''; el.style.willChange = '';
     }
   };
 }
@@ -835,7 +866,10 @@ async function attack(who, unit, target, fromBatch = false) {
 /** 안전장치: 연출 promise 타임아웃, 남은 연출 정리, 오류 기록 */
 function withTimeout(pr, ms) { return Promise.race([pr, new Promise(r => setTimeout(r, ms))]); }
 function resetAnim(el) {
-  for (const x of [el, ...document.querySelectorAll('.fx-attacker')]) if (x) { x.classList.remove('fx-attacker'); x.style.transform = ''; x.style.transition = ''; }
+  for (const x of [el, ...document.querySelectorAll('.fx-attacker')]) if (x) {
+    try { x.getAnimations?.().forEach(a => a.cancel()); } catch {}
+    x.classList.remove('fx-attacker'); x.style.transform = ''; x.style.transition = ''; x.style.willChange = '';
+  }
 }
 function reportError(where, err) {
   console.error(`[TCG] ${where}`, err);

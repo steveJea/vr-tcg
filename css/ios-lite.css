@@ -22,3 +22,8 @@ html.ios .bfx #game.bfx-low::before { box-shadow: none; border: 2px solid rgba(2
   will-change: opacity; }
 /* 선택된 카드·드래그 중 카드의 빛은 짧게만 쓰여서 그대로 둠 */
 html.ios #game .card-frame > .cosmo-bdr{display:none!important}
+
+/* 돌진 중: 상태 흔들림·히트 필터를 끄고 GPU 레이어만 유지 (움직임 = transform) */
+html.ios .fx-attacker, html.ios .fx-attacker > .relative { animation: none !important; filter: none !important; }
+html.ios .fx-attacker { will-change: transform; }
+html.ios .fx-hitflash { filter: none !important; outline: 2px solid rgba(255,255,255,.9); box-shadow: 0 0 12px 2px rgba(255,255,255,.55) !important; }
