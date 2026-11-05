@@ -73,3 +73,7 @@
 .mp-deck-go{cursor:pointer}.mp-deck-go:active{opacity:.75}
 
 .mp-nick-edit{margin-left:auto;padding:5px 10px;border-radius:8px;border:1px solid rgba(251,191,36,.45);background:rgba(0,0,0,.3);color:#fde68a;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap}
+
+.mp-who{flex-wrap:wrap;gap:6px}
+.mp-who .cosmo-chip{flex:1;min-width:0}
+.mp-av{/* kept for guest */}

@@ -86,7 +86,8 @@
     pvp: { th: ['점수', '승/패'], td: r => [r.rating, `${r.wins}/${r.losses}`], note: () => '이번 시즌 PvP 점수 기준이에요 · 매주 새 시즌' },
     story: { th: ['진행'], td: r => [`${r.ch}-${r.ph}`], note: () => '깬 곳 중 가장 먼 챕터-페이즈예요 (예: 9-15 = 9챕터 15페이즈)' },
   };
-  const row2 = (sp, r, nm) => `<tr class="${r.me ? 'me' : ''}"><td>${medal(r.rank)}</td><td class="nm">${esc(nm ?? r.name)}${r.me && nm == null ? ' (나)' : ''}</td>${sp.td(r).map(v => `<td>${esc(v)}</td>`).join('')}</tr>`;
+  const nmCell = (r, nm) => { const label = (nm ?? r.name) + (r.me && nm == null ? ' (나)' : ''); const t = r.title_name || ''; return window.VRCosmo ? `${esc(label)}${t ? `<i class="cosmo-ttl t-${esc(r.title || '')}"> ${esc(t)}</i>` : ''}` : esc(label); };
+  const row2 = (sp, r, nm) => `<tr class="${r.me ? 'me' : ''}"><td>${medal(r.rank)}</td><td class="nm">${nmCell(r, nm)}</td>${sp.td(r).map(v => `<td>${esc(v)}</td>`).join('')}</tr>`;
   async function loadOther(cur, tok) {
     const sp = SPEC[main];
     $('.rn').textContent = sp.note();

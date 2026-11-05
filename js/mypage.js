@@ -166,10 +166,16 @@
     body.innerHTML = '<div class="mp-note">…</div>';
     const ctx = await gather();
     const meta = ctx.user.user_metadata || {};
-    body.innerHTML = `<div class="mp-who">${meta.avatar_url ? `<img src="${esc(meta.avatar_url)}" referrerpolicy="no-referrer" alt="" class="mp-av" onerror="this.src='img/ui/profile.webp'">` : '<img src="img/ui/profile.webp" alt="" class="mp-av">'}<b class="mp-nick">${esc(cloud()?.profile?.nickname || meta.name || meta.full_name || (ctx.user.email || '').split('@')[0] || '플레이어')}</b><button id="mp-nick-edit" class="mp-nick-edit" type="button">닉네임 변경${cloud()?.profile?.nick_set ? ' <small>🔮200</small>' : ''}</button></div>`
+    const nick = cloud()?.profile?.nickname || meta.name || meta.full_name || (ctx.user.email || '').split('@')[0] || '플레이어';
+    const cos = await window.VRCosmo?.status?.();
+    const eq = cos?.equipped || {};
+    const whoChip = window.VRCosmo?.chip?.({ name: nick, title: eq.title, title_name: window.VRCosmo.titleName?.(eq.title), frame: eq.frame, avatar: meta.avatar_url })
+      || `<img src="${meta.avatar_url ? esc(meta.avatar_url) : 'img/ui/profile.webp'}" referrerpolicy="no-referrer" alt="" class="mp-av" onerror="this.src='img/ui/profile.webp'"><b class="mp-nick">${esc(nick)}</b>`;
+    body.innerHTML = `<div class="mp-who">${whoChip}<button id="mp-cosmo" class="mp-cosmo" type="button">꾸미기</button><button id="mp-nick-edit" class="mp-nick-edit" type="button">닉네임 변경${cloud()?.profile?.nick_set ? ' <small>🔮200</small>' : ''}</button></div>`
       + sections.map(s => { let h = ''; try { h = s.render(ctx) || ''; } catch (e) { console.warn('[mypage] section', s.id, e); }
         return h ? `<section class="mp-sec" data-sec="${s.id}">${s.title ? `<h3>${s.title}</h3>` : ''}${h}</section>` : ''; }).join('');
-    const ne = $('mp-nick-edit'); if (ne) ne.onclick = async () => { const n = await cloud()?.askNickname?.(); if (n) { const b = body.querySelector('.mp-nick'); if (b) b.textContent = n; } };
+    const ne = $('mp-nick-edit'); if (ne) ne.onclick = async () => { const n = await cloud()?.askNickname?.(); if (n) { const b = body.querySelector('.cosmo-nm, .mp-nick'); if (b) b.textContent = n; } };
+    const cb = $('mp-cosmo'); if (cb) cb.onclick = () => window.VRCosmo?.open?.();
     const lb = $('mp-leader'); if (lb) movieFor(lb.dataset.id).then(u => bindLeaderVideo(lb, u));
     return ctx;
   }
