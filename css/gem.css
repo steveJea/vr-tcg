@@ -129,3 +129,17 @@
 .ach-tier{display:flex;align-items:center;gap:8px;padding:6px 4px;border-radius:8px;background:rgba(0,0,0,.2)}
 .ach-tier.done{opacity:.55}.ach-tier.ready{background:rgba(251,191,36,.1)}
 .ach-tt{flex:1;min-width:0;font-size:12px}.ach-tt small{display:block;color:#fcd34d;font-size:11px}
+
+/* 🎁 방치 보상 상자 (js/idle-box.js) */
+.main-idle{flex:none}.main-cur:empty+.main-idle{margin-left:auto}.main-idle+.main-ach,.main-idle+.main-daily{margin-left:0!important}
+.main-idle .story-mailbtn{min-height:34px}
+.idle-panel{max-height:86vh;overflow:auto;text-align:left;min-width:min(380px,92vw)}
+.idle-bar-wrap{margin:4px 0 10px}.idle-bar-wrap small{display:block;margin-top:4px;color:#a1a1aa;font-size:11px}
+.idle-bar{height:8px}
+.idle-got{padding:10px;border-radius:10px;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.35);color:#fde68a;font-size:14px;font-weight:700;text-align:center;margin-bottom:6px}
+.idle-rate{font-size:11px;color:#a1a1aa;text-align:center;margin-bottom:8px}
+.idle-boost{margin-top:12px;padding:10px;border-radius:10px;background:rgba(168,85,247,.12);border:1px solid rgba(192,132,252,.35)}
+.idle-boost-h{display:flex;align-items:center;gap:8px;margin-bottom:4px;font-size:13px;color:#e9d5ff}.idle-boost-h small{margin-left:auto;color:#a1a1aa;font-weight:500}
+.idle-boost-r{font-size:12px;color:#fcd34d;margin-bottom:6px}
+.idle-boost-btn{margin:0!important;background:linear-gradient(#a855f7,#7e22ce)!important;color:#fff!important}
+.idle-boost-btn:disabled{background:#3f3f46!important;color:#a1a1aa!important}
