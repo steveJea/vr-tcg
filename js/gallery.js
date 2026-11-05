@@ -12,6 +12,26 @@
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const cloud = () => window.VRCloud;
   const logged = () => !!(cloud()?.sb && cloud()?.user);
+  const missing = e => /PGRST202|PGRST205|42883|42P01|Could not find|does not exist/i.test(`${e?.code} ${e?.message}`);
+  let rewards = null, rewardsOff = false;
+  const rwText = r => [r?.gold && `🪙 ${Number(r.gold).toLocaleString('ko-KR')}`, r?.gem && `🔮 ${Number(r.gem).toLocaleString('ko-KR')}`, r?.tickets && `🎟️ ${r.tickets}`].filter(Boolean).join(' · ');
+  async function fetchRewards() {
+    if (rewardsOff || !logged()) { rewards = null; return null; }
+    try {
+      const { data, error } = await cloud().sb.rpc('gallery_rewards');
+      if (error) { if (missing(error)) { rewardsOff = true; rewards = null; return null; } throw error; }
+      rewards = data; return data;
+    } catch (e) { console.warn('[gallery] rewards', e?.message); return null; }
+  }
+  async function claimReward(pct) {
+    const { data, error } = await cloud().sb.rpc('gallery_reward_claim', { p_pct: pct });
+    if (error) throw error;
+    rewards = data;
+    if (data?.wallet) window.VRPlayer?.setWallet?.(data.wallet);
+    if (data?.got?.gem) window.VRGem?.status?.(true);
+    window.VRPlayer?.status?.(true);
+    return data;
+  }
 
   // --- VIP 왕관 등급 (mvp_count) ---
   const TIERS = [null,
@@ -146,6 +166,7 @@
       <div class="gal-head"><div><div class="gal-title">${IC('gallery')} 인재 갤러리</div><div id="gal-progress" class="gal-progress"></div></div>
         <button id="gal-close" class="gal-x" aria-label="닫기">✕</button></div>
       <div class="gal-bar"><div id="gal-bar-fill"></div></div>
+      <div id="gal-milestones" class="gal-miles"></div>
       <div id="gal-filters" class="gal-filters"></div>
       <div id="gal-msg" class="gal-msg"></div>
       <div id="gal-grid" class="gal-grid"></div></div>
@@ -161,6 +182,19 @@
       if (e.target.id === 'gal-detail' || e.target.closest('.gal-x')) $('gal-detail').classList.add('hidden'); });
     $('gal-grid').addEventListener('click', e => { const t = e.target.closest('[data-cid]'); if (t) detail(t.dataset.cid); });
     $('gal-filters').addEventListener('click', e => { const b = e.target.closest('[data-f]'); if (b) { filter = b.dataset.f; draw(); } });
+    $('gal-milestones').addEventListener('click', async e => {
+      const b = e.target.closest('[data-galrw]'); if (!b || b.disabled) return;
+      b.disabled = true; const old = b.textContent; b.textContent = '...';
+      try {
+        const r = await claimReward(+b.dataset.galrw);
+        galToast(`🎁 ${b.dataset.galrw}% · ${rwText(r?.got || {})}`);
+        drawMiles();
+      } catch (err) {
+        const m = String(err?.message || err);
+        galToast(/already claimed/i.test(m) ? '이미 받았어요' : /not done/i.test(m) ? '아직 모으는 중이에요' : m.slice(0, 60));
+        b.disabled = false; b.textContent = old;
+      }
+    });
     document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('gal-zoom') && !$('gal-zoom').classList.contains('hidden')) { $('gal-zoom').classList.add('hidden'); return; }
       if (e.key === 'Escape' && !m.classList.contains('hidden')) { $('gal-detail').classList.contains('hidden') ? close() : $('gal-detail').classList.add('hidden'); } });
   }
@@ -180,16 +214,26 @@
     try { await loadCards(); await loadSkills(); } catch { $('gal-msg').textContent = '인재 목록을 불러오지 못했어요. 인터넷 연결을 확인해 주세요.'; return; }
     let msg = '';
     if (!logged()) { owned = new Map(); msg = cloud()?.sb ? '🔑 로그인하면 인재가 갤러리에 수집돼요' : '📡 지금은 서버에 연결할 수 없어요. 게스트로는 수집되지 않아요'; }
-    else { try { await flushPending(); await fetchOwned(); } catch (e) { console.warn('[gallery] load failed', e); msg = '📡 갤러리를 불러오지 못했어요. 잠시 후 다시 시도해 주세요'; } }
+    else { try { await flushPending(); await fetchOwned(); await fetchRewards(); } catch (e) { console.warn('[gallery] load failed', e); msg = '📡 갤러리를 불러오지 못했어요. 잠시 후 다시 시도해 주세요'; } }
     $('gal-msg').innerHTML = msg ? (logged() || !cloud()?.sb ? esc(msg) : `${window.VRIcon ? VRIcon.swap(esc(msg)) : esc(msg)} <button id="gal-login" class="gal-login">로그인</button>`) : '';
     if ($('gal-login')) $('gal-login').onclick = () => cloud().login();
     draw();
   }
 
+  function drawMiles() {
+    const el = $('gal-milestones'); if (!el) return;
+    if (!rewards?.milestones?.length) { el.innerHTML = ''; return; }
+    el.innerHTML = rewards.milestones.map(m => {
+      const pct = m.pct | 0, ok = !!m.ready, got = !!m.claimed;
+      const label = got ? '완료' : ok ? '받기' : `${pct}%`;
+      return `<button class="gal-mile ${got ? 'got' : ''} ${ok && !got ? 'ready' : ''}" data-galrw="${pct}" ${got || !ok ? 'disabled' : ''} title="${rwText(m.reward)}"><b>${pct}%</b><span>${rwText(m.reward)}</span><i>${label}</i></button>`;
+    }).join('');
+  }
   function draw() {
     const total = cards.length, have = cards.filter(c => owned.has(c.id)).length;
     $('gal-progress').textContent = `${have}/${total} 수집 (${Math.floor(have / total * 100)}%)`;
     $('gal-bar-fill').style.width = `${have / total * 100}%`;
+    drawMiles();
     const cnt = s => { const l = cards.filter(c => SHORT[c.grade] === s); return `${l.filter(c => owned.has(c.id)).length}/${l.length}`; };
     $('gal-filters').innerHTML = [['ALL', `전체 ${have}/${total}`], ...['N', 'R', 'HR', 'SR', 'UR', 'MR'].map(s => [s, `${s} ${cnt(s)}`])]
       .map(([f, t]) => `<button data-f="${f}" class="gal-f ${f !== 'ALL' ? 'rar-' + f : ''} ${filter === f ? 'on' : ''}">${t}</button>`).join('');
@@ -297,5 +341,5 @@
   }
   document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', addButton) : addButton();
   setTimeout(flushPending, 4000);
-  window.VRGallery = { open, close, collection, shareCard, _test: { shareInfo, setOwned: m => { owned = m; }, detail, draw, promoNote, loadCards, loadSkills, cardById } };
+  window.VRGallery = { open, close, collection, shareCard, _test: { shareInfo, setOwned: m => { owned = m; }, detail, draw, promoNote, loadCards, loadSkills, cardById, fetchRewards, drawMiles } };
 })();

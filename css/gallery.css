@@ -94,3 +94,17 @@ body.gal-lock { overflow: hidden; }
 .gal-share{position:absolute;top:12px;left:12px;z-index:3;padding:6px 12px;border-radius:999px;background:rgba(15,23,42,.85);border:1px solid rgba(255,255,255,.25);color:#fff;font-weight:800;font-size:13px}
 .gal-share:disabled{opacity:.7}
 .gal-kakao{top:50px;background:#fee500;color:#191919;border-color:#fee500}
+
+/* 도감 수집률 구간 보상 */
+.gal-miles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin: 0 0 8px; flex-shrink: 0; }
+.gal-mile { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 2px; border-radius: 8px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12); color: #e4e4e7; font-size: 10px; line-height: 1.25; cursor: pointer; }
+.gal-mile b { font-size: 12px; color: #fde68a; }
+.gal-mile span { color: #fcd34d; text-align: center; }
+.gal-mile i { font-style: normal; font-weight: 800; color: #a1a1aa; }
+.gal-mile.ready { border-color: #fbbf24; box-shadow: 0 0 8px rgba(251,191,36,.45); }
+.gal-mile.ready i { color: #fbbf24; }
+.gal-mile.got { opacity: .55; cursor: default; }
+.gal-mile:disabled { cursor: default; }
+@media (max-width: 420px) {
+  .gal-mile span { font-size: 9px; }
+}
