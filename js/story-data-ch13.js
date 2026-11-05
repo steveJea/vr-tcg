@@ -94,6 +94,10 @@ window.STORY_DATA.chapters.push({
       "text": "응. 그게 제일 빨라.",
       "expr": "보통",
       "slug": "an_jisu_7"
+     },
+     {
+      "speaker": "내레이션",
+      "text": "다음 날, 골목에는 더 많은 아이들이 기다리고 있었다. 중학생 형들과 함께."
      }
     ]
    },
@@ -114,14 +118,7 @@ window.STORY_DATA.chapters.push({
    "bossId": "10143",
    "mana": 50,
    "starTurns": 6,
-   "starMana": 0.3,
-   "after": [
-    {
-     "speaker": "내레이션",
-     "text": "다음 날, 골목에는 더 많은 아이들이 기다리고 있었다. 중학생 형들과 함께."
-    }
-   ],
-   "afterTitle": "전투 후"
+   "starMana": 0.3
   },
   {
    "no": 2,
@@ -199,6 +196,10 @@ window.STORY_DATA.chapters.push({
       "text": "아빠가 그랬잖아. 링 위에선 남자 여자 없다고.",
       "expr": "보통",
       "slug": "an_jisu_12"
+     },
+     {
+      "speaker": "내레이션",
+      "text": "관원들이 하나둘 링 위로 올라왔다. 아무도 그녀와 눈을 마주치지 않았다."
      }
     ]
    },
@@ -219,14 +220,7 @@ window.STORY_DATA.chapters.push({
    "bossId": "10148",
    "mana": 50,
    "starTurns": 6,
-   "starMana": 0.3,
-   "after": [
-    {
-     "speaker": "내레이션",
-     "text": "관원들이 하나둘 링 위로 올라왔다. 아무도 그녀와 눈을 마주치지 않았다."
-    }
-   ],
-   "afterTitle": "전투 후"
+   "starMana": 0.3
   },
   {
    "no": 3,
@@ -299,6 +293,11 @@ window.STORY_DATA.chapters.push({
      {
       "speaker": "불량배-M",
       "text": "1학년 주제에 웃어? 너 오늘 무릎 꿇고 내려간다."
+     },
+     {
+      "speaker": "안지수",
+      "text": "그 말, 내려갈 때도 할 수 있으면 해 봐.",
+      "expr": "보통"
      }
     ]
    },
@@ -319,15 +318,7 @@ window.STORY_DATA.chapters.push({
    "bossId": "10153",
    "mana": 50,
    "starTurns": 6,
-   "starMana": 0.3,
-   "after": [
-    {
-     "speaker": "안지수",
-     "text": "그 말, 내려갈 때도 할 수 있으면 해 봐.",
-     "expr": "보통"
-    }
-   ],
-   "afterTitle": "전투 후"
+   "starMana": 0.3
   },
   {
    "no": 4,
@@ -446,6 +437,19 @@ window.STORY_DATA.chapters.push({
       "speaker": "안지수",
       "text": "...미친X. 너 진짜 겁 없다.",
       "expr": "기쁨"
+     },
+     {
+      "speaker": "내레이션",
+      "text": "그날 하굣길. 김지우를 노리던 다른 학교 아이들이 골목을 막아섰다."
+     },
+     {
+      "speaker": "불량배-R",
+      "text": "초록머리 반장님~ 지난번에 우리 애 선도부에 찔렀지?"
+     },
+     {
+      "speaker": "안지수",
+      "text": "야. 얘 건드리면 너네 오늘 집에 못 가.",
+      "expr": "분노"
      }
     ]
    },
@@ -466,23 +470,7 @@ window.STORY_DATA.chapters.push({
    "bossId": "10158",
    "mana": 50,
    "starTurns": 8,
-   "starMana": 0.25,
-   "after": [
-    {
-     "speaker": "내레이션",
-     "text": "그날 하굣길. 김지우를 노리던 다른 학교 아이들이 골목을 막아섰다."
-    },
-    {
-     "speaker": "불량배-R",
-     "text": "초록머리 반장님~ 지난번에 우리 애 선도부에 찔렀지?"
-    },
-    {
-     "speaker": "안지수",
-     "text": "야. 얘 건드리면 너네 오늘 집에 못 가.",
-     "expr": "분노"
-    }
-   ],
-   "afterTitle": "전투 후"
+   "starMana": 0.25
   },
   {
    "no": 5,
@@ -588,6 +576,11 @@ window.STORY_DATA.chapters.push({
      {
       "speaker": "불량배-A",
       "text": "어이, 학생. 친구 기다려? 오빠들이랑 놀까?"
+     },
+     {
+      "speaker": "안지수",
+      "text": "꺼져. 지금 기분 좋으니까 한 번만 말한다.",
+      "expr": "분노"
      }
     ]
    },
@@ -608,15 +601,7 @@ window.STORY_DATA.chapters.push({
    "bossId": "10143",
    "mana": 67,
    "starTurns": 8,
-   "starMana": 0.3,
-   "after": [
-    {
-     "speaker": "안지수",
-     "text": "꺼져. 지금 기분 좋으니까 한 번만 말한다.",
-     "expr": "분노"
-    }
-   ],
-   "afterTitle": "전투 후"
+   "starMana": 0.3
   },
   {
    "no": 6,
@@ -680,6 +665,11 @@ window.STORY_DATA.chapters.push({
      {
       "speaker": "불량배-W",
       "text": "보람아 끝내 버려! 쟤 무릎 노려!"
+     },
+     {
+      "speaker": "심판",
+      "text": "양 선수, 준비. ...시작!",
+      "expr": "보통"
      }
     ]
    },
@@ -700,15 +690,7 @@ window.STORY_DATA.chapters.push({
    "bossId": "10509",
    "mana": 34,
    "starTurns": 4,
-   "starMana": 0,
-   "after": [
-    {
-     "speaker": "심판",
-     "text": "양 선수, 준비. ...시작!",
-     "expr": "보통"
-    }
-   ],
-   "afterTitle": "전투 후"
+   "starMana": 0
   },
   {
    "no": 7,
@@ -782,6 +764,11 @@ window.STORY_DATA.chapters.push({
      {
       "speaker": "불량배-F",
       "text": "지수야, 아직 무리야. 관장님이 너 스파링 금지랬어."
+     },
+     {
+      "speaker": "안지수",
+      "text": "닥쳐. 다 덤벼. 아직 나 안 끝났어. 안 끝났다고!",
+      "expr": "분노"
      }
     ]
    },
@@ -802,15 +789,7 @@ window.STORY_DATA.chapters.push({
    "bossId": "10148",
    "mana": 50,
    "starTurns": 6,
-   "starMana": 0.3,
-   "after": [
-    {
-     "speaker": "안지수",
-     "text": "닥쳐. 다 덤벼. 아직 나 안 끝났어. 안 끝났다고!",
-     "expr": "분노"
-    }
-   ],
-   "afterTitle": "전투 후"
+   "starMana": 0.3
   },
   {
    "no": 8,
@@ -893,6 +872,11 @@ window.STORY_DATA.chapters.push({
      {
       "speaker": "불량배-K",
       "text": "야, 사과 안 해? 눈을 어디다 달고 다녀?"
+     },
+     {
+      "speaker": "안지수",
+      "text": "...오늘 내가 좀 기분이 X같거든. 그냥 지나가.",
+      "expr": "분노"
      }
     ]
    },
@@ -913,15 +897,7 @@ window.STORY_DATA.chapters.push({
    "bossId": "10153",
    "mana": 50,
    "starTurns": 6,
-   "starMana": 0.3,
-   "after": [
-    {
-     "speaker": "안지수",
-     "text": "...오늘 내가 좀 기분이 X같거든. 그냥 지나가.",
-     "expr": "분노"
-    }
-   ],
-   "afterTitle": "전투 후"
+   "starMana": 0.3
   },
   {
    "no": 9,
@@ -962,7 +938,8 @@ window.STORY_DATA.chapters.push({
     "default": [
      {
       "speaker": "내레이션",
-      "text": "그날 밤. 무심코 넘기던 인스타그램 피드에서, 손가락이 멈췄다."
+      "text": "그날 밤. 무심코 넘기던 인스타그램 피드에서, 손가락이 멈췄다.",
+      "image": "img/story/ch13-01.webp"
      },
      {
       "speaker": "내레이션",
@@ -998,6 +975,11 @@ window.STORY_DATA.chapters.push({
      {
       "speaker": "불량배-U",
       "text": "뭐야, 너? 그거 우리가 쓴 거 아니야. 그냥 퍼 온 거라고!"
+     },
+     {
+      "speaker": "안지수",
+      "text": "퍼 온 놈도 똑같아. 누가 처음 올렸는지 불어. 이빨 다 남아 있을 때.",
+      "expr": "분노"
      }
     ]
    },
@@ -1018,15 +1000,7 @@ window.STORY_DATA.chapters.push({
    "bossId": "10163",
    "mana": 50,
    "starTurns": 8,
-   "starMana": 0.2,
-   "after": [
-    {
-     "speaker": "안지수",
-     "text": "퍼 온 놈도 똑같아. 누가 처음 올렸는지 불어. 이빨 다 남아 있을 때.",
-     "expr": "분노"
-    }
-   ],
-   "afterTitle": "전투 후"
+   "starMana": 0.2
   },
   {
    "no": 10,
@@ -1107,6 +1081,11 @@ window.STORY_DATA.chapters.push({
      {
       "speaker": "불량배-C",
       "text": "그건 알 필요 없고."
+     },
+     {
+      "speaker": "안지수",
+      "text": "그럼 맞으면서 생각해 봐.",
+      "expr": "분노"
      }
     ]
    },
@@ -1127,15 +1106,7 @@ window.STORY_DATA.chapters.push({
    "bossId": "10144",
    "mana": 50,
    "starTurns": 6,
-   "starMana": 0.3,
-   "after": [
-    {
-     "speaker": "안지수",
-     "text": "그럼 맞으면서 생각해 봐.",
-     "expr": "분노"
-    }
-   ],
-   "afterTitle": "전투 후"
+   "starMana": 0.3
   },
   {
    "no": 11,
@@ -1229,6 +1200,11 @@ window.STORY_DATA.chapters.push({
      {
       "speaker": "불량배-G",
       "text": "(무전) 유리 님이 그러셨다. 진짜 올 만한 애인지 좀 보라고."
+     },
+     {
+      "speaker": "안지수",
+      "text": "...시험이냐? 좋아. 통과해 주지.",
+      "expr": "분노"
      }
     ]
    },
@@ -1249,15 +1225,7 @@ window.STORY_DATA.chapters.push({
    "bossId": "10149",
    "mana": 50,
    "starTurns": 7,
-   "starMana": 0.25,
-   "after": [
-    {
-     "speaker": "안지수",
-     "text": "...시험이냐? 좋아. 통과해 주지.",
-     "expr": "분노"
-    }
-   ],
-   "afterTitle": "전투 후"
+   "starMana": 0.25
   },
   {
    "no": 12,
@@ -1365,6 +1333,11 @@ window.STORY_DATA.chapters.push({
      {
       "speaker": "불량배-P",
       "text": "손님 환영식이에요. 유리 님께서 준비하셨대요."
+     },
+     {
+      "speaker": "안지수",
+      "text": "(손이 떨린다. 겁나서가 아니야. 화나서야.)",
+      "expr": "분노"
      }
     ]
    },
@@ -1385,15 +1358,7 @@ window.STORY_DATA.chapters.push({
    "bossId": "10158",
    "mana": 80,
    "starTurns": 8,
-   "starMana": 0.3,
-   "after": [
-    {
-     "speaker": "안지수",
-     "text": "(손이 떨린다. 겁나서가 아니야. 화나서야.)",
-     "expr": "분노"
-    }
-   ],
-   "afterTitle": "전투 후"
+   "starMana": 0.3
   },
   {
    "no": 13,
@@ -1505,6 +1470,11 @@ window.STORY_DATA.chapters.push({
       "speaker": "안지수",
       "text": "닥치라고 했다!!!",
       "expr": "분노"
+     },
+     {
+      "speaker": "오유나",
+      "text": "유리 님~ 시작해도 되죠?",
+      "expr": "기쁨"
      }
     ]
    },
@@ -1525,15 +1495,7 @@ window.STORY_DATA.chapters.push({
    "bossId": "10256",
    "mana": 80,
    "starTurns": 9,
-   "starMana": 0.25,
-   "after": [
-    {
-     "speaker": "오유나",
-     "text": "유리 님~ 시작해도 되죠?",
-     "expr": "기쁨"
-    }
-   ],
-   "afterTitle": "전투 후"
+   "starMana": 0.25
   },
   {
    "no": 14,
@@ -1562,7 +1524,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "내레이션",
-      "text": "붉은 조명 아래, 벨벳 소파. 와인잔을 든 소녀가 다리를 꼬고 앉아 있었다."
+      "text": "붉은 조명 아래, 벨벳 소파. 와인잔을 든 소녀가 다리를 꼬고 앉아 있었다.",
+      "image": "img/story/ch13-02.webp"
      },
      {
       "speaker": "안지수",
@@ -1602,6 +1565,12 @@ window.STORY_DATA.chapters.push({
      {
       "speaker": "내레이션",
       "text": "와인잔이 탁자 위에 내려앉았다. 안지수는 주먹을 쥐었다. 손에 감긴 핸드랩이 붉게 물들어 있었다."
+     },
+     {
+      "speaker": "안지수",
+      "text": "(1분이면 돼. 1분이면 끝내.)",
+      "expr": "분노",
+      "image": "img/story/ch13-03.webp"
      }
     ]
    },
@@ -1649,15 +1618,7 @@ window.STORY_DATA.chapters.push({
    },
    "mana": 100,
    "starTurns": 3,
-   "starMana": 0.3,
-   "after": [
-    {
-     "speaker": "안지수",
-     "text": "(1분이면 돼. 1분이면 끝내.)",
-     "expr": "분노"
-    }
-   ],
-   "afterTitle": "전투 후"
+   "starMana": 0.3
   },
   {
    "no": 15,
@@ -1719,15 +1680,16 @@ window.STORY_DATA.chapters.push({
    "after": [
     {
      "speaker": "내레이션",
-     "text": "바닥에 붉은 것이 번졌다. 안지수는 무릎을 꿇었다. 이 소녀의 움직임과 공격은...보이지 않았다..."
+     "text": "바닥에 붉은 것이 번졌다. 안지수는 무릎을 꿇었다. 이 여자의 움직임과 공격은...보이지 않았다..."
     },
     {
      "speaker": "내레이션",
-     "text": "유리가 천천히 다가와 그녀 앞에 쪼그려 앉았다."
+     "text": "유리가 천천히 다가와 그녀 앞에 쪼그려 앉았다.",
+     "video": "video/story/ch13-04.mp4"
     },
     {
      "speaker": "임유리",
-     "text": "헤헤...벌레가 사람 말을 하네?",
+     "text": "헤헤...개미가 사람 말을 하네?",
      "expr": "기쁨"
     },
     {
@@ -1737,7 +1699,7 @@ window.STORY_DATA.chapters.push({
     },
     {
      "speaker": "임유리",
-     "text": "이래서 너희가 안 되는거야...네가 남 걱정 할 때니?",
+     "text": "이래서 벌레는 안 되는거야...네가 남 걱정 할 때니?",
      "expr": "보통"
     },
     {
@@ -1752,7 +1714,8 @@ window.STORY_DATA.chapters.push({
     {
      "speaker": "안지수",
      "text": "(...지우야. 미안해. 밥...같이 못 먹겠다.)",
-     "expr": "슬픔"
+     "expr": "슬픔",
+     "video": "video/story/ch13-05.mp4"
     },
     {
      "speaker": "내레이션",
