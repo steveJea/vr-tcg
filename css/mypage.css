@@ -6,7 +6,7 @@
 .mp-title{font-weight:900;font-size:18px}
 .mp-x{background:none;border:0;color:#fde68a;font-size:20px;cursor:pointer}
 .mp-who{display:flex;align-items:center;gap:10px;margin-bottom:10px;color:#fff}
-.mp-av{width:40px;height:40px;border-radius:50%;object-fit:cover}
+.mp-av{width:40px;height:40px;border-radius:50%;object-fit:cover;object-position:top}
 .mp-sec{margin-top:14px}.mp-sec h3{font-weight:800;font-size:14px;margin-bottom:6px;color:#f5c96a}
 .mp-leader{position:relative;width:min(78%,300px);aspect-ratio:2/3;margin:0 auto;border-radius:16px;overflow:hidden;border:3px solid #9ca3af;background:#0b0b12}
 .mp-leader.empty{display:flex;align-items:center;justify-content:center;text-align:center;border-style:dashed}
