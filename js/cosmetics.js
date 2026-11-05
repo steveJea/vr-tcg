@@ -57,6 +57,16 @@
       return (!b || b === 'border_basic') ? null : b;
     } catch { return null; }
   }
+  /** 내 리더 카드 얼굴(썸네일). 없으면 null → 호출측에서 기본 프로필로 폴백 */
+  function leaderAvatar() {
+    try {
+      const sv = window.VRStory?.save;
+      const lo = sv?.owned?.find(o => o.uid === sv.leader) || sv?.owned?.[0];
+      const id = lo?.id;
+      if (!id) return null;
+      return (window.cardThumb || (x => 'img/thumb/' + x + '.webp'))(id);
+    } catch { return null; }
+  }
   function chip(p = {}, opt = {}) {
     const name = p.name || '플레이어';
     const tn = p.title_name || titleName(p.title) || '';
@@ -87,7 +97,7 @@
     if (r) { set(r); window.VRGem?.status?.(true); } return r;
   }
   function thumb(it) {
-    if (tab === 'frame') return `<span class="cosmo-av f-${it.id}"><img src="${frameSrc(it.id)}" alt="" class="cosmo-fr" onerror="this.classList.add('miss')"><img src="img/ui/profile.webp" alt="" class="cosmo-av-img"></span>`;
+    if (tab === 'frame') return `<span class="cosmo-av f-${it.id}"><img src="${frameSrc(it.id)}" alt="" class="cosmo-fr" onerror="this.classList.add('miss')"><img src="${esc(leaderAvatar() || 'img/ui/profile.webp')}" alt="" class="cosmo-av-img" onerror="this.src='img/ui/profile.webp'"></span>`;
     if (tab === 'board') {
       const src = boardSrc(it.id, false);
       return src ? `<span class="cosmo-board-th"><img src="${src}" alt="" onerror="this.parentNode.classList.add('miss')"></span>` : `<span class="cosmo-board-th miss">기본</span>`;
@@ -109,7 +119,7 @@
       const previewBoard = boardSrc(eq.board, false);
       pop.innerHTML = `<div class="gem-panel daily-panel cosmo-panel" role="dialog" aria-label="꾸미기"><button class="gem-x" data-x aria-label="닫기">✕</button>
         <h3 class="daily-h">🎨 꾸미기</h3>
-        <div class="cosmo-preview ${previewBoard ? 'has-board' : ''}" ${previewBoard ? `style="background-image:url(${previewBoard})"` : ''}>${chip({ name: window.VRCloud?.profile?.nickname || '나', title: eq.title, frame: eq.frame, title_name: titleName(eq.title), avatar: window.VRCloud?.user?.user_metadata?.avatar_url })}</div>
+        <div class="cosmo-preview ${previewBoard ? 'has-board' : ''}" ${previewBoard ? `style="background-image:url(${previewBoard})"` : ''}>${chip({ name: window.VRCloud?.profile?.nickname || '나', title: eq.title, frame: eq.frame, title_name: titleName(eq.title), avatar: leaderAvatar() || window.VRCloud?.user?.user_metadata?.avatar_url })}</div>
         <div class="ach-tabs cosmo-tabs">${TABS.filter(([k]) => k === 'title' || k === 'frame' || (s[LIST_KEY[k]] && s[LIST_KEY[k]].length)).map(([k, l]) => `<button type="button" class="ach-tab ${tab === k ? 'on' : ''}" data-tab="${k}">${l}</button>`).join('')}</div>
         <div class="cosmo-list">${list.map(it => {
           const owned = !!it.owned, on = !!it.equipped;
@@ -138,6 +148,6 @@
     if (!window.VRPages?.host?.('cosmetics', '🎨 꾸미기', pop)) document.body.appendChild(pop);
     draw(); status(true).then(draw);
   }
-  window.VRCosmo = { open, status, chip, lookup, titleName, frameSrc, boardSrc, borderSrc, boardKey, borderId, equipped, get cache() { return cache; } };
+  window.VRCosmo = { open, status, chip, leaderAvatar, lookup, titleName, frameSrc, boardSrc, borderSrc, boardKey, borderId, equipped, get cache() { return cache; } };
   setTimeout(() => { status(); }, 2000);
 })();

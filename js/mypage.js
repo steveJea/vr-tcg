@@ -169,8 +169,11 @@
     const nick = cloud()?.profile?.nickname || meta.name || meta.full_name || (ctx.user.email || '').split('@')[0] || '플레이어';
     const cos = await window.VRCosmo?.status?.();
     const eq = cos?.equipped || {};
-    const whoChip = window.VRCosmo?.chip?.({ name: nick, title: eq.title, title_name: window.VRCosmo.titleName?.(eq.title), frame: eq.frame, avatar: meta.avatar_url })
-      || `<img src="${meta.avatar_url ? esc(meta.avatar_url) : 'img/ui/profile.webp'}" referrerpolicy="no-referrer" alt="" class="mp-av" onerror="this.src='img/ui/profile.webp'"><b class="mp-nick">${esc(nick)}</b>`;
+    const lead = ctx.story?.owned?.find(o => o.uid === ctx.story.leaderUid) || ctx.story?.owned?.find(o => ctx.story.deckUids?.[0] === o.uid);
+    const leadAv = lead?.id ? (window.cardThumb || (x => 'img/thumb/' + x + '.webp'))(lead.id) : null;
+    const av = leadAv || meta.avatar_url || null;
+    const whoChip = window.VRCosmo?.chip?.({ name: nick, title: eq.title, title_name: window.VRCosmo.titleName?.(eq.title), frame: eq.frame, avatar: av })
+      || `<img src="${av ? esc(av) : 'img/ui/profile.webp'}" referrerpolicy="no-referrer" alt="" class="mp-av" onerror="this.src='img/ui/profile.webp'"><b class="mp-nick">${esc(nick)}</b>`;
     body.innerHTML = `<div class="mp-who">${whoChip}<button id="mp-cosmo" class="mp-cosmo" type="button"><img class="ui-btn-ic" src="img/ui/icon/cosmetics.webp" alt="꾸미기" width="16" height="16">꾸미기</button><button id="mp-nick-edit" class="mp-nick-edit" type="button">닉네임 변경${cloud()?.profile?.nick_set ? ' <small>🔮200</small>' : ''}</button></div>`
       + sections.map(s => { let h = ''; try { h = s.render(ctx) || ''; } catch (e) { console.warn('[mypage] section', s.id, e); }
         return h ? `<section class="mp-sec" data-sec="${s.id}">${s.title ? `<h3>${s.title}</h3>` : ''}${h}</section>` : ''; }).join('');
