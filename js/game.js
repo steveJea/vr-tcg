@@ -1234,6 +1234,30 @@ function preloadFx(cards) {
     fxLoaded.add(s.fx); const img = new Image(); img.decoding = 'async'; img.src = `data/fx/${s.fx}`;
   }
   try { preloadVoice(cards); } catch {}
+  warmPortraits(cards);
+}
+// 상세 창 초상화: 손패·필드에 이미 뜬 썸네일(img/thumb)을 먼저 보여 주고, 원본(bt_img)이 디코드되면 교체.
+// GitHub raw 원본은 캐시가 짧아 모바일에서 까만 칸이 잠깐 보이던 문제를 막음.
+const portraitWarmed = new Set();
+function portraitFull(id) { return (window.cardImgOverride || (x => x))(`${IMG}${id}.webp`); }
+function warmPortraits(cards) {
+  for (const c of cards || []) {
+    const id = c?.id; if (id == null) continue;
+    const k = String(id); if (portraitWarmed.has(k)) continue;
+    portraitWarmed.add(k);
+    const im = new Image(); im.decoding = 'async'; im.src = portraitFull(id);
+  }
+}
+function fillDetailPortrait(img, id) {
+  if (!img || id == null) return;
+  const full = portraitFull(id), k = String(id);
+  portraitWarmed.add(k);
+  const apply = () => { if (img.isConnected && String(img.dataset.id) === k) img.src = full; };
+  const hi = new Image();
+  hi.decoding = 'async';
+  hi.onload = () => { if (typeof hi.decode === 'function') hi.decode().then(apply).catch(apply); else apply(); };
+  hi.src = full;
+  if (hi.complete && hi.naturalWidth) apply();
 }
 function cutInHTML(u, name, fx, passive) {
   const media = fx ? (/\.(mp4|webm)$/i.test(fx) ? `<video src="data/fx/${fx}" autoplay muted playsinline class="cutin-media"></video>` : `<img src="data/fx/${fx}" class="cutin-media" alt="" onerror="this.remove()">`) : '';
@@ -1968,7 +1992,7 @@ function showDetail(c, { fromHand = false, hp, unit = null, view = null, power =
   const myTurn = !!S && S.turn === 'me' && !S.over && !S.busy;
   $('detail-body').innerHTML = `
     <div class="flex gap-4">
-      <div class="relative shrink-0"><img src="${IMG}${c.id}.webp" data-id="${c.id}" class="card-img w-32 md:w-40 aspect-[3/4] object-cover rounded-xl ring-2 ${e.ring}">${window.rarityStars?.(c, S?.story || c.ex ? 'story' : 'base', 'rstars-over', c.ex) || ''}<button type="button" class="zoom-btn absolute bottom-1 right-1" data-zoom="${c.id}"${S?.story || c.ex ? ' data-st="1"' : ''}${c.ex ? ` data-ex="${c.ex}" data-name="${String(c.name).replace(/[&"<>]/g, ch => `&#${ch.charCodeAt(0)};`)}"` : ''}${hp != null ? ` data-hp="${hp}"` : ''} title="크게 보기" aria-label="크게 보기">🔍</button></div>
+      <div class="relative shrink-0"><img src="${cardThumb(c.id)}" data-id="${c.id}" class="card-img w-32 md:w-40 aspect-[3/4] object-cover rounded-xl ring-2 ${e.ring}">${window.rarityStars?.(c, S?.story || c.ex ? 'story' : 'base', 'rstars-over', c.ex) || ''}<button type="button" class="zoom-btn absolute bottom-1 right-1" data-zoom="${c.id}"${S?.story || c.ex ? ' data-st="1"' : ''}${c.ex ? ` data-ex="${c.ex}" data-name="${String(c.name).replace(/[&"<>]/g, ch => `&#${ch.charCodeAt(0)};`)}"` : ''}${hp != null ? ` data-hp="${hp}"` : ''} title="크게 보기" aria-label="크게 보기">🔍</button></div>
       <div class="flex-1 min-w-0">
         <div class="text-xl font-black leading-tight">${cardTitle(c)}</div>
         ${cardTags(c, [power ? '' : `⚡${fmt(c.power)}`, `${ic('mana', { alt: '코스트' })}${c.cost}`])}
@@ -1997,6 +2021,7 @@ function showDetail(c, { fromHand = false, hp, unit = null, view = null, power =
       <button id="sacrifice-btn" ${sc.ok && myTurn ? '' : 'disabled'} class="mt-2 w-full py-2.5 rounded-2xl bg-rose-600 hover:bg-rose-500 disabled:opacity-40 text-white font-bold">${ic('bleed', { alt: '' })} 희생 (마나 +${sc.gain})${sc.ok || !myTurn ? '' : ` — ${sc.reason}`}</button>
       <div class="text-[11px] text-zinc-500 mt-1 text-center">카드를 없애고 코스트의 ${Math.round(RULES.SACRIFICE_RATIO * 100)}%를 마나로 (턴당 1회)</div>`; })() : ''}`;
   fixImages($('detail-body'));
+  fillDetailPortrait($('detail-body').querySelector('img.card-img'), c.id);
   if (unit) $('detail-body').querySelectorAll('[data-skill]').forEach(b => {
     // 길게 누르기(0.45초) = 설명만 보기 (스킬은 안 씀). 짧게 탭 = 사용
     let t = null, held = false; const cancel = () => { clearTimeout(t); t = null; };
