@@ -59,7 +59,8 @@
     .fx-hitflash { filter: brightness(2.6) saturate(.4) contrast(1.1); }   /* 하얀 섬광 */
     .fx-knock { animation: fxKnock .2s cubic-bezier(.2,.9,.3,1); }
     .fx-knock.fx-shake { animation: fxKnock .2s cubic-bezier(.2,.9,.3,1), fxShake .16s linear; }
-    @keyframes fxKnock { 0% { transform: translateY(var(--kb, 6px)) scale(.96); } 60% { transform: translateY(calc(var(--kb, 6px) * -.15)); } 100% { transform: none; } }
+    /* translate/scale 개별 속성: 돌진 중 inline transform(translate3d)을 덮어쓰지 않음 (아이폰 워프 방지) */
+    @keyframes fxKnock { 0% { translate: 0 var(--kb, 6px); scale: .96; } 60% { translate: 0 calc(var(--kb, 6px) * -.15); scale: 1; } 100% { translate: 0 0; scale: 1; } }
     .fx-stop .unit, .fx-stop .unit *, .fx-stop #me-hero, .fx-stop #ai-hero, .fx-stop .fx-hit { animation-play-state: paused !important; }   /* 히트스톱 */
     .fx-screen { animation: fxScreen .22s linear; }
     @keyframes fxScreen { 0%,100% { translate: 0 0; } 20% { translate: calc(var(--amp) * -1) calc(var(--amp) * .5); } 40% { translate: var(--amp) calc(var(--amp) * -.4); } 60% { translate: calc(var(--amp) * -.6) calc(var(--amp) * .3); } 80% { translate: calc(var(--amp) * .3) 0; } }
@@ -140,7 +141,8 @@
     @media (min-width: 768px) { .rar-badge, .sk-count { font-size: 11px; } }
     .hero-card > div:first-child { box-shadow: 0 0 0 3px #fbbf24, 0 0 14px 4px rgba(251,191,36,.7); animation: heroGlow 1.6s ease-in-out infinite; }
     @keyframes heroGlow { 50% { box-shadow: 0 0 0 3px #fde68a, 0 0 22px 8px rgba(251,191,36,.9); } }
-    .fx-attacker { position: relative; z-index: 30; }
+    .fx-attacker { position: relative; z-index: 30; will-change: transform; transform: translateZ(0); backface-visibility: hidden; transition: none !important; }
+    .fx-attacker.fx-hitflash { filter: none; } /* 돌진 중 filter는 레이어를 깨서 아이폰에서 끊김 */
     .cutin { top: 33%; padding: .75rem 0; }
     .cutin.cutin-img { top: 0; bottom: 0; margin: auto !important; padding: 0; aspect-ratio: 16/9; max-height: 70vh; width: min(100vw, calc(70vh * 16 / 9)); margin: 0 auto; overflow: hidden; border-block: 2px solid rgba(255,255,255,.35); box-shadow: 0 0 40px rgba(0,0,0,.8); }
     .cutin-img .cutin-media { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center; }
