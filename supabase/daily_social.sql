@@ -27,10 +27,10 @@ revoke all on public.gallery_claims from public, anon, authenticated;
 create or replace function public._gallery_total() returns int language sql immutable as $$ select 438 $$;
 
 create or replace function public._gallery_reward_defs() returns jsonb language sql immutable as $$ select '[
-  {"pct":25,"reward":{"gold":5000,"tickets":1}},
-  {"pct":50,"reward":{"gold":15000,"gem":50,"tickets":2}},
-  {"pct":75,"reward":{"gold":30000,"gem":100,"tickets":3}},
-  {"pct":100,"reward":{"gold":50000,"gem":300,"tickets":5}}
+  {"pct":25,"reward":{"gold":15000,"tickets":10}},
+  {"pct":50,"reward":{"gold":45000,"gem":50,"tickets":20}},
+  {"pct":75,"reward":{"gold":90000,"gem":100,"tickets":30}},
+  {"pct":100,"reward":{"gold":150000,"gem":300,"tickets":50}}
 ]'::jsonb $$;
 
 create or replace function public._gallery_have(p_uid uuid) returns int language sql stable security definer set search_path = public as $$
