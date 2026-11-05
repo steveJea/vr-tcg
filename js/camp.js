@@ -47,7 +47,7 @@
   const tile = (c, attrs, lvTxt, extra = '') => `<div class="story-owned" ${attrs}><div class="story-card story-own-tile rar-${RCL[c.g]}"><div class="story-card-img">${thumbImg(c.id, c.name)}${extra}</div><div class="story-card-name">${esc(String(c.name).replace(/^\[EX\d+\] /, ''))}</div><div class="story-own-lv">${lvTxt}</div></div></div>`;
   const css = document.createElement('style');
   css.textContent = `
-  #camp-ov{position:fixed;inset:0;z-index:9050;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;padding:10px}
+  #camp-ov{position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;padding:10px}
   #camp-box{width:100%;max-width:480px;max-height:92vh;display:flex;flex-direction:column;background:linear-gradient(#1e1530,#0e0a18);border:1px solid rgba(251,191,36,.45);border-radius:16px;color:#fde68a;box-shadow:0 10px 40px rgba(0,0,0,.6)}
   #camp-box .ch{display:flex;justify-content:space-between;align-items:center;padding:12px 14px 4px;font-weight:800;font-size:18px}
   #camp-box .cx{background:none;border:0;color:#fde68a;font-size:22px;cursor:pointer}
@@ -75,7 +75,7 @@
   function shell(title, sub) {
     let ov = document.getElementById('camp-ov');
     if (!ov) { ov = document.createElement('div'); ov.id = 'camp-ov'; document.body.appendChild(ov); ov.addEventListener('click', e => { if (e.target === ov && !ov.classList.contains('vr-in-page')) close(); });
-      window.VRPages?.host?.('camp', '🏋️ 훈련소', ov, () => { clearInterval(tick); paint(); }); }   // 페이지 시스템 (마이페이지 등 페이지 위에 뜨고 확인창도 그 위). 실패하면 팝업 (z 9050 > 페이지 9000)
+      window.VRPages?.host?.('camp', '🏋️ 훈련소', ov, () => { clearInterval(tick); paint(); }); }   // 페이지 시스템 (마이페이지 등 페이지 위에 뜨고 확인창도 그 위). 실패하면 팝업 (z 9600 > 상단바 9050)
     ov.innerHTML = `<div id="camp-box" role="dialog" aria-label="훈련소"><div class="ch"><span>${title}</span><button class="cx" aria-label="닫기">×</button></div>${sub ? `<div class="csub">${sub}</div>` : ''}<div class="cbody"></div></div>`;
     ov.querySelector('.cx').onclick = close;
     return ov.querySelector('#camp-box');

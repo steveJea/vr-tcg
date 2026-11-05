@@ -2071,7 +2071,7 @@ function skillListHTML(c, unit, myTurn, lv = 1, opt = {}) {
 function showModal(id) { $(id).classList.remove('hidden'); $(id).classList.add('flex'); }
 function hideModal(id) { if (id === 'detail') detailHandCard = null; $(id).classList.add('hidden'); $(id).classList.remove('flex'); $(id).style.zIndex = ''; resetHScroll(); }
 // 다른 화면(마이페이지 등) 위에서 카드 정보 보기: 전투 중이 아닌 보기 전용 상세
-function showCardInfo(c, opt = {}) { if (!c) return; showDetail(c, { power: !!opt.power }); $('detail').style.zIndex = '130'; showModal('detail'); }
+function showCardInfo(c, opt = {}) { if (!c) return; showDetail(c, { power: !!opt.power }); $('detail').style.zIndex = ''; showModal('detail'); }   // z-index 는 css/pages.css (9600, 상단바 위)
 // 모바일에서 페이지가 옆으로 밀린 채 남지 않게 (컷인·모달 뒤) 가로 스크롤을 0으로
 function resetHScroll() { if (window.scrollX || document.documentElement.scrollLeft || document.body.scrollLeft) { document.documentElement.scrollLeft = 0; document.body.scrollLeft = 0; window.scrollTo(0, window.scrollY); } }
 window.addEventListener('scroll', () => { if (window.scrollX) resetHScroll(); }, { passive: true });
