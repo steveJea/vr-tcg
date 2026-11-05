@@ -122,7 +122,7 @@
       <div class="mp-stat"><span>시련의 탑</span><b>${ctx.questBest != null ? `${ctx.questBest}층` : '-'}</b><small>최고 기록</small></div>
       <div class="mp-stat"><span>갤러리</span><b>${g ? `${pct(g.have, g.total)}%` : '-'}</b><small>${g ? `${g.have}/${g.total} 수집` : ''}</small></div></div>`;
   } });
-  addSection({ id: 'nav', order: 12, render: ctx => ctx.story ? `<div class="mp-nav"><button type="button" class="mp-navbtn" data-nav="cards"><span>🃏</span>보유 인재<small>${ctx.story.owned.length}</small></button><button type="button" class="mp-navbtn" data-nav="decks"><span>🗂</span>덱 설정<small>${(ctx.story.decks || []).filter(d => d.uids.length).length}/10</small></button>${ctx.story.serverMode && window.VRGear && !window.VRGear.off ? '<button type="button" class="mp-navbtn mp-navbtn-wide" data-nav="gearbag"><span>🎒</span>장비 가방</button>' : ''}</div>` : '' });
+  addSection({ id: 'nav', order: 12, render: ctx => ctx.story ? `<div class="mp-nav"><button type="button" class="mp-navbtn" data-nav="cards"><span>🃏</span>보유 인재<small>${ctx.story.owned.length}</small></button><button type="button" class="mp-navbtn" data-nav="decks"><span>🗂</span>덱 설정<small>${(ctx.story.decks || []).filter(d => d.uids.length).length}/10</small></button>${ctx.story.serverMode && window.VRGear && !window.VRGear.off ? '<button type="button" class="mp-navbtn mp-navbtn-wide" data-nav="gearbag"><span>🎒</span>장비 가방</button>' : ''}${ctx.story.serverMode && window.VRCamp && !window.VRCamp.off ? '<button type="button" class="mp-navbtn mp-navbtn-wide" data-nav="camp"><span>🏋️</span>훈련소<i data-campdot></i></button>' : ''}</div>` : '' });
   addSection({ id: 'deck', order: 40, title: '마이 덱', render: ctx => {
     const s = ctx.story; if (!s) return '';
     const by = new Map(s.owned.map(o => [o.uid, o])), ds = (s.decks || []).filter(d => d.uids.length);
@@ -143,7 +143,7 @@
     document.body.appendChild(m);
     m.addEventListener('click', e => { if (e.target === m) close(); });   // 바깥 클릭 = 닫기 (팝업일 때)
     m.querySelector('.mp-panel').addEventListener('click', e => { if (e.target.closest('#mp-close')) return close();   // 판에 달아 둠: 페이지로 옮겨가도 동작
-      const nv = e.target.closest('[data-nav]'); if (nv) { if (nv.dataset.nav === 'gearbag') return window.VRGear?.bag?.();   // 장비 가방은 팝업이라 마이페이지는 그대로
+      const nv = e.target.closest('[data-nav]'); if (nv) { if (nv.dataset.nav === 'gearbag') return window.VRGear?.bag?.(); if (nv.dataset.nav === 'camp') return window.VRCamp?.open?.();   // 장비 가방은 팝업이라 마이페이지는 그대로
         close(); const S = window.VRStory; return nv.dataset.nav === 'story' ? S?.openMap?.(+nv.dataset.ch) : nv.dataset.nav === 'decks' ? S?.openDecks?.() : S?.openCards?.(); }
       const t = e.target.closest('.mp-card[data-uid]'); if (t) openCard(t.dataset.uid, t.dataset.id); });   // 바깥 클릭 = 닫기
     document.addEventListener('keydown', e => { if (e.key === 'Escape' && !m.classList.contains('hidden')) close(); });
