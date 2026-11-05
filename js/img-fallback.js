@@ -1,6 +1,7 @@
 // ===== 작은 카드 그림(썸네일) =====
 // 작은 칸(전투 손패/필드, 목록 등)은 img/thumb/<id>.webp (가로 300px, tools/make_thumbs.py 로 생성)를 쓰고,
-// 썸네일이 없으면 원본(bt_img → 아래 대체 경로들)으로 자동 전환. 큰 화면(상세/컷인/확대)은 원본 그대로.
+// 썸네일이 없으면 원본(bt_img → 아래 대체 경로들)으로 자동 전환.
+// 상세 창은 썸네일을 먼저 띄운 뒤 원본이 디코드되면 교체(game.js fillDetailPortrait). 컷인·확대(🔍)는 원본.
 (function () {
   const BT = 'https://raw.githubusercontent.com/steveJea/vr-ideal-worldcup/main/img/bt_img/';
   window.cardThumb = id => 'img/thumb/' + id + '.webp';
