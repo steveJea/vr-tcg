@@ -43,7 +43,7 @@
       if (badgeN() > 0) b.insertAdjacentHTML('beforeend', `<i class="story-badge">${badgeN()}</i>`);
     }
   }
-  const row = (p, btns) => `<div class="fr-row"><span class="fr-dot ${p.online ? 'on' : ''}"></span><div class="fr-info"><b>${esc(p.name)}</b><small>Lv.${p.level | 0} · ${esc(p.code)} · ${p.online ? '🟢 접속 중' : ago(p.seen_at)}</small></div><div class="fr-btns">${btns}</div></div>`;
+  const row = (p, btns) => `<div class="fr-row"><span class="fr-dot ${p.online ? 'on' : ''}"></span><div class="fr-info">${window.VRCosmo?.chip?.({ name: p.name, title: p.title, title_name: p.title_name, frame: p.frame, avatar: p.avatar }, { sm: true }) || `<b>${esc(p.name)}</b>`}<small>Lv.${p.level | 0} · ${esc(p.code)} · ${p.online ? '🟢 접속 중' : ago(p.seen_at)}</small></div><div class="fr-btns">${btns}</div></div>`;
   const empty = t => `<div class="fr-empty">${t}</div>`;
 
   function open() {

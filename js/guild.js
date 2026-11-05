@@ -127,7 +127,7 @@
         <button data-t="war"><span class="gd-tic"><img src="img/ui/guild/war_icon.webp" alt="" onerror="this.remove()"><i>🏴</i></span>전쟁<i class="gd-dot" data-dot="war" title="보상 · 전쟁 덱 편성하기" hidden></i></button></div>
       <div class="gd-h">${gi('ic_members', '👥')} 조직원</div>
       <div class="gd-mem">${st.members.map(x => `<button class="gd-m r-${x.role}" data-u="${x.user_id}">${x.card ? `<img src="${cardThumb(x.card)}" alt="" loading="lazy" onerror="this.remove()">` : '<span class="gd-m-no">👤</span>'}
-        ${x.role !== 'member' ? `<i class="gd-m-role">${ROLE[x.role][0]}</i>` : ''}<span class="gd-m-n">${esc(x.name)}</span><small>${LOYI}${n(x.loyalty_total)}</small></button>`).join('')}</div>
+        ${x.role !== 'member' ? `<i class="gd-m-role">${ROLE[x.role][0]}</i>` : ''}<span class="gd-m-n" data-cn="${x.user_id}">${esc(x.name)}</span><small>${LOYI}${n(x.loyalty_total)}</small></button>`).join('')}</div>
       <div class="gd-foot">${me.can_claim ? '<button data-claim>👑 보스 승계</button>' : ''}<button data-leave>${me.role === 'boss' && g.members <= 1 ? '조직 해산' : '조직 나가기'}</button></div>`;
     p.querySelector('[data-t="shop"]').onclick = shopPop;
     p.querySelector('[data-t="rally"]').onclick = rallyPop;
@@ -140,6 +140,9 @@
     p.querySelector('[data-t="req"]')?.addEventListener('click', reqPop);
     p.querySelector('[data-t="set"]')?.addEventListener('click', setPop);
     p.querySelectorAll('[data-u]').forEach(b => b.onclick = () => memberPop(st.members.find(x => x.user_id === b.dataset.u)));
+    if (window.VRCosmo?.lookup) window.VRCosmo.lookup(st.members.map(x => x.user_id)).then(map => {
+      for (const x of st.members) { const el = p.querySelector(`[data-cn="${x.user_id}"]`); const c = map?.[x.user_id]; if (el && c?.title_name) el.insertAdjacentHTML('beforeend', ` <i class="cosmo-ttl t-${c.title}">${c.title_name}</i>`); }
+    });
     p.querySelector('[data-claim]')?.addEventListener('click', () => act('guild_claim_boss', {}, '👑 보스가 되었어요'));
     p.querySelector('[data-leave]').onclick = async () => { if (await window.VRAsk(me.role === 'boss' ? '조직을 해산할까요?' : '조직을 나갈까요? 24시간 동안 다른 조직에 들어갈 수 없어요')) act('guild_leave', {}, '조직을 떠났어요'); };
   }
@@ -149,9 +152,10 @@
     const canKick = (me.role === 'boss' && x.role !== 'boss') || (me.role === 'officer' && x.role === 'member');
     const boss = me.role === 'boss' && x.role !== 'boss';
     const m = pop(`<div class="gd-mp">${x.card ? `<img class="gd-mp-img" src="${cardThumb(x.card)}" alt="" onerror="this.remove()">` : '<div class="gd-mp-no">👤</div>'}
-      <div class="gd-mp-n">${ROLE[x.role][0]} ${esc(x.name)}</div><div class="gd-mp-s">${ROLE[x.role][1]} · ${new Date(x.joined_at).toLocaleDateString('ko-KR')} 가입</div><div class="gd-mp-d">…</div>
+      <div class="gd-mp-n" data-mpn>${ROLE[x.role][0]} ${esc(x.name)}</div><div class="gd-mp-s">${ROLE[x.role][1]} · ${new Date(x.joined_at).toLocaleDateString('ko-KR')} 가입</div><div class="gd-mp-d">…</div>
       <div class="gd-mp-a">${boss ? `<button data-role="${x.role === 'officer' ? 'member' : 'officer'}">${x.role === 'officer' ? '간부 해제' : (gi('role_officer', '⚔️') + ' 간부 임명')}</button><button data-tr>${gi('role_boss', '👑')} 보스 이관</button>` : ''}${canKick ? '<button class="bad" data-kick>추방</button>' : ''}</div></div>`);
     const ago = t => { const h = (Date.now() - new Date(t)) / 36e5; return h < 1 ? '방금' : h < 24 ? `${Math.floor(h)}시간 전` : `${Math.floor(h / 24)}일 전`; };
+    window.VRCosmo?.lookup?.([x.user_id]).then(map => { const c = map?.[x.user_id]; const el = m.querySelector('[data-mpn]'); if (el && c?.title_name) el.insertAdjacentHTML('beforeend', ` <i class="cosmo-ttl t-${c.title}">${c.title_name}</i>`); });
     rpc('guild_member_info', { p_user: x.user_id }).then(d => { const el = m.querySelector('.gd-mp-d'); if (!el || !d) return;
       el.innerHTML = `<div class="gd-mp-g"><span><small>레벨</small><b>Lv.${d.level}</b></span><span><small>충성 누적</small><b>${LOYI}${n(d.loyalty_total)}</b></span><span><small>이번 주</small><b>${LOYI}${n(d.loyalty_week)}</b></span>
         <span><small>PvP</small><b>${d.pvp ? `${esc(d.pvp.tier)} ${n(d.pvp.rating)}` : '-'}</b></span><span><small>접속</small><b>${ago(d.seen_at)}</b></span></div>

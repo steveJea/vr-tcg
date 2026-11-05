@@ -143,3 +143,40 @@
 .idle-boost-r{font-size:12px;color:#fcd34d;margin-bottom:6px}
 .idle-boost-btn{margin:0!important;background:linear-gradient(#a855f7,#7e22ce)!important;color:#fff!important}
 .idle-boost-btn:disabled{background:#3f3f46!important;color:#a1a1aa!important}
+
+/* 🎨 꾸미기 (js/cosmetics.js) */
+.cosmo-panel{max-height:86vh;overflow:auto;text-align:left;min-width:min(400px,92vw)}
+.cosmo-preview{display:flex;justify-content:center;padding:10px;margin-bottom:8px;border-radius:10px;background:rgba(255,255,255,.05)}
+.cosmo-list{display:flex;flex-direction:column;gap:6px}
+.cosmo-row{display:flex;align-items:center;gap:8px;padding:8px;border-radius:10px;background:rgba(255,255,255,.05)}
+.cosmo-row.on{border:1px solid rgba(251,191,36,.5);background:rgba(251,191,36,.1)}
+.cosmo-row.lock{opacity:.7}
+.cosmo-meta{flex:1;min-width:0;font-size:13px}.cosmo-meta small{display:block;color:#a1a1aa;font-size:11px}
+.cosmo-st{font-size:11px;color:#fde68a}.cosmo-st.dim{color:#71717a}
+.cosmo-ttl-ic{width:36px;height:36px;display:flex;align-items:center;justify-content:center;border-radius:8px;background:rgba(255,255,255,.08);flex:none}
+.cosmo-chip{display:inline-flex;align-items:center;gap:8px;min-width:0;vertical-align:middle}
+.cosmo-chip.sm{gap:5px}.cosmo-tx{display:flex;flex-direction:column;min-width:0;line-height:1.2}
+.cosmo-nm{font-size:13px;font-weight:800;color:#f4f4f5;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cosmo-chip.sm .cosmo-nm{font-size:12px}
+.cosmo-ttl{font-style:normal;font-size:10px;color:#fcd34d;font-weight:700}
+.cosmo-ttl.t-abyss,.cosmo-ttl.t-abyss_pioneer{color:#e879f9;text-shadow:0 0 6px rgba(168,85,247,.6)}
+.cosmo-ttl.t-pvp_gold{color:#fbbf24}.cosmo-ttl.t-pvp_platinum{color:#a5f3fc}.cosmo-ttl.t-pvp_diamond{color:#93c5fd}
+.cosmo-av{position:relative;width:40px;height:40px;flex:none;border-radius:50%;display:inline-block}
+.cosmo-av.sm{width:28px;height:28px}
+.cosmo-av-img{width:100%;height:100%;object-fit:cover;border-radius:50%;display:block}
+.cosmo-fr{position:absolute;inset:-4px;width:calc(100% + 8px);height:calc(100% + 8px);object-fit:contain;pointer-events:none;z-index:2}
+.cosmo-fr.miss{display:none}
+/* 프레임 이미지 없을 때 CSS 테두리 */
+.cosmo-av.f-frame_basic{box-shadow:0 0 0 2px rgba(161,161,170,.7)}
+.cosmo-av.f-frame_bronze{box-shadow:0 0 0 2px #b45309,0 0 8px rgba(180,83,9,.5)}
+.cosmo-av.f-frame_silver{box-shadow:0 0 0 2px #d4d4d8,0 0 8px rgba(212,212,216,.45)}
+.cosmo-av.f-frame_gold{box-shadow:0 0 0 2px #fbbf24,0 0 10px rgba(251,191,36,.55)}
+.cosmo-av.f-frame_abyss{box-shadow:0 0 0 2px #c084fc,0 0 12px rgba(168,85,247,.7)}
+.cosmo-av.f-frame_guild{box-shadow:0 0 0 2px #f87171,0 0 8px rgba(248,113,113,.5)}
+.mp-who .cosmo-chip{flex:1;min-width:0}
+.mp-cosmo{margin-left:6px;padding:5px 10px;border-radius:8px;border:1px solid rgba(192,132,252,.5);background:rgba(88,28,135,.35);color:#e9d5ff;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap}
+
+.fr-info .cosmo-chip{display:flex;margin-bottom:2px}
+.gd-m-n .cosmo-ttl{margin-left:4px}
+.pvp-rk-nm .cosmo-tx{display:inline-flex;flex-direction:column;min-width:0}
+.pvp-rk-nm .cosmo-ttl{font-size:9px}

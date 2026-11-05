@@ -356,7 +356,7 @@ function playback(s, res) {
 }
 
 // ---- 랭킹 ----
-const rkRow = (x, nm, pos) => `<div class="pvp-rk-row ${x.me ? 'me' : ''} ${pos ? 'tap' : ''}"${pos ? ` data-who="${pos}"` : ''}><b>${x.rank <= 3 ? ['🥇', '🥈', '🥉'][x.rank - 1] : x.rank}</b><span class="pvp-rk-nm">${emb(tierBy(x.tier) || tierOf(x.rating), 'sm')}<span class="${x.abyss ? 'pvp-abyss-name' : ''}">${esc(nm ?? x.name)}</span></span><small>${x.wins}W ${x.losses}L</small><em>${x.rating}</em></div>`;
+const rkRow = (x, nm, pos) => { const label = nm ?? x.name; const ttl = x.title_name ? `<i class="cosmo-ttl t-${esc(x.title || '')}">${esc(x.title_name)}</i>` : ''; return `<div class="pvp-rk-row ${x.me ? 'me' : ''} ${pos ? 'tap' : ''}"${pos ? ` data-who="${pos}"` : ''}><b>${x.rank <= 3 ? ['🥇', '🥈', '🥉'][x.rank - 1] : x.rank}</b><span class="pvp-rk-nm">${emb(tierBy(x.tier) || tierOf(x.rating), 'sm')}<span class="cosmo-tx"><span class="${x.abyss || x.title === 'abyss' ? 'pvp-abyss-name' : ''}">${esc(label)}</span>${ttl}</span></span><small>${x.wins}W ${x.losses}L</small><em>${x.rating}</em></div>`; };
 const rkRows = r => ((r?.top || []).slice(0, 10).map((x, i) => rkRow(x, undefined, i + 1)).join('') || '<div class="pvp-empty">—</div>') + (r?.me && !(r.top || []).slice(0, 10).some(x => x.me) ? rkRow(r.me, '나') : '');
 async function rankings() {
   const m = modal('pvp-ranking', `<div class="pvp-empty">…</div>`, 'pvp-sub');
