@@ -2347,7 +2347,10 @@ window.TCG = { get fxOff() { return FX_OFF(); }, kickoff: () => S?.kickGo?.(), v
   const paint = () => { const g = $('game'), H = document.documentElement.scrollHeight, vh = window.innerHeight;
     const on = g && !g.classList.contains('hidden') && H > vh + 40; nav.classList.toggle('on', !!on); if (!on) return;
     thumb.style.top = (window.scrollY / H * 100) + '%'; thumb.style.height = Math.max(8, vh / H * 100) + '%'; };
-  window.addEventListener('scroll', paint, { passive: true }); window.addEventListener('resize', paint); setInterval(paint, 500);
+  window.addEventListener('scroll', paint, { passive: true }); window.addEventListener('resize', paint);
+  // 0.5초마다 다시 그리던 것 → 스크롤·화면 크기·전투판 크기가 바뀔 때만 (아이폰 버벅임 줄이기)
+  if (window.ResizeObserver) { const ro = new ResizeObserver(() => paint()); ro.observe(document.body); } else setInterval(paint, 500);
+  { const g = $('game'); if (g) new MutationObserver(paint).observe(g, { attributes: true, attributeFilter: ['class'] }); }
   nav.addEventListener('click', e => { const r = nav.getBoundingClientRect(), H = document.documentElement.scrollHeight, vh = window.innerHeight;
     window.scrollTo({ top: Math.max(0, (e.clientY - r.top) / r.height * H - vh / 2), behavior: 'smooth' }); });
 }
