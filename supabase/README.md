@@ -168,3 +168,8 @@ SQL Editor 에서 형님이 직접 실행하는 파일들. **같은 함수를 �
 
 
 추가: `_player_unlock_level`, `_player_json` 도 이제 `story_level_gate.sql` 이 최신 (`phaseE_2.sql` 은 옛 버전).
+
+## 추가 (2026-11-05)
+
+- `daily_social.sql` — 도감 수집률 보상 · 친구 일일 선물 · 개인 주간 미션. 선행: `daily.sql` · `friends.sql` · `gallery`(schema) · `phaseE_2.sql`.
+  - 이 파일이 `friends_list` · `friends_ping` 을 선물 필드로 다시 정의함. `friends.sql` 을 나중에 다시 돌리면 선물 필드가 빠지니 주의.
