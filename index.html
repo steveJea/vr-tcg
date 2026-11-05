@@ -285,6 +285,8 @@
 <script>document.addEventListener("contextmenu",function(e){var t=e.target;if(t&&t.closest&&t.closest("input,textarea,[contenteditable]"))return;e.preventDefault()},true)</script>
   <!-- Tailwind: 실행 중 생성(CDN) 대신 미리 만든 CSS. 클래스 추가 시 tools/tailwind/tailwind.config.js 주석대로 다시 빌드 -->
   <link rel="stylesheet" href="css/tw.css">
+  <link rel="stylesheet" href="css/ios-lite.css">
+  <script>/* 아이폰·아이패드(사파리 엔진) 표시 → css/ios-lite.css 가벼운 연출 */(function(){var u=navigator.userAgent,i=/iP(hone|ad|od)/.test(u)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);if(i||/[?&]ioslite=1/.test(location.search))document.documentElement.classList.add("ios");})();</script>
 </head>
 <body class="bg-zinc-950 text-white min-h-screen select-none">
 

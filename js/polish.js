@@ -1,6 +1,8 @@
 // ===== 앱 같은 손맛: 팝업 열림·화면 전환 애니메이션 + 짧은 진동 (게임 로직 건드리지 않음 · css/polish.css) =====
 (() => {
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // 전투 화면(#game)이 열려 있는 동안엔 페이지 전체 감시를 쉬어요 (아이폰 버벅임 줄이기). 전투 밖으로 나가면 다시 돌아요
+  const inBattle = () => { const g = document.getElementById('game'); const e = document.getElementById('end-screen'); return !!g && !g.classList.contains('hidden') && !(e && !e.classList.contains('hidden')); };
   const HAP_KEY = 'vrHaptic';
   const hapOn = () => localStorage.getItem(HAP_KEY) !== '0';
   // --- 진동: 버튼 누를 때 8ms (지원 기기만 · 전투 화면 #game 안은 제외 · 설정에서 끔) ---
@@ -44,7 +46,7 @@
     const [ctx, id] = ctxOf(el); if (!ctx) continue; const p = powSeen.get(ctx); powSeen.set(ctx, { id, v });
     if (p && p.id === id && p.v !== v && el.dataset.curSeen !== String(v)) countUp(el, p.v, v); el.dataset.curSeen = String(v); } };
   const scanAll = () => { scanCur(); try { scanPow(); } catch {} };
-  if (!reduce) new MutationObserver(() => { if (!curQ) curQ = requestAnimationFrame(scanAll); }).observe(document.body, { childList: true, subtree: true, characterData: true });
+  if (!reduce) new MutationObserver(() => { if (inBattle()) return; if (!curQ) curQ = requestAnimationFrame(scanAll); }).observe(document.body, { childList: true, subtree: true, characterData: true });
   // ===== 폴리시 4: 등급별 영입 빛 (R 초록 · HR 파랑 · SR 보라 링 · UR/MR/LR 화면 전체 섬광). 보이는 것만 =====
   const SUM = { 'RARE': ['r', 1], 'HIGH RARE': ['hr', 2], 'SUPER RARE': ['sr', 3], 'ULTRA RARE': ['ur', 4], 'MYTHIC RARE': ['mr', 4], 'LEGENDARY RARE': ['lr', 4] };
   const summon = (grade, el, delay = 0, opt = {}) => { const g = SUM[grade]; if (!g || !el) return; const [k, lv] = g;
@@ -99,5 +101,5 @@
     for (const n of document.querySelectorAll(SKEL)) if (!n.classList.contains('ui-skel')) skelFx(n);
     for (const n of document.querySelectorAll('.ui-skel')) { const t = (n.textContent || '').trim(); if (n.children.length > 1 || !(t === '…' || t === '...' || /^불러오는 중/.test(t))) { n.classList.remove('ui-skel'); n.removeAttribute('aria-busy'); } }   // 같은 자리에 글(오류 등)이 들어오면 원래대로
     for (const d of document.querySelectorAll(DOTS)) if (d.offsetParent) dotFx(d); };
-  new MutationObserver(() => { if (!p3q) p3q = requestAnimationFrame(scan3); }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['hidden', 'class'] });
+  new MutationObserver(() => { if (inBattle()) return; if (!p3q) p3q = requestAnimationFrame(scan3); }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['hidden', 'class'] });
 })();

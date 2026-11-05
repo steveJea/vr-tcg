@@ -1,0 +1,23 @@
+/* 아이폰(iOS Safari) 전용 가벼운 전투 연출 — html.ios 일 때만. 안드로이드·PC는 그대로.
+   움직이는 filter(drop-shadow·hue-rotate·blur)와 움직이는 box-shadow는 아이폰에서 매 프레임 다시 그려서 버벅여요.
+   → 빛은 고정, 움직임은 transform/opacity 만. */
+/* 혼란·교란: 색 흔들림 대신 고정 빛 + 기울기 흔들림만 */
+html.ios .unit.st-confuse > .relative { animation-name: stfx-sway-ios; filter: drop-shadow(0 0 5px #a855f7); }
+html.ios .unit.st-disrupt > .relative { animation-name: stfx-sway-ios; filter: drop-shadow(0 0 5px #22d3ee); }
+@keyframes stfx-sway-ios { 0%, 100% { transform: rotate(-3deg); } 50% { transform: rotate(3deg); } }
+/* 도발: 깜빡이는 그림자 → 고정 그림자 + 겉 링만 opacity 깜빡임 */
+html.ios .unit.st-taunt > .relative { animation: none; box-shadow: 0 0 0 1px rgba(239,68,68,.7), 0 0 10px 2px rgba(239,68,68,.5); }
+html.ios .unit.st-taunt > .relative::after { content: ''; position: absolute; inset: -2px; border-radius: 10px; pointer-events: none; box-shadow: 0 0 0 2px rgba(248,113,113,.9); animation: ios-pulse 1.6s ease-in-out infinite; will-change: opacity; }
+/* 작은 반짝이·물방울 등의 흐림/그림자 필터 제거 (움직임은 그대로) */
+html.ios .stfx-p-spark, html.ios .stfx-tick.curse { filter: none; }
+/* 영웅 카드 빛: 그림자 애니메이션 → 고정 빛 + 위에 얹은 층의 opacity 깜빡임 */
+html.ios .hero-card > div:first-child { animation: none; box-shadow: 0 0 0 3px #fbbf24, 0 0 14px 4px rgba(251,191,36,.7); }
+html.ios .hero-card { position: relative; }
+html.ios .hero-card::after { content: ''; position: absolute; inset: 0; border-radius: 8px; pointer-events: none; z-index: 1; box-shadow: 0 0 0 3px #fde68a, 0 0 22px 8px rgba(251,191,36,.9); opacity: 0; animation: ios-pulse 1.6s ease-in-out infinite; will-change: opacity; }
+@keyframes ios-pulse { 0%, 100% { opacity: 0; } 50% { opacity: 1; } }
+/* 체력 위기: 화면 전체 안쪽 그림자 → 가장자리 그라데이션 (깜빡임은 opacity 그대로) */
+html.ios .bfx #game.bfx-low::before { box-shadow: none; border: 2px solid rgba(239,68,68,.55);
+  background: linear-gradient(to right, rgba(220,38,38,.4), transparent 14%, transparent 86%, rgba(220,38,38,.4)),
+              linear-gradient(to bottom, rgba(220,38,38,.4), transparent 10%, transparent 90%, rgba(220,38,38,.4));
+  will-change: opacity; }
+/* 선택된 카드·드래그 중 카드의 빛은 짧게만 쓰여서 그대로 둠 */
