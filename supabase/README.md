@@ -173,3 +173,5 @@ SQL Editor 에서 형님이 직접 실행하는 파일들. **같은 함수를 �
 
 - `daily_social.sql` — 도감 수집률 보상 · 친구 일일 선물 · 개인 주간 미션. 선행: `daily.sql` · `friends.sql` · `gallery`(schema) · `phaseE_2.sql`.
   - 이 파일이 `friends_list` · `friends_ping` 을 선물 필드로 다시 정의함. `friends.sql` 을 나중에 다시 돌리면 선물 필드가 빠지니 주의.
+
+- `achievements.sql` — 업적(성장·전투·수집·스토리·소셜) · 업적 점수 마일스톤. 선행: `daily.sql`(_daily_grant) · `phaseE_2.sql`(player_state) · `tower_v2.sql` · `pvp.sql`/`pvp_tier.sql` · gallery · `story_progress` · `friends.sql`. 선택: `camp.sql`/`camp2.sql` · `guild.sql`/`guild3.sql` · `gear_v1.sql` · `story_gacha_log`.
