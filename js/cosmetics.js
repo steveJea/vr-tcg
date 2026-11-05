@@ -1,9 +1,12 @@
-// ===== 🎨 꾸미기 1차 (칭호·프레임) — 서버: supabase/cosmetics.sql =====
-// 마이페이지 닉네임 옆 버튼 · 장착은 보유만 · 남 표시는 profiles.cosmo_* / lookup
+// ===== 🎨 꾸미기 (칭호·프레임·보드·테두리) — 서버: cosmetics.sql · cosmetics2.sql =====
 (() => {
   const missing = e => /PGRST202|PGRST205|42883|42P01|Could not find|does not exist/i.test(`${e?.code} ${e?.message}`);
   let cache = null, off = false, tab = 'title';
   const TITLE_NAME = {};
+  const TABS = [
+    ['title', '칭호'], ['frame', '프레임'], ['board', '보드'], ['border', '테두리'],
+  ];
+  const LIST_KEY = { title: 'titles', frame: 'frames', board: 'boards', border: 'borders' };
   async function rpc(name, args) {
     const c = window.VRCloud, sb = c?.sb; if (!sb || !c?.user) return null;
     const { data, error } = await sb.rpc(name, args);
@@ -17,6 +20,7 @@
     if (s?.ok) {
       cache = s;
       (s.titles || []).forEach(t => { TITLE_NAME[t.id] = t.name; });
+      try { localStorage.setItem('vrCosmoEq', JSON.stringify(s.equipped || {})); } catch {}
     }
     return cache;
   }
@@ -27,7 +31,32 @@
   }
   function titleName(id) { return TITLE_NAME[id] || cache?.titles?.find(t => t.id === id)?.name || id || ''; }
   function frameSrc(id) { return `img/ui/frame/${id || 'frame_basic'}.webp`; }
-  /** 이름+칭호+프레임 칩. p: { name, title|title_name, frame, avatar } */
+  function boardSrc(id, wide) {
+    if (!id || id === 'board_basic') return null;
+    const k = id.replace(/^board_/, '');
+    return `img/battle/bg/cosmo_${k}_${wide ? 'pc' : 'm'}.webp`;
+  }
+  function borderSrc(id) {
+    if (!id || id === 'border_basic') return null;
+    return `img/ui/border/${id}.webp`;
+  }
+  function equipped() {
+    if (cache?.equipped) return cache.equipped;
+    try { const v = JSON.parse(localStorage.getItem('vrCosmoEq') || 'null'); if (v) return { title: 'recruit', frame: 'frame_basic', board: 'board_basic', border: 'border_basic', ...v }; } catch {}
+    return { title: 'recruit', frame: 'frame_basic', board: 'board_basic', border: 'border_basic' };
+  }
+  function boardKey() {
+    const b = equipped().board;
+    if (!b || b === 'board_basic') return null;
+    return 'cosmo_' + b.replace(/^board_/, '');
+  }
+  function borderId() {
+    try {
+      if (document.documentElement.classList.contains('ios')) return null;
+      const b = equipped().border;
+      return (!b || b === 'border_basic') ? null : b;
+    } catch { return null; }
+  }
   function chip(p = {}, opt = {}) {
     const name = p.name || '플레이어';
     const tn = p.title_name || titleName(p.title) || '';
@@ -48,13 +77,26 @@
       return data || {};
     } catch (e) { console.warn('[cosmo] lookup', e?.message); return {}; }
   }
-  async function equip(title, frame) {
-    const r = await rpc('cosmetics_equip', { p_title: title, p_frame: frame });
+  async function equipAll(patch) {
+    const eq = { ...equipped(), ...patch };
+    const r = await rpc('cosmetics_equip', { p_title: eq.title, p_frame: eq.frame, p_board: eq.board, p_border: eq.border });
     if (r) set(r); return r;
   }
-  async function buy(id) {
-    const r = await rpc('cosmetics_buy', { p_kind: 'frame', p_id: id });
+  async function buy(kind, id) {
+    const r = await rpc('cosmetics_buy', { p_kind: kind, p_id: id });
     if (r) { set(r); window.VRGem?.status?.(true); } return r;
+  }
+  function thumb(it) {
+    if (tab === 'frame') return `<span class="cosmo-av f-${it.id}"><img src="${frameSrc(it.id)}" alt="" class="cosmo-fr" onerror="this.classList.add('miss')"><img src="img/ui/profile.webp" alt="" class="cosmo-av-img"></span>`;
+    if (tab === 'board') {
+      const src = boardSrc(it.id, false);
+      return src ? `<span class="cosmo-board-th"><img src="${src}" alt="" onerror="this.parentNode.classList.add('miss')"></span>` : `<span class="cosmo-board-th miss">기본</span>`;
+    }
+    if (tab === 'border') {
+      const src = borderSrc(it.id);
+      return src ? `<span class="cosmo-border-th"><img src="${src}" alt="" onerror="this.parentNode.classList.add('miss')"></span>` : `<span class="cosmo-border-th miss">기본</span>`;
+    }
+    return `<span class="cosmo-ttl-ic t-${it.id}">🏷️</span>`;
   }
   function open() {
     document.querySelector('.cosmo-pop:not(.vr-in-page)')?.remove();
@@ -62,21 +104,19 @@
     const draw = () => {
       const s = cache;
       if (!s) { pop.innerHTML = '<div class="gem-panel daily-panel cosmo-panel">불러오는 중...</div>'; return; }
-      const eq = s.equipped || {};
-      const list = tab === 'frame' ? (s.frames || []) : (s.titles || []);
+      const eq = s.equipped || equipped();
+      const list = s[LIST_KEY[tab]] || [];
+      const previewBoard = boardSrc(eq.board, false);
       pop.innerHTML = `<div class="gem-panel daily-panel cosmo-panel" role="dialog" aria-label="꾸미기"><button class="gem-x" data-x aria-label="닫기">✕</button>
         <h3 class="daily-h">🎨 꾸미기</h3>
-        <div class="cosmo-preview">${chip({ name: window.VRCloud?.profile?.nickname || '나', title: eq.title, frame: eq.frame, title_name: titleName(eq.title), avatar: window.VRCloud?.user?.user_metadata?.avatar_url })}</div>
-        <div class="ach-tabs cosmo-tabs">
-          <button type="button" class="ach-tab ${tab === 'title' ? 'on' : ''}" data-tab="title">칭호</button>
-          <button type="button" class="ach-tab ${tab === 'frame' ? 'on' : ''}" data-tab="frame">프레임</button>
-        </div>
+        <div class="cosmo-preview ${previewBoard ? 'has-board' : ''}" ${previewBoard ? `style="background-image:url(${previewBoard})"` : ''}>${chip({ name: window.VRCloud?.profile?.nickname || '나', title: eq.title, frame: eq.frame, title_name: titleName(eq.title), avatar: window.VRCloud?.user?.user_metadata?.avatar_url })}</div>
+        <div class="ach-tabs cosmo-tabs">${TABS.filter(([k]) => k === 'title' || k === 'frame' || (s[LIST_KEY[k]] && s[LIST_KEY[k]].length)).map(([k, l]) => `<button type="button" class="ach-tab ${tab === k ? 'on' : ''}" data-tab="${k}">${l}</button>`).join('')}</div>
         <div class="cosmo-list">${list.map(it => {
           const owned = !!it.owned, on = !!it.equipped;
           const price = it.price != null && it.price !== '' ? +it.price : null;
-          const canBuy = tab === 'frame' && !owned && price != null;
+          const canBuy = !owned && price != null;
           return `<div class="cosmo-row ${owned ? '' : 'lock'} ${on ? 'on' : ''}">
-            ${tab === 'frame' ? `<span class="cosmo-av f-${it.id}"><img src="${frameSrc(it.id)}" alt="" class="cosmo-fr" onerror="this.classList.add('miss')"><img src="img/ui/profile.webp" alt="" class="cosmo-av-img"></span>` : `<span class="cosmo-ttl-ic t-${it.id}">🏷️</span>`}
+            ${thumb(it)}
             <div class="cosmo-meta"><b>${esc(it.name)}</b><small>${esc(it.how || '')}</small></div>
             ${on ? '<span class="cosmo-st">장착</span>' : owned ? `<button class="fr-b" data-eq="${it.id}">장착</button>` : canBuy ? `<button class="fr-b" data-buy="${it.id}">🔮${price}</button>` : '<span class="cosmo-st dim">미보유</span>'}
           </div>`;
@@ -86,19 +126,18 @@
       pop.querySelectorAll('[data-eq]').forEach(b => b.onclick = async () => {
         try {
           const id = b.dataset.eq;
-          const title = tab === 'title' ? id : eq.title;
-          const frame = tab === 'frame' ? id : eq.frame;
-          await equip(title, frame); toast('장착했어요'); draw();
+          const patch = { [tab]: id };
+          await equipAll(patch); toast('장착했어요'); draw();
         } catch (e) { toast(errText(e)); }
       });
       pop.querySelectorAll('[data-buy]').forEach(b => b.onclick = async () => {
-        try { await buy(b.dataset.buy); toast('구매했어요'); draw(); } catch (e) { toast(errText(e)); }
+        try { await buy(tab, b.dataset.buy); toast('구매했어요'); draw(); } catch (e) { toast(errText(e)); }
       });
     };
     pop.onclick = e => { if (e.target === pop) pop.remove(); };
     if (!window.VRPages?.host?.('cosmetics', '🎨 꾸미기', pop)) document.body.appendChild(pop);
     draw(); status(true).then(draw);
   }
-  window.VRCosmo = { open, status, chip, lookup, titleName, frameSrc, get cache() { return cache; } };
+  window.VRCosmo = { open, status, chip, lookup, titleName, frameSrc, boardSrc, borderSrc, boardKey, borderId, equipped, get cache() { return cache; } };
   setTimeout(() => { status(); }, 2000);
 })();

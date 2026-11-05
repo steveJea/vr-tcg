@@ -180,3 +180,9 @@
 .gd-m-n .cosmo-ttl{margin-left:4px}
 .pvp-rk-nm .cosmo-tx{display:inline-flex;flex-direction:column;min-width:0}
 .pvp-rk-nm .cosmo-ttl{font-size:9px}
+
+.cosmo-preview.has-board{background-size:cover;background-position:center;min-height:72px}
+.cosmo-board-th,.cosmo-border-th{width:48px;height:36px;border-radius:6px;overflow:hidden;flex:none;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;font-size:10px;color:#a1a1aa}
+.cosmo-board-th img,.cosmo-border-th img{width:100%;height:100%;object-fit:cover;display:block}
+.cosmo-border-th{height:48px;width:36px}
+.cosmo-board-th.miss,.cosmo-border-th.miss{border:1px dashed rgba(255,255,255,.25)}
