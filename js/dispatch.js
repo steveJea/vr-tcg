@@ -176,7 +176,7 @@
   function paint() {
     for (const w of document.querySelectorAll('[data-dispatchbtn]')) {
       if (off || !window.VRCloud?.user) { w.innerHTML = ''; continue; }
-      if (!w.querySelector('.dsp-btn')) { w.innerHTML = '<button class="story-mailbtn dsp-btn" type="button" aria-label="파견" title="파견">🧭<span>파견</span></button>'; w.firstChild.onclick = open; }
+      if (!w.querySelector('.dsp-btn')) { w.innerHTML = '<button class="story-mailbtn dsp-btn" type="button" aria-label="파견" title="파견"><img class="ui-btn-ic" src="img/ui/icon/dispatch.webp" alt="파견" width="20" height="20"><span>파견</span></button>'; w.firstChild.onclick = open; }
       const b = w.firstChild; b.querySelector('.story-badge')?.remove();
       const k = (st?.runs || []).filter(r => r.done || new Date(r.ends_at) <= Date.now()).length;
       if (k > 0) b.insertAdjacentHTML('beforeend', `<i class="story-badge">${k}</i>`);
