@@ -205,6 +205,7 @@ function startGame(story = null, at = null) {
   $('story-giveup')?.classList.toggle('hidden', !story);
   for (const w of ['me', 'ai']) { $(`${w}-hp`).classList.toggle('hidden', S[w].noBase); $(`${w}-hpbar`).parentElement.classList.toggle('hidden', S[w].noBase); }
   $('game').classList.toggle('story-field', !!story);
+  dockStoryBuff(!!story);
   setBattleBg(story?.win === 'ko' ? 'boss' : 'normal', { story, key: story?.bgKey }); preloadHit();
   $('ai-name').textContent = story ? (story.aiName || '적군') : '';   // 아케이드: 이름·아이콘 없음
   preloadFx([...S.me.deck, ...S.me.hand, ...S.ai.deck, ...S.ai.hand]);
@@ -923,7 +924,7 @@ function finish(win, reason) {
   if (S.story) {   // 스토리 모드: 아케이드 전적·랭킹·갤러리에 기록하지 않고 스토리 화면으로 결과 전달
     render();
     const cb = S.story.onEnd;
-    setTimeout(() => { $('game').classList.add('hidden'); try { cb?.(win, reason, { turns: S.turnNo, myTurns: S.myTurns, mana: S.me.manaPool ? S.me.mana : null, maxMana: S.me.manaPool ? S.me.maxMana : null, damage: S.log.total, played: [...S.log.played], kills: { ...S.log.kills }, blocks: { ...(S.log.blocks || {}) } }); } catch (err) { reportError('storyEnd', err); } }, FX_OFF() ? 0 : 900);
+    setTimeout(() => { dockStoryBuff(false); $('game').classList.add('hidden'); try { cb?.(win, reason, { turns: S.turnNo, myTurns: S.myTurns, mana: S.me.manaPool ? S.me.mana : null, maxMana: S.me.manaPool ? S.me.maxMana : null, damage: S.log.total, played: [...S.log.played], kills: { ...S.log.kills }, blocks: { ...(S.log.blocks || {}) } }); } catch (err) { reportError('storyEnd', err); } }, FX_OFF() ? 0 : 900);
     return true;
   }
   const st = Stats.record(win);
@@ -2202,6 +2203,14 @@ renderAutoBtn();
 $('share-btn').onclick = shareResult;
 $('restart-btn').onclick = () => { renderStats(); startGame(); };
 /** 스토리 모드 전투 시작 (js/story.js에서 호출) */
+
+/** 스토리·탑: 공격력 강화(공업)를 하단 4버튼 줄로 옮김. 아케이드는 action-bar 자리로 복귀 */
+function dockStoryBuff(on) {
+  const b = $('act-buff'), bar = $('action-bar'), hud = document.querySelector('#me-dock .hud-btns'), gu = $('story-giveup');
+  if (!b || !bar || !hud) return;
+  if (on) { if (b.parentElement !== hud) hud.insertBefore(b, gu || null); }
+  else if (b.parentElement !== bar) { const fh = $('act-fieldheal'); if (fh) bar.insertBefore(b, fh); else bar.appendChild(b); }
+}
 /** 스토리 [도전 포기]: 확인 후 패배 처리 */
 function giveUp() {
   if (!S?.story || S.over) return;
@@ -2408,7 +2417,7 @@ async function viewBattle0({ session, aiName = '상대', bg = 'normal', bgKey = 
     return x.value;
   } finally {
     clearInterval(tick); RB?.remove(); SKB.remove();
-    $('game').classList.remove('view-battle', 'view-raid', 'view-boss', 'story-field'); $('game').classList.add('hidden');
+    dockStoryBuff(false); $('game').classList.remove('view-battle', 'view-raid', 'view-boss', 'story-field'); $('game').classList.add('hidden');
     hid.forEach(e => { e.style.display = e.dataset.vbHide || ''; delete e.dataset.vbHide; });
     if (hubWasOn) $('start-screen').classList.remove('hidden');
     S = null; selected = null;

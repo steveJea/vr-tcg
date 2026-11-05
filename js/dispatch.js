@@ -6,7 +6,7 @@
   const EL = { WIND: '🍃 바람', FIRE: '🔥 불', ICE: '❄️ 얼음', DARK: '🌑 어둠', LIGHT: '☀️ 빛' };
   const RW = { gold: '💰 골드', blood: '🩸 순수한 피', shard: '🔹 이상한 조각', soul: '🔥 각성자의 혼', gem: '🔮 심연석', tickets: '🎫 소환권', drink: '🥤 드링크' };
   const HOURS = [1, 4, 8, 12];
-  const ERR = { 'slots full': '파견 슬롯이 꽉 찼어요', 'daily cap': '오늘 파견 횟수(12번)를 다 썼어요', busy: '이미 파견 중인 인재가 있어요', 'need grade': '필수 등급을 채우지 못했어요', 'banned grade': 'MR·LR 인재는 아직 파견할 수 없어요', 'not owned': '보유하지 않은 인재예요', taken: '이미 보낸 의뢰예요', 'no offer': '의뢰가 바뀌었어요. 다시 열어 주세요', 'not enough gem': '심연석이 부족해요', 'nothing to claim': '받을 보상이 없어요', 'bad cards': '인원 수가 맞지 않아요' };
+  const ERR = { 'slots full': '파견 슬롯이 꽉 찼어요', 'daily cap': '오늘 파견 횟수(12번)를 다 썼어요', busy: '이미 파견 중인 인재가 있어요', 'duplicate card': '같은 인재는 한 명만 보낼 수 있어요', 'need grade': '필수 등급을 채우지 못했어요', 'banned grade': 'MR·LR 인재는 아직 파견할 수 없어요', 'not owned': '보유하지 않은 인재예요', taken: '이미 보낸 의뢰예요', 'no offer': '의뢰가 바뀌었어요. 다시 열어 주세요', 'not enough gem': '심연석이 부족해요', 'nothing to claim': '받을 보상이 없어요', 'bad cards': '인원 수가 맞지 않아요' };
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const errText = e => { const m = e?.message || String(e); for (const k in ERR) if (m.includes(k)) return ERR[k]; return '⚠️ ' + m; };
   const toast = t => { const el = document.createElement('div'); el.className = 'gem-toast'; el.textContent = t; document.body.appendChild(el); setTimeout(() => el.remove(), 2600); };
@@ -20,6 +20,7 @@
   }
   const zone = id => st?.zones?.find(z => z.id === id);
   const busy = () => new Set((st?.runs || []).flatMap(r => r.uids));
+  const busyIds = () => { const out = new Set(); for (const r of st?.runs || []) for (const u of r.uids || []) { const o = owned.find(x => x.uid === u); if (o?.id) out.add(String(o.id)); } return out; };
   const meta = o => { const c = window.TCG?.cardById?.(o.id) || {}; return { ...o, g: Math.max(0, G.indexOf(c.grade || o.grade)), el: c.class, cls: c.attribute, name: o.name || c.name || o.id }; };
   const rwText = (rw, f = 1) => Object.entries(rw || {}).map(([k, v]) => { const n = v * f; return `${RW[k] || k} ${n >= 1 ? '~' + Math.round(n) : Math.round(n * 100) + '%'}`; }).join(' · ');
   const left = t => { const ms = new Date(t) - Date.now(); if (ms <= 0) return '완료'; const h = Math.floor(ms / 3600e3), m = Math.floor(ms % 3600e3 / 60000), s = Math.floor(ms % 60000 / 1000); return h ? `${h}시간 ${m}분` : `${m}분 ${s}초`; };
@@ -46,6 +47,7 @@
   .dsp-run button,.dsp-acts button,.dsp-h button,.dsp-pk-acts button{padding:8px 10px;border-radius:10px;border:1px solid rgba(251,191,36,.35);background:rgba(0,0,0,.3);color:#fde68a;font-weight:700;cursor:pointer;font-size:13px;white-space:nowrap}
   .dsp-run button.go,.dsp-acts button.go,.dsp-pk-acts button.go,.dsp-h button.on{background:#f59e0b;color:#1a1200}
   .dsp-run.done{border-color:#22c55e}
+  .dsp-card.dim{opacity:.35;filter:grayscale(.6)}
   .dsp-acts{display:flex;gap:6px;padding:8px 10px 12px;border-top:1px solid rgba(255,255,255,.08)}.dsp-acts button{flex:1;padding:10px 4px;font-size:13px}
   .dsp-acts button:disabled,.dsp-pk-acts button:disabled{opacity:.45}
   .dsp-h{display:flex;gap:6px;padding:4px 10px 0}.dsp-h button{flex:1;padding:7px 2px}
@@ -130,15 +132,22 @@
 
   // 인재 고르기: 보낼 수 있는 인재(파견 중·MR 이상 제외), 조건 맞는 인재 위로
   function pick(o) {
-    const z = zone(o.zone), bz = busy(); let sel = [];
-    const pool = owned.filter(c => !bz.has(c.uid) && c.g <= 4).sort((a, b) => ((b.el === o.el) + (b.cls === o.cls)) - ((a.el === o.el) + (a.cls === o.cls)) || a.g - b.g);
+    const z = zone(o.zone), bz = busy(), bid = busyIds(); let sel = [];
+    const pool = owned.filter(c => !bz.has(c.uid) && !bid.has(String(c.id)) && c.g <= 4).sort((a, b) => ((b.el === o.el) + (b.cls === o.cls)) - ((a.el === o.el) + (a.cls === o.cls)) || a.g - b.g);
+    // 같은 인재(카드 id)는 한 명만 — 이미 선택된 id 는 다른 사본 비활성
+    const selIds = () => new Set(sel.map(u => String(pool.find(c => c.uid === u)?.id || '')));
     const box = shell(`${esc(z.name)} <span style="font-size:12px">${gBadge(z.min_grade)}</span>`, `최대 ${z.size}명 · ${EL[o.el] || o.el} · ${esc(o.cls)} · ${hours}시간`);
     const body = box.querySelector('.dbody');
     const paintP = () => {
-      const cards = sel.map(u => pool.find(c => c.uid === u)), ok = cards.some(c => c.g >= z.min_grade), b = bonusOf(cards, o, z);
+      const cards = sel.map(u => pool.find(c => c.uid === u)), ok = cards.some(c => c.g >= z.min_grade), b = bonusOf(cards, o, z), ids = selIds();
       body.innerHTML = `<div class="dsp-need"><span class="${ok ? 'ok' : 'no'}">${ok ? '✔' : '✖'} 필수: ${GS[z.min_grade]} 이상 1명</span> · 보너스 +${b}%<br>예상: ${rwText(z.rw, st.mult[hours] * (1 + b / 100))}</div>
-        <div class="dsp-pk-list">${pool.map(c => `<button class="dsp-card ${sel.includes(c.uid) ? 'on' : ''} ${c.el === o.el || c.cls === o.cls ? 'hit' : ''}" data-u="${esc(c.uid)}"><span class="dsp-g" style="background:${GC[c.g]}">${GS[c.g]}</span> Lv${c.level || 1}<b>${esc(c.name)}</b><span style="font-size:10px;opacity:.85">${EL[c.el] || ''} · ${esc(c.cls || '')}</span></button>`).join('') || '<div class="dsp-empty">보낼 수 있는 인재가 없어요</div>'}</div>`;
-      body.querySelectorAll('[data-u]').forEach(btn => btn.onclick = () => { const u = btn.dataset.u; sel = sel.includes(u) ? sel.filter(x => x !== u) : sel.length < z.size ? [...sel, u] : sel; paintP(); });
+        <div class="dsp-pk-list">${pool.map(c => { const on = sel.includes(c.uid), blocked = !on && ids.has(String(c.id)); return `<button class="dsp-card ${on ? 'on' : ''} ${blocked ? 'dim' : ''} ${c.el === o.el || c.cls === o.cls ? 'hit' : ''}" data-u="${esc(c.uid)}" ${blocked ? 'disabled' : ''}><span class="dsp-g" style="background:${GC[c.g]}">${GS[c.g]}</span> Lv${c.level || 1}<b>${esc(c.name)}</b><span style="font-size:10px;opacity:.85">${EL[c.el] || ''} · ${esc(c.cls || '')}</span></button>`; }).join('') || '<div class="dsp-empty">보낼 수 있는 인재가 없어요</div>'}</div>`;
+      body.querySelectorAll('[data-u]').forEach(btn => btn.onclick = () => {
+        const u = btn.dataset.u, c = pool.find(x => x.uid === u); if (!c) return;
+        if (sel.includes(u)) sel = sel.filter(x => x !== u);
+        else if (sel.length < z.size && !selIds().has(String(c.id))) sel = [...sel, u];
+        paintP();
+      });
       go.disabled = !ok;
     };
     box.insertAdjacentHTML('beforeend', `<div class="dsp-pk-acts"><button data-back>뒤로</button><button class="go" data-go>🧭 보내기</button></div>`);
@@ -150,13 +159,15 @@
 
   // 자동: 의뢰마다 필수 등급을 겨우 넘는 가장 낮은 인재 1명 + 보너스 맞는 인재(낮은 등급부터)로 채움
   function plan() {
-    const used = busy(), out = []; let room = Math.min(st.slots - st.runs.length, st.cap - st.starts);
+    const used = busy(), usedId = busyIds(), out = []; let room = Math.min(st.slots - st.runs.length, st.cap - st.starts);
     for (const o of st.offers) {
       if (room <= 0) break; if (o.taken) continue; const z = zone(o.zone); if (!z) continue;
-      const free = owned.filter(c => !used.has(c.uid) && c.g <= 4), hit = c => (c.el === o.el) + (c.cls === o.cls);
+      const free = owned.filter(c => !used.has(c.uid) && !usedId.has(String(c.id)) && c.g <= 4), hit = c => (c.el === o.el) + (c.cls === o.cls);
       const key = free.filter(c => c.g >= z.min_grade).sort((a, b) => a.g - b.g || hit(b) - hit(a))[0]; if (!key) continue;
-      const rest = free.filter(c => c !== key && hit(c) > 0).sort((a, b) => hit(b) - hit(a) || a.g - b.g).slice(0, z.size - 1);
-      const team = [key, ...rest]; team.forEach(c => used.add(c.uid)); out.push({ o, z, team, bonus: bonusOf(team, o, z) }); room--;
+      const rest = free.filter(c => c !== key && c.id !== key.id && hit(c) > 0).sort((a, b) => hit(b) - hit(a) || a.g - b.g);
+      const team = [key]; const seen = new Set([String(key.id)]);
+      for (const c of rest) { if (team.length >= z.size) break; if (seen.has(String(c.id))) continue; seen.add(String(c.id)); team.push(c); }
+      team.forEach(c => { used.add(c.uid); usedId.add(String(c.id)); }); out.push({ o, z, team, bonus: bonusOf(team, o, z) }); room--;
     }
     return out;
   }

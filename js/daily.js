@@ -93,8 +93,12 @@
     if (skills) { jobs.push(track('skill', skills)); skills = 0; }
     if (d.mode === 'arcade') jobs.push(track('arcade'));
     if (d.mode === 'tower') jobs.push(track('tower'));
-    if (d.mode === 'story' && d.win) jobs.push(track('story'));
-    if (d.win) jobs.push(track('win'));
+    if (d.mode === 'story' && d.win) {
+      // 소탕 n회 = 스테이지 n회 클리어 (daily per=1 · weekly per=2 이라 회차마다 호출)
+      const n = Math.max(1, d.n | 0);
+      for (let i = 0; i < n; i++) jobs.push(track('story'));
+    }
+    if (d.win && !d.sweep) jobs.push(track('win'));   // 소탕은 전투 승리가 아님 → story 만 n회
     await Promise.all(jobs); status();
   });
   window.VRDaily = { open, status, paint };

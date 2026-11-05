@@ -71,7 +71,9 @@
     const b = SS()?.querySelector('.story-back, #q-home'); if (b) return b.click();
     window.VRStory?.api?.home?.();
   }
-  const overlay = () => !!document.querySelector('.gem-pop, .main-pop:not(.hidden), .tr-bg:not(.vr-in-page), #story-pop:not(.hidden), .gal-detail, #detail:not(.hidden), #vr-mailbox, .gear-pop, .vr-mail-pop');
+  // 숨긴 팝업(.gal-detail.hidden · 남은 .gear-pop 등)이 잡혀 상단 메뉴만 사라지던 문제 — 실제로 보이는 것만
+  const ovVis = q => { const e = document.querySelector(q); return !!(e && !e.classList.contains('hidden') && getComputedStyle(e).display !== 'none' && e.getClientRects().length); };
+  const overlay = () => ovVis('.gem-pop') || ovVis('.main-pop') || !!document.querySelector('.tr-bg:not(.vr-in-page)') || ovVis('#story-pop') || ovVis('.gal-detail') || ovVis('#detail') || ovVis('#vr-mailbox') || ovVis('.vr-mail-pop') || !!document.querySelector('.gear-pop-bg:not(.vr-in-page):not([data-vr-under])');
   const busy = () => (window.VRGnb?.busy?.() ?? (vis($('game')))) || vis($('game')) || overlay();
   let last = '';
   function paint(force) {

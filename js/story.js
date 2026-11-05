@@ -636,6 +636,7 @@
     pop.close(true);
     if (error) { const m = error.message || ''; toast(/bag full/.test(m) ? '🎒 장비 가방이 꽉 찼어요. 정리하거나 칸을 늘린 뒤 소탕해 주세요' : /stamina/.test(m) ? '🔋 행동력이 부족해요' : /locked/.test(m) ? `⚡ 소탕은 플레이어 Lv.${SWEEP_LV}부터` : /not cleared/.test(m) ? '클리어한 페이즈만 소탕할 수 있어요' : `⚠️ 소탕 실패: ${m}`); window.VRPlayer?.status(true).then(() => window.VRPlayer.paint()); return; }
     if (r.player) window.VRPlayer?.set(r.player); window.VRPlayer?.setWallet(r.wallet);
+    try { window.dispatchEvent(new CustomEvent('vr:daily', { detail: { k: 'battle', win: true, mode: 'story', n: r.runs | 0 || n, sweep: true } })); } catch {}   // 소탕도 스토리 클리어 미션에 포함
     const againCost = n * (window.VRPlayer?.cost ?? 6), againSt = window.VRPlayer?.now?.()?.stamina, againOk = againSt == null || againSt >= againCost;
     const d = r.drops || {}, line = (k, ic2, nm) => d[k] ? `<div class="story-sweep-get">${ic2} ${nm} <b>+${fmt(d[k])}</b></div>` : '';
     const res = popup(`<div class="text-lg font-black text-center">${SW()} 소탕 완료 ×${r.runs}</div>
@@ -827,7 +828,20 @@
     const byName = ph.enemyName && enemies.find(c => c.name === ph.enemyName);
     return byId || byName || (ph.enemies?.ids ? enemies[0] : [...enemies].sort((a, b) => (b.power || 0) - (a.power || 0))[0]);
   }
-  const PICK_KEY = () => `vrTcgStoryPick:${user()?.id || 'guest'}`;
+  // 배틀 모드별 마지막 출전 덱 (스토리·탑이 같은 키를 써서 서로 덮어쓰던 문제)
+  const PICK_KEY = (mode = 'story') => `vrTcgPick:${mode}:${user()?.id || 'guest'}`;
+  const pickKeyRead = mode => {
+    const uid = user()?.id || 'guest', k = PICK_KEY(mode);
+    try {
+      const v = localStorage.getItem(k); if (v) return v;
+      // 예전 공용 키 → 스토리 모드로 한 번만 이전
+      if (mode === 'story') {
+        const legacy = localStorage.getItem(`vrTcgStoryPick:${uid}`);
+        if (legacy) { try { localStorage.setItem(k, legacy); } catch {} return legacy; }
+      }
+    } catch {}
+    return '[]';
+  };
   /** 출전 카드 고르기 (카드마다 1장, 최대 5장). 보유 카드가 5종 이하면 전부 출전 */
   /** 페이즈 필수 출전: party.forced (없으면 루트 주인공). 보유하지 않은 카드는 게스트(리더 레벨, 강화·EX 없음, 전투 EXP 없음) */
   const isGuest = o => String(o?.uid || '').startsWith('guest:');
@@ -887,13 +901,14 @@
   /** opts (퀘스트 등 재사용): { onGo(list), onCancel(), note, noLend } — 없으면 스토리 페이즈 전투 */
   function pickDeck(ch, ph, enemies, opts = null) {
     if (!opts?.noLend && serverMode && Date.now() - lendAt >= 30000) return loadLend().then(() => pickDeck(ch, ph, enemies, opts));
+    const pickMode = opts?.mode || 'story';
     const { forced, guests = [], exclude, allow, notes, max } = partyOf(ch, ph), pm = opts ? MAX_PICK() : pickMax(ch, ph), slots = Math.max(0, Math.min(pm, max || pm) - forced.length);   // party.max: 필수 포함 최대 장수
     const ln = opts?.noLend ? null : lendInst(), lend = ln && !exclude.has(ln.id) && allow(ln) && !guests.some(g => g.id === ln.id) ? [ln] : [];
     const all = [...new Map([...deckInstances().filter(o => !exclude.has(o.id) && allow(o)), ...lend, ...guests.filter(o => !exclude.has(o.id) && (!o.loan || allow(o)))].map(o => [o.uid, o])).values()];   // 같은 uid면 뒤(대여 인재의 시트 레벨 사본)가 이김
     const go = opts?.onGo || (list => battle(ch, ph, enemies, list));
     if (all.length <= slots && !forced.length) return go(all);
     if (ph.party?.auto && !opts) return go(forced);   // party.auto: 고르기 창 없이 필수 카드만 (챕터 0 튜토리얼)
-    let last = []; try { last = JSON.parse(localStorage.getItem(PICK_KEY()) || '[]'); } catch {}
+    let last = []; try { last = JSON.parse(pickKeyRead(pickMode) || '[]'); } catch {}
     const valid = new Set(all.map(o => o.uid));
     let sel = last.filter(u => valid.has(u)).slice(0, slots);
     if (!sel.length) sel = all.slice().sort((a, b) => (isLeader(b) - isLeader(a)) || (shown(b)?.power || 0) - (shown(a)?.power || 0)).slice(0, slots).map(o => o.uid);
@@ -930,7 +945,7 @@
       p.el.querySelector('[data-pickreset]')?.addEventListener('click', () => { sel = []; deck0.clear(); list = sortInst(all, deck0); p.close(true); draw(); });   // 리셋: 고른 인재 전부 해제 (필수 출전은 그대로) + 덱에 있던 카드도 지금 정렬 순서 자리로
       p.el.querySelectorAll('[data-pf]').forEach(b => b.onclick = () => { pf[b.dataset.pf] = !pf[b.dataset.pf]; p.close(true); draw(); });
       p.el.querySelectorAll('[data-usedeck]').forEach(b => b.onclick = () => { const v = new Set(all.map(o => o.uid)); sel = (decksOf()[+b.dataset.usedeck]?.uids || []).filter(u => v.has(u)).slice(0, slots); deck0.clear(); sel.forEach(u => deck0.add(u)); list = sortInst(all, deck0); p.close(true); draw(); });
-      $('story-deck-ok').onclick = () => { if (!sel.length && !forced.length) return; try { localStorage.setItem(PICK_KEY(), JSON.stringify(sel)); } catch {} p.close(true); go([...forced, ...list.filter(o => sel.includes(o.uid))]); };
+      $('story-deck-ok').onclick = () => { if (!sel.length && !forced.length) return; try { localStorage.setItem(PICK_KEY(pickMode), JSON.stringify(sel)); } catch {} p.close(true); go([...forced, ...list.filter(o => sel.includes(o.uid))]); };
     };
     draw();
   }
@@ -2067,7 +2082,7 @@
     await load(); if (!save) return { ok: false, reason: 'load' };
     let tk = null; try { const r = await syncTickets(); tk = r?.tickets ?? tickets; } catch {}
     const inst = deckInstances(), byUid = new Map(save.owned.map(o => [o.uid, o]));
-    let deck = []; try { deck = JSON.parse(localStorage.getItem(PICK_KEY()) || '[]').filter(u => byUid.has(u)); } catch {}
+    let deck = []; try { deck = JSON.parse(pickKeyRead('story') || '[]').filter(u => byUid.has(u)); } catch {}
     if (!deck.length) deck = inst.slice().sort((a, b) => (b.uid === save.leader) - (a.uid === save.leader) || (shown(b)?.power || 0) - (shown(a)?.power || 0)).slice(0, MAX_PICK()).map(o => o.uid);
     const view = o => { const b = shown(o) || {}; return { uid: o.uid, id: o.id, name: b.name || card(o.id)?.name || o.id, grade: b.grade || card(o.id)?.grade, level: o.level | 0, ex: o.ex | 0, power: b.power || 0, locked: isLocked(o), fav: isFav(o), leader: o.uid === save.leader }; };
     return {
@@ -2089,7 +2104,7 @@
     leaderFor: me => { const lo = me.find(c => c.uid === save.leader), le = lo && leaderEff(lo.id); return le ? { ...le, uid: lo.uid } : undefined; },
     ownedCount: () => deckInstances().length, syncTickets,
     /** 마지막으로 고른 출전 카드 (없으면 빈 배열). 보유 카드가 출전 수 이하면 전부 */
-    lastDeck: () => { const all = deckInstances(); if (all.length <= MAX_PICK()) return all; let last = []; try { last = JSON.parse(localStorage.getItem(PICK_KEY()) || '[]'); } catch {} const by = new Map(all.map(o => [o.uid, o])); return last.map(u => by.get(u)).filter(Boolean).slice(0, MAX_PICK()); },
+    lastDeck: (mode = 'tower') => { const all = deckInstances(); if (all.length <= MAX_PICK()) return all; let last = []; try { last = JSON.parse(pickKeyRead(mode) || '[]'); } catch {} const by = new Map(all.map(o => [o.uid, o])); return last.map(u => by.get(u)).filter(Boolean).slice(0, MAX_PICK()); },
   };
   const openPage = async fn => { if ((await enter()) === 'gate') return; if (save?.starter) fn(); };   // 오프닝·챕터 0·강제 영입·캐릭터 고르기 중이면 그 화면 유지 (위에 다른 화면 덮지 않음)
   /** 조직 대여 등록용: 내 인재 목록 (카드마다 1장) */
