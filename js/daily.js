@@ -32,7 +32,7 @@
     const ws = document.querySelectorAll('[data-dailybtn]');
     for (const w of ws) {
       if ((off && weekOff) || !window.VRCloud?.user) { w.innerHTML = ''; continue; }
-      if (!w.querySelector('.daily-btn')) { w.innerHTML = '<button class="story-mailbtn daily-btn" type="button" aria-label="일일·주간 미션" title="일일·주간 미션">📅<span>미션</span></button>'; w.firstChild.onclick = open; }
+      if (!w.querySelector('.daily-btn')) { w.innerHTML = '<button class="story-mailbtn daily-btn" type="button" aria-label="일일·주간 미션" title="일일·주간 미션"><img class="ui-btn-ic" src="img/ui/icon/mission.webp" alt="미션" width="20" height="20"><span>미션</span></button>'; w.firstChild.onclick = open; }
       const b = w.firstChild; b.querySelector('.story-badge')?.remove(); const k = readyDaily(cache) + readyWeek(week);
       if (k > 0) b.insertAdjacentHTML('beforeend', `<i class="story-badge">${k}</i>`);
     }

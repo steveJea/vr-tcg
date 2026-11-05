@@ -37,7 +37,7 @@
     const ws = document.querySelectorAll('[data-achbtn]');
     for (const w of ws) {
       if (off || !window.VRCloud?.user) { w.innerHTML = ''; continue; }
-      if (!w.querySelector('.ach-btn')) { w.innerHTML = '<button class="story-mailbtn ach-btn" type="button" aria-label="업적" title="업적">🏆<span>업적</span></button>'; w.firstChild.onclick = open; }
+      if (!w.querySelector('.ach-btn')) { w.innerHTML = '<button class="story-mailbtn ach-btn" type="button" aria-label="업적" title="업적"><img class="ui-btn-ic" src="img/ui/icon/achievement.webp" alt="업적" width="20" height="20"><span>업적</span></button>'; w.firstChild.onclick = open; }
       const b = w.firstChild; b.querySelector('.story-badge')?.remove();
       const k = cache?.ready | 0;
       if (k > 0) b.insertAdjacentHTML('beforeend', `<i class="story-badge">${k}</i>`);

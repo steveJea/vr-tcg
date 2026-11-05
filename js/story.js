@@ -560,11 +560,11 @@
   function mailBtn() {
     const ws = document.querySelectorAll('[data-mailbtn]'); if (!ws.length) return;   // 우편 유무와 상관없이 항상 표시 (메인 상단·허브·챕터 맵)
     for (const w of ws) { if (w.querySelector('.story-mailbtn')) continue;
-    w.innerHTML = '<button class="story-mailbtn" type="button" aria-label="우편함" title="우편함">📮<span>우편</span></button>';
+    w.innerHTML = '<button class="story-mailbtn" type="button" aria-label="우편함" title="우편함"><img class="ui-btn-ic" src="img/ui/icon/mail.webp" alt="우편" width="20" height="20"><span>우편</span></button>';
     w.firstChild.onclick = () => { const G = window.VRGear; if (!G || G.off) return toast('📮 우편함을 불러올 수 없어요. 잠시 후 다시 시도해 주세요'); G.mailbox({ back: () => G.unread?.() }); }; }
     window.VRGear?.unread?.(); setTimeout(() => window.VRGear?.unread?.(), 1500);
   }
-  document.addEventListener('vr-mail-unread', e => { document.querySelectorAll('.story-mailbtn').forEach(b => { b.querySelector('.story-badge')?.remove();
+  document.addEventListener('vr-mail-unread', e => { document.querySelectorAll('[data-mailbtn] .story-mailbtn').forEach(b => { b.querySelector('.story-badge')?.remove();
     if (e.detail > 0) b.insertAdjacentHTML('beforeend', `<i class="story-badge">${e.detail > 99 ? '99+' : e.detail}</i>`); }); });
   // 메인 화면 상단 📮: 처음 로드 · 로그인 뒤(장비 모듈 준비) · 처음으로 돌아올 때
   setTimeout(mailBtn, 0); setTimeout(mailBtn, 3000);

@@ -38,7 +38,7 @@
     for (const t of document.querySelectorAll('[data-friendbadge]')) { t.querySelector('.fr-tabbadge')?.remove(); if (!off && window.VRCloud?.user && badgeN() > 0) t.insertAdjacentHTML('beforeend', `<i class="story-badge fr-tabbadge">${badgeN()}</i>`); }
     for (const w of document.querySelectorAll('[data-friendbtn]')) {
       if (off || !window.VRCloud?.user) { w.innerHTML = ''; continue; }
-      if (!w.querySelector('.friend-btn')) { w.innerHTML = '<button class="story-mailbtn friend-btn" type="button" aria-label="친구" title="친구">👥<span>친구</span></button>'; w.firstChild.onclick = open; }
+      if (!w.querySelector('.friend-btn')) { w.innerHTML = '<button class="story-mailbtn friend-btn" type="button" aria-label="친구" title="친구"><img class="ui-btn-ic" src="img/ui/icon/friend.webp" alt="친구" width="20" height="20"><span>친구</span></button>'; w.firstChild.onclick = open; }
       const b = w.firstChild; b.querySelector('.story-badge')?.remove();
       if (badgeN() > 0) b.insertAdjacentHTML('beforeend', `<i class="story-badge">${badgeN()}</i>`);
     }

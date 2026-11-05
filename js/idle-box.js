@@ -34,7 +34,7 @@
     for (const w of ws) {
       if (off || !window.VRCloud?.user) { w.innerHTML = ''; continue; }
       if (!w.querySelector('.idle-btn')) {
-        w.innerHTML = '<button class="story-mailbtn idle-btn" type="button" aria-label="방치 보상" title="방치 보상">🎁<span>보상</span></button>';
+        w.innerHTML = '<button class="story-mailbtn idle-btn" type="button" aria-label="방치 보상" title="방치 보상"><img class="ui-btn-ic" src="img/ui/icon/idle_box.webp" alt="보상" width="20" height="20"><span>보상</span></button>';
         w.firstChild.onclick = open;
       }
       const b = w.firstChild; b.querySelector('.story-badge')?.remove();
