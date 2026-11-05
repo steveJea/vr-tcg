@@ -102,7 +102,8 @@
     let el = $('gal-end');
     if (!el) {
       el = document.createElement('div'); el.id = 'gal-end'; el.className = 'gal-end';
-      const btn = $('restart-btn'); btn.parentNode.insertBefore(el, btn);
+      const anchor = $('end-actions') || $('restart-btn');
+      anchor.parentNode.insertBefore(el, anchor);
     }
     return el;
   }
@@ -124,9 +125,7 @@
       await loadSkills();
       res.forEach(r => owned.set(r.card_id, { ...(owned.get(r.card_id) || {}), ...r }));
       const items = ids.map(id => ({ c: cardById(id), r: res.find(x => x.card_id === id) })).filter(x => x.c);
-      const nNew = items.filter(x => x.r?.is_new).length;
-      box.innerHTML = `<div class="gal-end-title">${IC('gallery')} 갤러리 수집 ${items.length}장${nNew ? ` · <span class="gal-new-txt">NEW ${nNew}</span>` : ''}</div>
-        <div class="gal-end-row">${items.map(({ c, r }) => `<div class="gal-end-card rar-${SHORT[c.grade]}">
+      box.innerHTML = `<div class="gal-end-row">${items.map(({ c, r }) => `<div class="gal-end-card rar-${SHORT[c.grade]}">
           <img src="${cardThumb(c.id)}" alt="${esc(c.name)}" onerror="this.style.visibility='hidden'">
           ${r?.is_new ? '<span class="gal-new">NEW!</span>' : `<span class="gal-cnt">×${r?.count ?? ''}</span>`}
           ${crownHtml(crownTier(r))}

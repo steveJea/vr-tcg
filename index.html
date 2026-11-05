@@ -558,12 +558,14 @@
   <div class="end-card relative text-center w-full max-w-sm my-auto">
     <div id="end-title" class="mb-2"></div>
     <div id="end-mvp-wrap"></div>
-    <div id="end-text" class="text-zinc-300 text-sm mb-2"></div>
+    <div id="end-text" class="text-zinc-300 text-sm mb-2 empty:hidden"></div>
     <div id="end-stats" class="text-sm text-left bg-black/40 rounded-2xl px-4 py-2 mb-4"></div>
-    <button id="restart-btn" class="w-full py-3.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black text-lg font-bold">다시 하기</button>
-    <button id="share-btn" class="w-full mt-2 py-3 rounded-2xl bg-sky-500 hover:bg-sky-400 text-black font-bold">공유하기</button>
+    <div id="end-actions" class="flex gap-2">
+      <button id="restart-btn" class="flex-1 py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black text-sm font-bold">다시 하기</button>
+      <button id="share-btn" class="flex-1 py-3 rounded-2xl bg-sky-500 hover:bg-sky-400 text-black text-sm font-bold">공유하기</button>
+      <button id="home-btn" class="flex-1 py-3 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20 text-sm">처음으로</button>
+    </div>
     <div id="end-share-msg" class="text-xs text-sky-300 mt-1 min-h-[1rem] break-all"></div>
-    <button id="home-btn" class="w-full mt-1 py-2.5 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20">처음으로</button>
   </div>
 </div>
 

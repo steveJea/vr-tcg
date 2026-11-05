@@ -927,11 +927,8 @@ function finish(win, reason) {
     setTimeout(() => { dockStoryBuff(false); $('game').classList.add('hidden'); try { cb?.(win, reason, { turns: S.turnNo, myTurns: S.myTurns, mana: S.me.manaPool ? S.me.mana : null, maxMana: S.me.manaPool ? S.me.maxMana : null, damage: S.log.total, played: [...S.log.played], kills: { ...S.log.kills }, blocks: { ...(S.log.blocks || {}) } }); } catch (err) { reportError('storyEnd', err); } }, FX_OFF() ? 0 : 900);
     return true;
   }
-  const st = Stats.record(win);
-  $('end-title').innerHTML = win === null ? '<span class="text-zinc-200">무승부</span>' : win ? '<span class="text-emerald-400">승리!</span>' : '<span class="text-red-400">패배...</span>';
-  const why = reason === 'ko' ? '진영 붕괴 (KO)' : `${maxTurns()}턴 종료 판정 · ${JUDGE_LABEL[reason]}`;
-  const detail = reason === 'ko' ? '' : `<div class="text-sm text-zinc-400 mt-1">진영 HP 나 ${fmt(S.me.hp)} : ${fmt(S.ai.hp)} 상대 · 필드 카드 ${S.me.field.length} : ${S.ai.field.length}</div>`;
-  $('end-text').innerHTML = `<div id="end-reason" class="font-bold text-amber-300">${why}</div>${detail}<div class="mt-2">${S.turnNo}라운드 · 아케이드 전적 ${st.wins}승 ${st.losses}패${st.draws ? ` ${st.draws}무` : ''}</div>`;
+  Stats.record(win);
+  $('end-text').innerHTML = '';
   try { showEnding(win, reason); } catch (err) { reportError('ending', err); }
   try { const mvp = pickMvp(); window.dispatchEvent(new CustomEvent('vr:match', { detail: { result: win === null ? 'draw' : win ? 'win' : 'lose', reason, turns: S.turnNo, damage: S.log.total, skills: S.log.skills, mvpId: mvp?.card.id, mvpName: mvp?.card.name, mercId: S.log.merc?.id, fieldIds: S.me.field.map(u => (u.base || u.card).id) } })); } catch {}
   const showEnd = () => { if (!S.over) return; $('end-screen').classList.remove('hidden'); countUp($('end-screen')); };
@@ -1108,7 +1105,7 @@ function showEnding(win, reason) {
       <img src="${IMG}${mvp.card.id}.webp" alt="${mvp.card.name}" onerror="this.style.visibility='hidden'">
       <div class="end-mvp-tag">MVP · ${mvp.card.name}${mvp.dmg ? ` · 피해 ${fmt(mvp.dmg)}` : ''}</div></div>` : '';
   const row = (k, v) => `<div class="flex justify-between gap-3 py-1 border-b border-white/10"><span class="text-zinc-400">${k}</span><span class="font-bold text-zinc-100">${v}</span></div>`;
-  $('end-title').innerHTML = `<div class="end-slash"><div class="end-big">${title}</div></div><div class="text-base font-bold mt-1 ${kind === 'win' ? 'text-emerald-300' : kind === 'lose' ? 'text-red-400' : 'text-zinc-200'}">${sub}</div>`;
+  $('end-title').innerHTML = `<div class="end-slash"><div class="end-big">${title}</div></div>`;
   $('end-mvp-wrap').innerHTML = mvpHTML;
   $('end-stats').innerHTML = row('진행 턴', `${S.myTurns || S.turnNo}턴 (${S.turnNo}라운드)`) + row('준 피해 합계', BFX() ? `<span data-count="${L.total || 0}">${fmt(L.total)}</span>` : fmt(L.total)) + row('사용한 스킬', BFX() ? `<span data-count="${L.skills || 0}" data-suf="회">${L.skills}회</span>` : `${L.skills}회`)
     + row('고용한 용병', L.merc ? `${ic('merc')} ${L.merc.name}` : '없음') + row('진영 HP', `나 ${fmt(Math.max(0, S.me.hp))} : ${fmt(Math.max(0, S.ai.hp))} 상대`);
