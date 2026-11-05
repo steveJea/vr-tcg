@@ -637,7 +637,8 @@ function setBattleBg(kind, o = {}) {
   document.body.classList.toggle('bfx', BFX());
   bg.style.backgroundImage = ''; delete bg.dataset.bgKey;
   bg.dataset.bg = kind; bg.classList.add('on');
-  tryBgArt(bg, [o.key, ...battleBgKeys(kind, o.story)].filter(Boolean));
+  const cosmoBg = (() => { try { return window.VRCosmo?.boardKey?.(); } catch { return null; } })();
+  tryBgArt(bg, [cosmoBg, o.key, ...battleBgKeys(kind, o.story)].filter(Boolean));
   if (!bg._watch) { bg._watch = new MutationObserver(() => { const vis = !$('game').classList.contains('hidden'); document.body.classList.toggle('bfx-battle', vis); if (!vis) battleFullscreen(false); }); bg._watch.observe($('game'), { attributes: true, attributeFilter: ['class'] }); bg._watch2 = new MutationObserver(() => bg.classList.toggle('on', !$('game').classList.contains('hidden'))); bg._watch2.observe($('game'), { attributes: true, attributeFilter: ['class'] }); }
 }
 
@@ -1570,13 +1571,14 @@ function cardTags(c, extra = []) {
 function cardStats(c, hp = null, power = false) {
   return `${power ? `<div class="ci-power" title="전투력 (레벨 반영)">⚡ <span>POWER</span> <b>${fmt(c.power)}</b></div>` : ''}<div class="ci-stats"><span class="ci-st atk" title="ATK">${ic('atk', { alt: 'ATK' })}<b>${fmt(c.ATK)}</b></span><span class="ci-st def" title="DEF">${ic('def', { alt: 'DEF' })}<b>${fmt(c.DEF)}</b></span><span class="ci-st hp" title="HP">${ic('hp', { alt: 'HP' })}<b>${hp != null ? fmt(+hp) + '/' : ''}${fmt(c.HP)}</b></span></div>`;
 }
-function cardHTML(c, { hp, size = 'md', dim = false } = {}) {
+function cardHTML(c, { hp, size = 'md', dim = false, mine = false } = {}) {
   const e = ELEMENTS[c.class] || ELEMENTS.WIND;
   const small = size === 'sm';
   const rar = rarityOf(c), nSk = skillsOf(c.id).length;
+  const bdr = mine ? (() => { try { const id = window.VRCosmo?.borderId?.(); return id ? `<img class="cosmo-bdr" src="img/ui/border/${id}.webp" alt="" aria-hidden="true" onerror="this.remove()">` : ''; } catch { return ''; } })() : '';
   return `
   <div class="card-frame ${rar.cls} relative ${small ? 'w-[64px] md:w-[96px]' : 'w-[78px] md:w-[110px]'} bg-zinc-900 rounded-xl overflow-hidden ${dim ? 'opacity-50' : ''} shadow-lg" data-grade="${rar.short}">
-    <img src="${cardThumb(c.id)}" data-id="${c.id}" class="card-img w-full aspect-[3/4] object-cover" alt="${c.name}">
+    ${bdr}<img src="${cardThumb(c.id)}" data-id="${c.id}" class="card-img w-full aspect-[3/4] object-cover" alt="${c.name}">
     <button type="button" class="zoom-btn absolute bottom-[46px] md:bottom-[58px] right-1" data-zoom="${c.id}"${hp != null ? ` data-hp="${hp}"` : ''} title="크게 보기" aria-label="크게 보기">🔍</button>
     <div class="absolute top-1 left-1 w-6 h-6 md:w-7 md:h-7 rounded-full bg-sky-600 text-white text-[11px] md:text-xs font-black flex items-center justify-center border border-white/40">${c.cost}</div>
     <div class="absolute top-1 right-1 text-sm md:text-base" title="${e.label}">${icOf(e)}</div>
@@ -1764,7 +1766,7 @@ function render() {
       const sts = statusIcons(u);
       const skReady = who === 'me' && myTurn && u.sk.some(s => skillState(u, s).ok);
       const icons = [u.items?.weapon && icOf(ITEMS.weapon), u.items?.armor && icOf(ITEMS.armor), ...u.skills.map(k => icOf(SKILLS[k]))].filter(Boolean);
-      w.__h = `<div class="relative ${hero ? 'hero-card' : ''}">${cardHTML(u.card, { hp: u.hp, size: 'sm', dim: who === 'me' && !u.canAttack && myTurn })}${statusDecor(u)}` +
+      w.__h = `<div class="relative ${hero ? 'hero-card' : ''}">${cardHTML(u.card, { hp: u.hp, size: 'sm', dim: who === 'me' && !u.canAttack && myTurn, mine: who === 'me' })}${statusDecor(u)}` +
         `<div class="lv-badge absolute -top-1.5 left-1/2 -translate-x-1/2 px-1.5 rounded-full ${hero ? 'bg-gradient-to-r from-yellow-300 to-amber-500 shadow-[0_0_8px_#fbbf24]' : u.level > 1 ? 'bg-amber-400' : 'bg-zinc-600 text-white'} text-black text-[9px] md:text-[10px] font-black whitespace-nowrap">${hero ? ic('crown', { cls: 'ui-ic-sm' }) + ' ' : ''}Lv${u.level}</div>` +
         (icons.length ? `<div class="item-icons absolute top-7 right-0.5 flex flex-col text-[11px] md:text-sm leading-tight drop-shadow">${icons.map(x => `<span>${x}</span>`).join('')}</div>` : '') +
         (sts.length ? `<div class="status-icons absolute top-7 left-0.5 flex flex-col text-[11px] md:text-sm leading-tight drop-shadow">${sts.map(x => { const big = isStatusFxKind(x.kind), au = big && statusIconUrl(x.kind); return `<span title="${x.title}"${big ? ` class="st-big ${x.kind}"` : ''}>${au ? `<img class="st-asset" src="${au}" alt="">` : icOf(x)}${x.t > 0 ? `<b class="st-turns">${x.t}</b>` : ''}</span>`; }).join('')}</div>` : '') + `</div>` +
@@ -1809,7 +1811,7 @@ function render() {
   closeStaleHandDetail();   // 손패 카드 상세가 떠 있는데 그 카드가 손패에서 빠졌으면(소환·회수·자동·이벤트 등 어떤 경로든) 닫기
   const hand = $('me-hand');
   renderSortBar();
-  const hcs = sortedHand(S.me.hand).map(c => { const ok = myTurn && canSummon(c, S.me, S.ai).ok; return { c, cls: `hand-card shrink-0 cursor-pointer transition hover:-translate-y-2 ${ok ? '' : 'opacity-60'}`, html: cardHTML(c) }; });
+  const hcs = sortedHand(S.me.hand).map(c => { const ok = myTurn && canSummon(c, S.me, S.ai).ok; return { c, cls: `hand-card shrink-0 cursor-pointer transition hover:-translate-y-2 ${ok ? '' : 'opacity-60'}`, html: cardHTML(c, { mine: true }) }; });
   const hsig = hcs.map(h => h.c.id + '|' + h.cls + '|' + h.html).join('\n');
   if (hand.__sig === hsig && hand.childElementCount === hcs.length && hand.__len === hand.innerHTML.length) {   // 손패가 그대로면 다시 만들지 않고 눌렀을 때 카드만 최신으로
     hcs.forEach((h, i) => { hand.children[i].onclick = () => showDetail(h.c, { fromHand: true }); });

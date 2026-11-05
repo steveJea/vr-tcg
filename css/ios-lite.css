@@ -21,3 +21,4 @@ html.ios .bfx #game.bfx-low::before { box-shadow: none; border: 2px solid rgba(2
               linear-gradient(to bottom, rgba(220,38,38,.4), transparent 10%, transparent 90%, rgba(220,38,38,.4));
   will-change: opacity; }
 /* 선택된 카드·드래그 중 카드의 빛은 짧게만 쓰여서 그대로 둠 */
+html.ios #game .card-frame > .cosmo-bdr{display:none!important}
