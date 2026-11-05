@@ -71,9 +71,11 @@
     const b = SS()?.querySelector('.story-back, #q-home'); if (b) return b.click();
     window.VRStory?.api?.home?.();
   }
-  // 숨긴 팝업(.gal-detail.hidden · 남은 .gear-pop 등)이 잡혀 상단 메뉴만 사라지던 문제 — 실제로 보이는 것만
+  // 숨긴 팝업·페이지로 담은 창(vr-in-page)·밑에 깔린 창(data-vr-under)은 제외 — 진짜 떠 있는 팝업만
+  // 조직·PvP 작은 창도 포함 → 상단바가 팝업 위에 남지 않음. 페이지 자체(상점·친구 등)는 상단바 유지
   const ovVis = q => { const e = document.querySelector(q); return !!(e && !e.classList.contains('hidden') && getComputedStyle(e).display !== 'none' && e.getClientRects().length); };
-  const overlay = () => ovVis('.gem-pop') || ovVis('.main-pop') || !!document.querySelector('.tr-bg:not(.vr-in-page)') || ovVis('#story-pop') || ovVis('.gal-detail') || ovVis('#detail') || ovVis('#vr-mailbox') || ovVis('.vr-mail-pop') || !!document.querySelector('.gear-pop-bg:not(.vr-in-page):not([data-vr-under])');
+  const ovLive = q => [...document.querySelectorAll(q)].some(e => !e.classList.contains('hidden') && getComputedStyle(e).display !== 'none' && e.getClientRects().length);
+  const overlay = () => ovLive('.gem-pop:not(.vr-in-page)') || ovVis('.main-pop') || ovVis('.mp-modal') || ovLive('.tr-bg:not(.vr-in-page)') || ovLive('#story-pop:not(.story-pop-page)') || ovVis('.gal-detail') || ovVis('#detail') || ovVis('#vr-mailbox') || ovVis('.vr-mail-pop') || ovLive('#camp-ov:not(.vr-in-page)') || ovLive('.gear-pop-bg:not(.vr-in-page):not([data-vr-under])') || ovLive('.gd-pop:not(.vr-in-page):not([data-vr-under])') || ovLive('.pvp-modal:not(.vr-in-page):not(#pvp-play)');
   const busy = () => (window.VRGnb?.busy?.() ?? (vis($('game')))) || vis($('game')) || overlay();
   let last = '';
   function paint(force) {

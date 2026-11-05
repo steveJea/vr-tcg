@@ -17,17 +17,34 @@
 .vr-in-page > .gem-panel { width: 100% !important; max-width: 560px; max-height: none !important; margin: 0 auto; border: 0 !important; background: none !important; box-shadow: none !important; padding: 0 !important; }
 .vr-in-page .gem-x, #vr-page #rank-box .rh { display: none !important; }
 #vr-page #rank-box { width: 100% !important; max-width: 560px; max-height: none !important; margin: 0 auto; border: 0 !important; background: none !important; box-shadow: none !important; position: static !important; }
-/* 페이지가 열려 있을 때: 페이지 위에 떠야 하는 팝업(카드 상세 · Y/N 확인 · 갤러리 상세·확대 · 알림)은 더 위로 */
-body.vr-page-on #detail, body.vr-page-on .gal-detail, body.vr-page-on #story-pop, body.vr-page-on .drink-ask { z-index: 9100 !important; }
-body.vr-page-on #main-settings-pop { z-index: 9100 !important; }   /* 페이지(탑 등) 위에서 설정 창이 페이지 뒤에 깔려 안 보이고 상단 메뉴만 사라지던 문제 */
-body.vr-page-on .gal-zoom { z-index: 9150 !important; }
-body.vr-page-on #vr-confirm { z-index: 9200 !important; }
-body.vr-page-on .gem-toast, body.vr-page-on .story-toast { z-index: 9300 !important; }
+/* 레이어: 페이지(#vr-page)=9000 · 상단바(#vr-tnb)=9050 · 하단GNB(#vr-gnb)=9100 · 진짜 팝업(body 직속)=9600+
+   마이/PvP/조직 등에서 연 팝업이 상단바 뒤로 깔리던 문제 — 페이지 안(vr-in-page)이 아닌 떠 있는 창은 항상 크롬 위 */
+.gd-pop:not(.vr-in-page):not([data-vr-under]),
+.pvp-modal:not(.vr-in-page),
+.gear-pop-bg:not(.vr-in-page):not([data-vr-under]),
+.gem-pop:not(.vr-in-page),
+.main-pop,
+.tr-bg:not(.vr-in-page),
+.mp-modal:not(.hidden),
+.gal-modal:not(.hidden),
+.gal-detail:not(.hidden),
+#detail:not(.hidden),
+#story-pop:not(.hidden):not(.story-pop-page),
+#camp-ov:not(.vr-in-page),
+#main-settings-pop:not(.hidden),
+#arcade-opts:not(.hidden),
+#merc:not(.hidden),
+#help:not(.hidden),
+#endturn-confirm:not(.hidden),
+#howto.open,
+.drink-ask { z-index: 9600 !important; }
+.pvp-modal.pvp-top:not(.vr-in-page), .pvp-vsx, .gal-zoom, .pvp-modal.pvp-sub:not(.vr-in-page) { z-index: 9650 !important; }
+#vr-confirm { z-index: 9700 !important; }
+.gem-toast, .story-toast, .gd-toast, .pvp-toast { z-index: 9800 !important; }
 /* 3단계: 마이페이지 · 갤러리 판을 페이지 안에 */
 #vr-page .mp-panel, #vr-page .gal-panel { width: 100% !important; max-width: 640px; max-height: none !important; margin: 0 auto; border: 0 !important; background: none !important; box-shadow: none !important; position: static !important; overflow: visible !important; }
 #vr-page .mp-title, #vr-page .mp-x, #vr-page .gal-title, #vr-page .gal-x:not(.gal-detail .gal-x) { display: none !important; }
 /* 4단계: 파견 · 장비(가방·우편함·PvP 상점) */
-body.vr-page-on .gear-pop-bg:not(.vr-in-page) { z-index: 9100 !important; }
 #vr-page #dsp-box, #vr-page .gear-pop { width: 100% !important; max-width: 640px; max-height: none !important; margin: 0 auto; border: 0 !important; background: none !important; box-shadow: none !important; position: static !important; overflow: visible !important; }
 #vr-page #dsp-box .dx { display: none !important; }
 /* 5단계: 탑 — #story-screen 을 페이지 안에 담음 (스크롤은 예전처럼 story-screen 이 맡음). 전투 중(화면 숨김)엔 페이지도 숨김 */
@@ -35,7 +52,6 @@ body.vr-page-on .gear-pop-bg:not(.vr-in-page) { z-index: 9100 !important; }
 #vr-page .vr-quest-body > #story-screen { position: absolute; inset: 0; z-index: 0; clip-path: inset(0); }   /* 탑 고정 배경(::before)이 머리줄까지 덮지 않게 잘라냄 */
 #vr-page:has(.vr-quest-body > #story-screen.hidden) { display: none; }
 /* 6단계: 토벌·구역 전쟁 (조직 창 위에서도 열림) */
-body.vr-page-on .gd-pop:not(.vr-in-page):not([data-vr-under]) { z-index: 9100 !important; }
 #vr-page .gd-pop.vr-in-page { position: static !important; inset: auto !important; background: none !important; padding: 0 !important; display: block !important; }
 #vr-page .gd-pop.vr-in-page > .gd-pop-panel { width: 100% !important; max-width: 640px; max-height: none !important; margin: 0 auto; box-shadow: none !important; overflow: visible !important; }
 #vr-page .gd-pop.vr-in-page > .gd-pop-panel > .gd-x { display: none !important; }
@@ -46,8 +62,6 @@ body.vr-page-on:has(#game:not(.hidden)) #vr-page, #vr-page:has(.vr-in-page[style
 #vr-page .gd-ov.vr-in-page > .gd-page { margin: 0 auto; }
 #vr-page .gd-ov.vr-in-page .gd-page > .gd-x[data-close] { display: none !important; }
 /* 8단계: PvP 로비 + 하위 페이지(덱 편집·랭킹·시즌 보상). 작은 창·재생·VS 화면은 페이지 위 */
-body.vr-page-on .pvp-modal:not(.vr-in-page) { z-index: 9100 !important; }
-body.vr-page-on .pvp-modal.pvp-top:not(.vr-in-page), body.vr-page-on .pvp-vsx { z-index: 9150 !important; }
 #vr-page .pvp-modal.vr-in-page { position: static !important; inset: auto !important; z-index: auto !important; background: none !important; padding: 0 !important; display: block !important; }
 #vr-page .pvp-modal.vr-in-page > .pvp-panel { width: 100% !important; max-width: 640px; max-height: none !important; margin: 0 auto; overflow: visible !important; }
 #vr-page .pvp-modal.vr-in-page > .pvp-panel > .pvp-x { display: none !important; }
