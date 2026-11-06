@@ -118,7 +118,7 @@
   // 승리·패배 징글 (한 번만): 반복 BGM을 페이드아웃·일시정지 → 징글 → 끝나면 그때의 트랙을 페이드인. 음소거·덕킹·볼륨은 그대로
   const JINGLE = { victory: 'audio/victory.mp3', defeat: 'audio/defeat.mp3', draw: 'audio/draw.mp3' };
   // 모드별 BGM (README 참고)
-  window.VR_BGM = { pvpLobby: 'audio/pvp_lobby.mp3', pvpBattle: 'audio/pvp_battle.mp3', raid: 'audio/raid.mp3', guildHome: 'audio/guild_lobby.mp3', guildBattle: 'audio/guild_battle.mp3' };
+  window.VR_BGM = { pvpLobby: 'audio/pvp_lobby.mp3', pvpBattle: 'audio/pvp_battle.mp3', raid: 'audio/raid.mp3', guildHome: 'audio/guild_lobby.mp3', guildBattle: 'audio/guild_battle.mp3', crisis: 'audio/crisis.mp3' };
   let jingleA = null;
   const jingle = (name) => {
     const url = JINGLE[name]; if (!url || !soundOn || held) return;

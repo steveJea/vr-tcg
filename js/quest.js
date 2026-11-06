@@ -212,7 +212,7 @@
     try { await trpc('quest_start', { p_floor: n }); }
     catch (e) { const m = String(e?.message || ''); api.toast(ERR(m) || (/locked/.test(m) ? '아직 열리지 않은 층이에요' : `⚠️ 시작 실패: ${m}`)); return render(); }
     startedAt = Date.now();
-    $('story-screen').classList.add('hidden'); api.bgm(n % 10 === 0 ? 'boss' : 'tower');
+    $('story-screen').classList.add('hidden'); api.bgm(n === cfg.floors.length ? 'crisis' : n % 10 === 0 ? 'boss' : 'tower');  // 최상층(350) = crisis
     await api.gearReady?.();
     const me = api.battleCards(list);
     const B = g.bossCard;

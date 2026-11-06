@@ -298,7 +298,7 @@
 
   // ----- BGM -----
   const BGM = { story: 'audio/story_story.mp3', battle: 'audio/story_battle.mp3', boss: 'audio/story_boss.mp3', ending: 'audio/story_ending.mp3', main: 'audio/main.mp3',
-    tower: 'audio/tower.mp3', gacha: 'audio/gacha.mp3', mypage: 'audio/mypage.mp3', arcade: 'audio/arcade_battle.mp3', boss2: 'audio/story_boss2.mp3' };
+    tower: 'audio/tower.mp3', gacha: 'audio/gacha.mp3', mypage: 'audio/mypage.mp3', arcade: 'audio/arcade_battle.mp3', boss2: 'audio/story_boss2.mp3', crisis: 'audio/crisis.mp3' };
   const BOSS2_FROM = 8;   // 스토리 보스 BGM 2 (BOSS_2): 이 챕터부터
   const bgm = k => { try { window.VRSound?.setTrack?.(BGM[k]); } catch {} };
 

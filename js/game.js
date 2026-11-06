@@ -1790,7 +1790,16 @@ function render() {
   { // 체력 위기 (30% 이하): 화면 가장자리 붉은 깜빡임 + 체력바 색. 진영이 없으면(스토리) 필드 전체 HP 비율
     const p = S.me, f = p.field.filter(u => !u.undying), mx = f.reduce((a, u) => a + (u.maxHp || 0), 0);
     const r = !p.noBase ? (p.maxHp ? p.hp / p.maxHp : 1) : mx ? f.reduce((a, u) => a + Math.max(0, u.hp), 0) / mx : 1;
-    $('game').classList.toggle('bfx-low', BFX() && !S.over && r > 0 && r <= 0.3);
+    const low = BFX() && !S.over && r > 0 && r <= 0.3;
+    $('game').classList.toggle('bfx-low', low);
+    // 아케이드만: 붉게 깜빡일 때 crisis BGM, 회복·종료 시 아케이드 전투곡으로 (mute·덕킹은 setTrack이 그대로)
+    if (!S.story && !S.at) {
+      try {
+        const cri = window.VR_BGM?.crisis || 'audio/crisis.mp3', arc = 'audio/arcade_battle.mp3';
+        const cur = window.VRSound?.track, want = low ? cri : arc;
+        if (cur !== want && (low || cur === cri)) window.VRSound?.setTrack?.(want);
+      } catch {}
+    }
   }
   for (const who of ['ai', 'me']) {
     const p = S[who];
