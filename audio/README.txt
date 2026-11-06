@@ -3,6 +3,7 @@
 # 추가 BGM (feat/bgm-more, 128kbps 재인코딩)
 arcade_battle.mp3  아케이드 전투 (나가면 main.mp3) — 10/29 ARCADE_MODE 로 교체
 tower.mp3          시련의 탑 화면·일반 층 (10층마다 보스층은 story_boss.mp3)
+crisis.mp3         아케이드 체력 위기(진영 HP≤30%·붉은 깜빡임) · 탑 최상층(350층) 전투 — 위기 해제 시 arcade_battle 로 복귀
 gacha.mp3          카드 뽑기실
 mypage.mp3         마이페이지·카드 도감 (닫으면 이전 트랙)
 victory.mp3 / defeat.mp3  전투 종료 징글 1회 (VRSound.jingle) — 반복 BGM 페이드아웃 후 정지, 징글 끝나면 현재 트랙 페이드인
