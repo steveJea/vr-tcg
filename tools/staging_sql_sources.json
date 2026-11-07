@@ -124,7 +124,8 @@
     "batch_ui_bugs.sql",
     "achievements2.sql",
     "security_phase1_rewards.sql",
-    "security_phase2_clears.sql"
+    "security_phase2_clears.sql",
+    "security_phase3_pvp.sql"
   ],
   "excluded": {
     "blood_rebalance_preview.sql": "기존 데이터 조회 전용",

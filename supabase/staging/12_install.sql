@@ -1,4 +1,4 @@
--- ⚠ 테스트 전용 12/12. 운영 실행 금지. 파일 전체를 번호 순서대로 실행.
+-- ⚠ 테스트 전용 12/13. 운영 실행 금지. 파일 전체를 번호 순서대로 실행.
 -- 대상 프로젝트: cuyqchmdcnsgzkwyclji; 운영 htarwisgkkphutxxnuak 금지.
 -- 완료한 파일은 다시 실행해도 건너뜀. 중간 오류는 해당 파일만 되돌아감.
 -- 실제 project_ref는 SQL Editor가 보장해서 제공하지 않음: DB 고유번호를 대조.
@@ -40,11 +40,11 @@ set local check_function_bodies = off;
 
 do $vr_install_part$
 begin
-  if exists (select 1 from vr_staging_install.parts where bundle_hash <> '3da76f48e41e9e52500615b8cdbb1be15aa7e9e35a3d2f73e67dd0a9ce29222d' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
+  if exists (select 1 from vr_staging_install.parts where bundle_hash <> 'cd08a0f983083019c450a26b3d38df14282a83b45978cbbc9eca0613e860dbef' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
     raise exception 'STOP: 다른 버전/DB의 설치 기록입니다. 파일을 섞지 마세요.';
   end if;
   if exists (select 1 from vr_staging_install.parts where part_no = 12) then
-    if not exists (select 1 from vr_staging_install.parts where part_no = 12 and part_hash = '41d047fe771aa59e54ddbf14bdae8f79e2f35c0262d0dd5144569bb02bdbeae1') then
+    if not exists (select 1 from vr_staging_install.parts where part_no = 12 and part_hash = 'd12cbd14daa79d27ffdb80393a42b6fadc94366c252fd9a96c69a66a46356add') then
       raise exception 'STOP: 완료한 파일과 내용이 다릅니다.';
     end if;
     raise notice '12_install.sql: 이미 완료, 변경 없이 건너뜀';
@@ -828,37 +828,116 @@ end $acl$;$vr_statement$;
   execute $vr_statement$notify pgrst,'reload schema';$vr_statement$;
   execute $vr_statement$-- 설치본의 단일 트랜잭션에 포함
 
--- 공개 게임 설정만 명시적으로 조회 허용 (사용자 자료 아님).
-grant select on public.story_card_pool, public.story_phase_config, public.story_premium_ur,
-  public.pvp_card_meta, public.pvp_reward_table, public.pvp_tier_table, public.pvp_streak_table,
-  public.dispatch_card_meta, public.dispatch_zones to anon, authenticated;$vr_statement$;
-  execute $vr_statement$-- 설치 완료 (원본 SQL의 사용자 테이블은 처음부터 비어 있어야 함).
-set local check_function_bodies = on;$vr_statement$;
-  execute $vr_statement$do $staging_verify$
-declare f record;
-begin
-  for f in
-    select pg_get_functiondef(p.oid) ddl from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-    where n.nspname = 'public' and p.prokind = 'f'
-      and not exists (select 1 from pg_depend d where d.objid = p.oid and d.deptype = 'e')
-  loop execute f.ddl; end loop;
-  if exists (select 1 from auth.users) then raise exception 'STOP: 설치 중 사용자 자료 발견'; end if;
-  if exists (select 1 from pg_class c join pg_namespace n on n.oid=c.relnamespace
-    where n.nspname='public' and c.relkind='r' and not c.relrowsecurity
-      and not exists (select 1 from pg_depend d where d.objid = c.oid and d.deptype = 'e')) then
-    raise exception 'STOP: RLS 없는 테이블 발견';
-  end if;
-  if exists (select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace
-    where n.nspname='public' and p.prosecdef and left(p.proname,1)='_'
-      and pg_get_function_result(p.oid) <> 'trigger'
-      and (has_function_privilege('anon',p.oid,'execute') or has_function_privilege('authenticated',p.oid,'execute'))) then
-    raise exception 'STOP: 외부 호출 가능한 내부 서버 함수 발견';
-  end if;
-end $staging_verify$;$vr_statement$;
 
-  grant usage on schema public to public, anon, authenticated;
+-- ===== SOURCE: security_phase3_pvp.sql =====
+-- STAGING ONLY. After security_phase1_rewards.sql and security_phase2_clears.sql.
+-- No credentials, backfill certification, resets or deletes. Deploy pvp-verify-v3 too.
+-- 설치본의 단일 트랜잭션에 포함
+-- Standalone phase3 guard: enforced by installer entry guard instead.
+
+create table if not exists public.pvp_policy_v3(
+ singleton boolean primary key default true check(singleton), engine_hash text not null check(length(engine_hash)=64), enabled boolean not null default true);$vr_statement$;
+  execute $vr_statement$insert into public.pvp_policy_v3(singleton,engine_hash) values(true,'16b61abb1c42f29f063b9b84de938ef950363cdd2a23262cddf05c27c0c038a6')
+ on conflict(singleton) do update set engine_hash=excluded.engine_hash;$vr_statement$;
+  execute $vr_statement$-- A clean, verified ladder. Legacy rows remain intact, NOT copied as proof.
+create table if not exists public.pvp_ratings_v3(
+ user_id uuid not null references auth.users(id), league text not null, mode text not null, season date not null,
+ rating int not null default 1000, wins int not null default 0, losses int not null default 0,
+ def_wins int not null default 0, def_losses int not null default 0, streak int not null default 0,
+ games_verified int not null default 0, updated_at timestamptz not null default now(),
+ primary key(user_id,league,mode,season));$vr_statement$;
+  execute $vr_statement$create table if not exists public.pvp_sessions_v3(
+ id bigint primary key references public.pvp_attempts(id), user_id uuid not null references auth.users(id),
+ request_id uuid not null, control text not null check(control in('auto','actions')), engine_hash text not null,
+ issued_at timestamptz not null default clock_timestamp(), expires_at timestamptz not null,
+ status text not null default 'issued' check(status in('issued','settled')),
+ submission jsonb, result jsonb, verified boolean not null default false,
+ unique(user_id,request_id));$vr_statement$;
+  execute $vr_statement$create index if not exists pvp_sessions_v3_pending on public.pvp_sessions_v3(user_id,status);$vr_statement$;
+  execute $vr_statement$create table if not exists public.pvp_events_v3(
+ session_id bigint primary key references public.pvp_sessions_v3(id), user_id uuid not null references auth.users(id),
+ day date not null, week date not null, win boolean not null, skills int not null check(skills between 0 and 4800));$vr_statement$;
+  execute $vr_statement$create or replace function public._pvp_lock_v3(l text,m text,s date) returns void language sql security definer
+set search_path=pg_catalog,public,pg_temp as $$ select pg_advisory_xact_lock(hashtext('pvp3:'||l||':'||m||':'||s::text)) $$;$vr_statement$;
+  execute $vr_statement$create or replace function public._pvp_rating_v3(u uuid,l text,m text,s date) returns public.pvp_ratings_v3 language plpgsql security definer
+set search_path=pg_catalog,public,pg_temp as $$ declare r public.pvp_ratings_v3; begin
+ insert into public.pvp_ratings_v3(user_id,league,mode,season) values(u,l,m,s) on conflict do nothing;
+ select * into r from public.pvp_ratings_v3 where user_id=u and league=l and mode=m and season=s; return r;
+end $$;$vr_statement$;
+  execute $vr_statement$create or replace function public._pvp_session_json_v3(a public.pvp_attempts,s public.pvp_sessions_v3) returns jsonb language sql stable security definer
+set search_path=pg_catalog,public,pg_temp as $$ select jsonb_build_object('id',a.id::text,'mode',a.mode,'league',a.league,'season',a.season,
+ 'seed',a.seed,'me',a.my_snap,'opp',a.opp_snap,'opp_name',a.opp_name,'opp_rating',a.opp_rating,'rating',a.my_rating,
+ 'dw',a.dw,'dl',a.dl,'bot',a.opp_user is null,'control',s.control,'engine_hash',s.engine_hash,'expires_at',s.expires_at,'status',s.status,'result',s.result) $$;$vr_statement$;
+  execute $vr_statement$-- Private ledger grants. Do NOT reopen the old _pvp_grant or global battle feeds.
+create or replace function public._pvp_grant_v3(u uuid,rw jsonb,kind text,ref_ text,l text,m text,s date) returns jsonb language plpgsql security definer
+set search_path=pg_catalog,public,pg_temp as $$
+declare prior public.reward_claims; res jsonb:='{}'; k text; v jsonb; tk int; g jsonb;
+begin
+ if kind not in('pvp_streak_v3','pvp_tier_v3','pvp_rank_v3') then raise exception 'invalid grant kind'; end if;
+ for k,v in select * from jsonb_each(rw-'title') loop
+  if k not in('gold','blood','shard','soul','gem','tickets') or jsonb_typeof(v)<>'number' or v::text !~ '^[0-9]+$' or v::numeric>2147483647 then raise exception 'invalid reward'; end if;
+ end loop;
+ if rw ? 'title' and rw->>'title'<>'abyss' then raise exception 'invalid title'; end if;
+ perform pg_advisory_xact_lock(hashtext('gem:'||u::text));
+ select * into prior from public.reward_claims where user_id=u and reward_kind=kind and source_or_period=ref_;
+ if found then return prior.result; end if;
+ insert into public.reward_claims(user_id,reward_kind,source_or_period,reward,rule_version) values(u,kind,ref_,rw,4);
+ if rw-'gem'-'tickets'-'title'<>'{}' then res:=res||jsonb_build_object('wallet',public._wallet_add(u,rw-'gem'-'tickets'-'title',kind)); end if;
+ if coalesce((rw->>'gem')::int,0)>0 then
+  g:=public._gem_add(u,(rw->>'gem')::int,0,kind,'p3:'||ref_,jsonb_build_object('validation','server-replay-v3'));
+  res:=res||jsonb_build_object('gem',g->'gem');
+ end if;
+ if coalesce((rw->>'tickets')::int,0)>0 then
+  insert into public.story_gacha(user_id,last_draw) values(u,public._gem_day()-1) on conflict do nothing;
+  update public.story_gacha set tickets=tickets+(rw->>'tickets')::int,updated_at=now() where user_id=u returning tickets into tk;
+  res:=res||jsonb_build_object('tickets',tk);
+ end if;
+ if rw->>'title'='abyss' then insert into public.pvp_titles(user_id,title,league,mode,season) values(u,'abyss',l,m,s) on conflict do nothing; end if;
+ res:=res||jsonb_build_object('gave',rw);
+ update public.reward_claims set result=res where user_id=u and reward_kind=kind and source_or_period=ref_;
+ return res;
+end $$;$vr_statement$;
+  execute $vr_statement$-- Restore ONLY verified ranked wins' old guild EXP/loyalty feed (10/win, 100/KST day).
+-- Global _guild_feed remains held for other unverified modes. Unique source is the PvP receipt.
+create or replace function public._pvp_guild_feed_v3(u uuid,aid bigint) returns int language plpgsql security definer
+set search_path=pg_catalog,public,pg_temp as $$ declare m public.guild_members; used_ int; n int; ref_ text:='pvp3:'||aid; begin
+ select * into m from public.guild_members where user_id=u; if not found then return 0; end if;
+ perform public._guild_lock(m.guild_id);
+ if not exists(select 1 from public.guild_members where user_id=u and guild_id=m.guild_id) then return 0; end if;
+ if exists(select 1 from public.guild_exp_log where guild_id=m.guild_id and ref=ref_) then return 0; end if;
+ perform public._guild_event(u,'pvp_win',1);
+ select coalesce(sum(amount),0)::int into used_ from public.guild_exp_log where user_id=u and day=public._guild_day() and src='pvp';
+ n:=least(10,greatest(0,100-used_)); if n=0 then return 0; end if;
+ perform public._guild_exp(m.guild_id,u,n,'pvp',ref_);
+ perform public._loyalty_add(u,n,'feed:pvp',ref_,jsonb_build_object('guild',m.guild_id,'session',aid)); return n;
+end $$;$vr_statement$;
+  execute $vr_statement$-- Unsubmitted/replaced sessions are server-defined forfeits, already loss-reserved at start.
+-- They NEVER produce verified participation, wins, events, streak money, tier/rank eligibility.
+create or replace function public._pvp_forfeit_v3(a public.pvp_attempts,s public.pvp_sessions_v3) returns jsonb language plpgsql security definer
+set search_path=pg_catalog,public,pg_temp as $$ declare res jsonb; r int; begin
+ if s.status='settled' then return s.result; end if;
+ update public.pvp_ratings_v3 set streak=0 where user_id=a.user_id and league=a.league and mode=a.mode and season=a.season returning rating into r;
+ res:=jsonb_build_object('ok',true,'verified',false,'forfeit',true,'win',false,'wins',0,'losses',case when a.mode='3v3' then 2 else 1 end,
+  'rounds','[]'::jsonb,'rating',r,'delta',-a.dl,'streak',0);
+ update public.pvp_sessions_v3 set status='settled',submission='{"forfeit":true}',result=res where id=a.id;
+ update public.pvp_attempts set reported_at=clock_timestamp(),win=false,wins=0,losses=case when a.mode='3v3' then 2 else 1 end,verified=false,streak=0 where id=a.id;
+ return res;
+end $$;$vr_statement$;
+  execute $vr_statement$-- Server-owned fresh snapshots, including HR guard checks and cross-deck uniqueness.
+create or replace function public._pvp_decks_v3(u uuid,l text,m text) returns jsonb language plpgsql stable security definer
+set search_path=pg_catalog,public,pg_temp as $$ declare n int:=public._pvp_ok(l,m); d record; out_ jsonb:='[]'; c jsonb; begin
+ for d in select * from public.pvp_decks where user_id=u and league=l and mode=m and slot>=0 and slot<n order by slot loop
+  c:=public._pvp_snap_mode(u,d.uids,l,m)->'cards';
+  if m='boss' and not exists(select 1 from public.pvp_card_meta where id=c->0->>'id' and grade in('NORMAL','RARE','HIGH RARE')) then raise exception 'guard grade'; end if;
+  out_:=out_||jsonb_build_array(c);
+ end loop;
+ if jsonb_array_length(out_)<>n then raise exception 'deck required'; end if;
+ if exists(select x->>'id' from jsonb_array_elements(out_) dk cross join lateral jsonb_array_elements(dk) x group by x->>'id' having count(*)>1) then raise exception 'duplicate card'; end if;
+ return out_;
+end $$;$vr_statement$;
+
   insert into vr_staging_install.parts(part_no, bundle_hash, part_hash, project_ref, db_id)
-  values (12, '3da76f48e41e9e52500615b8cdbb1be15aa7e9e35a3d2f73e67dd0a9ce29222d', '41d047fe771aa59e54ddbf14bdae8f79e2f35c0262d0dd5144569bb02bdbeae1', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
+  values (12, 'cd08a0f983083019c450a26b3d38df14282a83b45978cbbc9eca0613e860dbef', 'd12cbd14daa79d27ffdb80393a42b6fadc94366c252fd9a96c69a66a46356add', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
 end $vr_install_part$;
 commit;
-select '12_install.sql: 완료 또는 이미 완료 (12/12)' as result;
+select '12_install.sql: 완료 또는 이미 완료 (12/13)' as result;

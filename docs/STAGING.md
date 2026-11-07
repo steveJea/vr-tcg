@@ -119,3 +119,7 @@ WRANGLER_SEND_METRICS=false npx wrangler deploy --dry-run
 - https://docs.github.com/en/pages/getting-started-with-github-pages/github-pages-limits
 
 보안 2단계 개별 업그레이드는 [SECURITY_PHASE2.md](SECURITY_PHASE2.md)를 따릅니다. 기존 10개 bundle 설치 DB에는 새 12개 bundle을 섞지 않습니다.
+
+## 보안 3단계 PvP
+
+기존 DB는 1→2단계 다음 `supabase/security_phase3_pvp.sql`만 추가합니다. 새 빈 DB bundle은 13개이며 기존 bundle과 섞지 않습니다. `pvp-verify-v3` Edge Function과 같은 버전 웹 배포까지 필요합니다. 새 검증 래더/옛 기록 보존, 소유자 실행 순서와 smoke test는 [SECURITY_PHASE3.md](SECURITY_PHASE3.md)를 따르세요. 운영 적용/자동 배포는 하지 않습니다.

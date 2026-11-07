@@ -95,7 +95,7 @@ for (const defaults of [false, true]) {
       assert.deepEqual(await snapshot(db), before, part.name + ': 즉시 재실행 시 내용 변경');
     }
     const final = await snapshot(db);
-    assert.equal(final.functions.length, 597); // phase 1 + phase 2 session, settlement and receipt helpers
+    assert.equal(final.functions.length, 609); // phase 1–3: sessions, replay authority, settlement and receipt helpers
     assert.equal(final.ledger.length, parts.length);
     assert.equal(final.usage[0].anon, true);
     assert.equal((await db.query('select count(*)::int n from auth.users')).rows[0].n, 0);

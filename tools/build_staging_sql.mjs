@@ -10,6 +10,11 @@ export async function buildSql() {
   const sections = [base + `\n-- Supabase 프로젝트별 기본 권한 차이에 기대지 않는 최소 직접 접근.\ngrant select on public.profiles to authenticated;\ngrant select, insert, update on public.saves to authenticated;\ngrant select, insert on public.matches to authenticated;\n`];
   for (const name of manifest.ordered) {
     let sql = await read(name);
+    if (name === 'security_phase3_pvp.sql') {
+      // Standalone upgrade is fixed to staging's cluster. Clean installers already
+      // enforce EMPTY DB here, and split installers also enforce the cluster guard.
+      sql = sql.replace(/do \$phase3_staging_guard\$[\s\S]*?end \$phase3_staging_guard\$;/, '-- Standalone phase3 guard: enforced by installer entry guard instead.');
+    }
     if (name === 'card_id_remap.sql') {
       // 이 저장소의 카드 ID는 이미 변경 완료. 기존 데이터/함수 일괄 치환은 실행하지 않음.
       const alias = sql.slice(sql.indexOf('create table if not exists public.card_id_alias'), sql.indexOf('-- 글자 안의 옛 ID'));
