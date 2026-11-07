@@ -1520,6 +1520,7 @@ function onEngine(e) {
     case 'elfx': { const f = EL_FX[e.kind]; if (e.kind === 'drain') elemFx(uEl(e.unit), 'drain'); if (f) { dmgNumber(uEl(e.unit), f[0], f[1], false, 'fx-dmg-mini'); log(`${nm(e.unit)}: ${f[2]}`, 'text-zinc-300'); } break; }
     case 'immune': dmgNumber(uEl(e.unit), `${ic('immune')} 면역`, '#93c5fd', true); break;
     case 'heroImmune': dmgNumber(heroEl(whoOf(e.p)), `${ic('immune')} 무효`, '#93c5fd', true); break;
+    case 'stagger': { const el = uEl(e.unit); log(`💫 ${nm(e.unit)} 흔들림! (ATK·DEF -${Math.round(RULES.STAGGER_DOWN * 100)}%, 받는 피해 일부 → 진영)`, 'text-red-300'); if (el && !FX_OFF()) { el.classList.remove('fx-stagger'); void el.offsetWidth; el.classList.add('fx-stagger'); setTimeout(() => el.classList.remove('fx-stagger'), 700); } break; }
     case 'resist': dmgNumber(uEl(e.unit), '✳️ 면역', '#93c5fd'); break;
     case 'miss': log(`${nm(e.unit)}: ${e.text}`, 'text-zinc-400'); dmgNumber(uEl(e.unit), 'MISS', '#a1a1aa'); break;
     case 'mp': if (typeof e.amt === 'string' || e.amt > 0) dmgNumber(uEl(e.unit), `MP +${e.amt}`, '#60a5fa'); else dmgNumber(uEl(e.unit), `MP ${e.amt}`, '#60a5fa'); break;

@@ -82,6 +82,7 @@ export const STATUS = {
   sisterSwap: { icon: '🔄', label: '선미영 교체', desc: '선나영 대신 선미영이 전투 (끝나면 선나영 HP 100% 회복, 선미영이 쓰러지면 선나영도 쓰러짐)' },
   evade:   { icon: '💨', img: 'st_evade', label: '회피', desc: '기본 공격을 확률로 회피 (회피 시 피해·반격 없음, 스킬은 회피 불가)' },
   endure:  { icon: '💢', img: 'st_endure', label: '불사', desc: 'HP가 1 아래로 내려가지 않음 (즉사 포함)' },
+  stagger: { icon: '💫', label: '흔들림!', debuff: true, desc: '수비대장이 큰 피해를 맞아 흔들림: ATK·DEF -20%, 받는 피해 50%가 진영 HP로' },
   guard:   { icon: '🛡️', img: 'def', label: '대신 맞기', desc: '지정한 아군을 향한 기본 공격을 대신 맞음' },
   soulsteal:{ icon: '👻', img: 'st_soulsteal', label: '영혼 강탈', desc: '이 카드를 기본 공격한 상대의 MP 20% 제거' },
   mod:     { icon: '', label: '' },
@@ -229,6 +230,7 @@ export function damageUnit(target, dmg, src = null, { silent = false } = {}) {
   if (target.st.endure && target.hp < 1) target.hp = 1;   // 불사 (언니니까!·카르밀라...사랑해)
   if (src && dmg > 0 && src.owner !== target.owner) emit({ type: 'dealt', src, dmg });
   if (!silent) emit(TICK ? { type: 'dmg', unit: target, dmg, tick: TICK } : { type: 'dmg', unit: target, dmg });
+  if (target.guard && src && src.owner && src.owner !== target.owner && dmg > 0 && target.owner.field.includes(target)) staggerHit(target, dmg, src);
   if (src && src.hp > 0 && hasPassive(src, '우습네요') && heal(src, Math.round(dmg * 0.3), '흡혈')) stats.count('우습네요');
   if (src && src.hp > 0 && src.owner !== target.owner && hasPassive(src, '플레쉬') && heal(src, Math.round(dmg * 0.1), '플레쉬')) stats.count('플레쉬');
   return dmg;
@@ -240,6 +242,16 @@ export function heal(u, amt, why = '') {
   u.hp += h; emit({ type: 'heal', unit: u, amt: h, why }); return h;
 }
 export function healHero(p, amt) { if (SKC && p === SKC.u.owner) amt = skScale(amt); const b = p.hp; p.hp = Math.min((p.maxHp || RULES.HERO_HP), p.hp + Math.round(amt)); if (p.hp > b) emit({ type: 'heroHeal', p, amt: p.hp - b }); return p.hp - b; }
+
+/** 수비대장 흔들림: 큰 한 방 → 1턴 ATK·DEF 감소 (수비대장마다 쿨타임), 흔들리는 동안 받는 피해 일부가 진영 HP로 */
+function staggerHit(t, dmg, src) {
+  const o = t.owner, now = o.turnsTaken || 0;
+  if (!t.st.stagger && dmg >= t.maxHp * RULES.STAGGER_HIT_PCT && now >= (t.staggerReady || 0)) {
+    const d = -RULES.STAGGER_DOWN;
+    if (addStatus(t, 'stagger', RULES.STAGGER_TURNS, { atk: d, def: d }, 'stagger')) { t.staggerReady = now + RULES.STAGGER_TURNS + RULES.STAGGER_CD; refreshAll(o); emit({ type: 'stagger', unit: t }); }
+  }
+  if (t.st.stagger && !o.noBase) damageHero(o, Math.max(1, Math.round(dmg * RULES.STAGGER_PASS)), src.owner, 'stagger', src);
+}
 
 /** 본진 피해. srcOwner가 자기 첫 N턴이면 차단 (자기 본진 강제 공격은 예외) */
 export function damageHero(p, dmg, srcOwner, kind = 'hit', srcUnit = null) {
@@ -462,6 +474,14 @@ function hitAll(src, f, n, pct, opt = {}) {
   return dead;
 }
 const heroHit = (src, f, pct) => damageHero(f, skillDamage(src, null, pct), src.owner, 'skill', src);
+/** 진영을 칠 수 없는가 (첫 N턴 잠금 · 진영 없는 전투) */
+const heroBlocked = (src, f) => !!f.noBase || heroLocked(src.owner);
+/** 본진 타격 공통 대체: 진영을 못 치면 HP가 가장 높은 적(수비대장·보스 제외)에게 같은 배율. 반환: 피해 */
+const heroHitOr = (src, f, pct) => {
+  if (!heroBlocked(src, f)) return heroHit(src, f, pct);
+  const t = by(live(f).filter(x => x.hp > 0 && !x.undying), x => x.hp, -1); if (!t) return 0;
+  const d = damageUnit(t, skillDamage(src, t, pct), src); checkDeath(t, src); return d;
+};
 const debuffAll = (f, key, turns, data) => live(f).forEach(t => addStatus(t, key, turns, data, data.kind || 'mod'));
 export const bleedOn = (t, src, turns = 1, pct = 0.05) => { if (addStatus(t, 'bleed', turns, { atk: -0.05, def: -0.05 }, 'bleed')) { damageUnit(t, Math.max(1, Math.round(t.maxHp * pct)), null); checkDeath(t, src); } };
 /** 현재 HP의 pct 제거 (카드당 최대 cap) */
@@ -602,7 +622,7 @@ export const ACTIVE = {
   '반야': (u, p) => live(p).forEach(a => heal(a, a.maxHp * 0.2)),
   '열반': (u, p) => { live(p).forEach(a => heal(a, a.maxHp * 0.1)); healHero(p, (p.maxHp || RULES.HERO_HP) * 0.1); },
   // 이성호
-  'Fiat Lux': (u, p, f) => { const full = fieldCount(f) >= RULES.FIELD_MAX; hitAll(u, f, 2, 0.3); if (!full) heroHit(u, f, 0.3); },
+  'Fiat Lux': (u, p, f) => { const full = fieldCount(f) >= RULES.FIELD_MAX; hitAll(u, f, 2, 0.3); if (!full) { if (heroBlocked(u, f)) hitAll(u, f, 1, 0.3); else heroHit(u, f, 0.3); } },
   'Sperandum Est Infestis': (u, p, f) => { const ts = live(f); for (let i = 0; i < 2; i++) ts.forEach(t => damageUnit(t, skillDamage(u, t, 0.2, { extra: t.card.cost < 30 ? 2 : 1 }), u)); ts.forEach(t => checkDeath(t, u)); },
   'Memento Mori': (u, p, f) => { const ts = live(f); hitAll(u, f, 3, 0.2); ts.forEach(t => f.field.includes(t) && sChance(0.2) && addStatus(t, 'para', 1, {}, 'para')); },
   // 임유리
@@ -615,13 +635,13 @@ export const ACTIVE = {
   // 임나리
   'Seductive Whisper': (u, p, f) => { if (hitAll(u, f, 3, 0.2)) gainMp(u, u.maxMp * 0.1, '사망자 발생'); },
   'Alluring Dance': (u, p, f) => { if (hitAll(u, f, 3, 0.3)) gainMp(u, u.maxMp * 0.15, '사망자 발생'); },
-  'Fatal Temptation': (u, p, f) => { const d = heroHit(u, f, 2.0); if (d > 0) { const ts = live(f); ts.forEach(t => damageUnit(t, Math.max(1, Math.round(d * 0.2)), u)); ts.forEach(t => checkDeath(t, u)); } },
+  'Fatal Temptation': (u, p, f) => { const d = heroHitOr(u, f, 2.0); if (d > 0) { const ts = live(f); ts.forEach(t => damageUnit(t, Math.max(1, Math.round(d * 0.2)), u)); ts.forEach(t => checkDeath(t, u)); } },
   // 임규리
   '천사의 시': (u, p, f) => hitAll(u, f, 3, 0.2, { ignoreDef: 1 }),
   '천사의 자장가': (u, p, f) => { const d = hitAll(u, f, 5, 0.2); if (d) heal(u, u.maxHp * 0.1 * d, '자장가'); },
   // 정아람
   '人鬼相半': (u, p, f) => { const d = hitAll(u, f, 2, 0.3); if (d) heal(u, u.maxHp * 0.1 * d, '人鬼相半'); },
-  '夜不談鬼': (u, p, f) => { let died = false; for (let i = 0; i < 5; i++) { if (died || !f.field.length) heroHit(u, f, 0.2); else { const ts = live(f); ts.forEach(t => damageUnit(t, skillDamage(u, t, 0.2), u)); ts.forEach(t => { if (checkDeath(t, u)) died = true; }); } } },
+  '夜不談鬼': (u, p, f) => { let died = false; for (let i = 0; i < 5; i++) { if (died || !f.field.length) heroHitOr(u, f, 0.2); else { const ts = live(f); ts.forEach(t => damageUnit(t, skillDamage(u, t, 0.2), u)); ts.forEach(t => { if (checkDeath(t, u)) died = true; }); } } },
   // 김신현
   '신기하네요': (u, p, f, s) => { const t = by(live(f), x => x.card.ATK, -1); if (t && multiHit(u, t, 10, 0.2)) u.cd[s.name] = 0; },
   // 임예리
@@ -639,10 +659,10 @@ export const ACTIVE = {
   'Esoteric Method': (u, p, f) => live(f).forEach(t => addStatus(t, 'esoteric', 3, { stack: 0 }, 'esoteric')),
   // 김백중
   '다친다': (u, p, f) => hitAll(u, f, 5, 0.2, { ignoreDef: 0.5 }),
-  '죽을지도 몰라': (u, p, f, s) => { let d = 0; for (let i = 0; i < 5; i++) { const ts = live(f); ts.forEach(t => damageUnit(t, skillDamage(u, t, 0.2, { ignoreDef: 0.3 }), u)); ts.forEach(t => { if (checkDeath(t, u)) d++; }); heroHit(u, f, 0.2); } if (d) { u.cd[s.name] = 0; gainMp(u, u.maxMp * 0.3, '사망자 발생'); } },
-  '죽는다…': (u, p, f) => { heroHit(u, f, 2.0); live(f).forEach(t => bleedOn(t, u)); },
+  '죽을지도 몰라': (u, p, f, s) => { let d = 0; for (let i = 0; i < 5; i++) { const ts = live(f); ts.forEach(t => damageUnit(t, skillDamage(u, t, 0.2, { ignoreDef: 0.3 }), u)); ts.forEach(t => { if (checkDeath(t, u)) d++; }); heroHitOr(u, f, 0.2); } if (d) { u.cd[s.name] = 0; gainMp(u, u.maxMp * 0.3, '사망자 발생'); } },
+  '죽는다…': (u, p, f) => { heroHitOr(u, f, 2.0); live(f).forEach(t => bleedOn(t, u)); },
   // [각성] 윤진아
-  '여기는 뇌입니다': (u, p, f) => { const t = by(live(f), x => x.card.cost, -1); if (!t) return; let killed = false, heroHits = 0; for (let i = 0; i < 3; i++) { if (!killed) { damageUnit(t, skillDamage(u, t, 0.5, { ignoreDef: 0.3 }), u); killed = checkDeath(t, u); } else { heroHit(u, f, 0.5); heroHits++; } } if (killed && !heroHits) heroHit(u, f, 0.5); },
+  '여기는 뇌입니다': (u, p, f) => { const t = by(live(f), x => x.card.cost, -1); if (!t) return; let killed = false, heroHits = 0; for (let i = 0; i < 3; i++) { if (!killed) { damageUnit(t, skillDamage(u, t, 0.5, { ignoreDef: 0.3 }), u); killed = checkDeath(t, u); } else { heroHitOr(u, f, 0.5); heroHits++; } } if (killed && !heroHits) heroHitOr(u, f, 0.5); },
   '이게 심장인가요?': (u, p, f) => { let t = by(live(f), x => x.card.cost); for (let i = 0; i < 4 && t; i++) { damageUnit(t, skillDamage(u, t, 0.5, { ignoreDef: 0.3 }), u); if (checkDeath(t, u)) t = by(live(f), x => x.card.cost); } },
   '감당…해주세요.': (u, p, f) => { const t = by(live(f), x => x.card.ATK, -1); if (t && multiHit(u, t, 5, 0.5, { ignoreDef: 0.3 })) { u.mp = u.maxMp; emit({ type: 'mp', unit: u, amt: 'MAX' }); } },
   // [각성] 임유리
@@ -799,7 +819,7 @@ export const ACTIVE = {
   },
   // 정하루
   '드론 폭격!': (u, p, f) => hitAllOverflow(u, f, 0.3),
-  '드론 연사!': (u, p, f) => { if (!f.noBase && !heroLocked(p)) heroHit(u, f, 1.5); else hitAll(u, f, 1, 0.3); },
+  '드론 연사!': (u, p, f) => { if (!heroBlocked(u, f)) heroHit(u, f, 1.5); else hitAll(u, f, 1, 0.3); },
 };
 export const CHANGWON_ID = '10053';
 export const WISH_YUNA_ID = '10490', WISH_REVIVE_HP = 0.5;   // [염원] 최윤아 · 염원 자매 부활 HP
@@ -1090,7 +1110,7 @@ export function aiSkillScores(u, { noSave = false } = {}) {
     if (saving && s !== top) continue;
     const n = f.field.length, lowHp = p.field.filter(a => a.hp < a.maxHp * 0.7).length;
     let sc = 0;
-    const heroOk = !heroLocked(p) && !f.noBase;   // 진영 없는 전투(스토리 일반전·퀘스트): 진영 전용 스킬은 쓰지 않음
+    const heroOk = !heroLocked(p) && !f.noBase;   // 진영을 못 치면 본진 스킬은 대체 효과(가장 HP 높은 적)로 나감 → 점수만 낮게
     // 기본 공격으로 처치 가능한 대상이 있으면 보조 스킬보다 공격 우선
     const canKill = f.field.some(t => calcDamage(u.card, t.card) >= t.hp);   // 처치하면 반격 없음
     switch (s.name) {
