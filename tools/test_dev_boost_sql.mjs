@@ -1,0 +1,31 @@
+// Offline PGlite: staging bundle + phase1 위에서 dev_boost_account.sql 검증 (가짜 사용자).
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import {PGlite} from '@electric-sql/pglite';
+import {buildSql,INSTALL_ACK} from './build_staging_sql.mjs';
+const boost=await readFile(new URL('../supabase/staging/dev_boost_account.sql',import.meta.url),'utf8');
+const db=new PGlite();
+await db.exec(`create role anon; create role authenticated; create schema auth;
+create table auth.users(id uuid primary key,email text,raw_user_meta_data jsonb default '{}',raw_app_meta_data jsonb default '{}',created_at timestamptz default now(),last_sign_in_at timestamptz,email_confirmed_at timestamptz);
+create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
+create function auth.jwt() returns jsonb language sql stable as $$ select coalesce(nullif(current_setting('request.jwt.claims',true),''),'{}')::jsonb $$;
+grant usage on schema auth,public to anon,authenticated;`);
+await db.exec((await buildSql()).replace(`confirmed_ref text := '${INSTALL_ACK}'`,"confirmed_ref text := 'abcdefghijklmnopqrst'"));
+const sid=(await db.query('select system_identifier::text id from pg_catalog.pg_control_system()')).rows[0].id;
+// 실제 파일은 다른 DB에서 거부
+await assert.rejects(db.exec(boost),/현재 접속한 DB/); await db.exec('rollback');
+const local=boost.replace("expected_db_id text := '7703759698107299042'",`expected_db_id text := '${sid}'`);
+await assert.rejects(db.exec(local),/찾지 못했어요/); await db.exec('rollback');
+await db.query(`insert into auth.users(id,email) values ('11111111-1111-4111-8111-111111111111','SteveJean77@gmail.com')`);
+await db.exec(`insert into story_progress(user_id,data) values ('11111111-1111-4111-8111-111111111111','{"owned":[{"uid":"a1","id":"10001","level":3,"boost":{"ATK":2}}],"starter":"10001","leader":"a1"}')`);
+await db.exec(local);
+const one=(await db.query(`select data from story_progress`)).rows[0].data;
+await db.exec(local);
+const r2=await db.query(local.slice(local.indexOf('select u.email'), local.lastIndexOf('commit;')).replace("current_setting('vr_dev_boost.uid')::uuid","'11111111-1111-4111-8111-111111111111'"));
+console.log(r2.rows[0]);
+assert.deepEqual((await db.query(`select data from story_progress`)).rows[0].data,one,'idempotent');
+assert.equal((await db.query(`select count(*)::int n from gem_ledger`)).rows[0].n,1);
+assert.equal((await db.query(`select count(*)::int n from player_gear`)).rows[0].n,0,'no tower drops');
+assert.equal((await db.query(`select count(*)::int n from pg_trigger where not tgenabled='O' and not tgisinternal`)).rows[0].n,0,'triggers re-enabled');
+assert.equal((await db.query(`select count(*)::int n from verified_game_events`)).rows[0].n,0);
+console.log('dev boost ok');
