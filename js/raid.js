@@ -17,7 +17,7 @@ const RW = { loyalty: gi('cur_loyalty', '🩸'), gold: gi('cur_gold', '🪙'), g
 const rwTxt = rw => Object.entries(rw || {}).filter(([k, v]) => RW[k] && v).map(([k, v]) => `<span>${RW[k]}${n(v)}</span>`).join('');
 const DIFF_IC = { normal: gi('diff_normal', '🟢'), hard: gi('diff_hard', '🟠'), abyss: gi('diff_abyss', '🟣') };
 const ATTR = { CHARGE: '돌격', DEFENSE: '방어', CRUSH: '분쇄', SUPPORT: '지원', DISTURB: '교란', FASCINATION: '매혹' };
-const ERR = { 'not in guild': '조직에 들어가야 해요', 'no attempts': '오늘 토벌 횟수를 다 썼어요', 'fight first': '오늘 한 번 직접 싸워야 소탕할 수 있어요', 'raid ended': '이번 주 토벌이 끝났어요 (일 22시 정산)',
+const ERR = { 'reward verification pending': '지급 보류', 'not in guild': '조직에 들어가야 해요', 'no attempts': '오늘 토벌 횟수를 다 썼어요', 'fight first': '오늘 한 번 직접 싸워야 소탕할 수 있어요', 'raid ended': '이번 주 토벌이 끝났어요 (일 22시 정산)',
   'card not owned': '덱 인재를 다시 골라 주세요', 'duplicate card': '같은 인재는 한 명만', 'deck size': '덱은 1~5장', 'too fast': '잠시 후 다시', 'battle expired': '시간이 지나 무효가 됐어요',
   'guild level': '조직 레벨이 부족해요', 'raid started': '이번 주 토벌이 이미 시작됐어요', 'not allowed': '보스·간부만 바꿀 수 있어요', 'nothing to claim': '받을 보상이 없어요', 'login required': '로그인이 필요해요' };
 const errText = e => { const m = String(e?.message || e); const k = Object.keys(ERR).find(x => m.includes(x)); return k ? ERR[k] : m.slice(0, 60); };

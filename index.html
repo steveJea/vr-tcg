@@ -153,6 +153,10 @@
     .cutin-img.cutin-me .cutin-text > div:last-child { color: #a7f3d0; } .cutin-img.cutin-ai .cutin-text > div:last-child { color: #fecaca; }
     .cutin-img.cutin-me .cutin-text { color: #d1fae5; } .cutin-img.cutin-ai .cutin-text { color: #fee2e2; }
     @media (orientation: portrait) { .cutin.cutin-img { aspect-ratio: auto; width: 100vw; height: min(62vh, 125vw); max-height: none; } }
+    @supports (height: 100dvh) {
+      .cutin.cutin-img { max-height: 70dvh; width: min(100vw, calc(70dvh * 16 / 9)); }
+      @media (orientation: portrait) { .cutin.cutin-img { max-height: none; width: 100vw; height: min(62dvh, 125vw); } }
+    }
     .cutin.cutin-img { background: #000; }
     .hp-fill, .mp-bar > div { transition: width .35s ease-out; }
     .cutin { --dir: 1; --dur: .75s; text-shadow: 0 2px 8px #000; animation: slashCut var(--dur) both; clip-path: polygon(5% 0, 100% 0, 95% 100%, 0 100%); }
@@ -586,6 +590,7 @@
 <script src="js/camp.js"></script>
 <div id="cutin" class="hidden"></div>
 <section id="story-screen" class="hidden"></section>
+<script src="js/battle-session.js"></script>
 <script src="js/story-data.js"></script>
 <script src="js/story-data-ch0.js"></script>
 <script src="js/story-data-ch2.js"></script>

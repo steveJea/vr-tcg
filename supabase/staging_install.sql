@@ -1,6 +1,6 @@
 -- ⚠ 테스트 전용 신규 설치. 운영 프로젝트에서는 절대 실행하지 마세요.
 -- tools/build_staging_sql.mjs 로 생성. 수동 편집 대신 소스/순서표를 수정하고 재생성.
--- 운영 유저·세이브·결제·우편 자료를 복사하지 않음. 기존 보안 문제 수정본이 아님.
+-- 운영 유저·세이브·결제·우편 자료를 복사하지 않음. 보안 1단계 지급 차단 포함, 전투 검증 완료 아님.
 -- 먼저 docs/STAGING.md를 읽고, 아래 확인 문자열을 새 테스트 프로젝트 ID로 바꾸세요.
 
 begin;
@@ -16199,6 +16199,2498 @@ end $$;
 revoke all on function public._ach_defs(), public._ach_score_defs(), public._ach_prog(uuid, text), public._ach_json(uuid),
   public._ach_title_name(text), public._ach_title_owned(uuid, text), public._cosmo_owned(uuid, text, text)
   from public, anon, authenticated;
+
+
+-- ===== SOURCE: security_phase1_rewards.sql =====
+-- 보안 1단계: 보상 근거 분리 / 임의 카운터 차단 (2026-11-07 KST)
+-- 먼저 docs/SECURITY_PHASE1.md와 security_phase1_preflight.sql 확인.
+-- 기존 DB에는 이 파일만 실행. staging/설치본이나 옛 SQL을 재실행하지 마세요.
+-- 소유자가 테스트 DB에 먼저 적용/확인, 운영은 별도 승인 후 같은 파일 적용.
+-- 기존 잔액/도감/수령/진행 행 삭제·초기화·자동 보상 회수 없음.
+-- 중요: 전투 검증기 없는 보상은 정상 플레이에서도 지급 보류됩니다.
+-- 설치본의 단일 트랜잭션에 포함
+select pg_advisory_xact_lock(20261107, 501);
+
+do $preconditions$
+declare obj text;
+begin
+  foreach obj in array array['gallery','gallery_claims','daily_progress','weekly_progress',
+    'daily_attend','achievement_claims','ach_counters','story_progress','story_gacha',
+    'story_gacha_log','story_card_pool','card_id_alias','player_wallet','gem_ledger',
+    'arcade_tut_claims','pvp_reward_claims','pvp_tier_claims','guild_claims'] loop
+    if to_regclass('public.' || obj) is null then raise exception 'STOP: missing table %; inspect preflight', obj; end if;
+  end loop;
+  foreach obj in array array['_daily_defs()','_weekly_defs()','_ach_defs()',
+    '_daily_grant(uuid,jsonb,text,text)','_gem_add(uuid,integer,integer,text,text,jsonb)',
+    '_gem_sync(uuid)','_story_ticket_sync(uuid)','_gallery_sync_owned(uuid,jsonb)',
+    'gallery_register(text[],text)','daily_track(text,integer)','weekly_track(text,integer)',
+    'ach_track(text,integer)','tower_complete(text,integer,jsonb)',
+    'tower_sweep_complete(text,integer,jsonb)','pvp_report(bigint,integer,integer)'] loop
+    if to_regprocedure('public.' || obj) is null then raise exception 'STOP: missing function %; inspect preflight', obj; end if;
+  end loop;
+end $preconditions$;
+
+-- No client-writable flags or generic "verify this result" RPC. Later phases must
+-- supply a verifier, not flip an unverified client result into a trusted event.
+create table if not exists public.reward_security_policy (
+  key text primary key, enabled boolean not null default false,
+  installed_at timestamptz not null default now(),
+  check (key in ('battle_rewards_v1')), check (not enabled)
+);
+insert into public.reward_security_policy(key) values ('battle_rewards_v1') on conflict do nothing;
+alter table public.reward_security_policy enable row level security;
+revoke all on public.reward_security_policy from public, anon, authenticated;
+
+create table if not exists public.verified_game_events (
+  id bigint generated always as identity primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  source_kind text not null check (source_kind = 'gacha'),
+  source_id text not null,
+  event_kind text not null check (event_kind = 'card_acquired'),
+  card_id text not null references public.story_card_pool(id),
+  rule_version integer not null default 1 check (rule_version = 1),
+  occurred_at timestamptz not null default now(),
+  unique(user_id, source_kind, source_id, event_kind)
+);
+create index if not exists verified_game_events_user_card on public.verified_game_events(user_id, card_id);
+alter table public.verified_game_events enable row level security;
+revoke all on public.verified_game_events from public, anon, authenticated;
+
+create table if not exists public.reward_claims (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  reward_kind text not null,
+  source_or_period text not null,
+  reward jsonb not null check (jsonb_typeof(reward) = 'object'),
+  result jsonb not null default '{}'::jsonb,
+  rule_version integer not null default 1,
+  claimed_at timestamptz not null default now(),
+  primary key(user_id, reward_kind, source_or_period)
+);
+alter table public.reward_claims enable row level security;
+revoke all on public.reward_claims from public, anon, authenticated;
+
+-- Release catalog from data/cards.csv. Hidden pool entries cannot inflate collection %.
+create table if not exists public.reward_card_catalog (
+  card_id text primary key references public.story_card_pool(id)
+);
+alter table public.reward_card_catalog enable row level security;
+revoke all on public.reward_card_catalog from public,anon,authenticated;
+insert into public.reward_card_catalog(card_id) values
+  ('10118'),
+  ('10019'),
+  ('10018'),
+  ('10299'),
+  ('10074'),
+  ('10080'),
+  ('10445'),
+  ('10375'),
+  ('10051'),
+  ('10404'),
+  ('10049'),
+  ('10048'),
+  ('10189'),
+  ('10060'),
+  ('10071'),
+  ('10086'),
+  ('10169'),
+  ('10137'),
+  ('10138'),
+  ('10020'),
+  ('10463'),
+  ('10228'),
+  ('10453'),
+  ('10293'),
+  ('10010'),
+  ('10380'),
+  ('10114'),
+  ('10401'),
+  ('10315'),
+  ('10026'),
+  ('10191'),
+  ('10469'),
+  ('10001'),
+  ('10183'),
+  ('10064'),
+  ('10444'),
+  ('10279'),
+  ('10225'),
+  ('10431'),
+  ('10332'),
+  ('10201'),
+  ('10346'),
+  ('10275'),
+  ('10124'),
+  ('10134'),
+  ('10037'),
+  ('10031'),
+  ('10180'),
+  ('10390'),
+  ('10027'),
+  ('10033'),
+  ('10353'),
+  ('10244'),
+  ('10245'),
+  ('10292'),
+  ('10076'),
+  ('10045'),
+  ('10409'),
+  ('10407'),
+  ('10036'),
+  ('10075'),
+  ('10173'),
+  ('10406'),
+  ('10328'),
+  ('10329'),
+  ('10098'),
+  ('10187'),
+  ('10319'),
+  ('10081'),
+  ('10252'),
+  ('10298'),
+  ('10125'),
+  ('10025'),
+  ('10035'),
+  ('10112'),
+  ('10270'),
+  ('10069'),
+  ('10088'),
+  ('10004'),
+  ('10420'),
+  ('10408'),
+  ('10205'),
+  ('10139'),
+  ('10347'),
+  ('10023'),
+  ('10448'),
+  ('10067'),
+  ('10005'),
+  ('10276'),
+  ('10259'),
+  ('10386'),
+  ('10105'),
+  ('10077'),
+  ('10212'),
+  ('10065'),
+  ('10008'),
+  ('10425'),
+  ('10107'),
+  ('10032'),
+  ('10142'),
+  ('10089'),
+  ('10094'),
+  ('10350'),
+  ('10366'),
+  ('10016'),
+  ('10385'),
+  ('10474'),
+  ('10287'),
+  ('10182'),
+  ('10136'),
+  ('10209'),
+  ('10170'),
+  ('10128'),
+  ('10433'),
+  ('10374'),
+  ('10218'),
+  ('10441'),
+  ('10349'),
+  ('10314'),
+  ('10337'),
+  ('10038'),
+  ('10365'),
+  ('10278'),
+  ('10251'),
+  ('10109'),
+  ('10017'),
+  ('10015'),
+  ('10028'),
+  ('10181'),
+  ('10333'),
+  ('10054'),
+  ('10046'),
+  ('10066'),
+  ('10195'),
+  ('10283'),
+  ('10284'),
+  ('10321'),
+  ('10320'),
+  ('10371'),
+  ('10345'),
+  ('10021'),
+  ('10424'),
+  ('10398'),
+  ('10318'),
+  ('10458'),
+  ('10464'),
+  ('10233'),
+  ('10034'),
+  ('10171'),
+  ('10119'),
+  ('10226'),
+  ('10307'),
+  ('10402'),
+  ('10009'),
+  ('10055'),
+  ('10013'),
+  ('10313'),
+  ('10106'),
+  ('10316'),
+  ('10416'),
+  ('10057'),
+  ('10220'),
+  ('10340'),
+  ('10309'),
+  ('10070'),
+  ('10113'),
+  ('10364'),
+  ('10410'),
+  ('10419'),
+  ('10053'),
+  ('10176'),
+  ('10200'),
+  ('10234'),
+  ('10123'),
+  ('10304'),
+  ('10434'),
+  ('10430'),
+  ('10379'),
+  ('10325'),
+  ('10260'),
+  ('10300'),
+  ('10462'),
+  ('10072'),
+  ('10256'),
+  ('10115'),
+  ('10348'),
+  ('10339'),
+  ('10394'),
+  ('10047'),
+  ('10188'),
+  ('10132'),
+  ('10087'),
+  ('10202'),
+  ('10184'),
+  ('10103'),
+  ('10265'),
+  ('10266'),
+  ('10465'),
+  ('10466'),
+  ('10002'),
+  ('10289'),
+  ('10083'),
+  ('10079'),
+  ('10338'),
+  ('10336'),
+  ('10418'),
+  ('10323'),
+  ('10403'),
+  ('10185'),
+  ('10308'),
+  ('10413'),
+  ('10415'),
+  ('10414'),
+  ('10186'),
+  ('10295'),
+  ('10297'),
+  ('10317'),
+  ('10108'),
+  ('10417'),
+  ('10172'),
+  ('10262'),
+  ('10261'),
+  ('10290'),
+  ('10384'),
+  ('10383'),
+  ('10110'),
+  ('10442'),
+  ('10129'),
+  ('10014'),
+  ('10235'),
+  ('10111'),
+  ('10357'),
+  ('10360'),
+  ('10306'),
+  ('10285'),
+  ('10343'),
+  ('10271'),
+  ('10003'),
+  ('10095'),
+  ('10096'),
+  ('10342'),
+  ('10327'),
+  ('10286'),
+  ('10273'),
+  ('10253'),
+  ('10061'),
+  ('10460'),
+  ('10459'),
+  ('10461'),
+  ('10296'),
+  ('10246'),
+  ('10204'),
+  ('10447'),
+  ('10429'),
+  ('10211'),
+  ('10193'),
+  ('10120'),
+  ('10101'),
+  ('10099'),
+  ('10241'),
+  ('10044'),
+  ('10043'),
+  ('10376'),
+  ('10377'),
+  ('10322'),
+  ('10239'),
+  ('10039'),
+  ('10310'),
+  ('10247'),
+  ('10248'),
+  ('10221'),
+  ('10011'),
+  ('10140'),
+  ('10388'),
+  ('10121'),
+  ('10236'),
+  ('10102'),
+  ('10092'),
+  ('10194'),
+  ('10361'),
+  ('10354'),
+  ('10254'),
+  ('10222'),
+  ('10470'),
+  ('10059'),
+  ('10428'),
+  ('10471'),
+  ('10450'),
+  ('10432'),
+  ('10359'),
+  ('10362'),
+  ('10454'),
+  ('10363'),
+  ('10436'),
+  ('10412'),
+  ('10040'),
+  ('10042'),
+  ('10237'),
+  ('10207'),
+  ('10208'),
+  ('10303'),
+  ('10468'),
+  ('10467'),
+  ('10294'),
+  ('10258'),
+  ('10056'),
+  ('10041'),
+  ('10255'),
+  ('10141'),
+  ('10133'),
+  ('10091'),
+  ('10090'),
+  ('10344'),
+  ('10330'),
+  ('10263'),
+  ('10249'),
+  ('10063'),
+  ('10052'),
+  ('10190'),
+  ('10174'),
+  ('10122'),
+  ('10029'),
+  ('10232'),
+  ('10104'),
+  ('10378'),
+  ('10126'),
+  ('10062'),
+  ('10203'),
+  ('10097'),
+  ('10280'),
+  ('10352'),
+  ('10277'),
+  ('10100'),
+  ('10451'),
+  ('10389'),
+  ('10264'),
+  ('10438'),
+  ('10177'),
+  ('10178'),
+  ('10372'),
+  ('10373'),
+  ('10130'),
+  ('10131'),
+  ('10341'),
+  ('10272'),
+  ('10117'),
+  ('10078'),
+  ('10084'),
+  ('10085'),
+  ('10217'),
+  ('10216'),
+  ('10324'),
+  ('10006'),
+  ('10068'),
+  ('10400'),
+  ('10331'),
+  ('10250'),
+  ('10022'),
+  ('10437'),
+  ('10426'),
+  ('10381'),
+  ('10179'),
+  ('10215'),
+  ('10214'),
+  ('10223'),
+  ('10269'),
+  ('10268'),
+  ('10473'),
+  ('10135'),
+  ('10206'),
+  ('10240'),
+  ('10238'),
+  ('10230'),
+  ('10227'),
+  ('10387'),
+  ('10281'),
+  ('10472'),
+  ('10455'),
+  ('10423'),
+  ('10456'),
+  ('10457'),
+  ('10224'),
+  ('10382'),
+  ('10393'),
+  ('10030'),
+  ('10391'),
+  ('10392'),
+  ('10311'),
+  ('10397'),
+  ('10242'),
+  ('10356'),
+  ('10274'),
+  ('10192'),
+  ('10093'),
+  ('10312'),
+  ('10243'),
+  ('10231'),
+  ('10399'),
+  ('10050'),
+  ('10073'),
+  ('10229'),
+  ('10012'),
+  ('10219'),
+  ('10305'),
+  ('10443'),
+  ('10024'),
+  ('10446'),
+  ('10427'),
+  ('10411'),
+  ('10058'),
+  ('10395'),
+  ('10213'),
+  ('10175'),
+  ('10007'),
+  ('10257'),
+  ('10291'),
+  ('10326'),
+  ('10288'),
+  ('10282'),
+  ('10405'),
+  ('10452'),
+  ('10370'),
+  ('10368'),
+  ('10369'),
+  ('10358'),
+  ('10351'),
+  ('10449'),
+  ('10422'),
+  ('10421'),
+  ('10396'),
+  ('10435'),
+  ('10127'),
+  ('10439'),
+  ('10355'),
+  ('10367'),
+  ('10440'),
+  ('10267'),
+  ('10509')
+on conflict do nothing;
+
+create or replace function public._gallery_total() returns int
+language sql stable security definer set search_path = pg_catalog, public, pg_temp as $$
+  select count(*)::int from public.reward_card_catalog
+$$;
+
+-- Actual INSERT into the server-only draw log is the evidence, NOT owned JSON,
+-- gallery, matches, a browser event, or an old counter. No legacy backfill.
+create or replace function public._reward_gacha_event() returns trigger
+language plpgsql security definer set search_path = pg_catalog, public, pg_temp as $$
+declare cid text; eid bigint;
+begin
+  select p.id into cid from public.story_card_pool p
+  where p.id = coalesce((select a.new_id from public.card_id_alias a where a.old_id = new.card_id), new.card_id);
+  if cid is null then raise exception 'invalid acquired card'; end if;
+  insert into public.verified_game_events(user_id, source_kind, source_id, event_kind, card_id)
+  values (new.user_id, 'gacha', new.id::text, 'card_acquired', cid)
+  on conflict do nothing returning id into eid;
+  if eid is not null then
+    insert into public.gallery(user_id, card_id, count, mvp_count, first_at, last_at)
+    values (new.user_id, cid, 0, 0, now(), now() - interval '1 minute')
+    on conflict (user_id, card_id) do nothing;
+  end if;
+  return new;
+end $$;
+revoke all on function public._reward_gacha_event() from public, anon, authenticated;
+drop trigger if exists reward_gacha_event on public.story_gacha_log;
+create trigger reward_gacha_event after insert on public.story_gacha_log
+for each row execute function public._reward_gacha_event();
+
+-- The old JSON trigger is intentionally removed. Do not certify existing owned
+-- cards or gallery rows as acquisitions (including a sold/forged legacy card).
+drop trigger if exists story_progress_gallery on public.story_progress;
+create or replace function public._gallery_sync_owned(p_uid uuid, p_data jsonb)
+returns int language sql security definer set search_path = pg_catalog, public, pg_temp as $$ select 0 $$;
+
+create or replace function public._gallery_have(p_uid uuid) returns int
+language sql stable security definer set search_path = pg_catalog, public, pg_temp as $$
+  select count(distinct e.card_id)::int from public.verified_game_events e
+  join public.reward_card_catalog c on c.card_id=e.card_id
+  where user_id = p_uid and event_kind = 'card_acquired'
+$$;
+
+-- All currencies in a daily/gallery/achievement grant share one receipt. The
+-- caller already validates its server catalog and eligibility; this is private.
+-- Row/period locks in public claim RPCs precede the gem lock, then wallet/tickets.
+create or replace function public._daily_grant(p_uid uuid, p_rw jsonb, p_reason text, p_ref text) returns jsonb
+language plpgsql security definer set search_path = pg_catalog, public, pg_temp as $$
+declare res jsonb := '{}'::jsonb; prior public.reward_claims; t int; inserted boolean; k text; v jsonb;
+begin
+  if p_uid is null or p_ref is null or length(p_ref) not between 1 and 200
+    or p_reason is null or p_reason not in ('attend','daily','weekly','gallery','ach')
+    or jsonb_typeof(p_rw) is distinct from 'object' then raise exception 'invalid reward'; end if;
+  for k, v in select * from jsonb_each(p_rw) loop
+    if k not in ('gold','gem','tickets') or jsonb_typeof(v) <> 'number'
+      or v::text !~ '^[0-9]+$' or v::numeric > 2147483647 then raise exception 'invalid reward'; end if;
+  end loop;
+  perform pg_advisory_xact_lock(hashtext('gem:' || p_uid::text));
+  select * into prior from public.reward_claims where user_id=p_uid and reward_kind=p_reason and source_or_period=p_ref;
+  if found then
+    if prior.reward <> p_rw then raise exception 'reward conflict'; end if;
+    return prior.result;
+  end if;
+  -- Old gem receipts are NOT permission to replay ticket/gold parts of a grant.
+  if exists (select 1 from public.gem_ledger where user_id=p_uid and ref=p_ref) then raise exception 'already claimed'; end if;
+  insert into public.reward_claims(user_id, reward_kind, source_or_period, reward)
+  values (p_uid,p_reason,p_ref,p_rw) on conflict do nothing returning true into inserted;
+  if not coalesce(inserted,false) then raise exception 'already claimed'; end if;
+  if coalesce((p_rw->>'gold')::int,0)>0 then
+    res := res || jsonb_build_object('wallet',public._wallet_add(p_uid,jsonb_build_object('gold',(p_rw->>'gold')::int),p_reason));
+  end if;
+  if coalesce((p_rw->>'gem')::int,0)>0 then
+    perform public._gem_add(p_uid,(p_rw->>'gem')::int,0,p_reason,p_ref,jsonb_build_object('rule_version',1));
+  end if;
+  if coalesce((p_rw->>'tickets')::int,0)>0 then
+    insert into public.story_gacha(user_id,last_draw) values (p_uid,public._gem_day()-1) on conflict do nothing;
+    update public.story_gacha set tickets=tickets+(p_rw->>'tickets')::int, updated_at=now() where user_id=p_uid returning tickets into t;
+    res := res || jsonb_build_object('tickets',t);
+  end if;
+  update public.reward_claims set result=res where user_id=p_uid and reward_kind=p_reason and source_or_period=p_ref;
+  return res;
+end $$;
+
+-- Legacy mission and battle counters are retained but never used as evidence.
+-- No battle event supplier exists in phase 1, so all daily/weekly combat claims
+-- are held. Attendance is still server date + auth + account/day lock.
+create or replace function public._reward_battle_enabled() returns boolean
+language sql stable security definer set search_path = pg_catalog, public, pg_temp as $$
+  select coalesce((select enabled from public.reward_security_policy where key='battle_rewards_v1'),false)
+$$;
+
+
+create or replace function public.daily_track(p_kind text, p_n int default 1) returns jsonb
+language plpgsql security definer set search_path = pg_catalog, public, pg_temp as $$
+begin
+  if auth.uid() is null then raise exception 'login required'; end if;
+  raise exception 'reward verification pending' using errcode='P0001';
+end $$;
+
+
+create or replace function public.weekly_track(p_kind text, p_n int default 1) returns jsonb
+language plpgsql security definer set search_path = pg_catalog, public, pg_temp as $$
+begin
+  if auth.uid() is null then raise exception 'login required'; end if;
+  raise exception 'reward verification pending' using errcode='P0001';
+end $$;
+
+
+create or replace function public.ach_track(p_kind text, p_n int default 1) returns jsonb
+language plpgsql security definer set search_path = pg_catalog, public, pg_temp as $$
+begin
+  if auth.uid() is null then raise exception 'login required'; end if;
+  raise exception 'reward verification pending' using errcode='P0001';
+end $$;
+
+
+create or replace function public.daily_claim(p_key text) returns jsonb
+language plpgsql security definer set search_path = pg_catalog, public, pg_temp as $$
+begin
+  if auth.uid() is null then raise exception 'login required'; end if;
+  raise exception 'reward verification pending' using errcode='P0001';
+end $$;
+
+
+create or replace function public.weekly_claim(p_key text) returns jsonb
+language plpgsql security definer set search_path = pg_catalog, public, pg_temp as $$
+begin
+  if auth.uid() is null then raise exception 'login required'; end if;
+  raise exception 'reward verification pending' using errcode='P0001';
+end $$;
+
+
+create or replace function public.arcade_tut_claim(p_stage int) returns jsonb
+language plpgsql security definer set search_path = pg_catalog, public, pg_temp as $$
+begin
+  if auth.uid() is null then raise exception 'login required'; end if;
+  raise exception 'reward verification pending' using errcode='P0001';
+end $$;
+
+
+create or replace function public.story_star_claim(p_chapter int, p_key text) returns jsonb
+language plpgsql security definer set search_path = pg_catalog, public, pg_temp as $$
+begin
+  if auth.uid() is null then raise exception 'login required'; end if;
+  raise exception 'reward verification pending' using errcode='P0001';
+end $$;
+
+
+create or replace function public.pvp_claim_tier(p_league text, p_mode text) returns jsonb
+language plpgsql security definer set search_path = pg_catalog, public, pg_temp as $$
+begin
+  if auth.uid() is null then raise exception 'login required'; end if;
+  raise exception 'reward verification pending' using errcode='P0001';
+end $$;
+
+
+create or replace function public.pvp_claim_reward(p_league text, p_mode text, p_season date) returns jsonb
+language plpgsql security definer set search_path = pg_catalog, public, pg_temp as $$
+begin
+  if auth.uid() is null then raise exception 'login required'; end if;
+  raise exception 'reward verification pending' using errcode='P0001';
+end $$;
+
+
+create or replace function public.raid_claim() returns jsonb
+language plpgsql security definer set search_path = pg_catalog, public, pg_temp as $$
+begin
+  if auth.uid() is null then raise exception 'login required'; end if;
+  raise exception 'reward verification pending' using errcode='P0001';
+end $$;
+
+
+create or replace function public.war_claim() returns jsonb
+language plpgsql security definer set search_path = pg_catalog, public, pg_temp as $$
+begin
+  if auth.uid() is null then raise exception 'login required'; end if;
+  raise exception 'reward verification pending' using errcode='P0001';
+end $$;
+
+
+create or replace function public.gallery_register(p_cards text[], p_mvp text default null)
+returns table(card_id text, count int, mvp_count int, is_new boolean)
+language plpgsql security definer set search_path = pg_catalog, public, pg_temp as $$
+begin
+  if auth.uid() is null then raise exception 'login required'; end if;
+  raise exception 'reward verification pending' using errcode='P0001';
+end $$;
+
+
+create or replace function public._daily_json(p_uid uuid) returns jsonb language plpgsql stable security definer set search_path = pg_catalog, public, pg_temp as $$
+declare dp daily_progress; a daily_attend; today date := _gem_day(); done int;
+begin
+  select * into dp from daily_progress where user_id = p_uid and day = today;
+  select * into a from daily_attend where user_id = p_uid;
+  select count(*) into done from jsonb_array_elements(_daily_defs()) m where 0 >= (m->>'goal')::int;
+  return jsonb_build_object('ok', true, 'reward_held', true, 'day', today,
+    'next_reset', ((today + 1)::timestamp at time zone 'Asia/Seoul'),
+    'missions', (select jsonb_agg(m || jsonb_build_object('prog', least((m->>'goal')::int, 0),
+                   'claimed', coalesce(dp.claimed, '[]'::jsonb) ? (m->>'key'))) from jsonb_array_elements(_daily_defs()) m),
+    'all', jsonb_build_object('reward', _daily_all_reward(), 'done', done, 'goal', jsonb_array_length(_daily_defs()), 'claimed', coalesce(dp.claimed, '[]'::jsonb) ? 'all'),
+    'attend', jsonb_build_object('rewards', _attend_defs(), 'step', case when coalesce(a.step, 0) >= 7 and a.last_day < today then 0 else coalesce(a.step, 0) end,
+                   'today', a.last_day = today, 'total', coalesce(a.total, 0)));
+end $$;
+
+
+create or replace function public._weekly_json(p_uid uuid) returns jsonb language plpgsql stable security definer set search_path = pg_catalog, public, pg_temp as $$
+declare wp weekly_progress; v_week date := _weekly_week(); done int; next_reset timestamptz;
+begin
+  select * into wp from weekly_progress where user_id = p_uid and week = v_week;
+  select count(*) into done from jsonb_array_elements(_weekly_defs()) m where 0 >= (m->>'goal')::int;
+  next_reset := ((v_week + 7)::timestamp at time zone 'Asia/Seoul');
+  return jsonb_build_object('ok', true, 'reward_held', true, 'week', v_week, 'next_reset', next_reset,
+    'missions', (select jsonb_agg(m || jsonb_build_object('prog', least((m->>'goal')::int, 0),
+                   'claimed', coalesce(wp.claimed, '[]'::jsonb) ? (m->>'key'))) from jsonb_array_elements(_weekly_defs()) m),
+    'all', jsonb_build_object('reward', _weekly_all_reward(), 'done', done, 'goal', jsonb_array_length(_weekly_defs()),
+                   'claimed', coalesce(wp.claimed, '[]'::jsonb) ? 'all'));
+end $$;
+
+
+-- Only independently server-observed actions can unlock an achievement today.
+create or replace function public._ach_prog(p_uid uuid,p_id text) returns int
+language plpgsql stable security definer set search_path = pg_catalog, public, pg_temp as $$
+declare v int := 0;
+begin
+  case p_id
+  when 'camp_lv' then select camp_lv into v from public.camp_state where user_id=p_uid;
+  when 'camp_slots' then select count(*)::int into v from public.camp_slots where user_id=p_uid;
+  when 'gallery_n' then return public._gallery_have(p_uid);
+  when 'gacha_n' then select count(*)::int into v from public.verified_game_events where user_id=p_uid and event_kind='card_acquired';
+  when 'gear_p5' then select count(*)::int into v from public.player_gear where user_id=p_uid and plus>=5;
+  when 'attend_n' then select total into v from public.daily_attend where user_id=p_uid;
+  when 'friends_n' then select count(*)::int into v from public.friendships where user_a=p_uid or user_b=p_uid;
+  when 'guild_join' then select exists(select 1 from public.guild_members where user_id=p_uid)::int into v;
+  when 'gifts_sent' then select count(*)::int into v from public.friend_gifts where from_user=p_uid;
+  else return 0; -- battle/level/star/MVP counters need phase 2-5 verifiers
+  end case;
+  return coalesce(v,0);
+end $$;
+
+create or replace function public._ach_score(p_uid uuid) returns int
+language plpgsql stable security definer set search_path = pg_catalog, public, pg_temp as $$
+declare a jsonb; t jsonb; n int; i int; g int; s int := 0; k text;
+begin
+  for a in select x from jsonb_array_elements(_ach_defs()) x loop
+    n := jsonb_array_length(a->'tiers');
+    for i in 0 .. n - 1 loop
+      t := a->'tiers'->i; g := (t->>'goal')::int; k := _ach_key(a->>'id', g);
+      if exists (select 1 from public.reward_claims c where c.user_id=p_uid and c.reward_kind='ach' and c.source_or_period='ach:' || k) then
+        s := s + case when i = n - 1 then 20 else 10 end;
+      end if;
+    end loop;
+  end loop;
+  return s;
+end $$;
+
+
+create or replace function public._ach_json(p_uid uuid) returns jsonb
+language plpgsql stable security definer set search_path = pg_catalog, public, pg_temp as $$
+declare items jsonb := '[]'::jsonb; a jsonb; t jsonb; i int; n int; prog int; g int; k text; claimed boolean; ready boolean;
+  score int; sc jsonb; ready_n int := 0; cat text; cats jsonb := '[]'::jsonb; c jsonb; list jsonb;
+begin
+  for a in select x from jsonb_array_elements(_ach_defs()) x loop
+    prog := _ach_prog(p_uid, a->>'id');
+    n := jsonb_array_length(a->'tiers');
+    for i in 0 .. n - 1 loop
+      t := a->'tiers'->i; g := (t->>'goal')::int; k := _ach_key(a->>'id', g);
+      claimed := exists (select 1 from achievement_claims c where c.user_id = p_uid and c.key = k);
+      ready := (not claimed) and prog >= g;
+      if ready then ready_n := ready_n + 1; end if;
+      items := items || jsonb_build_array(jsonb_build_object(
+        'id', a->>'id', 'cat', a->>'cat', 'name', a->>'name', 'unit', coalesce(a->>'unit',''),
+        'goal', g, 'prog', least(prog, g), 'raw', prog, 'key', k,
+        'reward', t->'reward', 'claimed', claimed, 'ready', ready,
+        'pts', case when i = n - 1 then 20 else 10 end,
+        'tier', i + 1, 'tiers', n, 'held', a->>'id' not in ('camp_lv','camp_slots','gallery_n','gacha_n','gear_p5','attend_n','friends_n','guild_join','gifts_sent'), 'title', _ach_title_name(t->>'title')));
+    end loop;
+  end loop;
+  score := _ach_score(p_uid);
+  for sc in select x from jsonb_array_elements(_ach_score_defs()) x loop
+    g := (sc->>'goal')::int; k := _ach_score_key(g);
+    claimed := exists (select 1 from achievement_claims c where c.user_id = p_uid and c.key = k);
+    ready := (not claimed) and score >= g;
+    if ready then ready_n := ready_n + 1; end if;
+    items := items || jsonb_build_array(jsonb_build_object(
+      'id', 'score', 'cat', 'score', 'name', '업적 점수', 'unit', '점',
+      'goal', g, 'prog', least(score, g), 'raw', score, 'key', k,
+      'reward', sc->'reward', 'claimed', claimed, 'ready', ready,
+      'pts', 0, 'tier', 0, 'tiers', 0, 'title', _ach_title_name(sc->>'title')));
+  end loop;
+  for c in select x from jsonb_array_elements(_ach_cats()) x loop
+    cat := c->>'id';
+    select coalesce(jsonb_agg(x order by (x->>'id'), (x->>'goal')::int), '[]'::jsonb) into list
+      from jsonb_array_elements(items) x where x->>'cat' = cat;
+    cats := cats || jsonb_build_array(c || jsonb_build_object('items', list));
+  end loop;
+  select coalesce(jsonb_agg(x order by (x->>'goal')::int), '[]'::jsonb) into list
+    from jsonb_array_elements(items) x where x->>'cat' = 'score';
+  return jsonb_build_object('ok', true, 'score', score, 'ready', ready_n,
+    'cats', cats, 'score_items', list);
+end $$;
+
+
+create or replace function public.attend_claim() returns jsonb language plpgsql security definer set search_path = pg_catalog, public, pg_temp as $$
+declare uid uuid := auth.uid(); today date := _gem_day(); a daily_attend; st int; rw jsonb; res jsonb;
+begin
+  if uid is null then raise exception 'login required'; end if;
+  perform pg_advisory_xact_lock(hashtext('daily:' || uid::text));
+  perform pg_advisory_xact_lock(hashtext('gem:' || uid::text));
+  insert into daily_attend (user_id) values (uid) on conflict do nothing;
+  select * into a from daily_attend where user_id = uid for update;
+  if a.last_day = today then raise exception 'already claimed'; end if;
+  st := case when a.step >= 7 then 1 else a.step + 1 end;
+  rw := _attend_defs()->(st - 1);
+  update daily_attend set last_day = today, step = st, total = total + 1 where user_id = uid;
+  res := _daily_grant(uid, rw, 'attend', 'attend:' || today);
+  return _daily_json(uid) || res || jsonb_build_object('got', rw, 'got_day', st);
+end $$;
+
+
+create or replace function public.arcade_tut_status() returns jsonb
+language plpgsql stable security definer set search_path = pg_catalog, public, pg_temp as $$
+declare uid uuid := auth.uid();
+begin
+  if uid is null then raise exception 'login required'; end if;
+  return jsonb_build_object('ok', true, 'reward_held', true,
+    'claimed', coalesce((select jsonb_agg(stage order by stage) from arcade_tut_claims where user_id = uid), '[]'::jsonb),
+    'rewards', jsonb_build_object('1', _arcade_tut_rw(1), '2', _arcade_tut_rw(2), '3', _arcade_tut_rw(3)));
+end $$;
+
+
+create or replace function public._story_ticket_sync(uid uuid) returns jsonb
+language plpgsql set search_path = pg_catalog, public, pg_temp as $$
+declare t int;
+begin
+  if uid is null then raise exception 'login required'; end if;
+  insert into public.story_gacha(user_id,last_draw) values (uid,public._gem_day()-1) on conflict do nothing;
+  select tickets into t from public.story_gacha where user_id=uid for update;
+  return jsonb_build_object('tickets',t,'added',0,'chapters','[]'::jsonb,'reward_held',true);
+end $$;
+
+
+create or replace function public._gem_sync(p_uid uuid) returns jsonb language plpgsql security definer set search_path = pg_catalog, public, pg_temp as $$
+declare d jsonb; ch int; r jsonb; out jsonb := '[]'::jsonb; lg gem_login; today date := _gem_day();
+begin
+  -- Chapter gems are held until phase 2; daily login remains server dated.
+  insert into gem_login (user_id, last_day, streak) values (p_uid, today - 1, 0) on conflict (user_id) do nothing;
+  select * into lg from gem_login where user_id = p_uid for update;
+  if lg.last_day < today then
+    lg.streak := case when lg.last_day = today - 1 then lg.streak + 1 else 1 end;
+    update gem_login set last_day = today, streak = lg.streak where user_id = p_uid;
+    if lg.streak % 7 = 0 then
+      r := _gem_add(p_uid, _gem_login_reward(), 0, 'login_7', 'login:' || today, jsonb_build_object('streak', lg.streak));
+      if r is not null then out := out || jsonb_build_array(jsonb_build_object('reason', 'login_7', 'streak', lg.streak, 'gem', _gem_login_reward())); end if;
+    end if;
+  end if;
+  return out;
+end $$;
+
+
+create or replace function public._pvp_grant(p_uid uuid, p_rw jsonb, p_reason text, p_league text, p_mode text, p_season date) returns void
+language plpgsql security definer set search_path = pg_catalog, public, pg_temp as $$
+begin raise exception 'reward verification pending'; end $$;
+create or replace function public._tower_pay(uid uuid, p text, f int) returns jsonb
+language plpgsql set search_path = pg_catalog, public, pg_temp as $$
+begin raise exception 'reward verification pending'; end $$;
+create or replace function public._guild_feed(p_uid uuid, p_src text, p_n int) returns int
+language sql security definer set search_path = pg_catalog, public, pg_temp as $$ select 0 $$;
+
+
+create or replace function public.pvp_report(p_id bigint, p_wins int, p_losses int) returns jsonb
+language plpgsql security definer set search_path = pg_catalog, public, pg_temp as $$
+declare uid uuid := auth.uid(); a pvp_attempts; n int; need int; v_win boolean; r int; sk int := 0; srw jsonb;
+begin
+  if uid is null then raise exception 'login required'; end if;
+  select * into a from pvp_attempts where id = p_id and user_id = uid for update;
+  if a.id is null then raise exception 'not found'; end if;
+  if a.reported_at is not null then raise exception 'already reported'; end if;
+  if now() - a.created_at > interval '1 hour' then raise exception 'expired'; end if;
+  n := _pvp_ok(a.league, a.mode); need := case when n = 3 then 2 else 1 end;
+  if p_wins is null or p_losses is null or p_wins < 0 or p_losses < 0 or p_wins > need or p_losses > need
+     or not (p_wins = need or p_losses = need) or (p_wins = need and p_losses = need) then raise exception 'bad result'; end if;
+  v_win := p_wins = need;
+  update pvp_attempts set reported_at = now(), wins = p_wins, losses = p_losses, win = v_win where id = p_id;
+  if v_win then
+    update pvp_ratings set rating = rating + a.dl + a.dw, wins = wins + 1, losses = losses - 1, updated_at = now()
+      where user_id = uid and league = a.league and mode = a.mode and season = a.season;
+    if a.opp_user is not null then
+      update pvp_ratings set rating = rating - a.dl / 2 - a.dw / 2, def_wins = def_wins - 1, def_losses = def_losses + 1, updated_at = now()
+        where user_id = a.opp_user and league = a.league and mode = a.mode and season = a.season;
+    end if;
+    sk := _pvp_streak(uid, a.league, a.mode, a.season, p_id);
+    select reward into srw from pvp_streak_table where pvp_streak_table.n = sk;
+    -- No verified battle supplier yet. Do not consume a reward or claim it was paid.
+    srw := null;
+    update pvp_attempts set streak = sk, streak_reward = srw where id = p_id;
+    -- 조직 세력 (guild.sql): 승리당 +10 (하루 상한은 _guild_feed 가 처리)
+    if to_regprocedure('public._guild_feed(uuid,text,integer)') is not null then perform _guild_feed(uid, 'pvp', 10); end if;
+  end if;
+  select rating into r from pvp_ratings where user_id = uid and league = a.league and mode = a.mode and season = a.season;
+  return jsonb_build_object('ok', true, 'win', v_win, 'rating', r, 'delta', case when v_win then a.dw else -a.dl end,
+    'tier', _pvp_tier(r), 'streak', sk, 'streak_reward', srw, 'reward_held', true);
+end $$;
+
+
+create or replace function public.tower_complete(p_tower text, p_floor int, p_stats jsonb default '{}'::jsonb) returns jsonb language plpgsql security definer set search_path = pg_catalog, public, pg_temp as $$
+declare uid uuid := auth.uid(); r tower_progress; b jsonb; first boolean; paid boolean := false; pay jsonb := '{}'::jsonb; turns int; k text;
+begin
+  r := _tower_row(uid, p_tower);
+  b := r.battle;
+  if b is null or b ? 'sweep' or (b->>'floor')::int <> p_floor then raise exception 'battle not started'; end if;
+  if extract(epoch from clock_timestamp()) - (b->>'at')::bigint < _quest_min_secs() then raise exception 'too fast'; end if;
+  turns := coalesce((p_stats->>'turns')::int, 1);
+  if turns < 1 or turns > 40 then raise exception 'invalid stats'; end if;
+  if r.day_floors >= _tower_daily(p_tower) then raise exception 'daily limit'; end if;   -- 자정을 넘긴 전투도 새 날 카운트로
+  first := p_floor = r.best_floor + 1;
+  if public._reward_battle_enabled() and first and p_floor > r.paid_floor then pay := _tower_pay(uid, p_tower, p_floor); paid := true; end if;
+  update tower_progress set battle = null, clears = clears + 1, day_floors = day_floors + 1,
+    best_floor = case when first then p_floor else best_floor end,
+    paid_floor = case when paid then p_floor else paid_floor end,
+    rewards = case when paid then (select jsonb_object_agg(x.k, coalesce((rewards->>x.k)::int, 0) + coalesce((pay->'reward'->>x.k)::int, 0) + coalesce((pay->'currency'->>x.k)::int, 0))
+                                   from unnest(array['tickets', 'gold', 'blood', 'shard', 'soul']) x(k)) else rewards end,
+    updated_at = now()
+  where user_id = uid and tower = p_tower;
+  return jsonb_build_object('ok', true, 'reward_held', true, 'tower', p_tower, 'first', first, 'paid', paid, 'floor', p_floor, 'best_floor', case when first then p_floor else r.best_floor end,
+    'reward', case when paid then pay->'reward' else '{}'::jsonb end, 'currency', pay->'currency', 'tickets', pay->'tickets',
+    'today', r.day_floors + 1, 'daily', _tower_daily(p_tower));
+end $$;
+
+
+create or replace function public.tower_sweep_complete(p_tower text, p_to int, p_stats jsonb default '{}'::jsonb) returns jsonb language plpgsql security definer set search_path = pg_catalog, public, pg_temp as $$
+declare uid uuid := auth.uid(); r tower_progress; b jsonb; f int; n int; fl int; pay jsonb; tk int := null; paidTo int;
+  tot jsonb := '{}'::jsonb; floors jsonb := '[]'::jsonb; k text; turns jsonb := coalesce(p_stats->'turns', '[]'::jsonb);
+begin
+  r := _tower_row(uid, p_tower);
+  b := r.battle;
+  if b is null or not coalesce((b->>'sweep')::boolean, false) then raise exception 'sweep not started'; end if;
+  f := (b->>'from')::int;
+  if f <> r.best_floor + 1 then raise exception 'sweep stale'; end if;
+  if p_to is null or p_to < f - 1 or p_to > (b->>'last')::int then raise exception 'invalid range'; end if;
+  n := p_to - f + 1;
+  if r.day_floors + n > _tower_daily(p_tower) then raise exception 'daily limit'; end if;
+  if extract(epoch from clock_timestamp()) - (b->>'at')::numeric < n * _quest_sweep_secs() then raise exception 'too fast'; end if;
+  if jsonb_typeof(turns) <> 'array' or jsonb_array_length(turns) < n
+     or exists (select 1 from jsonb_array_elements(turns) x(v) where jsonb_typeof(x.v) <> 'number' or (x.v)::int < 1 or (x.v)::int > 40) then raise exception 'invalid stats'; end if;
+  paidTo := r.paid_floor;
+  for fl in f .. p_to loop
+    if public._reward_battle_enabled() and fl > paidTo then
+      pay := _tower_pay(uid, p_tower, fl); paidTo := fl; tk := coalesce((pay->>'tickets')::int, tk);
+      floors := floors || jsonb_build_object('floor', fl, 'reward', pay->'reward', 'currency', pay->'currency');
+      for k in select jsonb_object_keys((pay->'reward') || (pay->'currency')) loop
+        tot := tot || jsonb_build_object(k, coalesce((tot->>k)::int, 0) + coalesce((pay->'reward'->>k)::int, 0) + coalesce((pay->'currency'->>k)::int, 0));
+      end loop;
+    else floors := floors || jsonb_build_object('floor', fl, 'reward', '{}'::jsonb, 'currency', '{}'::jsonb, 'paid_before', true);
+    end if;
+  end loop;
+  update tower_progress set battle = null, clears = clears + n, day_floors = day_floors + n, best_floor = greatest(best_floor, p_to), paid_floor = paidTo,
+    rewards = (select jsonb_object_agg(x.k, coalesce((rewards->>x.k)::int, 0) + coalesce((tot->>x.k)::int, 0)) from unnest(array['tickets', 'gold', 'blood', 'shard', 'soul']) x(k)),
+    updated_at = now()
+  where user_id = uid and tower = p_tower;
+  return jsonb_build_object('ok', true, 'reward_held', true, 'tower', p_tower, 'from', f, 'to', p_to, 'cleared', n, 'boss', (b->>'boss')::int, 'best_floor', greatest(r.best_floor, p_to),
+    'total', tot, 'floors', floors, 'tickets', tk, 'today', r.day_floors + n, 'daily', _tower_daily(p_tower));
+end $$;
+
+
+create or replace function public.quest_complete(p_floor int, p_stats jsonb default '{}'::jsonb) returns jsonb language sql security definer set search_path = pg_catalog, public, pg_temp as $$ select tower_complete('normal', p_floor, p_stats) $$;
+
+create or replace function public.quest_sweep_complete(p_to int, p_stats jsonb default '{}'::jsonb) returns jsonb language sql security definer set search_path = pg_catalog, public, pg_temp as $$ select tower_sweep_complete('normal', p_to, p_stats) $$;
+
+create or replace function public._ach_claim_one(p_uid uuid, p_key text) returns jsonb
+language plpgsql security definer set search_path = pg_catalog, public, pg_temp as $$
+declare a jsonb; t jsonb; i int; n int; g int; prog int; rw jsonb; ok boolean; score int; sc jsonb;
+begin
+  -- 점수 마일스톤
+  if p_key like 'score:%' then
+    g := substr(p_key, 7)::int;
+    if p_key <> public._ach_score_key(g) then raise exception 'invalid key'; end if;
+    select x into sc from jsonb_array_elements(_ach_score_defs()) x where (x->>'goal')::int = g;
+    if sc is null then raise exception 'invalid key'; end if;
+    score := _ach_score(p_uid);
+    if score < g then raise exception 'not done'; end if;
+    insert into achievement_claims (user_id, key) values (p_uid, p_key) on conflict do nothing returning true into ok;
+    if not coalesce(ok, false) then raise exception 'already claimed'; end if;
+    return sc->'reward';
+  end if;
+  -- 일반 업적
+  for a in select x from jsonb_array_elements(_ach_defs()) x loop
+    n := jsonb_array_length(a->'tiers');
+    for i in 0 .. n - 1 loop
+      t := a->'tiers'->i; g := (t->>'goal')::int;
+      if _ach_key(a->>'id', g) = p_key then
+        prog := _ach_prog(p_uid, a->>'id');
+        if prog < g then raise exception 'not done'; end if;
+        insert into achievement_claims (user_id, key) values (p_uid, p_key) on conflict do nothing returning true into ok;
+        if not coalesce(ok, false) then raise exception 'already claimed'; end if;
+        return t->'reward';
+      end if;
+    end loop;
+  end loop;
+  raise exception 'invalid key';
+end $$;
+
+create or replace function public._guild_reward(p_uid uuid, p_gid bigint, p_rw jsonb, p_reason text, p_ref text) returns jsonb language plpgsql security definer set search_path = pg_catalog, public, pg_temp as $$
+declare ok boolean; w jsonb;
+begin
+  if p_reason in ('raid_attempt','raid_last_hit') then
+    return jsonb_build_object('reward','{}'::jsonb,'reward_held',true);
+  end if;
+  if p_reason not in ('guild_checkin','guild_rally_week','guild_rally_bonus') or p_reason is null then
+    raise exception 'reward verification pending';
+  end if;
+  insert into guild_claims (user_id, ref, guild_id, reward) values (p_uid, p_ref, p_gid, p_rw) on conflict do nothing returning true into ok;
+  if not coalesce(ok, false) then raise exception 'already claimed'; end if;
+  if coalesce((p_rw->>'loyalty')::int, 0) > 0 then perform _loyalty_add(p_uid, (p_rw->>'loyalty')::int, p_reason, null, jsonb_build_object('ref', p_ref)); end if;
+  if coalesce((p_rw->>'gold')::int, 0) > 0 then w := _wallet_add(p_uid, jsonb_build_object('gold', (p_rw->>'gold')::int), p_reason); end if;
+  if coalesce((p_rw->>'gem')::int, 0) > 0 then perform _gem_add(p_uid, (p_rw->>'gem')::int, 0, p_reason, 'guild:' || p_ref, jsonb_build_object('guild', p_gid)); end if;
+  if coalesce((p_rw->>'tickets')::int, 0) > 0 then
+    insert into story_gacha (user_id, last_draw) values (p_uid, _guild_day() - 1) on conflict (user_id) do nothing;
+    update story_gacha set tickets = tickets + (p_rw->>'tickets')::int, updated_at = now() where user_id = p_uid;
+  end if;
+  if coalesce((p_rw->>'exp')::int, 0) > 0 and p_gid is not null then perform _guild_exp(p_gid, p_uid, (p_rw->>'exp')::int, p_reason, 'u:' || p_uid || ':' || p_ref); end if;
+  return jsonb_build_object('reward', p_rw, 'wallet', w);
+end $$;
+
+create or replace function public._raid_close(a guild_raid_attempts, p_dmg bigint) returns jsonb language plpgsql security definer set search_path = pg_catalog, public, pg_temp as $$
+declare N jsonb := _raid_numbers(); k int; rw jsonb;
+begin
+  update guild_raid_attempts set damage = p_dmg, finished_at = now() where id = a.id;
+  insert into guild_raid_damage (guild_id, week, user_id, damage, attempts) values (a.guild_id, a.week, a.user_id, p_dmg, 1)
+    on conflict (guild_id, week, user_id) do update set damage = guild_raid_damage.damage + p_dmg, attempts = guild_raid_damage.attempts + 1, updated_at = now();
+  k := _raid_hit(a.guild_id, a.week, a.user_id, p_dmg);
+  rw := jsonb_build_object('loyalty', (N->'attempt'->>'loyalty')::int,
+    'gold', least((N->'attempt'->>'gold_max')::int, (N->'attempt'->>'gold_base')::int + (p_dmg / (N->'attempt'->>'gold_per_damage')::int)::int), 'exp', (N->'attempt'->>'exp')::int);
+  perform _guild_reward(a.user_id, a.guild_id, rw, 'raid_attempt', 'raida:' || a.id);
+  if to_regprocedure('public._guild_event(uuid,text,integer)') is not null then perform _guild_event(a.user_id, 'raid', 1); end if;
+  return jsonb_build_object('damage', p_dmg, 'cleared', k, 'got', '{}'::jsonb, 'reward_held', true);
+end $$;
+
+-- Cosmetic-only legacy score: already earned cosmetics are not confiscated.
+create or replace function public._cosmo_ach_score(p_uid uuid) returns int
+language plpgsql stable security definer set search_path = pg_catalog, public, pg_temp as $$
+declare a jsonb; t jsonb; n int; i int; g int; s int := 0; k text;
+begin
+  for a in select x from jsonb_array_elements(_ach_defs()) x loop
+    n := jsonb_array_length(a->'tiers');
+    for i in 0 .. n - 1 loop
+      t := a->'tiers'->i; g := (t->>'goal')::int; k := _ach_key(a->>'id', g);
+      if exists (select 1 from achievement_claims c where c.user_id = p_uid and c.key = k) then
+        s := s + case when i = n - 1 then 20 else 10 end;
+      end if;
+    end loop;
+  end loop;
+  return s;
+end $$;
+
+create or replace function public._star_chapter(d jsonb, p_chapter int) returns jsonb language plpgsql stable security definer set search_path = pg_catalog, public, pg_temp as $$
+declare mx int; tot int; cl jsonb := coalesce(d->'cleared'->(p_chapter::text), '[]'::jsonb); got jsonb := coalesce(d->'starClaims'->(p_chapter::text), '[]'::jsonb); ms jsonb := '[]'::jsonb; m jsonb; need int;
+begin
+  select 3 * count(*) into mx from story_phase_config where chapter = p_chapter and (p_chapter >= 1 or phase = 4);
+  select coalesce(sum(least(3, greatest(0, (s.value)::int))), 0) into tot
+    from jsonb_each_text(case when jsonb_typeof(d->'stars'->(p_chapter::text)) = 'object' then d->'stars'->(p_chapter::text) else '{}'::jsonb end) s
+    where s.key ~ '^\d+$' and cl @> to_jsonb(s.key::int)
+      and exists (select 1 from story_phase_config c where c.chapter = p_chapter and c.phase = s.key::int and (p_chapter >= 1 or c.phase = 4));
+  tot := least(tot, mx);
+  for m in select * from jsonb_array_elements(_star_milestones()) loop
+    need := coalesce((m->>'need')::int, mx);
+    if mx = 0 or need > mx or (m->>'key' <> 'all' and need >= mx) then continue; end if;   -- 최대보다 크거나 '전부'와 같으면 생략
+    ms := ms || (m || jsonb_build_object('need', need, 'claimed', got @> to_jsonb(m->>'key'), 'ready', false, 'held', true));
+  end loop;
+  return jsonb_build_object('chapter', p_chapter, 'total', tot, 'max', mx, 'milestones', ms);
+end $$;
+
+-- Explicit API allowlist for affected names: revoke EVERY overload, then grant
+-- only the reviewed signatures (including default parameters on those signatures).
+do $acl$
+declare f record; obj text; col record;
+begin
+  for f in select p.oid::regprocedure sig from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+    where n.nspname='public' and p.prokind='f' and
+      (left(p.proname,1)='_' or p.proname = any(array[
+        'gallery_register','daily_track','weekly_track','ach_track','daily_claim','weekly_claim',
+        'daily_status','weekly_status','attend_claim','gallery_rewards','gallery_reward_claim',
+        'achievements_status','achievements_claim','achievements_claim_all','arcade_tut_status',
+        'arcade_tut_claim','story_star_claim','story_tickets','pvp_claim_tier','pvp_claim_reward',
+        'pvp_report','raid_claim','war_claim','tower_complete','tower_sweep_complete',
+        'quest_complete','quest_sweep_complete'])) loop
+    execute format('revoke all on function %s from public, anon, authenticated', f.sig);
+  end loop;
+  foreach obj in array array[
+    'gallery_register(text[],text)','daily_track(text,integer)','weekly_track(text,integer)','ach_track(text,integer)',
+    'daily_claim(text)','weekly_claim(text)','daily_status()','weekly_status()','attend_claim()',
+    'gallery_rewards()','gallery_reward_claim(integer)','achievements_status()','achievements_claim(text)',
+    'achievements_claim_all()','arcade_tut_status()','arcade_tut_claim(integer)','story_star_claim(integer,text)',
+    'story_tickets()','pvp_claim_tier(text,text)','pvp_claim_reward(text,text,date)',
+    'pvp_report(bigint,integer,integer)','raid_claim()','war_claim()',
+    'tower_complete(text,integer,jsonb)','tower_sweep_complete(text,integer,jsonb)',
+    'quest_complete(integer,jsonb)','quest_sweep_complete(integer,jsonb)'] loop
+    execute format('grant execute on function public.%s to authenticated',obj);
+  end loop;
+  -- Strip raw and column-level writes too; retain existing SELECT/RLS contracts.
+  foreach obj in array array['gallery','gallery_claims','daily_progress','weekly_progress','daily_attend',
+    'achievement_claims','ach_counters','story_progress','story_gacha','story_gacha_log',
+    'player_wallet','player_state','player_items','gem_ledger','gem_login','arcade_tut_claims',
+    'pvp_reward_claims','pvp_tier_claims','guild_claims','verified_game_events','reward_claims','reward_security_policy',
+    'reward_card_catalog','story_card_pool','card_id_alias','gem_shop','pvp_streak_table','pvp_reward_table','pvp_tier_table'] loop
+    execute format('alter table public.%I enable row level security',obj);
+    execute format('revoke insert,update,delete,truncate,references,trigger on public.%I from public,anon,authenticated',obj);
+    for col in select attname from pg_attribute where attrelid=to_regclass('public.'||obj) and attnum>0 and not attisdropped loop
+      execute format('revoke insert (%I),update (%I),references (%I) on public.%I from public,anon,authenticated',col.attname,col.attname,col.attname,obj);
+    end loop;
+  end loop;
+end $acl$;
+revoke all on sequence public.verified_game_events_id_seq from public,anon,authenticated;
+-- Sequence mutation must not let an API role forge a future source/ledger identity.
+do $sequences$
+declare obj text; seq text;
+begin
+  foreach obj in array array['story_gacha_log','gem_ledger'] loop
+    seq := pg_get_serial_sequence('public.'||obj,'id');
+    if seq is not null then execute format('revoke all on sequence %s from public,anon,authenticated',seq); end if;
+  end loop;
+end $sequences$;
+
+do $verify_phase1$
+begin
+  if exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+    where n.nspname='public' and left(p.proname,1)='_' and p.prokind='f'
+      and (has_function_privilege('anon',p.oid,'execute') or has_function_privilege('authenticated',p.oid,'execute')))
+    then raise exception 'STOP: private reward helper exposed'; end if;
+  if has_table_privilege('authenticated','public.verified_game_events','INSERT')
+    or has_table_privilege('authenticated','public.reward_claims','INSERT')
+    or has_any_column_privilege('authenticated','public.story_gacha','UPDATE')
+    or has_any_column_privilege('authenticated','public.daily_progress','INSERT')
+    then raise exception 'STOP: raw reward writes exposed'; end if;
+end $verify_phase1$;
+-- Force PostgREST to see changed overload ACLs; never requires a service key.
+notify pgrst, 'reload schema';
+-- 설치본의 단일 트랜잭션에 포함
+
+
+-- ===== SOURCE: security_phase2_clears.sql =====
+-- 보안 2단계: 서버 세션 + 순서/시간/입장/통계 범위 + 원자적 정산.
+-- IMPORTANT: plausibility-v3 is NOT deterministic replay. A patient client can
+-- fabricate a plausible win. Read docs/SECURITY_PHASE2.md before staging approval.
+-- Existing DB: phase1 preflight -> phase1 rewards -> THIS file. No wildcard SQL.
+-- 설치본의 단일 트랜잭션에 포함
+select pg_advisory_xact_lock(20261107,502);
+do $$ begin
+  if to_regclass('public.reward_claims') is null or to_regprocedure('public._reward_battle_enabled()') is null then
+    raise exception 'STOP: phase 1 required'; end if;
+  if to_regclass('public.battle_sessions_v2') is not null and not exists(
+    select 1 from pg_attribute where attrelid=to_regclass('public.battle_sessions_v2') and attname='settlement') then
+    raise exception 'STOP: offline shadow prototype present; inspect before upgrade'; end if;
+end $$;
+
+-- Preserve reviewed economic implementations privately, once, before closing APIs.
+do $preserve$
+declare n text; sig text; src text; dest text;
+begin
+  foreach n in array array['story_start_phase','story_complete_phase','story_abort_phase','story_sweep','_ach_prog'] loop
+    sig := case n when 'story_start_phase' then '(integer,integer)' when 'story_complete_phase' then '(integer,integer,jsonb)'
+      when 'story_abort_phase' then '()' when 'story_sweep' then '(integer,integer,integer)' else '(uuid,text)' end;
+    dest := '_phase2_old_' || ltrim(n,'_');
+    if to_regprocedure('public.' || dest || sig) is null then
+      src := pg_get_functiondef(to_regprocedure('public.' || n || sig));
+      if src is null then raise exception 'STOP: missing %',n; end if;
+      execute replace(src,'FUNCTION public.' || n || '(', 'FUNCTION public.' || dest || '(');
+    end if;
+  end loop;
+end $preserve$;
+create table if not exists public.battle_policy_v2(mode text primary key check(mode in ('tutorial','story','tower')), enabled boolean not null default true);
+insert into public.battle_policy_v2(mode) values ('tutorial'),('story'),('tower') on conflict do nothing;
+create table if not exists public.battle_legacy_access_v2(
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  cleared jsonb not null default '{}', tower_best jsonb not null default '{}', tower_paid jsonb not null default '{}');
+-- Frozen access-only baseline; never grants stars/rewards/missions for old JSON.
+insert into public.battle_legacy_access_v2(user_id,cleared,tower_best,tower_paid)
+select u.id,coalesce(s.data->'cleared','{}'),
+  coalesce((select jsonb_object_agg(tower,best_floor) from public.tower_progress t where t.user_id=u.id),'{}'),
+  coalesce((select jsonb_object_agg(tower,paid_floor) from public.tower_progress t where t.user_id=u.id),'{}')
+from auth.users u left join public.story_progress s on s.user_id=u.id on conflict do nothing;
+create table if not exists public.battle_session_seeds_v2(
+  user_id uuid not null references auth.users(id) on delete cascade, mode text not null, target text not null,
+  seed integer not null check(seed between 1 and 2147483646), rule_version integer not null default 3 check(rule_version=3),
+  primary key(user_id,mode,target,rule_version));
+create table if not exists public.battle_sessions_v2(
+  id uuid primary key default gen_random_uuid(), user_id uuid not null references auth.users(id) on delete cascade,
+  request_id uuid not null, mode text not null check(mode in ('tutorial','story','tower','tower_sweep')),
+  target text not null, party jsonb not null, seed integer not null, rule_version integer not null default 3 check(rule_version=3),
+  snapshot jsonb not null, issued_at timestamptz not null default clock_timestamp(),
+  expires_at timestamptz not null default clock_timestamp()+interval '2 hours',
+  status text not null default 'issued' check(status in ('issued','settled','expired','aborted')),
+  submission jsonb, settlement jsonb, finished_at timestamptz,
+  unique(user_id,request_id), check(expires_at>issued_at));
+create unique index if not exists battle_sessions_v2_one_active on public.battle_sessions_v2(user_id) where status='issued';
+create index if not exists battle_sessions_v2_daily on public.battle_sessions_v2(user_id,issued_at);
+create table if not exists public.battle_clear_receipts_v2(
+  user_id uuid not null references auth.users(id) on delete cascade, mode text not null, target text not null,
+  session_id uuid not null references public.battle_sessions_v2(id), stars integer not null default 0 check(stars between 0 and 3),
+  settled_at timestamptz not null default clock_timestamp(), primary key(user_id,mode,target));
+create table if not exists public.battle_events_v2(
+  session_id uuid primary key references public.battle_sessions_v2(id), user_id uuid not null references auth.users(id) on delete cascade,
+  mode text not null, win boolean not null, skills integer not null, day date not null, week date not null);
+create index if not exists battle_events_v2_period on public.battle_events_v2(user_id,day,week);
+create table if not exists public.battle_acquisitions_v2(
+  session_id uuid primary key references public.battle_sessions_v2(id), user_id uuid not null references auth.users(id) on delete cascade,
+  card_id text not null references public.story_card_pool(id));
+create table if not exists public.battle_card_meta_v2(id text primary key,definition jsonb not null);
+create table if not exists public.battle_story_defs_v2(chapter integer not null,phase integer not null,variant text not null,
+  definition jsonb not null, primary key(chapter,phase,variant));
+create table if not exists public.battle_tutorial_defs_v2(stage integer primary key check(stage between 1 and 3),definition jsonb not null);
+insert into public.battle_tutorial_defs_v2(stage,definition) values
+  (1, '{"first":"me","me":["10019","10018","10299","10445","10404","10375","10325","10080","10074","10049"],"aiField":["10348","10339","10184"],"aiDeck":[],"aiHp":3000,"wipe":true,"levels":{"10325":7},"fullMp":["10019","10325"],"haste":["10325"],"bonus":{"3":30}}'::jsonb),
+  (2, '{"first":"me","me":["10299","10137","10183","10045","10445","10404","10375","10060","10080","10074","10049"],"aiField":["10270","10462","10132","10202"],"aiDeck":[],"aiHp":3000,"meHpNow":2500,"wipe":true,"levels":{"10060":2},"fullMp":["10060"],"haste":["10060"],"bonus":{"1":30,"2":30,"3":10,"4":70}}'::jsonb),
+  (3, '{"first":"me","me":["10036","10049","10118","10445","10404","10375","10080","10074","10311","10083"],"aiField":["10115","10103","10462","10256"],"aiDeck":[],"aiHp":3000,"wipe":true,"levels":{"10311":2},"fullMp":["10311"],"haste":["10311"],"mercs":["10292","10183","10325"],"bonus":{"1":0,"2":20,"3":80,"4":10,"5":50}}'::jsonb)
+on conflict (stage) do nothing;
+
+
+-- BEGIN GENERATED PHASE2 STORY
+insert into public.battle_story_defs_v2(chapter,phase,variant,definition) values
+(0,1,'','{"no":1,"type":"normal","enemies":{"ids":["10256"],"boost":{"10256":{"HP":700}}},"party":{"forced":["10325"],"mustLive":["10325"],"noExtra":true,"auto":true,"battleLevels":{"10325":2}},"fullMp":true,"hero":"10325","tutorial":true,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(0,2,'','{"no":2,"type":"normal","enemies":{"ids":["10154","10153","10153","10153","10153"]},"party":{"forced":["10325"],"mustLive":["10325"],"noExtra":true,"auto":true},"reserve":["10256"],"hero":"10325","tutorial":true,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(0,3,'','{"no":3,"type":"normal","enemies":{"ids":["10323","10168","10168","10168","10168"],"storyLevels":{"10168":30,"10323":30},"levels":{"10168":3,"10323":5}},"party":{"forced":["10325"],"mustLive":[],"fixedLevel":{"10325":1},"only":["10256","10462"],"guests":["10256","10462"]},"awaken":{"pauseOnEntrance":true,"on":"10325","id":"10326","storyLevel":100,"battleLevel":10,"line":"....약해...","image":"img/story/ch0-05.webp"},"hero":"10325","tutorial":true,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(0,4,'','{"no":4,"type":"normal","enemies":{"ids":["10111","10224","10265"],"levels":{"10111":2,"10224":2,"10265":2}},"party":{"forced":["10325","10256","10207","10462"],"mustLive":["10325"],"noExtra":true,"auto":true},"pool":true,"mana":200,"mustSummon":["10207"],"hero":"10325","tutorial":true,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(0,5,'','{"no":5,"type":"boss","enemies":{"ids":["10229","10391","10097","10093","10103"],"levels":{"10093":2,"10097":2,"10103":2,"10229":3,"10391":2}},"party":{"forced":["10325","10256","10207","10462","10208"],"mustLive":["10325"],"noExtra":true,"auto":true},"baseHp":300,"bossId":"10229","pool":true,"mana":200,"hero":"10325","tutorial":true,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(1,1,'','{"no":1,"type":"normal","enemies":{"count":1,"rank":[0,30]},"hero":null,"tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"starter","party":{}}'::jsonb),
+(1,2,'','{"no":2,"type":"normal","enemies":{"count":2,"rank":[0,50]},"hero":null,"tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"starter","party":{}}'::jsonb),
+(1,3,'','{"no":3,"type":"normal","enemies":{"count":2,"rank":[30,90]},"hero":null,"tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"starter","party":{}}'::jsonb),
+(1,4,'','{"no":4,"type":"normal","enemies":{"count":3,"rank":[50,120]},"hero":null,"tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"starter","party":{}}'::jsonb),
+(1,5,'','{"no":5,"type":"boss","enemies":{"count":4,"rank":[120,203]},"hero":null,"tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"starter","party":{}}'::jsonb),
+(1,1,'10111','{"no":1,"type":"normal","enemies":{"ids":["10210"]},"party":{"forced":["10111","10112"]},"hero":null,"tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"starter"}'::jsonb),
+(1,2,'10111','{"no":2,"type":"normal","enemies":{"ids":["10143","10144"]},"party":{"forced":["10111"]},"hero":null,"tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"starter"}'::jsonb),
+(1,3,'10111','{"no":3,"type":"normal","enemies":{"ids":["10153","10143","10144"]},"party":{"forced":["10111"]},"hero":null,"tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"starter"}'::jsonb),
+(1,4,'10111','{"no":4,"type":"normal","enemies":{"ids":["10154","10153","10143","10144"]},"party":{"forced":["10111"]},"hero":null,"tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"starter"}'::jsonb),
+(1,5,'10111','{"no":5,"type":"boss","enemies":{"ids":["10146","10153","10143","10144","10145"]},"party":{"forced":["10111"]},"bossId":"10146","hero":null,"tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"starter"}'::jsonb),
+(1,1,'10224','{"no":1,"type":"normal","enemies":{"ids":["10143"]},"party":{"forced":["10224"]},"hero":null,"tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"starter"}'::jsonb),
+(1,2,'10224','{"no":2,"type":"normal","enemies":{"ids":["10153","10143"]},"party":{"forced":["10224"]},"hero":null,"tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"starter"}'::jsonb),
+(1,3,'10224','{"no":3,"type":"normal","enemies":{"ids":["10145","10144"]},"party":{"forced":["10224"]},"hero":null,"tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"starter"}'::jsonb),
+(1,4,'10224','{"no":4,"type":"normal","enemies":{"ids":["10145","10154","10153"]},"party":{"forced":["10224"]},"hero":null,"tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"starter"}'::jsonb),
+(1,5,'10224','{"no":5,"type":"boss","enemies":{"ids":["10146","10153","10154","10145"]},"party":{"forced":["10224"]},"bossId":"10146","hero":null,"tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"starter"}'::jsonb),
+(1,1,'10265','{"no":1,"type":"normal","enemies":{"ids":["10143"]},"party":{"forced":["10265"]},"hero":null,"tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"starter"}'::jsonb),
+(1,2,'10265','{"no":2,"type":"normal","enemies":{"ids":["10153","10154"]},"party":{"forced":["10265"]},"hero":null,"tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"starter"}'::jsonb),
+(1,3,'10265','{"no":3,"type":"normal","enemies":{"ids":["10143","10144"]},"party":{"forced":["10265"]},"hero":null,"tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"starter"}'::jsonb),
+(1,4,'10265','{"no":4,"type":"normal","enemies":{"ids":["10145","10144","10153"]},"party":{"forced":["10265"]},"hero":null,"tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"starter"}'::jsonb),
+(1,5,'10265','{"no":5,"type":"boss","enemies":{"ids":["10146","10144","10145","10153","10154"]},"party":{"forced":["10265"]},"bossId":"10146","hero":null,"tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"starter"}'::jsonb),
+(2,1,'','{"no":1,"type":"normal","enemies":{"count":5,"rank":[60,203]},"hero":null,"tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"route","party":{}}'::jsonb),
+(2,2,'','{"no":2,"type":"normal","enemies":{"count":5,"rank":[60,203]},"hero":null,"tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"route","party":{}}'::jsonb),
+(2,3,'','{"no":3,"type":"normal","enemies":{"count":5,"rank":[60,203]},"hero":null,"tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"route","party":{}}'::jsonb),
+(2,4,'','{"no":4,"type":"normal","enemies":{"count":5,"rank":[60,203]},"hero":null,"tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"route","party":{}}'::jsonb),
+(2,5,'','{"no":5,"type":"normal","enemies":{"count":5,"rank":[60,203]},"hero":null,"tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"route","party":{}}'::jsonb)
+on conflict (chapter,phase,variant) do update set definition=excluded.definition;
+insert into public.battle_story_defs_v2(chapter,phase,variant,definition) values
+(2,6,'','{"no":6,"type":"normal","enemies":{"count":5,"rank":[60,203]},"hero":null,"tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"route","party":{}}'::jsonb),
+(2,7,'','{"no":7,"type":"normal","enemies":{"count":5,"rank":[60,203]},"hero":null,"tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"route","party":{}}'::jsonb),
+(2,8,'','{"no":8,"type":"normal","enemies":{"count":5,"rank":[60,203]},"hero":null,"tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"route","party":{}}'::jsonb),
+(2,9,'','{"no":9,"type":"normal","enemies":{"ids":["10368","10370","10149","10154","10153"]},"party":{"forced":["10298"],"exclude":["10125","10306"]},"rules":{"mustLive":["10298"]},"hero":null,"tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"route"}'::jsonb),
+(2,10,'','{"no":10,"type":"boss","enemies":{"ids":["10369","10368","10370","10149","10146"]},"party":{"forced":["10298"],"exclude":["10125","10306"]},"bossId":"10369","rules":{"mustLive":["10298"]},"hero":null,"tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"route"}'::jsonb),
+(2,1,'10081','{"no":1,"type":"normal","enemies":{"ids":["10147","10146","10145","10144","10143"]},"party":{"forced":["10081"]},"hero":"10081","tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"route"}'::jsonb),
+(2,2,'10081','{"no":2,"type":"normal","enemies":{"ids":["10147","10146","10145","10144","10143"]},"party":{"forced":["10081"]},"hero":"10081","tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"route"}'::jsonb),
+(2,3,'10081','{"no":3,"type":"normal","enemies":{"ids":["10147","10146","10145","10144","10143"]},"party":{"forced":["10081"]},"hero":"10081","tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"route"}'::jsonb),
+(2,4,'10081','{"no":4,"type":"normal","enemies":{"ids":["10148","10147","10146","10145","10144"]},"party":{"forced":["10081"]},"hero":"10081","tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"route"}'::jsonb),
+(2,5,'10081','{"no":5,"type":"normal","enemies":{"ids":["10149","10148","10147","10146","10145"]},"party":{"forced":["10081"]},"hero":"10081","tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"route"}'::jsonb),
+(2,6,'10081','{"no":6,"type":"normal","enemies":{"ids":["10149","10148","10147","10146","10145"]},"party":{"forced":["10081"],"exclude":["10306"]},"hero":"10081","tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"route"}'::jsonb),
+(2,7,'10081','{"no":7,"type":"normal","enemies":{"ids":["10082","10082","10082"]},"party":{"forced":["10081"],"exclude":["10252","10306"]},"rules":{"mustLive":["10081"]},"hero":"10081","tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"route"}'::jsonb),
+(2,8,'10081','{"no":8,"type":"normal","enemies":{"ids":["10082","10082","10082","10082","10082"]},"party":{"forced":["10081","10062"],"exclude":["10252","10306"]},"rules":{"mustLive":["10081"]},"hero":"10081","tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"route"}'::jsonb),
+(2,9,'10081','{"no":9,"type":"normal","enemies":{"ids":["10147","10146","10144","10145","10143"]},"party":{"forced":["10081"],"exclude":["10252","10306"]},"rules":{"mustLive":["10081"]},"hero":"10081","tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"route"}'::jsonb),
+(2,10,'10081','{"no":10,"type":"boss","enemies":{"ids":["10369","10368","10370","10149","10148"]},"party":{"forced":["10081"],"exclude":["10252","10306"]},"bossId":"10369","rules":{"mustLive":["10081"]},"hero":"10081","tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"route"}'::jsonb),
+(2,1,'10298','{"no":1,"type":"normal","enemies":{"ids":["10146","10143","10144","10145"]},"party":{"forced":["10298"]},"hero":"10298","tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"route"}'::jsonb),
+(2,2,'10298','{"no":2,"type":"normal","enemies":{"ids":["10146","10147","10145","10144","10143"]},"party":{"forced":["10298"]},"hero":"10298","tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"route"}'::jsonb),
+(2,3,'10298','{"no":3,"type":"normal","enemies":{"ids":["10148","10146","10145","10144","10143"]},"party":{"forced":["10298"]},"hero":"10298","tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"route"}'::jsonb),
+(2,4,'10298','{"no":4,"type":"normal","enemies":{"ids":["10149","10146","10145","10144","10143"]},"party":{"forced":["10306","10125"],"exclude":["10298"]},"hero":"10298","tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"route"}'::jsonb),
+(2,5,'10298','{"no":5,"type":"normal","enemies":{"ids":["10149","10153","10146","10144","10145"]},"party":{"forced":["10306","10125"],"exclude":["10298"]},"hero":"10298","tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"route"}'::jsonb),
+(2,6,'10298','{"no":6,"type":"normal","enemies":{"ids":["10149","10154","10153","10146","10145"]},"party":{"forced":["10306","10125"],"exclude":["10298"]},"hero":"10298","tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"route"}'::jsonb),
+(2,7,'10298','{"no":7,"type":"normal","enemies":{"ids":["10149","10154","10153","10146","10145"]},"party":{"forced":["10306","10125"],"exclude":["10298"]},"rules":{"mustLive":["10306"]},"hero":"10298","tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"route"}'::jsonb),
+(2,8,'10298','{"no":8,"type":"normal","enemies":{"ids":["10149","10154","10153","10146","10145"]},"party":{"forced":["10298"],"exclude":["10125"]},"rules":{"mustLive":["10298"]},"hero":"10298","tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"route"}'::jsonb),
+(2,9,'10298','{"no":9,"type":"normal","enemies":{"ids":["10368","10370","10149","10154","10153"]},"party":{"forced":["10298"],"exclude":["10125","10306"]},"rules":{"mustLive":["10298"]},"hero":"10298","tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"route"}'::jsonb),
+(2,10,'10298','{"no":10,"type":"boss","enemies":{"ids":["10369","10368","10370","10149","10146"]},"party":{"forced":["10298"],"exclude":["10125","10306"]},"bossId":"10369","rules":{"mustLive":["10298"]},"hero":"10298","tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"route"}'::jsonb),
+(3,1,'','{"no":1,"type":"normal","enemies":{"ids":["10157","10156","10155","10154","10153"]},"party":{"forced":["10384"],"noMale":true},"bossId":"10157","hero":"10384","tutorial":false,"single":true,"loan":["10384","10383"],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(3,2,'','{"no":2,"type":"normal","enemies":{"ids":["10097","10297","10290","10103","10432"]},"party":{"forced":["10384"],"maxMor":49},"bossId":"10097","hero":"10384","tutorial":false,"single":true,"loan":["10384","10383"],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(3,3,'','{"no":3,"type":"normal","enemies":{"ids":["10280","10160","10159","10158","10157"]},"party":{"forced":["10383"]},"bossId":"10280","hero":"10384","tutorial":false,"single":true,"loan":["10384","10383"],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(3,4,'','{"no":4,"type":"normal","enemies":{"ids":["10393","10290","10097","10306","10041"]},"party":{"forced":["10384"],"exclude":["10383"]},"bossId":"10393","hero":"10384","tutorial":false,"single":true,"loan":["10384","10383"],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(3,5,'','{"no":5,"type":"normal","enemies":{"ids":["10290","10306","10097","10405","10227"]},"party":{"forced":["10384"],"exclude":["10383"]},"bossId":"10290","hero":"10384","tutorial":false,"single":true,"loan":["10384","10383"],"loanLevel":{},"variantKind":"none"}'::jsonb)
+on conflict (chapter,phase,variant) do update set definition=excluded.definition;
+insert into public.battle_story_defs_v2(chapter,phase,variant,definition) values
+(3,6,'','{"no":6,"type":"normal","enemies":{"ids":["10290","10306","10097","10405","10229"]},"party":{"forced":["10384"],"exclude":["10383"],"maxGrade":"HIGH RARE"},"bossId":"10290","spare":{"10229":["10384"]},"hero":"10384","tutorial":false,"single":true,"loan":["10384","10383"],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(3,7,'','{"no":7,"type":"normal","enemies":{"ids":["10229","10040","10097","10466","10290"]},"party":{"forced":["10384","10383"]},"bossId":"10229","enemyFirst":true,"hero":"10384","tutorial":false,"single":true,"loan":["10384","10383"],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(3,8,'','{"no":8,"type":"normal","enemies":{"ids":["10123","10161","10160","10159","10158"]},"party":{"forced":["10384"]},"bossId":"10123","enemyFirst":true,"hero":"10384","tutorial":false,"single":true,"loan":["10384","10383"],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(3,9,'','{"no":9,"type":"normal","enemies":{"ids":["10123","10183","10161","10160","10159"]},"party":{"forced":["10383"],"maxGrade":"SUPER RARE"},"bossId":"10123","hero":"10384","tutorial":false,"single":true,"loan":["10384","10383"],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(3,10,'','{"no":10,"type":"boss","enemies":{"ids":["10200","10161","10160","10123","10025"]},"party":{"forced":["10384"],"exclude":["10383"]},"bossId":"10200","hero":"10384","tutorial":false,"single":true,"loan":["10384","10383"],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(4,1,'','{"no":1,"type":"normal","enemies":{"ids":["10153","10154","10155","10156","10157"]},"party":{"forced":["10300"]},"bossId":"10157","hero":"10300","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(4,2,'','{"no":2,"type":"normal","enemies":{"ids":["10153","10154","10156","10157","10158"]},"party":{"forced":["10300"]},"bossId":"10158","hero":"10300","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(4,3,'','{"no":3,"type":"normal","enemies":{"ids":["10160","10161","10162","10163","10159"]},"party":{"forced":["10300"]},"bossId":"10159","hero":"10300","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(4,4,'','{"no":4,"type":"normal","enemies":{"ids":["10156","10165","10166","10159","10164"]},"party":{"forced":["10300","10325"]},"bossId":"10164","rules":{"mustLive":["10300"]},"hero":"10300","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(4,5,'','{"no":5,"type":"normal","enemies":{"ids":["10156","10164","10165","10166","10167"]},"party":{"forced":["10300","10325"]},"bossId":"10167","rules":{"mustLive":["10300"]},"hero":"10300","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(4,6,'','{"no":6,"type":"normal","enemies":{"ids":["10168","10156","10154","10153","10159"]},"party":{"forced":["10300"]},"bossId":"10159","rules":{"mustLive":["10300"]},"hero":"10300","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(4,7,'','{"no":7,"type":"normal","enemies":{"ids":["10156","10154","10153","10159","10072"]},"party":{"forced":["10300"]},"bossId":"10072","rules":{"mustLive":["10300"]},"hero":"10300","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(4,8,'','{"no":8,"type":"normal","enemies":{"ids":["10160","10161","10162","10168","10072"]},"party":{"forced":["10300"]},"bossId":"10072","rules":{"revive":[{"id":"10072","level":1,"delay":2}]},"hero":"10300","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(4,9,'','{"no":9,"type":"normal","enemies":{"ids":["10161","10162","10072","10168","10325"]},"party":{"forced":["10300"]},"bossId":"10325","rules":{"revive":[{"id":"10072","level":"keep","delay":2},{"id":"10256","level":"keep","delay":2}]},"hero":"10300","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(4,10,'','{"no":10,"type":"normal","enemies":{"ids":["10301","10302","10302","10302","10302"],"levels":{"10301":5},"boost":{"10302":{"HP":317,"ATK":62,"DEF":62,"power":13277}}},"party":{"forced":["10325"]},"bossId":"10301","rules":{"invuln":"10301","expire":10,"revive":[{"id":"10302","level":1,"delay":1}]},"hero":"10300","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(5,1,'','{"no":1,"type":"normal","enemies":{"ids":["10153","10154","10155","10156","10157"],"storyLevels":{"10153":25,"10154":25,"10155":25,"10156":25,"10157":30}},"party":{"forced":["10442"]},"bossId":"10157","hero":"10442","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(5,2,'','{"no":2,"type":"normal","enemies":{"ids":["10143","10158","10155","10156","10159"],"storyLevels":{"10143":25,"10155":25,"10156":25,"10158":25,"10159":30}},"party":{"forced":["10442"]},"bossId":"10159","hero":"10442","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(5,3,'','{"no":3,"type":"normal","enemies":{"ids":["10159","10153","10154","10357","10360"],"boost":{"10360":{"HP":150,"ATK":30,"DEF":26,"power":2241}},"storyLevels":{"10153":25,"10154":25,"10159":25,"10357":25}},"party":{"forced":["10442"]},"bossId":"10360","hero":"10442","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(5,4,'','{"no":4,"type":"normal","enemies":{"ids":["10158","10160","10161","10162","10163"],"storyLevels":{"10158":25,"10160":25,"10161":25,"10162":25,"10163":30}},"party":{"forced":["10442"]},"bossId":"10163","hero":"10442","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(5,5,'','{"no":5,"type":"normal","enemies":{"ids":["10153","10154","10156","10164","10165"],"storyLevels":{"10153":25,"10154":25,"10156":25,"10164":25,"10165":30}},"party":{"forced":["10442"]},"bossId":"10165","hero":"10442","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(5,6,'','{"no":6,"type":"normal","enemies":{"ids":["10166","10167","10144","10145","10146"],"storyLevels":{"10144":25,"10145":25,"10146":30,"10166":25,"10167":25}},"party":{"forced":["10442"]},"bossId":"10146","hero":"10442","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(5,7,'','{"no":7,"type":"normal","enemies":{"ids":["10152","10147","10148","10149","10150"],"storyLevels":{"10147":25,"10148":25,"10149":25,"10150":30,"10152":25}},"party":{"forced":["10442"],"banClass":["DARK"]},"bossId":"10150","hero":"10442","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(5,8,'','{"no":8,"type":"normal","enemies":{"ids":["10152","10147","10148","10143","10150"],"storyLevels":{"10143":25,"10147":25,"10148":25,"10150":30,"10152":25}},"party":{"forced":["10442"],"banClass":["LIGHT"]},"bossId":"10150","hero":"10442","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(5,9,'','{"no":9,"type":"normal","enemies":{"ids":["10150","10152","10144","10145","10146"],"storyLevels":{"10144":25,"10145":25,"10146":30,"10150":25,"10152":25}},"party":{"forced":["10442"],"maxGrade":"SUPER RARE"},"bossId":"10146","hero":"10442","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(5,10,'','{"no":10,"type":"boss","enemies":{"ids":["10357","10168","10143","10147","10360"],"boost":{"10357":{"HP":240,"ATK":40,"DEF":30,"power":7800},"10360":{"HP":360,"ATK":62,"DEF":44,"power":4883}},"storyLevels":{"10143":25,"10147":25,"10168":25}},"party":{"forced":["10399"],"maxGrade":"SUPER RARE","exclude":["10442"]},"bossId":"10360","rules":{"undying":["10357"]},"hero":"10442","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(6,1,'','{"no":1,"type":"normal","enemies":{"ids":["10210","10151","10151"]},"party":{"forced":["10112","10111"]},"bossId":"10210","hero":"10110","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(6,2,'','{"no":2,"type":"normal","enemies":{"ids":["10146","10153","10143","10144","10145"]},"party":{"forced":["10111"]},"bossId":"10146","hero":"10110","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(6,3,'','{"no":3,"type":"normal","enemies":{"ids":["10152","10152","10152","10152","10152"]},"party":{"forced":["10111"]},"bossId":"10152","hero":"10110","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(6,4,'','{"no":4,"type":"normal","enemies":{"ids":["10163","10163","10163","10163","10163"]},"party":{"forced":["10111"],"exclude":["10325"]},"bossId":"10163","hero":"10110","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(6,5,'','{"no":5,"type":"normal","enemies":{"ids":["10166","10163","10163","10163","10163"]},"party":{"forced":["10110"],"exclude":["10111"]},"bossId":"10166","hero":"10110","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb)
+on conflict (chapter,phase,variant) do update set definition=excluded.definition;
+insert into public.battle_story_defs_v2(chapter,phase,variant,definition) values
+(6,6,'','{"no":6,"type":"normal","enemies":{"ids":["10166","10166","10166","10166","10166"]},"party":{"forced":["10110"],"exclude":["10325","10111"]},"bossId":"10166","hero":"10110","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(6,7,'','{"no":7,"type":"normal","enemies":{"ids":["10419","10166","10166","10163","10163"]},"party":{"forced":["10110"],"exclude":["10325","10111","10112"]},"bossId":"10419","hero":"10110","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(6,8,'','{"no":8,"type":"normal","enemies":{"ids":["10035","10167","10167","10166","10166"]},"party":{"forced":["10110"],"exclude":["10325","10111","10112"]},"bossId":"10035","hero":"10110","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(6,9,'','{"no":9,"type":"normal","enemies":{"ids":["10321","10168","10168","10167","10167"]},"party":{"forced":["10110"],"exclude":["10325","10111","10112"]},"bossId":"10321","hero":"10110","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(6,10,'','{"no":10,"type":"boss","enemies":{"ids":["10325","10168","10168","10168","10168"]},"party":{"forced":["10110"],"exclude":["10325","10111","10112"]},"bossId":"10325","hero":"10110","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(7,1,'','{"no":1,"type":"normal","enemies":{"ids":["10162","10161","10161","10161","10161"],"boost":{"10161":{"HP":231,"ATK":48,"DEF":41,"storyLv":40,"power":8753},"10162":{"HP":267,"ATK":53,"DEF":46,"storyLv":40,"power":9939}}},"party":{"forced":["10115","10267"],"noMale":true,"mustLive":["10115"],"levels":{"10115":40,"10267":40}},"bossId":"10162","hero":"10115","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(7,2,'','{"no":2,"type":"normal","enemies":{"ids":["10163","10149","10148","10146","10146"],"boost":{"10146":{"HP":97,"ATK":19,"DEF":15,"storyLv":40,"power":1328},"10148":{"HP":160,"ATK":27,"DEF":18,"storyLv":40,"power":5017},"10149":{"HP":196,"ATK":36,"DEF":27,"storyLv":40,"power":6877},"10163":{"HP":391,"ATK":65,"DEF":56,"storyLv":40,"power":21555}}},"party":{"forced":["10115","10267"],"mustLive":["10115"],"levels":{"10115":40,"10267":40}},"bossId":"10163","hero":"10115","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(7,3,'','{"no":3,"type":"normal","enemies":{"ids":["10151","10148","10148","10148","10148"],"boost":{"10148":{"HP":160,"ATK":27,"DEF":18,"storyLv":40,"power":5017},"10151":{"HP":494,"ATK":74,"DEF":74,"storyLv":50,"power":26808}}},"party":{"forced":["10115","10267"],"mustLive":["10115"],"levels":{"10115":40,"10267":40}},"bossId":"10151","hero":"10115","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(7,4,'','{"no":4,"type":"normal","enemies":{"ids":["10165","10164","10164","10164","10164"],"boost":{"10164":{"HP":469,"ATK":74,"DEF":64,"storyLv":50,"power":25336},"10165":{"HP":494,"ATK":74,"DEF":74,"storyLv":50,"power":26808}}},"party":{"forced":["10115","10267"],"noMale":true,"mustLive":["10115"],"levels":{"10115":40,"10267":40}},"bossId":"10165","hero":"10115","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(7,5,'','{"no":5,"type":"normal","enemies":{"ids":["10164","10163","10163","10163","10163"],"boost":{"10163":{"HP":445,"ATK":74,"DEF":64,"storyLv":50,"power":24551},"10164":{"HP":526,"ATK":83,"DEF":72,"storyLv":60,"power":28430}}},"party":{"forced":["10267"],"noMale":true,"exclude":["10115"],"mustLive":["10267"]},"bossId":"10164","hero":"10115","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(7,6,'','{"no":6,"type":"normal","enemies":{"ids":["10267"],"boost":{"10267":{"HP":430,"ATK":65,"DEF":140,"storyLv":30,"power":41589}}},"party":{"forced":["10115"],"exclude":["10267"],"max":3,"maxGrade":"SUPER RARE","mustLive":[]},"bossId":"10267","hero":"10115","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(7,7,'','{"no":7,"type":"normal","enemies":{"ids":["10198","10196","10197","10199"],"boost":{"10196":{"HP":127,"ATK":16,"DEF":16,"storyLv":60,"power":1709},"10197":{"HP":127,"ATK":16,"DEF":16,"storyLv":60,"power":1709},"10198":{"HP":127,"ATK":16,"DEF":16,"storyLv":60,"power":1709},"10199":{"HP":240,"ATK":33,"DEF":33,"storyLv":60,"power":8337}}},"party":{"forced":["10018","10019","10299","10074"],"max":5,"noFemale":true,"maxMor":39,"mustLive":[]},"bossId":"10198","hero":"10115","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(7,8,'','{"no":8,"type":"normal","enemies":{"ids":["10144","10143","10143","10143","10143"],"boost":{"10143":{"HP":80,"ATK":17,"DEF":13,"storyLv":60,"power":1076},"10144":{"HP":80,"ATK":19,"DEF":14,"storyLv":60,"power":1126}}},"party":{"forced":["10115","10018"],"noFemale":true,"exclude":["10118"],"mustLive":["10115"]},"bossId":"10144","hero":"10115","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(7,9,'','{"no":9,"type":"normal","enemies":{"ids":["10299","10019","10018","10074"],"boost":{"10018":{"HP":251,"ATK":46,"DEF":31,"storyLv":60,"power":9153},"10019":{"HP":240,"ATK":44,"DEF":33,"storyLv":60,"power":9100},"10074":{"HP":48,"ATK":8,"DEF":10,"storyLv":60,"power":523},"10299":{"HP":554,"ATK":97,"DEF":69,"storyLv":60,"power":28335}}},"party":{"forced":["10115"],"exclude":["10267","10118"],"mustLive":["10115"]},"bossId":"10299","hero":"10115","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(7,10,'','{"no":10,"type":"boss","enemies":{"ids":["10116","10116","10116","10116","10116"],"boost":{"10116":{"HP":1008,"ATK":50,"DEF":151,"storyLv":60,"power":80121}}},"party":{"forced":["10115"],"exclude":["10118"],"mustLive":["10115"]},"bossId":"10116","hero":"10115","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(8,1,'','{"no":1,"type":"normal","enemies":{"ids":["10494","10495","10495","10495","10495"],"boost":{"10494":{"HP":111,"ATK":17,"DEF":14,"storyLv":40,"power":1433},"10495":{"HP":214,"ATK":27,"DEF":18,"storyLv":40,"power":6130}}},"party":{"forced":["10493"],"mustLive":["10493"],"levels":{"10493":80}},"bossId":"10494","hero":"10231","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(8,2,'','{"no":2,"type":"normal","enemies":{"ids":["10496","10497","10497","10497","10497"],"boost":{"10496":{"HP":386,"ATK":54,"DEF":54,"storyLv":40,"power":19302},"10497":{"HP":97,"ATK":14,"DEF":14,"storyLv":40,"power":1337}}},"party":{"forced":["10493"],"mustLive":["10493"],"levels":{"10493":80}},"bossId":"10496","hero":"10231","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(8,3,'','{"no":3,"type":"normal","enemies":{"ids":["10144","10145","10145","10145","10145"],"boost":{"10144":{"HP":70,"ATK":17,"DEF":13,"storyLv":40,"power":1003},"10145":{"HP":83,"ATK":18,"DEF":14,"storyLv":40,"power":1131}}},"party":{"forced":["10231"],"noMale":true,"mustLive":["10231"],"levels":{"10231":50}},"bossId":"10144","hero":"10231","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(8,4,'','{"no":4,"type":"normal","enemies":{"ids":["10501","10500","10500","10500","10500"],"boost":{"10500":{"HP":217,"ATK":48,"DEF":48,"storyLv":40,"power":9293},"10501":{"HP":458,"ATK":82,"DEF":82,"storyLv":40,"power":28432}}},"party":{"forced":["10231"],"noMale":true,"mustLive":["10231"],"levels":{"10231":50}},"bossId":"10501","hero":"10231","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(8,5,'','{"no":5,"type":"normal","enemies":{"ids":["10154","10144","10145","10153","10155"],"boost":{"10144":{"HP":70,"ATK":17,"DEF":13,"storyLv":42,"power":1003},"10145":{"HP":85,"ATK":18,"DEF":14,"storyLv":42,"power":1145},"10153":{"HP":85,"ATK":14,"DEF":10,"storyLv":42,"power":1066},"10154":{"HP":99,"ATK":16,"DEF":11,"storyLv":42,"power":1226},"10155":{"HP":113,"ATK":17,"DEF":13,"storyLv":42,"power":1383}}},"party":{"forced":["10231"],"noMale":true,"mustLive":["10231"],"levels":{"10231":42}},"bossId":"10154","hero":"10231","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(8,6,'','{"no":6,"type":"normal","enemies":{"ids":["10153","10154","10155","10156","10156"],"boost":{"10153":{"HP":87,"ATK":14,"DEF":10,"storyLv":46,"power":1082},"10154":{"HP":102,"ATK":16,"DEF":12,"storyLv":46,"power":1265},"10155":{"HP":116,"ATK":17,"DEF":13,"storyLv":46,"power":1406},"10156":{"HP":130,"ATK":19,"DEF":14,"storyLv":46,"power":1664}}},"party":{"forced":["10231"],"noMale":true,"mustLive":["10231"],"levels":{"10231":46}},"bossId":"10153","hero":"10231","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(8,7,'','{"no":7,"type":"normal","enemies":{"ids":["10157","10144","10145","10155","10156"],"boost":{"10144":{"HP":74,"ATK":18,"DEF":13,"storyLv":50,"power":1050},"10145":{"HP":89,"ATK":19,"DEF":15,"storyLv":50,"power":1207},"10155":{"HP":119,"ATK":18,"DEF":13,"storyLv":50,"power":1448},"10156":{"HP":134,"ATK":19,"DEF":15,"storyLv":50,"power":1713},"10157":{"HP":149,"ATK":21,"DEF":16,"storyLv":50,"power":1892}}},"party":{"forced":["10231"],"noMale":true,"mustLive":["10231"],"levels":{"10231":50}},"bossId":"10157","hero":"10231","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(8,8,'','{"no":8,"type":"normal","enemies":{"ids":["10500","10501","10501","10501","10501"],"boost":{"10500":{"HP":246,"ATK":55,"DEF":55,"storyLv":52,"power":10591},"10501":{"HP":534,"ATK":96,"DEF":96,"storyLv":52,"power":33210}}},"party":{"forced":["10231"],"noMale":true,"mustLive":["10231"],"levels":{"10231":52}},"bossId":"10500","hero":"10231","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(8,9,'','{"no":9,"type":"normal","enemies":{"ids":["10494","10495","10496","10144","10145"],"boost":{"10144":{"HP":76,"ATK":18,"DEF":14,"storyLv":54,"power":1079},"10145":{"HP":92,"ATK":20,"DEF":15,"storyLv":54,"power":1247},"10494":{"HP":122,"ATK":18,"DEF":15,"storyLv":54,"power":1556},"10495":{"HP":247,"ATK":31,"DEF":21,"storyLv":54,"power":7076},"10496":{"HP":461,"ATK":65,"DEF":65,"storyLv":54,"power":23122}}},"party":{"forced":["10493"],"exclude":["10231"],"mustLive":["10493"],"levels":{"10493":54}},"bossId":"10494","hero":"10231","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(8,10,'','{"no":10,"type":"normal","enemies":{"ids":["10156","10153","10154","10157","10157"],"boost":{"10153":{"HP":93,"ATK":16,"DEF":11,"storyLv":56,"power":1180},"10154":{"HP":108,"ATK":17,"DEF":12,"storyLv":56,"power":1329},"10156":{"HP":140,"ATK":20,"DEF":16,"storyLv":56,"power":1798},"10157":{"HP":155,"ATK":22,"DEF":17,"storyLv":56,"power":1977}}},"party":{"forced":["10231"],"noMale":true,"mustLive":["10231"],"levels":{"10231":56}},"bossId":"10156","hero":"10231","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(8,11,'','{"no":11,"type":"normal","enemies":{"ids":["10494","10495","10496","10497","10498"],"boost":{"10494":{"HP":126,"ATK":19,"DEF":16,"storyLv":58,"power":1623},"10495":{"HP":257,"ATK":32,"DEF":21,"storyLv":58,"power":7318},"10496":{"HP":482,"ATK":68,"DEF":68,"storyLv":58,"power":24180},"10497":{"HP":110,"ATK":16,"DEF":16,"storyLv":58,"power":1521},"10498":{"HP":259,"ATK":39,"DEF":64,"storyLv":58,"power":9524}}},"party":{"forced":["10493"],"exclude":["10231"],"mustLive":["10493"],"levels":{"10493":58}},"bossId":"10494","hero":"10231","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(8,12,'','{"no":12,"type":"normal","enemies":{"ids":["10155","10144","10145","10154","10157"],"boost":{"10144":{"HP":79,"ATK":19,"DEF":14,"storyLv":59,"power":1119},"10145":{"HP":95,"ATK":21,"DEF":16,"storyLv":59,"power":1301},"10154":{"HP":111,"ATK":17,"DEF":13,"storyLv":59,"power":1368},"10155":{"HP":126,"ATK":19,"DEF":14,"storyLv":59,"power":1536},"10157":{"HP":158,"ATK":22,"DEF":17,"storyLv":59,"power":2001}}},"party":{"forced":["10231"],"noMale":true,"mustLive":["10231"],"levels":{"10231":59}},"bossId":"10155","hero":"10231","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(8,13,'','{"no":13,"type":"normal","enemies":{"ids":["10493","10493","10493","10493","10493"],"boost":{"10493":{"HP":554,"ATK":83,"DEF":83,"storyLv":60,"power":41039}}},"party":{"forced":["10231"],"noMale":true,"mustLive":["10231"],"levels":{"10231":60}},"bossId":"10493","hero":"10231","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(8,14,'','{"no":14,"type":"normal","enemies":{"ids":["10494","10495","10496","10153","10156"],"boost":{"10153":{"HP":95,"ATK":16,"DEF":11,"storyLv":60,"power":1195},"10156":{"HP":143,"ATK":21,"DEF":16,"storyLv":60,"power":1843},"10494":{"HP":127,"ATK":19,"DEF":16,"storyLv":60,"power":1631},"10495":{"HP":262,"ATK":33,"DEF":22,"storyLv":60,"power":7501},"10496":{"HP":493,"ATK":69,"DEF":69,"storyLv":60,"power":24657}}},"party":{"forced":["10231"],"noMale":true,"mustLive":["10231"],"levels":{"10231":60}},"bossId":"10494","hero":"10231","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(8,15,'','{"no":15,"type":"boss","enemies":{"ids":["10502"],"boost":{"10502":{"HP":1344,"ATK":151,"DEF":151,"storyLv":60,"power":146456}}},"party":{"forced":["10231"],"noMale":true,"mustLive":["10231"],"levels":{"10231":60}},"bossId":"10502","hero":"10231","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb)
+on conflict (chapter,phase,variant) do update set definition=excluded.definition;
+insert into public.battle_story_defs_v2(chapter,phase,variant,definition) values
+(9,1,'','{"no":1,"type":"normal","enemies":{"ids":["10144","10145","10145","10145","10145"],"boost":{"10144":{"HP":70,"ATK":17,"DEF":13,"storyLv":40,"power":1003},"10145":{"HP":83,"ATK":18,"DEF":14,"storyLv":40,"power":1131}}},"party":{"maxGrade":"HIGH RARE","forced":["10415"],"noMale":true,"mustLive":["10415"],"levels":{"10415":40}},"bossId":"10144","hero":"10415","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(9,2,'','{"no":2,"type":"normal","enemies":{"ids":["10145","10153","10153","10144","10144"],"boost":{"10144":{"HP":70,"ATK":17,"DEF":13,"storyLv":41,"power":1003},"10145":{"HP":84,"ATK":18,"DEF":14,"storyLv":41,"power":1138},"10153":{"HP":84,"ATK":14,"DEF":10,"storyLv":41,"power":1059}}},"party":{"maxGrade":"HIGH RARE","forced":["10415"],"noMale":true,"mustLive":["10415"],"levels":{"10415":41}},"bossId":"10145","hero":"10415","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(9,3,'','{"no":3,"type":"normal","enemies":{"ids":["10153","10154","10154","10145","10145"],"boost":{"10145":{"HP":85,"ATK":18,"DEF":14,"storyLv":43,"power":1145},"10153":{"HP":85,"ATK":14,"DEF":10,"storyLv":43,"power":1066},"10154":{"HP":99,"ATK":16,"DEF":11,"storyLv":43,"power":1226}}},"party":{"maxGrade":"HIGH RARE","forced":["10413"],"exclude":["10415"],"mustLive":["10413"],"levels":{"10413":43}},"bossId":"10153","hero":"10415","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(9,4,'','{"no":4,"type":"normal","enemies":{"ids":["10154","10155","10155","10153","10153"],"boost":{"10153":{"HP":86,"ATK":14,"DEF":10,"storyLv":44,"power":1074},"10154":{"HP":100,"ATK":16,"DEF":11,"storyLv":44,"power":1234},"10155":{"HP":114,"ATK":17,"DEF":13,"storyLv":44,"power":1391}}},"party":{"maxGrade":"HIGH RARE","forced":["10414"],"exclude":["10415"],"mustLive":["10414"],"levels":{"10414":44}},"bossId":"10154","hero":"10415","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(9,5,'','{"no":5,"type":"normal","enemies":{"ids":["10478","10144","10144","10145","10145"],"boost":{"10144":{"HP":72,"ATK":17,"DEF":13,"storyLv":45,"power":1018},"10145":{"HP":86,"ATK":19,"DEF":14,"storyLv":45,"power":1170},"10478":{"HP":209,"ATK":30,"DEF":30,"storyLv":45,"power":7718}}},"party":{"maxGrade":"HIGH RARE","forced":["10415"],"noMale":true,"mustLive":["10415"],"levels":{"10415":45}},"bossId":"10478","hero":"10415","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(9,6,'','{"no":6,"type":"normal","enemies":{"ids":["10478","10479","10145","10153","10153"],"boost":{"10145":{"HP":88,"ATK":19,"DEF":15,"storyLv":47,"power":1200},"10153":{"HP":88,"ATK":15,"DEF":10,"storyLv":47,"power":1108},"10478":{"HP":213,"ATK":31,"DEF":31,"storyLv":47,"power":7908},"10479":{"HP":227,"ATK":48,"DEF":25,"storyLv":47,"power":8876}}},"party":{"maxGrade":"HIGH RARE","forced":["10415"],"noMale":true,"mustLive":["10415"],"levels":{"10415":47}},"bossId":"10478","hero":"10415","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(9,7,'','{"no":7,"type":"normal","enemies":{"ids":["10475","10479","10478","10144","10145"],"boost":{"10144":{"HP":74,"ATK":18,"DEF":13,"storyLv":48,"power":1050},"10145":{"HP":88,"ATK":19,"DEF":15,"storyLv":48,"power":1200},"10475":{"HP":691,"ATK":127,"DEF":109,"storyLv":48,"power":63056},"10478":{"HP":215,"ATK":31,"DEF":31,"storyLv":48,"power":7953},"10479":{"HP":229,"ATK":48,"DEF":25,"storyLv":48,"power":8922}}},"party":{"maxGrade":"HIGH RARE","forced":["10415"],"noMale":true,"mustLive":["10415"],"levels":{"10415":48}},"bossId":"10475","hero":"10415","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(9,8,'','{"no":8,"type":"normal","enemies":{"ids":["10479","10478","10153","10154","10154"],"boost":{"10153":{"HP":89,"ATK":15,"DEF":10,"storyLv":50,"power":1115},"10154":{"HP":104,"ATK":16,"DEF":12,"storyLv":50,"power":1280},"10478":{"HP":220,"ATK":32,"DEF":32,"storyLv":50,"power":8166},"10479":{"HP":234,"ATK":50,"DEF":26,"storyLv":50,"power":9189}}},"party":{"maxGrade":"HIGH RARE","forced":["10415"],"noMale":true,"mustLive":["10415"],"levels":{"10415":50}},"bossId":"10479","hero":"10415","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(9,9,'','{"no":9,"type":"normal","enemies":{"ids":["10479","10478","10478","10155","10155"],"boost":{"10155":{"HP":120,"ATK":18,"DEF":14,"storyLv":51,"power":1471},"10478":{"HP":222,"ATK":32,"DEF":32,"storyLv":51,"power":8211},"10479":{"HP":236,"ATK":50,"DEF":26,"storyLv":51,"power":9234}}},"party":{"maxGrade":"HIGH RARE","forced":["10415"],"noMale":true,"mustLive":["10415"],"levels":{"10415":51}},"bossId":"10479","hero":"10415","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(9,10,'','{"no":10,"type":"normal","enemies":{"ids":["10480","10481","10479","10154","10154"],"boost":{"10154":{"HP":106,"ATK":17,"DEF":12,"storyLv":53,"power":1314},"10479":{"HP":241,"ATK":51,"DEF":27,"storyLv":53,"power":9447},"10480":{"HP":486,"ATK":64,"DEF":115,"storyLv":53,"power":27447},"10481":{"HP":481,"ATK":64,"DEF":64,"storyLv":53,"power":24070}}},"party":{"maxGrade":"HIGH RARE","forced":["10415"],"noMale":true,"mustLive":["10415"],"levels":{"10415":53}},"bossId":"10480","hero":"10415","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(9,11,'','{"no":11,"type":"normal","enemies":{"ids":["10481","10480","10479","10155","10155"],"boost":{"10155":{"HP":122,"ATK":18,"DEF":14,"storyLv":54,"power":1486},"10479":{"HP":243,"ATK":52,"DEF":27,"storyLv":54,"power":9546},"10480":{"HP":492,"ATK":65,"DEF":117,"storyLv":54,"power":27839},"10481":{"HP":487,"ATK":65,"DEF":65,"storyLv":54,"power":24398}}},"party":{"maxGrade":"HIGH RARE","forced":["10415"],"noMale":true,"mustLive":["10415"],"levels":{"10415":54}},"bossId":"10481","hero":"10415","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(9,12,'','{"no":12,"type":"normal","enemies":{"ids":["10475","10480","10481","10156","10156"],"boost":{"10156":{"HP":140,"ATK":20,"DEF":16,"storyLv":56,"power":1798},"10475":{"HP":768,"ATK":141,"DEF":122,"storyLv":56,"power":70152},"10480":{"HP":504,"ATK":66,"DEF":119,"storyLv":56,"power":28420},"10481":{"HP":498,"ATK":66,"DEF":66,"storyLv":56,"power":24884}}},"party":{"maxGrade":"HIGH RARE","forced":["10415"],"noMale":true,"mustLive":["10415"],"levels":{"10415":56}},"bossId":"10475","hero":"10415","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(9,13,'','{"no":13,"type":"normal","enemies":{"ids":["10485","10486","10479","10157","10157"],"boost":{"10157":{"HP":156,"ATK":22,"DEF":17,"storyLv":57,"power":1985},"10479":{"HP":250,"ATK":53,"DEF":28,"storyLv":57,"power":9804},"10485":{"HP":208,"ATK":45,"DEF":34,"storyLv":57,"power":7265},"10486":{"HP":235,"ATK":53,"DEF":38,"storyLv":57,"power":10484}}},"party":{"maxGrade":"HIGH RARE","forced":["10415"],"noMale":true,"mustLive":["10415"],"levels":{"10415":57}},"bossId":"10485","hero":"10415","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(9,14,'','{"no":14,"type":"normal","enemies":{"ids":["10480","10481","10475","10156","10157"],"boost":{"10156":{"HP":142,"ATK":21,"DEF":16,"storyLv":59,"power":1834},"10157":{"HP":158,"ATK":22,"DEF":17,"storyLv":59,"power":2001},"10475":{"HP":797,"ATK":146,"DEF":126,"storyLv":59,"power":72698},"10480":{"HP":521,"ATK":68,"DEF":123,"storyLv":59,"power":29360},"10481":{"HP":515,"ATK":68,"DEF":68,"storyLv":59,"power":25699}}},"party":{"maxGrade":"HIGH RARE","forced":["10414"],"exclude":["10415"],"mustLive":["10414"],"levels":{"10414":59}},"bossId":"10480","hero":"10415","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(9,15,'','{"no":15,"type":"normal","enemies":{"ids":["10482","10483","10484","10157","10157"],"boost":{"10157":{"HP":159,"ATK":22,"DEF":17,"storyLv":60,"power":2009},"10482":{"HP":554,"ATK":133,"DEF":111,"storyLv":60,"power":34119},"10483":{"HP":615,"ATK":125,"DEF":83,"storyLv":60,"power":32803},"10484":{"HP":665,"ATK":138,"DEF":69,"storyLv":60,"power":37416}}},"party":{"maxGrade":"HIGH RARE","forced":["10415"],"noMale":true,"mustLive":["10415"],"levels":{"10415":60}},"bossId":"10482","hero":"10415","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(9,16,'','{"no":16,"type":"normal","enemies":{"ids":["10483","10482","10484","10475","10157"],"boost":{"10157":{"HP":161,"ATK":23,"DEF":18,"storyLv":62,"power":2062},"10475":{"HP":826,"ATK":151,"DEF":131,"storyLv":62,"power":75347},"10482":{"HP":566,"ATK":136,"DEF":113,"storyLv":62,"power":34842},"10483":{"HP":628,"ATK":127,"DEF":85,"storyLv":62,"power":33464},"10484":{"HP":679,"ATK":142,"DEF":71,"storyLv":62,"power":38327}}},"party":{"maxGrade":"HIGH RARE","forced":["10415"],"noMale":true,"mustLive":["10415"],"levels":{"10415":62}},"bossId":"10483","hero":"10415","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(9,17,'','{"no":17,"type":"normal","enemies":{"ids":["10475","10482","10483","10484","10157"],"boost":{"10157":{"HP":162,"ATK":23,"DEF":18,"storyLv":63,"power":2070},"10475":{"HP":835,"ATK":153,"DEF":132,"storyLv":63,"power":76168},"10482":{"HP":572,"ATK":137,"DEF":114,"storyLv":63,"power":35166},"10483":{"HP":635,"ATK":129,"DEF":86,"storyLv":63,"power":33883},"10484":{"HP":686,"ATK":143,"DEF":72,"storyLv":63,"power":38703}}},"party":{"maxGrade":"HIGH RARE","forced":["10415"],"noMale":true,"mustLive":["10415"],"levels":{"10415":63}},"bossId":"10475","hero":"10415","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(9,18,'','{"no":18,"type":"boss","enemies":{"ids":["10475","10482","10483","10484","10480"],"boost":{"10475":{"HP":854,"ATK":157,"DEF":135,"storyLv":65,"power":77966},"10480":{"HP":555,"ATK":73,"DEF":131,"storyLv":65,"power":31317},"10482":{"HP":584,"ATK":140,"DEF":117,"storyLv":65,"power":35951},"10483":{"HP":648,"ATK":131,"DEF":88,"storyLv":65,"power":34545},"10484":{"HP":701,"ATK":146,"DEF":73,"storyLv":65,"power":39501}}},"party":{"maxGrade":"HIGH RARE","forced":["10415"],"noMale":true,"mustLive":["10415"],"levels":{"10415":65}},"bossId":"10475","hero":"10415","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(10,1,'','{"no":1,"type":"normal","enemies":{"ids":["10144","10145","10153","10153","10154"],"boost":{"10144":{"HP":72,"ATK":17,"DEF":13,"storyLv":45,"power":1018},"10145":{"HP":86,"ATK":19,"DEF":14,"storyLv":45,"power":1170},"10153":{"HP":86,"ATK":14,"DEF":10,"storyLv":45,"power":1074},"10154":{"HP":101,"ATK":16,"DEF":12,"storyLv":45,"power":1257}}},"party":{"forced":["10413"],"noMale":true,"mustLive":["10413"],"levels":{"10413":45},"maxGrade":"HIGH RARE"},"bossId":"10144","hero":"10413","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(10,2,'','{"no":2,"type":"normal","enemies":{"ids":["10145","10146","10154","10155","10155"],"boost":{"10145":{"HP":87,"ATK":19,"DEF":14,"storyLv":46,"power":1178},"10146":{"HP":102,"ATK":20,"DEF":16,"storyLv":46,"power":1400},"10154":{"HP":102,"ATK":16,"DEF":12,"storyLv":46,"power":1265},"10155":{"HP":116,"ATK":17,"DEF":13,"storyLv":46,"power":1406}}},"party":{"forced":["10413"],"noMale":true,"mustLive":["10413"],"levels":{"10413":46},"maxGrade":"HIGH RARE"},"bossId":"10145","hero":"10413","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(10,3,'','{"no":3,"type":"normal","enemies":{"ids":["10488","10146","10147","10155","10156"],"boost":{"10146":{"HP":103,"ATK":21,"DEF":16,"storyLv":48,"power":1426},"10147":{"HP":118,"ATK":22,"DEF":18,"storyLv":48,"power":1591},"10155":{"HP":118,"ATK":18,"DEF":13,"storyLv":48,"power":1440},"10156":{"HP":132,"ATK":19,"DEF":15,"storyLv":48,"power":1697},"10488":{"HP":1319,"ATK":196,"DEF":173,"storyLv":48,"power":116171}}},"party":{"forced":["10413"],"noMale":true,"mustLive":["10413"],"levels":{"10413":48},"maxGrade":"HIGH RARE"},"bossId":"10488","hero":"10413","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(10,4,'','{"no":4,"type":"normal","enemies":{"ids":["10147","10148","10156","10156","10157"],"boost":{"10147":{"HP":118,"ATK":22,"DEF":18,"storyLv":49,"power":1591},"10148":{"HP":176,"ATK":29,"DEF":20,"storyLv":49,"power":5495},"10156":{"HP":133,"ATK":19,"DEF":15,"storyLv":49,"power":1705},"10157":{"HP":148,"ATK":21,"DEF":16,"storyLv":49,"power":1884}}},"party":{"forced":["10414"],"exclude":["10413"],"mustLive":["10414"],"levels":{"10414":49},"maxGrade":"SUPER RARE"},"bossId":"10147","hero":"10413","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(10,5,'','{"no":5,"type":"normal","enemies":{"ids":["10480","10481","10148","10149","10157"],"boost":{"10148":{"HP":180,"ATK":30,"DEF":20,"storyLv":51,"power":5618},"10149":{"HP":220,"ATK":40,"DEF":30,"storyLv":51,"power":7686},"10157":{"HP":150,"ATK":21,"DEF":16,"storyLv":51,"power":1900},"10480":{"HP":475,"ATK":62,"DEF":112,"storyLv":51,"power":26759},"10481":{"HP":470,"ATK":62,"DEF":62,"storyLv":51,"power":23445}}},"party":{"forced":["10413"],"noMale":true,"mustLive":["10413"],"levels":{"10413":51},"maxGrade":"HIGH RARE"},"bossId":"10480","hero":"10413","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(10,6,'','{"no":6,"type":"normal","enemies":{"ids":["10481","10480","10149","10158","10158"],"boost":{"10149":{"HP":222,"ATK":40,"DEF":30,"storyLv":52,"power":7727},"10158":{"HP":151,"ATK":23,"DEF":23,"storyLv":52,"power":2062},"10480":{"HP":481,"ATK":63,"DEF":114,"storyLv":52,"power":27151},"10481":{"HP":476,"ATK":63,"DEF":63,"storyLv":52,"power":23773}}},"party":{"forced":["10413"],"noMale":true,"mustLive":["10413"],"levels":{"10413":52},"maxGrade":"HIGH RARE"},"bossId":"10481","hero":"10413","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(10,7,'','{"no":7,"type":"normal","enemies":{"ids":["10475","10158","10159","10149","10150"],"boost":{"10149":{"HP":227,"ATK":41,"DEF":31,"storyLv":54,"power":7919},"10150":{"HP":309,"ATK":62,"DEF":52,"storyLv":54,"power":11484},"10158":{"HP":153,"ATK":23,"DEF":23,"storyLv":54,"power":2078},"10159":{"HP":206,"ATK":41,"DEF":33,"storyLv":54,"power":7126},"10475":{"HP":749,"ATK":137,"DEF":119,"storyLv":54,"power":68355}}},"party":{"forced":["10413"],"noMale":true,"mustLive":["10413"],"levels":{"10413":54},"maxGrade":"HIGH RARE"},"bossId":"10475","hero":"10413","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(10,8,'','{"no":8,"type":"normal","enemies":{"ids":["10482","10150","10151","10159","10159"],"boost":{"10150":{"HP":312,"ATK":62,"DEF":52,"storyLv":55,"power":11546},"10151":{"HP":524,"ATK":79,"DEF":79,"storyLv":55,"power":28509},"10159":{"HP":208,"ATK":42,"DEF":33,"storyLv":55,"power":7211},"10482":{"HP":524,"ATK":126,"DEF":105,"storyLv":55,"power":32287}}},"party":{"forced":["10413"],"noMale":true,"mustLive":["10413"],"levels":{"10413":55},"maxGrade":"HIGH RARE"},"bossId":"10482","hero":"10413","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(10,9,'','{"no":9,"type":"normal","enemies":{"ids":["10480","10481","10151","10160","10160"],"boost":{"10151":{"HP":536,"ATK":80,"DEF":80,"storyLv":57,"power":29045},"10160":{"HP":254,"ATK":53,"DEF":45,"storyLv":57,"power":9066},"10480":{"HP":509,"ATK":67,"DEF":121,"storyLv":57,"power":28779},"10481":{"HP":504,"ATK":67,"DEF":67,"storyLv":57,"power":25213}}},"party":{"forced":["10413"],"noMale":true,"mustLive":["10413"],"levels":{"10413":57},"maxGrade":"HIGH RARE"},"bossId":"10480","hero":"10413","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(10,10,'','{"no":10,"type":"normal","enemies":{"ids":["10475","10160","10161","10152","10152"],"boost":{"10152":{"HP":623,"ATK":122,"DEF":122,"storyLv":58,"power":40167},"10160":{"HP":257,"ATK":53,"DEF":45,"storyLv":58,"power":9123},"10161":{"HP":278,"ATK":58,"DEF":49,"storyLv":58,"power":10532},"10475":{"HP":787,"ATK":144,"DEF":125,"storyLv":58,"power":71825}}},"party":{"forced":["10413"],"noMale":true,"mustLive":["10413"],"levels":{"10413":58},"maxGrade":"HIGH RARE"},"bossId":"10475","hero":"10413","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(10,11,'','{"no":11,"type":"normal","enemies":{"ids":["10152","10161","10162","10162","10163"],"boost":{"10152":{"HP":637,"ATK":125,"DEF":125,"storyLv":60,"power":41109},"10161":{"HP":283,"ATK":59,"DEF":50,"storyLv":60,"power":10724},"10162":{"HP":327,"ATK":65,"DEF":57,"storyLv":60,"power":12204},"10163":{"HP":499,"ATK":83,"DEF":72,"storyLv":60,"power":27547}}},"party":{"forced":["10413"],"noMale":true,"mustLive":["10413"],"levels":{"10413":60},"maxGrade":"HIGH RARE"},"bossId":"10152","hero":"10413","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(10,12,'','{"no":12,"type":"normal","enemies":{"ids":["10482","10483","10484","10143","10144"],"boost":{"10143":{"HP":80,"ATK":18,"DEF":13,"storyLv":61,"power":1094},"10144":{"HP":80,"ATK":19,"DEF":14,"storyLv":61,"power":1126},"10482":{"HP":560,"ATK":134,"DEF":112,"storyLv":61,"power":34443},"10483":{"HP":622,"ATK":126,"DEF":84,"storyLv":61,"power":33149},"10484":{"HP":672,"ATK":140,"DEF":70,"storyLv":61,"power":37871}}},"party":{"forced":["10413"],"noMale":true,"mustLive":["10413"],"levels":{"10413":61},"maxGrade":"HIGH RARE"},"bossId":"10482","hero":"10413","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb)
+on conflict (chapter,phase,variant) do update set definition=excluded.definition;
+insert into public.battle_story_defs_v2(chapter,phase,variant,definition) values
+(10,13,'','{"no":13,"type":"normal","enemies":{"ids":["10501","10500","10500","10500","10500"],"boost":{"10500":{"HP":273,"ATK":60,"DEF":60,"storyLv":63,"power":11654},"10501":{"HP":603,"ATK":109,"DEF":109,"storyLv":63,"power":37593}}},"party":{"forced":["10415"],"noMale":true,"mustLive":["10415"],"levels":{"10415":63},"maxGrade":"HIGH RARE"},"bossId":"10501","hero":"10413","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(10,14,'','{"no":14,"type":"normal","enemies":{"ids":["10149","10149","10149","10149","10149"],"boost":{"10149":{"HP":251,"ATK":46,"DEF":34,"storyLv":65,"power":8778}}},"party":{"forced":["10415"],"noMale":true,"mustLive":["10415"],"levels":{"10415":63},"maxGrade":"HIGH RARE"},"bossId":"10149","hero":"10413","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(10,15,'','{"no":15,"type":"normal","enemies":{"ids":["10145","10146","10153","10153","10154"],"boost":{"10145":{"HP":98,"ATK":21,"DEF":16,"storyLv":65,"power":1323},"10146":{"HP":115,"ATK":23,"DEF":18,"storyLv":65,"power":1586},"10153":{"HP":98,"ATK":16,"DEF":11,"storyLv":65,"power":1219},"10154":{"HP":115,"ATK":18,"DEF":13,"storyLv":65,"power":1417}}},"party":{"forced":["10415"],"noMale":true,"mustLive":["10415"],"levels":{"10415":65},"maxGrade":"HIGH RARE"},"bossId":"10145","hero":"10413","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(10,16,'','{"no":16,"type":"normal","enemies":{"ids":["10490","10490","10490"],"boost":{"10490":{"HP":1440,"ATK":234,"DEF":234,"storyLv":66,"power":168731}}},"party":{"forced":[],"mustLive":[]},"bossId":"10490","hero":"10413","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(10,17,'','{"no":17,"type":"boss","enemies":{"ids":["10490"],"boost":{"10490":{"HP":1664,"ATK":270,"DEF":270,"storyLv":80,"power":194858}}},"party":{"forced":["10413"],"mustLive":["10413"],"levels":{"10413":70},"maxGrade":"SUPER RARE"},"bossId":"10490","bossCdMinus":1,"hero":"10413","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(11,1,'','{"no":1,"type":"normal","enemies":{"ids":["10491","10163","10163","10163","10163"],"boost":{"10163":{"HP":558,"ATK":93,"DEF":81,"storyLv":71,"power":30851},"10491":{"HP":1880,"ATK":263,"DEF":263,"storyLv":70,"power":211427}}},"party":{"forced":["10491"],"noMale":true,"mustLive":["10491"],"levels":{"10491":70}},"bossId":"10491","hero":"10491","tutorial":false,"single":true,"loan":["10491"],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(11,2,'','{"no":2,"type":"normal","enemies":{"ids":["10491","10164","10164","10164","10164"],"boost":{"10164":{"HP":589,"ATK":93,"DEF":81,"storyLv":71,"power":31865},"10491":{"HP":1900,"ATK":266,"DEF":266,"storyLv":71,"power":213738}}},"party":{"forced":["10491"],"noMale":true,"mustLive":["10491"],"levels":{"10491":71}},"bossId":"10491","hero":"10491","tutorial":false,"single":true,"loan":["10491"],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(11,3,'','{"no":3,"type":"normal","enemies":{"ids":["10491","10164","10164","10165","10165"],"boost":{"10164":{"HP":595,"ATK":94,"DEF":81,"storyLv":72,"power":32139},"10165":{"HP":626,"ATK":94,"DEF":94,"storyLv":72,"power":34004},"10491":{"HP":1920,"ATK":269,"DEF":269,"storyLv":72,"power":216049}}},"party":{"forced":["10491"],"noMale":true,"mustLive":["10491"],"levels":{"10491":72}},"bossId":"10491","hero":"10491","tutorial":false,"single":true,"loan":["10491"],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(11,4,'','{"no":4,"type":"normal","enemies":{"ids":["10490","10166","10166","10163","10164"],"boost":{"10163":{"HP":569,"ATK":95,"DEF":82,"storyLv":73,"power":31433},"10164":{"HP":600,"ATK":95,"DEF":82,"storyLv":73,"power":32447},"10166":{"HP":664,"ATK":111,"DEF":111,"storyLv":73,"power":37693},"10490":{"HP":1552,"ATK":252,"DEF":252,"storyLv":73,"power":181795}}},"party":{"forced":["10491","10490"],"noMale":true,"mustLive":["10491"],"levels":{"10490":73,"10491":73}},"bossId":"10490","hero":"10491","tutorial":false,"single":true,"loan":["10491"],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(11,5,'','{"no":5,"type":"normal","enemies":{"ids":["10491","10490"],"boost":{"10490":{"HP":1568,"ATK":255,"DEF":255,"storyLv":74,"power":183790},"10491":{"HP":1960,"ATK":274,"DEF":274,"storyLv":74,"power":220365}}},"party":{"forced":["10491","10490"],"noMale":true,"mustLive":["10490"],"levels":{"10490":74,"10491":74}},"bossId":"10491","hero":"10491","tutorial":false,"single":true,"loan":["10491"],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(11,6,'','{"no":6,"type":"normal","enemies":{"ids":["10475","10489","10482","10483","10484"],"boost":{"10475":{"HP":950,"ATK":174,"DEF":150,"storyLv":75,"power":86631},"10482":{"HP":644,"ATK":155,"DEF":129,"storyLv":75,"power":39689},"10483":{"HP":715,"ATK":145,"DEF":97,"storyLv":75,"power":38143},"10484":{"HP":773,"ATK":161,"DEF":80,"storyLv":75,"power":43526},"10489":{"HP":679,"ATK":129,"DEF":135,"storyLv":75,"power":44948}}},"party":{"forced":["10491"],"noMale":true,"mustLive":["10491"],"levels":{"10491":75}},"bossId":"10475","hero":"10491","tutorial":false,"single":true,"loan":["10491"],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(11,7,'','{"no":7,"type":"normal","enemies":{"ids":["10482","10483","10167","10168","10168"],"boost":{"10167":{"HP":748,"ATK":130,"DEF":130,"storyLv":76,"power":43175},"10168":{"HP":812,"ATK":146,"DEF":146,"storyLv":76,"power":50370},"10482":{"HP":650,"ATK":156,"DEF":130,"storyLv":76,"power":40013},"10483":{"HP":722,"ATK":146,"DEF":98,"storyLv":76,"power":38489}}},"party":{"forced":["10490"],"noMale":true,"mustLive":["10490"],"levels":{"10490":76,"10491":76}},"bossId":"10482","hero":"10491","tutorial":false,"single":true,"loan":["10491"],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(11,8,'','{"no":8,"type":"normal","enemies":{"ids":["10168","10166","10167","10163","10164"],"boost":{"10163":{"HP":590,"ATK":98,"DEF":85,"storyLv":77,"power":32552},"10164":{"HP":623,"ATK":98,"DEF":85,"storyLv":77,"power":33631},"10166":{"HP":689,"ATK":115,"DEF":115,"storyLv":77,"power":39087},"10167":{"HP":754,"ATK":131,"DEF":131,"storyLv":77,"power":43516},"10168":{"HP":820,"ATK":148,"DEF":148,"storyLv":77,"power":50952}}},"party":{"forced":["10491"],"noMale":true,"mustLive":["10491"],"levels":{"10491":77}},"bossId":"10168","hero":"10491","tutorial":false,"single":true,"loan":["10491"],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(11,9,'','{"no":9,"type":"normal","enemies":{"ids":["10165","10166","10167","10168","10163"],"boost":{"10163":{"HP":596,"ATK":99,"DEF":86,"storyLv":78,"power":32892},"10165":{"HP":662,"ATK":99,"DEF":99,"storyLv":78,"power":35901},"10166":{"HP":695,"ATK":116,"DEF":116,"storyLv":78,"power":39427},"10167":{"HP":761,"ATK":132,"DEF":132,"storyLv":78,"power":43889},"10168":{"HP":828,"ATK":149,"DEF":149,"storyLv":78,"power":51381}}},"party":{"forced":["10491"],"noMale":true,"mustLive":["10491"],"levels":{"10491":78}},"bossId":"10165","hero":"10491","tutorial":false,"single":true,"loan":["10491"],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(11,10,'','{"no":10,"type":"normal","enemies":{"ids":["10168","10166","10166","10166","10166"],"boost":{"10166":{"HP":701,"ATK":117,"DEF":117,"storyLv":79,"power":39767},"10168":{"HP":835,"ATK":150,"DEF":150,"storyLv":79,"power":51776}}},"party":{"forced":["10491"],"noMale":true,"mustLive":["10491"],"levels":{"10491":79}},"bossId":"10168","hero":"10491","tutorial":false,"single":true,"loan":["10491"],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(11,11,'','{"no":11,"type":"normal","enemies":{"ids":["10168","10166","10166","10166","10166"],"boost":{"10166":{"HP":708,"ATK":118,"DEF":118,"storyLv":80,"power":40140},"10168":{"HP":842,"ATK":152,"DEF":152,"storyLv":80,"power":52323}}},"party":{"forced":["10490"],"noMale":true,"mustLive":["10490"],"levels":{"10490":80,"10491":80}},"bossId":"10168","hero":"10491","tutorial":false,"single":true,"loan":["10491"],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(11,12,'','{"no":12,"type":"normal","enemies":{"ids":["10168","10166","10166","10166","10166"],"boost":{"10166":{"HP":714,"ATK":119,"DEF":119,"storyLv":81,"power":40480},"10168":{"HP":850,"ATK":153,"DEF":153,"storyLv":81,"power":52753}}},"party":{"forced":["10491"],"noMale":true,"mustLive":["10491"],"levels":{"10491":81}},"bossId":"10168","hero":"10491","tutorial":false,"single":true,"loan":["10491"],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(11,13,'','{"no":13,"type":"normal","enemies":{"ids":["10504"],"boost":{"10504":{"HP":2778,"ATK":278,"DEF":278,"storyLv":82,"power":442353}}},"party":{"forced":["10490"],"noMale":true,"mustLive":["10490"],"levels":{"10490":82,"10491":82}},"bossId":"10504","hero":"10491","tutorial":false,"single":true,"loan":["10491"],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(11,14,'','{"no":14,"type":"normal","enemies":{"ids":["10503"],"boost":{"10503":{"HP":2805,"ATK":280,"DEF":280,"storyLv":83,"power":438481}}},"party":{"forced":["10491"],"noMale":true,"mustLive":["10491"],"levels":{"10491":83}},"bossId":"10503","hero":"10491","tutorial":false,"single":true,"loan":["10491"],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(11,15,'','{"no":15,"type":"normal","enemies":{"ids":["10475","10489","10482","10483","10484"],"boost":{"10475":{"HP":1046,"ATK":192,"DEF":166,"storyLv":85,"power":95525},"10482":{"HP":704,"ATK":169,"DEF":141,"storyLv":85,"power":43353},"10483":{"HP":781,"ATK":158,"DEF":106,"storyLv":85,"power":41639},"10484":{"HP":845,"ATK":176,"DEF":88,"storyLv":85,"power":47616},"10489":{"HP":743,"ATK":141,"DEF":148,"storyLv":85,"power":49191}}},"party":{"forced":["10415"],"noMale":true,"maxGrade":"RARE","mustLive":["10415"],"levels":{"10415":85,"10491":85}},"bossId":"10475","joinAlly":{"id":"10311","afterTurn":1,"storyLevel":100,"battleLevel":10},"hero":"10491","tutorial":false,"single":true,"loan":["10491"],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(11,16,'','{"no":16,"type":"boss","enemies":{"ids":["10475","10489","10482","10483","10484"],"boost":{"10475":{"HP":1056,"ATK":194,"DEF":167,"storyLv":86,"power":96397},"10482":{"HP":710,"ATK":170,"DEF":142,"storyLv":86,"power":43677},"10483":{"HP":788,"ATK":160,"DEF":106,"storyLv":86,"power":41997},"10484":{"HP":852,"ATK":178,"DEF":89,"storyLv":86,"power":48072},"10489":{"HP":749,"ATK":142,"DEF":149,"storyLv":86,"power":49563}}},"party":{"forced":["10311"],"solo":true,"mustLive":["10311"],"levels":{"10311":86,"10491":86}},"bossId":"10475","hero":"10491","tutorial":false,"single":true,"loan":["10491"],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(12,1,'','{"no":1,"type":"normal","enemies":{"ids":["10153","10154","10155","10156","10157"],"boost":{"10153":{"HP":102,"ATK":17,"DEF":12,"storyLv":71,"power":1283},"10154":{"HP":119,"ATK":19,"DEF":14,"storyLv":71,"power":1482},"10155":{"HP":136,"ATK":20,"DEF":15,"storyLv":71,"power":1646},"10156":{"HP":153,"ATK":22,"DEF":17,"storyLv":71,"power":1960},"10157":{"HP":170,"ATK":24,"DEF":19,"storyLv":71,"power":2171}}},"party":{"forced":["10072"],"costBelow":35,"mustLive":["10072"],"levels":{"10072":71}},"bossId":"10153","hero":"10072","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(12,2,'','{"no":2,"type":"normal","enemies":{"ids":["10155","10156","10158","10158","10159"],"boost":{"10155":{"HP":137,"ATK":21,"DEF":15,"storyLv":72,"power":1673},"10156":{"HP":154,"ATK":22,"DEF":17,"storyLv":72,"power":1969},"10158":{"HP":171,"ATK":26,"DEF":26,"storyLv":72,"power":2333},"10159":{"HP":242,"ATK":48,"DEF":39,"storyLv":72,"power":8373}}},"party":{"forced":["10072"],"costBelow":35,"mustLive":["10072"],"levels":{"10072":72}},"bossId":"10155","hero":"10072","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(12,3,'','{"no":3,"type":"normal","enemies":{"ids":["10159","10160","10161","10153","10153"],"boost":{"10153":{"HP":103,"ATK":17,"DEF":12,"storyLv":73,"power":1291},"10159":{"HP":244,"ATK":49,"DEF":39,"storyLv":73,"power":8458},"10160":{"HP":293,"ATK":61,"DEF":51,"storyLv":73,"power":10416},"10161":{"HP":317,"ATK":66,"DEF":56,"storyLv":73,"power":12008}}},"party":{"forced":["10072"],"costBelow":35,"mustLive":["10072"],"levels":{"10072":73}},"bossId":"10159","hero":"10072","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(12,4,'','{"no":4,"type":"normal","enemies":{"ids":["10160","10161","10162","10154","10155"],"boost":{"10154":{"HP":121,"ATK":19,"DEF":14,"storyLv":74,"power":1497},"10155":{"HP":138,"ATK":21,"DEF":16,"storyLv":74,"power":1696},"10160":{"HP":295,"ATK":62,"DEF":52,"storyLv":74,"power":10540},"10161":{"HP":320,"ATK":66,"DEF":57,"storyLv":74,"power":12110},"10162":{"HP":369,"ATK":74,"DEF":64,"storyLv":74,"power":13790}}},"party":{"forced":["10072"],"costBelow":35,"mustLive":["10072"],"levels":{"10072":74}},"bossId":"10160","hero":"10072","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(12,5,'','{"no":5,"type":"normal","enemies":{"ids":["10300","10161","10162","10163","10163"],"boost":{"10161":{"HP":322,"ATK":67,"DEF":57,"storyLv":75,"power":12200},"10162":{"HP":372,"ATK":74,"DEF":64,"storyLv":75,"power":13852},"10163":{"HP":580,"ATK":97,"DEF":84,"storyLv":75,"power":32081},"10300":{"HP":310,"ATK":62,"DEF":62,"storyLv":75,"power":12407}}},"party":{"forced":["10072"],"costBelow":40,"mustLive":["10072"],"levels":{"10072":75}},"bossId":"10300","hero":"10072","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(12,6,'','{"no":6,"type":"normal","enemies":{"ids":["10162","10163","10164","10164","10165"],"boost":{"10162":{"HP":375,"ATK":75,"DEF":65,"storyLv":76,"power":14003},"10163":{"HP":585,"ATK":98,"DEF":84,"storyLv":76,"power":32323},"10164":{"HP":618,"ATK":98,"DEF":84,"storyLv":76,"power":33402},"10165":{"HP":650,"ATK":98,"DEF":98,"storyLv":76,"power":35365}}},"party":{"forced":["10072"],"costBelow":45,"mustLive":["10072"],"levels":{"10072":76}},"bossId":"10162","hero":"10072","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(12,7,'','{"no":7,"type":"normal","enemies":{"ids":["10165","10166","10166","10153","10154"],"boost":{"10153":{"HP":106,"ATK":18,"DEF":12,"storyLv":77,"power":1332},"10154":{"HP":123,"ATK":19,"DEF":14,"storyLv":77,"power":1513},"10165":{"HP":656,"ATK":98,"DEF":98,"storyLv":77,"power":35561},"10166":{"HP":689,"ATK":115,"DEF":115,"storyLv":77,"power":39087}}},"party":{"forced":["10505"],"maxGrade":"HIGH RARE","mustLive":["10505"],"levels":{"10505":77}},"bossId":"10165","hero":"10072","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(12,8,'','{"no":8,"type":"normal","enemies":{"ids":["10166","10167","10167","10155","10156"],"boost":{"10155":{"HP":142,"ATK":21,"DEF":16,"storyLv":78,"power":1727},"10156":{"HP":159,"ATK":23,"DEF":18,"storyLv":78,"power":2045},"10166":{"HP":695,"ATK":116,"DEF":116,"storyLv":78,"power":39427},"10167":{"HP":761,"ATK":132,"DEF":132,"storyLv":78,"power":43889}}},"party":{"forced":["10505"],"maxGrade":"HIGH RARE","mustLive":["10505"],"levels":{"10505":78}},"bossId":"10166","hero":"10072","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(12,9,'','{"no":9,"type":"normal","enemies":{"ids":["10167","10168","10168","10157","10158"],"boost":{"10157":{"HP":178,"ATK":25,"DEF":20,"storyLv":79,"power":2273},"10158":{"HP":178,"ATK":27,"DEF":27,"storyLv":79,"power":2427},"10167":{"HP":768,"ATK":134,"DEF":134,"storyLv":79,"power":44405},"10168":{"HP":835,"ATK":150,"DEF":150,"storyLv":79,"power":51776}}},"party":{"forced":["10505"],"costBelow":45,"mustLive":["10505"],"levels":{"10505":79}},"bossId":"10167","hero":"10072","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb)
+on conflict (chapter,phase,variant) do update set definition=excluded.definition;
+insert into public.battle_story_defs_v2(chapter,phase,variant,definition) values
+(12,10,'','{"no":10,"type":"normal","enemies":{"ids":["10505","10168","10168","10153","10154"],"boost":{"10153":{"HP":107,"ATK":18,"DEF":13,"storyLv":80,"power":1356},"10154":{"HP":125,"ATK":20,"DEF":14,"storyLv":80,"power":1546},"10168":{"HP":842,"ATK":152,"DEF":152,"storyLv":80,"power":52323},"10505":{"HP":708,"ATK":135,"DEF":125,"storyLv":80,"power":47151}}},"party":{"forced":["10072"],"costBelow":45,"mustLive":["10072"],"levels":{"10072":80}},"bossId":"10505","hero":"10072","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(12,11,'','{"no":11,"type":"normal","enemies":{"ids":["10153","10155","10156","10157","10158"],"boost":{"10153":{"HP":108,"ATK":18,"DEF":13,"storyLv":81,"power":1363},"10155":{"HP":144,"ATK":22,"DEF":16,"storyLv":81,"power":1760},"10156":{"HP":162,"ATK":23,"DEF":18,"storyLv":81,"power":2070},"10157":{"HP":180,"ATK":25,"DEF":20,"storyLv":81,"power":2289},"10158":{"HP":180,"ATK":27,"DEF":27,"storyLv":81,"power":2443}}},"party":{"forced":["10072"],"costBelow":45,"mustLive":["10072"],"levels":{"10072":81}},"bossId":"10153","hero":"10072","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(12,12,'','{"no":12,"type":"normal","enemies":{"ids":["10506","10507","10159","10160","10161"],"boost":{"10159":{"HP":262,"ATK":52,"DEF":42,"storyLv":82,"power":9058},"10160":{"HP":314,"ATK":66,"DEF":55,"storyLv":82,"power":11205},"10161":{"HP":341,"ATK":71,"DEF":60,"storyLv":82,"power":12907},"10506":{"HP":617,"ATK":113,"DEF":144,"storyLv":82,"power":44487},"10507":{"HP":720,"ATK":144,"DEF":117,"storyLv":82,"power":48414}}},"party":{"forced":["10072"],"maxGrade":"SUPER RARE","mustLive":["10072"],"levels":{"10072":82}},"bossId":"10506","hero":"10072","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(12,13,'','{"no":13,"type":"normal","enemies":{"ids":["10229","10153","10154","10155","10156"],"boost":{"10153":{"HP":109,"ATK":18,"DEF":13,"storyLv":83,"power":1371},"10154":{"HP":127,"ATK":20,"DEF":15,"storyLv":83,"power":1577},"10155":{"HP":146,"ATK":22,"DEF":16,"storyLv":83,"power":1776},"10156":{"HP":164,"ATK":24,"DEF":18,"storyLv":83,"power":2106},"10229":{"HP":761,"ATK":138,"DEF":121,"storyLv":83,"power":60641}}},"party":{"forced":["10072"],"maxGrade":"SUPER RARE","mustLive":["10072"],"levels":{"10072":83}},"bossId":"10229","rules":{"maxTurns":6},"hero":"10072","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(12,14,'','{"no":14,"type":"normal","enemies":{"ids":["10325"],"boost":{"10325":{"HP":2832,"ATK":360,"DEF":360,"storyLv":84,"power":332457}}},"party":{"forced":["10229"],"noMale":true,"maxGrade":"SUPER RARE","mustLive":["10229"],"levels":{"10229":84}},"bossId":"10325","loseClears":true,"hero":"10072","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(12,15,'','{"no":15,"type":"normal","enemies":{"ids":["10508","10506","10507","10256","10462"],"boost":{"10256":{"HP":295,"ATK":54,"DEF":80,"storyLv":85,"power":14426},"10462":{"HP":268,"ATK":40,"DEF":40,"storyLv":85,"power":8085},"10506":{"HP":634,"ATK":116,"DEF":148,"storyLv":85,"power":45705},"10507":{"HP":739,"ATK":148,"DEF":120,"storyLv":85,"power":49703},"10508":{"HP":1526,"ATK":218,"DEF":196,"storyLv":85,"power":169010}}},"party":{"forced":["10072"],"noMale":true,"maxGrade":"SUPER RARE","mustLive":["10072"],"levels":{"10072":85}},"bossId":"10508","hero":"10072","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(12,16,'','{"no":16,"type":"normal","enemies":{"ids":["10163","10164","10165","10143","10144"],"boost":{"10143":{"HP":92,"ATK":20,"DEF":15,"storyLv":86,"power":1247},"10144":{"HP":92,"ATK":22,"DEF":17,"storyLv":86,"power":1311},"10163":{"HP":639,"ATK":106,"DEF":92,"storyLv":86,"power":35240},"10164":{"HP":674,"ATK":106,"DEF":92,"storyLv":86,"power":36385},"10165":{"HP":710,"ATK":106,"DEF":106,"storyLv":86,"power":38478}}},"party":{"forced":["10072"],"noMale":true,"maxGrade":"HIGH RARE","mustLive":["10072"],"levels":{"10072":86}},"bossId":"10163","hero":"10072","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(12,17,'','{"no":17,"type":"normal","enemies":{"ids":["10506","10507","10256","10462"],"boost":{"10256":{"HP":299,"ATK":54,"DEF":82,"storyLv":87,"power":14624},"10462":{"HP":272,"ATK":41,"DEF":41,"storyLv":87,"power":8238},"10506":{"HP":644,"ATK":118,"DEF":150,"storyLv":87,"power":46416},"10507":{"HP":752,"ATK":150,"DEF":122,"storyLv":87,"power":50515}}},"party":{"forced":["10072"],"noMale":true,"maxGrade":"SUPER RARE","mustLive":["10072"],"levels":{"10072":87}},"bossId":"10506","hero":"10072","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(12,18,'','{"no":18,"type":"normal","enemies":{"ids":["10325","10506","10507","10256","10462"],"boost":{"10256":{"HP":301,"ATK":55,"DEF":82,"storyLv":88,"power":14732},"10325":{"HP":2942,"ATK":374,"DEF":374,"storyLv":88,"power":345376},"10462":{"HP":274,"ATK":41,"DEF":41,"storyLv":88,"power":8274},"10506":{"HP":650,"ATK":119,"DEF":152,"storyLv":88,"power":46885},"10507":{"HP":758,"ATK":152,"DEF":123,"storyLv":88,"power":50992}}},"party":{"forced":["10072"],"noMale":true,"maxGrade":"SUPER RARE","mustLive":["10072"],"levels":{"10072":88}},"bossId":"10325","rules":{"survive":5},"hero":"10072","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(12,19,'','{"no":19,"type":"normal","enemies":{"ids":["10325","10506","10507","10256","10462"],"boost":{"10256":{"HP":304,"ATK":55,"DEF":83,"storyLv":89,"power":14856},"10325":{"HP":2970,"ATK":378,"DEF":378,"storyLv":89,"power":348809},"10462":{"HP":276,"ATK":41,"DEF":41,"storyLv":89,"power":8310},"10506":{"HP":655,"ATK":120,"DEF":153,"storyLv":89,"power":47241},"10507":{"HP":764,"ATK":153,"DEF":124,"storyLv":89,"power":51379}}},"party":{"forced":["10072"],"noMale":true,"maxGrade":"SUPER RARE","mustLive":["10072"],"levels":{"10072":89}},"bossId":"10325","rules":{"survive":7},"hero":"10072","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(12,20,'','{"no":20,"type":"normal","enemies":{"ids":["10302"],"boost":{"10302":{"HP":639,"ATK":125,"DEF":125,"storyLv":90,"power":26766}}},"party":{"forced":["10072"],"maxGrade":"SUPER RARE","mustLive":["10072"],"levels":{"10072":90}},"bossId":"10302","rules":{"blind":{"10072":0.4},"survive":10},"hero":"10072","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(12,21,'','{"no":21,"type":"normal","enemies":{"ids":["10300","10256","10462"],"boost":{"10256":{"HP":308,"ATK":56,"DEF":84,"storyLv":91,"power":15063},"10300":{"HP":350,"ATK":70,"DEF":70,"storyLv":91,"power":14008},"10462":{"HP":280,"ATK":42,"DEF":42,"storyLv":91,"power":8463}}},"party":{"forced":["10072"],"mustLive":["10072"],"levels":{"10072":91}},"bossId":"10300","hero":"10072","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(13,1,'','{"no":1,"type":"normal","enemies":{"ids":["10143","10144","10145"],"boost":{"10143":{"HP":86,"ATK":19,"DEF":14,"storyLv":72,"power":1170},"10144":{"HP":86,"ATK":21,"DEF":15,"storyLv":72,"power":1220},"10145":{"HP":103,"ATK":22,"DEF":17,"storyLv":72,"power":1392}}},"party":{"forced":["10229"],"mustLive":["10229"],"levels":{"10229":72}},"bossId":"10143","mana":50,"starTurns":6,"starMana":0.3,"hero":"10229","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(13,2,'','{"no":2,"type":"normal","enemies":{"ids":["10148","10149","10150"],"boost":{"10148":{"HP":220,"ATK":37,"DEF":24,"storyLv":73,"power":6865},"10149":{"HP":268,"ATK":49,"DEF":37,"storyLv":73,"power":9395},"10150":{"HP":366,"ATK":73,"DEF":61,"storyLv":73,"power":13557}}},"party":{"forced":["10229"],"mustLive":["10229"],"levels":{"10229":73}},"bossId":"10148","mana":50,"starTurns":6,"starMana":0.3,"hero":"10229","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(13,3,'','{"no":3,"type":"normal","enemies":{"ids":["10153","10154","10155"],"boost":{"10153":{"HP":104,"ATK":17,"DEF":12,"storyLv":74,"power":1299},"10154":{"HP":121,"ATK":19,"DEF":14,"storyLv":74,"power":1497},"10155":{"HP":138,"ATK":21,"DEF":16,"storyLv":74,"power":1696}}},"party":{"forced":["10229"],"mustLive":["10229"],"levels":{"10229":74}},"bossId":"10153","mana":50,"starTurns":6,"starMana":0.3,"hero":"10229","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(13,4,'','{"no":4,"type":"normal","enemies":{"ids":["10158","10159","10160","10161","10162"],"boost":{"10158":{"HP":174,"ATK":26,"DEF":26,"storyLv":75,"power":2358},"10159":{"HP":248,"ATK":50,"DEF":40,"storyLv":75,"power":8619},"10160":{"HP":298,"ATK":62,"DEF":52,"storyLv":75,"power":10597},"10161":{"HP":322,"ATK":67,"DEF":57,"storyLv":75,"power":12200},"10162":{"HP":372,"ATK":74,"DEF":64,"storyLv":75,"power":13852}}},"party":{"forced":["10229"],"mustLive":["10229"],"levels":{"10229":75}},"bossId":"10158","mana":50,"starTurns":8,"starMana":0.25,"hero":"10229","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(13,5,'','{"no":5,"type":"normal","enemies":{"ids":["10143","10144","10145","10163","10164"],"boost":{"10143":{"HP":88,"ATK":19,"DEF":14,"storyLv":76,"power":1185},"10144":{"HP":88,"ATK":21,"DEF":16,"storyLv":76,"power":1249},"10145":{"HP":105,"ATK":23,"DEF":18,"storyLv":76,"power":1439},"10163":{"HP":585,"ATK":98,"DEF":84,"storyLv":76,"power":32323},"10164":{"HP":618,"ATK":98,"DEF":84,"storyLv":76,"power":33402}}},"party":{"forced":["10229"],"mustLive":["10229"],"levels":{"10229":76}},"bossId":"10143","mana":67,"starTurns":8,"starMana":0.3,"hero":"10229","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(13,6,'','{"no":6,"type":"normal","enemies":{"ids":["10509"],"boost":{"10509":{"HP":689,"ATK":125,"DEF":118,"storyLv":77,"power":55174}}},"party":{"forced":["10229"],"mustLive":["10229"],"levels":{"10229":77}},"bossId":"10509","mana":34,"starTurns":4,"starMana":0,"hero":"10229","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(13,7,'','{"no":7,"type":"normal","enemies":{"ids":["10148","10149","10150"],"boost":{"10148":{"HP":229,"ATK":38,"DEF":25,"storyLv":78,"power":7122},"10149":{"HP":279,"ATK":51,"DEF":38,"storyLv":78,"power":9759},"10150":{"HP":381,"ATK":76,"DEF":64,"storyLv":78,"power":14134}}},"party":{"forced":["10229"],"mustLive":["10229"],"levels":{"10229":78}},"bossId":"10148","mana":50,"starTurns":6,"starMana":0.3,"hero":"10229","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(13,8,'','{"no":8,"type":"normal","enemies":{"ids":["10153","10154","10155"],"boost":{"10153":{"HP":107,"ATK":18,"DEF":12,"storyLv":79,"power":1340},"10154":{"HP":125,"ATK":20,"DEF":14,"storyLv":79,"power":1546},"10155":{"HP":142,"ATK":21,"DEF":16,"storyLv":79,"power":1727}}},"party":{"forced":["10229"],"mustLive":["10229"],"levels":{"10229":79}},"bossId":"10153","mana":50,"starTurns":6,"starMana":0.3,"hero":"10229","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(13,9,'','{"no":9,"type":"normal","enemies":{"ids":["10163","10164","10165"],"boost":{"10163":{"HP":607,"ATK":101,"DEF":88,"storyLv":80,"power":33539},"10164":{"HP":640,"ATK":101,"DEF":88,"storyLv":80,"power":34619},"10165":{"HP":674,"ATK":101,"DEF":101,"storyLv":80,"power":36581}}},"party":{"forced":["10229"],"mustLive":["10229"],"levels":{"10229":80}},"bossId":"10163","mana":50,"starTurns":8,"starMana":0.2,"hero":"10229","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(13,10,'','{"no":10,"type":"normal","enemies":{"ids":["10144","10145","10146"],"boost":{"10144":{"HP":90,"ATK":22,"DEF":16,"storyLv":81,"power":1282},"10145":{"HP":108,"ATK":23,"DEF":18,"storyLv":81,"power":1461},"10146":{"HP":126,"ATK":25,"DEF":20,"storyLv":81,"power":1739}}},"party":{"forced":["10229"],"mustLive":["10229"],"levels":{"10229":81}},"bossId":"10144","mana":50,"starTurns":6,"starMana":0.3,"hero":"10229","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(13,11,'','{"no":11,"type":"normal","enemies":{"ids":["10149","10150","10151"],"boost":{"10149":{"HP":288,"ATK":52,"DEF":39,"storyLv":82,"power":10033},"10150":{"HP":393,"ATK":79,"DEF":66,"storyLv":82,"power":14608},"10151":{"HP":686,"ATK":103,"DEF":103,"storyLv":82,"power":37262}}},"party":{"forced":["10229"],"mustLive":["10229"],"levels":{"10229":82}},"bossId":"10149","mana":50,"starTurns":7,"starMana":0.25,"hero":"10229","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(13,12,'','{"no":12,"type":"normal","enemies":{"ids":["10158","10159","10160","10161","10162"],"boost":{"10158":{"HP":182,"ATK":27,"DEF":27,"storyLv":83,"power":2459},"10159":{"HP":264,"ATK":53,"DEF":42,"storyLv":83,"power":9143},"10160":{"HP":317,"ATK":66,"DEF":55,"storyLv":83,"power":11263},"10161":{"HP":343,"ATK":71,"DEF":61,"storyLv":83,"power":12989},"10162":{"HP":396,"ATK":79,"DEF":69,"storyLv":83,"power":14792}}},"party":{"forced":["10229"],"mustLive":["10229"],"levels":{"10229":83}},"bossId":"10158","mana":80,"starTurns":8,"starMana":0.3,"hero":"10229","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(13,13,'','{"no":13,"type":"normal","enemies":{"ids":["10256","10462","10072","10153","10154"],"boost":{"10072":{"HP":698,"ATK":73,"DEF":154,"storyLv":84,"power":36990},"10153":{"HP":110,"ATK":18,"DEF":13,"storyLv":84,"power":1379},"10154":{"HP":128,"ATK":20,"DEF":15,"storyLv":84,"power":1585},"10256":{"HP":293,"ATK":53,"DEF":80,"storyLv":84,"power":14318},"10462":{"HP":266,"ATK":40,"DEF":40,"storyLv":84,"power":8048}}},"party":{"forced":["10229"],"mustLive":["10229"],"levels":{"10229":84}},"bossId":"10256","mana":80,"starTurns":9,"starMana":0.25,"hero":"10229","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(13,14,'','{"no":14,"type":"normal","enemies":{"ids":["10325"],"boost":{"10325":{"HP":2860,"ATK":364,"DEF":364,"storyLv":85,"power":335890}}},"party":{"forced":["10229"],"mustLive":["10229"],"levels":{"10229":85}},"bossId":"10325","mana":100,"starTurns":3,"starMana":0.3,"rules":{"survive":3,"aiScript":[{"turn":1,"unit":"10325","say":["한 번 때려보세요. 헤헤"],"end":true},{"turn":2,"unit":"10325","say":["너무 느린데.. 정말 격투가 맞나요?"],"end":true},{"turn":3,"unit":"10325","skill":"아름다운 고통의 키스","end":true}]},"hero":"10229","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(13,15,'','{"no":15,"type":"normal","enemies":{"ids":["10325"],"boost":{"10325":{"HP":2860,"ATK":364,"DEF":364,"storyLv":85,"power":335890}}},"party":{"forced":["10229"],"mustLive":["10229"],"levels":{"10229":85}},"bossId":"10325","mana":34,"starTurns":1,"starMana":0,"rules":{"survive":1},"hero":"10229","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(14,1,'','{"no":1,"type":"normal","enemies":{"ids":["10143","10144","10145","10146","10147"],"boost":{"10143":{"HP":86,"ATK":19,"DEF":14,"storyLv":74,"power":1170},"10144":{"HP":86,"ATK":21,"DEF":16,"storyLv":74,"power":1235},"10145":{"HP":104,"ATK":22,"DEF":17,"storyLv":74,"power":1399},"10146":{"HP":121,"ATK":24,"DEF":19,"storyLv":74,"power":1667},"10147":{"HP":138,"ATK":26,"DEF":21,"storyLv":74,"power":1865}}},"party":{"forced":["10317"],"costBelow":41,"mustLive":["10317"],"levels":{"10317":74}},"bossId":"10143","mana":80,"starTurns":6,"starMana":0.3,"hero":"10317","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(14,2,'','{"no":2,"type":"normal","enemies":{"ids":["10148","10149","10153","10154","10155"],"boost":{"10148":{"HP":223,"ATK":37,"DEF":25,"storyLv":75,"power":6961},"10149":{"HP":273,"ATK":50,"DEF":37,"storyLv":75,"power":9546},"10153":{"HP":104,"ATK":17,"DEF":12,"storyLv":75,"power":1299},"10154":{"HP":122,"ATK":19,"DEF":14,"storyLv":75,"power":1505},"10155":{"HP":139,"ATK":21,"DEF":16,"storyLv":75,"power":1703}}},"party":{"forced":["10317"],"costBelow":41,"mustLive":["10317"],"levels":{"10317":75}},"bossId":"10148","mana":80,"starTurns":8,"starMana":0.3,"hero":"10317","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(14,3,'','{"no":3,"type":"normal","enemies":{"ids":["10017","10015","10150","10156","10157"],"boost":{"10015":{"HP":682,"ATK":130,"DEF":75,"storyLv":76,"power":49179},"10017":{"HP":650,"ATK":130,"DEF":81,"storyLv":76,"power":41502},"10150":{"HP":375,"ATK":75,"DEF":62,"storyLv":76,"power":13880},"10156":{"HP":158,"ATK":23,"DEF":18,"storyLv":76,"power":2037},"10157":{"HP":175,"ATK":24,"DEF":19,"storyLv":76,"power":2212}}},"party":{"forced":["10317"],"noFemale":true,"mustLive":["10317"],"levels":{"10317":76}},"bossId":"10017","mana":80,"starTurns":9,"starMana":0.25,"hero":"10317","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb)
+on conflict (chapter,phase,variant) do update set definition=excluded.definition;
+insert into public.battle_story_defs_v2(chapter,phase,variant,definition) values
+(14,4,'','{"no":4,"type":"normal","enemies":{"ids":["10158","10159","10160","10151","10152"],"boost":{"10151":{"HP":656,"ATK":98,"DEF":98,"storyLv":77,"power":35561},"10152":{"HP":754,"ATK":148,"DEF":148,"storyLv":77,"power":48666},"10158":{"HP":176,"ATK":26,"DEF":26,"storyLv":77,"power":2374},"10159":{"HP":252,"ATK":50,"DEF":40,"storyLv":77,"power":8696},"10160":{"HP":302,"ATK":63,"DEF":53,"storyLv":77,"power":10759}}},"party":{"forced":["10317"],"costBelow":35,"mustLive":["10317"],"levels":{"10317":77}},"bossId":"10158","mana":80,"starTurns":9,"starMana":0.25,"hero":"10317","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(14,5,'','{"no":5,"type":"normal","enemies":{"ids":["10181","10423","10287","10136","10161"],"boost":{"10136":{"HP":655,"ATK":126,"DEF":126,"storyLv":78,"power":36978},"10161":{"HP":330,"ATK":69,"DEF":58,"storyLv":78,"power":12503},"10181":{"HP":1142,"ATK":184,"DEF":155,"storyLv":78,"power":105255},"10287":{"HP":282,"ATK":64,"DEF":46,"storyLv":78,"power":11032},"10423":{"HP":124,"ATK":21,"DEF":14,"storyLv":78,"power":1526}}},"party":{"forced":["10317"],"exclude":["10312"],"mustLive":["10317"],"levels":{"10317":78}},"bossId":"10181","mana":80,"starTurns":2,"starMana":0,"rules":{"survive":2},"hero":"10317","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(14,6,'','{"no":6,"type":"normal","enemies":{"ids":["10181","10423","10287","10136","10161"],"boost":{"10136":{"HP":655,"ATK":126,"DEF":126,"storyLv":78,"power":36978},"10161":{"HP":330,"ATK":69,"DEF":58,"storyLv":78,"power":12503},"10181":{"HP":1142,"ATK":184,"DEF":155,"storyLv":78,"power":105255},"10287":{"HP":282,"ATK":64,"DEF":46,"storyLv":78,"power":11032},"10423":{"HP":124,"ATK":21,"DEF":14,"storyLv":78,"power":1526}}},"party":{"forced":["10317"],"maxGrade":"SUPER RARE","mustLive":["10317"],"levels":{"10317":78}},"bossId":"10181","mana":80,"starTurns":10,"starMana":0.2,"hero":"10317","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(14,7,'','{"no":7,"type":"normal","enemies":{"ids":["10182","10136","10162","10163","10164"],"boost":{"10136":{"HP":661,"ATK":127,"DEF":127,"storyLv":79,"power":37296},"10162":{"HP":384,"ATK":77,"DEF":67,"storyLv":79,"power":14367},"10163":{"HP":601,"ATK":100,"DEF":87,"storyLv":79,"power":33199},"10164":{"HP":635,"ATK":100,"DEF":87,"storyLv":79,"power":34311},"10182":{"HP":307,"ATK":41,"DEF":38,"storyLv":79,"power":9366}}},"party":{"forced":["10060"],"solo":true,"mustLive":["10060"],"levels":{"10060":79}},"bossId":"10182","mana":89,"starTurns":4,"starMana":0.3,"hero":"10317","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(14,8,'','{"no":8,"type":"normal","enemies":{"ids":["10153","10154","10155","10167","10168"],"boost":{"10153":{"HP":107,"ATK":18,"DEF":13,"storyLv":80,"power":1356},"10154":{"HP":125,"ATK":20,"DEF":14,"storyLv":80,"power":1546},"10155":{"HP":143,"ATK":21,"DEF":16,"storyLv":80,"power":1734},"10167":{"HP":775,"ATK":135,"DEF":135,"storyLv":80,"power":44778},"10168":{"HP":842,"ATK":152,"DEF":152,"storyLv":80,"power":52323}}},"party":{"forced":["10312"],"solo":true,"mustLive":["10312"],"levels":{"10312":80}},"bossId":"10153","mana":67,"starTurns":7,"starMana":0.3,"hero":"10317","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(14,9,'','{"no":9,"type":"normal","enemies":{"ids":["10433","10156","10157","10158","10159"],"boost":{"10156":{"HP":162,"ATK":23,"DEF":18,"storyLv":81,"power":2070},"10157":{"HP":180,"ATK":25,"DEF":20,"storyLv":81,"power":2289},"10158":{"HP":180,"ATK":27,"DEF":27,"storyLv":81,"power":2443},"10159":{"HP":260,"ATK":52,"DEF":42,"storyLv":81,"power":9020},"10433":{"HP":731,"ATK":129,"DEF":82,"storyLv":81,"power":36255}}},"party":{"forced":["10312"],"solo":true,"mustLive":["10312"],"levels":{"10312":81}},"bossId":"10433","mana":67,"starTurns":9,"starMana":0.3,"hero":"10317","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(14,10,'','{"no":10,"type":"normal","enemies":{"ids":["10143","10144","10145","10161","10162"],"boost":{"10143":{"HP":90,"ATK":20,"DEF":14,"storyLv":82,"power":1217},"10144":{"HP":90,"ATK":22,"DEF":16,"storyLv":82,"power":1282},"10145":{"HP":109,"ATK":24,"DEF":18,"storyLv":82,"power":1486},"10161":{"HP":341,"ATK":71,"DEF":60,"storyLv":82,"power":12907},"10162":{"HP":393,"ATK":79,"DEF":68,"storyLv":82,"power":14690}}},"party":{"forced":["10312"],"solo":true,"mustLive":["10312"],"levels":{"10312":82}},"bossId":"10143","mana":67,"starTurns":9,"starMana":0.3,"hero":"10317","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(14,11,'','{"no":11,"type":"normal","enemies":{"ids":["10163","10164","10165","10166","10167"],"boost":{"10163":{"HP":623,"ATK":104,"DEF":90,"storyLv":83,"power":34429},"10164":{"HP":657,"ATK":104,"DEF":90,"storyLv":83,"power":35541},"10165":{"HP":692,"ATK":104,"DEF":104,"storyLv":83,"power":37602},"10166":{"HP":727,"ATK":121,"DEF":121,"storyLv":83,"power":41193},"10167":{"HP":796,"ATK":138,"DEF":138,"storyLv":83,"power":45897}}},"party":{"forced":["10312"],"solo":true,"mustLive":["10312"],"levels":{"10312":83}},"bossId":"10163","mana":67,"starTurns":7,"starMana":0.3,"hero":"10317","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(14,12,'','{"no":12,"type":"normal","enemies":{"ids":["10146","10147","10148","10163","10164"],"boost":{"10146":{"HP":128,"ATK":26,"DEF":20,"storyLv":84,"power":1773},"10147":{"HP":146,"ATK":27,"DEF":22,"storyLv":84,"power":1961},"10148":{"HP":239,"ATK":40,"DEF":27,"storyLv":84,"power":7484},"10163":{"HP":628,"ATK":105,"DEF":91,"storyLv":84,"power":34737},"10164":{"HP":663,"ATK":105,"DEF":91,"storyLv":84,"power":35881}}},"party":{"forced":["10312"],"solo":true,"mustLive":["10312"],"levels":{"10312":84}},"bossId":"10146","mana":67,"starTurns":8,"starMana":0.3,"hero":"10317","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(14,13,'','{"no":13,"type":"normal","enemies":{"ids":["10504","10503"],"boost":{"10503":{"HP":2860,"ATK":286,"DEF":286,"storyLv":85,"power":447322},"10504":{"HP":2860,"ATK":286,"DEF":286,"storyLv":85,"power":455310}}},"party":{"forced":[],"mustLive":[]},"bossId":"10504","mana":100,"starTurns":8,"starMana":0.3,"hero":"10317","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(14,14,'','{"no":14,"type":"normal","enemies":{"ids":["10423","10287","10153","10154","10148"],"boost":{"10148":{"HP":241,"ATK":40,"DEF":27,"storyLv":85,"power":7523},"10153":{"HP":110,"ATK":18,"DEF":13,"storyLv":85,"power":1379},"10154":{"HP":129,"ATK":20,"DEF":15,"storyLv":85,"power":1593},"10287":{"HP":297,"ATK":67,"DEF":48,"storyLv":85,"power":11579},"10423":{"HP":129,"ATK":22,"DEF":15,"storyLv":85,"power":1597}}},"party":{"forced":["10192"],"costBelow":40,"mustLive":["10192"],"levels":{"10192":85}},"bossId":"10423","mana":150,"starTurns":5,"starMana":0,"rules":{"survive":5},"hero":"10317","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(14,15,'','{"no":15,"type":"normal","enemies":{"ids":["10423","10287","10136","10149","10155"],"boost":{"10136":{"HP":703,"ATK":135,"DEF":135,"storyLv":86,"power":39657},"10149":{"HP":297,"ATK":54,"DEF":40,"storyLv":86,"power":10356},"10155":{"HP":148,"ATK":22,"DEF":17,"storyLv":86,"power":1807},"10287":{"HP":300,"ATK":68,"DEF":49,"storyLv":86,"power":11734},"10423":{"HP":130,"ATK":22,"DEF":15,"storyLv":86,"power":1605}}},"party":{"forced":["10312"],"solo":true,"mustLive":["10312"],"levels":{"10312":86}},"bossId":"10423","mana":67,"starTurns":9,"starMana":0.3,"hero":"10317","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(14,16,'','{"no":16,"type":"normal","enemies":{"ids":["10181","10182","10433","10150","10151"],"boost":{"10150":{"HP":408,"ATK":82,"DEF":68,"storyLv":87,"power":15144},"10151":{"HP":716,"ATK":107,"DEF":107,"storyLv":87,"power":38819},"10181":{"HP":1243,"ATK":200,"DEF":169,"storyLv":87,"power":114560},"10182":{"HP":326,"ATK":44,"DEF":41,"storyLv":87,"power":9992},"10433":{"HP":770,"ATK":136,"DEF":86,"storyLv":87,"power":38176}}},"party":{"forced":["10312"],"solo":true,"mustLive":["10312"],"levels":{"10312":87}},"bossId":"10181","mana":67,"starTurns":8,"starMana":0.3,"hero":"10317","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(14,17,'','{"no":17,"type":"normal","enemies":{"ids":["10109","10017","10015","10150","10151"],"boost":{"10015":{"HP":758,"ATK":144,"DEF":83,"storyLv":88,"power":54578},"10017":{"HP":722,"ATK":144,"DEF":90,"storyLv":88,"power":46066},"10109":{"HP":1882,"ATK":278,"DEF":157,"storyLv":88,"power":193365},"10150":{"HP":411,"ATK":82,"DEF":68,"storyLv":88,"power":15205},"10151":{"HP":722,"ATK":108,"DEF":108,"storyLv":88,"power":39159}}},"party":{"forced":["10312"],"exclude":["10317"],"maxGrade":"SUPER RARE","mustLive":["10312"],"levels":{"10312":88}},"bossId":"10109","mana":90,"starTurns":9,"starMana":0.25,"hero":"10317","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(14,18,'','{"no":18,"type":"normal","enemies":{"ids":["10054","10109","10017","10015","10143"],"boost":{"10015":{"HP":771,"ATK":147,"DEF":84,"storyLv":90,"power":55533},"10017":{"HP":734,"ATK":147,"DEF":92,"storyLv":90,"power":46922},"10054":{"HP":2752,"ATK":409,"DEF":327,"storyLv":90,"power":312724},"10109":{"HP":1915,"ATK":283,"DEF":160,"storyLv":90,"power":196809},"10143":{"HP":94,"ATK":21,"DEF":15,"storyLv":90,"power":1279}}},"party":{"forced":["10312"],"exclude":["10317"],"maxGrade":"SUPER RARE","mustLive":["10312"],"levels":{"10312":90}},"bossId":"10054","mana":90,"starTurns":10,"starMana":0.2,"hero":"10317","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(15,1,'','{"no":1,"type":"normal","enemies":{"ids":["10143","10144","10153","10154","10155"],"boost":{"10143":{"HP":87,"ATK":19,"DEF":14,"storyLv":75,"power":1178},"10144":{"HP":87,"ATK":21,"DEF":16,"storyLv":75,"power":1242},"10153":{"HP":104,"ATK":17,"DEF":12,"storyLv":75,"power":1299},"10154":{"HP":122,"ATK":19,"DEF":14,"storyLv":75,"power":1505},"10155":{"HP":139,"ATK":21,"DEF":16,"storyLv":75,"power":1703}}},"party":{"forced":["10290"],"solo":true,"mustLive":["10290"],"levels":{"10290":75}},"bossId":"10143","mana":25,"starTurns":10,"starMana":0.3,"joinAlly":{"id":"10406","afterTurn":1,"storyLevel":100,"battleLevel":1},"hero":"10290","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(15,2,'','{"no":2,"type":"normal","enemies":{"ids":["10510","10145","10146","10156","10157"],"boost":{"10145":{"HP":105,"ATK":23,"DEF":18,"storyLv":76,"power":1439},"10146":{"HP":122,"ATK":24,"DEF":19,"storyLv":76,"power":1674},"10156":{"HP":158,"ATK":23,"DEF":18,"storyLv":76,"power":2037},"10157":{"HP":175,"ATK":24,"DEF":19,"storyLv":76,"power":2212},"10510":{"HP":650,"ATK":98,"DEF":98,"storyLv":76,"power":37320}}},"party":{"forced":["10290"],"maxGrade":"SUPER RARE","mustLive":["10290"],"levels":{"10290":76}},"bossId":"10510","mana":80,"starTurns":9,"starMana":0.25,"hero":"10290","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(15,3,'','{"no":3,"type":"normal","enemies":{"ids":["10280","10147","10148","10158","10159"],"boost":{"10147":{"HP":141,"ATK":26,"DEF":21,"storyLv":77,"power":1888},"10148":{"HP":227,"ATK":38,"DEF":25,"storyLv":77,"power":7084},"10158":{"HP":176,"ATK":26,"DEF":26,"storyLv":77,"power":2374},"10159":{"HP":252,"ATK":50,"DEF":40,"storyLv":77,"power":8696},"10280":{"HP":123,"ATK":18,"DEF":11,"storyLv":77,"power":1514}}},"party":{"forced":["10097"],"maxGrade":"HIGH RARE","mustLive":["10097"],"levels":{"10097":77}},"bossId":"10280","mana":80,"starTurns":9,"starMana":0.25,"hero":"10290","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(15,4,'','{"no":4,"type":"normal","enemies":{"ids":["10149","10150","10160","10161","10162"],"boost":{"10149":{"HP":279,"ATK":51,"DEF":38,"storyLv":78,"power":9759},"10150":{"HP":381,"ATK":76,"DEF":64,"storyLv":78,"power":14134},"10160":{"HP":305,"ATK":64,"DEF":53,"storyLv":78,"power":10863},"10161":{"HP":330,"ATK":69,"DEF":58,"storyLv":78,"power":12503},"10162":{"HP":381,"ATK":76,"DEF":66,"storyLv":78,"power":14216}}},"party":{"forced":["10383"],"maxGrade":"SUPER RARE","mustLive":["10383"],"levels":{"10383":78}},"bossId":"10149","mana":80,"starTurns":8,"starMana":0.3,"hero":"10290","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(15,5,'','{"no":5,"type":"normal","enemies":{"ids":["10151","10152","10163","10164","10165"],"boost":{"10151":{"HP":668,"ATK":100,"DEF":100,"storyLv":79,"power":36241},"10152":{"HP":768,"ATK":150,"DEF":150,"storyLv":79,"power":49456},"10163":{"HP":601,"ATK":100,"DEF":87,"storyLv":79,"power":33199},"10164":{"HP":635,"ATK":100,"DEF":87,"storyLv":79,"power":34311},"10165":{"HP":668,"ATK":100,"DEF":100,"storyLv":79,"power":36241}}},"party":{"forced":["10290","10024"],"maxGrade":"SUPER RARE","mustLive":["10290"],"levels":{"10024":79,"10290":79}},"bossId":"10151","mana":80,"starTurns":9,"starMana":0.25,"hero":"10290","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(15,6,'','{"no":6,"type":"normal","enemies":{"ids":["10383","10384"],"boost":{"10383":{"HP":1456,"ATK":187,"DEF":208,"storyLv":80,"power":175241},"10384":{"HP":258,"ATK":41,"DEF":34,"storyLv":80,"power":9197}}},"party":{"forced":["10024"],"noMale":true,"exclude":["10383","10384"],"mustLive":["10024"],"levels":{"10024":80}},"bossId":"10383","mana":60,"starTurns":7,"starMana":0.3,"hero":"10290","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(15,7,'','{"no":7,"type":"normal","enemies":{"ids":["10166","10167","10154","10155","10156"],"boost":{"10154":{"HP":125,"ATK":20,"DEF":14,"storyLv":80,"power":1546},"10155":{"HP":143,"ATK":21,"DEF":16,"storyLv":80,"power":1734},"10156":{"HP":161,"ATK":23,"DEF":18,"storyLv":80,"power":2062},"10166":{"HP":708,"ATK":118,"DEF":118,"storyLv":80,"power":40140},"10167":{"HP":775,"ATK":135,"DEF":135,"storyLv":80,"power":44778}}},"party":{"forced":["10024"],"solo":true,"mustLive":["10024"],"levels":{"10024":80}},"bossId":"10166","mana":59,"starTurns":8,"starMana":0.3,"hero":"10290","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(15,8,'','{"no":8,"type":"normal","enemies":{"ids":["10143","10144","10145","10157","10158"],"boost":{"10143":{"HP":90,"ATK":20,"DEF":14,"storyLv":81,"power":1217},"10144":{"HP":90,"ATK":22,"DEF":16,"storyLv":81,"power":1282},"10145":{"HP":108,"ATK":23,"DEF":18,"storyLv":81,"power":1461},"10157":{"HP":180,"ATK":25,"DEF":20,"storyLv":81,"power":2289},"10158":{"HP":180,"ATK":27,"DEF":27,"storyLv":81,"power":2443}}},"party":{"forced":["10290","10200"],"mustLive":[],"levels":{"10200":81,"10290":81}},"bossId":"10143","mana":80,"starTurns":10,"starMana":0.25,"hero":"10290","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(15,9,'','{"no":9,"type":"normal","enemies":{"ids":["10146","10147","10159","10160","10161"],"boost":{"10146":{"HP":127,"ATK":25,"DEF":20,"storyLv":82,"power":1747},"10147":{"HP":145,"ATK":27,"DEF":22,"storyLv":82,"power":1953},"10159":{"HP":262,"ATK":52,"DEF":42,"storyLv":82,"power":9058},"10160":{"HP":314,"ATK":66,"DEF":55,"storyLv":82,"power":11205},"10161":{"HP":341,"ATK":71,"DEF":60,"storyLv":82,"power":12907}}},"party":{"forced":["10097"],"noFemale":true,"mustLive":["10097"],"levels":{"10097":82}},"bossId":"10146","mana":80,"starTurns":9,"starMana":0.25,"hero":"10290","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(15,10,'','{"no":10,"type":"normal","enemies":{"ids":["10025","10148","10149","10162","10163"],"boost":{"10025":{"HP":1498,"ATK":235,"DEF":278,"storyLv":83,"power":132604},"10148":{"HP":238,"ATK":40,"DEF":26,"storyLv":83,"power":7426},"10149":{"HP":290,"ATK":53,"DEF":40,"storyLv":83,"power":10164},"10162":{"HP":396,"ATK":79,"DEF":69,"storyLv":83,"power":14792},"10163":{"HP":623,"ATK":104,"DEF":90,"storyLv":83,"power":34429}}},"party":{"forced":["10290"],"maxGrade":"HIGH RARE","mustLive":["10290"],"levels":{"10290":83}},"bossId":"10025","mana":120,"starTurns":5,"starMana":0,"rules":{"survive":5},"hero":"10290","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(15,11,'','{"no":11,"type":"normal","enemies":{"ids":["10123","10151","10151","10151","10151"],"boost":{"10123":{"HP":768,"ATK":93,"DEF":152,"storyLv":83,"power":41636},"10151":{"HP":692,"ATK":104,"DEF":104,"storyLv":83,"power":37602}}},"party":{"forced":["10290"],"exclude":["10383"],"mustLive":["10290"],"levels":{"10290":83}},"bossId":"10123","mana":80,"starTurns":9,"starMana":0.25,"hero":"10290","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(15,12,'','{"no":12,"type":"normal","enemies":{"ids":["10150","10151","10164","10165","10166"],"boost":{"10150":{"HP":399,"ATK":80,"DEF":66,"storyLv":84,"power":14780},"10151":{"HP":698,"ATK":105,"DEF":105,"storyLv":84,"power":37942},"10164":{"HP":663,"ATK":105,"DEF":91,"storyLv":84,"power":35881},"10165":{"HP":698,"ATK":105,"DEF":105,"storyLv":84,"power":37942},"10166":{"HP":733,"ATK":122,"DEF":122,"storyLv":84,"power":41533}}},"party":{"forced":["10024"],"solo":true,"mustLive":["10024"],"levels":{"10024":84}},"bossId":"10150","mana":59,"starTurns":8,"starMana":0.3,"hero":"10290","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(15,13,'','{"no":13,"type":"normal","enemies":{"ids":["10123","10183","10152","10167","10168"],"boost":{"10123":{"HP":788,"ATK":96,"DEF":156,"storyLv":86,"power":42767},"10152":{"HP":816,"ATK":160,"DEF":160,"storyLv":86,"power":52642},"10167":{"HP":816,"ATK":142,"DEF":142,"storyLv":86,"power":47127},"10168":{"HP":888,"ATK":160,"DEF":160,"storyLv":86,"power":55135},"10183":{"HP":1848,"ATK":264,"DEF":198,"storyLv":86,"power":133936}}},"party":{"forced":["10024"],"exclude":["10290","10383"],"maxGrade":"HIGH RARE","mustLive":["10024"],"levels":{"10024":86}},"bossId":"10123","mana":80,"starTurns":10,"starMana":0.2,"hero":"10290","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(15,14,'','{"no":14,"type":"normal","enemies":{"ids":["10024"],"boost":{"10024":{"HP":1376,"ATK":266,"DEF":222,"storyLv":87,"power":173281}}},"party":{"forced":["10097"],"exclude":["10126"],"maxGrade":"HIGH RARE","noMale":true,"mustLive":["10097"],"levels":{"10097":87}},"bossId":"10024","mana":120,"starTurns":5,"starMana":0,"rules":{"survive":5},"hero":"10290","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(15,15,'','{"no":15,"type":"normal","enemies":{"ids":["10025","10143","10144","10153","10154"],"boost":{"10025":{"HP":1568,"ATK":246,"DEF":291,"storyLv":88,"power":138803},"10143":{"HP":94,"ATK":21,"DEF":15,"storyLv":88,"power":1279},"10144":{"HP":94,"ATK":22,"DEF":17,"storyLv":88,"power":1326},"10153":{"HP":112,"ATK":19,"DEF":13,"storyLv":88,"power":1413},"10154":{"HP":131,"ATK":21,"DEF":15,"storyLv":88,"power":1626}}},"party":{"forced":["10024"],"maxGrade":"HIGH RARE","noMale":true,"mustLive":["10024"],"levels":{"10024":88}},"bossId":"10025","mana":80,"starTurns":8,"starMana":0.3,"hero":"10290","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb)
+on conflict (chapter,phase,variant) do update set definition=excluded.definition;
+insert into public.battle_story_defs_v2(chapter,phase,variant,definition) values
+(15,16,'','{"no":16,"type":"normal","enemies":{"ids":["10200","10143","10143","10143","10143"],"boost":{"10143":{"HP":65,"ATK":14,"DEF":10,"storyLv":31,"power":869},"10200":{"HP":1756,"ATK":319,"DEF":160,"storyLv":90,"power":151890}}},"party":{"forced":["10024"],"maxGrade":"HIGH RARE","noMale":true,"mustLive":["10024"],"levels":{"10024":90}},"bossId":"10200","mana":150,"starTurns":10,"starMana":0,"rules":{"survive":10,"revive":[{"id":"10143","delay":2,"level":"keep"}]},"hero":"10290","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb)
+on conflict (chapter,phase,variant) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10118','{"class":"FIRE","gender":"MALE","MOR":72,"cost":43,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10019','{"class":"FIRE","gender":"MALE","MOR":25,"cost":17,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10018','{"class":"WIND","gender":"MALE","MOR":20,"cost":17,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10299','{"class":"ICE","gender":"MALE","MOR":18,"cost":26,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10074','{"class":"WIND","gender":"MALE","MOR":21,"cost":5,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10080','{"class":"WIND","gender":"MALE","MOR":18,"cost":5,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10445','{"class":"WIND","gender":"MALE","MOR":25,"cost":7,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10375','{"class":"FIRE","gender":"MALE","MOR":23,"cost":6,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10051','{"class":"FIRE","gender":"MALE","MOR":60,"cost":48,"grade":"ULTRA RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10404','{"class":"WIND","gender":"MALE","MOR":55,"cost":8,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10049','{"class":"ICE","gender":"MALE","MOR":82,"cost":14,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10048','{"class":"WIND","gender":"MALE","MOR":80,"cost":14,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10189','{"class":"FIRE","gender":"MALE","MOR":77,"cost":45,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10060','{"class":"ABYSS","gender":"MALE","MOR":1,"cost":62,"grade":"MYTHIC RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10071','{"class":"WIND","gender":"MALE","MOR":32,"cost":10,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10086','{"class":"WIND","gender":"MALE","MOR":39,"cost":8,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10169','{"class":"WIND","gender":"MALE","MOR":78,"cost":14,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10137','{"class":"ICE","gender":"MALE","MOR":25,"cost":30,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10138','{"class":"WIND","gender":"MALE","MOR":25,"cost":26,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10020','{"class":"FIRE","gender":"MALE","MOR":23,"cost":23,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10463','{"class":"WIND","gender":"MALE","MOR":13,"cost":30,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10228','{"class":"FIRE","gender":"MALE","MOR":79,"cost":24,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10453','{"class":"WIND","gender":"MALE","MOR":41,"cost":6,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10293','{"class":"FIRE","gender":"MALE","MOR":80,"cost":25,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10010','{"class":"FIRE","gender":"MALE","MOR":41,"cost":13,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10380','{"class":"ICE","gender":"MALE","MOR":80,"cost":24,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10114','{"class":"WIND","gender":"MALE","MOR":21,"cost":7,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10401','{"class":"FIRE","gender":"MALE","MOR":31,"cost":12,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10315','{"class":"FIRE","gender":"MALE","MOR":36,"cost":10,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10026','{"class":"FIRE","gender":"MALE","MOR":40,"cost":11,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10191','{"class":"ICE","gender":"MALE","MOR":26,"cost":10,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10469','{"class":"FIRE","gender":"MALE","MOR":78,"cost":12,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10001','{"class":"WIND","gender":"MALE","MOR":29,"cost":10,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10183','{"class":"ICE","gender":"MALE","MOR":13,"cost":37,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10064','{"class":"WIND","gender":"MALE","MOR":35,"cost":7,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10444','{"class":"FIRE","gender":"MALE","MOR":15,"cost":5,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10279','{"class":"WIND","gender":"MALE","MOR":9,"cost":5,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10225','{"class":"FIRE","gender":"MALE","MOR":42,"cost":23,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10431','{"class":"WIND","gender":"MALE","MOR":28,"cost":8,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10332','{"class":"ICE","gender":"MALE","MOR":19,"cost":13,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10201','{"class":"WIND","gender":"MALE","MOR":47,"cost":6,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10346','{"class":"WIND","gender":"MALE","MOR":12,"cost":11,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10275','{"class":"ICE","gender":"MALE","MOR":12,"cost":11,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10124','{"class":"WIND","gender":"MALE","MOR":24,"cost":21,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10134','{"class":"WIND","gender":"MALE","MOR":12,"cost":20,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10037','{"class":"FIRE","gender":"MALE","MOR":11,"cost":12,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10031','{"class":"ICE","gender":"MALE","MOR":14,"cost":6,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10180','{"class":"ICE","gender":"MALE","MOR":31,"cost":17,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10390','{"class":"WIND","gender":"MALE","MOR":12,"cost":12,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10027','{"class":"ICE","gender":"MALE","MOR":11,"cost":6,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10033','{"class":"FIRE","gender":"MALE","MOR":1,"cost":11,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10353','{"class":"WIND","gender":"MALE","MOR":3,"cost":10,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10244','{"class":"FIRE","gender":"MALE","MOR":5,"cost":12,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10245','{"class":"WIND","gender":"MALE","MOR":11,"cost":11,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10292','{"class":"WIND","gender":"MALE","MOR":55,"cost":28,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10076','{"class":"ICE","gender":"MALE","MOR":35,"cost":7,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10045','{"class":"ICE","gender":"MALE","MOR":78,"cost":45,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10409','{"class":"FIRE","gender":"MALE","MOR":10,"cost":7,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10407','{"class":"ICE","gender":"MALE","MOR":69,"cost":23,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10036','{"class":"WIND","gender":"MALE","MOR":21,"cost":29,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10075','{"class":"WIND","gender":"MALE","MOR":30,"cost":9,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10173','{"class":"WIND","gender":"MALE","MOR":35,"cost":11,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10406','{"class":"ICE","gender":"MALE","MOR":77,"cost":33,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10328','{"class":"FIRE","gender":"MALE","MOR":60,"cost":15,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10329','{"class":"WIND","gender":"MALE","MOR":50,"cost":37,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10098','{"class":"FIRE","gender":"MALE","MOR":18,"cost":18,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10187','{"class":"FIRE","gender":"MALE","MOR":11,"cost":17,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10319','{"class":"FIRE","gender":"MALE","MOR":18,"cost":16,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10081','{"class":"WIND","gender":"MALE","MOR":15,"cost":32,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10252','{"class":"ICE","gender":"MALE","MOR":20,"cost":11,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10298','{"class":"FIRE","gender":"MALE","MOR":88,"cost":31,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10125','{"class":"FIRE","gender":"MALE","MOR":73,"cost":15,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10025','{"class":"FIRE","gender":"MALE","MOR":10,"cost":37,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10035','{"class":"ICE","gender":"MALE","MOR":12,"cost":28,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10112','{"class":"FIRE","gender":"MALE","MOR":55,"cost":36,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10270','{"class":"FIRE","gender":"FEMALE","MOR":19,"cost":16,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10069','{"class":"ICE","gender":"MALE","MOR":42,"cost":13,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10088','{"class":"FIRE","gender":"MALE","MOR":16,"cost":11,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10004','{"class":"WIND","gender":"MALE","MOR":78,"cost":9,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10420','{"class":"WIND","gender":"MALE","MOR":13,"cost":18,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10408','{"class":"WIND","gender":"MALE","MOR":18,"cost":19,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10205','{"class":"ICE","gender":"MALE","MOR":79,"cost":33,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10139','{"class":"WIND","gender":"MALE","MOR":20,"cost":6,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10347','{"class":"ICE","gender":"MALE","MOR":21,"cost":22,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10023','{"class":"WIND","gender":"MALE","MOR":49,"cost":6,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10448','{"class":"FIRE","gender":"MALE","MOR":27,"cost":11,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10067','{"class":"FIRE","gender":"MALE","MOR":16,"cost":38,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10005','{"class":"WIND","gender":"MALE","MOR":58,"cost":8,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10276','{"class":"WIND","gender":"MALE","MOR":39,"cost":20,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10259','{"class":"ICE","gender":"MALE","MOR":19,"cost":21,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10386','{"class":"WIND","gender":"MALE","MOR":30,"cost":24,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10105','{"class":"FIRE","gender":"MALE","MOR":27,"cost":22,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10077','{"class":"ICE","gender":"MALE","MOR":34,"cost":32,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10212','{"class":"WIND","gender":"MALE","MOR":17,"cost":5,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10065','{"class":"ICE","gender":"MALE","MOR":25,"cost":25,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10008','{"class":"WIND","gender":"MALE","MOR":79,"cost":11,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10425','{"class":"WIND","gender":"MALE","MOR":13,"cost":29,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10107','{"class":"WIND","gender":"MALE","MOR":29,"cost":10,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10032','{"class":"WIND","gender":"MALE","MOR":33,"cost":8,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10142','{"class":"ICE","gender":"MALE","MOR":72,"cost":5,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10089','{"class":"WIND","gender":"MALE","MOR":8,"cost":22,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10094','{"class":"WIND","gender":"MALE","MOR":21,"cost":7,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10350','{"class":"FIRE","gender":"MALE","MOR":80,"cost":35,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10366','{"class":"WIND","gender":"MALE","MOR":32,"cost":13,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10016','{"class":"WIND","gender":"MALE","MOR":12,"cost":18,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10385','{"class":"ICE","gender":"MALE","MOR":21,"cost":16,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10474','{"class":"WIND","gender":"MALE","MOR":58,"cost":13,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10287','{"class":"FIRE","gender":"MALE","MOR":18,"cost":18,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10182','{"class":"DARK","gender":"MALE","MOR":20,"cost":16,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10136','{"class":"ICE","gender":"MALE","MOR":16,"cost":27,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10209','{"class":"ICE","gender":"MALE","MOR":20,"cost":7,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10170','{"class":"FIRE","gender":"MALE","MOR":21,"cost":10,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10128','{"class":"FIRE","gender":"MALE","MOR":25,"cost":6,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10433','{"class":"WIND","gender":"MALE","MOR":19,"cost":26,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10374','{"class":"WIND","gender":"MALE","MOR":82,"cost":32,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10218','{"class":"FIRE","gender":"MALE","MOR":59,"cost":14,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10441','{"class":"FIRE","gender":"MALE","MOR":37,"cost":6,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10349','{"class":"FIRE","gender":"MALE","MOR":21,"cost":16,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10314','{"class":"WIND","gender":"MALE","MOR":31,"cost":6,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10337','{"class":"ICE","gender":"MALE","MOR":25,"cost":6,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10038','{"class":"WIND","gender":"MALE","MOR":21,"cost":7,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10365','{"class":"WIND","gender":"MALE","MOR":80,"cost":12,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10278','{"class":"WIND","gender":"MALE","MOR":79,"cost":23,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10251','{"class":"FIRE","gender":"MALE","MOR":82,"cost":14,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10109','{"class":"FIRE","gender":"MALE","MOR":60,"cost":42,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10017','{"class":"FIRE","gender":"MALE","MOR":60,"cost":30,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10015','{"class":"ICE","gender":"MALE","MOR":72,"cost":32,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10028','{"class":"WIND","gender":"MALE","MOR":55,"cost":7,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10181','{"class":"WIND","gender":"MALE","MOR":19,"cost":35,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10333','{"class":"FIRE","gender":"MALE","MOR":78,"cost":43,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10054','{"class":"DARK","gender":"MALE","MOR":8,"cost":46,"grade":"ULTRA RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10046','{"class":"WIND","gender":"MALE","MOR":75,"cost":22,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10066','{"class":"WIND","gender":"MALE","MOR":55,"cost":12,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10195','{"class":"ICE","gender":"MALE","MOR":10,"cost":15,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10283','{"class":"FIRE","gender":"MALE","MOR":65,"cost":14,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10284','{"class":"FIRE","gender":"MALE","MOR":40,"cost":20,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10321','{"class":"DARK","gender":"MALE","MOR":12,"cost":38,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10320','{"class":"FIRE","gender":"MALE","MOR":16,"cost":5,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10371','{"class":"FIRE","gender":"MALE","MOR":16,"cost":28,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10345','{"class":"FIRE","gender":"MALE","MOR":14,"cost":19,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10021','{"class":"WIND","gender":"MALE","MOR":20,"cost":20,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10424','{"class":"WIND","gender":"MALE","MOR":12,"cost":21,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10398','{"class":"ICE","gender":"MALE","MOR":24,"cost":16,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10318','{"class":"WIND","gender":"MALE","MOR":42,"cost":13,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10458','{"class":"FIRE","gender":"MALE","MOR":24,"cost":18,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10464','{"class":"FIRE","gender":"MALE","MOR":38,"cost":19,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10233','{"class":"FIRE","gender":"MALE","MOR":19,"cost":9,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10034','{"class":"WIND","gender":"MALE","MOR":35,"cost":14,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10171','{"class":"FIRE","gender":"MALE","MOR":75,"cost":13,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10119','{"class":"ICE","gender":"MALE","MOR":75,"cost":9,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10226','{"class":"WIND","gender":"MALE","MOR":11,"cost":16,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10307','{"class":"ICE","gender":"MALE","MOR":80,"cost":20,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10402','{"class":"WIND","gender":"MALE","MOR":13,"cost":7,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10009','{"class":"WIND","gender":"MALE","MOR":65,"cost":14,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10055','{"class":"WIND","gender":"MALE","MOR":18,"cost":7,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10013','{"class":"FIRE","gender":"MALE","MOR":55,"cost":39,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10313','{"class":"WIND","gender":"MALE","MOR":65,"cost":15,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10106','{"class":"ICE","gender":"MALE","MOR":16,"cost":6,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10316','{"class":"WIND","gender":"MALE","MOR":50,"cost":12,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10416','{"class":"WIND","gender":"MALE","MOR":45,"cost":11,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10057','{"class":"WIND","gender":"MALE","MOR":3,"cost":5,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10220','{"class":"FIRE","gender":"MALE","MOR":60,"cost":13,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10340','{"class":"FIRE","gender":"MALE","MOR":30,"cost":11,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10309','{"class":"FIRE","gender":"MALE","MOR":15,"cost":25,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10070','{"class":"ICE","gender":"MALE","MOR":78,"cost":39,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10113','{"class":"ICE","gender":"MALE","MOR":30,"cost":7,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10364','{"class":"ICE","gender":"MALE","MOR":17,"cost":10,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10410','{"class":"WIND","gender":"MALE","MOR":45,"cost":9,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10419','{"class":"WIND","gender":"MALE","MOR":12,"cost":25,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10053','{"class":"DARK","gender":"MALE","MOR":1,"cost":45,"grade":"ULTRA RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10176','{"class":"LIGHT","gender":"MALE","MOR":90,"cost":49,"grade":"ULTRA RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10200','{"class":"DARK","gender":"MALE","MOR":15,"cost":38,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10234','{"class":"FIRE","gender":"MALE","MOR":20,"cost":16,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10123','{"class":"FIRE","gender":"MALE","MOR":12,"cost":29,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10304','{"class":"DARK","gender":"MALE","MOR":85,"cost":51,"grade":"ULTRA RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10434','{"class":"FIRE","gender":"MALE","MOR":25,"cost":9,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10430','{"class":"WIND","gender":"MALE","MOR":22,"cost":9,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10379','{"class":"WIND","gender":"MALE","MOR":70,"cost":14,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10325','{"class":"DARK","gender":"FEMALE","MOR":1,"cost":46,"grade":"ULTRA RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10260','{"class":"ICE","gender":"FEMALE","MOR":58,"cost":13,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10300','{"class":"DARK","gender":"FEMALE","MOR":72,"cost":20,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10462','{"class":"WIND","gender":"FEMALE","MOR":65,"cost":15,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10072','{"class":"DARK","gender":"FEMALE","MOR":10,"cost":26,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10256','{"class":"DARK","gender":"FEMALE","MOR":55,"cost":21,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10115','{"class":"WIND","gender":"FEMALE","MOR":89,"cost":19,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10348','{"class":"ICE","gender":"FEMALE","MOR":24,"cost":8,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10339','{"class":"ICE","gender":"FEMALE","MOR":28,"cost":8,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10394','{"class":"LIGHT","gender":"FEMALE","MOR":88,"cost":25,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10047','{"class":"WIND","gender":"FEMALE","MOR":82,"cost":27,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10188','{"class":"WIND","gender":"FEMALE","MOR":80,"cost":34,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10132','{"class":"WIND","gender":"FEMALE","MOR":81,"cost":21,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10087','{"class":"ICE","gender":"FEMALE","MOR":21,"cost":29,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10202','{"class":"FIRE","gender":"FEMALE","MOR":45,"cost":19,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10184','{"class":"WIND","gender":"FEMALE","MOR":31,"cost":8,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10103','{"class":"DARK","gender":"FEMALE","MOR":89,"cost":19,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10265','{"class":"WIND","gender":"FEMALE","MOR":79,"cost":25,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10266','{"class":"WIND","gender":"FEMALE","MOR":88,"cost":18,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10465','{"class":"WIND","gender":"FEMALE","MOR":85,"cost":43,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10466','{"class":"WIND","gender":"FEMALE","MOR":88,"cost":22,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10002','{"class":"WIND","gender":"FEMALE","MOR":31,"cost":9,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10289','{"class":"WIND","gender":"FEMALE","MOR":52,"cost":9,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10083','{"class":"WIND","gender":"FEMALE","MOR":11,"cost":5,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10079','{"class":"FIRE","gender":"FEMALE","MOR":13,"cost":11,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10338','{"class":"WIND","gender":"FEMALE","MOR":70,"cost":34,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10336','{"class":"WIND","gender":"FEMALE","MOR":78,"cost":34,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10418','{"class":"ICE","gender":"FEMALE","MOR":74,"cost":40,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10323','{"class":"FIRE","gender":"FEMALE","MOR":72,"cost":49,"grade":"ULTRA RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10403','{"class":"ICE","gender":"FEMALE","MOR":70,"cost":14,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10185','{"class":"FIRE","gender":"FEMALE","MOR":88,"cost":9,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10308','{"class":"ICE","gender":"FEMALE","MOR":55,"cost":28,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10413','{"class":"WIND","gender":"FEMALE","MOR":88,"cost":35,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10415','{"class":"DARK","gender":"FEMALE","MOR":90,"cost":43,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10414','{"class":"ICE","gender":"FEMALE","MOR":85,"cost":35,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10186','{"class":"ICE","gender":"FEMALE","MOR":43,"cost":37,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10295','{"class":"WIND","gender":"FEMALE","MOR":25,"cost":12,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10297','{"class":"WIND","gender":"FEMALE","MOR":92,"cost":23,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10317','{"class":"ICE","gender":"FEMALE","MOR":72,"cost":41,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10108','{"class":"LIGHT","gender":"FEMALE","MOR":90,"cost":41,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10417','{"class":"ICE","gender":"FEMALE","MOR":78,"cost":17,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10172','{"class":"FIRE","gender":"FEMALE","MOR":21,"cost":6,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10262','{"class":"WIND","gender":"FEMALE","MOR":40,"cost":8,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10261','{"class":"WIND","gender":"FEMALE","MOR":58,"cost":20,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10290','{"class":"LIGHT","gender":"FEMALE","MOR":99,"cost":17,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10384','{"class":"WIND","gender":"FEMALE","MOR":55,"cost":16,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10383','{"class":"DARK","gender":"FEMALE","MOR":85,"cost":42,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10110','{"class":"FIRE","gender":"FEMALE","MOR":58,"cost":34,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10442','{"class":"ICE","gender":"FEMALE","MOR":60,"cost":30,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10129','{"class":"WIND","gender":"FEMALE","MOR":78,"cost":15,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10014','{"class":"FIRE","gender":"FEMALE","MOR":21,"cost":7,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10235','{"class":"ICE","gender":"FEMALE","MOR":35,"cost":6,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10111','{"class":"FIRE","gender":"FEMALE","MOR":80,"cost":25,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10357','{"class":"FIRE","gender":"FEMALE","MOR":15,"cost":15,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10360','{"class":"WIND","gender":"FEMALE","MOR":12,"cost":13,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10306','{"class":"WIND","gender":"FEMALE","MOR":90,"cost":17,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10285','{"class":"WIND","gender":"FEMALE","MOR":20,"cost":19,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10343','{"class":"FIRE","gender":"FEMALE","MOR":45,"cost":27,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10271','{"class":"WIND","gender":"FEMALE","MOR":13,"cost":12,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10003','{"class":"FIRE","gender":"FEMALE","MOR":27,"cost":9,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10095','{"class":"FIRE","gender":"FEMALE","MOR":42,"cost":22,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10096','{"class":"ICE","gender":"FEMALE","MOR":43,"cost":28,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10342','{"class":"WIND","gender":"FEMALE","MOR":41,"cost":12,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10327','{"class":"ICE","gender":"FEMALE","MOR":21,"cost":14,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10286','{"class":"WIND","gender":"FEMALE","MOR":65,"cost":10,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10273','{"class":"WIND","gender":"FEMALE","MOR":32,"cost":10,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10253','{"class":"FIRE","gender":"FEMALE","MOR":52,"cost":15,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10061','{"class":"ICE","gender":"FEMALE","MOR":31,"cost":36,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10460','{"class":"WIND","gender":"FEMALE","MOR":51,"cost":10,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10459','{"class":"WIND","gender":"FEMALE","MOR":49,"cost":13,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10461','{"class":"FIRE","gender":"FEMALE","MOR":57,"cost":23,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10296','{"class":"WIND","gender":"FEMALE","MOR":41,"cost":21,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10246','{"class":"WIND","gender":"FEMALE","MOR":51,"cost":20,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10204','{"class":"WIND","gender":"FEMALE","MOR":60,"cost":24,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10447','{"class":"WIND","gender":"FEMALE","MOR":44,"cost":21,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10429','{"class":"WIND","gender":"FEMALE","MOR":50,"cost":23,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10211','{"class":"WIND","gender":"FEMALE","MOR":21,"cost":8,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10193','{"class":"ICE","gender":"FEMALE","MOR":52,"cost":9,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10120','{"class":"FIRE","gender":"FEMALE","MOR":24,"cost":13,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10101','{"class":"WIND","gender":"FEMALE","MOR":33,"cost":14,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10099','{"class":"WIND","gender":"FEMALE","MOR":50,"cost":10,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10241','{"class":"WIND","gender":"FEMALE","MOR":49,"cost":20,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10044','{"class":"WIND","gender":"FEMALE","MOR":42,"cost":21,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10043','{"class":"WIND","gender":"FEMALE","MOR":25,"cost":30,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10376','{"class":"WIND","gender":"FEMALE","MOR":71,"cost":10,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10377','{"class":"WIND","gender":"FEMALE","MOR":81,"cost":8,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10322','{"class":"ICE","gender":"FEMALE","MOR":62,"cost":50,"grade":"ULTRA RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10239','{"class":"WIND","gender":"FEMALE","MOR":31,"cost":31,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10039','{"class":"WIND","gender":"FEMALE","MOR":30,"cost":8,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10310','{"class":"WIND","gender":"FEMALE","MOR":19,"cost":8,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10247','{"class":"ICE","gender":"FEMALE","MOR":72,"cost":14,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10248','{"class":"WIND","gender":"FEMALE","MOR":82,"cost":6,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10221','{"class":"FIRE","gender":"FEMALE","MOR":80,"cost":9,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10011','{"class":"WIND","gender":"FEMALE","MOR":28,"cost":7,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10140','{"class":"WIND","gender":"FEMALE","MOR":32,"cost":11,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10388','{"class":"WIND","gender":"FEMALE","MOR":57,"cost":7,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10121','{"class":"WIND","gender":"FEMALE","MOR":14,"cost":16,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10236','{"class":"FIRE","gender":"FEMALE","MOR":75,"cost":42,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10102','{"class":"WIND","gender":"FEMALE","MOR":9,"cost":26,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10092','{"class":"WIND","gender":"FEMALE","MOR":21,"cost":17,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10194','{"class":"WIND","gender":"FEMALE","MOR":29,"cost":17,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10361','{"class":"WIND","gender":"FEMALE","MOR":6,"cost":27,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10354','{"class":"ICE","gender":"FEMALE","MOR":3,"cost":36,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10254','{"class":"WIND","gender":"FEMALE","MOR":42,"cost":18,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10222','{"class":"WIND","gender":"FEMALE","MOR":24,"cost":17,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10470','{"class":"FIRE","gender":"FEMALE","MOR":57,"cost":23,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10059','{"class":"DARK","gender":"FEMALE","MOR":6,"cost":17,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10428','{"class":"WIND","gender":"FEMALE","MOR":77,"cost":5,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10471','{"class":"FIRE","gender":"FEMALE","MOR":80,"cost":14,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10450','{"class":"ICE","gender":"FEMALE","MOR":54,"cost":10,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10432','{"class":"WIND","gender":"FEMALE","MOR":88,"cost":22,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10359','{"class":"ICE","gender":"FEMALE","MOR":77,"cost":51,"grade":"ULTRA RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10362','{"class":"DARK","gender":"FEMALE","MOR":80,"cost":33,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10454','{"class":"ICE","gender":"FEMALE","MOR":13,"cost":21,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10363','{"class":"WIND","gender":"FEMALE","MOR":78,"cost":9,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10436','{"class":"FIRE","gender":"FEMALE","MOR":21,"cost":12,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10412','{"class":"ICE","gender":"FEMALE","MOR":13,"cost":12,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10040','{"class":"FIRE","gender":"FEMALE","MOR":82,"cost":15,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10042','{"class":"WIND","gender":"FEMALE","MOR":80,"cost":24,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10237','{"class":"ICE","gender":"FEMALE","MOR":75,"cost":25,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10207','{"class":"ICE","gender":"FEMALE","MOR":6,"cost":27,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10208','{"class":"DARK","gender":"FEMALE","MOR":2,"cost":31,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10303','{"class":"WIND","gender":"FEMALE","MOR":19,"cost":9,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10468','{"class":"WIND","gender":"FEMALE","MOR":88,"cost":13,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10467','{"class":"LIGHT","gender":"FEMALE","MOR":90,"cost":15,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10294','{"class":"WIND","gender":"FEMALE","MOR":81,"cost":15,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10258','{"class":"WIND","gender":"FEMALE","MOR":80,"cost":25,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10056','{"class":"WIND","gender":"FEMALE","MOR":73,"cost":14,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10041','{"class":"WIND","gender":"FEMALE","MOR":72,"cost":32,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10255','{"class":"ICE","gender":"FEMALE","MOR":75,"cost":44,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10141','{"class":"WIND","gender":"FEMALE","MOR":43,"cost":22,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10133','{"class":"WIND","gender":"FEMALE","MOR":51,"cost":23,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10091','{"class":"DARK","gender":"FEMALE","MOR":24,"cost":21,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10090','{"class":"ICE","gender":"FEMALE","MOR":35,"cost":20,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10344','{"class":"ICE","gender":"FEMALE","MOR":78,"cost":7,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10330','{"class":"ICE","gender":"FEMALE","MOR":55,"cost":11,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10263','{"class":"FIRE","gender":"FEMALE","MOR":80,"cost":6,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10249','{"class":"FIRE","gender":"FEMALE","MOR":39,"cost":13,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10063','{"class":"ICE","gender":"FEMALE","MOR":49,"cost":14,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10052','{"class":"DARK","gender":"FEMALE","MOR":6,"cost":39,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10190','{"class":"FIRE","gender":"FEMALE","MOR":61,"cost":13,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10174','{"class":"WIND","gender":"FEMALE","MOR":52,"cost":12,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10122','{"class":"ICE","gender":"FEMALE","MOR":68,"cost":14,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10029','{"class":"FIRE","gender":"FEMALE","MOR":75,"cost":23,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10232','{"class":"WIND","gender":"FEMALE","MOR":80,"cost":12,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10104','{"class":"WIND","gender":"FEMALE","MOR":66,"cost":24,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10378','{"class":"ICE","gender":"FEMALE","MOR":42,"cost":23,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10126','{"class":"WIND","gender":"FEMALE","MOR":44,"cost":31,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10062','{"class":"ABYSS","gender":"FEMALE","MOR":1,"cost":58,"grade":"MYTHIC RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10203','{"class":"LIGHT","gender":"FEMALE","MOR":80,"cost":33,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10097','{"class":"WIND","gender":"FEMALE","MOR":82,"cost":22,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10280','{"class":"ICE","gender":"FEMALE","MOR":23,"cost":10,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10352','{"class":"WIND","gender":"FEMALE","MOR":21,"cost":10,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10277','{"class":"WIND","gender":"FEMALE","MOR":39,"cost":7,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10100','{"class":"FIRE","gender":"FEMALE","MOR":39,"cost":9,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10451','{"class":"ICE","gender":"FEMALE","MOR":49,"cost":12,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10389','{"class":"WIND","gender":"FEMALE","MOR":51,"cost":11,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10264','{"class":"ICE","gender":"FEMALE","MOR":61,"cost":11,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10438','{"class":"ICE","gender":"FEMALE","MOR":59,"cost":13,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10177','{"class":"WIND","gender":"FEMALE","MOR":30,"cost":13,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10178','{"class":"ICE","gender":"FEMALE","MOR":29,"cost":12,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10372','{"class":"ICE","gender":"FEMALE","MOR":68,"cost":24,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10373','{"class":"WIND","gender":"FEMALE","MOR":50,"cost":35,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10130','{"class":"WIND","gender":"FEMALE","MOR":81,"cost":7,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10131','{"class":"DARK","gender":"FEMALE","MOR":72,"cost":31,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10341','{"class":"ICE","gender":"FEMALE","MOR":82,"cost":44,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10272','{"class":"WIND","gender":"FEMALE","MOR":69,"cost":6,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10117','{"class":"FIRE","gender":"FEMALE","MOR":82,"cost":44,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10078','{"class":"FIRE","gender":"FEMALE","MOR":13,"cost":30,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10084','{"class":"FIRE","gender":"FEMALE","MOR":56,"cost":10,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10085','{"class":"FIRE","gender":"FEMALE","MOR":59,"cost":11,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10217','{"class":"DARK","gender":"FEMALE","MOR":3,"cost":40,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10216','{"class":"DARK","gender":"FEMALE","MOR":8,"cost":39,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10324','{"class":"DARK","gender":"FEMALE","MOR":90,"cost":53,"grade":"ULTRA RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10006','{"class":"FIRE","gender":"FEMALE","MOR":80,"cost":14,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10068','{"class":"DARK","gender":"FEMALE","MOR":65,"cost":41,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10400','{"class":"ICE","gender":"FEMALE","MOR":35,"cost":26,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10331','{"class":"LIGHT","gender":"FEMALE","MOR":99,"cost":52,"grade":"ULTRA RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10250','{"class":"WIND","gender":"FEMALE","MOR":57,"cost":7,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10022','{"class":"FIRE","gender":"FEMALE","MOR":82,"cost":8,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10437','{"class":"DARK","gender":"FEMALE","MOR":6,"cost":18,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10426','{"class":"FIRE","gender":"FEMALE","MOR":16,"cost":18,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10381','{"class":"FIRE","gender":"FEMALE","MOR":41,"cost":5,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10179','{"class":"WIND","gender":"FEMALE","MOR":65,"cost":8,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10215','{"class":"FIRE","gender":"FEMALE","MOR":72,"cost":13,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10214','{"class":"FIRE","gender":"FEMALE","MOR":72,"cost":31,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10223','{"class":"WIND","gender":"FEMALE","MOR":80,"cost":12,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10269','{"class":"WIND","gender":"FEMALE","MOR":6,"cost":38,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10268','{"class":"WIND","gender":"FEMALE","MOR":11,"cost":29,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10473','{"class":"WIND","gender":"FEMALE","MOR":12,"cost":28,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10135','{"class":"DARK","gender":"FEMALE","MOR":77,"cost":25,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10206','{"class":"ICE","gender":"FEMALE","MOR":80,"cost":11,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10240','{"class":"WIND","gender":"FEMALE","MOR":72,"cost":32,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10238','{"class":"WIND","gender":"FEMALE","MOR":45,"cost":12,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10230','{"class":"WIND","gender":"FEMALE","MOR":78,"cost":22,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10227','{"class":"WIND","gender":"FEMALE","MOR":87,"cost":24,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10387','{"class":"WIND","gender":"FEMALE","MOR":25,"cost":10,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10281','{"class":"WIND","gender":"FEMALE","MOR":80,"cost":41,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10472','{"class":"WIND","gender":"FEMALE","MOR":78,"cost":8,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10455','{"class":"FIRE","gender":"FEMALE","MOR":80,"cost":24,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10423','{"class":"FIRE","gender":"FEMALE","MOR":21,"cost":10,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10456','{"class":"ICE","gender":"FEMALE","MOR":85,"cost":7,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10457','{"class":"WIND","gender":"FEMALE","MOR":83,"cost":33,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10224','{"class":"WIND","gender":"FEMALE","MOR":79,"cost":24,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10382','{"class":"WIND","gender":"FEMALE","MOR":30,"cost":6,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10393','{"class":"ICE","gender":"FEMALE","MOR":89,"cost":33,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10030','{"class":"WIND","gender":"FEMALE","MOR":72,"cost":9,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10391','{"class":"WIND","gender":"FEMALE","MOR":21,"cost":19,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10392','{"class":"WIND","gender":"FEMALE","MOR":88,"cost":42,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10311','{"class":"ABYSS","gender":"FEMALE","MOR":100,"cost":65,"grade":"MYTHIC RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10397','{"class":"ICE","gender":"FEMALE","MOR":88,"cost":21,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10242','{"class":"WIND","gender":"FEMALE","MOR":55,"cost":15,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10356','{"class":"ICE","gender":"FEMALE","MOR":21,"cost":10,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10274','{"class":"WIND","gender":"FEMALE","MOR":21,"cost":6,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10192','{"class":"FIRE","gender":"FEMALE","MOR":78,"cost":15,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10093','{"class":"WIND","gender":"FEMALE","MOR":85,"cost":8,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10312','{"class":"DARK","gender":"FEMALE","MOR":22,"cost":47,"grade":"ULTRA RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10243','{"class":"ICE","gender":"FEMALE","MOR":40,"cost":14,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10231','{"class":"LIGHT","gender":"FEMALE","MOR":88,"cost":35,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10399','{"class":"WIND","gender":"FEMALE","MOR":90,"cost":43,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10050','{"class":"FIRE","gender":"MALE","MOR":28,"cost":9,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10073','{"class":"LIGHT","gender":"FEMALE","MOR":88,"cost":33,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10229','{"class":"FIRE","gender":"FEMALE","MOR":65,"cost":34,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10012','{"class":"WIND","gender":"FEMALE","MOR":45,"cost":12,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10219','{"class":"DARK","gender":"FEMALE","MOR":55,"cost":8,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10305','{"class":"FIRE","gender":"FEMALE","MOR":66,"cost":9,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10443','{"class":"ICE","gender":"FEMALE","MOR":75,"cost":8,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10024','{"class":"ICE","gender":"FEMALE","MOR":88,"cost":41,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10446','{"class":"FIRE","gender":"FEMALE","MOR":10,"cost":13,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10427','{"class":"FIRE","gender":"FEMALE","MOR":80,"cost":14,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10411','{"class":"ICE","gender":"FEMALE","MOR":80,"cost":9,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10058','{"class":"FIRE","gender":"FEMALE","MOR":75,"cost":54,"grade":"ULTRA RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10395','{"class":"WIND","gender":"FEMALE","MOR":87,"cost":15,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10213','{"class":"FIRE","gender":"FEMALE","MOR":52,"cost":44,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10175','{"class":"WIND","gender":"FEMALE","MOR":41,"cost":19,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10007','{"class":"WIND","gender":"FEMALE","MOR":44,"cost":20,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10257','{"class":"ICE","gender":"FEMALE","MOR":31,"cost":31,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10291','{"class":"DARK","gender":"FEMALE","MOR":78,"cost":54,"grade":"ULTRA RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10326','{"class":"DARK","gender":"FEMALE","MOR":1,"cost":55,"grade":"MYTHIC RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10288','{"class":"FIRE","gender":"FEMALE","MOR":6,"cost":30,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10282','{"class":"ICE","gender":"FEMALE","MOR":12,"cost":11,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10405','{"class":"LIGHT","gender":"FEMALE","MOR":89,"cost":18,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10452','{"class":"ICE","gender":"FEMALE","MOR":70,"cost":34,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10370','{"class":"ICE","gender":"MALE","MOR":12,"cost":19,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10368','{"class":"WIND","gender":"MALE","MOR":11,"cost":19,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10369','{"class":"ICE","gender":"MALE","MOR":1,"cost":36,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10358','{"class":"WIND","gender":"MALE","MOR":92,"cost":55,"grade":"ULTRA RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10351','{"class":"WIND","gender":"MALE","MOR":16,"cost":10,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10449','{"class":"WIND","gender":"MALE","MOR":12,"cost":6,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10422','{"class":"WIND","gender":"MALE","MOR":20,"cost":8,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10421','{"class":"WIND","gender":"MALE","MOR":9,"cost":13,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10396','{"class":"ICE","gender":"MALE","MOR":77,"cost":15,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10435','{"class":"FIRE","gender":"MALE","MOR":55,"cost":50,"grade":"ULTRA RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10127','{"class":"LIGHT","gender":"FEMALE","MOR":80,"cost":44,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10439','{"class":"WIND","gender":"FEMALE","MOR":75,"cost":45,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10355','{"class":"ICE","gender":"FEMALE","MOR":78,"cost":14,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10367','{"class":"ICE","gender":"FEMALE","MOR":80,"cost":25,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10440','{"class":"WIND","gender":"FEMALE","MOR":8,"cost":51,"grade":"ULTRA RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10267','{"class":"ICE","gender":"FEMALE","MOR":80,"cost":35,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10509','{"class":"WIND","gender":"FEMALE","MOR":55,"cost":33,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10301','{"class":"DARK","gender":"FEMALE","MOR":75,"cost":45,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10210','{"class":"WIND","gender":"MALE","MOR":55,"cost":30,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10143','{"class":"FIRE","gender":"MALE","MOR":10,"cost":10,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10144','{"class":"WIND","gender":"MALE","MOR":10,"cost":10,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10145','{"class":"ICE","gender":"MALE","MOR":10,"cost":10,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10146','{"class":"FIRE","gender":"MALE","MOR":10,"cost":10,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10147','{"class":"WIND","gender":"MALE","MOR":10,"cost":10,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10148','{"class":"ICE","gender":"MALE","MOR":10,"cost":20,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10149','{"class":"FIRE","gender":"MALE","MOR":10,"cost":20,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10150','{"class":"WIND","gender":"MALE","MOR":10,"cost":20,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10151','{"class":"ICE","gender":"MALE","MOR":10,"cost":30,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10152','{"class":"FIRE","gender":"MALE","MOR":10,"cost":30,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10153','{"class":"WIND","gender":"FEMALE","MOR":10,"cost":10,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10154','{"class":"ICE","gender":"FEMALE","MOR":10,"cost":10,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10155','{"class":"FIRE","gender":"FEMALE","MOR":10,"cost":10,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10156','{"class":"WIND","gender":"FEMALE","MOR":10,"cost":10,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10157','{"class":"ICE","gender":"FEMALE","MOR":10,"cost":10,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10158','{"class":"FIRE","gender":"FEMALE","MOR":10,"cost":10,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10159','{"class":"WIND","gender":"FEMALE","MOR":10,"cost":20,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10160','{"class":"ICE","gender":"FEMALE","MOR":10,"cost":20,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10161','{"class":"FIRE","gender":"FEMALE","MOR":10,"cost":20,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10162','{"class":"WIND","gender":"FEMALE","MOR":10,"cost":20,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10163','{"class":"ICE","gender":"FEMALE","MOR":10,"cost":30,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10164','{"class":"FIRE","gender":"FEMALE","MOR":10,"cost":30,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10165','{"class":"WIND","gender":"FEMALE","MOR":10,"cost":30,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10166','{"class":"DARK","gender":"FEMALE","MOR":10,"cost":30,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10167','{"class":"DARK","gender":"FEMALE","MOR":10,"cost":30,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10168','{"class":"DARK","gender":"FEMALE","MOR":10,"cost":30,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10082','{"class":"WIND","gender":"MALE","MOR":80,"cost":30,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10302','{"class":"WIND","gender":"FEMALE","MOR":10,"cost":20,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10196','{"class":"WIND","gender":"FEMALE","MOR":70,"cost":12,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10197','{"class":"WIND","gender":"FEMALE","MOR":70,"cost":12,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10198','{"class":"WIND","gender":"FEMALE","MOR":70,"cost":12,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10199','{"class":"WIND","gender":"FEMALE","MOR":70,"cost":16,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10116','{"class":"FIRE","gender":"FEMALE","MOR":80,"cost":35,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10335','{"class":"ABYSS","gender":"FEMALE","MOR":99,"cost":100,"grade":"MYTHIC RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10334','{"class":"VOID","gender":"FEMALE","MOR":100,"cost":185,"grade":"LEGENDARY RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10475','{"class":"DARK","gender":"MALE","MOR":10,"cost":45,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10476','{"class":"WIND","gender":"MALE","MOR":55,"cost":10,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10477','{"class":"WIND","gender":"MALE","MOR":55,"cost":10,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10478','{"class":"WIND","gender":"MALE","MOR":55,"cost":20,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10479','{"class":"ICE","gender":"MALE","MOR":55,"cost":20,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10480','{"class":"ICE","gender":"MALE","MOR":12,"cost":30,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10481','{"class":"ICE","gender":"MALE","MOR":12,"cost":30,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10482','{"class":"FIRE","gender":"MALE","MOR":3,"cost":30,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10483','{"class":"FIRE","gender":"MALE","MOR":7,"cost":30,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10484','{"class":"FIRE","gender":"MALE","MOR":4,"cost":30,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10485','{"class":"FIRE","gender":"FEMALE","MOR":24,"cost":20,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10486','{"class":"FIRE","gender":"FEMALE","MOR":54,"cost":20,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10487','{"class":"WIND","gender":"MALE","MOR":70,"cost":10,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10488','{"class":"ICE","gender":"MALE","MOR":3,"cost":45,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10489','{"class":"FIRE","gender":"MALE","MOR":13,"cost":30,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10490','{"class":"WIND","gender":"FEMALE","MOR":80,"cost":45,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10491','{"class":"ICE","gender":"FEMALE","MOR":80,"cost":45,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10492','{"class":"LIGHT","gender":"MALE","MOR":80,"cost":10,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10493','{"class":"LIGHT","gender":"FEMALE","MOR":82,"cost":30,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10494','{"class":"WIND","gender":"MALE","MOR":21,"cost":10,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10495','{"class":"ICE","gender":"MALE","MOR":18,"cost":20,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10496','{"class":"FIRE","gender":"MALE","MOR":6,"cost":30,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10497','{"class":"WIND","gender":"FEMALE","MOR":33,"cost":10,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10498','{"class":"ICE","gender":"FEMALE","MOR":24,"cost":20,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10499','{"class":"FIRE","gender":"FEMALE","MOR":27,"cost":30,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10500','{"class":"DARK","gender":"FEMALE","MOR":0,"cost":20,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10501','{"class":"DARK","gender":"FEMALE","MOR":0,"cost":30,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10502','{"class":"DARK","gender":"FEMALE","MOR":50,"cost":45,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10503','{"class":"DARK","gender":"FEMALE","MOR":99,"cost":55,"grade":"ULTRA RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10504','{"class":"LIGHT","gender":"FEMALE","MOR":99,"cost":55,"grade":"ULTRA RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10505','{"class":"ICE","gender":"FEMALE","MOR":42,"cost":30,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10506','{"class":"ICE","gender":"FEMALE","MOR":23,"cost":30,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10507','{"class":"ICE","gender":"FEMALE","MOR":16,"cost":30,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10508','{"class":"FIRE","gender":"MALE","MOR":76,"cost":45,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10510','{"class":"FIRE","gender":"FEMALE","MOR":34,"cost":30,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+-- END GENERATED PHASE2 STORY
+
+create or replace function public._clear_enabled_v2(m text) returns boolean language sql stable security definer
+set search_path=pg_catalog,public,pg_temp as $$ select coalesce((select enabled from public.battle_policy_v2 where mode=case when m='tower_sweep' then 'tower' else m end),false) $$;
+create or replace function public._clear_access_v2(u uuid,m text,t text) returns boolean language sql stable security definer
+set search_path=pg_catalog,public,pg_temp as $$
+ select exists(select 1 from public.battle_clear_receipts_v2 where user_id=u and mode=m and target=t)
+ or case when m='story' then coalesce((select cleared->split_part(t,':',1) @> to_jsonb(split_part(t,':',2)::int) from public.battle_legacy_access_v2 where user_id=u),false)
+ when m='tower' then coalesce((select (tower_best->>split_part(t,':',1))::int >= split_part(t,':',2)::int from public.battle_legacy_access_v2 where user_id=u),false)
+ else exists(select 1 from public.arcade_tut_claims where user_id=u and stage=t::int) end
+$$;
+create or replace function public._clear_grant_v2(u uuid,rw jsonb,kind text,ref_ text) returns jsonb language plpgsql security definer
+set search_path=pg_catalog,public,pg_temp as $$
+declare prior public.reward_claims; res jsonb:='{}'; k text; v jsonb; w jsonb; tk int; g jsonb;
+begin
+ if kind not in ('tutorial_v2','chapter_v2','star_v2','tower_v2') then raise exception 'invalid grant kind'; end if;
+ for k,v in select * from jsonb_each(rw) loop
+  if k not in ('gold','blood','shard','soul','gem','tickets') or jsonb_typeof(v)<>'number' or v::text !~ '^[0-9]+$' or v::numeric>2147483647 then raise exception 'invalid reward'; end if;
+ end loop;
+ perform pg_advisory_xact_lock(hashtext('gem:'||u::text));
+ select * into prior from public.reward_claims where user_id=u and reward_kind=kind and source_or_period=ref_;
+ if found then return prior.result; end if;
+ insert into public.reward_claims(user_id,reward_kind,source_or_period,reward,rule_version) values(u,kind,ref_,rw,3);
+ w:=rw-'gem'-'tickets'; if w<>'{}' then res:=res||jsonb_build_object('wallet',public._wallet_add(u,w,kind)); end if;
+ if coalesce((rw->>'gem')::int,0)>0 then
+  g:=public._gem_add(u,(rw->>'gem')::int,0,kind,'p2:'||ref_,jsonb_build_object('validation','plausibility-v3'));
+  res:=res||jsonb_build_object('gem',g->'gem');
+ end if;
+ if coalesce((rw->>'tickets')::int,0)>0 then
+  insert into public.story_gacha(user_id,last_draw) values(u,public._gem_day()-1) on conflict do nothing;
+  update public.story_gacha set tickets=tickets+(rw->>'tickets')::int,updated_at=now() where user_id=u returning tickets into tk;
+  res:=res||jsonb_build_object('tickets',tk);
+ end if;
+ res:=res||jsonb_build_object('gave',rw);
+ update public.reward_claims set result=res where user_id=u and reward_kind=kind and source_or_period=ref_;
+ return res;
+end $$;
+
+create or replace function public._clear_session_v2(s public.battle_sessions_v2) returns jsonb language sql stable security definer
+set search_path=pg_catalog,public,pg_temp as $$
+ select jsonb_build_object('ok',true,'session',s.id,'mode',s.mode,'target',s.target,'seed',s.seed,
+ 'rule_version',3,'validation','plausibility-v3','issued_at',s.issued_at,'expires_at',s.expires_at,
+ 'status',s.status,'min_seconds',(s.snapshot->>'min_seconds')::numeric,'snapshot',s.snapshot,
+ 'data',case when s.mode='story' then (select data from public.story_progress where user_id=s.user_id) else null end)
+$$;
+create or replace function public._clear_close_v2(s public.battle_sessions_v2,st text) returns void language plpgsql security definer
+set search_path=pg_catalog,public,pg_temp as $$
+declare d jsonb;
+begin
+ if s.status<>'issued' then return; end if;
+ if s.mode='story' then
+  d:=public._story_lock(s.user_id);
+  if d->'battle'->>'session'=s.id::text then perform public._phase2_old_story_abort_phase(); end if;
+ end if;
+ update public.battle_sessions_v2 set status=st,finished_at=clock_timestamp() where id=s.id and status='issued';
+end $$;
+create or replace function public.battle_session_start_v2(p_mode text,p_target text,p_party jsonb,p_request uuid) returns jsonb
+language plpgsql security definer set search_path=pg_catalog,public,pg_temp as $$
+declare u uuid:=auth.uid(); s public.battle_sessions_v2; old public.battle_sessions_v2; cfg jsonb; d jsonb; variant_ text;
+ ch int; ph int; fl int; tw text; r public.tower_progress; cards jsonb:='[]'; o jsonb; x text; cid text; ids text[]:='{}';
+ forced jsonb; allowed jsonb; pp jsonb; v text; snap jsonb; cost int:=0; mana_ int; seed_ int; min_ numeric; lv int; max_ int;
+begin
+ if u is null then raise exception 'login required'; end if;
+ if p_mode is null or not public._clear_enabled_v2(p_mode) then raise exception 'reward verification pending'; end if;
+ if p_target is null or length(p_target)>40 or p_request is null or jsonb_typeof(p_party) is distinct from 'array'
+ or jsonb_array_length(p_party)>10 or octet_length(p_party::text)>2048
+ or exists(select 1 from jsonb_array_elements(p_party) a where jsonb_typeof(a)<>'string') then raise exception 'invalid battle request'; end if;
+ perform pg_advisory_xact_lock(hashtext('battle-v2:'||u::text));
+ perform pg_advisory_xact_lock(hashtext('gem:'||u::text));
+ select * into s from public.battle_sessions_v2 where user_id=u and request_id=p_request for update;
+ if found then
+  if s.mode<>p_mode or s.target<>p_target or s.party<>p_party then raise exception 'request conflict'; end if;
+  if s.status='issued' and s.expires_at<=clock_timestamp() then perform public._clear_close_v2(s,'expired'); select * into s from public.battle_sessions_v2 where id=s.id; end if;
+  return public._clear_session_v2(s);
+ end if;
+ if (select count(*) from public.battle_sessions_v2 where user_id=u and issued_at >= (public._gem_day()::timestamp at time zone 'Asia/Seoul'))>=500 then raise exception 'session issuance limit'; end if;
+ insert into public.battle_legacy_access_v2(user_id) values(u) on conflict do nothing;
+ -- Starting a different battle replaces/refunds an unfinished story battle exactly
+ -- as before; the old token becomes unusable. Reissued stage keeps the same seed.
+ for old in select * from public.battle_sessions_v2 where user_id=u and status='issued' for update loop
+  perform public._clear_close_v2(old,case when old.expires_at<=clock_timestamp() then 'expired' else 'aborted' end);
+ end loop;
+ d:=public._story_lock(u); lv:=(public._player_sync(u)).level;
+ if p_mode='tutorial' then
+  if p_target!~'^[1-3]$' or p_party<>'[]' then raise exception 'invalid tutorial stage or party'; end if;
+  ph:=p_target::int;
+  if ph>1 and not public._clear_access_v2(u,'tutorial',(ph-1)::text) then raise exception 'previous tutorial first'; end if;
+  select definition into cfg from public.battle_tutorial_defs_v2 where stage=ph;
+  min_:=3;
+ elsif p_mode='story' then
+  if p_target!~'^(0|[1-9][0-9]?):[1-9][0-9]?$' then raise exception 'invalid story target'; end if;
+  ch:=split_part(p_target,':',1)::int; ph:=split_part(p_target,':',2)::int;
+  select definition into cfg from public.battle_story_defs_v2 where chapter=ch and phase=ph and variant='';
+  if cfg is null then raise exception 'invalid phase'; end if;
+  variant_:=case cfg->>'variantKind' when 'starter' then d->>'starter' when 'route' then d->'routes'->>ch::text else '' end;
+  if coalesce(variant_,'')<>'' then select definition into cfg from public.battle_story_defs_v2 where chapter=ch and phase=ph and variant=variant_; end if;
+  if cfg is null then raise exception 'invalid story variant'; end if;
+  if exists(select 1 from public.story_phase_config c where (c.chapter<ch or(c.chapter=ch and c.phase<ph)) and (c.chapter<>0 or ch=0)
+   and not public._clear_access_v2(u,'story',c.chapter::text||':'||c.phase::text)) then raise exception 'phase locked'; end if;
+  if cfg->>'variantKind' in ('starter','route') and coalesce(variant_,'')='' then raise exception 'story variant required'; end if;
+  pp:=coalesce(cfg->'party','{}'); forced:=coalesce(pp->'forced','[]');
+  allowed:=forced||coalesce(pp->'guests','[]')||coalesce(cfg->'loan','[]')||coalesce(cfg->'reserve','[]');
+  min_:=public._story_min_battle_secs();
+  max_:=case when coalesce((cfg->>'tutorial')::boolean,false) and not coalesce((cfg->>'pool')::boolean,false) then 5 else 10 end;
+  if coalesce((pp->>'solo')::boolean,false) then max_:=greatest(1,jsonb_array_length(forced)); end if;
+  max_:=least(max_,coalesce((pp->>'max')::int,max_));
+  if jsonb_array_length(p_party) not between 1 and max_ then raise exception 'party size'; end if;
+ else
+  if p_target!~'^(normal|wind|ice|fire|light|dark):[1-9][0-9]{0,2}$' then raise exception 'invalid tower target'; end if;
+  tw:=split_part(p_target,':',1); fl:=split_part(p_target,':',2)::int;
+  r:=public._tower_row(u,tw); perform public._tower_gate(u,tw,r);
+  if fl>public._tower_max_floor(tw) or (fl>1 and not public._clear_access_v2(u,'tower',tw||':'||(fl-1)::text)) then raise exception 'floor locked'; end if;
+  if p_mode='tower_sweep' and (fl%10=0 or fl<>r.best_floor+1) then raise exception 'boss floor or stale sweep'; end if;
+  if jsonb_array_length(p_party) not between 1 and 5 then raise exception 'party size'; end if;
+  cfg:=jsonb_build_object('tower',tw,'floor',fl); min_:=case when p_mode='tower_sweep' then public._quest_sweep_secs() else public._quest_min_secs() end;
+ end if;
+ if p_mode<>'tutorial' then
+  for x in select jsonb_array_elements_text(p_party) loop
+   o:=null;
+   if x like 'guest:lend:%' then
+    select jsonb_build_object('uid',x,'id',card_id,'guest',true,'level',snap->'level','loan',snap) into o from public.guild_loans
+     where borrower=u and id::text=substr(x,12) and expires_at>now();
+   elsif x like 'guest:%' then
+    cid:=substr(x,7);
+    if p_mode<>'story' or not allowed @> to_jsonb(cid) then raise exception 'guest not allowed'; end if;
+    o:=jsonb_build_object('uid',x,'id',cid,'guest',true,'level',coalesce((pp->'fixedLevel'->>cid)::int,(pp->'levels'->>cid)::int,lv));
+   else o:=public._pvp_snap(u,jsonb_build_array(x),'open')->'cards'->0;
+   end if;
+   if o is null then raise exception 'card not owned or loan expired'; end if;
+   cid:=o->>'id';
+   if p_mode='story' and not forced @> to_jsonb(cid) and not coalesce(pp->'guests','[]') @> to_jsonb(cid) then
+    if coalesce((pp->>'solo')::boolean,false) or coalesce((pp->>'noExtra')::boolean,false) or coalesce(pp->'exclude','[]') @> to_jsonb(cid)
+      or (pp ? 'only' and not pp->'only' @> to_jsonb(cid)) then raise exception 'party restriction'; end if;
+    select definition into snap from public.battle_card_meta_v2 where id=cid;
+    if (coalesce((pp->>'noMale')::boolean,false) and snap->>'gender'='MALE')
+      or (coalesce((pp->>'noFemale')::boolean,false) and snap->>'gender'='FEMALE')
+      or (pp ? 'maxMor' and (snap->>'MOR')::numeric > (pp->>'maxMor')::numeric)
+      or (pp ? 'costBelow' and (snap->>'cost')::numeric >= (pp->>'costBelow')::numeric)
+      or (pp ? 'onlyClass' and snap->>'class'<>pp->>'onlyClass')
+      or coalesce(pp->'banClass','[]') @> to_jsonb(snap->>'class')
+      or (pp ? 'maxGrade' and array_position(array['NORMAL','RARE','HIGH RARE','SUPER RARE','ULTRA RARE','MYTHIC RARE','LEGENDARY RARE'],snap->>'grade') > array_position(array['NORMAL','RARE','HIGH RARE','SUPER RARE','ULTRA RARE','MYTHIC RARE','LEGENDARY RARE'],pp->>'maxGrade'))
+      then raise exception 'party restriction'; end if;
+   end if;
+   if cid=any(ids) then raise exception 'duplicate card'; end if;
+   ids:=ids||cid; cards:=cards||jsonb_build_array(o);
+   if p_mode like 'tower%' and tw<>'normal' and not exists(select 1 from public.battle_card_meta_v2 where id=cid and definition->>'class'=upper(tw)) then raise exception 'tower element'; end if;
+  end loop;
+  if p_mode='story' then
+   for v in select jsonb_array_elements_text(forced) loop if not v=any(ids) then raise exception 'required card missing'; end if; end loop;
+   -- Reserve cards are server-defined participants, never arbitrary XP targets.
+   for v in select jsonb_array_elements_text(coalesce(cfg->'reserve','[]')) loop
+    select o0 into o from jsonb_array_elements(public._story_owned(d)) o0 where o0->>'id'=v order by (o0->>'uid'=d->>'leader') desc nulls last,coalesce((o0->>'ex')::int,0) desc,coalesce((o0->>'level')::int,1) desc limit 1;
+    if o is not null and not v=any(ids) then cards:=cards||jsonb_build_array(public._pvp_snap(u,jsonb_build_array(o->>'uid'),'open')->'cards'->0); end if;
+   end loop;
+   d:=public._phase2_old_story_start_phase(ch,ph); cost:=coalesce((d->'battle'->>'stamina')::int,0);
+   if not coalesce((cfg->>'tutorial')::boolean,false) or coalesce((cfg->>'pool')::boolean,false) then
+    mana_:=coalesce((cfg->>'mana')::int,80+15*ch+2*lv+case when cfg->>'type'='boss' then 40 else 0 end+coalesce((cfg->>'manaBonus')::int,0));
+   end if;
+  end if;
+ end if;
+ insert into public.battle_session_seeds_v2(user_id,mode,target,seed) values(u,p_mode,p_target,1+floor(random()*2147483646)::int) on conflict do nothing;
+ select seed into seed_ from public.battle_session_seeds_v2 where user_id=u and mode=p_mode and target=p_target and rule_version=3;
+ snap:=jsonb_build_object('stage',cfg,'cards',cards,'player_level',lv,'starter',d->'starter','leader',d->'leader','cost',cost,'mana',mana_,'min_seconds',min_);
+ insert into public.battle_sessions_v2(user_id,request_id,mode,target,party,seed,snapshot) values(u,p_request,p_mode,p_target,p_party,seed_,snap) returning * into s;
+ if p_mode='story' then perform public._story_save(u,jsonb_set(d,'{battle,session}',to_jsonb(s.id::text))); end if;
+ if p_mode like 'tower%' then insert into public.battle_events_v2(session_id,user_id,mode,win,skills,day,week) values(s.id,u,'tower',false,0,public._gem_day(),public._weekly_week()); end if;
+ return public._clear_session_v2(s);
+end $$;
+
+create or replace function public.arcade_tut_status() returns jsonb language plpgsql stable security definer set search_path=pg_catalog,public,pg_temp as $$
+declare u uuid:=auth.uid(); begin
+ if u is null then raise exception 'login required'; end if;
+ return jsonb_build_object('ok',true,'reward_held',not public._clear_enabled_v2('tutorial'),
+ 'claimed',coalesce((select jsonb_agg(stage order by stage) from public.arcade_tut_claims where user_id=u),'[]'),
+ 'completed',coalesce((select jsonb_agg(target::int order by target::int) from public.battle_clear_receipts_v2 where user_id=u and mode='tutorial'),'[]'),
+ 'rewards',jsonb_build_object('1',public._arcade_tut_rw(1),'2',public._arcade_tut_rw(2),'3',public._arcade_tut_rw(3)));
+end $$;
+create or replace function public.arcade_tut_claim(p_stage int) returns jsonb language plpgsql security definer set search_path=pg_catalog,public,pg_temp as $$
+declare u uuid:=auth.uid(); rw jsonb:=public._arcade_tut_rw(p_stage); r jsonb; k text; n int;
+begin
+ if u is null then raise exception 'login required'; end if;
+ perform pg_advisory_xact_lock(hashtext('battle-v2:'||u::text)); perform pg_advisory_xact_lock(hashtext('gem:'||u::text));
+ if rw is null then raise exception 'invalid tutorial stage'; end if;
+ k:=rw->>'kind'; n:=(rw->>'n')::int;
+ if exists(select 1 from public.arcade_tut_claims where user_id=u and stage=p_stage) then return jsonb_build_object('ok',true,'already',true,'stage',p_stage,'kind',k); end if;
+ if not public._clear_enabled_v2('tutorial') then raise exception 'reward verification pending'; end if;
+ if not exists(select 1 from public.battle_clear_receipts_v2 where user_id=u and mode='tutorial' and target=p_stage::text) then raise exception 'verified tutorial session required'; end if;
+ r:=public._clear_grant_v2(u,jsonb_build_object(k,n),'tutorial_v2','arcade_tut:'||p_stage);
+ insert into public.arcade_tut_claims(user_id,stage,tickets,kind) values(u,p_stage,n,k);
+ return r||jsonb_build_object('ok',true,'kind',k,'stage',p_stage,'gave',n);
+end $$;
+
+create or replace function public._story_ticket_sync(uid uuid) returns jsonb language plpgsql security definer set search_path=pg_catalog,public,pg_temp as $$
+declare ch int; got int[]; added int:=0; chapters jsonb:='[]'; rw jsonb; r jsonb; tk int;
+begin
+ if uid is null then raise exception 'login required'; end if;
+ perform pg_advisory_xact_lock(hashtext('gem:'||uid::text));
+ insert into public.story_gacha(user_id,last_draw) values(uid,public._gem_day()-1) on conflict do nothing;
+ select ticket_chapters into got from public.story_gacha where user_id=uid for update;
+ if public._clear_enabled_v2('story') then
+ for ch in select chapter from public.story_phase_config c group by chapter having bool_and(exists(
+  select 1 from public.battle_clear_receipts_v2 v where v.user_id=uid and v.mode='story' and v.target=c.chapter::text||':'||c.phase::text)) order by chapter loop
+  if exists(select 1 from public.reward_claims where user_id=uid and reward_kind='chapter_v2' and source_or_period='chapter:'||ch) then continue; end if;
+  rw:=jsonb_build_object('tickets',case when ch=any(got) then 0 else 10 end,'gem',case when exists(
+   select 1 from public.gem_ledger where user_id=uid and ref='chapter:'||ch) then 0 else public._gem_chapter_reward() end);
+  r:=public._clear_grant_v2(uid,rw,'chapter_v2','chapter:'||ch);
+  if not ch=any(got) then got:=got||ch; end if;
+  added:=added+(rw->>'tickets')::int; chapters:=chapters||to_jsonb(ch);
+ end loop; end if;
+ update public.story_gacha set ticket_chapters=got where user_id=uid returning tickets into tk;
+ return jsonb_build_object('tickets',tk,'added',added,'chapters',chapters,'reward_held',not public._clear_enabled_v2('story'));
+end $$;
+
+create or replace function public.battle_session_finish_v2(p_session uuid,p_report jsonb) returns jsonb language plpgsql security definer
+set search_path=pg_catalog,public,pg_temp as $$
+declare u uuid:=auth.uid(); s public.battle_sessions_v2; cfg jsonb; d jsonb; res jsonb:='{}'; x jsonb; o jsonb; stats jsonb:='[]';
+ tr int; mt int; skills_ int; cap_ int; win_ boolean; clear_ boolean; reason_ text; ch int; ph int; stars_ int:=0; mana_ int; maxmana int;
+ kills_ int; blocks_ int; ksum int:=0; bsum int:=0; seen text[]:='{}'; uid_ text; tw text; fl int; tp public.tower_progress;
+ first_ boolean; rw jsonb; cur jsonb; pay jsonb:='{}'; baseline int; key_ text; daily_n int;
+begin
+ if u is null then raise exception 'login required'; end if;
+ perform pg_advisory_xact_lock(hashtext('battle-v2:'||u::text)); perform pg_advisory_xact_lock(hashtext('gem:'||u::text));
+ select * into s from public.battle_sessions_v2 where id=p_session and user_id=u for update;
+ if not found then raise exception 'battle session not found'; end if;
+ if s.status='settled' then if s.submission is distinct from p_report then raise exception 'submission conflict'; end if; return s.settlement; end if;
+ if s.status<>'issued' then raise exception 'battle session closed'; end if;
+ if s.expires_at<=clock_timestamp() then perform public._clear_close_v2(s,'expired'); return jsonb_build_object('ok',false,'session',s.id,'status','expired','reward_held',true); end if;
+ if not public._clear_enabled_v2(s.mode) then raise exception 'reward verification pending'; end if;
+ if clock_timestamp()-s.issued_at < make_interval(secs=>(s.snapshot->>'min_seconds')::double precision) then raise exception 'too fast'; end if;
+ if jsonb_typeof(p_report) is distinct from 'object' or octet_length(p_report::text)>32768 or exists(select 1 from jsonb_object_keys(p_report) k where k not in ('win','reason','turns','my_turns','mana','skills','cards'))
+ or jsonb_typeof(p_report->'win') is distinct from 'boolean' then raise exception 'invalid report'; end if;
+ foreach key_ in array array['turns','my_turns','skills'] loop
+  if jsonb_typeof(p_report->key_) is distinct from 'number' or p_report->>key_ !~ '^[0-9]{1,4}$' then raise exception 'invalid stats'; end if;
+ end loop;
+ tr:=(p_report->>'turns')::int; mt:=(p_report->>'my_turns')::int; skills_:=(p_report->>'skills')::int;
+ cfg:=s.snapshot->'stage'; win_:=(p_report->>'win')::boolean; reason_:=coalesce(p_report->>'reason','');
+ cap_:=case when s.mode='tutorial' then 400 else coalesce((cfg->'rules'->>'maxTurns')::int,40) end;
+ if (mt=0 and skills_>0) or tr>cap_ or mt>ceil(tr/2.0)::int or mt<greatest(0,floor(tr/2.0)::int-1) or mt>tr or skills_>least(2000,(mt+1)*greatest(1,jsonb_array_length(s.snapshot->'cards'))*5+20)
+ or (win_ and reason_='giveup') or length(reason_)>40 then raise exception 'implausible turns or skills'; end if;
+ -- Field-entry passives can legitimately win story/manual tower before turn 1.
+ if s.mode in ('tower_sweep','tutorial') and win_ and tr<1 then raise exception 'implausible zero-turn win'; end if;
+ if reason_ not in ('ko','wipe','survive','timeout','giveup','mustlive','mustsummon','hp','cards','draw')
+ or (win_ and reason_ in ('timeout','giveup','mustlive','mustsummon','draw'))
+ or (reason_='survive' and (not win_ or cfg->'rules'->>'survive' is null or tr<2*(cfg->'rules'->>'survive')::int)) then raise exception 'implausible end reason'; end if;
+ if (select count(*) from public.battle_events_v2 where user_id=u and day=public._gem_day() and session_id<>s.id)>=500 then raise exception 'completion rate limit'; end if;
+ clear_:=win_ or (s.mode='story' and coalesce((cfg->>'loseClears')::boolean,false) and reason_ not in ('giveup',''));
+ if s.mode='story' then
+  ch:=split_part(s.target,':',1)::int; ph:=split_part(s.target,':',2)::int;
+  d:=public._story_lock(u);
+  if d->'battle'->>'session' is distinct from s.id::text then raise exception 'battle not started'; end if;
+  if clear_ then
+   if jsonb_typeof(p_report->'cards') is distinct from 'array' or jsonb_array_length(p_report->'cards')>30 then raise exception 'invalid card stats'; end if;
+   select enemy_count into cap_ from public.story_phase_config where chapter=ch and phase=ph;
+   for x in select * from jsonb_array_elements(p_report->'cards') loop
+    uid_:=x->>'uid';
+    if uid_ is null or uid_=any(seen) then raise exception 'duplicate or missing participant'; end if;
+    seen:=seen||uid_; select c into o from jsonb_array_elements(s.snapshot->'cards') c where c->>'uid'=uid_ and not coalesce((c->>'guest')::boolean,false);
+    if o is null then raise exception 'unselected XP participant'; end if;
+    if jsonb_typeof(x->'kills') is distinct from 'number' or x->>'kills' !~ '^[0-9]{1,3}$' or jsonb_typeof(x->'blocks') is distinct from 'number' or x->>'blocks' !~ '^[0-9]{1,3}$' then raise exception 'invalid card stats'; end if;
+    kills_:=(x->>'kills')::int; blocks_:=(x->>'blocks')::int;
+    if kills_>200 or blocks_>200 then raise exception 'implausible card stats'; end if;
+    kills_:=least(kills_,greatest(0,cap_-ksum)); ksum:=ksum+kills_;
+    blocks_:=least(blocks_,3,greatest(0,cap_*2-bsum)); bsum:=bsum+blocks_;
+    stats:=stats||jsonb_build_object('uid',uid_,'kills',kills_,'blocks',blocks_);
+   end loop;
+   maxmana:=(s.snapshot->>'mana')::int;
+   if maxmana is not null then
+    if jsonb_typeof(p_report->'mana') is distinct from 'number' or p_report->>'mana' !~ '^[0-9]{1,5}$' then raise exception 'invalid mana'; end if;
+    mana_:=(p_report->>'mana')::int; if mana_>maxmana then raise exception 'implausible mana'; end if;
+    stars_:=1+case when mt<=coalesce((cfg->>'starTurns')::int,10) then 1 else 0 end+case when mana_>=ceil(maxmana*coalesce((cfg->>'starMana')::numeric,0.3)) then 1 else 0 end;
+   end if;
+   if coalesce((cfg->>'loseClears')::boolean,false) then stars_:=3; end if;
+   res:=public._phase2_old_story_complete_phase(ch,ph,stats);
+   insert into public.battle_clear_receipts_v2(user_id,mode,target,session_id,stars) values(u,'story',s.target,s.id,stars_)
+    on conflict(user_id,mode,target) do update set stars=greatest(battle_clear_receipts_v2.stars,excluded.stars);
+   d:=res->'data';
+   if stars_>0 then
+    if jsonb_typeof(d->'stars') is distinct from 'object' then d:=jsonb_set(d,'{stars}','{}'); end if;
+    if jsonb_typeof(d->'stars'->ch::text) is distinct from 'object' then d:=jsonb_set(d,array['stars',ch::text],'{}'); end if;
+    d:=jsonb_set(d,array['stars',ch::text,ph::text],to_jsonb(greatest(stars_,coalesce((d->'stars'->ch::text->>ph::text)::int,0))));
+    d:=public._story_save(u,d); res:=res||jsonb_build_object('data',d);
+   end if;
+   if res->>'reward_id' is not null then
+    insert into public.battle_acquisitions_v2(session_id,user_id,card_id) values(s.id,u,res->>'reward_id');
+    insert into public.gallery(user_id,card_id,count,mvp_count) values(u,res->>'reward_id',0,0) on conflict do nothing;
+   end if;
+   res:=res||jsonb_build_object('stars',stars_,'chapter_reward',public._story_ticket_sync(u));
+  else
+   res:=public._phase2_old_story_abort_phase(); res:=jsonb_build_object('player',res,'win',false);
+  end if;
+ elsif s.mode='tutorial' then
+  if clear_ then
+   insert into public.battle_clear_receipts_v2(user_id,mode,target,session_id) values(u,'tutorial',s.target,s.id) on conflict do nothing;
+   res:=public.arcade_tut_claim(s.target::int);
+  end if;
+ else
+  tw:=split_part(s.target,':',1); fl:=split_part(s.target,':',2)::int; tp:=public._tower_row(u,tw);
+  if clear_ then
+   if tp.day_floors>=public._tower_daily(tw) then raise exception 'daily limit'; end if;
+   if fl>1 and not public._clear_access_v2(u,'tower',tw||':'||(fl-1)::text) then raise exception 'floor locked'; end if;
+   baseline:=coalesce((select (tower_paid->>tw)::int from public.battle_legacy_access_v2 where user_id=u),0);
+   first_:=fl>baseline and not exists(select 1 from public.battle_clear_receipts_v2 where user_id=u and mode='tower' and target=s.target);
+   rw:=case when first_ then public._tower_reward(tw,fl) else '{}'::jsonb end;
+   cur:=case when first_ then public._tower_currency(tw,fl) else '{}'::jsonb end;
+   if first_ then pay:=public._clear_grant_v2(u,rw||cur,'tower_v2','tower:'||s.target); end if;
+   insert into public.battle_clear_receipts_v2(user_id,mode,target,session_id) values(u,'tower',s.target,s.id) on conflict do nothing;
+   update public.tower_progress set battle=null,clears=clears+1,day_floors=day_floors+1,best_floor=greatest(best_floor,fl),
+    paid_floor=case when first_ then greatest(paid_floor,fl) else paid_floor end,
+    rewards=(select jsonb_object_agg(k,coalesce((rewards->>k)::int,0)+coalesce((rw->>k)::int,0)+coalesce((cur->>k)::int,0)) from unnest(array['tickets','gold','blood','shard','soul']) k),updated_at=now()
+    where user_id=u and tower=tw;
+   res:=jsonb_build_object('tower',tw,'floor',fl,'best_floor',greatest(tp.best_floor,fl),'first',first_,'paid',first_,'reward',rw,'currency',cur,'tickets',pay->'tickets','today',tp.day_floors+1,'daily',public._tower_daily(tw));
+  end if;
+ end if;
+ if s.mode<>'tutorial' then insert into public.battle_events_v2(session_id,user_id,mode,win,skills,day,week)
+  values(s.id,u,case when s.mode='tower_sweep' then 'tower' else s.mode end,win_,skills_,public._gem_day(),public._weekly_week())
+ on conflict(session_id) do update set win=excluded.win,skills=excluded.skills; end if;
+ res:=res||jsonb_build_object('ok',true,'session',s.id,'status','settled','win',win_,'cleared',clear_,'reward_held',false,'validation','plausibility-v3');
+ update public.battle_sessions_v2 set status='settled',submission=p_report,settlement=res,finished_at=clock_timestamp() where id=s.id;
+ return res;
+end $$;
+create or replace function public.battle_session_status_v2(p_session uuid) returns jsonb language plpgsql stable security definer set search_path=pg_catalog,public,pg_temp as $$
+declare s public.battle_sessions_v2; begin
+ if auth.uid() is null then raise exception 'login required'; end if;
+ select * into s from public.battle_sessions_v2 where id=p_session and user_id=auth.uid();
+ if not found then raise exception 'battle session not found'; end if;
+ return public._clear_session_v2(s)||jsonb_build_object('settlement',s.settlement);
+end $$;
+create or replace function public.battle_session_abort_v2(p_session uuid) returns jsonb language plpgsql security definer set search_path=pg_catalog,public,pg_temp as $$
+declare u uuid:=auth.uid(); s public.battle_sessions_v2; begin
+ if u is null then raise exception 'login required'; end if;
+ perform pg_advisory_xact_lock(hashtext('battle-v2:'||u::text)); perform pg_advisory_xact_lock(hashtext('gem:'||u::text));
+ select * into s from public.battle_sessions_v2 where id=p_session and user_id=u for update;
+ if not found then raise exception 'battle session not found'; end if;
+ perform public._clear_close_v2(s,'aborted');
+ select * into s from public.battle_sessions_v2 where id=p_session;
+ return public._clear_session_v2(s)||jsonb_build_object('player',case when s.mode='story' then public._player_json(u) else null end);
+end $$;
+
+create or replace function public._clear_mission_prog_v2(u uuid,k text,w boolean) returns int language sql stable security definer set search_path=pg_catalog,public,pg_temp as $$
+ select coalesce(case k when 'skill' then sum(skills) else count(*) end,0)::int from public.battle_events_v2
+ where user_id=u and (case when w then week=public._weekly_week() else day=public._gem_day() end)
+ and case k when 'win' then win when 'story' then mode='story' and win when 'tower' then mode='tower' when 'skill' then true else false end
+$$;
+create or replace function public._clear_missions_json_v2(u uuid,w boolean) returns jsonb language plpgsql stable security definer set search_path=pg_catalog,public,pg_temp as $$
+declare defs jsonb:=case when w then public._weekly_defs() else public._daily_defs() end; period_ date:=case when w then public._weekly_week() else public._gem_day() end;
+ claimed_ jsonb; missions jsonb:='[]'; m jsonb; n int; done_ int:=0; a public.daily_attend; res jsonb;
+begin
+ if w then select claimed into claimed_ from public.weekly_progress where user_id=u and week=period_;
+ else select claimed into claimed_ from public.daily_progress where user_id=u and day=period_; end if;
+ claimed_:=coalesce(claimed_,'[]');
+ for m in select * from jsonb_array_elements(defs) loop
+  n:=public._clear_mission_prog_v2(u,m->>'key',w); if n>=(m->>'goal')::int then done_:=done_+1; end if;
+  missions:=missions||jsonb_build_array(m||jsonb_build_object('prog',least(n,(m->>'goal')::int),'held',m->>'key'='arcade','claimed',claimed_ ? (m->>'key')));
+ end loop;
+ res:=jsonb_build_object('ok',true,'reward_held',false,'missions',missions,'next_reset',((period_+case when w then 7 else 1 end)::timestamp at time zone 'Asia/Seoul'),
+ 'all',jsonb_build_object('reward',case when w then public._weekly_all_reward() else public._daily_all_reward() end,'done',done_,'goal',jsonb_array_length(defs),'claimed',claimed_ ? 'all','held',true));
+ if w then return res||jsonb_build_object('week',period_); end if;
+ select * into a from public.daily_attend where user_id=u;
+ return res||jsonb_build_object('day',period_,'attend',jsonb_build_object('rewards',public._attend_defs(),'step',case when coalesce(a.step,0)>=7 and a.last_day<period_ then 0 else coalesce(a.step,0) end,'today',a.last_day=period_,'total',coalesce(a.total,0)));
+end $$;
+create or replace function public._daily_json(p_uid uuid) returns jsonb language sql stable security definer set search_path=pg_catalog,public,pg_temp as $$ select public._clear_missions_json_v2(p_uid,false) $$;
+create or replace function public._weekly_json(p_uid uuid) returns jsonb language sql stable security definer set search_path=pg_catalog,public,pg_temp as $$ select public._clear_missions_json_v2(p_uid,true) $$;
+create or replace function public._clear_mission_claim_v2(k text,w boolean) returns jsonb language plpgsql security definer set search_path=pg_catalog,public,pg_temp as $$
+declare u uuid:=auth.uid(); period_ date:=case when w then public._weekly_week() else public._gem_day() end; m jsonb; claimed_ jsonb; res jsonb;
+begin
+ if u is null then raise exception 'login required'; end if;
+ perform pg_advisory_xact_lock(hashtext('battle-v2:'||u::text)); perform pg_advisory_xact_lock(hashtext('gem:'||u::text));
+ if k in ('arcade','all') then raise exception 'reward verification pending'; end if;
+ select x into m from jsonb_array_elements(case when w then public._weekly_defs() else public._daily_defs() end) x where x->>'key'=k;
+ if m is null then raise exception 'invalid mission'; end if;
+ if public._clear_mission_prog_v2(u,k,w)<(m->>'goal')::int then raise exception 'not done'; end if;
+ if w then
+  insert into public.weekly_progress(user_id,week) values(u,period_) on conflict do nothing;
+  select claimed into claimed_ from public.weekly_progress where user_id=u and week=period_ for update;
+ else
+  insert into public.daily_progress(user_id,day) values(u,period_) on conflict do nothing;
+  select claimed into claimed_ from public.daily_progress where user_id=u and day=period_ for update;
+ end if;
+ if claimed_ ? k then raise exception 'already claimed'; end if;
+ if w then update public.weekly_progress set claimed=claimed||to_jsonb(k) where user_id=u and week=period_;
+ else update public.daily_progress set claimed=claimed||to_jsonb(k) where user_id=u and day=period_; end if;
+ res:=public._daily_grant(u,m->'reward',case when w then 'weekly' else 'daily' end,(case when w then 'weekly:' else 'daily:' end)||period_||':'||k);
+ return public._clear_missions_json_v2(u,w)||res||jsonb_build_object('got',m->'reward');
+end $$;
+create or replace function public.daily_claim(p_key text) returns jsonb language sql security definer set search_path=pg_catalog,public,pg_temp as $$ select public._clear_mission_claim_v2(p_key,false) $$;
+create or replace function public.weekly_claim(p_key text) returns jsonb language sql security definer set search_path=pg_catalog,public,pg_temp as $$ select public._clear_mission_claim_v2(p_key,true) $$;
+
+create or replace function public._star_chapter(d jsonb,p_chapter int) returns jsonb language plpgsql stable security definer set search_path=pg_catalog,public,pg_temp as $$
+declare mx int; tot int; got jsonb:=coalesce(d->'starClaims'->p_chapter::text,'[]'); ms jsonb:='[]'; m jsonb; need_ int;
+begin
+ select 3*count(*) into mx from public.story_phase_config where chapter=p_chapter and (p_chapter>=1 or phase=4);
+ select coalesce(sum(v.stars),0)::int into tot from public.battle_clear_receipts_v2 v join public.story_phase_config c
+  on v.target=c.chapter::text||':'||c.phase::text where v.user_id=auth.uid() and v.mode='story' and c.chapter=p_chapter and (p_chapter>=1 or c.phase=4);
+ for m in select * from jsonb_array_elements(public._star_milestones()) loop
+  need_:=coalesce((m->>'need')::int,mx);
+  if mx=0 or need_>mx or (m->>'key'<>'all' and need_>=mx) then continue; end if;
+  ms:=ms||jsonb_build_array(m||jsonb_build_object('need',need_,'claimed',got @> to_jsonb(m->>'key'),'ready',tot>=need_ and public._clear_enabled_v2('story'),'held',not public._clear_enabled_v2('story')));
+ end loop;
+ return jsonb_build_object('chapter',p_chapter,'total',tot,'max',mx,'milestones',ms);
+end $$;
+create or replace function public.story_star_claim(p_chapter int,p_key text) returns jsonb language plpgsql security definer set search_path=pg_catalog,public,pg_temp as $$
+declare u uuid:=auth.uid(); d jsonb; m jsonb; st jsonb; res jsonb;
+begin
+ if u is null then raise exception 'login required'; end if;
+ perform pg_advisory_xact_lock(hashtext('battle-v2:'||u::text)); perform pg_advisory_xact_lock(hashtext('gem:'||u::text));
+ if not public._clear_enabled_v2('story') then raise exception 'reward verification pending'; end if;
+ d:=public._story_lock(u); st:=public._star_chapter(d,p_chapter);
+ select x into m from jsonb_array_elements(st->'milestones') x where x->>'key'=p_key;
+ if m is null then raise exception 'invalid milestone'; end if;
+ if (m->>'claimed')::boolean then raise exception 'already claimed'; end if;
+ if not (m->>'ready')::boolean then raise exception 'not enough stars'; end if;
+ res:=public._clear_grant_v2(u,jsonb_build_object('tickets',(m->>'tickets')::int,'gold',(m->>'gold')::int),'star_v2','star:'||p_chapter||':'||p_key);
+ if jsonb_typeof(d->'starClaims') is distinct from 'object' then d:=jsonb_set(d,'{starClaims}','{}'); end if;
+ d:=public._story_save(u,jsonb_set(d,array['starClaims',p_chapter::text],coalesce(d->'starClaims'->p_chapter::text,'[]')||to_jsonb(p_key)));
+ return res||jsonb_build_object('ok',true,'status',public._star_chapter(d,p_chapter));
+end $$;
+create or replace function public._gallery_have(p_uid uuid) returns int language sql stable security definer set search_path=pg_catalog,public,pg_temp as $$
+ select count(*)::int from public.reward_card_catalog c where c.card_id in(
+ select card_id from public.verified_game_events where user_id=p_uid and event_kind='card_acquired'
+ union select card_id from public.battle_acquisitions_v2 where user_id=p_uid)
+$$;
+create or replace function public._ach_prog(p_uid uuid,p_id text) returns int language plpgsql stable security definer set search_path=pg_catalog,public,pg_temp as $$
+declare n int; begin
+ case p_id when 'story_ch' then select count(*)::int into n from public.reward_claims where user_id=p_uid and reward_kind='chapter_v2';
+ when 'story_stars' then select sum(stars)::int into n from public.battle_clear_receipts_v2 where user_id=p_uid and mode='story';
+ when 'skill_uses' then select sum(skills)::int into n from public.battle_events_v2 where user_id=p_uid;
+ when 'tower_normal' then select max(split_part(target,':',2)::int) into n from public.battle_clear_receipts_v2 where user_id=p_uid and mode='tower' and target like 'normal:%';
+ when 'tower_elem' then select max(split_part(target,':',2)::int) into n from public.battle_clear_receipts_v2 where user_id=p_uid and mode='tower' and split_part(target,':',1) in ('wind','ice','fire');
+ when 'tower_light' then select max(split_part(target,':',2)::int) into n from public.battle_clear_receipts_v2 where user_id=p_uid and mode='tower' and split_part(target,':',1) in ('light','dark');
+ else return public._phase2_old_ach_prog(p_uid,p_id); end case;
+ return coalesce(n,0);
+end $$;
+do $$ declare src text; begin
+ src:=pg_get_functiondef('public._ach_json(uuid)'::regprocedure);
+ execute replace(src,'''gifts_sent'')','''gifts_sent'',''story_ch'',''story_stars'',''tower_normal'',''tower_elem'',''tower_light'',''skill_uses'')');
+end $$;
+-- Show held legacy floors so honest players can select and replay them for settlement.
+create or replace function public.tower_status() returns jsonb language plpgsql security definer set search_path=pg_catalog,public,pg_temp as $$
+declare u uuid:=auth.uid(); lv int; out_ jsonb:='{}'; tw text; r public.tower_progress; today_ date:=public._tower_today(); paid_ int; pending_ jsonb;
+begin
+ if u is null then raise exception 'login required'; end if;
+ select level into lv from public.player_state where user_id=u;
+ foreach tw in array array['normal','wind','ice','fire','light','dark'] loop
+  select * into r from public.tower_progress where user_id=u and tower=tw;
+  select coalesce((tower_paid->>tw)::int,0) into paid_ from public.battle_legacy_access_v2 where user_id=u;
+  select coalesce(jsonb_agg(f order by f),'[]') into pending_ from generate_series(coalesce(paid_,0)+1,coalesce(r.best_floor,0)) f
+   where not exists(select 1 from public.battle_clear_receipts_v2 v where v.user_id=u and v.mode='tower' and v.target=tw||':'||f::text);
+  out_:=out_||jsonb_build_object(tw,jsonb_build_object('best_floor',coalesce(r.best_floor,0),'paid_floor',coalesce(r.paid_floor,0),'max_floor',public._tower_max_floor(tw),
+   'clears',coalesce(r.clears,0),'rewards',coalesce(r.rewards,'{}'),'unpaid_floors',pending_,'reward_held',not public._clear_enabled_v2('tower'),
+   'today',case when r.day=today_ then r.day_floors else 0 end,'daily',public._tower_daily(tw),
+   'open_today',public._tower_dow()=any(public._tower_days(tw)),'days',to_jsonb(public._tower_days(tw)),
+   'min_level',public._tower_min_level(tw),'unlocked',coalesce(lv,1)>=public._tower_min_level(tw)));
+ end loop;
+ return jsonb_build_object('ok',true,'level',coalesce(lv,1),'dow',public._tower_dow(),'day',today_,'towers',out_);
+end $$;
+create or replace function public.story_sweep(p_chapter int,p_phase int,p_runs int default 1) returns jsonb language plpgsql security definer set search_path=pg_catalog,public,pg_temp as $$
+declare u uuid:=auth.uid(); begin
+ if u is null then raise exception 'login required'; end if;
+ perform pg_advisory_xact_lock(hashtext('battle-v2:'||u::text)); perform pg_advisory_xact_lock(hashtext('gem:'||u::text));
+ if not public._clear_enabled_v2('story') then raise exception 'reward verification pending'; end if;
+ if not exists(select 1 from public.battle_clear_receipts_v2 where user_id=u and mode='story' and target=p_chapter::text||':'||p_phase::text) then raise exception 'verified clear required for sweep'; end if;
+ return public._phase2_old_story_sweep(p_chapter,p_phase,p_runs);
+end $$;
+create or replace function public.story_abort_phase() returns jsonb language plpgsql security definer set search_path=pg_catalog,public,pg_temp as $$
+declare u uuid:=auth.uid(); s public.battle_sessions_v2; begin
+ if u is null then raise exception 'login required'; end if;
+ perform pg_advisory_xact_lock(hashtext('battle-v2:'||u::text)); perform pg_advisory_xact_lock(hashtext('gem:'||u::text));
+ select * into s from public.battle_sessions_v2 where user_id=u and mode='story' and status='issued' for update;
+ if found then perform public._clear_close_v2(s,'aborted'); end if;
+ return public._player_json(u);
+end $$;
+do $acl$
+declare f record; t text; c record;
+begin
+ for f in select p.oid::regprocedure sig from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.prokind='f' and
+ (left(p.proname,1)='_' or p.proname=any(array['story_start_phase','story_complete_phase','story_set_stars','tower_start','tower_complete','tower_sweep_start','tower_sweep_complete','quest_start','quest_complete','quest_sweep_start','quest_sweep_complete','battle_session_start_v2','battle_session_finish_v2','battle_session_status_v2','battle_session_abort_v2','story_star_claim','arcade_tut_claim','story_sweep','daily_claim','weekly_claim','story_abort_phase'])) loop
+ execute format('revoke all on function %s from public,anon,authenticated',f.sig); end loop;
+ foreach t in array array['battle_policy_v2','battle_legacy_access_v2','battle_session_seeds_v2','battle_sessions_v2','battle_clear_receipts_v2','battle_events_v2','battle_acquisitions_v2','battle_card_meta_v2','battle_story_defs_v2','battle_tutorial_defs_v2','tower_progress','quest_progress','story_phase_config'] loop
+ execute format('alter table public.%I enable row level security',t);
+ if t in ('tower_progress','quest_progress','story_phase_config') then execute format('revoke insert,update,delete,truncate,references,trigger on public.%I from public,anon,authenticated',t);
+ else execute format('revoke all on public.%I from public,anon,authenticated',t); end if;
+ for c in select attname from pg_attribute where attrelid=to_regclass('public.'||t) and attnum>0 and not attisdropped loop
+ execute format('revoke insert(%I),update(%I),references(%I) on public.%I from public,anon,authenticated',c.attname,c.attname,c.attname,t);
+ if t not in ('tower_progress','quest_progress','story_phase_config') then execute format('revoke select(%I) on public.%I from public,anon,authenticated',c.attname,t); end if;
+ end loop; end loop;
+end $acl$;
+grant execute on function public.battle_session_start_v2(text,text,jsonb,uuid),public.battle_session_finish_v2(uuid,jsonb),public.battle_session_status_v2(uuid),public.battle_session_abort_v2(uuid),public.arcade_tut_claim(int),public.story_star_claim(int,text),public.story_sweep(int,int,int),public.daily_claim(text),public.weekly_claim(text),public.story_abort_phase() to authenticated;
+notify pgrst,'reload schema';
+-- 설치본의 단일 트랜잭션에 포함
 
 -- 공개 게임 설정만 명시적으로 조회 허용 (사용자 자료 아님).
 grant select on public.story_card_pool, public.story_phase_config, public.story_premium_ur,
