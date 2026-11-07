@@ -144,3 +144,16 @@ PGlite의 클러스터 번호만 **메모리**에서 바인딩한다. 배포 SQL
 [Supabase Functions Auth](https://supabase.com/docs/guides/functions/auth),
 [Auth headers](https://supabase.com/docs/guides/functions/auth-headers),
 [Runtime secrets](https://supabase.com/docs/guides/functions/secrets).
+
+
+## Approved level-stat engine update (2026-11-07 KST)
+
+The `snapCard` progression regression inherited from PR #382 is fixed. Existing
+staging installs must apply **`supabase/security_phase3_pvp_level_stats.sql`**
+(after finishing old active PvP sessions), redeploy the regenerated
+`pvp-verify-v3/dashboard_single_file.ts` with JWT verification ON, then deploy
+the updated browser build. Do not run the full staging installer on an existing DB.
+No stored-defense backfill/deck re-save is needed; v3 reads fresh metadata for both
+sides. The patch refuses active old sessions and preserves existing data/kill switch.
+See [PVP_LEVEL_STATS_20261107.md](PVP_LEVEL_STATS_20261107.md) for verified impact,
+exact rollout order, new engine hash, old-receipt handling and production caveats.

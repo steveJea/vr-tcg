@@ -1,5 +1,9 @@
 # PvP staging feedback (2026-11-07 KST)
 
+> Historical report for commit `aeb9e19`. The subsequently approved level-stat
+> fix DOES change the engine and requires an Edge + SQL policy rollout.
+> Follow [PVP_LEVEL_STATS_20261107.md](PVP_LEVEL_STATS_20261107.md) for the current deployment instructions.
+
 Base: `sec/phase3-pvp-20261107` (`70fd708`). Worktree: `/workspace/vrp-pvpfix`.
 
 ## Changes
@@ -32,8 +36,8 @@ No client/server verdict disagreement was reproduced. A real view-stepper fixtur
 - New `tools/test_pvp_feedback.mjs` is part of `test:staging`: real view-stepper/manual-batch/AUTO/SKIP transcripts replay identically on the Edge bundle; targeting, media queue, 40s uninterrupted playback, skip/error/stall recovery, filters/IME wiring and result markup are covered.
 - Tests use an offline DOM/media harness, not a fresh interactive PC Chrome staging session.
 - Staging SQL bundle/parts/manifest were regenerated; hashes remain unchanged because SQL did not change. No new Tailwind utility classes were added; custom styles are in `css/pvp.css` and `css/story.css`, so `css/tw.css` requires no rebuild.
-- **No SQL or Edge function changes/deployment are required.** `dashboard_single_file.ts` is unchanged and passes its reproducibility check. Engine version remains `16b61abb1c42f29f063b9b84de938ef950363cdd2a23262cddf05c27c0c038a6`.
+- **For historical commit `aeb9e19` ONLY, no SQL or Edge function changes/deployment were required.** The current follow-up requires both (see the linked rollout above). `dashboard_single_file.ts` was unchanged and passed its reproducibility check. Its engine version was `16b61abb1c42f29f063b9b84de938ef950363cdd2a23262cddf05c27c0c038a6`.
 
-### Pre-existing, separately discovered issue
+### Pre-existing issue — resolved by the approved follow-up
 
-The optional legacy `node tools/test_pvp_core.mjs` fails its **레벨 스탯 반영** assertion both here and on untouched base `70fd708` in `/workspace/vrp-phase3`. In `snapCard()` a trailing `// EX는 별 색으로만` comment currently swallows the `slv/ATK/HP/DEF/power` fields. This feedback patch intentionally does **not** change that canonical engine behavior or the engine hash: correcting it changes battle balance and requires a coordinated client/Edge/policy-hash update. This is not a regression introduced by these UI fixes, but should be handled as a separate engine fix; do not mistake the required security suites passing for a pass of this older optional assertion.
+At the initial feedback commit, the optional legacy `node tools/test_pvp_core.mjs` failed its **레벨 스탯 반영** assertion both here and on untouched base `70fd708` in `/workspace/vrp-phase3`. In `snapCard()` a trailing `// EX는 별 색으로만` comment swallowed the `slv/ATK/HP/DEF/power` fields. The initial feedback commit intentionally did **not** change that canonical engine behavior or the engine hash: correcting it changes battle balance and requires a coordinated client/Edge/policy-hash update. This was not a regression introduced by these UI fixes and is now fixed in the approved follow-up (see the linked report above); the assertion now passes and is permanently included in the phase3 security suite.

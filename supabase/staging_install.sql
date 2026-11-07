@@ -18701,7 +18701,7 @@ notify pgrst,'reload schema';
 
 create table if not exists public.pvp_policy_v3(
  singleton boolean primary key default true check(singleton), engine_hash text not null check(length(engine_hash)=64), enabled boolean not null default true);
-insert into public.pvp_policy_v3(singleton,engine_hash) values(true,'16b61abb1c42f29f063b9b84de938ef950363cdd2a23262cddf05c27c0c038a6')
+insert into public.pvp_policy_v3(singleton,engine_hash) values(true,'ff3c2c77c26429a0fbf85f1d1ab73edb882af342a152727c1aed64c49160dd2a')
  on conflict(singleton) do update set engine_hash=excluded.engine_hash;
 -- A clean, verified ladder. Legacy rows remain intact, NOT copied as proof.
 create table if not exists public.pvp_ratings_v3(

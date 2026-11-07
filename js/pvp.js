@@ -362,6 +362,8 @@ async function fight() {
   if (pendingResult()) { await retryResult(); return; }
   const go = document.querySelector('#pvp-modal [data-go]'); if (go) go.disabled = true;
   const manual = battleMode() === 'manual';
+  const waitingStart = pendingStart();
+  if (waitingStart && waitingStart.version !== PVP_ENGINE_VERSION) pendingStart(null); // A stale start must not pin refreshes to an old engine forever.
   const body = pendingStart() || { op: 'start', league: view.league, mode: view.mode, request: crypto.randomUUID(), control: (manual || !!VIEW()) ? 'actions' : 'auto', version: PVP_ENGINE_VERSION };
   pendingStart(body);
   let s; try { s = await verifyRpc(body); pendingStart(null); } catch (e) { toast(errText(e)); if (go) go.disabled = false; return; }

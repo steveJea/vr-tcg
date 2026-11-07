@@ -65,7 +65,12 @@ export function createHandler(env, fetcher = fetch) {
         return reply(200, await rpc('pvp_engine_settle_v3', { p_uid: user.id, p_id: body.id, p_engine_hash: ENGINE_VERSION, p_submission: submission, p_result: null }));
       }
       if (body.op === 'forfeit') return reply(200, await rpc('pvp_engine_settle_v3', { p_uid: user.id, p_id: body.id, p_engine_hash: ENGINE_VERSION, p_submission: submission, p_result: null }));
-      if (s.engine_hash !== ENGINE_VERSION) return reply(409, { error: 'PvP engine version unavailable' });
+      if (s.engine_hash !== ENGINE_VERSION) {
+        // NEVER replay an old transcript with new rules. SQL alone can close an
+        // expired session as its already-reserved forfeit (or reject an active
+        // old session). This also releases durable pending results after rollout.
+        return reply(200, await rpc('pvp_engine_settle_v3', { p_uid: user.id, p_id: body.id, p_engine_hash: ENGINE_VERSION, p_submission: submission, p_result: null }));
+      }
       let result; try { result = verifyBattle(s, body.actions); } catch { return reply(422, { error: 'illegal or incomplete battle actions' }); }
       // No await inside engine execution: its scoped RNG/global skill state cannot interleave requests.
       return reply(200, await rpc('pvp_engine_settle_v3', { p_uid: user.id, p_id: body.id, p_engine_hash: ENGINE_VERSION, p_submission: submission, p_result: result }));
