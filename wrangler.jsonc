@@ -1,0 +1,16 @@
+// 테스트 서버 전용. GitHub Pages 운영 배포는 바꾸지 않습니다.
+// Cloudflare에서 staging 브랜치만 연결하세요. docs/STAGING.md 참고.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "vr-tcg-staging",
+  "compatibility_date": "2026-11-07",
+  "workers_dev": true,
+  "assets": {
+    "directory": "./.staging-dist",
+    "not_found_handling": "404-page"
+  },
+  "observability": {
+    "enabled": true,
+    "traces": { "enabled": true, "head_sampling_rate": 0.01 }
+  }
+}

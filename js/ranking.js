@@ -1,8 +1,9 @@
+import { config } from './config.js';
 // ===== 랭킹 팝업: 아케이드(rankings_weekly/all) · 시탑(tower_rankings) · PVP(pvp_rankings) · 스토리(story_rankings). anon 키로 공개 조회 =====
 (() => {
   const IC = n => window.VRIcon?.icon(n) || '';   // js/icons.js
-  const URL_ = 'https://htarwisgkkphutxxnuak.supabase.co/rest/v1/';
-  const KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh0YXJ3aXNna2twaHV0eHhudWFrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIxNTMwOTgsImV4cCI6MjEwNzcyOTA5OH0.xaIda-o8QwRhoG5yDRLAcMo8LbU1rNHUA7xznO-tEfc';
+  const URL_ = config.enabled ? config.supabaseUrl + '/rest/v1/' : '';
+  const KEY = config.anonKey;
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   let main = 'arcade', tab = 'weekly', tower = 'normal', league = 'open', pmode = '1v1';
   const MAIN = [['arcade', '아케이드'], ['tower', '시탑'], ['pvp', 'PVP'], ['story', '스토리']];
@@ -61,6 +62,7 @@
     try { const sb = window.VRCloud?.sb; if (!sb || !window.VRCloud.user) return null; const { data } = await sb.auth.getSession(); return data?.session?.access_token || null; } catch { return null; }
   }
   async function q(path, tok) {
+    if (!config.enabled) throw new Error(config.reason);
     const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 8000);
     try {
       const r = await fetch(URL_ + path, { signal: ctl.signal, headers: { apikey: KEY, Authorization: 'Bearer ' + (tok || KEY) } });
@@ -72,6 +74,7 @@
   const head = `<tr><th>순위</th><th style="text-align:left">닉네임</th><th>점수</th><th>승/무/패</th></tr>`;
 
   async function rpc(name, args, tok) {
+    if (!config.enabled) throw new Error(config.reason);
     const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 8000);
     try {
       const r = await fetch(URL_ + 'rpc/' + name, { method: 'POST', signal: ctl.signal, headers: { apikey: KEY, Authorization: 'Bearer ' + (tok || KEY), 'Content-Type': 'application/json' }, body: JSON.stringify(args || {}) });

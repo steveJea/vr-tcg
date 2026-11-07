@@ -1,8 +1,9 @@
 // ===== 계정 + 클라우드 저장 (Supabase) =====
 // 로그아웃 상태는 기존과 동일하게 게스트(브라우저 저장)로 플레이.
 // Supabase 접속 실패 시 조용히 게스트 모드로 동작.
-const SUPABASE_URL = 'https://htarwisgkkphutxxnuak.supabase.co';
-const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh0YXJ3aXNna2twaHV0eHhudWFrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIxNTMwOTgsImV4cCI6MjEwNzcyOTA5OH0.xaIda-o8QwRhoG5yDRLAcMo8LbU1rNHUA7xznO-tEfc';
+import { config } from './config.js';
+const SUPABASE_URL = config.supabaseUrl;
+const SUPABASE_ANON = config.anonKey;
 const SDK = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm';
 const REDIRECT = location.hostname === 'tcg.mbbs.kr' ? 'https://tcg.mbbs.kr/' : location.origin + location.pathname;
 
@@ -128,6 +129,8 @@ window.addEventListener('vr:match', async e => {
 });
 
 async function init() {
+  // 미등록 주소·아직 준비 안 된 테스트 DB는 SDK/로그인/DB 요청 자체를 시작하지 않음.
+  if (!config.enabled) { render(); return; }
   try {
     const mod = await Promise.race([import(SDK), new Promise((_, r) => setTimeout(() => r(new Error('timeout')), 8000))]);
     sb = mod.createClient(SUPABASE_URL, SUPABASE_ANON, { auth: { persistSession: true, detectSessionInUrl: true, flowType: 'pkce' } });
