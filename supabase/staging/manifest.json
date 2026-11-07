@@ -1,0 +1,57 @@
+{
+  "projectRef": "cuyqchmdcnsgzkwyclji",
+  "systemId": "7703759698107299042",
+  "bundle": "ac67dd4f5df4920603189b3e57b25a5e13e409b830a4a45862378c594de08997",
+  "parts": [
+    {
+      "file": "01_install.sql",
+      "bytes": 129195,
+      "sha256": "c00068e80a623b66656a66f0cd2aab7e7f17ab07d91fba6cfcbb5f6d147a6a5f"
+    },
+    {
+      "file": "02_install.sql",
+      "bytes": 129716,
+      "sha256": "68f41b459ad692de90823c6143e7791c371b1b73df0ad85c43cd27a44a7737ee"
+    },
+    {
+      "file": "03_install.sql",
+      "bytes": 129490,
+      "sha256": "203cd31e9c564b03ae309e368d6991e5bbffc5d6e7aa5ccb0a10425fbd774fee"
+    },
+    {
+      "file": "04_install.sql",
+      "bytes": 128818,
+      "sha256": "93bb8266d7ba3e323cc94c6aab31af1fc72dac84680d30a6280d80d88adbd4de"
+    },
+    {
+      "file": "05_install.sql",
+      "bytes": 129674,
+      "sha256": "5982a29a66fb3d02f19581341cac083b3f0c9ef82bef239d69a0dfe667b4fcea"
+    },
+    {
+      "file": "06_install.sql",
+      "bytes": 129774,
+      "sha256": "7d21afd66da64844d53862cf3898c45f7e678d013811ff7da37464167ea9f796"
+    },
+    {
+      "file": "07_install.sql",
+      "bytes": 129781,
+      "sha256": "b9448bb322b7df4f9962a5da325dd980e3020814ccd31993b1d999f396aee43b"
+    },
+    {
+      "file": "08_install.sql",
+      "bytes": 129620,
+      "sha256": "c0afcf3a199df929bd751d840e7aa8b8abb8cc7d4e0c1eafe7d6135da8feb0f1"
+    },
+    {
+      "file": "09_install.sql",
+      "bytes": 129644,
+      "sha256": "9474f0913ed92f06027db90e3d7ac11e0c3a46fa60e639600cf18cd02b1ec309"
+    },
+    {
+      "file": "10_install.sql",
+      "bytes": 28870,
+      "sha256": "612e972acbdad552d42c9c1faea1bb528e8b6a4f81ae5347b016be9c77e16c8f"
+    }
+  ]
+}

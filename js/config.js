@@ -5,10 +5,10 @@ const PRODUCTION = Object.freeze({
   anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh0YXJ3aXNna2twaHV0eHhudWFrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIxNTMwOTgsImV4cCI6MjEwNzcyOTA5OH0.xaIda-o8QwRhoG5yDRLAcMo8LbU1rNHUA7xznO-tEfc',
 });
 
-// 형님: 별도 테스트 프로젝트를 만든 뒤 이 3곳만 채우세요 (docs/STAGING.md).
+// 별도 테스트 DB 공개 설정. Cloudflare 주소 발급 후 hostnames를 맞추세요 (docs/STAGING.md).
 export const STAGING = Object.freeze({
-  supabaseUrl: '', // 예: https://별도테스트프로젝트.supabase.co (운영 URL 금지)
-  anonKey: '',     // 테스트 프로젝트의 anon 또는 sb_publishable_ 키만
+  supabaseUrl: 'https://cuyqchmdcnsgzkwyclji.supabase.co', // 테스트 전용 (운영 URL 금지)
+  anonKey: 'sb_publishable_N3rWy8v7bsWu8CdgHJM0Hg_6dGqsKn-', // 공개 publishable 키
   hostnames: Object.freeze([
     'dev-tcg.mbbs.kr',
     'vr-tcg-staging.YOUR_SUBDOMAIN.workers.dev', // 실제 Cloudflare 주소로 교체
