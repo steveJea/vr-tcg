@@ -1120,3 +1120,6 @@ body.gnb-on:not(.gnb-hidden) #story-screen { --wrap-pb: 12px; }   /* 하단 메�
 #game.story-field .hud-btns:has(#act-buff) > #attack-all { order: 3; }
 #game.story-field .hud-btns:has(#act-buff) > #end-turn { order: 4; }
 #game.story-field .hud-btns:has(#act-buff) > #reserve-btn { order: 5; }
+
+/* PvP boss rule cue: one readable sentence, not a tiny explanatory footer. */
+#game.view-boss #hero-hint { font-size: 14px; line-height: 1.5; }
