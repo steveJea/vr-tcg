@@ -2146,6 +2146,7 @@ function canStillAct() {
 }
 function autoEndReady() {
   if (!S || !S.story || S.turn !== 'me' || S.over || S.busy || !S.meActed) return false;
+  if (window.VRTutorial?.active) return false;                                         // 가이드의 턴 종료 탭을 기다림 (자동 넘김과 충돌 방지)
   if (S.view ? (S.view.auto || !S.view.ask) : autoActive()) return false;                 // 자동전투 중엔 엔진/자동이 처리
   return !canStillAct();
 }
@@ -2162,7 +2163,8 @@ function maybeAutoEndTurn() {
 function requestEndTurn() {
   if (S.turn !== 'me' || S.over || S.busy) return;
   const n = idleUnits().length;
-  if (!n || S.at || localStorage.getItem(CONFIRM_KEY) === '1') return endTurn();
+  const guidedEnd = ['end_turn', '#end-turn'].includes(window.VRTutorial?.active?.target);
+  if (!n || S.at || guidedEnd || localStorage.getItem(CONFIRM_KEY) === '1') return endTurn();
   $('endturn-msg').textContent = `행동 안 한 카드가 ${n}장 있어요. 턴을 넘길까요?`;
   $('endturn-noask').checked = false;
   showModal('endturn-confirm');
