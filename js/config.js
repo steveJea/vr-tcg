@@ -11,7 +11,7 @@ export const STAGING = Object.freeze({
   anonKey: 'sb_publishable_N3rWy8v7bsWu8CdgHJM0Hg_6dGqsKn-', // 공개 publishable 키
   hostnames: Object.freeze([
     'dev-tcg.mbbs.kr',
-    'vr-tcg-staging.YOUR_SUBDOMAIN.workers.dev', // 실제 Cloudflare 주소로 교체
+    'vr-tcg-staging.notcold.workers.dev',
   ]),
 });
 
