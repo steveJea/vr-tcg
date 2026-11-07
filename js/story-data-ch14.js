@@ -115,6 +115,11 @@ window.STORY_DATA.chapters.push({
      {
       "speaker": "불량배-A",
       "text": "저기다! 그 역사학자 딸들이다!"
+     },
+     {
+      "speaker": "이혜경",
+      "text": "...진경아, 꽉 잡아. 언니가 절대 안 놓을게.",
+      "expr": "분노"
      }
     ]
    },
@@ -136,15 +141,7 @@ window.STORY_DATA.chapters.push({
    "bossId": "10143",
    "mana": 80,
    "starTurns": 6,
-   "starMana": 0.3,
-   "after": [
-    {
-     "speaker": "이혜경",
-     "text": "...진경아, 꽉 잡아. 언니가 절대 안 놓을게.",
-     "expr": "분노"
-    }
-   ],
-   "afterTitle": "전투 후"
+   "starMana": 0.3
   },
   {
    "no": 2,
@@ -238,6 +235,11 @@ window.STORY_DATA.chapters.push({
      {
       "speaker": "불량배-L",
       "text": "ㅋㅋ 떨면서 말하네. 귀엽다."
+     },
+     {
+      "speaker": "이혜경",
+      "text": "진경아. 눈 감고, 귀 막고, 언니가 됐다고 할 때까지 숫자 세.",
+      "expr": "분노"
      }
     ]
    },
@@ -259,15 +261,7 @@ window.STORY_DATA.chapters.push({
    "bossId": "10148",
    "mana": 80,
    "starTurns": 8,
-   "starMana": 0.3,
-   "after": [
-    {
-     "speaker": "이혜경",
-     "text": "진경아. 눈 감고, 귀 막고, 언니가 됐다고 할 때까지 숫자 세.",
-     "expr": "분노"
-    }
-   ],
-   "afterTitle": "전투 후"
+   "starMana": 0.3
   },
   {
    "no": 3,
@@ -363,6 +357,11 @@ window.STORY_DATA.chapters.push({
       "speaker": "강철진",
       "text": "조용히 해, 꼬맹이. 우리가 안 데려가면 더 험한 놈들이 와.",
       "expr": "분노"
+     },
+     {
+      "speaker": "이혜경",
+      "text": "여기선 좋은 뜻으로 온 사람이 제일 위험하댔어요. 나가요!",
+      "expr": "분노"
      }
     ]
    },
@@ -386,11 +385,6 @@ window.STORY_DATA.chapters.push({
    "starTurns": 9,
    "starMana": 0.25,
    "after": [
-    {
-     "speaker": "이혜경",
-     "text": "여기선 좋은 뜻으로 온 사람이 제일 위험하댔어요. 나가요!",
-     "expr": "분노"
-    },
     {
      "speaker": "문재",
      "text": "그만. 철훈아, 철진아. 손대지 마.",
@@ -530,6 +524,11 @@ window.STORY_DATA.chapters.push({
      {
       "speaker": "불량배-Q",
       "text": "(속삭임) 작은 애가 목록에 있대. 오성 형님이 직접 온대. 동욱 회장님 손님이 급하시대."
+     },
+     {
+      "speaker": "이혜경",
+      "text": "(...또 오는구나. 이번엔 진짜로.)",
+      "expr": "분노"
      }
     ]
    },
@@ -551,15 +550,7 @@ window.STORY_DATA.chapters.push({
    "bossId": "10158",
    "mana": 80,
    "starTurns": 9,
-   "starMana": 0.25,
-   "after": [
-    {
-     "speaker": "이혜경",
-     "text": "(...또 오는구나. 이번엔 진짜로.)",
-     "expr": "분노"
-    }
-   ],
-   "afterTitle": "전투 후"
+   "starMana": 0.25
   },
   {
    "no": 5,
@@ -651,6 +642,21 @@ window.STORY_DATA.chapters.push({
       "speaker": "백천주",
       "text": "언니도 나쁘진 않은데. 근데 손님이 원하는 건 작은 거라.",
       "expr": "기쁨"
+     },
+     {
+      "speaker": "윤우람",
+      "text": "어디 숨겼어. 말해.",
+      "expr": "분노"
+     },
+     {
+      "speaker": "이혜경",
+      "text": "...이 집에 나 혼자예요. 뭐라도 하고 싶으면 나 먼저 쓰러뜨려요.",
+      "expr": "분노"
+     },
+     {
+      "speaker": "서오성",
+      "text": "그래? 그럼 그렇게 해 줄게.",
+      "expr": "기쁨"
      }
     ]
    },
@@ -677,25 +683,7 @@ window.STORY_DATA.chapters.push({
    },
    "mana": 80,
    "starTurns": 2,
-   "starMana": 0,
-   "after": [
-    {
-     "speaker": "윤우람",
-     "text": "어디 숨겼어. 말해.",
-     "expr": "분노"
-    },
-    {
-     "speaker": "이혜경",
-     "text": "...이 집에 나 혼자예요. 뭐라도 하고 싶으면 나 먼저 쓰러뜨려요.",
-     "expr": "분노"
-    },
-    {
-     "speaker": "서오성",
-     "text": "그래? 그럼 그렇게 해 줄게.",
-     "expr": "기쁨"
-    }
-   ],
-   "afterTitle": "전투 후"
+   "starMana": 0
   },
   {
    "no": 6,
@@ -957,6 +945,11 @@ window.STORY_DATA.chapters.push({
       "speaker": "백천주",
       "text": "운 좋네. 근데 옆에 저 남자는 뭐야? ...야, 아저씨. 그 애 우리 거야.",
       "expr": "기쁨"
+     },
+     {
+      "speaker": "김성진",
+      "text": "너희 거? ...이 아이는 이제 내 거야. 열흘만 조용히 해 줄래?",
+      "expr": "보통"
      }
     ]
    },
@@ -980,11 +973,6 @@ window.STORY_DATA.chapters.push({
    "starTurns": 4,
    "starMana": 0.3,
    "after": [
-    {
-     "speaker": "김성진",
-     "text": "너희 거? ...이 아이는 이제 내 거야. 열흘만 조용히 해 줄래?",
-     "expr": "보통"
-    },
     {
      "speaker": "내레이션",
      "text": "싸움이라 부를 수도 없었다. 서진성과 백천주는 무언가에 쫓기듯 골목 밖으로 기어 나갔다. 무엇을 봤는지, 둘은 끝내 입에 담지 못했다."
@@ -1218,7 +1206,7 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "풍건",
-      "text": "걱정 마세요, 원장님. 김동욱 회장님은 계산이 정확하시니까. 자, 목록 확인할게요.",
+      "text": "걱정 마세요, 원장님. 회장님은 계산이 정확하시니까. 자, 목록 확인할게요.",
       "expr": "기쁨"
      },
      {
@@ -1232,18 +1220,13 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "이진경",
-      "text": "(아저씨 머릿속에 우리 언니가 있어. 피투성이 언니가.)",
+      "text": "(아저씨 머릿속에 우리 언니가 있어. 피투성이의....그 언니가.)",
       "expr": "보통"
      },
      {
       "speaker": "이진경",
       "text": "(...기억났어. 아저씨네 사람들이었구나.)",
       "expr": "분노"
-     },
-     {
-      "speaker": "풍건",
-      "text": "얘, 얘 눈이 왜 이래...? 야, 빨리 태워! 이상해!",
-      "expr": "놀람"
      }
     ]
    },
@@ -1268,25 +1251,30 @@ window.STORY_DATA.chapters.push({
    "starMana": 0.3,
    "after": [
     {
+     "speaker": "풍건",
+     "text": "얘, 얘 눈이 왜 이래...? 야, 그..그냥 가자!!!",
+     "expr": "놀람"
+    },
+    {
      "speaker": "불량배-N",
-     "text": "움직이지 마, 꼬맹이! 차에 타!"
+     "text": "움직이지 마, 꼬맹이!!! 으..으아아악..!!"
     },
     {
      "speaker": "내레이션",
-     "text": "그날 밤, 고아원의 모든 것이 불길에 삼켜졌다. 연기 사이로 아이들의 비명이 메아리쳤다."
+     "text": "고아원의 모든 것이 불길에 삼켜졌다. 연기 사이로 사람들의 비명이 메아리쳤다."
     },
     {
      "speaker": "내레이션",
-     "text": "새벽. 잔해 더미 속에서, 진경은 아무 일도 없었다는 듯 홀로 걸어 나왔다. 머리카락 한 올 타지 않은 채로."
+     "text": "새벽. 잔해 더미 속에서, 진경과 아이들은 아무 일도 없었다는 듯 홀로 걸어 나왔다. 머리카락 한 올 타지 않은 채로."
     },
     {
      "speaker": "이진경",
-     "text": "...예쁘다. 붉어.",
+     "text": "...예쁘다....헤헤",
      "expr": "보통"
     },
     {
      "speaker": "내레이션",
-     "text": "풍건은 사라지기 전 마지막으로 승합차에 올라탔다. 그가 무엇을 기억하고 무엇을 잊었는지는, 아무도 몰랐다."
+     "text": "풍건은 사라지기 전 마지막으로 승합차에 올라탔다. 얼굴에 큰 화상을 입은 그는....한동안 혼이 빠져 있었다."
     }
    ],
    "afterTitle": "전투 후"
@@ -1387,6 +1375,11 @@ window.STORY_DATA.chapters.push({
      {
       "speaker": "불량배-B",
       "text": "잡아. 얼굴도 반반하네. 동욱 회장님한테 넘기면 한몫 챙기겠는데?"
+     },
+     {
+      "speaker": "이진경",
+      "text": "...또 회장님이야? 다들 그 사람 좋아하네.",
+      "expr": "기쁨"
      }
     ]
    },
@@ -1408,15 +1401,7 @@ window.STORY_DATA.chapters.push({
    "bossId": "10143",
    "mana": 67,
    "starTurns": 9,
-   "starMana": 0.3,
-   "after": [
-    {
-     "speaker": "이진경",
-     "text": "...또 회장님이야? 다들 그 사람 좋아하네.",
-     "expr": "기쁨"
-    }
-   ],
-   "afterTitle": "전투 후"
+   "starMana": 0.3
   },
   {
    "no": 11,
@@ -1494,7 +1479,7 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "이진경",
-      "text": "언니를 죽인 놈들은...아...나는 누구지?...도대체 여긴 어디지?...언니? 그게 누구지??",
+      "text": "언니를 죽인 놈들은...아...언니? 누구지?...도대체 여긴 어디지?...응?..나..나는...누구지?",
       "expr": "슬픔"
      },
      {
@@ -1508,6 +1493,11 @@ window.STORY_DATA.chapters.push({
      {
       "speaker": "불량배-V",
       "text": "이 시간에 혼자 다니는 애는 주인 없는 애야. 따라와."
+     },
+     {
+      "speaker": "이진경",
+      "text": "머리 아파...시끄러워. 다 시끄러워!!",
+      "expr": "분노"
      }
     ]
    },
@@ -1529,15 +1519,7 @@ window.STORY_DATA.chapters.push({
    "bossId": "10163",
    "mana": 67,
    "starTurns": 7,
-   "starMana": 0.3,
-   "after": [
-    {
-     "speaker": "이진경",
-     "text": "머리 아파...시끄러워. 다 시끄러워!!",
-     "expr": "분노"
-    }
-   ],
-   "afterTitle": "전투 후"
+   "starMana": 0.3
   },
   {
    "no": 12,
@@ -1598,7 +1580,7 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "내레이션",
-      "text": "배척지에서 약자를 괴롭히고 약탈하는 것은 상식이었다. 진경은 그 질서를 부정했다."
+      "text": "배척지에서 약자를 괴롭히고 약탈하는 것은 상식이었다. 그리고 진경은 그 질서를 부정했다."
      },
      {
       "speaker": "불량배-D",
@@ -1685,7 +1667,7 @@ window.STORY_DATA.chapters.push({
     },
     {
      "speaker": "내레이션",
-     "text": "하지만 아침이 오면, 그녀는 다시 웃었다."
+     "text": "하지만 아침이 오면, 진경은 다시 미소 지었다."
     }
    ],
    "afterTitle": "전투 후"
@@ -1907,6 +1889,11 @@ window.STORY_DATA.chapters.push({
       "speaker": "윤우람",
       "text": "오성 형님 깨기 전에 치워 버려.",
       "expr": "분노"
+     },
+     {
+      "speaker": "설달",
+      "text": "...내 친구들 이름, 하나씩 불러 줄게. 너희가 기억할 때까지.",
+      "expr": "분노"
      }
     ]
    },
@@ -1933,11 +1920,6 @@ window.STORY_DATA.chapters.push({
    "starTurns": 5,
    "starMana": 0,
    "after": [
-    {
-     "speaker": "설달",
-     "text": "...내 친구들 이름, 하나씩 불러 줄게. 너희가 기억할 때까지.",
-     "expr": "분노"
-    },
     {
      "speaker": "내레이션",
      "text": "복수는 이루어지지 않았다. 설달은 짓밟혔고, 모든 것을 빼앗긴 채 버려졌다."
@@ -2114,6 +2096,11 @@ window.STORY_DATA.chapters.push({
       "speaker": "설달",
       "text": "신님...조심하세요.",
       "expr": "슬픔"
+     },
+     {
+      "speaker": "이진경",
+      "text": "괜찮아, 언니. 뒤에 있어. 이건 내 놀이야.",
+      "expr": "기쁨"
      }
     ]
    },
@@ -2137,11 +2124,6 @@ window.STORY_DATA.chapters.push({
    "starTurns": 9,
    "starMana": 0.3,
    "after": [
-    {
-     "speaker": "이진경",
-     "text": "괜찮아, 언니. 뒤에 있어. 이건 내 놀이야.",
-     "expr": "기쁨"
-    },
     {
      "speaker": "내레이션",
      "text": "쓰러진 세 사람 앞에, 진경이 쪼그려 앉았다."
@@ -2254,6 +2236,11 @@ window.STORY_DATA.chapters.push({
       "speaker": "이진경",
       "text": "장롱 틈으로 다 봤어. 근데 이상하다. 언니 얼굴은 하나도 기억 안 나는데...아저씨 얼굴은 기억나.",
       "expr": "보통"
+     },
+     {
+      "speaker": "서오성",
+      "text": "...죽여. 둘 다 죽여!!",
+      "expr": "분노"
      }
     ]
    },
@@ -2278,17 +2265,12 @@ window.STORY_DATA.chapters.push({
    "starMana": 0.3,
    "after": [
     {
-     "speaker": "서오성",
-     "text": "...죽여. 둘 다 죽여!!",
-     "expr": "분노"
-    },
-    {
      "speaker": "내레이션",
      "text": "서오성은 끝까지 동생을 등 뒤에 감쌌다. 그것이, 그가 한 유일한 인간다운 일이었다."
     },
     {
      "speaker": "이진경",
-     "text": "아저씨도 동생 있구나. ...나도 있었던 것 같은데.",
+     "text": "아저씨도 동생 있구나. ...나도 있었던 것 같은데...응? 아닌가? 몰라..기억 안 나..",
      "expr": "보통"
     },
     {
@@ -2397,13 +2379,18 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "문재",
-      "text": "알아! ...알아.",
+      "text": "알아! ...안다고!!!!",
       "expr": "분노"
      },
      {
       "speaker": "이진경",
       "text": "아저씨. 착하네. 근데 왜 나쁜 사람 개야?",
       "expr": "보통"
+     },
+     {
+      "speaker": "문재",
+      "text": "...목줄이 묶여 있으면, 착한 개도 문다. 미안하다, 꼬마야. 오늘은 내가 못 비켜 준다.",
+      "expr": "슬픔"
      }
     ]
    },
@@ -2430,11 +2417,6 @@ window.STORY_DATA.chapters.push({
    "starTurns": 9,
    "starMana": 0.25,
    "after": [
-    {
-     "speaker": "문재",
-     "text": "...목줄이 묶여 있으면, 착한 개도 문다. 미안하다, 꼬마야. 오늘은 내가 못 비켜 준다.",
-     "expr": "슬픔"
-    },
     {
      "speaker": "내레이션",
      "text": "문재는 강했다. 하지만 진경은 그의 머릿속을 보고 있었다. 그 안에 묶여 있는 사람들의 얼굴까지."
@@ -2534,33 +2516,38 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "김동욱",
-      "text": "문재. 너희 셋. 뭐 하고 있어. 잡아.",
+      "text": "문재 이 X끼야..뭐 하고 있어? 잡아.!!",
       "expr": "보통"
      },
      {
       "speaker": "문재",
-      "text": "...예, 회장님.",
+      "text": "....이번엔...안됩니다. 회장님 죄송합니다.",
       "expr": "슬픔"
      },
      {
       "speaker": "김동욱",
-      "text": "형님이 그 금빛 눈 계집애한테 당하고 사라진 뒤로, 이 구역은 내가 3달 만에 다 먹었어. 꼬맹이 하나한테 뺏길 것 같아?",
+      "text": "이...이 돼지가 미쳤나? 너희 셋은 오늘 다 죽을거다.",
       "expr": "분노"
      },
      {
       "speaker": "이진경",
-      "text": "아저씨가 회장님이구나. 다들 아저씨 좋아하던데.",
+      "text": "하하...아저씨가 회장님이구나. 다들 아저씨 좋아하던데.",
       "expr": "기쁨"
      },
      {
       "speaker": "이진경",
-      "text": "...언니가 죽은 거, 아저씨 목록 때문이지?",
+      "text": "그...언니가 죽은 거, 아저씨 목록 때문이지?",
       "expr": "분노"
      },
      {
       "speaker": "김동욱",
-      "text": "언니? 아아...기억 안 나. 상품이 아니었나 보지.",
+      "text": "그 언니? 뭔소리지?",
       "expr": "기쁨"
+     },
+     {
+      "speaker": "이진경",
+      "text": "...나도 기억 안 나. 그러니까 아저씨도 잊게 해 줄게. 전부.",
+      "expr": "분노"
      }
     ]
    },
@@ -2587,11 +2574,6 @@ window.STORY_DATA.chapters.push({
    "starTurns": 10,
    "starMana": 0.2,
    "after": [
-    {
-     "speaker": "이진경",
-     "text": "...나도 기억 안 나. 그러니까 아저씨도 잊게 해 줄게. 전부.",
-     "expr": "분노"
-    },
     {
      "speaker": "내레이션",
      "text": "하얀 정장이 바닥에 무너졌다. 진경이 그 앞에 쪼그려 앉았다."
