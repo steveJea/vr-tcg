@@ -10,14 +10,14 @@ const manifest = JSON.parse(await readFile(new URL('manifest.json', dir), 'utf8'
 assert.equal(STAGING_SYSTEM_ID, '7703759698107299042');
 assert.equal(manifest.systemId, STAGING_SYSTEM_ID);
 assert.equal(typeof manifest.systemId, 'string');
-assert.equal(manifest.systemId.length, 18);
+assert.equal(manifest.systemId.length, 19);
 assert.equal('productionSystemId' in manifest, false);
 const sourceParts = await buildParts(manifest.systemId);
 assert.deepEqual((await readdir(dir)).filter(n => n.endsWith('.sql')).sort(), sourceParts.map(p => p.name));
 for (const [index, part] of sourceParts.entries()) {
   const sql = await readFile(new URL(part.name, dir), 'utf8');
   assert.equal(sql, part.sql, part.name + ': 재생성 필요');
-  assert.ok(sql.includes("expected_db_id text := '7703759698107299042'"), '18자리 확인 값이 정확히 유지되어야 함');
+  assert.ok(sql.includes("expected_db_id text := '7703759698107299042'"), '19자리 확인 값이 정확히 유지되어야 함');
   assert.ok(!sql.includes('production_db_id'));
   assert.ok(Buffer.byteLength(sql) < MAX_PART_BYTES);
   assert.equal(createHash('sha256').update(sql).digest('hex'), manifest.parts[index].sha256);
