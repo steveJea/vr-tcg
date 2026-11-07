@@ -218,6 +218,30 @@ try {
   assert.equal(nextDay.got_day,1);
   await db.exec(originalClock);
   console.log('Tower/PvP play without payment; KST day/week/7-day login boundaries: OK');
+  // Staging feedback #5: a free accumulated claim and a 30-gem instant boost are distinct.
+  // All data here is a disposable local fixture; never a live database.
+  await q('update player_wallet set gem_free=0,gem_paid=0 where user_id=$1',[other]);
+  const idleStatus=await role('authenticated',()=>val('select idle_box_status() v'),other);
+  assert.equal(idleStatus.boost.cost,30);
+  assert.equal(idleStatus.boost.hours,4);
+  await q("update idle_box set last_claim=now()-interval '2 hours' where user_id=$1",[other]);
+  const idleFree=await role('authenticated',()=>val('select idle_box_claim() v'),other);
+  assert(idleFree.got.gold>0,'accumulated rewards must work with zero gems');
+  assert.equal(await val('select gem_free+gem_paid v from player_wallet where user_id=$1',[other]),0);
+  const idleBefore=await val(`select jsonb_build_object('wallet',to_jsonb(w),'idle',to_jsonb(i),'gear',to_jsonb(g)) v
+    from player_wallet w join idle_box i using(user_id) left join player_gear_meta g using(user_id) where w.user_id=$1`,[other]);
+  await reject('select idle_box_boost()',/not enough gem/,other);
+  const idleAfter=await val(`select jsonb_build_object('wallet',to_jsonb(w),'idle',to_jsonb(i),'gear',to_jsonb(g)) v
+    from player_wallet w join idle_box i using(user_id) left join player_gear_meta g using(user_id) where w.user_id=$1`,[other]);
+  assert.deepEqual(idleAfter,idleBefore,'failed paid boost cannot change rewards or daily count');
+  await q('update player_wallet set gem_free=100 where user_id=$1',[other]);
+  const boost1=await role('authenticated',()=>val('select idle_box_boost() v'),other);
+  assert.equal(boost1.gem.gem,70); assert.equal(boost1.boost.left,1); assert(boost1.got.gold>0);
+  const boost2=await role('authenticated',()=>val('select idle_box_boost() v'),other);
+  assert.equal(boost2.gem.gem,40); assert.equal(boost2.boost.left,0);
+  await reject('select idle_box_boost()',/daily limit/,other);
+  assert.equal(await val('select gem_free+gem_paid v from player_wallet where user_id=$1',[other]),40);
+  console.log('Idle rewards: zero-gem free claim, 30-gem paid boost, rollback and daily limit: OK');
   const exposed=await q(`select p.oid::regprocedure sig from pg_proc p join pg_namespace n on n.oid=p.pronamespace
     where n.nspname='public' and left(p.proname,1)='_' and
     (has_function_privilege('anon',p.oid,'execute') or has_function_privilege('authenticated',p.oid,'execute'))`);

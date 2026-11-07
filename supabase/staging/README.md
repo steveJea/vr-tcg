@@ -21,7 +21,7 @@
 7. [`07_install.sql`](07_install.sql) — 129,784바이트
 8. [`08_install.sql`](08_install.sql) — 129,623바이트
 9. [`09_install.sql`](09_install.sql) — 129,647바이트
-10. [`10_install.sql`](10_install.sql) — 125,040바이트
+10. [`10_install.sql`](10_install.sql) — 125,063바이트
 11. [`11_install.sql`](11_install.sql) — 129,596바이트
 12. [`12_install.sql`](12_install.sql) — 121,230바이트
 

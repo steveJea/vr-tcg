@@ -40,11 +40,11 @@ set local check_function_bodies = off;
 
 do $vr_install_part$
 begin
-  if exists (select 1 from vr_staging_install.parts where bundle_hash <> '410cdea919d7fef2dc1c1430be099965278672866ca01148fb8f0da2240951aa' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
+  if exists (select 1 from vr_staging_install.parts where bundle_hash <> '3da76f48e41e9e52500615b8cdbb1be15aa7e9e35a3d2f73e67dd0a9ce29222d' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
     raise exception 'STOP: 다른 버전/DB의 설치 기록입니다. 파일을 섞지 마세요.';
   end if;
   if exists (select 1 from vr_staging_install.parts where part_no = 10) then
-    if not exists (select 1 from vr_staging_install.parts where part_no = 10 and part_hash = '35278980f56707d0441dd02bffda4173e2abb401f347e3da2c02870778b1b7fe') then
+    if not exists (select 1 from vr_staging_install.parts where part_no = 10 and part_hash = '06ed9a63be6b194a3da066e8cb9b234a77ce595a1b463052e049287d57159144') then
       raise exception 'STOP: 완료한 파일과 내용이 다릅니다.';
     end if;
     raise notice '10_install.sql: 이미 완료, 변경 없이 건너뜀';
@@ -1569,7 +1569,7 @@ on conflict (stage) do nothing;$vr_statement$;
 insert into public.battle_story_defs_v2(chapter,phase,variant,definition) values
 (0,1,'','{"no":1,"type":"normal","enemies":{"ids":["10256"],"boost":{"10256":{"HP":700}}},"party":{"forced":["10325"],"mustLive":["10325"],"noExtra":true,"auto":true,"battleLevels":{"10325":2}},"fullMp":true,"hero":"10325","tutorial":true,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
 (0,2,'','{"no":2,"type":"normal","enemies":{"ids":["10154","10153","10153","10153","10153"]},"party":{"forced":["10325"],"mustLive":["10325"],"noExtra":true,"auto":true},"reserve":["10256"],"hero":"10325","tutorial":true,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
-(0,3,'','{"no":3,"type":"normal","enemies":{"ids":["10323","10168","10168","10168","10168"],"storyLevels":{"10168":30,"10323":30},"levels":{"10168":3,"10323":5}},"party":{"forced":["10325"],"mustLive":[],"fixedLevel":{"10325":1},"only":["10256","10462"],"guests":["10256","10462"]},"awaken":{"on":"10325","id":"10326","storyLevel":100,"battleLevel":10,"line":"....약해...","image":"img/story/ch0-05.webp"},"hero":"10325","tutorial":true,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(0,3,'','{"no":3,"type":"normal","enemies":{"ids":["10323","10168","10168","10168","10168"],"storyLevels":{"10168":30,"10323":30},"levels":{"10168":3,"10323":5}},"party":{"forced":["10325"],"mustLive":[],"fixedLevel":{"10325":1},"only":["10256","10462"],"guests":["10256","10462"]},"awaken":{"pauseOnEntrance":true,"on":"10325","id":"10326","storyLevel":100,"battleLevel":10,"line":"....약해...","image":"img/story/ch0-05.webp"},"hero":"10325","tutorial":true,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
 (0,4,'','{"no":4,"type":"normal","enemies":{"ids":["10111","10224","10265"],"levels":{"10111":2,"10224":2,"10265":2}},"party":{"forced":["10325","10256","10207","10462"],"mustLive":["10325"],"noExtra":true,"auto":true},"pool":true,"mana":200,"mustSummon":["10207"],"hero":"10325","tutorial":true,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
 (0,5,'','{"no":5,"type":"boss","enemies":{"ids":["10229","10391","10097","10093","10103"],"levels":{"10093":2,"10097":2,"10103":2,"10229":3,"10391":2}},"party":{"forced":["10325","10256","10207","10462","10208"],"mustLive":["10325"],"noExtra":true,"auto":true},"baseHp":300,"bossId":"10229","pool":true,"mana":200,"hero":"10325","tutorial":true,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
 (1,1,'','{"no":1,"type":"normal","enemies":{"count":1,"rank":[0,30]},"hero":null,"tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"starter","party":{}}'::jsonb),
@@ -1696,7 +1696,7 @@ on conflict (chapter,phase,variant) do update set definition=excluded.definition
 on conflict (chapter,phase,variant) do update set definition=excluded.definition;$vr_statement$;
 
   insert into vr_staging_install.parts(part_no, bundle_hash, part_hash, project_ref, db_id)
-  values (10, '410cdea919d7fef2dc1c1430be099965278672866ca01148fb8f0da2240951aa', '35278980f56707d0441dd02bffda4173e2abb401f347e3da2c02870778b1b7fe', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
+  values (10, '3da76f48e41e9e52500615b8cdbb1be15aa7e9e35a3d2f73e67dd0a9ce29222d', '06ed9a63be6b194a3da066e8cb9b234a77ce595a1b463052e049287d57159144', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
 end $vr_install_part$;
 commit;
 select '10_install.sql: 완료 또는 이미 완료 (10/12)' as result;

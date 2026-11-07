@@ -339,6 +339,7 @@ window.STORY_DATA.chapters.unshift({
     ]
    },
    "awaken": {
+    "pauseOnEntrance": true,
     "on": "10325",
     "id": "10326",
     "storyLevel": 100,

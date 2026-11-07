@@ -97,6 +97,17 @@ test('confirmation -> cancel leaves turn unchanged -> confirm advances', () => {
   h.$('end-turn').onclick(); h.$('endturn-ok').onclick();
   assert.equal(h.modal, null); assert.equal(h.S.turn, 'ai');
 });
+for (const target of ['end_turn', '#end-turn']) test(`guided ${target} skips confirmation without changing preference`, () => {
+  const h = harness({ story: true });
+  h.window.VRTutorial = { active: { target, wait: 'tap_target' } };
+  h.localStorage.setItem = () => assert.fail('guided turn must not change confirmation preference');
+  h.$('end-turn').onclick(); assert.equal(h.S.turn, 'ai'); assert.equal(h.modal, null);
+});
+test('unrelated tutorial target retains confirmation', () => {
+  const h = harness({ story: true });
+  h.window.VRTutorial = { active: { target: 'enemy_card:0' } };
+  h.$('end-turn').onclick(); assert.equal(h.modal, 'endturn-confirm'); assert.equal(h.S.turn, 'me');
+});
 test('exhausted cards skip confirmation and advance', () => {
   const h = harness(); h.S.me.field.forEach(u => { u.canAttack = false; });
   h.$('end-turn').onclick(); assert.equal(h.S.turn, 'ai'); assert.equal(h.modal, null);
