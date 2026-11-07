@@ -9,7 +9,7 @@ begin;
 do $vr_project_guard$
 declare
   confirmed_ref text := 'cuyqchmdcnsgzkwyclji';
-  expected_db_id text := '770375969810729904';
+  expected_db_id text := '7703759698107299042';
   actual_db_id text;
 begin
   if confirmed_ref is distinct from 'cuyqchmdcnsgzkwyclji' or confirmed_ref = 'htarwisgkkphutxxnuak' then
@@ -40,7 +40,7 @@ set local check_function_bodies = off;
 
 do $vr_install_part$
 begin
-  if exists (select 1 from vr_staging_install.parts where bundle_hash <> 'ac67dd4f5df4920603189b3e57b25a5e13e409b830a4a45862378c594de08997' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '770375969810729904') then
+  if exists (select 1 from vr_staging_install.parts where bundle_hash <> 'ac67dd4f5df4920603189b3e57b25a5e13e409b830a4a45862378c594de08997' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
     raise exception 'STOP: 다른 버전/DB의 설치 기록입니다. 파일을 섞지 마세요.';
   end if;
   if exists (select 1 from vr_staging_install.parts where part_no = 8) then
@@ -1831,7 +1831,7 @@ create or replace function public._camp_plv(p_uid uuid) returns int language plp
 declare lv int; begin select (_player_sync(p_uid)).level into lv; return coalesce(lv, 1); end $$;$vr_statement$;
 
   insert into vr_staging_install.parts(part_no, bundle_hash, part_hash, project_ref, db_id)
-  values (8, 'ac67dd4f5df4920603189b3e57b25a5e13e409b830a4a45862378c594de08997', '88b786d177f12a46ca801845bbeb154575ba785421933e5efbc0d107939c19ad', 'cuyqchmdcnsgzkwyclji', '770375969810729904');
+  values (8, 'ac67dd4f5df4920603189b3e57b25a5e13e409b830a4a45862378c594de08997', '88b786d177f12a46ca801845bbeb154575ba785421933e5efbc0d107939c19ad', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
 end $vr_install_part$;
 commit;
 select '08_install.sql: 완료 또는 이미 완료 (8/10)' as result;

@@ -7,7 +7,7 @@ import { splitStatements, stripLeadingComments } from './sql_statements.mjs';
 export const TARGET_REF = 'cuyqchmdcnsgzkwyclji';
 export const DB_ID_PLACEHOLDER = 'REPLACE_WITH_STAGING_SYSTEM_IDENTIFIER';
 // 형님이 확인한 18자리 값. JS Number로 변환하면 반올림되므로 항상 문자열로 유지.
-export const STAGING_SYSTEM_ID = '770375969810729904';
+export const STAGING_SYSTEM_ID = '7703759698107299042';
 export const MAX_PART_BYTES = 140000;
 const sha = text => createHash('sha256').update(text).digest('hex');
 const dir = new URL('../supabase/staging/', import.meta.url);

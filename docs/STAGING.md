@@ -27,7 +27,7 @@
 
 **통합 `supabase/staging_install.sql`은 SQL Editor 크기 제한을 넘으므로 붙여 넣지 않습니다.** 대신 [`supabase/staging/README.md`](../supabase/staging/README.md)의 01~10 분할본을 씁니다.
 
-확인받은 테스트 DB 식별번호 **770375969810729904 (18자리)**가 모든 분할 파일에 반영돼 있습니다. 운영 DB 번호 조회나 파일 수동 편집은 필요 없습니다.
+확인받은 테스트 DB 식별번호 **7703759698107299042 (18자리)**가 모든 분할 파일에 반영돼 있습니다. 운영 DB 번호 조회나 파일 수동 편집은 필요 없습니다.
 
 1. Supabase 화면이 테스트 프로젝트 `cuyqchmdcnsgzkwyclji`인지 확인합니다. 운영에서 설치 실행 금지입니다.
 2. 같은 커밋의 `supabase/staging/01_install.sql`부터 `10_install.sql`까지 **파일 하나 전체씩 순서대로** 붙여 실행합니다. 매번 성공 메시지 확인 후 다음 번호로 갑니다.
