@@ -759,7 +759,7 @@
     const phase = k => {
       const ph = list[k]; if (!ph) return card0('', 'THE END', esc(ch.subtitle || ''), null, true);
       const pre = ph.lines?.[save.starter] || ph.lines?.default || [], enemies = ph.enemies?.ids ? pickEnemies(ph) : [], after = ph.after || [];
-      const next = () => phase(k + 1), aft = () => after.length ? playLines(after, [], next, /엔딩/.test(ph.afterTitle || '') ? 'ending' : 'story', ph.hero || ch.hero) : next();
+      const next = () => phase(k + 1), aft = () => after.length ? card0('', '[전투 후]', `Phase.${ph.no}${ph.afterTitle ? ` · ${esc(ph.afterTitle)}` : ''}`, () => playLines(after, [], next, /엔딩/.test(ph.afterTitle || '') ? 'ending' : 'story', ph.hero || ch.hero)) : next();   // 다시보기 전용: 전투 후 대사 앞 구분 페이지
       card0('', `Phase.${ph.no}`, `${esc(ph.title || '')}${ph.type === 'boss' ? ' · BOSS' : ''}`, () => pre.length ? playLines(pre, enemies, aft, 'story', ph.hero || ch.hero) : aft());
     };
     const start = [...(ch.single && ch.tagline ? [{ speaker: '내레이션', text: ch.tagline.replace(/\n/g, ' ') }] : []), ...(ch.start || [])];
