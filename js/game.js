@@ -737,18 +737,18 @@ addEventListener('resize', fitBoardSoon);
 
 /** 1-3 겹침 정리 (BFX): 같은 대상 위 글자는 위로 차례로 쌓고, 0.9초 안에 같은 글자가 또 나오면 '×n' 으로 합침 */
 const fxStacks = new Map();
-function fxStackSlot(key, text) {
+function fxStackSlot(key, text, repeat = 'times') {
   const now = performance.now(), st = (fxStacks.get(key) || []).filter(x => x.d.isConnected && now - x.t < 900);
   fxStacks.set(key, st);
   for (const k of fxStacks.keys()) if (k !== key && !(fxStacks.get(k) || []).some(x => x.d.isConnected)) fxStacks.delete(k);
-  const same = text && st.find(x => x.text === text);
-  if (same) { same.n++; same.t = now; same.d.dataset.n = `×${same.n}`; same.d.classList.remove('fx-merged'); void same.d.offsetWidth; same.d.classList.add('fx-merged'); return { merged: true }; }
-  return { merged: false, i: st.length, push: d => st.push({ d, text, n: 1, t: now }) };
+  const same = text && st.find(x => x.text === text && x.repeat === repeat);
+  if (same) { same.n++; same.t = now; same.d.dataset.n = repeat === 'hits' ? `${same.n}타` : `×${same.n}`; same.d.classList.remove('fx-merged'); void same.d.offsetWidth; same.d.classList.add('fx-merged'); return { merged: true }; }
+  return { merged: false, i: st.length, push: d => st.push({ d, text, repeat, n: 1, t: now }) };
 }
 function dmgNumber(el, text, color, html = false, extra = '') {
   if (!el || FX_OFF()) return;
   const r = el.getBoundingClientRect();
-  const slot = BFX() ? fxStackSlot(el, html ? null : text) : null;
+  const slot = BFX() ? fxStackSlot(el, html ? null : text, extra.split(/\s+/).includes('fx-dmg-raid') ? 'hits' : 'times') : null;
   if (slot?.merged) return;
   const d = document.createElement('div');
   d.className = 'fx-dmg' + (extra ? ' ' + extra : ''); if (html) d.innerHTML = text; else d.textContent = text;
@@ -2038,7 +2038,7 @@ function closeStaleHandDetail() {
   const c = detailHandCard; if (!c) return;
   if (!S || S.over || !S.me?.hand?.includes(c) || (detailHandTurn != null && (S.turn !== 'me' || S.totalTurns !== detailHandTurn))) { detailHandCard = null; if (!$('detail').classList.contains('hidden')) hideModal('detail'); }
 }
-function showDetail(c, { fromHand = false, hp, unit = null, view = null, power = false } = {}) {
+function showDetail(c, { fromHand = false, hp, unit = null, view = null, power = false, level = c.slv ?? 1 } = {}) {
   if (fromHand && (!S || !S.me?.hand?.includes(c))) { detailHandCard = null; return; }   // 이미 손패에 없는 카드(늦게 들어온 탭)는 안 엶
   detailHandCard = fromHand ? c : null; detailHandTurn = fromHand && S.turn === 'me' && !S.over ? S.totalTurns : null;
   const arcadeUi = !S?.story;   // 아케이드만: 아이템 장착·회수·희생 (스토리·탑·PvP·전쟁·토벌은 숨김)
@@ -2054,7 +2054,7 @@ function showDetail(c, { fromHand = false, hp, unit = null, view = null, power =
         ${cardStats(c, hp, power)}
       </div>
     </div>
-    ${skillListHTML(c, unit || view, myTurn)}
+    ${skillListHTML(c, unit || view, myTurn, level, { skillLv: c.skillLv })}
     ${fromHand ? `
       ${check.ok || !myTurn ? '' : `<div id="summon-reason" class="mt-3 text-sm text-red-400">${check.reason}</div>`}
       <button id="summon-btn" ${check.ok && myTurn ? '' : 'disabled'} class="mt-4 w-full py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 text-black font-bold">소환하기</button>
@@ -2128,7 +2128,7 @@ function skillListHTML(c, unit, myTurn, lv = 1, opt = {}) {
 function showModal(id) { $(id).classList.remove('hidden'); $(id).classList.add('flex'); }
 function hideModal(id) { if (id === 'detail') detailHandCard = null; $(id).classList.add('hidden'); $(id).classList.remove('flex'); $(id).style.zIndex = ''; resetHScroll(); }
 // 다른 화면(마이페이지 등) 위에서 카드 정보 보기: 전투 중이 아닌 보기 전용 상세
-function showCardInfo(c, opt = {}) { if (!c) return; showDetail(c, { power: !!opt.power }); $('detail').style.zIndex = ''; showModal('detail'); }   // z-index 는 css/pages.css (9600, 상단바 위)
+function showCardInfo(c, opt = {}) { if (!c) return; showDetail(c, { power: !!opt.power, hp: opt.hp, level: opt.level ?? c.slv ?? c.level ?? 1 }); $('detail').style.zIndex = ''; showModal('detail'); }   // Read-only external card detail; layer is owned by css/pages.css.
 // 모바일에서 페이지가 옆으로 밀린 채 남지 않게 (컷인·모달 뒤) 가로 스크롤을 0으로
 function resetHScroll() { if (window.scrollX || document.documentElement.scrollLeft || document.body.scrollLeft) { document.documentElement.scrollLeft = 0; document.body.scrollLeft = 0; window.scrollTo(0, window.scrollY); } }
 window.addEventListener('scroll', () => { if (window.scrollX) resetHScroll(); }, { passive: true });
@@ -2408,7 +2408,7 @@ async function viewBattle0({ session, aiName = '상대', bg = 'normal', bgKey = 
     RB = document.createElement('div'); RB.id = 'vb-raid';
     RB.innerHTML = `<img class="vbr-pic" src="${IMG}${raid.bossId}.webp" alt=""><div class="vbr-main"><div class="vbr-top"><b>${escHtml(raid.bossName)}</b><span class="vbr-st">${raid.stage}단계</span>${raid.weakLabel ? `<span class="vbr-weak">약점 ${escHtml(raid.weakLabel)}</span>` : ''}<span class="vbr-time"></span></div>
       <div class="vbr-bar"><i class="vbr-lag"></i><i class="vbr-fill"></i><span class="vbr-hp"></span></div>
-      <div class="vbr-dmg">이번 판 피해 <b>0</b><small>· 1회 상한 ${fmt(raid.cap)}</small></div></div>`;
+      <div class="vbr-dmg">이번 판 피해 <b>0</b><small>· 행동당 상한 ${fmt(raid.cap)}</small></div></div>`;
     $('top-bar').before(RB);
     const t = () => { const ms = Math.max(0, (raid.deadline || 0) - Date.now()), m = Math.floor(ms / 60000), sec = Math.floor(ms / 1000) % 60, el = RB.querySelector('.vbr-time'); if (!el) return; el.textContent = `⏱ ${m}:${String(sec).padStart(2, '0')}`; el.classList.toggle('low', ms < 120000); };
     if (raid.deadline) { t(); tick = setInterval(t, 1000); }

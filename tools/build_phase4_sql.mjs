@@ -1,6 +1,7 @@
 // Explicit, reviewable legacy rule extraction: no live DB, no wildcard SQL execution.
 import {readFile,writeFile} from 'node:fs/promises';
 import {splitStatements,stripLeadingComments} from './sql_statements.mjs';
+import {detailProjection} from './phase4/war_card_details.mjs';
 import {refillPatches} from './phase4/refill_patches.mjs';
 const root=new URL('../',import.meta.url),rd=p=>readFile(new URL(p,root),'utf8');
 const names=['guild_raids','guild_raid_stages','guild_raid_attempts','guild_raid_damage','war_decks','war_entries','war_roster','war_matches','war_ajits','war_atk_state','war_attacks'];
@@ -13,6 +14,7 @@ function map(s){return s.replace(/\b[a-z_][a-z0-9_]*\b/g,n=>mappings.get(n)||n).
 let out=await rd('tools/phase4/head.sql');out+='\n-- ISOLATED VERIFIED TABLES: legacy rows remain untouched.\n'+tables.map(map).join('\n');
 out+='\nalter table guild_raid_attempts_v4 add column if not exists actions jsonb;\nalter table war_attacks_v4 add column if not exists actions jsonb;\ncreate unique index if not exists war_roster_user_v4 on war_roster_v4(season,user_id) where user_id is not null;\ninsert into war_decks_v4 select * from war_decks on conflict do nothing;\n';
 for(const [n,s] of funcs){if(excluded.has(n))continue;let body=map(s);
+ if(n==='_war_side_json'){const marker="'hp', a.state->(c->>'uid')";if(!body.includes(marker))throw Error('war detail projection drift');body=body.replace(marker,()=>detailProjection+marker);}
  if(n==='_raid_now'||n==='_war_now')body=body.replace('select now()','select public._guildbattle_now_v4()');
  if(n==='_guild_reward')body=body.replace('begin\n','begin\n  perform _guildbattle_guard_v4();\n  p_ref := p_ref || \':v4\';\n');
  // Claim checks must reference the same namespace as the payout ledger.
@@ -60,7 +62,21 @@ const preflight=`if not exists(select 1 from guildbattle_policy_v4 where singlet
 if to_regclass('public.guildbattle_sessions_v4') is null or exists(select 1 from unnest(array[${refillPatches.map(([sig])=>"'public."+sig+"'").join(',')}]) sig where to_regprocedure(sig) is null) then raise exception 'STOP: install phase4 SQL first'; end if;`;
 const installer=preflight+"\n execute $phase4_refill_install$\n"+refill+'\n'+budgetDefs.join('\n')+'\n$phase4_refill_install$;';
 const seed=(await rd('tools/phase4/seed.sql')).replace('-- REFILL_INSTALLER',()=>installer);
-for(const [path,content] of [['supabase/security_phase4_raid_guildwar.sql',out],['supabase/staging_seed_raid_guildwar.sql',seed]]){
+const side=stripLeadingComments(splitStatements(out).find(s=>stripLeadingComments(s).startsWith('create or replace function public._war_side_json_v4(')));
+const details=`-- EXISTING STAGING ONLY: read-only war card metadata upgrade (no HP, decks, clock or engine changes).
+-- Same allowlisted projection as security_phase4_raid_guildwar.sql. Run the whole file.
+begin;
+do $details_guard$ begin
+ if (select system_identifier::text from pg_catalog.pg_control_system()) is distinct from '7703759698107299042' then raise exception 'STOP: war details staging cuyqchmdcnsgzkwyclji only'; end if;
+ if not exists(select 1 from public.guildbattle_policy_v4 where singleton and engine_hash='${hash}') then raise exception 'STOP: phase4 engine version mismatch'; end if;
+ if to_regprocedure('public._war_side_json_v4(bigint,integer)') is null then raise exception 'STOP: install phase4 first'; end if;
+end $details_guard$;
+${side}
+revoke all on function public._war_side_json_v4(bigint,integer) from public,anon,authenticated;
+do $details_acl$ begin if exists(select 1 from pg_roles where rolname='service_role') then revoke all on function public._war_side_json_v4(bigint,integer) from service_role; end if; end $details_acl$;
+commit;
+`;
+for(const [path,content] of [['supabase/security_phase4_raid_guildwar.sql',out],['supabase/staging_seed_raid_guildwar.sql',seed],['supabase/security_phase4_war_card_details.sql',details]]){
  const p=new URL(path,root);if(process.argv.includes('--check')){if(await readFile(p,'utf8')!==content)throw Error('stale '+path);}else await writeFile(p,content);
 }
 console.log('Phase4 SQL '+Buffer.byteLength(out)+' bytes');
