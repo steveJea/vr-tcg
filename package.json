@@ -1,0 +1,14 @@
+{
+  "name": "vr-tcg-staging-tools",
+  "private": true,
+  "scripts": {
+    "build:staging": "node tools/build_staging.mjs",
+    "test:staging": "node tools/test_staging_config.mjs && node tools/test_staging_sql.mjs && node tools/test_staging_sql.mjs --supabase-defaults",
+    "check:staging": "node --check js/config.js && node --check js/cloud.js && node --check js/ranking.js",
+    "deploy:staging": "npm run build:staging && wrangler deploy"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.5.15",
+    "wrangler": "4.158.0"
+  }
+}
