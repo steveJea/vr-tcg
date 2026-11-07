@@ -496,7 +496,8 @@ window.STORY_DATA.chapters.push({
      {
       "speaker": "이진경",
       "text": "언니, 언니는 안 무서워?",
-      "expr": "슬픔"
+      "expr": "슬픔",
+      "video": "video/story/ch14-02.mp4"
      },
      {
       "speaker": "이혜경",
@@ -797,7 +798,8 @@ window.STORY_DATA.chapters.push({
     },
     {
      "speaker": "내레이션",
-     "text": "한참이 지나서야, 진경은 입에서 손을 뗐다. 그리고 언니에게 기어갔다."
+     "text": "한참이 지나서야, 진경은 입에서 손을 뗐다. 그리고 언니에게 기어갔다.",
+     "video": "video/story/ch14-03.mp4"
     },
     {
      "speaker": "이진경",
@@ -833,7 +835,8 @@ window.STORY_DATA.chapters.push({
     {
      "speaker": "이혜경",
      "text": "진경아...! 진경아, 가지 마! 언니 여기 있어!",
-     "expr": "슬픔"
+     "expr": "슬픔",
+     "image": "img/story/ch14-04.webp"
     },
     {
      "speaker": "내레이션",
@@ -984,7 +987,8 @@ window.STORY_DATA.chapters.push({
     },
     {
      "speaker": "내레이션",
-     "text": "1일. 2일. 5일. 10일. 김성진의 검은 기운이 작은 몸 안으로 천천히, 아주 천천히 스며들었다."
+     "text": "1일. 2일. 5일. 10일. 김성진의 검은 기운이 작은 몸 안으로 천천히, 아주 천천히 스며들었다.",
+     "image": "img/story/ch14-05.webp"
     },
     {
      "speaker": "내레이션",
@@ -1089,7 +1093,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "불량배-L",
-      "text": "야, 이진경. 네 언니 죽었다며? 배척지에서 주워 온 애라며?"
+      "text": "야, 이진경. 네 언니 죽었다며? 배척지에서 주워 온 애라며?",
+      "image": "img/story/ch14-06.webp"
      },
      {
       "speaker": "이진경",
@@ -1725,7 +1730,8 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "내레이션",
-      "text": "담벼락 위에 소녀 하나가 내려앉았다. 희미하게 금빛을 띤 왼쪽 눈. 이지영이었다."
+      "text": "담벼락 위에 소녀 하나가 내려앉았다. 희미하게 금빛을 띤 왼쪽 눈. 이지영이었다.",
+      "image": "img/story/ch14-07.webp"
      },
      {
       "speaker": "이혜경",
@@ -1767,7 +1773,8 @@ window.STORY_DATA.chapters.push({
     {
      "speaker": "이지영",
      "text": "대신. 너의 염원이 너무 강력해서, 너는 환생할 수 있어. 그러니 내가 환생하는 걸 도와줄게. 그리고 동생은 내가 지켜볼게.",
-     "expr": "보통"
+     "expr": "보통",
+     "image": "img/story/ch14-08.webp"
     },
     {
      "speaker": "이혜경",
@@ -1800,7 +1807,8 @@ window.STORY_DATA.chapters.push({
     {
      "speaker": "이지영",
      "text": "앗...아..어쩌지...",
-     "expr": "놀람"
+     "expr": "놀람",
+     "image": "img/story/ch14-09.webp"
     },
     {
      "speaker": "이지영",
@@ -2645,7 +2653,8 @@ window.STORY_DATA.chapters.push({
     {
      "speaker": "이지영",
      "text": "아...진..진...뭐였더라..몇..살이랬지..하아..그 은발한테..뭐라고..하지..하아....",
-     "expr": "당황"
+     "expr": "당황",
+     "image": "img/story/ch14-10.webp"
     }
    ],
    "afterTitle": "전투 후",
@@ -2661,7 +2670,8 @@ window.STORY_DATA.chapters.push({
   },
   {
    "speaker": "내레이션",
-   "text": "그리고 이혜경. 16살. 그 작은 세상을 지키기 위해, 자신의 전부를 걸었던 소녀."
+   "text": "그리고 이혜경. 16살. 그 작은 세상을 지키기 위해, 자신의 전부를 걸었던 소녀.",
+   "image": "img/story/ch14-01.webp"
   },
   {
    "speaker": "이진경",
