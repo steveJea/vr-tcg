@@ -40,11 +40,11 @@ set local check_function_bodies = off;
 
 do $vr_install_part$
 begin
-  if exists (select 1 from vr_staging_install.parts where bundle_hash <> 'cd08a0f983083019c450a26b3d38df14282a83b45978cbbc9eca0613e860dbef' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
+  if exists (select 1 from vr_staging_install.parts where bundle_hash <> 'cc55a18ffb6e7f31c29402be300a5e256b333fd450277ae07e425819f76899c9' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
     raise exception 'STOP: 다른 버전/DB의 설치 기록입니다. 파일을 섞지 마세요.';
   end if;
   if exists (select 1 from vr_staging_install.parts where part_no = 12) then
-    if not exists (select 1 from vr_staging_install.parts where part_no = 12 and part_hash = 'd12cbd14daa79d27ffdb80393a42b6fadc94366c252fd9a96c69a66a46356add') then
+    if not exists (select 1 from vr_staging_install.parts where part_no = 12 and part_hash = '09774e40f2cf161cbd1e8da6264a2bb26d28d28d93e040131548d6ebaa2d03bd') then
       raise exception 'STOP: 완료한 파일과 내용이 다릅니다.';
     end if;
     raise notice '12_install.sql: 이미 완료, 변경 없이 건너뜀';
@@ -837,7 +837,7 @@ end $acl$;$vr_statement$;
 
 create table if not exists public.pvp_policy_v3(
  singleton boolean primary key default true check(singleton), engine_hash text not null check(length(engine_hash)=64), enabled boolean not null default true);$vr_statement$;
-  execute $vr_statement$insert into public.pvp_policy_v3(singleton,engine_hash) values(true,'16b61abb1c42f29f063b9b84de938ef950363cdd2a23262cddf05c27c0c038a6')
+  execute $vr_statement$insert into public.pvp_policy_v3(singleton,engine_hash) values(true,'ff3c2c77c26429a0fbf85f1d1ab73edb882af342a152727c1aed64c49160dd2a')
  on conflict(singleton) do update set engine_hash=excluded.engine_hash;$vr_statement$;
   execute $vr_statement$-- A clean, verified ladder. Legacy rows remain intact, NOT copied as proof.
 create table if not exists public.pvp_ratings_v3(
@@ -937,7 +937,7 @@ set search_path=pg_catalog,public,pg_temp as $$ declare n int:=public._pvp_ok(l,
 end $$;$vr_statement$;
 
   insert into vr_staging_install.parts(part_no, bundle_hash, part_hash, project_ref, db_id)
-  values (12, 'cd08a0f983083019c450a26b3d38df14282a83b45978cbbc9eca0613e860dbef', 'd12cbd14daa79d27ffdb80393a42b6fadc94366c252fd9a96c69a66a46356add', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
+  values (12, 'cc55a18ffb6e7f31c29402be300a5e256b333fd450277ae07e425819f76899c9', '09774e40f2cf161cbd1e8da6264a2bb26d28d28d93e040131548d6ebaa2d03bd', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
 end $vr_install_part$;
 commit;
 select '12_install.sql: 완료 또는 이미 완료 (12/13)' as result;

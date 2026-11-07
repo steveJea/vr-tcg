@@ -17,10 +17,15 @@ const policyPath = path.join(root, 'supabase/security_phase3_pvp.sql');
 const policy = await readFile(policyPath, 'utf8');
 if ((policy.match(/values\(true,'[a-f0-9]{64}'\)/g) || []).length !== 1) throw new Error('phase3 policy engine-hash marker missing/ambiguous');
 const next = policy.replace(/engine_hash = '[a-f0-9]{64}'/g, "engine_hash = '"+version+"'").replace(/values\(true,'[a-f0-9]{64}'\)/g, "values(true,'"+version+"')");
+const upgradePath = path.join(root, 'supabase/security_phase3_pvp_level_stats.sql');
+const upgrade = await readFile(upgradePath, 'utf8');
+const upgradeMarker = /new_hash constant text := '[a-f0-9]{64}';/g;
+if ((upgrade.match(upgradeMarker) || []).length !== 1) throw new Error('level-stat upgrade hash marker missing/ambiguous');
+const nextUpgrade = upgrade.replace(upgradeMarker, "new_hash constant text := '"+version+"';");
 if (process.argv.includes('--check')) {
-  if (await readFile(path.join(root,out),'utf8') !== content || policy !== next || await readFile(browserPath,'utf8') !== browser) throw new Error('stale phase3 engine / SQL hash; regenerate');
+  if (await readFile(path.join(root,out),'utf8') !== content || policy !== next || upgrade !== nextUpgrade || await readFile(browserPath,'utf8') !== browser) throw new Error('stale phase3 engine / SQL hash; regenerate');
 } else {
   await mkdir(path.dirname(path.join(root,out)),{recursive:true});
-  await writeFile(path.join(root,out),content); await writeFile(policyPath,next); await writeFile(browserPath,browser);
+  await writeFile(path.join(root,out),content); await writeFile(policyPath,next); await writeFile(browserPath,browser); await writeFile(upgradePath,nextUpgrade);
 }
 console.log('Phase3 engine '+version+' ('+inputs.length+' canonical inputs)');
