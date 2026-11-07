@@ -2,30 +2,23 @@
 -- 대상 프로젝트: cuyqchmdcnsgzkwyclji; 운영 htarwisgkkphutxxnuak 금지.
 -- 완료한 파일은 다시 실행해도 건너뜀. 중간 오류는 해당 파일만 되돌아감.
 -- 실제 project_ref는 SQL Editor가 보장해서 제공하지 않음: DB 고유번호를 대조.
--- 아직 DB 고유번호를 받지 못했다면 차단됨. guard 삭제/SET 우회 금지.
+-- 지정 테스트 DB의 식별번호와 일치할 때만 허용. guard 삭제/SET 우회 금지.
 -- docs/STAGING.md 및 supabase/staging/README.md 먼저 확인.
 
 begin;
 do $vr_project_guard$
 declare
   confirmed_ref text := 'cuyqchmdcnsgzkwyclji';
-  expected_db_id text := 'REPLACE_WITH_STAGING_SYSTEM_IDENTIFIER';
-  production_db_id text := 'REPLACE_WITH_PRODUCTION_SYSTEM_IDENTIFIER';
+  expected_db_id text := '770375969810729904';
   actual_db_id text;
 begin
   if confirmed_ref is distinct from 'cuyqchmdcnsgzkwyclji' or confirmed_ref = 'htarwisgkkphutxxnuak' then
     raise exception 'STOP: 지정한 테스트 프로젝트만 허용합니다. 운영 DB 금지.';
   end if;
-  if expected_db_id !~ '^[0-9]{16,20}$' or production_db_id !~ '^[0-9]{16,20}$' then
-    raise exception 'STOP: 테스트/운영 DB의 실제 고유번호가 아직 등록되지 않았습니다. 안내 문서를 확인하세요.';
-  end if;
-  if expected_db_id = production_db_id then
-    raise exception 'STOP: 운영/테스트 클러스터 식별번호가 같아 구분할 수 없습니다.';
+  if expected_db_id !~ '^[0-9]{16,20}$' then
+    raise exception 'STOP: 테스트 DB의 실제 고유번호가 아직 등록되지 않았습니다. 안내 문서를 확인하세요.';
   end if;
   select system_identifier::text into actual_db_id from pg_catalog.pg_control_system();
-  if actual_db_id = production_db_id then
-    raise exception 'STOP: 현재 접속한 DB가 운영 DB입니다. 실행 금지.';
-  end if;
   if actual_db_id is distinct from expected_db_id then
     raise exception 'STOP: 현재 접속한 DB가 지정된 테스트 DB와 다릅니다. 실행 금지.';
   end if;
@@ -47,7 +40,7 @@ set local check_function_bodies = off;
 
 do $vr_install_part$
 begin
-  if exists (select 1 from vr_staging_install.parts where bundle_hash <> 'ac67dd4f5df4920603189b3e57b25a5e13e409b830a4a45862378c594de08997' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> 'REPLACE_WITH_STAGING_SYSTEM_IDENTIFIER') then
+  if exists (select 1 from vr_staging_install.parts where bundle_hash <> 'ac67dd4f5df4920603189b3e57b25a5e13e409b830a4a45862378c594de08997' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '770375969810729904') then
     raise exception 'STOP: 다른 버전/DB의 설치 기록입니다. 파일을 섞지 마세요.';
   end if;
   if exists (select 1 from vr_staging_install.parts where part_no = 9) then
@@ -1724,7 +1717,7 @@ create or replace function public._trade_listing_json(l trade_listings, uid uuid
   execute $vr_statement$revoke all on function public._trade_listing_json(trade_listings, uuid) from public, anon, authenticated;$vr_statement$;
 
   insert into vr_staging_install.parts(part_no, bundle_hash, part_hash, project_ref, db_id)
-  values (9, 'ac67dd4f5df4920603189b3e57b25a5e13e409b830a4a45862378c594de08997', 'badd9a664f0995f8b26e84fce26922c4989c9e7aeb6c596f8d7c52066d8cdc40', 'cuyqchmdcnsgzkwyclji', 'REPLACE_WITH_STAGING_SYSTEM_IDENTIFIER');
+  values (9, 'ac67dd4f5df4920603189b3e57b25a5e13e409b830a4a45862378c594de08997', 'badd9a664f0995f8b26e84fce26922c4989c9e7aeb6c596f8d7c52066d8cdc40', 'cuyqchmdcnsgzkwyclji', '770375969810729904');
 end $vr_install_part$;
 commit;
 select '09_install.sql: 완료 또는 이미 완료 (9/10)' as result;

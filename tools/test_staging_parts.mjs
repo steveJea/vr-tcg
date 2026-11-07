@@ -3,15 +3,22 @@ import assert from 'node:assert/strict';
 import { readFile, readdir } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { PGlite } from '@electric-sql/pglite';
-import { buildParts, DB_ID_PLACEHOLDER, TARGET_REF, MAX_PART_BYTES } from './build_staging_parts.mjs';
+import { buildParts, DB_ID_PLACEHOLDER, STAGING_SYSTEM_ID, TARGET_REF, MAX_PART_BYTES } from './build_staging_parts.mjs';
 import { splitStatements, stripLeadingComments } from './sql_statements.mjs';
 const dir = new URL('../supabase/staging/', import.meta.url);
 const manifest = JSON.parse(await readFile(new URL('manifest.json', dir), 'utf8'));
-const sourceParts = await buildParts(manifest.systemId, manifest.productionSystemId);
+assert.equal(STAGING_SYSTEM_ID, '770375969810729904');
+assert.equal(manifest.systemId, STAGING_SYSTEM_ID);
+assert.equal(typeof manifest.systemId, 'string');
+assert.equal(manifest.systemId.length, 18);
+assert.equal('productionSystemId' in manifest, false);
+const sourceParts = await buildParts(manifest.systemId);
 assert.deepEqual((await readdir(dir)).filter(n => n.endsWith('.sql')).sort(), sourceParts.map(p => p.name));
 for (const [index, part] of sourceParts.entries()) {
   const sql = await readFile(new URL(part.name, dir), 'utf8');
   assert.equal(sql, part.sql, part.name + ': 재생성 필요');
+  assert.ok(sql.includes("expected_db_id text := '770375969810729904'"), '18자리 확인 값이 정확히 유지되어야 함');
+  assert.ok(!sql.includes('production_db_id'));
   assert.ok(Buffer.byteLength(sql) < MAX_PART_BYTES);
   assert.equal(createHash('sha256').update(sql).digest('hex'), manifest.parts[index].sha256);
   splitStatements(sql); // 인용/함수 중간에서 끊기면 실패
@@ -56,16 +63,19 @@ for (const defaults of [false, true]) {
   try {
     await db.exec(setup(defaults));
     const systemId = (await db.query('select system_identifier::text id from pg_catalog.pg_control_system()')).rows[0].id;
-    const parts = await buildParts(systemId, '1111111111111111111');
-    const unbound = await buildParts();
+    const parts = await buildParts(systemId);
+    const unbound = await buildParts(DB_ID_PLACEHOLDER);
     for (const part of unbound) await reject(db, part.sql, /고유번호가 아직/);
     for (const part of parts) {
       await reject(db, part.sql.replace(`confirmed_ref text := '${TARGET_REF}'`, "confirmed_ref text := 'htarwisgkkphutxxnuak'"), /운영 DB 금지/);
       await reject(db, part.sql.replace(`expected_db_id text := '${systemId}'`, "expected_db_id text := '2222222222222222222'"), /현재 접속한 DB/);
     }
-    const productionBound = await buildParts('2222222222222222222', systemId);
-    for (const part of productionBound) await reject(db, part.sql, /현재 접속한 DB가 운영 DB/);
-    await assert.rejects(buildParts(systemId, systemId), /같아 안전하게/);
+    // 실제 배포 파일은 테스트 Supabase 번호에 고정: 다른 WASM DB에서는 그대로 거부.
+    assert.notEqual(systemId, STAGING_SYSTEM_ID);
+    for (const part of sourceParts) await reject(db, part.sql, /현재 접속한 DB/);
+    const readStatement = 'select system_identifier::text into actual_db_id from pg_catalog.pg_control_system();';
+    await reject(db, parts[0].sql.replace(readStatement, "raise insufficient_privilege using message = '가상 조회 권한 오류';"), /DB 식별 조회 권한/);
+    await reject(db, parts[0].sql.replace(readStatement, 'actual_db_id := null;'), /현재 접속한 DB/);
     await noChanges(db);
     await reject(db, parts[1].sql, /앞 번호/);
     await noChanges(db);
