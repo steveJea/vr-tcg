@@ -17,7 +17,7 @@ async function rpc(name, args) {
   const sb = window.VRCloud?.sb; if (!sb) throw new Error('offline');
   const { data, error } = await sb.rpc(name, args); if (error) throw new Error(error.message); return data;
 }
-const ERR = { 'guard grade': '리더(수비대장)는 HR 이하', 'boss members': '멤버 1장 이상', 'no attempts left': '오늘 횟수 끝', 'not enough gem': '🔮 부족', 'deck required': '덱 필요', 'card not owned': '없는 인재', 'duplicate card': '중복', 'grade not allowed': 'HR 이하만', 'cost over 150': '코스트 150 초과', 'card used in another deck': '다른 덱에 있음', 'login required': '로그인 필요' };
+const ERR = { 'reward verification pending': '지급 보류', 'guard grade': '리더(수비대장)는 HR 이하', 'boss members': '멤버 1장 이상', 'no attempts left': '오늘 횟수 끝', 'not enough gem': '🔮 부족', 'deck required': '덱 필요', 'card not owned': '없는 인재', 'duplicate card': '중복', 'grade not allowed': 'HR 이하만', 'cost over 150': '코스트 150 초과', 'card used in another deck': '다른 덱에 있음', 'login required': '로그인 필요' };
 const errText = e => { const m = String(e?.message || e); const k = Object.keys(ERR).find(x => m.includes(x)); return k ? ERR[k] : m.slice(0, 40); };
 function toast(t) { const el = document.createElement('div'); el.className = 'pvp-toast'; el.textContent = t; document.body.appendChild(el); setTimeout(() => el.remove(), 1800); }
 
@@ -114,7 +114,7 @@ function tierTable() {
 /** 지난 시즌 티어 보상 자동 수령 (서버가 1회만 지급) */
 async function claimTier() {
   const p = st.pending; st.pending = null;
-  let r; try { r = await rpc('pvp_claim_tier', { p_league: view.league, p_mode: view.mode }); } catch (e) { return; }
+  let r; try { r = await rpc('pvp_claim_tier', { p_league: view.league, p_mode: view.mode }); } catch (e) { toast(errText(e)); return; }
   const t = tierBy(r.tier) || TIERS[0];
   window.VRPlayer?.wallet?.(true);
   modal('pvp-claim', `<div class="pvp-claim t-${t.k}">${emb(t, 'huge')}<div class="pvp-claim-t">${t.label}</div><small>지난 시즌 · 🏆 ${r.rating}</small><div class="pvp-rw big">${rwHtml(r.reward)}</div></div>
