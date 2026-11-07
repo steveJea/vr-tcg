@@ -350,13 +350,14 @@ function summon(who, card) {
   log(`${p.name}: ${card.name} 소환 (코스트 ${card.cost})`);
   const wasPlayed = S.log.played.has(String(card.id));
   if (who === 'me' && S.story) S.log.played.add(String(card.id));   // 스토리: 참전 카드 기록 (EXP 지급용)
+  const ownHold = !S.holdPassive; if (ownHold) S.holdPassive = [];   // 소환 패시브 컷인은 등장 컷인 뒤로 (등장 컷인이 패시브 스킬 이미지를 덮어 프로필이 보이던 문제)
   const u = placeUnit(p, card, makeUnit, true);   // 새로 소환한 카드는 필드 맨 앞
   if (who === 'me' && p.manaPool) { storyMeInit(u, card); refreshAll(p); }
   if (who === 'me' && S.at) { atLevel(u); refreshAll(p); }
   if (who === 'me') TUT('summoned', { id: String(card.id) });   // 튜토리얼: 손패 소환
   playSe(card.grade === 'MYTHIC RARE' || card.grade === 'LEGENDARY RARE' ? 6 : card.grade === 'ULTRA RARE' ? 5 : 2);
   render();
-  onEnter(who, u);
+  onEnter(who, u); if (ownHold) flushHeldPassives();
   if (who === 'me' && !S.view && !S.over) { const must = (S.mustSummon?.ids || []).includes(String(card.id)); if (!must) { S.undo = { u, card, cost: card.cost, wasPlayed, sig: undoSig() }; } }
   return { ok: true };
 }
@@ -405,12 +406,13 @@ function placeGuard(who, card) {
   if (who === 'me') S.meActed = true;
   p.mana -= card.cost;
   p.hand.splice(p.hand.indexOf(card), 1);
+  const ownHold = !S.holdPassive; if (ownHold) S.holdPassive = [];
   const u = placeUnit(p, card, makeUnit);
   setGuard(u, p); refreshAll(p);
   if (who === 'me' && S.at) atLevel(u);
   log(`${p.name}: ${card.name} 수비대장 배치 (코스트 ${card.cost})`, 'text-amber-300');
   if (who === 'me') TUT('guard_set', { id: String(card.id) });
-  playSe(2); render(); onEnter(who, u);
+  playSe(2); render(); onEnter(who, u); if (ownHold) flushHeldPassives();
   return { ok: true };
 }
 /** PvP 보스리그 전투 화면 (엔진 pvp-core 가 진행 · 진영 HP 있음) */
@@ -1047,10 +1049,11 @@ function summonReserve() {
   if (!r || S.turn !== 'me' || S.over || S.busy) return;
   if ((r.cost || 0) > S.me.mana) return;
   S.me.mana -= r.cost || 0; S.reserve.shift();
+  const ownHold = !S.holdPassive; if (ownHold) S.holdPassive = [];
   const u = placeUnit(S.me, { ...r.card }, makeUnit);
   u.canAttack = true; S.log.played.add(String(r.card.id));
   log(`${S.me.name}: ${r.card.name} 소환`, 'text-violet-300');
-  playSe(2); render(); onEnter('me', u); TUT('summoned', { id: r.card.id });
+  playSe(2); render(); onEnter('me', u); if (ownHold) flushHeldPassives(); TUT('summoned', { id: r.card.id });
 }
 /** 턴 종료 후: 전체 턴 제한 도달 시 판정 */
 function checkTimeout() {
