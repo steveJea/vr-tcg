@@ -103,6 +103,26 @@ window.STORY_DATA.chapters.push({
      {
       "speaker": "불량배-L",
       "text": "웃어? 이게 미쳤나."
+     },
+     {
+      "speaker": "윤진아",
+      "text": "(지각하면 안 되는데...오늘 윤이가 수학 알려 주기로 했는데.)",
+      "expr": "슬픔",
+      "slug": "yun_jina_school"
+     },
+     {
+      "speaker": "윤진아",
+      "text": "...죄송한데요, 저 지금 진짜 바빠요!",
+      "expr": "분노",
+      "slug": "yun_jina_school"
+     },
+     {
+      "speaker": "내레이션",
+      "text": "진아는 버텼다. 하지만 숫자가 너무 많았다. 등 뒤가 벽에 닿았다."
+     },
+     {
+      "speaker": "불량배-M",
+      "text": "ㅋㅋ 이제 어쩔 건데, 배척민?"
      }
     ]
    },
@@ -133,26 +153,6 @@ window.STORY_DATA.chapters.push({
    "starMana": 0.3,
    "after": [
     {
-     "speaker": "윤진아",
-     "text": "(지각하면 안 되는데...오늘 윤이가 수학 알려 주기로 했는데.)",
-     "expr": "슬픔",
-     "slug": "yun_jina_school"
-    },
-    {
-     "speaker": "윤진아",
-     "text": "...죄송한데요, 저 지금 진짜 바빠요!",
-     "expr": "분노",
-     "slug": "yun_jina_school"
-    },
-    {
-     "speaker": "내레이션",
-     "text": "진아는 버텼다. 하지만 숫자가 너무 많았다. 등 뒤가 벽에 닿았다."
-    },
-    {
-     "speaker": "불량배-M",
-     "text": "ㅋㅋ 이제 어쩔 건데, 노란 띠."
-    },
-    {
      "speaker": "내레이션",
      "text": "그때, 담벼락 위에서 누군가 뛰어내렸다. 샛노란 머리, 찢어진 눈매. 사납게 생긴 남자애였다."
     },
@@ -163,7 +163,7 @@ window.STORY_DATA.chapters.push({
     },
     {
      "speaker": "불량배-A",
-     "text": "저, 저거 구로구 노란머리 아냐? 튀어!"
+     "text": "저, 저거 그 싸이코 아냐? 튀어!"
     },
     {
      "speaker": "내레이션",
@@ -171,7 +171,7 @@ window.STORY_DATA.chapters.push({
     },
     {
      "speaker": "윤진아",
-     "text": "저기요! 고맙습니다! 진짜 진짜 고마워요! 저 윤진아예요. 다음에 꼭 바나나우유 살게요~ 흥흥~",
+     "text": "저기요! 고맙습니다! 진짜 진짜 고마워요!",
      "expr": "기쁨",
      "slug": "yun_jina_school"
     },
@@ -405,13 +405,13 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "윤진아",
-      "text": "ㅋㅋㅋ 세린이 천재다 진짜~ 흥흥~ 아 맞다, 나 오늘 아침에 노란머리 남자애가 구해 줬다?",
+      "text": "ㅋㅋㅋ 세린이 천재다 진짜~ 흥흥~ 아 맞다, 나 오늘 아침에 머리 긴 노란머리 남자애가 구해 줬다?",
       "expr": "기쁨",
       "slug": "yun_jina_school"
      },
      {
       "speaker": "고세린",
-      "text": "노란머리? 구로구 최국선? 그 미친개? 걔 중학생이잖아! 진아 너 중학생이 구해줬어? ㅋㅋㅋ",
+      "text": "머리 긴 노란머리? 최국선? 그 미친개? 걔 중학생이잖아! 진아 너 중학생이 구해줬어? ㅋㅋㅋ",
       "expr": "놀람"
      },
      {
@@ -453,7 +453,12 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "동지선",
-      "text": "야, 윤미리내. 그 입 다물어. 배척지 냄새 어떤 건지 내가 직접 맡게 해 줄까?",
+      "text": "야, 돼지. 그 입 다물어. 배척지 냄새 어떤 건지 내가 직접 맡게 해 줄까?",
+      "expr": "분노"
+     },
+     {
+      "speaker": "동지선",
+      "text": "(인아 언니가 그랬어. 우리 같은 애들은 서로 지켜야 한다고.)",
       "expr": "분노"
      }
     ]
@@ -476,15 +481,7 @@ window.STORY_DATA.chapters.push({
    "bossId": "10280",
    "mana": 80,
    "starTurns": 9,
-   "starMana": 0.25,
-   "after": [
-    {
-     "speaker": "동지선",
-     "text": "(인아 언니가 그랬어. 우리 같은 애들은 서로 지켜야 한다고.)",
-     "expr": "분노"
-    }
-   ],
-   "afterTitle": "전투 후"
+   "starMana": 0.25
   },
   {
    "no": 4,
@@ -720,7 +717,7 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "고세린",
-      "text": "아저씨들. 우리 진아한테 그렇게 말하면, 고세린 화나요. 고세린 화나면 바나나우유 던져요.",
+      "text": "아저씨들. 우리 진아한테 그렇게 말하면, 이 구역 미친X 화나요. 미친X 화나면 바나나우유 던져요.",
       "expr": "분노"
      },
      {
@@ -1064,7 +1061,7 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "불량배-B",
-      "text": "노란 띠면서 비싸게 굴지 마."
+      "text": "배척민 주제에 비싸게 굴지 마."
      },
      {
       "speaker": "윤진아",
@@ -1073,7 +1070,7 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "내레이션",
-      "text": "그때, 문이 열렸다. 하얀 셔츠, 단정한 코트. 이 동네와 어울리지 않는 남자였다."
+      "text": "그때, 문이 열렸다. 세련된 수트, 멋진 얼굴...이 동네와 어울리지 않는 남자였다."
      },
      {
       "speaker": "소민섭",
@@ -1357,16 +1354,6 @@ window.STORY_DATA.chapters.push({
       "speaker": "고정태",
       "text": "형님, 위에서 연락 왔습니다. 이번 '출하' 목록에 하나 비었답니다.",
       "expr": "보통"
-     },
-     {
-      "speaker": "소민섭",
-      "text": "...그래? 마침 하나 있네.",
-      "expr": "기쁨"
-     },
-     {
-      "speaker": "윤진아",
-      "text": "...출하? 그게 무슨...",
-      "expr": "놀람"
      }
     ]
    },
@@ -1393,6 +1380,16 @@ window.STORY_DATA.chapters.push({
    "starTurns": 5,
    "starMana": 0,
    "after": [
+    {
+     "speaker": "소민섭",
+     "text": "...그래? 마침 하나 있네.",
+     "expr": "기쁨"
+    },
+    {
+     "speaker": "윤진아",
+     "text": "...출하? 그게 무슨...",
+     "expr": "놀람"
+    },
     {
      "speaker": "고정태",
      "text": "아가씨, 오늘은 그냥 집에 가요. 데려다줄게.",
@@ -1742,7 +1739,7 @@ window.STORY_DATA.chapters.push({
     "default": [
      {
       "speaker": "내레이션",
-      "text": "그 후로, 중랑구 뒷골목에서 사람이 하나씩 사라지기 시작했다."
+      "text": "그 후로, B급 안전지대 뒷골목에서 사람이 하나씩 사라지기 시작했다."
      },
      {
       "speaker": "내레이션",
@@ -1915,7 +1912,7 @@ window.STORY_DATA.chapters.push({
     },
     {
      "speaker": "고세린",
-     "text": "...미안해, 지선아. 인아 언니한테 내 몫까지 잘해.",
+     "text": "...미안해, 지선아. 그리고 혹시..나 안 돌아오면...세연이한테....",
      "expr": "슬픔"
     },
     {
@@ -2218,6 +2215,11 @@ window.STORY_DATA.chapters.push({
      "speaker": "할머니",
      "text": "우리 애기...언제 오나...밥 다 식겠네...",
      "expr": "기쁨"
+    },
+    {
+     "speaker": "고세연",
+     "text": "세..세린아!!! 어딨어!!!!!!!!! 으아아아아아!!!!",
+     "expr": "슬픔"
     }
    ],
    "afterTitle": "전투 후",
