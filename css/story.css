@@ -1095,7 +1095,7 @@ body.gnb-on:not(.gnb-hidden) #story-screen { --wrap-pb: 12px; }   /* 하단 메�
 #game.story-field .hud-btns > #act-buff .ui-ic { width: 16px; height: 16px; }
 #game.story-field .hud-btns > #act-buff > span.text-sky-300,
 #game.story-field .hud-btns > #act-buff .reason { display: none; }
-#game.story-field .hud-btns > #act-buff .act-buff-lbl { display: none; }
+#act-buff .act-buff-lbl { display: none; }
 #game.story-field .hud-btns > #act-buff::after { content: '공업'; font-weight: 800; }
 #game.story-field #action-bar.act-row:not(:has(.act-btn:not(.hidden))) { display: none; }
 @media (max-width: 480px) {
