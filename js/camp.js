@@ -87,7 +87,16 @@
   async function open() {
     const box = shell('🏋️ 훈련소'); box.querySelector('.cbody').innerHTML = '<div class="camp-empty">불러오는 중...</div>';
     try { await load(); } catch (e) { box.querySelector('.cbody').innerHTML = `<div class="camp-empty">${off ? '훈련소 준비 중이에요' : esc(errText(e))}</div>`; return; }
+    if (await autoClaim()) return;
     draw();
+  }
+  // 넣어 둔 동안 쌓인 EXP 를 바로 반영 (열 때 + 열려 있는 동안 10분마다). 빼기를 기다리지 않아도 실제 레벨이 보임
+  let auto = 0;
+  async function autoClaim() {
+    clearInterval(auto); auto = setInterval(async () => { if (!document.getElementById('camp-ov')) return clearInterval(auto);
+      try { const r = await rpc('camp_status'); if (r?.slots?.some(s => s.pending > 0)) done(await rpc('camp_claim')); } catch {} }, 600000);
+    if (!st?.slots?.some(s => s.uid && s.pending > 0)) return false;
+    try { await done(await rpc('camp_claim')); return true; } catch { return false; }
   }
 
   function slotHTML(s, firstLocked) {

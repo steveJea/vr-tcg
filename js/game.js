@@ -1631,7 +1631,7 @@ function cardHTML(c, { hp, size = 'md', dim = false, mine = false } = {}) {
   const e = ELEMENTS[c.class] || ELEMENTS.WIND;
   const small = size === 'sm';
   const rar = rarityOf(c), nSk = skillsOf(c.id).length;
-  const bdr = mine ? (() => { try { const id = window.VRCosmo?.borderId?.(); return id ? `<img class="cosmo-bdr" src="img/ui/border/${id}.webp" alt="" aria-hidden="true" onerror="this.remove()">` : ''; } catch { return ''; } })() : '';
+  const bdr = mine ? (() => { try { const id = window.VRCosmo?.borderId?.(); return id ? `<span class="cosmo-bdr" style="border-image-source:url('img/ui/border/${id}.webp')" aria-hidden="true"></span>` : ''; } catch { return ''; } })() : '';
   return `
   <div class="card-frame ${rar.cls} relative ${small ? 'w-[64px] md:w-[96px]' : 'w-[78px] md:w-[110px]'} bg-zinc-900 rounded-xl overflow-hidden ${dim ? 'opacity-50' : ''} shadow-lg" data-grade="${rar.short}">
     ${bdr}<img src="${cardThumb(c.id)}" data-id="${c.id}" class="card-img w-full aspect-[3/4] object-cover" alt="${c.name}">
@@ -1825,13 +1825,13 @@ function render() {
       const w = document.createElement('div');
       const isSel = selected === u.uid;
       const ready = who === 'me' && u.canAttack && myTurn;
-      w.className = `unit ${u.undying ? 'boss-unit' : ''} cursor-pointer transition ${isSel ? '-translate-y-2 drop-shadow-[0_0_10px_#34d399]' : ''} ${ready ? 'ready' : ''} ${atkSel && who === 'ai' && tg.units.includes(u) ? 'target' : ''} ${isSel && !atkSel ? 'swap-sel' : ''} ${statusClasses(u)}`;
+      w.className = `unit ${u.undying ? 'boss-unit' : ''} ${skReady ? 'sk-ready' : ''} cursor-pointer transition ${isSel ? '-translate-y-2 drop-shadow-[0_0_10px_#34d399]' : ''} ${ready ? 'ready' : ''} ${atkSel && who === 'ai' && tg.units.includes(u) ? 'target' : ''} ${isSel && !atkSel ? 'swap-sel' : ''} ${statusClasses(u)}`;
       w.dataset.uid = u.uid;
       const hero = u.level >= RULES.LEVEL_MAX;
       const sts = statusIcons(u);
       const skReady = who === 'me' && myTurn && u.sk.some(s => skillState(u, s).ok);
       const icons = [u.items?.weapon && icOf(ITEMS.weapon), u.items?.armor && icOf(ITEMS.armor), ...u.skills.map(k => icOf(SKILLS[k]))].filter(Boolean);
-      w.__h = `<div class="relative ${hero ? 'hero-card' : ''}">${cardHTML(u.card, { hp: u.hp, size: 'sm', dim: who === 'me' && !u.canAttack && myTurn, mine: who === 'me' })}${statusDecor(u)}` +
+      w.__h = `<div class="relative ${hero ? 'hero-card' : ''}">${cardHTML(u.card, { hp: u.hp, size: 'sm', dim: who === 'me' && !u.canAttack && myTurn, mine: who === 'me' })}${statusDecor(u)}${skReady ? '<button type="button" class="skill-btn sk-ready-badge" title="스킬 사용 가능" aria-label="스킬">✦</button>' : ''}` +
         `<div class="lv-badge absolute -top-1.5 left-1/2 -translate-x-1/2 px-1.5 rounded-full ${hero ? 'bg-gradient-to-r from-yellow-300 to-amber-500 shadow-[0_0_8px_#fbbf24]' : u.level > 1 ? 'bg-amber-400' : 'bg-zinc-600 text-white'} text-black text-[9px] md:text-[10px] font-black whitespace-nowrap">${hero ? ic('crown', { cls: 'ui-ic-sm' }) + ' ' : ''}Lv${u.level}</div>` +
         (icons.length ? `<div class="item-icons absolute top-7 right-0.5 flex flex-col text-[11px] md:text-sm leading-tight drop-shadow">${icons.map(x => `<span>${x}</span>`).join('')}</div>` : '') +
         (sts.length ? `<div class="status-icons absolute top-7 left-0.5 flex flex-col text-[11px] md:text-sm leading-tight drop-shadow">${sts.map(x => { const big = isStatusFxKind(x.kind), au = big && statusIconUrl(x.kind); return `<span title="${x.title}"${big ? ` class="st-big ${x.kind}"` : ''}>${au ? `<img class="st-asset" src="${au}" alt="">` : icOf(x)}${x.t > 0 ? `<b class="st-turns">${x.t}</b>` : ''}</span>`; }).join('')}</div>` : '') + `</div>` +
@@ -1839,7 +1839,7 @@ function render() {
         `<div class="hp-bar h-1.5 bg-white/10 rounded-full mt-0.5 overflow-hidden${u.maxHp && u.hp / u.maxHp <= 0.3 ? ' hp-low' : ''}" title="HP ${u.hp}/${u.maxHp}"><div class="hp-ghost" style="width:${hpPrev.get(String(u.uid)) ?? (u.maxHp ? Math.max(0, Math.min(100, u.hp / u.maxHp * 100)) : 0)}%"></div><div class="hp-fill h-full bg-red-500" data-to="${u.maxHp ? Math.max(0, Math.min(100, u.hp / u.maxHp * 100)) : 0}" style="width:${hpPrev.get(String(u.uid)) ?? (u.maxHp ? Math.max(0, Math.min(100, u.hp / u.maxHp * 100)) : 0)}%"></div></div>` +
         `<div class="mp-bar h-1.5 bg-white/10 rounded-full mt-0.5 overflow-hidden" title="MP ${u.mp}/${u.maxMp} (+${u.mpRegen}/턴)"><div class="h-full bg-blue-500" style="width:${u.maxMp ? Math.min(100, u.mp / u.maxMp * 100) : 0}%"></div></div>` +
         // 상태 줄: 카드 너비를 넘지 않게 (width:0 + min-width:100% → 이 줄이 유닛 너비를 늘리지 않음). 둘 다면 '공격 가능'을 ⚔ 로 줄여 한 줄 유지
-        `<div class="unit-tags flex justify-center items-center gap-1 h-4 whitespace-nowrap overflow-hidden" style="width:0;min-width:100%">${ready ? `<span class="text-[10px] text-emerald-400 font-bold" title="공격 가능">${skReady ? '⚔' : '공격 가능'}</span>` : ''}${skReady ? '<button class="skill-btn text-[10px] px-1 rounded bg-fuchsia-600 hover:bg-fuchsia-500 font-bold leading-4">✦스킬</button>' : ''}</div>`;
+        `<div class="unit-tags flex justify-center items-center gap-1 h-4 whitespace-nowrap overflow-hidden" style="width:0;min-width:100%">${ready ? '<span class="text-[10px] text-emerald-400 font-bold" title="공격 가능">공격 가능</span>' : ''}</div>`;
       binds.push([u.uid, el => {
         el.onclick = ev => { if (dragJustEnded) { ev.stopPropagation(); return; } onUnitClick(who, u); };
         if (who === 'me' && myTurn && el.__dragU !== u) { el.__dragU = u; enableDrag(el, u); }

@@ -41,5 +41,15 @@
 #game .card-frame.shadow-lg { --tw-shadow: 0 0 #0000; --tw-shadow-colored: 0 0 #0000; }
 
 /* 꾸미기 카드 테두리 (내 카드만 · 이미지 1장). iOS 라이트에선 끔 */
-#game .card-frame > .cosmo-bdr{position:absolute;inset:0;width:100%;height:100%;object-fit:fill;pointer-events:none;z-index:6}
+#game .card-frame > .cosmo-bdr{position:absolute;inset:0;pointer-events:none;z-index:6;border:4px solid transparent;border-image-slice:50;border-image-width:4px;border-image-repeat:stretch}
 html.ios #game .card-frame > .cosmo-bdr{display:none}
+
+/* 스킬 사용 가능: 카드 자체에 빛 + 배지 (아래 줄이 수비대장 칸에 가려지던 문제) */
+#game .unit.sk-ready > .relative > .card-frame{box-shadow:0 0 0 2px #e879f9,0 0 12px rgba(217,70,239,.75)}
+#game .unit .sk-ready-badge{position:absolute;right:2px;bottom:30px;z-index:8;width:22px;height:22px;border-radius:9999px;background:radial-gradient(circle at 35% 30%,#f5d0fe,#c026d3 60%,#701a75);color:#fff;font-size:12px;font-weight:900;line-height:22px;text-align:center;border:1.5px solid #fff;box-shadow:0 0 8px #d946ef;animation:skBadge 1.2s ease-in-out infinite}
+@keyframes skBadge{50%{transform:scale(1.15)}}
+html.ios #game .unit .sk-ready-badge{animation:none}
+@media (min-width:768px){#game .unit .sk-ready-badge{width:26px;height:26px;line-height:26px;font-size:14px;bottom:40px}}
+/* 진영 칸(수비대장·보스) 원형 테두리는 상태효과 스타일이 모서리를 바꾸지 않게 항상 원형 유지 (금색 네모로 보이던 문제) */
+#game .base-unit > .base-ring{border-radius:9999px!important}
+html.ios #game .base-unit > .base-ring::after{border-radius:9999px!important}

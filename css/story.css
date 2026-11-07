@@ -1116,3 +1116,10 @@ body.gnb-on:not(.gnb-hidden) #story-screen { --wrap-pb: 12px; }   /* 하단 메�
 .q-lead { position: absolute; top: 1px; right: 1px; font-size: 10px; line-height: 0; z-index: 2; pointer-events: none; filter: drop-shadow(0 0 2px #000); }
 .q-lead .ui-ic { width: 12px !important; height: 12px !important; vertical-align: top; }
 .q-lv { top: 15px; }
+
+/* 스토리·탑 하단 버튼 순서: 포기 – 공업 – 일괄공격 – 턴종료 */
+#game.story-field .hud-btns:has(#act-buff) > #story-giveup { order: 1; }
+#game.story-field .hud-btns:has(#act-buff) > #act-buff { order: 2; }
+#game.story-field .hud-btns:has(#act-buff) > #attack-all { order: 3; }
+#game.story-field .hud-btns:has(#act-buff) > #end-turn { order: 4; }
+#game.story-field .hud-btns:has(#act-buff) > #reserve-btn { order: 5; }
