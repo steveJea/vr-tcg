@@ -1826,11 +1826,11 @@ function render() {
       const w = document.createElement('div');
       const isSel = selected === u.uid;
       const ready = who === 'me' && u.canAttack && myTurn;
+      const skReady = who === 'me' && myTurn && u.sk.some(s => skillState(u, s).ok);
       w.className = `unit ${u.undying ? 'boss-unit' : ''} ${skReady ? 'sk-ready' : ''} cursor-pointer transition ${isSel ? '-translate-y-2 drop-shadow-[0_0_10px_#34d399]' : ''} ${ready ? 'ready' : ''} ${atkSel && who === 'ai' && tg.units.includes(u) ? 'target' : ''} ${isSel && !atkSel ? 'swap-sel' : ''} ${statusClasses(u)}`;
       w.dataset.uid = u.uid;
       const hero = u.level >= RULES.LEVEL_MAX;
       const sts = statusIcons(u);
-      const skReady = who === 'me' && myTurn && u.sk.some(s => skillState(u, s).ok);
       const icons = [u.items?.weapon && icOf(ITEMS.weapon), u.items?.armor && icOf(ITEMS.armor), ...u.skills.map(k => icOf(SKILLS[k]))].filter(Boolean);
       w.__h = `<div class="relative ${hero ? 'hero-card' : ''}">${cardHTML(u.card, { hp: u.hp, size: 'sm', dim: who === 'me' && !u.canAttack && myTurn, mine: who === 'me' })}${statusDecor(u)}${skReady ? '<button type="button" class="skill-btn sk-ready-badge" title="스킬 사용 가능" aria-label="스킬">✦</button>' : ''}` +
         `<div class="lv-badge absolute -top-1.5 left-1/2 -translate-x-1/2 px-1.5 rounded-full ${hero ? 'bg-gradient-to-r from-yellow-300 to-amber-500 shadow-[0_0_8px_#fbbf24]' : u.level > 1 ? 'bg-amber-400' : 'bg-zinc-600 text-white'} text-black text-[9px] md:text-[10px] font-black whitespace-nowrap">${hero ? ic('crown', { cls: 'ui-ic-sm' }) + ' ' : ''}Lv${u.level}</div>` +

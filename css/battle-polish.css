@@ -29,7 +29,7 @@
 #game .w-\[64px\] { width: 64px; }
 #game .w-\[78px\] { width: 78px; }
 #game .aspect-\[3\/4\] { aspect-ratio: 3 / 4; }
-#game .card-frame { overflow: hidden; }
+#game .card-frame { overflow: hidden; isolation: isolate; }
 #game .card-frame > img.card-img { display: block; width: 100%; max-width: 100%; aspect-ratio: 3 / 4; object-fit: cover; }
 @media (min-width: 768px) {
   #game .md\:w-\[96px\] { width: 96px; }
@@ -40,8 +40,10 @@
    WebKit에서 프레임을 가장 많이 잡아먹었음. 등급 테두리/빛(rar-*)은 그대로 둔다. */
 #game .card-frame.shadow-lg { --tw-shadow: 0 0 #0000; --tw-shadow-colored: 0 0 #0000; }
 
-/* 꾸미기 카드 테두리 (내 카드만 · 이미지 1장). iOS 라이트에선 끔 */
-#game .card-frame > .cosmo-bdr{position:absolute;inset:0;pointer-events:none;z-index:6;border:4px solid transparent;border-image-slice:50;border-image-width:4px;border-image-repeat:stretch}
+/* 꾸미기 카드 테두리 (내 카드만 · 이미지 1장). iOS 라이트에선 끔.
+   원본 프레임의 검은 질감이 9-slice 상단에 남아 초상화 위 검은 줄이 됨.
+   폭만 줄여선 없어지지 않음: 카드 안에서만 screen 합성해 밝은 장식은 살리고 검정은 투명하게. */
+#game .card-frame > .cosmo-bdr{position:absolute;inset:0;pointer-events:none;z-index:6;border:4px solid transparent;border-image-slice:50;border-image-width:4px;border-image-repeat:stretch;mix-blend-mode:screen}
 html.ios #game .card-frame > .cosmo-bdr{display:none}
 
 /* 스킬 사용 가능: 카드 자체에 빛 + 배지 (아래 줄이 수비대장 칸에 가려지던 문제) */
