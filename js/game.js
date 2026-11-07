@@ -104,7 +104,7 @@ const AUTO_LV = 5;
 const autoLocked = () => (window.VRPlayer?.now?.()?.level ?? 0) < AUTO_LV;
 // 튜토리얼이 AUTO를 잠갔던 전투(챕0-3 각성 등): 잠금이 풀려도 저장된 AUTO 설정으로 자동 전환하지 않음 — 직접 눌러야 켜짐
 const autoHeld = () => { if (S && TUT_LOCK('auto')) S.autoHold = true; return !!S?.autoHold; };
-const autoActive = () => autoOn && !autoLocked() && !!S?.story && !S.over && !S.view && !autoHeld();
+const autoActive = () => !S?.awakenPause && autoOn && !autoLocked() && !!S?.story && !S.over && !S.view && !autoHeld();
 function renderAutoBtn() {
   const b = $('auto-btn'); if (!b) return;
   b.classList.toggle('hidden', !S?.story); b.classList.toggle('on', autoOn);
@@ -291,7 +291,16 @@ const mustLeft = () => S?.mustSummon ? S.mustSummon.ids.filter(id => !S.log.play
 /** 제한 마나: 손패에서 지금 낼 수 있는 카드 */
 const affordable = () => (S.me.hand || []).filter(c => { try { return canSummon(c, S.me, S.ai).ok; } catch { return false; } });
 
+// Awakening hands control directly to the player, without turn-start passives.
+function awakenPlayerControl() {
+  S.turn = 'me'; S.meActed = false; S.undo = null;
+  S.me.field.forEach(u => u.canAttack = true);
+  selected = null; fastForward = false;
+  S.busy = !!(S.awakenPresenting || S.awakenAiPending);
+  render();
+}
 function startTurn(who) {
+  if (S.awakenPause) { awakenPlayerControl(); return; }
   turnScroll(who);
   const p = S[who];
   S.turn = who; if (who === S.first) S.turnNo++; S.totalTurns++;
@@ -344,7 +353,7 @@ function opp(who) { return who === 'me' ? S.ai : S.me; }
 function summon(who, card) {
   const p = S[who], check = canSummon(card, p, opp(who));
   if (!check.ok) return check;
-  if (who === 'me') S.meActed = true;
+  if (who === 'me') { S.awakenPause = false; S.meActed = true; }
   p.mana -= card.cost;
   p.hand.splice(p.hand.indexOf(card), 1);
   log(`${p.name}: ${card.name} 소환 (코스트 ${card.cost})`);
@@ -402,7 +411,7 @@ function clearGuard(u) { u.guard = u.boss = u.undying = false; delete u.guardAt;
 function placeGuard(who, card) {
   const p = S[who], check = canGuard(card, p);
   if (!check.ok) return check;
-  if (who === 'me') S.meActed = true;
+  if (who === 'me') { S.awakenPause = false; S.meActed = true; }
   p.mana -= card.cost;
   p.hand.splice(p.hand.indexOf(card), 1);
   const u = placeUnit(p, card, makeUnit);
@@ -484,11 +493,12 @@ async function attackAll() {
   if (S.turn !== 'me' || S.over || S.busy) return;
   const ready = S.me.field.filter(u => u.canAttack);
   if (!ready.length) return;
+  S.awakenPause = false;
   S.busy = true; selected = null; render();
   log(`일괄 공격! (${ready.length}장)`, 'text-emerald-400');
   try {
     for (const u of ready) {
-      if (S.over) break;
+      if (S.over || S.awakenPause) break;
       await passiveWait(); await vidWait();   // 앞 공격에서 뜬 패시브 컷인(부활 등)이 끝난 뒤 다음 공격
       if (S.over || !S.me.field.includes(u) || !u.canAttack) continue;
       const t = autoTarget(u, S.me, S.ai);
@@ -498,7 +508,8 @@ async function attackAll() {
     }
   } catch (err) { reportError('attackAll', err); }
   resetAnim();
-  S.busy = false; fastForward = false; render();
+  S.busy = false; fastForward = false;
+  if (S.awakenPause) awakenPlayerControl(); else render();
 }
 
 function setStartLabel(t) { const b = $('start-btn'), l = b?.querySelector('.main-banner-title'); if (l) l.textContent = t; else if (b) b.textContent = t; }
@@ -814,7 +825,7 @@ async function attack(who, unit, target, fromBatch = false) {
   if (who === 'me') S.undo = null;
   if (!canTarget(p, o, target, unit)) { if (who === 'me') { const r = attackTargets(p, o, unit).reason; log(r, 'text-red-400'); floatText(r, 'text-red-400 text-sm', 'ai'); if (!target) TUT('hero_blocked'); } return; }
   const prevBusy = S.busy;
-  if (who === 'me') S.meActed = true;
+  if (who === 'me') { S.awakenPause = false; S.meActed = true; }
   S.busy = true; selected = null;
   const oWho = who === 'me' ? 'ai' : 'me';
   let aEl = null;
@@ -996,17 +1007,32 @@ function awakenCheck() {
   const A = S.story?.awaken;
   if (!A || S.awakened || !A.card || S.me.field.some(u => String(u.card.id) === String(A.on))) return;
   S.awakened = true;
+  if (A.pauseOnEntrance) {
+    S.awakenPause = true; S.awakenPresenting = true;
+    S.awakenAiPending = S.turn === 'ai';
+    S.autoHold = true; S.meActed = false;
+    clearTimeout(autoEndTimer); autoEndTimer = null;
+    S.busy = true;
+  }
   const u = placeUnit(S.me, { ...A.card }, makeUnit, true);
   while (u.level < Math.min(A.battleLevel || 1, RULES.LEVEL_MAX)) levelUpOnce(u);
   u.hp = u.maxHp; u.mp = u.maxMp; u.canAttack = true;
   S.log.played.add(String(A.card.id));
   log(`⚡ ${A.card.name} 난입!`, 'text-fuchsia-300');
   render(); playSe(6);
+  const battle = S;
   fxQueue.push(async () => {
-    const t = document.createElement('div'); t.className = 'awaken-toast'; if (A.image) t.style.backgroundImage = `linear-gradient(rgba(30,0,50,.35),rgba(30,0,50,.75)),url(${A.image})`; t.innerHTML = `<b>⚡ 각성</b><span>${escHtml(A.line || A.card.name)}</span>`;
-    document.body.appendChild(t); setTimeout(() => t.remove(), 2600);
-    await withTimeout(cutIn(u, '각성', null), 2500);
-    TUT('awaken', { id: A.card.id });
+    try {
+      const t = document.createElement('div'); t.className = 'awaken-toast'; if (A.image) t.style.backgroundImage = `linear-gradient(rgba(30,0,50,.35),rgba(30,0,50,.75)),url(${A.image})`; t.innerHTML = `<b>⚡ 각성</b><span>${escHtml(A.line || A.card.name)}</span>`;
+      document.body.appendChild(t); setTimeout(() => t.remove(), 2600);
+      await withTimeout(cutIn(u, '각성', null), 2500);
+      TUT('awaken', { id: A.card.id });
+    } finally {
+      if (A.pauseOnEntrance && S === battle) {
+        S.awakenPresenting = false;
+        awakenPlayerControl();
+      }
+    }
   });
   runFxQueue();
 }
@@ -1065,6 +1091,7 @@ function checkTimeout() {
 function endTurn() {
   if (S?.view) { S.view.ask?.({ k: 'end' }); return; }
   if (S.turn !== 'me' || S.over || S.busy) return;
+  S.awakenPause = false;
   selected = null; S.undo = null;
   endTurnXp(S.me); turnEnd(S.me);
   render();
@@ -1465,7 +1492,7 @@ async function castSkill(who, u, s, force = false) {
   const p = S[who];
   if (S.over || !p.field.includes(u) || !(force || skillState(u, s).ok)) return;
   if (who === 'me') S.undo = null;
-  const prevBusy = S.busy; S.busy = true; selected = null; if (who === 'me') S.meActed = true;
+  const prevBusy = S.busy; S.busy = true; selected = null; if (who === 'me') { S.awakenPause = false; S.meActed = true; }
   try {
     render();
     if (!(await mrVideo(u, s))) await withTimeout(cutIn(u, s.name, s.fx), 3000);
@@ -1582,7 +1609,7 @@ async function aiTurn() {
   if (ai.field.some(u => u.canAttack)) scrollBottom();   // 준비 끝 → 공격은 내 쪽에서 보기
   for (const u of [...ai.field]) {
     await vidWait();
-    if (S.over) break;
+    if (S.over || S.awakenPause) break;
     if (!ai.field.includes(u) || !u.canAttack) continue;
     if (spareBlocked(u)) { u.canAttack = false; log(`${u.card.name}: 공격할 대상이 없어 턴을 넘깁니다`, 'text-zinc-400'); floatText(`${u.card.name} 행동 안 함`, 'text-zinc-300 text-sm', 'ai'); await sleep(AI_DELAY()); continue; }
     const sk = S.at && !S.at.aiSkills ? null : aiPickSkill(u);
@@ -1592,11 +1619,13 @@ async function aiTurn() {
     await attack('ai', u, best);
     await sleep(AI_DELAY());
   }
-  if (!S.over && !S.at && aiWantHeal(ai)) { useAction('ai', 'heal'); await sleep(AI_DELAY()); }
+  if (!S.over && !S.awakenPause && !S.at && aiWantHeal(ai)) { useAction('ai', 'heal'); await sleep(AI_DELAY()); }
   } catch (err) { if (!err?.guardSwap && !err?.scripted) reportError('aiTurn', err); }
+  if (S.awakenPause) { S.awakenAiPending = false; awakenPlayerControl(); return; }
   // 오류가 나도 턴은 반드시 넘어감
   const ai = S.ai;
   try { if (!S.over) { endTurnXp(ai); turnEnd(ai); render(); checkEnd() || checkTimeout(); } } catch (err) { reportError('aiTurnEnd', err); }
+  if (S.awakenPause) { S.awakenAiPending = false; awakenPlayerControl(); return; }
   resetAnim(); S.busy = false; fastForward = false;
   if (!S.over) startTurn('me');
 }
@@ -2145,6 +2174,7 @@ function canStillAct() {
   return false;
 }
 function autoEndReady() {
+  if (S?.awakenPause) return false;
   if (!S || !S.story || S.turn !== 'me' || S.over || S.busy || !S.meActed) return false;
   if (S.view ? (S.view.auto || !S.view.ask) : autoActive()) return false;                 // 자동전투 중엔 엔진/자동이 처리
   return !canStillAct();
@@ -2200,7 +2230,7 @@ $('fx-skip').onclick = e => { e.stopPropagation(); if (TUT_LOCK('skip')) return;
 // 연출 중 화면을 누르면 현재 연출 빨리 감기
 $('game').addEventListener('click', e => { if (S?.view && e.target.closest('button')) return; if (S?.busy && !S.over) fastForward = true; }, true);   // 화면 전투: AUTO 등 버튼 탭은 빨리감기 아님
 renderSkipBtn();
-$('auto-btn').onclick = e => { e.stopPropagation(); if (TUT_LOCK('auto')) return; if (S?.view) { S.view.auto = !S.view.auto; renderAutoBtn(); if (S.view.auto) S.view.ask?.({ k: 'auto' }); return; } if (autoLocked()) return autoHint(); if (S?.autoHold) { S.autoHold = false; autoOn = true; } else autoOn = !autoOn; localStorage.setItem(AUTO_KEY(), autoOn ? '1' : '0'); renderAutoBtn(); if (autoActive() && S.turn === 'me' && !S.busy) autoTurn(); };
+$('auto-btn').onclick = e => { e.stopPropagation(); if (TUT_LOCK('auto')) return; if (S?.view) { S.view.auto = !S.view.auto; renderAutoBtn(); if (S.view.auto) S.view.ask?.({ k: 'auto' }); return; } if (autoLocked()) return autoHint(); if (S?.awakenPresenting || S?.awakenAiPending) return; if (S?.autoHold) { S.awakenPause = false; S.autoHold = false; autoOn = true; } else autoOn = !autoOn; localStorage.setItem(AUTO_KEY(), autoOn ? '1' : '0'); renderAutoBtn(); if (autoActive() && S.turn === 'me' && !S.busy) autoTurn(); };
 function autoHint() {
   document.getElementById('auto-hint')?.remove();
   const t = document.createElement('div'); t.id = 'auto-hint'; t.className = 'auto-hint'; t.textContent = `🔒 계정 Lv${AUTO_LV}부터 AUTO`;
