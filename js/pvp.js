@@ -190,15 +190,20 @@ function vsScreen(s) {
 
 // ---- 덱 편집 (PvP 전용 · 마이 덱에서 불러오기) ----
 // 인재 정렬 (스토리·거래소와 같은 칩: 같은 버튼 다시 누르면 ▼▲ 전환, localStorage 기억)
-const PSORTS = { grade: '등급', level: '레벨', power: '전투력', name: '이름', new: '획득' }, PSORT_KEY = 'vr-pvp-card-sort';
+const PSORTS = { grade: '등급', level: '레벨', power: '전투력', cost: '코스트', name: '이름', new: '획득' }, PSORT_KEY = 'vr-pvp-card-sort';
 const GRADE_ORD = ['NORMAL', 'RARE', 'HIGH RARE', 'SUPER RARE', 'ULTRA RARE', 'MYTHIC RARE', 'LEGENDARY RARE'];
 let psort = (() => { try { const v = JSON.parse(localStorage.getItem(PSORT_KEY)); if (v && PSORTS[v.k]) return { k: v.k, desc: v.desc !== false }; } catch {} return { k: 'power', desc: true }; })();
 const setPSort = k => { psort = psort.k === k ? { k, desc: !psort.desc } : { k, desc: true }; try { localStorage.setItem(PSORT_KEY, JSON.stringify(psort)); } catch {} };
 export function sortPool(list, cardOf = card, all = owned, s = psort) {
-  const idx = new Map(all.map((o, i) => [o.uid, i])), gr = o => GRADE_ORD.indexOf(cardOf(o.id)?.grade), lv = o => o.level | 0, pw = o => +o.power || 0, nw = o => idx.get(o.uid) ?? -1;
+  const idx = new Map(all.map((o, i) => [o.uid, i])), gr = o => GRADE_ORD.indexOf(cardOf(o.id)?.grade), lv = o => o.level | 0, pw = o => +o.power || 0, ct = o => +cardOf(o.id)?.cost || 0, nw = o => idx.get(o.uid) ?? -1;
   const nm = o => cardOf(o.id)?.name || '', d = s.desc ? -1 : 1;
-  const key = { grade: [gr, lv, pw], level: [lv, gr, pw], power: [pw, gr, lv], new: [nw], name: [] }[s.k] || [pw];
+  const key = { grade: [gr, lv, pw], level: [lv, gr, pw], power: [pw, gr, lv], cost: [ct, pw, lv], new: [nw], name: [] }[s.k] || [pw];
   return list.slice().sort((a, b) => { if (s.k === 'name') { const v = nm(a).localeCompare(nm(b), 'ko'); if (v) return v * d; } for (const f of key) { const v = f(a) - f(b); if (v) return v * d; } return 0; });
+}
+export function filterPool(list, query = '', maxCost = '', cardOf = card) {
+  const name = query.trim().normalize('NFKC').toLocaleLowerCase('ko');
+  const cap = maxCost === '' ? Infinity : Number(maxCost);
+  return list.filter(o => { const c = cardOf(o.id); return c && (+c.cost || 0) <= cap && (!name || (c.name || '').normalize('NFKC').toLocaleLowerCase('ko').includes(name)); });
 }
 const sortChips = () => `<div class="pvp-chips pvp-sort">${Object.entries(PSORTS).map(([k, l]) => `<button data-srt="${k}" class="${psort.k === k ? 'on' : ''}" aria-pressed="${psort.k === k}">${l}${psort.k === k ? (psort.desc ? ' ▼' : ' ▲') : ''}</button>`).join('')}</div>`;
 function editDeck(slot, keep) {
@@ -206,6 +211,7 @@ function editDeck(slot, keep) {
   let sel = keep ? keep.sel.filter(u => owned.some(o => o.uid === u)) : cur ? [...cur.uids] : [];
   if (keep && sel.length < keep.sel.length) toast('합성 등으로 빠진 인재가 있어요');
   const L = LEAGUES[view.league];
+  let query = keep?.query || '', maxCost = keep?.maxCost ?? '';
   const usedElsewhere = new Set(st.decks.filter(d => d.slot !== slot).flatMap(d => d.uids.map(u => owned.find(o => o.uid === u)?.id)));
   const pool = [...new Map(owned.filter(o => !L.grades || L.grades.includes(card(o.id)?.grade)).sort((a, b) => b.power - a.power).map(o => [o.id, o])).values()];   // 같은 카드는 가장 센 1장
   const m = modal('pvp-edit', '', 'pvp-sub');
@@ -216,7 +222,7 @@ function editDeck(slot, keep) {
   if (BOSS && !(sel.length && isGuard(sel[0]))) { sel = []; step = 'leader'; }
   const oOf = u => owned.find(o => o.uid === u);
   const fire = u => window.VRStory?.canMergeUid?.(u) ? '<b class="pvp-fire" title="합성 가능">🔥</b>' : '';
-  const pickBtn = (o, on, badge) => { const c = card(o.id); return c ? `<button data-u="${o.uid}" class="g-${GS[c.grade] || 'N'} ${on ? 'on' : ''}" ${usedElsewhere.has(o.id) ? 'disabled' : ''}>${thumb({ ...c, level: o.level }, (on ? badge : '') + fire(o.uid))}</button>` : ''; };
+  const pickBtn = (o, on, badge) => { const c = card(o.id); return c ? `<button data-u="${o.uid}" class="g-${GS[c.grade] || 'N'} ${on ? 'on' : ''}" ${usedElsewhere.has(o.id) ? 'disabled' : ''}>${thumb({ ...c, level: o.level }, (on ? badge : '') + fire(o.uid))}<span class="pvp-card-cost">💰 ${+c.cost || 0}</span><span class="pvp-card-name">${esc(c.name)}</span></button>` : ''; };
   // 맨 윗줄 (화면 위 고정): 현재 덱 칸 · 전투력 합 · HR 코스트 · 자동 채우기 · 덱 설정 완료
   const topRow = bad => {
     const cards = sel.map(oOf).filter(Boolean), pw = cards.reduce((a, o) => a + (+o.power || 0), 0), cost = cards.reduce((a, o) => a + (+card(o.id)?.cost || 0), 0);
@@ -241,7 +247,7 @@ function editDeck(slot, keep) {
   const train = async uid => {
     const S = window.VRStory; if (!S?.trainCard) return toast('인재 화면 없음');
     const hid = [...document.querySelectorAll('.pvp-modal')]; hid.forEach(e => e.style.display = 'none');
-    const back = async () => { hid.forEach(e => e.remove()); await open(); if ($('pvp-modal')) editDeck(slot, { sel, step }); };
+    const back = async () => { hid.forEach(e => e.remove()); await open(); if ($('pvp-modal')) editDeck(slot, { sel, step, query, maxCost }); };
     const ran = await S.trainCard(uid, back, 'PvP 덱으로');
     if (!ran) hid.forEach(e => e.style.display = '');
   };
@@ -258,6 +264,24 @@ function editDeck(slot, keep) {
     m.querySelectorAll('[data-rm]').forEach(b => b.onclick = () => { const u = b.dataset.rm; if (BOSS && u === sel[0]) { sel = []; step = 'leader'; } else sel = sel.filter(x => x !== u); if (BOSS && step === 'confirm' && sel.length < 2) step = 'members'; drawAll(); });
     m.querySelector('[data-auto]')?.addEventListener('click', autoFill);
     m.querySelector('[data-ok]')?.addEventListener('click', () => commit());
+  };
+  const poolTools = () => `<div class="pvp-filters"><input type="search" data-name value="${esc(query)}" placeholder="이름 검색" aria-label="이름 검색"><label>코스트 ≤ <input type="number" min="0" step="1" inputmode="numeric" data-cost value="${esc(maxCost)}" placeholder="전체" aria-label="최대 코스트"></label></div>${sortChips()}`;
+  const filtered = list => sortPool(filterPool(list, query, maxCost));
+  const bindFilters = () => {
+    for (const key of ['name', 'cost']) {
+      const input = m.querySelector(`[data-${key}]`); if (!input) continue;
+      const apply = () => {
+        const start = input.selectionStart, end = input.selectionEnd;
+        const scroll = m.querySelector('.pvp-panel').scrollTop;
+        if (key === 'name') query = input.value; else maxCost = input.value === '' ? '' : String(Math.max(0, Math.floor(+input.value || 0)));
+        drawAll();
+        const next = m.querySelector(`[data-${key}]`); next.focus({ preventScroll: true });
+        if (key === 'name') next.setSelectionRange(start, end);
+        m.querySelector('.pvp-panel').scrollTop = scroll;
+      };
+      input.oninput = e => { if (!e.isComposing) apply(); };
+      input.oncompositionend = apply;   // Keep Korean IME composition intact while typing.
+    }
   };
   const draw = () => BOSS ? drawBoss() : drawNormal();
   const drawBoss = () => {
@@ -276,7 +300,7 @@ function editDeck(slot, keep) {
       const list = step === 'leader' ? pool.filter(o => GUARD_GRADES.includes(card(o.id)?.grade)) : pool.filter(o => o.uid !== lead);
       body = `<div class="pvp-boss-tip">${step === 'leader' ? '① 리더(수비대장) 1장을 고르세요 · HR 이하만' : `② 멤버를 고르세요 · ${BOSS_MEMBERS[0]}~${BOSS_MEMBERS[1]}장`}</div>
         ${myDecks.length && step === 'members' ? `<div class="pvp-chips">${myDecks.map((d, i) => `<button data-load="${i}">🗂 ${esc(d.name)}</button>`).join('')}</div>` : ''}
-        ${list.length > 1 ? sortChips() : ''}<div class="pvp-pick">${sortPool(list).map(o => pickBtn(o, step === 'leader' ? o.uid === lead : mem.includes(o.uid), `<b class="pvp-n">${step === 'leader' ? '👑' : mem.indexOf(o.uid) + 1}</b>`)).join('') || '<div class="pvp-empty">고를 수 있는 카드가 없어요</div>'}</div>`;
+        ${poolTools()}<div class="pvp-pick">${filtered(list).map(o => pickBtn(o, step === 'leader' ? o.uid === lead : mem.includes(o.uid), `<b class="pvp-n">${step === 'leader' ? '👑' : mem.indexOf(o.uid) + 1}</b>`)).join('') || '<div class="pvp-empty">고를 수 있는 카드가 없어요</div>'}</div>`;
       acts = step === 'leader' ? `<button class="pvp-go" data-step="members" ${lead ? '' : 'disabled'}>다음: 멤버</button>` : `<button class="pvp-ghost" data-step="leader">← 리더</button><button class="pvp-go" data-step="confirm" ${mem.length ? '' : 'disabled'}>다음: 확인</button>`;
     }
     m.querySelector('.pvp-panel').innerHTML = `${head}${topRow(bad)}${body}<small class="pvp-gear-note" style="display:block;opacity:.7;font-size:11px;margin:6px 0">🛡️ 장비는 덱을 저장할 때 들어가요 — 장비를 바꿨다면 덱을 다시 저장해야 반영돼요 (PvP 장비 50%)</small><div class="pvp-acts">${acts}</div>`;
@@ -290,7 +314,7 @@ function editDeck(slot, keep) {
     m.querySelector('.pvp-panel').innerHTML = `<button class="pvp-x" data-x>✕</button>
       <div class="pvp-h">${MODES[view.mode].decks > 1 ? `덱 ${slot + 1}` : '🛡 덱'} <small>${sel.length}/5${L.costCap ? ` · ${cost}/${L.costCap}` : ''}</small></div>${MODES[view.mode].boss ? '<div class="pvp-boss-tip">👑 보스리그: 첫 번째로 고른 카드가 수비대장(HR 이하, 진영 칸 · 쓰러지지 않음). 상대 진영 HP를 0으로 만들면 승리</div>' : ''}
       ${topRow(bad)}${myDecks.length ? `<div class="pvp-chips">${myDecks.map((d, i) => `<button data-load="${i}">🗂 ${esc(d.name)}</button>`).join('')}</div>` : ''}
-      ${pool.length > 1 ? sortChips() : ''}<div class="pvp-pick">${sortPool(pool).map(o => pickBtn(o, sel.includes(o.uid), `<b class="pvp-n">${sel.indexOf(o.uid) + 1}</b>`)).join('') || '<div class="pvp-empty">없음</div>'}</div>
+      ${poolTools()}<div class="pvp-pick">${filtered(pool).map(o => pickBtn(o, sel.includes(o.uid), `<b class="pvp-n">${sel.indexOf(o.uid) + 1}</b>`)).join('') || '<div class="pvp-empty">없음</div>'}</div>
       <div class="pvp-acts">${cur ? '<button data-del class="pvp-ghost">🗑</button>' : ''}</div>`;
     bindPick(); bindTop();
     m.querySelectorAll('[data-load]').forEach(b => b.onclick = () => { const d = myDecks[+b.dataset.load]; const ok = new Set(pool.map(o => o.uid)); sel = d.uids.filter(u => ok.has(u)).slice(0, 5); if (sel.length < d.uids.length) toast('일부 제외'); drawAll(); });
@@ -301,7 +325,7 @@ function editDeck(slot, keep) {
     const del = m.querySelector('[data-del]'); if (del) del.onclick = async () => { try { await rpc('pvp_set_deck', { p_league: view.league, p_mode: view.mode, p_slot: slot, p_uids: [] }); m.remove(); open(); } catch (e) { toast(errText(e)); } };
   };
   const draw0 = draw;
-  const drawAll = () => { draw0(); redraw(); };
+  const drawAll = () => { draw0(); bindFilters(); redraw(); };
   // 카드 정보 (확대) → 선택 / 빼기 / 취소. 5장이 되면 저장 여부를 묻는다
   const cardInfo = uid => {
     const o = owned.find(x => x.uid === uid), c = o && card(o.id); if (!c) return;
@@ -363,13 +387,13 @@ async function fight() {
   }
 }
 function showResult(s, rep) {
-  const delta = rep.delta;
+  const delta = rep.delta, boss = !!MODES[s.mode || view.mode]?.boss;
   const m = modal('pvp-result', `<button class="pvp-x" data-x>✕</button>
     <div class="pvp-res ${rep.win ? 'win' : 'lose'}">${rep.win ? 'WIN' : 'LOSE'}</div>
     <div class="pvp-vs">${emb(tierOf(s.opp_rating))}<span>${esc(s.opp_name)}${s.bot ? ' 🤖' : ''}</span><small>🏆 ${s.opp_rating}</small></div>
     ${rep.streak >= 2 ? `<div class="pvp-res-streak"><span class="pvp-streak big">🔥${rep.streak}</span>${rep.streak_reward ? `<span class="pvp-rw">${rwHtml(rep.streak_reward)}</span>` : ''}</div>` : ''}
     ${rep.forfeit ? '<div class="pvp-empty">기한 만료/중단 · 보상 없는 패배</div>' : ''}
-    ${rep.rounds.map((r, i) => `<div class="pvp-round ${r.win ? 'win' : 'lose'}"><div class="pvp-side">${snapThumbs(s.me[i])}</div><b>${r.win ? '○' : '✕'}</b><div class="pvp-side foe">${snapThumbs(s.opp[i])}</div></div>`).join('')}
+    ${rep.rounds.map((r, i) => boss ? `<div class="pvp-round pvp-round-boss ${r.win ? 'win' : 'lose'}"><div class="pvp-result-side"><strong>상대${r.win ? ' · 진영 파괴' : ''}</strong><div class="pvp-side foe">${snapThumbs(s.opp[i])}</div></div><div class="pvp-result-side"><strong>나${r.win ? '' : ' · 패배'}</strong><div class="pvp-side">${snapThumbs(s.me[i])}</div></div></div>` : `<div class="pvp-round ${r.win ? 'win' : 'lose'}"><div class="pvp-side">${snapThumbs(s.me[i])}</div><b>${r.win ? '○' : '✕'}</b><div class="pvp-side foe">${snapThumbs(s.opp[i])}</div></div>`).join('')}
     <div class="pvp-delta ${delta >= 0 ? 'up' : 'down'}">${emb(tierOf(rep.rating))} ${rep.rating} <b>${delta >= 0 ? '+' : ''}${delta}</b></div>
     <div class="pvp-acts"><button class="pvp-go" data-x>확인</button></div>`, 'pvp-sub');
   m.addEventListener('click', e => { if (e.target === m || e.target.closest('[data-x]')) open(); });

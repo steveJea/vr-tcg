@@ -35,13 +35,13 @@
 .pvp-go{flex:1;padding:12px;border-radius:14px;background:linear-gradient(180deg,#fbbf24,#f59e0b);color:#111;font-weight:900;font-size:15px}.pvp-go:disabled{opacity:.4}
 .pvp-rank,.pvp-ghost{width:52px;border-radius:14px;background:#27272a;font-size:20px}
 .pvp-chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}.pvp-chips button{padding:4px 10px;border-radius:999px;background:#27272a;font-size:12px;color:#e4e4e7}
-.pvp-pick{display:grid;grid-template-columns:repeat(auto-fill,minmax(52px,1fr));gap:6px}
+.pvp-pick{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:10px}
 .pvp-pick button{padding:0;border-radius:10px}.pvp-pick button .pvp-th{width:100%}.pvp-pick button.on .pvp-th{box-shadow:0 0 0 2px #10b981}.pvp-pick button:disabled{opacity:.3}
 .pvp-res{text-align:center;font:900 44px/1 Cinzel,serif;letter-spacing:.08em;margin:6px 0}.pvp-res.win{color:#6ee7b7}.pvp-res.lose{color:#f87171}
 .pvp-vs{text-align:center;margin-bottom:8px}.pvp-vs small{color:#a1a1aa;margin-left:6px}
 .pvp-round{display:flex;align-items:center;gap:6px;padding:6px;border-radius:12px;background:rgba(255,255,255,.04);margin-bottom:6px}
 .pvp-round b{font-size:18px;width:20px;text-align:center}.pvp-round.win b{color:#6ee7b7}.pvp-round.lose b{color:#f87171}
-.pvp-side{display:flex;gap:3px;flex:1}.pvp-side.foe{justify-content:flex-end}.pvp-side .pvp-th{width:calc(20% - 3px);min-width:0}
+.pvp-side{display:flex;gap:3px;flex:1}.pvp-side.foe{justify-content:flex-end}.pvp-side .pvp-th{flex:1 1 0;width:auto;min-width:0}
 .pvp-delta{text-align:center;font-size:16px;margin-top:6px}.pvp-delta.up b{color:#6ee7b7}.pvp-delta.down b{color:#f87171}
 .pvp-rk{display:flex;flex-direction:column;gap:4px}
 .pvp-rk-row{display:grid;grid-template-columns:34px 1fr auto 52px;gap:6px;align-items:center;padding:6px 8px;border-radius:10px;background:rgba(255,255,255,.04);font-size:13px;color:#e4e4e7}
@@ -140,3 +140,16 @@
 #vb-skip:disabled{opacity:.7}
 /* SKIP: 오른쪽 위 AUTO 왼쪽에 나란히 (#top-bar 안) */
 #top-bar > #vb-skip{position:static;top:auto;left:auto;transform:none;flex-shrink:0;height:40px;padding:0 12px;z-index:auto;white-space:nowrap}
+
+/* Feedback: controls belong with matchmaking, not the saved deck. */
+.pvp-bmode{margin-top:24px;padding-top:8px}.pvp-bmode + .pvp-acts{margin-top:8px}
+.pvp-filters{display:flex;align-items:center;gap:10px;margin:12px 0;flex-wrap:wrap}
+.pvp-filters input{min-width:0;background:#27272a;color:#fff;border:1px solid #52525b;border-radius:10px;padding:9px 10px;font-size:14px}
+.pvp-filters input[type="search"]{flex:1 1 150px;width:150px}.pvp-filters label{display:flex;align-items:center;gap:6px;font-size:14px}.pvp-filters input[type="number"]{width:76px}
+.pvp-card-cost,.pvp-card-name{display:block;font-size:13px;line-height:1.4;color:#fef3c7;text-align:center;padding-top:3px}
+.pvp-card-name{color:#e4e4e7;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pvp-pick>button{min-width:0}.pvp-pick .pvp-th i{font-size:12px}.pvp-sort button{font-size:13px;padding:6px 10px}
+.pvp-round-boss{display:flex;flex-direction:column;align-items:stretch;gap:16px;padding:12px}
+.pvp-result-side{min-width:0}.pvp-result-side strong{display:block;font-size:15px;margin-bottom:6px}
+.pvp-round-boss .pvp-side{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:5px}
+.pvp-round-boss .pvp-side .pvp-th{width:100%}
