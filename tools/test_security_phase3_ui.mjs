@@ -9,14 +9,14 @@ assert(!ranked.includes('p_wins:')&&!ranked.includes('p_losses:'));
 assert(src.includes("sb.functions.invoke('pvp-verify-v3'"));
 assert(src.includes('rep.rounds.map') && !src.includes('rep ? rep.delta : -s.dl'));
 const block=(start,end)=>src.slice(src.indexOf(start),src.indexOf(end,src.indexOf(start)));
-let stored=null,calls=[],shown=[],localRuns=0,fail=false,live=false,buttons={};
+let starting=null,stored=null,calls=[],shown=[],localRuns=0,fail=false,live=false,buttons={};
 const session={id:'42',mode:'1v1',me:[[]],opp:[[]],seed:123};
 const official={ok:true,verified:true,win:false,wins:0,losses:1,rounds:[{win:false}],rating:984,delta:-16};
 const ctx=vm.createContext({
  console,crypto:{randomUUID:()=> 'aaaaaaaa-aaaa-4aaa-8aaa-000000000001'},PVP_ENGINE_VERSION:'version',view:{league:'open',mode:'1v1'},
  document:{querySelector:()=>null},battleMode:()=> 'auto',VIEW:()=>live?{}:null,
  verifyRpc:async body=>{calls.push(body);if(body.op==='start')return {...session,control:body.control};if(fail)throw new Error('network');return official;},
- pendingStart:()=>null,pendingResult:value=>value===undefined?stored:(stored=value),showResult:(s,r)=>shown.push(r),vsScreen:async()=>{},card:()=>{},snapCard:()=>{},
+ pendingStart:value=>value===undefined?starting:(starting=value),pendingResult:value=>value===undefined?stored:(stored=value),showResult:(s,r)=>shown.push(r),vsScreen:async()=>{},card:()=>{},snapCard:()=>{},
  runSeries:()=>{localRuns++;return {win:true,wins:1,losses:0,rounds:[{win:true}]};},viewSeries:async()=>({acts:[[{k:'end'}]],win:true}),
  playback:async()=>{},toast:()=>{},errText:e=>e.message,esc:String,open:async()=>{},
  modal:()=>({querySelector:s=>(buttons[s] ||= {})})
@@ -35,6 +35,14 @@ fail=false;calls=[];await vm.runInContext('retryResult()',ctx);
 assert.equal(calls.length,1);assert.equal(JSON.stringify(calls[0]),saved,'retry exact transcript, never create another attempt');assert.equal(stored,null);
 shown=[];calls=[];live=true;await vm.runInContext('fight()',ctx);assert.equal(calls[0].control,'actions');assert.equal(calls[1].actions[0][0].k,'end');
 assert.equal(localRuns,2);
+// Reload after an engine upgrade must not repeatedly submit a saved old version.
+starting={op:'start',league:'open',mode:'1v1',request:'bbbbbbbb-bbbb-4bbb-8bbb-000000000002',control:'actions',version:'old-version'};
+calls=[]; await vm.runInContext('fight()',ctx);
+assert.equal(calls[0].version,'version'); assert.notEqual(calls[0].request,'bbbbbbbb-bbbb-4bbb-8bbb-000000000002'); assert.equal(starting,null);
+// Same-version network retries retain the original request identity.
+const retryStart={op:'start',league:'open',mode:'1v1',request:'bbbbbbbb-bbbb-4bbb-8bbb-000000000003',control:'actions',version:'version'};
+starting=retryStart; calls=[]; await vm.runInContext('fight()',ctx); assert.equal(calls[0],retryStart);
+
 // The invocation helper itself retries the identical body and extracts safe Edge error bodies.
 let invokes=0; const body={op:'finish',id:'1',actions:null};
 const transport=vm.createContext({window:{VRCloud:{sb:{functions:{invoke:async(name,args)=>{
@@ -52,4 +60,4 @@ assert.equal(networkCalls,0);
 // A conflicting tab/expired first response resolves only to the saved official receipt.
 transport.window.VRCloud.sb.functions.invoke=async(name,{body})=>body.op==='status'?{data:{ok:true,status:'settled',result:official}}:{error:{message:'submission conflict'}};
 assert.equal(await vm.runInContext('finishVerified(body)',transport),official);
-console.log('Phase3 UI: verified start/finish wiring, server result overrides, failed-settlement hold/retry, live action transcript, same-request retries and bounded backend payload OK');
+console.log('Phase3 UI: verified start/finish wiring, server result overrides, failed-settlement hold/retry, live action transcript, same-request/stale-version retries and bounded backend payload OK');

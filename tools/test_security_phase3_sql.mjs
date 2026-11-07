@@ -6,7 +6,7 @@ import { buildSql, INSTALL_ACK } from './build_staging_sql.mjs';
 import { ENGINE_VERSION, verifyBattle } from '../supabase/functions/_shared/pvp-engine-v3.mjs';
 import { dashboardHandler } from './load_phase3_dashboard.mjs';
 import { createHandler } from '../supabase/functions/pvp-verify-v3/handler.mjs';
-import { setSkillData } from '../js/skills.js';
+import { setSkillData, skillsOf } from '../js/skills.js';
 import { parseCSV, setCardPool } from '../js/rules.js';
 import { manualMatch, snapCard, MODES, roundSeed } from '../js/pvp-core.js';
 const rd=p=>readFile(new URL('../'+p,import.meta.url),'utf8');
@@ -97,6 +97,8 @@ try {
  const sql=migration.replaceAll("'7703759698107299042'",`'${system}'`); // IN-MEMORY binding only. Production SQL guard stays fixed.
  await db.exec(sql); await db.exec(sql);
  assert.deepEqual(await eco(),before); assert.deepEqual(await q(`select * from pvp_ratings`),legacy);
+ const pool=parseCSV(await rd('data/cards.csv')); setCardPool(pool); setSkillData(JSON.parse(await rd('data/skills.json')),JSON.parse(await rd('data/combos.json')));
+ const byId=id=>pool.find(c=>String(c.id)===String(id));
  for(const u of [me,other]) for(const mode of ['1v1','3v3','boss']) for(let i=0;i<MODES[mode].decks;i++) {
   const cards=(u===me?owned:enemy).slice(i*5,i*5+(mode==='boss'?6:5));
   assert(cards.length>=2); await rpc(`select pvp_set_deck('open',$1,$2,$3) v`,[mode,i,JSON.stringify(cards.map(o=>o.uid))],u);
@@ -118,7 +120,19 @@ try {
  assert.equal((await http({op:'finish',id:'1',actions:[[{k:'auto'}]]})).status,400);
  assert.equal((await http({op:'start',league:'open',mode:'1v1',request:req(999),control:'auto',version:'stale'})).status,409);
  assert.equal((await http({op:'forfeit',id:'1'},'fixture-me',factory({...env,SUPABASE_URL:'https://htarwisgkkphutxxnuak.supabase.co'},fetcher))).status,503);
- const first=await start();
+ // Progression after deck save: both attacker and defender MUST be refreshed
+ // from owned metadata, not the stored defense cache. No backfill/re-save needed.
+ const savedDecks=await q(`select user_id,mode,slot,snap from pvp_decks order by user_id,mode,slot`);
+ const fresh=(list,level,exb)=>list.map(o=>({...o,level,ex:2,exb,boost:{ATK:7,HP:8,DEF:3},skillLv:Object.fromEntries(skillsOf(o.id).flatMap((s,i)=>s.mode==='active'?[[String(i+1),3]]:[]))}));
+ const mineFresh=fresh(owned,40,12.5), enemyFresh=fresh(enemy,7,5);
+ await q(`update story_progress set data=jsonb_set(data,'{owned}',$2) where user_id=$1`,[me,JSON.stringify(mineFresh)]);
+ await q(`update story_progress set data=jsonb_set(data,'{owned}',$2) where user_id=$1`,[other,JSON.stringify(enemyFresh)]);
+ const assertFresh=s=>{ for(const [key,list] of [['me',mineFresh],['opp',enemyFresh]]) for(const d of s[key]) for(const o of d) {
+  const raw=list.find(x=>x.uid===o.uid); assert(raw,'both snapshots must be the real stored player, not bot metadata');
+  for(const k of ['level','ex','exb','boost','skillLv']) assert.deepEqual(o[k],raw[k],key+' fresh '+k);
+ }};
+ const first=await start(); assertFresh(first);
+ assert.deepEqual(await q(`select user_id,mode,slot,snap from pvp_decks order by user_id,mode,slot`),savedDecks,'fresh snapshots do not mutate cached defense data');
  const reqBody={op:'start',league:'open',mode:'1v1',request:req(serial),control:'auto',version:ENGINE_VERSION};
  assert.equal((await http(reqBody)).data.id,first.id,'idempotent start reserves one try');
  assert.equal(await val(`select count(*)::int v from pvp_sessions_v3`),1);
@@ -141,12 +155,11 @@ try {
  const pvpAchievements=(await rpc('select achievements_status() v')).cats.flatMap(c=>c.items).filter(a=>a.id==='pvp_wins'||a.id==='pvp_tier');
  assert(pvpAchievements.length>0 && pvpAchievements.every(a=>!a.held));
  // AUTO matching across all modes. No client result fields ever reach the settlement call.
- for(const mode of ['3v3','boss']) { const s=await start(mode); const got=await finish(s); assert.equal(got.status,200,JSON.stringify(got)); assert.equal(got.data.win,verifyBattle(s,null).win); }
+ for(const mode of ['3v3','boss']) { const s=await start(mode); assertFresh(s); const got=await finish(s); assert.equal(got.status,200,JSON.stringify(got)); assert.equal(got.data.win,verifyBattle(s,null).win); }
  // Real live/manual transcript, including SKIP/AUTO canonical records, strict early/trailing/illegal input.
- const pool=parseCSV(await rd('data/cards.csv')); setCardPool(pool); setSkillData(JSON.parse(await rd('data/skills.json')),JSON.parse(await rd('data/combos.json')));
- const byId=id=>pool.find(c=>String(c.id)===String(id));
  const s=await start('1v1','actions'), st=manualMatch(s.me[0].map(o=>snapCard(o,byId)),s.opp[0].map(o=>snapCard(o,byId)),roundSeed(s.seed,0),null,{view:true,manual:true});
  let x=st.next(); while(!x.done) x=st.next(x.value.ask?{k:'auto'}:undefined);
+ assertFresh(s);
  const acts=[st.acts]; assert.equal((await finish(s,[[]])).status,422);
  assert.equal((await finish(s,[[{k:'skill',i:0,s:'forged'}]])).status,422);
  const longer=structuredClone(acts); longer[0].push({k:'end'}); assert.equal((await finish(s,longer)).status,422);
@@ -200,11 +213,38 @@ try {
  const rank=await rpc(`select pvp_claim_reward('open','1v1',$1) v`,[prevSeason]); assert(rank.reward.tickets>0);
  await reject(`select pvp_claim_reward('open','1v1',$1)`,[prevSeason],/already claimed/);
  const claims=await q(`select reward_kind from reward_claims where reward_kind like 'pvp_%_v3'`); assert(claims.some(c=>c.reward_kind==='pvp_tier_v3')&&claims.some(c=>c.reward_kind==='pvp_rank_v3'));
+ // Existing-install engine upgrade: wrong DB/version/active sessions fail
+ // closed; expired old transcripts are NEVER replayed under new rules.
+ const upgradeRaw=await rd('supabase/security_phase3_pvp_level_stats.sql');
+ await assert.rejects(db.exec(upgradeRaw),/STOP: PvP level stats only/); await db.exec('rollback');
+ const upgrade=upgradeRaw.replaceAll("'7703759698107299042'",`'${system}'`);
+ const oldHash='16b61abb1c42f29f063b9b84de938ef950363cdd2a23262cddf05c27c0c038a6';
+ await q(`update pvp_policy_v3 set engine_hash=$1`,['0'.repeat(64)]);
+ await assert.rejects(db.exec(upgrade),/unexpected PvP engine version/); await db.exec('rollback');
+ assert.equal(await val(`select engine_hash v from pvp_policy_v3`),'0'.repeat(64));
+ await q(`update pvp_policy_v3 set engine_hash=$1`,[oldHash]);
+ const oldSession=await rpc(`select pvp_start_v3('open','boss',$1,'actions',$2) v`,[req(++serial),oldHash],other);
+ const reserved=await q(`select * from pvp_ratings_v3 order by user_id,league,mode,season`), upgradeEco=await eco(), evidence=await val(`select count(*)::int v from pvp_events_v3`);
+ await assert.rejects(db.exec(upgrade),/active old PvP sessions/); await db.exec('rollback');
+ assert.equal(await val(`select engine_hash v from pvp_policy_v3`),oldHash);
+ assert.deepEqual(await q(`select * from pvp_ratings_v3 order by user_id,league,mode,season`),reserved);
+ assert.equal((await finish(oldSession,[[]],'fixture-other')).status,409,'active old transcript cannot be silently upgraded');
+ assert.equal(await val(`select status v from pvp_sessions_v3 where id=$1`,[oldSession.id]),'issued');
+ await q(`update pvp_sessions_v3 set expires_at=clock_timestamp()-interval '1 second' where id=$1`,[oldSession.id]);
+ await db.exec(upgrade); await db.exec(upgrade);
+ assert.equal(await val(`select engine_hash v from pvp_policy_v3`),ENGINE_VERSION);
+ assert.deepEqual(await q(`select * from pvp_ratings_v3 order by user_id,league,mode,season`),reserved,'upgrade never resets/rewards/re-rates');
+ assert.deepEqual(await eco(),upgradeEco); assert.equal(await val(`select count(*)::int v from pvp_events_v3`),evidence);
+ assert.deepEqual(await q(`select user_id,mode,slot,snap from pvp_decks order by user_id,mode,slot`),savedDecks);
+ const oldExpired=await finish(oldSession,[[]],'fixture-other'); assert.equal(oldExpired.status,200,JSON.stringify(oldExpired));
+ assert(oldExpired.data.forfeit && !oldExpired.data.verified,'SQL closes expired old session without a new-engine replay');
+ assert.deepEqual(await finish(oldSession,[[]],'fixture-other'),oldExpired);
+ assert.equal(await val(`select count(*)::int v from pvp_events_v3`),evidence);
  // Kill switch survives rerunning migration, cannot be flipped by ordinary roles.
- await q(`update pvp_policy_v3 set enabled=false`); await db.exec(sql);
+ await q(`update pvp_policy_v3 set enabled=false`); await db.exec(sql); await db.exec(upgrade);
  assert.equal(await val(`select enabled v from pvp_policy_v3`),false);
  await reject(`select pvp_claim_tier('open','1v1')`,[],/verification pending/);
  assert.equal((await rpc(`select pvp_status('open','1v1') v`)).reward_held,true);
  assert(authCalls>10 && restCalls>10);
- console.log((process.argv.includes('--dashboard')?'Dashboard standalone / ':'')+'Phase3 PGlite + real handler: staging guard/idempotency, JWT/ACL/ownership, canonical auto/manual replay, both ratings, rewards/events, transaction rollback, legacy isolation, expiry/forfeit, season claims and kill switch OK');
+ console.log((process.argv.includes('--dashboard')?'Dashboard standalone / ':'')+'Phase3 PGlite + real handler: staging guard/idempotency, JWT/ACL/ownership, canonical auto/manual replay, both ratings, rewards/events, transaction rollback, legacy isolation, expiry/forfeit, season claims, fresh attacker/defender upgrade metadata, guarded engine rollout/old-session expiry and kill switch OK');
 } finally { await db.close(); }

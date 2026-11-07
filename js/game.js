@@ -1,5 +1,6 @@
 import { fieldCount, GUARD_GRADES, GUARD_SWAP_TURNS, guardOf, levelUpOnce, RULES, calcPower, skillLvPowerMult, skillCountMult, ELEMENTS, elementMultiplier, calcDamage, canSummon, buildDeck, parseCSV, aiSummonOrder, aiPickTarget, recallCost, canRecall, aiShouldRecall, makeUnit, resolveAttack, refillMana, ACTIONS, canAction, doAction, clearBuff, aiWantShuffle, aiWantBuff, aiWantHeal, aiWantFieldHeal, aiPickItem, endTurnXp, ITEMS, canEquip, equip, attackTargets, canTarget, autoTarget, heroLocked, xpToNext, SKILLS, gainXp, setCardPool, canSacrifice, sacrifice, aiPickSacrifice, aiWantAccel, judgeTimeout, JUDGE_LABEL, genderMult, GRADES, GRADE_SHORT, allowedGrades, baseEvade, swapField } from './rules.js';
 import { autoNext, noteUsed } from './auto-ai.js';
+import { batchAttackReady, nextBatchAttack } from './battle-view-controls.js';
 import { initStatusFx, tickFx, statusApplyFx, paraSkipFx, confuseAllyFx, tauntPullFx, statusClasses, statusDecor, statusIconUrl, isStatusFxKind } from './status-fx.js';
 import { skillCd, skillMp, setSpare, spareBlocked, setSkillData, setEmitter, initPlayers, placeUnit, turnStart, turnEnd, useSkill, forceSkill, skillState, aiPickSkill, skillLvOf, skillCdAt, skillLvMult, skillLvProb, SKILL_LV_MAX, refreshAll, statusIcons, skillsOf, combos, STATUS, SK, maleLure, checkDeath } from './skills.js';
 
@@ -209,7 +210,7 @@ function startGame(story = null, at = null) {
   setBattleBg(story?.win === 'ko' ? 'boss' : 'normal', { story, key: story?.bgKey }); preloadHit();
   $('ai-name').textContent = story ? (story.aiName || '적군') : '';   // 아케이드: 이름·아이콘 없음
   preloadFx([...S.me.deck, ...S.me.hand, ...S.ai.deck, ...S.ai.hand]);
-  selected = null; $('log').innerHTML = ''; fxQueue.length = 0; vidGate = Promise.resolve();
+  selected = null; $('log').innerHTML = ''; fxQueue.length = 0; mrCancel?.(); vidGate = Promise.resolve();
   $('end-screen').classList.add('hidden'); $('start-screen').classList.add('hidden'); $('game').classList.remove('hidden', 'bfx-final', 'bfx-lose'); fitBoardSoon();
   initPlayers(S.me, S.ai, S[first]);   // 0턴 배치 상태(불사·회피 등) 지속 턴 기준 = 선공
   if (at) atSetup(at);
@@ -487,7 +488,7 @@ function recall(who, unit) {
 
 async function attackAll() {
   if (S?.view) {   // 화면 전투(토벌·PvP·구역 전쟁): 공격 가능한 내 카드가 차례로 공격 → 행동마다 기록(raid_log 재생 검증)
-    if (!S.view.ask || S.turn !== 'me') return;
+    if (!S.view.ask || S.turn !== 'me' || S.over || S.busy || !batchAttackReady(S.me, S.ai)) return;
     S.view.batch = S.me.field.filter(u => u.canAttack && u.hp > 0).map(u => u);
     log(`일괄 공격! (${S.view.batch.length}장)`, 'text-emerald-400');
     S.view.nextBatch?.(); return;
@@ -993,6 +994,7 @@ function storyTurnRules(who) {
 }
 function checkEnd() {
   if (S.over) return true;
+  if (S.view) return false;   // Only the canonical session stepper may finish a view battle.
   if (S.ai.hp <= 0 || S.me.hp <= 0) return finish(S.ai.hp <= 0, 'ko');
   if (S.at?.wipe && !S.ai.field.length && !S.ai.hand.length && !S.ai.deck.length) return finish(true, 'wipe');   // 특강: 적 전멸 = 승리
   if (S.story) {   // 스토리: 내 필드 카드 전멸 시 패배 / 일반전은 상대 카드 전멸 시 승리 (보스전은 진영 HP 0)
@@ -1438,7 +1440,8 @@ let passiveUntil = 0;
 const passiveWait = () => { const ms = passiveUntil - performance.now(); return ms > 0 ? sleep(Math.min(ms, 4000)) : Promise.resolve(); };
 // 패시브 MR 영상 대기열: 영상이 끝날 때까지 다음 행동(공격·스킬·AI 행동)이 vidWait() 로 기다림
 let vidGate = Promise.resolve();
-const vidWait = () => withTimeout(vidGate, 30000);
+let mrCancel = null;
+const vidWait = () => vidGate;
 function passiveCutIn(u, name) {
   if (!S || SWEEPING()) return;
   if (S.holdPassive) { S.holdPassive.push([u, name]); return; }   // 전투 시작: 등장 컷인이 먼저
@@ -1448,7 +1451,7 @@ function passiveCutIn(u, name) {
   // MR 카드 패시브: 첫 발동 때 영상 (data/fx/mr/<id>_<n>.mp4). 없거나 실패하면 기존 패시브 컷인
   if (!FX_OFF() && (u.base || u.card).grade === 'MYTHIC RARE' && s) {
     S.fxSeen.add(key); const st = S;
-    vidGate = vidGate.then(() => (S === st && !SWEEPING() ? mrVideo(u, s) : true)).then(ok => { if (!ok && S === st) passiveCutInPlain(u, name, s); }).catch(() => {});
+    mrVideo(u, s).then(ok => { if (!ok && S === st && !SWEEPING() && !S.view?.skip) passiveCutInPlain(u, name, s); }).catch(() => {});
     return;
   }
   passiveCutInPlain(u, name, s, key);
@@ -1470,6 +1473,14 @@ function passiveCutInPlain(u, name, s, key = null) {
 /** MR 스킬 영상: data/fx/mr/<카드id>_<스킬번호>.mp4 (영상은 항상 음소거, 소리는 기존 스킬 보이스).
  *  카드 인스턴스별 전투 중 스킬마다 첫 사용 때만. 탭하면 넘김. 파일 없음·로드 실패 → false (기존 컷인으로) */
 function mrVideo(u, s) {
+  // Active and passive MR clips share ONE queue. Returning each job lets both
+  // callers and the view stepper wait without a timeout advancing the engine.
+  const battle = S;
+  const job = vidGate.then(() => S === battle && !SWEEPING() && !S?.view?.skip ? playMrVideo(u, s) : false);
+  vidGate = job.then(() => {}, () => {});
+  return job;
+}
+function playMrVideo(u, s) {
   if (FX_OFF() || (u.base || u.card).grade !== 'MYTHIC RARE') return Promise.resolve(false);
   const i = skillsOf(u.card.id).findIndex(x => x.name === s.name); if (i < 0) return Promise.resolve(false);
   const seen = (u.mrVid ||= new Set()); if (seen.has(i)) return Promise.resolve(false);
@@ -1479,11 +1490,15 @@ function mrVideo(u, s) {
     const v = document.createElement('video'); v.muted = true; v.defaultMuted = true; v.playsInline = true; v.setAttribute('playsinline', ''); v.setAttribute('muted', ''); v.preload = 'auto';
     ov.innerHTML = `<div class="mr-vid-cap"><b>${escHtml(s.name)}</b></div><div class="mr-vid-skip">탭하여 넘기기</div>`; ov.prepend(v);
     let done = false, shown = false, t0, t1;
-    const end = ok => { if (done) return; done = true; clearTimeout(t0); clearTimeout(t1); try { v.pause(); } catch {} ov.remove(); res(ok); };
+    const end = ok => { if (done) return; done = true; clearTimeout(t0); clearTimeout(t1); try { v.pause(); } catch {} ov.remove(); if (mrCancel === cancel) mrCancel = null; res(ok); };
+    const cancel = () => end(true); mrCancel = cancel;
+    // Watch for stalled playback, not clip length: long, healthy videos must finish.
+    const progress = () => { if (done) return; clearTimeout(t1); t1 = window.setTimeout(() => end(shown), 15000); };
+    v.onplaying = v.ontimeupdate = progress;
     v.onerror = () => end(shown);
     v.onended = () => end(true);
     v.oncanplay = () => { if (shown || done) return; shown = true; clearTimeout(t0); document.body.appendChild(ov); playVoice(u, s.name);
-      v.play().catch(() => end(true)); t1 = window.setTimeout(() => end(true), Math.min(15000, ((v.duration || 8) + 1.5) * 1000)); };
+      progress(); v.play().catch(() => end(true)); };
     ov.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); end(true); });
     t0 = window.setTimeout(() => end(false), 2500);   // 로드가 늦거나 파일 없음 → 기존 컷인
     v.src = `data/fx/mr/${u.card.id}_${i + 1}.mp4`; v.load();
@@ -1807,7 +1822,7 @@ function render() {
     btn.disabled = !myTurn || done || !!S.limitedAids;
     btn.querySelector('.reason').textContent = S.limitedAids ? '일반대전 전용' : myTurn && done ? '이번 판 고용 완료' : ''; }
   if (S.story) { const b = $('act-shuffle'); b.disabled = true; b.querySelector('.reason').textContent = '스토리 불가'; }
-  $('attack-all').disabled = !myTurn || !S.me.field.some(u => u.canAttack);
+  $('attack-all').disabled = !myTurn || (S.view ? !batchAttackReady(S.me, S.ai) : !S.me.field.some(u => u.canAttack));
   { const rb = $('reserve-btn'), r = S.reserve?.[0]; if (rb) { rb.classList.toggle('hidden', !r || !!S.view); if (r) { rb.querySelector('img').src = `${cardThumb(r.card.id)}`; rb.disabled = !myTurn || (r.cost || 0) > S.me.mana; } } }
   const selU = selected != null ? S.me.field.find(x => x.uid === selected) : null;
   if (selected != null && (!selU || !myTurn)) selected = null;
@@ -1817,7 +1832,7 @@ function render() {
   $('ai-hero').classList.toggle('ring-4', !!atkSel && tg.hero);
   $('ai-hero').classList.toggle('ring-red-500', !!atkSel && tg.hero);
   $('ai-hero').classList.toggle('opacity-70', S.turn === 'me' && !tg.hero);
-  $('hero-hint').innerHTML = S.story && S.over ? '' : S.ai.noBase ? (S.over ? '' : $('game').classList.contains('view-raid') ? '🐉 균열 토벌: 15턴 동안 보스에게 최대한 큰 피해를!' : '⚔️ 일반전: 상대 카드를 모두 쓰러뜨리면 승리') : S.turn === 'me' && !S.over ? (tg.hero ? `${ic('taunt', { alt: '' })} 상대 진영 공격 가능` : `${ic('def', { alt: '' })} ${escHtml(tg.reason)}`) : '';
+  $('hero-hint').innerHTML = bossView() ? (S.over ? '' : '첫 2턴에는 보스를 공격할 수 없습니다.') : S.story && S.over ? '' : S.ai.noBase ? (S.over ? '' : $('game').classList.contains('view-raid') ? '🐉 균열 토벌: 15턴 동안 보스에게 최대한 큰 피해를!' : '⚔️ 일반전: 상대 카드를 모두 쓰러뜨리면 승리') : S.turn === 'me' && !S.over ? (tg.hero ? `${ic('taunt', { alt: '' })} 상대 진영 공격 가능` : `${ic('def', { alt: '' })} ${escHtml(tg.reason)}`) : '';
   $('hero-hint').className = `text-center text-[11px] md:text-xs font-bold ${tg.hero ? 'text-emerald-400' : 'text-amber-300'}`;
 
   { // 체력 위기 (30% 이하): 화면 가장자리 붉은 깜빡임 + 체력바 색. 진영이 없으면(스토리) 필드 전체 HP 비율
@@ -2373,11 +2388,11 @@ async function viewBattle0({ session, aiName = '상대', bg = 'normal', bgKey = 
   const hubWasOn = !$('start-screen').classList.contains('hidden');   // 메인 허브: 전투 후 class 'hidden' 도 원래대로 (조직 닫으면 검은 화면 방지)
   let x = session.next();
   const V = { auto: auto ?? !manual, A0: x.value.A0, B0: x.value.B0, ask: null }; fastForward = false;
-  S = { me: x.value.A, ai: x.value.B, view: V, story: { win: 'wipe', view: true, aiName }, maxTurns: mt, first: 'me', turn: 'me', turnNo: 0, totalTurns: 0, myTurns: 0, over: false, busy: true, fxSeen: new Set(), mercBought: 0, mercHired: null, mercOffer: [], limitedAids: true,
+  S = { me: x.value.A, ai: x.value.B, view: V, story: { win: x.value.B.noBase ? 'wipe' : 'ko', view: true, aiName }, maxTurns: mt, first: 'me', turn: 'me', turnNo: 0, totalTurns: 0, myTurns: 0, over: false, busy: true, fxSeen: new Set(), mercBought: 0, mercHired: null, mercOffer: [], limitedAids: true,
     log: { dmg: new Map(), total: 0, skills: 0, merc: null, played: new Set(), kills: {}, blocks: {} } };
   S.me.name = '나'; S.ai.name = aiName;
   for (const w of ['me', 'ai']) { $(`${w}-hp`).classList.toggle('hidden', S[w].noBase); $(`${w}-hpbar`).parentElement.classList.toggle('hidden', S[w].noBase); }   // 보스리그: 진영 HP 표시
-  selected = null; $('log').innerHTML = ''; fxQueue.length = 0; vidGate = Promise.resolve(); hpPrev.clear();
+  selected = null; $('log').innerHTML = ''; fxQueue.length = 0; mrCancel?.(); vidGate = Promise.resolve(); hpPrev.clear();
   $('end-screen').classList.add('hidden'); $('start-screen').classList.add('hidden'); $('game').classList.remove('hidden', 'bfx-final', 'bfx-lose'); fitBoardSoon();
   $('game').classList.add('story-field', 'view-battle'); $('game').classList.toggle('view-raid', !!raid); $('game').classList.toggle('view-boss', !S.ai.noBase);
   // ---- 균열 토벌: 보스 배너 (그림 · 단계 · 공유 HP 바 · 이번 판 피해 · 남은 시간) ----
@@ -2403,18 +2418,24 @@ async function viewBattle0({ session, aiName = '상대', bg = 'normal', bgKey = 
   $('ai-name').textContent = aiName || '';
   setBattleBg(bg, { key: bgKey }); preloadHit(); preloadFx([...S.me.field, ...S.ai.field].map(u => u.base || u.card));
   if (title) log(title, 'text-amber-300');
-  log(raid ? `🐉 균열 토벌 · 내 턴 ${mt / 2}번 동안 최대한 큰 피해를 (행동 1번 상한 ${fmt(raid.cap)})` : '⚔️ 마나 없음 · 상대를 모두 쓰러뜨리면 승리', 'text-amber-300');
+  log(raid ? `🐉 균열 토벌 · 내 턴 ${mt / 2}번 동안 최대한 큰 피해를 (행동 1번 상한 ${fmt(raid.cap)})` : (S.ai.noBase ? '⚔️ 마나 없음 · 상대를 모두 쓰러뜨리면 승리' : '⚔️ 상대 진영 HP를 0으로 만들면 승리'), 'text-amber-300');
   render();
   // SKIP: 남은 전투를 AUTO 로 연출 없이 끝까지 (같은 엔진·같은 seed → 결과는 끝까지 본 것과 같음. 수동이면 AUTO 행동도 기록돼 재생 검증 그대로). 3vs3 은 판마다
   const SKB = document.createElement('button'); SKB.id = 'vb-skip'; SKB.type = 'button'; SKB.textContent = 'SKIP ⏭';
-  SKB.onclick = e => { e.stopPropagation(); if (V.skip || S?.over) return; V.skip = true; V.auto = true; V.batch = null; fastForward = true; SKB.disabled = true; SKB.textContent = '결과 계산 중…'; if (V.ask) V.ask({ k: 'auto' }); };
+  SKB.onclick = e => { e.stopPropagation(); if (V.skip || S?.over) return; V.skip = true; V.auto = true; V.batch = null; fastForward = true; mrCancel?.(); SKB.disabled = true; SKB.textContent = '결과 계산 중…'; if (V.ask) V.ask({ k: 'auto' }); };
   { const ab = $('auto-btn'); if (ab?.parentElement) ab.before(SKB); else document.body.appendChild(SKB); }   // 오른쪽 위 AUTO 바로 왼쪽 (SKIP · AUTO 나란히)
   const drain = () => { const ev = session.events || []; const out = ev.splice(0, ev.length); return out; };
   // 마나 없음: 처치 마나(refund) 연출 생략. 같은 카드에 숫자가 겹치지 않게 조금씩 띄워 보여 줌
   const bossNum = (d, weak) => { if (!raid || !(d > 0)) return; const el = unitEl('ai', V.B0[0]); shake(el, { dmg: d, crit: d >= raid.cap }); hitFx(el, 'blood'); dmgNumber(el, `-${fmt(d)}`, d >= raid.cap ? '#f97316' : '#fde047', false, 'fx-dmg-crit fx-dmg-raid'); if (weak) dmgNumber(el, '약점!', '#fca5a5', false, 'fx-dmg-mini'); if (d >= raid.cap) dmgNumber(el, 'MAX', '#fb923c', false, 'fx-dmg-mini'); };
-  const play = async (evs, gap = 0) => { const seen = new Map(); for (const e of evs) { if (e.type === 'refund') continue; if (raid && e.type === 'dmg' && e.unit === V.B0[0]) continue;   /* 보스 원래 피해 숫자 대신 상한 적용 피해(bossNum) */
+  const play = async (evs, gap = 0, focus = true) => {
+    if (focus) {
+      const h = evs.find(e => e.type === 'hero' && e.p === S.ai && e.dmg > 0);
+      const d = evs.find(e => e.type === 'dmg' && e.unit?.owner === S.ai);
+      if (h || d) await peekBefore(h ? heroEl('ai') : unitEl('ai', d.unit));
+    }
+    const seen = new Map(); for (const e of evs) { if (e.type === 'refund') continue; if (raid && e.type === 'dmg' && e.unit === V.B0[0]) continue;   /* 보스 원래 피해 숫자 대신 상한 적용 피해(bossNum) */
     try { onEngine(e); } catch (err) { reportError('view', err); }   // ⚠️ 주석 뒤에 붙이면 통째로 꺼짐 (#190~#195 스킬 타격·상태·레벨업 연출 누락 원인)
-    if (gap && e.unit && ['levelup', 'mp', 'status', 'heal', 'immune', 'miss', 'resist', 'elfx'].includes(e.type)) { const n = (seen.get(e.unit) || 0) + 1; seen.set(e.unit, n); if (n > 0) await sleep(fxMs(gap)); } } };
+    if (gap && e.unit && ['levelup', 'mp', 'status', 'heal', 'immune', 'miss', 'resist', 'elfx'].includes(e.type)) { const n = (seen.get(e.unit) || 0) + 1; seen.set(e.unit, n); if (n > 0) await sleep(fxMs(gap)); } } await vidWait(); await passiveWait(); };
   try {
     for (let g = 0; !x.done && g < 20000; g++) {
       const v = x.value;
@@ -2426,24 +2447,27 @@ async function viewBattle0({ session, aiName = '상대', bg = 'normal', bgKey = 
         if (a.k === 'turn') { turnScroll(who); S.turn = who; S.totalTurns++; if (who === 'me') { S.myTurns++; S.meActed = false; } S.busy = true; render(); if (raid && who === 'me') floatText(`T${a.t}/${mt / 2}`, 'text-amber-200 text-2xl', 'me'); await play(evs, 160); if (raid) { bossNum(v.damage - (S.vDmg || 0)); S.vDmg = v.damage; raidPaint(v.damage, 1); } await sleep(AI_DELAY()); }
         else if (a.k === 'skill') { S.busy = true; selected = null;   /* 컷인 전엔 다시 그리지 않음: 엔진은 이미 스킬 결과(처치 포함)를 반영 → 그리면 맞을 카드가 먼저 사라짐 */ if (!(await mrVideo(a.u, a.s))) await withTimeout(cutIn(a.u, a.s.name, a.s.fx), 3000); pendingDying = []; await play(evs, 160); if (raid) { bossNum(a.d, a.weak); S.vDmg = v.damage; raidPaint(v.damage, a.d); } if (who === 'me') S.log.skills++; render(); await sleep(fxMs(450)); await withTimeout(fadeDying(), 750); if (who === 'me') TUT('skill_used', { skill: a.s?.name }); }
         else if (a.k === 'atk') {
-          S.busy = true; const oWho = who === 'me' ? 'ai' : 'me', aEl = unitEl(who, a.u), tEl = a.t ? unitEl(oWho, a.t) : null;
+          S.busy = true; const oWho = who === 'me' ? 'ai' : 'me';
+          const shown = (a.hits || []).find(e => e.type === 'hit' || e.type === 'evade')?.target || a.t;
+          const aEl = unitEl(who, a.u), tEl = shown ? unitEl(whoOf(shown.owner), shown) : heroEl(oWho);
+          if (who === 'me') await peekBefore(tEl);
           playSe(7); const hit = await withTimeout(lunge(aEl, tEl), 750); pendingDying = [];
-          { const h = (a.hits || []).find(e => e.type === 'hit'); log(`${a.u.card.name} → ${a.t?.card?.name || '?'}${h ? ` ${fmt(h.d1)} 피해${h.mult !== 1 ? ` (속성 ×${h.mult})` : ''}${h.killed ? ', 처치' : h.d2 ? `, 반격 ${fmt(h.d2)}` : ''}` : ' 회피'}`, who === 'me' ? 'text-emerald-300' : 'text-red-300'); }
-          const late = evs.filter(e => !['dmg', 'crit', 'dealt', 'destroy', 'hero'].includes(e.type)); await play(evs.filter(e => !late.includes(e)));
+          { const h = (a.hits || []).find(e => e.type === 'hit'), base = (a.hits || []).find(e => e.type === 'hero'); log(`${a.u.card.name} → ${shown?.card?.name || '진영'}${h ? ` ${fmt(h.d1)} 피해${h.mult !== 1 ? ` (속성 ×${h.mult})` : ''}${h.killed ? ', 처치' : h.d2 ? `, 반격 ${fmt(h.d2)}` : ''}` : base ? ` ${fmt(base.dmg)} 피해` : ' 회피'}`, who === 'me' ? 'text-emerald-300' : 'text-red-300'); }
+          const late = evs.filter(e => !['dmg', 'crit', 'dealt', 'destroy', 'hero'].includes(e.type)); await play(evs.filter(e => !late.includes(e)), 0, false);
           for (const e of a.hits || []) {
             playSe(e.type === 'hit' ? 1 : 0);
-            if (e.type === 'hit') { const real = e.target || a.t, rEl = (real && unitEl(oWho, real)) || tEl; shake(rEl, { dmg: e.d1, crit: critSet.has(real) }); hitFx(rEl, e.mult > 1 ? 'blood' : 'impact'); elemFx(rEl, a.u?.card?.class); if (raid && real === V.B0[0]) critSet.delete(real); else critNum(rEl, e.d1, real); if (e.d2) { shake(aEl, { dmg: e.d2 }); hitFx(aEl); dmgNumber(aEl, `-${fmt(e.d2)}`, '#fca5a5'); } }
+            if (e.type === 'hit') { const real = e.target || a.t, rEl = (real && unitEl(whoOf(real.owner), real)) || tEl; shake(rEl, { dmg: e.d1, crit: critSet.has(real) }); hitFx(rEl, e.mult > 1 ? 'blood' : 'impact'); elemFx(rEl, a.u?.card?.class); if (raid && real === V.B0[0]) critSet.delete(real); else critNum(rEl, e.d1, real); if (e.d2) { shake(aEl, { dmg: e.d2 }); hitFx(aEl); dmgNumber(aEl, `-${fmt(e.d2)}`, '#fca5a5'); } }
             else if (e.type === 'evade') dmgNumber(unitEl(oWho, e.target) || tEl, 'MISS', '#e0f2fe');
           }
           critSet.clear(); if (raid) { bossNum(a.d, a.weak); S.vDmg = v.damage; raidPaint(v.damage, a.d); }
-          await withTimeout(hit?.back?.() ?? Promise.resolve(), 750); resetAnim(aEl); await play(late, 220); render(); await withTimeout(fadeDying(), 750); if (who === 'me') TUT('attack_done'); await sleep(AI_DELAY()); await passiveWait();
+          await withTimeout(hit?.back?.() ?? Promise.resolve(), 750); resetAnim(aEl); await play(late, 220, false); render(); await withTimeout(fadeDying(), 750); if (who === 'me') TUT('attack_done'); await sleep(AI_DELAY()); await passiveWait();
         } else { if (a.k === 'swap') { log(`${who === 'me' ? '나' : aiName}: 수비대장 교체 ${a.t?.card?.name} → ${a.u?.card?.name} (턴 종료)`, 'text-amber-300'); playSe(4); } await play(evs, 160); if (raid && a.d) { bossNum(a.d); S.vDmg = v.damage; raidPaint(v.damage, a.d); } render(); }
         x = session.next(); continue;
       }
       if (v.ask) {
         await play(drain()); S.turn = 'me'; S.busy = false; render();
-        // 일괄 공격 대기열: 아직 행동 가능한 카드부터 차례로 (대상 = 공격 가능한 첫 적, 토벌은 보스)
-        const fromBatch = () => { while (V.batch?.length) { const u = V.batch.shift(); if (!u.canAttack || u.hp <= 0 || !S.me.field.includes(u)) continue; const t = autoTarget(u, S.me, S.ai); if (t == null) continue; return { k: 'atk', i: V.A0.indexOf(u), t: V.B0.indexOf(t) }; } V.batch = null; return null; };
+        // Re-evaluate targets after EVERY action. null = base; undefined = blocked.
+        const fromBatch = () => nextBatchAttack(V, S.me, S.ai);
         const inp = V.auto ? { k: 'auto' } : fromBatch() || await new Promise(res => { V.ask = i => { V.ask = null; V.nextBatch = null; res(i); }; V.nextBatch = () => { const b = fromBatch(); if (b) V.ask(b); }; });
         V.ask = null; selected = null; S.busy = true; if (inp && inp.k !== 'end' && inp.k !== 'auto') S.meActed = true;
         x = session.next(inp); continue;
@@ -2459,6 +2483,7 @@ async function viewBattle0({ session, aiName = '상대', bg = 'normal', bgKey = 
     return x.value;
   } finally {
     clearInterval(tick); RB?.remove(); SKB.remove();
+    mrCancel?.();
     dockStoryBuff(false); $('game').classList.remove('view-battle', 'view-raid', 'view-boss', 'story-field'); $('game').classList.add('hidden');
     hid.forEach(e => { e.style.display = e.dataset.vbHide || ''; delete e.dataset.vbHide; });
     if (hubWasOn) $('start-screen').classList.remove('hidden');
