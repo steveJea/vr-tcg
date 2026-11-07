@@ -78,6 +78,11 @@
     if (!window.VRPages?.host?.('daily', '🗓️ 출석 · 미션', pop)) document.body.appendChild(pop);
     draw(); status().then(draw);
   }
+  let achOff = false;
+  function achTrack(kind, k) {
+    if (achOff || !window.VRCloud?.user) return;
+    window.VRCloud.sb?.rpc('ach_track', { p_kind: kind, p_n: k }).then(({ error }) => { if (error && missing(error)) achOff = true; }, () => {});
+  }
   async function track(kind, k = 1) {
     if (!window.VRCloud?.user) return;
     const jobs = [];
@@ -90,7 +95,8 @@
     if (d.k === 'skill') { skills++; return; }
     if (d.k !== 'battle' || !d.mode) return;
     const jobs = [];
-    if (skills) { jobs.push(track('skill', skills)); skills = 0; }
+    if (skills) { jobs.push(track('skill', skills)); achTrack('skill', skills); skills = 0; }
+    if (d.mode === 'arcade' && d.win) achTrack('arcade_win', 1);
     if (d.mode === 'arcade') jobs.push(track('arcade'));
     if (d.mode === 'tower') jobs.push(track('tower'));
     if (d.mode === 'story' && d.win) {

@@ -70,7 +70,7 @@
       const tiers = group.map(it => {
         const ok = it.ready, done = it.claimed;
         return `<div class="ach-tier ${done ? 'done' : ''} ${ok ? 'ready' : ''}">
-          <div class="ach-tt"><b>${goalTxt(it)}</b><small>${rwText(it.reward)}${it.pts ? ` · +${it.pts}점` : ''}</small></div>
+          <div class="ach-tt"><b>${goalTxt(it)}</b><small>${rwText(it.reward)}${it.title ? ` · 🏷️ ${it.title}` : ''}${it.pts ? ` · +${it.pts}점` : ''}</small></div>
           <button class="daily-claim sm" data-k="${it.key}" ${done || !ok ? 'disabled' : ''}>${done ? '완료' : ok ? '받기' : `${progTxt(it)}`}</button>
         </div>`;
       }).join('');
@@ -93,7 +93,7 @@
         <h3 class="daily-h">🏆 업적 <small>${n(s.score)}점</small></h3>
         <div class="ach-score">${(s.score_items || []).map(it => {
           const done = it.claimed, ok = it.ready;
-          return `<div class="ach-score-i ${done ? 'done' : ''} ${ok ? 'ready' : ''}"><b>${n(it.goal)}점</b><span>${rwText(it.reward)}</span>
+          return `<div class="ach-score-i ${done ? 'done' : ''} ${ok ? 'ready' : ''}"><b>${n(it.goal)}점</b><span>${rwText(it.reward)}${it.title ? ` · 🏷️ ${it.title}` : ''}</span>
             <button class="daily-claim sm" data-k="${it.key}" ${done || !ok ? 'disabled' : ''}>${done ? '완료' : ok ? '받기' : `${n(s.score)}`}</button></div>`;
         }).join('')}</div>
         <div class="ach-tabs">${cats.map(c => {
