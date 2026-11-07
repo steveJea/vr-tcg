@@ -918,13 +918,13 @@ function finish(win, reason) {
   if (S.at) {   // 아케이드 튜토리얼: 전적·랭킹·갤러리 기록 없이 결과만 넘김
     rngOn(true); render();
     const cb = S.at.onEnd;
-    setTimeout(() => { $('game').classList.add('hidden'); try { cb?.(win, reason); } catch (err) { reportError('atEnd', err); } }, (fxWait || 0) + 1600);
+    setTimeout(() => { $('game').classList.add('hidden'); try { cb?.(win, reason, { totalTurns: S.totalTurns, myTurns: S.myTurns, skills: S.log.skills }); } catch (err) { reportError('atEnd', err); } }, (fxWait || 0) + 1600);
     return true;
   }
   if (S.story) {   // 스토리 모드: 아케이드 전적·랭킹·갤러리에 기록하지 않고 스토리 화면으로 결과 전달
     render();
     const cb = S.story.onEnd;
-    setTimeout(() => { dockStoryBuff(false); $('game').classList.add('hidden'); try { cb?.(win, reason, { turns: S.turnNo, myTurns: S.myTurns, mana: S.me.manaPool ? S.me.mana : null, maxMana: S.me.manaPool ? S.me.maxMana : null, damage: S.log.total, played: [...S.log.played], kills: { ...S.log.kills }, blocks: { ...(S.log.blocks || {}) } }); } catch (err) { reportError('storyEnd', err); } }, FX_OFF() ? 0 : 900);
+    setTimeout(() => { dockStoryBuff(false); $('game').classList.add('hidden'); try { cb?.(win, reason, { turns: S.turnNo, totalTurns: S.totalTurns, skills: S.log.skills, myTurns: S.myTurns, mana: S.me.manaPool ? S.me.mana : null, maxMana: S.me.manaPool ? S.me.maxMana : null, damage: S.log.total, played: [...S.log.played], kills: { ...S.log.kills }, blocks: { ...(S.log.blocks || {}) } }); } catch (err) { reportError('storyEnd', err); } }, FX_OFF() ? 0 : 900);
     return true;
   }
   Stats.record(win);

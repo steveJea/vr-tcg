@@ -32,7 +32,7 @@
 확인받은 테스트 DB 식별번호 **7703759698107299042 (18자리)**가 모든 분할 파일에 반영돼 있습니다. 운영 DB 번호 조회나 파일 수동 편집은 필요 없습니다.
 
 1. Supabase 화면이 테스트 프로젝트 `cuyqchmdcnsgzkwyclji`인지 확인합니다. 운영에서 설치 실행 금지입니다.
-2. 같은 커밋의 `supabase/staging/01_install.sql`부터 `10_install.sql`까지 **파일 하나 전체씩 순서대로** 붙여 실행합니다. 매번 성공 메시지 확인 후 다음 번호로 갑니다.
+2. 같은 커밋의 `supabase/staging/01_install.sql`부터 `12_install.sql`까지 **파일 하나 전체씩 순서대로** 붙여 실행합니다. 매번 성공 메시지 확인 후 다음 번호로 갑니다.
 3. DB 식별번호 불일치/조회 오류가 나오면 중단합니다. 번호를 임의로 바꾸거나 guard를 삭제하지 말고 오류를 알려주세요.
 4. 이미 완료한 파일은 재실행해도 건너뜁니다. 오류가 난 파일은 그 파일만 되돌아가므로 원인을 확인한 뒤 같은 파일부터 재개합니다. 앞선 성공 파일을 지우거나 전체 DB를 초기화하지 않습니다.
 5. 마지막 파일까지 성공하기 전에는 회원 가입/로그인을 하지 마세요. 설치 중 API 접근은 차단되며 마지막에 개방됩니다.
@@ -117,3 +117,5 @@ WRANGLER_SEND_METRICS=false npx wrangler deploy --dry-run
 - https://developers.cloudflare.com/workers/static-assets/billing-and-limitations/
 - https://developers.cloudflare.com/workers/ci-cd/builds/configuration/
 - https://docs.github.com/en/pages/getting-started-with-github-pages/github-pages-limits
+
+보안 2단계 개별 업그레이드는 [SECURITY_PHASE2.md](SECURITY_PHASE2.md)를 따릅니다. 기존 10개 bundle 설치 DB에는 새 12개 bundle을 섞지 않습니다.

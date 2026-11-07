@@ -104,9 +104,13 @@
   /** 서버 쓰기: 서버 함수(rpc) 호출 후 서버가 돌려준 data 로 교체. 서버 함수가 없으면 local() 로 브라우저 저장 */
   async function act(rpc, args, local, pick = r => r) {
     if (serverMode) {
-      const { data, error } = await cloud().sb.rpc(rpc, args);
+      const { data, error } = await (rpc === 'battle_session_start_v2'
+        ? window.VRBattleSession.start(args.p_mode, args.p_target, args.p_party).then(data => ({ data }), error => ({ error }))
+        : rpc === 'battle_session_finish_v2'
+          ? window.VRBattleSession.finish(storySession, args.p_report).then(data => ({ data }), error => ({ error }))
+          : cloud().sb.rpc(rpc, args));
       if (!error) { const r = data || {}; save = clampPoints({ ...fresh(), ...(pick(r) || {}) }); cacheLocal(); return { ok: true, r, raw: r }; }
-      if (!missingFn(error)) { console.warn('[story] 서버 거부', rpc, error.message); toast(`⚠️ 저장 실패: ${error.message}`); return { ok: false, error }; }
+      if (rpc.startsWith('battle_session_') || !missingFn(error)) { console.warn('[story] 서버 거부', rpc, error.message); toast(`⚠️ 저장 실패: ${error.message}`); return { ok: false, error }; }
       serverMode = false; cloudOk = false; console.warn('[story] 서버 함수 없음 → 브라우저 저장', rpc);
     }
     const r = await local?.(); await persist(); return { ok: true, r, local: true };
@@ -950,6 +954,7 @@
     draw();
   }
 
+  let storySession = null;
   let deckUid = {};   // 이번 전투 출전 카드 id → 인스턴스 uid
   /** 스토리 보호 규칙: 공격자 id → 공격하지 않는 카드 id (기본 공격·스킬·반격·광역 모두) */
   const STORY_SPARE = { '10383': ['10384'] };   // 조윤이 → 조윤하
@@ -957,7 +962,8 @@
     const P = window.VRPlayer, ps = serverMode && P ? await P.status(true) : null;
     if (ps && ps.stamina < P.cost) { staminaShort(ps); return renderMap(); }
     await gearReady();
-    const st = await act('story_start_phase', { p_chapter: ch.id, p_phase: ph.no }, () => {});
+    const st = await act('battle_session_start_v2', { p_mode: 'story', p_target: `${ch.id}:${ph.no}`, p_party: (picked || deckInstances()).slice(0, pickMax(ch, ph)).map(o => o.uid) }, () => {}, r => r.data);
+    storySession = st.raw || null;
     if (!st.ok) { const em = st.error?.message || '', lvM = /level required.*level (\d+)/.exec(em); if (lvM) toast(`🔒 Lv ${lvM[1]} 필요 — 계정 레벨을 올린 뒤 입장할 수 있어요`); else if (/stamina/.test(em)) staminaShort(await P?.status(true)); return renderMap(); }
     if (ps) P.status(true);
     root().classList.add('hidden');
@@ -972,6 +978,8 @@
     if (bc && ph.bossCdMinus) bc.gear = { ...(bc.gear || {}), cd: (bc.gear?.cd || 0) + (ph.bossCdMinus | 0) };   // 페이즈 bossCdMinus: 보스 스킬 쿨타임 -N (장비 쿨타임과 같은 경로, 최소 1)
     // 보스 카드를 맨 앞에 (진영 안 표시), 나머지는 그대로
     const ai = bc ? [bc, ...enemies.filter(c => c !== bc)] : enemies;
+    const reserve = (ph.reserve || []).map(id => repOf(id) || guestOf(id)).filter(o => card(o.id)).map(o => mul({ ...boosted(o), uid: o.uid }));
+    for (const o of reserve) if (!isGuest(o)) deckUid[o.id] = o.uid;
     window.TCG.startStory({
       chapter: ch.id,   // 전투 배경 키 story_ch{n}(_boss)
       me, ai, leader: (() => { const lo = me.find(c => c.uid === save.leader), le = lo && leaderEff(lo.id); return le ? { ...le, uid: lo.uid } : undefined; })(), win: boss ? 'ko' : 'wipe', aiHp: boss ? bossHp(ch, ph) : undefined, bossId: bc ? String(bc.id) : undefined, enemyLevels: ph.enemies?.levels, aiName: ph.enemyName || (boss ? '보스' : '적군'), rules: battleRules(ch, ph), first: ph.enemyFirst ? 'ai' : 'me',   // 기본 내가 선공, 페이즈 enemyFirst 면 적 선공
@@ -979,11 +987,11 @@
       spare: { ...STORY_SPARE, ...(ph.spare || {}) },
       tutorial: ph.tutorial,
       // 챕터 0: reserve = 소환 대기 카드(소환 버튼으로 필드에) · fullMp = 시작 MP 가득 · meLevels = 내 카드 전투 시작 레벨 · awaken = 쓰러지면 난입
-      reserve: (ph.reserve || []).map(id => repOf(id) || guestOf(id)).filter(o => card(o.id)).map(o => mul({ ...boosted(o), uid: o.uid })),
+      reserve,
       kickoff: ch.tutorial && !ph.pool ? true : 'external',   // 챕터 0: 가운데 [⚔️ 시작하기] · 그 밖: 조건 창의 [⚔️ 전투 시작]/✕ 가 시작 신호   // 모든 스토리 전투: [시작하기] 눌러야 등장 연출 → 첫 턴 → 가이드 (탑·퀘스트·PvP·전쟁·토벌은 그대로 자동 시작)
       fullMp: !!ph.fullMp, meLevels: ph.party?.battleLevels,
       // 제한 마나 (챕터 1~): 시작에 한 번만, 다시 차지 않음. 출전 카드는 손패 → 코스트 내고 소환. 필수 인재는 1명 2턴·2명+ 3턴 안에 소환
-      manaPool: ch.tutorial && !ph.pool ? undefined : storyMana(ch, ph, me),   // 챕터 0 은 ph.pool 페이즈(P4 튜토리얼)만
+      manaPool: serverMode ? (storySession?.snapshot?.mana ?? undefined) : ch.tutorial && !ph.pool ? undefined : storyMana(ch, ph, me),   // 챕터 0 은 ph.pool 페이즈(P4 튜토리얼)만
       mustSummon: ph.mustSummon ? ph.mustSummon.map(String) : ch.tutorial || !ch.single ? undefined : (ph.party?.forced || ph.party?.mustLive || []).map(String),
       joinAlly: ph.joinAlly && card(ph.joinAlly.id) ? { ...ph.joinAlly, card: lvScaled(card(ph.joinAlly.id), ph.joinAlly.storyLevel || 1) } : undefined,   // 턴 난입 아군 (CH11 P15 이지영): 내 afterTurn 번째 턴이 끝난 뒤 다음 내 턴 시작에 합류
       awaken: ph.awaken ? { ...ph.awaken, card: lvScaled(card(ph.awaken.id), ph.awaken.storyLevel || 1) } : undefined,   // 튜토리얼 가이드 id (data/tutorials/<id>.json · README 참고) — 처음 한 번만   // 조윤이는 조윤하를 공격하지 않음 + 페이즈 spare (예: CH3 P6 안지수 → 조윤하)
@@ -1046,9 +1054,10 @@
   const starsOf = (chId, no) => +(save?.stars?.[chId]?.[no] || 0);
   const starHtml = (n, cls = '') => n ? `<span class="story-stars ${cls}">${[1, 2, 3].map(i => `<i class="${i <= n ? 'on' : ''}">★</i>`).join('')}</span>` : '';
   async function saveStars(ch, ph, n) {
+    if (serverMode) { starAt = 0; return; }
     if (!n || n <= starsOf(ch.id, ph.no)) return;
     save.stars = save.stars || {}; save.stars[ch.id] = { ...(save.stars[ch.id] || {}), [ph.no]: n };
-    if (serverMode) { try { const { error } = await cloud().sb.rpc('story_set_stars', { p_chapter: ch.id, p_phase: ph.no, p_stars: n }); if (error) console.warn('[story] 별 저장', error.message); } catch {} }   // SQL 전이면 이 기기에만
+    // Authenticated stars are written atomically by battle_session_finish_v2, never a second RPC.
     cacheLocal(); starAt = 0;   // 별 보상 상자 다시 불러오기
   }
   const RULES_MAX_MY = () => Math.floor((window.TCG?.RULES?.MAX_TURNS || 40) / 2);
@@ -1137,10 +1146,12 @@
     });
   }
   async function result(ch, ph, win, reason, st = {}) {
+    const previousStars = starsOf(ch.id, ph.no);
     // 페이즈 loseClears (CH12 P14 안지수 vs 임유리): 져도(포기 제외) 승리와 같은 길로 클리어 처리 + 별 3개. 이 플래그 없는 페이즈는 그대로
     const lostOk = !win && !!ph.loseClears && reason !== 'giveup';
     if (!win && !lostOk) {
-      const ab = serverMode && window.VRPlayer ? await window.VRPlayer.abort() : null;
+      let ab = null;
+      if (serverMode && storySession) { try { const loss = await window.VRBattleSession.finish(storySession, window.VRBattleSession.report(false, reason, st)); ab = loss.player; if (ab) window.VRPlayer?.set(ab); await reload(); } catch (e) { toast(`⚠️ 패배 기록 저장 실패: ${e?.message || e}`); } }
       show(`<div class="text-center py-10"><div class="story-chapter-big text-red-400">DEFEAT</div><div class="text-zinc-300 mt-2">${reason === 'giveup' ? '도전을 포기했어요.' : reason === 'wipe' ? (window.TCG?.S?.me?.manaPool ? '아군 전멸! 남은 마나로 소환할 수 없어요.' : '아군 전멸!') : reason === 'mustsummon' ? `필수 인재 ${esc(window.TCG?.S?.mustSummonMiss || '')}을(를) 제때 소환하지 못했어요.` : reason === 'mustlive' ? `${esc(window.TCG?.S?.mustLiveDown || card((battleRules(ch, ph)?.mustLive || [])[0])?.name || '필수 출전')} 인재가 쓰러졌어요.` : reason === 'timeout' ? (ph.type === 'boss' ? '턴 제한 안에 상대 진영을 무너뜨리지 못했어요.' : '턴 제한 안에 적을 모두 쓰러뜨리지 못했어요.') : '패배했어요.'} 스탯을 올리고 다시 도전해 보세요!</div>${ab?.refunded ? `<div class="mt-2 text-emerald-300 text-sm">🔋 행동력 ${ab.refunded} 반환 (보유 ${ab.stamina}/${ab.stamina_max})</div>` : ''}
         <div class="flex flex-col gap-2 max-w-xs mx-auto mt-6"><button class="story-btn" id="story-retry">다시 도전</button><button class="story-back" data-go="map">챕터 지도로</button></div></div>`);
       bind(); $('story-retry').onclick = () => startPhase(ch, ph); return;
@@ -1148,8 +1159,8 @@
     // 서버가 첫 클리어 여부·보상(카드·포인트)을 결정. 재클리어는 보상 없음
     let first = !clearedOf(ch).includes(ph.no), reward = null, pts = 0;
     // 전투 EXP: 이번 전투에 낸 내 카드 + 처치 수 (서버가 보유 여부·처치 상한·배율을 다시 계산)
-    const kills = st.kills || {}, blocks = st.blocks || {}, p_stats = [...new Set(st.played || [])].filter(id => !isGuest({ uid: deckUid[id] })).slice(0, 30).map(id => ({ uid: deckUid[id], id, kills: kills[id] | 0, blocks: blocks[id] | 0 }));
-    const res = await act('story_complete_phase', { p_chapter: ch.id, p_phase: ph.no, p_stats }, () => {
+    const kills = st.kills || {}, blocks = st.blocks || {}, p_stats = [...new Set(st.played || [])].filter(id => deckUid[id] && !isGuest({ uid: deckUid[id] })).slice(0, 30).map(id => ({ uid: deckUid[id], id, kills: kills[id] | 0, blocks: blocks[id] | 0 }));
+    const res = await act(serverMode ? 'battle_session_finish_v2' : 'story_complete_phase', serverMode ? { p_report: window.VRBattleSession.report(win, reason, st, p_stats) } : { p_chapter: ch.id, p_phase: ph.no, p_stats }, () => {
       const exp = [], cap = Math.max(0, (ph.enemies?.ids?.length || ph.enemies?.count || 99) - (ph.type === 'boss' ? 1 : 0)); let ksum = 0, bsum = 0; const bcap = Math.max(0, (ph.enemies?.ids?.length || ph.enemies?.count || 99)) * 2;   // 보스 카드는 쓰러지지 않음
       for (const s of p_stats) {
         const o = byUid(s.uid) || save.owned.find(x => x.id === s.id); if (!o) continue;
@@ -1171,7 +1182,7 @@
     if (!res.ok) {
       const m = String(res.error?.message || ''), why = /too fast/.test(m) ? '전투가 너무 빨리 끝나서 기록이 인정되지 않았어요.' : /battle not started/.test(m) ? '전투 시작 기록이 없어요. (새로고침·다른 기기에서 전투를 시작했을 수 있어요)' : `결과를 서버에 저장하지 못했어요.${m ? ` (${esc(m)})` : ''}`;
       show(`<div class="text-center py-10"><div class="story-chapter-big text-amber-300">!</div><div class="text-zinc-300 mt-2">${why}<br>다시 도전해 주세요.</div><div class="flex flex-col gap-2 max-w-xs mx-auto mt-6"><button class="story-btn" id="story-retry">다시 도전</button><button class="story-back" data-go="map">챕터 지도로</button></div></div>`);
-      bind(); $('story-retry').onclick = () => startPhase(ch, ph); return; }
+      bind(); $('story-retry').textContent = '결과 다시 저장'; $('story-retry').onclick = () => result(ch, ph, win, reason, st); return; }
     const r = res.r || {};
     const pr = res.raw?.player || null; if (pr) window.VRPlayer?.set(pr);
     first = !!r.first; pts = r.points | 0; reward = r.reward_id ? card(r.reward_id) : null;
@@ -1185,13 +1196,13 @@
     if (first && (ph.type === 'boss' || ph.final) && ch.ending?.length) await new Promise(ok => playLines(ch.ending, [], ok, 'ending', ph.hero || ch.hero));
     // 챕터 첫 클리어 + 엔딩 영상 있음 → 승리 화면에 🎬 엔딩 보기 (탭으로 열어야 모바일 전체화면·가로 가능). 영상을 닫기 전까지 NEXT 숨김
     const needVid = first && chapterDone(D.chapters.find(c => c.id === ch.id) || ch) && !!videoOf(ch);
-    const tk = first && chapterDone(D.chapters.find(c => c.id === ch.id) || ch) ? await syncTickets() : null;   // 챕터 첫 클리어 → 소환권
+    const tk = r.chapter_reward || (first && chapterDone(D.chapters.find(c => c.id === ch.id) || ch) ? await syncTickets() : null);   // 챕터 첫 클리어 → 소환권
     // [다음 챕터로]: 다음 페이즈로, 마지막 페이즈면 다음 챕터로. 다음 챕터가 잠겼으면 🔒, 아예 없으면 숨김
     const nextPh = ch.phases[ch.phases.findIndex(p => p.no === ph.no) + 1] || null;
     const nextI = D.chapters.findIndex(c => c.id === ch.id) + 1, nextChB = nextPh ? null : D.chapters[nextI] || null;
     const hasNext = !!(nextPh || nextChB), nextOpen = !!nextPh || (!!nextChB && chapterOpen(nextI));
-    const stars = ph.loseClears ? 3 : starsCalc(ph, st)   // loseClears 페이즈(CH12 P14)는 이겨도 져도 별 3개
-    , bestB = starsOf(ch.id, ph.no); if (stars) await saveStars(ch, ph, stars);
+    const stars = serverMode ? (r.stars || 0) : ph.loseClears ? 3 : starsCalc(ph, st)   // loseClears 페이즈(CH12 P14)는 이겨도 져도 별 3개
+    , bestB = previousStars; if (stars) await saveStars(ch, ph, stars);
     const starRow = stars ? `<div class="story-star-res">${starHtml(stars, 'big')}<div class="text-xs text-zinc-300 mt-2 inline-flex flex-col items-start gap-0.5 text-left">${ph.loseClears ? '<div><b class="text-emerald-400">✔</b> 이겨도 져도 별 3개인 페이즈</div>' : ''}${ph.loseClears ? '' : (() => { const t = ph.starTurns || STAR_TURNS, k = ph.starMana ?? STAR_MANA, need = Math.ceil(st.maxMana * k), okT = (st.myTurns | 0) <= t, okM = st.mana >= need, ln = (ok, txt) => `<div><b class="${ok ? 'text-emerald-400' : 'text-red-400'}">${ok ? '✔' : '✖'}</b> ${txt}</div>`;
       return ln(true, '★ 클리어') + ln(okT, `★ 내 턴 ${t}턴 이내 <span class="text-zinc-500">(${st.myTurns | 0}턴)</span>`) + ln(okM, `★ 남은 마나 ${Math.round(k * 100)}% 이상 <span class="text-zinc-500">(${st.mana}/${st.maxMana}, 필요 ${need})</span>`); })()}${stars > bestB && bestB ? '<div><b class="text-amber-300">최고 기록!</b></div>' : ''}</div></div>` : '';
     show(`<div class="text-center py-6"><div class="story-chapter-sub">Phase.${ph.no} CLEAR</div><div class="story-chapter-big text-emerald-300">${lostOk ? 'STORY CLEAR' : 'VICTORY'}</div>${lostOk ? '<div class="text-zinc-300 text-sm mt-1">졌지만 이야기는 계속돼요.</div>' : ''}${starRow}

@@ -1,6 +1,6 @@
-# 테스트 DB 분할 설치 — 01번부터 10번까지
+# 테스트 DB 분할 설치 — 01번부터 12번까지
 
-**이미 설치된 테스트 DB에는 새 설치본을 재실행하지 마세요.** bundle 해시가 달라집니다. [보안 1단계 migration 안내](../../docs/SECURITY_PHASE1.md)에 따라 기존 DB 전용 파일 하나만 적용하세요. 새 설치본은 1단계 지급 보류 정책을 포함합니다.
+**이미 설치된 테스트 DB에는 새 설치본을 재실행하지 마세요.** bundle 해시가 달라집니다. [보안 2단계 migration 안내](../../docs/SECURITY_PHASE2.md)에 따라 기존 DB는 1단계 → 2단계 개별 SQL만 적용하세요. 새 설치본은 1단계 지급 보호와 2단계 tutorial/story/tower 정산을 포함합니다.
 
 대상은 **cuyqchmdcnsgzkwyclji** 테스트 프로젝트뿐입니다. 운영 **htarwisgkkphutxxnuak**에서 실행하지 마세요.
 
@@ -12,23 +12,25 @@
 2. SQL Editor의 기존 내용을 지우고 **파일 하나 전체만** 붙여 넣어 Run 합니다. 성공 메시지를 확인한 뒤 다음 번호로 갑니다.
 3. 파일 안의 함수·달러 인용을 나누거나, 여러 파일을 한꺼번에 합쳐 붙이지 마세요. 모든 파일이 끝나기 전에는 회원 가입/로그인을 하지 마세요.
 
-1. [`01_install.sql`](01_install.sql) — 129,195바이트
-2. [`02_install.sql`](02_install.sql) — 129,716바이트
-3. [`03_install.sql`](03_install.sql) — 129,490바이트
-4. [`04_install.sql`](04_install.sql) — 128,818바이트
-5. [`05_install.sql`](05_install.sql) — 129,674바이트
-6. [`06_install.sql`](06_install.sql) — 129,774바이트
-7. [`07_install.sql`](07_install.sql) — 129,781바이트
-8. [`08_install.sql`](08_install.sql) — 129,620바이트
-9. [`09_install.sql`](09_install.sql) — 129,644바이트
-10. [`10_install.sql`](10_install.sql) — 28,870바이트
+1. [`01_install.sql`](01_install.sql) — 129,198바이트
+2. [`02_install.sql`](02_install.sql) — 129,719바이트
+3. [`03_install.sql`](03_install.sql) — 129,493바이트
+4. [`04_install.sql`](04_install.sql) — 128,821바이트
+5. [`05_install.sql`](05_install.sql) — 129,677바이트
+6. [`06_install.sql`](06_install.sql) — 129,777바이트
+7. [`07_install.sql`](07_install.sql) — 129,784바이트
+8. [`08_install.sql`](08_install.sql) — 129,623바이트
+9. [`09_install.sql`](09_install.sql) — 129,647바이트
+10. [`10_install.sql`](10_install.sql) — 125,040바이트
+11. [`11_install.sql`](11_install.sql) — 129,596바이트
+12. [`12_install.sql`](12_install.sql) — 121,230바이트
 
 ## 안전장치
 
 - 매 파일 시작에 현재 DB의 `pg_control_system().system_identifier::text`가 지정된 **7703759698107299042**와 정확히 같은지 확인합니다. 다르거나, NULL이거나, 조회 권한/기능 오류가 나면 중단합니다. guard를 삭제하거나 임의 SET/번호 변경으로 우회하지 마세요.
 - SQL Editor가 실제 `project_ref`를 SQL 변수로 제공한다고 가정하지 않습니다. `confirmed_ref`는 테스트 ID로 고정하고 실제 DB 식별번호도 함께 검사합니다.
 - 클러스터 번호는 프로젝트 이름 그 자체는 아니며 복제 DB에서 같을 수 있습니다. 따라서 화면의 프로젝트 선택 확인, 최초 설치 시 기존 사용자/게임 테이블·함수 거부, 이후 비공개 설치 기록·번호 순서 검사도 함께 사용합니다. 운영 선택을 허용하는 옵션은 없습니다.
-- 새 프로젝트 전용입니다. 운영 회원/결제 자료는 포함하지 않으며, 원본 관리자 판정 규칙을 유지하고 마지막에 보안 1단계를 적용합니다. 미검증 전투 보상 보류 범위를 먼저 확인하세요. 모든 보안 취약점이 해결된 것은 아닙니다.
+- 새 프로젝트 전용입니다. 운영 회원/결제 자료는 포함하지 않으며, 원본 관리자 판정 규칙을 유지하고 마지막에 보안 1→2단계를 적용합니다. 재개/보류 범위와 실용적 검증의 한계를 먼저 확인하세요. 모든 보안 취약점이 해결된 것은 아닙니다.
 
 ## 재실행과 오류
 

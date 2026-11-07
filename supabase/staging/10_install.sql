@@ -1,4 +1,4 @@
--- ⚠ 테스트 전용 10/10. 운영 실행 금지. 파일 전체를 번호 순서대로 실행.
+-- ⚠ 테스트 전용 10/12. 운영 실행 금지. 파일 전체를 번호 순서대로 실행.
 -- 대상 프로젝트: cuyqchmdcnsgzkwyclji; 운영 htarwisgkkphutxxnuak 금지.
 -- 완료한 파일은 다시 실행해도 건너뜀. 중간 오류는 해당 파일만 되돌아감.
 -- 실제 project_ref는 SQL Editor가 보장해서 제공하지 않음: DB 고유번호를 대조.
@@ -40,11 +40,11 @@ set local check_function_bodies = off;
 
 do $vr_install_part$
 begin
-  if exists (select 1 from vr_staging_install.parts where bundle_hash <> 'd58808b88d2b2323a18856d9663da6bec0c35ea9b3485319d62a3c189dd7aa8e' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
+  if exists (select 1 from vr_staging_install.parts where bundle_hash <> '410cdea919d7fef2dc1c1430be099965278672866ca01148fb8f0da2240951aa' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
     raise exception 'STOP: 다른 버전/DB의 설치 기록입니다. 파일을 섞지 마세요.';
   end if;
   if exists (select 1 from vr_staging_install.parts where part_no = 10) then
-    if not exists (select 1 from vr_staging_install.parts where part_no = 10 and part_hash = '3dd6159642253d3ac4cf0f4ce435413f9025030edda8c2ffb8e09f1421ef6015') then
+    if not exists (select 1 from vr_staging_install.parts where part_no = 10 and part_hash = '35278980f56707d0441dd02bffda4173e2abb401f347e3da2c02870778b1b7fe') then
       raise exception 'STOP: 완료한 파일과 내용이 다릅니다.';
     end if;
     raise notice '10_install.sql: 이미 완료, 변경 없이 건너뜀';
@@ -1489,37 +1489,214 @@ end $verify_phase1$;$vr_statement$;
 notify pgrst, 'reload schema';$vr_statement$;
   execute $vr_statement$-- 설치본의 단일 트랜잭션에 포함
 
--- 공개 게임 설정만 명시적으로 조회 허용 (사용자 자료 아님).
-grant select on public.story_card_pool, public.story_phase_config, public.story_premium_ur,
-  public.pvp_card_meta, public.pvp_reward_table, public.pvp_tier_table, public.pvp_streak_table,
-  public.dispatch_card_meta, public.dispatch_zones to anon, authenticated;$vr_statement$;
-  execute $vr_statement$-- 설치 완료 (원본 SQL의 사용자 테이블은 처음부터 비어 있어야 함).
-set local check_function_bodies = on;$vr_statement$;
-  execute $vr_statement$do $staging_verify$
-declare f record;
-begin
-  for f in
-    select pg_get_functiondef(p.oid) ddl from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-    where n.nspname = 'public' and p.prokind = 'f'
-      and not exists (select 1 from pg_depend d where d.objid = p.oid and d.deptype = 'e')
-  loop execute f.ddl; end loop;
-  if exists (select 1 from auth.users) then raise exception 'STOP: 설치 중 사용자 자료 발견'; end if;
-  if exists (select 1 from pg_class c join pg_namespace n on n.oid=c.relnamespace
-    where n.nspname='public' and c.relkind='r' and not c.relrowsecurity
-      and not exists (select 1 from pg_depend d where d.objid = c.oid and d.deptype = 'e')) then
-    raise exception 'STOP: RLS 없는 테이블 발견';
-  end if;
-  if exists (select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace
-    where n.nspname='public' and p.prosecdef and left(p.proname,1)='_'
-      and pg_get_function_result(p.oid) <> 'trigger'
-      and (has_function_privilege('anon',p.oid,'execute') or has_function_privilege('authenticated',p.oid,'execute'))) then
-    raise exception 'STOP: 외부 호출 가능한 내부 서버 함수 발견';
-  end if;
-end $staging_verify$;$vr_statement$;
 
-  grant usage on schema public to public, anon, authenticated;
+-- ===== SOURCE: security_phase2_clears.sql =====
+-- 보안 2단계: 서버 세션 + 순서/시간/입장/통계 범위 + 원자적 정산.
+-- IMPORTANT: plausibility-v3 is NOT deterministic replay. A patient client can
+-- fabricate a plausible win. Read docs/SECURITY_PHASE2.md before staging approval.
+-- Existing DB: phase1 preflight -> phase1 rewards -> THIS file. No wildcard SQL.
+-- 설치본의 단일 트랜잭션에 포함
+select pg_advisory_xact_lock(20261107,502);$vr_statement$;
+  execute $vr_statement$do $$ begin
+  if to_regclass('public.reward_claims') is null or to_regprocedure('public._reward_battle_enabled()') is null then
+    raise exception 'STOP: phase 1 required'; end if;
+  if to_regclass('public.battle_sessions_v2') is not null and not exists(
+    select 1 from pg_attribute where attrelid=to_regclass('public.battle_sessions_v2') and attname='settlement') then
+    raise exception 'STOP: offline shadow prototype present; inspect before upgrade'; end if;
+end $$;$vr_statement$;
+  execute $vr_statement$-- Preserve reviewed economic implementations privately, once, before closing APIs.
+do $preserve$
+declare n text; sig text; src text; dest text;
+begin
+  foreach n in array array['story_start_phase','story_complete_phase','story_abort_phase','story_sweep','_ach_prog'] loop
+    sig := case n when 'story_start_phase' then '(integer,integer)' when 'story_complete_phase' then '(integer,integer,jsonb)'
+      when 'story_abort_phase' then '()' when 'story_sweep' then '(integer,integer,integer)' else '(uuid,text)' end;
+    dest := '_phase2_old_' || ltrim(n,'_');
+    if to_regprocedure('public.' || dest || sig) is null then
+      src := pg_get_functiondef(to_regprocedure('public.' || n || sig));
+      if src is null then raise exception 'STOP: missing %',n; end if;
+      execute replace(src,'FUNCTION public.' || n || '(', 'FUNCTION public.' || dest || '(');
+    end if;
+  end loop;
+end $preserve$;$vr_statement$;
+  execute $vr_statement$create table if not exists public.battle_policy_v2(mode text primary key check(mode in ('tutorial','story','tower')), enabled boolean not null default true);$vr_statement$;
+  execute $vr_statement$insert into public.battle_policy_v2(mode) values ('tutorial'),('story'),('tower') on conflict do nothing;$vr_statement$;
+  execute $vr_statement$create table if not exists public.battle_legacy_access_v2(
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  cleared jsonb not null default '{}', tower_best jsonb not null default '{}', tower_paid jsonb not null default '{}');$vr_statement$;
+  execute $vr_statement$-- Frozen access-only baseline; never grants stars/rewards/missions for old JSON.
+insert into public.battle_legacy_access_v2(user_id,cleared,tower_best,tower_paid)
+select u.id,coalesce(s.data->'cleared','{}'),
+  coalesce((select jsonb_object_agg(tower,best_floor) from public.tower_progress t where t.user_id=u.id),'{}'),
+  coalesce((select jsonb_object_agg(tower,paid_floor) from public.tower_progress t where t.user_id=u.id),'{}')
+from auth.users u left join public.story_progress s on s.user_id=u.id on conflict do nothing;$vr_statement$;
+  execute $vr_statement$create table if not exists public.battle_session_seeds_v2(
+  user_id uuid not null references auth.users(id) on delete cascade, mode text not null, target text not null,
+  seed integer not null check(seed between 1 and 2147483646), rule_version integer not null default 3 check(rule_version=3),
+  primary key(user_id,mode,target,rule_version));$vr_statement$;
+  execute $vr_statement$create table if not exists public.battle_sessions_v2(
+  id uuid primary key default gen_random_uuid(), user_id uuid not null references auth.users(id) on delete cascade,
+  request_id uuid not null, mode text not null check(mode in ('tutorial','story','tower','tower_sweep')),
+  target text not null, party jsonb not null, seed integer not null, rule_version integer not null default 3 check(rule_version=3),
+  snapshot jsonb not null, issued_at timestamptz not null default clock_timestamp(),
+  expires_at timestamptz not null default clock_timestamp()+interval '2 hours',
+  status text not null default 'issued' check(status in ('issued','settled','expired','aborted')),
+  submission jsonb, settlement jsonb, finished_at timestamptz,
+  unique(user_id,request_id), check(expires_at>issued_at));$vr_statement$;
+  execute $vr_statement$create unique index if not exists battle_sessions_v2_one_active on public.battle_sessions_v2(user_id) where status='issued';$vr_statement$;
+  execute $vr_statement$create index if not exists battle_sessions_v2_daily on public.battle_sessions_v2(user_id,issued_at);$vr_statement$;
+  execute $vr_statement$create table if not exists public.battle_clear_receipts_v2(
+  user_id uuid not null references auth.users(id) on delete cascade, mode text not null, target text not null,
+  session_id uuid not null references public.battle_sessions_v2(id), stars integer not null default 0 check(stars between 0 and 3),
+  settled_at timestamptz not null default clock_timestamp(), primary key(user_id,mode,target));$vr_statement$;
+  execute $vr_statement$create table if not exists public.battle_events_v2(
+  session_id uuid primary key references public.battle_sessions_v2(id), user_id uuid not null references auth.users(id) on delete cascade,
+  mode text not null, win boolean not null, skills integer not null, day date not null, week date not null);$vr_statement$;
+  execute $vr_statement$create index if not exists battle_events_v2_period on public.battle_events_v2(user_id,day,week);$vr_statement$;
+  execute $vr_statement$create table if not exists public.battle_acquisitions_v2(
+  session_id uuid primary key references public.battle_sessions_v2(id), user_id uuid not null references auth.users(id) on delete cascade,
+  card_id text not null references public.story_card_pool(id));$vr_statement$;
+  execute $vr_statement$create table if not exists public.battle_card_meta_v2(id text primary key,definition jsonb not null);$vr_statement$;
+  execute $vr_statement$create table if not exists public.battle_story_defs_v2(chapter integer not null,phase integer not null,variant text not null,
+  definition jsonb not null, primary key(chapter,phase,variant));$vr_statement$;
+  execute $vr_statement$create table if not exists public.battle_tutorial_defs_v2(stage integer primary key check(stage between 1 and 3),definition jsonb not null);$vr_statement$;
+  execute $vr_statement$insert into public.battle_tutorial_defs_v2(stage,definition) values
+  (1, '{"first":"me","me":["10019","10018","10299","10445","10404","10375","10325","10080","10074","10049"],"aiField":["10348","10339","10184"],"aiDeck":[],"aiHp":3000,"wipe":true,"levels":{"10325":7},"fullMp":["10019","10325"],"haste":["10325"],"bonus":{"3":30}}'::jsonb),
+  (2, '{"first":"me","me":["10299","10137","10183","10045","10445","10404","10375","10060","10080","10074","10049"],"aiField":["10270","10462","10132","10202"],"aiDeck":[],"aiHp":3000,"meHpNow":2500,"wipe":true,"levels":{"10060":2},"fullMp":["10060"],"haste":["10060"],"bonus":{"1":30,"2":30,"3":10,"4":70}}'::jsonb),
+  (3, '{"first":"me","me":["10036","10049","10118","10445","10404","10375","10080","10074","10311","10083"],"aiField":["10115","10103","10462","10256"],"aiDeck":[],"aiHp":3000,"wipe":true,"levels":{"10311":2},"fullMp":["10311"],"haste":["10311"],"mercs":["10292","10183","10325"],"bonus":{"1":0,"2":20,"3":80,"4":10,"5":50}}'::jsonb)
+on conflict (stage) do nothing;$vr_statement$;
+  execute $vr_statement$-- BEGIN GENERATED PHASE2 STORY
+insert into public.battle_story_defs_v2(chapter,phase,variant,definition) values
+(0,1,'','{"no":1,"type":"normal","enemies":{"ids":["10256"],"boost":{"10256":{"HP":700}}},"party":{"forced":["10325"],"mustLive":["10325"],"noExtra":true,"auto":true,"battleLevels":{"10325":2}},"fullMp":true,"hero":"10325","tutorial":true,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(0,2,'','{"no":2,"type":"normal","enemies":{"ids":["10154","10153","10153","10153","10153"]},"party":{"forced":["10325"],"mustLive":["10325"],"noExtra":true,"auto":true},"reserve":["10256"],"hero":"10325","tutorial":true,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(0,3,'','{"no":3,"type":"normal","enemies":{"ids":["10323","10168","10168","10168","10168"],"storyLevels":{"10168":30,"10323":30},"levels":{"10168":3,"10323":5}},"party":{"forced":["10325"],"mustLive":[],"fixedLevel":{"10325":1},"only":["10256","10462"],"guests":["10256","10462"]},"awaken":{"on":"10325","id":"10326","storyLevel":100,"battleLevel":10,"line":"....약해...","image":"img/story/ch0-05.webp"},"hero":"10325","tutorial":true,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(0,4,'','{"no":4,"type":"normal","enemies":{"ids":["10111","10224","10265"],"levels":{"10111":2,"10224":2,"10265":2}},"party":{"forced":["10325","10256","10207","10462"],"mustLive":["10325"],"noExtra":true,"auto":true},"pool":true,"mana":200,"mustSummon":["10207"],"hero":"10325","tutorial":true,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(0,5,'','{"no":5,"type":"boss","enemies":{"ids":["10229","10391","10097","10093","10103"],"levels":{"10093":2,"10097":2,"10103":2,"10229":3,"10391":2}},"party":{"forced":["10325","10256","10207","10462","10208"],"mustLive":["10325"],"noExtra":true,"auto":true},"baseHp":300,"bossId":"10229","pool":true,"mana":200,"hero":"10325","tutorial":true,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(1,1,'','{"no":1,"type":"normal","enemies":{"count":1,"rank":[0,30]},"hero":null,"tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"starter","party":{}}'::jsonb),
+(1,2,'','{"no":2,"type":"normal","enemies":{"count":2,"rank":[0,50]},"hero":null,"tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"starter","party":{}}'::jsonb),
+(1,3,'','{"no":3,"type":"normal","enemies":{"count":2,"rank":[30,90]},"hero":null,"tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"starter","party":{}}'::jsonb),
+(1,4,'','{"no":4,"type":"normal","enemies":{"count":3,"rank":[50,120]},"hero":null,"tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"starter","party":{}}'::jsonb),
+(1,5,'','{"no":5,"type":"boss","enemies":{"count":4,"rank":[120,203]},"hero":null,"tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"starter","party":{}}'::jsonb),
+(1,1,'10111','{"no":1,"type":"normal","enemies":{"ids":["10210"]},"party":{"forced":["10111","10112"]},"hero":null,"tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"starter"}'::jsonb),
+(1,2,'10111','{"no":2,"type":"normal","enemies":{"ids":["10143","10144"]},"party":{"forced":["10111"]},"hero":null,"tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"starter"}'::jsonb),
+(1,3,'10111','{"no":3,"type":"normal","enemies":{"ids":["10153","10143","10144"]},"party":{"forced":["10111"]},"hero":null,"tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"starter"}'::jsonb),
+(1,4,'10111','{"no":4,"type":"normal","enemies":{"ids":["10154","10153","10143","10144"]},"party":{"forced":["10111"]},"hero":null,"tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"starter"}'::jsonb),
+(1,5,'10111','{"no":5,"type":"boss","enemies":{"ids":["10146","10153","10143","10144","10145"]},"party":{"forced":["10111"]},"bossId":"10146","hero":null,"tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"starter"}'::jsonb),
+(1,1,'10224','{"no":1,"type":"normal","enemies":{"ids":["10143"]},"party":{"forced":["10224"]},"hero":null,"tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"starter"}'::jsonb),
+(1,2,'10224','{"no":2,"type":"normal","enemies":{"ids":["10153","10143"]},"party":{"forced":["10224"]},"hero":null,"tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"starter"}'::jsonb),
+(1,3,'10224','{"no":3,"type":"normal","enemies":{"ids":["10145","10144"]},"party":{"forced":["10224"]},"hero":null,"tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"starter"}'::jsonb),
+(1,4,'10224','{"no":4,"type":"normal","enemies":{"ids":["10145","10154","10153"]},"party":{"forced":["10224"]},"hero":null,"tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"starter"}'::jsonb),
+(1,5,'10224','{"no":5,"type":"boss","enemies":{"ids":["10146","10153","10154","10145"]},"party":{"forced":["10224"]},"bossId":"10146","hero":null,"tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"starter"}'::jsonb),
+(1,1,'10265','{"no":1,"type":"normal","enemies":{"ids":["10143"]},"party":{"forced":["10265"]},"hero":null,"tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"starter"}'::jsonb),
+(1,2,'10265','{"no":2,"type":"normal","enemies":{"ids":["10153","10154"]},"party":{"forced":["10265"]},"hero":null,"tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"starter"}'::jsonb),
+(1,3,'10265','{"no":3,"type":"normal","enemies":{"ids":["10143","10144"]},"party":{"forced":["10265"]},"hero":null,"tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"starter"}'::jsonb),
+(1,4,'10265','{"no":4,"type":"normal","enemies":{"ids":["10145","10144","10153"]},"party":{"forced":["10265"]},"hero":null,"tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"starter"}'::jsonb),
+(1,5,'10265','{"no":5,"type":"boss","enemies":{"ids":["10146","10144","10145","10153","10154"]},"party":{"forced":["10265"]},"bossId":"10146","hero":null,"tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"starter"}'::jsonb),
+(2,1,'','{"no":1,"type":"normal","enemies":{"count":5,"rank":[60,203]},"hero":null,"tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"route","party":{}}'::jsonb),
+(2,2,'','{"no":2,"type":"normal","enemies":{"count":5,"rank":[60,203]},"hero":null,"tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"route","party":{}}'::jsonb),
+(2,3,'','{"no":3,"type":"normal","enemies":{"count":5,"rank":[60,203]},"hero":null,"tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"route","party":{}}'::jsonb),
+(2,4,'','{"no":4,"type":"normal","enemies":{"count":5,"rank":[60,203]},"hero":null,"tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"route","party":{}}'::jsonb),
+(2,5,'','{"no":5,"type":"normal","enemies":{"count":5,"rank":[60,203]},"hero":null,"tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"route","party":{}}'::jsonb)
+on conflict (chapter,phase,variant) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_story_defs_v2(chapter,phase,variant,definition) values
+(2,6,'','{"no":6,"type":"normal","enemies":{"count":5,"rank":[60,203]},"hero":null,"tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"route","party":{}}'::jsonb),
+(2,7,'','{"no":7,"type":"normal","enemies":{"count":5,"rank":[60,203]},"hero":null,"tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"route","party":{}}'::jsonb),
+(2,8,'','{"no":8,"type":"normal","enemies":{"count":5,"rank":[60,203]},"hero":null,"tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"route","party":{}}'::jsonb),
+(2,9,'','{"no":9,"type":"normal","enemies":{"ids":["10368","10370","10149","10154","10153"]},"party":{"forced":["10298"],"exclude":["10125","10306"]},"rules":{"mustLive":["10298"]},"hero":null,"tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"route"}'::jsonb),
+(2,10,'','{"no":10,"type":"boss","enemies":{"ids":["10369","10368","10370","10149","10146"]},"party":{"forced":["10298"],"exclude":["10125","10306"]},"bossId":"10369","rules":{"mustLive":["10298"]},"hero":null,"tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"route"}'::jsonb),
+(2,1,'10081','{"no":1,"type":"normal","enemies":{"ids":["10147","10146","10145","10144","10143"]},"party":{"forced":["10081"]},"hero":"10081","tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"route"}'::jsonb),
+(2,2,'10081','{"no":2,"type":"normal","enemies":{"ids":["10147","10146","10145","10144","10143"]},"party":{"forced":["10081"]},"hero":"10081","tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"route"}'::jsonb),
+(2,3,'10081','{"no":3,"type":"normal","enemies":{"ids":["10147","10146","10145","10144","10143"]},"party":{"forced":["10081"]},"hero":"10081","tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"route"}'::jsonb),
+(2,4,'10081','{"no":4,"type":"normal","enemies":{"ids":["10148","10147","10146","10145","10144"]},"party":{"forced":["10081"]},"hero":"10081","tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"route"}'::jsonb),
+(2,5,'10081','{"no":5,"type":"normal","enemies":{"ids":["10149","10148","10147","10146","10145"]},"party":{"forced":["10081"]},"hero":"10081","tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"route"}'::jsonb),
+(2,6,'10081','{"no":6,"type":"normal","enemies":{"ids":["10149","10148","10147","10146","10145"]},"party":{"forced":["10081"],"exclude":["10306"]},"hero":"10081","tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"route"}'::jsonb),
+(2,7,'10081','{"no":7,"type":"normal","enemies":{"ids":["10082","10082","10082"]},"party":{"forced":["10081"],"exclude":["10252","10306"]},"rules":{"mustLive":["10081"]},"hero":"10081","tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"route"}'::jsonb),
+(2,8,'10081','{"no":8,"type":"normal","enemies":{"ids":["10082","10082","10082","10082","10082"]},"party":{"forced":["10081","10062"],"exclude":["10252","10306"]},"rules":{"mustLive":["10081"]},"hero":"10081","tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"route"}'::jsonb),
+(2,9,'10081','{"no":9,"type":"normal","enemies":{"ids":["10147","10146","10144","10145","10143"]},"party":{"forced":["10081"],"exclude":["10252","10306"]},"rules":{"mustLive":["10081"]},"hero":"10081","tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"route"}'::jsonb),
+(2,10,'10081','{"no":10,"type":"boss","enemies":{"ids":["10369","10368","10370","10149","10148"]},"party":{"forced":["10081"],"exclude":["10252","10306"]},"bossId":"10369","rules":{"mustLive":["10081"]},"hero":"10081","tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"route"}'::jsonb),
+(2,1,'10298','{"no":1,"type":"normal","enemies":{"ids":["10146","10143","10144","10145"]},"party":{"forced":["10298"]},"hero":"10298","tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"route"}'::jsonb),
+(2,2,'10298','{"no":2,"type":"normal","enemies":{"ids":["10146","10147","10145","10144","10143"]},"party":{"forced":["10298"]},"hero":"10298","tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"route"}'::jsonb),
+(2,3,'10298','{"no":3,"type":"normal","enemies":{"ids":["10148","10146","10145","10144","10143"]},"party":{"forced":["10298"]},"hero":"10298","tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"route"}'::jsonb),
+(2,4,'10298','{"no":4,"type":"normal","enemies":{"ids":["10149","10146","10145","10144","10143"]},"party":{"forced":["10306","10125"],"exclude":["10298"]},"hero":"10298","tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"route"}'::jsonb),
+(2,5,'10298','{"no":5,"type":"normal","enemies":{"ids":["10149","10153","10146","10144","10145"]},"party":{"forced":["10306","10125"],"exclude":["10298"]},"hero":"10298","tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"route"}'::jsonb),
+(2,6,'10298','{"no":6,"type":"normal","enemies":{"ids":["10149","10154","10153","10146","10145"]},"party":{"forced":["10306","10125"],"exclude":["10298"]},"hero":"10298","tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"route"}'::jsonb),
+(2,7,'10298','{"no":7,"type":"normal","enemies":{"ids":["10149","10154","10153","10146","10145"]},"party":{"forced":["10306","10125"],"exclude":["10298"]},"rules":{"mustLive":["10306"]},"hero":"10298","tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"route"}'::jsonb),
+(2,8,'10298','{"no":8,"type":"normal","enemies":{"ids":["10149","10154","10153","10146","10145"]},"party":{"forced":["10298"],"exclude":["10125"]},"rules":{"mustLive":["10298"]},"hero":"10298","tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"route"}'::jsonb),
+(2,9,'10298','{"no":9,"type":"normal","enemies":{"ids":["10368","10370","10149","10154","10153"]},"party":{"forced":["10298"],"exclude":["10125","10306"]},"rules":{"mustLive":["10298"]},"hero":"10298","tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"route"}'::jsonb),
+(2,10,'10298','{"no":10,"type":"boss","enemies":{"ids":["10369","10368","10370","10149","10146"]},"party":{"forced":["10298"],"exclude":["10125","10306"]},"bossId":"10369","rules":{"mustLive":["10298"]},"hero":"10298","tutorial":false,"single":false,"loan":[],"loanLevel":{},"variantKind":"route"}'::jsonb),
+(3,1,'','{"no":1,"type":"normal","enemies":{"ids":["10157","10156","10155","10154","10153"]},"party":{"forced":["10384"],"noMale":true},"bossId":"10157","hero":"10384","tutorial":false,"single":true,"loan":["10384","10383"],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(3,2,'','{"no":2,"type":"normal","enemies":{"ids":["10097","10297","10290","10103","10432"]},"party":{"forced":["10384"],"maxMor":49},"bossId":"10097","hero":"10384","tutorial":false,"single":true,"loan":["10384","10383"],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(3,3,'','{"no":3,"type":"normal","enemies":{"ids":["10280","10160","10159","10158","10157"]},"party":{"forced":["10383"]},"bossId":"10280","hero":"10384","tutorial":false,"single":true,"loan":["10384","10383"],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(3,4,'','{"no":4,"type":"normal","enemies":{"ids":["10393","10290","10097","10306","10041"]},"party":{"forced":["10384"],"exclude":["10383"]},"bossId":"10393","hero":"10384","tutorial":false,"single":true,"loan":["10384","10383"],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(3,5,'','{"no":5,"type":"normal","enemies":{"ids":["10290","10306","10097","10405","10227"]},"party":{"forced":["10384"],"exclude":["10383"]},"bossId":"10290","hero":"10384","tutorial":false,"single":true,"loan":["10384","10383"],"loanLevel":{},"variantKind":"none"}'::jsonb)
+on conflict (chapter,phase,variant) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_story_defs_v2(chapter,phase,variant,definition) values
+(3,6,'','{"no":6,"type":"normal","enemies":{"ids":["10290","10306","10097","10405","10229"]},"party":{"forced":["10384"],"exclude":["10383"],"maxGrade":"HIGH RARE"},"bossId":"10290","spare":{"10229":["10384"]},"hero":"10384","tutorial":false,"single":true,"loan":["10384","10383"],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(3,7,'','{"no":7,"type":"normal","enemies":{"ids":["10229","10040","10097","10466","10290"]},"party":{"forced":["10384","10383"]},"bossId":"10229","enemyFirst":true,"hero":"10384","tutorial":false,"single":true,"loan":["10384","10383"],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(3,8,'','{"no":8,"type":"normal","enemies":{"ids":["10123","10161","10160","10159","10158"]},"party":{"forced":["10384"]},"bossId":"10123","enemyFirst":true,"hero":"10384","tutorial":false,"single":true,"loan":["10384","10383"],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(3,9,'','{"no":9,"type":"normal","enemies":{"ids":["10123","10183","10161","10160","10159"]},"party":{"forced":["10383"],"maxGrade":"SUPER RARE"},"bossId":"10123","hero":"10384","tutorial":false,"single":true,"loan":["10384","10383"],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(3,10,'','{"no":10,"type":"boss","enemies":{"ids":["10200","10161","10160","10123","10025"]},"party":{"forced":["10384"],"exclude":["10383"]},"bossId":"10200","hero":"10384","tutorial":false,"single":true,"loan":["10384","10383"],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(4,1,'','{"no":1,"type":"normal","enemies":{"ids":["10153","10154","10155","10156","10157"]},"party":{"forced":["10300"]},"bossId":"10157","hero":"10300","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(4,2,'','{"no":2,"type":"normal","enemies":{"ids":["10153","10154","10156","10157","10158"]},"party":{"forced":["10300"]},"bossId":"10158","hero":"10300","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(4,3,'','{"no":3,"type":"normal","enemies":{"ids":["10160","10161","10162","10163","10159"]},"party":{"forced":["10300"]},"bossId":"10159","hero":"10300","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(4,4,'','{"no":4,"type":"normal","enemies":{"ids":["10156","10165","10166","10159","10164"]},"party":{"forced":["10300","10325"]},"bossId":"10164","rules":{"mustLive":["10300"]},"hero":"10300","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(4,5,'','{"no":5,"type":"normal","enemies":{"ids":["10156","10164","10165","10166","10167"]},"party":{"forced":["10300","10325"]},"bossId":"10167","rules":{"mustLive":["10300"]},"hero":"10300","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(4,6,'','{"no":6,"type":"normal","enemies":{"ids":["10168","10156","10154","10153","10159"]},"party":{"forced":["10300"]},"bossId":"10159","rules":{"mustLive":["10300"]},"hero":"10300","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(4,7,'','{"no":7,"type":"normal","enemies":{"ids":["10156","10154","10153","10159","10072"]},"party":{"forced":["10300"]},"bossId":"10072","rules":{"mustLive":["10300"]},"hero":"10300","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(4,8,'','{"no":8,"type":"normal","enemies":{"ids":["10160","10161","10162","10168","10072"]},"party":{"forced":["10300"]},"bossId":"10072","rules":{"revive":[{"id":"10072","level":1,"delay":2}]},"hero":"10300","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(4,9,'','{"no":9,"type":"normal","enemies":{"ids":["10161","10162","10072","10168","10325"]},"party":{"forced":["10300"]},"bossId":"10325","rules":{"revive":[{"id":"10072","level":"keep","delay":2},{"id":"10256","level":"keep","delay":2}]},"hero":"10300","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(4,10,'','{"no":10,"type":"normal","enemies":{"ids":["10301","10302","10302","10302","10302"],"levels":{"10301":5},"boost":{"10302":{"HP":317,"ATK":62,"DEF":62,"power":13277}}},"party":{"forced":["10325"]},"bossId":"10301","rules":{"invuln":"10301","expire":10,"revive":[{"id":"10302","level":1,"delay":1}]},"hero":"10300","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(5,1,'','{"no":1,"type":"normal","enemies":{"ids":["10153","10154","10155","10156","10157"],"storyLevels":{"10153":25,"10154":25,"10155":25,"10156":25,"10157":30}},"party":{"forced":["10442"]},"bossId":"10157","hero":"10442","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(5,2,'','{"no":2,"type":"normal","enemies":{"ids":["10143","10158","10155","10156","10159"],"storyLevels":{"10143":25,"10155":25,"10156":25,"10158":25,"10159":30}},"party":{"forced":["10442"]},"bossId":"10159","hero":"10442","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(5,3,'','{"no":3,"type":"normal","enemies":{"ids":["10159","10153","10154","10357","10360"],"boost":{"10360":{"HP":150,"ATK":30,"DEF":26,"power":2241}},"storyLevels":{"10153":25,"10154":25,"10159":25,"10357":25}},"party":{"forced":["10442"]},"bossId":"10360","hero":"10442","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(5,4,'','{"no":4,"type":"normal","enemies":{"ids":["10158","10160","10161","10162","10163"],"storyLevels":{"10158":25,"10160":25,"10161":25,"10162":25,"10163":30}},"party":{"forced":["10442"]},"bossId":"10163","hero":"10442","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(5,5,'','{"no":5,"type":"normal","enemies":{"ids":["10153","10154","10156","10164","10165"],"storyLevels":{"10153":25,"10154":25,"10156":25,"10164":25,"10165":30}},"party":{"forced":["10442"]},"bossId":"10165","hero":"10442","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(5,6,'','{"no":6,"type":"normal","enemies":{"ids":["10166","10167","10144","10145","10146"],"storyLevels":{"10144":25,"10145":25,"10146":30,"10166":25,"10167":25}},"party":{"forced":["10442"]},"bossId":"10146","hero":"10442","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(5,7,'','{"no":7,"type":"normal","enemies":{"ids":["10152","10147","10148","10149","10150"],"storyLevels":{"10147":25,"10148":25,"10149":25,"10150":30,"10152":25}},"party":{"forced":["10442"],"banClass":["DARK"]},"bossId":"10150","hero":"10442","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(5,8,'','{"no":8,"type":"normal","enemies":{"ids":["10152","10147","10148","10143","10150"],"storyLevels":{"10143":25,"10147":25,"10148":25,"10150":30,"10152":25}},"party":{"forced":["10442"],"banClass":["LIGHT"]},"bossId":"10150","hero":"10442","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(5,9,'','{"no":9,"type":"normal","enemies":{"ids":["10150","10152","10144","10145","10146"],"storyLevels":{"10144":25,"10145":25,"10146":30,"10150":25,"10152":25}},"party":{"forced":["10442"],"maxGrade":"SUPER RARE"},"bossId":"10146","hero":"10442","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(5,10,'','{"no":10,"type":"boss","enemies":{"ids":["10357","10168","10143","10147","10360"],"boost":{"10357":{"HP":240,"ATK":40,"DEF":30,"power":7800},"10360":{"HP":360,"ATK":62,"DEF":44,"power":4883}},"storyLevels":{"10143":25,"10147":25,"10168":25}},"party":{"forced":["10399"],"maxGrade":"SUPER RARE","exclude":["10442"]},"bossId":"10360","rules":{"undying":["10357"]},"hero":"10442","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(6,1,'','{"no":1,"type":"normal","enemies":{"ids":["10210","10151","10151"]},"party":{"forced":["10112","10111"]},"bossId":"10210","hero":"10110","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(6,2,'','{"no":2,"type":"normal","enemies":{"ids":["10146","10153","10143","10144","10145"]},"party":{"forced":["10111"]},"bossId":"10146","hero":"10110","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(6,3,'','{"no":3,"type":"normal","enemies":{"ids":["10152","10152","10152","10152","10152"]},"party":{"forced":["10111"]},"bossId":"10152","hero":"10110","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(6,4,'','{"no":4,"type":"normal","enemies":{"ids":["10163","10163","10163","10163","10163"]},"party":{"forced":["10111"],"exclude":["10325"]},"bossId":"10163","hero":"10110","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(6,5,'','{"no":5,"type":"normal","enemies":{"ids":["10166","10163","10163","10163","10163"]},"party":{"forced":["10110"],"exclude":["10111"]},"bossId":"10166","hero":"10110","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb)
+on conflict (chapter,phase,variant) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_story_defs_v2(chapter,phase,variant,definition) values
+(6,6,'','{"no":6,"type":"normal","enemies":{"ids":["10166","10166","10166","10166","10166"]},"party":{"forced":["10110"],"exclude":["10325","10111"]},"bossId":"10166","hero":"10110","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(6,7,'','{"no":7,"type":"normal","enemies":{"ids":["10419","10166","10166","10163","10163"]},"party":{"forced":["10110"],"exclude":["10325","10111","10112"]},"bossId":"10419","hero":"10110","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(6,8,'','{"no":8,"type":"normal","enemies":{"ids":["10035","10167","10167","10166","10166"]},"party":{"forced":["10110"],"exclude":["10325","10111","10112"]},"bossId":"10035","hero":"10110","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(6,9,'','{"no":9,"type":"normal","enemies":{"ids":["10321","10168","10168","10167","10167"]},"party":{"forced":["10110"],"exclude":["10325","10111","10112"]},"bossId":"10321","hero":"10110","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(6,10,'','{"no":10,"type":"boss","enemies":{"ids":["10325","10168","10168","10168","10168"]},"party":{"forced":["10110"],"exclude":["10325","10111","10112"]},"bossId":"10325","hero":"10110","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(7,1,'','{"no":1,"type":"normal","enemies":{"ids":["10162","10161","10161","10161","10161"],"boost":{"10161":{"HP":231,"ATK":48,"DEF":41,"storyLv":40,"power":8753},"10162":{"HP":267,"ATK":53,"DEF":46,"storyLv":40,"power":9939}}},"party":{"forced":["10115","10267"],"noMale":true,"mustLive":["10115"],"levels":{"10115":40,"10267":40}},"bossId":"10162","hero":"10115","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(7,2,'','{"no":2,"type":"normal","enemies":{"ids":["10163","10149","10148","10146","10146"],"boost":{"10146":{"HP":97,"ATK":19,"DEF":15,"storyLv":40,"power":1328},"10148":{"HP":160,"ATK":27,"DEF":18,"storyLv":40,"power":5017},"10149":{"HP":196,"ATK":36,"DEF":27,"storyLv":40,"power":6877},"10163":{"HP":391,"ATK":65,"DEF":56,"storyLv":40,"power":21555}}},"party":{"forced":["10115","10267"],"mustLive":["10115"],"levels":{"10115":40,"10267":40}},"bossId":"10163","hero":"10115","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(7,3,'','{"no":3,"type":"normal","enemies":{"ids":["10151","10148","10148","10148","10148"],"boost":{"10148":{"HP":160,"ATK":27,"DEF":18,"storyLv":40,"power":5017},"10151":{"HP":494,"ATK":74,"DEF":74,"storyLv":50,"power":26808}}},"party":{"forced":["10115","10267"],"mustLive":["10115"],"levels":{"10115":40,"10267":40}},"bossId":"10151","hero":"10115","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(7,4,'','{"no":4,"type":"normal","enemies":{"ids":["10165","10164","10164","10164","10164"],"boost":{"10164":{"HP":469,"ATK":74,"DEF":64,"storyLv":50,"power":25336},"10165":{"HP":494,"ATK":74,"DEF":74,"storyLv":50,"power":26808}}},"party":{"forced":["10115","10267"],"noMale":true,"mustLive":["10115"],"levels":{"10115":40,"10267":40}},"bossId":"10165","hero":"10115","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(7,5,'','{"no":5,"type":"normal","enemies":{"ids":["10164","10163","10163","10163","10163"],"boost":{"10163":{"HP":445,"ATK":74,"DEF":64,"storyLv":50,"power":24551},"10164":{"HP":526,"ATK":83,"DEF":72,"storyLv":60,"power":28430}}},"party":{"forced":["10267"],"noMale":true,"exclude":["10115"],"mustLive":["10267"]},"bossId":"10164","hero":"10115","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(7,6,'','{"no":6,"type":"normal","enemies":{"ids":["10267"],"boost":{"10267":{"HP":430,"ATK":65,"DEF":140,"storyLv":30,"power":41589}}},"party":{"forced":["10115"],"exclude":["10267"],"max":3,"maxGrade":"SUPER RARE","mustLive":[]},"bossId":"10267","hero":"10115","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(7,7,'','{"no":7,"type":"normal","enemies":{"ids":["10198","10196","10197","10199"],"boost":{"10196":{"HP":127,"ATK":16,"DEF":16,"storyLv":60,"power":1709},"10197":{"HP":127,"ATK":16,"DEF":16,"storyLv":60,"power":1709},"10198":{"HP":127,"ATK":16,"DEF":16,"storyLv":60,"power":1709},"10199":{"HP":240,"ATK":33,"DEF":33,"storyLv":60,"power":8337}}},"party":{"forced":["10018","10019","10299","10074"],"max":5,"noFemale":true,"maxMor":39,"mustLive":[]},"bossId":"10198","hero":"10115","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(7,8,'','{"no":8,"type":"normal","enemies":{"ids":["10144","10143","10143","10143","10143"],"boost":{"10143":{"HP":80,"ATK":17,"DEF":13,"storyLv":60,"power":1076},"10144":{"HP":80,"ATK":19,"DEF":14,"storyLv":60,"power":1126}}},"party":{"forced":["10115","10018"],"noFemale":true,"exclude":["10118"],"mustLive":["10115"]},"bossId":"10144","hero":"10115","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(7,9,'','{"no":9,"type":"normal","enemies":{"ids":["10299","10019","10018","10074"],"boost":{"10018":{"HP":251,"ATK":46,"DEF":31,"storyLv":60,"power":9153},"10019":{"HP":240,"ATK":44,"DEF":33,"storyLv":60,"power":9100},"10074":{"HP":48,"ATK":8,"DEF":10,"storyLv":60,"power":523},"10299":{"HP":554,"ATK":97,"DEF":69,"storyLv":60,"power":28335}}},"party":{"forced":["10115"],"exclude":["10267","10118"],"mustLive":["10115"]},"bossId":"10299","hero":"10115","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(7,10,'','{"no":10,"type":"boss","enemies":{"ids":["10116","10116","10116","10116","10116"],"boost":{"10116":{"HP":1008,"ATK":50,"DEF":151,"storyLv":60,"power":80121}}},"party":{"forced":["10115"],"exclude":["10118"],"mustLive":["10115"]},"bossId":"10116","hero":"10115","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(8,1,'','{"no":1,"type":"normal","enemies":{"ids":["10494","10495","10495","10495","10495"],"boost":{"10494":{"HP":111,"ATK":17,"DEF":14,"storyLv":40,"power":1433},"10495":{"HP":214,"ATK":27,"DEF":18,"storyLv":40,"power":6130}}},"party":{"forced":["10493"],"mustLive":["10493"],"levels":{"10493":80}},"bossId":"10494","hero":"10231","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(8,2,'','{"no":2,"type":"normal","enemies":{"ids":["10496","10497","10497","10497","10497"],"boost":{"10496":{"HP":386,"ATK":54,"DEF":54,"storyLv":40,"power":19302},"10497":{"HP":97,"ATK":14,"DEF":14,"storyLv":40,"power":1337}}},"party":{"forced":["10493"],"mustLive":["10493"],"levels":{"10493":80}},"bossId":"10496","hero":"10231","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(8,3,'','{"no":3,"type":"normal","enemies":{"ids":["10144","10145","10145","10145","10145"],"boost":{"10144":{"HP":70,"ATK":17,"DEF":13,"storyLv":40,"power":1003},"10145":{"HP":83,"ATK":18,"DEF":14,"storyLv":40,"power":1131}}},"party":{"forced":["10231"],"noMale":true,"mustLive":["10231"],"levels":{"10231":50}},"bossId":"10144","hero":"10231","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(8,4,'','{"no":4,"type":"normal","enemies":{"ids":["10501","10500","10500","10500","10500"],"boost":{"10500":{"HP":217,"ATK":48,"DEF":48,"storyLv":40,"power":9293},"10501":{"HP":458,"ATK":82,"DEF":82,"storyLv":40,"power":28432}}},"party":{"forced":["10231"],"noMale":true,"mustLive":["10231"],"levels":{"10231":50}},"bossId":"10501","hero":"10231","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(8,5,'','{"no":5,"type":"normal","enemies":{"ids":["10154","10144","10145","10153","10155"],"boost":{"10144":{"HP":70,"ATK":17,"DEF":13,"storyLv":42,"power":1003},"10145":{"HP":85,"ATK":18,"DEF":14,"storyLv":42,"power":1145},"10153":{"HP":85,"ATK":14,"DEF":10,"storyLv":42,"power":1066},"10154":{"HP":99,"ATK":16,"DEF":11,"storyLv":42,"power":1226},"10155":{"HP":113,"ATK":17,"DEF":13,"storyLv":42,"power":1383}}},"party":{"forced":["10231"],"noMale":true,"mustLive":["10231"],"levels":{"10231":42}},"bossId":"10154","hero":"10231","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(8,6,'','{"no":6,"type":"normal","enemies":{"ids":["10153","10154","10155","10156","10156"],"boost":{"10153":{"HP":87,"ATK":14,"DEF":10,"storyLv":46,"power":1082},"10154":{"HP":102,"ATK":16,"DEF":12,"storyLv":46,"power":1265},"10155":{"HP":116,"ATK":17,"DEF":13,"storyLv":46,"power":1406},"10156":{"HP":130,"ATK":19,"DEF":14,"storyLv":46,"power":1664}}},"party":{"forced":["10231"],"noMale":true,"mustLive":["10231"],"levels":{"10231":46}},"bossId":"10153","hero":"10231","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(8,7,'','{"no":7,"type":"normal","enemies":{"ids":["10157","10144","10145","10155","10156"],"boost":{"10144":{"HP":74,"ATK":18,"DEF":13,"storyLv":50,"power":1050},"10145":{"HP":89,"ATK":19,"DEF":15,"storyLv":50,"power":1207},"10155":{"HP":119,"ATK":18,"DEF":13,"storyLv":50,"power":1448},"10156":{"HP":134,"ATK":19,"DEF":15,"storyLv":50,"power":1713},"10157":{"HP":149,"ATK":21,"DEF":16,"storyLv":50,"power":1892}}},"party":{"forced":["10231"],"noMale":true,"mustLive":["10231"],"levels":{"10231":50}},"bossId":"10157","hero":"10231","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(8,8,'','{"no":8,"type":"normal","enemies":{"ids":["10500","10501","10501","10501","10501"],"boost":{"10500":{"HP":246,"ATK":55,"DEF":55,"storyLv":52,"power":10591},"10501":{"HP":534,"ATK":96,"DEF":96,"storyLv":52,"power":33210}}},"party":{"forced":["10231"],"noMale":true,"mustLive":["10231"],"levels":{"10231":52}},"bossId":"10500","hero":"10231","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(8,9,'','{"no":9,"type":"normal","enemies":{"ids":["10494","10495","10496","10144","10145"],"boost":{"10144":{"HP":76,"ATK":18,"DEF":14,"storyLv":54,"power":1079},"10145":{"HP":92,"ATK":20,"DEF":15,"storyLv":54,"power":1247},"10494":{"HP":122,"ATK":18,"DEF":15,"storyLv":54,"power":1556},"10495":{"HP":247,"ATK":31,"DEF":21,"storyLv":54,"power":7076},"10496":{"HP":461,"ATK":65,"DEF":65,"storyLv":54,"power":23122}}},"party":{"forced":["10493"],"exclude":["10231"],"mustLive":["10493"],"levels":{"10493":54}},"bossId":"10494","hero":"10231","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(8,10,'','{"no":10,"type":"normal","enemies":{"ids":["10156","10153","10154","10157","10157"],"boost":{"10153":{"HP":93,"ATK":16,"DEF":11,"storyLv":56,"power":1180},"10154":{"HP":108,"ATK":17,"DEF":12,"storyLv":56,"power":1329},"10156":{"HP":140,"ATK":20,"DEF":16,"storyLv":56,"power":1798},"10157":{"HP":155,"ATK":22,"DEF":17,"storyLv":56,"power":1977}}},"party":{"forced":["10231"],"noMale":true,"mustLive":["10231"],"levels":{"10231":56}},"bossId":"10156","hero":"10231","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(8,11,'','{"no":11,"type":"normal","enemies":{"ids":["10494","10495","10496","10497","10498"],"boost":{"10494":{"HP":126,"ATK":19,"DEF":16,"storyLv":58,"power":1623},"10495":{"HP":257,"ATK":32,"DEF":21,"storyLv":58,"power":7318},"10496":{"HP":482,"ATK":68,"DEF":68,"storyLv":58,"power":24180},"10497":{"HP":110,"ATK":16,"DEF":16,"storyLv":58,"power":1521},"10498":{"HP":259,"ATK":39,"DEF":64,"storyLv":58,"power":9524}}},"party":{"forced":["10493"],"exclude":["10231"],"mustLive":["10493"],"levels":{"10493":58}},"bossId":"10494","hero":"10231","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(8,12,'','{"no":12,"type":"normal","enemies":{"ids":["10155","10144","10145","10154","10157"],"boost":{"10144":{"HP":79,"ATK":19,"DEF":14,"storyLv":59,"power":1119},"10145":{"HP":95,"ATK":21,"DEF":16,"storyLv":59,"power":1301},"10154":{"HP":111,"ATK":17,"DEF":13,"storyLv":59,"power":1368},"10155":{"HP":126,"ATK":19,"DEF":14,"storyLv":59,"power":1536},"10157":{"HP":158,"ATK":22,"DEF":17,"storyLv":59,"power":2001}}},"party":{"forced":["10231"],"noMale":true,"mustLive":["10231"],"levels":{"10231":59}},"bossId":"10155","hero":"10231","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(8,13,'','{"no":13,"type":"normal","enemies":{"ids":["10493","10493","10493","10493","10493"],"boost":{"10493":{"HP":554,"ATK":83,"DEF":83,"storyLv":60,"power":41039}}},"party":{"forced":["10231"],"noMale":true,"mustLive":["10231"],"levels":{"10231":60}},"bossId":"10493","hero":"10231","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(8,14,'','{"no":14,"type":"normal","enemies":{"ids":["10494","10495","10496","10153","10156"],"boost":{"10153":{"HP":95,"ATK":16,"DEF":11,"storyLv":60,"power":1195},"10156":{"HP":143,"ATK":21,"DEF":16,"storyLv":60,"power":1843},"10494":{"HP":127,"ATK":19,"DEF":16,"storyLv":60,"power":1631},"10495":{"HP":262,"ATK":33,"DEF":22,"storyLv":60,"power":7501},"10496":{"HP":493,"ATK":69,"DEF":69,"storyLv":60,"power":24657}}},"party":{"forced":["10231"],"noMale":true,"mustLive":["10231"],"levels":{"10231":60}},"bossId":"10494","hero":"10231","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(8,15,'','{"no":15,"type":"boss","enemies":{"ids":["10502"],"boost":{"10502":{"HP":1344,"ATK":151,"DEF":151,"storyLv":60,"power":146456}}},"party":{"forced":["10231"],"noMale":true,"mustLive":["10231"],"levels":{"10231":60}},"bossId":"10502","hero":"10231","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb)
+on conflict (chapter,phase,variant) do update set definition=excluded.definition;$vr_statement$;
+
   insert into vr_staging_install.parts(part_no, bundle_hash, part_hash, project_ref, db_id)
-  values (10, 'd58808b88d2b2323a18856d9663da6bec0c35ea9b3485319d62a3c189dd7aa8e', '3dd6159642253d3ac4cf0f4ce435413f9025030edda8c2ffb8e09f1421ef6015', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
+  values (10, '410cdea919d7fef2dc1c1430be099965278672866ca01148fb8f0da2240951aa', '35278980f56707d0441dd02bffda4173e2abb401f347e3da2c02870778b1b7fe', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
 end $vr_install_part$;
 commit;
-select '10_install.sql: 완료 또는 이미 완료 (10/10)' as result;
+select '10_install.sql: 완료 또는 이미 완료 (10/12)' as result;

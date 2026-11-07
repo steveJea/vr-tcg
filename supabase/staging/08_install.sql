@@ -1,4 +1,4 @@
--- ⚠ 테스트 전용 8/10. 운영 실행 금지. 파일 전체를 번호 순서대로 실행.
+-- ⚠ 테스트 전용 8/12. 운영 실행 금지. 파일 전체를 번호 순서대로 실행.
 -- 대상 프로젝트: cuyqchmdcnsgzkwyclji; 운영 htarwisgkkphutxxnuak 금지.
 -- 완료한 파일은 다시 실행해도 건너뜀. 중간 오류는 해당 파일만 되돌아감.
 -- 실제 project_ref는 SQL Editor가 보장해서 제공하지 않음: DB 고유번호를 대조.
@@ -40,7 +40,7 @@ set local check_function_bodies = off;
 
 do $vr_install_part$
 begin
-  if exists (select 1 from vr_staging_install.parts where bundle_hash <> 'd58808b88d2b2323a18856d9663da6bec0c35ea9b3485319d62a3c189dd7aa8e' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
+  if exists (select 1 from vr_staging_install.parts where bundle_hash <> '410cdea919d7fef2dc1c1430be099965278672866ca01148fb8f0da2240951aa' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
     raise exception 'STOP: 다른 버전/DB의 설치 기록입니다. 파일을 섞지 마세요.';
   end if;
   if exists (select 1 from vr_staging_install.parts where part_no = 8) then
@@ -1831,7 +1831,7 @@ create or replace function public._camp_plv(p_uid uuid) returns int language plp
 declare lv int; begin select (_player_sync(p_uid)).level into lv; return coalesce(lv, 1); end $$;$vr_statement$;
 
   insert into vr_staging_install.parts(part_no, bundle_hash, part_hash, project_ref, db_id)
-  values (8, 'd58808b88d2b2323a18856d9663da6bec0c35ea9b3485319d62a3c189dd7aa8e', '88b786d177f12a46ca801845bbeb154575ba785421933e5efbc0d107939c19ad', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
+  values (8, '410cdea919d7fef2dc1c1430be099965278672866ca01148fb8f0da2240951aa', '88b786d177f12a46ca801845bbeb154575ba785421933e5efbc0d107939c19ad', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
 end $vr_install_part$;
 commit;
-select '08_install.sql: 완료 또는 이미 완료 (8/10)' as result;
+select '08_install.sql: 완료 또는 이미 완료 (8/12)' as result;

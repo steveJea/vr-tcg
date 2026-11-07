@@ -50,9 +50,9 @@
   function missionRows(list, all, keyAttr, held) {
     return `${list.map(m => { const ok = m.prog >= m.goal;
       return `<div class="daily-m ${m.claimed ? 'done' : ''}"><div class="daily-mt ${!m.claimed && GO[m.key] ? 'go' : ''}" ${!m.claimed && GO[m.key] ? `data-go="${m.key}" role="button" tabindex="0" title="바로 가기"` : ''}><b>${m.name}${!m.claimed && GO[m.key] ? ' <span class="daily-arrow">›</span>' : ''}</b><small>${rwText(m.reward)}</small><div class="daily-bar"><i style="width:${Math.round(m.prog / m.goal * 100)}%"></i></div></div>
-      <button class="daily-claim sm" ${keyAttr}="${m.key}" ${m.claimed || held || !ok ? 'disabled' : ''}>${m.claimed ? '완료' : held ? '지급 보류' : ok ? '받기' : `${m.prog}/${m.goal}`}</button></div>`; }).join('')}
+      <button class="daily-claim sm" ${keyAttr}="${m.key}" ${m.claimed || held || m.held || !ok ? 'disabled' : ''}>${m.claimed ? '완료' : held || m.held ? '지급 보류' : ok ? '받기' : `${m.prog}/${m.goal}`}</button></div>`; }).join('')}
       <div class="daily-m all ${all.claimed ? 'done' : ''}"><div class="daily-mt"><b>🎁 모든 미션 완료</b><small>${rwText(all.reward)}</small><div class="daily-bar"><i style="width:${Math.round(all.done / all.goal * 100)}%"></i></div></div>
-      <button class="daily-claim sm" ${keyAttr}="all" ${all.claimed || held || all.done < all.goal ? 'disabled' : ''}>${all.claimed ? '완료' : held ? '지급 보류' : all.done >= all.goal ? '받기' : `${all.done}/${all.goal}`}</button></div>`;
+      <button class="daily-claim sm" ${keyAttr}="all" ${all.claimed || held || all.held || all.done < all.goal ? 'disabled' : ''}>${all.claimed ? '완료' : held || all.held ? '지급 보류' : all.done >= all.goal ? '받기' : `${all.done}/${all.goal}`}</button></div>`;
   }
   function open() {
     document.querySelector('.daily-pop:not(.vr-in-page)')?.remove();
