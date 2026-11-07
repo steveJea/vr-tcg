@@ -16,7 +16,12 @@ for (const host of ['unknown.example', 'tcg.mbbs.kr.evil.test', 'fake.workers.de
 }
 assert.equal(select('unknown.example', '?vrEnv=production').enabled, false);
 assert.equal(select('dev-tcg.mbbs.kr').isStaging, true);
-assert.equal(select('dev-tcg.mbbs.kr').enabled, false, '설정 전 테스트 DB 요청 차단');
+assert.equal(select('dev-tcg.mbbs.kr').enabled, true, '설정된 테스트 DB 사용');
+assert.equal(select('dev-tcg.mbbs.kr').supabaseUrl, STAGING.supabaseUrl);
+assert.notEqual(STAGING.supabaseUrl, prod.supabaseUrl);
+assert.match(STAGING.anonKey, /^sb_publishable_/);
+const unconfigured = { ...STAGING, supabaseUrl: '', anonKey: '' };
+assert.equal(select('dev-tcg.mbbs.kr', '', unconfigured).enabled, false, '설정 전 테스트 DB 요청 차단');
 const jwt = role => `eyJhbGciOiJub25lIn0.${btoa(JSON.stringify({ role, ref: 'abcdefghijklmnopqrst' }))}.FAKE_NOT_A_REAL_KEY`;
 const test = { hostnames: ['dev-tcg.mbbs.kr', 'vr-tcg-staging.example.workers.dev'], supabaseUrl: 'https://abcdefghijklmnopqrst.supabase.co', anonKey: jwt('anon') };
 for (const host of test.hostnames) {
@@ -41,8 +46,10 @@ const elements = [];
 const doc = { getElementById: id => elements.find(e => e.id === id), createElement: () => ({ style: {}, setAttribute() {} }), body: { appendChild: e => elements.push(e) } };
 showTestBadge(doc, prod); assert.equal(elements.length, 0);
 showTestBadge(doc, select('unknown.example')); assert.equal(elements.length, 0);
-showTestBadge(doc, select('dev-tcg.mbbs.kr')); assert.equal(elements[0].textContent, 'TEST · DB 미설정');
-showTestBadge(doc, select('dev-tcg.mbbs.kr')); assert.equal(elements.length, 1, '중복 배지 없음');
+showTestBadge(doc, select('dev-tcg.mbbs.kr', '', unconfigured)); assert.equal(elements[0].textContent, 'TEST · DB 미설정');
+showTestBadge(doc, select('dev-tcg.mbbs.kr', '', unconfigured)); assert.equal(elements.length, 1, '중복 배지 없음');
+elements.length = 0;
+showTestBadge(doc, select('dev-tcg.mbbs.kr')); assert.equal(elements[0].textContent, 'TEST');
 const cloud = await readFile(new URL('../js/cloud.js', import.meta.url), 'utf8');
 const ranking = await readFile(new URL('../js/ranking.js', import.meta.url), 'utf8');
 for (const text of [cloud, ranking]) {
