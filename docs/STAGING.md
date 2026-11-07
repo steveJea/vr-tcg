@@ -57,7 +57,7 @@
 - `anonKey`: 새 테스트 anon 또는 publishable 키
 - `hostnames`: 실제 테스트 사이트의 정확한 호스트 이름 (https://와 경로는 빼기)
 
-`vr-tcg-staging.YOUR_SUBDOMAIN.workers.dev`는 예시입니다. Cloudflare가 발급한 실제 주소로 교체해야 합니다. `dev-tcg.mbbs.kr`을 쓰지 않으면 목록에서 빼도 됩니다. 모든 `workers.dev` 주소를 통째로 허용하지 않습니다.
+`vr-tcg-staging.notcold.workers.dev`는 실제 테스트 주소입니다. `dev-tcg.mbbs.kr`을 쓰지 않으면 목록에서 빼도 됩니다. 모든 `workers.dev` 주소를 통째로 허용하지 않습니다.
 
 설정 전에는 테스트 DB에 접속하지 않고 `TEST · DB 미설정`만 표시합니다. 운영 URL/키를 잘못 넣거나, 등록하지 않은 주소에서 열어도 운영 DB로 자동 연결하지 않습니다. 등록된 테스트 주소의 작은 `TEST` 표시는 관리자 화면에도 나옵니다.
 
