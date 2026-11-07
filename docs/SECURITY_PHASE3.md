@@ -10,12 +10,22 @@
    1·2단계가 적용된 현재 staging은 **3단계 SQL만** 실행. 파일 전체가 한 트랜잭션이며 재실행 가능.
    `pg_control_system().system_identifier::text = '7703759698107299042'`를 강제한다.
    다른 DB/NULL/권한 오류는 중단. guard 삭제·임의 SET 우회 금지.
-3. 같은 커밋의 **Supabase Edge Function `pvp-verify-v3`를 배포**한다.
-   예시(소유자 실행): `supabase functions deploy pvp-verify-v3 --project-ref cuyqchmdcnsgzkwyclji`.
-   `supabase/config.toml`의 `verify_jwt = true` 유지. `_shared/pvp-engine-v3.mjs`, handler, entrypoint를 함께 배포.
-   함수는 runtime의 `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEYS`, `SUPABASE_SECRET_KEYS`를 사용한다.
-   legacy `SUPABASE_ANON_KEY`/`SUPABASE_SERVICE_ROLE_KEY`도 지원한다. 키를 SQL/브라우저/명령 인수/로그에 넣지 않는다.
-   새 secret key는 `apikey`에만, legacy service-role JWT는 서버의 Authorization에도 전달한다.
+3. **CLI/액세스 토큰 없이 대시보드에서 배포할 수 있다.**
+   - 테스트 프로젝트 → **Edge Functions → Deploy a new function → Via Editor**.
+   - 함수 이름은 정확히 **`pvp-verify-v3`**.
+   - 편집기의 `index.ts` 기본 내용을 모두 지우고,
+     [`dashboard_single_file.ts`](../supabase/functions/pvp-verify-v3/dashboard_single_file.ts)의 **전체 내용**을 붙여 넣는다.
+     이 파일 하나에 정식 엔진·데이터·handler가 들어 있어 `_shared` 등 다른 파일을 만들 필요 없다.
+   - **Verify JWT / JWT verification은 ON**으로 유지하고 **Deploy function**을 누른다.
+   - 액세스 토큰이나 키를 새로 만들거나 채팅/코드/편집기에 붙이지 않는다. 별도 사용자 정의 secret도 없다.
+     `SUPABASE_URL` 및 `SUPABASE_PUBLISHABLE_KEYS`/`SUPABASE_SECRET_KEYS`는 Supabase가 자동 주입한다.
+     legacy `SUPABASE_ANON_KEY`/`SUPABASE_SERVICE_ROLE_KEY`도 지원하며 역시 자동 주입된다.
+     정산에는 **서비스 역할 권한**이 필요하지만, 사용자가 그 키를 복사할 필요는 없다.
+   - JWT gateway 검사와 별개로 handler도 Auth `/user`에서 로그인 토큰을 검증한다.
+     Dashboard의 기본 Hello World 테스트 body/anon key만으로는 정상 PvP 응답이 나오지 않는 것이 맞다.
+     배포 후 테스트 게임에 로그인해 PvP로 확인한다.
+   - 저장소의 기존 `index.ts`는 개발자용 다중 파일 진입점이다. 대시보드에는 **dashboard_single_file.ts 전체를 index.ts로** 넣는다.
+     생성 파일은 JavaScript 엔진 번들이므로 `@ts-nocheck`를 명시하며 원본/단일 파일 양쪽의 실제 replay·SQL parity suite로 검증한다.
 4. 같은 버전의 staging 웹 자산을 배포한다. **SQL만으로는 PvP가 재개되지 않는다. 함수까지 필수**다.
    함수 미배포/인증/버전/네트워크 오류는 fail-closed이며 로컬 승리를 지급 근거로 사용하지 않는다.
    점검 시간에 전환하고 진행 중인 옛 전투는 끝낸 뒤 적용한다. 옛 attempt는 승격/소급 지급하지 않는다.
@@ -88,6 +98,7 @@
 
 ```bash
 node tools/build_phase3_engine.mjs          # 엔진/데이터 변경 때 생성
+node tools/build_phase3_dashboard.mjs       # 대시보드용 단일 파일 생성/갱신
 node tools/build_staging_sql.mjs
 node tools/build_staging_parts.mjs
 npm run check:staging
@@ -129,6 +140,7 @@ PGlite의 클러스터 번호만 **메모리**에서 바인딩한다. 배포 SQL
 일반 사용자는 변경할 수 없다. 재실행해도 false를 true로 되돌리지 않는다.
 프런트만 옛 버전으로 롤백하면 금지 RPC를 호출하므로, 안전하게 PvP를 닫고 원인을 수정한다.
 
-참고: [Supabase Functions Auth](https://supabase.com/docs/guides/functions/auth),
+참고: [Dashboard 배포](https://supabase.com/docs/guides/functions/quickstart-dashboard),
+[Supabase Functions Auth](https://supabase.com/docs/guides/functions/auth),
 [Auth headers](https://supabase.com/docs/guides/functions/auth-headers),
 [Runtime secrets](https://supabase.com/docs/guides/functions/secrets).

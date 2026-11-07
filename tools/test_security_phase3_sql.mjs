@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { PGlite } from '@electric-sql/pglite';
 import { buildSql, INSTALL_ACK } from './build_staging_sql.mjs';
 import { ENGINE_VERSION, verifyBattle } from '../supabase/functions/_shared/pvp-engine-v3.mjs';
+import { dashboardHandler } from './load_phase3_dashboard.mjs';
 import { createHandler } from '../supabase/functions/pvp-verify-v3/handler.mjs';
 import { setSkillData } from '../js/skills.js';
 import { parseCSV, setCardPool } from '../js/rules.js';
@@ -37,7 +38,8 @@ const fetcher=async(url,opts)=>{
  try { const data=await as(trusted?null:uid,()=>val(`select public.${name}(${ps.map((_,i)=>'$'+(i+1)).join(',')}) v`,ps),trusted?'service_role':'authenticated'); return Response.json(data); }
  catch(e) { return Response.json({message:e.message},{status:400}); }
 };
-const handler=createHandler(env,fetcher);
+const factory=process.argv.includes('--dashboard')?dashboardHandler:createHandler;
+const handler=factory(env,fetcher);
 const http=async(body,token='fixture-me',h=handler)=>{
  const r=await h(new Request('https://example.invalid/pvp-verify-v3',{method:'POST',headers:{'content-type':'application/json',authorization:'Bearer '+token},body:JSON.stringify(body)}));
  return {status:r.status,data:await r.json()};
@@ -115,7 +117,7 @@ try {
  assert.equal((await http({op:'finish',id:'1',actions:null,wins:99})).status,400);
  assert.equal((await http({op:'finish',id:'1',actions:[[{k:'auto'}]]})).status,400);
  assert.equal((await http({op:'start',league:'open',mode:'1v1',request:req(999),control:'auto',version:'stale'})).status,409);
- assert.equal((await http({op:'forfeit',id:'1'},'fixture-me',createHandler({...env,SUPABASE_URL:'https://htarwisgkkphutxxnuak.supabase.co'},fetcher))).status,503);
+ assert.equal((await http({op:'forfeit',id:'1'},'fixture-me',factory({...env,SUPABASE_URL:'https://htarwisgkkphutxxnuak.supabase.co'},fetcher))).status,503);
  const first=await start();
  const reqBody={op:'start',league:'open',mode:'1v1',request:req(serial),control:'auto',version:ENGINE_VERSION};
  assert.equal((await http(reqBody)).data.id,first.id,'idempotent start reserves one try');
@@ -204,5 +206,5 @@ try {
  await reject(`select pvp_claim_tier('open','1v1')`,[],/verification pending/);
  assert.equal((await rpc(`select pvp_status('open','1v1') v`)).reward_held,true);
  assert(authCalls>10 && restCalls>10);
- console.log('Phase3 PGlite + real handler: staging guard/idempotency, JWT/ACL/ownership, canonical auto/manual replay, both ratings, rewards/events, transaction rollback, legacy isolation, expiry/forfeit, season claims and kill switch OK');
+ console.log((process.argv.includes('--dashboard')?'Dashboard standalone / ':'')+'Phase3 PGlite + real handler: staging guard/idempotency, JWT/ACL/ownership, canonical auto/manual replay, both ratings, rewards/events, transaction rollback, legacy isolation, expiry/forfeit, season claims and kill switch OK');
 } finally { await db.close(); }
