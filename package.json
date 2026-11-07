@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "build:staging": "node tools/build_staging.mjs",
-    "test:staging": "node tools/test_staging_config.mjs && node tools/test_staging_sql.mjs && node tools/test_staging_sql.mjs --supabase-defaults",
+    "test:staging": "node tools/test_staging_config.mjs && node tools/test_staging_sql.mjs && node tools/test_staging_sql.mjs --supabase-defaults && node tools/test_staging_parts.mjs",
     "check:staging": "node --check js/config.js && node --check js/cloud.js && node --check js/ranking.js",
     "deploy:staging": "npm run build:staging && wrangler deploy"
   },
