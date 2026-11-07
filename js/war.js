@@ -13,7 +13,7 @@ const gi = (n, e, c = '') => `<img class="gi ${c}" src="img/ui/guild/${n}.webp" 
 const RW = { loyalty: gi('cur_loyalty', '🩸'), gold: gi('cur_gold', '🪙'), gem: gi('cur_gem', '🔮'), tickets: gi('cur_ticket', '🎟️') };
 const rwTxt = rw => Object.entries(rw || {}).filter(([k, v]) => RW[k] && v).map(([k, v]) => `<span>${RW[k]}${n(v)}</span>`).join('');
 const ROLE_ORDER = ['def', 'atk', 'mid', 'boss', 'etc'];
-const ERR = { 'not in guild': '조직에 들어가야 해요', 'not allowed': '권한이 없어요', 'signup closed': '신청 기간이 아니에요', 'need members': '조직원 10명 이상 필요해요', 'not entered': '이번 시즌 참가 명단에 없어요 (조직 레벨 3부터 자동 참가)', 'roster locked': '시즌 중엔 아지트(14번)만 바꿀 수 있어요', 'battle hours': '전투 시간(09~23시)에는 배치를 바꿀 수 없어요',
+const ERR = { 'reward verification pending': '지급 보류', 'not in guild': '조직에 들어가야 해요', 'not allowed': '권한이 없어요', 'signup closed': '신청 기간이 아니에요', 'need members': '조직원 10명 이상 필요해요', 'not entered': '이번 시즌 참가 명단에 없어요 (조직 레벨 3부터 자동 참가)', 'roster locked': '시즌 중엔 아지트(14번)만 바꿀 수 있어요', 'battle hours': '전투 시간(09~23시)에는 배치를 바꿀 수 없어요',
   'defense locked': '방어 덱은 시즌 중 못 바꿔요', 'same card': '1·2번 덱에 같은 인재는 안 돼요', 'card not owned': '덱 인재를 다시 골라 주세요', 'duplicate card': '같은 인재는 한 명만', 'deck size': '덱은 1~5장',
   'not battle time': '전투 시간은 09:00~23:00', 'no match': '오늘 경기가 없어요', 'match ended': '오늘 경기는 끝났어요', 'not in roster': '전쟁 명단에 없어요', 'ajit destroyed': '내 아지트가 무너져 공격할 수 없어요',
   'no attacks': '오늘 공격 5회를 다 썼어요', 'already destroyed': '이미 무너진 아지트', 'target busy': '다른 조직원이 공격 중', 'defense first': '방어조 5곳을 먼저 무너뜨리세요', 'no attack deck': '공격 덱을 먼저 정하세요',

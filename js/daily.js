@@ -1,10 +1,10 @@
 // ===== 📅 일일 미션 + 출석 보상 + 📋 주간 미션 — 서버: supabase/daily.sql · daily_social.sql =====
 // 버튼: [data-dailybtn] (메인 상단·스토리 허브) · 받을 수 있는 보상 수 뱃지 · 한국 시간 00:00 / 월요일 00:00 초기화
-// 진행: game.js 가 'vr:daily' 이벤트({k:'battle', mode, win} · {k:'skill'})를 보내면 여기서 서버 daily_track · weekly_track 호출
+// 진행도는 서버만 확정. 브라우저 전투 이벤트는 상태 새로고침만 요청한다.
 // SQL 실행 전이거나 비로그인이면 버튼이 안 보임
 (() => {
   const missing = e => /PGRST202|PGRST205|42883|42P01|Could not find|does not exist/i.test(`${e?.code} ${e?.message}`);
-  let cache = null, week = null, off = false, weekOff = false, skills = 0;
+  let cache = null, week = null, off = false, weekOff = false;
   async function rpc(name, args) {
     const c = window.VRCloud, sb = c?.sb; if (!sb || !c?.user) return null;
     const { data, error } = await sb.rpc(name, args);
@@ -14,7 +14,7 @@
   const n = v => Number(v || 0).toLocaleString('ko-KR');
   const rwText = r => [r?.gold && `🪙 ${n(r.gold)}`, r?.gem && `🔮 ${n(r.gem)}`, r?.tickets && `🎟️ ${r.tickets}`, r?.stamina && `🔋 ${r.stamina}`].filter(Boolean).join(' · ');
   function toast(t) { const el = document.createElement('div'); el.className = 'gem-toast'; el.textContent = t; document.body.appendChild(el); setTimeout(() => el.remove(), 2600); }
-  const ERR = { 'already claimed': '이미 받았어요', 'not done': '아직 완료하지 않았어요', 'login required': '로그인이 필요해요' };
+  const ERR = { 'already claimed': '이미 받았어요', 'not done': '아직 완료하지 않았어요', 'login required': '로그인이 필요해요', 'reward verification pending': '지급 보류' };
   const errText = e => { const m = String(e?.message || e); const k = Object.keys(ERR).find(x => m.includes(x)); return k ? ERR[k] : m.slice(0, 60); };
   const readyDaily = s => !s ? 0 : (s.attend.today ? 0 : 1) + s.missions.filter(m => !m.claimed && m.prog >= m.goal).length + (!s.all.claimed && s.all.done >= s.all.goal ? 1 : 0);
   const readyWeek = s => !s ? 0 : s.missions.filter(m => !m.claimed && m.prog >= m.goal).length + (!s.all.claimed && s.all.done >= s.all.goal ? 1 : 0);
@@ -47,12 +47,12 @@
     arcade: () => window.VRArcadeHub?.open(), win: () => window.VRArcadeHub?.open(), skill: () => window.VRArcadeHub?.open(),
     story: () => window.VRStory?.enter?.(), tower: () => window.VRQuest?.open?.(),
   };
-  function missionRows(list, all, keyAttr) {
+  function missionRows(list, all, keyAttr, held) {
     return `${list.map(m => { const ok = m.prog >= m.goal;
       return `<div class="daily-m ${m.claimed ? 'done' : ''}"><div class="daily-mt ${!m.claimed && GO[m.key] ? 'go' : ''}" ${!m.claimed && GO[m.key] ? `data-go="${m.key}" role="button" tabindex="0" title="바로 가기"` : ''}><b>${m.name}${!m.claimed && GO[m.key] ? ' <span class="daily-arrow">›</span>' : ''}</b><small>${rwText(m.reward)}</small><div class="daily-bar"><i style="width:${Math.round(m.prog / m.goal * 100)}%"></i></div></div>
-      <button class="daily-claim sm" ${keyAttr}="${m.key}" ${m.claimed || !ok ? 'disabled' : ''}>${m.claimed ? '완료' : ok ? '받기' : `${m.prog}/${m.goal}`}</button></div>`; }).join('')}
+      <button class="daily-claim sm" ${keyAttr}="${m.key}" ${m.claimed || held || !ok ? 'disabled' : ''}>${m.claimed ? '완료' : held ? '지급 보류' : ok ? '받기' : `${m.prog}/${m.goal}`}</button></div>`; }).join('')}
       <div class="daily-m all ${all.claimed ? 'done' : ''}"><div class="daily-mt"><b>🎁 모든 미션 완료</b><small>${rwText(all.reward)}</small><div class="daily-bar"><i style="width:${Math.round(all.done / all.goal * 100)}%"></i></div></div>
-      <button class="daily-claim sm" ${keyAttr}="all" ${all.claimed || all.done < all.goal ? 'disabled' : ''}>${all.claimed ? '완료' : all.done >= all.goal ? '받기' : `${all.done}/${all.goal}`}</button></div>`;
+      <button class="daily-claim sm" ${keyAttr}="all" ${all.claimed || held || all.done < all.goal ? 'disabled' : ''}>${all.claimed ? '완료' : held ? '지급 보류' : all.done >= all.goal ? '받기' : `${all.done}/${all.goal}`}</button></div>`;
   }
   function open() {
     document.querySelector('.daily-pop:not(.vr-in-page)')?.remove();
@@ -65,9 +65,9 @@
           return `<div class="daily-day ${got ? 'got' : ''} ${now ? 'now' : ''} ${d === 7 ? 'big' : ''}"><b>${d}일</b><span>${rwText(r).replace(/ · /g, '<br>')}</span>${got ? '<i>✔</i>' : ''}</div>`; }).join('')}</div>
         <button class="daily-claim" data-att ${a.today ? 'disabled' : ''}>${a.today ? '오늘 출석 완료 ✔' : `${nextStep}일째 출석 보상 받기`}</button>` : ''}
         ${s ? `<h3 class="daily-h">📋 일일 미션 <small>${left(s.next_reset)}</small></h3>
-        <div class="daily-list">${missionRows(s.missions, s.all, 'data-m')}</div>` : ''}
+        <div class="daily-list">${missionRows(s.missions, s.all, 'data-m', s.reward_held)}</div>` : ''}
         ${week ? `<h3 class="daily-h">🗓️ 주간 미션 <small>${left(week.next_reset)}</small></h3>
-        <div class="daily-list">${missionRows(week.missions, week.all, 'data-w')}</div>` : ''}</div>`;
+        <div class="daily-list">${missionRows(week.missions, week.all, 'data-w', week.reward_held)}</div>` : ''}</div>`;
       pop.querySelector('[data-x]').onclick = () => pop.remove();
       pop.querySelector('[data-att]')?.addEventListener('click', async () => { await claim('attend_claim'); draw(); });
       pop.querySelectorAll('[data-go]').forEach(el => el.onclick = () => { const f = GO[el.dataset.go]; pop.remove(); f?.(); });
@@ -78,35 +78,7 @@
     if (!window.VRPages?.host?.('daily', '🗓️ 출석 · 미션', pop)) document.body.appendChild(pop);
     draw(); status().then(draw);
   }
-  let achOff = false;
-  function achTrack(kind, k) {
-    if (achOff || !window.VRCloud?.user) return;
-    window.VRCloud.sb?.rpc('ach_track', { p_kind: kind, p_n: k }).then(({ error }) => { if (error && missing(error)) achOff = true; }, () => {});
-  }
-  async function track(kind, k = 1) {
-    if (!window.VRCloud?.user) return;
-    const jobs = [];
-    if (!off) jobs.push(rpc('daily_track', { p_kind: kind, p_n: k }).catch(e => console.warn('[daily]', e?.message)));
-    if (!weekOff) jobs.push(rpc('weekly_track', { p_kind: kind, p_n: k }).catch(e => console.warn('[weekly]', e?.message)));
-    await Promise.all(jobs);
-  }
-  window.addEventListener('vr:daily', async e => {
-    const d = e.detail || {};
-    if (d.k === 'skill') { skills++; return; }
-    if (d.k !== 'battle' || !d.mode) return;
-    const jobs = [];
-    if (skills) { jobs.push(track('skill', skills)); achTrack('skill', skills); skills = 0; }
-    if (d.mode === 'arcade' && d.win) achTrack('arcade_win', 1);
-    if (d.mode === 'arcade') jobs.push(track('arcade'));
-    if (d.mode === 'tower') jobs.push(track('tower'));
-    if (d.mode === 'story' && d.win) {
-      // 소탕 n회 = 스테이지 n회 클리어 (daily per=1 · weekly per=2 이라 회차마다 호출)
-      const n = Math.max(1, d.n | 0);
-      for (let i = 0; i < n; i++) jobs.push(track('story'));
-    }
-    if (d.win && !d.sweep) jobs.push(track('win'));   // 소탕은 전투 승리가 아님 → story 만 n회
-    await Promise.all(jobs); status();
-  });
+  window.addEventListener('vr:daily', e => { if (e.detail?.k === 'battle') status(); });
   window.VRDaily = { open, status, paint };
   setTimeout(() => { paint(); status(); }, 1500); setTimeout(() => { paint(); status(); }, 4000);
   new MutationObserver(() => { if (document.querySelector('[data-dailybtn]:empty')) paint(); }).observe(document.body, { childList: true, subtree: true });
