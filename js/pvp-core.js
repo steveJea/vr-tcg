@@ -112,7 +112,7 @@ export function* matchGen(deckA, deckB, r, rec = null, manual = false, acts = nu
           const inp = yield { ask: true, A, B, A0, B0, t: t + 1 };
           a = resolveAct(inp, A, B, A0, B0, turn, autoNext);
           if (a === null) { acts?.push({ k: 'end' }); break; }
-          if (a === false) { k--; continue; }
+          if (a === false) { if (opt.strict) throw new Error('illegal action'); k--; continue; }
           if (a.none) { acts?.push({ k: 'end' }); break; }
           acts?.push(a.rec);
         } else { a = autoNext(cur, op, turn); if (!a) break; }

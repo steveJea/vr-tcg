@@ -1,8 +1,9 @@
 // ===== 비동기 PvP 화면 =====
-// 서버: supabase/pvp.sql (pvp_status / pvp_set_deck / pvp_start / pvp_report / pvp_rankings). 전투 계산: js/pvp-core.js (양쪽 자동 AI)
+// 서버: security_phase3_pvp.sql + pvp-verify-v3 (공식 승패·보상은 서버 엔진 재생만). 화면: js/pvp-core.js
 // 리그: 무제한(open) · HR 이하(hr, 코스트 150) / 모드: 1v1 · 3v3(3덱 2선승) / 하루 10회 · 주간 시즌(월 00:00 KST)
 import { LEAGUES, MODES, snapCard, deckCheck, runSeries, manualMatch, roundSeed, GUARD_GRADES, BOSS_MEMBERS } from './pvp-core.js';
 const VIEW = () => window.TCG?.viewBattle;   // 스토리·탑과 같은 전투 화면 (js/game.js)
+import { PVP_ENGINE_VERSION } from './pvp-engine-version.js';
 import { modeToggle, bindMode, battleMode, playManual } from './manual-ui.js';
 const IMG = 'https://raw.githubusercontent.com/steveJea/vr-ideal-worldcup/main/img/bt_img/';
 const $ = id => document.getElementById(id);
@@ -17,7 +18,50 @@ async function rpc(name, args) {
   const sb = window.VRCloud?.sb; if (!sb) throw new Error('offline');
   const { data, error } = await sb.rpc(name, args); if (error) throw new Error(error.message); return data;
 }
-const ERR = { 'guard grade': '리더(수비대장)는 HR 이하', 'boss members': '멤버 1장 이상', 'no attempts left': '오늘 횟수 끝', 'not enough gem': '🔮 부족', 'deck required': '덱 필요', 'card not owned': '없는 인재', 'duplicate card': '중복', 'grade not allowed': 'HR 이하만', 'cost over 150': '코스트 150 초과', 'card used in another deck': '다른 덱에 있음', 'login required': '로그인 필요' };
+// Ranked results only cross the authenticated verifier. No client win/loss RPC.
+async function verifyRpc(body) {
+  if (window.__PVP_MOCK) return window.__PVP_MOCK('pvp-verify-v3', body);
+  const sb = window.VRCloud?.sb; if (!sb) throw new Error('offline');
+  let last;
+  for (let i = 0; i < 2; i++) {
+    try {
+      const { data, error } = await sb.functions.invoke('pvp-verify-v3', { body });
+      if (error) { let detail; try { detail = await error.context?.json(); } catch {} throw new Error(detail?.error || error.message); }
+      if (!data?.ok && body.op !== 'start') throw new Error(data?.error || 'server settlement failed');
+      return data;
+    } catch (e) { last = e; }
+  }
+  throw last;
+}
+async function finishVerified(body) {
+  try { return await verifyRpc(body); }
+  catch (e) {
+    // Another tab/expiry may have closed this session, or a response was lost.
+    // Re-read the server receipt; never reinterpret the local outcome.
+    try { const s = await verifyRpc({ op: 'status', id: body.id }); if (s.status === 'settled' && s.result) return s.result; } catch {}
+    throw e;
+  }
+}
+const pendingKey = () => 'vrTcgPvp.pendingV3:' + (window.VRCloud?.user?.id || 'mock');
+function pendingStore(key, value) {
+  try {
+    if (value === undefined) return JSON.parse(localStorage.getItem(key) || 'null');
+    if (value === null) localStorage.removeItem(key); else localStorage.setItem(key, JSON.stringify(value));
+  } catch {} return value;
+}
+const pendingResult = value => pendingStore(pendingKey(), value);
+function pendingStart(value) {
+  const key = pendingKey() + ':start';
+  const cached = pendingStore(key, value);
+  if (cached && cached.version !== PVP_ENGINE_VERSION) { pendingStore(key, null); return null; }
+  return cached;
+}
+async function retryResult() {
+  const p = pendingResult(); if (!p) return;
+  try { const rep = await finishVerified(p.body); pendingResult(null); showResult(p.session, rep); }
+  catch (e) { toast('결과 미정산 · ' + errText(e)); }
+}
+const ERR = { 'PvP verifier unavailable': 'PvP 검증 서버 준비 중', 'rate limited': '잠시 후 다시 도전해 주세요', 'server settlement failed': '서버 정산 실패 · 다시 저장해 주세요', 'reward verification pending': '지급 보류', 'guard grade': '리더(수비대장)는 HR 이하', 'boss members': '멤버 1장 이상', 'no attempts left': '오늘 횟수 끝', 'not enough gem': '🔮 부족', 'deck required': '덱 필요', 'card not owned': '없는 인재', 'duplicate card': '중복', 'grade not allowed': 'HR 이하만', 'cost over 150': '코스트 150 초과', 'card used in another deck': '다른 덱에 있음', 'login required': '로그인 필요' };
 const errText = e => { const m = String(e?.message || e); const k = Object.keys(ERR).find(x => m.includes(x)); return k ? ERR[k] : m.slice(0, 40); };
 function toast(t) { const el = document.createElement('div'); el.className = 'pvp-toast'; el.textContent = t; document.body.appendChild(el); setTimeout(() => el.remove(), 1800); }
 
@@ -67,11 +111,13 @@ export async function open() {
 function paint() {
   const m = $('pvp-modal'); if (!m) return;
   const n = MODES[view.mode].decks, decks = Array.from({ length: n }, (_, i) => st.decks.find(d => d.slot === i));
-  const ready = decks.every(Boolean) && st.left > 0;
+  const ready = !st.reward_held && ((decks.every(Boolean) && st.left > 0) || !!pendingStart());
   const byUid = new Map(owned.map(o => [o.uid, o]));
   m.querySelector('.pvp-panel').innerHTML = `
     <button class="pvp-x" data-x aria-label="닫기">✕</button>
     <div class="pvp-h">⚔️ PvP <small>${dleft()}</small></div>
+    ${st.ladder === 'verified-v3' ? `<div class="pvp-empty">서버 검증 래더${st.legacy_rating != null ? ` · 이전 기록 ${st.legacy_rating} 보존` : ''}</div>` : ''}
+    ${pendingResult() ? '<div class="pvp-acts"><button class="pvp-go" data-retry-result>결과 다시 저장</button></div>' : ''}
     <div class="pvp-tabs">${Object.entries(LEAGUES).map(([k, L]) => `<button data-league="${k}" class="${view.league === k ? 'on' : ''}">${L.label}</button>`).join('')}
       <span class="pvp-sep"></span>${Object.keys(MODES).map(k => `<button data-mode="${k}" class="${view.mode === k ? 'on' : ''}">${MODES[k].label ? `👑 ${MODES[k].label}` : k}</button>`).join('')}</div>
     ${myRank()}
@@ -79,7 +125,7 @@ function paint() {
       <span class="pvp-deck-no">${n > 1 ? i + 1 : '🛡'}</span><span class="pvp-deck-row">${d ? d.uids.map(u => thumb(byUid.get(u) && { ...card(byUid.get(u).id), level: byUid.get(u).level })).join('') : '<span class="pvp-plus">＋</span>'}</span>
       ${view.league === 'hr' && d ? `<small class="pvp-cost">${d.cost}/150</small>` : ''}</button>`).join('')}</div>
     <div class="pvp-bmode">${modeToggle()}</div>
-    <div class="pvp-acts"><button class="pvp-rank" data-rank title="랭킹">🏅</button><button class="pvp-rank" data-shop title="PvP 상점">🛒</button>${st.left <= 0 && window.VRGem?.item?.('pvp_try') ? `<button class="pvp-gemtry" data-gemtry ${window.VRGem.item('pvp_try').left === 0 ? 'disabled' : ''} title="추가 도전 (하루 3회)">🎫+1 <small>🔮${window.VRGem.item('pvp_try').price}</small></button>` : ''}<button class="pvp-go" data-go ${ready ? '' : 'disabled'}>⚔️ 매칭</button></div>
+    <div class="pvp-acts"><button class="pvp-rank" data-rank title="랭킹">🏅</button><button class="pvp-rank" data-shop title="PvP 상점">🛒</button>${st.left <= 0 && window.VRGem?.item?.('pvp_try') ? `<button class="pvp-gemtry" data-gemtry ${window.VRGem.item('pvp_try').left === 0 ? 'disabled' : ''} title="추가 도전 (하루 3회)">🎫+1 <small>🔮${window.VRGem.item('pvp_try').price}</small></button>` : ''}<button class="pvp-go" data-go ${ready ? '' : 'disabled'}>${pendingStart() ? '매칭 다시 확인' : '⚔️ 매칭'}</button></div>
     <div class="pvp-top"><div class="pvp-top-h">🏅 TOP 10</div><div class="pvp-rk">${rkRows(top)}</div></div>`;
   m.querySelectorAll('[data-league]').forEach(b => b.onclick = () => { view.league = b.dataset.league; save(); open(); });
   m.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => { view.mode = b.dataset.mode; save(); open(); });
@@ -87,7 +133,8 @@ function paint() {
   m.querySelector('[data-rank]').onclick = rankings; bindWho(m);
   m.querySelector('[data-shop]').onclick = () => window.VRGear?.pvpShop?.();   // 장비 PR7
   m.querySelector('[data-tiers]').onclick = tierTable;
-  if (st.pending) claimTier();
+  if (st.pending || st.pending_rank) claimTier();
+  const retry = m.querySelector('[data-retry-result]'); if (retry) retry.onclick = retryResult;
   m.querySelector('[data-go]').onclick = fight; bindMode(m);
   const gt = m.querySelector('[data-gemtry]'); if (gt) gt.onclick = async () => { gt.disabled = true; if (await window.VRGem.buy('pvp_try', view.league, view.mode)) open(); else gt.disabled = false; };
   if (st.left <= 0 && window.VRGem && !window.VRGem.now) window.VRGem.status().then(g => { if (g && $('pvp-modal')) paint(); });
@@ -108,17 +155,24 @@ function tierTable() {
   const cur = tierOf(st.rating).k, tiers = st.tiers || TIERS.map(t => ({ tier: t.k, min: t.min, reward: {} }));
   modal('pvp-tiers', `<button class="pvp-x" data-x>✕</button><div class="pvp-h">🏆 시즌 보상 <small>${dleft()}</small></div>
     <div class="pvp-tt">${[...tiers].reverse().map(x => { const t = tierBy(x.tier) || TIERS[0]; return `<div class="pvp-tt-row t-${t.k} ${t.k === cur ? 'on' : ''}">${emb(t)}<b>${t.label}</b><small>${x.min}+</small><span class="pvp-rw">${rwHtml(x.reward)}</span></div>`; }).join('')}</div>
+    <div class="pvp-empty">이번 시즌 검증 완료 ${st.games_verified || 0}경기 · 티어 보상 3경기 / 순위 보상 1경기 이상<br>포기·미완료는 보상 참여 횟수에서 제외돼요.</div>
     <div class="pvp-h pvp-h2">🔥 연승</div>
     <div class="pvp-tt">${(st.streaks || []).map(x => `<div class="pvp-tt-row ${st.streak >= x.n ? 'got' : ''}"><span class="pvp-streak">🔥${x.n}</span><span class="pvp-rw">${rwHtml(x.reward)}</span></div>`).join('')}</div>`, 'pvp-sub');
 }
 /** 지난 시즌 티어 보상 자동 수령 (서버가 1회만 지급) */
 async function claimTier() {
-  const p = st.pending; st.pending = null;
-  let r; try { r = await rpc('pvp_claim_tier', { p_league: view.league, p_mode: view.mode }); } catch (e) { return; }
-  const t = tierBy(r.tier) || TIERS[0];
+  const tier = st.pending, rank = st.pending_rank; st.pending = null; st.pending_rank = null;
+  const rewards = [];
+  for (const [name, args] of [
+    ...(tier ? [['pvp_claim_tier', { p_league: view.league, p_mode: view.mode }]] : []),
+    ...(rank ? [['pvp_claim_reward', { p_league: view.league, p_mode: view.mode, p_season: rank.season }]] : [])
+  ]) {
+    try { rewards.push(await rpc(name, args)); } catch (e) { toast(errText(e)); }
+  }
+  if (!rewards.length) return;
   window.VRPlayer?.wallet?.(true);
-  modal('pvp-claim', `<div class="pvp-claim t-${t.k}">${emb(t, 'huge')}<div class="pvp-claim-t">${t.label}</div><small>지난 시즌 · 🏆 ${r.rating}</small><div class="pvp-rw big">${rwHtml(r.reward)}</div></div>
-    <div class="pvp-acts"><button class="pvp-go" data-x>받기</button></div>`, 'pvp-sub');
+  modal('pvp-claim', rewards.map(r => `<div class="pvp-claim"><div class="pvp-claim-t">${r.tier ? (tierBy(r.tier) || TIERS[0]).label : `🏅 ${r.rank}위`}</div><small>지난 시즌</small><div class="pvp-rw big">${rwHtml(r.reward)}</div></div>`).join('') +
+    '<div class="pvp-acts"><button class="pvp-go" data-x>확인</button></div>', 'pvp-sub');
 }
 /** VS 연출 (~1.5초 · 탭하면 넘김 · 연출 끄기면 생략) */
 function vsScreen(s) {
@@ -280,26 +334,46 @@ function editDeck(slot, keep) {
 
 // ---- 매칭 → 계산 → 보고 → 결과 ----
 async function fight() {
+  // Do not overwrite an unacknowledged receipt with another attempt. Refresh/reopen can retry it.
+  if (pendingResult()) { await retryResult(); return; }
   const go = document.querySelector('#pvp-modal [data-go]'); if (go) go.disabled = true;
-  let s; try { s = await rpc('pvp_start', { p_league: view.league, p_mode: view.mode }); } catch (e) { toast(errText(e)); if (go) go.disabled = false; return; }
+  const manual = battleMode() === 'manual';
+  const body = pendingStart() || { op: 'start', league: view.league, mode: view.mode, request: crypto.randomUUID(), control: (manual || !!VIEW()) ? 'actions' : 'auto', version: PVP_ENGINE_VERSION };
+  pendingStart(body);
+  let s; try { s = await verifyRpc(body); pendingStart(null); } catch (e) { toast(errText(e)); if (go) go.disabled = false; return; }
+  if (s.status === 'settled' && s.result) { showResult(s, s.result); return; }
+  if (s.expires_at && Date.parse(s.expires_at) <= Date.now()) {
+    try { showResult(s, await verifyRpc({ op: 'forfeit', id: s.id })); } catch (e) { toast(errText(e)); await open(); } return;
+  }
+  const live = s.control === 'actions';
   await vsScreen(s);
   const toCards = d => d.map(o => snapCard(o, card)).filter(Boolean);
-  const manual = battleMode() === 'manual', live = manual || !!VIEW();   // 전투 화면이 있으면 AUTO 도 실제 판 (AUTO→PLAY 로 중간에 직접 조작 가능) — 결과·행동 기록은 화면 판 기준
-  const res = live ? await viewSeries(s, toCards, manual) : runSeries(view.mode, s.me.map(toCards), s.opp.map(toCards), s.seed, true);
-  // 결과는 재생 전에 먼저 1회 보고 (재생 중 이탈해도 결과 동일 · 중복 보고 없음). 수동은 행동 기록을 먼저 남김 (tools/pvp_verify.mjs 재생 검증)
-  if (live) { try { await rpc('pvp_log', { p_id: s.id, p_actions: res.acts }); } catch (e) { toast(errText(e)); } }
-  let rep = null; try { rep = await rpc('pvp_report', { p_id: s.id, p_wins: res.wins, p_losses: res.losses }); } catch (e) { toast(errText(e)); }
+  let res;
+  try { res = live ? await viewSeries(s, toCards, manual) : runSeries(s.mode, s.me.map(toCards), s.opp.map(toCards), s.seed, true); }
+  catch (e) { toast('전투 중단 · 서버에서 패배 처리돼요'); try { await verifyRpc({ op: 'forfeit', id: s.id }); } catch {} await open(); return; }
   if (!live) await playback(s, res);
-  const delta = rep ? rep.delta : -s.dl;
+  const finish = { op: 'finish', id: s.id, actions: live ? res.acts : null };
+  pendingResult({ body: finish, session: s });
+  try { const rep = await finishVerified(finish); pendingResult(null); showResult(s, rep); }
+  catch (e) {
+    // Never pretend that a local win/rating/reward is an official settlement.
+    const m = modal('pvp-result', `<div class="pvp-h">결과 미정산</div><div class="pvp-empty">${esc(errText(e))}<br>같은 전투를 다시 저장하면 중복 지급 없이 확인돼요.</div><div class="pvp-acts"><button class="pvp-go" data-retry>다시 저장</button><button data-x>나중에</button></div>`, 'pvp-sub');
+    m.querySelector('[data-retry]').onclick = retryResult;
+    m.querySelector('[data-x]').onclick = open;
+  }
+}
+function showResult(s, rep) {
+  const delta = rep.delta;
   const m = modal('pvp-result', `<button class="pvp-x" data-x>✕</button>
-    <div class="pvp-res ${res.win ? 'win' : 'lose'}">${res.win ? 'WIN' : 'LOSE'}</div>
+    <div class="pvp-res ${rep.win ? 'win' : 'lose'}">${rep.win ? 'WIN' : 'LOSE'}</div>
     <div class="pvp-vs">${emb(tierOf(s.opp_rating))}<span>${esc(s.opp_name)}${s.bot ? ' 🤖' : ''}</span><small>🏆 ${s.opp_rating}</small></div>
-    ${rep?.streak >= 2 ? `<div class="pvp-res-streak"><span class="pvp-streak big">🔥${rep.streak}</span>${rep.streak_reward ? `<span class="pvp-rw">${rwHtml(rep.streak_reward)}</span>` : ''}</div>` : ''}
-    ${res.rounds.map((r, i) => `<div class="pvp-round ${r.win ? 'win' : 'lose'}"><div class="pvp-side">${snapThumbs(s.me[i])}</div><b>${r.win ? '○' : '✕'}</b><div class="pvp-side foe">${snapThumbs(s.opp[i])}</div></div>`).join('')}
-    <div class="pvp-delta ${delta >= 0 ? 'up' : 'down'}">${emb(tierOf(rep?.rating ?? s.rating - s.dl))} ${(rep?.rating ?? s.rating - s.dl)} <b>${delta >= 0 ? '+' : ''}${delta}</b></div>
+    ${rep.streak >= 2 ? `<div class="pvp-res-streak"><span class="pvp-streak big">🔥${rep.streak}</span>${rep.streak_reward ? `<span class="pvp-rw">${rwHtml(rep.streak_reward)}</span>` : ''}</div>` : ''}
+    ${rep.forfeit ? '<div class="pvp-empty">기한 만료/중단 · 보상 없는 패배</div>' : ''}
+    ${rep.rounds.map((r, i) => `<div class="pvp-round ${r.win ? 'win' : 'lose'}"><div class="pvp-side">${snapThumbs(s.me[i])}</div><b>${r.win ? '○' : '✕'}</b><div class="pvp-side foe">${snapThumbs(s.opp[i])}</div></div>`).join('')}
+    <div class="pvp-delta ${delta >= 0 ? 'up' : 'down'}">${emb(tierOf(rep.rating))} ${rep.rating} <b>${delta >= 0 ? '+' : ''}${delta}</b></div>
     <div class="pvp-acts"><button class="pvp-go" data-x>확인</button></div>`, 'pvp-sub');
   m.addEventListener('click', e => { if (e.target === m || e.target.closest('[data-x]')) open(); });
-  if (rep?.streak_reward) window.VRPlayer?.wallet?.(true);
+  if (rep.streak_reward) window.VRPlayer?.wallet?.(true);
 }
 
 // ---- 수동: 판마다 내가 조작 (상대는 AI). 같은 seed·스냅샷 · 2선승 ----
