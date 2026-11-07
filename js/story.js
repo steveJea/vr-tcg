@@ -251,14 +251,23 @@
         v.play().catch(() => { if (!v) return; v.muted = true; unhold(); v.play().catch(() => {}); });
       } else { const im = el.querySelector('img'); im.onerror = () => clear(); }
     };
-    /** 미디어 패널 = 화면 위 ~ 대사 상자 바로 위까지 꽉 채움 (cover, 좌우 잘려도 됨) */
+    // 대사 상자 위의 실제 가용 높이. 회전·주소창·긴 대사·메뉴 숨김 뒤에도 다시 맞춤.
+    let observedBox = null;
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(fit);
     function fit() {
       if (!el) return; const box = document.querySelector('#story-dlg .story-dlg-box');
-      const top = box ? box.getBoundingClientRect().top : innerHeight * 0.6;
-      el.style.height = Math.max(120, top - 34) + 'px';
+      if (box !== observedBox) { observer?.disconnect(); if (box) observer?.observe(box); observedBox = box; }
+      const height = window.visualViewport?.height || innerHeight;
+      const top = box ? box.getBoundingClientRect().top : height * 0.6;
+      el.style.height = Math.max(0, Math.min(height, top) - 12) + 'px';
     }
-    addEventListener('resize', fit);
-    const api = { set, clear, fit }; storyMedia.cur?.clear(); storyMedia.cur = api; return api;
+    const dispose = () => {
+      clear(); observer?.disconnect(); removeEventListener('resize', fit);
+      window.visualViewport?.removeEventListener('resize', fit);
+      if (storyMedia.cur === api) storyMedia.cur = null;
+    };
+    addEventListener('resize', fit); window.visualViewport?.addEventListener('resize', fit);
+    const api = { set, clear, fit, dispose }; storyMedia.cur?.dispose(); storyMedia.cur = api; return api;
   }
   function storyCutin(src, done) {
     const el = document.createElement('div'); el.className = 'story-cutin';
@@ -305,11 +314,13 @@
   // ----- 화면 -----
   const root = () => $('story-screen');
   function show(html, track = 'story') {
-    if (!String(html).includes('id="story-dlg"')) storyMedia.cur?.clear();   // 대사 화면을 떠나면 미디어 패널도 닫음
+    if (!String(html).includes('id="story-dlg"')) storyMedia.cur?.dispose();   // 대사 화면을 떠나면 미디어 패널도 닫음
     bgm(track);
     const r = root(); r.innerHTML = `<div class="story-wrap">${UI(html)}</div>`;
     r.classList.remove('hidden'); $('start-screen').classList.add('hidden'); $('game').classList.add('hidden');
     r.scrollTop = 0;
+    // 대사·전투 결과로 바뀌는 즉시 메뉴를 숨김. 미디어 높이도 최종 레이아웃에서 잼.
+    window.VRGnb?.paint?.(); window.VRTnb?.paint?.();
   }
   function home() { if (ext) { const e = ext; ext = null; $('story-pop')?.classList.add('hidden'); root().classList.add('hidden'); $('start-screen').classList.remove('hidden'); e.done?.(); return; }
     bgm('main'); root().classList.add('hidden'); $('start-screen').classList.remove('hidden'); mailBtn(); }
@@ -792,7 +803,7 @@
     let i = 0;
     const media = storyMedia();
     const step = () => {
-      if (i >= lines.length) { media.clear(); return next(); }
+      if (i >= lines.length) { media.dispose(); return next(); }
       // 대사 줄의 video·image: 따로 넘기는 단계 없이 그 대사와 함께 표시 (다음 미디어 / 장면 끝까지 유지)
       // 그 대사 한 줄에서만 표시 → 다음 줄로 넘어가면 디졸브. 글 없는 미디어 줄은 바로 다음 대사 한 줄에 붙임
       const own = lines[i].video ? ['video', lines[i].video] : lines[i].image ? ['image', lines[i].image] : null;
@@ -1141,7 +1152,7 @@
     const lostOk = !win && !!ph.loseClears && reason !== 'giveup';
     if (!win && !lostOk) {
       const ab = serverMode && window.VRPlayer ? await window.VRPlayer.abort() : null;
-      show(`<div class="text-center py-10"><div class="story-chapter-big text-red-400">DEFEAT</div><div class="text-zinc-300 mt-2">${reason === 'giveup' ? '도전을 포기했어요.' : reason === 'wipe' ? (window.TCG?.S?.me?.manaPool ? '아군 전멸! 남은 마나로 소환할 수 없어요.' : '아군 전멸!') : reason === 'mustsummon' ? `필수 인재 ${esc(window.TCG?.S?.mustSummonMiss || '')}을(를) 제때 소환하지 못했어요.` : reason === 'mustlive' ? `${esc(window.TCG?.S?.mustLiveDown || card((battleRules(ch, ph)?.mustLive || [])[0])?.name || '필수 출전')} 인재가 쓰러졌어요.` : reason === 'timeout' ? (ph.type === 'boss' ? '턴 제한 안에 상대 진영을 무너뜨리지 못했어요.' : '턴 제한 안에 적을 모두 쓰러뜨리지 못했어요.') : '패배했어요.'} 스탯을 올리고 다시 도전해 보세요!</div>${ab?.refunded ? `<div class="mt-2 text-emerald-300 text-sm">🔋 행동력 ${ab.refunded} 반환 (보유 ${ab.stamina}/${ab.stamina_max})</div>` : ''}
+      show(`<div class="story-battle-result text-center py-10"><div class="story-chapter-big text-red-400">DEFEAT</div><div class="text-zinc-300 mt-2">${reason === 'giveup' ? '도전을 포기했어요.' : reason === 'wipe' ? (window.TCG?.S?.me?.manaPool ? '아군 전멸! 남은 마나로 소환할 수 없어요.' : '아군 전멸!') : reason === 'mustsummon' ? `필수 인재 ${esc(window.TCG?.S?.mustSummonMiss || '')}을(를) 제때 소환하지 못했어요.` : reason === 'mustlive' ? `${esc(window.TCG?.S?.mustLiveDown || card((battleRules(ch, ph)?.mustLive || [])[0])?.name || '필수 출전')} 인재가 쓰러졌어요.` : reason === 'timeout' ? (ph.type === 'boss' ? '턴 제한 안에 상대 진영을 무너뜨리지 못했어요.' : '턴 제한 안에 적을 모두 쓰러뜨리지 못했어요.') : '패배했어요.'} 스탯을 올리고 다시 도전해 보세요!</div>${ab?.refunded ? `<div class="mt-2 text-emerald-300 text-sm">🔋 행동력 ${ab.refunded} 반환 (보유 ${ab.stamina}/${ab.stamina_max})</div>` : ''}
         <div class="flex flex-col gap-2 max-w-xs mx-auto mt-6"><button class="story-btn" id="story-retry">다시 도전</button><button class="story-back" data-go="map">챕터 지도로</button></div></div>`);
       bind(); $('story-retry').onclick = () => startPhase(ch, ph); return;
     }
@@ -1170,7 +1181,7 @@
     }, r => r.data);
     if (!res.ok) {
       const m = String(res.error?.message || ''), why = /too fast/.test(m) ? '전투가 너무 빨리 끝나서 기록이 인정되지 않았어요.' : /battle not started/.test(m) ? '전투 시작 기록이 없어요. (새로고침·다른 기기에서 전투를 시작했을 수 있어요)' : `결과를 서버에 저장하지 못했어요.${m ? ` (${esc(m)})` : ''}`;
-      show(`<div class="text-center py-10"><div class="story-chapter-big text-amber-300">!</div><div class="text-zinc-300 mt-2">${why}<br>다시 도전해 주세요.</div><div class="flex flex-col gap-2 max-w-xs mx-auto mt-6"><button class="story-btn" id="story-retry">다시 도전</button><button class="story-back" data-go="map">챕터 지도로</button></div></div>`);
+      show(`<div class="story-battle-result text-center py-10"><div class="story-chapter-big text-amber-300">!</div><div class="text-zinc-300 mt-2">${why}<br>다시 도전해 주세요.</div><div class="flex flex-col gap-2 max-w-xs mx-auto mt-6"><button class="story-btn" id="story-retry">다시 도전</button><button class="story-back" data-go="map">챕터 지도로</button></div></div>`);
       bind(); $('story-retry').onclick = () => startPhase(ch, ph); return; }
     const r = res.r || {};
     const pr = res.raw?.player || null; if (pr) window.VRPlayer?.set(pr);
@@ -1194,7 +1205,7 @@
     , bestB = starsOf(ch.id, ph.no); if (stars) await saveStars(ch, ph, stars);
     const starRow = stars ? `<div class="story-star-res">${starHtml(stars, 'big')}<div class="text-xs text-zinc-300 mt-2 inline-flex flex-col items-start gap-0.5 text-left">${ph.loseClears ? '<div><b class="text-emerald-400">✔</b> 이겨도 져도 별 3개인 페이즈</div>' : ''}${ph.loseClears ? '' : (() => { const t = ph.starTurns || STAR_TURNS, k = ph.starMana ?? STAR_MANA, need = Math.ceil(st.maxMana * k), okT = (st.myTurns | 0) <= t, okM = st.mana >= need, ln = (ok, txt) => `<div><b class="${ok ? 'text-emerald-400' : 'text-red-400'}">${ok ? '✔' : '✖'}</b> ${txt}</div>`;
       return ln(true, '★ 클리어') + ln(okT, `★ 내 턴 ${t}턴 이내 <span class="text-zinc-500">(${st.myTurns | 0}턴)</span>`) + ln(okM, `★ 남은 마나 ${Math.round(k * 100)}% 이상 <span class="text-zinc-500">(${st.mana}/${st.maxMana}, 필요 ${need})</span>`); })()}${stars > bestB && bestB ? '<div><b class="text-amber-300">최고 기록!</b></div>' : ''}</div></div>` : '';
-    show(`<div class="text-center py-6"><div class="story-chapter-sub">Phase.${ph.no} CLEAR</div><div class="story-chapter-big text-emerald-300">${lostOk ? 'STORY CLEAR' : 'VICTORY'}</div>${lostOk ? '<div class="text-zinc-300 text-sm mt-1">졌지만 이야기는 계속돼요.</div>' : ''}${starRow}
+    show(`<div class="story-battle-result text-center py-6"><div class="story-chapter-sub">Phase.${ph.no} CLEAR</div><div class="story-chapter-big text-emerald-300">${lostOk ? 'STORY CLEAR' : 'VICTORY'}</div>${lostOk ? '<div class="text-zinc-300 text-sm mt-1">졌지만 이야기는 계속돼요.</div>' : ''}${starRow}
       ${reward ? `<div class="mt-4 text-amber-200 font-bold">🎁 보상 인재 획득!</div><div class="flex justify-center mt-2 story-reward">${tile(reward)}</div>` : `<div class="mt-4 text-zinc-400 text-sm">${first ? '이번 챕터는 인재 보상 없이 스탯 포인트만 받아요.' : '이미 클리어한 페이즈라 인재 보상은 없어요.'}</div>`}
       ${tk?.added ? `<div class="mt-3 text-amber-200 font-bold">🎟️ 챕터 클리어 보상: 소환권 +${tk.added} <small class="text-zinc-400">(특수 뽑기에서 사용)</small></div>` : ''}
       ${r.drops ? `<div class="story-drops mt-3">${first ? '🎁 첫 클리어 ' : ''}획득 ${curTxt(r.drops)}</div>` : ''}

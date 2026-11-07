@@ -169,5 +169,5 @@ async function demo(id = 'ch0_battle1') {
   tryStart(); return true;
 }
 
-window.VRTutorial = { finishIf: id => { if (T && (!id || T.id === id)) abort(); }, start, emit, locked, done, reset, demo, get active() { return T ? { id: T.id, step: T.i, wait: T.def.steps[T.i]?.wait } : null; } };
+window.VRTutorial = { finishIf: id => { if (T && (!id || T.id === id)) abort(); }, start, emit, locked, done, reset, demo, get active() { return T ? { id: T.id, step: T.i, wait: T.def.steps[T.i]?.wait, target: T.def.steps[T.i]?.target } : null; } };
 try { const q = new URLSearchParams(location.search); if (q.get('tut_reset') != null) reset(q.get('tut_reset') || undefined); if (q.get('tut')) demo(q.get('tut')); } catch {}
