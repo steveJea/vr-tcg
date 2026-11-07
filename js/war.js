@@ -1,6 +1,7 @@
 // ===== 조직 전쟁 「구역 전쟁」 화면 =====
-// 서버: supabase/guild4.sql + war_auto.sql (자동 참가·배치) (war_status / war_enter / war_withdraw / war_set_slot / war_set_deck / war_start / war_finish / war_claim). 전투: js/war-core.js (양쪽 자동, 서버 seed)
+// 서버: security_phase4_raid_guildwar.sql + guildbattle-verify-v4. 승패·HP·점수는 서버 재생만.
 // 그림: img/ui/guild/war_banner.webp · war_bg.webp · war_icon.webp · war_role_<def|atk|mid|boss|etc>.webp · war_ajit.webp · war_npc.webp (없으면 이모지). 카드는 IMG
+import { startVerified,finishVerified,recoverVerified } from './guildbattle-session.js';
 import { runWar, warSession, warDeck, warCard, WAR_ROLES } from './war-core.js';
 import { modeToggle, bindMode, battleMode } from './manual-ui.js';
 
@@ -67,6 +68,7 @@ export async function open() {
   window.VRPages?.host?.('war', '🏴 구역 전쟁', M);   // 페이지 시스템 (실패하면 예전 팝업)
   try { S = await rpc('war_status'); } catch (e) { toast(errText(e)); M.remove(); return; }
   await loadUi(); paint();
+  try {const r=await recoverVerified('war');if(r){await reload();showVerifiedResult(r);}}catch(e){toast(errText(e));}
 }
 async function reload() { try { S = await rpc('war_status'); } catch (e) { toast(errText(e)); } await loadUi(); paint(); }
 function paint() {
@@ -137,23 +139,22 @@ function ajitPop(slot, foe) {
   bindMode(m); m.querySelectorAll('[data-go]').forEach(b => b.onclick = () => { m.remove(); attack(slot, +b.dataset.go); });
 }
 async function attack(slot, deck) {
-  let st; try { st = await rpc('war_start', { p_slot: slot, p_deck: deck }); } catch (er) { toast(errText(er)); return reload(); }
+  let st; try { st = await startVerified('war', { slot, deck }, window.TCG?.viewBattle ? 'actions' : 'auto'); } catch (er) { toast(errText(er)); return reload(); }
   const A = warDeck(st.atk, card, st.atk_buff), B = warDeck(st.def, card, st.def_buff), log = [], t0 = Date.now();
-  // 전투 화면 = 스토리·탑과 같은 화면 (js/game.js TCG.viewBattle). 배경 war_bg. 수동이면 행동 기록을 war_log 로 남김 (tools/war_verify.mjs 재생 검증)
+  // 전투 화면 = 스토리·탑과 같은 화면 (js/game.js TCG.viewBattle). 배경 war_bg. 수동이면 행동 의도를 서버에서 재생
   const V = window.TCG?.viewBattle, manual = battleMode() === 'manual' && !!V, aiName = `${S.match?.enemy?.find(x => x.slot === slot)?.name || '아지트'}`;
-  let res;
+  let res, actions=null;
   if (V) {
     const ses = warSession(A, B, st.seed, log, { view: true, manual: true });
-    // AUTO 도 실제 판 (AUTO 로 시작, 버튼으로 PLAY 전환 가능). 결과는 화면 판 그대로 보고 · 행동 기록도 항상 남김
+    // AUTO 도 실제 판 (AUTO 로 시작, 버튼으로 PLAY 전환 가능). 화면 결과를 신뢰하지 않고 행동 의도만 서버에 전송
     res = await V({ session: ses, aiName, manual: true, auto: !manual, maxTurns: 40, bg: 'war', music: window.VR_BGM?.guildBattle, title: `🏴 구역 전쟁 · ${aiName}` });
-    try { await rpc('war_log', { p_id: st.id, p_actions: ses.acts }); } catch (er) { toast(errText(er)); }
+    actions=ses.acts;
   } else { res = runWar(A, B, st.seed, log); await playback(res, log, t0); }
-  let fin = null;
-  for (let i = 0; i < 3 && !fin; i++) { try { fin = await rpc('war_finish', { p_id: st.id, p_win: res.win, p_atk_hp: res.aHp, p_def_hp: res.bHp }); } catch (er) { if (/too fast/.test(er.message)) await new Promise(r => setTimeout(r, 1500)); else { toast(errText(er)); break; } } }
-  if (fin) { S = fin; const r = fin.result || {};
-    pop(`<div class="rd-res"><b class="${r.win ? '' : 'lose'}">${r.boss_kill ? (gi('role_boss', '👑') + ' 보스 격파!') : r.destroyed ? (gi('fx_destroy', '💥') + ' 아지트 파괴') : r.next_deck ? '🛡️ 1번 덱 격파' : r.win ? '승리' : '패배'}</b>${r.points ? `<div class="rd-clr">+${n(r.points)}점</div>` : ''}${r.next_deck ? '<small>2번 방어 덱이 나타났어요</small>' : ''}${r.expired ? '<small>시간이 지나 무효</small>' : ''}</div><button class="gd-big" data-x>확인</button>`, 'rd-r');
-  } else await reload();
+  try {const r=await finishVerified('war',st,actions);await reload();showVerifiedResult(r);}catch(er){toast('결과 미정산 · '+errText(er));}
   paint();
+}
+function showVerifiedResult(r) {
+    pop(`<div class="rd-res"><b class="${r.win ? '' : 'lose'}">${r.expired ? '무효' : r.boss_kill ? (gi('role_boss', '👑') + ' 보스 격파!') : r.destroyed ? (gi('fx_destroy', '💥') + ' 아지트 파괴') : r.next_deck ? '🛡️ 1번 덱 격파' : r.win ? '승리' : '패배'}</b>${r.points ? `<div class="rd-clr">+${n(r.points)}점</div>` : ''}${r.next_deck ? '<small>2번 방어 덱이 나타났어요</small>' : ''}</div><button class="gd-big" data-x>확인</button>`, 'rd-r');
 }
 async function claim(e) {
   e.currentTarget.disabled = true;

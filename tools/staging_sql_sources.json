@@ -125,7 +125,8 @@
     "achievements2.sql",
     "security_phase1_rewards.sql",
     "security_phase2_clears.sql",
-    "security_phase3_pvp.sql"
+    "security_phase3_pvp.sql",
+    "security_phase4_raid_guildwar.sql"
   ],
   "excluded": {
     "blood_rebalance_preview.sql": "기존 데이터 조회 전용",
@@ -133,7 +134,8 @@
     "audit_live.sql": "운영 점검 조회 전용",
     "report_ur_owners.sql": "기존 사용자 보유 현황 조회 전용",
     "security_phase1_preflight.sql": "보안 1단계 적용 전후 읽기 전용 ACL/함수 점검",
-    "security_phase3_pvp_level_stats.sql": "기존 스테이징 phase3 엔진 해시 업그레이드 전용; 신규 설치는 security_phase3_pvp.sql의 새 해시를 사용"
+    "security_phase3_pvp_level_stats.sql": "기존 스테이징 phase3 엔진 해시 업그레이드 전용; 신규 설치는 security_phase3_pvp.sql의 새 해시를 사용",
+    "staging_seed_raid_guildwar.sql": "테스트 계정 2개를 지정하는 staging 전용 seed/reset; 신규 설치 자동 실행 금지"
   },
   "partial": {
     "card_id_remap.sql": "card_id_alias 설정 자료 + 최신 _war_npc_deck만; 기존 사용자 ID 일괄 변경은 제외"
