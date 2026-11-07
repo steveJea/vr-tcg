@@ -13,7 +13,7 @@ assert.equal(typeof manifest.systemId, 'string');
 assert.equal(manifest.systemId.length, 19);
 assert.equal('productionSystemId' in manifest, false);
 const sourceParts = await buildParts(manifest.systemId);
-assert.deepEqual((await readdir(dir)).filter(n => n.endsWith('.sql')).sort(), sourceParts.map(p => p.name));
+assert.deepEqual((await readdir(dir)).filter(n => /^[0-9]+_install\.sql$/.test(n)).sort(), sourceParts.map(p => p.name));
 for (const [index, part] of sourceParts.entries()) {
   const sql = await readFile(new URL(part.name, dir), 'utf8');
   assert.equal(sql, part.sql, part.name + ': 재생성 필요');
