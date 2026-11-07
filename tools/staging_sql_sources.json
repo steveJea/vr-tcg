@@ -130,7 +130,8 @@
     "blood_rebalance_refund.sql": "기존 사용자 1회 환급 전용",
     "audit_live.sql": "운영 점검 조회 전용",
     "report_ur_owners.sql": "기존 사용자 보유 현황 조회 전용",
-    "security_phase1_preflight.sql": "보안 1단계 적용 전후 읽기 전용 ACL/함수 점검"
+    "security_phase1_preflight.sql": "보안 1단계 적용 전후 읽기 전용 ACL/함수 점검",
+    "security_phase2_clears.sql": "보안 2단계 세션 프로토콜 초안 (shadow only): 실제 전투 replay/정산/클라이언트 연결 미완료; 자동 설치·보상 재개 금지"
   },
   "partial": {
     "card_id_remap.sql": "card_id_alias 설정 자료 + 최신 _war_npc_deck만; 기존 사용자 ID 일괄 변경은 제외"

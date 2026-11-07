@@ -1,5 +1,7 @@
 # supabase SQL 안내
 
+**보안 2단계는 미완료 초안:** `security_phase2_clears.sql`은 shadow 세션만 기록하며 보상을 재개하지 않습니다. 지금 실행할 파일이 아닙니다. [현재 상태·남은 작업](../docs/SECURITY_PHASE2.md)을 확인하세요.
+
 **보안 1단계 적용:** 기존 DB는 [security_phase1_preflight.sql](security_phase1_preflight.sql) 점검 → [security_phase1_rewards.sql](security_phase1_rewards.sql)만 실행합니다. [적용·보류 범위·복구 안내](../docs/SECURITY_PHASE1.md)를 먼저 읽으세요. 운영 적용은 별도 승인 후입니다. 폴더 전체/옛 설치본 재실행 금지.
 
 SQL Editor 에서 형님이 직접 실행하는 파일들. **같은 함수를 여러 파일이 다시 정의**하므로, 오래된 파일을 다시 돌리면 나중에 붙인 검사가 사라질 수 있어요.
