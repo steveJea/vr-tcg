@@ -538,13 +538,13 @@
     box.querySelector('button').onclick = () => starPop(base, c);
   }
   function starPop(base, c) {
-    const row = m => `<div class="story-starm ${m.claimed ? 'done' : m.ready ? 'ready' : ''}"><span class="story-starm-n">${m.key === 'all' ? '전부' : ''} ★${m.need}</span><span class="story-starm-r">🎟️ ${m.tickets} · 🪙 ${fmt(m.gold)}</span>${m.claimed ? '<span class="story-starm-ok">✔</span>' : `<button class="story-btn story-starm-go" data-claim="${m.key}" ${m.ready ? '' : 'disabled'}>${m.ready ? '받기' : '🔒'}</button>`}</div>`;
+    const row = m => `<div class="story-starm ${m.claimed ? 'done' : m.ready ? 'ready' : ''}"><span class="story-starm-n">${m.key === 'all' ? '전부' : ''} ★${m.need}</span><span class="story-starm-r">🎟️ ${m.tickets} · 🪙 ${fmt(m.gold)}</span>${m.claimed ? '<span class="story-starm-ok">✔</span>' : `<button class="story-btn story-starm-go" data-claim="${m.key}" ${m.ready ? '' : 'disabled'}>${m.held ? '지급 보류' : m.ready ? '받기' : '🔒'}</button>`}</div>`;
     const p = popup(`<div class="story-pop-title">🎁 별 보상 · ${esc(base.title)}</div><div class="story-starbar"><i style="width:${Math.min(100, c.total / c.max * 100).toFixed(1)}%"></i><b>★ ${c.total} / ${c.max}</b></div>
       <div class="text-[11px] text-zinc-400 mb-2">마나 전투 별(★1 클리어 · 10턴 이내 · 남은 마나 30%)을 모으면 받아요</div>${c.milestones.map(row).join('')}`);
     p.el.querySelectorAll('[data-claim]').forEach(b => b.onclick = async () => {
       b.disabled = true;
       const { data, error } = await cloud().sb.rpc('story_star_claim', { p_chapter: base.id, p_key: b.dataset.claim });
-      if (error) { toast(/not enough stars/.test(error.message) ? '별이 모자라요' : /already/.test(error.message) ? '이미 받았어요' : `⚠️ ${error.message}`); b.disabled = false; return; }
+      if (error) { toast(/reward verification pending/.test(error.message) ? '지급 보류' : /not enough stars/.test(error.message) ? '별이 모자라요' : /already/.test(error.message) ? '이미 받았어요' : `⚠️ ${error.message}`); b.disabled = false; return; }
       toast(`🎁 소환권 +${data.gave.tickets} · 🪙 골드 +${fmt(data.gave.gold)}`);
       if (data.wallet) window.VRPlayer?.setWallet?.(data.wallet);
       if (data.tickets != null) tickets = data.tickets;

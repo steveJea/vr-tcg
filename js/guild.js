@@ -12,7 +12,7 @@
   const SHOP = { ticket: [gi('cur_ticket', '🎟️'), '소환권'], stamina30: [gi('item_stamina', '🔋'), '행동력 30'], gold5k: [gi('cur_gold', '🪙'), '골드 5,000'], shard5: [gi('item_shard', '💠'), '조각 ×5'], soul3: [gi('item_soul', '🔥'), '혼 ×3'], frame: [gi('item_frame', '🖼️'), '엠블럼 프레임'] };
   const LOY = '🩸';
   const LOYI = gi('cur_loyalty', LOY);
-  const ERR = { 'level required': '계정 Lv.15부터 창설할 수 있어요', 'not enough gold': '🪙 골드가 부족해요', 'not enough gem': '🔮 심연석이 부족해요', 'bad name': '이름은 한글·영문·숫자 2~8자 (금칙어 불가)',
+  const ERR = { 'reward verification pending': '지급 보류', 'level required': '계정 Lv.15부터 창설할 수 있어요', 'not enough gold': '🪙 골드가 부족해요', 'not enough gem': '🔮 심연석이 부족해요', 'bad name': '이름은 한글·영문·숫자 2~8자 (금칙어 불가)',
     'name taken': '이미 있는 이름이에요', 'already in guild': '이미 조직에 있어요', cooldown: '아직 가입할 수 없어요', 'guild full': '정원이 가득 찼어요', closed: '초대로만 가입할 수 있어요',
     'too many requests': '신청은 3곳까지', 'no permission': '권한이 없어요', 'officer slots full': '간부 자리가 가득 찼어요', 'boss must transfer': '보스를 넘긴 뒤에 나갈 수 있어요',
     'kick limit': '오늘은 더 추방할 수 없어요', 'not enough loyalty': `${LOYI} 충성이 부족해요`, 'limit reached': '구매 한도에 도달했어요', 'guild level required': '조직 레벨이 부족해요',
