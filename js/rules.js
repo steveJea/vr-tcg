@@ -29,7 +29,9 @@ export const RULES = {
   LEVEL_HIGH_FROM: 6,
   // 영웅 공격 제한
   HERO_GUARD_FIELD: 4,        // 상대 필드가 이 장수 이상이면 영웅 공격 불가 (카드만 공격)
-  HERO_LOCK_TURNS: 2,         // 자기 첫 N턴 동안은 영웅 공격·초과 피해 불가
+  HERO_LOCK_TURNS: 2,
+  // 수비대장 흔들림: 한 번에 최대 HP의 이 비율 이상 맞으면 → STAGGER_TURNS 턴 ATK·DEF 감소, 받는 피해 일부가 진영 HP로
+  STAGGER_HIT_PCT: 0.15, STAGGER_TURNS: 1, STAGGER_DOWN: 0.2, STAGGER_PASS: 0.5, STAGGER_CD: 2,         // 자기 첫 N턴 동안은 영웅 공격·초과 피해 불가
   // 아이템 (마나로 구매, 카드당 무기 1 + 방어구 1)
   WEAPON_COST: 30, WEAPON_ATK_RATIO: 0.15,
   ARMOR_COST: 30, ARMOR_HP_RATIO: 0.2,

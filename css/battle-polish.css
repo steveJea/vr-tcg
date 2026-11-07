@@ -53,3 +53,7 @@ html.ios #game .unit .sk-ready-badge{animation:none}
 /* 진영 칸(수비대장·보스) 원형 테두리는 상태효과 스타일이 모서리를 바꾸지 않게 항상 원형 유지 (금색 네모로 보이던 문제) */
 #game .base-unit > .base-ring{border-radius:9999px!important}
 html.ios #game .base-unit > .base-ring::after{border-radius:9999px!important}
+/* 수비대장 흔들림: 붉은 흔들림 (iOS는 가볍게) */
+@keyframes fxStagger{0%,100%{transform:translateX(0)}20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(3px)}}
+#game .fx-stagger{animation:fxStagger .6s ease-out;filter:drop-shadow(0 0 10px rgba(239,68,68,.9)) saturate(1.3)}
+html.ios #game .fx-stagger{animation-duration:.35s;filter:none;box-shadow:0 0 0 2px rgba(239,68,68,.8);border-radius:9999px}
