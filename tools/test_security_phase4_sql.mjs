@@ -1,6 +1,8 @@
 // No network/keys. PGlite SQL + the REAL trusted handler/engine behind a simulated Auth/REST boundary.
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import {refillPatches} from './phase4/refill_patches.mjs';
+import {splitStatements,stripLeadingComments} from './sql_statements.mjs';
 import { PGlite } from '@electric-sql/pglite';
 import { buildSql, INSTALL_ACK } from './build_staging_sql.mjs';
 import { ENGINE_VERSION, verifyBattle } from '../supabase/functions/_shared/guildbattle-engine-v4.mjs';
@@ -62,13 +64,24 @@ try {
  const system=await val(`select system_identifier::text v from pg_control_system()`);
  const migration=await rd('supabase/security_phase4_raid_guildwar.sql');
  await assert.rejects(db.exec(migration),/STOP: phase4 only/);await db.exec('rollback');
- const sql=migration.replaceAll("'7703759698107299042'",`'${system}'`);await db.exec(sql);await db.exec(sql);
+ const sql=migration.replaceAll("'7703759698107299042'",`'${system}'`);
+ // Model the already-deployed pre-refill phase4 schema, not a fresh upgraded DB.
+ let previous=migration.replace(await rd('tools/phase4/refill.sql'),'');
+ for(const [signature,from,to] of refillPatches){const name=signature.split('(')[0],stmt=splitStatements(previous).find(x=>stripLeadingComments(x).startsWith('create or replace function public.'+name+'('));assert(stmt?.includes(to),signature);previous=previous.replace(stmt,()=>stmt.replace(to,from));}
+ assert(!previous.includes('function public._guildbattle_used_v4('));
+ await db.exec(previous.replaceAll("'7703759698107299042'",`'${system}'`));
+ assert.equal(await val("select to_regclass('public.guildbattle_test_refills_v4')::text v"),null);
  await q(`insert into auth.users(id,email) values($1,'one@example.invalid'),($2,'two@example.invalid')`,[me,other]);
  await q(`insert into player_wallet(user_id,gold,gem_free) values($1,100,500),($2,200,700)`,[me,other]);
  await q(`insert into story_progress(user_id,data) values($1,'{"starter":"10111","owned":[]}'),($2,'{"starter":"10111","owned":[]}')`,[me,other]);
  await q(`insert into player_state(user_id,level) values($1,80),($2,80)`,[me,other]);
  let seed=(await rd('supabase/staging_seed_raid_guildwar.sql')).replaceAll("'7703759698107299042'",`'${system}'`).replace("user_a uuid := '00000000-0000-0000-0000-000000000000'",`user_a uuid := '${me}'`).replace("user_b uuid := '00000000-0000-0000-0000-000000000000'",`user_b uuid := '${other}'`);
+ // Wrong-DB seed must abort before installing ANY refill helper/table.
+ await assert.rejects(db.exec(await rd('supabase/staging_seed_raid_guildwar.sql')),/STOP: staging/);await db.exec('rollback');
+ assert.equal(await val("select to_regclass('public.guildbattle_test_refills_v4')::text v"),null);
  await db.exec(seed);await db.exec(seed);
+ const installedDefs=await q("select proname,pg_get_functiondef(oid) ddl from pg_proc where pronamespace='public'::regnamespace and proname=any($1) order by proname",[refillPatches.map(([sig])=>sig.split('(')[0])]);
+ await db.exec(sql);assert.deepEqual(await q("select proname,pg_get_functiondef(oid) ddl from pg_proc where pronamespace='public'::regnamespace and proname=any($1) order by proname",[refillPatches.map(([sig])=>sig.split('(')[0])]),installedDefs,'standalone seed and migration must install identical budget consumers');
  const status0=await rpc('select raid_status() v');assert.equal(status0.attempts_left,3);assert.equal(status0.can_sweep,false);assert.equal((await rpc('select war_status() v')).phase,'live');
  let serial=0;
  const ids=await val(`select jsonb_agg(c->>'uid') v from story_progress,jsonb_array_elements(data->'owned') c where user_id=$1`,[me]);
@@ -144,6 +157,60 @@ try {
  const ally='33333333-3333-4333-8333-333333333333';await q(`insert into auth.users(id) values($1)`,[ally]);await q(`insert into story_progress(user_id,data) values($1,'{"starter":"10111","owned":[]}')`,[ally]);
  const allySeed=seed.replace("allies_a uuid[] := '{}'",`allies_a uuid[] := '{${ally}}'`).replace("action text := 'start'","action text := 'reset'");await db.exec(allySeed);assert.equal(await val('select guild_id v from guild_members where user_id=$1',[ally]),gid);assert.equal(await val("select jsonb_array_length(data->'owned') v from story_progress where user_id=$1",[ally]),5);
 
+ // SAME-match refill: five NPC defense positions each have TWO decks => 10 wins,
+ // not five. Use real issued AUTO battles; retain the attacker's accumulated HP.
+ await db.exec(seed.replace("action text := 'start'","action text := 'reset'"));
+ const refillSeed=seed.replace("action text := 'start'","action text := 'refill'");
+ const ws0=await rpc('select war_status() v'),mid=ws0.match.id;
+ assert.equal(ws0.match.gate_open,false);assert.equal(ws0.match.me.attacks_left,5);
+ assert.equal(ws0.match.enemy.filter(t=>t.role==='def').length,5);
+ assert(ws0.match.enemy.filter(t=>t.role==='def').every(t=>t.decks===2&&t.npc));
+ const blocked=await http({op:'start',kind:'war',payload:{slot:6,deck:1},request:req(++serial),control:'auto',version:ENGINE_VERSION});assert.equal(blocked.data.error,'defense first');
+ const rr=await start();assert.equal((await finish(rr)).status,200);
+ for(let i=0;i<2;i++)await rpc('select raid_sweep_v4($1) v',[req(++serial)]);
+ for(let i=0;i<5;i++){const w=await start('war',{slot:Math.floor(i/2)+1,deck:1});const f=await finish(w);assert.equal(f.status,200,JSON.stringify(f));assert.equal(f.data.result.win,true,'Lv80 HR fixture must beat NPC defense');assert.equal((await rpc('select war_status() v')).match.gate_open,false);}
+ assert.equal((await rpc('select raid_status() v')).attempts_left,0);
+ const halfway=await rpc('select war_status() v');assert.equal(halfway.match.me.attacks_left,0);assert.equal(halfway.match.enemy.filter(t=>t.role==='def'&&t.destroyed).length,2);assert.equal(halfway.match.enemy.find(t=>t.slot===3).deck,2);
+ assert.equal((await http({op:'start',kind:'war',payload:{slot:3,deck:1},request:req(++serial),control:'auto',version:ENGINE_VERSION})).data.error,'no attacks');
+ const unchangedTables=['guildbattle_test_clock_v4','guilds','guild_members','story_progress','war_decks_v4','war_entries_v4','war_roster_v4','war_matches_v4','war_ajits_v4','war_atk_state_v4','guild_raids_v4','guild_raid_damage_v4','guild_raid_stages_v4','guild_raid_attempts_v4','war_attacks_v4','guildbattle_sessions_v4','guildbattle_events_v4','guildbattle_sweeps_v4','player_wallet','reward_claims','guild_claims'];
+ const untouched=async()=>Promise.all(unchangedTables.map(t=>q(`select to_jsonb(t) v from public.${t} t order by to_jsonb(t)::text`)));
+ const halfwayState=await untouched();await db.exec(refillSeed);assert.deepEqual(await untouched(),halfwayState,'refill must preserve EVERY battle/economy/evidence/clock row');
+ assert.equal((await rpc('select raid_status() v')).attempts_left,3);assert.equal((await rpc('select war_status() v')).match.me.attacks_left,5);
+ await db.exec(refillSeed);assert.deepEqual(await untouched(),halfwayState);assert.equal((await rpc('select war_status() v')).match.me.attacks_left,5,'no stacking');
+ // Old sweep UUID stays idempotent, proof stays valid, but every NEW sweep consumes
+ // the same refilled budget as a direct start (and is still capped at three).
+ for(let i=0;i<3;i++)await rpc('select raid_sweep_v4($1) v',[req(++serial)]);
+ await reject('select raid_sweep_v4($1)',[req(++serial)],/no attempts/);
+ assert.equal((await http({op:'start',kind:'raid',payload:{uids:ids},request:req(++serial),control:'auto',version:ENGINE_VERSION})).data.error,'no attempts');
+ for(let i=5;i<10;i++){const w=await start('war',{slot:Math.floor(i/2)+1,deck:1});const f=await finish(w);assert.equal(f.status,200,JSON.stringify(f));assert.equal(f.data.result.win,true,'same unhealed Lv80 HR attack deck must clear all ten NPC defense decks');assert.equal((await rpc('select war_status() v')).match.gate_open,i===9);}
+ const cleared=await rpc('select war_status() v');assert.equal(cleared.match.id,mid);assert(cleared.match.enemy.filter(t=>t.role==='def').every(t=>t.destroyed));assert.equal(cleared.match.me.attacks_left,0);
+ await db.exec(refillSeed);const afterGate=await rpc('select war_status() v');assert.equal(afterGate.match.gate_open,true);assert.equal(afterGate.match.id,mid);
+ const nextGroup=await start('war',{slot:6,deck:1});assert.equal((await finish(nextGroup)).status,200,'next group must actually accept a verified attack after clearing defense');
+ // Refill closes pending reservations, not their HP/score/reward effects. Late
+ // finish conflicts; durable status/forfeit recovery returns the zero-award receipt.
+ // Also preserve a genuinely partial defender state, including one already-dead card.
+ await q("update war_ajits_v4 set state=jsonb_build_object(snaps->(deck-1)->0->>'uid',1234,snaps->(deck-1)->1->>'uid',0) where match_id=$1 and side=$2 and slot=7",[mid,1-afterGate.match.side]);
+ const pendingRaid=await start(),pendingWar=await start('war',{slot:7,deck:1});
+ const allyIssued=await rpc("select guildbattle_start_v4('war',$1,$2,'auto',$3) v",[JSON.stringify({slot:21,deck:1}),req(++serial),ENGINE_VERSION],ally);assert(allyIssued.id);
+ const battleState=()=>q(`select match_id,side,slot,snaps,deck,state,destroyed_at,destroyed_by from war_ajits_v4 order by match_id,side,slot`);
+ const heldHP=await battleState(),heldEco=await eco(),heldAtk=await q('select * from war_atk_state_v4 order by match_id,user_id,deck'),heldClock=await q('select * from guildbattle_test_clock_v4'),heldBoss=await q('select * from guild_raids_v4 order by guild_id,week'),heldEvidence=await q('select * from guildbattle_events_v4 order by session_id');
+ await db.exec(refillSeed);assert.deepEqual(await battleState(),heldHP);assert.deepEqual(await eco(),heldEco);assert.deepEqual(await q('select * from war_atk_state_v4 order by match_id,user_id,deck'),heldAtk);assert.deepEqual(await q('select * from guildbattle_test_clock_v4'),heldClock);assert.deepEqual(await q('select * from guild_raids_v4 order by guild_id,week'),heldBoss);assert.deepEqual(await q('select * from guildbattle_events_v4 order by session_id'),heldEvidence);
+ assert.equal(await val('select count(*)::int v from war_ajits_v4 where locked_by=$1',[me]),0);assert.equal(await val('select count(*)::int v from war_ajits_v4 where locked_by=$1',[ally]),1,'do not release an unnamed account reservation');
+ for(const pending of [pendingRaid,pendingWar]){assert.equal((await finish(pending)).status,409);const st=await http({op:'status',id:pending.id});assert.equal(st.data.result.expired,true);assert.equal((await http({op:'forfeit',id:pending.id})).status,200);}
+ assert.deepEqual(await eco(),heldEco);assert.deepEqual(await battleState(),heldHP);
+ // No allowance survives a changed clock anchor/run, expired clock, removed
+ // fixture membership, or an unprovisioned/unnamed account. SQL is operator-only.
+ await reject("select _guildbattle_used_v4($1,'war',$2)",[me,mid]);await reject('select * from guildbattle_test_refills_v4');await reject('update guildbattle_test_refills_v4 set used_base=999');await reject('update guildbattle_test_refills_v4 set used_base=999 where false');
+ const effective=()=>val("select _guildbattle_used_v4($1,'war',$2)::int v",[me,mid]);assert.equal(await effective(),0);
+ await q("update guildbattle_test_clock_v4 set set_at=set_at+interval '1 millisecond'");assert.equal(await effective(),12);await q('update guildbattle_test_clock_v4 set set_at=$1',[heldClock[0].set_at]);
+ await q('update guildbattle_test_clock_v4 set run=run+1');assert.equal(await effective(),12);await q('update guildbattle_test_clock_v4 set run=$1',[heldClock[0].run]);
+ await q("update guildbattle_test_clock_v4 set expires_at=clock_timestamp()-interval '1 second'");const expiredRefills=await val('select count(*)::int v from guildbattle_test_refills_v4');await assert.rejects(db.exec(refillSeed),/active start fixture required/);await db.exec('rollback');assert.equal(await val('select count(*)::int v from guildbattle_test_refills_v4'),expiredRefills);await q('update guildbattle_test_clock_v4 set expires_at=$1',[heldClock[0].expires_at]);
+ await q('update guild_members set guild_id=$1 where user_id=$2',[bgid,me]);assert.equal(await effective(),12);await assert.rejects(db.exec(refillSeed),/provisioned member/);await db.exec('rollback');await q('update guild_members set guild_id=$1 where user_id=$2',[gid,me]);assert.equal(await effective(),0);
+ assert.equal(await val('select count(*)::int v from guildbattle_test_refills_v4 where user_id=$1',[ally]),0);assert.equal(await val("select _guildbattle_used_v4($1,'war',$2)::int v",[ally,mid]),1,'unnamed fixture ally keeps its consumed attempt');assert.equal(await val('select status v from guildbattle_sessions_v4 where id=$1',[allyIssued.id]),'issued');
+ // Rerunning migration preserves the refill ledger and its live effective count.
+ const credits=await q('select * from guildbattle_test_refills_v4 order by id');await db.exec(sql);assert.deepEqual(await q('select * from guildbattle_test_refills_v4 order by id'),credits);assert.equal(await effective(),0);
+ console.log('Refill PASS: standalone upgrade, exact HP/clock/evidence preservation, 3/5 caps, no stacking, ten real NPC-defense wins + next-group attack, stale reservation closure, scope/expiry/ACL');
+
  // Saved defense configuration may reference a card sold before roster freeze.
  // It must become a valid NPC fallback, not JSON-null inside a broken deck array.
  const savedDef=await val('select def1 v from war_decks_v4 where user_id=$1',[me]);await q(`update war_decks_v4 set def1='[{"uid":"sold-card","id":"10111"}]' where user_id=$1`,[me]);
@@ -151,6 +218,9 @@ try {
  // Auth and strict schemas reject before any trusted settlement.
  assert.equal((await http({op:'finish',id:r.id,actions:null},'forged-token')).status,401);assert.equal((await http({op:'start',kind:'raid',payload:{uids:ids,damage:999},request:req(++serial),control:'auto',version:ENGINE_VERSION})).status,409);
  const noProd=createHandler({...env,SUPABASE_URL:'https://htarwisgkkphutxxnuak.supabase.co'},()=>{throw Error('must not fetch');});assert.equal((await http({},'fixture-me',noProd)).status,503);
+
+
+ await db.exec(seed.replace("action text := 'start'","action text := 'stop'"));await assert.rejects(db.exec(refillSeed),/active start fixture required/);await db.exec('rollback');assert.equal(await effective(),12);
  console.log('Phase4 SQL + real '+(process.argv.includes('--dashboard')?'Dashboard':'Edge')+' PASS: issuance, AUTO/manual, snapshots/NPC, ownership, strict input, exact-once, sweeps, limits, expiry, guild switch, stale HP, kill switch, raid quests, atomic rollback, hostile ACL defaults, seed/reset');
 
 } catch(e) {console.error('FAIL',e.message,e.where||'',e.stack?.split('\n').slice(0,3).join('\n'));process.exitCode=1;} finally { await db.close(); }

@@ -19236,7 +19236,7 @@ begin
     'difficulty', r.difficulty, 'guild_level', g.level, 'diff_level', N->'diff_level', 'diff_mult', N->'diff_mult',
     'can_set_diff', m.role in ('boss', 'officer') and r.total_damage = 0 and not exists(select 1 from guild_raid_attempts_v4 where guild_id=m.guild_id and week=w),
     'stage', r.stage, 'hp_max', r.hp_max, 'hp_left', r.hp_left, 'total_damage', r.total_damage, 'boss', _raid_boss_v4(r.stage), 'next_boss', _raid_boss_v4(r.stage + 1),
-    'attempts_left', greatest(0, (N->>'attempts_per_day')::int - used-(select count(*) from guild_raid_attempts where user_id=uid and day=_raid_day_v4())), 'best_today', best, 'can_sweep', coalesce(fought, false) and best > 0,
+    'attempts_left', greatest(0, (N->>'attempts_per_day')::int - _guildbattle_used_v4(uid,'raid')), 'best_today', best, 'can_sweep', coalesce(fought, false) and best > 0,
     'sweep_damage', best * (N->>'sweep_pct')::int / 100,
     'ranking', (select coalesce(jsonb_agg(jsonb_build_object('user_id', d.user_id, 'name', coalesce(p.nickname, '조직원'), 'damage', d.damage, 'attempts', d.attempts, 'me', d.user_id = uid) order by d.damage desc, d.user_id), '[]'::jsonb)
                 from guild_raid_damage_v4 d left join profiles p on p.id = d.user_id where d.guild_id = m.guild_id and d.week = w and d.damage > 0),
@@ -19562,7 +19562,7 @@ begin
   if mt.id is null then return res; end if;
   my := case when mt.guild_a = m.guild_id then 0 else 1 end;
   select slot into me_slot from war_ajits_v4 where match_id = mt.id and side = my and user_id = uid;
-  select count(*) into used from war_attacks_v4 where match_id = mt.id and user_id = uid;
+  used := _guildbattle_used_v4(uid,'war',mt.id);
   return res || jsonb_build_object('match', jsonb_build_object('id', mt.id, 'day', mt.day, 'side', my,
     'opponent', case when (case my when 0 then mt.guild_b else mt.guild_a end) is null then jsonb_build_object('name', '동네 불량배파', 'npc', true, 'emblem', 0)
                 else (select jsonb_build_object('id', g.id, 'name', g.name, 'emblem', g.emblem, 'level', g.level, 'npc', false) from guilds g where g.id = case my when 0 then mt.guild_b else mt.guild_a end) end,
@@ -19696,7 +19696,7 @@ begin
   perform pg_advisory_xact_lock(hashtext('raid:' || uid));
   -- 끝내지 않은 판은 0 피해로 마감 (횟수는 이미 씀)
   update guild_raid_attempts_v4 set finished_at = now(), damage = 0 where user_id = uid and finished_at is null;
-  if (select count(*) from guild_raid_attempts_v4 where user_id = uid and day = _raid_day_v4()) >= (N->>'attempts_per_day')::int then raise exception 'no attempts'; end if;
+  if _guildbattle_used_v4(uid,'raid') >= (N->>'attempts_per_day')::int then raise exception 'no attempts'; end if;
   r := _raid_get_v4(m.guild_id, w);
   snap := _pvp_snap(uid, p_uids, 'open')->'cards';
   seed := floor(random() * 2147483647)::bigint;
@@ -19723,7 +19723,7 @@ begin
   perform pg_advisory_xact_lock(hashtext('waratk:' || uid));
   update war_attacks_v4 set finished_at = now(), win = false where user_id = uid and finished_at is null;   -- 끝내지 않은 판 = 패배(변화 없음)
   update war_ajits_v4 set locked_by = null, locked_until = null where locked_by = uid;
-  if (select count(*) from war_attacks_v4 where match_id = mt.id and user_id = uid)+(select count(*) from war_attacks legacy_attempt join war_matches legacy_match on legacy_match.id=legacy_attempt.match_id where legacy_attempt.user_id=uid and legacy_match.season=s and legacy_match.day=d) >= (N->>'attacks_per_day')::int then raise exception 'no attacks'; end if;
+  if _guildbattle_used_v4(uid,'war',mt.id) >= (N->>'attacks_per_day')::int then raise exception 'no attacks'; end if;
   select * into t from war_ajits_v4 where match_id = mt.id and side = 1 - my and slot = p_slot for update;
   if t.slot is null then raise exception 'bad target'; end if;
   if t.destroyed_at is not null then raise exception 'already destroyed'; end if;
@@ -19797,6 +19797,54 @@ begin
   return jsonb_build_object('result', jsonb_build_object('win', iswin, 'points', pts, 'next_deck', iswin and next_ok, 'destroyed', iswin and not next_ok, 'boss_kill', t.role = 'boss' and iswin and not next_ok));
 end $$;
 
+-- Operator-only fixture budget baselines; never delete or relabel combat/reward evidence.
+create table if not exists public.guildbattle_test_refills_v4(
+ id bigint generated always as identity primary key,
+ user_id uuid not null references auth.users(id) on delete cascade,
+ guild_id bigint not null, kind text not null check(kind in('raid','war')),
+ day date not null, match_id bigint, run int not null, clock_set_at timestamptz not null,
+ used_base bigint not null check(used_base>=0), at timestamptz not null default clock_timestamp(),
+ check((kind='raid' and match_id is null) or (kind='war' and match_id is not null))
+);
+create index if not exists guildbattle_test_refills_scope_v4 on public.guildbattle_test_refills_v4(user_id,kind,day,run,clock_set_at);
+alter table public.guildbattle_test_refills_v4 enable row level security;
+revoke all on public.guildbattle_test_refills_v4 from public,anon,authenticated;
+revoke all on sequence public.guildbattle_test_refills_v4_id_seq from public,anon,authenticated;
+
+-- Same effective count is used by issuance, sweep AND status. Normal users retain 3 / 5 caps.
+-- Allowance is valid ONLY inside this staging DB's still-active, identical fixture clock/run,
+-- day/match and guild membership. Closing/resetting the clock disables old baselines.
+create or replace function public._guildbattle_used_v4(p_uid uuid,p_kind text,p_mid bigint default null) returns bigint language plpgsql stable security definer set search_path=pg_catalog,public,pg_temp as $budget$
+declare total_ bigint; base_ bigint; gid bigint; c guildbattle_test_clock_v4; mt war_matches_v4; d date:=_raid_day_v4();
+begin
+ if p_kind='raid' then
+  select (select count(*) from guild_raid_attempts where user_id=p_uid and day=d)+(select count(*) from guild_raid_attempts_v4 where user_id=p_uid and day=d) into total_;
+ elsif p_kind='war' and p_mid is not null then
+  select * into mt from war_matches_v4 where id=p_mid;
+  if mt.id is null then raise exception 'bad budget match'; end if;
+  select (select count(*) from war_attacks_v4 where match_id=p_mid and user_id=p_uid)+(select count(*) from war_attacks a join war_matches m on m.id=a.match_id where a.user_id=p_uid and m.season=mt.season and m.day=mt.day) into total_;
+ else raise exception 'bad budget kind'; end if;
+ select * into c from guildbattle_test_clock_v4 where singleton;
+ if c.at is null or c.expires_at is null or c.expires_at<=clock_timestamp() or c.run<1 or (select system_identifier::text from pg_catalog.pg_control_system()) is distinct from '7703759698107299042' then return total_; end if;
+ select g.id into gid from guild_members gm join guilds g on g.id=gm.guild_id where gm.user_id=p_uid and g.id=any(c.guild_ids) and g.name_key='sec4_fixture_'||g.boss::text;
+ if gid is null or not exists(select 1 from story_progress sp,jsonb_array_elements(coalesce(sp.data->'owned','[]')) o where sp.user_id=p_uid and o->>'uid' like 'sec4fixture:'||p_uid||':%') then return total_; end if;
+ if p_kind='war' and (mt.season<>_war_season_v4() or mt.day is distinct from _war_day_v4(mt.season) or (gid is distinct from mt.guild_a and gid is distinct from mt.guild_b)) then return total_; end if;
+ select coalesce(max(used_base),0) into base_ from guildbattle_test_refills_v4 where user_id=p_uid and guild_id=gid and kind=p_kind and day=d and match_id is not distinct from p_mid and run=c.run and clock_set_at=c.set_at;
+ return greatest(0,total_-least(total_,base_));
+end $budget$;
+revoke all on function public._guildbattle_used_v4(uuid,text,bigint) from public,anon,authenticated;
+-- Defend against hostile defaults or later column grants when the seed is rerun standalone.
+do $refill_acl$ declare cols text; begin
+ select string_agg(quote_ident(attname),',') into cols from pg_attribute where attrelid='public.guildbattle_test_refills_v4'::regclass and attnum>0 and not attisdropped;
+ execute format('revoke select(%1$s),insert(%1$s),update(%1$s),references(%1$s) on public.guildbattle_test_refills_v4 from public,anon,authenticated',cols);
+ if exists(select 1 from pg_roles where rolname='service_role') then
+  revoke all on public.guildbattle_test_refills_v4 from service_role;
+  revoke all on sequence public.guildbattle_test_refills_v4_id_seq from service_role;
+  revoke all on function public._guildbattle_used_v4(uuid,text,bigint) from service_role;
+  execute format('revoke select(%1$s),insert(%1$s),update(%1$s),references(%1$s) on public.guildbattle_test_refills_v4 from service_role',cols);
+ end if;
+end $refill_acl$;
+
 
 -- Finish ALL already-frozen past seasons before rankings/claims are evaluated.
 -- A lazy tick must not strand Sunday results when Monday advances the season.
@@ -19847,7 +19895,7 @@ begin
  -- Prior abandoned reservations consume their attempt, never award or feed anything.
  update guildbattle_sessions_v4 set status='settled',submission='{"forfeit":true}',result='{"expired":true,"win":false,"damage":0}' where user_id=u and kind=p_kind and status='issued';
  if p_kind='raid' then
-  if (select count(*) from guild_raid_attempts where user_id=u and day=_raid_day_v4())+(select count(*) from guild_raid_attempts_v4 where user_id=u and day=_raid_day_v4())>=3 then raise exception 'no attempts'; end if;
+  if _guildbattle_used_v4(u,'raid')>=3 then raise exception 'no attempts'; end if;
   b:=_raid_start_v4(p_payload->'uids');
  else b:=_war_start_v4((p_payload->>'slot')::int,(p_payload->>'deck')::int);
  end if;
@@ -19925,7 +19973,7 @@ begin
  select result into rw from guildbattle_sweeps_v4 where user_id=u and request_id=p_request; if found then return rw; end if;
  select * into m from guild_members where user_id=u for update; if not found then raise exception 'not in guild'; end if;
  if _raid_now_v4()>=_raid_end_v4(_raid_week_v4()) then raise exception 'raid ended'; end if;
- if (select count(*) from guild_raid_attempts where user_id=u and day=_raid_day_v4())+(select count(*) from guild_raid_attempts_v4 where user_id=u and day=_raid_day_v4())>=3 then raise exception 'no attempts'; end if;
+ if _guildbattle_used_v4(u,'raid')>=3 then raise exception 'no attempts'; end if;
  select max(fight.damage) into best from guild_raid_attempts_v4 fight join guildbattle_sessions_v4 sess on sess.kind='raid' and sess.attempt_id=fight.id and sess.verified and sess.status='settled'
  where fight.user_id=u and fight.guild_id=m.guild_id and fight.week=_raid_week_v4() and fight.day=_raid_day_v4() and fight.kind='fight' and not fight.voided;
  if coalesce(best,0)<=0 then raise exception 'fight first'; end if;
