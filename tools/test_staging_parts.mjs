@@ -95,7 +95,7 @@ for (const defaults of [false, true]) {
       assert.deepEqual(await snapshot(db), before, part.name + ': 즉시 재실행 시 내용 변경');
     }
     const final = await snapshot(db);
-    assert.equal(final.functions.length, 674); // phase 1–4: ranked + raid/war replay, isolated ledgers, fixtures and receipts
+    assert.equal(final.functions.length, 675); // phase 1–4: ranked + raid/war replay, isolated ledgers, fixtures and receipts
     assert.equal(final.ledger.length, parts.length);
     assert.equal(final.usage[0].anon, true);
     assert.equal((await db.query('select count(*)::int n from auth.users')).rows[0].n, 0);

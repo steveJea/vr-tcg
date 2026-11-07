@@ -1,6 +1,7 @@
 // Explicit, reviewable legacy rule extraction: no live DB, no wildcard SQL execution.
 import {readFile,writeFile} from 'node:fs/promises';
 import {splitStatements,stripLeadingComments} from './sql_statements.mjs';
+import {refillPatches} from './phase4/refill_patches.mjs';
 const root=new URL('../',import.meta.url),rd=p=>readFile(new URL(p,root),'utf8');
 const names=['guild_raids','guild_raid_stages','guild_raid_attempts','guild_raid_damage','war_decks','war_entries','war_roster','war_matches','war_ajits','war_atk_state','war_attacks'];
 const sources=['guild2.sql','guild3.sql','guild4.sql','manual_battle.sql','war_manual.sql','guild4_ui.sql','war_auto.sql','card_id_remap.sql'];
@@ -36,7 +37,8 @@ for(const n of ['raid_start','war_start','war_finish']){
  if(n==='war_start')body=body.replace("if (select count(*) from war_attacks_v4 where match_id = mt.id and user_id = uid)","if (select count(*) from war_attacks_v4 where match_id = mt.id and user_id = uid)+(select count(*) from war_attacks legacy_attempt join war_matches legacy_match on legacy_match.id=legacy_attempt.match_id where legacy_attempt.user_id=uid and legacy_match.season=s and legacy_match.day=d)");
  out+='\n'+body+'\n';
 }
-out+='\n'+await rd('tools/phase4/tail.sql');
+const refill=await rd('tools/phase4/refill.sql');
+out+='\n'+refill+'\n'+await rd('tools/phase4/tail.sql');
 const quest=splitStatements(await rd('supabase/guild2.sql')).map(stripLeadingComments).find(s=>s.startsWith('create or replace function public.guild_quests('));
 let questUi=quest.replace(/set search_path\s*=\s*public/g,'set search_path=pg_catalog,public,pg_temp');
 const proof="(case when p.event='raid' then _guildbattle_raid_count_v4(case when p.kind='daily' then uid else null end,m.guild_id,case when p.kind='daily' then d else w end,case when p.kind='daily' then d else w+6 end) else q.progress end)";
@@ -45,5 +47,20 @@ out+='\n'+questUi+'\n';
 
 for(const [n,source] of funcs){if(n.startsWith('_')||excluded.has(n)||n==='war_enter'||n==='war_withdraw')continue;const m=source.match(/^create or replace function public\.\w+\(([^)]*)\) returns ([\w.]+) /);if(!m)throw Error('wrapper signature '+n);const args=m[1].split(',').filter(x=>x.trim()).map(x=>x.trim().split(/\s+/)[0]).join(',');out+=`\ncreate or replace function public.${n}(${m[1]}) returns ${m[2]} language plpgsql security definer set search_path=pg_catalog,public,pg_temp as $$ begin perform _guildbattle_guard_v4(); perform pg_advisory_xact_lock(hashtext('guildbattle:v4')); return ${mappings.get(n)}(${args}); end $$;\nrevoke all on function public.${n}(${m[1].split(',').filter(x=>x.trim()).map(x=>x.trim().split(/\s+/).slice(1).join(' ')).join(',')}) from public,anon;\ngrant execute on function public.${n}(${m[1].split(',').filter(x=>x.trim()).map(x=>x.trim().split(/\s+/).slice(1).join(' ')).join(',')}) to authenticated;\n`;}
 out+='\ncommit;\n';
-const p=new URL('supabase/security_phase4_raid_guildwar.sql',root);if(process.argv.includes('--check')){if(await readFile(p,'utf8')!==out)throw Error('stale phase4 SQL');}else await writeFile(p,out);
+const budgetDefs=[];
+for(const [signature,from,to] of refillPatches){
+ const name=signature.split('(')[0], stmt=splitStatements(out).find(s=>stripLeadingComments(s).startsWith('create or replace function public.'+name+'('));
+ if(!stmt||stmt.split(from).length!==2)throw Error('budget mapping drift: '+signature);
+ const patched=stmt.replace(from,to);out=out.replace(stmt,()=>patched);budgetDefs.push(stripLeadingComments(patched));
+}
+// Existing staging can install the SAME six definitions in one guarded seed transaction.
+// No dynamic catalog rewriting; no overwritten HP/evidence; no new public RPC.
+const hash=(await rd('js/guildbattle-engine-version.js')).match(/[a-f0-9]{64}/)?.[0];if(!hash)throw Error('missing phase4 engine hash');
+const preflight=`if not exists(select 1 from guildbattle_policy_v4 where singleton and engine_hash='${hash}') then raise exception 'STOP: seed/phase4 engine version mismatch'; end if;
+if to_regclass('public.guildbattle_sessions_v4') is null or exists(select 1 from unnest(array[${refillPatches.map(([sig])=>"'public."+sig+"'").join(',')}]) sig where to_regprocedure(sig) is null) then raise exception 'STOP: install phase4 SQL first'; end if;`;
+const installer=preflight+"\n execute $phase4_refill_install$\n"+refill+'\n'+budgetDefs.join('\n')+'\n$phase4_refill_install$;';
+const seed=(await rd('tools/phase4/seed.sql')).replace('-- REFILL_INSTALLER',()=>installer);
+for(const [path,content] of [['supabase/security_phase4_raid_guildwar.sql',out],['supabase/staging_seed_raid_guildwar.sql',seed]]){
+ const p=new URL(path,root);if(process.argv.includes('--check')){if(await readFile(p,'utf8')!==content)throw Error('stale '+path);}else await writeFile(p,content);
+}
 console.log('Phase4 SQL '+Buffer.byteLength(out)+' bytes');

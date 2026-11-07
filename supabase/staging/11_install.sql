@@ -1,4 +1,4 @@
--- ⚠ 테스트 전용 11/13. 운영 실행 금지. 파일 전체를 번호 순서대로 실행.
+-- ⚠ 테스트 전용 11/14. 운영 실행 금지. 파일 전체를 번호 순서대로 실행.
 -- 대상 프로젝트: cuyqchmdcnsgzkwyclji; 운영 htarwisgkkphutxxnuak 금지.
 -- 완료한 파일은 다시 실행해도 건너뜀. 중간 오류는 해당 파일만 되돌아감.
 -- 실제 project_ref는 SQL Editor가 보장해서 제공하지 않음: DB 고유번호를 대조.
@@ -40,7 +40,7 @@ set local check_function_bodies = off;
 
 do $vr_install_part$
 begin
-  if exists (select 1 from vr_staging_install.parts where bundle_hash <> 'da0eb586a3c1de0d9d4014bf2ade294ba499b39fbabed5ddb640c82a37e009fe' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
+  if exists (select 1 from vr_staging_install.parts where bundle_hash <> 'a28d331ed610dbcea36619120ef409846d80786b3339d5c8d4441a8b9b347d70' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
     raise exception 'STOP: 다른 버전/DB의 설치 기록입니다. 파일을 섞지 마세요.';
   end if;
   if exists (select 1 from vr_staging_install.parts where part_no = 11) then
@@ -409,7 +409,7 @@ on conflict (chapter,phase,variant) do update set definition=excluded.definition
   execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10262','{"class":"WIND","gender":"FEMALE","MOR":40,"cost":8,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
 
   insert into vr_staging_install.parts(part_no, bundle_hash, part_hash, project_ref, db_id)
-  values (11, 'da0eb586a3c1de0d9d4014bf2ade294ba499b39fbabed5ddb640c82a37e009fe', '3b66dc772262ccc7322c8ac98991910e451a32724bb5fa86832c6eaed3d1793c', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
+  values (11, 'a28d331ed610dbcea36619120ef409846d80786b3339d5c8d4441a8b9b347d70', '3b66dc772262ccc7322c8ac98991910e451a32724bb5fa86832c6eaed3d1793c', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
 end $vr_install_part$;
 commit;
-select '11_install.sql: 완료 또는 이미 완료 (11/13)' as result;
+select '11_install.sql: 완료 또는 이미 완료 (11/14)' as result;

@@ -1,4 +1,4 @@
-**보안 4단계 토벌·조직전:** 기존 staging에 `security_phase4_raid_guildwar.sql`을 실행하고 새 `guildbattle-verify-v4` Edge/JWT ON 및 같은 브랜치 클라이언트를 배포합니다. 테스트 계정 2개를 지정하는 seed/reset SQL은 `staging_seed_raid_guildwar.sql`입니다. 자세한 순서·정책 변경·확인은 [SECURITY_PHASE4_20261107.md](../docs/SECURITY_PHASE4_20261107.md). 운영 배포는 전체 보안 완료 후 별도 승인. 순서는 **1→2→3→4**입니다.
+**보안 4단계 토벌·조직전:** 기존 staging에 `security_phase4_raid_guildwar.sql`을 실행하고 새 `guildbattle-verify-v4` Edge/JWT ON 및 같은 브랜치 클라이언트를 배포합니다. 테스트 계정 2개를 지정하는 seed/refill/reset SQL은 `staging_seed_raid_guildwar.sql`입니다. 자세한 순서·정책 변경·확인은 [SECURITY_PHASE4_20261107.md](../docs/SECURITY_PHASE4_20261107.md). 운영 배포는 전체 보안 완료 후 별도 승인. 순서는 **1→2→3→4**입니다.
 
 # supabase SQL 안내
 
