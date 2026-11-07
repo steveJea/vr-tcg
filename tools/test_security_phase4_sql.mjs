@@ -1,6 +1,7 @@
 // No network/keys. PGlite SQL + the REAL trusted handler/engine behind a simulated Auth/REST boundary.
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import {detailProjection} from './phase4/war_card_details.mjs';
 import {refillPatches} from './phase4/refill_patches.mjs';
 import {splitStatements,stripLeadingComments} from './sql_statements.mjs';
 import { PGlite } from '@electric-sql/pglite';
@@ -66,7 +67,7 @@ try {
  await assert.rejects(db.exec(migration),/STOP: phase4 only/);await db.exec('rollback');
  const sql=migration.replaceAll("'7703759698107299042'",`'${system}'`);
  // Model the already-deployed pre-refill phase4 schema, not a fresh upgraded DB.
- let previous=migration.replace(await rd('tools/phase4/refill.sql'),'');
+ let previous=migration.replace(await rd('tools/phase4/refill.sql'),'').replace(detailProjection,'');
  for(const [signature,from,to] of refillPatches){const name=signature.split('(')[0],stmt=splitStatements(previous).find(x=>stripLeadingComments(x).startsWith('create or replace function public.'+name+'('));assert(stmt?.includes(to),signature);previous=previous.replace(stmt,()=>stmt.replace(to,from));}
  assert(!previous.includes('function public._guildbattle_used_v4('));
  await db.exec(previous.replaceAll("'7703759698107299042'",`'${system}'`));
@@ -80,8 +81,31 @@ try {
  await assert.rejects(db.exec(await rd('supabase/staging_seed_raid_guildwar.sql')),/STOP: staging/);await db.exec('rollback');
  assert.equal(await val("select to_regclass('public.guildbattle_test_refills_v4')::text v"),null);
  await db.exec(seed);await db.exec(seed);
+ // Existing-staging metadata upgrade is read-only, idempotent and private under hostile default ACLs.
+ const detailPatch=await rd('supabase/security_phase4_war_card_details.sql');
+ await assert.rejects(db.exec(detailPatch),/STOP: war details staging/);await db.exec('rollback');
+ const oldRow=(await q('select match_id,side,slot,snaps,state from war_ajits_v4 order by match_id,side,slot limit 1'))[0];
+ assert(oldRow?.snaps?.[0]?.length);
+ const frozen={...oldRow.snaps[0][0],uid:'private-owned-instance',level:42,ex:2,exb:true,boost:{atk:1.2},skillLv:{'1':3},gear:{atk:7},sigil:null,private_note:'must-not-leak'};
+ const snaps=structuredClone(oldRow.snaps);snaps[0][0]=frozen;
+ await q('update war_ajits_v4 set snaps=$1,state=$2 where match_id=$3 and side=$4 and slot=$5',[JSON.stringify(snaps),JSON.stringify({'private-owned-instance':123}),oldRow.match_id,oldRow.side,oldRow.slot]);
+ const sideRead=()=>val('select _war_side_json_v4($1,$2) v',[oldRow.match_id,oldRow.side]);
+ assert.equal((await sideRead()).find(a=>a.slot===oldRow.slot).cards[0].snapshot,undefined);
+ const detailTables=(await q("select tablename from pg_tables where schemaname='public' order by tablename")).map(x=>x.tablename);
+ const detailState=()=>Promise.all(detailTables.map(t=>q(`select to_jsonb(t) v from public.${t} t order by to_jsonb(t)::text`)));
+ const beforeDetail=await detailState(),patchedDetail=detailPatch.replaceAll("'7703759698107299042'",`'${system}'`);
+ await db.exec(patchedDetail);await db.exec(patchedDetail);assert.deepEqual(await detailState(),beforeDetail,'detail upgrade changes NO data rows, HP, clocks or budgets');
+ const exposed=(await sideRead()).find(a=>a.slot===oldRow.slot).cards[0],allow=['id','level','ex','exb','boost','skillLv','gear','sigil','scale'];
+ assert.deepEqual(Object.keys(exposed.snapshot).sort(),allow.slice().sort());
+ for(const key of allow)assert.deepEqual(exposed.snapshot[key],frozen[key]??null,key);
+ assert.equal(exposed.hp,123);assert(!JSON.stringify(exposed).includes('private-owned-instance'));assert(!JSON.stringify(exposed).includes('must-not-leak'));
+ for(const role of ['anon','authenticated','service_role'])assert.equal(await val("select has_function_privilege($1,'public._war_side_json_v4(bigint,integer)','execute') v",[role]),false);
+ const detailDefinition=await val("select pg_get_functiondef('public._war_side_json_v4(bigint,integer)'::regprocedure) v");
+ await q('update war_ajits_v4 set snaps=$1,state=$2 where match_id=$3 and side=$4 and slot=$5',[JSON.stringify(oldRow.snaps),JSON.stringify(oldRow.state),oldRow.match_id,oldRow.side,oldRow.slot]);
+ console.log('War detail SQL PASS: staging guard, existing-install upgrade, idempotency, exact frozen metadata/HP, UID/extra-key privacy, ALL public data rows unchanged, helper ACL');
  const installedDefs=await q("select proname,pg_get_functiondef(oid) ddl from pg_proc where pronamespace='public'::regnamespace and proname=any($1) order by proname",[refillPatches.map(([sig])=>sig.split('(')[0])]);
  await db.exec(sql);assert.deepEqual(await q("select proname,pg_get_functiondef(oid) ddl from pg_proc where pronamespace='public'::regnamespace and proname=any($1) order by proname",[refillPatches.map(([sig])=>sig.split('(')[0])]),installedDefs,'standalone seed and migration must install identical budget consumers');
+ assert.equal(await val("select pg_get_functiondef('public._war_side_json_v4(bigint,integer)'::regprocedure) v"),detailDefinition,'fresh/install and small upgrade must install identical detail helper');
  const status0=await rpc('select raid_status() v');assert.equal(status0.attempts_left,3);assert.equal(status0.can_sweep,false);assert.equal((await rpc('select war_status() v')).phase,'live');
  let serial=0;
  const ids=await val(`select jsonb_agg(c->>'uid') v from story_progress,jsonb_array_elements(data->'owned') c where user_id=$1`,[me]);

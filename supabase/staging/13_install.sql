@@ -40,11 +40,11 @@ set local check_function_bodies = off;
 
 do $vr_install_part$
 begin
-  if exists (select 1 from vr_staging_install.parts where bundle_hash <> 'a28d331ed610dbcea36619120ef409846d80786b3339d5c8d4441a8b9b347d70' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
+  if exists (select 1 from vr_staging_install.parts where bundle_hash <> '8ff473e973d5bc52e71f798115e03bf5931c2ad74f766c08f6dd0f2d69dd56f5' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
     raise exception 'STOP: 다른 버전/DB의 설치 기록입니다. 파일을 섞지 마세요.';
   end if;
   if exists (select 1 from vr_staging_install.parts where part_no = 13) then
-    if not exists (select 1 from vr_staging_install.parts where part_no = 13 and part_hash = '9a4c31b4f6c083109ae9b2fde22fd76669432ca808a80cc9929acd8bd42fa2ec') then
+    if not exists (select 1 from vr_staging_install.parts where part_no = 13 and part_hash = '447a51b3b12407834f8759dfbcee99edc2b05509e0e5e14554a040d1c86ef712') then
       raise exception 'STOP: 완료한 파일과 내용이 다릅니다.';
     end if;
     raise notice '13_install.sql: 이미 완료, 변경 없이 건너뜀';
@@ -747,7 +747,7 @@ end $$;$vr_statement$;
   execute $vr_statement$create or replace function public._war_side_json_v4(p_mid bigint, p_side int) returns jsonb language sql stable security definer set search_path=pg_catalog,public,pg_temp as $$
   select coalesce(jsonb_agg(jsonb_build_object('slot', a.slot, 'role', a.role, 'npc', a.npc, 'user_id', a.user_id,
       'name', case when a.npc and a.user_id is null then '동네 불량배' else coalesce(p.nickname, '조직원') end, 'deck', a.deck, 'decks', jsonb_array_length(a.snaps) - (case when jsonb_array_length(coalesce(a.snaps->1, '[]'::jsonb)) = 0 then 1 else 0 end),
-      'cards', (select coalesce(jsonb_agg(jsonb_build_object('id', c->>'id', 'level', c->'level', 'scale', c->'scale', 'hp', a.state->(c->>'uid'))), '[]'::jsonb) from jsonb_array_elements(a.snaps->(a.deck - 1)) c),
+      'cards', (select coalesce(jsonb_agg(jsonb_build_object('id', c->>'id', 'level', c->'level', 'scale', c->'scale', 'snapshot', jsonb_build_object('id',c->'id','level',c->'level','ex',c->'ex','exb',c->'exb','boost',c->'boost','skillLv',c->'skillLv','gear',c->'gear','sigil',c->'sigil','scale',c->'scale'), 'hp', a.state->(c->>'uid'))), '[]'::jsonb) from jsonb_array_elements(a.snaps->(a.deck - 1)) c),
       'destroyed', a.destroyed_at is not null, 'locked', a.locked_until > _war_now_v4()) order by a.slot), '[]'::jsonb)
   from war_ajits_v4 a left join profiles p on p.id = a.user_id where a.match_id = p_mid and a.side = p_side $$;$vr_statement$;
   execute $vr_statement$create or replace function public._war_status_v4() returns jsonb language plpgsql security definer set search_path=pg_catalog,public,pg_temp as $$
@@ -1290,10 +1290,9 @@ end $$;$vr_statement$;
   execute $vr_statement$grant execute on function public.war_claim() to authenticated;$vr_statement$;
   execute $vr_statement$create or replace function public.war_ui() returns jsonb language plpgsql security definer set search_path=pg_catalog,public,pg_temp as $$ begin perform _guildbattle_guard_v4(); perform pg_advisory_xact_lock(hashtext('guildbattle:v4')); return _war_ui_v4(); end $$;$vr_statement$;
   execute $vr_statement$revoke all on function public.war_ui() from public,anon;$vr_statement$;
-  execute $vr_statement$grant execute on function public.war_ui() to authenticated;$vr_statement$;
 
   insert into vr_staging_install.parts(part_no, bundle_hash, part_hash, project_ref, db_id)
-  values (13, 'a28d331ed610dbcea36619120ef409846d80786b3339d5c8d4441a8b9b347d70', '9a4c31b4f6c083109ae9b2fde22fd76669432ca808a80cc9929acd8bd42fa2ec', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
+  values (13, '8ff473e973d5bc52e71f798115e03bf5931c2ad74f766c08f6dd0f2d69dd56f5', '447a51b3b12407834f8759dfbcee99edc2b05509e0e5e14554a040d1c86ef712', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
 end $vr_install_part$;
 commit;
 select '13_install.sql: 완료 또는 이미 완료 (13/14)' as result;
