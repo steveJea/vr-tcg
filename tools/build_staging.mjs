@@ -1,8 +1,10 @@
+import { buildMediaManifest } from './build_media_manifest.mjs';
 // 운영 Pages는 이 빌드를 사용하지 않음. 웹 자산만 복사 (SQL/tools/docs/비밀파일 제외).
 import { cp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 const root = fileURLToPath(new URL('../', import.meta.url));
+await buildMediaManifest();
 const out = path.join(root, '.staging-dist');
 await rm(out, { recursive: true, force: true });
 await mkdir(out, { recursive: true });
