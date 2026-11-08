@@ -12,7 +12,7 @@ globalThis.window={VRAsk:async()=>true,VRCloud:{user:{id:'one'},loadRecord:async
  assert.equal(name,'arcade-verify-v5');calls.push(body);if(fail)throw Error('network');
  if(body.op==='start'){if(session?.request!==body.request){issued++;session={ok:true,id:String(issued),seed:1,options:body.options,request:body.request};receipt=null;}return{data:session};}
  if(body.op==='status')return{data:{ok:true,status:receipt?'settled':'active',result:receipt}};
- receipt={result:body.op==='forfeit'?'lose':'win',verified:body.op!=='forfeit'};if(lost)throw Error('lost response');return{data:{ok:true,result:receipt}};
+ receipt={result:body.op==='forfeit'?'lose':'win',reason:body.op==='forfeit'?'forfeit':'ko',damage:100,skills:1,turns:5,verified:body.op!=='forfeit'};if(lost)throw Error('lost response');return{data:{ok:true,result:receipt}};
 }}}}};
 const options={grades:null,turns:10,clearFirst:false};
 let s=await startArcadeVerified(options);assert.equal(issued,1);fail=true;
@@ -56,7 +56,7 @@ console.log('phase5 UI: durable retries/lost responses, account isolation, no ra
 }
 // Old VICTORY/share state must disappear while waiting; only the server verdict reaches showEnding.
 {
- let resolve,shown;const nodes=new Map(),node=id=>{if(!nodes.has(id))nodes.set(id,{classList:{add(){},remove(){},contains(){return false;}},textContent:'old victory',innerHTML:'old victory',disabled:false});return nodes.get(id);};
+ let resolve,shown;const nodes=new Map(),node=id=>{if(!nodes.has(id))nodes.set(id,{setAttribute(){},classList:{add(){},remove(){},contains(){return false;}},textContent:'old victory',innerHTML:'old victory',disabled:false});return nodes.get(id);};
  const c=vm.createContext({battleViewEpoch:0,queueEndingVoice(){},S:{arcadeSession:{},arcade:{result:{result:'win'},actions:[]},log:{total:999,skills:99},turnNo:99},$:node,finishArcadeVerified:()=>new Promise(r=>resolve=r),hideModal(){},TUT(){},finishFx:()=>0,window:{VRCloud:{user:{id:'one'}},dispatchEvent(){}},CustomEvent:class{},Stats:{record:()=>assert.fail('account must not increment local stats')},showEnding:(win)=>{shown=win;},pickMvp:()=>null,render(){},countUp(){},reportError(){},console,setTimeout:f=>f()});
  vm.runInContext(section('function finish(win, reason) {','// ===== 스토리 페이즈 규칙'),c);vm.runInContext("finish(true,'ko')",c);
  assert.equal(node('end-title').textContent,'검증 중');assert.equal(node('share-btn').disabled,true);assert.equal(c.S.endShare,null);assert.equal(shown,undefined);

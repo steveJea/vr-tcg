@@ -967,12 +967,12 @@ function countUp(root) {
 }
 function finish(win, reason) {
   if(S?.arcadeSession&&!S.arcadeSettled){
-   if(S.arcadeSaving)return true;const battle=S, view=battleViewEpoch;S.arcadeSaving=true;S.over=true;S.busy=true;
-   $('end-title').textContent='검증 중';for(const id of ['end-text','end-mvp-wrap','end-stats','end-share-msg'])$(id).textContent='';S.endShare=null;$('share-btn').disabled=true;$('restart-btn').disabled=true;$('end-screen').classList.remove('end-win','end-lose','end-draw','hidden');$('end-screen').classList.add('end-pending');
-   finishArcadeVerified(S.arcadeSession,S.arcade.result?S.arcade.actions:null).then(r=>{if(S!==battle)return;S.arcadeSettled=true;S.arcadeReceipt=r;S.log.total=r.damage;S.log.skills=r.skills;S.turnNo=r.turns;S.busy=false;if(view!==battleViewEpoch||$('game').classList.contains('hidden'))return;finish(r.result==='draw'?null:r.result==='win',r.reason);}).catch(e=>{if(S!==battle)return;S.arcadeSaving=false;S.busy=false;if(view!==battleViewEpoch||$('game').classList.contains('hidden'))return;$('restart-btn').disabled=false;$('end-title').textContent='기록 저장 보류';$('end-text').textContent='';const b=document.createElement('button');b.className='main-btn';b.textContent='다시 시도';b.onclick=()=>finish(win,reason);$('end-text').appendChild(b);(window.VRGem?.toast||console.warn)(e.message);});return true;
+   if(S.arcadeSaving)return true;const battle=S, view=battleViewEpoch;S.arcadeSaving=true;S.arcadeError=null;S.over=true;S.busy=true;
+   $('end-title').textContent='검증 중';for(const id of ['end-text','end-mvp-wrap','end-stats','end-share-msg'])$(id).textContent='';S.endShare=null;$('share-btn').disabled=true;$('restart-btn').disabled=true;$('end-screen').classList.remove('end-win','end-lose','end-draw','hidden');$('end-screen').classList.add('end-pending');$('end-screen').setAttribute('aria-busy','true');if($('gal-end'))$('gal-end').textContent='';
+   finishArcadeVerified(S.arcadeSession,S.arcade.result?S.arcade.actions:null).then(r=>{if(S!==battle)return;S.arcadeSettled=true;S.arcadeSaving=false;S.arcadeReceipt=r;S.log.total=r.damage;S.log.skills=r.skills;S.turnNo=r.turns;S.busy=false;if(view!==battleViewEpoch||$('game').classList.contains('hidden'))return;finish(r.result==='draw'?null:r.result==='win',r.reason);}).catch(e=>{if(S!==battle)return;S.arcadeSaving=false;S.busy=false;S.arcadeError={message:e.message,trace:e.trace};if(view!==battleViewEpoch||$('game').classList.contains('hidden'))return;$('end-screen').setAttribute('aria-busy','false');$('end-title').textContent='검증을 완료하지 못했어요';$('end-text').textContent=e.message||'다시 시도해 주세요.';const b=document.createElement('button');b.className='main-btn';b.textContent='다시 시도';b.onclick=()=>finish(win,reason);$('end-text').appendChild(b);(window.VRGem?.toast||console.warn)(e.message);});return true;
   }
 
-  $('share-btn').disabled=false;$('restart-btn').disabled=false;
+  $('share-btn').disabled=false;$('restart-btn').disabled=false;$('end-screen').setAttribute('aria-busy','false');
   S.over = true; hideModal('detail'); TUT('battle_end', { win: !!win });
   const fxWait = finishFx(win);
   try { window.dispatchEvent(new CustomEvent('vr:daily', { detail: { k: 'battle', win: !!win, mode: S.at ? null : S.story ? (S.story.tutorial || S.story.view ? null : S.story.dailyMode || 'story') : 'arcade' } })); } catch {}   // 📅 일일 미션 (js/daily.js)
@@ -991,7 +991,13 @@ function finish(win, reason) {
   }
   if(!window.VRCloud?.user) Stats.record(win);
   $('end-text').innerHTML = '';
-  try { showEnding(win, reason); } catch (err) { reportError('ending', err); }
+  try { showEnding(win, reason); } catch (err) {
+    reportError('ending', err);
+    // A cosmetic render failure must not leave an already-settled game on 검증 중.
+    $('end-screen').classList.remove('end-pending','end-win','end-lose');$('end-screen').classList.add('end-draw');
+    $('end-title').textContent='결과 표시 오류';$('end-text').textContent='처음으로 돌아가 다시 시작해 주세요.';
+    $('end-mvp-wrap').textContent='';$('end-stats').textContent='';S.endVoice=null;S.endShare=null;$('share-btn').disabled=true;
+  }
   try { const mvp = pickMvp(); window.dispatchEvent(new CustomEvent('vr:match', { detail: { result: win === null ? 'draw' : win ? 'win' : 'lose', reason, turns: S.turnNo, damage: S.log.total, skills: S.log.skills, mvpId: mvp?.card.id, mvpName: mvp?.card.name, mercId: S.log.merc?.id, fieldIds: S.me.field.map(u => (u.base || u.card).id) } })); } catch {}
   const battle = S, view = battleViewEpoch;
   const showEnd = () => { if (S !== battle || view !== battleViewEpoch || !S.over || $('game').classList.contains('hidden')) return; $('end-screen').classList.remove('hidden'); countUp($('end-screen')); queueEndingVoice(S.endVoice); };

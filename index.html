@@ -178,6 +178,7 @@
   #end-screen.end-win { background: radial-gradient(circle at 50% 30%, rgba(16,120,90,.45), transparent 70%), #04080a; }
   #end-screen.end-lose { background: radial-gradient(circle at 50% 30%, rgba(90,20,20,.45), transparent 70%), #050303; }
   #end-screen.end-pending { background: #09090b; }
+  #end-screen.end-pending #end-stats:empty, #end-screen.end-pending .gal-end { display: none; }
   #end-screen.end-draw { background: rgba(10,10,12,.98); }
   .end-slash { position: relative; overflow: hidden; padding: .4rem 0; }
   .end-slash::before { content: ''; position: absolute; left: -10%; right: -10%; top: 50%; height: 4px; background: linear-gradient(90deg, transparent, #fff, transparent); transform: rotate(-8deg); animation: endSlash .6s ease-out both; }
