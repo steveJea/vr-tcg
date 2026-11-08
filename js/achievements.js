@@ -13,7 +13,7 @@
   const n = v => Number(v || 0).toLocaleString('ko-KR');
   const rwText = r => [r?.gold && `🪙 ${n(r.gold)}`, r?.gem && `🔮 ${n(r.gem)}`, r?.tickets && `🎟️ ${r.tickets}`].filter(Boolean).join(' · ');
   function toast(t) { const el = document.createElement('div'); el.className = 'gem-toast'; el.textContent = t; document.body.appendChild(el); setTimeout(() => el.remove(), 2600); }
-  const ERR = { 'already claimed': '이미 받았어요', 'not done': '아직 완료하지 않았어요', 'login required': '로그인이 필요해요', 'invalid key': '잘못된 요청이에요' };
+  const ERR = { 'already claimed': '이미 받았어요', 'not done': '아직 완료하지 않았어요', 'login required': '로그인이 필요해요', 'invalid key': '잘못된 요청이에요', 'reward verification pending': '지급 보류' };
   const errText = e => { const m = String(e?.message || e); const k = Object.keys(ERR).find(x => m.includes(x)); return k ? ERR[k] : m.slice(0, 60); };
   const TIER_LABEL = { pvp_tier: { 1: '실버', 2: '골드', 3: '플래티넘', 4: '다이아' } };
   function goalTxt(it) {
@@ -71,7 +71,7 @@
         const ok = it.ready, done = it.claimed;
         return `<div class="ach-tier ${done ? 'done' : ''} ${ok ? 'ready' : ''}">
           <div class="ach-tt"><b>${goalTxt(it)}</b><small>${rwText(it.reward)}${it.title ? ` · 🏷️ ${it.title}` : ''}${it.pts ? ` · +${it.pts}점` : ''}</small></div>
-          <button class="daily-claim sm" data-k="${it.key}" ${done || !ok ? 'disabled' : ''}>${done ? '완료' : ok ? '받기' : `${progTxt(it)}`}</button>
+          <button class="daily-claim sm" data-k="${it.key}" ${done || it.held || !ok ? 'disabled' : ''}>${done ? '완료' : it.held ? '지급 보류' : ok ? '받기' : `${progTxt(it)}`}</button>
         </div>`;
       }).join('');
       return `<div class="ach-m ${group.every(x => x.claimed) ? 'done' : ''}">
@@ -94,7 +94,7 @@
         <div class="ach-score">${(s.score_items || []).map(it => {
           const done = it.claimed, ok = it.ready;
           return `<div class="ach-score-i ${done ? 'done' : ''} ${ok ? 'ready' : ''}"><b>${n(it.goal)}점</b><span>${rwText(it.reward)}${it.title ? ` · 🏷️ ${it.title}` : ''}</span>
-            <button class="daily-claim sm" data-k="${it.key}" ${done || !ok ? 'disabled' : ''}>${done ? '완료' : ok ? '받기' : `${n(s.score)}`}</button></div>`;
+            <button class="daily-claim sm" data-k="${it.key}" ${done || it.held || !ok ? 'disabled' : ''}>${done ? '완료' : it.held ? '지급 보류' : ok ? '받기' : `${n(s.score)}`}</button></div>`;
         }).join('')}</div>
         <div class="ach-tabs">${cats.map(c => {
           const r = (c.items || []).filter(x => x.ready).length;

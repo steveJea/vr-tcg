@@ -24,7 +24,7 @@
   // ---- 데이터 모으기 (각 출처는 실패해도 다른 칸은 표시) ----
   function arcadeRecord() {
     const u = user(); if (!u) return null;
-    try { const v = JSON.parse(localStorage.getItem(`vrTcgStats.v1:${u.id}`) || 'null'); return v ? { wins: v.wins | 0, losses: v.losses | 0, draws: v.draws | 0 } : null; } catch { return null; }
+    try { const v = JSON.parse(localStorage.getItem(`vrTcgStats.v5:${u.id}`) || 'null'); return v ? { wins: v.wins | 0, losses: v.losses | 0, draws: v.draws | 0 } : null; } catch { return null; }
   }
   // 지갑: supabase/phaseE_1.sql 의 wallet_status (SQL 실행 전이면 null → '-' 표시)
   async function walletStatus() {
@@ -118,7 +118,7 @@
     return `<div class="mp-rec">
       ${s?.current ? (() => { const c = s.current; return `<button type="button" class="mp-story" data-nav="story" data-ch="${c.i}" aria-label="스토리 맵"><span class="mp-story-bg" style="background-image:url(img/story/ch_bg_${esc(c.bg || c.id)}.webp),url(img/story/ch_bg_${esc(c.id)}.webp)${c.cover ? `,url(${esc(c.cover)})` : ''},url(img/story/opening_poster.webp)"></span>
         <span class="mp-story-t"><small>${esc(c.title)}</small><b>${esc(c.subtitle)}</b><i>${c.phase ? `Phase.${c.phase}${c.boss ? ' · BOSS' : ''}` : `✔ ${c.done}/${c.total}`}</i></span></button>`; })() : ''}
-      <div class="mp-stat"><span>아케이드</span><b>${a ? `${a.wins}승 ${a.losses}패${a.draws ? ` ${a.draws}무` : ''}` : '-'}</b><small>${a && games ? `승률 ${pct(a.wins, games)}%` : '기록 없음'}</small></div>
+      <div class="mp-stat"><span>아케이드 · 검증 전적</span><b>${a ? `${a.wins}승 ${a.losses}패${a.draws ? ` ${a.draws}무` : ''}` : '-'}</b><small>${a && games ? `승률 ${pct(a.wins, games)}%` : '기록 없음'}</small></div>
       <div class="mp-stat"><span>시련의 탑</span><b>${ctx.questBest != null ? `${ctx.questBest}층` : '-'}</b><small>최고 기록</small></div>
       <div class="mp-stat"><span>갤러리</span><b>${g ? `${pct(g.have, g.total)}%` : '-'}</b><small>${g ? `${g.have}/${g.total} 수집` : ''}</small></div></div>`;
   } });

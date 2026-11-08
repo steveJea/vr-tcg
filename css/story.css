@@ -34,10 +34,10 @@
 .story-path.on{background:#34d399}
 .story-status{text-align:center;font-size:14px;display:flex;flex-direction:column;gap:6px}
 .story-dlg{position:relative;min-height:92vh;display:flex;flex-direction:column;justify-content:flex-end;cursor:pointer}
-.story-dlg-stage{flex:1;position:relative;display:flex;align-items:flex-end}
+.story-dlg-stage{flex:1;min-height:0;position:relative;display:flex;align-items:flex-end}
 .story-portrait{max-height:62vh;max-width:70%;border-radius:18px;object-fit:cover;box-shadow:0 0 40px rgba(0,0,0,.6);animation:storyFade .35s}
 .story-portrait.right{margin-left:auto}
-.story-dlg-box{background:rgba(12,10,9,.92);border:2px solid rgba(251,191,36,.5);border-radius:18px;padding:14px 16px 10px;min-height:120px}
+.story-dlg-box{flex-shrink:0;max-height:100%;overflow-y:auto;background:rgba(12,10,9,.92);border:2px solid rgba(251,191,36,.5);border-radius:18px;padding:14px 16px 10px;min-height:120px}
 .story-dlg-name{display:inline-block;margin-top:-30px;margin-bottom:6px;padding:2px 14px;border-radius:999px;background:#b45309;color:#fff;font-weight:900}
 .story-dlg-text{font-size:16px;line-height:1.6}
 .story-dlg-next{text-align:right;font-size:11px;color:#a8a29e}
@@ -779,7 +779,7 @@ span.story-lvpct { background: rgba(251,191,36,.12); border: 1px solid rgba(251,
 /* 스토리: 대사와 함께 보이는 미디어 패널 (위쪽). 탭은 아래 대사로 통과 */
 .story-media { position: fixed; left: 0; right: 0; top: 0; height: 55vh; z-index: 29; overflow: hidden; pointer-events: none; opacity: 0; transition: opacity .4s ease; background: #000; }
 .story-media.on { opacity: 1; }
-.story-media img, .story-media video { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center; }
+.story-media img, .story-media video { display: block; width: 100%; height: 100%; object-fit: contain; object-position: center; }
 .story-media::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 40px; background: linear-gradient(transparent, rgba(0,0,0,.55)); pointer-events: none; }
 .story-media-zoom { position: fixed; top: calc(10px + env(safe-area-inset-top)); right: 10px; z-index: 35; width: 40px; height: 40px; border-radius: 999px; background: rgba(0,0,0,.55); border: 1px solid rgba(255,255,255,.35); font-size: 18px; line-height: 38px; text-align: center; }
 body.story-media-on .story-portrait { max-height: 22vh; max-width: 40%; margin-bottom: -20px; }
@@ -788,11 +788,7 @@ body.story-media-on .story-dlg-skip { left: 4px; right: auto; top: calc(4px + en
 .story-zoom { position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,.94); display: flex; align-items: center; justify-content: center; animation: storyFade .25s; }
 .story-zoom img { max-width: 100vw; max-height: 100vh; object-fit: contain; }
 .story-zoom-x { position: absolute; top: calc(10px + env(safe-area-inset-top)); right: 12px; width: 44px; height: 44px; border-radius: 999px; background: rgba(255,255,255,.15); font-size: 20px; color: #fff; }
-/* 대사 그림 켄번즈: 나타날 때 천천히 살짝 확대 (영상·돋보기 화면 제외) */
-.story-media img { transform: scale(1); transform-origin: center; will-change: transform; }
-.story-media.on img { animation: storyKenBurns 8s ease-out forwards; }
-@keyframes storyKenBurns { from { transform: scale(1); } to { transform: scale(1.06); } }
-@media (prefers-reduced-motion: reduce) { .story-media.on img { animation: none; } }
+/* 이벤트 원본 그림은 확대/크롭 없이 대사 위 가용 화면 안에 전부 표시. */
 
 /* 10회 뽑기 결과: 카드 뒷면 → 낮은 등급부터 차례로 뒤집힘 (--fd = 열리는 시각). SR 자주 · UR 이상 금색 반짝, 나머지 무지 */
 .story-tk-card.tk-flip{opacity:1;animation:none;background:transparent;border-color:transparent;box-shadow:none;overflow:visible;perspective:600px;transition:border-color .2s var(--fd),box-shadow .2s var(--fd)}
@@ -1052,9 +1048,10 @@ body.gnb-on:not(.gnb-hidden) #story-screen { --wrap-pb: 12px; }   /* 하단 메�
 #story-screen .gr-ui { min-height: calc(100vh - var(--ss-used) - 12px - var(--wrap-pb) - 16px); min-height: calc(100dvh - var(--ss-used) - 12px - var(--wrap-pb) - 16px); }
 /* PC 진행(루트 고르기): 카드 3장이 화면 폭만큼 커져 세로로 넘치던 것 → 폭을 줄여 한 화면에 들어가게 */
 @media (min-width: 768px) { #story-screen .story-select { max-width: 600px; margin-left: auto; margin-right: auto; } }
-/* 폰: 대사 화면 높이 = 보이는 화면 (92vh 는 안드로이드 크롬 주소창을 빼지 않아 아래 대사창이 잘렸음) · 출전 고르기 창 = 위에 붙임 */
+/* 모든 화면: 대사창까지 보이는 높이 안에 배치 (모바일 주소창 포함). 긴 대사만 스크롤. */
+#story-screen .story-dlg { height: calc(100vh - var(--ss-used, 0px) - 24px); height: calc(100dvh - var(--ss-used, 0px) - 24px); min-height: 0; }
+#story-screen .story-wrap:has(#story-dlg) { padding-bottom: 12px; }
 @media (max-width: 767px) {
-  #story-screen .story-dlg { min-height: 92vh; min-height: calc(100dvh - var(--ss-used, 0px) - 24px); }
   #story-pop:has(.story-deckpick) { align-items: flex-start; padding: max(8px, env(safe-area-inset-top)) 8px 8px; }
   #story-pop:has(.story-deckpick) > .story-pop-panel { max-height: calc(100vh - 16px); max-height: calc(100dvh - 16px); }
 }
@@ -1123,3 +1120,6 @@ body.gnb-on:not(.gnb-hidden) #story-screen { --wrap-pb: 12px; }   /* 하단 메�
 #game.story-field .hud-btns:has(#act-buff) > #attack-all { order: 3; }
 #game.story-field .hud-btns:has(#act-buff) > #end-turn { order: 4; }
 #game.story-field .hud-btns:has(#act-buff) > #reserve-btn { order: 5; }
+
+/* PvP boss rule cue: one readable sentence, not a tiny explanatory footer. */
+#game.view-boss #hero-hint { font-size: 14px; line-height: 1.5; }

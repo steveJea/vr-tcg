@@ -1,8 +1,9 @@
 // ===== 비동기 PvP 화면 =====
-// 서버: supabase/pvp.sql (pvp_status / pvp_set_deck / pvp_start / pvp_report / pvp_rankings). 전투 계산: js/pvp-core.js (양쪽 자동 AI)
+// 서버: security_phase3_pvp.sql + pvp-verify-v3 (공식 승패·보상은 서버 엔진 재생만). 화면: js/pvp-core.js
 // 리그: 무제한(open) · HR 이하(hr, 코스트 150) / 모드: 1v1 · 3v3(3덱 2선승) / 하루 10회 · 주간 시즌(월 00:00 KST)
 import { LEAGUES, MODES, snapCard, deckCheck, runSeries, manualMatch, roundSeed, GUARD_GRADES, BOSS_MEMBERS } from './pvp-core.js';
 const VIEW = () => window.TCG?.viewBattle;   // 스토리·탑과 같은 전투 화면 (js/game.js)
+import { PVP_ENGINE_VERSION } from './pvp-engine-version.js';
 import { modeToggle, bindMode, battleMode, playManual } from './manual-ui.js';
 const IMG = 'https://raw.githubusercontent.com/steveJea/vr-ideal-worldcup/main/img/bt_img/';
 const $ = id => document.getElementById(id);
@@ -17,7 +18,50 @@ async function rpc(name, args) {
   const sb = window.VRCloud?.sb; if (!sb) throw new Error('offline');
   const { data, error } = await sb.rpc(name, args); if (error) throw new Error(error.message); return data;
 }
-const ERR = { 'guard grade': '리더(수비대장)는 HR 이하', 'boss members': '멤버 1장 이상', 'no attempts left': '오늘 횟수 끝', 'not enough gem': '🔮 부족', 'deck required': '덱 필요', 'card not owned': '없는 인재', 'duplicate card': '중복', 'grade not allowed': 'HR 이하만', 'cost over 150': '코스트 150 초과', 'card used in another deck': '다른 덱에 있음', 'login required': '로그인 필요' };
+// Ranked results only cross the authenticated verifier. No client win/loss RPC.
+async function verifyRpc(body) {
+  if (window.__PVP_MOCK) return window.__PVP_MOCK('pvp-verify-v3', body);
+  const sb = window.VRCloud?.sb; if (!sb) throw new Error('offline');
+  let last;
+  for (let i = 0; i < 2; i++) {
+    try {
+      const { data, error } = await sb.functions.invoke('pvp-verify-v3', { body });
+      if (error) { let detail; try { detail = await error.context?.json(); } catch {} throw new Error(detail?.error || error.message); }
+      if (!data?.ok && body.op !== 'start') throw new Error(data?.error || 'server settlement failed');
+      return data;
+    } catch (e) { last = e; }
+  }
+  throw last;
+}
+async function finishVerified(body) {
+  try { return await verifyRpc(body); }
+  catch (e) {
+    // Another tab/expiry may have closed this session, or a response was lost.
+    // Re-read the server receipt; never reinterpret the local outcome.
+    try { const s = await verifyRpc({ op: 'status', id: body.id }); if (s.status === 'settled' && s.result) return s.result; } catch {}
+    throw e;
+  }
+}
+const pendingKey = () => 'vrTcgPvp.pendingV3:' + (window.VRCloud?.user?.id || 'mock');
+function pendingStore(key, value) {
+  try {
+    if (value === undefined) return JSON.parse(localStorage.getItem(key) || 'null');
+    if (value === null) localStorage.removeItem(key); else localStorage.setItem(key, JSON.stringify(value));
+  } catch {} return value;
+}
+const pendingResult = value => pendingStore(pendingKey(), value);
+function pendingStart(value) {
+  const key = pendingKey() + ':start';
+  const cached = pendingStore(key, value);
+  if (cached && cached.version !== PVP_ENGINE_VERSION) { pendingStore(key, null); return null; }
+  return cached;
+}
+async function retryResult() {
+  const p = pendingResult(); if (!p) return;
+  try { const rep = await finishVerified(p.body); pendingResult(null); showResult(p.session, rep); }
+  catch (e) { toast('결과 미정산 · ' + errText(e)); }
+}
+const ERR = { 'PvP verifier unavailable': 'PvP 검증 서버 준비 중', 'rate limited': '잠시 후 다시 도전해 주세요', 'server settlement failed': '서버 정산 실패 · 다시 저장해 주세요', 'reward verification pending': '지급 보류', 'guard grade': '리더(수비대장)는 HR 이하', 'boss members': '멤버 1장 이상', 'no attempts left': '오늘 횟수 끝', 'not enough gem': '🔮 부족', 'deck required': '덱 필요', 'card not owned': '없는 인재', 'duplicate card': '중복', 'grade not allowed': 'HR 이하만', 'cost over 150': '코스트 150 초과', 'card used in another deck': '다른 덱에 있음', 'login required': '로그인 필요' };
 const errText = e => { const m = String(e?.message || e); const k = Object.keys(ERR).find(x => m.includes(x)); return k ? ERR[k] : m.slice(0, 40); };
 function toast(t) { const el = document.createElement('div'); el.className = 'pvp-toast'; el.textContent = t; document.body.appendChild(el); setTimeout(() => el.remove(), 1800); }
 
@@ -54,6 +98,10 @@ const dleft = () => { const e = st?.season_end ? new Date(st.season_end) : null;
 
 // ---- 메인 ----
 export async function open() {
+  if (window.VRUnlocks) {
+    if (!window.VRUnlocks.guard('pvp_hr')) return;
+    if (!window.VRUnlocks.allowed(window.VRUnlocks.pvpKey(view.league,view.mode))) { view.league='hr'; view.mode='1v1'; save(); }
+  }
   if (!window.VRCloud?.user && !window.__PVP_MOCK) return modal('pvp-modal', `<button class="pvp-x" data-x>✕</button><div class="pvp-h">⚔️ PvP</div><div class="pvp-empty">🔒 로그인</div>`);
   const again = $('pvp-modal')?.classList.contains('vr-in-page') && window.VRPages?.current === 'pvp';
   const m = modal('pvp-modal', `<div class="pvp-empty">…</div>`); if (!again) window.VRSound?.scope?.(m, window.VR_BGM?.pvpLobby);
@@ -67,27 +115,31 @@ export async function open() {
 function paint() {
   const m = $('pvp-modal'); if (!m) return;
   const n = MODES[view.mode].decks, decks = Array.from({ length: n }, (_, i) => st.decks.find(d => d.slot === i));
-  const ready = decks.every(Boolean) && st.left > 0;
+  const ready = !st.reward_held && ((decks.every(Boolean) && st.left > 0) || !!pendingStart());
   const byUid = new Map(owned.map(o => [o.uid, o]));
   m.querySelector('.pvp-panel').innerHTML = `
     <button class="pvp-x" data-x aria-label="닫기">✕</button>
     <div class="pvp-h">⚔️ PvP <small>${dleft()}</small></div>
-    <div class="pvp-tabs">${Object.entries(LEAGUES).map(([k, L]) => `<button data-league="${k}" class="${view.league === k ? 'on' : ''}">${L.label}</button>`).join('')}
-      <span class="pvp-sep"></span>${Object.keys(MODES).map(k => `<button data-mode="${k}" class="${view.mode === k ? 'on' : ''}">${MODES[k].label ? `👑 ${MODES[k].label}` : k}</button>`).join('')}</div>
+    ${st.ladder === 'verified-v3' ? `<div class="pvp-empty">서버 검증 래더${st.legacy_rating != null ? ` · 이전 기록 ${st.legacy_rating} 보존` : ''}</div>` : ''}
+    ${pendingResult() ? '<div class="pvp-acts"><button class="pvp-go" data-retry-result>결과 다시 저장</button></div>' : ''}
+    <div class="pvp-tabs">${Object.entries(LEAGUES).map(([k, L]) => `<button data-league="${k}" data-unlock="${window.VRUnlocks?.pvpKey(k,view.mode) || ''}" class="${view.league === k ? 'on' : ''}">${L.label}</button>`).join('')}
+      <span class="pvp-sep"></span>${Object.keys(MODES).map(k => `<button data-mode="${k}" data-unlock="${window.VRUnlocks?.pvpKey(view.league,k) || ''}" class="${view.mode === k ? 'on' : ''}">${MODES[k].label ? `👑 ${MODES[k].label}` : k}</button>`).join('')}</div>
     ${myRank()}
     <div class="pvp-decks">${decks.map((d, i) => `<button class="pvp-deck ${d ? '' : 'empty'}" data-edit="${i}">
       <span class="pvp-deck-no">${n > 1 ? i + 1 : '🛡'}</span><span class="pvp-deck-row">${d ? d.uids.map(u => thumb(byUid.get(u) && { ...card(byUid.get(u).id), level: byUid.get(u).level })).join('') : '<span class="pvp-plus">＋</span>'}</span>
       ${view.league === 'hr' && d ? `<small class="pvp-cost">${d.cost}/150</small>` : ''}</button>`).join('')}</div>
     <div class="pvp-bmode">${modeToggle()}</div>
-    <div class="pvp-acts"><button class="pvp-rank" data-rank title="랭킹">🏅</button><button class="pvp-rank" data-shop title="PvP 상점">🛒</button>${st.left <= 0 && window.VRGem?.item?.('pvp_try') ? `<button class="pvp-gemtry" data-gemtry ${window.VRGem.item('pvp_try').left === 0 ? 'disabled' : ''} title="추가 도전 (하루 3회)">🎫+1 <small>🔮${window.VRGem.item('pvp_try').price}</small></button>` : ''}<button class="pvp-go" data-go ${ready ? '' : 'disabled'}>⚔️ 매칭</button></div>
+    <div class="pvp-acts"><button class="pvp-rank" data-rank title="랭킹">🏅</button><button class="pvp-rank" data-shop title="PvP 상점">🛒</button>${st.left <= 0 && window.VRGem?.item?.('pvp_try') ? `<button class="pvp-gemtry" data-gemtry ${window.VRGem.item('pvp_try').left === 0 ? 'disabled' : ''} title="추가 도전 (하루 3회)">🎫+1 <small>🔮${window.VRGem.item('pvp_try').price}</small></button>` : ''}<button class="pvp-go" data-go ${ready ? '' : 'disabled'}>${pendingStart() ? '매칭 다시 확인' : '⚔️ 매칭'}</button></div>
     <div class="pvp-top"><div class="pvp-top-h">🏅 TOP 10</div><div class="pvp-rk">${rkRows(top)}</div></div>`;
-  m.querySelectorAll('[data-league]').forEach(b => b.onclick = () => { view.league = b.dataset.league; save(); open(); });
-  m.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => { view.mode = b.dataset.mode; save(); open(); });
+  window.VRUnlocks?.paint?.();
+  m.querySelectorAll('[data-league]').forEach(b => b.onclick = () => { if (window.VRUnlocks && !window.VRUnlocks.guard(window.VRUnlocks.pvpKey(b.dataset.league,view.mode))) return; view.league = b.dataset.league; save(); open(); });
+  m.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => { if (window.VRUnlocks && !window.VRUnlocks.guard(window.VRUnlocks.pvpKey(view.league,b.dataset.mode))) return; view.mode = b.dataset.mode; save(); open(); });
   m.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => editDeck(+b.dataset.edit));
   m.querySelector('[data-rank]').onclick = rankings; bindWho(m);
   m.querySelector('[data-shop]').onclick = () => window.VRGear?.pvpShop?.();   // 장비 PR7
   m.querySelector('[data-tiers]').onclick = tierTable;
-  if (st.pending) claimTier();
+  if (st.pending || st.pending_rank) claimTier();
+  const retry = m.querySelector('[data-retry-result]'); if (retry) retry.onclick = retryResult;
   m.querySelector('[data-go]').onclick = fight; bindMode(m);
   const gt = m.querySelector('[data-gemtry]'); if (gt) gt.onclick = async () => { gt.disabled = true; if (await window.VRGem.buy('pvp_try', view.league, view.mode)) open(); else gt.disabled = false; };
   if (st.left <= 0 && window.VRGem && !window.VRGem.now) window.VRGem.status().then(g => { if (g && $('pvp-modal')) paint(); });
@@ -108,17 +160,24 @@ function tierTable() {
   const cur = tierOf(st.rating).k, tiers = st.tiers || TIERS.map(t => ({ tier: t.k, min: t.min, reward: {} }));
   modal('pvp-tiers', `<button class="pvp-x" data-x>✕</button><div class="pvp-h">🏆 시즌 보상 <small>${dleft()}</small></div>
     <div class="pvp-tt">${[...tiers].reverse().map(x => { const t = tierBy(x.tier) || TIERS[0]; return `<div class="pvp-tt-row t-${t.k} ${t.k === cur ? 'on' : ''}">${emb(t)}<b>${t.label}</b><small>${x.min}+</small><span class="pvp-rw">${rwHtml(x.reward)}</span></div>`; }).join('')}</div>
+    <div class="pvp-empty">이번 시즌 검증 완료 ${st.games_verified || 0}경기 · 티어 보상 3경기 / 순위 보상 1경기 이상<br>포기·미완료는 보상 참여 횟수에서 제외돼요.</div>
     <div class="pvp-h pvp-h2">🔥 연승</div>
     <div class="pvp-tt">${(st.streaks || []).map(x => `<div class="pvp-tt-row ${st.streak >= x.n ? 'got' : ''}"><span class="pvp-streak">🔥${x.n}</span><span class="pvp-rw">${rwHtml(x.reward)}</span></div>`).join('')}</div>`, 'pvp-sub');
 }
 /** 지난 시즌 티어 보상 자동 수령 (서버가 1회만 지급) */
 async function claimTier() {
-  const p = st.pending; st.pending = null;
-  let r; try { r = await rpc('pvp_claim_tier', { p_league: view.league, p_mode: view.mode }); } catch (e) { return; }
-  const t = tierBy(r.tier) || TIERS[0];
+  const tier = st.pending, rank = st.pending_rank; st.pending = null; st.pending_rank = null;
+  const rewards = [];
+  for (const [name, args] of [
+    ...(tier ? [['pvp_claim_tier', { p_league: view.league, p_mode: view.mode }]] : []),
+    ...(rank ? [['pvp_claim_reward', { p_league: view.league, p_mode: view.mode, p_season: rank.season }]] : [])
+  ]) {
+    try { rewards.push(await rpc(name, args)); } catch (e) { toast(errText(e)); }
+  }
+  if (!rewards.length) return;
   window.VRPlayer?.wallet?.(true);
-  modal('pvp-claim', `<div class="pvp-claim t-${t.k}">${emb(t, 'huge')}<div class="pvp-claim-t">${t.label}</div><small>지난 시즌 · 🏆 ${r.rating}</small><div class="pvp-rw big">${rwHtml(r.reward)}</div></div>
-    <div class="pvp-acts"><button class="pvp-go" data-x>받기</button></div>`, 'pvp-sub');
+  modal('pvp-claim', rewards.map(r => `<div class="pvp-claim"><div class="pvp-claim-t">${r.tier ? (tierBy(r.tier) || TIERS[0]).label : `🏅 ${r.rank}위`}</div><small>지난 시즌</small><div class="pvp-rw big">${rwHtml(r.reward)}</div></div>`).join('') +
+    '<div class="pvp-acts"><button class="pvp-go" data-x>확인</button></div>', 'pvp-sub');
 }
 /** VS 연출 (~1.5초 · 탭하면 넘김 · 연출 끄기면 생략) */
 function vsScreen(s) {
@@ -136,15 +195,20 @@ function vsScreen(s) {
 
 // ---- 덱 편집 (PvP 전용 · 마이 덱에서 불러오기) ----
 // 인재 정렬 (스토리·거래소와 같은 칩: 같은 버튼 다시 누르면 ▼▲ 전환, localStorage 기억)
-const PSORTS = { grade: '등급', level: '레벨', power: '전투력', name: '이름', new: '획득' }, PSORT_KEY = 'vr-pvp-card-sort';
+const PSORTS = { grade: '등급', level: '레벨', power: '전투력', cost: '코스트', name: '이름', new: '획득' }, PSORT_KEY = 'vr-pvp-card-sort';
 const GRADE_ORD = ['NORMAL', 'RARE', 'HIGH RARE', 'SUPER RARE', 'ULTRA RARE', 'MYTHIC RARE', 'LEGENDARY RARE'];
 let psort = (() => { try { const v = JSON.parse(localStorage.getItem(PSORT_KEY)); if (v && PSORTS[v.k]) return { k: v.k, desc: v.desc !== false }; } catch {} return { k: 'power', desc: true }; })();
 const setPSort = k => { psort = psort.k === k ? { k, desc: !psort.desc } : { k, desc: true }; try { localStorage.setItem(PSORT_KEY, JSON.stringify(psort)); } catch {} };
 export function sortPool(list, cardOf = card, all = owned, s = psort) {
-  const idx = new Map(all.map((o, i) => [o.uid, i])), gr = o => GRADE_ORD.indexOf(cardOf(o.id)?.grade), lv = o => o.level | 0, pw = o => +o.power || 0, nw = o => idx.get(o.uid) ?? -1;
+  const idx = new Map(all.map((o, i) => [o.uid, i])), gr = o => GRADE_ORD.indexOf(cardOf(o.id)?.grade), lv = o => o.level | 0, pw = o => +o.power || 0, ct = o => +cardOf(o.id)?.cost || 0, nw = o => idx.get(o.uid) ?? -1;
   const nm = o => cardOf(o.id)?.name || '', d = s.desc ? -1 : 1;
-  const key = { grade: [gr, lv, pw], level: [lv, gr, pw], power: [pw, gr, lv], new: [nw], name: [] }[s.k] || [pw];
+  const key = { grade: [gr, lv, pw], level: [lv, gr, pw], power: [pw, gr, lv], cost: [ct, pw, lv], new: [nw], name: [] }[s.k] || [pw];
   return list.slice().sort((a, b) => { if (s.k === 'name') { const v = nm(a).localeCompare(nm(b), 'ko'); if (v) return v * d; } for (const f of key) { const v = f(a) - f(b); if (v) return v * d; } return 0; });
+}
+export function filterPool(list, query = '', maxCost = '', cardOf = card) {
+  const name = query.trim().normalize('NFKC').toLocaleLowerCase('ko');
+  const cap = maxCost === '' ? Infinity : Number(maxCost);
+  return list.filter(o => { const c = cardOf(o.id); return c && (+c.cost || 0) <= cap && (!name || (c.name || '').normalize('NFKC').toLocaleLowerCase('ko').includes(name)); });
 }
 const sortChips = () => `<div class="pvp-chips pvp-sort">${Object.entries(PSORTS).map(([k, l]) => `<button data-srt="${k}" class="${psort.k === k ? 'on' : ''}" aria-pressed="${psort.k === k}">${l}${psort.k === k ? (psort.desc ? ' ▼' : ' ▲') : ''}</button>`).join('')}</div>`;
 function editDeck(slot, keep) {
@@ -152,6 +216,7 @@ function editDeck(slot, keep) {
   let sel = keep ? keep.sel.filter(u => owned.some(o => o.uid === u)) : cur ? [...cur.uids] : [];
   if (keep && sel.length < keep.sel.length) toast('합성 등으로 빠진 인재가 있어요');
   const L = LEAGUES[view.league];
+  let query = keep?.query || '', maxCost = keep?.maxCost ?? '';
   const usedElsewhere = new Set(st.decks.filter(d => d.slot !== slot).flatMap(d => d.uids.map(u => owned.find(o => o.uid === u)?.id)));
   const pool = [...new Map(owned.filter(o => !L.grades || L.grades.includes(card(o.id)?.grade)).sort((a, b) => b.power - a.power).map(o => [o.id, o])).values()];   // 같은 카드는 가장 센 1장
   const m = modal('pvp-edit', '', 'pvp-sub');
@@ -162,7 +227,7 @@ function editDeck(slot, keep) {
   if (BOSS && !(sel.length && isGuard(sel[0]))) { sel = []; step = 'leader'; }
   const oOf = u => owned.find(o => o.uid === u);
   const fire = u => window.VRStory?.canMergeUid?.(u) ? '<b class="pvp-fire" title="합성 가능">🔥</b>' : '';
-  const pickBtn = (o, on, badge) => { const c = card(o.id); return c ? `<button data-u="${o.uid}" class="g-${GS[c.grade] || 'N'} ${on ? 'on' : ''}" ${usedElsewhere.has(o.id) ? 'disabled' : ''}>${thumb({ ...c, level: o.level }, (on ? badge : '') + fire(o.uid))}</button>` : ''; };
+  const pickBtn = (o, on, badge) => { const c = card(o.id); return c ? `<button data-u="${o.uid}" class="g-${GS[c.grade] || 'N'} ${on ? 'on' : ''}" ${usedElsewhere.has(o.id) ? 'disabled' : ''}>${thumb({ ...c, level: o.level }, (on ? badge : '') + fire(o.uid))}<span class="pvp-card-cost">💰 ${+c.cost || 0}</span><span class="pvp-card-name">${esc(c.name)}</span></button>` : ''; };
   // 맨 윗줄 (화면 위 고정): 현재 덱 칸 · 전투력 합 · HR 코스트 · 자동 채우기 · 덱 설정 완료
   const topRow = bad => {
     const cards = sel.map(oOf).filter(Boolean), pw = cards.reduce((a, o) => a + (+o.power || 0), 0), cost = cards.reduce((a, o) => a + (+card(o.id)?.cost || 0), 0);
@@ -187,7 +252,7 @@ function editDeck(slot, keep) {
   const train = async uid => {
     const S = window.VRStory; if (!S?.trainCard) return toast('인재 화면 없음');
     const hid = [...document.querySelectorAll('.pvp-modal')]; hid.forEach(e => e.style.display = 'none');
-    const back = async () => { hid.forEach(e => e.remove()); await open(); if ($('pvp-modal')) editDeck(slot, { sel, step }); };
+    const back = async () => { hid.forEach(e => e.remove()); await open(); if ($('pvp-modal')) editDeck(slot, { sel, step, query, maxCost }); };
     const ran = await S.trainCard(uid, back, 'PvP 덱으로');
     if (!ran) hid.forEach(e => e.style.display = '');
   };
@@ -204,6 +269,24 @@ function editDeck(slot, keep) {
     m.querySelectorAll('[data-rm]').forEach(b => b.onclick = () => { const u = b.dataset.rm; if (BOSS && u === sel[0]) { sel = []; step = 'leader'; } else sel = sel.filter(x => x !== u); if (BOSS && step === 'confirm' && sel.length < 2) step = 'members'; drawAll(); });
     m.querySelector('[data-auto]')?.addEventListener('click', autoFill);
     m.querySelector('[data-ok]')?.addEventListener('click', () => commit());
+  };
+  const poolTools = () => `<div class="pvp-filters"><input type="search" data-name value="${esc(query)}" placeholder="이름 검색" aria-label="이름 검색"><label>코스트 ≤ <input type="number" min="0" step="1" inputmode="numeric" data-cost value="${esc(maxCost)}" placeholder="전체" aria-label="최대 코스트"></label></div>${sortChips()}`;
+  const filtered = list => sortPool(filterPool(list, query, maxCost));
+  const bindFilters = () => {
+    for (const key of ['name', 'cost']) {
+      const input = m.querySelector(`[data-${key}]`); if (!input) continue;
+      const apply = () => {
+        const start = input.selectionStart, end = input.selectionEnd;
+        const scroll = m.querySelector('.pvp-panel').scrollTop;
+        if (key === 'name') query = input.value; else maxCost = input.value === '' ? '' : String(Math.max(0, Math.floor(+input.value || 0)));
+        drawAll();
+        const next = m.querySelector(`[data-${key}]`); next.focus({ preventScroll: true });
+        if (key === 'name') next.setSelectionRange(start, end);
+        m.querySelector('.pvp-panel').scrollTop = scroll;
+      };
+      input.oninput = e => { if (!e.isComposing) apply(); };
+      input.oncompositionend = apply;   // Keep Korean IME composition intact while typing.
+    }
   };
   const draw = () => BOSS ? drawBoss() : drawNormal();
   const drawBoss = () => {
@@ -222,7 +305,7 @@ function editDeck(slot, keep) {
       const list = step === 'leader' ? pool.filter(o => GUARD_GRADES.includes(card(o.id)?.grade)) : pool.filter(o => o.uid !== lead);
       body = `<div class="pvp-boss-tip">${step === 'leader' ? '① 리더(수비대장) 1장을 고르세요 · HR 이하만' : `② 멤버를 고르세요 · ${BOSS_MEMBERS[0]}~${BOSS_MEMBERS[1]}장`}</div>
         ${myDecks.length && step === 'members' ? `<div class="pvp-chips">${myDecks.map((d, i) => `<button data-load="${i}">🗂 ${esc(d.name)}</button>`).join('')}</div>` : ''}
-        ${list.length > 1 ? sortChips() : ''}<div class="pvp-pick">${sortPool(list).map(o => pickBtn(o, step === 'leader' ? o.uid === lead : mem.includes(o.uid), `<b class="pvp-n">${step === 'leader' ? '👑' : mem.indexOf(o.uid) + 1}</b>`)).join('') || '<div class="pvp-empty">고를 수 있는 카드가 없어요</div>'}</div>`;
+        ${poolTools()}<div class="pvp-pick">${filtered(list).map(o => pickBtn(o, step === 'leader' ? o.uid === lead : mem.includes(o.uid), `<b class="pvp-n">${step === 'leader' ? '👑' : mem.indexOf(o.uid) + 1}</b>`)).join('') || '<div class="pvp-empty">고를 수 있는 카드가 없어요</div>'}</div>`;
       acts = step === 'leader' ? `<button class="pvp-go" data-step="members" ${lead ? '' : 'disabled'}>다음: 멤버</button>` : `<button class="pvp-ghost" data-step="leader">← 리더</button><button class="pvp-go" data-step="confirm" ${mem.length ? '' : 'disabled'}>다음: 확인</button>`;
     }
     m.querySelector('.pvp-panel').innerHTML = `${head}${topRow(bad)}${body}<small class="pvp-gear-note" style="display:block;opacity:.7;font-size:11px;margin:6px 0">🛡️ 장비는 덱을 저장할 때 들어가요 — 장비를 바꿨다면 덱을 다시 저장해야 반영돼요 (PvP 장비 50%)</small><div class="pvp-acts">${acts}</div>`;
@@ -236,7 +319,7 @@ function editDeck(slot, keep) {
     m.querySelector('.pvp-panel').innerHTML = `<button class="pvp-x" data-x>✕</button>
       <div class="pvp-h">${MODES[view.mode].decks > 1 ? `덱 ${slot + 1}` : '🛡 덱'} <small>${sel.length}/5${L.costCap ? ` · ${cost}/${L.costCap}` : ''}</small></div>${MODES[view.mode].boss ? '<div class="pvp-boss-tip">👑 보스리그: 첫 번째로 고른 카드가 수비대장(HR 이하, 진영 칸 · 쓰러지지 않음). 상대 진영 HP를 0으로 만들면 승리</div>' : ''}
       ${topRow(bad)}${myDecks.length ? `<div class="pvp-chips">${myDecks.map((d, i) => `<button data-load="${i}">🗂 ${esc(d.name)}</button>`).join('')}</div>` : ''}
-      ${pool.length > 1 ? sortChips() : ''}<div class="pvp-pick">${sortPool(pool).map(o => pickBtn(o, sel.includes(o.uid), `<b class="pvp-n">${sel.indexOf(o.uid) + 1}</b>`)).join('') || '<div class="pvp-empty">없음</div>'}</div>
+      ${poolTools()}<div class="pvp-pick">${filtered(pool).map(o => pickBtn(o, sel.includes(o.uid), `<b class="pvp-n">${sel.indexOf(o.uid) + 1}</b>`)).join('') || '<div class="pvp-empty">없음</div>'}</div>
       <div class="pvp-acts">${cur ? '<button data-del class="pvp-ghost">🗑</button>' : ''}</div>`;
     bindPick(); bindTop();
     m.querySelectorAll('[data-load]').forEach(b => b.onclick = () => { const d = myDecks[+b.dataset.load]; const ok = new Set(pool.map(o => o.uid)); sel = d.uids.filter(u => ok.has(u)).slice(0, 5); if (sel.length < d.uids.length) toast('일부 제외'); drawAll(); });
@@ -247,7 +330,7 @@ function editDeck(slot, keep) {
     const del = m.querySelector('[data-del]'); if (del) del.onclick = async () => { try { await rpc('pvp_set_deck', { p_league: view.league, p_mode: view.mode, p_slot: slot, p_uids: [] }); m.remove(); open(); } catch (e) { toast(errText(e)); } };
   };
   const draw0 = draw;
-  const drawAll = () => { draw0(); redraw(); };
+  const drawAll = () => { draw0(); bindFilters(); redraw(); };
   // 카드 정보 (확대) → 선택 / 빼기 / 취소. 5장이 되면 저장 여부를 묻는다
   const cardInfo = uid => {
     const o = owned.find(x => x.uid === uid), c = o && card(o.id); if (!c) return;
@@ -280,26 +363,48 @@ function editDeck(slot, keep) {
 
 // ---- 매칭 → 계산 → 보고 → 결과 ----
 async function fight() {
+  // Do not overwrite an unacknowledged receipt with another attempt. Refresh/reopen can retry it.
+  if (pendingResult()) { await retryResult(); return; }
   const go = document.querySelector('#pvp-modal [data-go]'); if (go) go.disabled = true;
-  let s; try { s = await rpc('pvp_start', { p_league: view.league, p_mode: view.mode }); } catch (e) { toast(errText(e)); if (go) go.disabled = false; return; }
+  const manual = battleMode() === 'manual';
+  const waitingStart = pendingStart();
+  if (waitingStart && waitingStart.version !== PVP_ENGINE_VERSION) pendingStart(null); // A stale start must not pin refreshes to an old engine forever.
+  const body = pendingStart() || { op: 'start', league: view.league, mode: view.mode, request: crypto.randomUUID(), control: (manual || !!VIEW()) ? 'actions' : 'auto', version: PVP_ENGINE_VERSION };
+  pendingStart(body);
+  let s; try { s = await verifyRpc(body); pendingStart(null); } catch (e) { toast(errText(e)); if (go) go.disabled = false; return; }
+  if (s.status === 'settled' && s.result) { showResult(s, s.result); return; }
+  if (s.expires_at && Date.parse(s.expires_at) <= Date.now()) {
+    try { showResult(s, await verifyRpc({ op: 'forfeit', id: s.id })); } catch (e) { toast(errText(e)); await open(); } return;
+  }
+  const live = s.control === 'actions';
   await vsScreen(s);
   const toCards = d => d.map(o => snapCard(o, card)).filter(Boolean);
-  const manual = battleMode() === 'manual', live = manual || !!VIEW();   // 전투 화면이 있으면 AUTO 도 실제 판 (AUTO→PLAY 로 중간에 직접 조작 가능) — 결과·행동 기록은 화면 판 기준
-  const res = live ? await viewSeries(s, toCards, manual) : runSeries(view.mode, s.me.map(toCards), s.opp.map(toCards), s.seed, true);
-  // 결과는 재생 전에 먼저 1회 보고 (재생 중 이탈해도 결과 동일 · 중복 보고 없음). 수동은 행동 기록을 먼저 남김 (tools/pvp_verify.mjs 재생 검증)
-  if (live) { try { await rpc('pvp_log', { p_id: s.id, p_actions: res.acts }); } catch (e) { toast(errText(e)); } }
-  let rep = null; try { rep = await rpc('pvp_report', { p_id: s.id, p_wins: res.wins, p_losses: res.losses }); } catch (e) { toast(errText(e)); }
+  let res;
+  try { res = live ? await viewSeries(s, toCards, manual) : runSeries(s.mode, s.me.map(toCards), s.opp.map(toCards), s.seed, true); }
+  catch (e) { toast('전투 중단 · 서버에서 패배 처리돼요'); try { await verifyRpc({ op: 'forfeit', id: s.id }); } catch {} await open(); return; }
   if (!live) await playback(s, res);
-  const delta = rep ? rep.delta : -s.dl;
+  const finish = { op: 'finish', id: s.id, actions: live ? res.acts : null };
+  pendingResult({ body: finish, session: s });
+  try { const rep = await finishVerified(finish); pendingResult(null); showResult(s, rep); }
+  catch (e) {
+    // Never pretend that a local win/rating/reward is an official settlement.
+    const m = modal('pvp-result', `<div class="pvp-h">결과 미정산</div><div class="pvp-empty">${esc(errText(e))}<br>같은 전투를 다시 저장하면 중복 지급 없이 확인돼요.</div><div class="pvp-acts"><button class="pvp-go" data-retry>다시 저장</button><button data-x>나중에</button></div>`, 'pvp-sub');
+    m.querySelector('[data-retry]').onclick = retryResult;
+    m.querySelector('[data-x]').onclick = open;
+  }
+}
+function showResult(s, rep) {
+  const delta = rep.delta, boss = !!MODES[s.mode || view.mode]?.boss;
   const m = modal('pvp-result', `<button class="pvp-x" data-x>✕</button>
-    <div class="pvp-res ${res.win ? 'win' : 'lose'}">${res.win ? 'WIN' : 'LOSE'}</div>
+    <div class="pvp-res ${rep.win ? 'win' : 'lose'}">${rep.win ? 'WIN' : 'LOSE'}</div>
     <div class="pvp-vs">${emb(tierOf(s.opp_rating))}<span>${esc(s.opp_name)}${s.bot ? ' 🤖' : ''}</span><small>🏆 ${s.opp_rating}</small></div>
-    ${rep?.streak >= 2 ? `<div class="pvp-res-streak"><span class="pvp-streak big">🔥${rep.streak}</span>${rep.streak_reward ? `<span class="pvp-rw">${rwHtml(rep.streak_reward)}</span>` : ''}</div>` : ''}
-    ${res.rounds.map((r, i) => `<div class="pvp-round ${r.win ? 'win' : 'lose'}"><div class="pvp-side">${snapThumbs(s.me[i])}</div><b>${r.win ? '○' : '✕'}</b><div class="pvp-side foe">${snapThumbs(s.opp[i])}</div></div>`).join('')}
-    <div class="pvp-delta ${delta >= 0 ? 'up' : 'down'}">${emb(tierOf(rep?.rating ?? s.rating - s.dl))} ${(rep?.rating ?? s.rating - s.dl)} <b>${delta >= 0 ? '+' : ''}${delta}</b></div>
+    ${rep.streak >= 2 ? `<div class="pvp-res-streak"><span class="pvp-streak big">🔥${rep.streak}</span>${rep.streak_reward ? `<span class="pvp-rw">${rwHtml(rep.streak_reward)}</span>` : ''}</div>` : ''}
+    ${rep.forfeit ? '<div class="pvp-empty">기한 만료/중단 · 보상 없는 패배</div>' : ''}
+    ${rep.rounds.map((r, i) => boss ? `<div class="pvp-round pvp-round-boss ${r.win ? 'win' : 'lose'}"><div class="pvp-result-side"><strong>상대${r.win ? ' · 진영 파괴' : ''}</strong><div class="pvp-side foe">${snapThumbs(s.opp[i])}</div></div><div class="pvp-result-side"><strong>나${r.win ? '' : ' · 패배'}</strong><div class="pvp-side">${snapThumbs(s.me[i])}</div></div></div>` : `<div class="pvp-round ${r.win ? 'win' : 'lose'}"><div class="pvp-side">${snapThumbs(s.me[i])}</div><b>${r.win ? '○' : '✕'}</b><div class="pvp-side foe">${snapThumbs(s.opp[i])}</div></div>`).join('')}
+    <div class="pvp-delta ${delta >= 0 ? 'up' : 'down'}">${emb(tierOf(rep.rating))} ${rep.rating} <b>${delta >= 0 ? '+' : ''}${delta}</b></div>
     <div class="pvp-acts"><button class="pvp-go" data-x>확인</button></div>`, 'pvp-sub');
   m.addEventListener('click', e => { if (e.target === m || e.target.closest('[data-x]')) open(); });
-  if (rep?.streak_reward) window.VRPlayer?.wallet?.(true);
+  if (rep.streak_reward) window.VRPlayer?.wallet?.(true);
 }
 
 // ---- 수동: 판마다 내가 조작 (상대는 AI). 같은 seed·스냅샷 · 2선승 ----

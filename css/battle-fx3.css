@@ -27,8 +27,8 @@ body.bfx:has(#game.bfx-final) .fx-dmg { animation-duration: 2.2s !important; }
   background-size: 300% 100%; animation: bfxSpeed var(--dur) linear both; }
 @keyframes bfxSpeed { from { background-position: 0 0; } to { background-position: calc(var(--dir, 1) * -600px) 0; } }
 .bfx .cutin .cutin-text { z-index: 4; }
-.bfx .cutin.cutin-img { max-height: 40vh; width: min(100vw, calc(40vh * 16 / 9)); }
-@media (orientation: portrait) { .bfx .cutin.cutin-img { height: min(32vh, 70vw); } }
+/* 그림 크기는 index.html 의 기본 70vh / 세로 62vh 를 사용.
+   BFX 의 40vh / 32vh 축소 덮어쓰기는 제거 (보안 1단계와 무관한 기존 스타일). */
 
 /* 2-4 PC 가로: 필드 카드 크기 맞춤 (js fitBoard → --bz) · 1440px 이상이면 전투 기록을 왼쪽에 상시 표시 */
 .bfx #game.bfx-fit #field-box .unit { zoom: var(--bz, 1); }

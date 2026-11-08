@@ -1,13 +1,12 @@
 // ===== 카드 갤러리 =====
-// 판이 끝나면(로그인 유저만) 승리: 필드에 남은 내 카드 전부 / 패배·무승부: MVP 1장을 갤러리에 등록.
-// 저장은 Supabase gallery 테이블 + gallery_register RPC. 스킬 이미지는 VIP 왕관 등급으로 개방된 것만 노출.
+// 획득은 서버 거래에서 등록. 미검증 아케이드 결과로는 도감/MVP를 증가시키지 않는다.
+// 조회는 Supabase gallery 테이블. 스킬 이미지는 VIP 왕관 등급으로 개방된 것만 노출.
 (() => {
   const IC = n => window.VRIcon?.icon(n) || '';   // js/icons.js
   const IMG = 'https://raw.githubusercontent.com/steveJea/vr-ideal-worldcup/main/img/bt_img/';
   const ORDER = ['NORMAL', 'RARE', 'HIGH RARE', 'SUPER RARE', 'ULTRA RARE', 'MYTHIC RARE', 'LEGENDARY RARE'];
   const SHORT = { 'NORMAL': 'N', 'RARE': 'R', 'HIGH RARE': 'HR', 'SUPER RARE': 'SR', 'ULTRA RARE': 'UR', 'MYTHIC RARE': 'MR', 'LEGENDARY RARE': 'LR' };
   const LABEL = { N: '노멀', R: '레어', HR: '하이 레어', SR: '슈퍼 레어', UR: '울트라 레어', MR: '미식 레어' };
-  const PENDING = 'vrGalleryPending.v1';
   const $ = id => document.getElementById(id);
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const cloud = () => window.VRCloud;
@@ -79,24 +78,6 @@
     if (error) throw error;
     owned = new Map(data.map(r => [r.card_id, r]));
   }
-  async function register(ids, mvp) {
-    const { data, error } = await cloud().sb.rpc('gallery_register', { p_cards: ids, p_mvp: mvp || null });
-    if (error) throw error;
-    return data || [];
-  }
-  const readPending = () => { try { return JSON.parse(localStorage.getItem(PENDING) || '[]'); } catch { return []; } };
-  const writePending = a => localStorage.setItem(PENDING, JSON.stringify(a.slice(-10)));
-  async function flushPending() {
-    if (!logged()) return;
-    const list = readPending(); if (!list.length) return;
-    const rest = [];
-    for (const p of list) {
-      if (p.uid !== cloud().user.id) { rest.push(p); continue; }
-      try { await register(p.ids, p.mvp); } catch { rest.push(p); }
-    }
-    writePending(rest);
-  }
-
   // --- 종료 화면 ---
   function endBox() {
     let el = $('gal-end');
@@ -107,34 +88,9 @@
     }
     return el;
   }
-  window.addEventListener('vr:match', async e => {
-    const m = e.detail || {};
-    const box = endBox();
-    if (!logged()) {
-      box.innerHTML = `<div class="gal-hint">${IC('gallery')} 로그인하면 인재가 갤러리에 수집돼요</div>`;
-      return;
-    }
-    const ids = m.result === 'win' ? [...new Set((m.fieldIds || []).map(String))] : [];
-    const mvp = m.mvpId ? String(m.mvpId) : null;
-    if (m.result !== 'win' && mvp) ids.push(mvp);
-    if (!ids.length) { box.innerHTML = `<div class="gal-hint">이번 판은 갤러리에 수집된 인재가 없어요</div>`; return; }
-    box.innerHTML = `<div class="gal-hint">${IC('gallery')} 갤러리에 수집 중...</div>`;
-    try {
-      await loadCards();
-      const res = await register(ids, mvp);
-      await loadSkills();
-      res.forEach(r => owned.set(r.card_id, { ...(owned.get(r.card_id) || {}), ...r }));
-      const items = ids.map(id => ({ c: cardById(id), r: res.find(x => x.card_id === id) })).filter(x => x.c);
-      box.innerHTML = `<div class="gal-end-row">${items.map(({ c, r }) => `<div class="gal-end-card rar-${SHORT[c.grade]}">
-          <img src="${cardThumb(c.id)}" alt="${esc(c.name)}" onerror="this.style.visibility='hidden'">
-          ${r?.is_new ? '<span class="gal-new">NEW!</span>' : `<span class="gal-cnt">×${r?.count ?? ''}</span>`}
-          ${crownHtml(crownTier(r))}
-          <div class="gal-end-name">${esc(c.name)}</div></div>`).join('')}</div>${promoNote(items, mvp)}`;
-    } catch (err) {
-      console.warn('[gallery] register failed', err);
-      writePending([...readPending(), { uid: cloud().user.id, ids, mvp, at: Date.now() }]);
-      box.innerHTML = `<div class="gal-hint">📡 지금은 갤러리에 저장하지 못했어요. 다음에 연결되면 자동으로 수집돼요</div>`;
-    }
+  window.addEventListener('vr:match', () => {
+    if (!logged()) return;
+    endBox().textContent = '도감·MVP 반영 보류';
   });
 
   function promoNote(items, mvp) {
@@ -213,7 +169,7 @@
     try { await loadCards(); await loadSkills(); } catch { $('gal-msg').textContent = '인재 목록을 불러오지 못했어요. 인터넷 연결을 확인해 주세요.'; return; }
     let msg = '';
     if (!logged()) { owned = new Map(); msg = cloud()?.sb ? '🔑 로그인하면 인재가 갤러리에 수집돼요' : '📡 지금은 서버에 연결할 수 없어요. 게스트로는 수집되지 않아요'; }
-    else { try { await flushPending(); await fetchOwned(); await fetchRewards(); } catch (e) { console.warn('[gallery] load failed', e); msg = '📡 갤러리를 불러오지 못했어요. 잠시 후 다시 시도해 주세요'; } }
+    else { try { await fetchOwned(); await fetchRewards(); } catch (e) { console.warn('[gallery] load failed', e); msg = '📡 갤러리를 불러오지 못했어요. 잠시 후 다시 시도해 주세요'; } }
     $('gal-msg').innerHTML = msg ? (logged() || !cloud()?.sb ? esc(msg) : `${window.VRIcon ? VRIcon.swap(esc(msg)) : esc(msg)} <button id="gal-login" class="gal-login">로그인</button>`) : '';
     if ($('gal-login')) $('gal-login').onclick = () => cloud().login();
     draw();
@@ -339,6 +295,5 @@
     howto.parentNode.insertBefore(b, howto.nextSibling);
   }
   document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', addButton) : addButton();
-  setTimeout(flushPending, 4000);
   window.VRGallery = { open, close, collection, shareCard, _test: { shareInfo, setOwned: m => { owned = m; }, detail, draw, promoNote, loadCards, loadSkills, cardById, fetchRewards, drawMiles } };
 })();

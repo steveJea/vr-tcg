@@ -153,6 +153,10 @@
     .cutin-img.cutin-me .cutin-text > div:last-child { color: #a7f3d0; } .cutin-img.cutin-ai .cutin-text > div:last-child { color: #fecaca; }
     .cutin-img.cutin-me .cutin-text { color: #d1fae5; } .cutin-img.cutin-ai .cutin-text { color: #fee2e2; }
     @media (orientation: portrait) { .cutin.cutin-img { aspect-ratio: auto; width: 100vw; height: min(62vh, 125vw); max-height: none; } }
+    @supports (height: 100dvh) {
+      .cutin.cutin-img { max-height: 70dvh; width: min(100vw, calc(70dvh * 16 / 9)); }
+      @media (orientation: portrait) { .cutin.cutin-img { max-height: none; width: 100vw; height: min(62dvh, 125vw); } }
+    }
     .cutin.cutin-img { background: #000; }
     .hp-fill, .mp-bar > div { transition: width .35s ease-out; }
     .cutin { --dir: 1; --dur: .75s; text-shadow: 0 2px 8px #000; animation: slashCut var(--dur) both; clip-path: polygon(5% 0, 100% 0, 95% 100%, 0 100%); }
@@ -173,6 +177,13 @@
   /* 엔딩 화면 */
   #end-screen.end-win { background: radial-gradient(circle at 50% 30%, rgba(16,120,90,.45), transparent 70%), #04080a; }
   #end-screen.end-lose { background: radial-gradient(circle at 50% 30%, rgba(90,20,20,.45), transparent 70%), #050303; }
+  #arcade-verifying { position: fixed; inset: 0; z-index: 49; background: rgba(0,0,0,.24); }
+  #arcade-verifying:not(.hidden) { display: grid; place-items: center; }
+  #arcade-verifying > i { width: 28px; height: 28px; border: 3px solid rgba(255,255,255,.2); border-top-color: #a7f3d0; border-radius: 50%; animation: arcadeVerifySpin .8s linear infinite; }
+  @keyframes arcadeVerifySpin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { #arcade-verifying > i { animation: none; } }
+  #end-screen.end-pending { background: #09090b; }
+  #end-screen.end-pending #end-stats:empty, #end-screen.end-pending .gal-end { display: none; }
   #end-screen.end-draw { background: rgba(10,10,12,.98); }
   .end-slash { position: relative; overflow: hidden; padding: .4rem 0; }
   .end-slash::before { content: ''; position: absolute; left: -10%; right: -10%; top: 50%; height: 4px; background: linear-gradient(90deg, transparent, #fff, transparent); transform: rotate(-8deg); animation: endSlash .6s ease-out both; }
@@ -553,6 +564,8 @@
   </div>
 </div>
 
+<!-- 검증 대기: 결과창/설명/버튼 없이 전투 위에 작은 스피너만 -->
+<div id="arcade-verifying" class="hidden" role="status" aria-label="전투 결과 확인 중"><i aria-hidden="true"></i></div>
 <!-- 종료 화면 -->
 <div id="end-screen" class="hidden fixed inset-0 flex items-center justify-center z-50 p-3 overflow-y-auto">
   <div class="end-card relative text-center w-full max-w-sm my-auto">
@@ -586,6 +599,7 @@
 <script src="js/camp.js"></script>
 <div id="cutin" class="hidden"></div>
 <section id="story-screen" class="hidden"></section>
+<script src="js/battle-session.js"></script>
 <script src="js/story-data.js"></script>
 <script src="js/story-data-ch0.js"></script>
 <script src="js/story-data-ch2.js"></script>
@@ -603,6 +617,8 @@
 <script src="js/story-data-ch14.js"></script>
 <script src="js/story-data-ch15.js"></script>
 <script src="js/player.js"></script>
+<script src="js/unlock-policy.js"></script>
+<script src="js/unlocks.js"></script>
 <script src="js/gem.js"></script>
 <script src="js/daily.js"></script>
 <script src="js/achievements.js"></script>

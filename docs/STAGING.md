@@ -25,20 +25,22 @@
 
 ### 2. 빈 테스트 DB에 분할 설치 SQL 실행
 
+**이미 설치한 테스트 DB:** 01~10을 다시 실행하지 말고 [보안 1단계 전용 migration](SECURITY_PHASE1.md) 안내를 따르세요. 새 설치본은 이 migration을 마지막에 포함합니다.
+
 **통합 `supabase/staging_install.sql`은 SQL Editor 크기 제한을 넘으므로 붙여 넣지 않습니다.** 대신 [`supabase/staging/README.md`](../supabase/staging/README.md)의 01~10 분할본을 씁니다.
 
 확인받은 테스트 DB 식별번호 **7703759698107299042 (18자리)**가 모든 분할 파일에 반영돼 있습니다. 운영 DB 번호 조회나 파일 수동 편집은 필요 없습니다.
 
 1. Supabase 화면이 테스트 프로젝트 `cuyqchmdcnsgzkwyclji`인지 확인합니다. 운영에서 설치 실행 금지입니다.
-2. 같은 커밋의 `supabase/staging/01_install.sql`부터 `10_install.sql`까지 **파일 하나 전체씩 순서대로** 붙여 실행합니다. 매번 성공 메시지 확인 후 다음 번호로 갑니다.
+2. 같은 커밋의 `supabase/staging/01_install.sql`부터 `12_install.sql`까지 **파일 하나 전체씩 순서대로** 붙여 실행합니다. 매번 성공 메시지 확인 후 다음 번호로 갑니다.
 3. DB 식별번호 불일치/조회 오류가 나오면 중단합니다. 번호를 임의로 바꾸거나 guard를 삭제하지 말고 오류를 알려주세요.
 4. 이미 완료한 파일은 재실행해도 건너뜁니다. 오류가 난 파일은 그 파일만 되돌아가므로 원인을 확인한 뒤 같은 파일부터 재개합니다. 앞선 성공 파일을 지우거나 전체 DB를 초기화하지 않습니다.
 5. 마지막 파일까지 성공하기 전에는 회원 가입/로그인을 하지 마세요. 설치 중 API 접근은 차단되며 마지막에 개방됩니다.
 6. 예전 `schema.sql`이나 폴더 전체 SQL을 추가 실행하지 마세요. 옛 함수로 덮어써질 수 있습니다.
 
-설치본은 새 테스트 DB 전용입니다. 운영 회원/결제 자료, 기존 사용자 환급 및 운영 조회 스크립트를 넣지 않습니다. 원본 관리자 판정 규칙은 유지하며 기존 보안 문제를 고치는 작업은 아닙니다.
+설치본은 새 테스트 DB 전용입니다. 운영 회원/결제 자료, 기존 사용자 환급 및 운영 조회 스크립트를 넣지 않습니다. 원본 관리자 판정 규칙을 유지하고, 신규 설치의 마지막에 [보안 1단계](SECURITY_PHASE1.md)를 적용합니다. 전투 검증을 포함한 나머지 보안 작업은 아직 남아 있습니다.
 
-검증: 빈 PostgreSQL(WASM/PGlite)에 전체 설치·함수 578개 재컴파일, RLS/내부 함수 권한, 분할 설치 순서·재실행·오류 롤백을 검사합니다. 실제 Supabase에 SQL을 실행하거나 Google 로그인·메일·화면 동작까지 확인한 것은 아닙니다.
+검증: 빈 PostgreSQL(WASM/PGlite)에 전체 설치·함수 580개 재컴파일, RLS/내부 함수 권한, 분할 설치 순서·재실행·오류 롤백을 검사합니다. 실제 Supabase에 SQL을 실행하거나 Google 로그인·메일·화면 동작까지 확인한 것은 아닙니다.
 
 ### 3. 테스트용 구글 로그인 설정
 
@@ -115,3 +117,9 @@ WRANGLER_SEND_METRICS=false npx wrangler deploy --dry-run
 - https://developers.cloudflare.com/workers/static-assets/billing-and-limitations/
 - https://developers.cloudflare.com/workers/ci-cd/builds/configuration/
 - https://docs.github.com/en/pages/getting-started-with-github-pages/github-pages-limits
+
+보안 2단계 개별 업그레이드는 [SECURITY_PHASE2.md](SECURITY_PHASE2.md)를 따릅니다. 기존 10개 bundle 설치 DB에는 새 12개 bundle을 섞지 않습니다.
+
+## 보안 3단계 PvP
+
+기존 DB는 1→2단계 다음 `supabase/security_phase3_pvp.sql`만 추가합니다. 새 빈 DB bundle은 13개이며 기존 bundle과 섞지 않습니다. `pvp-verify-v3` Edge Function과 같은 버전 웹 배포까지 필요합니다. 새 검증 래더/옛 기록 보존, 소유자 실행 순서와 smoke test는 [SECURITY_PHASE3.md](SECURITY_PHASE3.md)를 따르세요. 운영 적용/자동 배포는 하지 않습니다.

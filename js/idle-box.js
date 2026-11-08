@@ -3,7 +3,7 @@
 // SQL 실행 전이거나 비로그인이면 버튼이 안 보임
 (() => {
   const missing = e => /PGRST202|PGRST205|42883|42P01|Could not find|does not exist/i.test(`${e?.code} ${e?.message}`);
-  let cache = null, off = false;
+  let cache = null, off = false, acting = false;
   async function rpc(name, args) {
     const c = window.VRCloud, sb = c?.sb; if (!sb || !c?.user) return null;
     const { data, error } = await sb.rpc(name, args);
@@ -20,7 +20,7 @@
   function toast(t) { const el = document.createElement('div'); el.className = 'gem-toast'; el.textContent = t; document.body.appendChild(el); setTimeout(() => el.remove(), 2600); }
   const ERR = {
     'not done': '아직 쌓인 보상이 없어요', 'login required': '로그인이 필요해요',
-    'daily limit': '오늘은 빠른 보상을 다 썼어요', 'not enough gem': '심연석이 부족해요',
+    'daily limit': '오늘은 빠른 보상을 다 썼어요', 'not enough gem': '심연석이 부족해요 (빠른 보상은 유료예요)',
     'dust unavailable': '장비 가루를 줄 수 없어요',
   };
   const errText = e => { const m = String(e?.message || e); const k = Object.keys(ERR).find(x => m.includes(x)); return k ? ERR[k] : m.slice(0, 60); };
@@ -42,6 +42,7 @@
     }
   }
   async function act(fn) {
+    if (acting) return; acting = true;
     try {
       const r = await rpc(fn); if (!r) return;
       set(r);
@@ -49,7 +50,7 @@
       if (r.wallet) window.VRPlayer?.setWallet?.(r.wallet);
       if (r.gem) window.VRGem?.status?.(true);
       window.VRPlayer?.status?.(true);
-    } catch (e) { toast(errText(e)); }
+    } catch (e) { toast(errText(e)); } finally { acting = false; }
   }
   function hrsTxt(h) {
     const x = Number(h) || 0;
@@ -72,15 +73,24 @@
           <small>${hrsTxt(s.hours)} / ${s.max_hours}시간${s.full ? ' · 가득' : ''}</small></div>
         <div class="idle-got">${rwText(p) || '—'}</div>
         <div class="idle-rate">시간당 ${rwText(rate)}</div>
-        <button class="daily-claim" data-claim ${s.ready ? '' : 'disabled'}>모두 받기</button>
+        <button class="daily-claim" data-claim ${s.ready ? '' : 'disabled'}>쌓인 보상 받기 (무료)</button>
         <div class="idle-boost">
-          <div class="idle-boost-h"><b>⚡ 빠른 보상</b><small>오늘 ${b.left ?? 0}/${b.max ?? 2}</small></div>
-          <div class="idle-boost-r">${rwText(b.reward)} · 🔮 ${b.cost ?? 30}</div>
-          <button class="daily-claim idle-boost-btn" data-boost ${(b.left | 0) < 1 ? 'disabled' : ''}>4시간분 받기</button>
+          <div class="idle-boost-h"><b>⚡ 빠른 보상 (심연석 사용)</b><small>오늘 ${b.left ?? 0}/${b.max ?? 2}</small></div>
+          <div class="idle-boost-r">${rwText(b.reward)}</div>
+          <button class="daily-claim idle-boost-btn" data-boost ${(b.left | 0) < 1 ? 'disabled' : ''}>심연석 ${n(b.cost ?? 30)}개로 ${b.hours ?? 4}시간분 받기</button>
         </div></div>`;
       pop.querySelector('[data-x]').onclick = () => pop.remove();
-      pop.querySelector('[data-claim]')?.addEventListener('click', async () => { await act('idle_box_claim'); draw(); });
-      pop.querySelector('[data-boost]')?.addEventListener('click', async () => { await act('idle_box_boost'); draw(); });
+      pop.querySelector('[data-claim]')?.addEventListener('click', async e => {
+        e.currentTarget.disabled = true; await act('idle_box_claim'); draw();
+      });
+      pop.querySelector('[data-boost]')?.addEventListener('click', async e => {
+        e.currentTarget.disabled = true;
+        const msg = `심연석 ${n(b.cost ?? 30)}개를 사용해 ${b.hours ?? 4}시간분 보상을 받을까요?\n쌓인 보상 받기는 무료예요.`;
+        try {
+          const ok = await (window.VRAsk ? window.VRAsk(msg) : confirm(msg));
+          if (ok && pop.isConnected) await act('idle_box_boost');
+        } finally { draw(); }
+      });
     };
     pop.onclick = e => { if (e.target === pop) pop.remove(); };
     if (!window.VRPages?.host?.('idle-box', '🎁 방치 보상', pop)) document.body.appendChild(pop);

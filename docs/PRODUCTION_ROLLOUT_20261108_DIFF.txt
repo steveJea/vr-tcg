@@ -1,0 +1,206 @@
+READ-ONLY INVENTORY: main f8ed722 -> staging d0ba664 (2026-11-08 KST)
+
+NON-MERGE COMMITS
+a5659044387734de7d85b17b734044774b3a22a0 fix: show arcade results only after verification completes
+a2f68a7cb4efeb1e673644879ea058b9bd74ea8b fix: bound arcade verification waits and decouple stats refresh
+f582a4354d73e3b477aadf64bd6a96efc9b89da2 fix: address arcade feedback 18-21 media and battle UI
+661cedd4f32a313eea09b0e783d77f3817941d7e security: verify arcade replays and restore verified missions
+4e9c18c896297c342696af24d07c7e4c17c70750 fix: seal opponent unique actions for Sungjin skill 2
+7cb06bbf9ec1e0cae7bcd8469ec489a10cb19cc5 feat: unlock forge and dojo independently at account level 20
+c2f0b498e21eba3e549e6b83b4cda71a4fac2420 feat: stage level unlocks, lobby intros and verified once-only rewards
+8ec48b3eda807515e33131289a258ba7ded221df fix: address sheet feedback 8-15 for raid and war UI
+65c0faed4889d6cf2ee884edb7ccbf34d8d07b75 fix: refill staging raid and war attempts without resetting battle state
+f079e29e47f6c097184aa79e860f58de980f4b0a security: verify raid and guild-war battles on staging (phase 4)
+d9a28d612163dcebc6f5914425f5fe0a5ccc5e57 fix(pvp): restore progression stats in client and verified replay
+aeb9e193606bbbc897357eba5cc873194ddeadbd fix(pvp): polish boss controls, skill playback, results and deck picker
+1931f75da2069806601cd17199c004226ba6f03d story: apply chapter 14 media at exact sheet cues
+70fd708e42ce32327774485aaa74a752d8be026a security: provide paste-ready PvP Dashboard function bundle
+b62976c3796640ffcbb487a60d1784fa182c07a7 security: verify PvP server-side and release audited rewards
+2e7b6543a5c7215911ef5da92baec8611579ede0 security: settle tutorial story and tower session clears
+a4cd1c83aa674f1262968dea4e6325a9c1d3d504 security: scaffold fail-closed phase 2 shadow battle sessions
+684893da703a5359ddb8e7f9e978a401784b3cc5 fix: 소환 패시브 컷인을 등장 컷인 뒤로 미룸 (이영아 잔상 스킬 이미지가 프로필로 덮이던 문제)
+050c60546f2d79baf4cc7a9e9a3ae816ffc67ca7 arcade: hide 공격력 강화 label on buff button
+68e8dd4181edbaff10e102dd47d3bfa50a84d1d8 fix: pause chapter 0 phase 3 after Yuri awakens
+897e8224d58fc9fce4dd0e4445a320dceff1e1f9 Story replay: add [전투 후] divider page before post-battle lines
+87fe6baabf10b3c68ee9b26638aab72a82c4c42c fix: address staging story, tutorial and reward feedback
+e2964d4c10c23fca14a7681bfab446b24fd2cb08 security: gate phase one rewards on server-owned evidence
+30429c39fc673d1ca8fa8d440783ace236c24e65 staging: set real workers.dev host
+e9b1261f66a61406a57cca05522e19e251718328 staging: refresh manifest hashes
+9d68ec12afab3f5f8319f5e9b2be70bc55e492b1 staging: system id is 19 digits
+
+ALL CHANGED PATHS (includes inert staging tools/docs/fixtures; NOT an SQL execution list)
+M	css/battle-fx3.css
+M	css/guild.css
+M	css/pages.css
+M	css/pvp.css
+M	css/story.css
+M	css/tw.css
+A	css/unlocks.css
+M	data/skills.json
+A	docs/PVP_FEEDBACK_20261107.md
+A	docs/PVP_LEVEL_STATS_20261107.md
+A	docs/SECURITY_PHASE1.md
+A	docs/SECURITY_PHASE1_RPC_INVENTORY.json
+A	docs/SECURITY_PHASE2.md
+A	docs/SECURITY_PHASE3.md
+A	docs/SECURITY_PHASE4_20261107.md
+A	docs/SHEET_FEEDBACK_8PLUS_20261107.md
+M	docs/STAGING.md
+A	docs/STAGING_ARCADE_VERIFY_WAIT.md
+A	docs/STAGING_FEEDBACK_16.md
+A	docs/STAGING_FEEDBACK_18_21.md
+A	docs/STAGING_FEEDBACK_20261107.md
+A	docs/STAGING_LEVEL_UNLOCKS.md
+A	docs/STAGING_SECURITY_PHASE5.md
+A	docs/STORY_CH14_MEDIA.md
+A	img/story/ch14-01.webp
+A	img/story/ch14-04.webp
+A	img/story/ch14-05.webp
+A	img/story/ch14-06.webp
+A	img/story/ch14-07.webp
+A	img/story/ch14-08.webp
+A	img/story/ch14-09.webp
+A	img/story/ch14-10.webp
+M	index.html
+M	js/achievements.js
+A	js/arcade-core.js
+A	js/arcade-engine-version.js
+A	js/arcade-session.js
+M	js/arcade-tut.js
+A	js/battle-session.js
+A	js/battle-view-controls.js
+M	js/camp.js
+M	js/cloud.js
+M	js/daily.js
+M	js/dispatch.js
+M	js/friends.js
+M	js/gallery.js
+M	js/game.js
+M	js/gear.js
+M	js/gnb.js
+M	js/guild.js
+A	js/guildbattle-engine-version.js
+A	js/guildbattle-session.js
+M	js/idle-box.js
+M	js/mypage.js
+M	js/player.js
+M	js/pvp-core.js
+A	js/pvp-engine-version.js
+M	js/pvp.js
+M	js/quest.js
+M	js/raid-core.js
+M	js/raid.js
+M	js/skills.js
+M	js/story-data-ch14.js
+M	js/story.js
+M	js/trade.js
+M	js/tutorial.js
+A	js/unlock-policy.js
+A	js/unlocks.js
+A	js/war-deck-controls.js
+M	js/war.js
+M	package-lock.json
+M	package.json
+M	supabase/README.md
+A	supabase/config.toml
+A	supabase/functions/_shared/arcade-engine-v5.mjs
+A	supabase/functions/_shared/guildbattle-engine-v4.mjs
+A	supabase/functions/_shared/pvp-engine-v3.mjs
+A	supabase/functions/arcade-verify-v5/dashboard_single_file.ts
+A	supabase/functions/arcade-verify-v5/handler.mjs
+A	supabase/functions/arcade-verify-v5/index.ts
+A	supabase/functions/guildbattle-verify-v4/dashboard_single_file.ts
+A	supabase/functions/guildbattle-verify-v4/handler.mjs
+A	supabase/functions/guildbattle-verify-v4/index.ts
+A	supabase/functions/pvp-verify-v3/dashboard_single_file.ts
+A	supabase/functions/pvp-verify-v3/handler.mjs
+A	supabase/functions/pvp-verify-v3/index.ts
+A	supabase/level_unlocks_facilities_staging.sql
+A	supabase/level_unlocks_staging.sql
+A	supabase/security_feedback16_skill_lock_staging.sql
+A	supabase/security_phase1_preflight.sql
+A	supabase/security_phase1_rewards.sql
+A	supabase/security_phase2_clears.sql
+A	supabase/security_phase3_pvp.sql
+A	supabase/security_phase3_pvp_level_stats.sql
+A	supabase/security_phase4_raid_guildwar.sql
+A	supabase/security_phase4_war_card_details.sql
+A	supabase/security_phase5_arcade.sql
+M	supabase/staging/01_install.sql
+M	supabase/staging/02_install.sql
+M	supabase/staging/03_install.sql
+M	supabase/staging/04_install.sql
+M	supabase/staging/05_install.sql
+M	supabase/staging/06_install.sql
+M	supabase/staging/07_install.sql
+M	supabase/staging/08_install.sql
+M	supabase/staging/09_install.sql
+M	supabase/staging/10_install.sql
+A	supabase/staging/11_install.sql
+A	supabase/staging/12_install.sql
+A	supabase/staging/13_install.sql
+A	supabase/staging/14_install.sql
+M	supabase/staging/README.md
+M	supabase/staging/manifest.json
+M	supabase/staging_install.sql
+A	supabase/staging_seed_raid_guildwar.sql
+A	tools/arcade-engine-entry.mjs
+A	tools/build_feedback16_sql.mjs
+A	tools/build_phase2_catalog.mjs
+A	tools/build_phase3_dashboard.mjs
+A	tools/build_phase3_engine.mjs
+A	tools/build_phase4_dashboard.mjs
+A	tools/build_phase4_engine.mjs
+A	tools/build_phase4_sql.mjs
+A	tools/build_phase5_dashboard.mjs
+A	tools/build_phase5_engine.mjs
+M	tools/build_staging_sql.mjs
+A	tools/build_unlock_policy.mjs
+A	tools/ch14_media_manifest.json
+A	tools/guildbattle-engine-entry.mjs
+A	tools/load_phase3_dashboard.mjs
+A	tools/load_phase4_dashboard.mjs
+A	tools/load_phase5_dashboard.mjs
+A	tools/phase4/head.sql
+A	tools/phase4/refill.sql
+A	tools/phase4/refill_patches.mjs
+A	tools/phase4/seed.sql
+A	tools/phase4/tail.sql
+A	tools/phase4/war_card_details.mjs
+A	tools/phase5_fixture.mjs
+A	tools/pvp-engine-entry.mjs
+M	tools/pvp_verify.mjs
+M	tools/staging_sql_sources.json
+A	tools/test_arcade_verify_wait.mjs
+M	tools/test_battle_render.mjs
+A	tools/test_ch14_media.mjs
+A	tools/test_feedback16_upgrade.mjs
+A	tools/test_feedback18.mjs
+A	tools/test_level_unlocks_facilities.mjs
+A	tools/test_level_unlocks_sql.mjs
+A	tools/test_level_unlocks_ui.mjs
+A	tools/test_pvp_feedback.mjs
+A	tools/test_pvp_level_stats.mjs
+A	tools/test_security_phase1_sql.mjs
+A	tools/test_security_phase1_ui.mjs
+A	tools/test_security_phase2_sql.mjs
+A	tools/test_security_phase2_ui.mjs
+A	tools/test_security_phase3_engine.mjs
+A	tools/test_security_phase3_sql.mjs
+A	tools/test_security_phase3_ui.mjs
+A	tools/test_security_phase4_engine.mjs
+A	tools/test_security_phase4_sql.mjs
+A	tools/test_security_phase4_ui.mjs
+A	tools/test_security_phase5_engine.mjs
+A	tools/test_security_phase5_sql.mjs
+A	tools/test_security_phase5_ui.mjs
+A	tools/test_sheet_feedback.mjs
+A	tools/test_staging_feedback.mjs
+M	tools/test_staging_parts.mjs
+A	tools/test_sungjin_seal.mjs
+A	tools/unlocks/facilities.sql
+A	tools/unlocks/migration.sql
+A	tools/unlocks/policy.json
+A	tools/unlocks/rpc_gates.json
+A	video/story/ch14-02.mp4
+A	video/story/ch14-03.mp4

@@ -8,7 +8,7 @@
   const ERR = { 'slot locked': '아직 열지 않은 칸이에요', 'slot busy': '이미 인재가 있는 칸이에요', 'already training': '이미 훈련 중인 인재예요', 'not owned': '보유하지 않은 인재예요',
     'at cap': '훈련소에서 올릴 수 있는 최대 레벨이에요', 'already open': '이미 열린 칸이에요', 'open previous': '앞 칸부터 열어 주세요', 'need level': '플레이어 레벨이 부족해요',
     'not enough gold': '골드가 부족해요', 'not enough gem': '심연석이 부족해요', 'not enough dust': '장비 가루가 부족해요', 'not enough soul': '각성자의 혼이 부족해요',
-    'max camp level': '훈련소가 최대 레벨이에요', 'forge locked': '연마소는 훈련소 Lv5부터 열려요', 'forge busy': '연마소에 이미 장비가 있어요', 'max plus': '이미 +5 장비예요',
+    'max camp level': '훈련소가 최대 레벨이에요', 'forge locked': '🔒 Lv20', 'forge busy': '연마소에 이미 장비가 있어요', 'max plus': '이미 +5 장비예요',
     'dojo locked': '도장이 아직 안 열렸어요', 'dojo max': '도장에서는 스킬 Lv7까지만 올릴 수 있어요', 'skill locked': '아직 배우지 않은 스킬이에요', 'invalid skill': '올릴 수 없는 스킬이에요', 'not done': '아직 끝나지 않았어요' };
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const errText = e => { const m = e?.message || String(e); for (const k in ERR) if (m.includes(k)) return ERR[k]; return '⚠️ ' + m; };
@@ -85,6 +85,7 @@
 
   async function load() { st = await rpc('camp_status'); try { const s = await window.VRStory?.summary?.(); owned = (s?.ok ? s.owned : []).map(meta); } catch { owned = []; } paint(); return st; }
   async function open() {
+    if (window.VRUnlocks && !window.VRUnlocks.guard('camp')) return;
     const box = shell('🏋️ 훈련소'); box.querySelector('.cbody').innerHTML = '<div class="camp-empty">불러오는 중...</div>';
     try { await load(); } catch (e) { box.querySelector('.cbody').innerHTML = `<div class="camp-empty">${off ? '훈련소 준비 중이에요' : esc(errText(e))}</div>`; return; }
     if (await autoClaim()) return;
@@ -153,17 +154,17 @@
   const jobOf = (k, slot = 1) => (st.jobs || []).find(j => j.kind === k && j.slot === slot);
   const jobState = j => { const fin = j.done || new Date(j.ends_at) <= Date.now(); return fin ? '<small class="camp-pend">완료!</small>' : `<small data-left="${esc(j.ends_at)}">⏳ ${left(j.ends_at)}</small>`; };
   function forgeHTML() {
-    const lock = (st.camp_lv || 1) < st.forge_lv, j = jobOf('forge');
+    const need = st.forge_account_level ?? 20, lock = st.level < need, j = jobOf('forge');
     let row;
-    if (lock) row = `<div class="camp-slot locked"><span class="camp-no">🔒</span><div class="grow"><b>연마소</b></div><button class="go" disabled>훈련소 Lv${st.forge_lv}</button></div>`;
+    if (lock) row = `<div class="camp-slot locked"><span class="camp-no">🔒</span><div class="grow"><b>연마소</b></div><button class="go" disabled>Lv${need}</button></div>`;
     else if (j) { const fin = j.done || new Date(j.ends_at) <= Date.now();
       row = `<div class="camp-slot ${fin ? 'ready' : ''}"><span class="camp-no">⚒️</span><div class="grow"><b>${esc(gearName(j.gear_def))} +${j.from} → +${j.from + 1}</b>${jobState(j)}</div>${fin ? `<button class="go" data-jclaim="${j.id}">받기</button>` : ''}</div>`; }
     else row = `<div class="camp-slot"><span class="camp-no">⚒️</span><div class="grow"><b>비어 있어요</b></div><button class="go" data-forge>넣기</button></div>`;
     return `<div class="camp-sec">⚒️ 연마소</div>${row}`;
   }
   function dojoHTML() {
-    const lock = (st.camp_lv || 1) < st.dojo_lv; let rows = '';
-    if (lock) rows = `<div class="camp-slot locked"><span class="camp-no">🔒</span><div class="grow"><b>도장</b></div><button class="go" disabled>훈련소 Lv${st.dojo_lv}</button></div>`;
+    const need = st.dojo_account_level ?? 20, lock = st.level < need; let rows = '';
+    if (lock) rows = `<div class="camp-slot locked"><span class="camp-no">🔒</span><div class="grow"><b>도장</b></div><button class="go" disabled>Lv${need}</button></div>`;
     else {
       for (let s = 1; s <= st.dojo_slots; s++) { const j = jobOf('dojo', s);
         if (j) { const fin = j.done || new Date(j.ends_at) <= Date.now(), c = meta(rawOwned(j.card_uid).id ? rawOwned(j.card_uid) : { id: j.card });
@@ -181,11 +182,12 @@
     box.querySelectorAll('[data-jclaim]').forEach(b => b.onclick = async () => { try { const r = await rpc('camp_job_claim', { p_job: +b.dataset.jclaim }); jobToast(r.got); done(r); } catch (e) { toast(errText(e)); } });
     box.querySelector('[data-forge]')?.addEventListener('click', pickGear);
     box.querySelectorAll('[data-dojo]').forEach(b => b.onclick = () => pickSkill(+b.dataset.dojo));
-    box.querySelector('[data-dojounlock]')?.addEventListener('click', async () => { if (!await ask(`🔮 ${fmt(st.dojo_next_cost)}로 도장 ${st.dojo_slots + 1}번 칸을 열까요?`)) return;
+    box.querySelector('[data-dojounlock]')?.addEventListener('click', async () => { if (window.VRUnlocks && !window.VRUnlocks.guard('dojo')) return; if (!await ask(`🔮 ${fmt(st.dojo_next_cost)}로 도장 ${st.dojo_slots + 1}번 칸을 열까요?`)) return;
       try { st = await rpc('camp_dojo_unlock'); toast('🥋 도장을 열었어요'); window.VRGem?.status?.(true); draw(); } catch (e) { toast(errText(e)); } });
   }
   // 장비 고르기: +5 미만 장비, 반값 비용 미리보기 (최종 값은 서버)
   async function pickGear() {
+    if (window.VRUnlocks && !window.VRUnlocks.guard('forge')) return;
     const box = shell('⚒️ 연마할 장비'); const body = box.querySelector('.cbody');
     body.innerHTML = '<div class="camp-empty">불러오는 중...</div>';
     const [ec] = await Promise.all([loadEnh(), window.VRGear?.load?.(true)]); const list = (window.VRGear?.myGear?.() || []).filter(g => g.plus < 5).sort((a, b) => b.plus - a.plus);
@@ -197,6 +199,7 @@
   }
   // 스킬 고르기: 액티브 스킬, Lv7 미만, 도장 중 아닌 것
   function pickSkill(slot) {
+    if (window.VRUnlocks && !window.VRUnlocks.guard('dojo')) return;
     const busy = new Set((st.jobs || []).filter(j => j.kind === 'dojo').map(j => `${j.card_uid}:${j.skill}`)), rows = [];
     for (const o of owned) { const raw = rawOwned(o.uid), sl = raw.skillLv || {};
       (window.TCG?.skillsOf?.(o.id) || []).forEach((sk, i) => { const k = i + 1, lv = Math.max(1, sl[k] | 0 || 1);
@@ -216,8 +219,8 @@
     const busy = new Set(st.slots.map(s => s.uid).filter(Boolean));
     const pool = owned.filter(c => !busy.has(c.uid) && (c.level || 1) < capOf(c)).sort((a, b) => (a.level || 1) - (b.level || 1) || b.g - a.g);
     const box = shell(`🏋️ ${slot}번 칸`);
-    box.querySelector('.cbody').innerHTML = pool.length ? `<div class="story-grid camp-grid">${pool.map(c => { const n = skCount(c.id), sl = rawOwned(c.uid).skillLv || {}, mx = Math.max(1, ...Object.values(sl).map(v => v | 0));
-      return tile(c, `data-u="${esc(c.uid)}"`, `Lv.${c.level || 1}`, n ? `<span class="story-skn">✦${n}${mx > 1 ? ` Lv${mx}` : ''}</span>` : ''); }).join('')}</div>` : '<div class="camp-empty">없음</div>';
+    box.querySelector('.cbody').innerHTML = pool.length ? `<div class="story-grid camp-grid">${pool.map((c, i) => { const n = skCount(c.id), sl = rawOwned(c.uid).skillLv || {}, mx = Math.max(1, ...Object.values(sl).map(v => v | 0));
+      return tile(c, `data-u="${esc(c.uid)}" ${i === 0 ? 'data-recommended' : ''}`, `Lv.${c.level || 1}`, (i === 0 ? '<span class="camp-rec">추천</span>' : '') + (n ? `<span class="story-skn">✦${n}${mx > 1 ? ` Lv${mx}` : ''}</span>` : '')); }).join('')}</div>` : '<div class="camp-empty">없음</div>';
     box.insertAdjacentHTML('beforeend', '<div class="camp-acts"><button data-back>뒤로</button></div>');
     box.querySelector('[data-back]').onclick = draw;
     box.querySelectorAll('[data-u]').forEach(b => b.onclick = async () => { if (b.dataset.busy) return; b.dataset.busy = 1;
