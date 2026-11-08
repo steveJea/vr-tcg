@@ -3,7 +3,7 @@ import {readFile} from 'node:fs/promises';
 import {PGlite} from '@electric-sql/pglite';
 import {buildSql,INSTALL_ACK} from './build_staging_sql.mjs';
 import {createHandler,validPayment,STAGING} from '../supabase/functions/payments-confirm-v1/handler.mjs';
-import {enabled,readReturn,paymentError,loadPending,savePending,api,checkoutParams,sdkErrorCode,sdkFailure} from '../js/payments-core.js';
+import {enabled,readReturn,paymentError,loadPending,savePending,api,checkoutParams,sdkErrorCode,sdkFailure,safeSdkText} from '../js/payments-core.js';
 const read=p=>readFile(new URL('../'+p,import.meta.url),'utf8'),sql=await read('supabase/payments_staging.sql');
 assert(sql.includes("'7703759698107299042'"));assert(!sql.includes('7692130048193495360'));
 // Offline-only substitute for unavailable pg_control_system in WASM. Production artifact is NOT edited.
@@ -117,6 +117,23 @@ const params=checkoutParams({orderId:order.order_id,orderName:'심연석 100',am
 assert.equal(params.windowTarget,'self');assert.deepEqual(params.amount,{currency:'KRW',value:1100});assert.equal(params.customerEmail,undefined);assert.equal(params.customerName,undefined);
 for(const [patch,uid,code]of [[{orderId:undefined},u,'INVALID_ORDER_ID'],[{amount:'1100'},u,'INVALID_AMOUNT_VALUE'],[{orderName:''},u,'INVALID_ORDER_NAME'],[{},'abc','INVALID_CUSTOMER_KEY']])assert.throws(()=>checkoutParams({orderId:order.order_id,orderName:'심연석 100',amount:1100,...patch},uid,'https://vr-tcg-staging.notcold.workers.dev'),new RegExp(code));
 assert.equal(sdkErrorCode({code:'INVALID_CLIENT_KEY',message:'must never leak'}),'INVALID_CLIENT_KEY');assert.equal(sdkErrorCode({code:'<script>private</script>',name:'TypeError'}),'TypeError');assert.equal(sdkErrorCode({code:'test_sk_private'}),'SDK_UNKNOWN');assert.match(paymentError('sdk:INVALID_CLIENT_KEY'),/INVALID_CLIENT_KEY/);assert(!paymentError('sdk:<script>').includes('<script>'));
-const originalWarn=console.warn,captured=[];console.warn=x=>captured.push(x);try{assert.equal(sdkFailure({code:'INVALID_CLIENT_KEY',message:'private token'},'sdk-init','test_ck_custom').message,'sdk:INVALID_CLIENT_KEY');}finally{console.warn=originalWarn;}
-assert(!captured.join('').includes('private'));assert(!captured.join('').includes('test_ck_custom'));assert.match(captured.join(''),/sdk-init/);
-console.log('SDK checkout: documented full-page redirect, trusted typed fields, valid UUID customer, no PII, safe code in toast/logs, no key/error-message leakage OK');
+const originalWarn=console.warn,captured=[];console.warn=x=>captured.push(x);
+let plainFailure,nativeFailure;
+try{
+ const error=Object.assign(Error('Cannot read properties of undefined (reading payment)'),{stack:'TypeError: Cannot read properties of undefined\n at https://vr-tcg-staging.notcold.workers.dev/js/payments.js:31:12?access_token=do-not-log'});
+ plainFailure=sdkFailure(error,'checkout','test_ck_custom');
+ nativeFailure=sdkFailure({code:'UNKNOWN',message:'알 수 없는 에러가 발생했습니다.'},'checkout','test_ck_custom');
+ sdkFailure({code:'INVALID_CLIENT_KEY',message:'key test_sk_private email someone@example.com paymentKey="short-private-value"',stack:'Error test_ck_hidden access_token=short-token\n at https://private.example/callback?paymentKey=opaque'},'sdk-init','test_ck_custom');
+}finally{console.warn=originalWarn;}
+assert.equal(sdkErrorCode(Error('no code')),'SDK_UNKNOWN');
+assert.equal(sdkErrorCode({code:'UNKNOWN'}),'UNKNOWN','UNKNOWN is a real native Toss SDK code, not proof of a plain JS exception');
+assert.match(paymentError(plainFailure.message,plainFailure.sdkMessage),/Cannot read properties of undefined/);
+assert(!paymentError(plainFailure.message,plainFailure.sdkMessage).includes('UNKNOWN'));
+assert.match(paymentError(nativeFailure.message,nativeFailure.sdkMessage),/알 수 없는 에러가 발생했습니다.*UNKNOWN/);
+assert.match(captured[0],/payments.js:31:12/);assert.match(captured[0],/Cannot read properties/);
+for(const secret of ['do-not-log','test_ck_custom','test_sk_private','test_ck_hidden','someone@example.com','short-private-value','short-token','private.example','paymentKey=opaque'])assert(!captured.join('').includes(secret),secret);
+const redacted=safeSdkText('Bearer token-secret Basic dXNlcjpwYXNz test_sk_hidden live_gsk_hidden sb_secret_hidden eyJhbGciOiJIUzI1NiJ9.signature someone@example.com 11111111-1111-4111-8111-111111111111 010-1234-5678 4111 1111 1111 1111 https://example.com?token=secret apiKey="short secret value"',2000);
+for(const secret of ['token-secret','dXNlcjpwYXNz','test_sk_hidden','live_gsk_hidden','sb_secret_hidden','eyJhbGci','someone@example.com','11111111-1111-4111','010-1234-5678','4111 1111','example.com','short secret value'])assert(!redacted.includes(secret),secret);
+assert.equal(safeSdkText('설명'.repeat(200)).length,120);assert.equal(safeSdkText(null),'');
+assert(!paymentError('sdk:SDK_UNKNOWN','test_sk_private').includes('test_sk_private'));
+console.log('SDK checkout: trusted typed fields, native UNKNOWN distinguished from plain errors, redacted message fallback and bounded stack, no key/token/PII leakage OK');
