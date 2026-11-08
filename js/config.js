@@ -1,5 +1,6 @@
 // 접속 환경의 단일 설정. URL / anon(publishable) 키는 공개 값입니다.
 // 비밀 키는 절대 넣지 마세요. 운영은 아래의 정확한 주소에서만 연결합니다.
+export const PRODUCTION_HOSTNAMES = Object.freeze(['tcg.mbbs.kr', 'vr-tcg-prod.notcold.workers.dev']);
 const PRODUCTION = Object.freeze({
   supabaseUrl: 'https://htarwisgkkphutxxnuak.supabase.co',
   anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh0YXJ3aXNna2twaHV0eHhudWFrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIxNTMwOTgsImV4cCI6MjEwNzcyOTA5OH0.xaIda-o8QwRhoG5yDRLAcMo8LbU1rNHUA7xznO-tEfc',
@@ -34,7 +35,7 @@ export function resolveConfig(locationLike, staging = STAGING) {
   const host = String(locationLike.hostname || '').toLowerCase();
   const local = ['localhost', '127.0.0.1', '[::1]', '::1'].includes(host);
   const flag = local ? new URLSearchParams(locationLike.search || '').get('vrEnv') : null;
-  const production = host === 'tcg.mbbs.kr' || (local && flag === 'production');
+  const production = PRODUCTION_HOSTNAMES.includes(host) || (local && flag === 'production');
   const test = !production && ((staging.hostnames || []).map(h => h.toLowerCase()).includes(host) || (local && flag === 'staging'));
   const enabled = production || (test && validStaging(staging));
   return Object.freeze({

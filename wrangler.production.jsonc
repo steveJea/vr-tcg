@@ -1,0 +1,22 @@
+// Separate production-content candidate. No DNS/custom-domain attachment.
+// Build from main (or its hosting-only review branch); never reuse .staging-dist.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "vr-tcg-prod",
+  "account_id": "a7cf57f7e3db3f2d94466da0c79c70b5",
+  "main": "worker/media-range.mjs",
+  "compatibility_date": "2026-11-08",
+  "workers_dev": true,
+  "preview_urls": false,
+  "routes": [],
+  "assets": {
+    "directory": "./.production-dist",
+    "binding": "ASSETS",
+    "run_worker_first": ["/*.mp4", "/*.mp3"],
+    "not_found_handling": "404-page"
+  },
+  "observability": {
+    "enabled": true,
+    "traces": { "enabled": true, "head_sampling_rate": 0.01 }
+  }
+}
