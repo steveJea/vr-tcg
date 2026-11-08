@@ -314,7 +314,10 @@
   <div class="intro-body">
     <img src="img/ui/main/logo_v2.webp" alt="Violence Royale : The Abyss Gate" class="intro-logo" width="1200" height="595">
     <div class="intro-acts">
-      <button id="intro-login" class="main-btn intro-btn" type="button"><img src="img/ui/login.webp" alt="" class="ui-ic"> 구글 로그인</button>
+      <div class="oauth-row">
+        <button id="intro-login" data-oauth-provider="google" class="main-btn intro-btn" type="button"><img src="img/ui/login.webp" alt="" class="ui-ic"> 구글 로그인</button>
+        <button id="intro-login-kakao" class="main-btn intro-btn oauth-kakao" type="button" data-oauth-provider="kakao" hidden><img src="img/ui/kakao-symbol.svg" class="oauth-symbol" width="18" height="18" alt="">카카오 로그인</button>
+      </div>
       <button id="intro-guest" class="intro-guest" type="button">게스트로 시작</button>
     </div>
   </div>
@@ -376,6 +379,8 @@
         <button id="arcade-opts-btn" class="gm-btn" type="button" aria-haspopup="dialog"><img src="img/ui/v2/icon_arcade_settings.webp" alt=""><span>아케이드 설정 <small id="arcade-opts-sum"></small></span></button>
         <button id="main-rank" class="gm-btn" type="button"><img src="img/ui/v2/icon_ranking.webp" alt=""><span>랭킹</span></button>
         <button id="main-gallery" class="gm-btn" type="button"><img src="img/ui/v2/icon_gallery.webp" alt=""><span>갤러리</span></button>
+        <button id="main-link-google" class="gm-btn" type="button" hidden><span>구글 연결</span></button>
+        <button id="main-link-kakao" class="gm-btn" type="button" hidden><span>카카오 연결</span></button>
         <button id="main-logout" class="gm-btn hidden" type="button"><img src="img/ui/login.webp" alt=""><span>로그아웃</span></button>
       </div>
       <div id="gm-foot" class="gm-foot"></div>

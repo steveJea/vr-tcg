@@ -116,7 +116,7 @@
     if (!api || !window.TCG?.ready) return;
     if (!api.user()) {
       const p = api.popup(`<div class="text-xl font-black mb-2">🗼 시련의 탑</div><div class="text-sm text-zinc-300 mb-4">퀘스트 모드는 로그인한 플레이어만 할 수 있어요.<br>스토리 모드에서 모은 인재로 한 층씩 올라가요.</div>
-        <button id="quest-login" class="w-full py-3 rounded-xl bg-amber-400 text-black font-bold">구글로 로그인</button><button data-close-pop class="w-full mt-2 py-2 rounded-xl bg-zinc-700">닫기</button>`);
+        <button id="quest-login" class="w-full py-3 rounded-xl bg-amber-400 text-black font-bold">로그인</button><button data-close-pop class="w-full mt-2 py-2 rounded-xl bg-zinc-700">닫기</button>`);
       $('quest-login').onclick = () => { p.close(true); window.VRCloud?.login?.(); };
       return;
     }

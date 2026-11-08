@@ -13,7 +13,7 @@
     });
   }
   window.VRConfirm = confirmYN;   // 다른 화면에서도 같은 Y/N 확인창 (예: 인재 상세 버튼)
-  const login = () => window.VRCloud?.login ? window.VRCloud.login() : (window.VRGem?.toast || alert)('로그인 서버 연결 중이에요. 잠시 뒤 다시 눌러 주세요.');
+  const login = provider => window.VRCloud?.login ? window.VRCloud.login(provider) : (window.VRGem?.toast || alert)('로그인 서버 연결 중이에요. 잠시 뒤 다시 눌러 주세요.');
 
   // --- 인트로: 처음 방문(로그인 안 됨)일 때만 ---
   const intro = $('intro');
@@ -33,7 +33,8 @@
     } catch {}
   }
   const hideIntro = () => { localStorage.setItem(INTRO_KEY, '1'); intro.classList.add('hidden'); const v = $('intro-video'); v.pause(); };
-  $('intro-login').onclick = () => { localStorage.setItem(INTRO_KEY, '1'); login(); };
+  $('intro-login').onclick = () => { localStorage.setItem(INTRO_KEY, '1'); login('google'); };
+  $('intro-login-kakao').onclick = () => { localStorage.setItem(INTRO_KEY, '1'); login('kakao'); };
   $('intro-guest').onclick = async () => {
     if (await confirmYN('<b>게스트는 아케이드만</b> 플레이할 수 있어요.<br>인재 수집·소환은 할 수 없어요.<div class="vc-q">그래도 게스트로 하시겠어요?</div>')) hideIntro();
   };
