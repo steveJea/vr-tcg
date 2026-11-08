@@ -1,0 +1,21 @@
+{
+  "release": "20261108",
+  "productionProject": "htarwisgkkphutxxnuak",
+  "productionSystemId": null,
+  "stagingSystemId": "7703759698107299042",
+  "stagingCommit": "d0ba664b9d2b1ca65d7f86863292b0dfd0985d08",
+  "mainCommit": "f8ed722dbd558a90f091752222bfc7f53d7254e1",
+  "sources": [
+    "security_phase1_rewards.sql",
+    "security_phase2_clears.sql",
+    "security_phase3_pvp.sql",
+    "security_phase4_raid_guildwar.sql",
+    "level_unlocks_staging.sql",
+    "security_phase5_arcade.sql"
+  ],
+  "edges": [
+    "pvp-verify-v3",
+    "guildbattle-verify-v4",
+    "arcade-verify-v5"
+  ]
+}
