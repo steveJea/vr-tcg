@@ -59,7 +59,7 @@
       <div class="gem-shop">${['stamina', 'gold10k', 'ticket'].map(k => priceBtn(k)).join('')}</div>
       ${window.VRDrink?.html?.() || ''}
       <div class="gem-how">🗺️ 챕터 첫 클리어 +50 · 📅 7일 연속 +30 · ⚔️ PvP 시즌 보상</div></div>`;
-      m.querySelector('[data-charge]').onclick = () => { m.querySelector('.gem-soon').hidden = false; };
+      m.querySelector('[data-charge]').onclick = () => { if(window.VRPayments?.enabled)window.VRPayments.open();else m.querySelector('.gem-soon').hidden = false; };
       m.querySelectorAll('[data-gem-buy]').forEach(b => b.onclick = async () => { b.disabled = true; const r = await buy(b.dataset.gemBuy); if (r) toast(`${ITEM[r.item]?.[0] || ''} ${REASON['buy:' + r.item] || ''} 완료`); if (m.isConnected) draw(); });
       window.VRDrink?.bind?.(m, draw);
     };
