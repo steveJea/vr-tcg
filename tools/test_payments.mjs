@@ -3,7 +3,7 @@ import {readFile} from 'node:fs/promises';
 import {PGlite} from '@electric-sql/pglite';
 import {buildSql,INSTALL_ACK} from './build_staging_sql.mjs';
 import {createHandler,validPayment,STAGING} from '../supabase/functions/payments-confirm-v1/handler.mjs';
-import {enabled,readReturn,paymentError,loadPending,savePending,api} from '../js/payments-core.js';
+import {enabled,readReturn,paymentError,loadPending,savePending,api,checkoutParams,sdkErrorCode,sdkFailure} from '../js/payments-core.js';
 const read=p=>readFile(new URL('../'+p,import.meta.url),'utf8'),sql=await read('supabase/payments_staging.sql');
 assert(sql.includes("'7703759698107299042'"));assert(!sql.includes('7692130048193495360'));
 // Offline-only substitute for unavailable pg_control_system in WASM. Production artifact is NOT edited.
@@ -108,7 +108,15 @@ for(const code of ['order creation failed','order creation delayed','payment gat
 console.log('Pre-checkout diagnostics: gateway 401, missing function, SQL/ACL/runtime/unknown DB errors, order timeout vs confirmation timeout and SDK failures remain distinct; no raw data leaked');
 
 const callback=await read('payment-return.html');assert(callback.indexOf('history.replaceState')<callback.indexOf('src='));assert(!/googletagmanager|gtag\(|google-analytics/.test(callback));assert(callback.includes('no-referrer'));
-const client=await read('js/payments.js');assert(client.includes('test_ck_'));assert(!/test_sk_[A-Za-z0-9]{5}|live_[sc]k_|TOSS_SECRET_KEY/.test(client));assert(client.includes('value:o.amount'));assert(!client.includes('customerEmail'));
+const client=await read('js/payments.js');assert(client.includes('test_ck_'));assert(!/test_sk_[A-Za-z0-9]{5}|live_[sc]k_|TOSS_SECRET_KEY/.test(client));assert(client.includes('checkoutParams(o,uid,location.origin)'));assert((await read('js/payments-core.js')).includes('value:order.amount'));assert(!client.includes('customerEmail'));
 assert((await read('tools/build_staging.mjs')).includes("'payment-return.html'"));assert(!(await read('tools/build_production_assets.mjs')).includes("'payment-return.html'"));
 assert.equal(await read('supabase/functions/payments-confirm-v1/dashboard_single_file.ts'),'// Generated from handler.mjs; staging only; JWT verification ON.\n'+await read('supabase/functions/payments-confirm-v1/handler.mjs')+'\nDeno.serve(createHandler(Deno.env.toObject()));\n');
 console.log('Payments client: staging-only, no-email safe, trusted server checkout amount, account-scoped durable recovery, URL scrub before SDK/no analytics, bounded API, no secret in public assets, dashboard parity OK');
+
+const params=checkoutParams({orderId:order.order_id,orderName:'심연석 100',amount:1100},u,'https://vr-tcg-staging.notcold.workers.dev');
+assert.equal(params.windowTarget,'self');assert.deepEqual(params.amount,{currency:'KRW',value:1100});assert.equal(params.customerEmail,undefined);assert.equal(params.customerName,undefined);
+for(const [patch,uid,code]of [[{orderId:undefined},u,'INVALID_ORDER_ID'],[{amount:'1100'},u,'INVALID_AMOUNT_VALUE'],[{orderName:''},u,'INVALID_ORDER_NAME'],[{},'abc','INVALID_CUSTOMER_KEY']])assert.throws(()=>checkoutParams({orderId:order.order_id,orderName:'심연석 100',amount:1100,...patch},uid,'https://vr-tcg-staging.notcold.workers.dev'),new RegExp(code));
+assert.equal(sdkErrorCode({code:'INVALID_CLIENT_KEY',message:'must never leak'}),'INVALID_CLIENT_KEY');assert.equal(sdkErrorCode({code:'<script>private</script>',name:'TypeError'}),'TypeError');assert.equal(sdkErrorCode({code:'test_sk_private'}),'SDK_UNKNOWN');assert.match(paymentError('sdk:INVALID_CLIENT_KEY'),/INVALID_CLIENT_KEY/);assert(!paymentError('sdk:<script>').includes('<script>'));
+const originalWarn=console.warn,captured=[];console.warn=x=>captured.push(x);try{assert.equal(sdkFailure({code:'INVALID_CLIENT_KEY',message:'private token'},'sdk-init','test_ck_custom').message,'sdk:INVALID_CLIENT_KEY');}finally{console.warn=originalWarn;}
+assert(!captured.join('').includes('private'));assert(!captured.join('').includes('test_ck_custom'));assert.match(captured.join(''),/sdk-init/);
+console.log('SDK checkout: documented full-page redirect, trusted typed fields, valid UUID customer, no PII, safe code in toast/logs, no key/error-message leakage OK');
