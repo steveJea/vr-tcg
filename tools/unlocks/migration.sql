@@ -157,6 +157,8 @@ begin
  return jsonb_build_object('ok',true,'gave',rw,'wallet',wallet);
 end $$;
 
+__FACILITY_SQL__
+
 revoke all on function public._unlock_levels(),public._unlock_intros(),public._unlock_require(text),public._unlock_pvp_key(text,text),public._unlock_chapter1(text),public._unlock_intro_eligible(uuid,jsonb),public._unlock_action_done(uuid,text),public._unlock_camp_action() from public,anon,authenticated;
 -- CREATE OR REPLACE above does not touch the older helper ACLs; explicitly keep all new helpers private.
 revoke all on function public.unlock_status(),public.unlock_intro_claim(text) from public,anon,authenticated;

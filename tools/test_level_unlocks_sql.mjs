@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {PGlite} from '@electric-sql/pglite';
+import {testFacilities} from './test_level_unlocks_facilities.mjs';
 import {buildSql,INSTALL_ACK} from './build_staging_sql.mjs';
 const rd=p=>readFile(new URL('../'+p,import.meta.url),'utf8');
 const db=new PGlite(), me='11111111-1111-4111-8111-111111111111', other='22222222-2222-4222-8222-222222222222';
@@ -46,7 +47,7 @@ try {
  assert.equal(await val('select _guild_min_level() v'),6);
  assert.equal(await val('select _lend_min_level() v'),13);
  for(const [t,n] of [['normal',10],['wind',25],['ice',25],['fire',25],['light',40],['dark',40]]) assert.equal(await val('select _tower_min_level($1) v',[t]),n);
- // Facilities deliberately unchanged pending the owner's balance decision.
+ // Training-building gates/rates stay unchanged; facilities are independently gated at account20.
  assert.equal(await val('select _camp_lv_need(_camp_forge_lv()) v'),35);
  assert.equal(await val('select _camp_lv_need(_camp_dojo_lv()) v'),50);
  assert.equal(await val('select _camp_lv_mult(8) v'),'1.35');
@@ -138,6 +139,7 @@ try {
  os=await as(()=>val('select unlock_status() v'),other);assert.equal(os.entries.find(e=>e.key==='tower').action_done,true);
  await as(()=>val("select unlock_intro_claim('tower') v"),other);
  assert.equal(await val('select xp v from player_state where user_id=$1',[other]),0,'camp/tower intro rewards do not add account EXP');
+ await testFacilities({db,q,val,as});
  const weak=await q("select proname from pg_proc where pronamespace='public'::regnamespace and prosecdef and left(proname,1)='_' and pg_get_function_result(oid)<>'trigger' and (has_function_privilege('anon',oid,'execute') or has_function_privilege('authenticated',oid,'execute'))");assert.deepEqual(weak,[]);
  console.log(`Level unlock SQL: ${gated} direct RPC boundaries, six PvP combinations, previous clears, atomic/idempotent rewards, no EXP, RLS/ACL, wrong-DB guard: OK`);
 } catch(e) {console.error('UNLOCK SQL FAILURE:',e.message,e.where || '');process.exitCode=1;}
