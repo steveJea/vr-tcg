@@ -2,8 +2,8 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {PGlite} from '@electric-sql/pglite';
 import {buildSql,INSTALL_ACK} from './build_staging_sql.mjs';
-import {createHandler,validPayment,STAGING} from '../supabase/functions/payments-confirm-v1/handler.mjs';
-import {enabled,readReturn,paymentError,loadPending,savePending,api,checkoutParams,sdkErrorCode,sdkFailure,safeSdkText} from '../js/payments-core.js';
+import {createHandler,validPayment,STAGING,RETIRED_CLIENT_KEY} from '../supabase/functions/payments-confirm-v1/handler.mjs';
+import {enabled,readReturn,paymentError,loadPending,savePending,api,checkoutParams,sdkErrorCode,sdkFailure,safeSdkText,RETIRED_TOSS_CLIENT_KEY} from '../js/payments-core.js';
 const read=p=>readFile(new URL('../'+p,import.meta.url),'utf8'),sql=await read('supabase/payments_staging.sql');
 assert(sql.includes("'7703759698107299042'"));assert(!sql.includes('7692130048193495360'));
 // Offline-only substitute for unavailable pg_control_system in WASM. Production artifact is NOT edited.
@@ -54,7 +54,7 @@ try{
  console.log('Payments SQL: prod/unknown guard, repeat install/data preservation, own-row RLS, no direct writes/helper calls, server snapshots, opaque unique keys, atomic rollback/once-only paid+bonus ledger, expiry/runtime guard OK');
 }finally{await db.close();}
 
-const env={SUPABASE_URL:STAGING,SUPABASE_PUBLISHABLE_KEYS:'{"default":"sb_publishable_unit"}',SUPABASE_SECRET_KEYS:'{"default":"sb_secret_unit"}',TOSS_SECRET_KEY:'test_sk_unit'};
+const env={SUPABASE_URL:STAGING,SUPABASE_PUBLISHABLE_KEYS:'{"default":"sb_publishable_unit"}',SUPABASE_SECRET_KEYS:'{"default":"sb_secret_unit"}',TOSS_SECRET_KEY:'test_sk_unit',TOSS_CLIENT_KEY:'test_ck_unit'};
 const order={order_id:'vrs_'+ 'a'.repeat(32),user_id:u,amount:1100,currency:'KRW',order_name:'test',paid_gems:100,bonus_gems:0,status:'pending'};
 const payment={paymentKey:'opaque_key',orderId:order.order_id,currency:'KRW',totalAmount:1100,balanceAmount:1100,status:'DONE',approvedAt:'2026-11-08T21:00:00+09:00',method:'카드'};
 let events=[],count=0,done=false,lose=false,variant=null,paid=false;
@@ -73,13 +73,26 @@ const fetcher=async(url,opt={})=>{events.push({url,opt});
 const body={op:'confirm',orderId:order.order_id,paymentKey:'opaque_key',amount:1100};
 const req=(b=body,origin='https://vr-tcg-staging.notcold.workers.dev',token='Bearer login')=>new Request('https://edge.test',{method:'POST',headers:{'content-type':'application/json',origin,authorization:token},body:JSON.stringify(b)});
 const handler=createHandler(env,fetcher);
-assert.equal((await handler(req({op:'create',product:'gem_100',request:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'}))).status,200);
+const created=await handler(req({op:'create',product:'gem_100',request:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'}));assert.equal(created.status,200);assert.equal((await created.json()).clientKey,env.TOSS_CLIENT_KEY);
 events=[];for(const bad of [{...body,amount:0},{...body,amount:'1100'},{...body,uid:u},{...body,paymentKey:'x'.repeat(201)}])assert.equal((await handler(req(bad))).status,400);assert.equal(events.length,0);
 assert.equal((await handler(req(body,'https://ag.violenceroyale.com'))).status,403);assert.equal((await handler(req(body,undefined,''))).status,401);
 assert.equal((await createHandler({...env,SUPABASE_URL:'https://htarwisgkkphutxxnuak.supabase.co'},fetcher)(req())).status,503);
 assert.equal((await createHandler({...env,TOSS_SECRET_KEY:'live_sk_never'},fetcher)(req())).status,503);
 assert.equal((await createHandler({...env,TOSS_SECRET_KEY:''},fetcher)(req())).status,503);
 assert.equal((await createHandler({...env,TOSS_CLIENT_KEY:'live_ck_never'},fetcher)(req())).status,503);
+assert.equal(RETIRED_CLIENT_KEY,RETIRED_TOSS_CLIENT_KEY);
+for(const key of [undefined,'',RETIRED_CLIENT_KEY,'test_gck_widget','live_ck_no',123]){
+ const before=events.length,result=await createHandler({...env,TOSS_CLIENT_KEY:key},fetcher)(req());
+ assert.equal(result.status,503);assert.deepEqual(await result.json(),{error:'test payment configuration required'});assert.equal(events.length,before,'bad/missing/retired config must not create an order or invoke Toss');
+}
+const oldSecret=createHandler(env,async(url,opt)=>url.startsWith('https://api.tosspayments.com/')?response({code:'UNAUTHORIZED_KEY'},401):fetcher(url,opt));
+const secretResult=await oldSecret(req());assert.equal(secretResult.status,503);assert.deepEqual(await secretResult.json(),{error:'test payment configuration required'});assert.equal(count,0);
+let keyRead=0;const badConfirm=createHandler(env,async(url,opt)=>{
+ if(url==='https://api.tosspayments.com/v1/payments/opaque_key')return ++keyRead===1?response({code:'NOT_FOUND_PAYMENT'},404):response({code:'UNAUTHORIZED_KEY'},401);
+ if(url==='https://api.tosspayments.com/v1/payments/confirm')return response({code:'UNAUTHORIZED_KEY'},401);
+ return fetcher(url,opt);
+});
+const badConfirmed=await badConfirm(req());assert.equal(badConfirmed.status,503);assert.deepEqual(await badConfirmed.json(),{error:'test payment configuration required'});assert.equal(count,0);
 lose=true;assert.equal((await handler(req())).status,409);assert(done);assert.equal(count,0);assert.equal((await handler(req())).status,200);assert.equal(count,1);assert.equal((await handler(req())).status,200);assert.equal(count,1);
 for(const change of [{orderId:'other'},{paymentKey:'other'},{totalAmount:100},{balanceAmount:100},{currency:'USD'},{status:'CANCELED'},{approvedAt:null},{method:'가상계좌'},{cancels:[{}]}])assert.equal(validPayment({...payment,...change},order,'opaque_key'),false);
 const hung=createHandler(env,()=>new Promise(()=>{}),15);assert.equal((await hung(req())).status,504);
@@ -92,7 +105,7 @@ const orderHung=createHandler(env,async url=>url.endsWith('/auth/v1/user')?respo
 const oh=await orderHung(req(creation));assert.equal(oh.status,504);assert.deepEqual(await oh.json(),{error:'order creation delayed',stage:'order'});
 
 const huge=new Request('https://edge.test',{method:'POST',headers:{'content-type':'application/json'},body:' '.repeat(4097)});assert.equal((await handler(huge)).status,413);
-console.log('Payments Edge: host/project/test-key fail-closed, Auth user validation, bounded inputs/deadlines, SDK server amount, stable Toss idempotency, lost approval recovery, exact DONE/currency/amount/key/balance/method, service-only grant OK');
+console.log('Payments Edge: explicit test-key config (no retired sample fallback), provider 401 distinguished, host/project/test-key fail-closed, Auth user validation, bounded inputs/deadlines, SDK server amount, stable Toss idempotency, lost approval recovery, exact DONE/currency/amount/key/balance/method, service-only grant OK');
 const c={enabled:true,isStaging:true,supabaseUrl:STAGING,anonKey:'public'};
 assert(enabled(c,{hostname:'vr-tcg-staging.notcold.workers.dev'}));for(const host of ['ag.violenceroyale.com','vr-tcg-staging.notcold.workers.dev.evil','localhost'])assert(!enabled(c,{hostname:host}));assert(!enabled({...c,isStaging:false},{hostname:'vr-tcg-staging.notcold.workers.dev'}));
 assert.equal(readReturn('https://x?vrpay=success&orderId='+order.order_id+'&paymentKey=opaque_key&amount=1100').amount,1100);assert.equal(readReturn('https://x?vrpay=success&orderId='+order.order_id+'&paymentKey=x&amount=-1'),null);

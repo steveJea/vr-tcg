@@ -7,11 +7,11 @@
 1. Supabase **staging `cuyqchmdcnsgzkwyclji`** → SQL Editor → `supabase/payments_staging.sql` 전체 실행.
    - DB 식별자 `7703759698107299042`가 아니면 즉시 중단됩니다. 가드를 지우지 마세요.
    - 여러 번 실행해도 주문·심연석·원장을 초기화하지 않습니다. 기존 테스트 상품 가격 수정도 보존합니다.
-2. 같은 프로젝트 → **Edge Functions → Secrets** → `TOSS_SECRET_KEY` 추가.
-   - [토스 공식 샘플 server.js](https://github.com/tosspayments/tosspayments-sample/blob/main/express-javascript/server.js)의 **`apiSecretKey` (`test_sk_…`)** 값을 직접 복사하여 넣으세요. `widgetSecretKey` / `test_gsk_…`가 아닙니다.
-   - 이 키는 공식 문서 예제의 **공개된 공용 테스트 상점 키**입니다. 개인 라이브 키를 넣지 마세요. 키를 채팅으로 보내실 필요가 없습니다.
-   - 기본 클라이언트 공개 키는 [공식 checkout 예제](https://github.com/tosspayments/tosspayments-sample/blob/main/express-javascript/public/payment/checkout.html)의 `clientKey` (`test_ck_…`)와 같습니다.
-   - 나중에 형님 전용 **테스트 키 쌍**으로 바꾸려면 `TOSS_SECRET_KEY`와 선택 설정 **`TOSS_CLIENT_KEY`**를 함께 바꾸세요. 클라이언트 키는 공개 값으로 주문 응답에 내려갑니다. 시크릿은 환경변수에서만 읽으며 Git·브라우저에는 넣지 않습니다.
+2. [토스 개발자센터 → API 키](https://developers.tosspayments.com/my/api-keys)에 로그인합니다(계정이 없으면 이메일로 가입).
+   - **개발 연동 체험 상점 → API 개별 연동 키 → 일반결제/결제창(구버전) → 테스트**에서 **같은 상점의 클라이언트 키(`test_ck_…`)와 시크릿 키(`test_sk_…`) 한 쌍**을 확인하세요. 브랜드페이·빌링 키 / `test_gck_…`, `test_gsk_…`는 아닙니다.
+   - Supabase **staging → Edge Functions → Secrets**에서 **`TOSS_CLIENT_KEY`와 `TOSS_SECRET_KEY` 둘 다** 직접 넣습니다. 클라이언트 키도 이제 필수이며, GitHub 샘플로 자동 대체하지 않습니다.
+   - 두 키를 채팅으로 보낼 필요가 없습니다. 시크릿은 환경변수에서만 읽고 Git·브라우저에는 넣지 않습니다. 클라이언트 키는 공개 값으로 본인 주문 응답에만 내려갑니다.
+   - [현재 공식 카드 결제 가이드](https://docs.tosspayments.com/guides/v2/payment-window/integration#api-키-준비하기)는 `{CLIENT_KEY}` / `{SECRET_KEY}`에 **개발자센터의 내 테스트 키**를 넣도록 안내합니다. 아래 “공용 샘플 401” 참고.
 3. **Edge Functions → 새 함수 `payments-confirm-v1`** → `supabase/functions/payments-confirm-v1/dashboard_single_file.ts` 전체 붙여넣고 배포.
    - **Verify JWT / JWT 검증 ON** 유지. 추가 npm 설치·import가 없는 대시보드용 단일 파일입니다.
    - Supabase의 기본 서버용 `SUPABASE_SERVICE_ROLE_KEY` 또는 `SUPABASE_SECRET_KEYS`, 공개 키 환경이 필요합니다(기존 검증 함수와 같은 방식). 값은 공유하지 마세요.
@@ -35,16 +35,23 @@
 - PC 기본 iframe 대신 **PC·모바일 모두 `windowTarget: self` 리다이렉트**를 명시합니다. 새 팝업을 만들지 않으므로 서버 주문 생성 await 뒤 팝업 사용자 제스처 제한에 의존하지 않습니다. 승인 결과는 기존 successUrl/failUrl 콜백에서만 처리합니다.
 - 서버 주문 번호·숫자 금액·상품명·고객 UUID를 SDK 호출 전에 검증합니다. 원래 서버 가격/소유자 검증과 1회 지급 조건은 바뀌지 않습니다.
 - 오류 토스트 끝에 `INVALID_CLIENT_KEY`, `SDK_VERSION_MISMATCH` 같은 **실제 SDK 오류 코드**가 붙습니다. 알 수 없는 오류는 **실제로 받은 메시지(최대 120자)**를 보여줍니다. 콘솔에는 `sdk-init`/`checkout`, 코드, 키 종류와 **비밀값을 가린 메시지·스택(최대 1,200자)**을 기록합니다. 키·인증 헤더/JWT·이메일·고객/주문 ID·결제 키·URL 쿼리는 가리며, 서버 SQL/응답 원문은 여전히 표시하지 않습니다.
-- `INVALID_CLIENT_KEY`라면 선택 설정 TOSS_CLIENT_KEY가 위 공식 샘플의 clientKey인지 확인합니다. 별도로 설정하지 않으면 공식 샘플이 기본값입니다. 승인용 apiSecretKey와 짝이 맞아야 합니다.
-- 이 클라이언트 보완만 적용할 때는 **SQL/Edge 재배포·시크릿 재입력이 필요하지 않습니다.** staging 새로고침 후 확인하세요.
-- 실브라우저 재현은 미완료입니다. 공식 SDK 파일을 오프라인 DOM mock으로 초기화했습니다(v2 payment API 생성 확인). 네트워크는 차단했으며 실제 결제창·사용자 계정 오류를 완전히 재현한 검사는 아닙니다. 실제 iPhone/PC 동작은 별도 확인이 필요합니다.
+- `INVALID_CLIENT_KEY`/`UNAUTHORIZED_KEY` 또는 “테스트 결제 키를 설정해 주세요.”라면 **같은 일반결제 상점의 테스트 키 한 쌍**인지 확인합니다. `TOSS_CLIENT_KEY`를 생략하거나 인증이 거절된 기존 예제 키를 사용하면 SDK/새 주문 생성 전에 중단합니다. 승인 API의 401도 키 설정 오류로 구분합니다.
+- **이번 공용 키 제거 수정은 Edge 코드도 변경됩니다.** 두 Secrets 설정 → 새 `dashboard_single_file.ts`로 **payments-confirm-v1 재배포(JWT ON)** → staging 새로고침 순서입니다. SQL 재실행은 필요 없습니다. 이후 키 값만 교체할 때는 함수 재배포가 필요 없습니다.
+- 이 실행 환경에서 실브라우저를 직접 실행하지 않았습니다. 공식 SDK 파일을 오프라인 DOM mock으로 초기화했습니다(v2 payment API 생성 확인). 네트워크는 차단했으며 실제 결제창·사용자 계정 오류를 완전히 재현한 검사는 아닙니다. 실제 iPhone/PC 동작은 별도 확인이 필요합니다.
 
-### `UNKNOWN`에 대한 확인 사항
+### 공용 샘플 401 — 확인된 원인과 수정
 
-- [`UNKNOWN`은 Toss SDK의 정식 오류 코드](https://docs.tosspayments.com/sdk/v2/error-codes)입니다. **코드 없는 일반 JS 예외라고 단정할 수 없습니다.**
-- 현재 공식 SDK에는 `requestPayment`의 분류되지 않은 내부 예외를 새 `UnknownError`로 바꾸는 처리가 있습니다. 이 경우 앱이 받는 메시지는 “알 수 없는 에러가 발생했습니다.”이고, 내부 원래 메시지·스택은 이미 사라졌을 수 있습니다. 앱의 catch만으로 그것을 복구했다고 주장하지 않습니다.
-- 일반 TypeError/코드 없는 Error라면 이번 보완으로 가려진 원문 메시지를 토스트와 콘솔에서 확인할 수 있습니다. 사용자 계정으로 발생한 실제 원인은 아직 확인되지 않았으며, 이 보완은 **근본 원인 수정/실브라우저 결제창 성공 검증이 아닙니다.**
-- 재발 시 브라우저 콘솔의 `tag: payments` 기록 중 가려진 `stage/code/message/stack`을 확인합니다. 전체 HAR·쿠키·토큰·키를 공유하지 마세요.
+- 보고된 실제 staging 브라우저 재현 결과: 서버 주문 생성은 200, 결제창을 여는 SDK 요청은 **401 `UNAUTHORIZED_KEY`**였습니다. 당시 `official-sample`은 위젯 키가 아니라 **기존 GitHub express 샘플의 `test_ck_…`**였습니다.
+- 같은 공식 express `apiSecretKey`를 **없는 주문의 공식 GET 조회 API**로 읽기 전용 확인한 결과도 **401 `UNAUTHORIZED_KEY`**였습니다. 사용자 Secrets는 읽지 않았습니다. 따라서 그 값을 넣으셨다면 **시크릿도 새 테스트 쌍으로 교체해야 합니다**.
+- 현재 카드 결제 문서와 인증 안내에는 실제 공용 키 대신 `{CLIENT_KEY}` / `{SECRET_KEY}`가 표시됩니다. 유효한 새 공개 카드 결제 키 쌍은 확인하지 못했으므로 임의의 다른 키를 넣지 않았습니다. 문서 자산의 PayPal 예제 키를 국내 카드용으로 전용하지도 않습니다.
+- 서버의 인증 거절된 샘플 자동 대체를 제거했습니다. 클라이언트도 예전 Edge에서 그 키가 내려오면 SDK를 실행하지 않습니다. **사용자 전용 테스트 한 쌍을 설정하기 전에는 결제창이 열리지 않는 것이 정상입니다.**
+- 키를 바꿀 때는 항상 같은 상점 한 쌍으로 맞추세요. 이미 인증·승인된 보류 결제가 있다면 다른 상점으로 옮기기 전 기존 결제를 먼저 정산해야 합니다. 이 수정은 주문/재화/원장을 삭제하지 않습니다.
+
+### `UNKNOWN` 진단 보완은 유지
+
+- [`UNKNOWN`은 Toss SDK의 정식 오류 코드](https://docs.tosspayments.com/sdk/v2/error-codes)이며, SDK가 내부 401을 일반 오류로 감싸서 앱에 전달할 수 있습니다. 코드가 없다는 의미는 아닙니다.
+- 일반 TypeError/코드 없는 Error는 민감값을 가린 메시지·스택으로 구분합니다. 전체 HAR·쿠키·토큰·키는 공유하지 마세요.
+- 이 환경에서는 실제 브라우저를 직접 실행하지 않았습니다. SDK 401 원인은 전달받은 실브라우저 증거와 공식 API 읽기 전용 확인에 근거합니다. 새 사용자 키 설정 뒤 실제 결제창 성공 여부는 별도 확인해야 합니다.
 
 ## 임시 가격안 — 확정 BM 아님 / 실제 출금 없음
 
@@ -66,7 +73,7 @@
 - iPhone Safari에서도 결제창 이동과 복귀 확인(실기기 테스트 필요).
 - SQL/Edge 설치 전에는 설정/연결 오류로 종료되며 허위로 성공·지급 처리하지 않습니다.
 
-개발 검사는 **오프라인 PostgreSQL(PGlite) + Auth/Toss 모의 응답**을 사용합니다. 실제 사용자 세션·카드·실결제는 사용하지 않았습니다. 위 SQL/Edge/시크릿 적용 뒤 실제 staging 브라우저 테스트를 해주세요. 공용 샘플 상점은 형님 토스 대시보드의 테스트 거래내역/웹훅을 제공하지 않으므로, 운영 준비 단계에서는 전용 테스트 상점 키 쌍으로 교체해야 합니다.
+개발 검사는 **오프라인 PostgreSQL(PGlite) + Auth/Toss 모의 응답**을 사용합니다. 실제 사용자 세션·카드·실결제는 사용하지 않았습니다. 위 SQL/Edge/시크릿 적용 뒤 실제 staging 브라우저 테스트를 해주세요. 테스트 키는 형님 개발자센터의 일반결제 상점에서 발급받은 한 쌍을 사용합니다. 공용 예제 키의 현재 유효성을 보장하지 않습니다.
 
 ## 보안·복구 구조
 
@@ -93,6 +100,7 @@
 - https://docs.tosspayments.com/sdk/v2/js/payment
 - https://docs.tosspayments.com/reference/using-api/api-keys
 - https://docs.tosspayments.com/reference/using-api/authorization
+- https://docs.tosspayments.com/guides/v2/payment-window/integration.md (현재 키 자리표시자 확인)
 - https://docs.tosspayments.com/reference (Payment, confirm, 조회, 취소)
 
-현재 공식 문서에서는 `test_ck_/test_sk_` 방식이 **결제창(구버전) / API 개별 연동**으로 분류됩니다. 요청한 공개 테스트 키와 맞는 SDK 경로를 사용했으며, `test_gck_/test_gsk_` 주문서형·신규 결제창형 키와 혼용하지 않습니다.
+현재 공식 문서에서는 `test_ck_/test_sk_` 방식이 **결제창(구버전) / API 개별 연동**으로 분류됩니다. 이 구현은 API 개별 연동 경로를 사용하며, `test_gck_/test_gsk_` 주문서형·신규 결제창형 키와 혼용하지 않습니다.

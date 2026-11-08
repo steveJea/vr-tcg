@@ -2,7 +2,8 @@
 // Staging-only test checkout. All privileged values come from env, never source.
 export const STAGING='https://cuyqchmdcnsgzkwyclji.supabase.co';
 const HOST='https://vr-tcg-staging.notcold.workers.dev';
-export const TEST_CLIENT_KEY='test_ck_D5GePWvyJnrK0W0k6q8gLzN97Eoq'; // Official Toss sample; public identifier, NOT a secret.
+// This formerly public example now returns UNAUTHORIZED_KEY. Never silently fall back to it.
+export const RETIRED_CLIENT_KEY='test_ck_D5GePWvyJnrK0W0k6q8gLzN97Eoq';
 const UUID=/^[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i, ORDER=/^vrs_[a-f0-9]{32}$/;
 const RPC_ERRORS=['order not found','order expired','payment mismatch','payment conflict','product unavailable','request conflict','rate limited','login required'];
 const exact=(x,keys)=>x&&typeof x==='object'&&!Array.isArray(x)&&Object.keys(x).sort().join(',')===[...keys].sort().join(',');
@@ -20,8 +21,8 @@ export function createHandler(env,fetcher=fetch,timeoutMs=9000) {
   // One bounded deadline includes body reads/Auth/REST/Toss/response JSON. Lost responses preserve the bound key and can retry.
   const work=async()=>{
    if(env.SUPABASE_URL!==STAGING)return reply(503,{error:'staging only'});
-   const secret=env.TOSS_SECRET_KEY,clientKey=env.TOSS_CLIENT_KEY||TEST_CLIENT_KEY;
-   if(typeof secret!=='string'||!/^test_sk_[A-Za-z0-9_]+$/.test(secret)||typeof clientKey!=='string'||!/^test_ck_[A-Za-z0-9_]+$/.test(clientKey))return reply(503,{error:'test payment configuration required'});
+   const secret=env.TOSS_SECRET_KEY,clientKey=env.TOSS_CLIENT_KEY;
+   if(typeof secret!=='string'||!/^test_sk_[A-Za-z0-9_]+$/.test(secret)||typeof clientKey!=='string'||!/^test_ck_[A-Za-z0-9_]+$/.test(clientKey)||clientKey===RETIRED_CLIENT_KEY)return reply(503,{error:'test payment configuration required'});
    const pub=envKey(env,'SUPABASE_PUBLISHABLE_KEYS','SUPABASE_ANON_KEY'),service=envKey(env,'SUPABASE_SECRET_KEYS','SUPABASE_SERVICE_ROLE_KEY');
    if(!pub||!service)return reply(503,{error:'backend configuration'});
    if(!/^application\/json(?:;|$)/i.test(req.headers.get('content-type')||''))return reply(400,{error:'invalid request'});
@@ -59,11 +60,13 @@ export function createHandler(env,fetcher=fetch,timeoutMs=9000) {
    let r=await get(),p=await r.json().catch(()=>null);
    if(!(r.ok&&validPayment(p,o,b.paymentKey))) {
     if(r.ok&&p&&p.status!=='IN_PROGRESS'&&p.status!=='READY')return reply(409,{error:'payment not completed'});
+    if(r.status===401)return reply(503,{error:'test payment configuration required'});
     if(!r.ok&&r.status!==404)return reply(503,{error:'payment processing unavailable'});
     r=await request('https://api.tosspayments.com/v1/payments/confirm',{method:'POST',headers:{...tossHeaders,'Idempotency-Key':'vr-toss-'+o.order_id},body:JSON.stringify({paymentKey:b.paymentKey,orderId:o.order_id,amount:o.amount})});
     p=await r.json().catch(()=>null);
     if(!r.ok){r=await get();p=await r.json().catch(()=>null);}
    }
+   if(r.status===401)return reply(503,{error:'test payment configuration required'});
    if(!r.ok||!validPayment(p,o,b.paymentKey))return reply(409,{error:'payment not completed'});
    stage='settle';return reply(200,await rpc('_payment_settle_v1',{p_uid:user.id,p_order:o.order_id,p_key:p.paymentKey,p_amount:p.totalAmount,p_currency:p.currency,p_status:p.status,p_balance:p.balanceAmount,p_approved:p.approvedAt}));
   };
