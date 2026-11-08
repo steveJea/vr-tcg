@@ -43,9 +43,15 @@ async function sdk(href,{sanitize=false,code=false,serverUser=oldUser,tokenError
 {
  const f=await sdk('https://fixture.invalid/?code=FAKE_CODE',{code:true,tokenError:true});assert(f.initialized.error);const verdict=await resolveOAuthReturn(f.client,f.callback,null,null,f.initialized.error);assert(verdict.message);await f.close();
 }
+// Old pinned JS runtime has no runtime provider-enum restriction: X keeps PKCE.
+for(const provider of ['x','twitter']) {
+ const f=await sdk('https://fixture.invalid/');
+ const {data,error}=await f.client.signInWithOAuth({provider,options:{redirectTo:'https://fixture.invalid/',skipBrowserRedirect:true}});
+ assert.equal(error,null);const url=new URL(data.url);assert.equal(url.searchParams.get('provider'),provider);assert.equal(url.searchParams.get('code_challenge_method'),'s256');assert(url.searchParams.get('code_challenge').length>=43);await f.close();
+}
 const memory=new Map(),storage={getItem:k=>memory.get(k),setItem:(k,v)=>memory.set(k,v),removeItem:k=>memory.delete(k)};
 saveLinkIntent(storage,'staging',{uid,provider:'google'},100);assert.equal(takeLinkIntent(storage,'production',200),null);assert.deepEqual(takeLinkIntent(storage,'staging',200),{uid,provider:'google',startedAt:100});assert.equal(takeLinkIntent(storage,'staging',200),null);
-saveLinkIntent(storage,'staging',{uid,provider:'google'},100);assert.equal(takeLinkIntent(storage,'staging',100+20*60*1000+1),null);assert.throws(()=>saveLinkIntent(storage,'staging',{uid,provider:'x'}));
+saveLinkIntent(storage,'staging',{uid,provider:'google'},100);assert.equal(takeLinkIntent(storage,'staging',100+20*60*1000+1),null);assert.throws(()=>saveLinkIntent(storage,'staging',{uid,provider:'github'}));
 for(const place of ['?','#']){
  const c=readOAuthCallback(new URL('https://fixture.invalid/'+place+'error_code=identity_already_exists&error_description=Identity+is+already+linked'));
  assert(c.failed);assert.equal(c.errorCode,'identity_already_exists');

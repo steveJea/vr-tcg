@@ -310,14 +310,15 @@
 #story-btn:disabled .main-story-hub{display:none}
 
 /* Shared OAuth controls. Kakao is exposed only after Supabase enables it. */
-.oauth-row{display:flex;gap:8px;align-items:stretch;width:100%}
-.oauth-row>button{flex:1;min-width:0;min-height:44px;white-space:nowrap}
-[data-oauth-provider][hidden],#main-link-google[hidden],#main-link-kakao[hidden]{display:none!important}
+.oauth-row{display:flex;flex-wrap:wrap;gap:8px;align-items:stretch;width:100%}
+.oauth-row>button{flex:1 1 140px;min-width:0;min-height:44px;white-space:nowrap}
+[data-oauth-provider][hidden],#main-link-google[hidden],#main-link-kakao[hidden],#main-link-x[hidden]{display:none!important}
 .oauth-kakao,.main-btn.oauth-kakao{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:#fee500;color:rgba(0,0,0,.85);border-color:#fee500;border-radius:12px;font-family:system-ui,sans-serif;text-shadow:none}
+.oauth-x,.main-btn.oauth-x{display:inline-flex;align-items:center;justify-content:center;background:#000;color:#fff;border:1px solid #777;border-image:none;border-radius:12px;font-family:system-ui,sans-serif;text-shadow:none}
 .oauth-symbol{width:18px;height:18px;flex:none;object-fit:contain}
-#intro .intro-acts{width:min(92vw,400px)}#intro .oauth-row .intro-btn{font-size:16px}
+#intro .intro-acts{width:min(92vw,480px)}#intro .oauth-row .intro-btn{font-size:16px}
 #intro .oauth-row{width:100%}#intro .oauth-row .intro-btn{padding-left:8px;padding-right:8px}
-#acct-box .oauth-row{width:auto}#acct-box .oauth-row .acct-login{padding:7px 10px;min-height:36px;font-size:14px!important}
+#acct-box .oauth-row{width:auto}#acct-box .oauth-row .acct-login{flex:0 1 auto;padding:7px 10px;min-height:36px;font-size:14px!important}
 .oauth-overlay{position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;padding:16px}
 .oauth-card{width:min(100%,360px);padding:20px;border-radius:16px;background:#1e1530;border:1px solid #91673a}
 .oauth-card h2{font-size:20px;margin:0 0 16px}.oauth-card .oauth-row{margin-bottom:12px}.oauth-close{width:100%}

@@ -1,5 +1,5 @@
 // Public OAuth helpers only: provider secrets belong in Supabase, never in this bundle.
-export const OAUTH_PROVIDERS = Object.freeze({ google: '구글', kakao: '카카오' });
+export const OAUTH_PROVIDERS = Object.freeze({ google: '구글', kakao: '카카오', x: 'X', twitter: 'X' });
 const text = v => typeof v === 'string' ? v.trim() : '';
 export function profileSeed(u) {
   const m = u?.user_metadata || {};
@@ -13,22 +13,46 @@ export function oauthRequest(provider, redirectTo) {
   if (!Object.hasOwn(OAUTH_PROVIDERS, provider)) throw new Error('Unsupported OAuth provider');
   return { provider, options: { redirectTo } };
 }
-export async function discoverKakao(config, fetcher = fetch, timeout = 4000) {
-  if (!config.enabled) return false;
+export async function discoverOAuthProviders(config, fetcher = fetch, timeout = 4000) {
+  let known = { google:false, kakao:false, x:null };
+  if (!config.enabled) return known;
   const controller = new AbortController();
+  const options = { headers:{ apikey:config.anonKey }, credentials:'omit', redirect:'manual', signal:controller.signal, cache:'no-store' };
   let timer;
   try {
-    // The anonymous settings endpoint, NOT a user/management endpoint. Fail closed.
-    const result = await Promise.race([
+    return await Promise.race([
       (async () => {
-        const res = await fetcher(config.supabaseUrl + '/auth/v1/settings', { headers: { apikey: config.anonKey }, signal: controller.signal, cache: 'no-store' });
-        return res.ok && (await res.json())?.external?.kakao === true;
+        const res = await fetcher(config.supabaseUrl + '/auth/v1/settings', options);
+        if (!res.ok) return known;
+        const external = (await res.json())?.external;
+        if (!external || typeof external !== 'object' || Array.isArray(external)) return known;
+        known = { google:external.google === true, kakao:external.kakao === true,
+          x:external.x === true ? 'x' : external.x === false && external.twitter === true ? 'twitter' : null };
+        // Auth v2.197.0 supports X but omits external.x from /settings.
+        // An incomplete PKCE pair is rejected AFTER provider validation and BEFORE
+        // any flow/session row, token or external request is created. Never follow redirects.
+        if (!Object.hasOwn(external, 'x')) {
+          try {
+            const probe = await fetcher(config.supabaseUrl + '/auth/v1/authorize?provider=x&code_challenge_method=S256', options);
+            if (probe.status === 400) {
+              const error = await probe.json();
+              if (error.error_code === 'validation_failed') {
+                if (error.msg === 'PKCE flow requires code_challenge_method and code_challenge') known = {...known, x:'x'};
+                else if (/^Unsupported provider: (?:provider is not enabled|Provider x could not be found)$/i.test(error.msg) && external.twitter === true) known = {...known, x:'twitter'};
+              }
+            }
+          } catch { /* Keep Google/Kakao; never switch identity namespaces on an unknown X status. */ }
+        }
+        return known;
       })(),
-      new Promise(resolve => { timer = setTimeout(() => { controller.abort(); resolve(false); }, timeout); })
+      new Promise(resolve => { timer = setTimeout(() => { controller.abort(); resolve(known); }, timeout); })
     ]);
-    return result === true;
-  } catch { return false; }
+  } catch { return known; }
   finally { clearTimeout(timer); }
+}
+// Kept for existing callers/tests; all buttons share a single discovery in cloud.js.
+export async function discoverKakao(config, fetcher = fetch, timeout = 4000) {
+  return (await discoverOAuthProviders(config, fetcher, timeout)).kakao;
 }
 const CALLBACK_KEYS = ['code', 'access_token', 'refresh_token', 'expires_in', 'expires_at', 'token_type', 'provider_token', 'provider_refresh_token', 'error', 'error_code', 'error_description'];
 export function oauthErrorCode(error) {
@@ -74,6 +98,7 @@ export function takeLinkIntent(storage, project, now = Date.now()) {
 export function oauthFailureMessage(code, intent = null) {
   const name = OAUTH_PROVIDERS[intent?.provider];
   if (['identity_already_exists', 'email_exists'].includes(code)) return name ? `이미 다른 계정에 연결된 ${name} 계정이에요.` : '이미 다른 계정에 연결된 로그인입니다.';
+  if (code === 'provider_disabled') return '지금은 이 로그인을 사용할 수 없어요.';
   if (code === 'manual_linking_disabled') return '계정 연결 기능이 아직 꺼져 있어요.';
   if (['access_denied', 'user_cancelled', 'user_canceled'].includes(code)) return intent ? '계정 연결을 취소했어요.' : '로그인을 취소했어요.';
   if (['bad_code_verifier', 'flow_state_expired', 'flow_state_not_found'].includes(code)) return '같은 브라우저에서 다시 시도해 주세요.';

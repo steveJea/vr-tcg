@@ -2,7 +2,7 @@
 // 로그아웃 상태는 기존과 동일하게 게스트(브라우저 저장)로 플레이.
 // Supabase 접속 실패 시 조용히 게스트 모드로 동작.
 import { config } from './config.js';
-import { OAUTH_PROVIDERS, profileSeed, hasIdentity, oauthRequest, discoverKakao, cleanOAuthCallback, readOAuthCallback, saveLinkIntent, takeLinkIntent, oauthErrorCode, oauthFailureMessage, resolveOAuthReturn } from './auth-oauth.js';
+import { OAUTH_PROVIDERS, profileSeed, hasIdentity, oauthRequest, discoverOAuthProviders, cleanOAuthCallback, readOAuthCallback, saveLinkIntent, takeLinkIntent, oauthErrorCode, oauthFailureMessage, resolveOAuthReturn } from './auth-oauth.js';
 const SUPABASE_URL = config.supabaseUrl;
 const SUPABASE_ANON = config.anonKey;
 const SDK = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm';
@@ -14,7 +14,8 @@ const STATS_KEY = 'vrTcgStats.v1';
 const SYNC_KEYS = ['vrTcgSkipFx', 'vrTcgVoiceOn', 'vrTcgVoiceVol', 'vrTcgSound', 'tcg_hand_sort', 'tcg_skip_endturn_confirm', 'vrTutorialDone'];
 
 let sb = null, user = null, profile = null, ready = false, pushTimer = null, applying = false;
-let kakaoEnabled = false, oauthBusy = false, oauthTimer = null, userVersion = 0;
+let oauthProviders = { kakao:false, x:null };
+let oauthBusy = false, oauthTimer = null, userVersion = 0;
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -96,9 +97,10 @@ function render(p) {
   const box = $('acct-box'); if (!box) return;
   if (!ready) { paintOAuth(); box.innerHTML = ''; return; }
   if (!user) {
-    box.innerHTML = `<div class="oauth-row"><button id="acct-login" type="button" class="main-btn acct-login" data-oauth-provider="google">구글 로그인</button><button id="acct-login-kakao" type="button" class="main-btn acct-login oauth-kakao" data-oauth-provider="kakao" aria-label="카카오 로그인" hidden><img src="img/ui/kakao-symbol.svg" class="oauth-symbol" width="18" height="18" alt="">로그인</button></div>`;
+    box.innerHTML = `<div class="oauth-row"><button id="acct-login" type="button" class="main-btn acct-login" data-oauth-provider="google">구글 로그인</button><button id="acct-login-kakao" type="button" class="main-btn acct-login oauth-kakao" data-oauth-provider="kakao" aria-label="카카오 로그인" hidden><img src="img/ui/kakao-symbol.svg" class="oauth-symbol" width="18" height="18" alt="">로그인</button><button id="acct-login-x" type="button" class="main-btn acct-login oauth-x" data-oauth-provider="x" hidden>X 로그인</button></div>`;
     $('acct-login').onclick = () => login('google');
     $('acct-login-kakao').onclick = () => login('kakao');
+    $('acct-login-x').onclick = () => login('x');
   } else {
     const av = p?.avatar_url
       ? `<img src="${esc(p.avatar_url)}" alt="" referrerpolicy="no-referrer" class="acct-avatar" onerror="this.onerror=null;this.src='img/ui/profile.webp'">`
@@ -112,16 +114,17 @@ function render(p) {
 }
 
 const notify = message => (window.VRGem?.toast || alert)(message);
-const canLogin = provider => !!sb && ready && (provider === 'google' || (provider === 'kakao' && kakaoEnabled));
+const backendProvider = provider => ['x', 'twitter'].includes(provider) ? oauthProviders.x : provider;
+const canLogin = provider => !!sb && ready && (provider === 'google' || (provider === 'kakao' && oauthProviders.kakao) || (['x', 'twitter'].includes(provider) && !!oauthProviders.x));
 function paintOAuth() {
   document.querySelectorAll('[data-oauth-provider]').forEach(button => {
-    button.hidden = button.dataset.oauthProvider === 'kakao' && !canLogin('kakao');
+    button.hidden = button.dataset.oauthProvider !== 'google' && !canLogin(button.dataset.oauthProvider);
     button.disabled = oauthBusy || !ready;
   });
-  for (const provider of Object.keys(OAUTH_PROVIDERS)) {
+  for (const provider of ['google', 'kakao', 'x']) {
     const button = $('main-link-' + provider);
     if (!button) continue;
-    button.hidden = !user || !canLogin(provider) || hasIdentity(user, provider);
+    button.hidden = !user || !canLogin(provider) || hasIdentity(user, backendProvider(provider));
     button.disabled = oauthBusy;
     button.onclick = () => linkProvider(provider);
   }
@@ -130,7 +133,7 @@ function paintOAuth() {
 function chooseLogin() {
   if (document.getElementById('oauth-choose')) return;
   const ov = document.createElement('div'); ov.id = 'oauth-choose'; ov.className = 'oauth-overlay';
-  ov.innerHTML = `<div class="oauth-card" role="dialog" aria-modal="true" aria-labelledby="oauth-title"><h2 id="oauth-title">로그인</h2><div class="oauth-row"><button type="button" class="main-btn" data-oauth-provider="google">구글 로그인</button><button type="button" class="main-btn oauth-kakao" data-oauth-provider="kakao"><img src="img/ui/kakao-symbol.svg" class="oauth-symbol" width="18" height="18" alt="">카카오 로그인</button></div><button type="button" class="main-btn oauth-close">닫기</button></div>`;
+  ov.innerHTML = `<div class="oauth-card" role="dialog" aria-modal="true" aria-labelledby="oauth-title"><h2 id="oauth-title">로그인</h2><div class="oauth-row"><button type="button" class="main-btn" data-oauth-provider="google">구글 로그인</button><button type="button" class="main-btn oauth-kakao" data-oauth-provider="kakao"><img src="img/ui/kakao-symbol.svg" class="oauth-symbol" width="18" height="18" alt="">카카오 로그인</button><button type="button" class="main-btn oauth-x" data-oauth-provider="x" hidden>X 로그인</button></div><button type="button" class="main-btn oauth-close">닫기</button></div>`;
   const close = () => { ov.remove(); document.removeEventListener('keydown', onKey); };
   const onKey = e => { if (e.key === 'Escape') close(); };
   ov.querySelectorAll('[data-oauth-provider]').forEach(b => { b.onclick = () => { close(); login(b.dataset.oauthProvider); }; });
@@ -141,6 +144,7 @@ function chooseLogin() {
 async function startOAuth(provider, linking) {
   if (!Object.hasOwn(OAUTH_PROVIDERS, provider) || oauthBusy) return;
   if (!canLogin(provider)) return notify('지금은 이 로그인을 사용할 수 없어요.');
+  provider = backendProvider(provider);
   const uid = user?.id;
   if (linking && (!uid || hasIdentity(user, provider))) return;
   if (!linking && uid) return; // Never switch/replace a signed-in account by accident.
@@ -171,7 +175,7 @@ async function startOAuth(provider, linking) {
 async function login(provider) {
   if (user) return;
   if (!sb || !ready) return notify('지금은 로그인 서버에 연결할 수 없어요.');
-  if (provider === undefined) { if (canLogin('kakao')) return chooseLogin(); provider = 'google'; }
+  if (provider === undefined) { if (canLogin('kakao') || canLogin('x')) return chooseLogin(); provider = 'google'; }
   return startOAuth(provider, false);
 }
 async function linkProvider(provider) { return startOAuth(provider, true); }
@@ -222,7 +226,7 @@ async function init() {
       // Keep getUser()'s authoritative result until a genuine server update.
       else if (session?.user && ['USER_UPDATED', 'TOKEN_REFRESHED'].includes(ev)) { user = session.user; render(profile); }
     });
-    void discoverKakao(config).then(enabled => { kakaoEnabled = enabled; paintOAuth(); });
+    void discoverOAuthProviders(config).then(providers => { oauthProviders = providers; paintOAuth(); });
     await onUser(returned.user);
     // Successful PKCE exchange is owned by SDK.initialize(), exactly once.
     cleanOAuthCallback(location, history);
