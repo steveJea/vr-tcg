@@ -14,7 +14,7 @@ for(const [i,sql]of files.entries()){
  await assert.rejects(db.exec(guarded),/STOP: .* only/);await db.exec('rollback');
  await db.exec(`create or replace function public.test_control() returns table(system_identifier text) language sql as $$select '${i?'7692130048193495360':'7703759698107299042'}'::text$$;`);
  await db.exec(guarded);await db.exec(guarded);
- for(const[email,meta]of [[null,{}],['',{}],['',{name:''}],['',{name:'카카오형'}],['g@example.com',{}]]){
+ for(const[email,meta]of [[null,{}],['',{}],['',{name:''}],['',{name:'카카오형'}],['g@example.com',{}],['',{preferred_username:'X형',picture:'https://example.com/x.png'}],['',{name:'X형',preferred_username:'x_user'}]]){
   const id=crypto.randomUUID();await db.query('insert into auth.users values($1,$2,$3)',[id,email,JSON.stringify(meta)]);
   const row=(await db.query('select nickname,nick_set from profiles where id=$1',[id])).rows[0];assert.equal(row.nickname,meta.name||email?.split('@')[0]||'플레이어');assert.equal(row.nick_set,false);
   // Same blank fallback for the legacy admin-reset path; never set nick_set for it.

@@ -19,7 +19,7 @@
     "build:production:worker": "node tools/build_production_assets.mjs",
     "deploy:production:worker": "npm run check:hosting && npm run build:production:worker && wrangler deploy --config wrangler.production.jsonc",
     "test:hosting:integration": "node tools/test_media_range_integration.mjs && node tools/test_media_range_integration.mjs --production",
-    "test:auth": "node tools/test_kakao_auth.mjs && node tools/test_kakao_profile_sql.mjs && node tools/test_oauth_link_callback.mjs"
+    "test:auth": "node tools/test_kakao_auth.mjs && node tools/test_kakao_profile_sql.mjs && node tools/test_oauth_link_callback.mjs && node tools/test_x_auth.mjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.15",

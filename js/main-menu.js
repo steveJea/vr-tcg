@@ -35,6 +35,7 @@
   const hideIntro = () => { localStorage.setItem(INTRO_KEY, '1'); intro.classList.add('hidden'); const v = $('intro-video'); v.pause(); };
   $('intro-login').onclick = () => { localStorage.setItem(INTRO_KEY, '1'); login('google'); };
   $('intro-login-kakao').onclick = () => { localStorage.setItem(INTRO_KEY, '1'); login('kakao'); };
+  $('intro-login-x').onclick = () => { localStorage.setItem(INTRO_KEY, '1'); login('x'); };
   $('intro-guest').onclick = async () => {
     if (await confirmYN('<b>게스트는 아케이드만</b> 플레이할 수 있어요.<br>인재 수집·소환은 할 수 없어요.<div class="vc-q">그래도 게스트로 하시겠어요?</div>')) hideIntro();
   };
