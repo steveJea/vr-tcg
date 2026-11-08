@@ -83,6 +83,14 @@ assert.equal((await createHandler({...env,TOSS_CLIENT_KEY:'live_ck_never'},fetch
 lose=true;assert.equal((await handler(req())).status,409);assert(done);assert.equal(count,0);assert.equal((await handler(req())).status,200);assert.equal(count,1);assert.equal((await handler(req())).status,200);assert.equal(count,1);
 for(const change of [{orderId:'other'},{paymentKey:'other'},{totalAmount:100},{balanceAmount:100},{currency:'USD'},{status:'CANCELED'},{approvedAt:null},{method:'가상계좌'},{cancels:[{}]}])assert.equal(validPayment({...payment,...change},order,'opaque_key'),false);
 const hung=createHandler(env,()=>new Promise(()=>{}),15);assert.equal((await hung(req())).status,504);
+const creation={op:'create',product:'gem_100',request:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'};
+for(const [dbCode,message,want]of [['PGRST202','raw SQL must not leak','payment sql required'],['42501','raw private SQL','payment database permissions'],['P0001','payments unavailable','payment database unavailable'],['XX000','unrecognized private DB failure','order creation failed']]){
+ const failed=createHandler(env,async url=>url.endsWith('/auth/v1/user')?response({id:u}):response({code:dbCode,message},400));
+ const result=await failed(req(creation));assert.equal(result.status,503);assert.deepEqual(await result.json(),{error:want,stage:'order'});
+}
+const orderHung=createHandler(env,async url=>url.endsWith('/auth/v1/user')?response({id:u}):new Promise(()=>{}),15);
+const oh=await orderHung(req(creation));assert.equal(oh.status,504);assert.deepEqual(await oh.json(),{error:'order creation delayed',stage:'order'});
+
 const huge=new Request('https://edge.test',{method:'POST',headers:{'content-type':'application/json'},body:' '.repeat(4097)});assert.equal((await handler(huge)).status,413);
 console.log('Payments Edge: host/project/test-key fail-closed, Auth user validation, bounded inputs/deadlines, SDK server amount, stable Toss idempotency, lost approval recovery, exact DONE/currency/amount/key/balance/method, service-only grant OK');
 const c={enabled:true,isStaging:true,supabaseUrl:STAGING,anonKey:'public'};
@@ -91,6 +99,14 @@ assert.equal(readReturn('https://x?vrpay=success&orderId='+order.order_id+'&paym
 assert.equal(paymentError('<script>bad</script>'),paymentError('unknown'));assert.match(paymentError('USER_CANCEL'),/취소/);
 const map=new Map(),store={setItem:(k,v)=>map.set(k,v),getItem:k=>map.get(k)};savePending(store,u,body);assert.equal(loadPending(store,u).orderId,order.order_id);assert.equal(loadPending(store,other),null);
 await assert.rejects(api({auth:{getSession:()=>new Promise(()=>{})}},c,body,fetch,10),/pending/);
+const authed={auth:{getSession:async()=>({data:{session:{access_token:'test_user_session'}}})}};
+for(const [status,payload,want]of [[401,{code:'UNAUTHORIZED_INVALID_JWT_FORMAT',message:'Invalid JWT'},'payment gateway authentication'],[404,{message:'Function not found'},'payment function missing'],[503,{error:'payment sql required'},'payment sql required'],[409,{error:'payment confirmation pending'},'order creation failed'],[500,{message:'private SQL must not appear'},'order creation failed'],[504,{error:'payment confirmation pending'},'order creation delayed']])await assert.rejects(api(authed,c,creation,async()=>response(payload,status)),e=>e.message===want);
+await assert.rejects(api(authed,c,creation,async()=>{throw new TypeError('private network detail');}),e=>e.message==='order creation failed');
+await assert.rejects(api(authed,c,creation,()=>new Promise(()=>{}),10),e=>e.message==='order creation delayed');
+await assert.rejects(api(authed,c,body,async()=>response({error:'payment confirmation pending'},504)),e=>e.message==='payment confirmation pending');
+for(const code of ['order creation failed','order creation delayed','payment gateway authentication','payment sdk unavailable','payment checkout failed','payment sql required','payment database permissions'])assert.notEqual(paymentError(code),paymentError('unknown'));
+console.log('Pre-checkout diagnostics: gateway 401, missing function, SQL/ACL/runtime/unknown DB errors, order timeout vs confirmation timeout and SDK failures remain distinct; no raw data leaked');
+
 const callback=await read('payment-return.html');assert(callback.indexOf('history.replaceState')<callback.indexOf('src='));assert(!/googletagmanager|gtag\(|google-analytics/.test(callback));assert(callback.includes('no-referrer'));
 const client=await read('js/payments.js');assert(client.includes('test_ck_'));assert(!/test_sk_[A-Za-z0-9]{5}|live_[sc]k_|TOSS_SECRET_KEY/.test(client));assert(client.includes('value:o.amount'));assert(!client.includes('customerEmail'));
 assert((await read('tools/build_staging.mjs')).includes("'payment-return.html'"));assert(!(await read('tools/build_production_assets.mjs')).includes("'payment-return.html'"));

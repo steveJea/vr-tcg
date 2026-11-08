@@ -4,6 +4,7 @@ export const STAGING='https://cuyqchmdcnsgzkwyclji.supabase.co';
 const HOST='https://vr-tcg-staging.notcold.workers.dev';
 export const TEST_CLIENT_KEY='test_ck_D5GePWvyJnrK0W0k6q8gLzN97Eoq'; // Official Toss sample; public identifier, NOT a secret.
 const UUID=/^[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i, ORDER=/^vrs_[a-f0-9]{32}$/;
+const RPC_ERRORS=['order not found','order expired','payment mismatch','payment conflict','product unavailable','request conflict','rate limited','login required'];
 const exact=(x,keys)=>x&&typeof x==='object'&&!Array.isArray(x)&&Object.keys(x).sort().join(',')===[...keys].sort().join(',');
 export const validPayment=(p,o,key)=>p&&p.paymentKey===key&&p.orderId===o.order_id&&p.currency==='KRW'&&p.totalAmount===o.amount&&p.balanceAmount===o.amount&&p.status==='DONE'&&typeof p.approvedAt==='string'&&Number.isFinite(Date.parse(p.approvedAt))&&(!p.cancels||p.cancels.length===0)&&['카드','간편결제'].includes(p.method);
 function envKey(env,plural,legacy){let keys;try{keys=JSON.parse(env[plural]||'{}');}catch{return null;}return keys.default||Object.values(keys)[0]||env[legacy];}
@@ -15,7 +16,7 @@ export function createHandler(env,fetcher=fetch,timeoutMs=9000) {
   if(origin&&origin!==HOST)return reply(403,{error:'origin not allowed'});
   if(req.method==='OPTIONS')return new Response(null,{status:204,headers:cors});
   if(req.method!=='POST')return reply(405,{error:'POST required'});
-  const controller=new AbortController();let timer;
+  const controller=new AbortController();let timer,stage='request';
   // One bounded deadline includes body reads/Auth/REST/Toss/response JSON. Lost responses preserve the bound key and can retry.
   const work=async()=>{
    if(env.SUPABASE_URL!==STAGING)return reply(503,{error:'staging only'});
@@ -32,20 +33,27 @@ export function createHandler(env,fetcher=fetch,timeoutMs=9000) {
    else return reply(400,{error:'invalid request'});
    const token=req.headers.get('authorization');if(!/^Bearer \S+$/i.test(token||''))return reply(401,{error:'login required'});
    const request=(url,opts={})=>fetcher(url,{...opts,signal:controller.signal});
-   const auth=await request(STAGING+'/auth/v1/user',{headers:{authorization:token,apikey:pub}});if(!auth.ok)return reply(401,{error:'login required'});
+   stage='auth';const auth=await request(STAGING+'/auth/v1/user',{headers:{authorization:token,apikey:pub}});if(!auth.ok)return reply(401,{error:'login required'});
    const user=await auth.json();if(typeof user.id!=='string'||!UUID.test(user.id))return reply(401,{error:'login required'});
    const rpc=async(name,args,trusted=true)=>{
     const headers={'content-type':'application/json',apikey:trusted?service:pub};if(!trusted)headers.authorization=token;else if(!service.startsWith('sb_secret_'))headers.authorization='Bearer '+service;
     const r=await request(STAGING+'/rest/v1/rpc/'+name,{method:'POST',headers,body:JSON.stringify(args)});
-    if(!r.ok){const e=await r.json().catch(()=>({}));throw Error(['order not found','order expired','payment mismatch','payment conflict','product unavailable','request conflict','rate limited'].find(s=>String(e.message).includes(s))||'payment processing unavailable');}return r.json();
+    if(!r.ok){
+     const e=await r.json().catch(()=>({}));
+     const known=RPC_ERRORS.find(s=>String(e.message).includes(s));
+     const code=known||(['PGRST202','42P01','42883','42703'].includes(e.code)?'payment sql required':e.code==='42501'?'payment database permissions':String(e.message).includes('payments unavailable')?'payment database unavailable':stage==='order'?'order creation failed':'payment confirmation pending');
+     // Safe diagnostic: no token, keys, SQL text, account/order IDs, or provider payload.
+     console.warn(JSON.stringify({tag:'payments-confirm-v1',stage,status:r.status,dbCode:/^[A-Z0-9_]{3,24}$/.test(e.code||'')?e.code:null,code}));
+     throw Error(code);
+    }return r.json();
    };
    if(b.op==='create') {
-    const o=await rpc('payment_create_v1',{p_product:b.product,p_request:b.request},false);
+    stage='order';const o=await rpc('payment_create_v1',{p_product:b.product,p_request:b.request},false);
     return reply(200,{ok:true,order:{orderId:o.order_id,orderName:o.order_name,amount:o.amount,currency:o.currency,userId:user.id,paidGems:o.paid_gems,bonusGems:o.bonus_gems,status:o.status},clientKey});
    }
-   const o=await rpc('_payment_bind_v1',{p_uid:user.id,p_order:b.orderId,p_key:b.paymentKey,p_amount:b.amount});
+   stage='bind';const o=await rpc('_payment_bind_v1',{p_uid:user.id,p_order:b.orderId,p_key:b.paymentKey,p_amount:b.amount});
    if(o.status==='paid')return reply(200,o.receipt);
-   const tossHeaders={authorization:'Basic '+btoa(secret+':'),'content-type':'application/json'};
+   stage='toss';const tossHeaders={authorization:'Basic '+btoa(secret+':'),'content-type':'application/json'};
    // Retrieval first also recovers a successful Toss approval followed by a lost HTTP/DB response.
    const get=()=>request('https://api.tosspayments.com/v1/payments/'+encodeURIComponent(b.paymentKey),{headers:tossHeaders});
    let r=await get(),p=await r.json().catch(()=>null);
@@ -57,10 +65,10 @@ export function createHandler(env,fetcher=fetch,timeoutMs=9000) {
     if(!r.ok){r=await get();p=await r.json().catch(()=>null);}
    }
    if(!r.ok||!validPayment(p,o,b.paymentKey))return reply(409,{error:'payment not completed'});
-   return reply(200,await rpc('_payment_settle_v1',{p_uid:user.id,p_order:o.order_id,p_key:p.paymentKey,p_amount:p.totalAmount,p_currency:p.currency,p_status:p.status,p_balance:p.balanceAmount,p_approved:p.approvedAt}));
+   stage='settle';return reply(200,await rpc('_payment_settle_v1',{p_uid:user.id,p_order:o.order_id,p_key:p.paymentKey,p_amount:p.totalAmount,p_currency:p.currency,p_status:p.status,p_balance:p.balanceAmount,p_approved:p.approvedAt}));
   };
-  try {return await Promise.race([work(),new Promise(resolve=>{timer=setTimeout(()=>{controller.abort();resolve(reply(504,{error:'payment confirmation pending'}));},timeoutMs);})]);}
-  catch(e){const allowed=['order not found','order expired','payment mismatch','payment conflict','product unavailable','request conflict','rate limited'];return reply(409,{error:allowed.includes(e.message)?e.message:'payment confirmation pending'});}
+  try {return await Promise.race([work(),new Promise(resolve=>{timer=setTimeout(()=>{controller.abort();resolve(reply(504,{error:stage==='order'?'order creation delayed':'payment confirmation pending',stage}));},timeoutMs);})]);}
+  catch(e){const allowed=[...RPC_ERRORS,'payment sql required','payment database permissions','payment database unavailable','order creation failed'];const error=allowed.includes(e.message)?e.message:stage==='order'?'order creation failed':'payment confirmation pending';return reply(error==='login required'?401:error.startsWith('payment sql')||error.startsWith('payment database')||error==='order creation failed'?503:409,{error,stage});}
   finally{clearTimeout(timer);}
  };
 }
