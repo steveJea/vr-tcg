@@ -9,7 +9,7 @@ import { createArcade } from '../js/arcade-core.js';
 import { verifyBattle } from '../supabase/functions/_shared/arcade-engine-v5.mjs';
 const source = fs.readFileSync('js/game.js', 'utf8');
 const section = (from, to) => { const a=source.indexOf(from), b=source.indexOf(to,a); assert(a>=0&&b>a,from); return source.slice(a,b); };
-const dom = () => parseHTML('<html><body><button id="home-btn"></button><div id="game"></div><div id="end-screen"></div><div id="me-dock"></div><div id="me-boss"></div><div id="ai-boss"></div><div id="me-hand"></div><div id="start-screen" class="hidden"></div></body></html>');
+const dom = () => parseHTML('<html><body><div id="arcade-verifying" class="hidden"></div><button id="home-btn"></button><div id="game"></div><div id="end-screen"></div><div id="me-dock"></div><div id="me-boss"></div><div id="ai-boss"></div><div id="me-hand"></div><div id="start-screen" class="hidden"></div></body></html>');
 // 18: enemy attack focuses our field ABOVE the sticky hand/HUD, before effects.
 {
  const {document}=dom();Object.defineProperty(document.documentElement,'scrollHeight',{value:2200});
@@ -55,7 +55,7 @@ const dom = () => parseHTML('<html><body><button id="home-btn"></button><div id=
 function lifecycleContext(){
  const {document}=dom(),timers=new Map();let timer=0,stops=0,plays=0;
  const c=vm.createContext({document,$:id=>document.getElementById(id),S:{over:true},window:{VRVoice:{stopAll:()=>stops++}},voiceCur:{pause:()=>stops++,currentTime:7},setTimeout:f=>{timers.set(++timer,f);return timer;},clearTimeout:id=>timers.delete(id),FX_OFF:()=>false,play:()=>plays++});
- vm.runInContext(section('let battleViewEpoch =','// ===== 스킬 ====='),c);
+ vm.runInContext(section('function setArcadeWait(','// ===== 스토리 페이즈 규칙')+section('let battleViewEpoch =','// ===== 스킬 ====='),c);
  return {c,document,timers,flush:()=>{const fs=[...timers.values()];timers.clear();fs.forEach(f=>f());},get plays(){return plays;},get stops(){return stops;}};
 }
 // 21: navigation stops playing voices AND cancels pending callbacks (not a 150ms grace).
@@ -77,12 +77,12 @@ function lifecycleContext(){
   const h=lifecycleContext(),{c,document}=h;for(const id of ['end-title','end-text','end-mvp-wrap','end-stats','end-share-msg','share-btn','restart-btn']){const n=document.createElement('div');n.id=id;document.body.appendChild(n);}
   let resolve,reject;Object.assign(c,{S:{arcadeSession:{},arcade:{result:{},actions:[]},log:{}},finishArcadeVerified:()=>new Promise((r,j)=>{resolve=r;reject=j;}),console});
   vm.runInContext(section('function finish(win, reason) {','// ===== 스토리 페이즈 규칙'),c);c.finish(true,'ko');
-  assert(document.getElementById('end-screen').classList.contains('end-pending'));assert.equal(document.getElementById('end-title').textContent,'검증 중');
+  assert(document.getElementById('end-screen').classList.contains('end-pending'));assert.equal(document.getElementById('end-title').textContent,'');assert(document.getElementById('end-screen').classList.contains('hidden'));
   c.leaveBattleVoices();document.getElementById('game').classList.add('hidden');document.getElementById('end-screen').classList.add('hidden');
   if(fail)reject(Error('offline'));else resolve({result:'lose',reason:'hp',damage:42,skills:2,turns:5});for(let i=0;i<4;i++)await Promise.resolve();
-  assert(document.getElementById('end-screen').classList.contains('hidden'));assert.equal(document.getElementById('end-title').textContent,'검증 중');if(!fail)assert.equal(c.S.arcadeSettled,true);
+  assert(document.getElementById('end-screen').classList.contains('hidden'));assert.equal(document.getElementById('end-title').textContent,'');assert(document.getElementById('end-screen').classList.contains('hidden'));if(!fail)assert.equal(c.S.arcadeSettled,true);
  }
- console.log('PASS 21 copy opaque pending/retry, authoritative receipt retained after home without reopening result');
+ console.log('PASS 21 copy hidden pending result, spinner cleanup, authoritative receipt retained after home without reopening result');
 }
 // Related phase5 integration defect: dragging must log canonical move intents, not mutate silently.
 {

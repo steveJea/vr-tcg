@@ -968,8 +968,8 @@ function countUp(root) {
 function finish(win, reason) {
   if(S?.arcadeSession&&!S.arcadeSettled){
    if(S.arcadeSaving)return true;const battle=S, view=battleViewEpoch;S.arcadeSaving=true;S.arcadeError=null;S.over=true;S.busy=true;
-   $('end-title').textContent='검증 중';for(const id of ['end-text','end-mvp-wrap','end-stats','end-share-msg'])$(id).textContent='';S.endShare=null;$('share-btn').disabled=true;$('restart-btn').disabled=true;$('end-screen').classList.remove('end-win','end-lose','end-draw','hidden');$('end-screen').classList.add('end-pending');$('end-screen').setAttribute('aria-busy','true');if($('gal-end'))$('gal-end').textContent='';
-   finishArcadeVerified(S.arcadeSession,S.arcade.result?S.arcade.actions:null).then(r=>{if(S!==battle)return;S.arcadeSettled=true;S.arcadeSaving=false;S.arcadeReceipt=r;S.log.total=r.damage;S.log.skills=r.skills;S.turnNo=r.turns;S.busy=false;if(view!==battleViewEpoch||$('game').classList.contains('hidden'))return;finish(r.result==='draw'?null:r.result==='win',r.reason);}).catch(e=>{if(S!==battle)return;S.arcadeSaving=false;S.busy=false;S.arcadeError={message:e.message,trace:e.trace};if(view!==battleViewEpoch||$('game').classList.contains('hidden'))return;$('end-screen').setAttribute('aria-busy','false');$('end-title').textContent='검증을 완료하지 못했어요';$('end-text').textContent=e.message||'다시 시도해 주세요.';const b=document.createElement('button');b.className='main-btn';b.textContent='다시 시도';b.onclick=()=>finish(win,reason);$('end-text').appendChild(b);(window.VRGem?.toast||console.warn)(e.message);});return true;
+   $('end-title').textContent='';for(const id of ['end-text','end-mvp-wrap','end-stats','end-share-msg'])$(id).textContent='';S.endShare=null;$('share-btn').disabled=true;$('restart-btn').disabled=true;$('end-screen').classList.remove('end-win','end-lose','end-draw');$('end-screen').classList.add('end-pending','hidden');setArcadeWait(true);$('end-screen').setAttribute('aria-busy','true');if($('gal-end'))$('gal-end').textContent='';
+   finishArcadeVerified(S.arcadeSession,S.arcade.result?S.arcade.actions:null).then(r=>{if(S!==battle)return;S.arcadeSettled=true;S.arcadeSaving=false;S.arcadeReceipt=r;S.log.total=r.damage;S.log.skills=r.skills;S.turnNo=r.turns;S.busy=false;if(view!==battleViewEpoch||$('game').classList.contains('hidden'))return;finish(r.result==='draw'?null:r.result==='win',r.reason);}).catch(e=>{if(S!==battle)return;S.arcadeSaving=false;S.busy=false;S.arcadeError={message:e.message,trace:e.trace};if(view!==battleViewEpoch||$('game').classList.contains('hidden'))return;setArcadeWait(false);$('end-screen').classList.remove('hidden');$('end-screen').setAttribute('aria-busy','false');$('end-title').textContent='검증을 완료하지 못했어요';$('end-text').textContent=e.message||'다시 시도해 주세요.';const b=document.createElement('button');b.className='main-btn';b.textContent='다시 시도';b.onclick=()=>finish(win,reason);$('end-text').appendChild(b);(window.VRGem?.toast||console.warn)(e.message);});return true;
   }
 
   $('share-btn').disabled=false;$('restart-btn').disabled=false;$('end-screen').setAttribute('aria-busy','false');
@@ -1000,10 +1000,17 @@ function finish(win, reason) {
   }
   try { const mvp = pickMvp(); window.dispatchEvent(new CustomEvent('vr:match', { detail: { result: win === null ? 'draw' : win ? 'win' : 'lose', reason, turns: S.turnNo, damage: S.log.total, skills: S.log.skills, mvpId: mvp?.card.id, mvpName: mvp?.card.name, mercId: S.log.merc?.id, fieldIds: S.me.field.map(u => (u.base || u.card).id) } })); } catch {}
   const battle = S, view = battleViewEpoch;
-  const showEnd = () => { if (S !== battle || view !== battleViewEpoch || !S.over || $('game').classList.contains('hidden')) return; $('end-screen').classList.remove('hidden'); countUp($('end-screen')); queueEndingVoice(S.endVoice); };
+  const showEnd = () => { if (S !== battle || view !== battleViewEpoch || !S.over || $('game').classList.contains('hidden')) return; setArcadeWait(false); $('end-screen').classList.remove('hidden'); countUp($('end-screen')); queueEndingVoice(S.endVoice); };
   if (fxWait) setTimeout(showEnd, fxWait); else showEnd();
   render();
   return true;
+}
+
+// Verification is not a result screen: keep the battlefield behind a textless spinner.
+function setArcadeWait(on) {
+  const el = $('arcade-verifying');
+  el?.classList[on ? 'remove' : 'add']('hidden');
+  $('game')?.setAttribute('aria-busy', String(on));
 }
 
 // ===== 스토리 페이즈 규칙 (story.rules) =====
@@ -1212,6 +1219,7 @@ async function shareResult() {
 // 결과 화면을 떠난 뒤 지연 음성/검증 응답이 이전 화면을 되살리지 않도록 분리.
 let battleViewEpoch = 0, endingVoiceTimer = 0;
 function leaveBattleVoices() {
+  setArcadeWait(false);
   battleViewEpoch++;
   clearTimeout(endingVoiceTimer); endingVoiceTimer = 0;
   window.VRVoice?.stopAll();

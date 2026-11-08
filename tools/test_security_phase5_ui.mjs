@@ -59,7 +59,7 @@ console.log('phase5 UI: durable retries/lost responses, account isolation, no ra
  let resolve,shown;const nodes=new Map(),node=id=>{if(!nodes.has(id))nodes.set(id,{setAttribute(){},classList:{add(){},remove(){},contains(){return false;}},textContent:'old victory',innerHTML:'old victory',disabled:false});return nodes.get(id);};
  const c=vm.createContext({battleViewEpoch:0,queueEndingVoice(){},S:{arcadeSession:{},arcade:{result:{result:'win'},actions:[]},log:{total:999,skills:99},turnNo:99},$:node,finishArcadeVerified:()=>new Promise(r=>resolve=r),hideModal(){},TUT(){},finishFx:()=>0,window:{VRCloud:{user:{id:'one'}},dispatchEvent(){}},CustomEvent:class{},Stats:{record:()=>assert.fail('account must not increment local stats')},showEnding:(win)=>{shown=win;},pickMvp:()=>null,render(){},countUp(){},reportError(){},console,setTimeout:f=>f()});
  vm.runInContext(section('function finish(win, reason) {','// ===== 스토리 페이즈 규칙'),c);vm.runInContext("finish(true,'ko')",c);
- assert.equal(node('end-title').textContent,'검증 중');assert.equal(node('share-btn').disabled,true);assert.equal(c.S.endShare,null);assert.equal(shown,undefined);
+ assert.equal(node('end-title').textContent,'');assert.equal(node('share-btn').disabled,true);assert.equal(c.S.endShare,null);assert.equal(shown,undefined);
  resolve({result:'lose',reason:'hp',damage:42,skills:2,turns:5});await Promise.resolve();await Promise.resolve();assert.equal(shown,false);assert.equal(c.S.log.total,42);assert.equal(c.S.turnNo,5);assert.equal(node('share-btn').disabled,false);
 }
 console.log('phase5 full UI: server-issued first/options preserved, no double init, pending victory/share cleared, authoritative receipt overrides local display OK');
