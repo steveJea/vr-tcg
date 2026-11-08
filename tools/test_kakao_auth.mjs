@@ -10,12 +10,14 @@ const html = await readFile(new URL('index.html',root),'utf8');
 const bundle = (await build({stdin:{contents:source.replace('import(SDK)','Promise.resolve(window.__authSdk)'),resolveDir:new URL('js/',root).pathname},bundle:true,write:false,format:'iife',logLevel:'silent'})).outputFiles[0].text;
 const tick=()=>new Promise(r=>setImmediate(r));
 const plain=o=>JSON.parse(JSON.stringify(o));
-function fixture({u=null,enabled=true,profiles={},authError=null,linkError=null,fetchError=false,href='https://vr-tcg-staging.notcold.workers.dev/',deferredProfile=null}={}) {
+function fixture({u=null,enabled=true,profiles={},authError=null,linkError=null,fetchError=false,href='https://vr-tcg-staging.notcold.workers.dev/',deferredProfile=null,linkIntent=null,serverUser=u,initError=null}={}) {
  const {window}=parseHTML(html),document=window.document;
  const location=new URL(href),calls=[],messages=[],replaces=[],timers=new Map();let seq=0,listener;
  class Storage { constructor(){this.data=new Map();} getItem(k){return this.data.get(k)??null;} setItem(k,v){this.data.set(k,String(v));} removeItem(k){this.data.delete(k);} }
- const localStorage=new Storage();localStorage.setItem('vrTcgIntroSeen','1');
+ const localStorage=new Storage(),sessionStorage=new Storage();if(linkIntent)sessionStorage.setItem('vrTcgOAuthLink.v1:https://cuyqchmdcnsgzkwyclji.supabase.co',JSON.stringify({...linkIntent,startedAt:Date.now()}));localStorage.setItem('vrTcgIntroSeen','1');
  const sb={auth:{
+  initialize:async()=>({error:initError}),
+  getUser:async()=>{calls.push(['getUser']);return {data:{user:serverUser},error:null};},
   getSession:async()=>({data:{session:u?{user:u}:null},error:null}),
   onAuthStateChange:fn=>{listener=fn;return {data:{subscription:{unsubscribe(){}}}};},
   signInWithOAuth:async req=>{calls.push(['signInWithOAuth',plain(req)]);return {error:authError};},
@@ -31,12 +33,12 @@ function fixture({u=null,enabled=true,profiles={},authError=null,linkError=null,
  }),rpc:async(name,args)=>{calls.push(['rpc',name,plain(args??{})]);return {data:name==='arcade_record_v5'?{wins:0,losses:0,draws:0}:null,error:null};}};
  window.__authSdk={createClient:(url,key,options)=>{calls.push(['createClient',url,key,plain(options)]);return sb;}};
  window.VRGem={toast:m=>messages.push(m)};window.VRConfirm=async()=>true;
- const context=vm.createContext({window,document,location,history:{replaceState:(...a)=>replaces.push(a)},Storage,localStorage,console,URL,URLSearchParams,AbortController,CustomEvent:window.CustomEvent,alert:m=>messages.push(m),atob,
+ const context=vm.createContext({window,document,location,history:{replaceState:(...a)=>{replaces.push(a);location.href=new URL(a[2],location).href;}},Storage,localStorage,sessionStorage,console,URL,URLSearchParams,AbortController,CustomEvent:window.CustomEvent,alert:m=>messages.push(m),atob,
  setTimeout:(fn,ms)=>{timers.set(++seq,{fn,ms});return seq;},clearTimeout:id=>timers.delete(id),
  fetch:async(url,options)=>{calls.push(['fetch',url,plain({headers:options.headers,cache:options.cache})]);if(fetchError)throw Error('offline');return {ok:true,json:async()=>({external:{google:true,kakao:enabled}})};}
  });
  vm.runInContext(bundle,context);
- return {window,document,calls,messages,replaces,timers,localStorage,settle:async()=>{for(let i=0;i<5;i++)await tick();},emit:(event,next)=>listener(event,next?{user:next}:null),fireTimer:ms=>{for(const[id,t]of timers)if(t.ms===ms){timers.delete(id);t.fn();}}};
+ return {window,document,calls,messages,replaces,timers,localStorage,sessionStorage,settle:async()=>{for(let i=0;i<5;i++)await tick();},emit:(event,next)=>listener(event,next?{user:next}:null),fireTimer:ms=>{for(const[id,t]of timers)if(t.ms===ms){timers.delete(id);t.fn();}}};
 }
 assert.deepEqual(Object.keys(OAUTH_PROVIDERS),['google','kakao']);
 for(const u of [null,{}, {email:null}, {email:''}, {email:{bad:1},user_metadata:{name:{bad:1},avatar_url:123}}, {email:'   ',user_metadata:{name:'  '}}])assert.equal(profileSeed(u).nickname,'플레이어');
@@ -106,6 +108,15 @@ for(const error of [{code:'manual_linking_disabled'},{code:'identity_already_exi
 }
 {
  const f=fixture({href:'https://unknown.example/'});await f.settle();assert.equal(f.window.VRCloud.ready,false);assert.equal(f.calls.length,0,'unregistered hostname cannot start discovery/SDK');
+}
+// Real callback error shape: preserve original Kakao UUID and explain conflict.
+{
+ const f=fixture({u:kakao,serverUser:kakao,linkIntent:{uid:kakao.id,provider:'google'},profiles:{[kakao.id]:{nickname:'카카오형',nick_set:true}},href:'https://vr-tcg-staging.notcold.workers.dev/#error=server_error&error_code=identity_already_exists&error_description=Identity+is+already+linked+to+another+user'});
+ await f.settle();assert.equal(f.window.VRCloud.user.id,kakao.id);assert.equal(f.messages[0],'이미 다른 계정에 연결된 구글 계정이에요.');assert(!f.messages.some(m=>m.includes('취소')));assert(f.calls.some(c=>c[0]==='getUser'));
+}
+{
+ const linked={...kakao,identities:[...kakao.identities,{provider:'google'}]};
+ const f=fixture({u:kakao,serverUser:linked,linkIntent:{uid:kakao.id,provider:'google'},profiles:{[kakao.id]:{nickname:'유지',nick_set:true}},href:'https://vr-tcg-staging.notcold.workers.dev/?code=FAKE_TEST_CODE'});await f.settle();assert.equal(f.messages[0],'구글 계정이 연결되었어요.');assert(f.document.getElementById('main-link-google').hidden);assert.equal(f.window.VRCloud.user.id,kakao.id);
 }
 // Existing story enrollment/starter RPCs are provider agnostic and UUID-keyed.
 const story=await readFile(new URL('js/story.js',root),'utf8');

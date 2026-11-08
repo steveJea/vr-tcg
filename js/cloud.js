@@ -2,7 +2,7 @@
 // 로그아웃 상태는 기존과 동일하게 게스트(브라우저 저장)로 플레이.
 // Supabase 접속 실패 시 조용히 게스트 모드로 동작.
 import { config } from './config.js';
-import { OAUTH_PROVIDERS, profileSeed, hasIdentity, oauthRequest, discoverKakao, cleanOAuthCallback } from './auth-oauth.js';
+import { OAUTH_PROVIDERS, profileSeed, hasIdentity, oauthRequest, discoverKakao, cleanOAuthCallback, readOAuthCallback, saveLinkIntent, takeLinkIntent, oauthErrorCode, oauthFailureMessage, resolveOAuthReturn } from './auth-oauth.js';
 const SUPABASE_URL = config.supabaseUrl;
 const SUPABASE_ANON = config.anonKey;
 const SDK = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm';
@@ -151,15 +151,19 @@ async function startOAuth(provider, linking) {
       const yes = window.VRConfirm ? await window.VRConfirm(question) : window.confirm(question);
       if (!yes || user?.id !== uid) return;
     }
+    if (linking) {
+      try { saveLinkIntent(sessionStorage, SUPABASE_URL, { uid, provider }); }
+      catch { return notify('브라우저 저장 기능을 켠 뒤 다시 시도해 주세요.'); }
+    }
     const request = oauthRequest(provider, REDIRECT);
     const result = await (linking ? sb.auth.linkIdentity(request) : sb.auth.signInWithOAuth(request));
     if (result.error) throw result.error;
     // Keep a double click from replacing the PKCE verifier while navigating.
     oauthTimer = setTimeout(() => { oauthTimer = null; oauthBusy = false; paintOAuth(); }, 10000);
   } catch (e) {
-    if (e?.code === 'manual_linking_disabled' || /manual linking.*disabled/i.test(e?.message || '')) notify('로그인 연결 설정이 아직 꺼져 있어요.');
-    else if (['identity_already_exists', 'email_exists'].includes(e?.code)) notify('이미 다른 계정에 연결된 로그인입니다. 기존 계정은 그대로예요.');
-    else notify(linking ? '로그인을 연결하지 못했어요. 기존 계정은 그대로예요.' : '로그인을 시작하지 못했어요. 다시 시도해 주세요.');
+    if (linking) takeLinkIntent(sessionStorage, SUPABASE_URL);
+    const code = oauthErrorCode(e);
+    notify(code ? oauthFailureMessage(code, linking ? {provider} : null) : linking ? '로그인을 연결하지 못했어요. 기존 계정은 그대로예요.' : '로그인을 시작하지 못했어요. 다시 시도해 주세요.');
   } finally {
     if (!oauthTimer) { oauthBusy = false; paintOAuth(); }
   }
@@ -173,6 +177,7 @@ async function login(provider) {
 async function linkProvider(provider) { return startOAuth(provider, true); }
 async function logout() {
   try { await push(); await sb.auth.signOut(); } catch {}
+  takeLinkIntent(sessionStorage, SUPABASE_URL);
   clearTimeout(oauthTimer); oauthTimer = null; oauthBusy = false; ++userVersion; document.getElementById('nick-ov')?.remove(); user = null; profile = null; render(); fireUser();
 }
 
@@ -181,10 +186,18 @@ async function logout() {
 async function init() {
   // 미등록 주소·아직 준비 안 된 테스트 DB는 SDK/로그인/DB 요청 자체를 시작하지 않음.
   if (!config.enabled) { render(); return; }
+  // Snapshot BEFORE SDK init: older auth-js treats PKCE error fragments as an
+  // invalid flow and can discard the valid signed-in session on link conflict.
+  const callback = readOAuthCallback(location);
+  const linkIntent = takeLinkIntent(sessionStorage, SUPABASE_URL);
+  if (callback.failed) cleanOAuthCallback(location, history);
   try {
     const mod = await Promise.race([import(SDK), new Promise((_, r) => setTimeout(() => r(new Error('timeout')), 8000))]);
     sb = mod.createClient(SUPABASE_URL, SUPABASE_ANON, { auth: { persistSession: true, detectSessionInUrl: true, flowType: 'pkce' } });
+    const { error: initError } = await sb.auth.initialize();
     const { data } = await sb.auth.getSession();
+    const returned = await resolveOAuthReturn(sb.auth, callback, linkIntent, data?.session?.user || null, initError);
+    if (returned.retry) saveLinkIntent(sessionStorage, SUPABASE_URL, linkIntent);
     ready = true;
     const onUser = async u => {
       const isNew = u && u.id !== user?.id;
@@ -208,9 +221,10 @@ async function init() {
       else if (session?.user) { user = session.user; if (ev === 'USER_UPDATED') render(profile); }
     });
     void discoverKakao(config).then(enabled => { kakaoEnabled = enabled; paintOAuth(); });
-    await onUser(data?.session?.user);
-    // Both providers use the SDK's PKCE callback; never interpret/merge identities here.
-    if (cleanOAuthCallback(location, history)) notify('로그인이 취소되었거나 완료되지 않았어요. 다시 시도해 주세요.');
+    await onUser(returned.user);
+    // Successful PKCE exchange is owned by SDK.initialize(), exactly once.
+    cleanOAuthCallback(location, history);
+    if (returned.message) notify(returned.message);
   } catch (e) {
     console.warn('[cloud] Supabase 연결 실패 - 게스트 모드', e);
     sb = null; ready = false; render();
