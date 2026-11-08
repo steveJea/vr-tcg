@@ -101,6 +101,7 @@ async function recoverPage(c) {
  catch(e){if(visiblePage(c))toast(errText(e));}finally{if(recovering===c.root)recovering=null;}
 }
 export async function open() {
+    if (window.VRUnlocks && !window.VRUnlocks.guard('war')) return;
  M?.remove();closeChildren();pageVersion++;pageAccount=window.VRCloud?.user?.id||'';S=null;
  M=pop('<div class="gd-loading">…</div>','wide wr',null);
  const c=context();window.VRSound?.scope?.(M,window.VR_BGM?.guildHome);

@@ -292,21 +292,22 @@
   let chReady = {};          // 서버에 페이즈 설정이 있는 챕터 (서버 모드에서만 확인)
   const chapterDone = base => base.phases.every(p => (save.cleared[base.id] || []).includes(p.no));
   const CH1 = () => Math.max(0, D.chapters.findIndex(c => c.id === 1));   // 챕터 1 위치 (앞에 챕터 0 튜토리얼이 있으면 1)
-  // 챕터 0(튜토리얼): 서버에 설정이 있으면 열림 · 챕터 1: 항상 열림(기존 진행 그대로, 챕터 0 클리어 불필요) · 2~: 이전 챕터 클리어 후
-  // 챕터 입장 레벨 (서버 _player_unlock_level 'chapter_N' → player_json unlocks.chapters). 이미 한 페이즈라도 깬 챕터는 제한 없음
-  const chNeedLv = c => serverMode ? (window.VRPlayer?.now?.()?.unlocks?.chapters?.[c.id] | 0) : 0;
+  // 신규 CH1은 CH0 완료 후. 기존 CH1 진행은 보존. 이후는 이전 챕터 완료 후(계정 레벨 장벽 없음).
+  // 레벨 장벽은 클라이언트와 서버 모두 제거. 단계/챕터 클리어 검증은 서버에서 유지.
+  const chNeedLv = () => 0; // Previous clears, never account level, open chapters.
   const chLvLock = c => { const need = chNeedLv(c), P = window.VRPlayer?.now?.(); return need > 0 && !!P && (P.level | 0) < need && !(save.cleared[c.id] || []).length; };
-  const chapterOpen = i => { const c = D.chapters[i]; if (!c) return false; if (c.id === 0) return chReady[0] !== false; if (c.id === 1) return true; return chapterDone(D.chapters[i - 1]) && chReady[c.id] !== false && !chLvLock(c); };
-  // 챕터 0 '나중에 추가된' 페이즈(p.late, 예: P4 마나 소환 튜토리얼): 스타터를 이미 고른 기존 사용자는 강제 진행·강제 영입 판정에서 빼고 지도에서 자유롭게
-  const ch0Core = c => save?.starter ? { ...c, phases: c.phases.filter(p => !p.late) } : c;
-  const ch0Pending = () => { const c = D.chapters.find(x => x.id === 0); return !!c && chReady[0] !== false && !chapterDone(ch0Core(c)); };
+  const hasMainProgress = () => D.chapters.some(c => c.id >= 1 && (save.cleared[c.id] || []).length);
+  const chapterOpen = i => { const c = D.chapters[i]; if (!c) return false; if (c.id === 0) return chReady[0] !== false; if (c.id === 1) return hasMainProgress() || !D.chapters.some(x => x.id === 0) || chapterDone(D.chapters.find(x => x.id === 0)); return chapterDone(D.chapters[i - 1]) && chReady[c.id] !== false && !chLvLock(c); };
+  // 신규 사용자는 CH0 전체 완료. 기존 CH1+ 사용자를 CH0으로 강제 되돌리지 않음.
+  const ch0Core = c => c;
+  const ch0Pending = () => { const c = D.chapters.find(x => x.id === 0); return !!c && !hasMainProgress() && chReady[0] !== false && !chapterDone(ch0Core(c)); };
   async function checkChapters() {
     chReady = {};
     if (!serverMode) return;
     try { const { data, error } = await cloud().sb.from('story_phase_config').select('chapter'); if (error) throw error; const have = new Set((data || []).map(r => r.chapter));
       for (const c of D.chapters) chReady[c.id] = have.has(c.id); } catch {}
   }
-  const latestOpen = () => { let i = save?.starter ? CH1() : 0; while (i + 1 < D.chapters.length && chapterOpen(i + 1)) i++; return i; }
+  const latestOpen = () => { let i = 0; while (i + 1 < D.chapters.length && chapterOpen(i + 1)) i++; return i; }
   const introOf = s => D.chapters[CH1()].byStarter?.[s.id]?.intro || s.tagline;
 
   // ----- BGM -----
@@ -1463,6 +1464,7 @@
   const skCost = (o, lv) => { const g = card(o.id)?.grade || 'NORMAL'; return { soul: (SK_SOUL[g] || 1) * Math.ceil(lv / 2), gold: Math.ceil((LV_G[g] || 1) * lv * 100) }; };
   const skCd = (cd, lv) => cd <= 0 ? cd : Math.max(1, cd - (lv >= 5 ? 1 : 0) - (lv >= 10 ? 1 : 0));
   function skillUp(u, i) {
+    if (window.VRUnlocks && !window.VRUnlocks.guard('skill')) return;
     const o = byUid(u), s = o && skillsOf(o.id)[i - 1]; if (!s || s.mode !== 'active') return;
     const lv = skLv(o, i), back = () => cardDetail(u);
     if ((o.level | 0) < s.unlock || lv >= SK_MAX) return back();
@@ -1542,6 +1544,7 @@
   }
   // ----- EX 합성: 대상 + 같은 카드의 다른 장(재료) → EX +1, 기본 스탯 보너스, 레벨 1로 초기화 (서버 story_merge) -----
   function mergePreview(tu, mu) {
+    if (window.VRUnlocks && !window.VRUnlocks.guard('merge')) return;
     const o = byUid(tu); if (!o) return renderCards(); norm(o);
     if (serverMode && window.VRPlayer && !W()) { window.VRPlayer.wallet().then(() => mergePreview(tu, mu)); return; }
     const mats = materialsOf(o); if (!mats.length) return cardDetail(tu);

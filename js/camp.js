@@ -85,6 +85,7 @@
 
   async function load() { st = await rpc('camp_status'); try { const s = await window.VRStory?.summary?.(); owned = (s?.ok ? s.owned : []).map(meta); } catch { owned = []; } paint(); return st; }
   async function open() {
+    if (window.VRUnlocks && !window.VRUnlocks.guard('camp')) return;
     const box = shell('🏋️ 훈련소'); box.querySelector('.cbody').innerHTML = '<div class="camp-empty">불러오는 중...</div>';
     try { await load(); } catch (e) { box.querySelector('.cbody').innerHTML = `<div class="camp-empty">${off ? '훈련소 준비 중이에요' : esc(errText(e))}</div>`; return; }
     if (await autoClaim()) return;
@@ -216,8 +217,8 @@
     const busy = new Set(st.slots.map(s => s.uid).filter(Boolean));
     const pool = owned.filter(c => !busy.has(c.uid) && (c.level || 1) < capOf(c)).sort((a, b) => (a.level || 1) - (b.level || 1) || b.g - a.g);
     const box = shell(`🏋️ ${slot}번 칸`);
-    box.querySelector('.cbody').innerHTML = pool.length ? `<div class="story-grid camp-grid">${pool.map(c => { const n = skCount(c.id), sl = rawOwned(c.uid).skillLv || {}, mx = Math.max(1, ...Object.values(sl).map(v => v | 0));
-      return tile(c, `data-u="${esc(c.uid)}"`, `Lv.${c.level || 1}`, n ? `<span class="story-skn">✦${n}${mx > 1 ? ` Lv${mx}` : ''}</span>` : ''); }).join('')}</div>` : '<div class="camp-empty">없음</div>';
+    box.querySelector('.cbody').innerHTML = pool.length ? `<div class="story-grid camp-grid">${pool.map((c, i) => { const n = skCount(c.id), sl = rawOwned(c.uid).skillLv || {}, mx = Math.max(1, ...Object.values(sl).map(v => v | 0));
+      return tile(c, `data-u="${esc(c.uid)}" ${i === 0 ? 'data-recommended' : ''}`, `Lv.${c.level || 1}`, (i === 0 ? '<span class="camp-rec">추천</span>' : '') + (n ? `<span class="story-skn">✦${n}${mx > 1 ? ` Lv${mx}` : ''}</span>` : '')); }).join('')}</div>` : '<div class="camp-empty">없음</div>';
     box.insertAdjacentHTML('beforeend', '<div class="camp-acts"><button data-back>뒤로</button></div>');
     box.querySelector('[data-back]').onclick = draw;
     box.querySelectorAll('[data-u]').forEach(b => b.onclick = async () => { if (b.dataset.busy) return; b.dataset.busy = 1;

@@ -126,7 +126,8 @@
     "security_phase1_rewards.sql",
     "security_phase2_clears.sql",
     "security_phase3_pvp.sql",
-    "security_phase4_raid_guildwar.sql"
+    "security_phase4_raid_guildwar.sql",
+    "level_unlocks_staging.sql"
   ],
   "excluded": {
     "blood_rebalance_preview.sql": "기존 데이터 조회 전용",

@@ -102,6 +102,7 @@
   let myView = 'live', mSort = 'new', mF = { type: 'all', gr: new Set(), q: '', buy: false, want: false }, srvSearch = null;   // mF: 마켓 필터 (화면 안에서 유지)   // mSort: 마켓 정렬
   const GO = ['N', 'R', 'HR', 'SR', 'UR', 'MR', 'LR'];   // 내 거래: 진행중 / 종료 탭
   async function open(tab = 'board') {
+    if (window.VRUnlocks && !window.VRUnlocks.guard('trade')) return;
     if (window.VRPages?.current?.startsWith('exchange') && window.VRPages.current !== 'exchange') while (window.VRPages.current?.startsWith('exchange-')) window.VRPages.closeNow();
     document.querySelector('.tr-bg.main')?.remove();
     const m = pop('<div class="tr-load">불러오는 중…</div>', 'wide', ['exchange', '💱 거래소']); m.classList.add('main');
