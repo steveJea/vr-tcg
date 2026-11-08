@@ -1,8 +1,8 @@
 import {config} from './config.js';
-import {enabled,api,paymentError,savePending,loadPending,pendingKey} from './payments-core.js';
+import {enabled,api,paymentError,savePending,loadPending,pendingKey,checkoutParams,sdkErrorCode,sdkFailure} from './payments-core.js';
 const on=enabled(config),toast=t=>window.VRGem?.toast?.(t);let sdk,buying=false;
 const deadline=async(p,ms=10000)=>{let t;try{return await Promise.race([p,new Promise((_,r)=>{t=setTimeout(()=>r(Error('payment confirmation pending')),ms);})]);}finally{clearTimeout(t);}};
-async function loadSDK(){try{if(window.TossPayments)return Promise.resolve(window.TossPayments);if(!sdk)sdk=new Promise((resolve,reject)=>{const s=document.createElement('script');s.src='https://js.tosspayments.com/v2/standard';s.onload=()=>window.TossPayments?resolve(window.TossPayments):reject(Error('sdk'));s.onerror=()=>reject(Error('sdk'));document.head.appendChild(s);}).catch(e=>{sdk=null;throw e;});return await deadline(sdk);}catch{sdk=null;throw Error('payment sdk unavailable');}}
+async function loadSDK(clientKey){try{if(window.TossPayments)return Promise.resolve(window.TossPayments);if(!sdk)sdk=new Promise((resolve,reject)=>{const s=document.createElement('script');s.src='https://js.tosspayments.com/v2/standard';s.onload=()=>window.TossPayments?resolve(window.TossPayments):reject(Error('sdk'));s.onerror=()=>reject(Error('sdk'));document.head.appendChild(s);}).catch(e=>{sdk=null;throw e;});return await deadline(sdk);}catch{sdk=null;throw sdkFailure({code:'SDK_LOAD_FAILED'},'sdk-load',clientKey);}}
 async function open(){
  if(!on)return;
  const c=window.VRCloud,uid=c?.user?.id;if(!c?.sb||!uid)return toast('로그인이 필요해요.');
@@ -25,9 +25,15 @@ async function open(){
    if(o.status==='paid'){localStorage.removeItem(pendingKey(uid));toast('이미 충전된 주문이에요.');return;}
    if(!result.clientKey?.startsWith('test_ck_')||o.userId!==uid)throw Error('payment mismatch');
    intent={...intent,orderId:o.orderId,amount:o.amount};savePending(localStorage,uid,intent);localStorage.setItem('vrTcg.toss.order.v1:'+o.orderId,JSON.stringify({uid,amount:o.amount}));
-   const Toss=await loadSDK();if(c.user?.id!==uid)throw Error('login required');
-   try{await Toss(result.clientKey).payment({customerKey:uid}).requestPayment({method:'CARD',amount:{currency:'KRW',value:o.amount},orderId:o.orderId,orderName:o.orderName,successUrl:location.origin+'/payment-return.html?vrpay=success',failUrl:location.origin+'/payment-return.html?vrpay=fail&vr_order='+o.orderId});}
-   catch(e){if(['USER_CANCEL','PAY_PROCESS_CANCELED','PAYMENT_REQUEST_ABORTED'].includes(e.code)){localStorage.removeItem(pendingKey(uid));throw e;}if(['PAY_PROCESS_ABORTED','REJECT_CARD_COMPANY'].includes(e.code))throw e;console.warn(JSON.stringify({tag:'payments',stage:'checkout',code:/^[A-Z0-9_]{1,60}$/.test(e.code||'')?e.code:null}));throw Error('payment checkout failed');}
+   const Toss=await loadSDK(result.clientKey);if(c.user?.id!==uid)throw Error('login required');
+   let phase='sdk-init';
+   try{
+    const params=checkoutParams(o,uid,location.origin);
+    if(typeof Toss!=='function')throw Error('sdk:SDK_VERSION_MISMATCH');
+    const sdk=Toss(result.clientKey);if(typeof sdk?.payment!=='function')throw Error('sdk:SDK_VERSION_MISMATCH');
+    const payment=sdk.payment({customerKey:uid});if(typeof payment?.requestPayment!=='function')throw Error('sdk:SDK_VERSION_MISMATCH');
+    phase='checkout';await payment.requestPayment(params);
+   }catch(e){if(['USER_CANCEL','PAY_PROCESS_CANCELED','PAYMENT_REQUEST_ABORTED'].includes(sdkErrorCode(e)))localStorage.removeItem(pendingKey(uid));throw sdkFailure(e,phase,result.clientKey);}
   });
  }catch(e){toast(paymentError(e.message));modal.remove();}
 }

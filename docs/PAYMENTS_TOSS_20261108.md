@@ -29,6 +29,16 @@
 - 업데이트된 Edge는 Logs에 `stage`와 PostgreSQL 오류 코드만 남깁니다. 토큰·키·주문/사용자 ID·SQL 원문은 남기지 않습니다. 문제가 계속되면 **토스트 문구와 stage/dbCode만** 알려주세요. 시크릿·사용자 JWT는 보내지 마세요.
 - **함수 코드 업데이트 시에만** 새 `dashboard_single_file.ts`로 `payments-confirm-v1`을 재배포합니다. 이 진단 수정에는 SQL 재실행이 필요하지 않습니다.
 
+## 결제창 실행 호환성 (클라이언트 보완)
+
+- 공식 `https://js.tosspayments.com/v2/standard` + `TossPayments(test_ck_…).payment({customerKey})` 사용. 위젯용 `test_gck_…`/v1 API와 혼용하지 않습니다.
+- PC 기본 iframe 대신 **PC·모바일 모두 `windowTarget: self` 리다이렉트**를 명시합니다. 새 팝업을 만들지 않으므로 서버 주문 생성 await 뒤 팝업 사용자 제스처 제한에 의존하지 않습니다. 승인 결과는 기존 successUrl/failUrl 콜백에서만 처리합니다.
+- 서버 주문 번호·숫자 금액·상품명·고객 UUID를 SDK 호출 전에 검증합니다. 원래 서버 가격/소유자 검증과 1회 지급 조건은 바뀌지 않습니다.
+- 오류 토스트 끝에 `INVALID_CLIENT_KEY`, `SDK_VERSION_MISMATCH` 같은 **실제 SDK 오류 코드**가 붙습니다. 콘솔에는 `sdk-init`/`checkout`, 코드, 공식 샘플/별도 테스트 키 여부만 기록하고 키·고객 ID·주문 ID·오류 원문은 기록하지 않습니다.
+- `INVALID_CLIENT_KEY`라면 선택 설정 TOSS_CLIENT_KEY가 위 공식 샘플의 clientKey인지 확인합니다. 별도로 설정하지 않으면 공식 샘플이 기본값입니다. 승인용 apiSecretKey와 짝이 맞아야 합니다.
+- 이 클라이언트 보완만 적용할 때는 **SQL/Edge 재배포·시크릿 재입력이 필요하지 않습니다.** staging 새로고침 후 확인하세요.
+- 실브라우저 도구가 없어 공식 SDK 파일을 오프라인 DOM mock으로 초기화했습니다(v2 payment API 생성 확인). 네트워크는 차단했으며 실제 결제창·사용자 계정 오류를 완전히 재현한 검사는 아닙니다. 실제 iPhone/PC 동작은 별도 확인이 필요합니다.
+
 ## 임시 가격안 — 확정 BM 아님 / 실제 출금 없음
 
 | 유료 심연석 | 무료 보너스 | 테스트 가격(KRW) |

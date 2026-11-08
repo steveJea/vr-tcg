@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import {parseHTML} from 'linkedom';
 import {readFile} from 'node:fs/promises';
-import {enabled,paymentError,readReturn,savePending,loadPending,pendingKey,STAGE_DB} from '../js/payments-core.js';
+import {enabled,paymentError,readReturn,savePending,loadPending,pendingKey,STAGE_DB,checkoutParams,sdkErrorCode,sdkFailure} from '../js/payments-core.js';
 const read=p=>readFile(new URL('../'+p,import.meta.url),'utf8'),client=(await read('js/payments.js')).replace(/^import .*;$/gm,'');
 const uid='11111111-1111-4111-8111-111111111111',orderId='vrs_'+'a'.repeat(32),config={enabled:true,isStaging:true,supabaseUrl:STAGE_DB,anonKey:'public'},location={hostname:'vr-tcg-staging.notcold.workers.dev',origin:'https://vr-tcg-staging.notcold.workers.dev'};
 const storage=()=>{const m=new Map();return {getItem:k=>m.get(k)||null,setItem:(k,v)=>m.set(k,v),removeItem:k=>m.delete(k)};};
@@ -10,12 +10,13 @@ const store=storage(),{document}=parseHTML('<html><body></body></html>');let pay
 const cloud={user:{id:uid},sb:{from:()=>({select:()=>({eq:()=>({order:async()=>({data:[{id:'gem_100',paid_gems:100,bonus_gems:0,amount:1000}]})})})})}};
 const window={VRCloud:cloud,VRGem:{toast:x=>toasts.push(x),status:()=>new Promise(()=>{})},TossPayments:()=>({payment:()=>({requestPayment:async p=>{payloads.push(p);if(checkoutFailure)throw Object.assign(Error('private SDK detail'),{code:'INVALID_CLIENT_KEY'});if(cancel)throw Object.assign(Error('abort'),{code:'USER_CANCEL'});}})})};
 const api=async(sb,c,b)=>{requests.push(b);if(createFailure)throw Error(createFailure);if(switchUser)cloud.user={id:'22222222-2222-4222-8222-222222222222'};return {ok:true,clientKey:'test_ck_public',order:{orderId,orderName:'test',amount:1100,userId:uid,status:'pending'}};};
-vm.runInNewContext(client,{window,document,config,location,localStorage:store,enabled:c=>enabled(c,location),api,paymentError,savePending,loadPending,pendingKey,crypto,setTimeout,clearTimeout,console});
-await window.VRPayments.open();assert.match(document.querySelector('h2').textContent,/테스트.*임시가/);const b=document.querySelector('.payment-product');await b.onclick();assert.equal(payloads[0].amount.value,1100,'checkout must use CREATED server order, not displayed/client price');assert.equal(payloads[0].customerEmail,undefined);assert.equal(payloads[0].customerName,undefined);assert.match(payloads[0].successUrl,/payment-return.html\?vrpay=success$/);assert.equal(payloads[0].orderId,orderId);
+vm.runInNewContext(client,{window,document,config,location,localStorage:store,enabled:c=>enabled(c,location),api,paymentError,savePending,loadPending,pendingKey,checkoutParams,sdkErrorCode,sdkFailure,crypto,setTimeout,clearTimeout,console});
+await window.VRPayments.open();assert.match(document.querySelector('h2').textContent,/테스트.*임시가/);const b=document.querySelector('.payment-product');await b.onclick();assert.equal(payloads[0].windowTarget,'self');assert.equal(payloads[0].amount.value,1100,'checkout must use CREATED server order, not displayed/client price');assert.equal(payloads[0].customerEmail,undefined);assert.equal(payloads[0].customerName,undefined);assert.match(payloads[0].successUrl,/payment-return.html\?vrpay=success$/);assert.equal(payloads[0].orderId,orderId);
 await b.onclick();assert.equal(requests[1].request,requests[0].request,'lost create/checkout retry preserves request UUID');
 cancel=true;await b.onclick();assert.equal(loadPending(store,uid),null);assert.match(toasts.at(-1),/취소/);
 cancel=false;createFailure='payment database permissions';const priorPayloads=payloads.length;await b.onclick();assert.equal(payloads.length,priorPayloads);assert.match(toasts.at(-1),/DB 권한/);assert(!toasts.at(-1).includes('지연'));
-createFailure=null;checkoutFailure=true;await b.onclick();assert.match(toasts.at(-1),/결제창을 열지/);assert(!toasts.at(-1).includes('지연'));checkoutFailure=false;
+createFailure=null;checkoutFailure=true;await b.onclick();assert.match(toasts.at(-1),/INVALID_CLIENT_KEY/);assert(!toasts.at(-1).includes('지연'));checkoutFailure=false;
+const oldToss=window.TossPayments;window.TossPayments=()=>({requestPayment:()=>{}});await b.onclick();assert.match(toasts.at(-1),/SDK_VERSION_MISMATCH/);window.TossPayments=oldToss;
 switchUser=true;const before=payloads.length;await b.onclick();assert.equal(payloads.length,before,'account switch must prevent SDK invocation');assert.match(toasts.at(-1),/로그인/);
 const callbackHtml=await read('payment-return.html');let callbackCode=(await read('js/payments-return.js')).replace(/^import .*;$/gm,'').replace("await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm')",'await getSDK()').replace('init();','window.__init=init;');
 async function returned({failed=false,reject=false,wrongUser=false,reload=false}={}){
