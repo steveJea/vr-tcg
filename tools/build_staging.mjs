@@ -8,7 +8,7 @@ await buildMediaManifest();
 const out = path.join(root, '.staging-dist');
 await rm(out, { recursive: true, force: true });
 await mkdir(out, { recursive: true });
-for (const name of ['index.html', 'admin.html', 'terms.html', 'privacy.html', 'favicon.ico', 'js', 'css', 'data', 'img', 'audio', 'video']) {
+for (const name of ['index.html', 'admin.html', 'terms.html', 'privacy.html', 'payment-return.html', 'favicon.ico', 'js', 'css', 'data', 'img', 'audio', 'video']) {
   await cp(path.join(root, name), path.join(out, name), { recursive: true });
 }
 await writeFile(path.join(out, 'robots.txt'), 'User-agent: *\nDisallow: /\n');

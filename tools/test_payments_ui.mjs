@@ -1,0 +1,32 @@
+import assert from 'node:assert/strict';
+import vm from 'node:vm';
+import {parseHTML} from 'linkedom';
+import {readFile} from 'node:fs/promises';
+import {enabled,paymentError,readReturn,savePending,loadPending,pendingKey,STAGE_DB} from '../js/payments-core.js';
+const read=p=>readFile(new URL('../'+p,import.meta.url),'utf8'),client=(await read('js/payments.js')).replace(/^import .*;$/gm,'');
+const uid='11111111-1111-4111-8111-111111111111',orderId='vrs_'+'a'.repeat(32),config={enabled:true,isStaging:true,supabaseUrl:STAGE_DB,anonKey:'public'},location={hostname:'vr-tcg-staging.notcold.workers.dev',origin:'https://vr-tcg-staging.notcold.workers.dev'};
+const storage=()=>{const m=new Map();return {getItem:k=>m.get(k)||null,setItem:(k,v)=>m.set(k,v),removeItem:k=>m.delete(k)};};
+const store=storage(),{document}=parseHTML('<html><body></body></html>');let payloads=[],requests=[],cancel=false,switchUser=false,toasts=[];
+const cloud={user:{id:uid},sb:{from:()=>({select:()=>({eq:()=>({order:async()=>({data:[{id:'gem_100',paid_gems:100,bonus_gems:0,amount:1000}]})})})})}};
+const window={VRCloud:cloud,VRGem:{toast:x=>toasts.push(x),status:()=>new Promise(()=>{})},TossPayments:()=>({payment:()=>({requestPayment:async p=>{payloads.push(p);if(cancel)throw Object.assign(Error('abort'),{code:'USER_CANCEL'});}})})};
+const api=async(sb,c,b)=>{requests.push(b);if(switchUser)cloud.user={id:'22222222-2222-4222-8222-222222222222'};return {ok:true,clientKey:'test_ck_public',order:{orderId,orderName:'test',amount:1100,userId:uid,status:'pending'}};};
+vm.runInNewContext(client,{window,document,config,location,localStorage:store,enabled:c=>enabled(c,location),api,paymentError,savePending,loadPending,pendingKey,crypto,setTimeout,clearTimeout,console});
+await window.VRPayments.open();assert.match(document.querySelector('h2').textContent,/테스트.*임시가/);const b=document.querySelector('.payment-product');await b.onclick();assert.equal(payloads[0].amount.value,1100,'checkout must use CREATED server order, not displayed/client price');assert.equal(payloads[0].customerEmail,undefined);assert.equal(payloads[0].customerName,undefined);assert.match(payloads[0].successUrl,/payment-return.html\?vrpay=success$/);assert.equal(payloads[0].orderId,orderId);
+await b.onclick();assert.equal(requests[1].request,requests[0].request,'lost create/checkout retry preserves request UUID');
+cancel=true;await b.onclick();assert.equal(loadPending(store,uid),null);assert.match(toasts.at(-1),/취소/);
+cancel=false;switchUser=true;const before=payloads.length;await b.onclick();assert.equal(payloads.length,before,'account switch must prevent SDK invocation');assert.match(toasts.at(-1),/로그인/);
+const callbackHtml=await read('payment-return.html');let callbackCode=(await read('js/payments-return.js')).replace(/^import .*;$/gm,'').replace("await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm')",'await getSDK()').replace('init();','window.__init=init;');
+async function returned({failed=false,reject=false,wrongUser=false,reload=false}={}){
+ const {document:d}=parseHTML(callbackHtml),localStorage=storage(),sessionStorage=storage(),url='https://vr-tcg-staging.notcold.workers.dev/payment-return.html?vrpay='+(failed?'fail&code=USER_CANCEL&vr_order='+orderId:'success&orderId='+orderId+'&paymentKey=opaque_key&amount=1100');
+ localStorage.setItem('vrTcg.toss.order.v1:'+orderId,JSON.stringify({uid,amount:1100}));savePending(localStorage,uid,{orderId,amount:1100,request:'request'});
+ if(reload)sessionStorage.setItem('vrTcg.toss.callback.url.v1',url);
+ const w={__VR_PAYMENT_RETURN:reload?location.origin+'/payment-return':url};let calls=0;
+ vm.runInNewContext(callbackCode,{window:w,document:d,config,location:{...location,href:url},localStorage,sessionStorage,enabled:c=>enabled(c,location),api:async()=>{calls++;if(reject)throw Error('payment confirmation pending');return {ok:true};},paymentError,readReturn,savePending,loadPending,pendingKey,setTimeout,clearTimeout,getSDK:async()=>({createClient:()=>({auth:{initialize:async()=>({}),getUser:async()=>({data:{user:{id:wrongUser?'22222222-2222-4222-8222-222222222222':uid}}})}})})});
+ await w.__init();return {d,localStorage,sessionStorage,calls};
+}
+const ok=await returned();assert.equal(ok.d.getElementById('pay-title').textContent,'충전 완료');assert.equal(loadPending(ok.localStorage,uid),null);assert.equal(ok.calls,1);
+const reloaded=await returned({reload:true});assert.equal(reloaded.d.getElementById('pay-title').textContent,'충전 완료');assert.equal(reloaded.calls,1);
+const fail=await returned({failed:true});assert.equal(fail.calls,0);assert.match(fail.d.getElementById('pay-toast').textContent,/취소/);assert.equal(loadPending(fail.localStorage,uid),null);
+const delayed=await returned({reject:true});assert.equal(delayed.d.getElementById('pay-retry').hidden,false);assert.equal(loadPending(delayed.localStorage,uid).paymentKey,'opaque_key');assert.match(delayed.d.getElementById('pay-toast').textContent,/지연/);
+const wrong=await returned({wrongUser:true});assert.equal(wrong.calls,0);assert.match(wrong.d.getElementById('pay-toast').textContent,/계정/);
+console.log('Payment DOM/SDK adapters: no-email checkout, server price, same-request retry, cancel, account switch, callback refresh recovery, bounded-failure retry and evidence retained OK');
