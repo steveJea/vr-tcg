@@ -44,6 +44,7 @@
   function subPop(name, title, html, cls) { const m = pop(html, cls); window.VRSound?.scope?.(m, window.VR_BGM?.guildHome); if (inGuild()) window.VRPages.host('guild-' + name, title, m); return m; }
   let gone = false;   // 조직 페이지가 위 페이지(토벌 등)에 가려졌다 돌아오면 BGM 다시
   async function open() {
+    if (window.VRUnlocks && !window.VRUnlocks.guard('guild')) return;
     close();
     ov = document.createElement('div'); ov.className = 'gd-ov'; ov.innerHTML = '<div class="gd-page"><div class="gd-loading">…</div></div>';
     ov.addEventListener('click', e => { if ((e.target === ov && !ov.classList.contains('vr-in-page')) || e.target.closest('[data-close]')) close(); });

@@ -52,6 +52,7 @@ const thumbs = cards => cards.map(o => `<span class="rd-th"><img src="${cardThum
 
 let S = null, M = null, DL = [];
 export async function open() {
+    if (window.VRUnlocks && !window.VRUnlocks.guard('raid')) return;
   M?.remove();
   M = pop('<div class="gd-loading">…</div>', 'wide rd'); window.VRSound?.scope?.(M, window.VR_BGM?.raid);
   window.VRPages?.host?.('raid', '🐉 균열 토벌', M);   // 페이지 시스템 (실패하면 예전 팝업)

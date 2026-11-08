@@ -98,6 +98,10 @@ const dleft = () => { const e = st?.season_end ? new Date(st.season_end) : null;
 
 // ---- 메인 ----
 export async function open() {
+  if (window.VRUnlocks) {
+    if (!window.VRUnlocks.guard('pvp_hr')) return;
+    if (!window.VRUnlocks.allowed(window.VRUnlocks.pvpKey(view.league,view.mode))) { view.league='hr'; view.mode='1v1'; save(); }
+  }
   if (!window.VRCloud?.user && !window.__PVP_MOCK) return modal('pvp-modal', `<button class="pvp-x" data-x>✕</button><div class="pvp-h">⚔️ PvP</div><div class="pvp-empty">🔒 로그인</div>`);
   const again = $('pvp-modal')?.classList.contains('vr-in-page') && window.VRPages?.current === 'pvp';
   const m = modal('pvp-modal', `<div class="pvp-empty">…</div>`); if (!again) window.VRSound?.scope?.(m, window.VR_BGM?.pvpLobby);
@@ -118,8 +122,8 @@ function paint() {
     <div class="pvp-h">⚔️ PvP <small>${dleft()}</small></div>
     ${st.ladder === 'verified-v3' ? `<div class="pvp-empty">서버 검증 래더${st.legacy_rating != null ? ` · 이전 기록 ${st.legacy_rating} 보존` : ''}</div>` : ''}
     ${pendingResult() ? '<div class="pvp-acts"><button class="pvp-go" data-retry-result>결과 다시 저장</button></div>' : ''}
-    <div class="pvp-tabs">${Object.entries(LEAGUES).map(([k, L]) => `<button data-league="${k}" class="${view.league === k ? 'on' : ''}">${L.label}</button>`).join('')}
-      <span class="pvp-sep"></span>${Object.keys(MODES).map(k => `<button data-mode="${k}" class="${view.mode === k ? 'on' : ''}">${MODES[k].label ? `👑 ${MODES[k].label}` : k}</button>`).join('')}</div>
+    <div class="pvp-tabs">${Object.entries(LEAGUES).map(([k, L]) => `<button data-league="${k}" data-unlock="${window.VRUnlocks?.pvpKey(k,view.mode) || ''}" class="${view.league === k ? 'on' : ''}">${L.label}</button>`).join('')}
+      <span class="pvp-sep"></span>${Object.keys(MODES).map(k => `<button data-mode="${k}" data-unlock="${window.VRUnlocks?.pvpKey(view.league,k) || ''}" class="${view.mode === k ? 'on' : ''}">${MODES[k].label ? `👑 ${MODES[k].label}` : k}</button>`).join('')}</div>
     ${myRank()}
     <div class="pvp-decks">${decks.map((d, i) => `<button class="pvp-deck ${d ? '' : 'empty'}" data-edit="${i}">
       <span class="pvp-deck-no">${n > 1 ? i + 1 : '🛡'}</span><span class="pvp-deck-row">${d ? d.uids.map(u => thumb(byUid.get(u) && { ...card(byUid.get(u).id), level: byUid.get(u).level })).join('') : '<span class="pvp-plus">＋</span>'}</span>
@@ -127,8 +131,9 @@ function paint() {
     <div class="pvp-bmode">${modeToggle()}</div>
     <div class="pvp-acts"><button class="pvp-rank" data-rank title="랭킹">🏅</button><button class="pvp-rank" data-shop title="PvP 상점">🛒</button>${st.left <= 0 && window.VRGem?.item?.('pvp_try') ? `<button class="pvp-gemtry" data-gemtry ${window.VRGem.item('pvp_try').left === 0 ? 'disabled' : ''} title="추가 도전 (하루 3회)">🎫+1 <small>🔮${window.VRGem.item('pvp_try').price}</small></button>` : ''}<button class="pvp-go" data-go ${ready ? '' : 'disabled'}>${pendingStart() ? '매칭 다시 확인' : '⚔️ 매칭'}</button></div>
     <div class="pvp-top"><div class="pvp-top-h">🏅 TOP 10</div><div class="pvp-rk">${rkRows(top)}</div></div>`;
-  m.querySelectorAll('[data-league]').forEach(b => b.onclick = () => { view.league = b.dataset.league; save(); open(); });
-  m.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => { view.mode = b.dataset.mode; save(); open(); });
+  window.VRUnlocks?.paint?.();
+  m.querySelectorAll('[data-league]').forEach(b => b.onclick = () => { if (window.VRUnlocks && !window.VRUnlocks.guard(window.VRUnlocks.pvpKey(b.dataset.league,view.mode))) return; view.league = b.dataset.league; save(); open(); });
+  m.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => { if (window.VRUnlocks && !window.VRUnlocks.guard(window.VRUnlocks.pvpKey(view.league,b.dataset.mode))) return; view.mode = b.dataset.mode; save(); open(); });
   m.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => editDeck(+b.dataset.edit));
   m.querySelector('[data-rank]').onclick = rankings; bindWho(m);
   m.querySelector('[data-shop]').onclick = () => window.VRGear?.pvpShop?.();   // 장비 PR7

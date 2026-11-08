@@ -111,6 +111,7 @@
   const enterPage = () => { try { if (window.VRPages && !inPage()) window.VRPages.open('quest'); } catch (e) { console.error('[quest] page', e); } };
 
   async function open() {
+    if (window.VRUnlocks && !window.VRUnlocks.guard('tower')) return;
     const api = A();
     if (!api || !window.TCG?.ready) return;
     if (!api.user()) {
@@ -131,7 +132,7 @@
   function lockOf(t) {
     const s = hub?.towers?.[t.id]; if (!s) return '준비중';
     const why = [];
-    if (!s.unlocked) why.push(`Lv.${s.min_level} 필요`);
+    if ((hub?.level || 1) < (window.VRUnlocks?.need(t.id === 'normal' ? 'tower' : 'tower_' + t.id) || s.min_level)) return `Lv${window.VRUnlocks?.need(t.id === 'normal' ? 'tower' : 'tower_' + t.id) || s.min_level}`;
     if (!s.open_today) why.push(`${(s.days || []).map(d => DOW[d]).join('·')} 오픈`);
     if (!t.ready) why.unshift('준비중');
     return why.length ? why.join(' · ') : null;

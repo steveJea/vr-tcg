@@ -13,7 +13,7 @@
     if (error) { if (missing(error)) return null; throw error; }
     return data;
   }
-  function set(s) { if (s && s.ok) { cache = s; at = Date.now(); paint(); } return cache; }
+  function set(s) { if (s && s.ok) { const changed = !cache || cache.level !== s.level; cache = s; at = Date.now(); paint(); if (changed) window.dispatchEvent(new Event('vr-player-change')); } return cache; }
   async function status(force = false) {
     if (!force && cache && Date.now() - at < 30000) return now();
     if (!pending) pending = rpc('player_status').then(set).catch(e => { console.warn('[player]', e?.message); return null; }).finally(() => { pending = null; });

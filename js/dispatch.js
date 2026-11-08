@@ -95,6 +95,7 @@
   async function load() { st = await rpc('dispatch_status'); try { const s = await window.VRStory?.summary?.(); owned = (s?.ok ? s.owned : []).map(meta); } catch { owned = []; } return st; }
 
   async function open() {
+    if (window.VRUnlocks && !window.VRUnlocks.guard('dispatch')) return;
     const box = shell('🧭 파견'); box.querySelector('.dbody').innerHTML = '<div class="dsp-empty">불러오는 중...</div>';
     try { await load(); } catch (e) { box.querySelector('.dbody').innerHTML = `<div class="dsp-empty">${off ? '파견 준비 중이에요' : esc(errText(e))}</div>`; return; }
     draw();
