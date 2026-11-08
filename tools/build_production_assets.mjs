@@ -8,7 +8,7 @@ await buildMediaManifest();
 const out = path.join(root, '.production-dist');
 await rm(out, { recursive: true, force: true });
 await mkdir(out, { recursive: true });
-for (const name of ['index.html', 'admin.html', 'favicon.ico', 'js', 'css', 'data', 'img', 'audio', 'video']) {
+for (const name of ['index.html', 'admin.html', 'terms.html', 'privacy.html', 'favicon.ico', 'js', 'css', 'data', 'img', 'audio', 'video']) {
   await cp(path.join(root, name), path.join(out, name), { recursive: true });
 }
 // Only the candidate workers.dev host is noindex. This is not a TEST badge,

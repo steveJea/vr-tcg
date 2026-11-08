@@ -1,4 +1,5 @@
-// Separate production-content candidate. No DNS/custom-domain attachment.
+// Production Worker. Only ag.violenceroyale.com is an approved Custom Domain.
+// Leave apex/www Pages and tcg.mbbs.kr unchanged.
 // Build from main (or its hosting-only review branch); never reuse .staging-dist.
 {
   "$schema": "node_modules/wrangler/config-schema.json",
@@ -8,7 +9,7 @@
   "compatibility_date": "2026-11-08",
   "workers_dev": true,
   "preview_urls": false,
-  "routes": [],
+  "routes": [{ "pattern": "ag.violenceroyale.com", "custom_domain": true }],
   "assets": {
     "directory": "./.production-dist",
     "binding": "ASSETS",
