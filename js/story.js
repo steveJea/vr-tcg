@@ -393,8 +393,8 @@
 
   async function enter(mode) {   // mode 'go' = 로비 '이어하기' 타일: 첫 진입 흐름이 끝났으면 허브를 거치지 않고 바로 다음 페이즈
     if (!user()) {
-      popup(`<div class="text-xl font-black mb-2">📜 스토리 모드</div><div class="text-sm text-zinc-300 mb-4">스토리 모드는 로그인한 플레이어만 할 수 있어요.<br>구글로 로그인하면 진행 상황과 보유 인재가 저장돼요.</div>
-        <button id="story-login" class="w-full py-3 rounded-xl bg-amber-400 text-black font-bold">${ic('login', { alt: '' })} 구글로 로그인</button><button data-close-pop class="w-full mt-2 py-2 rounded-xl bg-white/10">닫기</button>`);
+      popup(`<div class="text-xl font-black mb-2">📜 스토리 모드</div>
+        <button id="story-login" class="w-full py-3 rounded-xl bg-amber-400 text-black font-bold">${ic('login', { alt: '' })} 로그인</button><button data-close-pop class="w-full mt-2 py-2 rounded-xl bg-white/10">닫기</button>`);
       $('story-login').onclick = () => window.VRCloud?.login?.();
       return;
     }

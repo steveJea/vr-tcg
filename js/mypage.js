@@ -159,7 +159,7 @@
     const m = ensure(), body = $('mp-body');
     if (!(window.VRPages?.current === 'mypage' || window.VRPages?.open?.('mypage'))) { m.classList.remove('hidden'); document.body.classList.add('gal-lock'); }
     if (!user()) {
-      body.innerHTML = `<div class="mp-guest"><img src="img/ui/profile.webp" alt="" width="72" height="72"><b>로그인 필요</b>${cloud()?.sb ? '<button id="mp-login" class="main-btn mp-login">구글 로그인</button>' : '<small>오프라인</small>'}</div>`;
+      body.innerHTML = `<div class="mp-guest"><img src="img/ui/profile.webp" alt="" width="72" height="72"><b>로그인 필요</b>${cloud()?.sb ? '<button id="mp-login" class="main-btn mp-login">로그인</button>' : '<small>오프라인</small>'}</div>`;
       if ($('mp-login')) $('mp-login').onclick = () => cloud().login();
       return;
     }

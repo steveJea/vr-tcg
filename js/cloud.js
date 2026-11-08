@@ -2,6 +2,7 @@
 // 로그아웃 상태는 기존과 동일하게 게스트(브라우저 저장)로 플레이.
 // Supabase 접속 실패 시 조용히 게스트 모드로 동작.
 import { config } from './config.js';
+import { OAUTH_PROVIDERS, profileSeed, hasIdentity, oauthRequest, discoverKakao, cleanOAuthCallback } from './auth-oauth.js';
 const SUPABASE_URL = config.supabaseUrl;
 const SUPABASE_ANON = config.anonKey;
 const SDK = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm';
@@ -13,6 +14,7 @@ const STATS_KEY = 'vrTcgStats.v1';
 const SYNC_KEYS = ['vrTcgSkipFx', 'vrTcgVoiceOn', 'vrTcgVoiceVol', 'vrTcgSound', 'tcg_hand_sort', 'tcg_skip_endturn_confirm', 'vrTutorialDone'];
 
 let sb = null, user = null, profile = null, ready = false, pushTimer = null, applying = false;
+let kakaoEnabled = false, oauthBusy = false, oauthTimer = null, userVersion = 0;
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -51,10 +53,11 @@ Storage.prototype.setItem = function (k, v) {
   if (this === localStorage && !applying && SYNC_KEYS.includes(k)) schedulePush();
 };
 
-async function syncOnLogin() {
+async function syncOnLogin(uid) {
   try {
-    const { data, error } = await sb.from('saves').select('data').eq('user_id', user.id).maybeSingle();
+    const { data, error } = await sb.from('saves').select('data').eq('user_id', uid).maybeSingle();
     if (error) throw error;
+    if (user?.id !== uid) return;
     const merged = merge(readLocal(), data?.data || {});
     applyLocal(merged);
     await push();
@@ -75,24 +78,27 @@ async function loadRecord() {
 }
 const fireUser = () => window.dispatchEvent(new CustomEvent('vr:user'));
 
-async function loadProfile() {
-  const meta = user.user_metadata || {};
-  let p = { nickname: meta.name || meta.full_name || (user.email || '').split('@')[0] || '플레이어', avatar_url: meta.avatar_url };
+async function loadProfile(u) {
+  let p = profileSeed(u);
   try {
-    let { data, error } = await sb.from('profiles').select('nickname, avatar_url, nick_set').eq('id', user.id).maybeSingle();
-    if (error) ({ data } = await sb.from('profiles').select('nickname, avatar_url').eq('id', user.id).maybeSingle());   // nickname.sql 실행 전
-    if (data) p = data;
-    else await sb.from('profiles').upsert({ id: user.id, nickname: p.nickname.slice(0, 20), avatar_url: p.avatar_url });
+    let { data, error } = await sb.from('profiles').select('nickname, avatar_url, nick_set').eq('id', u.id).maybeSingle();
+    if (error) ({ data } = await sb.from('profiles').select('nickname, avatar_url').eq('id', u.id).maybeSingle());   // nickname.sql 실행 전
+    if (data) p = { ...p, ...data, nickname: typeof data.nickname === 'string' && data.nickname.trim() ? data.nickname : p.nickname };
+    else if (user?.id === u.id) {
+      const { error: insertError } = await sb.from('profiles').upsert({ id: u.id, nickname: p.nickname, avatar_url: p.avatar_url });
+      if (!insertError) p.nick_set = false;
+    }
   } catch {}
   return p;
 }
 
 function render(p) {
   const box = $('acct-box'); if (!box) return;
-  if (!ready) { box.innerHTML = ''; return; }
+  if (!ready) { paintOAuth(); box.innerHTML = ''; return; }
   if (!user) {
-    box.innerHTML = `<button id="acct-login" type="button" class="main-btn acct-login" title="로그인하면 아케이드 전적과 스토리 진행이 저장돼요"><img src="img/ui/login.webp" alt="" class="ui-ic" width="64" height="64"><span>구글 로그인</span><small>전적 저장</small></button>`;
-    $('acct-login').onclick = login;
+    box.innerHTML = `<div class="oauth-row"><button id="acct-login" type="button" class="main-btn acct-login" data-oauth-provider="google">구글 로그인</button><button id="acct-login-kakao" type="button" class="main-btn acct-login oauth-kakao" data-oauth-provider="kakao" aria-label="카카오 로그인" hidden><img src="img/ui/kakao-symbol.svg" class="oauth-symbol" width="18" height="18" alt="">로그인</button></div>`;
+    $('acct-login').onclick = () => login('google');
+    $('acct-login-kakao').onclick = () => login('kakao');
   } else {
     const av = p?.avatar_url
       ? `<img src="${esc(p.avatar_url)}" alt="" referrerpolicy="no-referrer" class="acct-avatar" onerror="this.onerror=null;this.src='img/ui/profile.webp'">`
@@ -102,16 +108,72 @@ function render(p) {
       <button id="acct-logout" type="button" class="acct-logout">로그아웃</button></div>`;
     $('acct-logout').onclick = logout;
   }
+  paintOAuth();
 }
 
-async function login() {
-  if (!sb) return (window.VRGem?.toast || alert)('지금은 로그인 서버에 연결할 수 없어요. 게스트로 플레이해 주세요.');
-  const { error } = await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: REDIRECT } });
-  if (error) (window.VRGem?.toast || alert)('로그인을 시작하지 못했어요: ' + error.message);
+const notify = message => (window.VRGem?.toast || alert)(message);
+const canLogin = provider => !!sb && ready && (provider === 'google' || (provider === 'kakao' && kakaoEnabled));
+function paintOAuth() {
+  document.querySelectorAll('[data-oauth-provider]').forEach(button => {
+    button.hidden = button.dataset.oauthProvider === 'kakao' && !canLogin('kakao');
+    button.disabled = oauthBusy || !ready;
+  });
+  for (const provider of Object.keys(OAUTH_PROVIDERS)) {
+    const button = $('main-link-' + provider);
+    if (!button) continue;
+    button.hidden = !user || !canLogin(provider) || hasIdentity(user, provider);
+    button.disabled = oauthBusy;
+    button.onclick = () => linkProvider(provider);
+  }
+  window.dispatchEvent(new CustomEvent('vr:auth-providers'));
 }
+function chooseLogin() {
+  if (document.getElementById('oauth-choose')) return;
+  const ov = document.createElement('div'); ov.id = 'oauth-choose'; ov.className = 'oauth-overlay';
+  ov.innerHTML = `<div class="oauth-card" role="dialog" aria-modal="true" aria-labelledby="oauth-title"><h2 id="oauth-title">로그인</h2><div class="oauth-row"><button type="button" class="main-btn" data-oauth-provider="google">구글 로그인</button><button type="button" class="main-btn oauth-kakao" data-oauth-provider="kakao"><img src="img/ui/kakao-symbol.svg" class="oauth-symbol" width="18" height="18" alt="">카카오 로그인</button></div><button type="button" class="main-btn oauth-close">닫기</button></div>`;
+  const close = () => { ov.remove(); document.removeEventListener('keydown', onKey); };
+  const onKey = e => { if (e.key === 'Escape') close(); };
+  ov.querySelectorAll('[data-oauth-provider]').forEach(b => { b.onclick = () => { close(); login(b.dataset.oauthProvider); }; });
+  ov.querySelector('.oauth-close').onclick = close;
+  ov.onclick = e => { if (e.target === ov) close(); };
+  document.addEventListener('keydown', onKey); document.body.append(ov); paintOAuth(); ov.querySelector('button').focus();
+}
+async function startOAuth(provider, linking) {
+  if (!Object.hasOwn(OAUTH_PROVIDERS, provider) || oauthBusy) return;
+  if (!canLogin(provider)) return notify('지금은 이 로그인을 사용할 수 없어요.');
+  const uid = user?.id;
+  if (linking && (!uid || hasIdentity(user, provider))) return;
+  if (!linking && uid) return; // Never switch/replace a signed-in account by accident.
+  oauthBusy = true; paintOAuth();
+  try {
+    if (linking) {
+      const question = `현재 계정에 ${OAUTH_PROVIDERS[provider]} 로그인을 연결할까요? 이미 따로 가입한 계정은 합쳐지지 않습니다.`;
+      const yes = window.VRConfirm ? await window.VRConfirm(question) : window.confirm(question);
+      if (!yes || user?.id !== uid) return;
+    }
+    const request = oauthRequest(provider, REDIRECT);
+    const result = await (linking ? sb.auth.linkIdentity(request) : sb.auth.signInWithOAuth(request));
+    if (result.error) throw result.error;
+    // Keep a double click from replacing the PKCE verifier while navigating.
+    oauthTimer = setTimeout(() => { oauthTimer = null; oauthBusy = false; paintOAuth(); }, 10000);
+  } catch (e) {
+    if (e?.code === 'manual_linking_disabled' || /manual linking.*disabled/i.test(e?.message || '')) notify('로그인 연결 설정이 아직 꺼져 있어요.');
+    else if (['identity_already_exists', 'email_exists'].includes(e?.code)) notify('이미 다른 계정에 연결된 로그인입니다. 기존 계정은 그대로예요.');
+    else notify(linking ? '로그인을 연결하지 못했어요. 기존 계정은 그대로예요.' : '로그인을 시작하지 못했어요. 다시 시도해 주세요.');
+  } finally {
+    if (!oauthTimer) { oauthBusy = false; paintOAuth(); }
+  }
+}
+async function login(provider) {
+  if (user) return;
+  if (!sb || !ready) return notify('지금은 로그인 서버에 연결할 수 없어요.');
+  if (provider === undefined) { if (canLogin('kakao')) return chooseLogin(); provider = 'google'; }
+  return startOAuth(provider, false);
+}
+async function linkProvider(provider) { return startOAuth(provider, true); }
 async function logout() {
   try { await push(); await sb.auth.signOut(); } catch {}
-  user = null; render(); fireUser();
+  clearTimeout(oauthTimer); oauthTimer = null; oauthBusy = false; ++userVersion; document.getElementById('nick-ov')?.remove(); user = null; profile = null; render(); fireUser();
 }
 
 // Arcade records are settled by arcade-verify-v5, never by a browser vr:match event.
@@ -126,19 +188,29 @@ async function init() {
     ready = true;
     const onUser = async u => {
       const isNew = u && u.id !== user?.id;
-      user = u || null;
+      const version = ++userVersion;
+      if ((u?.id || null) !== (user?.id || null)) document.getElementById('nick-ov')?.remove();
+      user = u || null; profile = null;
       fireUser();
-      if (!user) return render();
+      if (!u) return render();
       loadRecord();
       render({ nickname: '불러오는 중...' });
-      if (isNew) await syncOnLogin();
-      profile = await loadProfile(); render(profile);
+      if (isNew) await syncOnLogin(u.id);
+      if (version !== userVersion) return;
+      const nextProfile = await loadProfile(u);
+      if (version !== userVersion) return;
+      profile = nextProfile; render(profile);
       if (profile && profile.nick_set === false) askNickname(true);
     };
+    // Register before profile I/O: account changes must invalidate old responses.
+    sb.auth.onAuthStateChange((ev, session) => {
+      if ((session?.user?.id || null) !== (user?.id || null)) void onUser(session?.user);
+      else if (session?.user) { user = session.user; if (ev === 'USER_UPDATED') render(profile); }
+    });
+    void discoverKakao(config).then(enabled => { kakaoEnabled = enabled; paintOAuth(); });
     await onUser(data?.session?.user);
-    sb.auth.onAuthStateChange((_ev, session) => { if ((session?.user?.id || null) !== (user?.id || null)) onUser(session?.user); });
-    // OAuth 콜백 파라미터 정리
-    if (/[?&]code=|access_token=/.test(location.search + location.hash)) history.replaceState(null, '', location.pathname);
+    // Both providers use the SDK's PKCE callback; never interpret/merge identities here.
+    if (cleanOAuthCallback(location, history)) notify('로그인이 취소되었거나 완료되지 않았어요. 다시 시도해 주세요.');
   } catch (e) {
     console.warn('[cloud] Supabase 연결 실패 - 게스트 모드', e);
     sb = null; ready = false; render();
@@ -192,5 +264,5 @@ function askNickname(first) {
   });
 }
 
-window.VRCloud = { get profile() { return profile; }, askNickname: () => askNickname(false), get user() { return user; }, get sb() { return sb; }, get ready() { return ready; }, loadRecord, login, logout, push };
+window.VRCloud = { get profile() { return profile; }, askNickname: () => askNickname(false), get user() { return user; }, get sb() { return sb; }, get ready() { return ready; }, loadRecord, login, logout, push, canLogin, linkProvider };
 init();
