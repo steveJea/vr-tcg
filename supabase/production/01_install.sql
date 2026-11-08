@@ -1,11 +1,11 @@
 -- GENERATED DELTA ONLY: existing production DB, NEVER staging_install/seed SQL.
 -- Target: htarwisgkkphutxxnuak; baseline main f8ed722dbd558a90f091752222bfc7f53d7254e1; staging d0ba664b9d2b1ca65d7f86863292b0dfd0985d08.
--- BLOCKED until the owner reads the production system_identifier and it is pinned in config + regenerated.
+-- Production system_identifier 7692130048193495360 explicitly confirmed by the owner and pinned. Run only in the agreed maintenance window after settlement/claims.
 -- Do not guess/substitute the current DB ID automatically. See docs/PRODUCTION_ROLLOUT_20261108.md.
 -- Atomic + ledger-protected rerun. Existing user rows are not deleted or reset.
 begin;
 do $production_guard$
-declare expected_system_id text := 'PRODUCTION_SYSTEM_ID_REQUIRED'; actual_system_id text;
+declare expected_system_id text := '7692130048193495360'; actual_system_id text;
 begin
  select system_identifier::text into actual_system_id from pg_catalog.pg_control_system();
  if expected_system_id !~ '^[1-9][0-9]{15,19}$' or expected_system_id='7703759698107299042' or actual_system_id is distinct from expected_system_id then

@@ -34,10 +34,17 @@ try{
  await q(`insert into saves(user_id,data) values($1,'{"private_fixture":"preserve","vrTcgStats.v5":{"wins":999}}')`,[me]);
  const preserved=['auth.users','public.player_wallet','public.player_state','public.story_progress','public.pvp_ratings','public.matches','public.saves','public.story_gacha','public.gem_ledger','public.pvp_reward_claims','public.pvp_tier_claims','public.tower_progress','public.war_decks'];
  const snapshot=async(tables=preserved)=>Promise.all(tables.map(t=>q(`select to_jsonb(t) v from ${t} t order by to_jsonb(t)::text`)));
- const before=await snapshot(),unbound=await rd('supabase/production/01_install.sql');
- assert.equal(unbound,await buildProductionSql());
- await assert.rejects(db.exec(unbound),/STOP: production system_identifier/);await db.exec('rollback');
- assert.equal(await val(`select to_regnamespace('vr_rollout_private')::text v`),null,'wrong/unbound DB must receive NO DDL');
+ const before=await snapshot(),shipped=await rd('supabase/production/01_install.sql');
+ assert.equal(shipped,await buildProductionSql());
+ if(config.productionSystemId){
+  assert(shipped.includes("expected_system_id text := '"+config.productionSystemId+"'"));
+  assert(!shipped.includes('PRODUCTION_SYSTEM_ID_REQUIRED'));
+ }
+ // The actual shipped production pin must reject the local DB; null must remain fail-closed too.
+ for(const guarded of [shipped,await buildProductionSql({systemId:null})]){
+  await assert.rejects(db.exec(guarded),/STOP: production system_identifier/);await db.exec('rollback');
+  assert.equal(await val(`select to_regnamespace('vr_rollout_private')::text v`),null,'wrong/unbound DB must receive NO DDL');
+ }
  const system=await val(`select system_identifier::text v from pg_control_system()`),sql=await buildProductionSql({systemId:system});
  const bad=await buildProductionSql({systemId:system==='1111111111111111111'?'2222222222222222222':'1111111111111111111'});
  await assert.rejects(db.exec(bad),/STOP: production system_identifier/);await db.exec('rollback');

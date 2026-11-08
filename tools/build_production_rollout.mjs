@@ -62,7 +62,7 @@ export async function buildProductionSql({systemId=config.productionSystemId}={}
  const policyCheck=Object.entries(versions).map(([table,hash])=>` if to_regclass('public.${table}') is not null then execute 'select engine_hash from public.${table} where singleton' into h; if h is distinct from '${hash}' then raise exception 'STOP: unexpected existing ${table} engine; review upgrade before proceeding'; end if; end if;`).join('\n');
  return `-- GENERATED DELTA ONLY: existing production DB, NEVER staging_install/seed SQL.
 -- Target: ${config.productionProject}; baseline main ${config.mainCommit}; staging ${config.stagingCommit}.
--- BLOCKED until the owner reads the production system_identifier and it is pinned in config + regenerated.
+-- ${systemId ? 'Production system_identifier '+systemId+' explicitly confirmed by the owner and pinned. Run only in the agreed maintenance window after settlement/claims.' : 'BLOCKED until the owner reads the production system_identifier and it is pinned in config + regenerated.'}
 -- Do not guess/substitute the current DB ID automatically. See docs/PRODUCTION_ROLLOUT_20261108.md.
 -- Atomic + ledger-protected rerun. Existing user rows are not deleted or reset.
 begin;
