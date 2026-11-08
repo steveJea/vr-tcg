@@ -143,7 +143,8 @@
     "security_feedback16_skill_lock_staging.sql": "Existing staging engine-hash upgrade only; fresh phase3/4 SQL already uses the corrected skill engine.",
     "kakao_profile_staging.sql": "Existing staging additive email-less OAuth profile compatibility patch; apply separately before enabling Kakao.",
     "kakao_profile_production.sql": "Production-guarded future batched OAuth patch; never run as staging installer.",
-    "payments_staging.sql": "Staging-cluster-guarded optional Toss test payment add-on. Apply separately with Edge secrets; tested by test:payments, never run as production/fresh-cluster installer."
+    "payments_staging.sql": "Staging-cluster-guarded optional Toss test payment add-on. Apply separately with Edge secrets; tested by test:payments, never run as production/fresh-cluster installer.",
+    "payments_refunds_staging.sql": "Staging-cluster-guarded optional Toss refund add-on; run after payments_staging.sql, tested by test:payments, not a fresh-cluster/production installer."
   },
   "partial": {
     "card_id_remap.sql": "card_id_alias 설정 자료 + 최신 _war_npc_deck만; 기존 사용자 ID 일괄 변경은 제외"
