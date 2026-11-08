@@ -34,10 +34,17 @@
 - 공식 `https://js.tosspayments.com/v2/standard` + `TossPayments(test_ck_…).payment({customerKey})` 사용. 위젯용 `test_gck_…`/v1 API와 혼용하지 않습니다.
 - PC 기본 iframe 대신 **PC·모바일 모두 `windowTarget: self` 리다이렉트**를 명시합니다. 새 팝업을 만들지 않으므로 서버 주문 생성 await 뒤 팝업 사용자 제스처 제한에 의존하지 않습니다. 승인 결과는 기존 successUrl/failUrl 콜백에서만 처리합니다.
 - 서버 주문 번호·숫자 금액·상품명·고객 UUID를 SDK 호출 전에 검증합니다. 원래 서버 가격/소유자 검증과 1회 지급 조건은 바뀌지 않습니다.
-- 오류 토스트 끝에 `INVALID_CLIENT_KEY`, `SDK_VERSION_MISMATCH` 같은 **실제 SDK 오류 코드**가 붙습니다. 콘솔에는 `sdk-init`/`checkout`, 코드, 공식 샘플/별도 테스트 키 여부만 기록하고 키·고객 ID·주문 ID·오류 원문은 기록하지 않습니다.
+- 오류 토스트 끝에 `INVALID_CLIENT_KEY`, `SDK_VERSION_MISMATCH` 같은 **실제 SDK 오류 코드**가 붙습니다. 알 수 없는 오류는 **실제로 받은 메시지(최대 120자)**를 보여줍니다. 콘솔에는 `sdk-init`/`checkout`, 코드, 키 종류와 **비밀값을 가린 메시지·스택(최대 1,200자)**을 기록합니다. 키·인증 헤더/JWT·이메일·고객/주문 ID·결제 키·URL 쿼리는 가리며, 서버 SQL/응답 원문은 여전히 표시하지 않습니다.
 - `INVALID_CLIENT_KEY`라면 선택 설정 TOSS_CLIENT_KEY가 위 공식 샘플의 clientKey인지 확인합니다. 별도로 설정하지 않으면 공식 샘플이 기본값입니다. 승인용 apiSecretKey와 짝이 맞아야 합니다.
 - 이 클라이언트 보완만 적용할 때는 **SQL/Edge 재배포·시크릿 재입력이 필요하지 않습니다.** staging 새로고침 후 확인하세요.
-- 실브라우저 도구가 없어 공식 SDK 파일을 오프라인 DOM mock으로 초기화했습니다(v2 payment API 생성 확인). 네트워크는 차단했으며 실제 결제창·사용자 계정 오류를 완전히 재현한 검사는 아닙니다. 실제 iPhone/PC 동작은 별도 확인이 필요합니다.
+- 실브라우저 재현은 미완료입니다. 공식 SDK 파일을 오프라인 DOM mock으로 초기화했습니다(v2 payment API 생성 확인). 네트워크는 차단했으며 실제 결제창·사용자 계정 오류를 완전히 재현한 검사는 아닙니다. 실제 iPhone/PC 동작은 별도 확인이 필요합니다.
+
+### `UNKNOWN`에 대한 확인 사항
+
+- [`UNKNOWN`은 Toss SDK의 정식 오류 코드](https://docs.tosspayments.com/sdk/v2/error-codes)입니다. **코드 없는 일반 JS 예외라고 단정할 수 없습니다.**
+- 현재 공식 SDK에는 `requestPayment`의 분류되지 않은 내부 예외를 새 `UnknownError`로 바꾸는 처리가 있습니다. 이 경우 앱이 받는 메시지는 “알 수 없는 에러가 발생했습니다.”이고, 내부 원래 메시지·스택은 이미 사라졌을 수 있습니다. 앱의 catch만으로 그것을 복구했다고 주장하지 않습니다.
+- 일반 TypeError/코드 없는 Error라면 이번 보완으로 가려진 원문 메시지를 토스트와 콘솔에서 확인할 수 있습니다. 사용자 계정으로 발생한 실제 원인은 아직 확인되지 않았으며, 이 보완은 **근본 원인 수정/실브라우저 결제창 성공 검증이 아닙니다.**
+- 재발 시 브라우저 콘솔의 `tag: payments` 기록 중 가려진 `stage/code/message/stack`을 확인합니다. 전체 HAR·쿠키·토큰·키를 공유하지 마세요.
 
 ## 임시 가격안 — 확정 BM 아님 / 실제 출금 없음
 
