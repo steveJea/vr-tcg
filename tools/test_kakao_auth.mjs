@@ -117,6 +117,8 @@ for(const error of [{code:'manual_linking_disabled'},{code:'identity_already_exi
 {
  const linked={...kakao,identities:[...kakao.identities,{provider:'google'}]};
  const f=fixture({u:kakao,serverUser:linked,linkIntent:{uid:kakao.id,provider:'google'},profiles:{[kakao.id]:{nickname:'유지',nick_set:true}},href:'https://vr-tcg-staging.notcold.workers.dev/?code=FAKE_TEST_CODE'});await f.settle();assert.equal(f.messages[0],'구글 계정이 연결되었어요.');assert(f.document.getElementById('main-link-google').hidden);assert.equal(f.window.VRCloud.user.id,kakao.id);
+ // SDK initial/focus notifications may still contain the old session identities.
+ for(const event of ['INITIAL_SESSION','SIGNED_IN']) { f.emit(event,kakao);await f.settle();assert(hasIdentity(f.window.VRCloud.user,'google'),'cached SDK event must not overwrite the server-verified link'); }
 }
 // Existing story enrollment/starter RPCs are provider agnostic and UUID-keyed.
 const story=await readFile(new URL('js/story.js',root),'utf8');

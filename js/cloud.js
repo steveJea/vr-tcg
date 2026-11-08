@@ -218,7 +218,9 @@ async function init() {
     // Register before profile I/O: account changes must invalidate old responses.
     sb.auth.onAuthStateChange((ev, session) => {
       if ((session?.user?.id || null) !== (user?.id || null)) void onUser(session?.user);
-      else if (session?.user) { user = session.user; if (ev === 'USER_UPDATED') render(profile); }
+      // INITIAL_SESSION / same-UUID SIGNED_IN can carry stale cached identities.
+      // Keep getUser()'s authoritative result until a genuine server update.
+      else if (session?.user && ['USER_UPDATED', 'TOKEN_REFRESHED'].includes(ev)) { user = session.user; render(profile); }
     });
     void discoverKakao(config).then(enabled => { kakaoEnabled = enabled; paintOAuth(); });
     await onUser(returned.user);
