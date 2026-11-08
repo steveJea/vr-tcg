@@ -96,6 +96,13 @@
 3. staging 게임에 **기존 관리자 계정으로 로그인**한 뒤 같은 브라우저에서 **https://vr-tcg-staging.notcold.workers.dev/admin-payments.html** 접속 → **전액 환불**. 관리자 권한은 기존 `admin_check`/`_admin_guard` 기준입니다. 일반 유저에게는 환불 버튼을 제공하지 않습니다.
 4. 지연되면 같은 주문의 **환불 다시 확인**. 새 주문/멱등키를 만들거나 PG 대시보드에서 별도로 취소하지 마세요.
 
+### 관리자 목록의 구매자·결제 시각
+
+이미 환불이 설치된 staging에서는 **`supabase/payments_refunds_staging.sql` 전체만 다시 실행**합니다. 주문·지급·원장은 유지되고, DB 식별자가 아니면 중단됩니다. **Edge `payments-confirm-v1`은 이번 변경으로 재배포하지 않습니다.** 화면은 staging Worker 배포 후 `admin-payments.html`을 새로고침합니다.
+
+- **구매자**: `profiles.nickname`. 없거나 공백이면 사용자 ID. 이메일·paymentKey는 목록에 없습니다.
+- **결제 시각 (한국시간)**: 지급이 기록된 `paid_at`을 `Asia/Seoul`로 표시합니다. 미결제 주문은 `paid_at`이 없으므로 **미결제 · 생성**과 `created_at`만 표시합니다.
+
 ### 선택 정책: 음수 잔액 대신 미사용·회수 가능 주문만 전액 환불
 
 - 기본 운영안: **지급/결제 완료(`paid_at`) 후 7일 이내의 미사용 패키지**는 관리자 확인 후 **수수료 없이 원결제 전액 환불**, 해당 **유료 심연석과 무료 보너스 전량 회수**. 별도 유저 셀프 환불·부분 환불은 없습니다.
