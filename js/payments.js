@@ -10,7 +10,7 @@ async function open(){
  const panel=document.createElement('div');panel.className='gem-panel';panel.setAttribute('role','dialog');panel.setAttribute('aria-label','테스트 충전 · 임시가');
  const close=document.createElement('button');close.className='gem-x';close.textContent='✕';close.setAttribute('aria-label','닫기');close.onclick=()=>modal.remove();
  const title=document.createElement('h2');title.textContent='테스트 충전 · 임시가';panel.append(close,title);modal.append(panel);document.body.append(modal);modal.onclick=e=>{if(e.target===modal)modal.remove();};
- const button=(text,fn)=>{const b=document.createElement('button');b.type='button';b.className='gem-charge payment-product';b.textContent=text;b.onclick=async()=>{if(buying)return;buying=true;panel.querySelectorAll('button.payment-product').forEach(x=>x.disabled=true);try{if(c.user?.id!==uid)throw Error('login required');await fn();}catch(e){toast(paymentError(e?.code||e?.message,e?.sdkMessage));}finally{buying=false;panel.querySelectorAll('button.payment-product').forEach(x=>x.disabled=false);}};panel.append(b);return b;};
+ const button=(text,fn)=>{const b=document.createElement('button');b.type='button';b.className='gem-charge payment-product';b.textContent=text;b.onclick=async()=>{if(buying)return;buying=true;panel.querySelectorAll('button.payment-product').forEach(x=>x.disabled=true);try{if(c.user?.id!==uid)throw Error('login required');await fn();}catch(e){if(['payment refunded','payment closed','order expired'].includes(e?.message)&&c.user?.id===uid){localStorage.removeItem(pendingKey(uid));modal.remove();}toast(paymentError(e?.code||e?.message,e?.sdkMessage));}finally{buying=false;panel.querySelectorAll('button.payment-product').forEach(x=>x.disabled=false);}};panel.append(b);return b;};
  const prior=loadPending(localStorage,uid);
  if(prior?.paymentKey){button('충전 다시 확인',async()=>{const r=await api(c.sb,config,{op:'confirm',orderId:prior.orderId,paymentKey:prior.paymentKey,amount:prior.amount});if(c.user?.id!==uid)return;localStorage.removeItem(pendingKey(uid));void window.VRGem.status(true);toast('심연석 충전 완료');modal.remove();});return;}
  try{
@@ -22,6 +22,7 @@ async function open(){
    if(!intent||intent.product!==p.id){intent={product:p.id,request:crypto.randomUUID()};savePending(localStorage,uid,intent);}
    const result=await api(c.sb,config,{op:'create',product:p.id,request:intent.request}),o=result.order;
    if(c.user?.id!==uid)throw Error('login required');
+   if(['canceled','failed','expired','refunded'].includes(o.status)){localStorage.removeItem(pendingKey(uid));throw Error(o.status==='refunded'?'payment refunded':'payment closed');}
    if(o.status==='paid'){localStorage.removeItem(pendingKey(uid));toast('이미 충전된 주문이에요.');return;}
    if(o.userId!==uid)throw Error('payment mismatch');
    if(typeof result.clientKey!=='string'||!/^test_ck_[A-Za-z0-9_]+$/.test(result.clientKey)||result.clientKey===RETIRED_TOSS_CLIENT_KEY)throw Error('test payment configuration required');
@@ -34,7 +35,17 @@ async function open(){
     const sdk=Toss(result.clientKey);if(typeof sdk?.payment!=='function')throw Error('sdk:SDK_VERSION_MISMATCH');
     const payment=sdk.payment({customerKey:uid});if(typeof payment?.requestPayment!=='function')throw Error('sdk:SDK_VERSION_MISMATCH');
     phase='checkout';await payment.requestPayment(params);
-   }catch(e){if(['USER_CANCEL','PAY_PROCESS_CANCELED','PAYMENT_REQUEST_ABORTED'].includes(sdkErrorCode(e)))localStorage.removeItem(pendingKey(uid));throw sdkFailure(e,phase,result.clientKey);}
+   }catch(e){
+    if(c.user?.id===uid)try{
+     const reason=['USER_CANCEL','PAY_PROCESS_CANCELED','PAYMENT_REQUEST_ABORTED'].includes(sdkErrorCode(e))?'canceled':'failed';
+     const ended=await api(c.sb,config,{op:'abandon',orderId:o.orderId,reason});
+     if(['canceled','failed','expired'].includes(ended.state)){
+      const current=loadPending(localStorage,uid);if(current?.orderId===o.orderId&&!current.paymentKey)localStorage.removeItem(pendingKey(uid));
+      localStorage.removeItem('vrTcg.toss.order.v1:'+o.orderId);
+     }
+    }catch{} // An uncertain close keeps recovery evidence; server expiry handles abrupt exit.
+    throw sdkFailure(e,phase,result.clientKey);
+   }
   });
  }catch(e){toast(paymentError(e.message));modal.remove();}
 }
