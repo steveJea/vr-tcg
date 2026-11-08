@@ -64,3 +64,5 @@ Supabase 공식 문서는 `account_email` 없이 가입할 수 있다고 안내�
 - 공개 `/auth/v1/settings`는 구글/카카오 ON 여부만 보여 주며 **Allow manual linking 값은 노출하지 않습니다**. 그 설정이 OFF라면 연결 시작 API에서 곧바로 거절되므로 공급자 동의 화면 이후 복귀하는 현상과 구분됩니다. `manual_linking_disabled`일 때만 Supabase **Authentication → Sign In / Providers → Allow manual linking** 설정을 확인하세요. 이번 수정은 SQL/Edge/대시보드 설정 변경이 없습니다.
 - 기존 실패 URL은 이전 코드가 이미 지웠으므로, 익명 조회만으로 형님 계정의 원래 오류 코드나 identity 소유자를 단정할 수는 없습니다. 새로고침 후 같은 연결을 한 번 더 시도하면 구체적인 결과가 나옵니다. 콜백 URL 전체/토큰을 채팅으로 보내지 말고 결과 문구만 확인하세요.
 - 개발 회귀 테스트는 기존 브라우저 SDK와 정확히 같은 auth-js 버전을 사용합니다. 해당 구버전의 malformed-path 관련 low advisory는 기존 런타임에도 해당하는 별도 SDK 유지보수 항목입니다. 이 UI는 공급자를 고정된 google/kakao만 허용하며 버전을 임의 업그레이드하지 않았습니다.
+
+- 후속 회귀: SDK의 오래된 `INITIAL_SESSION`/동일 UUID `SIGNED_IN` 알림이 서버에서 확인한 연결 상태를 덮어쓰지 않도록 했다. 실제 `USER_UPDATED`/`TOKEN_REFRESHED`와 계정 변경은 계속 반영한다.
