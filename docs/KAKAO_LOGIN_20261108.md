@@ -55,3 +55,12 @@ Supabase 공식 문서는 `account_email` 없이 가입할 수 있다고 안내�
 버튼 심볼은 [카카오 공식 리소스](https://developers.kakao.com/tool/resource/login)의 원형을 유지하고 노란 컨테이너/검은 심볼을 사용합니다. 좁은 상단 버튼만 공식 축약형인 「로그인」을 씁니다.
 
 공식 참고: [Supabase Kakao](https://supabase.com/docs/guides/auth/social-login/auth-kakao), [계정 연결](https://supabase.com/docs/guides/auth/auth-identity-linking), [카카오 앱 설정](https://developers.kakao.com/docs/ko/app-setting/app), [플랫폼 키 변경 안내](https://developers.kakao.com/docs/ko/getting-started/app-key-migration).
+
+## 계정 연결 복귀 오류 수정 (후속)
+
+- 연결할 구글 계정이 이미 다른 staging 사용자에게 속해 있으면 Supabase는 `identity_already_exists`로 연결을 거절합니다. **이미 따로 있는 두 계정을 합치는 기능이 아닙니다.** 신규 메시지는 「이미 다른 계정에 연결된 구글 계정이에요.」입니다. 기존 계정/진행도는 삭제·이동하지 않습니다.
+- 이전 화면은 콜백의 오류 종류를 버리고 모두 「취소되었거나 완료되지 않았어요」로 표시했습니다. 또한 현재 고정 SDK(auth-js 2.65.0)는 PKCE의 오류 전용 URL을 잘못 처리해 기존 로그인 세션까지 제거하는 동작이 실제 SDK 테스트에서 재현되었습니다. 오류를 안전하게 분류·제거한 뒤 SDK를 초기화해 기존 세션을 보존합니다.
+- 정상 `?code=`는 SDK가 **딱 한 번** 교환합니다. 앱이 추가로 수동 교환하지 않습니다. 연결 시작 계정/공급자/시각만 탭 저장소에 임시 보관하고(토큰·코드·원문 오류 저장 없음), 복귀 시 `auth.getUser()`의 서버 identity와 동일 UUID로 실제 연결 여부를 확인합니다. 연결된 상태면 성공, 다른 계정에 속했으면 충돌, 확인 통신 실패면 미확인으로 구분합니다.
+- 공개 `/auth/v1/settings`는 구글/카카오 ON 여부만 보여 주며 **Allow manual linking 값은 노출하지 않습니다**. 그 설정이 OFF라면 연결 시작 API에서 곧바로 거절되므로 공급자 동의 화면 이후 복귀하는 현상과 구분됩니다. `manual_linking_disabled`일 때만 Supabase **Authentication → Sign In / Providers → Allow manual linking** 설정을 확인하세요. 이번 수정은 SQL/Edge/대시보드 설정 변경이 없습니다.
+- 기존 실패 URL은 이전 코드가 이미 지웠으므로, 익명 조회만으로 형님 계정의 원래 오류 코드나 identity 소유자를 단정할 수는 없습니다. 새로고침 후 같은 연결을 한 번 더 시도하면 구체적인 결과가 나옵니다. 콜백 URL 전체/토큰을 채팅으로 보내지 말고 결과 문구만 확인하세요.
+- 개발 회귀 테스트는 기존 브라우저 SDK와 정확히 같은 auth-js 버전을 사용합니다. 해당 구버전의 malformed-path 관련 low advisory는 기존 런타임에도 해당하는 별도 SDK 유지보수 항목입니다. 이 UI는 공급자를 고정된 google/kakao만 허용하며 버전을 임의 업그레이드하지 않았습니다.
