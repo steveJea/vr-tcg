@@ -73,6 +73,7 @@
   function bind(root, cardId, grade, reopen) {
     root.querySelectorAll('[data-gslot]').forEach(b => b.onclick = e => { e.stopPropagation(); const s = b.dataset.gslot;
       if (s === 'sigil') return sigilPop(cardId);
+      if (window.VRUnlocks && !window.VRUnlocks.guard('gear')) return;
       const cur = mine(cardId).find(g => slotOf(g) === s);
       cur ? itemPop(cur, { cardId, reopen }) : bag({ slot: s, cardId, reopen }); });
   }
@@ -82,6 +83,7 @@
   const SRC_TXT = { story_boss: '스토리 보스 소탕', raid_select: '조직 토벌 순위', guild_shop: '조직 상점', pvp_shop: 'PvP 상점', event: '이벤트', exchange: '조각 교환' };
   const sigIcon = c => SIGIL_ICON[c] ? `img/gear/${SIGIL_ICON[c]}.webp` : '';
   function sigilPop(cardId) {
+    if (window.VRUnlocks && !window.VRUnlocks.guard('sigil')) return;
     cardId = String(cardId);
     const sg = sigils[cardId], own = (st.sigils || []).find(s => s.card === cardId);
     if (!sg) return pop(`<div class="gear-big">${img('', 'sigil')}</div><b>증표</b><p class="gear-dim">이 인재의 증표는 아직 준비 중이에요</p>`);
@@ -167,6 +169,7 @@
 
   // 가방 (slot 지정 시 그 슬롯만, cardId 있으면 고르면 장착)
   async function bag(ctx = {}) {
+    if (window.VRUnlocks && !window.VRUnlocks.guard('gear')) return;
     if (!await load()) return toast('장비를 불러오지 못했어요');
     let filt = ctx.slot || 'all', pick = null;   // pick: 여러 개 선택 모드 (Set)
     const m = pop('', 'bag');

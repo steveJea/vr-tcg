@@ -9,7 +9,7 @@ const REDIRECT = location.hostname === 'tcg.mbbs.kr' ? 'https://tcg.mbbs.kr/' : 
 
 // 클라우드에 동기화할 localStorage 키 (전적 + 설정)
 const STATS_KEY = 'vrTcgStats.v1';
-// 아케이드 전적은 동기화하지 않음 (게스트 기록이 계정에 섞이지 않게). 계정 전적은 서버 matches 에서 집계
+// 아케이드 전적은 동기화하지 않음 (게스트 기록이 계정에 섞이지 않게). 계정 전적은 검증 서버에서 집계
 const SYNC_KEYS = ['vrTcgSkipFx', 'vrTcgVoiceOn', 'vrTcgVoiceVol', 'vrTcgSound', 'tcg_hand_sort', 'tcg_skip_endturn_confirm', 'vrTutorialDone'];
 
 let sb = null, user = null, profile = null, ready = false, pushTimer = null, applying = false;
@@ -61,15 +61,15 @@ async function syncOnLogin() {
   } catch (e) { console.warn('[cloud] sync failed', e); }
 }
 
-// 계정 아케이드 전적 = 서버 matches 집계 (스토리 전투는 기록 안 됨). 실패하면 기존 계정 캐시 유지
+// 계정 아케이드 전적 = 검증 서버 arcade_record_v5 집계 (스토리 전투는 기록 안 됨). 실패하면 기존 계정 캐시 유지
 async function loadRecord() {
   if (!sb || !user) return;
   const uid = user.id;
   try {
-    const cnt = async r => { const { count, error } = await sb.from('matches').select('id', { count: 'exact', head: true }).eq('user_id', uid).eq('result', r); if (error) throw error; return count || 0; };
-    const [wins, losses, draws] = await Promise.all(['win', 'lose', 'draw'].map(cnt));
+    const {data, error}=await sb.rpc('arcade_record_v5'); if(error)throw error;
+    const {wins,losses,draws}=data;
     if (user?.id !== uid) return;
-    origSet.call(localStorage, `${STATS_KEY}:${uid}`, JSON.stringify({ wins, losses, draws }));
+    origSet.call(localStorage, `vrTcgStats.v5:${uid}`, JSON.stringify({ wins, losses, draws }));
   } catch (e) { console.warn('[cloud] 전적 불러오기 실패', e?.message || e); }
   window.dispatchEvent(new CustomEvent('vr:user'));
 }
@@ -114,19 +114,7 @@ async function logout() {
   user = null; render(); fireUser();
 }
 
-// 판 결과 기록 (game.js가 'vr:match' 이벤트 발생)
-window.addEventListener('vr:match', async e => {
-  if (!sb || !user) return;
-  const m = e.detail || {};
-  try {
-    await sb.from('matches').insert({
-      user_id: user.id, result: m.result, reason: m.reason ? String(m.reason).slice(0, 20) : null,
-      turns: m.turns | 0, damage: Math.max(0, m.damage | 0), skills: m.skills | 0,
-      mvp_id: m.mvpId ? String(m.mvpId).slice(0, 40) : null, mvp_name: m.mvpName ? String(m.mvpName).slice(0, 40) : null,
-      merc_id: m.mercId ? String(m.mercId).slice(0, 40) : null,
-    });
-  } catch (err) { console.warn('[cloud] match save failed', err); }
-});
+// Arcade records are settled by arcade-verify-v5, never by a browser vr:match event.
 
 async function init() {
   // 미등록 주소·아직 준비 안 된 테스트 DB는 SDK/로그인/DB 요청 자체를 시작하지 않음.
@@ -204,5 +192,5 @@ function askNickname(first) {
   });
 }
 
-window.VRCloud = { get profile() { return profile; }, askNickname: () => askNickname(false), get user() { return user; }, get sb() { return sb; }, get ready() { return ready; }, login, logout, push };
+window.VRCloud = { get profile() { return profile; }, askNickname: () => askNickname(false), get user() { return user; }, get sb() { return sb; }, get ready() { return ready; }, loadRecord, login, logout, push };
 init();

@@ -39,6 +39,9 @@
 #howto.open,
 .drink-ask { z-index: 9600 !important; }
 .pvp-modal.pvp-top:not(.vr-in-page), .pvp-vsx, .gal-zoom, .pvp-modal.pvp-sub:not(.vr-in-page) { z-index: 9650 !important; }
+/* Card details must sit above their invoking deck dialog; zoom is above the detail. */
+#detail:not(.hidden) { z-index: 9660 !important; }
+#zoom-view.open { z-index: 9680 !important; }
 #vr-confirm { z-index: 9700 !important; }
 .gem-toast, .story-toast, .gd-toast, .pvp-toast { z-index: 9800 !important; }
 /* 3단계: 마이페이지 · 갤러리 판을 페이지 안에 */

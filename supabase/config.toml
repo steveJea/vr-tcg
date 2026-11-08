@@ -1,0 +1,6 @@
+# User-session function; handler ALSO validates JWT with Auth /user.
+[functions.pvp-verify-v3]
+verify_jwt = true
+
+[functions.guildbattle-verify-v4]
+verify_jwt = true

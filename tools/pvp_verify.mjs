@@ -1,22 +1,22 @@
-// PvP 결과 재검증: node tools/pvp_verify.mjs attempts.json
-// attempts.json = SQL Editor 에서 내려받은 행 배열:
-//   select id, mode, seed, my_snap, opp_snap, actions, wins, losses from pvp_attempts where reported_at is not null and verified is null;
-// 같은 seed·스냅샷으로 다시 돌려 보고한 결과와 다르면 출력하고, verified 갱신 SQL 을 만든다. (cards.csv·skills.json 은 그 시점 버전이어야 함)
-import { readFileSync } from 'fs';
-import { setSkillData } from '../js/skills.js';
-import { parseCSV, setCardPool } from '../js/rules.js';
-import { runSeries, snapCard } from '../js/pvp-core.js';
-const rd = p => readFileSync(new URL(p, import.meta.url), 'utf8');
-const pool = parseCSV(rd('../data/cards.csv')); setCardPool(pool); setSkillData(JSON.parse(rd('../data/skills.json')), JSON.parse(rd('../data/combos.json')));
-const byId = id => pool.find(c => String(c.id) === String(id));
-const rows = JSON.parse(readFileSync(process.argv[2] || 'attempts.json', 'utf8'));
-const good = [], bad = [];
-for (const a of rows) {
-  const J = v => typeof v === 'string' ? JSON.parse(v) : v, cards = d => d.map(o => snapCard(o, byId)).filter(Boolean);
-  const r = runSeries(a.mode, J(a.my_snap).map(cards), J(a.opp_snap).map(cards), a.seed, false, a.actions ? J(a.actions) : null);   // actions 있으면 수동 판
-  (r.wins === +a.wins && r.losses === +a.losses ? good : bad).push(a.id);
-  if (r.wins !== +a.wins || r.losses !== +a.losses) console.log(`✕ #${a.id} 보고 ${a.wins}-${a.losses} / 재계산 ${r.wins}-${r.losses}`);
+// READ-ONLY audit. This tool never certifies legacy rows or emits settlement/UPDATE SQL.
+// node tools/pvp_verify.mjs attempts.json
+// Export current-version attempts with their session metadata:
+// select a.id,a.mode,a.seed,a.my_snap,a.opp_snap,a.actions,a.wins,a.losses,s.control,s.engine_hash
+// from pvp_attempts a join pvp_sessions_v3 s using(id) where s.verified;
+import { readFileSync } from 'node:fs';
+import { ENGINE_VERSION, verifyBattle } from '../supabase/functions/_shared/pvp-engine-v3.mjs';
+const rows=JSON.parse(readFileSync(process.argv[2]||'attempts.json','utf8'));
+const J=v=>typeof v==='string'?JSON.parse(v):v;
+let good=0,bad=0,skipped=0;
+for(const a of rows) {
+ if(a.engine_hash!==ENGINE_VERSION || !['auto','actions'].includes(a.control)) {
+  console.log(`SKIP #${a.id}: legacy/unsupported engine; NOT certified`); skipped++; continue;
+ }
+ try {
+  const r=verifyBattle({mode:a.mode,seed:a.seed,me:J(a.my_snap),opp:J(a.opp_snap),control:a.control},a.control==='auto'?null:J(a.actions));
+  if(r.wins!==+a.wins || r.losses!==+a.losses) throw Error(`reported ${a.wins}-${a.losses}, replay ${r.wins}-${r.losses}`);
+  good++;
+ } catch(e) { bad++; console.log(`FAIL #${a.id}: ${e.message}`); }
 }
-console.log(`일치 ${good.length} · 불일치 ${bad.length}`);
-if (good.length) console.log(`update pvp_attempts set verified = true where id in (${good.join(',')});`);
-if (bad.length) console.log(`update pvp_attempts set verified = false where id in (${bad.join(',')});`);
+console.log(`Read-only replay: match ${good}, mismatch/illegal ${bad}, unsupported ${skipped}. No database writes; rewards settle only through pvp-verify-v3.`);
+if(bad) process.exitCode=1;

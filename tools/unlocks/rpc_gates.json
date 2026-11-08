@@ -1,0 +1,202 @@
+[
+  {
+    "name": "dispatch_refresh",
+    "gate": "perform public._unlock_require('dispatch');"
+  },
+  {
+    "name": "dispatch_start",
+    "gate": "perform public._unlock_require('dispatch');"
+  },
+  {
+    "name": "guild_create",
+    "gate": "perform public._unlock_require('guild');"
+  },
+  {
+    "name": "guild_apply",
+    "gate": "perform public._unlock_require('guild');"
+  },
+  {
+    "name": "guild_update",
+    "gate": "perform public._unlock_require('guild');"
+  },
+  {
+    "name": "guild_transfer",
+    "gate": "perform public._unlock_require('guild');"
+  },
+  {
+    "name": "guild_kick",
+    "gate": "perform public._unlock_require('guild');"
+  },
+  {
+    "name": "guild_shop_buy",
+    "gate": "perform public._unlock_require('guild');"
+  },
+  {
+    "name": "guild_rally_claim",
+    "gate": "perform public._unlock_require('guild');"
+  },
+  {
+    "name": "guild_quest_claim",
+    "gate": "perform public._unlock_require('guild');"
+  },
+  {
+    "name": "friend_request",
+    "gate": "perform public._unlock_require('friends');"
+  },
+  {
+    "name": "friend_respond",
+    "gate": "perform public._unlock_require('friends');"
+  },
+  {
+    "name": "friend_gift_send",
+    "gate": "perform public._unlock_require('friends');"
+  },
+  {
+    "name": "friend_gift_claim",
+    "gate": "perform public._unlock_require('friends');"
+  },
+  {
+    "name": "friend_gift_claim_all",
+    "gate": "perform public._unlock_require('friends');"
+  },
+  {
+    "name": "friend_battle_start",
+    "gate": "perform public._unlock_require('friends');"
+  },
+  {
+    "name": "gear_expand",
+    "gate": "perform public._unlock_require('gear');"
+  },
+  {
+    "name": "gear_lock",
+    "gate": "perform public._unlock_require('gear');"
+  },
+  {
+    "name": "gear_equip",
+    "gate": "perform public._unlock_require('gear');"
+  },
+  {
+    "name": "gear_unequip",
+    "gate": "perform public._unlock_require('gear');"
+  },
+  {
+    "name": "gear_box_open",
+    "gate": "perform public._unlock_require('gear');"
+  },
+  {
+    "name": "gear_enhance",
+    "gate": "perform public._unlock_require('gear');"
+  },
+  {
+    "name": "gear_reroll",
+    "gate": "perform public._unlock_require('gear');"
+  },
+  {
+    "name": "camp_put",
+    "gate": "perform public._unlock_require('camp');"
+  },
+  {
+    "name": "camp_unlock",
+    "gate": "perform public._unlock_require('camp');"
+  },
+  {
+    "name": "camp_levelup",
+    "gate": "perform public._unlock_require('camp');"
+  },
+  {
+    "name": "story_merge",
+    "gate": "perform public._unlock_require('merge');"
+  },
+  {
+    "name": "story_skill_levelup",
+    "gate": "perform public._unlock_require('skill');"
+  },
+  {
+    "name": "guild_lend_set",
+    "gate": "perform public._unlock_require('lend');"
+  },
+  {
+    "name": "guild_lend_borrow",
+    "gate": "perform public._unlock_require('lend');"
+  },
+  {
+    "name": "sigil_craft",
+    "gate": "perform public._unlock_require('sigil');"
+  },
+  {
+    "name": "sigil_enhance",
+    "gate": "perform public._unlock_require('sigil');"
+  },
+  {
+    "name": "sigil_exchange",
+    "gate": "perform public._unlock_require('sigil');"
+  },
+  {
+    "name": "sigil_mail_claim",
+    "gate": "perform public._unlock_require('sigil');"
+  },
+  {
+    "name": "raid_sweep_v4",
+    "gate": "perform public._unlock_require('raid');"
+  },
+  {
+    "name": "raid_set_difficulty",
+    "gate": "perform public._unlock_require('raid');"
+  },
+  {
+    "name": "war_set_deck",
+    "gate": "perform public._unlock_require('war');"
+  },
+  {
+    "name": "war_set_slot",
+    "gate": "perform public._unlock_require('war');"
+  },
+  {
+    "name": "war_signup",
+    "gate": "perform public._unlock_require('war');"
+  },
+  {
+    "name": "war_auto_assign",
+    "gate": "perform public._unlock_require('war');"
+  },
+  {
+    "name": "pvp_set_deck",
+    "gate": "perform public._unlock_require(public._unlock_pvp_key(p_league,p_mode));"
+  },
+  {
+    "name": "pvp_start_v3",
+    "gate": "perform public._unlock_require(public._unlock_pvp_key(p_league,p_mode));"
+  },
+  {
+    "name": "guildbattle_start_v4",
+    "gate": "perform public._unlock_require(case p_kind when 'raid' then 'raid' when 'war' then 'war' else null end);"
+  },
+  {
+    "name": "guild_invite",
+    "gate": "perform public._unlock_require('guild');"
+  },
+  {
+    "name": "guild_respond",
+    "gate": "perform public._unlock_require('guild');"
+  },
+  {
+    "name": "guild_set_role",
+    "gate": "perform public._unlock_require('guild');"
+  },
+  {
+    "name": "guild_checkin",
+    "gate": "perform public._unlock_require('guild');"
+  },
+  {
+    "name": "guild_quest_reroll",
+    "gate": "perform public._unlock_require('guild');"
+  },
+  {
+    "name": "guild_weekly_claim",
+    "gate": "perform public._unlock_require('guild');"
+  },
+  {
+    "name": "_guild_add_member",
+    "gate": "if coalesce((select level from public.player_state where user_id=p_uid),1)<6 then raise exception 'Lv6'; end if;"
+  }
+]

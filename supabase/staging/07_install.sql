@@ -1,4 +1,4 @@
--- ⚠ 테스트 전용 7/10. 운영 실행 금지. 파일 전체를 번호 순서대로 실행.
+-- ⚠ 테스트 전용 7/14. 운영 실행 금지. 파일 전체를 번호 순서대로 실행.
 -- 대상 프로젝트: cuyqchmdcnsgzkwyclji; 운영 htarwisgkkphutxxnuak 금지.
 -- 완료한 파일은 다시 실행해도 건너뜀. 중간 오류는 해당 파일만 되돌아감.
 -- 실제 project_ref는 SQL Editor가 보장해서 제공하지 않음: DB 고유번호를 대조.
@@ -40,7 +40,7 @@ set local check_function_bodies = off;
 
 do $vr_install_part$
 begin
-  if exists (select 1 from vr_staging_install.parts where bundle_hash <> 'ac67dd4f5df4920603189b3e57b25a5e13e409b830a4a45862378c594de08997' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
+  if exists (select 1 from vr_staging_install.parts where bundle_hash <> '8157203b9aa6e793a649e2e327c69fce2bfdfa17b0dc7a81d0e845baa5d34adf' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
     raise exception 'STOP: 다른 버전/DB의 설치 기록입니다. 파일을 섞지 마세요.';
   end if;
   if exists (select 1 from vr_staging_install.parts where part_no = 7) then
@@ -1455,7 +1455,7 @@ create table if not exists public.friend_battles (
   execute $vr_statement$create index if not exists friend_battles_opp_idx on public.friend_battles (opp_user, created_at desc);$vr_statement$;
 
   insert into vr_staging_install.parts(part_no, bundle_hash, part_hash, project_ref, db_id)
-  values (7, 'ac67dd4f5df4920603189b3e57b25a5e13e409b830a4a45862378c594de08997', '718e613270adfe78f559a0d89a9908277e1a392adcf0b342886578c9d7c8fdb8', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
+  values (7, '8157203b9aa6e793a649e2e327c69fce2bfdfa17b0dc7a81d0e845baa5d34adf', '718e613270adfe78f559a0d89a9908277e1a392adcf0b342886578c9d7c8fdb8', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
 end $vr_install_part$;
 commit;
-select '07_install.sql: 완료 또는 이미 완료 (7/10)' as result;
+select '07_install.sql: 완료 또는 이미 완료 (7/14)' as result;

@@ -47,6 +47,7 @@
   const empty = t => `<div class="fr-empty">${t}</div>`;
 
   function open() {
+    if (window.VRUnlocks && !window.VRUnlocks.guard('friends')) return;
     document.querySelector('.friend-pop:not(.vr-in-page)')?.remove();
     const pop = document.createElement('div'); pop.className = 'gem-pop friend-pop';
     const act = async (fn, args, msg) => { try { const r = await rpc(fn, args); if (r == null && /friend_gift/i.test(fn)) { toast('아직 준비 중이에요'); return; } if (msg) toast(msg); } catch (e) { toast(errText(e)); } await load(); if (found && lastQ) await search(lastQ, true); draw(); };

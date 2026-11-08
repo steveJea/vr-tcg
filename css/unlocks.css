@@ -1,0 +1,10 @@
+/* Compact level locks, no small explanatory copy. */
+.ul-locked{position:relative;filter:saturate(.45)}
+.ul-lock{display:inline-flex;align-items:center;justify-content:center;position:absolute;right:4px;bottom:4px;z-index:6;background:#17121eef;color:#fde68a;border:1px solid #705b89;border-radius:8px;padding:3px 6px;font-size:13px;font-weight:800;line-height:1.2;pointer-events:none;white-space:nowrap}
+.gnb-t>.ul-lock{bottom:2px;right:2px;font-size:12px}.th-card>.ul-lock{display:none}.pvp-tabs .ul-lock{position:static;margin-left:5px}
+#unlock-intro{position:fixed;inset:0;z-index:19000;display:flex;align-items:center;justify-content:center;background:#000b;padding:20px;color:#fef3c7}
+.ul-box{width:min(480px,100%);border:1px solid #b99a5b;border-radius:20px;padding:24px;background:linear-gradient(#271936,#100b1b);box-shadow:0 20px 80px #000a}
+.ul-box h2{font-size:24px;font-weight:900;margin:0 0 16px}.ul-box p{font-size:17px;line-height:1.6;margin:12px 0}.ul-box .ul-rewards{font-size:16px;color:#fde68a;font-weight:700}
+.ul-actions{display:flex;gap:12px;margin-top:20px}.ul-actions button{flex:1;padding:12px 8px;border-radius:12px;background:#eebf55;color:#21132d;font-size:17px;font-weight:800}.ul-actions button+button{background:#4c345e;color:#fef3c7}.ul-actions button:disabled{opacity:.5}
+.ul-toast{position:fixed;z-index:20000;bottom:100px;left:50%;transform:translateX(-50%);background:#17121ef5;color:#fde68a;border:1px solid #705b89;border-radius:12px;padding:12px 22px;font-size:17px;font-weight:800}
+.camp-grid [data-recommended]{outline:2px solid #fbbf24;border-radius:12px}.camp-rec{position:absolute;top:4px;left:4px;padding:3px 6px;background:#fbbf24;color:#21132d;border-radius:6px;font-size:13px;font-weight:800}

@@ -1,0 +1,4062 @@
+[
+  {
+    "signature": "_ach_cats()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "dc1e703a11474269cb5c56d557029b01"
+  },
+  {
+    "signature": "_ach_ch_need(integer)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "8965c5e831954a97f0b2c97670da26f5"
+  },
+  {
+    "signature": "_ach_claim_one(uuid,text)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "9e2e4f4c082bc4e9afef29e442d13ff0"
+  },
+  {
+    "signature": "_ach_defs()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "337b399060b1e354a8244f5af38d9006"
+  },
+  {
+    "signature": "_ach_json(uuid)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "0121c6d317581fba2f08a739ad85c4bd"
+  },
+  {
+    "signature": "_ach_key(text,integer)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "24f91177126f9eedc95b3c2c8434d45d"
+  },
+  {
+    "signature": "_ach_prog(uuid,text)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "ffa0abf326ccd612183fb51b4505cdd0"
+  },
+  {
+    "signature": "_ach_score(uuid)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "91c55ee20e064ab2cc0446624d587c5b"
+  },
+  {
+    "signature": "_ach_score_defs()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "2d3a2442f66c37d13746feafb4b8fb21"
+  },
+  {
+    "signature": "_ach_score_key(integer)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "d3e763b74b5d6a6c8db11fa5e9ee3a89"
+  },
+  {
+    "signature": "_ach_title_name(text)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "f2ab7ecfb45fa2aa1adf837aa765812a"
+  },
+  {
+    "signature": "_ach_title_owned(uuid,text)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "7287a604b9905fc73c537e4e98f3a41e"
+  },
+  {
+    "signature": "_admin_guard()",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "dd9c419a19160f2d470dff5b19c8f45c"
+  },
+  {
+    "signature": "_arcade_tut_reward(integer)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "c473a094a6e52c8533030a78e8576647"
+  },
+  {
+    "signature": "_arcade_tut_rw(integer)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "bcb4231bb937d33ae247336e597f1124"
+  },
+  {
+    "signature": "_attend_defs()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "6cd5d3bbe38b4c46f70af6d989f11a4f"
+  },
+  {
+    "signature": "_battle_acts_ok(jsonb,integer)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "ba8f34f37ab5514a267b1ae200ff9023"
+  },
+  {
+    "signature": "_camp_cap(text,integer,integer)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "6198cd9c49ba7cc31eac577ab6133420"
+  },
+  {
+    "signature": "_camp_cost(integer)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "713875976b489912ef38a53acec8bb2a"
+  },
+  {
+    "signature": "_camp_dojo_cost(integer)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "c37d33f4acefccb88142057eebe5a0ae"
+  },
+  {
+    "signature": "_camp_dojo_lv()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "be32380c5b8d9179d5b7fbda1125f716"
+  },
+  {
+    "signature": "_camp_dojo_max()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "4585e25bcb5e4e8a078409d48cdb91c6"
+  },
+  {
+    "signature": "_camp_forge_hours(integer)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "e18838ef2b375f7eb042d9b9aa0366d1"
+  },
+  {
+    "signature": "_camp_forge_lv()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "1612d9bc789d0b806606a81bdb7cc384"
+  },
+  {
+    "signature": "_camp_gear_guard()",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "d2b8355116b0e60ec588ef2f5792392e"
+  },
+  {
+    "signature": "_camp_grade(text)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "3a4ddd473385a30698869cb2b874131a"
+  },
+  {
+    "signature": "_camp_guard()",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "725f02776853336306afd66c59cf103b"
+  },
+  {
+    "signature": "_camp_half(numeric)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "d0f9338a16cb8860c7343a3bf3f9c548"
+  },
+  {
+    "signature": "_camp_json(uuid)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "8e3c4375e5f28664aa26c002717f68c2"
+  },
+  {
+    "signature": "_camp_lv_cost(integer)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "1a7b344cfe0c6f8d074b79915cc9a5d3"
+  },
+  {
+    "signature": "_camp_lv_mult(integer)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "8ee5a94f16598ef58cef209a86862f9c"
+  },
+  {
+    "signature": "_camp_lv_need(integer)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "553625893e32d6aff6a47bb27de169b4"
+  },
+  {
+    "signature": "_camp_max_hours()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "8fe80f18f8ec2961518fe84a4510e57b"
+  },
+  {
+    "signature": "_camp_need_level(integer)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "9c4858a977e33eaa0caa1bb7b0e0bc0f"
+  },
+  {
+    "signature": "_camp_owned(uuid)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "f4a7ebfa55ca47dc9bb48e62e74585aa"
+  },
+  {
+    "signature": "_camp_pending(jsonb,timestamp with time zone,integer)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "2d0aad0a7a0daf1d1b368ed4ef81d67b"
+  },
+  {
+    "signature": "_camp_pending2(jsonb,timestamp with time zone,integer,numeric)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "fe41403d526e01308a4ab9cb7ba87703"
+  },
+  {
+    "signature": "_camp_plv(uuid)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "23547b1ff84997f5b429a6a1ec40a364"
+  },
+  {
+    "signature": "_camp_rate(integer)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "4c21bcc9672d7ecb5de49d7090772650"
+  },
+  {
+    "signature": "_camp_settle(uuid,integer,integer)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "b6bd4abbbc9208892b2aa7784ad1fcd2"
+  },
+  {
+    "signature": "_camp_st(uuid)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "9b404de238915cdcf801a801e7ea4c2e"
+  },
+  {
+    "signature": "_cosmo_ach_score(uuid)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "b823d670089fb532344c8880d99b147c"
+  },
+  {
+    "signature": "_cosmo_board_defs()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "89748fcecd1a8cfa0bd8a3d6d8e9216e"
+  },
+  {
+    "signature": "_cosmo_border_defs()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "21c0ed47054baf71a6191d4dfb6f30fb"
+  },
+  {
+    "signature": "_cosmo_bought(uuid,text,text)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "ac1802d140a1334a3b61be960874caa7"
+  },
+  {
+    "signature": "_cosmo_ch_need(integer)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "886d5ee72e8dd7033c88eba5aebeb52a"
+  },
+  {
+    "signature": "_cosmo_equip_get(uuid)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "7fda882e1e9b781e91dab54f787efffd"
+  },
+  {
+    "signature": "_cosmo_frame_defs()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "b7467b7938e4e66baf5da70db936855b"
+  },
+  {
+    "signature": "_cosmo_gallery_pct(uuid)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "906964a041ff7a2c643f5b37844565cb"
+  },
+  {
+    "signature": "_cosmo_json(uuid)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "33d5a42b1b6230a9099682f9c12fbb92"
+  },
+  {
+    "signature": "_cosmo_list(uuid,text,text,jsonb)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "ad423e8b4c0883bd515e2419bb5bc7da"
+  },
+  {
+    "signature": "_cosmo_owned(uuid,text,text)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "0ae178f1f07d63317cd3541d8f303a4f"
+  },
+  {
+    "signature": "_cosmo_pvp_ord(uuid)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "57d8175c538238ae54b776cafce7fd73"
+  },
+  {
+    "signature": "_cosmo_story_ch(uuid)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "fdd9fa0842b86c5cd5b94c0a4daa2761"
+  },
+  {
+    "signature": "_cosmo_title_defs()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "bed29b7e462af87e4b27cd9a06466352"
+  },
+  {
+    "signature": "_cosmo_tower(uuid)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "3714598109e5084b91830fb0a3812116"
+  },
+  {
+    "signature": "_daily_all_reward()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "f5b64da64a2f21540c952eb2a1ce1063"
+  },
+  {
+    "signature": "_daily_defs()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "11499e9f14e5d4e209c9c19b29f8680f"
+  },
+  {
+    "signature": "_daily_grant(uuid,jsonb,text,text)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "7bdfe68b1dfb21f2dbfa3343b430b555"
+  },
+  {
+    "signature": "_daily_json(uuid)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "80ce6df2c04157b399af53ec2960ace2"
+  },
+  {
+    "signature": "_dismantle_yield(text)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "672b01d19347b3973f43b892a4567775"
+  },
+  {
+    "signature": "_drink_cfg(text)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "2718c37189ee497f59bad72ad5b1729b"
+  },
+  {
+    "signature": "_drink_grant_bound(uuid,integer,text,text)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "b2331f2d7789664edb6120a243d07146"
+  },
+  {
+    "signature": "_drink_json(uuid)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "97fb2143fcb9f905d2a73acb7e214dc9"
+  },
+  {
+    "signature": "_dsp_cap()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "d666b780c750072b138b05092b7aa07b"
+  },
+  {
+    "signature": "_dsp_cost(integer)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "23ee1241799c5712b6af05dcdf7aacc0"
+  },
+  {
+    "signature": "_dsp_day()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "10e02bb3d4308029b63e2f5960208d84"
+  },
+  {
+    "signature": "_dsp_fill(uuid,boolean)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "c67da184a26c3f2aa723b43ba61002d7"
+  },
+  {
+    "signature": "_dsp_free()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "4cb0532f052f5565a716477326924181"
+  },
+  {
+    "signature": "_dsp_grade(text)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "8616f7d9a66d9ae709c48444aa23c37b"
+  },
+  {
+    "signature": "_dsp_json(uuid)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "6de28997c7a52a71b55084db35d54ed7"
+  },
+  {
+    "signature": "_dsp_level(uuid)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "8e19011be74d09af8faf7720d8e2c2dd"
+  },
+  {
+    "signature": "_dsp_meta_sync()",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "4d9a11aba9808ffd6abeaf1d21001338"
+  },
+  {
+    "signature": "_dsp_mult(integer)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "ba60c11b69c11b8e38d439607bfded16"
+  },
+  {
+    "signature": "_dsp_owned(uuid)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "218f7dd5b741c53c119622d076457753"
+  },
+  {
+    "signature": "_dsp_slots(integer)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "1e4db6edb2b6a41d8790fa8c0d4c151b"
+  },
+  {
+    "signature": "_exp_per_blood()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "a71463f1b7ff0f0eff6122a29a9010a9"
+  },
+  {
+    "signature": "_fb_daily_max()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "3c33652d7796e2c4e99833a6ee51817e"
+  },
+  {
+    "signature": "_friend_cap()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "39953571177e7a460ed65572c39ca12d"
+  },
+  {
+    "signature": "_friend_card(uuid)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "a22114b5fc0fd9dd5d49b07bd8ecacf9"
+  },
+  {
+    "signature": "_friend_code(uuid)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "8383f355281a36ccee455be18d8045a4"
+  },
+  {
+    "signature": "_friend_count(uuid)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "dc4d1971dd21d008b24714f1777f41f7"
+  },
+  {
+    "signature": "_friend_gift_claim_cap()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "724ebdb375ffea0d10e2647cecf727d2"
+  },
+  {
+    "signature": "_friend_gift_grant(uuid,jsonb)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "ca6f9930d7965bb4f580f9d1b8eebc6e"
+  },
+  {
+    "signature": "_friend_gift_reward()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "a2cfca04779f621bfd2020337207dc54"
+  },
+  {
+    "signature": "_gallery_have(uuid)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "c3b5939687d24769669d2d09c45999f2"
+  },
+  {
+    "signature": "_gallery_owned_trg()",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "4ea114413a4d47fa696f96c529eacb16"
+  },
+  {
+    "signature": "_gallery_reward_defs()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "b6ba9721b102c5af4d5a3436bf112402"
+  },
+  {
+    "signature": "_gallery_rewards_json(uuid)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "1521f6f453c38aed39752d7822b76c65"
+  },
+  {
+    "signature": "_gallery_sync_owned(uuid,jsonb)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "fa37c010e28d462542417a470bd42e78"
+  },
+  {
+    "signature": "_gallery_total()",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "95f489c410cda36c5506a4a39e343dfb"
+  },
+  {
+    "signature": "_gear_bag_full(uuid)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "fb77e4b3f7d505d57190d10de1df2446"
+  },
+  {
+    "signature": "_gear_box_mail(uuid,gear_raid_rewards,text)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "e227ffbc1b7c0bf72c1d65314b5ba1c5"
+  },
+  {
+    "signature": "_gear_drop(uuid,integer,integer,text,text)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "87f03597bb742312fd240c1eaeb7c65a"
+  },
+  {
+    "signature": "_gear_dust_add(uuid,bigint)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "a9b90dba88fed7ed98a4938880581803"
+  },
+  {
+    "signature": "_gear_give_tier(uuid,integer,text,text,boolean)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "fc17b931e4fa4024229fbec3af461834"
+  },
+  {
+    "signature": "_gear_grant(uuid,text,text,boolean,text)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "34da35ece299022600ac6f76345de880"
+  },
+  {
+    "signature": "_gear_meta(uuid)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "76030fa46df9d86f187d51308fd2de7b"
+  },
+  {
+    "signature": "_gear_mine(uuid,bigint)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "d03f8120d0b18435e34c93f3fb9729f6"
+  },
+  {
+    "signature": "_gear_raid_attempt_trg()",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "7561c4fa07cb58b32a2b8c611897a1fa"
+  },
+  {
+    "signature": "_gear_raid_claim_trg()",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "bd28abfb523dfc0cfad2a79dfecfb0e2"
+  },
+  {
+    "signature": "_gear_roll_opts(text)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "428c90358b2c3d08e5066a0fd3cdc10c"
+  },
+  {
+    "signature": "_gear_roll_tier(integer,integer,text)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "9a6b197a4c166cd6fbef46c9c4ac286d"
+  },
+  {
+    "signature": "_gear_salvage(bigint[],boolean)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "b8e59c963a0c23e4c851b276c3a5bfc4"
+  },
+  {
+    "signature": "_gear_snap(uuid,text)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "19d8b992341ecd527e696cebeb27bd6b"
+  },
+  {
+    "signature": "_gear_tower_trg()",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "75aafaa9e1301f9cc2befb8a13a591b5"
+  },
+  {
+    "signature": "_gear_try_drop(uuid,integer,integer,text)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "406569a957dbbeda5c235e4b0b38b4e7"
+  },
+  {
+    "signature": "_gem_add(uuid,integer,integer,text,text,jsonb)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "542d1d6b496db09dbcc232b97682f302"
+  },
+  {
+    "signature": "_gem_bought(uuid,text)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "bde6ee498c3f38037fdab9e69c2e3266"
+  },
+  {
+    "signature": "_gem_chapter_reward()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "ede7776fb0a7ddd7f0651d749c7e33c3"
+  },
+  {
+    "signature": "_gem_day()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "353c95d9954b4dbc1914aa001c1bdee0"
+  },
+  {
+    "signature": "_gem_json(uuid)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "8ce8721dbf6195b65fc52c668e0b3ee4"
+  },
+  {
+    "signature": "_gem_login_reward()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "1cb1e168f44189513a04bd8bc842ae6c"
+  },
+  {
+    "signature": "_gem_spend(uuid,integer,text,jsonb)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "aa76c6013237ca68498379a31ff31b2b"
+  },
+  {
+    "signature": "_gem_sync(uuid)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "8f3423bf694a4741e965a72c23de6473"
+  },
+  {
+    "signature": "_global_notice_gacha()",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "59d601aab17181d84ec3fcf7f72e4228"
+  },
+  {
+    "signature": "_guild_add_member(bigint,uuid,uuid)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "835237aed92135ea8a46a8c5621d3882"
+  },
+  {
+    "signature": "_guild_card(bigint)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "110e56af98b83a3d505073972b57de95"
+  },
+  {
+    "signature": "_guild_cd_check(uuid,bigint)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "1a204eab51f59ceac7de58d26e56e344"
+  },
+  {
+    "signature": "_guild_checkin_reward()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "d88493a042bdf55b8eb91fd82b0dcf8d"
+  },
+  {
+    "signature": "_guild_cost_gem()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "6ed1fd908213827ea5cc07870b83acb9"
+  },
+  {
+    "signature": "_guild_cost_gold()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "fcad674537e24ed96d4c595cc0e30e34"
+  },
+  {
+    "signature": "_guild_daily_all_reward()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "2bc6e02257c7f3c87212155a2bd34769"
+  },
+  {
+    "signature": "_guild_day()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "1c53569e0066a9134018a63bd5bd4945"
+  },
+  {
+    "signature": "_guild_event(uuid,text,integer)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "89d9c2079a3b0a85059a13f98e2cf37f"
+  },
+  {
+    "signature": "_guild_exp(bigint,uuid,integer,text,text)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "1553468a612df387cb355d835e2f1ccd"
+  },
+  {
+    "signature": "_guild_feed(uuid,text,integer)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "8b91243e2eee4c41ceb49630e64e0f0d"
+  },
+  {
+    "signature": "_guild_feed_cap(text)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "c933156303dcedb80c6977b9677c5de5"
+  },
+  {
+    "signature": "_guild_lock(bigint)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "00268207db73c6937cd47f318155cd1c"
+  },
+  {
+    "signature": "_guild_log(bigint,uuid,text,uuid,jsonb)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "53227c00d62bf32d3966122930727fae"
+  },
+  {
+    "signature": "_guild_me(uuid)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "f640f278af8d3d5017a4b7e118d51faf"
+  },
+  {
+    "signature": "_guild_min_level()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "0141739c88e478113a3bccc7719111f4"
+  },
+  {
+    "signature": "_guild_name_ok(text)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "4821bba479871062512186c65bc145de"
+  },
+  {
+    "signature": "_guild_rally_count(bigint)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "106501e1a8ca637438da4e08fce14c6c"
+  },
+  {
+    "signature": "_guild_rally_tiers()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "ae3261677f8c868ce1ec62ee8f73c2d7"
+  },
+  {
+    "signature": "_guild_rename_gem()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "c2918bb0dba4bb0f1c9d2172a3bcf89a"
+  },
+  {
+    "signature": "_guild_reward(uuid,bigint,jsonb,text,text)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "cb08fafe3668853a687843f3fbab0e58"
+  },
+  {
+    "signature": "_guild_roll_daily(uuid)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "f3aadc82c5040af4d4a750bcf5d40653"
+  },
+  {
+    "signature": "_guild_roll_weekly(bigint)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "f36762b7acd91c36a3efa4ce88a6c22d"
+  },
+  {
+    "signature": "_guild_shop_left(uuid,guild_shop)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "1107e4c78369ff6e6c137a21faf5b0b7"
+  },
+  {
+    "signature": "_guild_text_ok(text,integer)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "7d72e0a916cbc279c4c562ccd0945cc4"
+  },
+  {
+    "signature": "_guild_trg_draw()",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "6df84e33cb8e4baef23345dcd2f82dc9"
+  },
+  {
+    "signature": "_guild_trg_levelup()",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "636fb3cb5c4c6580b91a25c361ba05f4"
+  },
+  {
+    "signature": "_guild_trg_tower()",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "b6eea280574c54b664db1f9873a7c553"
+  },
+  {
+    "signature": "_guild_week()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "ebeaf0abba13315d55978ace5b754771"
+  },
+  {
+    "signature": "_guild_week_streak_reward()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "6a6023c4d2807a619810a929ccecba5b"
+  },
+  {
+    "signature": "_guild_weekly_min_pct()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "72bec0f8da1e832cb484d393c82e4874"
+  },
+  {
+    "signature": "_guild_weekly_tiers()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "42bcd94de978b5a75fbcd87c79203115"
+  },
+  {
+    "signature": "_idle_amt(jsonb,numeric)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "9e6563495fc47330b88fbf249aa4ddfd"
+  },
+  {
+    "signature": "_idle_boost_cost()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "866a2d3f1457b33278f13ba6cba94681"
+  },
+  {
+    "signature": "_idle_boost_hours()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "f5d8005ff1a309191354e9fe681c6f49"
+  },
+  {
+    "signature": "_idle_boost_max()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "d75f346a747016a8ac963616b81869cd"
+  },
+  {
+    "signature": "_idle_grant(uuid,jsonb,text)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "f4cf8b34e3f39b1802e6cba5c454b37e"
+  },
+  {
+    "signature": "_idle_hours(timestamp with time zone)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "d083aeb16e325ae5b6cd06c31f8521e3"
+  },
+  {
+    "signature": "_idle_json(uuid,idle_box)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "adc75ea1c687ac4c29ae4a795721174a"
+  },
+  {
+    "signature": "_idle_max_hours()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "60a05631539735b612e477c1cb7fb879"
+  },
+  {
+    "signature": "_idle_plv(uuid)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "12dfa847e375f3aadbf8f9f4b57f9c7d"
+  },
+  {
+    "signature": "_idle_rate(integer)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "00358d9f7dfc3ba1adca5ccb8b8508a1"
+  },
+  {
+    "signature": "_idle_row(uuid)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "b33bdd0d14d77703e9304d205bab07d6"
+  },
+  {
+    "signature": "_is_admin()",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "90a21e39c57f50e856d359eafc73a7fe"
+  },
+  {
+    "signature": "_is_friend(uuid,uuid)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "5b427402686610fc6eb1d4f3943b7ed7"
+  },
+  {
+    "signature": "_item_add(uuid,text,integer,integer,text,text,jsonb)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "42ef32122d9f07be9cc89ddebdd59250"
+  },
+  {
+    "signature": "_lend_hours()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "3d35242b199399954b00004e8ecddddb"
+  },
+  {
+    "signature": "_lend_join_hours()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "2c74c7181e4c14e4105e76ef944739fc"
+  },
+  {
+    "signature": "_lend_max()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "ae620a8107b6662136c72f94733bb131"
+  },
+  {
+    "signature": "_lend_min_level()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "cf9d7adf5bbaf94c084b0d3e271b5407"
+  },
+  {
+    "signature": "_lend_owned(uuid,text)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "23fab9633fd3ec51ae29c7472532d445"
+  },
+  {
+    "signature": "_lend_reward()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "9daab7d057c02d1713982bb1a439dc2d"
+  },
+  {
+    "signature": "_lend_reward_daily()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "ad948b4de227d806471f657d3e81c3dd"
+  },
+  {
+    "signature": "_loyalty_add(uuid,integer,text,text,jsonb)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "9d37b2d525ca218c53bece9c8e74b6c8"
+  },
+  {
+    "signature": "_lv_cost(text,integer)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "4ca525270f31a77fdb5855a800d37e87"
+  },
+  {
+    "signature": "_lv_cost_b(text)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "955d7ffab98a319610f95b5579804e8e"
+  },
+  {
+    "signature": "_lv_cost_g(text)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "d0ee15a1ee139f4217af6fae63aa8dd8"
+  },
+  {
+    "signature": "_lv_cost_mult()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "b027a269820a1ab96640f2144ff94ec1"
+  },
+  {
+    "signature": "_mail_clean_payload(jsonb)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "7d39abbe290d9902942869cdf8086dc1"
+  },
+  {
+    "signature": "_mail_sync(uuid)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "937d5956c753696048c29050e5e0746a"
+  },
+  {
+    "signature": "_merge_shard_base(text)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "7ab9115a855e16e00e6248deb1f2a776"
+  },
+  {
+    "signature": "_merge_shard_cost(text,integer)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "1c59bc1ae537efe1e8286ece87168fd0"
+  },
+  {
+    "signature": "_nick_check(text,uuid)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "3f537b1e04edb614c0b2a5eed6a0d3a0"
+  },
+  {
+    "signature": "_nick_norm(text)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "a9b7f1877a467432282a539c2a705303"
+  },
+  {
+    "signature": "_nick_price()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "77e0a4d8a1489f8cf02dc8192770fe71"
+  },
+  {
+    "signature": "_player_add_xp(uuid,integer,boolean)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "874e6e961c256999d076fb37478a6067"
+  },
+  {
+    "signature": "_player_first_bonus(text)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "a009c90175c71de92cf6a1ca31429699"
+  },
+  {
+    "signature": "_player_json(uuid)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "5763866f4999e35c09de22a89e716259"
+  },
+  {
+    "signature": "_player_max_level()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "c4754e5658fee5868ed9f435aa563d9d"
+  },
+  {
+    "signature": "_player_stamina_add(uuid,integer)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "567f1b0e6969a3535f7378a972504760"
+  },
+  {
+    "signature": "_player_sync(uuid)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "76027f46a6061e5c67ad47110acf6081"
+  },
+  {
+    "signature": "_player_unlock_level(text)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "a1df3a55f6c8585a08bd976a438cc87e"
+  },
+  {
+    "signature": "_player_unlocked(uuid,text)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "7dd01fbe5573108a699a3697f1bce47d"
+  },
+  {
+    "signature": "_player_xp_need(integer)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "3ef6b8efae873fdc98732cebb8d4adde"
+  },
+  {
+    "signature": "_player_xp_per_stamina()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "86df14f5c7484dd939a12142dea9f100"
+  },
+  {
+    "signature": "_profiles_nick_guard()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "251c8949bdc5172737f0025701d11c1d"
+  },
+  {
+    "signature": "_pvp_boss_deck_chk()",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "4f0cb7c8a4cee63fa9417550e4c475d5"
+  },
+  {
+    "signature": "_pvp_day()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "a4408e0ed4fce70eeb0864f419003f7a"
+  },
+  {
+    "signature": "_pvp_extra(uuid,text,text)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "5e5f615b1f8357da363c68519c8d8470"
+  },
+  {
+    "signature": "_pvp_grant(uuid,jsonb,text,text,text,date)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "5fcdba2465e6fccba45a7f90b0a85100"
+  },
+  {
+    "signature": "_pvp_ok(text,text)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "4f4a62ad031246aa2791cb2ddf716ce0"
+  },
+  {
+    "signature": "_pvp_rating(uuid,text,text)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "d6180cc9fb768a60c598690497c4ecd8"
+  },
+  {
+    "signature": "_pvp_season()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "17e2ce300408ecf27fb8b31337159f2f"
+  },
+  {
+    "signature": "_pvp_shop_left(uuid,pvp_shop)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "1919c78f589dd28675f77e0fa1cd50a7"
+  },
+  {
+    "signature": "_pvp_snap(uuid,jsonb,text)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "d4a1bc0af2d717eea5e35b997fafd15c"
+  },
+  {
+    "signature": "_pvp_snap_mode(uuid,jsonb,text,text)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "eb95cf0b8037a87dfff21409e35c3fb2"
+  },
+  {
+    "signature": "_pvp_streak(uuid,text,text,date,bigint)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "d8d0504e3c44ab45bfa5821b0c50bcb8"
+  },
+  {
+    "signature": "_pvp_tier(integer)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "2d82e46df1212f0d5844584e8341859b"
+  },
+  {
+    "signature": "_quest_currency(integer)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "f8fe8b15d0438cb2d09d30976af3a2b3"
+  },
+  {
+    "signature": "_quest_max_floor()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "b67fd48a49bbd8fe77f7a51af9417d7c"
+  },
+  {
+    "signature": "_quest_min_secs()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "5659ac2424a9335897d4351f2f22a4b8"
+  },
+  {
+    "signature": "_quest_reward(integer)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "568e0568b52372eac4dff949d13468e6"
+  },
+  {
+    "signature": "_quest_row(uuid)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "51382da9055679352d1cd550d5aecaa4"
+  },
+  {
+    "signature": "_quest_sweep_secs()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "b2d81df4f9fb55a650882d9fe235a6e3"
+  },
+  {
+    "signature": "_raid_attempt_cap(integer)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "d9f40fe3e8740a1940a2ce923aa3e66e"
+  },
+  {
+    "signature": "_raid_boss(integer)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "df45e76caf4a051b3f94821e4d838dd3"
+  },
+  {
+    "signature": "_raid_close(guild_raid_attempts,bigint)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "4c3a56bddcdcd952d077a49fee44e898"
+  },
+  {
+    "signature": "_raid_end(date)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "243802a5391ec663efa95f0ae4307827"
+  },
+  {
+    "signature": "_raid_get(bigint,date)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "7df7f6ae21d9ff1836b9f34dab4b091b"
+  },
+  {
+    "signature": "_raid_hit(bigint,date,uuid,bigint)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "16235c1478365660c0cbf3d778b3bbdf"
+  },
+  {
+    "signature": "_raid_hp(text,integer,integer)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "e7d33aca6f0c0c1131098d9a84869df8"
+  },
+  {
+    "signature": "_raid_now()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "b6e30d102efeb8d9a0da0716be9b615b"
+  },
+  {
+    "signature": "_raid_numbers()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "3bd557d357d6f5961d22a3a3eeaf5001"
+  },
+  {
+    "signature": "_raid_rank_reward(integer)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "28294826e9b8dc028cdd3838a4721e7f"
+  },
+  {
+    "signature": "_raid_stage_reward(text,integer)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "40a7e56f699d1913b3c0b14102d160bf"
+  },
+  {
+    "signature": "_reward_battle_enabled()",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "f8e040d5ffa61385b6c12266a4e43042"
+  },
+  {
+    "signature": "_reward_gacha_event()",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "0abe69f84d90c6353ff3a02e2d664284"
+  },
+  {
+    "signature": "_shop_give_gear(uuid,jsonb,text)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "60fb37cbccd937bb2ecc2afd5d9b4abe"
+  },
+  {
+    "signature": "_sigil_add(uuid,text,integer,text)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "365028878597ea5e1e8e98563ea5443a"
+  },
+  {
+    "signature": "_sigil_story_roll(uuid,integer)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "bad24f8c7af04f6259f7b3ec7c3ef366"
+  },
+  {
+    "signature": "_skill_cost(text,integer)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "50e5ccf32298f4abe21f0c440d1445ff"
+  },
+  {
+    "signature": "_skill_lv_max()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "bd7f6317cda90f0c0099dab6de1cb463"
+  },
+  {
+    "signature": "_skill_soul_base(text)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "df9d9e1bdd5916fbb621dd033d7166ab"
+  },
+  {
+    "signature": "_stamina_cost(integer,integer)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "8769e2631438b89affef3ff99fa68dfb"
+  },
+  {
+    "signature": "_stamina_max(integer)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "a84f320465173d84d42561404caa43ca"
+  },
+  {
+    "signature": "_stamina_regen_secs()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "8d49d6c3f7c0ed36642b50667367fe59"
+  },
+  {
+    "signature": "_star_chapter(jsonb,integer)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "75e2a73e6ebf24bd360922b6592abdd3"
+  },
+  {
+    "signature": "_star_milestones()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "3533903e153abdb69be1c9e53e3fca72"
+  },
+  {
+    "signature": "_story_best(jsonb)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "4ab9e699ac984fb9a117a2fb0bb2be78"
+  },
+  {
+    "signature": "_story_cap(text,integer)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "ed5cbf32903d473230225b26d0f23edc"
+  },
+  {
+    "signature": "_story_card_src()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "e98137bb96f5e2fa14ee1a25dc2d85b0"
+  },
+  {
+    "signature": "_story_complete_phase_e0(integer,integer,jsonb)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "904699310cdbdb6a3477809055ff28fb"
+  },
+  {
+    "signature": "_story_dismantle_e5(text[])",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "8a76e6dc99a8b1d33421b28c86c5c5e6"
+  },
+  {
+    "signature": "_story_drop_calc(integer,text,boolean,integer,numeric,numeric)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "8c5467124f9a6df1bcf6066d6d49e6f3"
+  },
+  {
+    "signature": "_story_drops(uuid,integer,integer,boolean)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "3c61a11f29461005da09d8f0210a172c"
+  },
+  {
+    "signature": "_story_earned(jsonb)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "de03dc2e5b111fd1e9f12386604de286"
+  },
+  {
+    "signature": "_story_feed_exp(text)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "ce3f431e957ab988dd61557c14985c20"
+  },
+  {
+    "signature": "_story_find(jsonb,text)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "6bc3d519af0666604ecdf697e63c1217"
+  },
+  {
+    "signature": "_story_gain(jsonb,integer,text)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "6033e64efd9168ec2c089517db9209b1"
+  },
+  {
+    "signature": "_story_lock(uuid)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "0e29213448836031ee22571ae71523e4"
+  },
+  {
+    "signature": "_story_max_ex(text)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "e45319e7749ea57d5d41fc97024919a3"
+  },
+  {
+    "signature": "_story_merge_e0(text,text)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "d0971820a01ea7260c4cfd35e7ec9b96"
+  },
+  {
+    "signature": "_story_migrate(jsonb)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "7723146108c1f4b1754b674fedd89c4c"
+  },
+  {
+    "signature": "_story_min_battle_secs()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "c4131a2f29bf36193988f3da7e24aac8"
+  },
+  {
+    "signature": "_story_new_card(text)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "741cf20c547c24408a8424459f068b06"
+  },
+  {
+    "signature": "_story_new_uid()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "cf0a4418856955940154a330f685c9d7"
+  },
+  {
+    "signature": "_story_norm(jsonb)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "053b102388434d6ccf78a68deae1d090"
+  },
+  {
+    "signature": "_story_owned(jsonb)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "aef4b43d59afb2d8ca38fb3c3d2f1c18"
+  },
+  {
+    "signature": "_story_reach_trg()",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "cf1726c0299904e85367814c75079e22"
+  },
+  {
+    "signature": "_story_refund_stats(jsonb)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "e099891bfd4b7b592dcac709a0b8b7bc"
+  },
+  {
+    "signature": "_story_save(uuid,jsonb)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "51415b976b8afec524263ce8c5107440"
+  },
+  {
+    "signature": "_story_start_phase_e0(integer,integer)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "e6f5c89ef84ec887040dc4bf3054f613"
+  },
+  {
+    "signature": "_story_ticket_sync(uuid)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "35a874b9326610db35e096f796f375b5"
+  },
+  {
+    "signature": "_story_used(jsonb)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "8c07515fba139fec6b403467eb597b92"
+  },
+  {
+    "signature": "_tower_currency(text,integer)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "8e27d5762085cd6f2c74151535ad5fe4"
+  },
+  {
+    "signature": "_tower_daily(text)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "8312f1ddd1f3d1a8abb973e012afde1a"
+  },
+  {
+    "signature": "_tower_days(text)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "5e6d5cefcdbbb90d1c18849d37525ce1"
+  },
+  {
+    "signature": "_tower_dow()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "0ef12690bd567aad349f27a8baffe978"
+  },
+  {
+    "signature": "_tower_gate(uuid,text,tower_progress)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "cebb7819e588a8dfc7a9094013d21b8c"
+  },
+  {
+    "signature": "_tower_max_floor(text)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "b3a26ed93644323f9c82ebd69154c2ce"
+  },
+  {
+    "signature": "_tower_min_level(text)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "2528e86239c6352feb337debc1fc4d62"
+  },
+  {
+    "signature": "_tower_ok(text)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "f66b0090e8a84d4f41cef1e40628769a"
+  },
+  {
+    "signature": "_tower_pay(uuid,text,integer)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "28370e8e30686b4b5b29ff5d1118f53f"
+  },
+  {
+    "signature": "_tower_reward(text,integer)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "fb50cabe34bc3ff19dd87b58b8f3e6c7"
+  },
+  {
+    "signature": "_tower_row(uuid,text)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "959f35c8c07bb6223c5bcbc7db48a77d"
+  },
+  {
+    "signature": "_tower_today()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "2d9bebd54ee7bb2d0a8da95302d71780"
+  },
+  {
+    "signature": "_trade_accept_core(bigint,bigint,uuid,boolean)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "a81d94c8b4e2716b38c83a90a0259b27"
+  },
+  {
+    "signature": "_trade_admin_log(text,uuid,integer,text,integer,integer)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "7342078c4f5abcf0ff2baa7b95161b76"
+  },
+  {
+    "signature": "_trade_card_gkey(text)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "5e9f84159cfdbfa092586a964e1f5db8"
+  },
+  {
+    "signature": "_trade_cfg(text)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "3b7e3d64b3777b72a07dc01461006a6b"
+  },
+  {
+    "signature": "_trade_check_price(jsonb,jsonb,integer,bigint)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "81b465667a651c0f4b14327972f8ba3f"
+  },
+  {
+    "signature": "_trade_close_listing(bigint,text)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "053b18e2f67bf2acc8574e5209b1e005"
+  },
+  {
+    "signature": "_trade_day_start()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "19df01e3862cf293185bd5304202eb9d"
+  },
+  {
+    "signature": "_trade_direct_log()",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "fbb9d14b187ba7e730983e0114a5084f"
+  },
+  {
+    "signature": "_trade_direct_offer_guard()",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "83a05ae04579fdc041337cc5e34bb190"
+  },
+  {
+    "signature": "_trade_direct_settle()",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "986742f852ed192b081f30800e8c78e1"
+  },
+  {
+    "signature": "_trade_drinks_today(uuid,text)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "d1101b9b58880321e159494a4ea52789"
+  },
+  {
+    "signature": "_trade_gate(uuid)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "6666eb7f76b79001a82a83585aed8281"
+  },
+  {
+    "signature": "_trade_gear_gkey(integer)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "34f3b89f22fd8666270539190a4b885b"
+  },
+  {
+    "signature": "_trade_give_cards(uuid,jsonb,boolean)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "cc46a3f8d03058b3fd375ff78a1d77c1"
+  },
+  {
+    "signature": "_trade_give_gear(uuid,jsonb,boolean)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "6ea7433b40480e45f0c2e7272c318ee6"
+  },
+  {
+    "signature": "_trade_listing_json(trade_listings,uuid)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "2bbe8e2d32d8ad51b9a4a95b739827c7"
+  },
+  {
+    "signature": "_trade_lock_users(uuid[])",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "f2b20ee6a174d120f7cf59c1687f35c4"
+  },
+  {
+    "signature": "_trade_log_flag()",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "e2fb4e7ec77580711048f6a608e337b5"
+  },
+  {
+    "signature": "_trade_log_guard()",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "0e244bdd631a8ae67d3f90d414967feb"
+  },
+  {
+    "signature": "_trade_offer_guard()",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "253a7852bd85a20398205872b9836445"
+  },
+  {
+    "signature": "_trade_origin_backfill(uuid)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "add49bc42e152e421d8308d24f8fb261"
+  },
+  {
+    "signature": "_trade_refund_offer(bigint,text)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "7c0e8210515ee911e992bc40db57687d"
+  },
+  {
+    "signature": "_trade_sales(integer)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "8bbd29105333b519ab59465fabab6fc0"
+  },
+  {
+    "signature": "_trade_sigil_move(uuid,uuid,text)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "f537b23fee8cda4a90c929083a40c695"
+  },
+  {
+    "signature": "_trade_stats(text,text,integer)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "56ab7c1abaa38873bf7a8af1b95db4d7"
+  },
+  {
+    "signature": "_trade_strip(jsonb,text)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "87b0b7c59ea2e3bf929fb3f5596cf9bd"
+  },
+  {
+    "signature": "_trade_take_cards(uuid,text[])",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "3dd55bfff1fb905bc5e8bb603280dd27"
+  },
+  {
+    "signature": "_trade_take_gear(uuid,bigint[])",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "6a0e50c55169ac782f79dcb8a2a986fc"
+  },
+  {
+    "signature": "_trade_value(jsonb)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "9a554b99226750cbf49c815a9bce6bae"
+  },
+  {
+    "signature": "_trade_want_ids(jsonb)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "43d7936af9d16d7715a87cd144c40c3d"
+  },
+  {
+    "signature": "_wallet_add(uuid,jsonb,text)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "8a683b0e6ce312346aee66d363b73512"
+  },
+  {
+    "signature": "_war_at(date,integer,integer)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "3d67ac92843cdb9220179a815eb47c4f"
+  },
+  {
+    "signature": "_war_auto_deck(uuid)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "8e2e58c855fa69f8ad37f2d7240028a1"
+  },
+  {
+    "signature": "_war_auto_enter(date)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "a3215abef062a1b0c712ece8974173ae"
+  },
+  {
+    "signature": "_war_build_side(bigint,integer,date,bigint,numeric)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "906210007ac1400cb4d1b089952fecbb"
+  },
+  {
+    "signature": "_war_card_score(text,integer,integer)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "84357ee72c5a2c429c9c100779f44175"
+  },
+  {
+    "signature": "_war_day(date)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "fb3ffdc91805aef9ff1c2f63f0143bcb"
+  },
+  {
+    "signature": "_war_kst()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "034ea16f253d7c23eac6ef8d12acefc8"
+  },
+  {
+    "signature": "_war_leader_card(uuid)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "455deb447378d9005f0b0687cca26df5"
+  },
+  {
+    "signature": "_war_lock(date)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "ee6742323e0feda66d8ce4f7769da3fb"
+  },
+  {
+    "signature": "_war_min_level()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "d0cdb6c56dd6dd6bca4ef2d5deff1d2c"
+  },
+  {
+    "signature": "_war_now()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "0091ab4ee995516032ca9f8996acae25"
+  },
+  {
+    "signature": "_war_npc_deck(text,numeric)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "41efb63e873c7ffc74fff48f59f99337"
+  },
+  {
+    "signature": "_war_numbers()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "8193777fa543466704382aef99fd9195"
+  },
+  {
+    "signature": "_war_pair(date,integer)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "21d677f9c31d9ef92a113a0b2480e115"
+  },
+  {
+    "signature": "_war_pending(uuid)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "a593ced99968d182967813dc9e73fb86"
+  },
+  {
+    "signature": "_war_phase(date)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "d9379e44c18e8902fc9013f530abc3a5"
+  },
+  {
+    "signature": "_war_power(uuid)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "0e2eefb2904d38128035bba8cf4540d4"
+  },
+  {
+    "signature": "_war_role(integer)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "d6c7249845e516a536e52c405493eda8"
+  },
+  {
+    "signature": "_war_scale(date,bigint)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "6a50b15d9c98f7a3940c2ecf7bb3b674"
+  },
+  {
+    "signature": "_war_season()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "699c53b326cab4ee49b3d6a410e34213"
+  },
+  {
+    "signature": "_war_settle(bigint)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "00a3a95174c2467e91473706bd493759"
+  },
+  {
+    "signature": "_war_side_json(bigint,integer)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "12a47e4661bb284129c03bd307ca1b5e"
+  },
+  {
+    "signature": "_war_sum(jsonb,jsonb)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "918df3f0ca7f618eef4623b7d5e7b5f4"
+  },
+  {
+    "signature": "_war_third_wed(date)",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "de28de4437e2d3adea609f8f6d431112"
+  },
+  {
+    "signature": "_war_tick()",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "d6ab6ab67b187491737a15165caf2e11"
+  },
+  {
+    "signature": "_war_top5(uuid)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "2cbafb94525eb1d4414df2448773f9b0"
+  },
+  {
+    "signature": "_weekly_all_reward()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "eca600aee897304d53eb3d8064fe57be"
+  },
+  {
+    "signature": "_weekly_defs()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "c0f724b7fe13d03d2bcb34f9d22ca552"
+  },
+  {
+    "signature": "_weekly_json(uuid)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "41b63fbc3a49056145d95927fe33ae36"
+  },
+  {
+    "signature": "_weekly_week()",
+    "security_definer": false,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "cf436bd90a49345d96e5ef0634352d8a"
+  },
+  {
+    "signature": "ach_track(text,integer)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "318ef3ff726bf10cd76829f5150c936d"
+  },
+  {
+    "signature": "achievements_claim(text)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "f9146860646159ec74731b069046ba06"
+  },
+  {
+    "signature": "achievements_claim_all()",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "01f9eab486895ddb36d249c50fd54721"
+  },
+  {
+    "signature": "achievements_status()",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "223720ad9470176bcdcb4f8333ed794d"
+  },
+  {
+    "signature": "admin_check()",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "99768bcfdaab8b4eb480350d72c65f49"
+  },
+  {
+    "signature": "admin_gacha_log(uuid,integer)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "1339fa93b90b5b346e7e371d25976fa3"
+  },
+  {
+    "signature": "admin_gem_ledger(uuid,integer)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "7dc91386ff9948dc4b1fb37d9fa75564"
+  },
+  {
+    "signature": "admin_grant_currency(uuid,text,integer,text)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "a0675e96a061629a53d205d4e1934732"
+  },
+  {
+    "signature": "admin_grant_drink(uuid,integer,text)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "c638532357f93a3867f536126f084434"
+  },
+  {
+    "signature": "admin_grant_gem(uuid,integer,text)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "51393d4eaf67eed9b12ae29a6ac01916"
+  },
+  {
+    "signature": "admin_grant_tickets(uuid,integer,text)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "6e39a59389788cb0825ad715b4b911ef"
+  },
+  {
+    "signature": "admin_guild_activity(bigint)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "9f7cc786200b7709d21713afa7425e9c"
+  },
+  {
+    "signature": "admin_guild_edit(bigint,text,text,text)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "bf8cd87d3013ef1c15576b6baa011c32"
+  },
+  {
+    "signature": "admin_guild_list(text)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "4d4f803868db2b7129c7007e09e1f567"
+  },
+  {
+    "signature": "admin_guild_raid(bigint)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "0a0c76173c33b1189d16fe558b5f9f6a"
+  },
+  {
+    "signature": "admin_guild_reset_weekly(bigint,text)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "edfe1248b4fbbcabf863503ee07d1222"
+  },
+  {
+    "signature": "admin_list_users(text,integer,integer)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "01ad3975640d942e02ff8959532acc87"
+  },
+  {
+    "signature": "admin_logs(integer)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "5edf8f46592220c9f6be33107f5106b8"
+  },
+  {
+    "signature": "admin_mail_broadcast(text,text,jsonb,integer)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "8cbac69a603da57ac5e55d4493d11394"
+  },
+  {
+    "signature": "admin_mail_broadcasts(integer)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "1498c3aadcc363d59218ba172759e69d"
+  },
+  {
+    "signature": "admin_mail_send(uuid,text,text,jsonb,integer)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "9311a9c1447fca4a059a9305b4c000fc"
+  },
+  {
+    "signature": "admin_notice_delete(bigint)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "923ca8e580a90f7f9083ba58159bbd7d"
+  },
+  {
+    "signature": "admin_notice_save(bigint,text,boolean)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "a0dfae450290c97f5c85accfbaf4561d"
+  },
+  {
+    "signature": "admin_raid_void(bigint,text)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "b75f33925107cd1e4855bad6d4e2046f"
+  },
+  {
+    "signature": "admin_reset_account(uuid,text,text,boolean)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "b55f4e2f7b1adbe8ebdcd73ea576cef5"
+  },
+  {
+    "signature": "admin_trade_band_set(text,text,integer,text)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "ca59cdcbd0e79ebb372c9d9dec585efa"
+  },
+  {
+    "signature": "admin_trade_config()",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "82adf7e04cb1905ab569f9eb11131be2"
+  },
+  {
+    "signature": "admin_trade_config_set(text,integer,text)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "874da01fba2053c38fbad09057adcf6d"
+  },
+  {
+    "signature": "admin_trade_flag_review(bigint,text)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "6421d7b44233b40189c9ce7f5278482e"
+  },
+  {
+    "signature": "admin_trade_flags(boolean,integer)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "80440f0c62a12d45d196d4bfb65798ff"
+  },
+  {
+    "signature": "admin_trade_listings(uuid,text,integer)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "b616aace31a5a3f9d816040b3409c904"
+  },
+  {
+    "signature": "admin_trade_log(uuid,integer)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "c7fcae48c03629ec5f2f888add00fa6d"
+  },
+  {
+    "signature": "admin_trade_pairs(integer,integer)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "da36a96c80377cca4d295184012c65c3"
+  },
+  {
+    "signature": "admin_trade_refund_offer(bigint,text)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "223dc3f49e14de6ef18d7c6cd76fa4cb"
+  },
+  {
+    "signature": "admin_trade_void_listing(bigint,text)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "339448ece48fe4d83073ebc873c53291"
+  },
+  {
+    "signature": "admin_user_detail(uuid)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "eaa59dd18dd32d2aca1389c4621aa04a"
+  },
+  {
+    "signature": "admin_user_player(uuid)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "607e4f00eb6109f9c0abdbc7076e5222"
+  },
+  {
+    "signature": "admin_user_quest(uuid)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "325ca0870d2c5d0bbab2b6c0a0db664f"
+  },
+  {
+    "signature": "admin_user_wallet(uuid)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "d963c8c899b1ee0750f84c8f54cbc0aa"
+  },
+  {
+    "signature": "admin_war(date)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "8fd0067c5aaafc22ff18f8de60ac0bb8"
+  },
+  {
+    "signature": "admin_war_void(bigint,text)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "3b7ae7d0f6d0700aecbfd1356e984b05"
+  },
+  {
+    "signature": "arcade_tut_claim(integer)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "2ceb108a179d8001bd8a6915abcb6c1c"
+  },
+  {
+    "signature": "arcade_tut_status()",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "47a3140b5cf7f7b6f6ffca84067c6632"
+  },
+  {
+    "signature": "attend_claim()",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "452dc714cc7ea4667694832b0708221c"
+  },
+  {
+    "signature": "camp_claim()",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "79232b93682630c00e1832e998a24e5e"
+  },
+  {
+    "signature": "camp_dojo_start(integer,text,integer)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "db719d338f4c8ba3f7f8fa331e7f7da8"
+  },
+  {
+    "signature": "camp_dojo_unlock()",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "6dd76fbe99d7addb7f39f3b1e71e6aab"
+  },
+  {
+    "signature": "camp_forge_start(bigint)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "ef444f0108d742cca97456560244296a"
+  },
+  {
+    "signature": "camp_job_claim(bigint)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "06d414eb65726eaad9c97efaf130d940"
+  },
+  {
+    "signature": "camp_levelup()",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "1f8df96b8b3ba77388d03b89e6d1a96d"
+  },
+  {
+    "signature": "camp_put(integer,text)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "3595b3e6406a883abde03aee336b474b"
+  },
+  {
+    "signature": "camp_remove(integer)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "0b8fa18e23bf0f138ff911b171f717ca"
+  },
+  {
+    "signature": "camp_status()",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "5ef16999d6805d45f3017dc5a4afec0d"
+  },
+  {
+    "signature": "camp_unlock(integer)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "37ac3be9128744921b38e0d217eada6a"
+  },
+  {
+    "signature": "card_cost_table()",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "3a57dfb9cea5336f9e15805a1982377c"
+  },
+  {
+    "signature": "cosmetics_buy(text,text)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "684ff4bfe0dc44e6ca41b68201af0f1a"
+  },
+  {
+    "signature": "cosmetics_equip(text,text,text,text)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "97a8bc64a5fc4c5435723b34e448c93c"
+  },
+  {
+    "signature": "cosmetics_lookup(uuid[])",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": true,
+    "definition_hash": "685272fecb925f0fc86966ef2320adac"
+  },
+  {
+    "signature": "cosmetics_status()",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "89070214c5dbcbe0609be6759b219a36"
+  },
+  {
+    "signature": "daily_claim(text)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "2857886c40fa11db033b8051e4622285"
+  },
+  {
+    "signature": "daily_status()",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "a90763053f7236605be935f6ea5a28d5"
+  },
+  {
+    "signature": "daily_track(text,integer)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "d61185cdcadd1f1ac42c7e3a75fc3b70"
+  },
+  {
+    "signature": "dispatch_claim(bigint)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "943e41d0d184a95b41216ab8eca83ab4"
+  },
+  {
+    "signature": "dispatch_recall(bigint)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "6ccf8842ca4b58c502ecf131ddb504fc"
+  },
+  {
+    "signature": "dispatch_refresh()",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "4488ffaffa28b643d3acea2d333576a8"
+  },
+  {
+    "signature": "dispatch_start(integer,text[],integer)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "fdcc6dad7d7686488cc83063552380ca"
+  },
+  {
+    "signature": "dispatch_status()",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "5a5c87338a4f9e68e1776c0ad6e0d546"
+  },
+  {
+    "signature": "drink_buy(text)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "f6d12cd019f74183c3bed13ffcfd7ff3"
+  },
+  {
+    "signature": "drink_status()",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "7bc8d4685d3afaf2e22fb8ff8660f54f"
+  },
+  {
+    "signature": "drink_use(integer)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "159ceeaa01ec52f8c42747c8bc5c3e15"
+  },
+  {
+    "signature": "economy_rates()",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "8524b5dde23a09c3f36b432d5d1be405"
+  },
+  {
+    "signature": "friend_battle_history(uuid)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "4447bd050fe82686e0979d0223e9454b"
+  },
+  {
+    "signature": "friend_battle_report(bigint,integer,integer,jsonb)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "0459f226964689b3356903c9fa3e3fc9"
+  },
+  {
+    "signature": "friend_battle_start(uuid,text)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "017370e2897e258ecbfb38cdcd55d775"
+  },
+  {
+    "signature": "friend_cancel(bigint)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "ce091080ff31609ba28ee4b95e788510"
+  },
+  {
+    "signature": "friend_gift_claim(bigint)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "2bd0aa39655f28cd6a1bc4815295a85e"
+  },
+  {
+    "signature": "friend_gift_claim_all()",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "2d6906f8b1d5f6dea39352972ba9bb49"
+  },
+  {
+    "signature": "friend_gift_send(uuid)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "9bc405bab8a51c3255a9d2471f3e9a9b"
+  },
+  {
+    "signature": "friend_remove(uuid)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "742c2f2d2dc6e59d630675b6e720401e"
+  },
+  {
+    "signature": "friend_request(uuid)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "6cbd7cb02d829edf159db81c457730f5"
+  },
+  {
+    "signature": "friend_respond(bigint,boolean)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "47943a85bddcf78f0e743641b60f84d7"
+  },
+  {
+    "signature": "friends_list()",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "810a6d5c1e05e45d4da7d2334c3a4b3e"
+  },
+  {
+    "signature": "friends_pending_count()",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "4b9105db344e4695e4d07565439b477a"
+  },
+  {
+    "signature": "friends_ping()",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "826edf0ff75d86824cd05c03f3b6f711"
+  },
+  {
+    "signature": "friends_search(text)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "5305a6000399cb184992a37a3d7441f5"
+  },
+  {
+    "signature": "gallery_register(text[],text)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "99539ad0e8e0b83da6a446d66f7bc36c"
+  },
+  {
+    "signature": "gallery_reward_claim(integer)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "fcffe3e61230da5e19ff80dda8b8b7a6"
+  },
+  {
+    "signature": "gallery_rewards()",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "da238969c04907c29eefc6f5104d79af"
+  },
+  {
+    "signature": "gear_box_open(bigint,text)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "8f787e20071f51e646a5d85b79bd5dfc"
+  },
+  {
+    "signature": "gear_dismantle(bigint[])",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "d68186fef26c2d72528436820ba4e1f1"
+  },
+  {
+    "signature": "gear_drops_take()",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "217dad08ba0dd5fb40a843ec4cd8d254"
+  },
+  {
+    "signature": "gear_enhance(bigint)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "cbe4e3919a17b840e0de9276706fa962"
+  },
+  {
+    "signature": "gear_equip(bigint,text)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "ca68593e8686bb4cd95133b98730f172"
+  },
+  {
+    "signature": "gear_expand()",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "6c78dd516154669cf9c30ae5d6a30731"
+  },
+  {
+    "signature": "gear_lock(bigint,boolean)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "5957e26448d1ac4c7d1dc0169953ede6"
+  },
+  {
+    "signature": "gear_reroll(bigint)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "5251bbb0cb3bcfe719d04162cc005ffe"
+  },
+  {
+    "signature": "gear_sell(bigint[])",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "6634a1a57d5fcbf3122d4e72e4ccaca7"
+  },
+  {
+    "signature": "gear_status()",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "95ef7e33e938d13be68e04d1412e0fc8"
+  },
+  {
+    "signature": "gear_unequip(bigint)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "01adfe65da48ac755d92a0091bc8c5dd"
+  },
+  {
+    "signature": "gem_buy(text,text,text)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "2e6d8b296348d36b741d5fc972cad772"
+  },
+  {
+    "signature": "gem_status()",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "c7edb69b7de171bcbec6b81ca90c4efb"
+  },
+  {
+    "signature": "global_notice_list(bigint,integer)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "8b19fcf146ad747b5b7294cfe26b4c45"
+  },
+  {
+    "signature": "guild_apply(bigint)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "1824af1bf9449a5011d046b71e5497bb"
+  },
+  {
+    "signature": "guild_checkin()",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "f22cada1e221211a163ac58b1ea2afe4"
+  },
+  {
+    "signature": "guild_claim_boss()",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "d94b67fcf6e1c69cffeb8459e4f11932"
+  },
+  {
+    "signature": "guild_create(text,integer,text,text,text)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "a6423c36d60cc097775b1a5c4a677c06"
+  },
+  {
+    "signature": "guild_disband()",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "e9176ad19da949f25ec7130fe99855c6"
+  },
+  {
+    "signature": "guild_dots()",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "c843a71781eebf3792110f5f72958b26"
+  },
+  {
+    "signature": "guild_invite(text)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "514c51a57f43158cc91f87ef1ae136d8"
+  },
+  {
+    "signature": "guild_kick(uuid)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "fe53bd0256a4f228b7f0873e367c710c"
+  },
+  {
+    "signature": "guild_leave()",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "d33b938b1d5fc41a25a7da0ddd444be8"
+  },
+  {
+    "signature": "guild_lend_borrow(uuid,text)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "e4a3dfb12c1c718779fec6cb3cb2cf24"
+  },
+  {
+    "signature": "guild_lend_notices()",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "28f9201d739ed322c88ac0400243698c"
+  },
+  {
+    "signature": "guild_lend_return()",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "30b87d4778f93ce8cffefc35371d1819"
+  },
+  {
+    "signature": "guild_lend_set(jsonb)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "998ae32ca0e098a54397ab8bf05e4d24"
+  },
+  {
+    "signature": "guild_lend_status()",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "a5981d506e5ed8b69b3095a948372a2e"
+  },
+  {
+    "signature": "guild_member_info(uuid)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "437b433182c8d50bdc6223ce3a90c26f"
+  },
+  {
+    "signature": "guild_quest_claim(integer)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "b4662b5797ce4866c80fe7529bc0f086"
+  },
+  {
+    "signature": "guild_quest_reroll(integer)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "c370e89cef758ba77a5fcf388263e85e"
+  },
+  {
+    "signature": "guild_quests()",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "058293498167b31c51e569e83f91248b"
+  },
+  {
+    "signature": "guild_rally()",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "58ce86a7d5a9936d64a3db5b41c1fc48"
+  },
+  {
+    "signature": "guild_rally_claim(integer)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "e30b5381cee9b9b77a686c31736d52df"
+  },
+  {
+    "signature": "guild_respond(bigint,boolean)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "03cb976e4f2c3884f496bca29eee1867"
+  },
+  {
+    "signature": "guild_search(text)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "4d7373021631ddb6b48881f654db00c2"
+  },
+  {
+    "signature": "guild_set_role(uuid,text)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "7d7f41703adaafb4cb2186620fcb5c78"
+  },
+  {
+    "signature": "guild_shop_buy(text)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "08ebba2b5db6d9f2812c13745e91e590"
+  },
+  {
+    "signature": "guild_status()",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "8dad6ac5ddfd158026e1133d3a21b475"
+  },
+  {
+    "signature": "guild_transfer(uuid)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "0cbf8cb00932355b07f01cb2d1af31f6"
+  },
+  {
+    "signature": "guild_update(jsonb)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "4cc883f8c68832edd2550ef648275600"
+  },
+  {
+    "signature": "guild_weekly_claim(integer,integer)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "15935ab93cd2df13ae09dc1fab05934d"
+  },
+  {
+    "signature": "handle_new_user()",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": true,
+    "definition_hash": "03f1344c031a9ff050b241b78e873a7f"
+  },
+  {
+    "signature": "idle_box_boost()",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "65e2d5f87d402b3dd676693b36ee408b"
+  },
+  {
+    "signature": "idle_box_claim()",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "dcee8ddac1be03d1848e0604c98ccb9f"
+  },
+  {
+    "signature": "idle_box_status()",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "8d8b0793254e9ce297c890b0c8c37531"
+  },
+  {
+    "signature": "mail_claim(bigint)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "7389a0bed165b0c2a4410f70b68a83a6"
+  },
+  {
+    "signature": "mail_list()",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "cd32e5b044ce614d4dee17a428c49e0d"
+  },
+  {
+    "signature": "mail_msg_claim(bigint)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "458c94d0dedcb22052545a19d08b6c31"
+  },
+  {
+    "signature": "mail_read(bigint)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "8336afeac1aa8ee54e9cb2f1e5440fad"
+  },
+  {
+    "signature": "mail_unread()",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "25fcb61451423a805913f52596d095b0"
+  },
+  {
+    "signature": "matches_rate_limit()",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": true,
+    "definition_hash": "36314ec5e89db445a5f10bead8046a5b"
+  },
+  {
+    "signature": "nickname_check(text)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "62fb7d67c4adcccb0f8ae07010b0690d"
+  },
+  {
+    "signature": "player_status()",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "923fa762f47ca358ddd1bfe439649117"
+  },
+  {
+    "signature": "pvp_claim_reward(text,text,date)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "489c4173f1e79a52a8fc04cced208dc5"
+  },
+  {
+    "signature": "pvp_claim_tier(text,text)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "0603738660cf47f827d05ed261fe7f51"
+  },
+  {
+    "signature": "pvp_log(bigint,jsonb)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "8e865dd5338eca5ca798c5f3adcccf7b"
+  },
+  {
+    "signature": "pvp_rankings(text,text,date)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": true,
+    "definition_hash": "8af005827d3f0a42ab71d2aab9ff70ae"
+  },
+  {
+    "signature": "pvp_report(bigint,integer,integer)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "bc087c251cd30e425f6d4764355f6973"
+  },
+  {
+    "signature": "pvp_set_deck(text,text,integer,jsonb)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "9ee5f0b42a5be9158c62f1e804918223"
+  },
+  {
+    "signature": "pvp_shop_buy(text)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "33a7a6fd1081ad915e0ce6e21d1a760e"
+  },
+  {
+    "signature": "pvp_shop_status()",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "36bdd71200bcf53ae756c6d0391db8a5"
+  },
+  {
+    "signature": "pvp_start(text,text)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "a53c7162dd73c3299ef9bd516808e967"
+  },
+  {
+    "signature": "pvp_status(text,text)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "42ced8fa9f8f27b1a972bdd264f33966"
+  },
+  {
+    "signature": "pvp_user_info(text,text,integer)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "d424a5f292d5d509399a7b117f44aa86"
+  },
+  {
+    "signature": "quest_complete(integer,jsonb)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "48193e9cd232296d32d9d081a1e461cf"
+  },
+  {
+    "signature": "quest_start(integer)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "aa306110986b2bdc8c8d62a92ee14919"
+  },
+  {
+    "signature": "quest_status()",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "fde52f3dc7648e0dcb36fcb43a4595de"
+  },
+  {
+    "signature": "quest_sweep_complete(integer,jsonb)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "d4482cdca479974b94064a79fae0e06d"
+  },
+  {
+    "signature": "quest_sweep_info()",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "456202f3110f30c52a75428f0a176f36"
+  },
+  {
+    "signature": "quest_sweep_start()",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "85246593f1c0c71ee085590369654d99"
+  },
+  {
+    "signature": "raid_claim()",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "ec3e9034d398d80bebf9da635506117d"
+  },
+  {
+    "signature": "raid_claimable()",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "316b068629fa3edb3876708d92df4c81"
+  },
+  {
+    "signature": "raid_finish(bigint,bigint)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "57eeccd51c6c6190630d422e8fdeff2c"
+  },
+  {
+    "signature": "raid_log(bigint,jsonb)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "b9b1dda7720307ae8e55932bc2d44a9f"
+  },
+  {
+    "signature": "raid_set_difficulty(text)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "c2f67173d861653792f1b2c39cf404fc"
+  },
+  {
+    "signature": "raid_start(jsonb)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "be3ec3a964bd3130e5bba915e8a7a847"
+  },
+  {
+    "signature": "raid_status()",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "ee111b4c7e7996bc1cc5d0d5c12dc0ea"
+  },
+  {
+    "signature": "raid_sweep()",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "422fc42f83b4067852207f64d0af8563"
+  },
+  {
+    "signature": "set_nickname(text)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "efee57b277f977d47ba8c4e63befe3f5"
+  },
+  {
+    "signature": "sigil_craft(text)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "531960d51942b67d5844bc5a8f8cc553"
+  },
+  {
+    "signature": "sigil_enhance(text)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "0dd9b8d5b225154d6d91498084f922f1"
+  },
+  {
+    "signature": "sigil_exchange(text,text,integer)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "62134347d4085e9bb505f7990036a868"
+  },
+  {
+    "signature": "sigil_mail_claim(bigint,text)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "8f841d27b565cf50fa83aae3b4922fca"
+  },
+  {
+    "signature": "skill_cost_table()",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "9865119a44130ec33a685f3953041e48"
+  },
+  {
+    "signature": "story_abort_phase()",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "9917a8fe9b1448b4d113080476d54b49"
+  },
+  {
+    "signature": "story_allocate(jsonb)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "0a529136b8efae152234c06ba9c4eca8"
+  },
+  {
+    "signature": "story_card_levelup(text,integer)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "7a263046b36e52d8ce9f51b9e0841777"
+  },
+  {
+    "signature": "story_choose_route(integer,text)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "b3046a736ddea88509ffb4857e173bc1"
+  },
+  {
+    "signature": "story_choose_starter(text)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "7889177461931646ce45698ddd7ac6da"
+  },
+  {
+    "signature": "story_complete_phase(integer,integer)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "f3e85e95c67d5a26faab412770bcca78"
+  },
+  {
+    "signature": "story_complete_phase(integer,integer,jsonb)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "1db940dba5979d80f11ed7b73894454d"
+  },
+  {
+    "signature": "story_daily_draw()",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "631b0ff5351bf796902c229650e484d2"
+  },
+  {
+    "signature": "story_discard(text,text)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "94a6eb9a573b3c069e52e9bad31d000a"
+  },
+  {
+    "signature": "story_discard_many(text[],text)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "6a8b9c317131d7e2f4a3a304279aedd4"
+  },
+  {
+    "signature": "story_dismantle(text[])",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "fce2ee2ec661e50d13d5fdb0f7d7ab28"
+  },
+  {
+    "signature": "story_mark_seen(text)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "303a4c49ca78c69492da61ce64e2b300"
+  },
+  {
+    "signature": "story_merge(text,text)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "4db3c12353783cbd6bc20df4d8ee9f6d"
+  },
+  {
+    "signature": "story_rankings()",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": true,
+    "definition_hash": "1b5699ab6fdcc85b24f4b893f099ada4"
+  },
+  {
+    "signature": "story_set_decks(jsonb)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "c79467ffce59eac2542fd5a1ec8f8984"
+  },
+  {
+    "signature": "story_set_fav(text,boolean)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "caad2fce13716b5f7d179ebae7904c2b"
+  },
+  {
+    "signature": "story_set_leader(text)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "3be276eb2a794fd3bfaba1fad790ff4e"
+  },
+  {
+    "signature": "story_set_lock(text,boolean)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "4c577cacaf5b457f6dd2f20bac2b7ba9"
+  },
+  {
+    "signature": "story_set_stars(integer,integer,integer)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "ae23265bd411d7544520fd01e9dec878"
+  },
+  {
+    "signature": "story_skill_levelup(text,integer,integer)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "50fe625fd2d259d159d8d1b0dfa574f0"
+  },
+  {
+    "signature": "story_star_claim(integer,text)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "54263db2e916006fa450453700d24330"
+  },
+  {
+    "signature": "story_star_status()",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "a84e3a255b8e45cb4404dd033d90362f"
+  },
+  {
+    "signature": "story_start_phase(integer,integer)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "1c328c899a6f72c3efb82ce8fe05fe61"
+  },
+  {
+    "signature": "story_sweep(integer,integer,integer)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "7cee5d1d596ae3ffeed28ec71bce1222"
+  },
+  {
+    "signature": "story_ticket_draw(integer)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "0fd6d0a047b5e515c8a92375760f9967"
+  },
+  {
+    "signature": "story_tickets()",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "d9235150e6c0b02b82a896d7e17ef039"
+  },
+  {
+    "signature": "sweep_info()",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "b011095da98f6827b595488a90638c87"
+  },
+  {
+    "signature": "tower_complete(text,integer,jsonb)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "29d48d5d93c8e885a69fac42f711a75c"
+  },
+  {
+    "signature": "tower_rankings(text)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": true,
+    "definition_hash": "2ee589fb22f48a0587fcffaf3b799a43"
+  },
+  {
+    "signature": "tower_start(text,integer)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "4585bc7c31c3499c39ddc0c42b26f0ca"
+  },
+  {
+    "signature": "tower_status()",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "2031c46e352ff8eee3bc5b64bb382dbf"
+  },
+  {
+    "signature": "tower_sweep_complete(text,integer,jsonb)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "5a71b8e41b9f5117bdc719a73ae9a34d"
+  },
+  {
+    "signature": "tower_sweep_info(text)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "c5af919c00ac980e677565ab584cba22"
+  },
+  {
+    "signature": "tower_sweep_start(text)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "ad9d254c268fe6c730407f8292baa33e"
+  },
+  {
+    "signature": "trade_accept(bigint,bigint)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "b23f4cd5d50294ac299f1951498b79dd"
+  },
+  {
+    "signature": "trade_board(integer,bigint)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "48470f90b39a3c9f5e6f6d37ae609afe"
+  },
+  {
+    "signature": "trade_buy(bigint,integer,bigint)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "cc466e798125a3c715c615e8e9223b1e"
+  },
+  {
+    "signature": "trade_cancel(bigint)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "e4d4ebb67f77e2c10d8951fd0208735c"
+  },
+  {
+    "signature": "trade_direct_accept(bigint,text[],bigint[],integer,bigint)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "c1907ae0170b0494e1ae7b6ceb3787e8"
+  },
+  {
+    "signature": "trade_direct_decline(bigint)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "a48723a7ccff3299f8ad425172f64796"
+  },
+  {
+    "signature": "trade_direct_inbox()",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "a912aed26180a4ec15f4f0a6061a06a7"
+  },
+  {
+    "signature": "trade_direct_list(uuid,text[],bigint[],integer,text,jsonb,text)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "32d4a1d00441f30fa033103d1b2a30a9"
+  },
+  {
+    "signature": "trade_expire_due(integer)",
+    "security_definer": true,
+    "authenticated_execute": false,
+    "anon_execute": false,
+    "definition_hash": "fcb6fb9ae82294fda29f135b2d6392c8"
+  },
+  {
+    "signature": "trade_list(text[],bigint[],text)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "aa276fb5a113843a84c5bb75ffdd6ce7"
+  },
+  {
+    "signature": "trade_list2(text[],bigint[],text,integer,bigint)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "041168c4a8735f2a0b98c9ebe54364cb"
+  },
+  {
+    "signature": "trade_list3(text[],bigint[],text,integer,bigint,jsonb)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "347458492c58994359461577fb67860b"
+  },
+  {
+    "signature": "trade_my()",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "04320f50d7ddac075abeb60e6fa9cd29"
+  },
+  {
+    "signature": "trade_offer(bigint,text[],bigint[],integer,bigint)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "47789c3eb30271489607f2a2d868ce9f"
+  },
+  {
+    "signature": "trade_offer_cancel(bigint)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "9ff10a0d27d1bf5e47df0b9896f5f1a9"
+  },
+  {
+    "signature": "trade_price_board(integer,text,text,integer)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "7285b368dd4394ba4801fd8c46114d17"
+  },
+  {
+    "signature": "trade_price_history(text,text)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "6f763679c7ce7fe638a63271fbfc4440"
+  },
+  {
+    "signature": "trade_reject(bigint,bigint[])",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "db5d310ffb12d5af81751008669714af"
+  },
+  {
+    "signature": "trade_reject_below(bigint,integer,bigint,boolean)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "83b9e02ddb34f314302842b407d33f40"
+  },
+  {
+    "signature": "trade_search(text,text[],text,text[],boolean,text,integer,integer)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "b5def32330ec7765fb5ef2ce796e10c2"
+  },
+  {
+    "signature": "trade_search2(text,text[],text,text[],boolean,text,integer,integer,text[])",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "3776beed15e60a9c5a30573a471ce10e"
+  },
+  {
+    "signature": "trade_user_find(text)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "21480cc3be75ad5ed1540cc31d78615d"
+  },
+  {
+    "signature": "wallet_status()",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "d82f63d3c60c79fe80a6d4373039aa68"
+  },
+  {
+    "signature": "war_auto_assign()",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "df4e3f2dbf47a621f3b6e3604ad57fa5"
+  },
+  {
+    "signature": "war_claim()",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "3d689422261f16f34304e7fc0aeb2844"
+  },
+  {
+    "signature": "war_claimable()",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "8c6792220d7e2cf9941bfcc5c1aa2406"
+  },
+  {
+    "signature": "war_enter()",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "adf30be72d5536883ebf6d6ac670293d"
+  },
+  {
+    "signature": "war_finish(bigint,boolean,jsonb,jsonb)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "4db77e8773a69acb3b717bae2f318b49"
+  },
+  {
+    "signature": "war_log(bigint,jsonb)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "11a8cc92a15cc2786f3d01f7676819dc"
+  },
+  {
+    "signature": "war_meta()",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "4aa096cb8200944922ead07b0de64f81"
+  },
+  {
+    "signature": "war_set_deck(text,jsonb)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "eac14fa5cb2834e895a860461626b9fa"
+  },
+  {
+    "signature": "war_set_slot(integer,uuid)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "01a2bdc0c74932e061e8ceba8459a938"
+  },
+  {
+    "signature": "war_signup(boolean)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "c0420e44518c5a3cf7ed7f95e60ad8bf"
+  },
+  {
+    "signature": "war_start(integer,integer)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "834f8af4188b386d62a22645873e3f85"
+  },
+  {
+    "signature": "war_status()",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "275df95e77ad975293b04a59893da31c"
+  },
+  {
+    "signature": "war_ui()",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "8ac697395da0cf7813940d75f3e58af1"
+  },
+  {
+    "signature": "war_withdraw()",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "f393a95629cce8a5ac00e8d64b898c46"
+  },
+  {
+    "signature": "weekly_claim(text)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "7e4211f3538fb50002388a4533446b9a"
+  },
+  {
+    "signature": "weekly_status()",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "9ef72e92ac7202f026e59128573ca69c"
+  },
+  {
+    "signature": "weekly_track(text,integer)",
+    "security_definer": true,
+    "authenticated_execute": true,
+    "anon_execute": false,
+    "definition_hash": "d4fbf83663af96b0aef3cac3d8bc41a8"
+  }
+]

@@ -1,6 +1,7 @@
 // ===== 조직 토벌 「균열 토벌」 화면 =====
-// 서버: supabase/guild3.sql (raid_status / raid_set_difficulty / raid_start / raid_finish / raid_sweep / raid_claim). 전투: js/raid-core.js (자동 전투, 서버 seed)
+// 서버: security_phase4_raid_guildwar.sql + guildbattle-verify-v4. 공식 피해·보상은 서버 재생만.
 // 그림: img/ui/guild/raid_banner.webp · raid_bg.webp · raid_icon.webp · raid_diff_<normal|hard|abyss>.webp (없으면 이모지). 보스는 카드 그림(IMG)
+import { startVerified,finishVerified,recoverVerified,sweepVerified,recoverSweepVerified } from './guildbattle-session.js';
 import { snapCard } from './pvp-core.js';
 import { runRaid, manualRaid, hitCap, RAID_DIFF, RAID_BOSSES, RAID_TURNS } from './raid-core.js';
 import { modeToggle, bindMode, battleMode, playManual } from './manual-ui.js';
@@ -17,7 +18,7 @@ const RW = { loyalty: gi('cur_loyalty', '🩸'), gold: gi('cur_gold', '🪙'), g
 const rwTxt = rw => Object.entries(rw || {}).filter(([k, v]) => RW[k] && v).map(([k, v]) => `<span>${RW[k]}${n(v)}</span>`).join('');
 const DIFF_IC = { normal: gi('diff_normal', '🟢'), hard: gi('diff_hard', '🟠'), abyss: gi('diff_abyss', '🟣') };
 const ATTR = { CHARGE: '돌격', DEFENSE: '방어', CRUSH: '분쇄', SUPPORT: '지원', DISTURB: '교란', FASCINATION: '매혹' };
-const ERR = { 'not in guild': '조직에 들어가야 해요', 'no attempts': '오늘 토벌 횟수를 다 썼어요', 'fight first': '오늘 한 번 직접 싸워야 소탕할 수 있어요', 'raid ended': '이번 주 토벌이 끝났어요 (일 22시 정산)',
+const ERR = { 'reward verification pending': '지급 보류', 'not in guild': '조직에 들어가야 해요', 'no attempts': '오늘 토벌 횟수를 다 썼어요', 'fight first': '오늘 한 번 직접 싸워야 소탕할 수 있어요', 'raid ended': '이번 주 토벌이 끝났어요 (일 22시 정산)',
   'card not owned': '덱 인재를 다시 골라 주세요', 'duplicate card': '같은 인재는 한 명만', 'deck size': '덱은 1~5장', 'too fast': '잠시 후 다시', 'battle expired': '시간이 지나 무효가 됐어요',
   'guild level': '조직 레벨이 부족해요', 'raid started': '이번 주 토벌이 이미 시작됐어요', 'not allowed': '보스·간부만 바꿀 수 있어요', 'nothing to claim': '받을 보상이 없어요', 'login required': '로그인이 필요해요' };
 const errText = e => { const m = String(e?.message || e); const k = Object.keys(ERR).find(x => m.includes(x)); return k ? ERR[k] : m.slice(0, 60); };
@@ -51,11 +52,13 @@ const thumbs = cards => cards.map(o => `<span class="rd-th"><img src="${cardThum
 
 let S = null, M = null, DL = [];
 export async function open() {
+    if (window.VRUnlocks && !window.VRUnlocks.guard('raid')) return;
   M?.remove();
   M = pop('<div class="gd-loading">…</div>', 'wide rd'); window.VRSound?.scope?.(M, window.VR_BGM?.raid);
   window.VRPages?.host?.('raid', '🐉 균열 토벌', M);   // 페이지 시스템 (실패하면 예전 팝업)
   try { [S, DL] = await Promise.all([rpc('raid_status'), decks()]); } catch (e) { toast(errText(e)); M.remove(); return; }
   paint();
+  try { const r=await recoverVerified('raid');if(r){S=await rpc('raid_status');paint();result(r);}const sw=await recoverSweepVerified(rpc);if(sw){S=await rpc('raid_status');paint();result(sw.result);} } catch(e){toast(errText(e));}
 }
 function paint() {
   if (!M?.isConnected) return;
@@ -111,43 +114,41 @@ async function claim(e) {
 }
 async function sweep(e) {
   e.currentTarget.disabled = true;
-  try { S = await rpc('raid_sweep'); result(S.result); } catch (er) { toast(errText(er)); }
+  try { const r=await sweepVerified(rpc); S=await rpc('raid_status');result(r.result); } catch (er) { toast(errText(er)); }
   paint();
 }
 async function fight(e) {
   const dk = pickDeck(DL); if (!dk) return;
   e.currentTarget.disabled = true;
-  let st; try { st = await rpc('raid_start', { p_uids: dk.cards.map(o => o.uid) }); } catch (er) { toast(errText(er)); paint(); return; }
+  let st; try { st = await startVerified('raid', { uids: dk.cards.map(o => o.uid) }, window.TCG?.viewBattle || battleMode()==='manual' ? 'actions' : 'auto'); } catch (er) { toast(errText(er)); paint(); return; }
   const deck = st.deck.map(o => snapCard(o, card, 'raid')).filter(Boolean), log = [], t0 = Date.now();
-  let res;
+  let res, actions=null;
   const V = window.TCG?.viewBattle;
-  if (V) {   // 스토리·탑과 같은 전투 화면 (js/game.js). 수동이면 행동 기록을 raid_log 로 (tools/raid_verify.mjs 재생 검증)
+  if (V) {   // 실제 조작 의도만 전송; AUTO↔PLAY 전환도 구체 행동으로 기록
     const manual = battleMode() === 'manual', ses = manualRaid(deck, st.stage, st.difficulty, st.seed, card, log, { view: true });
     const feed = manual ? ses : { events: ses.events, next: inp => { let x = ses.next(inp); while (!x.done && x.value.ask) x = ses.next({ k: 'auto' }); return x; } };
     const started = st.started_at ? new Date(st.started_at).getTime() : t0;
     M?.style && (M.style.display = 'none');
     try {
       res = await V({ session: feed, aiName: st.boss.name, manual, maxTurns: RAID_TURNS * 2, music: window.VR_BGM?.raid, bg: 'raid', title: `🐉 균열 토벌 · ${st.stage}단계 ${st.boss.name}`,
-        raid: { stage: st.stage, bossId: st.boss.id, bossName: st.boss.name, hpLeft: +S?.hp_left || 0, hpMax: +S?.hp_max || 0, cap: hitCap(st.stage), weakLabel: ATTR[st.boss.weak] || st.boss.weak || '', deadline: started + 20 * 60000 } });
+        raid: { stage: st.stage, bossId: st.boss.id, bossName: st.boss.name, hpLeft: +S?.hp_left || 0, hpMax: +S?.hp_max || 0, cap: hitCap(st.stage), weakLabel: ATTR[st.boss.weak] || st.boss.weak || '', deadline: new Date(st.expires_at).getTime() || started + 20 * 60000 } });
     } finally { if (M?.style) M.style.display = ''; }
-    if (manual) { try { await rpc('raid_log', { p_id: st.id, p_actions: ses.acts }); } catch (er) { toast(errText(er)); } }
+    actions=ses.acts;
   } else if (battleMode() === 'manual') {   // 수동: 같은 seed·스냅샷으로 내가 조작. 행동 기록을 서버에 남겨 tools/raid_verify.mjs 로 재생 검증
     const ses = manualRaid(deck, st.stage, st.difficulty, st.seed, card, log);
     res = await playManual({ session: ses, rec: log, title: `${st.boss.name} · ${st.stage}단계`, maxTurns: RAID_TURNS, raid: true });
-    try { await rpc('raid_log', { p_id: st.id, p_actions: ses.acts }); } catch (er) { toast(errText(er)); }
+    actions=ses.acts;
   } else {
     res = runRaid(deck, st.stage, st.difficulty, st.seed, card, log);
     await playback(st, res, log, t0);
   }
-  let fin = null;
-  for (let i = 0; i < 3 && !fin; i++) { try { fin = await rpc('raid_finish', { p_id: st.id, p_damage: res.damage }); } catch (er) { if (/too fast/.test(er.message)) await new Promise(r => setTimeout(r, 1500)); else { toast(errText(er)); break; } } }
-  if (fin) { S = fin; result(fin.result); } else { try { S = await rpc('raid_status'); } catch {} }
+  try { const r=await finishVerified('raid',st,actions);S=await rpc('raid_status');result(r); } catch(er){toast('결과 미정산 · '+errText(er));}
   paint();
 }
 function result(r) {
   if (!r) return;
   window.VRPlayer?.wallet?.(true);
-  pop(`<div class="rd-res"><small>입힌 피해</small><b>${n(r.damage)}</b>${r.cleared ? `<div class="rd-clr">${gi('fx_destroy', '💥')} ${r.cleared}단계 처치!</div>` : ''}<div class="rd-got">${rwTxt(r.got)}</div></div><button class="gd-big" data-x>확인</button>`, 'rd-r');
+  pop(`<div class="rd-res"><small>${r.expired?'무효':'입힌 피해'}</small><b>${n(r.damage)}</b>${r.cleared ? `<div class="rd-clr">${gi('fx_destroy', '💥')} ${r.cleared}단계 처치!</div>` : ''}<div class="rd-got">${rwTxt(r.got)}</div></div><button class="gd-big" data-x>확인</button>`, 'rd-r');
   window.VRGear?.showDrops?.();   // 장비 PR4: 토벌 드롭
 }
 // ---- 전투 재생 (계산된 기록 그대로 · SKIP) ----

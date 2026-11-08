@@ -1,4 +1,10 @@
+**보안 4단계 토벌·조직전:** 기존 staging에 `security_phase4_raid_guildwar.sql`을 실행하고 새 `guildbattle-verify-v4` Edge/JWT ON 및 같은 브랜치 클라이언트를 배포합니다. 테스트 계정 2개를 지정하는 seed/refill/reset SQL은 `staging_seed_raid_guildwar.sql`입니다. 자세한 순서·정책 변경·확인은 [SECURITY_PHASE4_20261107.md](../docs/SECURITY_PHASE4_20261107.md). 운영 배포는 전체 보안 완료 후 별도 승인. 순서는 **1→2→3→4**입니다.
+
 # supabase SQL 안내
+
+**보안 3단계 PvP:** 기존 1→2단계 적용 staging은 `security_phase3_pvp.sql`만 추가 실행하고 같은 버전 `pvp-verify-v3` Edge Function/프런트를 배포합니다. 고정 DB 식별번호 guard, 새 검증 래더(옛 기록 보존), 지급 범위/잔여 위험은 [SECURITY_PHASE3.md](../docs/SECURITY_PHASE3.md)를 먼저 읽으세요. SQL만으로 PvP가 재개되지 않습니다. 최신 순서는 **1→2→3**입니다.
+
+**보안 1→2단계 적용:** 기존 staging DB는 `security_phase1_preflight.sql` 읽기 전용 점검 → `security_phase1_rewards.sql` → `security_phase2_clears.sql` 순서로 소유자가 실행합니다. 1단계가 이미 적용됐으면 2단계만 실행하세요. [2단계 지급 재개·과거 진행·잔여 위험](../docs/SECURITY_PHASE2.md), [1단계 안내](../docs/SECURITY_PHASE1.md)를 먼저 읽으세요. 2단계는 전체 replay가 아닌 서버 세션·순서·시간·상한 검증입니다. 운영 적용은 별도 승인 후이며 폴더 전체/옛 설치본 재실행은 금지합니다.
 
 SQL Editor 에서 형님이 직접 실행하는 파일들. **같은 함수를 여러 파일이 다시 정의**하므로, 오래된 파일을 다시 돌리면 나중에 붙인 검사가 사라질 수 있어요.
 

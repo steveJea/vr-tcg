@@ -1,0 +1,252 @@
+// GENERATED from tools/unlocks/policy.json; do not edit.
+window.VR_UNLOCK_POLICY = {
+  "version": 1,
+  "sheet": "1LVVLanwmvhaI9Cef21jQXCGVniwWZxuxUSqMS_Qlmpw",
+  "features": {
+    "pvp_hr": 3,
+    "gear": 3,
+    "dispatch": 5,
+    "guild": 6,
+    "friends": 8,
+    "tower": 10,
+    "raid": 11,
+    "camp": 12,
+    "merge": 13,
+    "skill": 13,
+    "lend": 13,
+    "sigil": 14,
+    "pvp_open": 15,
+    "trade": 15,
+    "pvp_3v3": 17,
+    "war": 18,
+    "pvp_boss": 20,
+    "tower_wind": 25,
+    "tower_ice": 25,
+    "tower_fire": 25,
+    "tower_light": 40,
+    "tower_dark": 40,
+    "forge": 20,
+    "dojo": 20
+  },
+  "entries": [
+    {
+      "key": "ch0",
+      "level": 1,
+      "title": "프리미엄 소환",
+      "text": "챕터 0을 완료했어요. 프리미엄 10회 소환으로 새로운 인재를 만나 보세요.",
+      "reward": {},
+      "route": "summon",
+      "trigger": "ch0",
+      "source_text": "챕터0 클리어- 소환(프리미엄) 10회"
+    },
+    {
+      "key": "leader",
+      "level": 1,
+      "title": "인재 레벨업",
+      "text": "지급된 리더를 레벨업해 보세요. 1레벨씩 또는 10레벨씩 올릴 수 있어요.",
+      "reward": {
+        "blood": 5000,
+        "gold": 5000
+      },
+      "route": "cards",
+      "trigger": "1:1",
+      "source_text": "ch1 P1클리어- 지급된 리더 레벨업. lv1업, lv10업"
+    },
+    {
+      "key": "deck",
+      "level": 1,
+      "title": "덱 설정",
+      "text": "덱에 출전할 인재를 배치하고 리더를 정해 보세요.",
+      "reward": {
+        "gold": 5000
+      },
+      "route": "decks",
+      "trigger": "1:3",
+      "source_text": "ch1 p3클리어- 덱 설정 및 방법 설명"
+    },
+    {
+      "key": "pvp_hr",
+      "level": 3,
+      "title": "PvP · 장비 가방",
+      "text": "HR 이하 1대1 리그가 열렸어요. PvP 덱을 배치하고 장비를 확인해 보세요.",
+      "reward": {
+        "gold": 5000
+      },
+      "route": "pvp",
+      "trigger": "",
+      "source_text": "pvp덱배치 및 다른 pvp설명."
+    },
+    {
+      "key": "dispatch",
+      "level": 5,
+      "title": "파견",
+      "text": "인재를 파견하면 시간이 지난 뒤 보상을 받아요. 파견할 인재와 의뢰를 골라 보세요.",
+      "reward": {
+        "gold": 5000
+      },
+      "route": "dispatch",
+      "trigger": "",
+      "source_text": "레벨5 되면 파견 설명 및 실행"
+    },
+    {
+      "key": "guild",
+      "level": 6,
+      "title": "조직",
+      "text": "조직에 가입하거나 직접 만들 수 있어요. 가입은 지금 하지 않아도 괜찮아요.",
+      "reward": {
+        "gold": 5000,
+        "boxes": 2
+      },
+      "route": "guild",
+      "trigger": "",
+      "source_text": "레벨6 되면 조직 가입 또는 창설 설명"
+    },
+    {
+      "key": "friends",
+      "level": 8,
+      "title": "친구 · 선물",
+      "text": "친구를 추가하고 행동력 선물을 주고받을 수 있어요.",
+      "reward": {},
+      "route": "friends",
+      "trigger": "",
+      "source_text": "친구를 추가하고 행동력 선물을 주고받을 수 있어요."
+    },
+    {
+      "key": "tower",
+      "level": 10,
+      "title": "시련의 탑",
+      "text": "덱을 골라 일반 전투 한 판만 도전해 보세요. 소탕은 원할 때 사용할 수 있어요.",
+      "reward": {
+        "gold": 5000,
+        "boxes": 2
+      },
+      "route": "tower",
+      "trigger": "",
+      "source_text": "시련의탑 설명, 강제 실행(일반+소탕)"
+    },
+    {
+      "key": "raid",
+      "level": 11,
+      "title": "토벌",
+      "text": "조직원들과 보스를 토벌할 수 있어요. 아직 조직이 없어도 안내와 보상은 받을 수 있어요.",
+      "reward": {
+        "tickets": 10
+      },
+      "route": "raid",
+      "trigger": "",
+      "source_text": "토벌 방법 및 내용 설명, 시행(길드 가입자 한정)"
+    },
+    {
+      "key": "camp",
+      "level": 12,
+      "title": "훈련소",
+      "text": "인재를 맡기면 훈련 경험치가 쌓여요. 가장 낮은 레벨 인재를 추천하지만 직접 골라도 돼요.",
+      "reward": {
+        "gold": 5000,
+        "boxes": 2
+      },
+      "route": "camp",
+      "trigger": "",
+      "source_text": "훈련소 설명 및 강제 배정(가장 레벨 낮은 캐릭터)"
+    },
+    {
+      "key": "skill",
+      "level": 13,
+      "title": "EX 합성 · 스킬 강화 · 대여",
+      "text": "인재를 EX 합성하거나 스킬을 강화할 수 있어요. 조직 인재 대여도 열렸어요.",
+      "reward": {
+        "soul": 1000,
+        "gold": 5000
+      },
+      "route": "cards",
+      "trigger": "",
+      "source_text": "스킬 강화 방법 알려줌"
+    },
+    {
+      "key": "sigil",
+      "level": 14,
+      "title": "증표",
+      "text": "인재 전용 증표를 만들고 강화할 수 있어요. 선택 상자는 우편에서 받을 수 있어요.",
+      "reward": {
+        "sigil_boxes": 10
+      },
+      "route": "cards",
+      "trigger": "",
+      "source_text": "증표 설명"
+    },
+    {
+      "key": "trade",
+      "level": 15,
+      "title": "무제한 1대1 · 거래소",
+      "text": "무제한 1대1 리그와 거래소가 열렸어요. 거래소는 계정 생성 후 7일이 지나면 이용할 수 있어요.",
+      "reward": {
+        "tickets": 10
+      },
+      "route": "trade",
+      "trigger": "",
+      "source_text": "거래소 설명 및 방법"
+    },
+    {
+      "key": "pvp_3v3",
+      "level": 17,
+      "title": "3대3 리그",
+      "text": "세 덱으로 겨루는 3대3 리그가 열렸어요. 두 리그에서 모두 도전할 수 있어요.",
+      "reward": {},
+      "route": "pvp",
+      "trigger": "",
+      "source_text": "세 덱으로 겨루는 3대3 리그가 열렸어요. 두 리그에서 모두 도전할 수 있어요."
+    },
+    {
+      "key": "war",
+      "level": 18,
+      "title": "조직전",
+      "text": "조직원들과 방어 덱을 배치하고 상대 조직에 도전해 보세요.",
+      "reward": {},
+      "route": "war",
+      "trigger": "",
+      "source_text": "조직원들과 방어 덱을 배치하고 상대 조직에 도전해 보세요."
+    },
+    {
+      "key": "pvp_boss",
+      "level": 20,
+      "title": "보스 리그",
+      "text": "진영 보스를 지키는 보스 리그가 열렸어요. 두 리그에서 모두 도전할 수 있어요.",
+      "reward": {},
+      "route": "pvp",
+      "trigger": "",
+      "source_text": "진영 보스를 지키는 보스 리그가 열렸어요. 두 리그에서 모두 도전할 수 있어요."
+    },
+    {
+      "key": "facilities",
+      "level": 20,
+      "title": "연마소 · 도장",
+      "text": "연마소에서 장비를, 도장에서 스킬을 강화할 수 있어요. 훈련소 건물 레벨과 무관하게 이용하며 기존 재료와 도장 개방 비용은 필요해요.",
+      "reward": {
+        "gold": 5000
+      },
+      "route": "camp",
+      "trigger": "",
+      "source_text": "연마소, 도장 설명"
+    },
+    {
+      "key": "attr25",
+      "level": 25,
+      "title": "바람 · 얼음 · 불의 탑",
+      "text": "같은 속성 인재로 도전하는 세 탑이 열렸어요. 각 탑의 개방 요일에 도전해 보세요.",
+      "reward": {},
+      "route": "tower",
+      "trigger": "",
+      "source_text": "같은 속성 인재로 도전하는 세 탑이 열렸어요. 각 탑의 개방 요일에 도전해 보세요."
+    },
+    {
+      "key": "attr40",
+      "level": 40,
+      "title": "빛의 섬 · 어둠의 늪",
+      "text": "빛과 어둠의 인재를 위한 두 탑이 열렸어요. 각 탑의 개방 요일에 도전해 보세요.",
+      "reward": {},
+      "route": "tower",
+      "trigger": "",
+      "source_text": "빛과 어둠의 인재를 위한 두 탑이 열렸어요. 각 탑의 개방 요일에 도전해 보세요."
+    }
+  ]
+};
