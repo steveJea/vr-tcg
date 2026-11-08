@@ -17,7 +17,7 @@
     ['[data-gnb="tower"],#main-quest','tower'], ['[data-dispatchbtn] button','dispatch'],
     ['[data-friendbtn] button,[data-nav="friends"]','friends'], ['[data-nav="camp"]','camp'],
     ['[data-nav="gearbag"],[data-go="gearbag"],[data-gslot]:not([data-gslot="sigil"])','gear'], ['#main-trade,#main-trade-tile,#story-trade','trade'],
-    ['[data-t="raid"]','raid'], ['[data-t="war"]','war'], ['[data-t="lend"]','lend'],
+    ['[data-forge]','forge'], ['[data-dojo],[data-dojounlock]','dojo'], ['[data-t="raid"]','raid'], ['[data-t="war"]','war'], ['[data-t="lend"]','lend'],
     ['[data-merge]','merge'], ['[data-skup]','skill'], ['[data-gslot="sigil"]','sigil'],
   ];
   function feature(el) {

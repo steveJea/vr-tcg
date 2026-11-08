@@ -24,7 +24,9 @@ window.VR_UNLOCK_POLICY = {
     "tower_ice": 25,
     "tower_fire": 25,
     "tower_light": 40,
-    "tower_dark": 40
+    "tower_dark": 40,
+    "forge": 20,
+    "dojo": 20
   },
   "entries": [
     {
@@ -213,6 +215,18 @@ window.VR_UNLOCK_POLICY = {
       "route": "pvp",
       "trigger": "",
       "source_text": "진영 보스를 지키는 보스 리그가 열렸어요. 두 리그에서 모두 도전할 수 있어요."
+    },
+    {
+      "key": "facilities",
+      "level": 20,
+      "title": "연마소 · 도장",
+      "text": "연마소에서 장비를, 도장에서 스킬을 강화할 수 있어요. 훈련소 건물 레벨과 무관하게 이용하며 기존 재료와 도장 개방 비용은 필요해요.",
+      "reward": {
+        "gold": 5000
+      },
+      "route": "camp",
+      "trigger": "",
+      "source_text": "연마소, 도장 설명"
     },
     {
       "key": "attr25",

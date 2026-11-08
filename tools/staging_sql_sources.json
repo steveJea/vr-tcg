@@ -137,7 +137,8 @@
     "security_phase1_preflight.sql": "보안 1단계 적용 전후 읽기 전용 ACL/함수 점검",
     "security_phase3_pvp_level_stats.sql": "기존 스테이징 phase3 엔진 해시 업그레이드 전용; 신규 설치는 security_phase3_pvp.sql의 새 해시를 사용",
     "staging_seed_raid_guildwar.sql": "테스트 계정 2개를 지정하는 staging 전용 seed/reset; 신규 설치 자동 실행 금지",
-    "security_phase4_war_card_details.sql": "Existing staging read-only upgrade; canonical phase4 already includes the same projection."
+    "security_phase4_war_card_details.sql": "Existing staging read-only upgrade; canonical phase4 already includes the same projection.",
+    "level_unlocks_facilities_staging.sql": "Existing staging account-Lv20 facility upgrade; canonical level_unlocks_staging.sql already includes it."
   },
   "partial": {
     "card_id_remap.sql": "card_id_alias 설정 자료 + 최신 _war_npc_deck만; 기존 사용자 ID 일괄 변경은 제외"
