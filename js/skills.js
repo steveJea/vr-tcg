@@ -581,7 +581,8 @@ export const ACTIVE = {
   '아파하라': (u, p, f, s) => { const t = by(live(f), x => x.card.cost, -1); if (t && multiHit(u, t, 5, 0.4)) u.cd[s.name] = 0; },
   // 김성진
   'Da nunc': (u, p, f, s) => { const d = hitAll(u, f, 10, 0.2); u.cd[s.name] = Math.max(0, u.cd[s.name] - d); },
-  'Tempus est discerpi': (u, p, f) => { live(f).forEach(t => addStatus(t, 'disrupt', 1, {}, 'disrupt')); p.actionLock = Math.max(p.actionLock, 2); },
+  // 봉인은 상대의 다음 턴 종료까지. 시전자에게 걸려 있던 별도 봉인은 건드리지 않는다.
+  'Tempus est discerpi': (u, p, f) => { live(f).forEach(t => addStatus(t, 'disrupt', 1, {}, 'disrupt')); f.actionLock = Math.max(f.actionLock, 1); },
   // 김동욱
   '잘린다': (u, p, f) => { const ts = live(f); hitAll(u, f, 3, 0.2); ts.forEach(t => f.field.includes(t) && sChance(0.2) && bleedOn(t, u)); },
   '러시안룰렛': (u, p, f) => { const t = by(live(f), x => x.card.cost); if (t) instaKill(t, u);
