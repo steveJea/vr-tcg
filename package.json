@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "build:staging": "node tools/build_staging.mjs",
-    "test:staging": "node tools/test_staging_config.mjs && node tools/test_staging_sql.mjs && node tools/test_staging_sql.mjs --supabase-defaults && node tools/test_staging_parts.mjs && node tools/test_staging_feedback.mjs && node tools/test_battle_render.mjs && node tools/test_pvp_feedback.mjs && node tools/test_sheet_feedback.mjs && npm run test:unlocks && npm run test:feedback16 && node tools/test_feedback18.mjs && node tools/test_arcade_verify_wait.mjs && npm run test:hosting",
+    "test:staging": "node tools/test_staging_config.mjs && node tools/test_staging_sql.mjs && node tools/test_staging_sql.mjs --supabase-defaults && node tools/test_staging_parts.mjs && node tools/test_staging_feedback.mjs && node tools/test_battle_render.mjs && node tools/test_pvp_feedback.mjs && node tools/test_sheet_feedback.mjs && npm run test:unlocks && npm run test:feedback16 && node tools/test_feedback18.mjs && node tools/test_arcade_verify_wait.mjs && npm run test:hosting && npm run test:legal",
     "check:staging": "node --check js/config.js && node --check js/cloud.js && node --check js/ranking.js && node --check js/daily.js && node --check js/achievements.js && node --check js/gallery.js && node --check js/arcade-tut.js && node --check js/pvp.js && node --check js/guild.js && node --check js/raid.js && node --check js/war.js && node --check js/story.js && node --check js/battle-session.js && node --check js/quest.js && node --check js/game.js && node --check js/tutorial.js && node --check js/gnb.js && node --check js/idle-box.js && node --check js/battle-view-controls.js && node --check js/pvp-core.js && node --check js/pvp-engine-version.js && node --check supabase/functions/pvp-verify-v3/handler.mjs && node --check js/guildbattle-session.js && node --check js/guildbattle-engine-version.js && node --check supabase/functions/guildbattle-verify-v4/handler.mjs && node --check js/war-deck-controls.js && node --check js/unlock-policy.js && node --check js/unlocks.js && node --check js/camp.js && node --check js/gear.js && node --check js/player.js && node tools/build_unlock_policy.mjs --check && node --check js/arcade-core.js && node --check js/arcade-session.js && node --check supabase/functions/arcade-verify-v5/handler.mjs && node tools/build_phase5_engine.mjs --check && node tools/build_phase5_dashboard.mjs --check",
     "deploy:staging": "npm run build:staging && wrangler deploy",
     "test:security:phase1": "node tools/test_security_phase1_sql.mjs && node tools/test_security_phase1_ui.mjs",
@@ -18,7 +18,8 @@
     "check:hosting": "node --check worker/media-range.mjs && npm run test:hosting",
     "build:production:worker": "node tools/build_production_assets.mjs",
     "deploy:production:worker": "npm run check:hosting && npm run build:production:worker && wrangler deploy --config wrangler.production.jsonc",
-    "test:hosting:integration": "node tools/test_media_range_integration.mjs && node tools/test_media_range_integration.mjs --production"
+    "test:hosting:integration": "node tools/test_media_range_integration.mjs && node tools/test_media_range_integration.mjs --production",
+    "test:legal": "node tools/test_legal_pages.mjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.15",
