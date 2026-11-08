@@ -1,5 +1,5 @@
 import {config} from './config.js';
-import {enabled,api,paymentError,savePending,loadPending,pendingKey,checkoutParams,sdkErrorCode,sdkFailure} from './payments-core.js';
+import {enabled,api,paymentError,savePending,loadPending,pendingKey,checkoutParams,sdkErrorCode,sdkFailure,RETIRED_TOSS_CLIENT_KEY} from './payments-core.js';
 const on=enabled(config),toast=t=>window.VRGem?.toast?.(t);let sdk,buying=false;
 const deadline=async(p,ms=10000)=>{let t;try{return await Promise.race([p,new Promise((_,r)=>{t=setTimeout(()=>r(Error('payment confirmation pending')),ms);})]);}finally{clearTimeout(t);}};
 async function loadSDK(clientKey){try{if(window.TossPayments)return Promise.resolve(window.TossPayments);if(!sdk)sdk=new Promise((resolve,reject)=>{const s=document.createElement('script');s.src='https://js.tosspayments.com/v2/standard';s.onload=()=>window.TossPayments?resolve(window.TossPayments):reject(Error('sdk'));s.onerror=()=>reject(Error('sdk'));document.head.appendChild(s);}).catch(e=>{sdk=null;throw e;});return await deadline(sdk);}catch(e){sdk=null;throw sdkFailure({code:'SDK_LOAD_FAILED',message:e?.message,stack:e?.stack},'sdk-load',clientKey);}}
@@ -23,7 +23,8 @@ async function open(){
    const result=await api(c.sb,config,{op:'create',product:p.id,request:intent.request}),o=result.order;
    if(c.user?.id!==uid)throw Error('login required');
    if(o.status==='paid'){localStorage.removeItem(pendingKey(uid));toast('이미 충전된 주문이에요.');return;}
-   if(!result.clientKey?.startsWith('test_ck_')||o.userId!==uid)throw Error('payment mismatch');
+   if(o.userId!==uid)throw Error('payment mismatch');
+   if(typeof result.clientKey!=='string'||!/^test_ck_[A-Za-z0-9_]+$/.test(result.clientKey)||result.clientKey===RETIRED_TOSS_CLIENT_KEY)throw Error('test payment configuration required');
    intent={...intent,orderId:o.orderId,amount:o.amount};savePending(localStorage,uid,intent);localStorage.setItem('vrTcg.toss.order.v1:'+o.orderId,JSON.stringify({uid,amount:o.amount}));
    const Toss=await loadSDK(result.clientKey);if(c.user?.id!==uid)throw Error('login required');
    let phase='sdk-init';
