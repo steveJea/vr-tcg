@@ -167,7 +167,9 @@ from public.payment_orders order by created_at desc limit 20;
 3. 기존 **`payments-confirm-v1`**에 최신 `dashboard_single_file.ts`를 붙여넣고 재배포합니다. **Verify JWT ON**을 유지합니다. 승인 응답의 `Payment.secret`을 서버에만 저장하며 브라우저 영수증에는 넣지 않습니다. 이 배포 전에 승인된 주문은 `secret`이 없어 웹훅 대상을 아닙니다.
 4. Edge Functions → 새 함수 **`payments-webhook-v1`** → `supabase/functions/payments-webhook-v1/dashboard_single_file.ts` 전체를 붙여넣고 배포합니다. **Verify JWT OFF.** 토스는 Supabase JWT를 보내지 않습니다. 이 설정은 플랫폼이 POST를 받게 할 뿐이고, 결제 권한은 저장된 `Payment.secret`과 서버 재조회입니다.
 5. 토스 개발자센터 **테스트 상점** 웹훅에 URL `https://cuyqchmdcnsgzkwyclji.supabase.co/functions/v1/payments-webhook-v1` 와 이벤트 **`PAYMENT_STATUS_CHANGED`만** 등록합니다. 운영 상점에는 등록하지 않습니다. 이 배포 뒤에 승인한 테스트 결제만 대시보드 취소 대사 대상입니다.
-6. 화면 문구는 이 브랜치를 staging에 병합한 뒤의 Worker 배포에서 보입니다. 구매자·결제 시각은 이미 staging `5d5751dd2d7e67c9711edcb69333a4f5ff37f763`에 있습니다.
+6. 화면 문구는 staging Worker 배포 후 `admin-payments.html` 새로고침으로 보입니다. 구매자·결제 시각은 이미 staging에 있습니다.
+
+취소 경로는 주문에 한 번 기록합니다. 관리자 **전액 환불**로 시작한 주문은 이후 웹훅이 와도 **게임 관리자**입니다. 관리자 요청 없이 웹훅으로만 기록된 취소는 **토스(PG)** 입니다. 이건 PG 경로라는 뜻이지, 누가 버튼을 눌렀는지는 아닙니다. 부분 취소도 같은 주문 행의 경로를 유지합니다. 취소된 주문인데 관리자 환불 키(`vr-refund-`)나 외부 키(`vr-external-`)가 없으면 **확인 불가**이고, 취소되지 않은 주문은 비웁니다. 상태만으로 과거 경로를 추정하지 않습니다. 이 항목은 같은 `payments_webhook_staging.sql`을 다시 실행하면 반영됩니다. Edge 함수는 이번 경로 표시만으로는 재배포하지 않습니다.
 
 ### 아직 제외한 범위
 

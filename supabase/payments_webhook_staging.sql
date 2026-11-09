@@ -10,6 +10,9 @@ do $guard$ begin
  or to_regprocedure('public._admin_guard()') is null then raise exception 'Install refunds first'; end if;
 end $guard$;
 
+alter table public.payment_orders add column if not exists cancel_origin text;
+alter table public.payment_orders drop constraint if exists payment_orders_cancel_origin_check;
+alter table public.payment_orders add constraint payment_orders_cancel_origin_check check (cancel_origin is null or cancel_origin in ('admin','toss'));
 alter table public.payment_orders add column if not exists cancel_source text;
 alter table public.payment_orders add column if not exists provider_status text;
 alter table public.payment_orders add column if not exists provider_mid text;
@@ -48,7 +51,11 @@ begin
  if not exists(select 1 from public.gem_ledger where user_id=o.user_id and ref='toss-refund-hold:'||o.order_id and d_free=-o.bonus_gems and d_paid=-o.paid_gems) then raise exception 'refund cs review'; end if;
  out:=jsonb_build_object('ok',true,'state','refunded','orderId',o.order_id,'amount',o.amount,'paidGems',o.paid_gems,'bonusGems',o.bonus_gems);
  update public.payment_refunds set state='refunded',cancel_amount=o.amount,canceled_at=at,updated_at=clock_timestamp(),provider_cancels=p_cancels,last_error=null,receipt=out where order_id=p_order;
- update public.payment_orders set cancel_status='refunded',cancel_amount=o.amount,canceled_at=at,cancel_source=coalesce(cancel_source,'admin'),provider_status='CANCELED' where order_id=p_order;
+ update public.payment_orders set cancel_status='refunded',cancel_amount=o.amount,canceled_at=at,cancel_source=coalesce(cancel_source,'admin'),provider_status='CANCELED',
+  cancel_origin=case
+   when cancel_origin='admin' or exists(select 1 from public.payment_refunds q where q.order_id=p_order and q.actor_id is not null and q.idempotency_key='vr-refund-'||p_order) then 'admin'
+   when cancel_origin='toss' or exists(select 1 from public.payment_refunds q where q.order_id=p_order and q.idempotency_key='vr-external-'||p_order) then 'toss'
+   else 'admin' end where order_id=p_order;
  return out;
 end $$;
 
@@ -109,7 +116,8 @@ begin
   if o.cancel_status='processing' or r.state='held' then return jsonb_build_object('ok',true,'state','processing','retry',true); end if;
   if r.state='refunded' or o.cancel_status='refunded' then
    update public.payment_refunds set last_error='external partial',cancel_amount=total::integer,canceled_at=at,updated_at=clock_timestamp(),provider_cancels=p_cancels where order_id=o.order_id;
-   update public.payment_orders set provider_status='PARTIAL_CANCELED',cancel_amount=total::integer,canceled_at=coalesce(canceled_at,at),cancel_source=coalesce(cancel_source,'external') where order_id=o.order_id;
+   update public.payment_orders set provider_status='PARTIAL_CANCELED',cancel_amount=total::integer,canceled_at=coalesce(canceled_at,at),cancel_source=coalesce(cancel_source,'external'),
+    cancel_origin=case when cancel_origin='admin' or exists(select 1 from public.payment_refunds q where q.order_id=o.order_id and q.actor_id is not null and q.idempotency_key='vr-refund-'||o.order_id) then 'admin' else coalesce(cancel_origin,'toss') end where order_id=o.order_id;
    return jsonb_build_object('ok',true,'state','review','reason','external partial','reclaimed',true);
   end if;
   if r.order_id is null then
@@ -118,7 +126,8 @@ begin
   else
    update public.payment_refunds set state='review',source=case when source='admin' then source else 'external' end,cancel_amount=total::integer,canceled_at=at,updated_at=clock_timestamp(),provider_cancels=p_cancels,last_error='external partial' where order_id=o.order_id and state<>'refunded';
   end if;
-  update public.payment_orders set cancel_status='review',cancel_amount=total::integer,canceled_at=at,cancel_source=coalesce(cancel_source,'external'),provider_status='PARTIAL_CANCELED' where order_id=o.order_id;
+  update public.payment_orders set cancel_status='review',cancel_amount=total::integer,canceled_at=at,cancel_source=coalesce(cancel_source,'external'),provider_status='PARTIAL_CANCELED',
+   cancel_origin=case when cancel_origin='admin' or exists(select 1 from public.payment_refunds q where q.order_id=o.order_id and q.actor_id is not null and q.idempotency_key='vr-refund-'||o.order_id) then 'admin' else coalesce(cancel_origin,'toss') end where order_id=o.order_id;
   return jsonb_build_object('ok',true,'state','review','reason','external partial','reclaimed',false);
  end if;
  if p_status is distinct from 'CANCELED' or p_balance is distinct from 0 or total is distinct from o.amount::bigint then raise exception 'payment mismatch'; end if;
@@ -155,7 +164,8 @@ begin
   else
    update public.payment_refunds set state='review',source=case when source='admin' then source else 'external' end,cancel_amount=o.amount,canceled_at=at,updated_at=clock_timestamp(),provider_cancels=p_cancels,last_error='external spent' where order_id=o.order_id and state<>'refunded';
   end if;
-  update public.payment_orders set cancel_status='review',cancel_amount=o.amount,canceled_at=at,cancel_source=coalesce(cancel_source,'external'),provider_status='CANCELED' where order_id=o.order_id and cancel_status<>'refunded';
+  update public.payment_orders set cancel_status='review',cancel_amount=o.amount,canceled_at=at,cancel_source=coalesce(cancel_source,'external'),provider_status='CANCELED',
+   cancel_origin=case when cancel_origin='admin' or exists(select 1 from public.payment_refunds q where q.order_id=o.order_id and q.actor_id is not null and q.idempotency_key='vr-refund-'||o.order_id) then 'admin' else coalesce(cancel_origin,'toss') end where order_id=o.order_id and cancel_status<>'refunded';
   return jsonb_build_object('ok',true,'state','review','reason','external spent','reclaimed',false);
  end if;
  out:=jsonb_build_object('ok',true,'state','refunded','orderId',o.order_id,'amount',o.amount,'paidGems',o.paid_gems,'bonusGems',o.bonus_gems);
@@ -165,8 +175,36 @@ begin
  else
   update public.payment_refunds set state='refunded',source=case when source='admin' then source else 'external' end,cancel_amount=o.amount,canceled_at=at,updated_at=clock_timestamp(),provider_cancels=p_cancels,last_error=null,receipt=out where order_id=o.order_id;
  end if;
- update public.payment_orders set cancel_status='refunded',cancel_amount=o.amount,canceled_at=at,cancel_source=coalesce(cancel_source,'external'),provider_status='CANCELED' where order_id=o.order_id;
+ update public.payment_orders set cancel_status='refunded',cancel_amount=o.amount,canceled_at=at,cancel_source=coalesce(cancel_source,'external'),provider_status='CANCELED',
+  cancel_origin=case when cancel_origin='admin' or exists(select 1 from public.payment_refunds q where q.order_id=o.order_id and q.actor_id is not null and q.idempotency_key='vr-refund-'||o.order_id) then 'admin' else coalesce(cancel_origin,'toss') end where order_id=o.order_id;
  return out;
+end $$;
+
+-- Admin initiation is recorded here, before any webhook. A later webhook must not replace it.
+create or replace function public.admin_payment_refund_prepare_v1(p_order text) returns jsonb language plpgsql security definer set search_path=pg_catalog,public as $$
+declare o public.payment_orders; r public.payment_refunds; w public.player_wallet; g public.gem_ledger; held jsonb; used_free bigint; used_paid bigint;
+begin
+ perform public._payments_guard_v1(); perform public._admin_guard();
+ select * into o from public.payment_orders where order_id=p_order for update;
+ if not found then raise exception 'order not found'; end if;
+ select * into r from public.payment_refunds where order_id=p_order;
+ if found then return jsonb_build_object('order',to_jsonb(o),'refund',to_jsonb(r)); end if;
+ if o.status<>'paid' or o.payment_key is null or o.cancel_status<>'none' then raise exception 'refund not eligible'; end if;
+ if o.paid_at+interval '7 days'<clock_timestamp() then raise exception 'refund cs review'; end if;
+ select * into w from public.player_wallet where user_id=o.user_id for update;
+ if not found then raise exception 'refund cs review'; end if;
+ select * into g from public.gem_ledger where user_id=o.user_id and ref='toss:'||o.order_id;
+ if not found or g.d_paid<>o.paid_gems or g.d_free<>o.bonus_gems then raise exception 'refund cs review'; end if;
+ select coalesce(sum(greatest(-d_free,0)),0),coalesce(sum(greatest(-d_paid,0)),0) into used_free,used_paid
+ from public.gem_ledger where user_id=o.user_id and id>g.id;
+ if w.gem_paid<o.paid_gems or w.gem_free<o.bonus_gems or used_paid>g.paid_after-o.paid_gems
+ or (o.bonus_gems>0 and used_free>g.free_after-o.bonus_gems) then raise exception 'refund cs review'; end if;
+ held:=public._gem_add(o.user_id,-o.bonus_gems,-o.paid_gems,'refund_hold','toss-refund-hold:'||o.order_id,jsonb_build_object('orderId',o.order_id,'actor',auth.uid()));
+ if held is null then raise exception 'refund cs review'; end if;
+ insert into public.payment_refunds(order_id,actor_id,amount,paid_gems,bonus_gems,idempotency_key,source)
+ values(o.order_id,auth.uid(),o.amount,o.paid_gems,o.bonus_gems,'vr-refund-'||o.order_id,'admin') returning * into r;
+ update public.payment_orders set cancel_status='processing',cancel_origin=case when cancel_origin is null then 'admin' else cancel_origin end where order_id=o.order_id returning * into o;
+ return jsonb_build_object('order',to_jsonb(o),'refund',to_jsonb(r));
 end $$;
 
 create or replace function public.admin_payment_orders_v1() returns jsonb language plpgsql security definer set search_path=pg_catalog,public as $$
@@ -175,12 +213,19 @@ begin
  update public.payment_orders set checkout_status='expired',closed_at=clock_timestamp()
  where status='pending' and checkout_status='open' and payment_key is null and expires_at<clock_timestamp();
  return jsonb_build_object('ok',true,'orders',(select coalesce(jsonb_agg(to_jsonb(t) order by t.created_at desc),'[]'::jsonb) from
- (select o.order_id,o.order_name,o.amount,o.paid_gems,o.bonus_gems,o.status,o.checkout_status,o.cancel_status,o.cancel_amount,o.created_at,o.paid_at,o.canceled_at,o.cancel_source,o.provider_status,
+ (select o.order_id,o.order_name,o.amount,o.paid_gems,o.bonus_gems,o.status,o.checkout_status,o.cancel_status,o.cancel_amount,o.created_at,o.paid_at,o.canceled_at,o.cancel_source,o.cancel_origin,o.provider_status,
   coalesce(nullif(btrim(p.nickname),''),o.user_id::text) as buyer
   from public.payment_orders o left join public.profiles p on p.id=o.user_id order by o.created_at desc limit 100) t));
 end $$;
 
-revoke all on function public._payment_refund_finish_v1(text,text,integer,text,text,integer,jsonb),public._payment_remember_secret_v1(text,text,text),public._payment_provider_key_v1(text),public._payment_external_reconcile_v1(text,text,integer,text,text,integer,jsonb,text),public.admin_payment_orders_v1() from public,anon,authenticated;
+-- Backfill only rows whose refund key shows who started the cancel. Status alone is not evidence.
+update public.payment_orders o set cancel_origin='admin'
+where o.cancel_origin is null and exists(select 1 from public.payment_refunds r where r.order_id=o.order_id and r.actor_id is not null and r.idempotency_key='vr-refund-'||o.order_id);
+update public.payment_orders o set cancel_origin='toss'
+where o.cancel_origin is null and exists(select 1 from public.payment_refunds r where r.order_id=o.order_id and r.actor_id is null and r.source='external' and r.idempotency_key='vr-external-'||o.order_id);
+
+revoke all on function public._payment_refund_finish_v1(text,text,integer,text,text,integer,jsonb),public._payment_remember_secret_v1(text,text,text),public._payment_provider_key_v1(text),public._payment_external_reconcile_v1(text,text,integer,text,text,integer,jsonb,text),public.admin_payment_refund_prepare_v1(text),public.admin_payment_orders_v1() from public,anon,authenticated;
+grant execute on function public.admin_payment_refund_prepare_v1(text),public.admin_payment_orders_v1() to authenticated;
 grant execute on function public._payment_refund_finish_v1(text,text,integer,text,text,integer,jsonb),public._payment_remember_secret_v1(text,text,text),public._payment_provider_key_v1(text),public._payment_external_reconcile_v1(text,text,integer,text,text,integer,jsonb,text) to service_role;
 grant execute on function public.admin_payment_orders_v1() to authenticated;
 notify pgrst,'reload schema';

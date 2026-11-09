@@ -21,11 +21,17 @@ const label=o=>{
  return states[o.cancel_status!=='none'?o.cancel_status:o.status==='paid'?'paid':o.checkout_status]||'확인 필요';
 };
 const blockRefund=o=>o.provider_status==='PARTIAL_CANCELED'||(o.cancel_source==='external'&&o.provider_status==='CANCELED');
+const origin=o=>{
+ if(!(o.cancel_status&&o.cancel_status!=='none'||Number(o.cancel_amount)>0))return '';
+ if(o.cancel_origin==='admin')return '게임 관리자';
+ if(o.cancel_origin==='toss')return '토스(PG)';
+ return '확인 불가';
+};
 async function load(){
  const result=await api(sb,config,{op:'orders'});rows.replaceChildren();
  for(const o of result.orders){
   const row=document.createElement('tr');cell(row,o.order_name+' / '+o.order_id);cell(row,buyer(o));cell(row,Number(o.amount).toLocaleString('ko-KR')+'원');cell(row,Number(o.paid_gems+o.bonus_gems).toLocaleString('ko-KR'));
-  cell(row,label(o));cell(row,paidWhen(o));cell(row,Number(o.cancel_amount).toLocaleString('ko-KR')+'원');
+  cell(row,label(o));cell(row,paidWhen(o));cell(row,Number(o.cancel_amount).toLocaleString('ko-KR')+'원');cell(row,origin(o));
   const actions=cell(row,'');
   if(o.status==='paid'&&o.cancel_status!=='refunded'&&!blockRefund(o)){
    const button=document.createElement('button');button.className='ad-btn';button.textContent=o.cancel_status==='none'?'전액 환불':'환불 다시 확인';actions.append(button);

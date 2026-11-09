@@ -51,15 +51,20 @@ try{
  const fresh=await paid();assert.deepEqual(await wallet(fresh.user_id),{paid:100,free:0});
  const done=await reconcile(fresh,{status:'DONE',balance:fresh.amount,cancels:[]});assert.equal(done.state,'open');assert.equal(await holds(fresh.user_id),0);
  const once=await reconcile(fresh);assert.equal(once.state,'refunded');assert.deepEqual(await wallet(fresh.user_id),{paid:0,free:0});assert.equal(await holds(fresh.user_id),1);
+ assert.equal((await q('select cancel_origin from payment_orders where order_id=$1',[fresh.order_id]))[0].cancel_origin,'toss');
  assert.equal((await reconcile(fresh)).state,'refunded');assert.equal(await holds(fresh.user_id),1);
+ assert.equal((await q('select cancel_origin from payment_orders where order_id=$1',[fresh.order_id]))[0].cancel_origin,'toss');
  const stale=await reconcile(fresh,{status:'DONE',balance:fresh.amount,cancels:[]});assert.equal(stale.state,'refunded');assert.equal(stale.stale,true);assert.deepEqual(await wallet(fresh.user_id),{paid:0,free:0});
+ assert.equal((await q('select cancel_origin from payment_orders where order_id=$1',[fresh.order_id]))[0].cancel_origin,'toss');
  const late=await paid();await q("update payment_orders set paid_at=now()-interval '8 days' where order_id=$1",[late.order_id]);
  assert.equal((await reconcile(late)).state,'refunded');assert.deepEqual(await wallet(late.user_id),{paid:0,free:0});
  const part=await paid();const partCancels=proof(100,'partial_transaction');
  const partial=await reconcile(part,{status:'PARTIAL_CANCELED',balance:part.amount-100,cancels:partCancels});
  assert.equal(partial.state,'review');assert.equal(partial.reason,'external partial');assert.equal(partial.reclaimed,false);assert.deepEqual(await wallet(part.user_id),{paid:100,free:0});assert.equal(await holds(part.user_id),0);
  assert.equal((await q('select cancel_status,cancel_amount,provider_status,cancel_source from payment_orders where order_id=$1',[part.order_id]))[0].cancel_amount,100);
+ assert.equal((await q('select cancel_origin from payment_orders where order_id=$1',[part.order_id]))[0].cancel_origin,'toss');
  assert.equal((await reconcile(part)).state,'refunded');assert.deepEqual(await wallet(part.user_id),{paid:0,free:0});assert.equal(await holds(part.user_id),1);
+ assert.equal((await q('select cancel_origin from payment_orders where order_id=$1',[part.order_id]))[0].cancel_origin,'toss');
  const spent=await paid();await v("select _gem_spend($1,1,'test',null) v",[spent.user_id]);const before=await wallet(spent.user_id);
  const denied=await reconcile(spent);assert.equal(denied.state,'review');assert.equal(denied.reason,'external spent');assert.equal(denied.reclaimed,false);
  assert.deepEqual(await wallet(spent.user_id),before);assert.ok(before.paid>=0&&before.free>=0);assert.equal(await holds(spent.user_id),0);
@@ -71,10 +76,17 @@ try{
  const held=await paid();await call('authenticated',admin,'admin_payment_refund_prepare_v1($1)',[held.order_id]);
  const closed=await reconcile(held);assert.equal(closed.state,'refunded');assert.equal(await holds(held.user_id),1);
  assert.equal((await q('select source from payment_refunds where order_id=$1',[held.order_id]))[0].source,'admin');
- assert.equal((await q('select cancel_source from payment_orders where order_id=$1',[held.order_id]))[0].cancel_source,'admin');
+ assert.equal((await q('select cancel_source,cancel_origin from payment_orders where order_id=$1',[held.order_id]))[0].cancel_origin,'admin');
+ assert.equal((await reconcile(held)).state,'refunded');
+ assert.equal((await q('select cancel_origin from payment_orders where order_id=$1',[held.order_id]))[0].cancel_origin,'admin');
+ const again=await call('authenticated',admin,'admin_payment_refund_prepare_v1($1)',[fresh.order_id]);
+ assert.equal(again.refund.source,'external');
+ assert.equal((await q('select cancel_origin from payment_orders where order_id=$1',[fresh.order_id]))[0].cancel_origin,'toss');
  const busy=await paid();await call('authenticated',admin,'admin_payment_refund_prepare_v1($1)',[busy.order_id]);
  const deferred=await reconcile(busy,{status:'PARTIAL_CANCELED',balance:busy.amount-100,cancels:partCancels});
- assert.equal(deferred.retry,true);assert.equal((await q('select cancel_status from payment_orders where order_id=$1',[busy.order_id]))[0].cancel_status,'processing');
+ assert.equal(deferred.retry,true);
+ const busyRow=(await q('select cancel_status,cancel_origin from payment_orders where order_id=$1',[busy.order_id]))[0];
+ assert.equal(busyRow.cancel_status,'processing');assert.equal(busyRow.cancel_origin,'admin');
  const mismatch=await paid();await assert.rejects(reconcile(mismatch,{key:'other-key'}),/payment mismatch/);assert.equal(await holds(mismatch.user_id),0);
  await reconcile(mismatch);await assert.rejects(reconcile(mismatch,{mid:'other_mid',status:'DONE',balance:mismatch.amount,cancels:[]}),/payment mismatch/);
  const pending=await call('authenticated',user,'payment_create_v1($1,$2)',['gem_100',randomUUID()]);
@@ -89,9 +101,20 @@ try{
  const listed=await call('authenticated',admin,'admin_payment_orders_v1()');
  assert.equal(listed.orders.find(x=>x.order_id===fresh.order_id).buyer,'플레이어');
  assert.equal(listed.orders.find(x=>x.order_id===fresh.order_id).cancel_source,'external');
+ assert.equal(listed.orders.find(x=>x.order_id===fresh.order_id).cancel_origin,'toss');
+ assert.equal(listed.orders.find(x=>x.order_id===held.order_id).cancel_origin,'admin');
+ const unknown=await paid();await q("update payment_orders set cancel_status='refunded',cancel_amount=amount,cancel_origin=null where order_id=$1",[unknown.order_id]);
+ const oldAdmin=await paid();
+ await q("insert into payment_refunds(order_id,actor_id,state,amount,paid_gems,bonus_gems,idempotency_key,source) values($1,$2,'refunded',$3,$4,$5,$6,'admin')",[oldAdmin.order_id,admin,oldAdmin.amount,oldAdmin.paid_gems,oldAdmin.bonus_gems,'vr-refund-'+oldAdmin.order_id]);
+ await q('update payment_orders set cancel_status=$2,cancel_amount=amount,cancel_origin=null,cancel_source=$3 where order_id=$1',[oldAdmin.order_id,'refunded','external']);
  assert(!JSON.stringify(listed).includes('payment_key'));assert(!JSON.stringify(listed).includes('provider_mid'));assert(!JSON.stringify(listed).includes('approval_secret_1'));assert(!JSON.stringify(listed).includes('email'));assert(!JSON.stringify(listed).includes('@'));
  await db.exec(swap(await read('supabase/payments_refunds_staging.sql')));await db.exec(migration);
+ assert.equal((await q('select cancel_origin from payment_orders where order_id=$1',[oldAdmin.order_id]))[0].cancel_origin,'admin');
+ assert.equal((await q('select cancel_origin from payment_orders where order_id=$1',[unknown.order_id]))[0].cancel_origin,null);
+ assert.equal((await q('select cancel_origin from payment_orders where order_id=$1',[fresh.order_id]))[0].cancel_origin,'toss');
+ assert.equal((await q('select cancel_origin from payment_orders where order_id=$1',[pending.order_id]))[0].cancel_origin,null);
  assert.equal((await reconcile(fresh)).state,'refunded');assert.equal(await holds(fresh.user_id),1);
+ assert.equal((await q('select cancel_origin from payment_orders where order_id=$1',[fresh.order_id]))[0].cancel_origin,'toss');
  await db.exec("select set_config('test.payment_db','7692130048193495360',false)");
  await assert.rejects(reconcile(fresh),/payments unavailable/);
  console.log('External cancel SQL: signature-free service reconcile, full unused reclaim, no double debit, partial without proration, spent/top-up review without negative or mint, admin-hold finish, deferred partial, stale DONE, buyer retained OK');
@@ -151,7 +174,16 @@ assert((await read('supabase/functions/payments-webhook-v1/dashboard_single_file
 assert((await read('supabase/functions/payments-confirm-v1/dashboard_single_file.ts')).includes('JWT verification ON'));
 const adminHtml=await read('admin-payments.html'),adminCode=(await read('js/payments-admin.js')).replace(/^import .*;$/gm,'').replace("await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm')",'await getSDK()').replace('init();','window.__init=init;');
 const {document}=parseHTML(adminHtml),window={};
-vm.runInNewContext(adminCode,{window,document,config:{enabled:true},enabled:()=>true,paymentError:x=>x,api:async()=>({ok:true,orders:[{order_id:orderId,order_name:'x',amount:1100,paid_gems:100,bonus_gems:0,status:'paid',checkout_status:'open',cancel_status:'review',cancel_amount:1100,cancel_source:'external',provider_status:'CANCELED',buyer:'심연구매',paid_at:'2026-11-08T14:05:06.000Z',created_at:'2026-11-08T13:00:00.000Z'}]}),getSDK:async()=>({createClient:()=>({auth:{initialize:async()=>{}}})})});
+vm.runInNewContext(adminCode,{window,document,config:{enabled:true},enabled:()=>true,paymentError:x=>x,api:async()=>({ok:true,orders:[
+ {order_id:orderId,order_name:'admin',amount:1100,paid_gems:100,bonus_gems:0,status:'paid',checkout_status:'open',cancel_status:'refunded',cancel_amount:1100,cancel_source:'admin',cancel_origin:'admin',provider_status:'CANCELED',buyer:'심연구매',paid_at:'2026-11-08T14:05:06.000Z',created_at:'2026-11-08T13:00:00.000Z'},
+ {order_id:'vrs_'+'b'.repeat(32),order_name:'toss',amount:5500,paid_gems:500,bonus_gems:25,status:'paid',checkout_status:'open',cancel_status:'refunded',cancel_amount:5500,cancel_source:'external',cancel_origin:'toss',provider_status:'CANCELED',buyer:'심연구매',paid_at:'2026-11-08T14:05:06.000Z',created_at:'2026-11-08T13:00:00.000Z'},
+ {order_id:'vrs_'+'c'.repeat(32),order_name:'unknown',amount:1100,paid_gems:100,bonus_gems:0,status:'paid',checkout_status:'open',cancel_status:'refunded',cancel_amount:1100,cancel_origin:null,buyer:'심연구매',paid_at:'2026-11-08T14:05:06.000Z',created_at:'2026-11-08T13:00:00.000Z'},
+ {order_id:'vrs_'+'d'.repeat(32),order_name:'open',amount:1100,paid_gems:100,bonus_gems:0,status:'paid',checkout_status:'open',cancel_status:'none',cancel_amount:0,buyer:'심연구매',paid_at:'2026-11-08T14:05:06.000Z',created_at:'2026-11-08T13:00:00.000Z'}
+]}),getSDK:async()=>({createClient:()=>({auth:{initialize:async()=>{}}})})});
 await window.__init();
-assert.match(document.body.textContent,/외부 취소 · 재화 불일치/);assert.equal(document.querySelector('tbody button'),null);assert.match(document.body.textContent,/2026-11-08 23:05:06/);
+const rows=[...document.querySelectorAll('tbody tr')];
+assert.match(document.querySelector('thead').textContent,/구매자/);assert.match(document.querySelector('thead').textContent,/결제 시각 \(한국시간\)/);assert.match(document.querySelector('thead').textContent,/취소 경로/);
+assert.match(rows[0].textContent,/게임 관리자/);assert.match(rows[1].textContent,/토스\(PG\)/);assert.match(rows[2].textContent,/확인 불가/);
+assert.doesNotMatch(rows[3].textContent,/게임 관리자|토스\(PG\)|확인 불가/);
+assert.equal(document.querySelectorAll('tbody button').length,1);assert.equal(rows[3].querySelector('button').textContent,'전액 환불');assert.match(document.body.textContent,/2026-11-08 23:05:06/);
 console.log('External cancel Edge: approval Payment.secret, no HMAC requirement, GET by stored key, webhook status/amount ignored, partial/full mapping, timeout retry, live/prod rejection, JWT modes OFF/ON OK');
