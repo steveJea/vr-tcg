@@ -9,9 +9,11 @@
 -- 4. 결과 표의 승리 층 / 패배 층을 확인한 뒤, 게임을 새로 열고 시련의 탑에서 소탕을 한 번 누릅니다.
 --
 -- apply 가 하는 일 (그 계정만)
--- * 보유 인재 중, 1장·시드 7·장비/증표/강화 없음으로 "이 층은 이기고 바로 다음 층은 지는" 카드 하나를 고릅니다.
+-- * 소탕 출전은 story_progress.data.owned 한 곳만 봅니다 (서버 _pvp_snap, 화면 deckInstances).
+--   그 목록이 없거나 비어 있으면, 장비·증표·뽑기 기록·대전 스냅샷에 있는 카드로 1장짜리 소탕 덱을 만듭니다.
+--   그런 카드도 없으면 가장 짧은 시험 카드 1장을 넣습니다. revert 하면 목록이 없던 상태는 행 삭제까지 그대로 돌아갑니다.
+-- * 목록이 있으면 그 인재 중 1장·시드 7·장비/증표/강화 없음으로 "이 층은 이기고 바로 다음 층은 지는" 카드를 고릅니다.
 --   가장 낮은 승리 층을 고르므로 시험이 짧습니다. 같은 카드의 사본은 남기고, 다른 인재는 백업에만 보관합니다.
---   그래서 소탕이 저장된 덱 대신 그 인재 1장만 데리고 나갑니다.
 -- * 그 카드의 레벨을 표의 값으로 맞추고, 강화·EX·스킬 레벨을 비웁니다. 장착 장비와 증표 강화만 잠시 벗깁니다.
 -- * 리더 스킬을 끕니다. 시험 중에 리더를 바꾸면 패배 층도 이길 수 있습니다.
 -- * 시련의 탑(normal) 최고 층을 승리 층 직전으로 맞춥니다. 이미 클리어한 계정도 그 층부터 다시 소탕할 수 있습니다.
@@ -442,6 +444,7 @@ insert into _sweep_fix(id, level, win, lose, name) values
   ('10509', 1, 23, 24, '강보람');
 
 create temp table _sweep_out(ord int primary key, line text) on commit drop;
+create temp table _sweep_have(id text primary key) on commit drop;
 
 do $sweep_fixture$
 declare
@@ -463,6 +466,9 @@ declare
   v_kinds int;
   v_copies int;
   v_hidden int;
+  v_story_present boolean := false;
+  v_made boolean := false;
+  v_from text := 'owned';
   v_need int;
   v_old_level int;
   v_new_level int;
@@ -598,11 +604,16 @@ begin
         tower_paid = excluded.tower_paid;
     end if;
 
-    update public.story_progress
-      set data = v_snap->'story_data', updated_at = now()
-      where user_id = v_uid;
-    if not found then
-      raise exception 'STOP: story_progress missing for %; backup kept', v_nick;
+    if coalesce((v_snap->>'story_present')::boolean, jsonb_typeof(v_snap->'story_data') = 'object') then
+      update public.story_progress
+        set data = v_snap->'story_data', updated_at = now()
+        where user_id = v_uid;
+      if not found then
+        insert into public.story_progress(user_id, data)
+        values (v_uid, v_snap->'story_data');
+      end if;
+    else
+      delete from public.story_progress where user_id = v_uid;
     end if;
 
     update public.player_gear set equipped_card = null
@@ -642,32 +653,97 @@ begin
 
     v_lines := array[
       'revert 완료: ' || v_nick || ' (' || v_uid::text || ')',
-      '시련의 탑 기록, 계정 레벨, 보유 인재, 리더, 장비 장착, 증표 강화, 소탕 시드를 백업 시점으로 되돌렸습니다.',
+      '시련의 탑 기록, 계정 레벨, 리더, 장비 장착, 증표 강화, 소탕 시드를 백업 시점으로 되돌렸습니다.',
+      case when coalesce((v_snap->>'story_present')::boolean, jsonb_typeof(v_snap->'story_data') = 'object')
+        then '보유 인재 목록을 백업 내용으로 되돌렸습니다.'
+        else '스토리 보유 목록이 원래 없었으므로 그 행을 지웠습니다.' end,
       '시험 뒤에 뽑은 인재와 시험으로 오른 탑 기록은 백업에 없어서 사라집니다. 장비 복구 ' || v_gear_n::text || '개.',
       '골드·젬·소환권·피·조각·혼은 이 스크립트가 바꾼 적이 없습니다.',
       '같은 파일을 다시 apply 하면 새 백업을 만들고 시험을 다시 맞춥니다.'
     ];
   else
     select data into v_story from public.story_progress where user_id = v_uid;
-    if v_story is null or jsonb_typeof(v_story->'owned') is distinct from 'array' then
-      raise exception 'STOP: % has no story card list; nothing was changed', v_nick;
+    v_story_present := found;
+    if not v_story_present or jsonb_typeof(v_story) is distinct from 'object' then
+      v_story_present := false;
+      v_story := '{}'::jsonb;
     end if;
     select snapshot into v_snap from public.staging_sweep_fixture_backup where user_id = v_uid;
     v_reused := v_snap is not null;
 
     if not v_reused then
-      select count(distinct o->>'id') into v_kinds from jsonb_array_elements(v_story->'owned') o;
+      delete from _sweep_have;
+      if jsonb_typeof(v_story->'owned') = 'array' then
+        insert into _sweep_have(id)
+        select distinct elem->>'id'
+        from jsonb_array_elements(v_story->'owned') elem
+        where elem->>'id' ~ '^[0-9]+$'
+        on conflict do nothing;
+        v_from := 'owned';
+      elsif jsonb_typeof(v_story->'owned') = 'object' then
+        insert into _sweep_have(id)
+        select k.id from jsonb_object_keys(v_story->'owned') k(id)
+        where k.id ~ '^[0-9]+$'
+        on conflict do nothing;
+        v_from := 'owned';
+      end if;
+      if not exists (select 1 from _sweep_have h join _sweep_fix f on f.id = h.id) then
+        delete from _sweep_have;
+        v_from := 'trace';
+        if to_regclass('public.player_gear') is not null then
+          insert into _sweep_have(id)
+          select distinct g.equipped_card from public.player_gear g
+          where g.user_id = v_uid and g.equipped_card ~ '^[0-9]+$'
+          on conflict do nothing;
+        end if;
+        if to_regclass('public.player_sigils') is not null then
+          insert into _sweep_have(id)
+          select distinct s.card_id from public.player_sigils s
+          where s.user_id = v_uid and s.card_id ~ '^[0-9]+$'
+          on conflict do nothing;
+        end if;
+        if to_regclass('public.story_gacha_log') is not null then
+          insert into _sweep_have(id)
+          select distinct l.card_id from public.story_gacha_log l
+          where l.user_id = v_uid and l.card_id ~ '^[0-9]+$'
+          on conflict do nothing;
+        end if;
+        if to_regclass('public.pvp_decks') is not null then
+          insert into _sweep_have(id)
+          select distinct c->>'id'
+          from public.pvp_decks d
+          cross join lateral jsonb_array_elements(case when jsonb_typeof(d.snap) = 'array' then d.snap else '[]'::jsonb end) c
+          where d.user_id = v_uid and c->>'id' ~ '^[0-9]+$'
+          on conflict do nothing;
+        end if;
+        if to_regclass('public.battle_sessions_v2') is not null then
+          insert into _sweep_have(id)
+          select distinct c->>'id'
+          from public.battle_sessions_v2 s
+          cross join lateral jsonb_array_elements(case when jsonb_typeof(s.snapshot->'cards') = 'array' then s.snapshot->'cards' else '[]'::jsonb end) c
+          where s.user_id = v_uid and c->>'id' ~ '^[0-9]+$'
+          on conflict do nothing;
+        end if;
+      end if;
       select f.id, f.name, f.level, f.win, f.lose
         into v_card_id, v_name, v_level, v_win, v_lose
       from _sweep_fix f
-      where exists (
-        select 1 from jsonb_array_elements(v_story->'owned') o where o->>'id' = f.id
-      )
+      join _sweep_have h on h.id = f.id
       order by f.win, f.level, f.id
       limit 1;
       if v_card_id is null then
-        raise exception 'STOP: % owns % card kinds and none has a solo seed-7 win/lose pair; nothing was changed', v_nick, v_kinds;
+        v_from := 'new';
+        select f.id, f.name, f.level, f.win, f.lose
+          into v_card_id, v_name, v_level, v_win, v_lose
+        from _sweep_fix f
+        order by f.win, f.level, f.id
+        limit 1;
       end if;
+      v_made := not exists (
+        select 1
+        from jsonb_array_elements(case when jsonb_typeof(v_story->'owned') = 'array' then v_story->'owned' else '[]'::jsonb end) elem
+        where elem->>'id' = v_card_id
+      );
 
       select case when ps.user_id is null then 'null'::jsonb else jsonb_build_object(
         'level', ps.level, 'xp', ps.xp, 'stamina', ps.stamina, 'stamina_at', ps.stamina_at
@@ -722,7 +798,10 @@ begin
         'lose', v_lose,
         'tower', v_tb,
         'legacy', v_tp,
-        'story_data', v_story,
+        'story_present', v_story_present,
+        'story_data', case when v_story_present then v_story else 'null'::jsonb end,
+        'made_card', v_made,
+        'card_from', v_from,
         'gear', v_gear,
         'sigil', v_sigil,
         'seeds', v_seeds,
@@ -743,32 +822,56 @@ begin
        or (v_snap->>'lose')::int is distinct from v_lose then
       raise exception 'STOP: backup for % does not match this fixture file. Revert with the file that created it.', v_nick;
     end if;
-    v_story := v_snap->'story_data';
-    if jsonb_typeof(v_story) is distinct from 'object' or jsonb_typeof(v_story->'owned') is distinct from 'array' then
-      raise exception 'STOP: backup story data is unusable; backup kept';
-    end if;
+    v_story := case when jsonb_typeof(v_snap->'story_data') = 'object' then v_snap->'story_data' else '{}'::jsonb end;
+    v_story_present := coalesce((v_snap->>'story_present')::boolean, jsonb_typeof(v_snap->'story_data') = 'object');
 
     select coalesce(jsonb_agg(
       (elem - 'level' - 'exp' - 'boost' - 'ex' - 'exb' - 'skillLv')
-      || jsonb_build_object('level', v_level, 'exp', 0, 'boost', '{}'::jsonb, 'ex', 0, 'exb', 0, 'skillLv', '{}'::jsonb)
+      || jsonb_build_object(
+        'uid', case when coalesce(elem->>'uid', '') <> '' then elem->>'uid' else 'sweepfix:' || v_card_id || ':' || ord::text end,
+        'id', v_card_id,
+        'level', v_level, 'exp', 0, 'boost', '{}'::jsonb, 'ex', 0, 'exb', 0, 'skillLv', '{}'::jsonb
+      )
       order by ord
     ), '[]'::jsonb)
       into v_owned
-    from jsonb_array_elements(v_story->'owned') with ordinality as t(elem, ord)
-    where elem->>'id' = v_card_id and coalesce(elem->>'uid', '') <> '';
-    v_copies := coalesce(jsonb_array_length(v_owned), 0);
-    if v_copies < 1 then
-      raise exception 'STOP: backup no longer contains card %; backup kept', v_card_id;
+    from jsonb_array_elements(case when jsonb_typeof(v_story->'owned') = 'array' then v_story->'owned' else '[]'::jsonb end)
+      with ordinality as t(elem, ord)
+    where jsonb_typeof(elem) = 'object' and elem->>'id' = v_card_id;
+    if coalesce(jsonb_array_length(v_owned), 0) < 1 then
+      v_owned := jsonb_build_array(jsonb_build_object(
+        'uid', 'sweepfix:' || v_card_id,
+        'id', v_card_id,
+        'level', v_level,
+        'exp', 0,
+        'totalExp', 0,
+        'boost', '{}'::jsonb,
+        'ex', 0,
+        'exb', 0,
+        'skillLv', '{}'::jsonb,
+        'cpts', 0,
+        'spentCard', 0
+      ));
     end if;
+    v_copies := jsonb_array_length(v_owned);
     select count(*) into v_hidden
-    from jsonb_array_elements(v_story->'owned') elem
-    where elem->>'id' is distinct from v_card_id;
+    from jsonb_array_elements(case when jsonb_typeof(v_story->'owned') = 'array' then v_story->'owned' else '[]'::jsonb end) elem
+    where jsonb_typeof(elem) = 'object' and elem->>'id' is distinct from v_card_id;
 
     v_story := jsonb_set(v_story, '{owned}', v_owned, true);
     v_story := jsonb_set(v_story, '{leader}', 'null'::jsonb, true);
-    update public.story_progress set data = v_story, updated_at = now() where user_id = v_uid;
-    if not found then
-      raise exception 'STOP: story_progress missing for %; backup kept', v_nick;
+    v_story := jsonb_set(v_story, '{decks}', jsonb_build_array(jsonb_build_object(
+      'name', '소탕 시험',
+      'uids', jsonb_build_array(v_owned->0->>'uid')
+    )), true);
+    if v_story_present then
+      update public.story_progress set data = v_story, updated_at = now() where user_id = v_uid;
+      if not found then
+        insert into public.story_progress(user_id, data) values (v_uid, v_story);
+      end if;
+    else
+      insert into public.story_progress(user_id, data) values (v_uid, v_story)
+      on conflict (user_id) do update set data = excluded.data, updated_at = now();
     end if;
 
     v_need := public._tower_min_level('normal');
@@ -877,7 +980,11 @@ begin
 
     v_lines := array[
       'apply 완료: ' || v_nick || ' (' || v_uid::text || ')' || case when v_reused then ' / 기존 백업 유지' else ' / 새 백업' end,
-      '소탕 인재 1장: ' || v_name || ' (id ' || v_card_id || ') 레벨 ' || v_level::text || ' / 사본 ' || v_copies::text || '장만 보유 목록에 남김 / 다른 인재 ' || v_hidden::text || '장은 백업에 보관',
+      '소탕 인재 1장: ' || v_name || ' (id ' || v_card_id || ') 레벨 ' || v_level::text || ' / 사본 ' || v_copies::text || '장만 보유 목록에 남김 / 다른 인재 ' || v_hidden::text || '장은 백업에 보관'
+        || case coalesce(v_snap->>'card_from', 'owned')
+          when 'new' then ' 보유 인재가 없어 시험 카드 1장을 넣었습니다. revert 하면 그 목록은 원래대로 돌아갑니다.'
+          when 'trace' then ' 스토리 보유 목록이 비어 장비·증표·뽑기·대전 기록의 카드로 소탕 덱을 만들었습니다. revert 하면 목록은 원래대로 돌아갑니다.'
+          else '' end,
       '리더 스킬 끔. 장비 ' || v_gear_n::text || '개 해제 (백업 ' || v_gear_saved::text || '개). 증표 강화도 잠시 끔. 강화·EX·스킬 레벨 비움.',
       '계정 레벨 ' || v_old_level::text || ' -> ' || v_new_level::text || ' (시련의 탑 입장 하한 ' || v_need::text || '). 경험치와 행동력은 백업 값.',
       '시련의 탑 최고 층 ' || v_old_best::text || ' -> ' || (v_win - 1)::text || '. 오늘 도전 횟수 0. 다른 탑은 그대로.',

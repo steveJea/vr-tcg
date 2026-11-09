@@ -10,7 +10,9 @@ assert.match(sql, /7703759698107299042/);
 assert.match(sql, /insert into _sweep_cfg\(nick, action\) values \('드리고니아', 'apply'\)/);
 assert.match(sql, /staging_sweep_fixture_backup/);
 assert.match(sql, /v_action = 'revert'/);
-assert.doesNotMatch(sql, /_wallet_add|_gem_add|gem_ledger|story_gacha|player_wallet/);
+assert.doesNotMatch(sql, /_wallet_add|_gem_add|gem_ledger|player_wallet|update public\.story_gacha[^_]/);
+assert.match(sql, /story_gacha_log/);
+assert.doesNotMatch(sql, /has no story card list/);
 
 const block = sql.slice(sql.indexOf('insert into _sweep_fix'), sql.indexOf('create temp table _sweep_out'));
 const rows = [...block.matchAll(/\('(\d+)', (\d+), (\d+), (\d+), '((?:[^']|'')*)'\)/g)].map(m => ({
