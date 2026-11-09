@@ -104,7 +104,11 @@ export function createHandler(env,fetcher=fetch,timeoutMs=9000) {
    }
    if(r.status===401)return reply(503,{error:'test payment configuration required'});
    if(!r.ok||!validPayment(p,o,b.paymentKey))return reply(409,{error:'payment not completed'});
-   stage='settle';return reply(200,await rpc('_payment_settle_v1',{p_uid:user.id,p_order:o.order_id,p_key:p.paymentKey,p_amount:p.totalAmount,p_currency:p.currency,p_status:p.status,p_balance:p.balanceAmount,p_approved:p.approvedAt}));
+   stage='settle';const receipt=await rpc('_payment_settle_v1',{p_uid:user.id,p_order:o.order_id,p_key:p.paymentKey,p_amount:p.totalAmount,p_currency:p.currency,p_status:p.status,p_balance:p.balanceAmount,p_approved:p.approvedAt});
+   // Payment.secret is the documented payment-status webhook check. It is not returned to the browser.
+   const webhookSecret=typeof p.secret==='string'&&p.secret.length>=1&&p.secret.length<=50&&!/[\u0000-\u001f\u007f]/.test(p.secret)?p.secret:null;
+   if(webhookSecret){try{await rpc('_payment_remember_secret_v1',{p_order:o.order_id,p_key:p.paymentKey,p_secret:webhookSecret});}catch{console.warn(JSON.stringify({tag:'payments-confirm-v1',stage:'webhook-secret',code:'not stored'}));}}
+   return reply(200,receipt);
   };
   try {return await Promise.race([work(),new Promise(resolve=>{timer=setTimeout(()=>{controller.abort();resolve(reply(504,{error:stage.startsWith('refund')?'refund pending':stage==='order'?'order creation delayed':'payment confirmation pending',stage}));},timeoutMs);})]);}
   catch(e){const allowed=[...RPC_ERRORS,'payment sql required','payment database permissions','payment database unavailable','order creation failed'];const error=allowed.includes(e.message)?e.message:stage.startsWith('refund')?'refund pending':stage==='order'?'order creation failed':'payment confirmation pending';return reply(error==='forbidden'?403:error==='login required'?401:error.startsWith('payment sql')||error.startsWith('payment database')||error==='order creation failed'?503:409,{error,stage});}

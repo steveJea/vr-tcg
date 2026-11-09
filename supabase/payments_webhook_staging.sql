@@ -52,13 +52,35 @@ begin
  return out;
 end $$;
 
-create or replace function public._payment_provider_key_v1(p_order text) returns jsonb language plpgsql security definer set search_path=pg_catalog,public as $$
+-- Approval-time Payment.secret. Not a webhook HMAC key. Never selected into the admin order list.
+create table if not exists public.payment_provider_secrets (
+ order_id text primary key references public.payment_orders(order_id) on delete restrict,
+ secret text not null check (char_length(secret) between 1 and 50 and secret !~ '[[:cntrl:]]')
+);
+alter table public.payment_provider_secrets enable row level security;
+revoke all on public.payment_provider_secrets from public,anon,authenticated;
+grant all on public.payment_provider_secrets to service_role;
+
+create or replace function public._payment_remember_secret_v1(p_order text,p_key text,p_secret text) returns void language plpgsql security definer set search_path=pg_catalog,public as $$
 declare o public.payment_orders;
+begin
+ perform public._payments_guard_v1();
+ if p_secret is null or char_length(p_secret) not between 1 and 50 or p_secret ~ '[[:cntrl:]]' then raise exception 'payment mismatch'; end if;
+ select * into o from public.payment_orders where order_id=p_order and status='paid' and payment_key=p_key;
+ if not found then raise exception 'order not found'; end if;
+ insert into public.payment_provider_secrets(order_id,secret) values(o.order_id,p_secret)
+ on conflict(order_id) do update set secret=excluded.secret where public.payment_provider_secrets.secret=excluded.secret;
+ if exists(select 1 from public.payment_provider_secrets where order_id=o.order_id and secret is distinct from p_secret) then raise exception 'payment mismatch'; end if;
+end $$;
+
+create or replace function public._payment_provider_key_v1(p_order text) returns jsonb language plpgsql security definer set search_path=pg_catalog,public as $$
+declare o public.payment_orders; s text;
 begin
  perform public._payments_guard_v1();
  select * into o from public.payment_orders where order_id=p_order;
  if not found or o.status<>'paid' or o.payment_key is null then return null; end if;
- return jsonb_build_object('order_id',o.order_id,'payment_key',o.payment_key,'amount',o.amount,'currency',o.currency);
+ select secret into s from public.payment_provider_secrets where order_id=o.order_id;
+ return jsonb_build_object('order_id',o.order_id,'payment_key',o.payment_key,'amount',o.amount,'currency',o.currency,'secret',s);
 end $$;
 
 -- Service role only. p_* values are the Edge's authenticated Toss GET, never the webhook JSON.
@@ -158,8 +180,8 @@ begin
   from public.payment_orders o left join public.profiles p on p.id=o.user_id order by o.created_at desc limit 100) t));
 end $$;
 
-revoke all on function public._payment_refund_finish_v1(text,text,integer,text,text,integer,jsonb),public._payment_provider_key_v1(text),public._payment_external_reconcile_v1(text,text,integer,text,text,integer,jsonb,text),public.admin_payment_orders_v1() from public,anon,authenticated;
-grant execute on function public._payment_refund_finish_v1(text,text,integer,text,text,integer,jsonb),public._payment_provider_key_v1(text),public._payment_external_reconcile_v1(text,text,integer,text,text,integer,jsonb,text) to service_role;
+revoke all on function public._payment_refund_finish_v1(text,text,integer,text,text,integer,jsonb),public._payment_remember_secret_v1(text,text,text),public._payment_provider_key_v1(text),public._payment_external_reconcile_v1(text,text,integer,text,text,integer,jsonb,text),public.admin_payment_orders_v1() from public,anon,authenticated;
+grant execute on function public._payment_refund_finish_v1(text,text,integer,text,text,integer,jsonb),public._payment_remember_secret_v1(text,text,text),public._payment_provider_key_v1(text),public._payment_external_reconcile_v1(text,text,integer,text,text,integer,jsonb,text) to service_role;
 grant execute on function public.admin_payment_orders_v1() to authenticated;
 notify pgrst,'reload schema';
 commit;

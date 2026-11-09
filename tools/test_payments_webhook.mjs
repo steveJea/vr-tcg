@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict';
-import {createHmac, randomUUID} from 'node:crypto';
+import {randomUUID} from 'node:crypto';
 import {readFile} from 'node:fs/promises';
 import vm from 'node:vm';
 import {parseHTML} from 'linkedom';
 import {PGlite} from '@electric-sql/pglite';
 import {buildSql,INSTALL_ACK} from './build_staging_sql.mjs';
-import {createHandler,verifyTossWebhook,providerSnapshot,STAGING} from '../supabase/functions/payments-webhook-v1/handler.mjs';
+import {createHandler,paymentSecret,providerSnapshot,STAGING} from '../supabase/functions/payments-webhook-v1/handler.mjs';
+import {createHandler as confirmHandler} from '../supabase/functions/payments-confirm-v1/handler.mjs';
 const read=p=>readFile(new URL('../'+p,import.meta.url),'utf8');
 const swap=s=>s.replaceAll('pg_catalog.pg_control_system()','public.test_payment_control()');
 const db=new PGlite(),admin='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',user='11111111-1111-4111-8111-111111111111';
@@ -78,10 +79,17 @@ try{
  await reconcile(mismatch);await assert.rejects(reconcile(mismatch,{mid:'other_mid',status:'DONE',balance:mismatch.amount,cancels:[]}),/payment mismatch/);
  const pending=await call('authenticated',user,'payment_create_v1($1,$2)',['gem_100',randomUUID()]);
  assert.equal(await service('_payment_provider_key_v1($1)',[pending.order_id]),null);
+ const remembered=await paid();
+ await assert.rejects(call('authenticated',user,'_payment_remember_secret_v1($1,$2,$3)',[remembered.order_id,remembered.payment_key,'approval_secret_1']),/permission denied/);
+ await assert.rejects(role('anon',user,()=>q('select secret from payment_provider_secrets')),/permission denied/);
+ await service('_payment_remember_secret_v1($1,$2,$3)',[remembered.order_id,remembered.payment_key,'approval_secret_1']);
+ await service('_payment_remember_secret_v1($1,$2,$3)',[remembered.order_id,remembered.payment_key,'approval_secret_1']);
+ await assert.rejects(service('_payment_remember_secret_v1($1,$2,$3)',[remembered.order_id,remembered.payment_key,'other_secret_value']),/payment mismatch/);
+ assert.equal((await service('_payment_provider_key_v1($1)',[remembered.order_id])).secret,'approval_secret_1');
  const listed=await call('authenticated',admin,'admin_payment_orders_v1()');
  assert.equal(listed.orders.find(x=>x.order_id===fresh.order_id).buyer,'플레이어');
  assert.equal(listed.orders.find(x=>x.order_id===fresh.order_id).cancel_source,'external');
- assert(!JSON.stringify(listed).includes('payment_key'));assert(!JSON.stringify(listed).includes('provider_mid'));assert(!JSON.stringify(listed).includes('email'));assert(!JSON.stringify(listed).includes('@'));
+ assert(!JSON.stringify(listed).includes('payment_key'));assert(!JSON.stringify(listed).includes('provider_mid'));assert(!JSON.stringify(listed).includes('approval_secret_1'));assert(!JSON.stringify(listed).includes('email'));assert(!JSON.stringify(listed).includes('@'));
  await db.exec(swap(await read('supabase/payments_refunds_staging.sql')));await db.exec(migration);
  assert.equal((await reconcile(fresh)).state,'refunded');assert.equal(await holds(fresh.user_id),1);
  await db.exec("select set_config('test.payment_db','7692130048193495360',false)");
@@ -89,44 +97,56 @@ try{
  console.log('External cancel SQL: signature-free service reconcile, full unused reclaim, no double debit, partial without proration, spent/top-up review without negative or mint, admin-hold finish, deferred partial, stale DONE, buyer retained OK');
 }finally{await db.close();}
 
-const secret='whsec_unit_test_value',env={SUPABASE_URL:STAGING,SUPABASE_SECRET_KEYS:'{"default":"sb_secret_unit"}',TOSS_SECRET_KEY:'test_sk_unit',TOSS_WEBHOOK_SECRET:secret};
-const orderId='vrs_'+'a'.repeat(32),stored='stored_payment_key',order={order_id:orderId,payment_key:stored,amount:1100,currency:'KRW'};
-const base={paymentKey:stored,orderId,totalAmount:1100,currency:'KRW',method:'카드',mId:'mid_test',approvedAt:new Date().toISOString()};
+const approvalSecret='approval_secret_1',env={SUPABASE_URL:STAGING,SUPABASE_PUBLISHABLE_KEYS:'{"default":"sb_publishable_unit"}',SUPABASE_SECRET_KEYS:'{"default":"sb_secret_unit"}',TOSS_SECRET_KEY:'test_sk_unit',TOSS_CLIENT_KEY:'test_ck_unit'};
+const orderId='vrs_'+'a'.repeat(32),stored='stored_payment_key',order={order_id:orderId,payment_key:stored,amount:1100,currency:'KRW',secret:approvalSecret};
+const base={paymentKey:stored,orderId,totalAmount:1100,currency:'KRW',method:'카드',mId:'mid_test',secret:approvalSecret,approvedAt:new Date().toISOString()};
 const fullPay={...base,status:'CANCELED',balanceAmount:0,cancels:proof(1100)};
 const response=x=>new Response(JSON.stringify(x),{status:200,headers:{'content-type':'application/json'}});
-const sign=(raw,time,key=secret)=>'v1:'+createHmac('sha256',key).update(raw+':'+time).digest('base64');
-function posted(raw,extra={}){const time=extra.time||new Date().toISOString();const headers={'tosspayments-webhook-transmission-time':time,'tosspayments-webhook-signature':extra.signature||sign(raw,time),'tosspayments-webhook-transmission-id':'whtrans_new_each_send',...extra.headers};return new Request('https://edge.test',{method:'POST',headers,body:raw});}
-const body=(data={})=>JSON.stringify({eventType:'PAYMENT_STATUS_CHANGED',createdAt:new Date().toISOString(),data:{orderId,paymentKey:'forged_key',status:'DONE',totalAmount:1,secret:'attacker',...(data||{})}});
+function posted(raw){return new Request('https://edge.test',{method:'POST',headers:{'content-type':'application/json','tosspayments-webhook-transmission-id':'whtrans_new_each_send'},body:raw});}
+const body=(data={})=>JSON.stringify({eventType:'PAYMENT_STATUS_CHANGED',createdAt:new Date().toISOString(),data:{orderId,paymentKey:stored,status:'DONE',totalAmount:1,secret:approvalSecret,...data}});
 function mock(payment,reconcile={ok:true,state:'refunded'}){
  const state={urls:[],rpcs:[]};
  const fetcher=async(url,opt={})=>{state.urls.push(url);if(url.endsWith('/_payment_provider_key_v1'))return response(order);if(url.endsWith('/_payment_external_reconcile_v1')){state.rpcs.push(JSON.parse(opt.body));return response(reconcile);}if(url.startsWith('https://api.tosspayments.com/v1/payments/'+encodeURIComponent(stored)))return response(payment);throw Error('unexpected destination');};
  return {state,fetcher};
 }
-const now=Date.parse('2026-11-09T00:00:00.000Z');
-assert.equal(await verifyTossWebhook('{"a":1}','2026-11-09T00:00:30+00:00',sign('{"a":1}','2026-11-09T00:00:30+00:00'),secret,now),true);
-assert.equal(await verifyTossWebhook('{"a":1}','2026-11-09T00:00:30+00:00','v1:'+Buffer.from('nope').toString('base64')+','+sign('{"a":1}','2026-11-09T00:00:30+00:00'),secret,now),true);
-assert.equal(await verifyTossWebhook('{"a":1}','2026-11-08T00:00:00+00:00',sign('{"a":1}','2026-11-08T00:00:00+00:00'),secret,now),false);
-assert.equal(await verifyTossWebhook('{"a":1}','2026-11-09T00:00:30+00:00',sign('{"a":1}','2026-11-09T00:00:30+00:00','other_webhook_secret'),secret,now),false);
+assert.equal(paymentSecret('approval_secret_1'),'approval_secret_1');assert.equal(paymentSecret(''),null);assert.equal(paymentSecret('x'.repeat(51)),null);
 assert.equal(providerSnapshot({...fullPay,totalAmount:1},order),null);
+assert.equal(providerSnapshot({...fullPay,secret:'other_secret_value'},order),null);
 const raw=body();const trusted=mock(fullPay);const ok=await createHandler(env,trusted.fetcher)(posted(raw));
-assert.equal(ok.status,200);assert.deepEqual(await ok.json(),{ok:true,state:'refunded'});
+assert.equal(ok.status,200);assert.deepEqual(await ok.json(),{ok:true,state:'refunded'});assert.equal(ok.headers.get('tosspayments-webhook-signature'),null);
 assert.equal(trusted.state.urls.filter(u=>u.includes('api.tosspayments.com')).length,1);
 assert.match(trusted.state.urls.find(u=>u.includes('api.tosspayments.com')),/stored_payment_key/);
 assert.equal(trusted.state.rpcs[0].p_status,'CANCELED');assert.equal(trusted.state.rpcs[0].p_amount,1100);assert.equal(trusted.state.rpcs[0].p_key,stored);assert.notEqual(trusted.state.rpcs[0].p_balance,1);
+const unsigned=mock(fullPay);const unsignedRaw=body();const unsignedReq=new Request('https://edge.test',{method:'POST',headers:{'content-type':'application/json','tosspayments-webhook-signature':'v1:not-a-real-signature'},body:unsignedRaw});
+assert.equal((await createHandler(env,unsigned.fetcher)(unsignedReq)).status,200);assert.equal(unsigned.state.rpcs[0].p_status,'CANCELED');
 const lied=body({status:'CANCELED',totalAmount:1});const open=mock({...base,status:'DONE',balanceAmount:1100,cancels:[]},{ok:true,state:'open'});
 assert.equal((await createHandler(env,open.fetcher)(posted(lied))).status,200);assert.equal(open.state.rpcs[0].p_status,'DONE');assert.equal(open.state.rpcs[0].p_cancels.length,0);
-const forged=mock(fullPay);assert.equal((await createHandler(env,forged.fetcher)(posted(raw,{signature:'v1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA='}))).status,401);assert.equal(forged.state.urls.length,0);
-const stale=mock(fullPay);assert.equal((await createHandler(env,stale.fetcher)(posted(raw,{time:'2026-11-01T00:00:00+00:00',signature:sign(raw,'2026-11-01T00:00:00+00:00')}))).status,401);assert.equal(stale.state.urls.length,0);
-const other=mock(fullPay);assert.deepEqual(await (await createHandler(env,other.fetcher)(posted(JSON.stringify({eventType:'CANCEL_STATUS_CHANGED',data:{orderId}})))).json(),{ok:true,state:'ignored'});assert.equal(other.state.urls.length,0);
+const forged=mock(fullPay);assert.equal((await createHandler(env,forged.fetcher)(posted(body({secret:'attacker_secret'})))).status,401);assert.equal(forged.state.urls.filter(u=>u.includes('api.tosspayments.com')).length,0);assert.equal(forged.state.rpcs.length,0);
+const missing=mock(fullPay);missing.fetcher=async url=>{if(String(url).endsWith('/_payment_provider_key_v1'))return response({...order,secret:null});throw Error('should not fetch');};
+assert.deepEqual(await (await createHandler(env,missing.fetcher)(posted(raw))).json(),{ok:true,state:'ignored'});
+const foreign=mock(fullPay);assert.equal((await createHandler(env,foreign.fetcher)(posted(body({paymentKey:'forged_key'})))).status,401);assert.equal(foreign.state.urls.filter(u=>u.includes('api.tosspayments.com')).length,0);
+const other=mock(fullPay);assert.deepEqual(await (await createHandler(env,other.fetcher)(posted(JSON.stringify({eventType:'CANCEL_STATUS_CHANGED',data:{orderId,secret:approvalSecret}})))).json(),{ok:true,state:'ignored'});assert.equal(other.state.urls.length,0);
 const partial=mock({...base,status:'PARTIAL_CANCELED',balanceAmount:1000,cancels:proof(100,'partial_transaction')},{ok:true,state:'review'});
 assert.equal((await (await createHandler(env,partial.fetcher)(posted(raw))).json()).state,'review');assert.equal(partial.state.rpcs[0].p_status,'PARTIAL_CANCELED');assert.equal(partial.state.rpcs[0].p_balance,1000);
 const broken=mock({...fullPay,cancels:[{...proof(1100)[0],cancelStatus:'IN_PROGRESS'}]});assert.equal((await createHandler(env,broken.fetcher)(posted(raw))).status,503);assert.equal(broken.state.rpcs.length,0);
+const drifted=mock({...fullPay,secret:'other_secret_value'});assert.equal((await createHandler(env,drifted.fetcher)(posted(raw))).status,503);assert.equal(drifted.state.rpcs.length,0);
 const retry=mock(fullPay,{ok:true,state:'processing',retry:true});assert.equal((await createHandler(env,retry.fetcher)(posted(raw))).status,503);
 const hang=mock(fullPay);hang.fetcher=async url=>{if(String(url).includes('api.tosspayments.com'))return new Promise(()=>{});return mock(fullPay).fetcher(url);};
 assert.equal((await createHandler(env,hang.fetcher,40)(posted(raw))).status,503);
 assert.equal((await createHandler({...env,TOSS_SECRET_KEY:'live_sk_never'},mock(fullPay).fetcher)(posted(raw))).status,503);
 assert.equal((await createHandler({...env,SUPABASE_URL:'https://htarwisgkkphutxxnuak.supabase.co'},mock(fullPay).fetcher)(posted(raw))).status,503);
-assert.equal((await createHandler({...env,TOSS_WEBHOOK_SECRET:'test_sk_not_a_webhook_key'},mock(fullPay).fetcher)(posted(raw))).status,503);
+const remembered=[];
+const confirmPayment={paymentKey:'opaque_key',orderId,currency:'KRW',totalAmount:1100,balanceAmount:1100,status:'DONE',approvedAt:'2026-11-08T21:00:00+09:00',method:'카드',secret:approvalSecret};
+const confirmFetch=async(url,opt={})=>{
+ if(url.endsWith('/auth/v1/user'))return response({id:'11111111-1111-4111-8111-111111111111'});
+ if(url.endsWith('/_payment_bind_v1'))return response({order_id:orderId,payment_key:'opaque_key',status:'pending',amount:1100});
+ if(url.endsWith('/_payment_settle_v1'))return response({ok:true,orderId});
+ if(url.endsWith('/_payment_remember_secret_v1')){remembered.push(JSON.parse(opt.body));return response(null);}
+ if(url.startsWith('https://api.tosspayments.com/'))return response(confirmPayment);
+ throw Error('unexpected confirm '+url);
+};
+const confirmed=await confirmHandler(env,confirmFetch)(new Request('https://edge.test',{method:'POST',headers:{'content-type':'application/json',origin:'https://vr-tcg-staging.notcold.workers.dev',authorization:'Bearer login'},body:JSON.stringify({op:'confirm',orderId,paymentKey:'opaque_key',amount:1100})}));
+const confirmedBody=await confirmed.json();assert.equal(confirmed.status,200);assert.equal(remembered[0].p_secret,approvalSecret);assert.equal(JSON.stringify(confirmedBody).includes(approvalSecret),false);
 assert((await read('supabase/functions/payments-webhook-v1/dashboard_single_file.ts')).includes('JWT verification OFF'));
 assert((await read('supabase/functions/payments-confirm-v1/dashboard_single_file.ts')).includes('JWT verification ON'));
 const adminHtml=await read('admin-payments.html'),adminCode=(await read('js/payments-admin.js')).replace(/^import .*;$/gm,'').replace("await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm')",'await getSDK()').replace('init();','window.__init=init;');
@@ -134,4 +154,4 @@ const {document}=parseHTML(adminHtml),window={};
 vm.runInNewContext(adminCode,{window,document,config:{enabled:true},enabled:()=>true,paymentError:x=>x,api:async()=>({ok:true,orders:[{order_id:orderId,order_name:'x',amount:1100,paid_gems:100,bonus_gems:0,status:'paid',checkout_status:'open',cancel_status:'review',cancel_amount:1100,cancel_source:'external',provider_status:'CANCELED',buyer:'심연구매',paid_at:'2026-11-08T14:05:06.000Z',created_at:'2026-11-08T13:00:00.000Z'}]}),getSDK:async()=>({createClient:()=>({auth:{initialize:async()=>{}}})})});
 await window.__init();
 assert.match(document.body.textContent,/외부 취소 · 재화 불일치/);assert.equal(document.querySelector('tbody button'),null);assert.match(document.body.textContent,/2026-11-08 23:05:06/);
-console.log('External cancel Edge: HMAC and fresh transmission time, GET by stored key, webhook status/amount ignored, partial/full mapping, timeout retry, live/prod/API-key secret rejection, JWT modes OFF/ON OK');
+console.log('External cancel Edge: approval Payment.secret, no HMAC requirement, GET by stored key, webhook status/amount ignored, partial/full mapping, timeout retry, live/prod rejection, JWT modes OFF/ON OK');

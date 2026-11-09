@@ -148,7 +148,9 @@ from public.payment_orders order by created_at desc limit 20;
 
 게임 밖(토스 개발자센터/대시보드)에서 취소되면 `PAYMENT_STATUS_CHANGED`만 받습니다. 국내 카드·간편결제의 취소는 이 이벤트입니다. `CANCEL_STATUS_CHANGED`는 해외 비동기 간편결제 전용이라 등록하지 않습니다. 가상계좌 `DEPOSIT_CALLBACK`도 등록하지 않습니다.
 
-웹훅 JSON의 상태·금액·사용자는 사용하지 않습니다. 서명이 맞으면 저장된 paymentKey로 결제 조회 API를 다시 호출하고, 그 결과만 주문·취소 금액·원장에 반영합니다. `PAYMENT_STATUS_CHANGED`에는 `eventId`가 없고, `tosspayments-webhook-transmission-id`는 재전송마다 바뀌므로 중복 방지에 쓰지 않습니다. 같은 주문은 원장 ref `toss-refund-hold:<orderId>`로 한 번만 회수합니다.
+웹훅 JSON의 상태·금액·사용자는 사용하지 않습니다. 승인 때 서버가 받은 Payment 객체의 `secret`과 웹훅 Payment 객체의 `secret`이 같을 때만, 저장된 paymentKey로 결제 조회 API를 다시 호출하고 그 조회의 주문번호·paymentKey·상점아이디·금액·현재 상태만 반영합니다. `PAYMENT_STATUS_CHANGED`에는 `eventId`가 없고, `tosspayments-webhook-transmission-id`는 재전송마다 바뀌므로 중복 방지에 쓰지 않습니다. 같은 주문은 원장 ref `toss-refund-hold:<orderId>`로 한 번만 회수합니다.
+
+`PAYMENT_STATUS_CHANGED`에 `tosspayments-webhook-signature`가 온다는 근거는 확인되지 않았습니다. [보안과 신뢰](https://docs.tosspayments.com/reference/using-api/security-trust)는 서명을 **서명을 지원하는 웹훅**에 한정하고, 그 밖은 결제 조회로 확인하라고 합니다. [API 키](https://docs.tosspayments.com/reference/using-api/api-keys)의 **보안 키**는 API 개별 연동 키이며 지급대행 본문 암호화와 웹훅 서명 검증에 쓰인다고 되어 있습니다. 웹훅 화면에서 따로 발급하는 키가 아닙니다. 그래서 `TOSS_WEBHOOK_SECRET`을 만들지 않고, 서명 헤더가 없어도 거절하지 않습니다. 헤더가 있어도 그 서명으로 승인하지 않습니다.
 
 - 전액 `CANCELED`이고 관리자 환불과 같은 FIFO로 그 패키지가 미사용이면 유료·보너스를 회수하고 **외부 취소 반영**입니다. 이미 관리자 환불 보류가 있으면 그 보류를 끝내며 다시 빼지 않습니다.
 - 일부만 취소(`PARTIAL_CANCELED`)면 심연석을 비율로 깎지 않습니다. PG 취소 금액만 기록하고 **외부 부분취소**입니다.
@@ -156,15 +158,16 @@ from public.payment_orders order by created_at desc limit 20;
 - 관리자 전액 환불이 진행 중인데 조회가 부분 취소면 DB를 확정하지 않고 503을 돌려 토스가 다시 보내게 합니다. 전액 취소로 조회되면 보류분을 그대로 완료합니다.
 - 결제 완료 통지가 나중에 도착해도 이미 회수한 심연석을 되돌리지 않습니다.
 
-200이 10초 안에 없으면 토스는 1, 4, 16, 64, 256, 1024, 4096분 간격으로 최대 7회(최초로부터 약 3일 19시간) 재전송한 뒤 이메일로 알립니다. 개발자센터에서 **다시 시도**할 수 있습니다. 서명이 틀리거나 10분을 벗어난 전송 시각이면 401이며 원장은 바꾸지 않습니다.
+200이 10초 안에 없으면 토스는 1, 4, 16, 64, 256, 1024, 4096분 간격으로 최대 7회(최초로부터 약 3일 19시간) 재전송한 뒤 이메일로 알립니다. 개발자센터에서 **다시 시도**할 수 있습니다. 저장된 `secret`과 다르면 401이며 조회·원장 변경은 없습니다. `secret`이 비어 승인된 옛 주문은 웹훅으로 맞추지 않고 200으로 무시합니다. 그 주문은 기존 관리자 환불을 씁니다.
 
 #### 형님이 하실 일
 
 1. staging SQL Editor에서 환불 SQL 다음으로 **`supabase/payments_webhook_staging.sql` 전체**를 실행합니다. 식별자가 아니면 중단됩니다. 주문·원장은 지우지 않습니다. 환불 SQL을 다시 실행했다면 이 파일을 그 다음에 다시 실행합니다.
-2. 기존 `TOSS_SECRET_KEY` / `TOSS_CLIENT_KEY`는 바꾸지 않습니다. Supabase staging → Edge Functions → Secrets에 **`TOSS_WEBHOOK_SECRET`만 추가**합니다. 값은 토스 개발자센터 웹훅 화면의 **보안 키**입니다. API 시크릿 키(`test_sk_…`)가 아닙니다. 채팅·저장소에 넣지 마세요.
-3. Edge Functions → 새 함수 **`payments-webhook-v1`** → `supabase/functions/payments-webhook-v1/dashboard_single_file.ts` 전체를 붙여넣고 배포합니다. **Verify JWT / JWT 검증 OFF.** 토스는 Supabase JWT를 보내지 않습니다. 기존 `payments-confirm-v1`은 **JWT ON을 유지**하고, 이번 변경으로 다시 배포하지 않습니다.
-4. 토스 개발자센터 **테스트 상점** 웹훅에 URL `https://cuyqchmdcnsgzkwyclji.supabase.co/functions/v1/payments-webhook-v1` 와 이벤트 **`PAYMENT_STATUS_CHANGED`만** 등록합니다. 운영 상점에는 등록하지 않습니다.
-5. 화면 문구는 staging Worker 배포 후 `admin-payments.html` 새로고침으로 보입니다. 배포 브랜치는 이 웹훅 브랜치여야 합니다. `origin/staging`만 배포하면 아직 병합되지 않은 구매자·결제 시각 표시가 빠집니다.
+2. 기존 `TOSS_SECRET_KEY` / `TOSS_CLIENT_KEY`는 바꾸지 않습니다. 새 시크릿 이름은 추가하지 않습니다.
+3. 기존 **`payments-confirm-v1`**에 최신 `dashboard_single_file.ts`를 붙여넣고 재배포합니다. **Verify JWT ON**을 유지합니다. 승인 응답의 `Payment.secret`을 서버에만 저장하며 브라우저 영수증에는 넣지 않습니다. 이 배포 전에 승인된 주문은 `secret`이 없어 웹훅 대상을 아닙니다.
+4. Edge Functions → 새 함수 **`payments-webhook-v1`** → `supabase/functions/payments-webhook-v1/dashboard_single_file.ts` 전체를 붙여넣고 배포합니다. **Verify JWT OFF.** 토스는 Supabase JWT를 보내지 않습니다. 이 설정은 플랫폼이 POST를 받게 할 뿐이고, 결제 권한은 저장된 `Payment.secret`과 서버 재조회입니다.
+5. 토스 개발자센터 **테스트 상점** 웹훅에 URL `https://cuyqchmdcnsgzkwyclji.supabase.co/functions/v1/payments-webhook-v1` 와 이벤트 **`PAYMENT_STATUS_CHANGED`만** 등록합니다. 운영 상점에는 등록하지 않습니다. 이 배포 뒤에 승인한 테스트 결제만 대시보드 취소 대사 대상입니다.
+6. 화면 문구는 이 브랜치를 staging에 병합한 뒤의 Worker 배포에서 보입니다. 구매자·결제 시각은 이미 staging `5d5751dd2d7e67c9711edcb69333a4f5ff37f763`에 있습니다.
 
 ### 아직 제외한 범위
 
@@ -179,7 +182,10 @@ from public.payment_orders order by created_at desc limit 20;
 - https://docs.tosspayments.com/reference/using-api/api-keys
 - https://docs.tosspayments.com/reference/using-api/authorization
 - https://docs.tosspayments.com/guides/v2/payment-window/integration.md (현재 키 자리표시자 확인)
-- https://docs.tosspayments.com/reference (Payment, confirm, 조회, 취소)
+- https://docs.tosspayments.com/reference (Payment.`secret`: 결제 상태 웹훅 검증 값, 최대 50자, nullable)
+- https://docs.tosspayments.com/reference/using-api/webhook-events (`PAYMENT_STATUS_CHANGED` 본문은 Payment 객체. 가상계좌만 본문 `secret`을 별도 필드로 설명. HMAC 헤더 절은 이벤트별 지원을 단정하지 않음)
+- https://docs.tosspayments.com/reference/using-api/security-trust (서명은 서명을 지원하는 웹훅. 그 밖은 결제 조회)
+- https://docs.tosspayments.com/guides/v2/webhook (등록, 200, 재전송 1/4/16/64/256/1024/4096분, 최대 7회)
 - https://docs.tosspayments.com/guides/v2/cancel-payment.md (전액 취소·멱등키·거래 증빙)
 - https://docs.tosspayments.com/reference/using-api/authorization.md (멱등키 15일·중복 처리)
 - https://www.law.go.kr/LSW/lsLinkCommonInfo.do?lsJoLnkSeq=1029561411 (전자상거래법 제17조, 2026-07-21 시행)
