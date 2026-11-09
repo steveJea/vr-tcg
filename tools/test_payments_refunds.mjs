@@ -85,7 +85,18 @@ try{
  const bound=await call('authenticated',user,'payment_create_v1($1,$2)',['gem_100',randomUUID()]);await service('_payment_bind_v1($1,$2,$3,$4)',[user,bound.order_id,'bound',bound.amount]);
  assert.equal((await call('authenticated',user,'payment_abandon_v1($1,$2)',[bound.order_id,'failed'])).state,'confirmation_required');
  const exp=await call('authenticated',user,'payment_create_v1($1,$2)',['gem_100',randomUUID()]);await q("update payment_orders set expires_at=now()-interval '1 minute' where order_id=$1",[exp.order_id]);
- const listed=await ac('admin_payment_orders_v1()');assert(listed.orders.some(x=>x.order_id===exp.order_id&&x.checkout_status==='expired'));assert(!JSON.stringify(listed).includes('payment_key'));assert(!JSON.stringify(listed).includes('email'));
+ const listed=await ac('admin_payment_orders_v1()');
+ const expired=listed.orders.find(x=>x.order_id===exp.order_id);
+ assert.equal(expired.checkout_status,'expired');assert.equal(expired.paid_at,null);assert.ok(expired.created_at);assert.equal(expired.buyer,'not-admin');
+ assert(!JSON.stringify(listed).includes('payment_key'));assert(!JSON.stringify(listed).includes('email'));assert(!JSON.stringify(listed).includes('@'));
+ await q("update profiles set nickname='심연구매' where id=$1",[user]);
+ assert.equal((await ac('admin_payment_orders_v1()')).orders.find(x=>x.order_id===exp.order_id).buyer,'심연구매');
+ await q("update profiles set nickname=' ' where id=$1",[user]);
+ assert.equal((await ac('admin_payment_orders_v1()')).orders.find(x=>x.order_id===exp.order_id).buyer,user);
+ await q('delete from profiles where id=$1',[user]);
+ assert.equal((await ac('admin_payment_orders_v1()')).orders.find(x=>x.order_id===exp.order_id).buyer,user);
+ const paidRow=(await ac('admin_payment_orders_v1()')).orders.find(x=>x.order_id===o.order_id);
+ assert.equal(paidRow.status,'paid');assert.equal(paidRow.buyer,'플레이어');assert.ok(paidRow.paid_at);assert.notEqual(paidRow.paid_at,null);
  const saved=await wallet(o);await db.exec(migration);assert.deepEqual(await wallet(o),saved);assert.equal((await prepare(o)).refund.state,'refunded');
  await db.exec("select set_config('test.payment_db','7692130048193495360',false)");await assert.rejects(ac('admin_payment_orders_v1()'),/payments unavailable/);
  console.log('Refund SQL: staging/runtime guard, admin+confirmed identity, RLS/helper ACL, immutable receipt, full paid+bonus hold, FIFO spent/recharge rejection, old-balance allowance, 7-day/CS boundary, repeat install, atomic rollback, once-only reclaim, closed/bound callback safety and lazy expiry OK');
@@ -158,15 +169,25 @@ console.log('Refund Edge/client: exact body, verified admin, server-only amount/
 // no HTML injection, forbidden/prod fail closed, successful refund rerenders as final.
 const adminHtml=await read('admin-payments.html');
 const adminCode=(await read('js/payments-admin.js')).replace(/^import .*;$/gm,'').replace("await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm')",'await getSDK()').replace('init();','window.__init=init;');
-async function adminPage({forbidden=false,production=false}={}){
+async function adminPage({forbidden=false,production=false,orders}={}){
  const {document}=parseHTML(adminHtml),calls=[];let confirm=false,refunded=false;
  const window={confirm:()=>confirm};
  vm.runInNewContext(adminCode,{window,document,config:{...config,enabled:true},enabled:()=>!production,paymentError,
-  api:async(sb,c,b)=>{calls.push(b);if(forbidden)throw Error('forbidden');if(b.op==='refund'){refunded=true;return {ok:true,state:'refunded'};}return {ok:true,orders:[{...order,order_name:'<img src=x onerror=bad>',checkout_status:'open',cancel_status:refunded?'refunded':'none',cancel_amount:refunded?1100:0}]};},
+  api:async(sb,c,b)=>{calls.push(b);if(forbidden)throw Error('forbidden');if(b.op==='refund'){refunded=true;return {ok:true,state:'refunded'};}return {ok:true,orders:orders||[{...order,order_name:'<img src=x onerror=bad>',checkout_status:'open',cancel_status:refunded?'refunded':'none',cancel_amount:refunded?1100:0}]};},
   getSDK:async()=>({createClient:()=>({auth:{initialize:async()=>{}}})})});
  await window.__init();return {document,calls,approve:()=>{confirm=true;}};
 }
 const page=await adminPage();assert.equal(page.calls.length,1);assert.equal(page.document.querySelector('tbody img'),null);let button=page.document.querySelector('tbody button');assert.equal(button.textContent,'전액 환불');await button.onclick();assert.equal(page.calls.length,1);page.approve();await button.onclick();assert.deepEqual(JSON.parse(JSON.stringify(page.calls[1])),{op:'refund',orderId:order.order_id});assert.equal(page.document.querySelector('tbody button'),null);assert.match(page.document.getElementById('pay-message').textContent,/환불 완료/);
 const noAdmin=await adminPage({forbidden:true});assert.match(noAdmin.document.getElementById('pay-message').textContent,/관리자/);assert.equal(noAdmin.document.querySelectorAll('tbody button').length,0);
 const prod=await adminPage({production:true});assert.equal(prod.calls.length,0);assert.equal(prod.document.getElementById('pay-load').disabled,true);
-console.log('Admin refund DOM: explicit confirm only, no self-refund on page load, safe text rendering, terminal status, forbidden/prod gates OK');
+const paidAt='2026-11-08T14:05:06.000Z',createdAt='2026-11-08T13:00:00.000Z',pendingId='vrs_'+'b'.repeat(32),fallbackId='22222222-2222-4222-8222-222222222222';
+const identity=await adminPage({orders:[
+ {order_id:order.order_id,order_name:'paid',amount:1100,paid_gems:100,bonus_gems:0,status:'paid',checkout_status:'open',cancel_status:'none',cancel_amount:0,buyer:'심연구매',user_id:user,paid_at:paidAt,created_at:createdAt,payment_key:'opaque',email:'hidden@example.test'},
+ {order_id:pendingId,order_name:'wait',amount:1100,paid_gems:100,bonus_gems:0,status:'pending',checkout_status:'open',cancel_status:'none',cancel_amount:0,buyer:'   ',user_id:fallbackId,paid_at:null,created_at:createdAt,email:'hidden@example.test'}
+]});
+assert.match(identity.document.querySelector('thead').textContent,/구매자/);assert.match(identity.document.querySelector('thead').textContent,/결제 시각 \(한국시간\)/);
+const identityRows=[...identity.document.querySelectorAll('tbody tr')];assert.equal(identityRows.length,2);
+assert.match(identityRows[0].textContent,/심연구매/);assert.match(identityRows[0].textContent,/2026-11-08 23:05:06/);assert.doesNotMatch(identityRows[0].textContent,/미결제/);assert.doesNotMatch(identityRows[0].textContent,/2026-11-08 22:00:00/);
+assert.match(identityRows[1].textContent,/미결제 · 생성 2026-11-08 22:00:00/);assert.match(identityRows[1].textContent,new RegExp(fallbackId));assert.doesNotMatch(identityRows[1].textContent,/23:05:06/);
+assert.equal(identity.document.querySelectorAll('tbody button').length,1);assert.doesNotMatch(identity.document.body.textContent,/hidden@example\.test|opaque/);
+console.log('Admin refund DOM: explicit confirm only, no self-refund on page load, safe text rendering, terminal status, forbidden/prod gates, buyer nickname/id and Seoul paid-vs-created time OK');

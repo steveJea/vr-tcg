@@ -86,7 +86,9 @@ begin
  update public.payment_orders set checkout_status='expired',closed_at=clock_timestamp()
  where status='pending' and checkout_status='open' and payment_key is null and expires_at<clock_timestamp();
  return jsonb_build_object('ok',true,'orders',(select coalesce(jsonb_agg(to_jsonb(t) order by t.created_at desc),'[]'::jsonb) from
- (select order_id,order_name,amount,paid_gems,bonus_gems,status,checkout_status,cancel_status,cancel_amount,created_at,paid_at,canceled_at from public.payment_orders order by created_at desc limit 100) t));
+ (select o.order_id,o.order_name,o.amount,o.paid_gems,o.bonus_gems,o.status,o.checkout_status,o.cancel_status,o.cancel_amount,o.created_at,o.paid_at,o.canceled_at,
+  coalesce(nullif(btrim(p.nickname),''),o.user_id::text) as buyer
+  from public.payment_orders o left join public.profiles p on p.id=o.user_id order by o.created_at desc limit 100) t));
 end $$;
 create or replace function public.admin_payment_refund_lookup_v1(p_order text) returns jsonb language plpgsql security definer set search_path=pg_catalog,public as $$
 declare o public.payment_orders; r public.payment_refunds;
