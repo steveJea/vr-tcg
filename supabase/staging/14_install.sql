@@ -40,11 +40,11 @@ set local check_function_bodies = off;
 
 do $vr_install_part$
 begin
-  if exists (select 1 from vr_staging_install.parts where bundle_hash <> 'dfd9e9cf98f828615163555c2ed90c56822e918465827ec85ff2ff30264c1d72' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
+  if exists (select 1 from vr_staging_install.parts where bundle_hash <> '3da93fca10d499670dc603dac0eb3471d6e1b15c6b4d491fb4b9e3ecfbd343af' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
     raise exception 'STOP: 다른 버전/DB의 설치 기록입니다. 파일을 섞지 마세요.';
   end if;
   if exists (select 1 from vr_staging_install.parts where part_no = 14) then
-    if not exists (select 1 from vr_staging_install.parts where part_no = 14 and part_hash = '810a5f7f666afe48ea8b31c35701f10cfc8fda81ac45ca276fae463a71177d16') then
+    if not exists (select 1 from vr_staging_install.parts where part_no = 14 and part_hash = '061369d18deeb6fd7aae35d36777f7af78450d827b0492126cbeace38b3eda36') then
       raise exception 'STOP: 완료한 파일과 내용이 다릅니다.';
     end if;
     raise notice '14_install.sql: 이미 완료, 변경 없이 건너뜀';
@@ -499,10 +499,11 @@ select 'phase5 arcade verification installed — staging only' as result;$vr_sta
 
 create table if not exists public.battle_replay_policy_v6 (
  singleton boolean primary key default true check (singleton),
- enabled boolean not null default true,
+ enabled boolean not null default false,
  engine_hash text not null check (engine_hash ~ '^[a-f0-9]{64}$'));$vr_statement$;
-  execute $vr_statement$insert into public.battle_replay_policy_v6(singleton, engine_hash)
- values(true,'1dbdb45994799cdcf3db14bd6eb44689d35678a733774caffcfd9867df85685c')
+  execute $vr_statement$-- Starts off. Re-running this file updates the engine hash only and does not turn enforcement on.
+insert into public.battle_replay_policy_v6(singleton, enabled, engine_hash)
+ values (true, false, '1dbdb45994799cdcf3db14bd6eb44689d35678a733774caffcfd9867df85685c')
  on conflict (singleton) do update set engine_hash = excluded.engine_hash;$vr_statement$;
   execute $vr_statement$alter table public.battle_replay_policy_v6 enable row level security;$vr_statement$;
   execute $vr_statement$revoke all on public.battle_replay_policy_v6 from public, anon, authenticated;$vr_statement$;
@@ -516,7 +517,9 @@ language plpgsql security definer set search_path=pg_catalog,public,pg_temp as $
 declare m text;
 begin
  select mode into m from public.battle_sessions_v2 where id = p_session and user_id = auth.uid();
- if m = 'tower_sweep' then raise exception 'sweep replay required'; end if;
+ if m = 'tower_sweep' and coalesce((select enabled from public.battle_replay_policy_v6 where singleton), false) then
+  raise exception 'sweep replay required';
+ end if;
  return public._phase6_old_finish_v2(p_session, p_report);
 end $$;$vr_statement$;
   execute $vr_statement$create or replace function public.battle_sweep_session_v6(p_uid uuid, p_id uuid) returns jsonb
@@ -643,7 +646,7 @@ end $staging_verify$;$vr_statement$;
 
   grant usage on schema public to public, anon, authenticated;
   insert into vr_staging_install.parts(part_no, bundle_hash, part_hash, project_ref, db_id)
-  values (14, 'dfd9e9cf98f828615163555c2ed90c56822e918465827ec85ff2ff30264c1d72', '810a5f7f666afe48ea8b31c35701f10cfc8fda81ac45ca276fae463a71177d16', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
+  values (14, '3da93fca10d499670dc603dac0eb3471d6e1b15c6b4d491fb4b9e3ecfbd343af', '061369d18deeb6fd7aae35d36777f7af78450d827b0492126cbeace38b3eda36', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
 end $vr_install_part$;
 commit;
 select '14_install.sql: 완료 또는 이미 완료 (14/14)' as result;

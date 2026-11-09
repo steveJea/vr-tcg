@@ -119,6 +119,7 @@ try {
   const sql = migration.replaceAll("'7703759698107299042'", `'${system}'`);
   await db.exec(sql);
   await db.exec(sql);
+  assert.equal(await val('select enabled v from battle_replay_policy_v6'), false, 'install leaves sweep replay off');
   await reject(`select battle_sweep_session_v6($1,$2)`, [me, req(1)]);
   await reject(`select battle_sweep_settle_v6($1,$2,$3,$4::jsonb)`, [me, req(1), ENGINE_VERSION, '{"win":true,"reason":"wipe","turns":2,"my_turns":1}']);
   await reject(`select _phase6_old_finish_v2($1,$2::jsonb)`, [req(1), '{}']);
@@ -163,10 +164,17 @@ try {
   assert.equal(survived.validation, 'plausibility-v3', 'survive turns are still a bounded report, not a combat replay');
   assert.equal(survived.cleared, true);
 
+  const held = await start('tower_sweep', 'normal:1', [owned.uid], req(29));
+  await age(held.session);
+  const heldWin = await finish(held.session, report);
+  assert.equal(heldWin.validation, 'plausibility-v3');
+  assert.equal(heldWin.cleared, true);
+  await q(`update battle_replay_policy_v6 set enabled=true where singleton`);
+
   await q(`update player_state set level=1 where user_id=$1`, [me]);
   await reject(`select battle_session_start_v2('tower','normal:1',$1::jsonb,$2)`, [JSON.stringify([owned.uid]), req(30)], /level too low/);
   await q(`update player_state set level=50 where user_id=$1`, [me]);
-  await reject(`select battle_session_start_v2('tower','normal:2',$1::jsonb,$2)`, [JSON.stringify([owned.uid]), req(31)], /floor locked/);
+  await reject(`select battle_session_start_v2('tower','normal:5',$1::jsonb,$2)`, [JSON.stringify([owned.uid]), req(31)], /floor locked/);
   const wind = await val(`select id v from battle_card_meta_v2 where definition->>'class'='WIND' limit 1`);
   const windCard = await val(`select _story_new_card($1) v`, [wind]);
   await q(`update story_progress set data=jsonb_set(data,'{owned}', data->'owned' || $2::jsonb) where user_id=$1`, [me, JSON.stringify(windCard)]);

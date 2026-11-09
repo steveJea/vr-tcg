@@ -25,7 +25,7 @@ await put('supabase/functions/_shared/sweep-engine-v6.mjs', '// GENERATED: node 
 await put('js/sweep-engine-version.js', '// GENERATED\nexport const SWEEP_ENGINE_VERSION=' + JSON.stringify(version) + ';\n');
 const sqlUrl = new URL('supabase/security_phase6_story_tower.sql', root);
 const sql = await readFile(sqlUrl, 'utf8');
-const nextSql = sql.replace(/values\s*\(\s*true\s*,\s*'[a-f0-9]{64}'\s*\)/, "values(true,'" + version + "')");
+const nextSql = sql.replace(/values\s*\(\s*true\s*,\s*false\s*,\s*'[a-f0-9]{64}'\s*\)/, "values (true, false, '" + version + "')");
 if (check && sql !== nextSql) throw new Error('stale SQL engine hash');
 if (!check) await writeFile(sqlUrl, nextSql);
 const questUrl = new URL('js/quest.js', root);

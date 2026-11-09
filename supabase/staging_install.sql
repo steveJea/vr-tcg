@@ -20571,10 +20571,11 @@ select 'phase5 arcade verification installed — staging only' as result;
 
 create table if not exists public.battle_replay_policy_v6 (
  singleton boolean primary key default true check (singleton),
- enabled boolean not null default true,
+ enabled boolean not null default false,
  engine_hash text not null check (engine_hash ~ '^[a-f0-9]{64}$'));
-insert into public.battle_replay_policy_v6(singleton, engine_hash)
- values(true,'1dbdb45994799cdcf3db14bd6eb44689d35678a733774caffcfd9867df85685c')
+-- Starts off. Re-running this file updates the engine hash only and does not turn enforcement on.
+insert into public.battle_replay_policy_v6(singleton, enabled, engine_hash)
+ values (true, false, '1dbdb45994799cdcf3db14bd6eb44689d35678a733774caffcfd9867df85685c')
  on conflict (singleton) do update set engine_hash = excluded.engine_hash;
 alter table public.battle_replay_policy_v6 enable row level security;
 revoke all on public.battle_replay_policy_v6 from public, anon, authenticated;
@@ -20590,7 +20591,9 @@ language plpgsql security definer set search_path=pg_catalog,public,pg_temp as $
 declare m text;
 begin
  select mode into m from public.battle_sessions_v2 where id = p_session and user_id = auth.uid();
- if m = 'tower_sweep' then raise exception 'sweep replay required'; end if;
+ if m = 'tower_sweep' and coalesce((select enabled from public.battle_replay_policy_v6 where singleton), false) then
+  raise exception 'sweep replay required';
+ end if;
  return public._phase6_old_finish_v2(p_session, p_report);
 end $$;
 

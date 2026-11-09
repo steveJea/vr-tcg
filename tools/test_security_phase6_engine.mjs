@@ -46,8 +46,9 @@ const quest = await readFile(new URL('../js/quest.js', import.meta.url), 'utf8')
 const sweepFn = quest.slice(quest.indexOf('async function settleSweep'), quest.indexOf('function mount()'));
 assert.match(sweepFn, /story-tower-verify-v6/);
 assert.match(sweepFn, /settleSweep\(session\)/);
+assert.match(sweepFn, /replayNotReady/);
 assert.match(quest, new RegExp(ENGINE_VERSION));
-assert.doesNotMatch(sweepFn, /battle_session_finish_v2/);
+assert.match(sweepFn, /VRBattleSession\.finish/);
 
 let losses = 0, wins = 0;
 for (let seed = 1; seed <= 12; seed++) {

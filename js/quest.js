@@ -282,6 +282,7 @@
       let message = data?.error || '';
       if (error) { try { message = (await error.context?.json())?.error || error.message; } catch { message = error.message; } }
       last = new Error(message || '소탕 결과를 서버가 확인하지 못했어요');
+      last.replayNotReady = /verifier unavailable|Failed to send a request to the Edge Function|Function not found|404 Not Found/i.test(last.message);
       if (n === 0) {
         const again = await c.sb.functions.invoke('story-tower-verify-v6', { body: { op: 'status', id: session.session } });
         if (!again.error && again.data?.settlement?.ok) return again.data.settlement;
@@ -306,10 +307,19 @@
       const wait = t0 + (k - from + 1) * SWEEP_SECS * 1000 - Date.now(); if (wait > 0) await new Promise(res => setTimeout(res, wait));
       let shown = r;
       if (session) {
-        accepted = await settleSweep(session);
-        shown = { win: !!accepted.win, turns: accepted.turns || r.turns, timeout: accepted.reason === 'timeout' };
-        if (!shown.win) { stop = { floor: k, why: shown.timeout ? 'timeout' : 'lose' }; }
-        else { lastPaid = accepted; for (const [key, value] of Object.entries({ ...(accepted.reward || {}), ...(accepted.currency || {}) })) total[key] = (total[key] || 0) + value; }
+        try { accepted = await settleSweep(session); }
+        catch (e) {
+          // Switch off or Edge not deployed yet: keep the previous one-time finish path.
+          // After battle_replay_policy_v6.enabled, that finish is rejected and this error stops the sweep.
+          if (!e.replayNotReady) throw e;
+          if (!r.win) { await window.VRBattleSession.abort(session); stop = { floor: k, why: r.timeout ? 'timeout' : 'lose' }; }
+          else accepted = await window.VRBattleSession.finish(session, window.VRBattleSession.report(true, 'wipe', { totalTurns: r.turns, myTurns: Math.ceil(r.turns / 2) }));
+        }
+        if (!stop) {
+          shown = accepted ? { win: !!accepted.win, turns: accepted.turns || r.turns, timeout: accepted.reason === 'timeout' } : r;
+          if (!shown.win) stop = { floor: k, why: shown.timeout ? 'timeout' : 'lose' };
+          else { lastPaid = accepted; for (const [key, value] of Object.entries({ ...(accepted.reward || {}), ...(accepted.currency || {}) })) total[key] = (total[key] || 0) + value; }
+        }
       } else if (!r.win) stop = { floor: k, why: r.timeout ? 'timeout' : 'lose' };
       prog.push(`<div class="q-sw-row ${shown.win ? 'win' : 'lose'}"><b>${k}층</b><span>${shown.win ? `✔ 승리 · ${shown.turns}턴` : shown.timeout ? `✕ ${cfg.maxTurns || 40}턴 초과` : '✕ 패배'}</span></div>`);
       const el = $('q-sw-prog'); if (el) { el.innerHTML = prog.join(''); el.scrollTop = el.scrollHeight; }
