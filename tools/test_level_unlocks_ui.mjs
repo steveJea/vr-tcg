@@ -23,14 +23,22 @@ evaluate(await rd('js/unlock-policy.js'));evaluate(await rd('js/unlocks.js'));
 const U=w.VRUnlocks;
 for(const[key,n]of Object.entries(policy.features)){level=n-1;assert.equal(U.allowed(key),false,key);level=n;assert.equal(U.allowed(key),true,key);}
 level=1;U.paint();
+const gnb=d.createElement('button');gnb.className='gnb-t';gnb.dataset.gnb='tower';gnb.textContent='탑';d.body.append(gnb);
+U.paint();
+assert.equal(gnb.querySelector('.ul-lock'),null,'bottom tabs have no Lv badge');
+assert.equal(gnb.classList.contains('ul-locked'),true);
 assert.equal(d.querySelector('#main-pvp .ul-lock').textContent,'🔒 Lv3');
 assert.equal(d.querySelector('#main-guild .ul-lock').textContent,'🔒 Lv6');
 assert.equal(d.querySelector('#main-trade .ul-lock').textContent,'🔒 Lv15');
 assert.equal(d.querySelector('#arcade .ul-lock'),null);assert.equal(d.querySelector('#shop .ul-lock'),null);
 let clicks=0;const capture=listeners.find(x=>x.type==='click'&&x.capture===true).fn;
 function clickPvp(){let stopped=false;capture({target:d.querySelector('#main-pvp'),preventDefault(){},stopImmediatePropagation(){stopped=true;}});if(!stopped)clicks++;}
-clickPvp();assert.equal(clicks,0);
+clickPvp();assert.equal(clicks,0);assert.equal(d.querySelector('#ul-lockpop'),null,'lobby tiles keep the toast, not the tab popup');
+let gnbStopped=false;capture({target:gnb,preventDefault(){},stopImmediatePropagation(){gnbStopped=true;}});
+assert.equal(gnbStopped,true);assert.match(d.querySelector('#ul-lockpop p').textContent,/계정레벨 10 이후 이용할 수 있습니다/);
+d.querySelector('#ul-lockpop button').click();assert.equal(d.querySelector('#ul-lockpop'),null);
 level=3;U.paint();assert.equal(d.querySelector('#main-pvp .ul-lock'),null);clickPvp();assert.equal(clicks,1);
+assert.equal(gnb.classList.contains('ul-locked'),true,'tower tab stays locked at the pvp level');
 entries.find(e=>e.key==='pvp_hr').eligible=true;
 d.querySelector('#game').classList.remove('hidden');await U.tick();assert.equal(d.querySelector('#unlock-intro'),null);assert.equal(requests.length,0);
 d.querySelector('#game').classList.add('hidden');

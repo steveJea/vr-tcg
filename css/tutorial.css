@@ -1,6 +1,9 @@
 /* 튜토리얼 가이드 (js/tutorial.js) — 보이기만, 탭 막기는 JS(capture) */
 .tut-ov{position:fixed;inset:0;z-index:9000;pointer-events:none}
 .tut-ov.dim.info{background:rgba(0,0,0,.62)}
+.tut-ov.info{pointer-events:auto}
+.tut-ov.info .tut-ring,.tut-ov.info .tut-hand{pointer-events:none}
+.tut-ov.info .tut-bub{pointer-events:auto}
 .tut-ring{position:fixed;border-radius:14px;box-shadow:0 0 0 9999px rgba(0,0,0,.62),0 0 0 3px #facc15,0 0 22px 6px rgba(250,204,21,.65);transition:left .2s,top .2s,width .2s,height .2s;animation:tutPulse 1.2s ease-in-out infinite}
 @keyframes tutPulse{50%{box-shadow:0 0 0 9999px rgba(0,0,0,.62),0 0 0 3px #fde047,0 0 34px 12px rgba(250,204,21,.85)}}
 .tut-hand{position:fixed;width:44px;height:44px;margin:-6px 0 0 -10px;font-size:40px;line-height:1;filter:drop-shadow(0 3px 4px #000);animation:tutTap 1s ease-in-out infinite}

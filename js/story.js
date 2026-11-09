@@ -422,7 +422,7 @@
   }
 
   // ----- 오프닝 영상 (처음 들어올 때 1회 + '오프닝 다시 보기') -----
-  // 전체 화면 · 화면을 누르면 건너뛰기 버튼 표시 · 소리 자동재생이 막히면 '눌러서 재생' 안내 · 재생 중 BGM 정지
+  // 전체 화면 · 건너뛰기는 떠 있는 동안 항상 눌림 · 소리 자동재생이 막히면 '눌러서 재생' 안내 · 재생 중 BGM 정지
   // 영상은 이 함수가 불릴 때만 만들어짐(메인 화면에서 미리 받지 않음)
   function playOpening(next) {
     const o = D.opening; if (!o.video) return next();
@@ -430,21 +430,19 @@
     document.getElementById('story-opening-fx')?.remove();
     const el = document.createElement('div'); el.id = 'story-opening-fx'; el.className = 'story-ovp';
     el.innerHTML = `<video playsinline preload="auto" ${o.poster ? `poster="${esc(o.poster)}"` : ''} src="${esc(o.video)}"></video>
-      <button class="story-ovp-skip" type="button">건너뛰기 ▶▶</button>
+      <button class="story-ovp-skip on" type="button">건너뛰기 ▶▶</button>
       <div class="story-ovp-tap hidden"><button type="button">▶<span>눌러서 오프닝 보기</span></button></div>`;
     document.body.appendChild(el);
     const v = el.querySelector('video'), skip = el.querySelector('.story-ovp-skip'), tap = el.querySelector('.story-ovp-tap');
-    let hideT = 0, ended = false;
-    const showSkip = () => { skip.classList.add('on'); clearTimeout(hideT); hideT = setTimeout(() => skip.classList.remove('on'), 3000); };
-    const finish = () => { if (ended) return; ended = true; clearTimeout(hideT); removeEventListener('keydown', key); try { v.pause(); v.removeAttribute('src'); v.load(); } catch {} el.remove(); snd?.hold?.(false); next(); };
+    let ended = false;
+    const finish = () => { if (ended) return; ended = true; removeEventListener('keydown', key); try { v.pause(); v.removeAttribute('src'); v.load(); } catch {} el.remove(); snd?.hold?.(false); next(); };
     const key = e => { if (e.key === 'Escape') finish(); };
     const start = () => v.play().then(() => tap.classList.add('hidden')).catch(() => { tap.classList.remove('hidden'); });
     skip.onclick = e => { e.stopPropagation(); finish(); };
-    tap.querySelector('button').onclick = e => { e.stopPropagation(); v.muted = false; v.play().then(() => { tap.classList.add('hidden'); showSkip(); }).catch(() => { v.muted = true; v.play().then(() => tap.classList.add('hidden')).catch(() => {}); }); };
-    el.onclick = () => showSkip();
+    tap.querySelector('button').onclick = e => { e.stopPropagation(); v.muted = false; v.play().then(() => tap.classList.add('hidden')).catch(() => { v.muted = true; v.play().then(() => tap.classList.add('hidden')).catch(() => {}); }); };
     v.onended = finish; v.onerror = () => { if (v.getAttribute('src')) finish(); };   // 영상 파일을 못 읽으면 바로 다음으로
     addEventListener('keydown', key);
-    showSkip(); start();
+    start();
     window.__storyOpening = { el, v, finish };
   }
   function renderOpening() {
@@ -510,9 +508,10 @@
     if (serverMode) { try { await cloud().sb.rpc('story_mark_seen', { p_key: 'ch0Pull' }); } catch {} }   // SQL 전이면 'invalid key' → localStorage 만으로 동작
     else await persist();
   }
+  function beginChapter1() { const i = CH1(); curCh = i; hubC = i; return renderMap(i); }   // 스타터·루트·시작 대사는 챕터 1 지도 진입이 그대로 처리. 허브로 보내지 않음
   async function forcedPull() {
     const r = await syncTickets();
-    if ((tickets | 0) < 10) { await markPullDone(); return enter(); }   // 소환권이 이미 쓰였으면(예: 다른 기기) 막히지 않게 건너뜀
+    if ((tickets | 0) < 10) { await markPullDone(); return beginChapter1(); }   // 소환권이 이미 쓰였으면(예: 다른 기기) 막히지 않게 건너뛰고 챕터 1로
     forcedPullOn = true;
     renderShop('special');
     if (r?.added) toast(`🎟️ 챕터 0 클리어 보상: 프리미엄 소환권 +${r.added}`);
@@ -1212,7 +1211,8 @@
     // [다음 챕터로]: 다음 페이즈로, 마지막 페이즈면 다음 챕터로. 다음 챕터가 잠겼으면 🔒, 아예 없으면 숨김
     const nextPh = ch.phases[ch.phases.findIndex(p => p.no === ph.no) + 1] || null;
     const nextI = D.chapters.findIndex(c => c.id === ch.id) + 1, nextChB = nextPh ? null : D.chapters[nextI] || null;
-    const hasNext = !!(nextPh || nextChB), nextOpen = !!nextPh || (!!nextChB && chapterOpen(nextI));
+    const ch0Last = ch.id === 0 && !nextPh;   // 챕터 0 마지막 페이즈(0-5): NEXT 없음. 챕터 1은 강제 영입 뒤 버튼으로
+    const hasNext = !ch0Last && !!(nextPh || nextChB), nextOpen = !!nextPh || (!!nextChB && chapterOpen(nextI));
     const stars = serverMode ? (r.stars || 0) : ph.loseClears ? 3 : starsCalc(ph, st)   // loseClears 페이즈(CH12 P14)는 이겨도 져도 별 3개
     , bestB = previousStars; if (stars) await saveStars(ch, ph, stars);
     const starRow = stars ? `<div class="story-star-res">${starHtml(stars, 'big')}<div class="text-xs text-zinc-300 mt-2 inline-flex flex-col items-start gap-0.5 text-left">${ph.loseClears ? '<div><b class="text-emerald-400">✔</b> 이겨도 져도 별 3개인 페이즈</div>' : ''}${ph.loseClears ? '' : (() => { const t = ph.starTurns || STAR_TURNS, k = ph.starMana ?? STAR_MANA, need = Math.ceil(st.maxMana * k), okT = (st.myTurns | 0) <= t, okM = st.mana >= need, ln = (ok, txt) => `<div><b class="${ok ? 'text-emerald-400' : 'text-red-400'}">${ok ? '✔' : '✖'}</b> ${txt}</div>`;
@@ -2057,8 +2057,8 @@
           if (vc) window.TCG.gachaVoice(card(vc.card_id).id); }   // 영입 보이스: 가장 높은 SR·UR 1명만
         $('gacha-msg').innerHTML = `+${r.cards.length} · <span class="g-text-${GLOW[bestG]}">최고 ${RAR[bestG]}</span>`;
         if (forcedPullOn && r.cards.length === 10) { forcedPullOn = false; await markPullDone();
-          const nb = document.createElement('button'); nb.className = 'gr-go gr-forced-next'; nb.id = 'forced-pull-next'; nb.textContent = save.starter ? '계속 ▶' : '함께할 캐릭터 고르기 ▶';
-          nb.onclick = () => enter(); root().querySelector('.gr-actions')?.replaceChildren(nb); return; }   // 강제 영입 결과: 탭 이동 없음 (계속 버튼만)
+          const nb = document.createElement('button'); nb.className = 'gr-go gr-forced-next'; nb.id = 'forced-pull-next'; nb.textContent = '챕터1 시작하기';
+          nb.onclick = () => beginChapter1(); root().querySelector('.gr-actions')?.replaceChildren(nb); return; }   // 강제 영입 결과: 허브 대신 챕터 1 시작
         root().querySelectorAll('[data-draw]').forEach(x => x.disabled = (tickets | 0) < +x.dataset.draw); { const ob = $('gr-own')?.querySelector('b'); if (ob) ob.textContent = tickets | 0; }   // 보유 소환권 갱신
         if (!forcedPullOn) resultOn = true;
       });

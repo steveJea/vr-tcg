@@ -1585,6 +1585,8 @@ function mrVideo(u, s) {
 }
 function playMrVideo(u, s) {
   if (FX_OFF() || (u.base || u.card).grade !== 'MYTHIC RARE') return Promise.resolve(false);
+  // 스토리 [각성] 임유리(10326)만 영상 대신 이미지 컷인. 탑(quest)·대전 뷰(view)·아케이드는 영상 유지
+  if (S?.story && !S.story.quest && !S.story.view && String(u.card?.id) === '10326') return Promise.resolve(false);
   const i = skillsOf(u.card.id).findIndex(x => x.name === s.name); if (i < 0) return Promise.resolve(false);
   const seen = (u.mrVid ||= new Set()); if (seen.has(i)) return Promise.resolve(false);
   seen.add(i);

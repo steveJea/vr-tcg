@@ -1,7 +1,12 @@
 /* Compact level locks, no small explanatory copy. */
 .ul-locked{position:relative;filter:saturate(.45)}
+.gnb-t.ul-locked{opacity:.38;filter:grayscale(.9) saturate(.15)}
 .ul-lock{display:inline-flex;align-items:center;justify-content:center;position:absolute;right:4px;bottom:4px;z-index:6;background:#17121eef;color:#fde68a;border:1px solid #705b89;border-radius:8px;padding:3px 6px;font-size:13px;font-weight:800;line-height:1.2;pointer-events:none;white-space:nowrap}
-.gnb-t>.ul-lock{bottom:2px;right:2px;font-size:12px}.th-card>.ul-lock{display:none}.pvp-tabs .ul-lock{position:static;margin-left:5px}
+.gnb-t>.ul-lock{display:none}.th-card>.ul-lock{display:none}.pvp-tabs .ul-lock{position:static;margin-left:5px}
+.ul-lockpop{position:fixed;inset:0;z-index:20000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.45);padding:20px}
+.ul-lockpop-box{width:min(280px,100%);background:#17121ef5;color:#fde68a;border:1px solid #705b89;border-radius:14px;padding:16px 18px;text-align:center}
+.ul-lockpop-box p{margin:0 0 12px;font-size:15px;font-weight:800;line-height:1.45}
+.ul-lockpop-box button{padding:8px 18px;border-radius:10px;background:#eebf55;color:#21132d;font-weight:800}
 #unlock-intro{position:fixed;inset:0;z-index:19000;display:flex;align-items:center;justify-content:center;background:#000b;padding:20px;color:#fef3c7}
 .ul-box{width:min(480px,100%);border:1px solid #b99a5b;border-radius:20px;padding:24px;background:linear-gradient(#271936,#100b1b);box-shadow:0 20px 80px #000a}
 .ul-box h2{font-size:24px;font-weight:900;margin:0 0 16px}.ul-box p{font-size:17px;line-height:1.6;margin:12px 0}.ul-box .ul-rewards{font-size:16px;color:#fde68a;font-weight:700}
