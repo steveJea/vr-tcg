@@ -259,27 +259,33 @@ function askNickname(first) {
   document.body.appendChild(ov);
   const inp = ov.querySelector('input'), msg = ov.querySelector('.nk-msg'), go = ov.querySelector('.go');
   const say = (t, cls) => { msg.textContent = t; msg.className = 'nk-msg ' + (cls || ''); };
-  let tmr = 0;
-  inp.oninput = () => { clearTimeout(tmr); const v = inp.value.trim(); if (!v) return say('');
+  let tmr = 0, composing = false, saving = false, submitAfter = false;
+  const check = () => { if (composing || saving) return; clearTimeout(tmr); const v = inp.value.trim(); if (!v) return say('');
     const loc = paid && v === cur ? 'same' : v.length < 2 ? 'short' : v.length > 12 ? 'long' : !/^[0-9A-Za-z가-힣ㄱ-ㅎㅏ-ㅣ _.\-]+$/.test(v) ? 'bad' : null;
     if (loc) return say(NICK_ERR[loc], 'bad');
-    tmr = setTimeout(async () => { try { const { data } = await sb.rpc('nickname_check', { p_nick: v }); if (inp.value.trim() === v) say(data === 'ok' ? '사용할 수 있어요' : NICK_ERR[data] || '', data === 'ok' ? 'good' : 'bad'); } catch {} }, 350); };
+    tmr = setTimeout(async () => { if (composing || saving) return; try { const { data } = await sb.rpc('nickname_check', { p_nick: v }); if (!composing && !saving && inp.value.trim() === v) say(data === 'ok' ? '사용할 수 있어요' : NICK_ERR[data] || '', data === 'ok' ? 'good' : 'bad'); } catch {} }, 350); };
   return new Promise(res => {
     const done = v => { ov.remove(); res(v); };
-    const no = ov.querySelector('.no'); if (no) no.onclick = () => done(null);
-    if (!first) ov.addEventListener('click', e => { if (e.target === ov) done(null); });
+    const no = ov.querySelector('.no'); if (no) no.onclick = () => { if (saving) return; done(null); };
+    if (!first) ov.addEventListener('click', e => { if (e.target === ov && !saving) done(null); });
     const save = async () => {
+      if (composing) { submitAfter = true; return; }
+      if (saving) return;
       const v = inp.value.trim();
       if (paid && !await window.VRAsk(`심연석 ${NICK_PRICE}개를 써서 '${v}'(으)로 바꿀까요?`)) return;
-      go.disabled = true;
+      if (composing || saving) return;
+      saving = true; go.disabled = true;   // 저장 중에는 문구를 바꾸지 않음
       const { data, error } = await sb.rpc('set_nickname', { p_nick: v });
-      go.disabled = false;
-      if (error) return say(nickErr(error.message), 'bad');
+      if (error) { saving = false; go.disabled = false; return say(nickErr(error.message), 'bad'); }
       profile = { ...(profile || {}), nickname: data?.nickname || v, nick_set: true }; render(profile);
       if (data?.cost) try { window.VRGem?.status?.(true); } catch {}
       window.dispatchEvent(new CustomEvent('vr:nickname', { detail: profile.nickname })); done(profile.nickname);
     };
-    go.onclick = save; inp.onkeydown = e => { if (e.key === 'Enter') save(); };
+    inp.addEventListener('compositionstart', () => { composing = true; clearTimeout(tmr); });
+    inp.addEventListener('compositionend', () => { composing = false; setTimeout(() => { if (composing || saving) return; check(); if (submitAfter) { submitAfter = false; save(); } }, 0); });
+    inp.oninput = e => { if (composing || saving || e.isComposing) return; check(); };
+    go.onclick = save;
+    inp.onkeydown = e => { if (composing || e.isComposing || e.keyCode === 229 || e.key === 'Process') return; if (e.key === 'Enter') save(); };
     setTimeout(() => inp.focus(), 50);
   });
 }
