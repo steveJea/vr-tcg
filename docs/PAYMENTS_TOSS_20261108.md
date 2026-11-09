@@ -144,9 +144,36 @@ from public.payment_orders order by created_at desc limit 20;
 5. 결제창 취소/실패 복귀 → 관리자 목록의 종료 상태 확인. 승인 대기/완료 주문의 fail URL을 재방문해도 유료 지급/승인 정보가 취소되면 안 됩니다.
 6. 네트워크 끊김이면 같은 주문 **환불 다시 확인**. 토스 테스트 상점 거래의 취소도 확인합니다. 실제 키·카드·실결제는 사용하지 않습니다.
 
+### 토스 대시보드 취소 대사 (staging 웹훅)
+
+게임 밖(토스 개발자센터/대시보드)에서 취소되면 `PAYMENT_STATUS_CHANGED`만 받습니다. 국내 카드·간편결제의 취소는 이 이벤트입니다. `CANCEL_STATUS_CHANGED`는 해외 비동기 간편결제 전용이라 등록하지 않습니다. 가상계좌 `DEPOSIT_CALLBACK`도 등록하지 않습니다.
+
+웹훅 JSON의 상태·금액·사용자는 사용하지 않습니다. 승인 때 서버가 받은 Payment 객체의 `secret`과 웹훅 Payment 객체의 `secret`이 같을 때만, 저장된 paymentKey로 결제 조회 API를 다시 호출하고 그 조회의 주문번호·paymentKey·상점아이디·금액·현재 상태만 반영합니다. `PAYMENT_STATUS_CHANGED`에는 `eventId`가 없고, `tosspayments-webhook-transmission-id`는 재전송마다 바뀌므로 중복 방지에 쓰지 않습니다. 같은 주문은 원장 ref `toss-refund-hold:<orderId>`로 한 번만 회수합니다.
+
+`PAYMENT_STATUS_CHANGED`에 `tosspayments-webhook-signature`가 온다는 근거는 확인되지 않았습니다. [보안과 신뢰](https://docs.tosspayments.com/reference/using-api/security-trust)는 서명을 **서명을 지원하는 웹훅**에 한정하고, 그 밖은 결제 조회로 확인하라고 합니다. [API 키](https://docs.tosspayments.com/reference/using-api/api-keys)의 **보안 키**는 API 개별 연동 키이며 지급대행 본문 암호화와 웹훅 서명 검증에 쓰인다고 되어 있습니다. 웹훅 화면에서 따로 발급하는 키가 아닙니다. 그래서 `TOSS_WEBHOOK_SECRET`을 만들지 않고, 서명 헤더가 없어도 거절하지 않습니다. 헤더가 있어도 그 서명으로 승인하지 않습니다.
+
+- 전액 `CANCELED`이고 관리자 환불과 같은 FIFO로 그 패키지가 미사용이면 유료·보너스를 회수하고 **외부 취소 반영**입니다. 이미 관리자 환불 보류가 있으면 그 보류를 끝내며 다시 빼지 않습니다.
+- 일부만 취소(`PARTIAL_CANCELED`)면 심연석을 비율로 깎지 않습니다. PG 취소 금액만 기록하고 **외부 부분취소**입니다.
+- 이미 쓴 패키지는 잔액이 있어도 미사용으로 보지 않습니다. 지갑을 음수로 만들지 않고, PG 실패로 적지 않습니다. **외부 취소 · 재화 불일치**로 남기고 재화를 새로 만들지 않습니다.
+- 관리자 전액 환불이 진행 중인데 조회가 부분 취소면 DB를 확정하지 않고 503을 돌려 토스가 다시 보내게 합니다. 전액 취소로 조회되면 보류분을 그대로 완료합니다.
+- 결제 완료 통지가 나중에 도착해도 이미 회수한 심연석을 되돌리지 않습니다.
+
+200이 10초 안에 없으면 토스는 1, 4, 16, 64, 256, 1024, 4096분 간격으로 최대 7회(최초로부터 약 3일 19시간) 재전송한 뒤 이메일로 알립니다. 개발자센터에서 **다시 시도**할 수 있습니다. 저장된 `secret`과 다르면 401이며 조회·원장 변경은 없습니다. `secret`이 비어 승인된 옛 주문은 웹훅으로 맞추지 않고 200으로 무시합니다. 그 주문은 기존 관리자 환불을 씁니다.
+
+#### 형님이 하실 일
+
+1. staging SQL Editor에서 환불 SQL 다음으로 **`supabase/payments_webhook_staging.sql` 전체**를 실행합니다. 식별자가 아니면 중단됩니다. 주문·원장은 지우지 않습니다. 환불 SQL을 다시 실행했다면 이 파일을 그 다음에 다시 실행합니다.
+2. 기존 `TOSS_SECRET_KEY` / `TOSS_CLIENT_KEY`는 바꾸지 않습니다. 새 시크릿 이름은 추가하지 않습니다.
+3. 기존 **`payments-confirm-v1`**에 최신 `dashboard_single_file.ts`를 붙여넣고 재배포합니다. **Verify JWT ON**을 유지합니다. 승인 응답의 `Payment.secret`을 서버에만 저장하며 브라우저 영수증에는 넣지 않습니다. 이 배포 전에 승인된 주문은 `secret`이 없어 웹훅 대상을 아닙니다.
+4. Edge Functions → 새 함수 **`payments-webhook-v1`** → `supabase/functions/payments-webhook-v1/dashboard_single_file.ts` 전체를 붙여넣고 배포합니다. **Verify JWT OFF.** 토스는 Supabase JWT를 보내지 않습니다. 이 설정은 플랫폼이 POST를 받게 할 뿐이고, 결제 권한은 저장된 `Payment.secret`과 서버 재조회입니다.
+5. 토스 개발자센터 **테스트 상점** 웹훅에 URL `https://cuyqchmdcnsgzkwyclji.supabase.co/functions/v1/payments-webhook-v1` 와 이벤트 **`PAYMENT_STATUS_CHANGED`만** 등록합니다. 운영 상점에는 등록하지 않습니다. 이 배포 뒤에 승인한 테스트 결제만 대시보드 취소 대사 대상입니다.
+6. 화면 문구는 staging Worker 배포 후 `admin-payments.html` 새로고침으로 보입니다. 구매자·결제 시각은 이미 staging에 있습니다.
+
+취소 경로는 주문에 한 번 기록합니다. 관리자 **전액 환불**로 시작한 주문은 이후 웹훅이 와도 **게임 관리자**입니다. 관리자 요청 없이 웹훅으로만 기록된 취소는 **토스(PG)** 입니다. 이건 PG 경로라는 뜻이지, 누가 버튼을 눌렀는지는 아닙니다. 부분 취소도 같은 주문 행의 경로를 유지합니다. 취소된 주문인데 관리자 환불 키(`vr-refund-`)나 외부 키(`vr-external-`)가 없으면 **확인 불가**이고, 취소되지 않은 주문은 비웁니다. 상태만으로 과거 경로를 추정하지 않습니다. 이 항목은 같은 `payments_webhook_staging.sql`을 다시 실행하면 반영됩니다. Edge 함수는 이번 경로 표시만으로는 재배포하지 않습니다.
+
 ### 아직 제외한 범위
 
-**웹훅·정기 대사·차지백·잔여분 부분 환불·CS 보류 해제 자동화는 이번 범위에서 제외**했습니다. 따라서 **토스 대시보드에서 직접 취소하면 자동 재화 회수가 보장되지 않습니다.** 게임 관리자 경로만 사용하세요. 직접 취소가 이미 있었다면 CS로 대사해야 하며, 이를 무시하고 라이브 판매를 시작하면 안 됩니다. 운영 Worker/DB/main에는 적용하지 않았습니다.
+**정기 폴링, 가상계좌, 해외 비동기 `CANCEL_STATUS_CHANGED`, 차지백 자동화, 부분 취소 금액에 맞춘 심연석 분할 회수, CS 보류 자동 해제**는 없습니다. 7회 재전송이 모두 실패하면 토스 이메일의 **다시 시도**로 같은 웹훅을 다시 보냅니다. 운영 Worker/DB/main에는 적용하지 않았습니다.
 
 결제 주문은 금융 기록 보존 검토를 위해 계정 삭제 시 `RESTRICT`로 남깁니다. 향후 계정 탈퇴/법정 보존/익명화·처리방침에도 반영해야 합니다. 실결제 전에는 PG 계약·게임 등급·연령/보호자 결제·환불 동의·확률 공개·약관 및 개인정보의 토스 처리/보유/국외이전 고지도 별도로 확정해야 합니다.
 
@@ -157,7 +184,10 @@ from public.payment_orders order by created_at desc limit 20;
 - https://docs.tosspayments.com/reference/using-api/api-keys
 - https://docs.tosspayments.com/reference/using-api/authorization
 - https://docs.tosspayments.com/guides/v2/payment-window/integration.md (현재 키 자리표시자 확인)
-- https://docs.tosspayments.com/reference (Payment, confirm, 조회, 취소)
+- https://docs.tosspayments.com/reference (Payment.`secret`: 결제 상태 웹훅 검증 값, 최대 50자, nullable)
+- https://docs.tosspayments.com/reference/using-api/webhook-events (`PAYMENT_STATUS_CHANGED` 본문은 Payment 객체. 가상계좌만 본문 `secret`을 별도 필드로 설명. HMAC 헤더 절은 이벤트별 지원을 단정하지 않음)
+- https://docs.tosspayments.com/reference/using-api/security-trust (서명은 서명을 지원하는 웹훅. 그 밖은 결제 조회)
+- https://docs.tosspayments.com/guides/v2/webhook (등록, 200, 재전송 1/4/16/64/256/1024/4096분, 최대 7회)
 - https://docs.tosspayments.com/guides/v2/cancel-payment.md (전액 취소·멱등키·거래 증빙)
 - https://docs.tosspayments.com/reference/using-api/authorization.md (멱등키 15일·중복 처리)
 - https://www.law.go.kr/LSW/lsLinkCommonInfo.do?lsJoLnkSeq=1029561411 (전자상거래법 제17조, 2026-07-21 시행)
