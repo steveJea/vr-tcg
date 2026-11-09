@@ -190,4 +190,12 @@ const identityRows=[...identity.document.querySelectorAll('tbody tr')];assert.eq
 assert.match(identityRows[0].textContent,/심연구매/);assert.match(identityRows[0].textContent,/2026-11-08 23:05:06/);assert.doesNotMatch(identityRows[0].textContent,/미결제/);assert.doesNotMatch(identityRows[0].textContent,/2026-11-08 22:00:00/);
 assert.match(identityRows[1].textContent,/미결제 · 생성 2026-11-08 22:00:00/);assert.match(identityRows[1].textContent,new RegExp(fallbackId));assert.doesNotMatch(identityRows[1].textContent,/23:05:06/);
 assert.equal(identity.document.querySelectorAll('tbody button').length,1);assert.doesNotMatch(identity.document.body.textContent,/hidden@example\.test|opaque/);
+const external=await adminPage({orders:[
+ {order_id:order.order_id,order_name:'ext',amount:1100,paid_gems:100,bonus_gems:0,status:'paid',checkout_status:'open',cancel_status:'refunded',cancel_amount:1100,buyer:'심연구매',paid_at:paidAt,created_at:createdAt,cancel_source:'external',provider_status:'CANCELED'},
+ {order_id:pendingId,order_name:'part',amount:1100,paid_gems:100,bonus_gems:0,status:'paid',checkout_status:'open',cancel_status:'review',cancel_amount:100,buyer:'심연구매',paid_at:paidAt,created_at:createdAt,cancel_source:'external',provider_status:'PARTIAL_CANCELED'},
+ {order_id:'vrs_'+'c'.repeat(32),order_name:'spent',amount:1100,paid_gems:100,bonus_gems:0,status:'paid',checkout_status:'open',cancel_status:'review',cancel_amount:1100,buyer:'심연구매',paid_at:paidAt,created_at:createdAt,cancel_source:'external',provider_status:'CANCELED'}
+]});
+const externalRows=[...external.document.querySelectorAll('tbody tr')];
+assert.match(externalRows[0].textContent,/외부 취소 반영/);assert.match(externalRows[1].textContent,/외부 부분취소/);assert.match(externalRows[2].textContent,/외부 취소 · 재화 불일치/);
+assert.equal(external.document.querySelectorAll('tbody button').length,0);
 console.log('Admin refund DOM: explicit confirm only, no self-refund on page load, safe text rendering, terminal status, forbidden/prod gates, buyer nickname/id and Seoul paid-vs-created time OK');

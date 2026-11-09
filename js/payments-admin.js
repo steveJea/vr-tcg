@@ -13,13 +13,21 @@ const seoul=value=>{
 };
 const buyer=o=>{const name=typeof o.buyer==='string'?o.buyer.trim():'';return name||(typeof o.user_id==='string'?o.user_id:'');};
 const paidWhen=o=>{if(o.paid_at)return seoul(o.paid_at);if(o.status==='paid')return '';return o.created_at?'미결제 · 생성 '+seoul(o.created_at):'미결제';};
+const label=o=>{
+ if(o.cancel_status==='refunded'&&o.provider_status==='PARTIAL_CANCELED')return '부분취소 불일치';
+ if(o.cancel_status==='refunded'&&o.cancel_source==='external')return '외부 취소 반영';
+ if(o.provider_status==='PARTIAL_CANCELED')return '외부 부분취소';
+ if(o.cancel_status==='review'&&o.cancel_source==='external')return '외부 취소 · 재화 불일치';
+ return states[o.cancel_status!=='none'?o.cancel_status:o.status==='paid'?'paid':o.checkout_status]||'확인 필요';
+};
+const blockRefund=o=>o.provider_status==='PARTIAL_CANCELED'||(o.cancel_source==='external'&&o.provider_status==='CANCELED');
 async function load(){
  const result=await api(sb,config,{op:'orders'});rows.replaceChildren();
  for(const o of result.orders){
   const row=document.createElement('tr');cell(row,o.order_name+' / '+o.order_id);cell(row,buyer(o));cell(row,Number(o.amount).toLocaleString('ko-KR')+'원');cell(row,Number(o.paid_gems+o.bonus_gems).toLocaleString('ko-KR'));
-  cell(row,states[o.cancel_status!=='none'?o.cancel_status:o.status==='paid'?'paid':o.checkout_status]||'확인 필요');cell(row,paidWhen(o));cell(row,Number(o.cancel_amount).toLocaleString('ko-KR')+'원');
+  cell(row,label(o));cell(row,paidWhen(o));cell(row,Number(o.cancel_amount).toLocaleString('ko-KR')+'원');
   const actions=cell(row,'');
-  if(o.status==='paid'&&o.cancel_status!=='refunded'){
+  if(o.status==='paid'&&o.cancel_status!=='refunded'&&!blockRefund(o)){
    const button=document.createElement('button');button.className='ad-btn';button.textContent=o.cancel_status==='none'?'전액 환불':'환불 다시 확인';actions.append(button);
    button.onclick=async()=>{
     if(busy||!window.confirm('이 테스트 주문을 전액 환불하고 지급 심연석을 회수할까요?'))return;
