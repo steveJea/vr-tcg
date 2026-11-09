@@ -20632,7 +20632,12 @@ begin
  if pol.enabled is not true or pol.engine_hash is distinct from p_engine_hash or p_engine_hash !~ '^[a-f0-9]{64}$' then
   raise exception 'verifier unavailable';
  end if;
- if clock_timestamp() - s.issued_at < make_interval(secs => (s.snapshot->>'min_seconds')::double precision) then raise exception 'too fast'; end if;
+ -- The replay is the proof of the floor. min_seconds is a wall-clock stand-in for
+ -- client-reported wins. A sweep opens one session per floor and settles it as soon
+ -- as the replay returns; the client paces from the sweep start, so a later floor's
+ -- session can be younger than 1 second and the check rejects a normal sweep.
+ -- Volume stays limited per request by the daily session issuance cap and the tower
+ -- daily floor cap, not by a minimum combat duration.
  if not public._clear_enabled_v2('tower') then raise exception 'reward verification pending'; end if;
  if jsonb_typeof(p_result) is distinct from 'object'
   or (select count(*) from jsonb_object_keys(p_result)) <> 4

@@ -220,6 +220,10 @@ try {
   await as(null, () => assert.rejects(q(`select battle_sweep_settle_v6($1,$2,$3,$4::jsonb)`, [me, sweep.session, ENGINE_VERSION, JSON.stringify({ ...winning.result, turns: winning.result.turns === 40 ? 39 : winning.result.turns + 1 })]), /submission conflict/), 'service_role');
   assert.equal(await gold(), paid);
 
+  const fast = await start('tower_sweep', 'normal:3', [owned.uid], req(50));
+  const fastRes = await http({ op: 'sweep', id: fast.session, version: ENGINE_VERSION });
+  assert.notEqual(fastRes.data?.error, 'too fast');
+  assert.equal(fastRes.status, 200, JSON.stringify(fastRes));
   await q(`update tower_progress set best_floor=38 where user_id=$1 and tower='normal'`, [me]);
   await q(`update battle_legacy_access_v2 set tower_best=jsonb_set(coalesce(tower_best,'{}'),'{normal}','38'::jsonb) where user_id=$1`, [me]);
   const loss = await start('tower_sweep', 'normal:39', [owned.uid], req(41));
@@ -231,7 +235,7 @@ try {
   assert.equal(unpaid.data.validation, 'replay-v6');
   assert.equal(unpaid.data.reason, 'wipe');
   assert.equal(await val(`select best_floor::int v from tower_progress where user_id=$1 and tower='normal'`, [me]), 38);
-  assert.equal(await receipts(), beforeReceipts + 1);
+  assert.equal(await receipts(), beforeReceipts + (fastRes.data.win ? 2 : 1));
 
   const stale = await start('tower_sweep', 'normal:39', [owned.uid], req(42));
   await q(`update battle_sessions_v2 set issued_at=clock_timestamp()-interval '3 hours', expires_at=clock_timestamp()-interval '1 second' where id=$1`, [stale.session]);

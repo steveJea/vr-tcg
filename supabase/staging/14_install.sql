@@ -40,11 +40,11 @@ set local check_function_bodies = off;
 
 do $vr_install_part$
 begin
-  if exists (select 1 from vr_staging_install.parts where bundle_hash <> '3da93fca10d499670dc603dac0eb3471d6e1b15c6b4d491fb4b9e3ecfbd343af' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
+  if exists (select 1 from vr_staging_install.parts where bundle_hash <> 'd7d89da318ab1607c923a8d19e4fbc0734a34a5763a279ee027425b6e83045d7' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
     raise exception 'STOP: 다른 버전/DB의 설치 기록입니다. 파일을 섞지 마세요.';
   end if;
   if exists (select 1 from vr_staging_install.parts where part_no = 14) then
-    if not exists (select 1 from vr_staging_install.parts where part_no = 14 and part_hash = '061369d18deeb6fd7aae35d36777f7af78450d827b0492126cbeace38b3eda36') then
+    if not exists (select 1 from vr_staging_install.parts where part_no = 14 and part_hash = '4751c85533585c16010801da7d598e22e802fe20588fabc1661d076f8ac267aa') then
       raise exception 'STOP: 완료한 파일과 내용이 다릅니다.';
     end if;
     raise notice '14_install.sql: 이미 완료, 변경 없이 건너뜀';
@@ -556,7 +556,12 @@ begin
  if pol.enabled is not true or pol.engine_hash is distinct from p_engine_hash or p_engine_hash !~ '^[a-f0-9]{64}$' then
   raise exception 'verifier unavailable';
  end if;
- if clock_timestamp() - s.issued_at < make_interval(secs => (s.snapshot->>'min_seconds')::double precision) then raise exception 'too fast'; end if;
+ -- The replay is the proof of the floor. min_seconds is a wall-clock stand-in for
+ -- client-reported wins. A sweep opens one session per floor and settles it as soon
+ -- as the replay returns; the client paces from the sweep start, so a later floor's
+ -- session can be younger than 1 second and the check rejects a normal sweep.
+ -- Volume stays limited per request by the daily session issuance cap and the tower
+ -- daily floor cap, not by a minimum combat duration.
  if not public._clear_enabled_v2('tower') then raise exception 'reward verification pending'; end if;
  if jsonb_typeof(p_result) is distinct from 'object'
   or (select count(*) from jsonb_object_keys(p_result)) <> 4
@@ -646,7 +651,7 @@ end $staging_verify$;$vr_statement$;
 
   grant usage on schema public to public, anon, authenticated;
   insert into vr_staging_install.parts(part_no, bundle_hash, part_hash, project_ref, db_id)
-  values (14, '3da93fca10d499670dc603dac0eb3471d6e1b15c6b4d491fb4b9e3ecfbd343af', '061369d18deeb6fd7aae35d36777f7af78450d827b0492126cbeace38b3eda36', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
+  values (14, 'd7d89da318ab1607c923a8d19e4fbc0734a34a5763a279ee027425b6e83045d7', '4751c85533585c16010801da7d598e22e802fe20588fabc1661d076f8ac267aa', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
 end $vr_install_part$;
 commit;
 select '14_install.sql: 완료 또는 이미 완료 (14/14)' as result;

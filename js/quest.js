@@ -298,13 +298,16 @@
     await api.gearReady?.();
     const me = api.battleCards(list), lead = api.leaderFor(me), from = st.from, lastF = Math.min(st.last, maxF());
     const p = api.popup(`<div class="text-lg font-black text-center">${SW()} 소탕 중…</div><div class="q-sw-prog" id="q-sw-prog"></div><div class="text-xs text-zinc-400 text-center mt-2">내 덱: ${list.map(o => esc(api.card(o.id)?.name || '')).join(' · ')}</div>`);
-    const prog = [], turns = []; const total = {}; let accepted = null, lastPaid = null; let to = from - 1, stop = null; const t0 = Date.now();
+    const prog = [], turns = []; const total = {}; let accepted = null, lastPaid = null; let to = from - 1, stop = null;
     window.VR_SWEEPING = true;   // 소탕 중 스킬 컷인·보이스·MR 영상 끔 (game.js)
     try {
     for (let k = from; k <= lastF; k++) {
       const session = M() ? null : await window.VRBattleSession.start('tower_sweep', `${TOWER}:${k}`, list.map(o => o.uid));
+      const issued = Date.now();
       const r = await sim.simBattle(me.map(c => ({ ...c })), enemiesOf(k).enemies.map(c => ({ ...c })), cfg.maxTurns || 40, lead, session?.seed);
-      const wait = t0 + (k - from + 1) * SWEEP_SECS * 1000 - Date.now(); if (wait > 0) await new Promise(res => setTimeout(res, wait));
+      // Pace from this floor's own session, not the sweep start. The old schedule
+      // could settle a later floor less than one second after its session was issued.
+      const wait = issued + SWEEP_SECS * 1000 - Date.now(); if (wait > 0) await new Promise(res => setTimeout(res, wait));
       let shown = r;
       if (session) {
         try { accepted = await settleSweep(session); }

@@ -78,6 +78,7 @@ declare
   v_enabled boolean;
   v_hash text;
   v_target text;
+  v_mark uuid;
   v_line text;
   v_lines text[];
   r record;
@@ -632,6 +633,10 @@ revoke all on table public.staging_sweep_fixture_backup, public.staging_sweep_fi
       where rc.user_id = v_uid and rc.mode = 'tower'
         and rc.target in ('normal:' || (v_snap->>'win'), 'normal:' || (v_snap->>'lose'))
         and not (rc.target = any (array(select jsonb_array_elements_text(coalesce(v_snap->'receipts', '[]'::jsonb)))));
+    delete from public.battle_sessions_v2
+      where user_id = v_uid
+        and target in ('normal:' || (v_snap->>'win'), 'normal:' || (v_snap->>'lose'))
+        and coalesce(snapshot->>'fixture_marker', '') = 'true';
 
     delete from public.staging_sweep_fixture_backup where user_id = v_uid;
 
@@ -949,6 +954,27 @@ revoke all on table public.staging_sweep_fixture_backup, public.staging_sweep_fi
       (v_uid, 'tower_sweep', 'normal:' || v_lose::text, 7, 3)
     on conflict (user_id, mode, target, rule_version) do update set seed = excluded.seed;
 
+    if coalesce((select (tower_paid->>'normal')::int from public.battle_legacy_access_v2 where user_id = v_uid), 0) < v_lose
+       or coalesce((select paid_floor from public.tower_progress where user_id = v_uid and tower = 'normal'), 0) < v_lose then
+      raise exception 'STOP: first-clear baseline was not raised for %', v_nick;
+    end if;
+    -- The server pays only when floor > tower_paid.normal AND no receipt exists.
+    -- A receipt for the win and lose floors makes first_ false even if that baseline is missed.
+    foreach v_target in array array['normal:' || v_win::text, 'normal:' || v_lose::text] loop
+      if exists (select 1 from public.battle_clear_receipts_v2 where user_id = v_uid and mode = 'tower' and target = v_target) then
+        continue;
+      end if;
+      insert into public.battle_sessions_v2(user_id, request_id, mode, target, party, seed, snapshot, status, issued_at, expires_at, finished_at)
+      values (
+        v_uid, gen_random_uuid(), 'tower_sweep', v_target, '[]'::jsonb, 7,
+        jsonb_build_object('min_seconds', 0, 'fixture_marker', true, 'cards', '[]'::jsonb),
+        'settled', clock_timestamp() - interval '3 hours', clock_timestamp() - interval '1 hour', clock_timestamp()
+      )
+      returning id into v_mark;
+      insert into public.battle_clear_receipts_v2(user_id, mode, target, session_id)
+      values (v_uid, 'tower', v_target, v_mark);
+    end loop;
+
     v_enabled := null;
     v_hash := null;
     if to_regclass('public.battle_replay_policy_v6') is not null then
@@ -967,7 +993,7 @@ revoke all on table public.staging_sweep_fixture_backup, public.staging_sweep_fi
       '시련의 탑 최고 층 ' || v_old_best::text || ' -> ' || (v_win - 1)::text || '. 오늘 도전 횟수 0. 다른 탑은 그대로.',
       '예상 승리 층: 시련의 탑 ' || v_win::text || '층. 예상 패배 층: ' || v_lose::text || '층. 시드 7. 이 인재 1장만.',
       '버튼이 ' || v_win::text || '~' || ((((v_win - 1) / 10) * 10) + 9)::text || '층처럼 보여도 ' || v_lose::text || '층에서 멈춥니다. 예전 탭은 닫고 게임을 새로 연 뒤 소탕을 한 번만 누르세요.',
-      '골드·젬·소환권·피·조각·혼은 바꾸지 않았습니다. 첫 클리어 보상은 이미 받은 것으로 표시해서 이번 소탕은 재화를 주지 않습니다.',
+      '골드·젬·소환권·피·조각·혼은 바꾸지 않았습니다. 승리 ' || v_win::text || '층과 패배 ' || v_lose::text || '층은 영수증과 tower_paid.normal ' || v_legacy_paid::text || ' 로 이미 받은 층입니다. 서버는 그 층이 이 기준보다 높고 영수증이 없을 때만 첫 보상(골드는 50+5×층)을 줍니다.',
       '성공: 승리 층까지 최고 기록이 오르고, 같은 승리 전투를 다시 받아도 같은 정산입니다. 패배 층에서는 기록과 재화가 늘지 않습니다.',
       case
         when v_enabled is true and v_hash is not distinct from v_engine then '재계산 스위치: 켜짐. 엔진 해시가 이 파일의 계산과 같습니다.'
