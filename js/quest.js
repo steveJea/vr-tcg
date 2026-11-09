@@ -255,6 +255,7 @@
 
   // ----- 소탕: 다음 층부터 연속된 일반 층을 내 덱으로 자동 전투 (supabase/quest_sweep.sql). 보스 층(10의 배수)에서 멈춤. 행동력 없음 -----
   const SWEEP_SECS = 1.1;   // 서버 최소 1초/층 + 여유
+  const SWEEP_V6 = '1dbdb45994799cdcf3db14bd6eb44689d35678a733774caffcfd9867df85685c';
   const isBoss = k => k % 10 === 0;
   function sweepBtn() {
     const f = best() + 1; if (f > maxF()) return '';
@@ -270,6 +271,25 @@
     if (!deck.length) { api.toast('출전 인재를 먼저 골라 주세요'); return api.pickDeck([], list => runSweep(list), () => render(), `${SW()} 소탕에 쓸 덱${tCls() ? ` · ${EL[tCls()]} 속성만` : ''}`, party(), { noLend: true, mode: 'tower' }); }
     runSweep(deck);
   }
+  async function settleSweep(session) {
+    const c = window.VRCloud;
+    if (!c?.sb || !session?.session) throw new Error('전투 시작 기록이 없어요');
+    const body = { op: 'sweep', id: session.session, version: SWEEP_V6 };
+    let last;
+    for (let n = 0; n < 2; n++) {
+      const { data, error } = await c.sb.functions.invoke('story-tower-verify-v6', { body });
+      if (!error && data?.ok) return data;
+      let message = data?.error || '';
+      if (error) { try { message = (await error.context?.json())?.error || error.message; } catch { message = error.message; } }
+      last = new Error(message || '소탕 결과를 서버가 확인하지 못했어요');
+      last.replayNotReady = /verifier unavailable|Failed to send a request to the Edge Function|Function not found|404 Not Found/i.test(last.message);
+      if (n === 0) {
+        const again = await c.sb.functions.invoke('story-tower-verify-v6', { body: { op: 'status', id: session.session } });
+        if (!again.error && again.data?.settlement?.ok) return again.data.settlement;
+      }
+    }
+    throw last;
+  }
   async function runSweep(list) {
     const api = A();
     let st; try { st = M() ? await trpc('quest_sweep_start') : { from: best() + 1, last: Math.min(Math.ceil((best() + 1) / 10) * 10 - 1, maxF(), best() + Math.max(0, (status?.daily || 30) - (status?.today || 0))) }; if (st.from > st.last) throw new Error('boss floor or daily limit'); }
@@ -278,22 +298,37 @@
     await api.gearReady?.();
     const me = api.battleCards(list), lead = api.leaderFor(me), from = st.from, lastF = Math.min(st.last, maxF());
     const p = api.popup(`<div class="text-lg font-black text-center">${SW()} 소탕 중…</div><div class="q-sw-prog" id="q-sw-prog"></div><div class="text-xs text-zinc-400 text-center mt-2">내 덱: ${list.map(o => esc(api.card(o.id)?.name || '')).join(' · ')}</div>`);
-    const prog = [], turns = []; const total = {}; let accepted = null; let to = from - 1, stop = null; const t0 = Date.now();
+    const prog = [], turns = []; const total = {}; let accepted = null, lastPaid = null; let to = from - 1, stop = null; const t0 = Date.now();
     window.VR_SWEEPING = true;   // 소탕 중 스킬 컷인·보이스·MR 영상 끔 (game.js)
     try {
     for (let k = from; k <= lastF; k++) {
       const session = M() ? null : await window.VRBattleSession.start('tower_sweep', `${TOWER}:${k}`, list.map(o => o.uid));
-      const r = await sim.simBattle(me.map(c => ({ ...c })), enemiesOf(k).enemies.map(c => ({ ...c })), cfg.maxTurns || 40, lead);
-      prog.push(`<div class="q-sw-row ${r.win ? 'win' : 'lose'}"><b>${k}층</b><span>${r.win ? `✔ 승리 · ${r.turns}턴` : r.timeout ? `✕ ${cfg.maxTurns || 40}턴 초과` : '✕ 패배'}</span></div>`);
-      const el = $('q-sw-prog'); if (el) { el.innerHTML = prog.join(''); el.scrollTop = el.scrollHeight; }
+      const r = await sim.simBattle(me.map(c => ({ ...c })), enemiesOf(k).enemies.map(c => ({ ...c })), cfg.maxTurns || 40, lead, session?.seed);
       const wait = t0 + (k - from + 1) * SWEEP_SECS * 1000 - Date.now(); if (wait > 0) await new Promise(res => setTimeout(res, wait));
-      if (!r.win) { if (session) await window.VRBattleSession.abort(session); stop = { floor: k, why: r.timeout ? 'timeout' : 'lose' }; break; }
-      if (session) { accepted = await window.VRBattleSession.finish(session, window.VRBattleSession.report(true, 'wipe', { totalTurns: r.turns, myTurns: Math.ceil(r.turns / 2) })); for (const [key, value] of Object.entries({ ...(accepted.reward || {}), ...(accepted.currency || {}) })) total[key] = (total[key] || 0) + value; }
+      let shown = r;
+      if (session) {
+        try { accepted = await settleSweep(session); }
+        catch (e) {
+          // Switch off or Edge not deployed yet: keep the previous one-time finish path.
+          // After battle_replay_policy_v6.enabled, that finish is rejected and this error stops the sweep.
+          if (!e.replayNotReady) throw e;
+          if (!r.win) { await window.VRBattleSession.abort(session); stop = { floor: k, why: r.timeout ? 'timeout' : 'lose' }; }
+          else accepted = await window.VRBattleSession.finish(session, window.VRBattleSession.report(true, 'wipe', { totalTurns: r.turns, myTurns: Math.ceil(r.turns / 2) }));
+        }
+        if (!stop) {
+          shown = accepted ? { win: !!accepted.win, turns: accepted.turns || r.turns, timeout: accepted.reason === 'timeout' } : r;
+          if (!shown.win) stop = { floor: k, why: shown.timeout ? 'timeout' : 'lose' };
+          else { lastPaid = accepted; for (const [key, value] of Object.entries({ ...(accepted.reward || {}), ...(accepted.currency || {}) })) total[key] = (total[key] || 0) + value; }
+        }
+      } else if (!r.win) stop = { floor: k, why: r.timeout ? 'timeout' : 'lose' };
+      prog.push(`<div class="q-sw-row ${shown.win ? 'win' : 'lose'}"><b>${k}층</b><span>${shown.win ? `✔ 승리 · ${shown.turns}턴` : shown.timeout ? `✕ ${cfg.maxTurns || 40}턴 초과` : '✕ 패배'}</span></div>`);
+      const el = $('q-sw-prog'); if (el) { el.innerHTML = prog.join(''); el.scrollTop = el.scrollHeight; }
+      if (stop) break;
       to = k; turns.push(Math.max(1, Math.min(40, r.turns)));
     }
     } catch (e) { stop = { floor: to + 1, why: 'error', message: String(e?.message || e) }; } finally { window.VR_SWEEPING = false; }
     if (!stop) stop = to >= maxF() ? { floor: to, why: 'top' } : isBoss(to + 1) ? { floor: to + 1, why: 'boss' } : { floor: to + 1, why: 'daily' };
-    let res; try { res = M() ? await trpc('quest_sweep_complete', { p_to: to, p_stats: { turns } }) : { ...(accepted || {}), cleared: to - from + 1, total, best_floor: accepted?.best_floor ?? best() }; }
+    let res; try { res = M() ? await trpc('quest_sweep_complete', { p_to: to, p_stats: { turns } }) : { ...(lastPaid || {}), cleared: to - from + 1, total, best_floor: lastPaid?.best_floor ?? best(), today: lastPaid?.today }; }
     catch (e) { p.close(true); api.toast(`⚠️ 소탕 기록 실패: ${e?.message || e}`); return render(); }
     p.close(true);
     status = { ...status, best_floor: res.best_floor ?? Math.max(best(), to), today: res.today ?? status?.today };

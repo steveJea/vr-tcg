@@ -17,6 +17,7 @@ export async function buildSql() {
     }
     if (name === 'security_phase4_raid_guildwar.sql') sql = sql.replace(/do \$phase4_staging_guard\$[\s\S]*?end \$phase4_staging_guard\$;/, '-- Phase4 cluster guard is enforced by installer outer guard.');
     if (name === 'security_phase5_arcade.sql') sql = sql.replace(/do \$phase5_staging_guard\$[\s\S]*?end \$phase5_staging_guard\$;/, '-- Phase5 cluster guard is enforced by installer outer guard.');
+    if (name === 'security_phase6_story_tower.sql') sql = sql.replace(/do \$phase6_staging_guard\$[\s\S]*?end \$phase6_staging_guard\$;/, '-- Phase6 cluster guard is enforced by installer outer guard.');
     if (name === 'level_unlocks_staging.sql') sql = sql.replace(/do \$guard\$[\s\S]*?end \$guard\$;/, '-- Unlock cluster guard is enforced by installer outer guard.');
     if (name === 'card_id_remap.sql') {
       // 이 저장소의 카드 ID는 이미 변경 완료. 기존 데이터/함수 일괄 치환은 실행하지 않음.
