@@ -1,12 +1,13 @@
 -- 스테이징 전용. 시련의 탑 소탕 재계산을 시험할 계정 하나를 맞추는 스크립트.
 -- 앱 로직을 바꾸지 않습니다. 프로덕션에서 실행하면 아래 가드가 즉시 중단합니다.
+-- 임시 테이블과 begin/commit 을 쓰지 않습니다. Supabase SQL Editor 는 문장마다 따로 실행해도 됩니다.
 --
--- 사용법 (Supabase 스테이징 SQL Editor 에 이 파일 전체를 붙여 넣고 Run)
--- 1. 파일 맨 위의 insert into _sweep_cfg 에서 닉네임을 바꿉니다. 기본값은 '드리고니아' 입니다.
+-- 사용법 (Supabase 스테이징 SQL Editor 에 이 파일 전체를 붙여 넣고 Run. 선택 없이 통째로)
+-- 1. 아래 DO 블록 맨 위의 v_nick, v_action 두 줄만 고칩니다. 지금 닉네임은 '드라고니아', action 은 'apply' 입니다.
 --    닉네임은 한 글자도 틀리면 안 됩니다. 0명이거나 2명 이상이면 아무것도 바꾸지 않고 멈춥니다.
--- 2. action 은 'apply' 로 두고 실행합니다. 되돌릴 때는 'revert' 로 바꾸고 같은 파일을 다시 실행합니다.
+-- 2. 되돌릴 때는 v_action 만 'revert' 로 바꾸고 같은 파일을 다시 실행합니다.
 -- 3. 그 계정의 게임 탭을 SQL 실행 전에 모두 닫습니다. 켜 둔 탭이 예전 보유 목록을 다시 저장할 수 있습니다.
--- 4. 결과 표의 승리 층 / 패배 층을 확인한 뒤, 게임을 새로 열고 시련의 탑에서 소탕을 한 번 누릅니다.
+-- 4. Messages 의 NOTICE 와 마지막 결과 표에서 승리 층 / 패배 층을 확인한 뒤, 게임을 새로 열고 시련의 탑에서 소탕을 한 번 누릅니다.
 --
 -- apply 가 하는 일 (그 계정만)
 -- * 소탕 출전은 story_progress.data.owned 한 곳만 봅니다 (서버 _pvp_snap, 화면 deckInstances).
@@ -31,47 +32,87 @@
 -- 시험 후에 뽑은 인재, 시험 중에 오른 탑 기록, 시험 중에 새로 생긴 그 두 층의 클리어 영수증은 백업에 없으므로 되돌려지지 않습니다.
 -- 재화는 이 스크립트가 준 적이 없습니다. 백업 줄은 revert 가 끝나면 지웁니다. 그 다음 apply 는 새 백업을 만듭니다.
 
-begin;
-
--- 여기만 고치세요. nick 은 계정 닉네임 하나, action 은 apply 또는 revert.
-create temp table _sweep_cfg(nick text not null, action text not null) on commit drop;
-insert into _sweep_cfg(nick, action) values ('드리고니아', 'apply');
-
-do $sweep_guard$
+do $sweep_fixture$
+declare
+  -- ===== 여기만 고치세요. 이 두 줄 외에는 손대지 마세요. =====
+  v_nick text := '드라고니아'; -- 시험할 닉네임 하나
+  v_action text := 'apply'; -- apply 또는 revert
+  -- ============================================================
+  v_fix jsonb;
+  v_have text[] := '{}';
+  v_engine text := '1dbdb45994799cdcf3db14bd6eb44689d35678a733774caffcfd9867df85685c';
+  v_uid uuid;
+  v_n int;
+  v_i int := 0;
+  v_snap jsonb;
+  v_story jsonb;
+  v_owned jsonb;
+  v_reused boolean := false;
+  v_card_id text;
+  v_name text;
+  v_level int;
+  v_win int;
+  v_lose int;
+  v_kinds int;
+  v_copies int;
+  v_hidden int;
+  v_story_present boolean := false;
+  v_made boolean := false;
+  v_from text := 'owned';
+  v_need int;
+  v_old_level int;
+  v_new_level int;
+  v_old_best int;
+  v_paid int;
+  v_legacy_best int;
+  v_legacy_paid int;
+  v_tb jsonb;
+  v_tp jsonb;
+  v_gear jsonb;
+  v_gear_n int := 0;
+  v_gear_saved int := 0;
+  v_sigil jsonb;
+  v_plus int;
+  v_seeds jsonb;
+  v_receipts jsonb;
+  v_enabled boolean;
+  v_hash text;
+  v_target text;
+  v_line text;
+  v_lines text[];
+  r record;
 begin
   if (select system_identifier::text from pg_catalog.pg_control_system()) is distinct from '7703759698107299042' then
     raise exception 'STOP: staging cuyqchmdcnsgzkwyclji only (system_identifier 7703759698107299042)';
   end if;
-end
-$sweep_guard$;
-
-create table if not exists public.staging_sweep_fixture_backup (
+  create table if not exists public.staging_sweep_fixture_backup (
   user_id uuid primary key references auth.users(id) on delete cascade,
   nickname text not null,
   snapshot jsonb not null,
   created_at timestamptz not null default now()
 );
-comment on table public.staging_sweep_fixture_backup is
-  'Staging-only tower sweep test snapshot. Not a game table. Apply or revert with supabase/staging_sweep_fixture.sql.';
+create table if not exists public.staging_sweep_fixture_report (
+  singleton boolean primary key default true check (singleton),
+  nickname text not null,
+  action text not null,
+  report text not null,
+  at timestamptz not null default now()
+);
 alter table public.staging_sweep_fixture_backup enable row level security;
-revoke all on table public.staging_sweep_fixture_backup from public, anon, authenticated;
-do $sweep_acl$
-begin
+alter table public.staging_sweep_fixture_report enable row level security;
+revoke all on table public.staging_sweep_fixture_backup, public.staging_sweep_fixture_report from public, anon, authenticated;
   if exists (select 1 from pg_roles where rolname = 'service_role') then
-    revoke all on table public.staging_sweep_fixture_backup from service_role;
+    revoke all on table public.staging_sweep_fixture_backup, public.staging_sweep_fixture_report from service_role;
   end if;
-end
-$sweep_acl$;
+  comment on table public.staging_sweep_fixture_backup is
+    'Staging-only tower sweep test snapshot. Not a game table.';
+  comment on table public.staging_sweep_fixture_report is
+    'Latest staging sweep fixture notice. Not a game table.';
 
-create temp table _sweep_fix (
-  id text primary key,
-  level int not null,
-  win int not null,
-  lose int not null,
-  name text not null
-) on commit drop;
-insert into _sweep_fix(id, level, win, lose, name) values
-  ('10001', 60, 2, 3, '가윤우'),
+  select jsonb_agg(jsonb_build_object('id', f.id, 'level', f.level, 'win', f.win, 'lose', f.lose, 'name', f.name))
+    into v_fix
+  from (values
+('10001', 60, 2, 3, '가윤우'),
   ('10002', 60, 2, 3, '강나빛'),
   ('10003', 40, 4, 5, '강리안'),
   ('10006', 40, 4, 5, '강서언'),
@@ -441,65 +482,8 @@ insert into _sweep_fix(id, level, win, lose, name) values
   ('10471', 20, 4, 5, '황지은'),
   ('10473', 1, 27, 28, '황한결'),
   ('10474', 60, 1, 2, '황혁'),
-  ('10509', 1, 23, 24, '강보람');
-
-create temp table _sweep_out(ord int primary key, line text) on commit drop;
-create temp table _sweep_have(id text primary key) on commit drop;
-
-do $sweep_fixture$
-declare
-  v_nick text;
-  v_action text;
-  v_engine text := '1dbdb45994799cdcf3db14bd6eb44689d35678a733774caffcfd9867df85685c';
-  v_uid uuid;
-  v_n int;
-  v_i int := 0;
-  v_snap jsonb;
-  v_story jsonb;
-  v_owned jsonb;
-  v_reused boolean := false;
-  v_card_id text;
-  v_name text;
-  v_level int;
-  v_win int;
-  v_lose int;
-  v_kinds int;
-  v_copies int;
-  v_hidden int;
-  v_story_present boolean := false;
-  v_made boolean := false;
-  v_from text := 'owned';
-  v_need int;
-  v_old_level int;
-  v_new_level int;
-  v_old_best int;
-  v_paid int;
-  v_legacy_best int;
-  v_legacy_paid int;
-  v_tb jsonb;
-  v_tp jsonb;
-  v_gear jsonb;
-  v_gear_n int := 0;
-  v_gear_saved int := 0;
-  v_sigil jsonb;
-  v_plus int;
-  v_seeds jsonb;
-  v_receipts jsonb;
-  v_enabled boolean;
-  v_hash text;
-  v_target text;
-  v_line text;
-  v_lines text[];
-  r record;
-begin
-  if (select system_identifier::text from pg_catalog.pg_control_system()) is distinct from '7703759698107299042' then
-    raise exception 'STOP: staging cuyqchmdcnsgzkwyclji only (system_identifier 7703759698107299042)';
-  end if;
-  select count(*) into v_n from _sweep_cfg;
-  if v_n <> 1 then
-    raise exception 'STOP: _sweep_cfg must contain exactly one nickname';
-  end if;
-  select nick, action into v_nick, v_action from _sweep_cfg;
+  ('10509', 1, 23, 24, '강보람')
+  ) as f(id, level, win, lose, name);
   if v_action not in ('apply', 'revert') then
     raise exception 'STOP: action must be apply or revert';
   end if;
@@ -515,8 +499,8 @@ begin
     raise exception 'STOP: phase6 sweep SQL is not installed on this staging database';
   end if;
   if exists (
-    select 1 from _sweep_fix
-    where lose <> win + 1 or win < 1 or lose > 349 or win % 10 = 0 or lose % 10 = 0 or win % 10 = 9
+    select 1 from jsonb_to_recordset(v_fix) as x(id text, level int, win int, lose int, name text)
+    where x.lose <> x.win + 1 or x.win < 1 or x.lose > 349 or x.win % 10 = 0 or x.lose % 10 = 0 or x.win % 10 = 9
   ) then
     raise exception 'STOP: fixture table is inconsistent';
   end if;
@@ -672,70 +656,63 @@ begin
     v_reused := v_snap is not null;
 
     if not v_reused then
-      delete from _sweep_have;
+      v_have := '{}';
       if jsonb_typeof(v_story->'owned') = 'array' then
-        insert into _sweep_have(id)
-        select distinct elem->>'id'
+        select coalesce(array_agg(distinct elem->>'id'), '{}') into v_have
         from jsonb_array_elements(v_story->'owned') elem
-        where elem->>'id' ~ '^[0-9]+$'
-        on conflict do nothing;
+        where elem->>'id' ~ '^[0-9]+$';
         v_from := 'owned';
       elsif jsonb_typeof(v_story->'owned') = 'object' then
-        insert into _sweep_have(id)
-        select k.id from jsonb_object_keys(v_story->'owned') k(id)
-        where k.id ~ '^[0-9]+$'
-        on conflict do nothing;
+        select coalesce(array_agg(k.id), '{}') into v_have
+        from jsonb_object_keys(v_story->'owned') as k(id)
+        where k.id ~ '^[0-9]+$';
         v_from := 'owned';
       end if;
-      if not exists (select 1 from _sweep_have h join _sweep_fix f on f.id = h.id) then
-        delete from _sweep_have;
+      if not exists (
+        select 1 from jsonb_to_recordset(v_fix) as f(id text, level int, win int, lose int, name text)
+        where f.id = any(coalesce(v_have, '{}'))
+      ) then
         v_from := 'trace';
+        v_have := '{}';
         if to_regclass('public.player_gear') is not null then
-          insert into _sweep_have(id)
-          select distinct g.equipped_card from public.player_gear g
-          where g.user_id = v_uid and g.equipped_card ~ '^[0-9]+$'
-          on conflict do nothing;
+          select coalesce(v_have, '{}') || coalesce(array_agg(distinct g.equipped_card), '{}') into v_have
+          from public.player_gear g
+          where g.user_id = v_uid and g.equipped_card ~ '^[0-9]+$';
         end if;
         if to_regclass('public.player_sigils') is not null then
-          insert into _sweep_have(id)
-          select distinct s.card_id from public.player_sigils s
-          where s.user_id = v_uid and s.card_id ~ '^[0-9]+$'
-          on conflict do nothing;
+          select coalesce(v_have, '{}') || coalesce(array_agg(distinct s.card_id), '{}') into v_have
+          from public.player_sigils s
+          where s.user_id = v_uid and s.card_id ~ '^[0-9]+$';
         end if;
         if to_regclass('public.story_gacha_log') is not null then
-          insert into _sweep_have(id)
-          select distinct l.card_id from public.story_gacha_log l
-          where l.user_id = v_uid and l.card_id ~ '^[0-9]+$'
-          on conflict do nothing;
+          select coalesce(v_have, '{}') || coalesce(array_agg(distinct l.card_id), '{}') into v_have
+          from public.story_gacha_log l
+          where l.user_id = v_uid and l.card_id ~ '^[0-9]+$';
         end if;
         if to_regclass('public.pvp_decks') is not null then
-          insert into _sweep_have(id)
-          select distinct c->>'id'
+          select coalesce(v_have, '{}') || coalesce(array_agg(distinct c->>'id'), '{}') into v_have
           from public.pvp_decks d
           cross join lateral jsonb_array_elements(case when jsonb_typeof(d.snap) = 'array' then d.snap else '[]'::jsonb end) c
-          where d.user_id = v_uid and c->>'id' ~ '^[0-9]+$'
-          on conflict do nothing;
+          where d.user_id = v_uid and c->>'id' ~ '^[0-9]+$';
         end if;
         if to_regclass('public.battle_sessions_v2') is not null then
-          insert into _sweep_have(id)
-          select distinct c->>'id'
+          select coalesce(v_have, '{}') || coalesce(array_agg(distinct c->>'id'), '{}') into v_have
           from public.battle_sessions_v2 s
           cross join lateral jsonb_array_elements(case when jsonb_typeof(s.snapshot->'cards') = 'array' then s.snapshot->'cards' else '[]'::jsonb end) c
-          where s.user_id = v_uid and c->>'id' ~ '^[0-9]+$'
-          on conflict do nothing;
+          where s.user_id = v_uid and c->>'id' ~ '^[0-9]+$';
         end if;
       end if;
       select f.id, f.name, f.level, f.win, f.lose
         into v_card_id, v_name, v_level, v_win, v_lose
-      from _sweep_fix f
-      join _sweep_have h on h.id = f.id
+      from jsonb_to_recordset(v_fix) as f(id text, level int, win int, lose int, name text)
+      where f.id = any(coalesce(v_have, '{}'))
       order by f.win, f.level, f.id
       limit 1;
       if v_card_id is null then
         v_from := 'new';
         select f.id, f.name, f.level, f.win, f.lose
           into v_card_id, v_name, v_level, v_win, v_lose
-        from _sweep_fix f
+        from jsonb_to_recordset(v_fix) as f(id text, level int, win int, lose int, name text)
         order by f.win, f.level, f.id
         limit 1;
       end if;
@@ -814,7 +791,7 @@ begin
     v_card_id := v_snap->>'card_id';
     select f.level, f.win, f.lose, f.name
       into v_level, v_win, v_lose, v_name
-    from _sweep_fix f
+    from jsonb_to_recordset(v_fix) as f(id text, level int, win int, lose int, name text)
     where f.id = v_card_id;
     if not found
        or (v_snap->>'level')::int is distinct from v_level
@@ -1002,13 +979,17 @@ begin
     ];
   end if;
 
+  insert into public.staging_sweep_fixture_report(singleton, nickname, action, report)
+  values (true, v_nick, v_action, array_to_string(v_lines, E'\n'))
+  on conflict (singleton) do update
+    set nickname = excluded.nickname, action = excluded.action, report = excluded.report, at = now();
   foreach v_line in array v_lines loop
-    v_i := v_i + 1;
-    insert into _sweep_out(ord, line) values (v_i, v_line);
     raise notice '%', v_line;
   end loop;
 end
 $sweep_fixture$;
 
-select ord, line as "시험 안내" from _sweep_out order by ord;
-commit;
+
+select nickname, action, at, report as "시험 안내"
+from public.staging_sweep_fixture_report
+where singleton;
