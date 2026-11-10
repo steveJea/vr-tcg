@@ -265,4 +265,51 @@ const batch1 = cases.filter(c => c.label === 'normal 1 batch');
 assert.ok(batch1.length === 4 && batch1.every(c => c.client.win === c.server?.win && c.client.reason === c.server?.reason));
 assert.ok(batch1.some(c => c.client.log.filter(a => a.k === 'atk').length >= 2));
 assert.ok(cases.some(c => c.label === 'normal 1 swap then batch' && c.client.log.some(a => a.k === 'swap') && c.client.win === c.server?.win));
+
+function searchWin(session, summonIds = []) {
+  const log = [];
+  for (let n = 0; n < 80; n++) {
+    let res;
+    try { res = verifyDirect(session, log); } catch (e) { return { err: e.message, log }; }
+    if (res.win || res.reason !== 'incomplete') return { res, log };
+    const t = res.my_turns;
+    const opts = [];
+    for (const id of summonIds) opts.push({ t, k: 'summon', id });
+    for (let i = 0; i < 6; i++) for (let g = 0; g < 6; g++) opts.push({ t, k: 'atk', i, g });
+    opts.push({ t, k: 'end' });
+    let picked = null;
+    for (const opt of opts) { try { verifyDirect(session, log.concat(opt)); picked = opt; break; } catch { /* not legal yet */ } }
+    if (!picked) return { res, log, stuck: true };
+    log.push(picked);
+  }
+  return { err: 'search', log };
+}
+const normalBoss = (target, stage, cards, summonIds = []) => searchWin({
+  mode: 'story', target, seed: 4,
+  snapshot: { mana: stage.mana ?? null, leader: null, cards, stage },
+}, summonIds);
+const ch158 = normalBoss('15:8', {
+  no: 8, type: 'normal', bossId: '10143', mana: 80,
+  enemies: { ids: ['10143', '10144', '10145', '10157', '10158'], boost: {
+    '10143': { HP: 90, ATK: 20, DEF: 14 }, '10144': { HP: 90, ATK: 22, DEF: 16 }, '10145': { HP: 108, ATK: 23, DEF: 18 },
+    '10157': { HP: 180, ATK: 25, DEF: 20 }, '10158': { HP: 180, ATK: 27, DEF: 27 },
+  } },
+}, [{ id: '10290', uid: 'a', level: 81 }, { id: '10200', uid: 'b', level: 81 }], ['10290', '10200']);
+assert.equal(ch158.res?.win, true, JSON.stringify(ch158.res || ch158.err));
+assert.equal(ch158.res.reason, 'wipe');
+const bossStage = { no: 8, type: 'boss', bossId: '10143', baseHp: 999999, mana: 80, enemies: { ids: ['10143', '10144', '10145', '10157', '10158'], boost: { '10143': { HP: 90, ATK: 20, DEF: 14 }, '10144': { HP: 90, ATK: 22, DEF: 16 }, '10145': { HP: 108, ATK: 23, DEF: 18 }, '10157': { HP: 180, ATK: 25, DEF: 20 }, '10158': { HP: 180, ATK: 27, DEF: 27 } } } };
+let bossReplay;
+try {
+  bossReplay = verifyDirect({ mode: 'story', target: '15:8', seed: 4, snapshot: { mana: 80, cards: [{ id: '10290', uid: 'a', level: 81 }, { id: '10200', uid: 'b', level: 81 }], stage: bossStage } }, ch158.log);
+} catch (e) { bossReplay = { win: false, reason: e.message }; }
+assert.notEqual(bossReplay.reason, 'wipe');
+for (const [target, bossId, ids, card] of [
+  ['3:1', '10157', ['10157', '10156', '10155', '10154', '10153'], '10384'],
+  ['4:1', '10157', ['10153', '10154', '10155', '10156', '10157'], '10300'],
+  ['6:2', '10146', ['10146', '10153', '10143', '10144', '10145'], '10111'],
+]) {
+  const fought = normalBoss(target, { type: 'normal', bossId, enemies: { ids } }, [{ id: card, uid: 'p', level: 60 }]);
+  assert.equal(fought.res?.reason, 'wipe', `${target} ${JSON.stringify(fought.res || fought.err)}`);
+  assert.equal(fought.res.win, true);
+}
 console.log('direct parity ok');
