@@ -29,7 +29,7 @@
     try { const { data, error } = pending[n] ? await window.VRBattleSession.finish(pending[n].session, pending[n].report).then(data => ({ data }), error => ({ error })) : await c.rpc('arcade_tut_claim', { p_stage: n }); if (error) throw error; if (data?.ok !== true) throw new Error('reward verification pending'); delete pending[n]; srv = { ...(srv || {}), claimed: [...new Set([...(srv?.claimed || []), n])] }; try { if (data?.kind === 'gem') window.VRGem?.status?.(true); else if (data?.tickets != null) window.dispatchEvent(new CustomEvent('vr:tickets', { detail: { tickets: data.tickets } })); } catch {} return data; }
     catch (e) { return { error: String(e?.message || e) }; }
   }
-  const rewardText = (r, n) => r.login ? `게스트 클리어 기록은 저장됐어요. 로그인 후 다시 클리어하면 첫 클리어 보상 ${rwLabel(n)}${CUR[REWARD[n].kind].unit}${REWARD[n].kind === 'gem' ? '를' : '을'} 받아요` : r.error ? (/reward verification pending/.test(r.error) ? '지급 보류' : /previous/.test(r.error) ? '앞 단계 보상을 먼저 받아야 해요' : '보상은 잠시 뒤 다시 받을 수 있어요 (단계 목록에서 받기)') : r.already ? '보상은 이미 받았어요' : r.kind === 'gem' ? `🔮 심연석 +${r.gave}${r.gem != null ? ` (보유 ${r.gem})` : ''}` : `🎟️ 영입권 +${r.gave}${r.tickets != null ? ` (보유 ${r.tickets})` : ''}`;
+  const rewardText = (r, n) => r.login ? '🔑 로그인 후 재클리어 → 보상' : r.error ? (/reward verification pending/.test(r.error) ? '지급 보류' : /previous/.test(r.error) ? '앞 단계 보상을 먼저 받아야 해요' : '⏳ 잠시 후 받기') : r.already ? '보상은 이미 받았어요' : r.kind === 'gem' ? `🔮 심연석 +${r.gave}${r.gem != null ? ` (보유 ${r.gem})` : ''}` : `🎟️ 영입권 +${r.gave}${r.tickets != null ? ` (보유 ${r.tickets})` : ''}`;
   let ov = null;
   const close = () => { ov?.remove(); ov = null; };
   function panel(html, onClick) {
@@ -43,11 +43,11 @@
     const rows = STAGES.map(st => {
       const ok = unlocked(st), done = cleared(st.n);
       return `<button class="yt-st ${done ? 'done' : ''}" data-st="${st.n}" ${ok ? '' : 'disabled'}>
-        <b>${st.name}</b><span>${st.title}</span><i>${done ? '✔ 클리어' : !st.ready ? '준비 중' : ok ? '도전' : '🔒 앞 단계 클리어'} · 첫 클리어 ${rwLabel(st.n)}${claimedSrv(st.n) ? ' (받음)' : ''}</i></button>
+        <b>${st.name}</b><span>${st.title}</span><i>${done ? '✔ 클리어' : !st.ready ? '🔒' : ok ? '도전' : '🔒 앞 단계 클리어'} · 첫 클리어 ${rwLabel(st.n)}${claimedSrv(st.n) ? ' (받음)' : ''}</i></button>
         ${done && srv && !claimedSrv(st.n) ? `<button class="yt-claim" data-claim="${st.n}" ${srv.reward_held ? 'disabled' : ''}>${srv.reward_held ? '지급 보류' : `${rwLabel(st.n)} 받기`}</button>` : ''}`;
     }).join('');
     panel(`<div class="yt-head"><img src="${FACE}" alt=""><div><b>유리의 특강</b><p>${cleared(1) ? '또 왔어? 복습은 칭찬해 줄게.' : '하… 아케이드도 모르면서 들어온 거야? 언니가 알려줄게.'}</p></div></div>
-      <div class="yt-list">${rows}</div><small class="yt-note">정해진 덱으로 진행 · 아케이드 전적에 기록되지 않아요</small>`,
+      <div class="yt-list">${rows}</div><small class="yt-note">고정 덱 · 전적 미기록</small>`,
       async e => { const c = e.target.closest('[data-claim]'); if (c) { c.disabled = true; const r = await claim(+c.dataset.claim); c.textContent = rewardText(r, +c.dataset.claim); if (!r.error) setTimeout(open, 1400); return; }
         const b = e.target.closest('[data-st]'); if (b && !b.disabled) play(+b.dataset.st); });
     if (srv === null && sb()) status().then(d => { if (d && ov && document.querySelector('.yt-list')) open(); });
@@ -79,7 +79,7 @@
     try { window.dispatchEvent(new CustomEvent('vr:arcade-tut', { detail: { stage: st.n, win: !!win, first } })); } catch {}
   }
   // 게스트 → 로그인: 표시용 진행만 옮김. 보상은 로그인한 세션으로 다시 플레이해야 함.
-  function login() { if (window.VRCloud?.login) window.VRCloud.login(); else (window.VRGem?.toast || alert)('로그인 서버 연결 중이에요. 잠시 뒤 다시 눌러 주세요.'); }
+  function login() { if (window.VRCloud?.login) window.VRCloud.login(); else (window.VRGem?.toast || alert)('⏳ 연결 중…'); }
   let migrating = false;
   async function migrateGuest() {
     const u = window.VRCloud?.user; if (!u || migrating) return;
@@ -102,7 +102,7 @@
     panel(`<div class="yt-promo"><img class="yt-promo-img" src="https://raw.githubusercontent.com/steveJea/vr-ideal-worldcup/main/img/bt_img/10325.webp" alt="임유리">
       <b class="yt-promo-t">📖 유리의 특강</b>
       <p>"하… 아케이드도 모르면서 들어온 거야? 언니가 딱 한 번만 알려줄게."</p>
-      <ul><li>로그인 없이 바로 플레이</li><li>초급 · 중급 · 상급 3단계, 마지막엔 MR 카드로 싹 쓸어버리기</li><li>로그인 후 다시 클리어하면 첫 클리어 보상 🎟️ 영입권 10장 + 🔮 심연석 최대 400개</li></ul>
+      <p class="yt-note">초급·중급·상급 · 🎁 영입권 10 + 🔮 400</p>
       <button class="yt-main yt-promo-go" data-promo-go>바로 시작 (게스트)</button>
       <label class="yt-promo-off"><input type="checkbox" data-promo-off> 다시 보지 않기</label></div>`,
       e => { if (e.target.closest('[data-promo-go]')) { offIf(); play(1); } });

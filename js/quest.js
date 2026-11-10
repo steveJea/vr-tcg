@@ -115,7 +115,7 @@
     const api = A();
     if (!api || !window.TCG?.ready) return;
     if (!api.user()) {
-      const p = api.popup(`<div class="text-xl font-black mb-2">🗼 시련의 탑</div><div class="text-sm text-zinc-300 mb-4">퀘스트 모드는 로그인한 플레이어만 할 수 있어요.<br>스토리 모드에서 모은 인재로 한 층씩 올라가요.</div>
+      const p = api.popup(`<div class="text-xl font-black mb-2">🗼 시련의 탑</div><div class="text-sm text-zinc-300 mb-4">🔑 로그인 필요</div>
         <button id="quest-login" class="w-full py-3 rounded-xl bg-amber-400 text-black font-bold">로그인</button><button data-close-pop class="w-full mt-2 py-2 rounded-xl bg-zinc-700">닫기</button>`);
       $('quest-login').onclick = () => { p.close(true); window.VRCloud?.login?.(); };
       return;
@@ -123,18 +123,18 @@
     await api.load(); await loadCfg();
     if (!api.ownedCount()) { api.popup(`<div class="text-lg font-black mb-2">🗼 시련의 탑</div><div class="text-sm text-zinc-300 mb-4">보유 인재가 없어요. 스토리 모드에서 먼저 인재를 골라 주세요.</div><button data-close-pop class="w-full py-2 rounded-xl bg-zinc-700">닫기</button>`); return; }
     try { status = await trpc('quest_status'); }
-    catch (e) { status = null; api.popup(`<div class="text-lg font-black mb-2">🗼 시련의 탑</div><div class="text-sm text-zinc-300 mb-4">${/quest_status|function/.test(e?.message || '') ? '퀘스트 서버가 아직 준비 중이에요.' : '진행 상황을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.'}</div><button data-close-pop class="w-full py-2 rounded-xl bg-zinc-700">닫기</button>`); return; }
+    catch (e) { status = null; api.popup(`<div class="text-lg font-black mb-2">🗼 시련의 탑</div><div class="text-sm text-zinc-300 mb-4">${/quest_status|function/.test(e?.message || '') ? '🔒' : '진행 상황을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.'}</div><button data-close-pop class="w-full py-2 rounded-xl bg-zinc-700">닫기</button>`); return; }
     enterPage();   // 실패하면 예전처럼 전체 화면
     if (legacy || !hub?.towers) { TOWER = 'normal'; sel = Math.min(best() + 1, maxF()); return render(); }
     renderHub();
   }
   /** 잠김 이유: 준비중 · 유저 레벨 · 요일 (KST). 없으면 null */
   function lockOf(t) {
-    const s = hub?.towers?.[t.id]; if (!s) return '준비중';
+    const s = hub?.towers?.[t.id]; if (!s) return '\u200b';
     const why = [];
     if ((hub?.level || 1) < (window.VRUnlocks?.need(t.id === 'normal' ? 'tower' : 'tower_' + t.id) || s.min_level)) return `Lv${window.VRUnlocks?.need(t.id === 'normal' ? 'tower' : 'tower_' + t.id) || s.min_level}`;
     if (!s.open_today) why.push(`${(s.days || []).map(d => DOW[d]).join('·')} 오픈`);
-    if (!t.ready) why.unshift('준비중');
+    if (!t.ready && !why.length) return '\u200b';
     return why.length ? why.join(' · ') : null;
   }
   function renderHub() {
@@ -146,14 +146,14 @@
         <div class="th-info"><div class="th-name">${esc(t.name)}</div>
           <div class="th-meta"><span title="최고 층">🏔 ${s.best_floor | 0}층</span><span title="오늘 이긴 층 / 하루 제한">⏳ ${s.today | 0}/${s.daily | 0}</span></div></div></button>`; }).join('');
     api.show(`<div class="story-top"><button class="story-back" id="q-home">← 처음으로</button><div class="story-top-title">🗼 탑</div><span class="th-lv">Lv.${hub?.level | 0}</span></div>
-      <div class="th-grid">${cards}</div><div class="th-foot">하루 제한·요일은 한국 시간 자정 기준</div>`, 'tower');
+      <div class="th-grid">${cards}</div><div class="th-foot">⏱ ${(() => { const ms = 86400e3 - ((Date.now() + 9 * 3600e3) % 86400e3); const h = Math.floor(ms / 3600e3), m = Math.floor(ms % 3600e3 / 6e4); return h + ':' + String(m).padStart(2, '0'); })()}</div>`, 'tower');
     $('q-home').onclick = goHome; view = 'hub';
     document.querySelectorAll('.th-card').forEach(b => b.onclick = () => enterTower(b.dataset.tower));
   }
   async function enterTower(id) {
     const api = A(), t = TOWERS.find(x => x.id === id), lock = t && lockOf(t);
     if (!t) return;
-    if (lock) { api.toast(/준비중/.test(lock) ? `${t.name}은(는) 준비 중이에요` : `${t.name}: ${lock}${/Lv\./.test(lock) ? ` (지금 Lv.${hub?.level | 0})` : ''}${/오픈/.test(lock) ? ' (한국 시간)' : ''}`); return; }
+    if (lock) { api.toast(lock === '\u200b' ? '🔒' : `${t.name}: ${lock}${/Lv\./.test(lock) ? ` (지금 Lv.${hub?.level | 0})` : ''}${/오픈/.test(lock) ? ' (한국 시간)' : ''}`); return; }
     TOWER = id; genCache.clear();
     status = { ...(hub.towers[id] || {}), level: hub.level };
     sel = Math.min(best() + 1, maxF()); render();
@@ -196,7 +196,7 @@
   function deckOk() {
     const c = tCls(); if (!c) return true;
     const n = myCls().length;
-    if (!n) { A().popup(`<div class="text-lg font-black mb-2">${EL[c]} 속성 인재가 없어요</div><div class="text-sm text-zinc-300 mb-4">${esc(tName())}에는 ${EL[c]} 속성 인재만 출전할 수 있어요.<br>뽑기·스토리로 ${EL[c]} 인재를 모아 주세요.</div><button data-close-pop class="w-full py-2 rounded-xl bg-zinc-700">닫기</button>`); return false; }
+    if (!n) { A().popup(`<div class="text-lg font-black mb-2">${EL[c]} 속성 인재 필요</div><button data-close-pop class="w-full py-2 rounded-xl bg-zinc-700">닫기</button>`); return false; }
     if (n <= 5) A().toast(`${EL[c]} 속성 인재 ${n}명이 모두 출전해요 (${esc(tName())}은 ${EL[c]} 속성만)`);
     return true;
   }
@@ -244,7 +244,7 @@
     const next = n + 1 <= maxF() ? n + 1 : null;
     const bossSw = !!next && isBoss(n) && best() === n;   // 보스 층 클리어 직후: 바로 소탕 (기존 소탕과 같은 규칙·서버)
     api.show(`<div class="text-center py-6"><div class="story-chapter-sub">${n}층 CLEAR</div><div class="story-chapter-big text-emerald-300">VICTORY</div>
-      ${res.first && res.currency ? `<div class="mt-4 story-drops">🎁 첫 클리어 ${window.VRPlayer?.curTxt?.(res.currency) || ''}</div>` : ''}${got ? `<div class="mt-2 text-amber-200 font-bold">🎁 첫 클리어 보상: ${rewardTxt(rw)}</div>` : `<div class="mt-4 text-zinc-400 text-sm">${res.first ? (res.currency ? '' : '이 층은 보상이 없어요. 10층마다 보상이 있어요.') : '이미 클리어한 층이라 보상은 없어요.'}</div>`}
+      ${res.first && res.currency ? `<div class="mt-4 story-drops">🎁 첫 클리어 ${window.VRPlayer?.curTxt?.(res.currency) || ''}</div>` : ''}${got ? `<div class="mt-2 text-amber-200 font-bold">🎁 첫 클리어 보상: ${rewardTxt(rw)}</div>` : ''}
       <div class="mt-2 text-sm text-zinc-300">최고 기록 ${best()}층${status?.daily ? ` · 오늘 ${status.today | 0}/${status.daily}층` : ''}</div>
       <div class="flex flex-col gap-2 max-w-xs mx-auto mt-5">${next ? `<div class="q-win-row"><button class="story-btn" id="q-next">다음 층 (${next}층)</button>${bossSw ? `<button class="story-btn q-sweep" id="q-win-sweep" title="내 덱으로 자동 전투 · 패배 또는 보스 층에서 멈춤">${SW()} 소탕하기</button>` : ''}</div>` : ''}<button class="story-back" id="q-back">탑으로</button></div></div>`, 'tower');
     if (next) $('q-next').onclick = () => { sel = next; challenge(next); };
@@ -293,7 +293,7 @@
   async function runSweep(list) {
     const api = A();
     let st; try { st = M() ? await trpc('quest_sweep_start') : { from: best() + 1, last: Math.min(Math.ceil((best() + 1) / 10) * 10 - 1, maxF(), best() + Math.max(0, (status?.daily || 30) - (status?.today || 0))) }; if (st.from > st.last) throw new Error('boss floor or daily limit'); }
-    catch (e) { const m = String(e?.message || ''); api.toast(ERR(m) || (/boss floor/.test(m) ? '보스 층은 직접 도전해야 해요' : /function|quest_sweep/.test(m) ? '소탕 서버가 아직 준비 중이에요' : `⚠️ 소탕 실패: ${m}`)); return render(); }
+    catch (e) { const m = String(e?.message || ''); api.toast(ERR(m) || (/boss floor/.test(m) ? '보스 층은 직접 도전해야 해요' : /function|quest_sweep/.test(m) ? '🔒' : `⚠️ 소탕 실패: ${m}`)); return render(); }
     let sim; try { sim = window.__QUEST_SIM || await import(new URL('js/quest-sim.js', document.baseURI).href); } catch (e) { api.toast('⚠️ 전투 엔진을 불러오지 못했어요'); return render(); }
     await api.gearReady?.();
     const me = api.battleCards(list), lead = api.leaderFor(me), from = st.from, lastF = Math.min(st.last, maxF());
@@ -338,7 +338,7 @@
     const tot = res.total || {}, tk = tot.tickets | 0, cur = { ...tot }; delete cur.tickets;
     if (tk) { QUEST_HOOKS.onReward({ tickets: tk }); try { await api.syncTickets(); } catch {} }
     window.VRPlayer?.wallet?.(true);
-    const why = stop.why === 'error' ? `⚠️ ${esc(stop.message)} · 완료한 층 보상은 저장됐어요. 다시 도전할 수 있어요.` : stop.why === 'daily' ? `⏳ 오늘 도전 가능한 층(하루 ${status?.daily ?? 30}층)을 다 썼어요.` : stop.why === 'boss' ? `👑 ${stop.floor}층은 보스 층이에요. 직접 도전해 주세요.` : stop.why === 'top' ? '🏁 마지막 층까지 올라갔어요.' : stop.why === 'timeout' ? `✕ ${stop.floor}층에서 ${cfg.maxTurns || 40}턴 안에 이기지 못했어요.` : `✕ ${stop.floor}층에서 패배했어요.`;
+    const why = stop.why === 'error' ? `⚠️ ${esc(stop.message)} · 보상 저장됨` : stop.why === 'daily' ? `⏳ 오늘 도전 가능한 층(하루 ${status?.daily ?? 30}층)을 다 썼어요.` : stop.why === 'boss' ? `👑 ${stop.floor}층은 보스 층이에요. 직접 도전해 주세요.` : stop.why === 'top' ? '🏁 마지막 층까지 올라갔어요.' : stop.why === 'timeout' ? `✕ ${stop.floor}층에서 ${cfg.maxTurns || 40}턴 안에 이기지 못했어요.` : `✕ ${stop.floor}층에서 패배했어요.`;
     sel = Math.min(best() + 1, maxF()); render();
     const rp = api.popup(`<div class="text-lg font-black text-center">${SW()} 소탕 결과</div>
       <div class="text-center mt-2 text-2xl font-black ${res.cleared ? 'text-emerald-300' : 'text-zinc-300'}">${res.cleared ? `${from}~${to}층 · ${res.cleared}층 클리어` : '클리어한 층 없음'}</div>

@@ -2662,7 +2662,7 @@ window.STORY_DATA.chapters.push({
   }
  ],
  "tagline": "",
- "warning": "이 챕터에는 괴롭힘·폭력·죽음 묘사가 포함되어 있습니다.",
+ "warning": "이 챕터에는 괴롭힘·폭력·죽음 묘사가 포함되어 있어요.",
  "start": [
   {
    "speaker": "내레이션",

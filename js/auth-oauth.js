@@ -97,7 +97,7 @@ export function takeLinkIntent(storage, project, now = Date.now()) {
 }
 export function oauthFailureMessage(code, intent = null) {
   const name = OAUTH_PROVIDERS[intent?.provider];
-  if (['identity_already_exists', 'email_exists'].includes(code)) return name ? `이미 다른 계정에 연결된 ${name} 계정이에요.` : '이미 다른 계정에 연결된 로그인입니다.';
+  if (['identity_already_exists', 'email_exists'].includes(code)) return name ? `이미 다른 계정에 연결된 ${name} 계정이에요.` : '이미 다른 계정에 연결된 로그인이에요.';
   if (code === 'provider_disabled') return '지금은 이 로그인을 사용할 수 없어요.';
   if (code === 'manual_linking_disabled') return '계정 연결 기능이 아직 꺼져 있어요.';
   if (['access_denied', 'user_cancelled', 'user_canceled'].includes(code)) return intent ? '계정 연결을 취소했어요.' : '로그인을 취소했어요.';

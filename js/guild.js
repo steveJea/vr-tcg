@@ -66,7 +66,7 @@
       ${st.invites.length ? `<div class="gd-h">${gi('ic_invite', '📨')} 초대</div>${st.invites.map(x => `<div class="gd-req">${card(x.guild)}<span class="gd-req-a"><button class="gd-ok" data-acc="${x.id}">수락</button><button data-rej="${x.id}">거절</button></span></div>`).join('')}` : ''}
       ${st.applies.length ? `<div class="gd-h">${gi('ic_cooldown', '⏳')} 신청 중</div>${st.applies.map(x => `<div class="gd-req">${card(x.guild)}<span class="gd-req-a"><button data-rej="${x.id}">취소</button></span></div>`).join('')}` : ''}
       <div class="gd-search"><input id="gd-q" maxlength="8" placeholder="🔎 조직 이름"><button id="gd-qgo">찾기</button></div>
-      <div class="gd-list" id="gd-list">${st.list.map(card).join('') || '<div class="gd-empty">아직 조직이 없어요. 첫 조직을 세워 보세요</div>'}</div>
+      <div class="gd-list" id="gd-list">${st.list.map(card).join('') || '<div class="gd-empty">조직 없음</div>'}</div>
       ${st.cooldown ? `<div class="gd-cd">${gi('ic_cooldown', '⏳')} ${new Date(st.cooldown).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })} 이후 가입 가능</div>` : ''}
       <button class="gd-create" id="gd-create" ${st.my_level < st.min_level ? 'disabled' : ''}>${gi('cur_loyalty', '🩸')} 조직 창설<small>${st.my_level < st.min_level ? `계정 Lv.${st.min_level}부터` : `${gi('cur_gold', '🪙')}${n(st.cost.gold)} 또는 ${gi('cur_gem', '🔮')}${n(st.cost.gem)}`}</small></button>`;
     p.querySelectorAll('[data-acc]').forEach(b => b.onclick = () => act('guild_respond', { p_req: +b.dataset.acc, p_accept: true }, '🩸 조직에 들어왔어요'));
@@ -168,7 +168,7 @@
   const gearName = g => g?.sigil ? `임유리 증표 조각 ×${g.sigil.n}` : g?.gear_box ? `${['', '낡은', '일반', '고급', '희귀', '영웅'][g.gear_box.tier]} 장비 상자` : g?.dust ? `장비 가루 ×${g.dust}` : '';
   // ---- 인재 대여 (guild_lend.sql): 내 인재 3명 등록 · 조직원 인재 하루 1명 12시간 (원주인 레벨) · 스토리·시련의 탑에서만 ----
   const LERR = { 'already borrowed today': '오늘은 이미 빌렸어요 (내일 다시)', 'joined too recently': '조직에 들어온 지 24시간이 지나야 빌릴 수 있어요', 'level too low': '계정 Lv.10부터 빌릴 수 있어요', 'already own card': '이미 가진 인재는 빌릴 수 없어요', 'own card': '내 인재는 빌릴 수 없어요', 'not lendable': '지금은 빌릴 수 없는 인재예요', 'not guildmate': '같은 조직원만 빌릴 수 있어요', 'too many': '최대 3명까지 등록할 수 있어요', 'not owned': '내 인재만 등록할 수 있어요' };
-  const lerr = e => { const m = String(e?.message || e); const k = Object.keys(LERR).find(x => m.includes(x)); return k ? LERR[k] : /function|does not exist/.test(m) ? '대여 준비 중이에요' : errText(e); };
+  const lerr = e => { const m = String(e?.message || e); const k = Object.keys(LERR).find(x => m.includes(x)); return k ? LERR[k] : /function|does not exist/.test(m) ? '🔒' : errText(e); };
   const left = t => { const ms = Math.max(0, new Date(t) - Date.now()), m = Math.ceil(ms / 60000); return m >= 60 ? `${Math.floor(m / 60)}시간 ${m % 60}분` : `${m}분`; };
   const lcard = (id, lv, sub = '', attr = '', cls = '') => `<button class="gd-lc ${cls}" ${attr}><img src="${cardThumb(id)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'"><b>Lv.${lv | 0}</b>${sub ? `<small>${sub}</small>` : ''}</button>`;
   // 정렬 탭 (스토리 덱 고르기와 같은 탭 · 기본 레벨 높은 순 · 이 창에서만 기억)
@@ -183,7 +183,7 @@
     const nm = id => window.VRStory?.api?.card?.(id)?.name || '';
     const m = subPop('lend', '🤝 인재 대여', `<div class="gd-h big">${gi('tile_lend', '🤝')} 인재 대여</div>
       <div class="gd-h">📥 빌린 인재</div>${L.loan ? `<div class="gd-lrow">${lcard(L.loan.card_id, L.loan.snap?.level, `${esc(L.loan.lender_name)} · ${left(L.loan.expires_at)} 남음`)}<small class="gd-lnote">${esc(nm(L.loan.card_id))} · 스토리·시련의 탑 출전 고르기에서 [대여]로 써요</small></div>`
-        : `<div class="gd-lnote">${L.borrowed_today ? '오늘은 이미 빌렸어요. 내일 다시 빌릴 수 있어요.' : `하루 1명 · ${L.hours}시간 동안 · 원주인 레벨 그대로`}</div>`}
+        : `<div class="gd-lnote">${L.borrowed_today ? '오늘 대여 완료' : `하루 1명 · ${L.hours}시간 동안 · 원주인 레벨 그대로`}</div>`}
       <div class="gd-h">📤 내 대여 인재 <small>${L.mine.length}/${L.max} · 빌려줄 때마다 ${LOYI}${L.reward} (하루 3번)</small></div><div class="gd-lrow">${L.mine.map(x => lcard(x.id, x.level)).join('')}<button class="gd-lc add" data-lset>✏️<small>바꾸기</small></button></div>
       <div class="gd-h">🤝 조직원 인재</div>${L.others.length ? '<div data-sb></div>' : ''}<div class="gd-lgrid" data-og></div>`, 'wide');
     L.others.forEach((x, i) => { x._i = i; x.uid = x.uid || ''; });
@@ -194,7 +194,7 @@
     m.querySelector('[data-lset]').onclick = () => { if (!inGuild()) m.remove(); lendSetPop(L); };   // 페이지면 대여 위에 쌓음 (뒤로 = 대여)
     const bindO = () => m.querySelectorAll('[data-lb]').forEach(b => b.onclick = () => { const x = L.others[+b.dataset.lb];
       const c = pop(`<div class="gd-h big">🤝 빌리기</div><div class="gd-lrow">${lcard(x.id, x.level, esc(x.owner_name))}</div><div class="gd-lnote">${esc(nm(x.id))} Lv.${x.level}을(를) ${L.hours}시간 빌릴까요? (하루 1명)</div><button class="gd-big" data-go>빌리기</button>`);
-      c.querySelector('[data-go]').onclick = async () => { try { await rpc('guild_lend_borrow', { p_owner: x.owner, p_uid: x.uid }); toast('🤝 빌렸어요! 스토리·시련의 탑에서 써 보세요'); window.VRStory?.reloadLend?.(); c.remove(); m.remove(); lendPop(); } catch (e) { toast(lerr(e)); } }; });
+      c.querySelector('[data-go]').onclick = async () => { try { await rpc('guild_lend_borrow', { p_owner: x.owner, p_uid: x.uid }); toast('🤝 대여 완료'); window.VRStory?.reloadLend?.(); c.remove(); m.remove(); lendPop(); } catch (e) { toast(lerr(e)); } }; });
     drawO();
   }
   async function lendSetPop(L) {

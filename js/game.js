@@ -257,12 +257,11 @@ async function startGame(story = null, at = null) {
     const need = (story.mustSummon || []).map(String).filter(id => S.me.hand.some(c => String(c.id) === id));
     S.mustSummon = need.length ? { ids: need, by: need.length >= 2 ? 3 : 2 } : null;
     $('game').classList.add('story-pool');
-    log(`${'💧'} 제한 마나 ${MP}: 이 전투 동안 다시 차지 않아요. 손패 카드를 코스트만큼 내고 소환하세요 (쓰러진 카드 코스트는 돌아오지 않음).`, 'text-sky-300');
+    log(`💧 제한 마나 ${MP} · 회복 없음`, 'text-sky-300');
     if (S.mustSummon) log(`📌 필수 인재 ${S.mustSummon.ids.map(id => S.me.hand.find(c => String(c.id) === id)?.name).join('·')}: 내 ${S.mustSummon.by}번째 턴이 끝나기 전에 소환해야 해요.`, 'text-amber-300');
   } else { $('game').classList.remove('story-pool'); S.mustSummon = null; }
-  if (fs && MP == null) log('⚔️ 출전 카드가 모두 필드에서 시작합니다 (손패·드로우 없음).', 'text-emerald-400');
   if (!story && !ArcadeOpts.isDefault(ao)) log(`🎛️ 게임 설정: ${ArcadeOpts.summary(ao)}`, 'text-amber-300');
-  if (at) log('📖 유리의 특강: 정해진 덱 · 치명타·회피·속성 확률 없음 · 전적에 기록되지 않아요', 'text-fuchsia-300');
+  if (at) log('📖 특강 · 확률 없음', 'text-fuchsia-300');
   if (!fs) log(first === 'me' ? '🪙 동전 던지기: 내가 선공!' : `🪙 동전 던지기: 컴퓨터가 선공! (나는 후공, 시작 손패 +${RULES.SECOND_PLAYER_BONUS_CARDS})`, 'text-emerald-400');
   $('me-order').textContent = first === 'me' ? '선공' : '후공';
   $('ai-order').textContent = first === 'ai' ? '선공' : '후공';
@@ -437,7 +436,7 @@ function canGuard(card, p) {
   if (!S?.guardMode) return { ok: false, reason: '아케이드 전용' };
   if (!GUARD_GRADES.has(card.grade)) return { ok: false, reason: '수비대장은 HR 이하만 가능' };
   if (guardOf(p)) return { ok: false, reason: '이미 수비대장이 있어요' };
-  if (card.cost > p.mana) return { ok: false, reason: `마나가 부족합니다 (${p.mana}/${card.cost})` };
+  if (card.cost > p.mana) return { ok: false, reason: `마나가 부족해요 (${p.mana}/${card.cost})` };
   return { ok: true };
 }
 function setGuard(u, p) { u.guard = u.boss = u.undying = true; u.guardAt = p.ownTurns || 0; if (u.hp < 1) u.hp = 1; }
@@ -1516,7 +1515,7 @@ function showEvent(ev) {
     const draw = () => {
       const L = lines[i];
       el.querySelector('.ev-line').innerHTML = L ? `${L.who && L.who !== 'NA' ? `<b>${escHtml(L.who)}</b>` : ''}<span class="${L.who === 'NA' ? 'ev-na' : ''}">${escHtml(L.text || '')}</span>` : '';
-      el.querySelector('.ev-step').textContent = lines.length ? `${i + 1}/${lines.length} · 탭하여 계속` : '탭하여 닫기';
+      el.querySelector('.ev-step').textContent = lines.length ? `${i + 1}/${lines.length} ▼` : '▼';
       clearTimeout(timer); timer = window.setTimeout(next, FX_OFF() ? 1600 : 2600);
       if (L?.voice) {   // 대사별 음성: 재생 길이만큼 다음 대사를 기다림
         say(L.voice); const a = audio, my = i;
@@ -1939,7 +1938,7 @@ function render() {
   $('ai-hero').classList.toggle('ring-4', !!atkSel && tg.hero);
   $('ai-hero').classList.toggle('ring-red-500', !!atkSel && tg.hero);
   $('ai-hero').classList.toggle('opacity-70', S.turn === 'me' && !tg.hero);
-  $('hero-hint').innerHTML = bossView() ? (S.over ? '' : '첫 2턴에는 보스를 공격할 수 없습니다.') : S.story && S.over ? '' : S.ai.noBase ? (S.over ? '' : $('game').classList.contains('view-raid') ? '🐉 균열 토벌: 15턴 동안 보스에게 최대한 큰 피해를!' : '⚔️ 일반전: 상대 카드를 모두 쓰러뜨리면 승리') : S.turn === 'me' && !S.over ? (tg.hero ? `${ic('taunt', { alt: '' })} 상대 진영 공격 가능` : `${ic('def', { alt: '' })} ${escHtml(tg.reason)}`) : '';
+  $('hero-hint').innerHTML = bossView() ? (S.over ? '' : '첫 2턴에는 보스를 공격할 수 없어요.') : S.story && S.over ? '' : S.ai.noBase ? (S.over ? '' : $('game').classList.contains('view-raid') ? '🐉 균열 토벌: 15턴 동안 보스에게 최대한 큰 피해를!' : '⚔️ 일반전: 상대 카드를 모두 쓰러뜨리면 승리') : S.turn === 'me' && !S.over ? (tg.hero ? `${ic('taunt', { alt: '' })} 상대 진영 공격 가능` : `${ic('def', { alt: '' })} ${escHtml(tg.reason)}`) : '';
   $('hero-hint').className = `text-center text-[11px] md:text-xs font-bold ${tg.hero ? 'text-emerald-400' : 'text-amber-300'}`;
 
   { // 체력 위기 (30% 이하): 화면 가장자리 붉은 깜빡임 + 체력바 색. 진영이 없으면(스토리) 필드 전체 HP 비율
@@ -2186,11 +2185,11 @@ function showDetail(c, { fromHand = false, hp, unit = null, view = null, power =
         <button data-equip="${type}" ${ce.ok && myTurn ? '' : 'disabled'} class="py-2 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-black text-sm font-bold">${icOf(it)} ${it.label} ${it.desc()} <span class="text-sky-900">${ic('mana')}${it.cost()}</span><div class="text-[10px] font-normal h-3">${unit.items?.[type] ? '장착됨' : (!myTurn || ce.ok ? '' : ce.reason)}</div></button>`; }).join('')}</div>` : ''}` : ''}
     ${unit && !view && canUndoSummon(unit) ? `
       <button id="undo-btn" class="mt-4 w-full py-3 rounded-2xl bg-sky-400 hover:bg-sky-300 text-black font-bold">↩ 회수 (무료 · 마나 ${S.undo.cost} 환불)</button>
-      <div class="text-[11px] text-zinc-500 mt-1 text-center">이번 턴에 낸 카드를 아직 아무것도 안 했다면 손패로 되돌릴 수 있어요</div>` : ''}
+      ` : ''}
     ${unit && arcadeUi ? (() => { const rc = canRecall(unit, S.me); return `
       ${rc.ok || !myTurn ? '' : `<div id="recall-reason" class="mt-3 text-sm text-red-400">${rc.reason}</div>`}
       <button id="recall-btn" ${rc.ok && myTurn ? '' : 'disabled'} class="mt-4 w-full py-3 rounded-2xl bg-sky-500 hover:bg-sky-400 disabled:opacity-40 text-black font-bold">회수 (마나 ${rc.cost})</button>
-      <div class="text-[11px] text-zinc-500 mt-1 text-center">손패로 돌아가며 HP가 회복되고, 레벨·XP·아이템은 초기화됩니다</div>`; })() : ''}
+      <div class="text-[11px] text-zinc-500 mt-1 text-center">HP 회복 · Lv·XP·아이템 초기화</div>`; })() : ''}
     ${unit && arcadeUi ? (() => { const sc = canSacrifice(unit, S.me); return `
       <button id="sacrifice-btn" ${sc.ok && myTurn ? '' : 'disabled'} class="mt-2 w-full py-2.5 rounded-2xl bg-rose-600 hover:bg-rose-500 disabled:opacity-40 text-white font-bold">${ic('bleed', { alt: '' })} 희생 (마나 +${sc.gain})${sc.ok || !myTurn ? '' : ` — ${sc.reason}`}</button>
       <div class="text-[11px] text-zinc-500 mt-1 text-center">카드를 없애고 코스트의 ${Math.round(RULES.SACRIFICE_RATIO * 100)}%를 마나로 (턴당 1회)</div>`; })() : ''}`;

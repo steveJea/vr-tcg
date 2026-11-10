@@ -56,11 +56,11 @@
     const draw = () => { m.innerHTML = `<div class="gem-panel" data-clarity-mask="true" role="dialog" aria-label="${NAME}"><button class="gem-x" data-x aria-label="닫기">✕</button>
       <div class="gem-big"><span class="gem-orb">${ICON}</span><b>${n(cache?.gem)}</b></div>
       <div class="gem-split">무료 ${n(cache?.free)} · 유료 ${n(cache?.paid)}</div>
-      <button type="button" class="gem-charge" data-charge>＋ 충전</button><div class="gem-soon" hidden>💳 충전은 준비 중이에요</div>
+      <button type="button" class="gem-charge" data-charge>＋ 충전</button>
       <div class="gem-shop">${['stamina', 'gold10k', 'ticket'].map(k => priceBtn(k)).join('')}</div>
       ${window.VRDrink?.html?.() || ''}
-      <div class="gem-how">🗺️ 챕터 첫 클리어 +50 · 📅 7일 연속 +30 · ⚔️ PvP 시즌 보상</div></div>`;
-      m.querySelector('[data-charge]').onclick = () => { if(window.VRPayments?.enabled)window.VRPayments.open();else m.querySelector('.gem-soon').hidden = false; };
+      <details class="vr-tip gem-how"><summary>ⓘ 획득처</summary><p>🗺️ 챕터 첫 클리어 +50 · 📅 7일 연속 +30 · ⚔️ PvP 시즌 보상</p></details></div>`;
+      m.querySelector('[data-charge]').onclick = () => { if (window.VRPayments?.enabled) window.VRPayments.open(); else { const b = m.querySelector('[data-charge]'); b.disabled = true; b.textContent = '＋ 충전 🔒'; } };
       m.querySelectorAll('[data-gem-buy]').forEach(b => b.onclick = async () => { b.disabled = true; const r = await buy(b.dataset.gemBuy); if (r) toast(`${ITEM[r.item]?.[0] || ''} ${REASON['buy:' + r.item] || ''} 완료`); if (m.isConnected) draw(); });
       window.VRDrink?.bind?.(m, draw);
     };

@@ -35,7 +35,7 @@ let clicks=0;const capture=listeners.find(x=>x.type==='click'&&x.capture===true)
 function clickPvp(){let stopped=false;capture({target:d.querySelector('#main-pvp'),preventDefault(){},stopImmediatePropagation(){stopped=true;}});if(!stopped)clicks++;}
 clickPvp();assert.equal(clicks,0);assert.equal(d.querySelector('#ul-lockpop'),null,'lobby tiles keep the toast, not the tab popup');
 let gnbStopped=false;capture({target:gnb,preventDefault(){},stopImmediatePropagation(){gnbStopped=true;}});
-assert.equal(gnbStopped,true);assert.match(d.querySelector('#ul-lockpop p').textContent,/계정레벨 10 이후 이용할 수 있습니다/);
+assert.equal(gnbStopped,true);assert.match(d.querySelector('#ul-lockpop p').textContent,/계정레벨 10 이후 이용할 수 있어요/);
 d.querySelector('#ul-lockpop button').click();assert.equal(d.querySelector('#ul-lockpop'),null);
 level=3;U.paint();assert.equal(d.querySelector('#main-pvp .ul-lock'),null);clickPvp();assert.equal(clicks,1);
 assert.equal(gnb.classList.contains('ul-locked'),true,'tower tab stays locked at the pvp level');

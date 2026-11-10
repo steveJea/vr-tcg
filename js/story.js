@@ -218,7 +218,7 @@
     const el = document.createElement('div'); el.className = 'story-vcut';
     el.innerHTML = `<video playsinline preload="auto" src="${esc(src)}"></video>
       <button class="story-vcut-skip" type="button">건너뛰기 ▶▶</button>
-      <div class="story-ovp-tap hidden"><button type="button">▶<span>눌러서 영상 보기</span></button></div>`;
+      <div class="story-ovp-tap hidden"><button type="button">▶</button></div>`;
     document.body.appendChild(el);
     const v = el.querySelector('video'), tap = el.querySelector('.story-ovp-tap');
     let out = false;
@@ -432,9 +432,8 @@
     if (save.statRefunded && !localStorage.getItem(RF)) {
       try { localStorage.setItem(RF, '1'); } catch {}
       const k = D.statPerPoint;
-      popup(`<div class="text-lg font-black mb-2">📈 스탯 포인트 규칙이 바뀌었어요</div>
-        <div class="text-sm text-zinc-300 space-y-1"><div>· 포인트 1당 ATK +${k.ATK}, HP +${k.HP}, DEF +${k.DEF}</div><div>· 같은 스탯 ${D.statFull + 1}번째 포인트부터는 절반만 올라요</div><div>· 한 스탯에는 그 인재 포인트 합계의 절반(올림)까지만 넣을 수 있어요</div>
-        <div class="text-emerald-300 font-bold mt-2">지금까지 분배한 포인트를 모두 돌려드렸어요. 다시 분배해 주세요!</div></div>
+      popup(`<div class="text-lg font-black mb-2">📈 규칙 변경 · 포인트 반환됨</div>
+        <details class="vr-tip"><summary>ⓘ 규칙</summary><div class="vr-tip-b">· 포인트 1당 ATK +${k.ATK}, HP +${k.HP}, DEF +${k.DEF}<br>· 같은 스탯 ${D.statFull + 1}번째 포인트부터는 절반만 올라요<br>· 한 스탯에는 그 인재 포인트 합계의 절반(올림)까지만 넣을 수 있어요</div></details>
         <div class="flex gap-2 mt-4"><button data-close-pop class="flex-1 py-2.5 rounded-xl bg-zinc-700 font-bold">나중에</button><button id="story-refund-go" class="flex-1 py-2.5 rounded-xl bg-emerald-500 text-black font-bold">📈 지금 분배</button></div>`);
       $('story-refund-go').onclick = () => { $('story-pop')?.querySelector('[data-close-pop]')?.click(); openStats(() => renderHub()); };
     }
@@ -450,7 +449,7 @@
     const el = document.createElement('div'); el.id = 'story-opening-fx'; el.className = 'story-ovp';
     el.innerHTML = `<video playsinline preload="auto" ${o.poster ? `poster="${esc(o.poster)}"` : ''} src="${esc(o.video)}"></video>
       <button class="story-ovp-skip on" type="button">건너뛰기 ▶▶</button>
-      <div class="story-ovp-tap hidden"><button type="button">▶<span>눌러서 오프닝 보기</span></button></div>`;
+      <div class="story-ovp-tap hidden"><button type="button">▶</button></div>`;
     document.body.appendChild(el);
     const v = el.querySelector('video'), skip = el.querySelector('.story-ovp-skip'), tap = el.querySelector('.story-ovp-tap');
     let ended = false;
@@ -473,7 +472,7 @@
   function renderSelect() {
     if (pullPending()) return forcedPull();
     show(`<div class="text-center"><div class="story-chapter-sub">MAIN STORY</div><div class="text-2xl md:text-3xl font-black mt-1">함께할 캐릭터를 골라 주세요</div>
-      <div class="text-sm text-zinc-400 mt-1">고른 인재는 내 인재로 영구 귀속되고, 리더가 돼요. (나중에 바꿀 수 없어요)</div></div>
+      <div class="text-sm text-zinc-400 mt-1">고른 인재는 내 인재로 영구 귀속되고, 리더가 돼요.</div></div>
       <div class="story-select">${D.starters.map(s => { const c = card(s.id); return c ? `<button class="story-pick" data-pick="${s.id}">${tile(c)}<div class="text-xs text-zinc-400 mt-1 story-intro-text">${esc(introOf(s))}</div></button>` : ''; }).join('')}</div>
       <div class="text-center mt-4 flex gap-2 justify-center flex-wrap"><button class="story-back" data-go="home">← 처음으로</button>${replayBtn}</div>`);
     bind({ opening: () => playOpening(renderSelect) });
@@ -485,7 +484,7 @@
   }
 
   function chapterIntro(ch, next) {
-    show(`<div class="story-intro" id="story-intro"><div class="story-chapter-sub">MAIN STORY</div><div class="story-chapter-big">${esc(ch.title)}</div><div class="story-chapter-name">${esc(ch.subtitle)}</div><div class="text-xs text-zinc-500 mt-8">화면을 누르면 계속</div></div>`);
+    show(`<div class="story-intro" id="story-intro"><div class="story-chapter-sub">MAIN STORY</div><div class="story-chapter-big">${esc(ch.title)}</div><div class="story-chapter-name">${esc(ch.subtitle)}</div><div class="vr-more" aria-hidden="true">▼</div></div>`);
     $('story-intro').onclick = next;
   }
 
@@ -513,7 +512,7 @@
     if (!ch.warning || seen) return next();
     const el = document.createElement('div'); el.className = 'story-warn';
     el.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.72)';
-    el.innerHTML = `<div style="max-width:20rem;margin:1rem;padding:1.25rem 1.5rem;border-radius:14px;background:#18181b;border:1px solid #f87171;text-align:center;color:#f4f4f5"><div style="font-size:1.6rem">⚠️</div><div style="font-weight:700;margin:.35rem 0 .5rem;color:#fca5a5">콘텐츠 주의</div><div style="font-size:.9rem;line-height:1.5">${esc(ch.warning)}</div><div style="font-size:.75rem;color:#a1a1aa;margin-top:.75rem">탭하면 계속</div></div>`;
+    el.innerHTML = `<div style="max-width:20rem;margin:1rem;padding:1.25rem 1.5rem;border-radius:14px;background:#18181b;border:1px solid #f87171;text-align:center;color:#f4f4f5"><div style="font-size:1.6rem">⚠️</div><div style="font-weight:700;margin:.35rem 0 .5rem;color:#fca5a5">콘텐츠 주의</div><div style="font-size:.9rem;line-height:1.5">${esc(ch.warning)}</div><div class="vr-more" aria-hidden="true">▼</div></div>`;
     el.addEventListener('click', () => { try { localStorage.setItem(k, '1'); } catch {} el.remove(); next(); });
     document.body.appendChild(el);
   }
@@ -630,14 +629,14 @@
       <div class="text-center"><div class="story-chtitle">${arr(prevI, 'l', '이전 챕터', '‹')}<div class="story-chapter-big text-3xl md:text-5xl">${esc(ch.title)}</div>${arr(nextI, 'r', '다음 챕터', '›')}</div><div class="story-chapter-name">${esc(ch.subtitle)}</div>
         ${hero && ch.route ? `<div class="story-route-tag">루트 <b>${esc(hero.name)}</b>${clearedOf(ch).length ? '' : ' <button class="story-mini" data-go="route">루트 바꾸기</button>'}</div>` : ''}</div>
       ${rows.map(r => `<div class="story-map ${rows.length > 1 ? 'story-map-row' : ''}">${r.map(node).join('')}</div>`).join('')}
-      ${!serverMode && !window.__STORY_MOCK_USER ? '<div class="text-[11px] text-amber-400 text-center">⚠️ 서버 저장 준비 중이라 이 브라우저에만 저장돼요</div>' : ''}
-      ${nextNo ? '' : `<div class="story-clear">✔ CLEAR ${nextOpen ? `<button class="story-btn" data-ch="${curCh + 1}">${esc(nextCh.title)} →</button>` : '<small>다음 챕터 준비 중</small>'}</div>`}
+      ${!serverMode && !window.__STORY_MOCK_USER ? '<div class="text-[11px] text-amber-400 text-center">⚠️ 이 브라우저에만 저장돼요</div>' : ''}
+      ${nextNo ? '' : `<div class="story-clear">✔ CLEAR ${nextOpen ? `<button class="story-btn" data-ch="${curCh + 1}">${esc(nextCh.title)} →</button>` : '<small>🔒</small>'}</div>`}
       <div class="text-center mt-2 flex flex-wrap gap-2 justify-center">${chapterDone(base) && videoOf(base) ? `<button class="story-back story-vid-btn" data-go="endvideo" title="엔딩 영상 다시 보기">🎬 엔딩</button>` : ''}${chapterDone(base) ? `<button class="story-back story-replay-btn" data-go="replay" title="P1부터 마지막 페이즈까지 대사만 다시 보기 (전투 없음)">📖 스토리 다시보기</button>` : ''}${base.id <= 1 ? `<button class="story-back" data-go="opening" title="오프닝 다시 보기">${ic('opening', { alt: '' }) || '🎬'} 오프닝</button>` : ''}</div>
       </div></div>`);
     mailBtn();
     starBox(base);   // 별 보상 상자 (마나 전투 별 합계 · ★9/★18/전부)
     bind({ stats: () => openStats(renderMap), opening: () => playOpening(renderMap), endvideo: () => endingVideo(base), replay: () => replayStory(base), route: () => renderRouteSelect(curCh),
-      rule: () => popup(`<div class="text-lg font-black mb-2">⚔️ 스토리 전투</div><div class="text-sm text-zinc-300 leading-relaxed">출전 인재 최대 ${MAX_PICK()}명이 모두 필드에서 시작해요 (손패·드로우·용병 없음, 내 진영 없음).<br>내 인재가 모두 쓰러지거나 ${RULES_TURNS()}턴이 지나면 패배.<br>일반전은 상대 인재 전멸, 👑 보스전은 상대 진영 HP 0이면 승리.</div><button data-close-pop class="story-btn w-full mt-4">확인</button>`) }); playerPaint();
+      rule: () => { try { if (localStorage.getItem('vrStoryRuleOnce') === '1') return; localStorage.setItem('vrStoryRuleOnce', '1'); } catch {} popup(`<div class="text-lg font-black mb-2">⚔️ 전원 필드 시작 · ${RULES_TURNS()}턴</div><button data-close-pop class="story-btn w-full mt-4">확인</button>`); } }); playerPaint();
     root().querySelectorAll('[data-ch]').forEach(b => b.onclick = () => renderMap(+b.dataset.ch));
     // 페이즈 누르면 팝업: 안 깬 페이즈 = [도전하기], 깬 페이즈 = [도전하기][소탕하기]
     root().querySelectorAll('[data-phase]').forEach(b => b.onclick = () => {
@@ -658,7 +657,7 @@
     const P = window.VRPlayer?.now?.(), cost = window.VRPlayer?.cost ?? 6, st = P?.stamina ?? 0;
     popPage('story-psweep', '소탕');
     const p = popup(`<div class="text-lg font-black">${SW()} 소탕 · ${esc(ch.title)} Phase.${ph.no}${ph.type === 'boss' ? ' BOSS' : ''}</div>
-      <div class="text-xs text-zinc-400 mt-1">전투 없이 반복 클리어 보상을 바로 받아요 (골드 · 순수한 피 · 이상한 조각 확률 · 플레이어 경험치). 인재 경험치·첫 클리어 보상은 없어요.</div>
+      <div class="text-xs text-zinc-400 mt-1">🪙 🩸 💠 EXP</div>
       <div class="story-sweep-runs">${SWEEP_RUNS.map(n => { const c = n * cost, okk = st >= c; return `<button class="story-btn ${okk ? '' : 'short'}" data-runs="${n}" ${okk ? '' : 'disabled'}>${n}회<small>🔋 ${c}</small></button>`; }).join('')}</div>
       <div class="text-xs text-center text-zinc-400 mt-2">보유 행동력 🔋 ${st}</div>
       <div class="text-center mt-3"><button class="story-btn ghost" data-x>닫기</button></div>`);
@@ -705,7 +704,7 @@
     const have = new Set(save.owned.map(o => o.id)), list = combosAll().map(b => ({ ...b, n: b.cards.filter(id => have.has(String(id))).length }))
       .sort((a, b) => (b.n === b.cards.length) - (a.n === a.cards.length) || b.n / b.cards.length - a.n / a.cards.length);
     const st = bondStats();
-    show(`${topBar('🤝 인연', 'hub')}<div class="text-center text-sm text-zinc-400 my-2">특정 인재가 함께 필드에 있으면 발동해요 · 완성 ${st.done}/${st.total}</div>
+    show(`${topBar('🤝 인연', 'hub')}<div class="text-center text-sm text-zinc-400 my-2"><details class="vr-tip" style="display:inline-block"><summary>ⓘ</summary><p>특정 인재가 함께 필드에 있으면 발동해요</p></details> 완성 ${st.done}/${st.total}</div>
       <div class="story-bonds">${list.map(b => { const full = b.n === b.cards.length;
         return `<div class="story-bond ${full ? 'full' : ''}"><div class="story-bond-h"><b>${esc(b.name)}</b><span class="story-bond-n">${b.n}/${b.cards.length}${full ? ' ✔' : ''}</span></div>
           <div class="story-bond-cards">${b.cards.map(id => { const c = card(id), own = have.has(String(id));
@@ -720,7 +719,7 @@
   function hubSlot(i, size) {
     const base = D.chapters[i]; if (!base) return `<div class="hub-ch-slot ${size} empty"></div>`;
     const open = chapterOpen(i), ch = chapterFor(base), n = clearedOf(ch).length, tot = ch.phases.length, done = open && n >= tot, cv = chCover(base);
-    const why = open ? '' : (i && !chapterDone(D.chapters[i - 1]) ? '이전 챕터 클리어 후' : chLvLock(D.chapters[i]) ? `Lv ${chNeedLv(D.chapters[i])} 필요` : '준비 중');
+    const why = open ? '' : (i && !chapterDone(D.chapters[i - 1]) ? '이전 챕터 클리어 후' : chLvLock(D.chapters[i]) ? `Lv ${chNeedLv(D.chapters[i])}` : '');
     const st = !open ? `🔒 ${why}` : done ? '✔ 클리어 · 다시 하기' : n ? `진행 중 ${n}/${tot}` : '새 챕터';
     return `<button class="hub-ch-slot ${size} ${open ? '' : 'locked'} ${done ? 'done' : ''}" data-hubch="${i}" ${open ? '' : 'disabled'}>
       <span class="hub-ch-img" style="background-image:${cv ? `url(${IMG}${cv}.webp),url(img/npc/${cv}.webp),` : ''}url(img/story/opening_poster.webp)"></span>
@@ -776,7 +775,7 @@
     const ch = chapterFor(base), list = ch.phases || [];
     const exit = () => renderMap(curCh);
     const card0 = (sub, big, name, go, last) => {
-      show(`<div class="story-intro" id="story-intro"><div class="story-chapter-sub">${esc(ch.title)} · 스토리 다시보기</div><div class="story-chapter-big">${big}</div><div class="story-chapter-name">${name}</div><div class="text-xs text-zinc-500 mt-8">${last ? '' : '화면을 누르면 계속'}</div>
+      show(`<div class="story-intro" id="story-intro"><div class="story-chapter-sub">${esc(ch.title)} · 스토리 다시보기</div><div class="story-chapter-big">${big}</div><div class="story-chapter-name">${name}</div><div class="text-xs text-zinc-500 mt-8">${last ? '' : '<span class="vr-more" aria-hidden="true">▼</span>'}</div>
         <div class="flex gap-2 justify-center mt-6">${last ? '<button class="story-btn" id="story-rp-done">지도로</button>' : '<button class="story-back" id="story-rp-exit">나가기</button>'}</div></div>`);
       $('story-intro').onclick = e => { if (e.target.closest('#story-rp-exit, #story-rp-done')) return exit(); if (!last) go(); };
     };
@@ -791,7 +790,7 @@
   }
   function startPhase(ch, ph) {
     const enemies = pickEnemies(ph);
-    show(`<div class="story-intro" id="story-intro"><div class="story-chapter-sub">${esc(ch.title)}</div><div class="story-chapter-big">Phase.${ph.no}</div><div class="story-chapter-name">${esc(ph.title)}${ph.type === 'boss' ? ' · BOSS' : ''}</div><div class="text-xs text-zinc-500 mt-8">화면을 누르면 계속</div></div>`);
+    show(`<div class="story-intro" id="story-intro"><div class="story-chapter-sub">${esc(ch.title)}</div><div class="story-chapter-big">Phase.${ph.no}</div><div class="story-chapter-name">${esc(ph.title)}${ph.type === 'boss' ? ' · BOSS' : ''}</div><div class="vr-more" aria-hidden="true">▼</div></div>`);
     // 재도전·이미 본 페이즈: 시작 전 대사 생략하고 바로 전투 준비 (첫 관람·튜토리얼 페이즈 첫 진입은 대사 그대로)
     const skip = phaseSeen(ch, ph);
     $('story-intro').onclick = () => skip ? pickDeck(ch, ph, enemies) : dialogue(ch, ph, enemies);
@@ -962,7 +961,7 @@
     const draw = () => {
       popPage('story-pick', '출전 고르기');
       const p = popup(`<div class="story-pop-title">출전 인재 선택 <span class="text-emerald-300">${forced.length + sel.length}/${forced.length + slots}</span></div>
-        <div class="text-xs text-zinc-400 mb-2">${opts?.note ? `${opts.note}<br>` : ''}${!opts && isPool(ch, ph) ? `고른 인재 ${forced.length + slots}장이 손패가 돼요. 마나로 소환하고, 마나는 다시 차지 않아요. (필드 최대 5장 · 시작 마나 <b class="text-sky-300">${storyMana(ch, ph, deckInstances())}</b>)` : '고른 인재가 모두 필드에서 시작해요. 손패·드로우는 없고, 내 인재가 모두 쓰러지면 패배예요.'}${boss ? '<br>👑 보스전: 보스는 진영 안에서 쓰러지지 않아요. 상대 진영 HP를 0으로!' : ''}</div>
+        <div class="text-xs text-zinc-400 mb-2">${opts?.note ? `${opts.note}<br>` : ''}${!opts && isPool(ch, ph) ? `고른 인재 ${forced.length + slots}장이 손패가 돼요. 마나로 소환하고, 마나는 다시 차지 않아요. (필드 최대 5장 · 시작 마나 <b class="text-sky-300">${storyMana(ch, ph, deckInstances())}</b>)` : ''}${boss ? '<br>👑 보스전: 보스는 진영 안에서 쓰러지지 않아요. 상대 진영 HP를 0으로!' : ''}</div>
         ${forced.length ? `<div class="story-forced-h">${ic('crown', { alt: '' })} 필수 출전 ${forced.length}장 <small>(게스트는 정해진 레벨(없으면 리더 레벨)로 함께 싸우고, 전투 EXP는 받지 않아요)</small></div><div class="story-grid story-deckpick story-forced">${forced.map(fTile).join('')}</div>
           <div class="story-forced-h">나머지 ${slots}장 고르기${notes.map(t => ` · <span class="text-red-300">${t}</span>`).join('')}</div>` : ''}${ph.enemyFirst ? '<div class="story-hint">⚡ 이번 페이즈는 적이 먼저 공격해요</div>' : ''}
         ${decksOf().some(d => d?.uids?.length) ? `<div class="story-sortbar story-deckchips">${decksOf().map((d, i) => d?.uids?.length ? `<button class="story-chip" data-usedeck="${i}">🗂 ${esc(deckName(d, i))}</button>` : '').join('')}</div>` : ''}${sortBar()}<div class="story-sortbar story-pickf"><button class="story-chip ${pf.skill ? 'on' : ''}" data-pf="skill">✦ 스킬</button><button class="story-chip ${pf.rec ? 'on' : ''}" data-pf="rec" ${rec.size ? '' : 'disabled'}>추천 ${rec.size ? '' : '-'}</button><button class="story-chip" data-pickreset ${sel.length ? '' : 'disabled'}>↺ 리셋</button></div><div class="story-grid story-deckpick">${list.filter(o => sel.includes(o.uid) || pfOk(o)).map(o => { const on = sel.includes(o.uid);
@@ -995,7 +994,7 @@
     await gearReady();
     const st = await act('battle_session_start_v2', { p_mode: 'story', p_target: `${ch.id}:${ph.no}`, p_party: (picked || deckInstances()).slice(0, pickMax(ch, ph)).map(o => o.uid) }, () => {}, r => r.data);
     storySession = st.raw || null;
-    if (!st.ok) { const em = st.error?.message || '', lvM = /level required.*level (\d+)/.exec(em); if (lvM) toast(`🔒 Lv ${lvM[1]} 필요 — 계정 레벨을 올린 뒤 입장할 수 있어요`); else if (/stamina/.test(em)) staminaShort(await P?.status(true)); return renderMap(); }
+    if (!st.ok) { const em = st.error?.message || '', lvM = /level required.*level (\d+)/.exec(em); if (lvM) toast(`🔒 Lv ${lvM[1]}`); else if (/stamina/.test(em)) staminaShort(await P?.status(true)); return renderMap(); }
     if (ps) P.status(true);
     root().classList.add('hidden');
     const boss = ph.type === 'boss';
@@ -1118,8 +1117,8 @@
   // ----- 플레이어 레벨 · 행동력 (js/player.js, 서버 phaseE_2.sql) -----
   function playerPaint() { const P = window.VRPlayer; if (!P || !serverMode) return; P.paint(); P.status().then(() => P.paint()); }
   function staminaShort(s) {
-    const P = window.VRPlayer, t = s && !s.stamina_max ? '' : s ? ` (보유 ${s.stamina}/${P.cost}${s.next_regen_secs ? ` · 다음 회복 ${P.mmss(s.next_regen_secs)}` : ''})` : '';
-    toast(`🔋 행동력이 부족해요${t} · 6분에 1씩 회복돼요`);
+    const P = window.VRPlayer;
+    toast(s?.next_regen_secs && P?.mmss ? `⏱ ${P.mmss(s.next_regen_secs)}` : '🔋');
     if (window.VRGem) window.VRGem.status().then(g => { const it = window.VRGem.item('stamina'); if (!g || !it || it.left === 0) return;   // 심연석으로 충전 (하루 5회, 100부터 +50)
       popup(`<div class="text-center"><div class="text-4xl mb-1">🔋</div><div class="text-lg font-black mb-3">행동력 충전</div><div class="gem-shop one">${window.VRGem.priceBtn('stamina')}</div><button data-close-pop class="w-full mt-3 py-2 rounded-xl bg-white/10">닫기</button></div>`);
       document.querySelectorAll('[data-gem-buy="stamina"]').forEach(b => b.onclick = async () => { b.disabled = true; const r = await window.VRGem.buy('stamina'); if (r) { toast(`🔋 행동력 ${r.stamina} · ${window.VRGem.ICON} −${r.price}`); document.querySelector('[data-close-pop]')?.click(); window.VRPlayer?.status(true).then(() => window.VRPlayer.paint()); } else b.disabled = false; }); });
@@ -1183,7 +1182,7 @@
     if (!win && !lostOk) {
       let ab = null;
       if (serverMode && storySession) { try { const loss = await window.VRBattleSession.finish(storySession, window.VRBattleSession.report(false, reason, st)); ab = loss.player; if (ab) window.VRPlayer?.set(ab); await reload(); } catch (e) { toast(`⚠️ 패배 기록 저장 실패: ${e?.message || e}`); } }
-      show(`<div class="story-battle-result text-center py-10"><div class="story-chapter-big text-red-400">DEFEAT</div><div class="text-zinc-300 mt-2">${reason === 'giveup' ? '도전을 포기했어요.' : reason === 'wipe' ? (window.TCG?.S?.me?.manaPool ? '아군 전멸! 남은 마나로 소환할 수 없어요.' : '아군 전멸!') : reason === 'mustsummon' ? `필수 인재 ${esc(window.TCG?.S?.mustSummonMiss || '')}을(를) 제때 소환하지 못했어요.` : reason === 'mustlive' ? `${esc(window.TCG?.S?.mustLiveDown || card((battleRules(ch, ph)?.mustLive || [])[0])?.name || '필수 출전')} 인재가 쓰러졌어요.` : reason === 'timeout' ? (ph.type === 'boss' ? '턴 제한 안에 상대 진영을 무너뜨리지 못했어요.' : '턴 제한 안에 적을 모두 쓰러뜨리지 못했어요.') : '패배했어요.'} 스탯을 올리고 다시 도전해 보세요!</div>${ab?.refunded ? `<div class="mt-2 text-emerald-300 text-sm">🔋 행동력 ${ab.refunded} 반환 (보유 ${ab.stamina}/${ab.stamina_max})</div>` : ''}
+      show(`<div class="story-battle-result text-center py-10"><div class="story-chapter-big text-red-400">DEFEAT</div><div class="text-zinc-300 mt-2">${reason === 'giveup' ? '도전을 포기했어요.' : reason === 'wipe' ? (window.TCG?.S?.me?.manaPool ? '아군 전멸! 남은 마나로 소환할 수 없어요.' : '아군 전멸!') : reason === 'mustsummon' ? `필수 인재 ${esc(window.TCG?.S?.mustSummonMiss || '')}을(를) 제때 소환하지 못했어요.` : reason === 'mustlive' ? `${esc(window.TCG?.S?.mustLiveDown || card((battleRules(ch, ph)?.mustLive || [])[0])?.name || '필수 출전')} 인재가 쓰러졌어요.` : reason === 'timeout' ? (ph.type === 'boss' ? '턴 제한 안에 상대 진영을 무너뜨리지 못했어요.' : '턴 제한 안에 적을 모두 쓰러뜨리지 못했어요.') : '패배했어요.'}</div>${ab?.refunded ? `<div class="mt-2 text-emerald-300 text-sm">🔋 행동력 ${ab.refunded} 반환 (보유 ${ab.stamina}/${ab.stamina_max})</div>` : ''}
         <div class="flex flex-col gap-2 max-w-xs mx-auto mt-6"><button class="story-btn" id="story-retry">다시 도전</button><button class="story-back" data-go="map">챕터 지도로</button></div></div>`);
       bind(); $('story-retry').onclick = () => startPhase(ch, ph); return;
     }
@@ -1221,7 +1220,7 @@
     if (first && ph.after?.length) await new Promise(ok => {
       const go = () => playLines(ph.after, [], ok, /엔딩/.test(ph.afterTitle || '') ? 'ending' : 'story', ph.hero || ch.hero);
       if (!ph.afterTitle) return go();
-      show(`<div class="story-intro" id="story-intro"><div class="story-chapter-sub">${esc(ch.title)} · Phase.${ph.no} ${lostOk ? '전투' : '승리'} 후</div><div class="story-chapter-name">${esc(ph.afterTitle)}</div><div class="text-xs text-zinc-500 mt-8">화면을 누르면 계속</div></div>`);
+      show(`<div class="story-intro" id="story-intro"><div class="story-chapter-sub">${esc(ch.title)} · Phase.${ph.no} ${lostOk ? '전투' : '승리'} 후</div><div class="story-chapter-name">${esc(ph.afterTitle)}</div><div class="vr-more" aria-hidden="true">▼</div></div>`);
       $('story-intro').onclick = go;
     });
     if (first && (ph.type === 'boss' || ph.final) && ch.ending?.length) await new Promise(ok => playLines(ch.ending, [], ok, 'ending', ph.hero || ch.hero));
@@ -1238,13 +1237,13 @@
     const starRow = stars ? `<div class="story-star-res">${starHtml(stars, 'big')}<div class="text-xs text-zinc-300 mt-2 inline-flex flex-col items-start gap-0.5 text-left">${ph.loseClears ? '<div><b class="text-emerald-400">✔</b> 이겨도 져도 별 3개인 페이즈</div>' : ''}${ph.loseClears ? '' : (() => { const t = ph.starTurns || STAR_TURNS, k = ph.starMana ?? STAR_MANA, need = Math.ceil(st.maxMana * k), okT = (st.myTurns | 0) <= t, okM = st.mana >= need, ln = (ok, txt) => `<div><b class="${ok ? 'text-emerald-400' : 'text-red-400'}">${ok ? '✔' : '✖'}</b> ${txt}</div>`;
       return ln(true, '★ 클리어') + ln(okT, `★ 내 턴 ${t}턴 이내 <span class="text-zinc-500">(${st.myTurns | 0}턴)</span>`) + ln(okM, `★ 남은 마나 ${Math.round(k * 100)}% 이상 <span class="text-zinc-500">(${st.mana}/${st.maxMana}, 필요 ${need})</span>`); })()}${stars > bestB && bestB ? '<div><b class="text-amber-300">최고 기록!</b></div>' : ''}</div></div>` : '';
     show(`<div class="story-battle-result text-center py-6"><div class="story-chapter-sub">Phase.${ph.no} CLEAR</div><div class="story-chapter-big text-emerald-300">${lostOk ? 'STORY CLEAR' : 'VICTORY'}</div>${lostOk ? '<div class="text-zinc-300 text-sm mt-1">졌지만 이야기는 계속돼요.</div>' : ''}${starRow}
-      ${reward ? `<div class="mt-4 text-amber-200 font-bold">🎁 보상 인재 획득!</div><div class="flex justify-center mt-2 story-reward">${tile(reward)}</div>` : `<div class="mt-4 text-zinc-400 text-sm">${first ? '이번 챕터는 인재 보상 없이 스탯 포인트만 받아요.' : '이미 클리어한 페이즈라 인재 보상은 없어요.'}</div>`}
+      ${reward ? `<div class="mt-4 text-amber-200 font-bold">🎁 보상 인재 획득!</div><div class="flex justify-center mt-2 story-reward">${tile(reward)}</div>` : ''}
       ${tk?.added ? `<div class="mt-3 text-amber-200 font-bold">🎟️ 챕터 클리어 보상: 소환권 +${tk.added} <small class="text-zinc-400">(특수 뽑기에서 사용)</small></div>` : ''}
       ${r.drops ? `<div class="story-drops mt-3">${first ? '🎁 첫 클리어 ' : ''}획득 ${curTxt(r.drops)}</div>` : ''}
       ${playerResult(pr)}
       ${expList(r.exp)}
-      <div class="mt-4 text-lg">${pts ? `스탯 포인트 <b class="text-emerald-300">+${pts}</b> (보유 ${save.points})` : '<span class="text-zinc-400 text-sm">다시 클리어한 페이즈라 스탯 포인트는 없어요.</span>'}</div>
-      <div class="flex flex-col gap-2 max-w-xs mx-auto mt-5">${needVid ? '<button class="story-btn story-endvid" data-go="endvid">🎬 엔딩 보기</button>' : ''}<div class="story-split">${'<button class="story-btn" data-go="stats">📈 스탯업</button>'}${hasNext ? `<button class="story-btn story-next" ${needVid ? 'style="display:none"' : ''} data-go="nextch" ${nextOpen ? '' : 'disabled'} title="${nextPh ? `Phase.${nextPh.no}` : nextOpen ? esc(nextChB.title) : '다음 챕터는 아직 잠겨 있어요'}">${nextOpen ? '▶' : '🔒'} NEXT</button>` : ''}</div><button class="story-back" data-go="map">챕터 지도로</button></div></div>`);
+      ${pts ? `<div class="mt-4 text-lg">스탯 포인트 <b class="text-emerald-300">+${pts}</b> (보유 ${save.points})</div>` : ''}
+      <div class="flex flex-col gap-2 max-w-xs mx-auto mt-5">${needVid ? '<button class="story-btn story-endvid" data-go="endvid">🎬 엔딩 보기</button>' : ''}<div class="story-split">${'<button class="story-btn" data-go="stats">📈 스탯업</button>'}${hasNext ? `<button class="story-btn story-next" ${needVid ? 'style="display:none"' : ''} data-go="nextch" ${nextOpen ? '' : 'disabled'} title="${nextPh ? `Phase.${nextPh.no}` : nextOpen ? esc(nextChB.title) : ''}">${nextOpen ? '▶' : '🔒'} NEXT</button>` : ''}</div><button class="story-back" data-go="map">챕터 지도로</button></div></div>`);
     bind({ stats: () => openStats(renderMap), endvid: () => endingVideo(ch).then(() => { const n = root().querySelector('.story-next'); if (n) n.style.display = ''; }), nextch: () => { if (nextPh) startPhase(ch, nextPh); else if (nextOpen) { hubC = nextI; chapterCard(nextChB).then(() => renderMap(nextI)); } } });
     if (pr?.levelups) levelUpFx('PLAYER LEVEL UP!'); else if ((r.exp || []).some(e => e.level > e.from)) levelUpFx();
   }
@@ -1286,7 +1285,7 @@
         <div class="flex gap-3 items-center"><img src="${cardThumb(c.id)}" class="w-20 aspect-[3/4] object-cover rounded-lg" alt=""><div class="flex-1 space-y-2">${STATS.map(s => { const n = temp[sel][s] | 0, sum = ptSum(temp[sel]), cap = ptCap(sum + 1), canInc = avail && n + 1 <= cap, canDec = n > (o.boost?.[s] || 0) && ptOk({ ...temp[sel], [s]: n - 1 });
           return `<div class="flex items-center gap-2"><span class="w-16 text-sm font-bold">${STAT_LABEL[s]}</span><span class="flex-1 font-black">${fmt(c[s])}${n ? ` <span class="text-emerald-300 text-xs">(+${fmt(ptGain(s, n))})</span>` : ''}
             <span class="story-ptinfo block text-[10px] font-normal ${n >= D.statFull ? 'text-amber-300' : 'text-zinc-500'}">${n}포인트 (최대 ${ptCap(sum)}) · 다음 +${ptNext(s, n)}${n >= D.statFull ? ' (절반)' : ''}${avail && !canInc ? ' · <i class="not-italic text-red-300">상한</i>' : ''}</span></span><button data-dec="${s}" class="story-pm" ${canDec ? '' : 'disabled'}>−</button><button data-inc="${s}" class="story-pm" ${canInc ? '' : 'disabled'}>＋</button></div>`; }).join('')}</div></div>
-        <div class="mt-3 text-[11px] text-zinc-500">🗡️ 무기 · 🛡️ 방어구 장착은 준비 중이에요 (Coming soon)</div>
+        <div class="mt-3">🔒</div>
         <div class="flex gap-2 mt-4"><button data-close-pop class="flex-1 py-2.5 rounded-xl bg-zinc-700 font-bold">취소</button><button id="story-stat-ok" class="flex-1 py-2.5 rounded-xl bg-emerald-500 text-black font-bold">확정</button></div>`, after);
       // 이름 탭: 스크롤바 숨김(스와이프 가능) + 좌우 화살표. 끝에서는 화살표 비활성/숨김. 다시 그려도 스크롤 위치 유지
       const row = p.el.querySelector('.story-tabs'), al = p.el.querySelector('.story-tab-arr.l'), ar = p.el.querySelector('.story-tab-arr.r');
@@ -1536,7 +1535,7 @@
         ${o.cpts ? `<div class="text-xs mt-1">남은 인재 전용 포인트 <b class="text-sky-300">${o.cpts}</b></div>` : ''}</div></div>
       <div id="story-d-lvwrap">${lvUpBox(o)}</div>
       <div id="story-d-gear">${window.VRGear?.slotsHTML?.(o.id, c.grade) || ''}</div>
-      ${(() => { const le = leaderEff(o.id); return le ? `<div class="cd-leader ${isLeader(o) ? 'on' : ''}" title="${isLeader(o) ? '리더 스킬 적용 중' : '이 인재를 리더로 하면 적용돼요'}">${ic('crown', { alt: '리더 스킬' })} <span>${esc(le.text)}</span></div>` : ''; })()}
+      ${(() => { const le = leaderEff(o.id); return le ? `<div class="cd-leader ${isLeader(o) ? 'on' : 'dim'}">${ic('crown', { alt: '리더 스킬' })} <span>${esc(le.text)}</span></div>` : ''; })()}
       <div class="cd-acts"><button id="story-d-stats" class="cd-ic stats" title="스탯 분배" aria-label="스탯 분배" ${save.points || o.cpts ? '' : 'disabled'}>📈</button>
       <button id="story-d-discard" class="cd-ic discard" title="분해" aria-label="분해" ${canDiscard(o) ? '' : 'disabled'}>${ic('discard', { alt: '분해' }) || '분해'}</button>
       ${canMerge(o) ? `<button id="story-d-merge" class="cd-sm merge" title="합성 (EX${exOf(o)} → EX${exOf(o) + 1})${serverMode ? ` · 이상한 조각 ${shardCost(o)}` : ''}">${ic('merge', { alt: '합성' })}</button>` : ''}
@@ -1548,12 +1547,12 @@
     { const st = p.el.querySelector('.cd-stats'); if (st) { const t = () => st.classList.toggle('open'); st.onclick = t; st.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); t(); } }; } }
     gearPrev = null;
     { const gw = $('story-d-gear'), gb = () => { window.VRGear?.bind?.(gw, o.id, c.grade, () => { gearPrev = { uid: o.uid, power: c.power, ATK: c.ATK, HP: c.HP, DEF: c.DEF }; cardDetail(o.uid); window.VRGear?.deckNote?.(); });   // 장비 바뀜 → 스탯 즉시 갱신 (+N/-N) · 덱 다시 저장 안내
-        if (!gw.querySelector('.gear-note')) gw.insertAdjacentHTML('beforeend', '<div class="gear-note">장비: 스토리·탑·토벌 100% · PvP·구역 전쟁 50% · <b>아케이드에는 적용되지 않아요</b></div>'); };   // 장비 칸 (gear.js)
+        if (!gw.querySelector('.gear-note')) gw.insertAdjacentHTML('beforeend', '<details class="vr-tip gear-note"><summary>ⓘ</summary><p>장비: 스토리·탑·토벌 100% · PvP·구역 전쟁 50% · 아케이드에는 적용되지 않아요</p></details>'); };   // 장비 칸 (gear.js)
       if (gw && window.VRGear && serverMode) { if (window.VRGear.ready) gb(); else window.VRGear.load().then(r => { if (r && gw.isConnected && byUid(o.uid)) cardDetail(o.uid); }); } }
-    $('story-d-lock').onclick = () => askYN(o.locked ? '잠금을 해제하시겠습니까?' : '잠금하시겠습니까?', () => { p.close(true); setLock(o.uid, !o.locked); });
-    $('story-d-fav').onclick = () => askYN(isFav(o) ? '즐겨찾기를 해제하시겠습니까?' : '즐겨찾기에 추가하시겠습니까?', () => { p.close(true); setFav(o.uid, !isFav(o)); });
+    $('story-d-lock').onclick = () => askYN(o.locked ? '잠금을 풀까요?' : '잠글까요?', () => { p.close(true); setLock(o.uid, !o.locked); });
+    $('story-d-fav').onclick = () => askYN(isFav(o) ? '즐겨찾기를 해제할까요?' : '즐겨찾기에 추가할까요?', () => { p.close(true); setFav(o.uid, !isFav(o)); });
     { const lb = $('story-d-leader'); if (lb) lb.onclick = () => { p.close(true); confirmLeader(o.uid, () => cardDetail(o.uid)); }; }
-    $('story-d-stats').onclick = () => askYN('스탯 분배를 하시겠습니까?', () => { p.close(true); openStats(renderCards, idxOf(o)); });   // 분해·합성·리더는 원래 확인창이 있어 그대로
+    $('story-d-stats').onclick = () => askYN('스탯을 분배할까요?', () => { p.close(true); openStats(renderCards, idxOf(o)); });   // 분해·합성·리더는 원래 확인창이 있어 그대로
     $('story-d-discard').onclick = () => { p.close(true); pickTarget(o.uid); };
     const mb = $('story-d-merge'); if (mb) mb.onclick = () => { p.close(true); mergePreview(o.uid); };
     document.querySelectorAll('#story-pop [data-skup]').forEach(b => b.onclick = e => { e.preventDefault(); e.stopPropagation(); p.close(true); skillUp(o.uid, +b.dataset.skup); });
@@ -1582,7 +1581,7 @@
       <div class="text-xs mt-2">레벨 Lv.${o.level} → <b class="text-amber-300">Lv.1</b> · 최대 레벨 Lv.${m.cap} → <b class="text-emerald-300">Lv.${m.capTo}</b></div>
       
       ${mat.cpts || Object.values(mat.boost || {}).some(Boolean) ? '<div class="text-[11px] text-zinc-400 mt-1">재료 인재에 분배한 스탯 포인트는 함께 사라져요.</div>' : ''}
-      <div class="story-warn">⚠️ 합성하면 대상 인재 레벨이 1로 초기화돼요. (EXP 0)</div>
+      <div class="story-warn">⚠️ Lv.1 초기화</div>
       ${serverMode ? (() => { const sc = shardCost(o), w = W(), ok = !w || (w.shard | 0) >= sc; return `<div class="story-merge-cost ${ok ? '' : 'short'}">💠 이상한 조각 <b>${sc}</b> 필요 <small>(${SHARD_BASE[c.grade] || 1} × EX${exOf(o) + 1})</small>${w ? ` · 보유 ${fmt(w.shard)}` : ''}${ok ? '' : ' · <b>부족해요</b>'}</div>`; })() : ''}
       <div class="flex gap-2 mt-4"><button data-close-pop class="flex-1 py-2.5 rounded-xl bg-zinc-700 font-bold">취소</button><button id="merge-next" class="flex-1 py-2.5 rounded-xl bg-red-500 font-bold" ${serverMode && W() && (W().shard | 0) < shardCost(o) ? 'disabled' : ''}>합성하기</button></div>`, renderCards);
     p.el.querySelectorAll('[data-mat]').forEach(b => b.onclick = () => { p.close(true); mergePreview(tu, b.dataset.mat); });
@@ -1673,11 +1672,11 @@
   }
   // ----- 리더 변경 (챕터 1 클리어 후, 서버 story_set_leader). 시작 캐릭터(starter)·루트는 그대로 -----
   function pickLeader() {
-    if (!leaderUnlocked()) return toast('리더 변경은 챕터 1을 클리어하면 열려요.');
+    if (!leaderUnlocked()) return toast('🔒 CH1');
     save.owned.forEach(norm);
     const list = sortInst(groups().map(gr => gr.list[0]).filter(Boolean));
     const p = popup(`<div class="text-lg font-black mb-1">${ic('crown', { alt: '' })} 리더 변경</div>${sortBar()}
-      <div class="text-xs text-zinc-400 mb-2">리더 스킬(속성 + 클래스)은 리더가 출전해 필드에 있는 동안 아군 전체에 적용돼요. 리더가 쓰러지면 해제되고 아군 진영 HP −${pc(D.leader?.deathPenalty ?? 0.3)}%.</div>
+      <details class="vr-tip"><summary>ⓘ 리더 스킬</summary><p>리더 스킬(속성 + 클래스)은 리더가 출전해 필드에 있는 동안 아군 전체에 적용돼요. 리더가 쓰러지면 해제되고 아군 진영 HP −${pc(D.leader?.deathPenalty ?? 0.3)}%.</p></details>
       <div class="story-target-list">${list.map(o => { const c = card(o.id), le = leaderEff(o.id);
         return `<button data-ld="${o.uid}" class="story-target ${isLeader(o) ? 'cur' : ''}" ${isLeader(o) ? 'disabled' : ''}><img src="${cardThumb(o.id)}" alt=""><div class="flex-1 min-w-0 text-left"><div class="text-sm font-bold truncate">${isLeader(o) ? ic('crown', { alt: '리더' }) + ' ' : ''}${esc(exName(o, c?.name))} <span class="text-[10px] text-zinc-400">${RAR[c?.grade] || 'N'} · Lv.${o.level}</span></div><div class="text-[11px] text-amber-200">${esc(le?.label || '')} · ${esc(le?.text || '')}</div></div><span class="text-emerald-300 text-sm">${isLeader(o) ? '현재' : '선택 ›'}</span></button>`; }).join('')}</div>
       <button data-close-pop class="w-full mt-3 py-2.5 rounded-xl bg-zinc-700 font-bold">취소</button>`, renderCards);
@@ -1688,7 +1687,7 @@
     const o = byUid(u), c = card(o?.id), le = leaderEff(o?.id); if (!o || isLeader(o) || isGuest(o)) return renderCards();
     const p = popup(`<div class="text-lg font-black mb-2">${esc(exName(o, c?.name))}을(를) 리더로 할까요?</div>
       <div class="story-leader-eff on">${ic('crown', { alt: '' })} <b>리더 스킬</b> <small>${esc(le?.label || '')}</small><div>${esc(le?.text || '')}</div></div>
-      <div class="text-[11px] text-zinc-400 mt-2">리더는 자동으로 분해 잠금돼요. 시작 캐릭터와 챕터 루트는 바뀌지 않아요. 언제든 다시 바꿀 수 있어요.</div>
+      <div class="text-[11px] text-zinc-400 mt-2">🔒 자동 잠금 · 언제든 변경</div>
       <div class="flex gap-2 mt-4"><button id="ld-no" class="flex-1 py-2.5 rounded-xl bg-zinc-700 font-bold">취소</button><button id="ld-yes" class="flex-1 py-2.5 rounded-xl bg-amber-500 text-black font-bold">리더로 지정</button></div>`, renderCards);
     $('ld-no').onclick = () => { p.close(true); back ? back() : renderCards(); };
     $('ld-yes').onclick = async () => {

@@ -99,7 +99,7 @@
       se.classList.toggle('low', P.stamina < (P.cost?.story || 6));
       if (!se.firstChild) se.innerHTML = `${ic('stamina')}<b></b><small></small><em></em>`; se.querySelector('b').textContent = P.stamina; se.querySelector('small').textContent = '/' + P.stamina_max; se.querySelector('em').textContent = full ? '' : mm; se.title = full ? '행동력 가득' : `행동력 · +1 까지 ${mm}`; }
     const cur = (k, v, img, name) => { const b = bar.querySelector(`[data-cur="${k}"]`); b.hidden = v == null; if (v == null) return;
-      const h = `${img ? `<img src="${img}" alt="">` : ic(k)}<b>${n(v)}</b><i class="tnb-plus">${ic('plus')}</i>`; if (b.dataset.v !== n(v)) { b.dataset.v = n(v); b.innerHTML = h; } b.title = `${name} ${full(v)} · 눌러서 충전`; b.setAttribute('aria-label', `${name} ${full(v)} · 충전`); };
+      const h = `${img ? `<img src="${img}" alt="">` : ic(k)}<b>${n(v)}</b><i class="tnb-plus">${ic('plus')}</i>`; if (b.dataset.v !== n(v)) { b.dataset.v = n(v); b.innerHTML = h; } b.title = `${name} ${full(v)}`; b.setAttribute('aria-label', `${name} ${full(v)}`); };
     cur('gem', G?.gem, null, '심연석'); cur('gold', W?.gold, CUR_IMG.gold, '골드'); cur('drink', D ? D.total : null, CUR_IMG.drink, '체력의 드링크');
     const key = w + t; if (key !== last) { last = key; document.body.dataset.tnb = w; }
   }

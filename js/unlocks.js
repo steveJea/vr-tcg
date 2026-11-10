@@ -17,7 +17,7 @@
     const el = document.createElement('div'); el.id = 'ul-lockpop'; el.className = 'ul-lockpop';
     el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true');
     const box = document.createElement('div'); box.className = 'ul-lockpop-box';
-    const p = document.createElement('p'); p.textContent = `계정레벨 ${n} 이후 이용할 수 있습니다`;
+    const p = document.createElement('p'); p.textContent = `계정레벨 ${n} 이후 이용할 수 있어요`;
     const b = document.createElement('button'); b.type = 'button'; b.textContent = '확인';
     const close = () => { el.remove(); document.removeEventListener('keydown', onKey); };
     const onKey = e => { if (e.key === 'Escape') close(); };

@@ -35,7 +35,7 @@ function resolve(t) {
 
 function build() {
   const ov = document.createElement('div'); ov.className = 'tut-ov';
-  ov.innerHTML = '<div class="tut-ring"></div><div class="tut-hand"></div><div class="tut-bub"><img class="tut-face" alt=""><div class="tut-txt"><b class="tut-who"></b><p></p><small class="tut-tap">탭하여 계속</small></div></div><button class="tut-skip" type="button">건너뛰기</button>';
+  ov.innerHTML = '<div class="tut-ring"></div><div class="tut-hand"></div><div class="tut-bub"><img class="tut-face" alt=""><div class="tut-txt"><b class="tut-who"></b><p></p><small class="tut-tap vr-more">▼</small></div></div><button class="tut-skip" type="button">건너뛰기</button>';
   document.body.appendChild(ov);
   ov.querySelector('.tut-skip').onclick = e => { e.stopPropagation(); finish(true); };
   return { ov, ring: ov.querySelector('.tut-ring'), hand: ov.querySelector('.tut-hand'), bub: ov.querySelector('.tut-bub') };
