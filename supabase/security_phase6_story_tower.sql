@@ -19,7 +19,7 @@ create table if not exists public.battle_replay_policy_v6 (
  engine_hash text not null check (engine_hash ~ '^[a-f0-9]{64}$'));
 -- Starts off. Re-running this file updates the engine hash only and does not turn enforcement on.
 insert into public.battle_replay_policy_v6(singleton, enabled, engine_hash)
- values (true, false, '2e7c04b59e64f9b51f66a2a03707176ceb8e058eb0b88909c42d08b6b6ba1b97')
+ values (true, false, '1dbdb45994799cdcf3db14bd6eb44689d35678a733774caffcfd9867df85685c')
  on conflict (singleton) do update set engine_hash = excluded.engine_hash;
 alter table public.battle_replay_policy_v6 enable row level security;
 revoke all on public.battle_replay_policy_v6 from public, anon, authenticated;
