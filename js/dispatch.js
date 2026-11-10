@@ -122,16 +122,16 @@
   async function open() {
     if (window.VRUnlocks && !window.VRUnlocks.guard('dispatch')) return;
     const box = shell('🧭 파견'); box.querySelector('.dbody').innerHTML = '<div class="dsp-empty">불러오는 중...</div>';
-    try { await load(); } catch (e) { box.querySelector('.dbody').innerHTML = `<div class="dsp-empty">${off ? '파견 준비 중이에요' : esc(errText(e))}</div>`; return; }
+    try { await load(); } catch (e) { box.querySelector('.dbody').innerHTML = `<div class="dsp-empty">${off ? '🔒' : esc(errText(e))}</div>`; return; }
     draw();
   }
   function draw() {
-    const box = shell('🧭 파견', `오늘 ${st.starts}/${st.cap}회 · 슬롯 ${st.runs.length}/${st.slots} · 매일 0시(한국 시간) 의뢰 교체`);
+    const box = shell('🧭 파견', `오늘 ${st.starts}/${st.cap}회 · 슬롯 ${st.runs.length}/${st.slots} · ⏱ ${(() => { const ms = 86400e3 - ((Date.now() + 9 * 3600e3) % 86400e3); const h = Math.floor(ms / 3600e3), m = Math.floor(ms % 3600e3 / 6e4); return h + ':' + String(m).padStart(2, '0'); })()}`);
     const free = Math.max(0, st.free - st.refreshes), done = st.runs.filter(r => r.done).length;
     box.querySelector('.dbody').innerHTML = `<h4>진행 중 (${st.runs.length}/${st.slots})</h4>${st.runs.map(runHTML).join('') || '<div class="dsp-empty">보낸 파견이 없어요</div>'}
       <h4>오늘의 의뢰</h4><div class="dsp-h">${HOURS.map(h => `<button data-h="${h}" class="${h === hours ? 'on' : ''}">${h}시간</button>`).join('')}</div><div style="height:6px"></div>
       ${st.offers.map(offHTML).join('')}
-      <div class="dsp-empty">필수: 등급(보낸 인재 중 1명 이상) · 속성·클래스가 맞는 인재 1명당 +15% (최대 60%) · 필수보다 높은 등급 +10% · 보너스 최대면 10% 확률 대성공(2배)</div>`;
+      <details class="vr-tip"><summary>ⓘ 성공 확률</summary><p>필수: 등급(보낸 인재 중 1명 이상) · 속성·클래스가 맞는 인재 1명당 +15% (최대 60%) · 필수보다 높은 등급 +10% · 보너스 최대면 10% 확률 대성공(2배)</p></details>`;
     box.insertAdjacentHTML('beforeend', `<div class="dsp-acts"><button data-auto ${st.runs.length >= st.slots || st.starts >= st.cap ? 'disabled' : ''}>🤖 자동 보내기</button><button class="go" data-all ${done ? '' : 'disabled'}>🎁 모두 받기${done ? ` (${done})` : ''}</button><button data-ref>🔄 새로고침<br><small>${free ? `무료 ${free}/${st.free}` : `🔮${st.refresh_cost}`}</small></button></div>`);
     box.querySelectorAll('[data-h]').forEach(b => b.onclick = () => { hours = +b.dataset.h; localStorage.setItem('vr:dsp_h', hours); draw(); });
     box.querySelectorAll('[data-more]').forEach(b => b.onclick = e => { e.stopPropagation(); morePop(st.offers.find(o => o.slot === +b.dataset.more)); });

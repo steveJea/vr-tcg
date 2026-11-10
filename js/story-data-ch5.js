@@ -1035,6 +1035,6 @@ window.STORY_DATA.chapters.push({
    "text": "그해 겨울, 비는 멈추지 않았다."
   }
  ],
- "warning": "이 챕터에는 괴롭힘, 자해·죽음을 암시하는 내용이 포함되어 있습니다."
+ "warning": "이 챕터에는 괴롭힘, 자해·죽음을 암시하는 내용이 포함되어 있어요."
 });
 window.STORY_DATA.noPortrait = [...new Set([...(window.STORY_DATA.noPortrait || []), ...["겨울 친구", "엄마"]])];

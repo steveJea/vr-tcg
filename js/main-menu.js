@@ -13,7 +13,7 @@
     });
   }
   window.VRConfirm = confirmYN;   // 다른 화면에서도 같은 Y/N 확인창 (예: 인재 상세 버튼)
-  const login = provider => window.VRCloud?.login ? window.VRCloud.login(provider) : (window.VRGem?.toast || alert)('로그인 서버 연결 중이에요. 잠시 뒤 다시 눌러 주세요.');
+  const login = provider => window.VRCloud?.login ? window.VRCloud.login(provider) : (window.VRGem?.toast || alert)('⏳ 연결 중…');
 
   // --- 인트로: 처음 방문(로그인 안 됨)일 때만 ---
   const intro = $('intro');
@@ -37,7 +37,7 @@
   $('intro-login-kakao').onclick = () => { localStorage.setItem(INTRO_KEY, '1'); login('kakao'); };
   $('intro-login-x').onclick = () => { localStorage.setItem(INTRO_KEY, '1'); login('x'); };
   $('intro-guest').onclick = async () => {
-    if (await confirmYN('<b>게스트는 아케이드만</b> 플레이할 수 있어요.<br>인재 수집·소환은 할 수 없어요.<div class="vc-q">그래도 게스트로 하시겠어요?</div>')) hideIntro();
+    if (await confirmYN('게스트: 아케이드만 · 수집 불가. 계속?')) hideIntro();
   };
   if (localStorage.getItem(INTRO_KEY) !== '1' && !/[?&]code=|access_token=/.test(location.search + location.hash)) {
     // 이미 로그인된 세션이면 바로 메인

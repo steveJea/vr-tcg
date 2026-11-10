@@ -5,9 +5,9 @@ window.STORY_DATA = {
   // 오프닝: 메인 스토리 첫 진입 시 1번 재생. video 경로를 넣으면 영상, 비어 있으면 자리표시 화면
   opening: { video: 'video/opening.mp4', poster: 'img/story/opening_poster.webp', title: 'OPENING', text: '' },
   starters: [
-    { id: '10111', name: '문지예', tagline: '(소개 문구 준비 중)' },
-    { id: '10265', name: '용지혜', tagline: '(소개 문구 준비 중)' },
-    { id: '10224', name: '안리', tagline: '(소개 문구 준비 중)' },
+    { id: '10111', name: '문지예', tagline: '🔒' },
+    { id: '10265', name: '용지혜', tagline: '🔒' },
+    { id: '10224', name: '안리', tagline: '🔒' },
   ],
   // 밸런스: 승리 시 스탯 포인트, 포인트 1당 상승량
   statPoints: { normal: 3, boss: 5 },

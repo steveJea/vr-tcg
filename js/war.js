@@ -32,7 +32,7 @@ function signupWindow(s) {
 /** 칸 배치가 잠긴 이유 (없으면 ''). 자동 참가(조직 Lv.3+) · 잠금 전 모든 칸 · 잠금 뒤 아지트(14)만, 전투 시간 제외 (war_auto.sql) */
 const minLv = () => +(X.min_level ?? 3);
 function slotLockReason(s, slot) {
-  if (!s.entry) return X.guild_level != null && X.guild_level < minLv() ? `조직 레벨 ${minLv()}부터 자동 참가해요 (지금 Lv.${X.guild_level})` : '이번 시즌 참가 명단을 준비 중이에요';
+  if (!s.entry) return X.guild_level != null && X.guild_level < minLv() ? `조직 레벨 ${minLv()}부터 자동 참가해요 (지금 Lv.${X.guild_level})` : '🔒';
   if (s.guild?.role !== 'boss') return '보스만 배치할 수 있어요';
   if (!s.entry.locked) return '';
   if (s.phase === 'live') return '전투 시간(09~23시)에는 배치를 바꿀 수 없어요';
@@ -150,7 +150,7 @@ function signupView() {
   const groups = ROLE_ORDER.map(r => `<div class="wr-row r-${r}"><div class="wr-slots ${r}">${s.roster.filter(x => x.role === r).map(slot).join('')}</div></div>`).join('');
   const why = slotLockReason(s), why14 = why && slotLockReason(s, 14);
   const note = why14 || why;
-  return `<div class="wr-sign"><div>${gi('ic_check', '✅')} 자동 참가 · 조직원 ${s.guild.members}명${e.locked ? ' · ' + gi('ic_lock', '🔒') : ''}</div>${boss && !e.locked ? '<button class="gd-big" data-auto>⚡ 자동 배치 (전투력 순)</button>' : ''}</div><small class="rd-note">빈 칸은 동네 불량배가 지켜요 · 안 넣은 조직원은 시즌 시작 때 전투력 순으로 들어가요</small>${note ? `<small class="rd-note wr-lock-why">🔒 ${esc(note)}</small>` : ''}${groups}`;
+  return `<div class="wr-sign"><div>${gi('ic_check', '✅')} 자동 참가 · 조직원 ${s.guild.members}명${e.locked ? ' · ' + gi('ic_lock', '🔒') : ''}</div>${boss && !e.locked ? '<button class="gd-big" data-auto>⚡ 자동 배치 (전투력 순)</button>' : ''}</div><details class="vr-tip"><summary>ⓘ</summary><p>빈 칸은 동네 불량배가 지켜요 · 안 넣은 조직원은 시즌 시작 때 전투력 순으로 들어가요</p></details>${note ? `<small class="rd-note wr-lock-why">🔒 ${esc(note)}</small>` : ''}${groups}`;
 }
 const roleBuff = r => { const x = WAR_ROLES[r], t = []; if (x.atk > 1 && x.def > 1) t.push(`공방 +${Math.round((x.atk - 1) * 100)}%`); else { if (x.atk > 1) t.push(`공격 +${Math.round((x.atk - 1) * 100)}%`); if (x.def > 1) t.push(`방어 +${Math.round((x.def - 1) * 100)}%`); } return `${t.join(' ')} · ${n(S.numbers.points[r])}점`; };
 function mapView(list, foe) {

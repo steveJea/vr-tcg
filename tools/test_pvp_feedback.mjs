@@ -172,7 +172,7 @@ console.log(`PASS real view stepper: batch base attack lunge/focus, video wait, 
 
 // Rule cue, legacy completion isolation, result rows and responsive layout.
 {
-  assert(game.includes('첫 2턴에는 보스를 공격할 수 없습니다.'));
+  assert(game.includes('첫 2턴에는 보스를 공격할 수 없어요.'));
   const ctx = vm.createContext({ S: { over: false, view: {}, ai: { hp: 0 }, me: { hp: 1 } }, finish: () => { throw Error('legacy completion must not run'); } });
   vm.runInContext(section(game, 'function checkEnd() {', '/** 챕터 0 P3:'), ctx); assert.equal(ctx.checkEnd(), false);
   let html = '';

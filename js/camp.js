@@ -87,7 +87,7 @@
   async function open() {
     if (window.VRUnlocks && !window.VRUnlocks.guard('camp')) return;
     const box = shell('🏋️ 훈련소'); box.querySelector('.cbody').innerHTML = '<div class="camp-empty">불러오는 중...</div>';
-    try { await load(); } catch (e) { box.querySelector('.cbody').innerHTML = `<div class="camp-empty">${off ? '훈련소 준비 중이에요' : esc(errText(e))}</div>`; return; }
+    try { await load(); } catch (e) { box.querySelector('.cbody').innerHTML = `<div class="camp-empty">${off ? '🔒' : esc(errText(e))}</div>`; return; }
     if (await autoClaim()) return;
     draw();
   }
@@ -124,7 +124,7 @@
     bindExtra(box);
     box.querySelectorAll('[data-put]').forEach(b => b.onclick = () => pick(+b.dataset.put));
     box.querySelectorAll('[data-remove]').forEach(b => b.onclick = async () => {
-      if (!await (window.VRAsk ? window.VRAsk('빼면 지금까지 쌓인 EXP 를 받고 칸이 비어요. 뺄까요?') : confirm('뺄까요?'))) return;
+      if (!await (window.VRAsk ? window.VRAsk('빼기? (EXP 받음)') : confirm('빼기? (EXP 받음)'))) return;
       try { const r = await rpc('camp_remove', { p_slot: +b.dataset.remove }); done(r); } catch (e) { toast(errText(e)); } });
     box.querySelectorAll('[data-unlock]').forEach(b => b.onclick = async () => {
       const s = st.slots.find(x => x.slot === +b.dataset.unlock);

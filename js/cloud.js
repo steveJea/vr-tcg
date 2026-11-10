@@ -151,7 +151,7 @@ async function startOAuth(provider, linking) {
   oauthBusy = true; paintOAuth();
   try {
     if (linking) {
-      const question = `현재 계정에 ${OAUTH_PROVIDERS[provider]} 로그인을 연결할까요? 이미 따로 가입한 계정은 합쳐지지 않습니다.`;
+      const question = `현재 계정에 ${OAUTH_PROVIDERS[provider]} 로그인을 연결할까요? 이미 따로 가입한 계정은 합쳐지지 않아요.`;
       const yes = window.VRConfirm ? await window.VRConfirm(question) : window.confirm(question);
       if (!yes || user?.id !== uid) return;
     }
@@ -253,7 +253,7 @@ function askNickname(first) {
   const cur = profile?.nick_set ? profile.nickname : '', paid = !first && !!profile?.nick_set;
   const ov = document.createElement('div'); ov.id = 'nick-ov';
   ov.innerHTML = `<div id="nick-box" data-clarity-mask="true" role="dialog" aria-label="닉네임"><h3>${first ? '닉네임을 정해 주세요' : '닉네임 변경'}</h3>
-    <p>${first ? '랭킹·PvP·친구 목록에 이 이름으로 나와요.<br>' : ''}2~12글자 · 다른 사람과 겹칠 수 없어요${paid ? `<br><b>변경할 때마다 🔮 심연석 ${NICK_PRICE}개가 들어요</b>` : first ? '<br>처음 한 번은 무료예요' : ''}</p>
+    <p>2~12글자 · 다른 사람과 겹칠 수 없어요${paid ? `<br><b>변경할 때마다 🔮 심연석 ${NICK_PRICE}개가 들어요</b>` : first ? '<br>처음 한 번은 무료예요' : ''}</p>
     <input maxlength="12" autocomplete="off" spellcheck="false" placeholder="닉네임" value="${esc(cur)}"><div class="nk-msg"></div>
     <div class="nk-btns">${first ? '' : '<button class="no" type="button">취소</button>'}<button class="go" type="button">${first ? '시작하기' : paid ? `🔮${NICK_PRICE} 변경` : '저장'}</button></div></div>`;
   document.body.appendChild(ov);

@@ -85,7 +85,7 @@
       });
       pop.querySelector('[data-boost]')?.addEventListener('click', async e => {
         e.currentTarget.disabled = true;
-        const msg = `심연석 ${n(b.cost ?? 30)}개를 사용해 ${b.hours ?? 4}시간분 보상을 받을까요?\n쌓인 보상 받기는 무료예요.`;
+        const msg = `심연석 ${n(b.cost ?? 30)}개를 사용해 ${b.hours ?? 4}시간분 보상을 받을까요?`;
         try {
           const ok = await (window.VRAsk ? window.VRAsk(msg) : confirm(msg));
           if (ok && pop.isConnected) await act('idle_box_boost');

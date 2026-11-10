@@ -58,11 +58,10 @@
       '⚡<b>마비</b>: 행동 불가 · 💫<b>혼란</b>: 아군을 공격 · 🌀<b>교란</b>: 자기 진영을 공격',
       '🩸출혈(매 턴 HP -3%) · 🔥화상(매 턴 HP -3%) · 🎯도발(먼저 맞아야 함) · 🔰피해 면역 · 🔒고유기술 봉인(상점 일부 불가)',
       '💨<b>회피</b>: 기본 공격을 확률로 피함(피해·반격 없음, 스킬은 못 피함) · 🌵<b>반격 강화</b>: 받는 피해 감소·반격 증가 · 👻<b>영혼 강탈</b>: 때린 상대 MP 감소',
-      '카드를 누르면 상세 정보와 스킬 설명을 볼 수 있어요'] },
+] },
     { icon: '💡', title: '팁', lines: [
       '행동할 카드가 남았는데 턴 종료를 누르면 한 번 더 물어봐요',
-      '🎬 연출 버튼으로 공격 연출 생략, 연출 중 화면을 누르면 빨리 감기',
-      '자세한 규칙은 게임 중 <b>?</b> 버튼에서 언제든 확인!'] },
+      '🎬 연출 버튼으로 공격 연출 생략, 연출 중 화면을 누르면 빨리 감기'] },
   ];
 
   // ---------- 슬라이드 ----------
@@ -119,11 +118,11 @@
     { sel: '#me-hero', title: `내 진영과 마나 ${IC('mana')}`, text: `아래쪽 ${IC('mana')}마나로 카드를 내요. 첫 턴 40, 매 턴 +20, 최대 100. 오른쪽 위는 내 턴 남은 횟수예요.` },
     { sel: '#me-hand', title: '카드 내기 🃏', text: '손패 카드를 누르고 "소환하기"를 눌러보세요. 흐린 카드는 지금 낼 수 없는 카드예요.' },
     { sel: '#me-field', title: '내 필드', text: '소환한 카드는 다음 내 턴부터 공격할 수 있어요. 공격 가능한 카드는 초록 테두리로 표시돼요.' },
-    { sel: '#ai-field', title: `공격하기 ${IC('atk')}`, text: '내 카드를 누른 뒤 적 카드나 상대 진영을 누르면 공격! 진영 공격 가능 여부는 가운데 안내 문구로 알려줘요.' },
+    { sel: '#ai-field', title: `공격하기 ${IC('atk')}`, text: '내 카드를 누른 뒤 적 카드나 상대 진영을 누르면 공격!' },
     { sel: '#me-field', title: '스킬 사용 ✦', text: '레벨이 올라 스킬이 해금되고 MP가 차면 카드가 보라색으로 빛나고 ✦ 배지가 생겨요. 액티브 스킬은 그 턴 공격 대신 써요.' },
     { sel: '#action-bar', title: '상점 🏪', text: '마나로 패 섞기, 기지 보강, 공격력 강화, 필드 회복, 마나 가속기를 살 수 있어요. 가속기 말고는 턴당 1번!' },
     { sel: '#end-turn', title: '턴 종료', text: '할 일을 다 했으면 턴 종료! 행동할 카드가 남아 있으면 한 번 더 물어봐요.' },
-    { sel: '#help-btn', title: '도움말', text: '규칙이 헷갈리면 언제든 ? 버튼! How to Play도 여기서 다시 볼 수 있어요. 이제 직접 싸워보세요 💪' },
+    { sel: '#help-btn', title: '도움말', text: '❓ = 규칙 · 이제 실전 💪' },
   ];
   const Tutorial = {
     i: -1, timer: null,
@@ -196,8 +195,7 @@
   function offer() {
     if (localStorage.getItem(TUT_KEY) === '1' || $('tut-offer')) return;
     const d = document.createElement('div'); d.id = 'tut-offer';
-    d.innerHTML = `<div class="font-black">처음 오셨나요? 👋</div><div class="text-xs text-zinc-300 mt-1">튜토리얼로 첫 게임을 따라 해보세요</div>
-      <div class="row"><button data-a="tut" class="bg-emerald-500 text-black">🎓 튜토리얼</button><button data-a="howto" class="bg-amber-400 text-black">📖 How to Play</button></div>
+    d.innerHTML = `<div class="row"><button data-a="tut" class="bg-emerald-500 text-black">🎓 튜토리얼</button><button data-a="howto" class="bg-amber-400 text-black">📖 How to Play</button></div>
       <div class="row"><button data-a="no" class="bg-zinc-700 text-zinc-200 text-xs">다시 보지 않기</button></div>`;
     $('start-screen').appendChild(d);
     d.onclick = e => {

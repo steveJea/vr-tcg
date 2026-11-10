@@ -144,10 +144,10 @@ export function calcDamageG(attacker, target) {
 
 /** 소환 가능 여부와 사유 */
 export function canSummon(card, me, opp) {
-  if (fieldCount(me) >= RULES.FIELD_MAX) return { ok: false, reason: '필드가 가득 찼습니다 (최대 5장)' };
-  if (card.cost > me.mana) return { ok: false, reason: `마나가 부족합니다 (${me.mana}/${card.cost})` };
+  if (fieldCount(me) >= RULES.FIELD_MAX) return { ok: false, reason: '필드가 가득 찼어요 (최대 5장)' };
+  if (card.cost > me.mana) return { ok: false, reason: `마나가 부족해요 (${me.mana}/${card.cost})` };
   if (card.class === 'ABYSS' && opp.field.some(u => u.card.class === 'LIGHT'))
-    return { ok: false, reason: '상대 필드에 빛(LIGHT) 카드가 있어 심연(ABYSS) 카드를 소환할 수 없습니다' };
+    return { ok: false, reason: '상대 필드에 빛(LIGHT) 카드가 있어 심연(ABYSS) 카드를 소환할 수 없어요' };
   return { ok: true };
 }
 
@@ -156,11 +156,11 @@ export function recallCost(card) { return Math.ceil(card.cost * RULES.RECALL_COS
 
 /** 회수 가능 여부와 사유 */
 export function canRecall(unit, me) {
-  if (unit.boss) return { ok: false, cost: 0, reason: '진영 칸 카드는 회수할 수 없습니다' };
+  if (unit.boss) return { ok: false, cost: 0, reason: '진영 칸 카드는 회수할 수 없어요' };
   const cost = recallCost(unit.card);
-  if (unit.st?.para) return { ok: false, cost, reason: '마비 상태에서는 회수할 수 없습니다' };
-  if (unit.st?.disrupt) return { ok: false, cost, reason: '교란 상태에서는 회수할 수 없습니다' };
-  if (cost > me.mana) return { ok: false, cost, reason: `마나가 부족합니다 (${me.mana}/${cost})` };
+  if (unit.st?.para) return { ok: false, cost, reason: '마비 상태에서는 회수할 수 없어요' };
+  if (unit.st?.disrupt) return { ok: false, cost, reason: '교란 상태에서는 회수할 수 없어요' };
+  if (cost > me.mana) return { ok: false, cost, reason: `마나가 부족해요 (${me.mana}/${cost})` };
   return { ok: true, cost };
 }
 
@@ -180,7 +180,7 @@ export function makeUnit(card, uid) {
 
 // ===== 스킬 훅 (아직 카드에 배정하지 않음). 카드 데이터에 skills: ['taunt'] 형태로 지정 =====
 export const SKILLS = {
-  taunt: { label: '도발', icon: '🎯', img: 'taunt', desc: '상대는 도발 카드부터 공격해야 합니다' },
+  taunt: { label: '도발', icon: '🎯', img: 'taunt', desc: '상대는 도발 카드부터 공격해야 해요' },
 };
 export const hasSkill = (u, id) => !!u.skills?.includes(id) || !!u.st?.[id];
 
@@ -235,16 +235,16 @@ export const heroLocked = me => (me.turnsTaken || 0) <= RULES.HERO_LOCK_TURNS;
 export function attackTargets(me, opp, attacker = null) {
   // 도발당함(김후 [나는 약하지 않아]): 그 카드는 도발한 카드만 공격 가능
   const pv = attacker?.st?.provoked?.by;
-  if (pv && pv.hp > 0 && opp.field.includes(pv) && !pv.undying && !spares(attacker, pv)) return { units: [pv], hero: false, reason: `도발당함: ${pv.card.name}만 공격할 수 있습니다` };
+  if (pv && pv.hp > 0 && opp.field.includes(pv) && !pv.undying && !spares(attacker, pv)) return { units: [pv], hero: false, reason: `도발당함: ${pv.card.name}만 공격할 수 있어요` };
   // 스토리 보스(undying): 진영 안에 있어 공격 대상이 아니고, 진영 방어(HERO_GUARD_FIELD) 장수에도 세지 않음
   const field = opp.field.filter(u => !u.undying && !spares(attacker, u));   // 스토리 보호 규칙(조윤이 → 조윤하)
   const taunts = field.filter(u => hasSkill(u, 'taunt'));
-  if (taunts.length) return { units: taunts, hero: false, reason: '도발 카드부터 공격해야 합니다' };
+  if (taunts.length) return { units: taunts, hero: false, reason: '도발 카드부터 공격해야 해요' };
   if (opp.noBase) return { units: field, hero: false, reason: '일반전: 상대 카드를 모두 쓰러뜨리세요' };
   if (me.clearFirst && field.length) return { units: field, hero: false, reason: '카드 먼저 제거: 상대 카드를 모두 쓰러뜨린 뒤 진영을 공격할 수 있어요' };
-  if (heroLocked(me)) return { units: field, hero: false, reason: `첫 ${RULES.HERO_LOCK_TURNS}턴에는 진영을 공격할 수 없습니다` };
+  if (heroLocked(me)) return { units: field, hero: false, reason: `첫 ${RULES.HERO_LOCK_TURNS}턴에는 진영을 공격할 수 없어요` };
   const guardN = opp.heroGuard || RULES.HERO_GUARD_FIELD;   // 탑 보스 층(부하 5명): 5 → 부하 1명 쓰러뜨리면 진영 공격 (스토리 보스전 부하 4명과 같은 조건)
-  if (field.length >= guardN) return { units: field, hero: false, reason: `상대 필드에 ${guardN}장 이상 있으면 카드만 공격할 수 있습니다` };
+  if (field.length >= guardN) return { units: field, hero: false, reason: `상대 필드에 ${guardN}장 이상 있으면 카드만 공격할 수 있어요` };
   return { units: field, hero: true, reason: '' };
 }
 export function canTarget(me, opp, target, attacker = null) {

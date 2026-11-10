@@ -15,7 +15,7 @@ ok(P(['card_ur'], [], 1000, 0).html.includes('900'), '판매자 수령 미리보
 ok(P(['card_ur'], ['card_sr'], 0, 0).fix === 10000, '물건끼리: 고정 수수료 미리보기');
 ok(P(['card_ur'], [], 0, 0).err.length > 0, '빈 제안 불가');
 ok(T._errText('some odd error').includes('⚠️') && T._errText('x reoffer cooldown y').includes('24시간'), '서버 오류 → 한국어 문구');
-ok(T._errText('Could not find the function public.trade_board').includes('준비 중'), 'SQL 없으면 준비 중');
+ok(T._errText('Could not find the function public.trade_board').includes('🔒'), 'SQL 없으면 잠금 표시');
 const save = { leader: 'L' };
 ok(T._cardBlock({ uid: 'L', bound: false }, save).includes('리더') && T._cardBlock({ uid: 'a', bound: true }, save).includes('귀속') && T._cardBlock({ uid: 'a', bound: false, locked: true }, save).includes('잠금'), '못 올리는 이유: 리더·귀속·잠금');
 ok(T._cardBlock({ uid: 'a', bound: false, locked: true, dlk: true }, save) === '', '덱 자동 잠금은 올릴 수 있음 (덱에서 빠짐)');

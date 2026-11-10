@@ -8,7 +8,7 @@ end $facility_guard$;
 -- Facilities are account-Lv20 features, NOT training-building upgrades.
 -- Preserve every existing receipt, building level, EXP rate, price, material and job.
 do $facility_policy$
-declare levels jsonb:=public._unlock_levels(); intros jsonb:=public._unlock_intros(); e jsonb:='{"key":"facilities","level":20,"title":"연마소 · 도장","text":"연마소에서 장비를, 도장에서 스킬을 강화할 수 있어요. 훈련소 건물 레벨과 무관하게 이용하며 기존 재료와 도장 개방 비용은 필요해요.","reward":{"gold":5000},"route":"camp","trigger":"","source_text":"연마소, 도장 설명"}'::jsonb;
+declare levels jsonb:=public._unlock_levels(); intros jsonb:=public._unlock_intros(); e jsonb:='{"key":"facilities","level":20,"title":"연마소 · 도장","text":"⚒️ 연마소 · 🥋 도장 오픈","reward":{"gold":5000},"route":"camp","trigger":"","source_text":"연마소, 도장 설명"}'::jsonb;
 begin
  levels:=levels||'{"forge":20,"dojo":20}'::jsonb;
  if not exists(select 1 from jsonb_array_elements(intros) x where x->>'key'=e->>'key') then

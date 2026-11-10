@@ -28,6 +28,13 @@ html { word-break: keep-all; overflow-wrap: anywhere; -webkit-tap-highlight-colo
   line-break: strict;
   text-wrap: pretty;
 }
+/* 짧은 안내: ⓘ 로 접고, 이어하기 표시는 ▼ 만 */
+.vr-tip { display: block; margin: 6px 0; font-size: 11px; color: #a1a1aa; text-align: left; }
+.vr-tip > summary { cursor: pointer; list-style: none; display: inline-flex; align-items: center; gap: 4px; font-weight: 800; color: #e4e4e7; }
+.vr-tip > summary::-webkit-details-marker { display: none; }
+.vr-tip p, .vr-tip .vr-tip-b { margin: 4px 0 0; line-height: 1.45; font-weight: 500; }
+.vr-more { display: inline-block; margin-top: 8px; font-size: 14px; color: #a1a1aa; animation: vr-blink 1.2s steps(2, end) infinite; }
+@keyframes vr-blink { 50% { opacity: .2; } }
 button, a, [role="button"], [data-go], .story-chip, .main-tile, .gr-go { touch-action: manipulation; }   /* 더블탭 확대 지연 없앰 */
 button, [role="button"], .main-tile, .gr-go, .story-chip, .set-toggle, .cd-sm, .cd-ic { transition: scale .12s ease, filter .12s ease; }
 button:not(:disabled):active, [role="button"]:active, .main-tile:active, .story-chip:active { scale: .96; filter: brightness(1.08); }   /* scale 속성: 원래 transform(가운데 정렬 등)과 겹쳐도 안 틀어짐 */
