@@ -85,9 +85,10 @@
     window.VRDrink?.bind?.(box, () => paintConsume(box));
   }
   function draw(body) { host = body; host.innerHTML = '<div class="shop" data-clarity-mask="true"><div class="shop-note">불러오는 중…</div></div>'; refresh(true).then(() => { if (host === body) paint(); }); }
-  function open() {
+  function open(next) {
     const logged = window.VRCloud?.user || window.__SHOP_MOCK || window.__GEM_MOCK;
     if (!logged) return toast('로그인이 필요해요');
+    if (TABS.some(([id]) => id === next)) tab = next;
     if (window.VRPages?.open) return window.VRPages.open('shop');
     const m = document.createElement('div'); m.className = 'gem-pop'; document.body.appendChild(m);
     const panel = document.createElement('div'); panel.className = 'gem-panel'; panel.setAttribute('data-clarity-mask', 'true'); m.appendChild(panel);

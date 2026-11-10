@@ -201,9 +201,17 @@
   // 챕터 2~: 고른 루트(byRoute, save.routes[챕터 id]) 대본을 덮어씀. 루트 주인공(hero)은 출전 카드 필수
   // 챕터 맵 배경 키: 시작 캐릭터별 대본(byStarter)이 있으면 ch_bg_<챕터id>_<캐릭터id>, 아니면 ch_bg_<챕터id>
   const bgKey = base => base.byStarter && save?.starter ? `${base.id}_${save.starter}` : String(base.id);
-  const bgUrl = base => `url(img/story/ch_bg_${esc(bgKey(base))}.webp),url(img/story/ch_bg_${esc(base.id)}.webp)`;
+  // 챕터 1 공용 ch_bg_1 / ch_bg_pc_1 은 파일이 없다. 시작 캐릭터 그림만 요청한다 (없는 공용 파일을 같이 넣으면 404).
+  const BG_NO_GENERIC = new Set([1]);
+  const bgList = (prefix, base) => {
+    const key = bgKey(base), id = String(base.id);
+    const urls = [`url(img/story/${prefix}${esc(key)}.webp)`];
+    if (key !== id && !BG_NO_GENERIC.has(base.id | 0)) urls.push(`url(img/story/${prefix}${esc(id)}.webp)`);
+    return urls.join(',');
+  };
+  const bgUrl = base => bgList('ch_bg_', base);
   // PC(가로 화면)용: img/story/ch_bg_pc_<키>.webp (1920×1080), 없으면 세로 그림
-  const bgPcUrl = base => `url(img/story/ch_bg_pc_${esc(bgKey(base))}.webp),url(img/story/ch_bg_pc_${esc(base.id)}.webp),${bgUrl(base)}`;
+  const bgPcUrl = base => [bgList('ch_bg_pc_', base), bgUrl(base)].filter(Boolean).join(',');
   const routeOf = base => base.byRoute ? save?.routes?.[base.id] || null : null;
   function chapterFor(base) {
     const key = base.byStarter ? save?.starter : routeOf(base);
@@ -678,12 +686,16 @@
         <div class="story-sweep-get">⭐ 플레이어 경험치 <b>+${fmt(r.player?.gained_xp || 0)}</b></div></div>
       ${r.player?.levelups ? `<div class="text-center text-amber-300 font-bold mt-2">LEVEL UP! Lv.${r.player.level}${r.player.levelup_gold ? ` · 🪙 +${fmt(r.player.levelup_gold)}` : ''}</div>` : ''}
       <div class="text-[11px] text-zinc-500 text-center mt-2">회차별: ${(r.per_run || []).map(x => x.shard ? '💠' : '·').join(' ')}</div>
-      <div class="story-phpop-a mt-3"><button class="story-btn ghost" data-x>확인</button><button class="story-btn story-btn-sw" data-again ${againOk ? '' : 'disabled'} title="${againOk ? '' : '행동력이 부족해요'}">${SW()} 소탕하기 ×${n}<small> 🔋 ${againCost}</small></button></div>`, () => renderMap());
+      <div class="story-phpop-a mt-3"><button class="story-btn ghost" data-x>확인</button><button class="story-btn story-btn-sw" data-again ${againOk ? '' : 'disabled'} title="${againOk ? '' : '행동력이 부족해요'}">${SW()} 소탕하기 ×${n}<small> 🔋 ${againCost}</small></button></div>`, () => afterSweepResult(r));
     res.el.querySelector('[data-x]').onclick = () => res.close();
-    // 같은 페이즈·같은 횟수로 바로 다시 소탕 (한 번만 눌리게 잠금 → 결과 팝업 새로 뜸)
+    // 같은 페이즈·같은 횟수로 바로 다시 소탕 (한 번만 눌리게 잠금 → 결과 팝업 새로 뜸). 다시 소탕은 close(true)라 아래 후속은 안 탄다.
     res.el.querySelector('[data-again]').onclick = e => { const b = e.currentTarget; if (b.disabled) return; res.el.querySelectorAll('button').forEach(x => x.disabled = true); doSweep(ch, ph, n, res); };
+  }
+  /** 소탕 결과를 닫은 뒤: 장비 획득 → 레벨업. 결과 창 위에 겹쳐 가운데를 가리지 않는다. */
+  async function afterSweepResult(r) {
+    if (r.gear?.length || r.sigil?.length) { try { await window.VRGear?.showDrops?.(); } catch {} }
     if (r.player?.levelups) levelUpFx(`PLAYER LEVEL UP! Lv.${r.player.level}`);
-    if (r.gear?.length || r.sigil?.length) window.VRGear?.showDrops?.();   // 장비 PR4: 획득 장비 (그림)
+    renderMap();
   }
 
   // ----- 스토리 메인 (허브): 이어하기 · 챕터 목록 · 메뉴. 배경 img/story/hub/bg_pc.webp / bg_m.webp (없으면 메인 배경) -----
@@ -714,7 +726,13 @@
   }
   // 허브 챕터 선택: 3칸 세로 (위 = 다음 챕터, 가운데 = 진행 중(크게), 아래 = 최근 클리어). ▲▼/스와이프로 이전 챕터 다시 하기
   let hubC = null, hubCur = null;
-  const chCover = base => { const r = routeOf(base); return r || base.hero || base.rewardCard || base.routeOrder?.[0] || null; };
+  // rewardCard 는 등급('NORMAL')이라 그림 id 가 아니다. 숫자 id 만 커버로 쓴다.
+  const coverId = v => /^\d+$/.test(String(v ?? '')) ? String(v) : '';
+  const chCover = base => {
+    const r = routeOf(base);
+    const hero = base.hero || (base.byStarter && save?.starter) || '';
+    return [r, hero, ...(base.routeOrder || [])].map(coverId).find(Boolean) || '';
+  };
   function hubCurIdx() { const nx = nextPlay(); if (nx) return nx.i; let k = 0; while (k + 1 < D.chapters.length && chapterOpen(k + 1)) k++; return k; }
   function hubSlot(i, size) {
     const base = D.chapters[i]; if (!base) return `<div class="hub-ch-slot ${size} empty"></div>`;
@@ -722,7 +740,7 @@
     const why = open ? '' : (i && !chapterDone(D.chapters[i - 1]) ? '이전 챕터 클리어 후' : chLvLock(D.chapters[i]) ? `Lv ${chNeedLv(D.chapters[i])}` : '');
     const st = !open ? `🔒 ${why}` : done ? '✔ 클리어 · 다시 하기' : n ? `진행 중 ${n}/${tot}` : '새 챕터';
     return `<button class="hub-ch-slot ${size} ${open ? '' : 'locked'} ${done ? 'done' : ''}" data-hubch="${i}" ${open ? '' : 'disabled'}>
-      <span class="hub-ch-img" style="background-image:${cv ? `url(${IMG}${cv}.webp),url(img/npc/${cv}.webp),` : ''}url(img/story/opening_poster.webp)"></span>
+      <span class="hub-ch-img" style="background-image:${coverId(cv) ? `url(${IMG}${coverId(cv)}.webp),` : ''}url(img/story/opening_poster.webp)"></span>
       <span class="hub-ch-txt"><small>${esc(base.title)}</small><b>${esc(ch.subtitle || base.title)}</b><i>${st}</i></span>
       ${done && videoOf(base) ? `<span class="story-hub-vid" role="button" data-hubvid="${i}" title="엔딩 영상 다시 보기">🎬</span>` : ''}</button>`;
   }
@@ -2137,7 +2155,7 @@
       owned: save.owned.map(view), uniq: inst.length,
       chapters: D.chapters.map(ch => ({ id: ch.id, title: ch.title, done: (save.cleared?.[ch.id] || []).filter(no => ch.phases.some(p => p.no === no)).length, total: ch.phases.length })),
       current: (() => { try { const i = hubCurIdx(), base = D.chapters[i], ch = chapterFor(base), nx = nextPlay(), n = clearedOf(ch).length, cv = chCover(base);
-        return { i, id: base.id, bg: bgKey(base), title: base.title, subtitle: ch.subtitle || base.title, phase: nx && nx.i === i ? nx.ph.no : null, boss: nx && nx.i === i && nx.ph.type === 'boss', done: n, total: ch.phases.length, cover: cv ? `${IMG}${cv}.webp` : null, variant: base.byStarter ? (save?.starter || null) : routeOf(base) }; } catch { return null; } })(),
+        return { i, id: base.id, bg: bgKey(base), title: base.title, subtitle: ch.subtitle || base.title, phase: nx && nx.i === i ? nx.ph.no : null, boss: nx && nx.i === i && nx.ph.type === 'boss', done: n, total: ch.phases.length, cover: coverId(cv) ? `${IMG}${coverId(cv)}.webp` : null, variant: base.byStarter ? (save?.starter || null) : routeOf(base) }; } catch { return null; } })(),
     };
   }
   /** 다른 모드(퀘스트)용 내부 도구 */

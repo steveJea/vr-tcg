@@ -348,9 +348,8 @@
       ${res.cleared ? `<div class="mt-3 story-drops">🎁 첫 클리어 보상 ${window.VRPlayer?.curTxt?.(cur) || ''}${tk ? ` · 🎟️ 소환권 ${tk}` : ''}</div>` : ''}
       <div class="q-sw-stop">${why}</div>
       <div class="q-sw-prog small">${prog.join('')}</div>
-      <div class="flex gap-2 mt-4">${stop.why === 'boss' ? `<button class="story-btn flex-1" id="q-sw-boss">👑 ${stop.floor}층 도전</button>` : ''}<button class="story-back flex-1" data-close-pop>닫기</button></div>`);
-    window.VRGear?.showDrops?.();   // 장비 PR4: 소탕 드롭
-    const bb = $('q-sw-boss'); if (bb) bb.onclick = () => { rp.close(true); sel = stop.floor; challenge(stop.floor); };
+      <div class="flex gap-2 mt-4">${stop.why === 'boss' ? `<button class="story-btn flex-1" id="q-sw-boss">👑 ${stop.floor}층 도전</button>` : ''}<button class="story-back flex-1" data-close-pop>닫기</button></div>`, () => window.VRGear?.showDrops?.());
+    const bb = $('q-sw-boss'); if (bb) bb.onclick = async () => { rp.close(true); try { await window.VRGear?.showDrops?.(); } catch {} sel = stop.floor; challenge(stop.floor); };
   }
 
   function mount() {

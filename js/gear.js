@@ -213,9 +213,15 @@
     const { data, error } = await sb().rpc('gear_drops_take'); if (error || !data?.length) return [];
     if (!defs) await load(true); else load(true);
     const mail = data.some(x => x.mail || x.kind === 'box');
-    pop(`<div class="gear-drops-h"><img class="ui-ic" src="img/ui/cur_dust.webp" alt="">장비 획득</div><div class="gear-drops">${data.map(tileOf).join('')}</div>
-      ${mail ? '<div class="gear-dim">📬 일부 우편함</div><button class="gear-btn main" data-mb><img class="ui-ic" src="img/ui/mailbox.webp" alt="">우편함</button>' : ''}`, 'drops')
-      .querySelector('[data-mb]')?.addEventListener('click', e => { e.target.closest('.gear-pop-bg').remove(); mailbox(); });
+    const m = pop(`<div class="gear-drops-h"><img class="ui-ic" src="img/ui/cur_dust.webp" alt="">장비 획득</div><div class="gear-drops">${data.map(tileOf).join('')}</div>
+      ${mail ? '<div class="gear-dim">📬 일부 우편함</div><button class="gear-btn main" data-mb><img class="ui-ic" src="img/ui/mailbox.webp" alt="">우편함</button>' : ''}<div class="gear-acts"><button class="gear-btn main" data-ok>확인</button></div>`, 'drops');
+    m.querySelector('[data-mb]')?.addEventListener('click', e => { e.target.closest('.gear-pop-bg').remove(); mailbox(); });
+    m.querySelector('[data-ok]')?.addEventListener('click', () => m.remove());
+    await new Promise(res => {
+      if (!m.isConnected) return res();
+      const o = new MutationObserver(() => { if (!m.isConnected) { o.disconnect(); res(); } });
+      o.observe(document.body, { childList: true });
+    });
     return data;
   }
   // 우편함: 장비는 받기, 상자는 슬롯 골라 열기
