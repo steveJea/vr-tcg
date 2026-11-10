@@ -631,11 +631,11 @@ create table if not exists public.weekly_progress (
 create or replace function public._weekly_week() returns date language sql stable as $$
   select date_trunc('week', _gem_day()::timestamp)::date $$;$vr_statement$;
   execute $vr_statement$create or replace function public._weekly_defs() returns jsonb language sql immutable as $$ select '[
-  {"key":"arcade","name":"아케이드 7판 플레이","goal":7,"per":2,"reward":{"gold":8000,"tickets":1}},
-  {"key":"win","name":"전투 15회 승리","goal":15,"per":3,"reward":{"gold":10000,"gem":30}},
-  {"key":"story","name":"스토리 스테이지 10회 클리어","goal":10,"per":2,"reward":{"gold":10000,"gem":30}},
-  {"key":"tower","name":"시련의 탑 5회 도전","goal":5,"per":1,"reward":{"gold":8000,"gem":20}},
-  {"key":"skill","name":"고유기술 50회 사용","goal":50,"per":40,"reward":{"gold":8000,"gem":20}}
+  {"key":"arcade","name":"아케이드 플레이 x 7","goal":7,"per":2,"reward":{"gold":8000,"tickets":1}},
+  {"key":"win","name":"전투 승리 x 15","goal":15,"per":3,"reward":{"gold":10000,"gem":30}},
+  {"key":"story","name":"스토리 스테이지 클리어 x 10","goal":10,"per":2,"reward":{"gold":10000,"gem":30}},
+  {"key":"tower","name":"시련의 탑 도전 x 5","goal":5,"per":1,"reward":{"gold":8000,"gem":20}},
+  {"key":"skill","name":"고유기술 사용 x 50","goal":50,"per":40,"reward":{"gold":8000,"gem":20}}
 ]'::jsonb $$;$vr_statement$;
   execute $vr_statement$create or replace function public._weekly_all_reward() returns jsonb language sql immutable as $$ select '{"gem":100,"tickets":2}'::jsonb $$;$vr_statement$;
   execute $vr_statement$create or replace function public._weekly_json(p_uid uuid) returns jsonb language plpgsql stable security definer set search_path = public as $$

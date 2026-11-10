@@ -101,6 +101,11 @@
 /* 마이페이지(z 120) 위에서 연 친구 창은 그 위로 */
 .gem-pop.friend-pop{z-index:130}
 /* 일일 미션: 제목 탭 → 바로 가기 */
+.daily-tabs{display:flex;gap:4px;margin:8px 0 4px}
+.daily-tab{position:relative;flex:1;padding:7px 4px;border-radius:8px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#d4d4d8;font-size:12px;font-weight:700;cursor:pointer}
+.daily-tab.on{background:rgba(251,191,36,.18);border-color:#fbbf24;color:#fde68a}
+.daily-tab .story-badge{position:absolute;top:-6px;right:-4px;margin:0}
+.daily-reset{margin:0 0 4px;font-size:11px;color:#a1a1aa}
 .daily-mt.go{cursor:pointer}.daily-mt.go:hover b,.daily-mt.go:focus-visible b{color:#6ee7b7}
 .daily-arrow{color:#6ee7b7;font-weight:900;margin-left:2px}
 

@@ -158,11 +158,11 @@ create table if not exists public.daily_progress (
   execute $vr_statement$revoke all on public.daily_attend from public, anon, authenticated;$vr_statement$;
   execute $vr_statement$-- 미션 정의 (한 곳에서 조정). per = daily_track 1회 호출로 올릴 수 있는 최대
 create or replace function public._daily_defs() returns jsonb language sql immutable as $$ select '[
-  {"key":"arcade","name":"아케이드 1판 플레이","goal":1,"per":1,"reward":{"gold":1000}},
-  {"key":"win","name":"전투 3회 승리","goal":3,"per":1,"reward":{"gold":2000}},
-  {"key":"story","name":"스토리 스테이지 2회 클리어","goal":2,"per":1,"reward":{"gold":2000,"gem":10}},
-  {"key":"tower","name":"시련의 탑 1회 도전","goal":1,"per":1,"reward":{"gold":1500,"gem":10}},
-  {"key":"skill","name":"고유기술 10회 사용","goal":10,"per":20,"reward":{"gold":1500}}
+  {"key":"arcade","name":"아케이드 플레이 x 1","goal":1,"per":1,"reward":{"gold":1000}},
+  {"key":"win","name":"전투 승리 x 3","goal":3,"per":1,"reward":{"gold":2000}},
+  {"key":"story","name":"스토리 스테이지 클리어 x 2","goal":2,"per":1,"reward":{"gold":2000,"gem":10}},
+  {"key":"tower","name":"시련의 탑 도전 x 1","goal":1,"per":1,"reward":{"gold":1500,"gem":10}},
+  {"key":"skill","name":"고유기술 사용 x 10","goal":10,"per":20,"reward":{"gold":1500}}
 ]'::jsonb $$;$vr_statement$;
   execute $vr_statement$create or replace function public._daily_all_reward() returns jsonb language sql immutable as $$ select '{"gem":30}'::jsonb $$;$vr_statement$;
   execute $vr_statement$-- 출석 7일 주기 (빠진 날이 있어도 끊기지 않고 다음 칸으로. 7일째 받으면 1일째부터 다시)
@@ -864,7 +864,7 @@ create or replace function public._dsp_cost(n int) returns int language sql immu
 declare lv int; begin begin select (_player_sync(p_uid)).level into lv; exception when others then lv := 1; end; return coalesce(lv, 1); end $$;$vr_statement$;
   execute $vr_statement$create or replace function public._dsp_owned(p_uid uuid) returns jsonb language sql stable security definer set search_path = public as $$
   select coalesce((select case when jsonb_typeof(data->'owned') = 'array' then data->'owned' end from story_progress where user_id = p_uid), '[]'::jsonb) $$;$vr_statement$;
-  execute $vr_statement$-- 게시판 채우기 (p_all: 전부 새로 / 아니면 아직 안 보낸 의뢰만). 가진 카드 중 최고 등급(UR까지)으로 갈 수 있는 곳만
+  execute $vr_statement$-- 게시판 채우기 (p_all: 전부 새로 / 아니면 아직 안 보낸 의뢰만). 보낸 의뢰(taken)는 지역을 바꾸지 않는다.
 create or replace function public._dsp_fill(p_uid uuid, p_all boolean) returns void language plpgsql security definer set search_path = public as $$
 declare best int; s int; z text; els text[] := array['WIND','FIRE','ICE','DARK','LIGHT']; cl text[] := array['CHARGE','CRUSH','DEFENSE','SUPPORT','DISTURB','FASCINATION'];
 begin
@@ -876,7 +876,8 @@ begin
     select id into z from dispatch_zones where grp = case when s <= 4 then 'exile' else 'safe' end and min_grade <= best
       order by -ln(greatest(random(), 1e-9)) / (1 + min_grade) limit 1;
     insert into dispatch_offers (user_id, slot, day, zone, el, cls, taken) values (p_uid, s, _dsp_day(), z, els[1 + floor(random() * 5)::int], cl[1 + floor(random() * 6)::int], false)
-      on conflict (user_id, slot) do update set day = excluded.day, zone = excluded.zone, el = excluded.el, cls = excluded.cls, taken = false;
+      on conflict (user_id, slot) do update set day = excluded.day, zone = excluded.zone, el = excluded.el, cls = excluded.cls, taken = false
+      where dispatch_offers.taken = false;
   end loop;
 end $$;$vr_statement$;
   execute $vr_statement$create or replace function public._dsp_json(p_uid uuid) returns jsonb language plpgsql security definer set search_path = public as $$
