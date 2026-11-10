@@ -149,6 +149,9 @@ test('field drag lands on the card under the pointer, including a move to the le
   assert.equal(h.fieldDropTo(row, 4, 250), 3);
   assert.equal(h.fieldDropTo(row, 4, 300, { left: 230, right: 294, width: 64 }), 3);
   assert.equal(h.fieldDropTo(row, 4, 330, { left: 270, right: 334, width: 64 }), 4);
+  const home = { left: 801, right: 892, width: 91 }, neighbor = { left: 698, right: 789, width: 91 };
+  const packed = [{ left: 388, right: 479, width: 91 }, { left: 491, right: 582, width: 91 }, { left: 594, right: 685, width: 91 }, neighbor, home];
+  assert.equal(h.fieldDropTo(packed, 4, 807, { left: 760, right: 857, width: 97, pointerY: 498 }), 3);
   assert.equal(h.fieldDropTo(row, 4, 32), 0);
 });
 test('dropping the rightmost tower card onto the card at its left logs one swap', () => {

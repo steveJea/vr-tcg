@@ -102,26 +102,28 @@ const CUT_QUICK = 600;
 // 자동 전투: 스토리·탑(S.story)에서만. 마지막에 고른 값을 다음 층·다시 도전 모두에 쓴다.
 const AUTO_STORE = 'vrTcgAuto';
 const AUTO_KEY = () => { const id = window.VRCloud?.user?.id; return id ? `vrTcgAuto:${id}` : 'vrTcgAuto:guest'; };
-let autoOn = false, autoPinned = false, autoRunning = false, autoGen = 0;
+let autoOn = false, autoRunning = false, autoGen = 0;
 function readAuto() {
-  for (const k of [AUTO_STORE, AUTO_KEY()]) {
-    let v = null; try { v = localStorage.getItem(k); } catch { v = null; }
-    if (v === '0' || v === '1') return v === '1';
-  }
+  try {
+    const saved = localStorage.getItem(AUTO_STORE);
+    if (saved === '0' || saved === '1') return saved === '1';
+    const legacy = localStorage.getItem(AUTO_KEY());
+    if (legacy === '0' || legacy === '1') { localStorage.setItem(AUTO_STORE, legacy); return legacy === '1'; }
+  } catch {}
   return false;
 }
 function writeAuto(on) {
   const v = on ? '1' : '0';
-  for (const k of [AUTO_STORE, AUTO_KEY()]) { try { localStorage.setItem(k, v); } catch {} }
+  for (const k of [AUTO_STORE, AUTO_KEY(), 'vrTcgAuto:guest']) { try { localStorage.setItem(k, v); } catch {} }
 }
 function applyAutoPref() {
   autoGen++; autoRunning = false;
-  if (!autoPinned) autoOn = readAuto();
+  autoOn = readAuto();
 }
 autoOn = readAuto();
 // 자동 전투 해금: 계정 레벨(플레이어 레벨, player_status.level) 5 이상
 const AUTO_LV = 5;
-const autoLocked = () => (window.VRPlayer?.now?.()?.level ?? 0) < AUTO_LV;
+const autoLocked = () => { const lv = window.VRPlayer?.now?.()?.level; return lv != null && lv < AUTO_LV; };
 // 튜토리얼이 AUTO를 잠갔던 전투(챕0-3 각성 등): 잠금이 풀려도 저장된 AUTO 설정으로 자동 전환하지 않음 — 직접 눌러야 켜짐
 const autoHeld = () => { if (S && TUT_LOCK('auto')) S.autoHold = true; return !!S?.autoHold; };
 const autoActive = () => !S?.awakenPause && autoOn && !autoLocked() && !!S?.story && !S.over && !S.view && !autoHeld();
@@ -131,7 +133,7 @@ function renderAutoBtn() {
   if (S?.view) { const on = S.view.auto; b.classList.toggle('on', on); b.classList.remove('locked'); b.title = '자동 전투'; b.setAttribute('aria-pressed', String(on)); b.textContent = on ? '⏸ AUTO' : '▶ AUTO'; return; }
   const lk = autoLocked(); b.classList.toggle('locked', lk); b.title = lk ? `자동 전투 · 계정 Lv${AUTO_LV}부터` : '자동 전투';
   const on = autoOn && !lk && !autoHeld(); b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); b.textContent = lk ? '🔒 AUTO' : on ? '⏸ AUTO' : '▶ AUTO';
-  if (lk && S?.story && !b.dataset.lvReq) { b.dataset.lvReq = '1'; window.VRPlayer?.status?.().then(() => { delete b.dataset.lvReq; if (!autoLocked()) { renderAutoBtn(); if (autoActive() && S.turn === 'me' && !S.busy) autoTurn(); } }); }
+  if (window.VRPlayer?.now?.()?.level == null && S?.story && !b.dataset.lvReq) { b.dataset.lvReq = '1'; window.VRPlayer?.status?.().then(() => { delete b.dataset.lvReq; renderAutoBtn(); if (autoActive() && S.turn === 'me' && !S.busy) autoTurn(); }); }
 }
 /** 조건 안내·스토리 대사 등 화면 위 창이 떠 있으면 자동 진행 대기 */
 const autoBlocked = () => [...document.querySelectorAll('#story-cond, #story-dlg, .story-pop')].some(e => e.getClientRects().length && getComputedStyle(e).visibility !== 'hidden');
@@ -2109,26 +2111,39 @@ function renderSortBar() {
 // ===== 필드 카드 드래그 앤 드롭 (내 턴만) =====
 let dragJustEnded = false;
 const DRAG_THRESHOLD = 8;
-/** Where a dragged field card lands. The card under the pointer wins. If the pointer is still over the old slot but the card body covers a neighbor, that neighbor wins. */
+/** Where a dragged field card lands. rects are the slots from before the card moved. The pointer wins when it is on another card; otherwise a card body that covers a neighbor wins, even while the cursor is still on the dragged card. */
 function fieldDropTo(rects, from, x, drag) {
   let hit = -1, best = Infinity;
   for (let i = 0; i < rects.length; i++) {
     if (i === from) continue;
     const r = rects[i];
-    if (x >= r.left && x <= r.right) {
-      const d = Math.abs(x - (r.left + r.width / 2));
-      if (d < best) { best = d; hit = i; }
-    }
+    if (x < r.left || x > r.right) continue;
+    if (r.top != null && drag?.pointerY != null && (drag.pointerY < r.top || drag.pointerY > r.bottom)) continue;
+    const d = Math.abs(x - (r.left + r.width / 2));
+    if (d < best) { best = d; hit = i; }
   }
   if (hit >= 0) return hit;
   if (drag && drag.width) {
     let over = -1, area = 0;
     for (let i = 0; i < rects.length; i++) {
       if (i === from) continue;
-      const r = rects[i], overlap = Math.max(0, Math.min(drag.right, r.right) - Math.max(drag.left, r.left));
+      const r = rects[i];
+      const overlap = Math.max(0, Math.min(drag.right, r.right) - Math.max(drag.left, r.left));
       if (overlap > area) { area = overlap; over = i; }
     }
-    if (over >= 0 && area >= drag.width * 0.34) return over;
+    const width = Math.min(drag.width, rects[over]?.width || drag.width);
+    if (over >= 0 && area >= width * 0.2) return over;
+    const home = rects[from];
+    if (home) {
+      const cx = drag.left + drag.width / 2;
+      let bestI = from, bestD = Math.abs(cx - (home.left + home.width / 2));
+      for (let i = 0; i < rects.length; i++) {
+        if (i === from) continue;
+        const d = Math.abs(cx - (rects[i].left + rects[i].width / 2));
+        if (d < bestD) { bestD = d; bestI = i; }
+      }
+      if (bestI !== from) return bestI;
+    }
   }
   let to = 0;
   for (let i = 0; i < rects.length; i++) {
@@ -2168,31 +2183,39 @@ function moveFieldCard(u, to) {
 }
 function enableDrag(el, u) {
   el.style.touchAction = 'none';
+  el.draggable = false;
+  el.querySelectorAll('img').forEach(img => { img.draggable = false; });
+  el.addEventListener('dragstart', e => e.preventDefault());
   el.addEventListener('pointerdown', e => {
     if (e.button > 0 || e.target.closest('.skill-btn')) return;
-    const sx = e.clientX, sy = e.clientY; let dragging = false;
+    e.preventDefault();
+    const slots = () => [...$('me-field').children].filter(c => c.dataset?.uid).map(c => {
+      const r = c.getBoundingClientRect();
+      return { left: r.left, right: r.right, top: r.top, bottom: r.bottom, width: r.width, uid: c.dataset.uid };
+    });
+    const sx = e.clientX, sy = e.clientY; let dragging = false, lastX = sx, lastY = sy, orig = slots();
     const move = ev => {
+      lastX = ev.clientX; lastY = ev.clientY;
       const dx = ev.clientX - sx, dy = ev.clientY - sy;
       if (!dragging && Math.hypot(dx, dy) < DRAG_THRESHOLD) return;
-      if (!dragging) { dragging = true; el.classList.add('dragging'); el.style.zIndex = 50; el.style.transition = 'none'; try { el.setPointerCapture(e.pointerId); } catch {} }
+      if (!dragging) { dragging = true; orig = slots(); el.classList.add('dragging'); el.style.zIndex = 50; el.style.transition = 'none'; try { el.setPointerCapture(ev.pointerId); } catch {} }
       ev.preventDefault();
-      el.style.transform = `translate(${dx}px, ${dy}px) scale(1.06)`;
+      const z = parseFloat(getComputedStyle(el).zoom);
+      const zoom = z > 0 ? z : 1;
+      el.style.transform = `translate(${dx / zoom}px, ${dy / zoom}px) scale(1.06)`;
     };
-    const up = ev => {
+    const up = () => {
       window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', up);
       if (!dragging) return;
       dragJustEnded = true; setTimeout(() => { dragJustEnded = false; }, 0);
-      if (ev.type !== 'pointercancel' && S.turn === 'me' && !S.busy && !S.over && S.me.field.includes(u)) {
-        const cards = [...$('me-field').children].filter(c => c.dataset?.uid);
-        const from = cards.indexOf(el);
-        el.style.pointerEvents = 'none';
-        const under = document.elementFromPoint(ev.clientX, ev.clientY)?.closest?.('[data-uid]');
-        el.style.pointerEvents = '';
-        const hit = under ? cards.indexOf(under) : -1;
-        const rects = cards.map(c => { const r = c.getBoundingClientRect(); return { left: r.left, right: r.right, width: r.width }; });
-        const to = hit >= 0 && hit !== from ? hit : fieldDropTo(rects, from < 0 ? cards.length : from, ev.clientX, from >= 0 ? rects[from] : null);
-        moveFieldCard(u, to);
+      if (S.turn === 'me' && !S.busy && !S.over && S.me.field.includes(u)) {
+        const from = Math.max(0, orig.findIndex(r => r.uid === el.dataset.uid));
+        const visual = el.getBoundingClientRect();
+        const drag = visual.width ? { left: visual.left, right: visual.right, width: visual.width, pointerY: lastY } : null;
+        moveFieldCard(u, fieldDropTo(orig, from, lastX, drag));
       }
+      el.style.transform = '';
+      el.classList.remove('dragging');
       render();
     };
     window.addEventListener('pointermove', move, { passive: false }); window.addEventListener('pointerup', up); window.addEventListener('pointercancel', up);
@@ -2453,7 +2476,7 @@ $('fx-skip').onclick = e => { e.stopPropagation(); if (TUT_LOCK('skip')) return;
 // 연출 중 화면을 누르면 현재 연출 빨리 감기
 $('game').addEventListener('click', e => { if (S?.view && e.target.closest('button')) return; if (S?.busy && !S.over) fastForward = true; }, true);   // 화면 전투: AUTO 등 버튼 탭은 빨리감기 아님
 renderSkipBtn();
-$('auto-btn').onclick = e => { e.stopPropagation(); if (TUT_LOCK('auto')) return; if (S?.view) { S.view.auto = !S.view.auto; renderAutoBtn(); if (S.view.auto) S.view.ask?.({ k: 'auto' }); return; } if (autoLocked()) return autoHint(); if (S?.awakenPresenting || S?.awakenAiPending) return; if (S?.autoHold) { S.awakenPause = false; S.autoHold = false; autoOn = true; } else autoOn = !autoOn; autoPinned = true; writeAuto(autoOn); renderAutoBtn(); if (autoActive() && S.turn === 'me' && !S.busy) autoTurn(); };
+$('auto-btn').onclick = e => { e.stopPropagation(); if (TUT_LOCK('auto')) return; if (S?.view) { S.view.auto = !S.view.auto; renderAutoBtn(); if (S.view.auto) S.view.ask?.({ k: 'auto' }); return; } if (autoLocked()) return autoHint(); if (S?.awakenPresenting || S?.awakenAiPending) return; if (S?.autoHold) { S.awakenPause = false; S.autoHold = false; autoOn = true; } else autoOn = !autoOn; writeAuto(autoOn); renderAutoBtn(); if (autoActive() && S.turn === 'me' && !S.busy) autoTurn(); };
 function autoHint() {
   document.getElementById('auto-hint')?.remove();
   const t = document.createElement('div'); t.id = 'auto-hint'; t.className = 'auto-hint'; t.textContent = `🔒 계정 Lv${AUTO_LV}부터 AUTO`;
