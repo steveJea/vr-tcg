@@ -655,11 +655,9 @@ span.story-lvpct { background: rgba(251,191,36,.12); border: 1px solid rgba(251,
 .gr-bn .story-badge{position:absolute;top:8px;right:8px;z-index:2}
 .gr-rates{position:absolute;right:6px;top:8px;z-index:3}
 
-/* 챕터 맵 배경 (img/story/ch_bg_<챕터id>.webp 1080×1920). 그림이 없으면 밤색 그라데이션 (검은 빈 화면 방지) */
+/* 챕터 맵 배경. 그림은 JS가 화면마다 한 장만 고른다 (PC ch_bg_pc_ / 모바일 ch_bg_). 없으면 밤색 그라데이션 */
 .story-map-bg{position:fixed;inset:0;z-index:0;pointer-events:none;background-color:#4a2414;background-image:radial-gradient(ellipse at 50% 18%,#8a4b28 0%,#4a2414 46%,#1a0c08 100%);background-size:cover;background-position:center top}
-.story-map-bg-pc{display:none}
-/* PC(가로 화면): img/story/ch_bg_pc_<챕터id>.webp 1920×1080 */
-@media (min-aspect-ratio:4/3) and (min-width:901px){.story-map-bg-m{display:none}.story-map-bg-pc{display:block;background-position:center}}
+.story-map-bg.pc{background-position:center}
 .story-map-bg::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.4),rgba(0,0,0,.18) 42%,rgba(0,0,0,.55))}
 .story-map-bg ~ :not(.story-map-bg){position:relative;z-index:1}
 /* 페이즈 팝업 */
