@@ -99,9 +99,26 @@ const FX_OFF = () => !!(window.TCG_FAST || skipFx || fastForward || SWEEPING());
 // 스킬 컷인 이미지는 '공격 연출 스킵'·탭 빨리감기 중에도 짧게(600ms) 보여 줌. 테스트·탑 소탕에서만 완전히 끔
 const CUT_OFF = () => !!(window.TCG_FAST || SWEEPING());
 const CUT_QUICK = 600;
-// 자동 전투: 스토리·탑(S.story)에서만. 사용자별 localStorage. 전투 중 언제든 끄면 다음 행동부터 수동
-const AUTO_KEY = () => `vrTcgAuto:${window.VRCloud?.user?.id || 'guest'}`;
-let autoOn = localStorage.getItem(AUTO_KEY()) === '1', autoRunning = false, autoGen = 0;
+// 자동 전투: 스토리·탑(S.story)에서만. 마지막에 고른 값을 다음 층·다시 도전 모두에 쓴다.
+const AUTO_STORE = 'vrTcgAuto';
+const AUTO_KEY = () => { const id = window.VRCloud?.user?.id; return id ? `vrTcgAuto:${id}` : 'vrTcgAuto:guest'; };
+let autoOn = false, autoPinned = false, autoRunning = false, autoGen = 0;
+function readAuto() {
+  for (const k of [AUTO_STORE, AUTO_KEY()]) {
+    let v = null; try { v = localStorage.getItem(k); } catch { v = null; }
+    if (v === '0' || v === '1') return v === '1';
+  }
+  return false;
+}
+function writeAuto(on) {
+  const v = on ? '1' : '0';
+  for (const k of [AUTO_STORE, AUTO_KEY()]) { try { localStorage.setItem(k, v); } catch {} }
+}
+function applyAutoPref() {
+  autoGen++; autoRunning = false;
+  if (!autoPinned) autoOn = readAuto();
+}
+autoOn = readAuto();
 // 자동 전투 해금: 계정 레벨(플레이어 레벨, player_status.level) 5 이상
 const AUTO_LV = 5;
 const autoLocked = () => (window.VRPlayer?.now?.()?.level ?? 0) < AUTO_LV;
@@ -186,7 +203,7 @@ async function startGame(story = null, at = null) {
   if (!story && !at && window.VRCloud?.user) { try { arcadeSession=await startArcadeVerified(ArcadeOpts.load()); } catch(e) { if (e?.code === 'account-changed') return; (window.VRGem?.toast || alert)(e.message); return; } }
   at = at && at.arcadeTut ? at : null; if (at) story = null; rngOn(!at);
   try { window.VRArcadeHub?.close?.(); } catch {}   // 아케이드 설정 [시작]으로 바로 시작하면 허브 창이 전투 위에 남아 있었음
-  autoGen++; autoRunning = false; autoOn = localStorage.getItem(AUTO_KEY()) === '1';
+  applyAutoPref();
   if (story && typeof story.then === 'function' || story instanceof Event) story = null;
   setSpare(story?.spare);   // 스토리 보호 규칙 (없으면 해제)
   const battleRng = story?.rng || (story?.seed ? rngOf(story.seed) : null);
@@ -2092,12 +2109,26 @@ function renderSortBar() {
 // ===== 필드 카드 드래그 앤 드롭 (내 턴만) =====
 let dragJustEnded = false;
 const DRAG_THRESHOLD = 8;
-/** Where a dragged field card lands. Over another card, that card's slot. In a gap, the slot the pointer has passed. */
-function fieldDropTo(rects, from, x) {
+/** Where a dragged field card lands. The card under the pointer wins. If the pointer is still over the old slot but the card body covers a neighbor, that neighbor wins. */
+function fieldDropTo(rects, from, x, drag) {
+  let hit = -1, best = Infinity;
   for (let i = 0; i < rects.length; i++) {
     if (i === from) continue;
     const r = rects[i];
-    if (x >= r.left && x <= r.right) return i;
+    if (x >= r.left && x <= r.right) {
+      const d = Math.abs(x - (r.left + r.width / 2));
+      if (d < best) { best = d; hit = i; }
+    }
+  }
+  if (hit >= 0) return hit;
+  if (drag && drag.width) {
+    let over = -1, area = 0;
+    for (let i = 0; i < rects.length; i++) {
+      if (i === from) continue;
+      const r = rects[i], overlap = Math.max(0, Math.min(drag.right, r.right) - Math.max(drag.left, r.left));
+      if (overlap > area) { area = overlap; over = i; }
+    }
+    if (over >= 0 && area >= drag.width * 0.34) return over;
   }
   let to = 0;
   for (let i = 0; i < rects.length; i++) {
@@ -2144,6 +2175,7 @@ function enableDrag(el, u) {
       const dx = ev.clientX - sx, dy = ev.clientY - sy;
       if (!dragging && Math.hypot(dx, dy) < DRAG_THRESHOLD) return;
       if (!dragging) { dragging = true; el.classList.add('dragging'); el.style.zIndex = 50; el.style.transition = 'none'; try { el.setPointerCapture(e.pointerId); } catch {} }
+      ev.preventDefault();
       el.style.transform = `translate(${dx}px, ${dy}px) scale(1.06)`;
     };
     const up = ev => {
@@ -2152,12 +2184,18 @@ function enableDrag(el, u) {
       dragJustEnded = true; setTimeout(() => { dragJustEnded = false; }, 0);
       if (ev.type !== 'pointercancel' && S.turn === 'me' && !S.busy && !S.over && S.me.field.includes(u)) {
         const cards = [...$('me-field').children].filter(c => c.dataset?.uid);
+        const from = cards.indexOf(el);
+        el.style.pointerEvents = 'none';
+        const under = document.elementFromPoint(ev.clientX, ev.clientY)?.closest?.('[data-uid]');
+        el.style.pointerEvents = '';
+        const hit = under ? cards.indexOf(under) : -1;
         const rects = cards.map(c => { const r = c.getBoundingClientRect(); return { left: r.left, right: r.right, width: r.width }; });
-        moveFieldCard(u, fieldDropTo(rects, Math.max(0, cards.indexOf(el)), ev.clientX));
+        const to = hit >= 0 && hit !== from ? hit : fieldDropTo(rects, from < 0 ? cards.length : from, ev.clientX, from >= 0 ? rects[from] : null);
+        moveFieldCard(u, to);
       }
       render();
     };
-    window.addEventListener('pointermove', move); window.addEventListener('pointerup', up); window.addEventListener('pointercancel', up);
+    window.addEventListener('pointermove', move, { passive: false }); window.addEventListener('pointerup', up); window.addEventListener('pointercancel', up);
   });
 }
 
@@ -2415,7 +2453,7 @@ $('fx-skip').onclick = e => { e.stopPropagation(); if (TUT_LOCK('skip')) return;
 // 연출 중 화면을 누르면 현재 연출 빨리 감기
 $('game').addEventListener('click', e => { if (S?.view && e.target.closest('button')) return; if (S?.busy && !S.over) fastForward = true; }, true);   // 화면 전투: AUTO 등 버튼 탭은 빨리감기 아님
 renderSkipBtn();
-$('auto-btn').onclick = e => { e.stopPropagation(); if (TUT_LOCK('auto')) return; if (S?.view) { S.view.auto = !S.view.auto; renderAutoBtn(); if (S.view.auto) S.view.ask?.({ k: 'auto' }); return; } if (autoLocked()) return autoHint(); if (S?.awakenPresenting || S?.awakenAiPending) return; if (S?.autoHold) { S.awakenPause = false; S.autoHold = false; autoOn = true; } else autoOn = !autoOn; localStorage.setItem(AUTO_KEY(), autoOn ? '1' : '0'); renderAutoBtn(); if (autoActive() && S.turn === 'me' && !S.busy) autoTurn(); };
+$('auto-btn').onclick = e => { e.stopPropagation(); if (TUT_LOCK('auto')) return; if (S?.view) { S.view.auto = !S.view.auto; renderAutoBtn(); if (S.view.auto) S.view.ask?.({ k: 'auto' }); return; } if (autoLocked()) return autoHint(); if (S?.awakenPresenting || S?.awakenAiPending) return; if (S?.autoHold) { S.awakenPause = false; S.autoHold = false; autoOn = true; } else autoOn = !autoOn; autoPinned = true; writeAuto(autoOn); renderAutoBtn(); if (autoActive() && S.turn === 'me' && !S.busy) autoTurn(); };
 function autoHint() {
   document.getElementById('auto-hint')?.remove();
   const t = document.createElement('div'); t.id = 'auto-hint'; t.className = 'auto-hint'; t.textContent = `🔒 계정 Lv${AUTO_LV}부터 AUTO`;
