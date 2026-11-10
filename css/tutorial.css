@@ -1,5 +1,6 @@
 /* 튜토리얼 가이드 (js/tutorial.js) — 보이기만, 탭 막기는 JS(capture) */
-.tut-ov{position:fixed;inset:0;z-index:9000;pointer-events:none}
+/* Above the character detail (#detail is 9660) so 유리의 특강 stays readable while that popup is open. Confirm (9700) and zoom (9680) stay above the guide. */
+.tut-ov{position:fixed;inset:0;z-index:9670;pointer-events:none}
 .tut-ov.dim.info{background:rgba(0,0,0,.62)}
 .tut-ov.info{pointer-events:auto}
 .tut-ov.info .tut-ring,.tut-ov.info .tut-hand{pointer-events:none}

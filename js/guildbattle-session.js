@@ -3,7 +3,7 @@ import { GUILDBATTLE_ENGINE_VERSION as version } from './guildbattle-engine-vers
 function cloud(owner) {
   const c = window.VRCloud;
   if (!c?.sb || !c.user) throw Error('login required');
-  if (owner && owner !== c.user.id) throw Error('로그인 계정이 바뀌었어요');
+  if (owner && owner !== c.user.id) throw Object.assign(Error('로그인 계정이 바뀌었어요'), { code: 'account-changed' });
   return c;
 }
 function store(kind, value, owner) {
@@ -51,7 +51,6 @@ export async function recoverVerified(kind) {
   if (p.phase === 'active') {
     const s = await verifyRpc({ op: 'status', id: p.session.id }, owner);
     if (s.status === 'settled') { store(kind, null, owner); return s.result; }
-    if (!await window.VRAsk?.('이전 전투를 포기하고 계속할까요?')) throw Error('이전 전투 확인 필요');
     cloud(owner);
     p = store(kind, { phase: 'finish', body: { op: 'forfeit', id: p.session.id } }, owner);
   }
@@ -65,6 +64,13 @@ export async function startVerified(kind, payload, control) {
   store(kind, { phase: 'start', body }, owner);
   const s = { ...await verifyRpc(body, owner), _owner: owner };
   store(kind, { phase: 'active', session: s }, owner); return s;
+}
+export async function forfeitVerified(kind, s) {
+  const owner = s._owner || cloud().user.id; cloud(owner);
+  const body = { op: 'forfeit', id: s.id };
+  store(kind, { phase: 'finish', body }, owner);
+  const r = await finishBody(body, owner);
+  store(kind, null, owner); return r.result;
 }
 export async function finishVerified(kind, s, actions) {
   const owner = s._owner || cloud().user.id; cloud(owner);
