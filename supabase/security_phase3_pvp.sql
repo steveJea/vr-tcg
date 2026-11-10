@@ -10,7 +10,7 @@ end $phase3_staging_guard$;
 
 create table if not exists public.pvp_policy_v3(
  singleton boolean primary key default true check(singleton), engine_hash text not null check(length(engine_hash)=64), enabled boolean not null default true);
-insert into public.pvp_policy_v3(singleton,engine_hash) values(true,'5a38b4b72651fcb8632fb1bfe14e1cd18a758d08249dbb18b0cfd223123c7a67')
+insert into public.pvp_policy_v3(singleton,engine_hash) values(true,'40bfb7c1e41f13f14b409aeb9142a57dd4ac2d73bdfca41ba431f3978afdbe2d')
  on conflict(singleton) do update set engine_hash=excluded.engine_hash;
 -- A clean, verified ladder. Legacy rows remain intact, NOT copied as proof.
 create table if not exists public.pvp_ratings_v3(

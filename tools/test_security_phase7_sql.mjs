@@ -12,13 +12,14 @@ import { clearBuff, refillMana, endTurnXp, makeUnit, resolveAttack, aiPickTarget
 import { createHandler } from '../supabase/functions/story-direct-verify-v7/handler.mjs';
 import { dashboardHandler } from './load_phase7_dashboard.mjs';
 
-assert.equal(SWEEP_HASH, '1dbdb45994799cdcf3db14bd6eb44689d35678a733774caffcfd9867df85685c');
-assert.equal(ARCADE_HASH, 'e792c491ffafe19d047aa6f58db1920e5767e4059e14816611dd38d473871161');
+assert.equal(SWEEP_HASH, 'e262b1b775c3e9d5c8faf5fc3103409ed20f7ed82ead9cd0c228e3160228c3f5');
+assert.equal(ARCADE_HASH, '0f427022636e17286bdaa61024e640aae28c6a15f3b0f1121fc8ad5d2f252de6');
 assert.notEqual(ENGINE_VERSION, SWEEP_HASH);
 
 assert.throws(() => verifySweep({ mode: 'tower_sweep', target: 'normal:10', seed: 3, snapshot: { cards: [{ id: '10111', uid: 'u1', level: 80 }] } }), /boss floor/);
 function bossCdFight(cd) {
-  const session = { mode: 'story', target: '10:17', seed: 8, snapshot: { mana: null, leader: null, cards: [{ id: '10311', uid: 'p', level: 1 }],
+  // 이지영(10311) Lv20: both cooldowns wipe the player, and bossCdMinus 2 ends that wipe sooner.
+  const session = { mode: 'story', target: '10:17', seed: 8, snapshot: { mana: null, leader: null, cards: [{ id: '10311', uid: 'p', level: 20 }],
     stage: { type: 'boss', bossId: '10051', bossCdMinus: cd, baseHp: 999999, enemies: { ids: ['10051'], levels: { '10051': 2 }, boost: { '10051': { ATK: 200 } } } } } };
   const log = [];
   for (let n = 0; n < 40; n++) {
