@@ -201,17 +201,44 @@
   // 챕터 2~: 고른 루트(byRoute, save.routes[챕터 id]) 대본을 덮어씀. 루트 주인공(hero)은 출전 카드 필수
   // 챕터 맵 배경 키: 시작 캐릭터별 대본(byStarter)이 있으면 ch_bg_<챕터id>_<캐릭터id>, 아니면 ch_bg_<챕터id>
   const bgKey = base => base.byStarter && save?.starter ? `${base.id}_${save.starter}` : String(base.id);
-  // 챕터 1 공용 ch_bg_1 / ch_bg_pc_1 은 파일이 없다. 시작 캐릭터 그림만 요청한다 (없는 공용 파일을 같이 넣으면 404).
+  // 챕터 1 공용 ch_bg_1 / ch_bg_pc_1 은 파일이 없다. 시작 캐릭터 그림만 고른다 (없는 공용 키는 요청하지 않는다).
   const BG_NO_GENERIC = new Set([1]);
-  const bgList = (prefix, base) => {
-    const key = bgKey(base), id = String(base.id);
-    const urls = [`url(img/story/${prefix}${esc(key)}.webp)`];
-    if (key !== id && !BG_NO_GENERIC.has(base.id | 0)) urls.push(`url(img/story/${prefix}${esc(id)}.webp)`);
-    return urls.join(',');
+  // img/story 에 있는 키만 요청한다. CSS url() 을 쉼표로 이어 붙이면 겹친 레이어라 두 장을 모두 받는다.
+  // 화면 종류에 맞는 파일 하나를 고르고, 없으면 다음 후보 한 장, 그것도 없으면 밤색 그라데이션(요청 없음).
+  const BG_M = new Set('0 1_10111 1_10224 1_10265 2 3 4 5 6 7 8 9 10 11 12 13 14 15'.split(' '));
+  const BG_PC = new Set('0 1_10111 1_10224 1_10265 2 3 4 5 6 7 8 9 10 11 12 13 14 15'.split(' '));
+  // 허브 큰 칸(PC 약 936×300)에서 16:9 배경의 얼굴이 잘리지 않게 맞춘 background-position.
+  // OpenCV YuNet 으로 ch_bg_pc_*.webp 의 얼굴을 잡아, 칸 높이의 약 38%에 오도록 계산했다.
+  // 정수리가 화면 위에 붙는 그림(4·9·12)은 0%라서 머리 위를 잘라 내지 않는다.
+  const BG_FOCUS = {
+    '0': '50% 44%', '1_10111': '50% 30%', '1_10224': '50% 12%', '1_10265': '50% 40%',
+    '2': '50% 18%', '3': '50% 33%', '4': '50% 0%', '5': '50% 21%', '6': '50% 40%', '7': '50% 39%',
+    '8': '50% 17%', '9': '50% 0%', '10': '50% 44%', '11': '50% 31%', '12': '50% 0%', '13': '50% 21%',
+    '14': '50% 30%', '15': '50% 30%',
   };
-  const bgUrl = base => bgList('ch_bg_', base);
-  // PC(가로 화면)용: img/story/ch_bg_pc_<키>.webp (1920×1080), 없으면 세로 그림
-  const bgPcUrl = base => [bgList('ch_bg_pc_', base), bgUrl(base)].filter(Boolean).join(',');
+  // css/story.css 에서 쓰던 PC 맵 조건과 같다 (가로 4:3 이상 · 너비 901px 이상).
+  const mapPc = () => matchMedia('(min-aspect-ratio: 4/3) and (min-width: 901px)').matches;
+  const bgKeysOf = base => {
+    const key = bgKey(base), id = String(base.id), keys = [key];
+    if (key !== id && !BG_NO_GENERIC.has(base.id | 0)) keys.push(id);
+    return keys;
+  };
+  const bgFile = (keys, set, prefix) => { const k = keys.find(x => set.has(x)); return k ? `img/story/${prefix}${k}.webp` : ''; };
+  // 없는 파일을 시험할 때만 테스트를 위해 갈아끼운다. 평소에는 위 목록.
+  const bgSets = () => window.__STORY_BG_FILES || { m: BG_M, pc: BG_PC };
+  // PC: 가로 그림 한 장. 그 파일이 없으면 세로 그림 한 장. 모바일: 세로 그림 한 장만.
+  const mapBgSrc = base => { const keys = bgKeysOf(base), sets = bgSets(); return mapPc() ? (bgFile(keys, sets.pc, 'ch_bg_pc_') || bgFile(keys, sets.m, 'ch_bg_')) : bgFile(keys, sets.m, 'ch_bg_'); };
+  const hubFocus = base => BG_FOCUS[bgKey(base)] || BG_FOCUS[String(base.id)] || '50% 30%';
+  // 허브에 보이는 지금 챕터와 이웃만. 16챕터를 한꺼번에 받지 않는다.
+  function preloadMapBgs(idxs) {
+    const seen = new Set();
+    for (const i of idxs) {
+      const base = D.chapters[i]; if (!base) continue;
+      const src = mapBgSrc(base); if (!src || seen.has(src)) continue;
+      seen.add(src);
+      const img = new Image(); img.decoding = 'async'; img.src = src;
+    }
+  }
   const routeOf = base => base.byRoute ? save?.routes?.[base.id] || null : null;
   function chapterFor(base) {
     const key = base.byStarter ? save?.starter : routeOf(base);
@@ -595,8 +622,8 @@
   }
   // PC(901px+)는 화면 폭에 맞춰 한 줄 칸 수를 늘림. 노드+연결선 ≈ 120px
   const mapCols = () => innerWidth < 901 ? 5 : Math.max(5, Math.floor((innerWidth - 80) / 120));
-  let mapColsNow = 0, mapRsT;
-  addEventListener('resize', () => { clearTimeout(mapRsT); mapRsT = setTimeout(() => { if (document.querySelector('.story-map-screen') && mapCols() !== mapColsNow) renderMap(); }, 200); });
+  let mapColsNow = 0, mapPcNow = false, mapRsT;
+  addEventListener('resize', () => { clearTimeout(mapRsT); mapRsT = setTimeout(() => { if (document.querySelector('.story-map-screen') && (mapCols() !== mapColsNow || mapPc() !== mapPcNow)) renderMap(); }, 200); });
   // 📮 우편 버튼 (가방과 분리) — 안 받은 우편 수 뱃지
   function mailBtn() {
     const ws = document.querySelectorAll('[data-mailbtn]'); if (!ws.length) return;   // 우편 유무와 상관없이 항상 표시 (메인 상단·허브·챕터 맵)
@@ -625,13 +652,14 @@
     const node = (p, i) => { const st = done.includes(p.no) ? 'done' : p.no === nextNo ? 'next' : 'lock', boss = p.type === 'boss';
       const dot = boss ? ic('crown', { alt: '보스', cls: 'story-node-ic' }) : st === 'done' ? '✔' : st === 'lock' ? '🔒' : p.no;
       return `${i ? `<div class="story-path ${st !== 'lock' ? 'on' : ''}"></div>` : ''}<span class="story-node-wrap"><button class="story-node ${st} ${p.type}" data-phase="${p.no}" ${st === 'lock' ? 'disabled' : ''} aria-label="Phase ${p.no}${boss ? ' 보스' : ''}${st === 'done' ? ' 다시 하기' : ''}"><span class="story-node-dot">${dot}${boss && st === 'done' ? '<i class="story-node-ok">✔</i>' : ''}</span><span class="story-node-label">${boss ? 'BOSS' : p.no}</span>${st === 'done' ? starHtml(starsOf(ch.id, p.no), 'node') : ''}</button></span>`; };
-    const per = mapColsNow = mapCols(); const rows = []; for (let k = 0; k < ch.phases.length; k += per) rows.push(ch.phases.slice(k, k + per));   // 모바일 5칸, PC는 화면 폭만큼
+    const per = mapColsNow = mapCols(); mapPcNow = mapPc(); const rows = []; for (let k = 0; k < ch.phases.length; k += per) rows.push(ch.phases.slice(k, k + per));   // 모바일 5칸, PC는 화면 폭만큼
     // 챕터 탭 대신 제목 옆 ‹ › : 방향으로 가장 가까운 열린 챕터로 이동, 없으면 흐리게
     const seekCh = d => { for (let i = curCh + d; i >= 0 && i < D.chapters.length; i += d) if (chapterOpen(i)) return i; return -1; };
     const prevI = seekCh(-1), nextI = seekCh(1);
     const arr = (i, cls, lbl, t) => `<button class="story-charr ${cls}" ${i >= 0 ? `data-ch="${i}"` : 'disabled'} aria-label="${lbl}">${t}</button>`;
     const nextCh = D.chapters[curCh + 1], nextOpen = nextCh && chapterOpen(curCh + 1);
-    show(`<div class="story-map-bg story-map-bg-m" aria-hidden="true" style="background-image:${bgUrl(base)}"></div><div class="story-map-bg story-map-bg-pc" aria-hidden="true" style="background-image:${bgPcUrl(base)}"></div>
+    const mapSrc = mapBgSrc(base);
+    show(`<div class="story-map-bg${mapPcNow ? ' pc' : ''}" aria-hidden="true"${mapSrc ? ` style="background-image:url(${mapSrc})"` : ''}></div>
       <div class="story-map-screen"><div class="story-map-top">${topBar('', 'hub')}<div class="story-map-status"><div class="story-player-row" data-vr-player></div><div class="story-starbox-wrap" data-starbox></div><span data-mailbtn></span></div></div>
       <div class="story-map-dock">
       <div class="text-center"><div class="story-chtitle">${arr(prevI, 'l', '이전 챕터', '‹')}<div class="story-chapter-big text-3xl md:text-5xl">${esc(ch.title)}</div>${arr(nextI, 'r', '다음 챕터', '›')}</div><div class="story-chapter-name">${esc(ch.subtitle)}</div>
@@ -739,8 +767,12 @@
     const open = chapterOpen(i), ch = chapterFor(base), n = clearedOf(ch).length, tot = ch.phases.length, done = open && n >= tot, cv = chCover(base);
     const why = open ? '' : (i && !chapterDone(D.chapters[i - 1]) ? '이전 챕터 클리어 후' : chLvLock(D.chapters[i]) ? `Lv ${chNeedLv(D.chapters[i])}` : '');
     const st = !open ? `🔒 ${why}` : done ? '✔ 클리어 · 다시 하기' : n ? `진행 중 ${n}/${tot}` : '새 챕터';
+    // PC 큰 칸은 챕터 가로 배경 한 장(얼굴 위치). 그 파일이 없을 때만 인재 초상화, 초상화도 없으면 오프닝 포스터. 모바일은 초상화를 유지한다. url 은 항상 하나.
+    const pcBanner = mapPc() ? bgFile(bgKeysOf(base), bgSets().pc, 'ch_bg_pc_') : '';
+    const id = coverId(cv);
+    const img = pcBanner ? `background-image:url(${pcBanner});background-position:${hubFocus(base)}` : `background-image:url(${id ? `${IMG}${id}.webp` : 'img/story/opening_poster.webp'})`;
     return `<button class="hub-ch-slot ${size} ${open ? '' : 'locked'} ${done ? 'done' : ''}" data-hubch="${i}" ${open ? '' : 'disabled'}>
-      <span class="hub-ch-img" style="background-image:${coverId(cv) ? `url(${IMG}${coverId(cv)}.webp),` : ''}url(img/story/opening_poster.webp)"></span>
+      <span class="hub-ch-img" style="${img}"></span>
       <span class="hub-ch-txt"><small>${esc(base.title)}</small><b>${esc(ch.subtitle || base.title)}</b><i>${st}</i></span>
       ${done && videoOf(base) ? `<span class="story-hub-vid" role="button" data-hubvid="${i}" title="엔딩 영상 다시 보기">🎬</span>` : ''}</button>`;
   }
@@ -771,6 +803,7 @@
     { const el = $('hub-ch'); let y0 = null; el.addEventListener('touchstart', e => { y0 = e.touches[0].clientY; }, { passive: true });
       el.addEventListener('touchend', e => { if (y0 == null) return; const dy = e.changedTouches[0].clientY - y0; y0 = null; if (Math.abs(dy) > 40) mv(dy < 0 ? -1 : 1); }); }
     bind(); playerPaint(); mailBtn();
+    preloadMapBgs([c - 1, c, c + 1]);   // 지금 칸과 이웃 챕터의 맵 배경만. 화면 종류(PC/모바일)에 맞는 한 장.
     if (tickets == null) syncTickets().then(r => { if (r.added) toast(`🎟️ 소환권 +${r.added} (챕터 클리어 보상)`); const el = root().querySelector('.story-hub-tk'); if (el) el.textContent = tickets ? `🎟️ ${tickets}` : ''; });
     root().querySelectorAll('[data-hubch]').forEach(b => b.onclick = () => renderMap(+b.dataset.hubch));
     root().querySelectorAll('[data-hubvid]').forEach(b => b.onclick = e => { e.stopPropagation(); endingVideo(D.chapters[+b.dataset.hubvid]); });
