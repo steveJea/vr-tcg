@@ -168,7 +168,7 @@
   const gearName = g => g?.sigil ? `임유리 증표 조각 ×${g.sigil.n}` : g?.gear_box ? `${['', '낡은', '일반', '고급', '희귀', '영웅'][g.gear_box.tier]} 장비 상자` : g?.dust ? `장비 가루 ×${g.dust}` : '';
   // ---- 인재 대여 (guild_lend.sql): 내 인재 3명 등록 · 조직원 인재 하루 1명 12시간 (원주인 레벨) · 스토리·시련의 탑에서만 ----
   const LERR = { 'already borrowed today': '오늘은 이미 빌렸어요 (내일 다시)', 'joined too recently': '조직에 들어온 지 24시간이 지나야 빌릴 수 있어요', 'level too low': '계정 Lv.10부터 빌릴 수 있어요', 'already own card': '이미 가진 인재는 빌릴 수 없어요', 'own card': '내 인재는 빌릴 수 없어요', 'not lendable': '지금은 빌릴 수 없는 인재예요', 'not guildmate': '같은 조직원만 빌릴 수 있어요', 'too many': '최대 3명까지 등록할 수 있어요', 'not owned': '내 인재만 등록할 수 있어요' };
-  const lerr = e => { const m = String(e?.message || e); const k = Object.keys(LERR).find(x => m.includes(x)); return k ? LERR[k] : /function|does not exist/.test(m) ? '🔒' : errText(e); };
+  const lerr = e => { const m = String(e?.message || e); const k = Object.keys(LERR).find(x => m.includes(x)); return k ? LERR[k] : /function|does not exist/.test(m) ? '🔒 대여' : errText(e); };
   const left = t => { const ms = Math.max(0, new Date(t) - Date.now()), m = Math.ceil(ms / 60000); return m >= 60 ? `${Math.floor(m / 60)}시간 ${m % 60}분` : `${m}분`; };
   const lcard = (id, lv, sub = '', attr = '', cls = '') => `<button class="gd-lc ${cls}" ${attr}><img src="${cardThumb(id)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'"><b>Lv.${lv | 0}</b>${sub ? `<small>${sub}</small>` : ''}</button>`;
   // 정렬 탭 (스토리 덱 고르기와 같은 탭 · 기본 레벨 높은 순 · 이 창에서만 기억)
@@ -189,7 +189,7 @@
     L.others.forEach((x, i) => { x._i = i; x.uid = x.uid || ''; });
     const drawO = () => { const g = m.querySelector('[data-og]'), y = g.scrollTop, T = window.VRStory?.sortTool;
       paintSort(m.querySelector('[data-sb]'), drawO);
-      g.innerHTML = L.others.length ? (T ? T.sort(L.others, lendSortSt) : L.others).map(x => lcard(x.id, x.level, esc(x.owner_name), `data-lb="${x._i}" ${L.loan || L.borrowed_today ? 'disabled' : ''}`)).join('') : '<div class="gd-lnote">아직 등록된 인재가 없어요</div>';
+      g.innerHTML = L.others.length ? (T ? T.sort(L.others, lendSortSt) : L.others).map(x => lcard(x.id, x.level, esc(x.owner_name), `data-lb="${x._i}" ${L.loan || L.borrowed_today ? 'disabled' : ''}`)).join('') : '<div class="gd-lnote">ℹ️ 등록 없음</div>';
       g.scrollTop = y; bindO(); };
     m.querySelector('[data-lset]').onclick = () => { if (!inGuild()) m.remove(); lendSetPop(L); };   // 페이지면 대여 위에 쌓음 (뒤로 = 대여)
     const bindO = () => m.querySelectorAll('[data-lb]').forEach(b => b.onclick = () => { const x = L.others[+b.dataset.lb];

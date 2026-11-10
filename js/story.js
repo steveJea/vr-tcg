@@ -629,7 +629,7 @@
       <div class="text-center"><div class="story-chtitle">${arr(prevI, 'l', '이전 챕터', '‹')}<div class="story-chapter-big text-3xl md:text-5xl">${esc(ch.title)}</div>${arr(nextI, 'r', '다음 챕터', '›')}</div><div class="story-chapter-name">${esc(ch.subtitle)}</div>
         ${hero && ch.route ? `<div class="story-route-tag">루트 <b>${esc(hero.name)}</b>${clearedOf(ch).length ? '' : ' <button class="story-mini" data-go="route">루트 바꾸기</button>'}</div>` : ''}</div>
       ${rows.map(r => `<div class="story-map ${rows.length > 1 ? 'story-map-row' : ''}">${r.map(node).join('')}</div>`).join('')}
-      ${!serverMode && !window.__STORY_MOCK_USER ? '<div class="text-[11px] text-amber-400 text-center">⚠️ 이 브라우저에만 저장돼요</div>' : ''}
+      ${!serverMode && !window.__STORY_MOCK_USER ? '<div class="text-[11px] text-amber-400 text-center">⚠️ 서버 저장 준비 중이라 이 브라우저에만 저장돼요</div>' : ''}
       ${nextNo ? '' : `<div class="story-clear">✔ CLEAR ${nextOpen ? `<button class="story-btn" data-ch="${curCh + 1}">${esc(nextCh.title)} →</button>` : '<small>🔒</small>'}</div>`}
       <div class="text-center mt-2 flex flex-wrap gap-2 justify-center">${chapterDone(base) && videoOf(base) ? `<button class="story-back story-vid-btn" data-go="endvideo" title="엔딩 영상 다시 보기">🎬 엔딩</button>` : ''}${chapterDone(base) ? `<button class="story-back story-replay-btn" data-go="replay" title="P1부터 마지막 페이즈까지 대사만 다시 보기 (전투 없음)">📖 스토리 다시보기</button>` : ''}${base.id <= 1 ? `<button class="story-back" data-go="opening" title="오프닝 다시 보기">${ic('opening', { alt: '' }) || '🎬'} 오프닝</button>` : ''}</div>
       </div></div>`);
@@ -960,8 +960,9 @@
     const fTile = o => { return `<div class="story-pick-card on locked" title="이번 페이즈 필수 출전">${pickTile(o).replace('</div><div class="story-pick-meta">', `</div><div class="story-pick-meta">${isGuest(o) ? '<span class="text-sky-300">게스트</span>' : ''}`)}<i class="story-pick-check">🔒</i></div>`; };
     const draw = () => {
       popPage('story-pick', '출전 고르기');
+      const pickNote = [opts?.note || '', !opts && isPool(ch, ph) ? `고른 인재 ${forced.length + slots}장이 손패가 돼요. 마나로 소환하고, 마나는 다시 차지 않아요. (필드 최대 5장 · 시작 마나 <b class="text-sky-300">${storyMana(ch, ph, deckInstances())}</b>)` : '', boss ? '👑 보스전: 보스는 진영 안에서 쓰러지지 않아요. 상대 진영 HP를 0으로!' : ''].filter(Boolean).join('<br>');
       const p = popup(`<div class="story-pop-title">출전 인재 선택 <span class="text-emerald-300">${forced.length + sel.length}/${forced.length + slots}</span></div>
-        <div class="text-xs text-zinc-400 mb-2">${opts?.note ? `${opts.note}<br>` : ''}${!opts && isPool(ch, ph) ? `고른 인재 ${forced.length + slots}장이 손패가 돼요. 마나로 소환하고, 마나는 다시 차지 않아요. (필드 최대 5장 · 시작 마나 <b class="text-sky-300">${storyMana(ch, ph, deckInstances())}</b>)` : ''}${boss ? '<br>👑 보스전: 보스는 진영 안에서 쓰러지지 않아요. 상대 진영 HP를 0으로!' : ''}</div>
+        ${pickNote ? `<div class="text-xs text-zinc-400 mb-2">${pickNote}</div>` : ''}
         ${forced.length ? `<div class="story-forced-h">${ic('crown', { alt: '' })} 필수 출전 ${forced.length}장 <small>(게스트는 정해진 레벨(없으면 리더 레벨)로 함께 싸우고, 전투 EXP는 받지 않아요)</small></div><div class="story-grid story-deckpick story-forced">${forced.map(fTile).join('')}</div>
           <div class="story-forced-h">나머지 ${slots}장 고르기${notes.map(t => ` · <span class="text-red-300">${t}</span>`).join('')}</div>` : ''}${ph.enemyFirst ? '<div class="story-hint">⚡ 이번 페이즈는 적이 먼저 공격해요</div>' : ''}
         ${decksOf().some(d => d?.uids?.length) ? `<div class="story-sortbar story-deckchips">${decksOf().map((d, i) => d?.uids?.length ? `<button class="story-chip" data-usedeck="${i}">🗂 ${esc(deckName(d, i))}</button>` : '').join('')}</div>` : ''}${sortBar()}<div class="story-sortbar story-pickf"><button class="story-chip ${pf.skill ? 'on' : ''}" data-pf="skill">✦ 스킬</button><button class="story-chip ${pf.rec ? 'on' : ''}" data-pf="rec" ${rec.size ? '' : 'disabled'}>추천 ${rec.size ? '' : '-'}</button><button class="story-chip" data-pickreset ${sel.length ? '' : 'disabled'}>↺ 리셋</button></div><div class="story-grid story-deckpick">${list.filter(o => sel.includes(o.uid) || pfOk(o)).map(o => { const on = sel.includes(o.uid);
@@ -1118,7 +1119,7 @@
   function playerPaint() { const P = window.VRPlayer; if (!P || !serverMode) return; P.paint(); P.status().then(() => P.paint()); }
   function staminaShort(s) {
     const P = window.VRPlayer;
-    toast(s?.next_regen_secs && P?.mmss ? `⏱ ${P.mmss(s.next_regen_secs)}` : '🔋');
+    toast(s?.next_regen_secs && P?.mmss ? `🔋 부족 · ⏱ ${P.mmss(s.next_regen_secs)}` : '🔋 부족');
     if (window.VRGem) window.VRGem.status().then(g => { const it = window.VRGem.item('stamina'); if (!g || !it || it.left === 0) return;   // 심연석으로 충전 (하루 5회, 100부터 +50)
       popup(`<div class="text-center"><div class="text-4xl mb-1">🔋</div><div class="text-lg font-black mb-3">행동력 충전</div><div class="gem-shop one">${window.VRGem.priceBtn('stamina')}</div><button data-close-pop class="w-full mt-3 py-2 rounded-xl bg-white/10">닫기</button></div>`);
       document.querySelectorAll('[data-gem-buy="stamina"]').forEach(b => b.onclick = async () => { b.disabled = true; const r = await window.VRGem.buy('stamina'); if (r) { toast(`🔋 행동력 ${r.stamina} · ${window.VRGem.ICON} −${r.price}`); document.querySelector('[data-close-pop]')?.click(); window.VRPlayer?.status(true).then(() => window.VRPlayer.paint()); } else b.disabled = false; }); });

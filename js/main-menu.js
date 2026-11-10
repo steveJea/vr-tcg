@@ -53,7 +53,7 @@
   document.querySelectorAll('#start-screen [data-auth]').forEach(b => b.addEventListener('click', async e => {
     if (user()) return;
     e.stopImmediatePropagation(); e.preventDefault();
-    if (await confirmYN('로그인하시겠어요?')) login();
+    if (await confirmYN('로그인할까요?')) login();
   }, true));
   // 로그아웃하면 인트로(로그인/게스트 선택)를 다시 보여 줌
   let hadUser = !!user();

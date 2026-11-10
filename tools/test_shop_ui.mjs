@@ -29,7 +29,7 @@ await new Promise(r=>setTimeout(r,0));
 const text=document.body.textContent;
 for(const name of ['충전','패키지','패스','소모품','스킨'])assert.match(text,new RegExp(name));
 document.querySelector('[data-tab="skin"]').click();
-assert.match(document.body.textContent,/🔒/);
+assert.match(document.body.textContent,/🔒 준비 중/);
 assert.doesNotMatch(document.body.textContent,/스킨 준비 중|Coming soon/);
 document.querySelector('[data-tab="charge"]').click();
 assert.match(document.body.textContent,/첫 구매 200/);

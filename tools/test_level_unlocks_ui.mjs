@@ -70,10 +70,14 @@ d.querySelector('.camp-grid [data-u="high"]').click();await new Promise(r=>setIm
 assert.equal(requests.find(x=>x.name==='camp_put').args.p_uid,'high');
 for(const[file,key]of [['js/quest.js','tower'],['js/pvp.js','pvp_hr'],['js/guild.js','guild'],['js/raid.js','raid'],['js/war.js','war'],['js/dispatch.js','dispatch'],['js/camp.js','camp'],['js/friends.js','friends'],['js/trade.js','trade'],['js/gear.js','gear'],['js/story.js','merge']])assert((await rd(file)).includes(`VRUnlocks.guard('${key}')`),file+' direct guard');
 // Facility UI is account-level based even when training-building level differs.
-const facilityState={level:19,camp_lv:10,forge_lv:5,dojo_lv:8,forge_account_level:20,dojo_account_level:20,dojo_slots:0,dojo_max:7,dojo_next_cost:1500,jobs:[],slots:[{slot:1,open:true,need_level:12,uid:null}],next:{lv:3,need_level:25,cost:{gold:20000}}};
+const facilityState={level:19,camp_lv:10,forge_lv:5,dojo_lv:8,forge_account_level:20,dojo_account_level:20,dojo_slots:0,dojo_max:7,dojo_next_cost:1500,jobs:[],slots:[{slot:1,open:true,need_level:12,uid:null},{slot:2,open:false,need_level:20,cost:{gold:20000}},{slot:3,open:false,need_level:35,cost:{gold:50000}},{slot:4,open:false,need_level:50,cost:{gem:300}},{slot:5,open:false,need_level:70,cost:{gem:800}}],next:{lv:3,need_level:25,cost:{gold:20000}}};
 w.VRCamp._set(facilityState,[]);w.VRCamp._draw();
+w.VRUnlocks.paint();
 assert.equal(d.querySelector('[data-forge]'),null);assert.equal(d.querySelector('[data-dojounlock]'),null);
-assert.equal(Array.from(d.querySelectorAll('#camp-box .camp-slot.locked button')).filter(b=>b.textContent==='Lv20').length,2);
+assert.equal(Array.from(d.querySelectorAll('#camp-box .camp-slot.locked button:not([data-unlock])')).filter(b=>b.textContent==='Lv20').length,2);
+assert.equal(d.querySelector('[data-unlock="2"]').textContent,'Lv20');
+assert.equal(d.querySelector('[data-unlock="5"]').textContent,'Lv70');
+assert.equal(d.body.textContent.includes('Infinity'),false,'camp slot numbers are not unlock keys');
 level=20;await U.refresh(true);facilityState.level=20;facilityState.camp_lv=1;w.VRCamp._set(facilityState,[]);w.VRCamp._draw();
 assert(d.querySelector('[data-forge]'),'forge opens at account20/camp1');assert(d.querySelector('[data-dojounlock]'),'dojo purchase is available at account20/camp1');
 assert.equal(d.querySelector('[data-lvup]').textContent,'Lv25','training building account lock is unchanged');

@@ -123,18 +123,21 @@
     await api.load(); await loadCfg();
     if (!api.ownedCount()) { api.popup(`<div class="text-lg font-black mb-2">🗼 시련의 탑</div><div class="text-sm text-zinc-300 mb-4">보유 인재가 없어요. 스토리 모드에서 먼저 인재를 골라 주세요.</div><button data-close-pop class="w-full py-2 rounded-xl bg-zinc-700">닫기</button>`); return; }
     try { status = await trpc('quest_status'); }
-    catch (e) { status = null; api.popup(`<div class="text-lg font-black mb-2">🗼 시련의 탑</div><div class="text-sm text-zinc-300 mb-4">${/quest_status|function/.test(e?.message || '') ? '🔒' : '진행 상황을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.'}</div><button data-close-pop class="w-full py-2 rounded-xl bg-zinc-700">닫기</button>`); return; }
+    catch (e) { status = null; api.popup(`<div class="text-lg font-black mb-2">🗼 시련의 탑</div><div class="text-sm text-zinc-300 mb-4">${/quest_status|function/.test(e?.message || '') ? '🔒 탑 준비 중' : '진행 상황을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.'}</div><button data-close-pop class="w-full py-2 rounded-xl bg-zinc-700">닫기</button>`); return; }
     enterPage();   // 실패하면 예전처럼 전체 화면
     if (legacy || !hub?.towers) { TOWER = 'normal'; sel = Math.min(best() + 1, maxF()); return render(); }
     renderHub();
   }
   /** 잠김 이유: 준비중 · 유저 레벨 · 요일 (KST). 없으면 null */
   function lockOf(t) {
-    const s = hub?.towers?.[t.id]; if (!s) return '\u200b';
+    const s = hub?.towers?.[t.id]; if (!s) return '준비중';
     const why = [];
-    if ((hub?.level || 1) < (window.VRUnlocks?.need(t.id === 'normal' ? 'tower' : 'tower_' + t.id) || s.min_level)) return `Lv${window.VRUnlocks?.need(t.id === 'normal' ? 'tower' : 'tower_' + t.id) || s.min_level}`;
+    // need() 가 표에 없으면 Infinity 를 돌려 준다. Infinity 는 참이라 || 가 min_level 로 안 떨어진다.
+    const req = window.VRUnlocks?.need?.(t.id === 'normal' ? 'tower' : 'tower_' + t.id);
+    const needLv = Number.isFinite(req) ? req : s.min_level;
+    if ((hub?.level || 1) < needLv) return `Lv${needLv}`;
     if (!s.open_today) why.push(`${(s.days || []).map(d => DOW[d]).join('·')} 오픈`);
-    if (!t.ready && !why.length) return '\u200b';
+    if (!t.ready) why.unshift('준비중');
     return why.length ? why.join(' · ') : null;
   }
   function renderHub() {
@@ -146,14 +149,14 @@
         <div class="th-info"><div class="th-name">${esc(t.name)}</div>
           <div class="th-meta"><span title="최고 층">🏔 ${s.best_floor | 0}층</span><span title="오늘 이긴 층 / 하루 제한">⏳ ${s.today | 0}/${s.daily | 0}</span></div></div></button>`; }).join('');
     api.show(`<div class="story-top"><button class="story-back" id="q-home">← 처음으로</button><div class="story-top-title">🗼 탑</div><span class="th-lv">Lv.${hub?.level | 0}</span></div>
-      <div class="th-grid">${cards}</div><div class="th-foot">⏱ ${(() => { const ms = 86400e3 - ((Date.now() + 9 * 3600e3) % 86400e3); const h = Math.floor(ms / 3600e3), m = Math.floor(ms % 3600e3 / 6e4); return h + ':' + String(m).padStart(2, '0'); })()}</div>`, 'tower');
+      <div class="th-grid">${cards}</div><div class="th-foot">⏱ 남은 시간 ${(() => { const ms = 86400e3 - ((Date.now() + 9 * 3600e3) % 86400e3); const h = Math.floor(ms / 3600e3), m = Math.floor(ms % 3600e3 / 6e4); return h + ':' + String(m).padStart(2, '0'); })()}</div>`, 'tower');
     $('q-home').onclick = goHome; view = 'hub';
     document.querySelectorAll('.th-card').forEach(b => b.onclick = () => enterTower(b.dataset.tower));
   }
   async function enterTower(id) {
     const api = A(), t = TOWERS.find(x => x.id === id), lock = t && lockOf(t);
     if (!t) return;
-    if (lock) { api.toast(lock === '\u200b' ? '🔒' : `${t.name}: ${lock}${/Lv\./.test(lock) ? ` (지금 Lv.${hub?.level | 0})` : ''}${/오픈/.test(lock) ? ' (한국 시간)' : ''}`); return; }
+    if (lock) { api.toast(/준비중/.test(lock) ? `${t.name}은(는) 준비 중이에요` : `${t.name}: ${lock}${/Lv\./.test(lock) ? ` (지금 Lv.${hub?.level | 0})` : ''}${/오픈/.test(lock) ? ' (한국 시간)' : ''}`); return; }
     TOWER = id; genCache.clear();
     status = { ...(hub.towers[id] || {}), level: hub.level };
     sel = Math.min(best() + 1, maxF()); render();
@@ -293,7 +296,7 @@
   async function runSweep(list) {
     const api = A();
     let st; try { st = M() ? await trpc('quest_sweep_start') : { from: best() + 1, last: Math.min(Math.ceil((best() + 1) / 10) * 10 - 1, maxF(), best() + Math.max(0, (status?.daily || 30) - (status?.today || 0))) }; if (st.from > st.last) throw new Error('boss floor or daily limit'); }
-    catch (e) { const m = String(e?.message || ''); api.toast(ERR(m) || (/boss floor/.test(m) ? '보스 층은 직접 도전해야 해요' : /function|quest_sweep/.test(m) ? '🔒' : `⚠️ 소탕 실패: ${m}`)); return render(); }
+    catch (e) { const m = String(e?.message || ''); api.toast(ERR(m) || (/boss floor/.test(m) ? '보스 층은 직접 도전해야 해요' : /function|quest_sweep/.test(m) ? '🔒 소탕' : `⚠️ 소탕 실패: ${m}`)); return render(); }
     let sim; try { sim = window.__QUEST_SIM || await import(new URL('js/quest-sim.js', document.baseURI).href); } catch (e) { api.toast('⚠️ 전투 엔진을 불러오지 못했어요'); return render(); }
     await api.gearReady?.();
     const me = api.battleCards(list), lead = api.leaderFor(me), from = st.from, lastF = Math.min(st.last, maxF());

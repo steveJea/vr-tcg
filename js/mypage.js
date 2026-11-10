@@ -108,7 +108,7 @@
       <div class="mp-pinfo"><div class="mp-pxp"><span>EXP</span><span>${p.xp_next ? `${p.xp.toLocaleString('ko-KR')} / ${p.xp_next.toLocaleString('ko-KR')}` : '최대 레벨'}</span></div><div class="mp-bar"><i style="width:${pct}%"></i></div>
       <div class="mp-pxp"><span>${window.VRIcon?.cur?.('stamina') || '🔋'}</span><span><b>${p.stamina}</b> / ${p.stamina_max}</span></div><div class="mp-bar st"><i style="width:${Math.min(100, Math.round(p.stamina / p.stamina_max * 100))}%"></i></div></div></div>`; } });
   addSection({ id: 'wallet', order: 20, render: ctx => `<div class="mp-wallet">${CURRENCIES.map(c => { const v = c.value(ctx);
-    return `<div class="mp-cur ${c.soon ? 'soon' : ''}" data-cur="${c.key}" title="${esc(c.label)}"><span class="mp-cur-ic">${window.VRIcon?.cur?.(c.key, { alt: c.label }) || c.icon}</span><b>${v == null ? (c.soon ? '🔒' : '-') : Number(v).toLocaleString('ko-KR')}</b></div>`; }).join('')}</div>` });
+    return `<div class="mp-cur ${c.soon ? 'soon' : ''}" data-cur="${c.key}" title="${esc(c.label)}"><span class="mp-cur-ic">${window.VRIcon?.cur?.(c.key, { alt: c.label }) || c.icon}</span><b>${v == null ? (c.soon ? '🔒 준비 중' : '-') : Number(v).toLocaleString('ko-KR')}</b></div>`; }).join('')}</div>` });
   // 조직 (guild.sql · js/guild.js): 엠블럼 · 이름 · 레벨 → 조직 화면
   addSection({ id: 'guild', order: 11, render: ctx => ctx.guild ? window.VRGuild?.myCard?.(ctx.guild) || '' : '' });
   // 심연석 (gem.sql · js/gem.js): 잔액 + 최근 20건

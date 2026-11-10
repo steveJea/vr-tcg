@@ -10,7 +10,7 @@
   const ERR = { 'not enough gem': '심연석이 부족해요', 'monthly limit': '이번 달 구매 횟수를 다 썼어요', 'rate limited': '잠시 후 다시 시도해 주세요', 'invalid item': '없는 상품이에요', 'login required': '로그인이 필요해요', 'shop unavailable': '이 서버에서는 상점을 열 수 없어요' };
   let tab = 'charge', cache = null, host = null;
   const toast = t => window.VRGem?.toast?.(t) || 0;
-  const errText = e => { const m = String(e?.message || e); const k = Object.keys(ERR).find(x => m.includes(x)); return k ? ERR[k] : (missing(e) ? '🔒' : m.slice(0, 80)); };
+  const errText = e => { const m = String(e?.message || e); const k = Object.keys(ERR).find(x => m.includes(x)); return k ? ERR[k] : (missing(e) ? '🔒 상점' : m.slice(0, 80)); };
   async function rpc(name, args) {
     const m = window.__SHOP_MOCK; if (m) return m(name, args);
     const c = window.VRCloud, sb = c?.sb; if (!sb || !c?.user) return null;
@@ -68,7 +68,7 @@
     if (!host) return;
     const list = (cache?.products || []).filter(p => p.tab === tab);
     const note = tab === 'pass' ? '<details class="vr-tip shop-note"><summary>ⓘ 재구매 시 +30일</summary><p>같은 패스를 다시 사면, 지금 패스가 끝난 다음 날부터 30일이 이어져요.</p></details>' : '';
-    const body = tab === 'skin' ? '<div class="shop-empty">🔒</div>'
+    const body = tab === 'skin' ? '<div class="shop-empty"><b>🔒 준비 중</b></div>'
       : !cache ? '<div class="shop-err">상점 정보를 불러오지 못했어요.</div>'
       : tab === 'consume' ? '<div data-consume></div>'
       : `${note}<div class="shop-grid">${list.map(card).join('') || '<div class="shop-empty">상품이 없어요.</div>'}</div>${tab === 'pass' ? passRows() : ''}`;

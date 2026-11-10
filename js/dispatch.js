@@ -122,11 +122,11 @@
   async function open() {
     if (window.VRUnlocks && !window.VRUnlocks.guard('dispatch')) return;
     const box = shell('🧭 파견'); box.querySelector('.dbody').innerHTML = '<div class="dsp-empty">불러오는 중...</div>';
-    try { await load(); } catch (e) { box.querySelector('.dbody').innerHTML = `<div class="dsp-empty">${off ? '🔒' : esc(errText(e))}</div>`; return; }
+    try { await load(); } catch (e) { box.querySelector('.dbody').innerHTML = `<div class="dsp-empty">${off ? '🔒 파견' : esc(errText(e))}</div>`; return; }
     draw();
   }
   function draw() {
-    const box = shell('🧭 파견', `오늘 ${st.starts}/${st.cap}회 · 슬롯 ${st.runs.length}/${st.slots} · ⏱ ${(() => { const ms = 86400e3 - ((Date.now() + 9 * 3600e3) % 86400e3); const h = Math.floor(ms / 3600e3), m = Math.floor(ms % 3600e3 / 6e4); return h + ':' + String(m).padStart(2, '0'); })()}`);
+    const box = shell('🧭 파견', `오늘 ${st.starts}/${st.cap}회 · 슬롯 ${st.runs.length}/${st.slots} · ⏱ 남은 시간 ${(() => { const ms = 86400e3 - ((Date.now() + 9 * 3600e3) % 86400e3); const h = Math.floor(ms / 3600e3), m = Math.floor(ms % 3600e3 / 6e4); return h + ':' + String(m).padStart(2, '0'); })()}`);
     const free = Math.max(0, st.free - st.refreshes), done = st.runs.filter(r => r.done).length;
     box.querySelector('.dbody').innerHTML = `<h4>진행 중 (${st.runs.length}/${st.slots})</h4>${st.runs.map(runHTML).join('') || '<div class="dsp-empty">보낸 파견이 없어요</div>'}
       <h4>오늘의 의뢰</h4><div class="dsp-h">${HOURS.map(h => `<button data-h="${h}" class="${h === hours ? 'on' : ''}">${h}시간</button>`).join('')}</div><div style="height:6px"></div>

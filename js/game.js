@@ -321,7 +321,7 @@ function startTurn(who) {
   const bonus = refillMana(p);
   { const b = who === 'me' && +(S.at?.bonus?.[S.myTurns] || 0); if (b) { p.mana += b; log(`📖 특강 보너스 마나 +${b}`, 'text-sky-300'); } }
   if (bonus) { log(`${p.name}: 처치 보너스 마나 +${bonus}`, 'text-sky-300'); if (who === 'me') floatText(`${ic('mana')} +${bonus}`, 'text-sky-300', 'me', true); }
-  if (S.story) { /* 스토리: 드로우 없음 */ } else if (p.deck.length) p.hand.push(p.deck.shift()); else log(`${p.name}: 덱이 비어 드로우를 건너뜁니다.`, 'text-zinc-500');
+  if (S.story) { /* 스토리: 드로우 없음 */ } else if (p.deck.length) p.hand.push(p.deck.shift()); else log(`${p.name}: 덱이 비어 드로우를 건너뛰어요.`, 'text-zinc-500');
   p.field.forEach(u => u.canAttack = true);
   turnStart(p);                           // 쿨타임·MP 회복, 턴 시작 패시브, 마비/혼란/교란 처리
   render();
@@ -1735,7 +1735,7 @@ async function aiTurn() {
     await vidWait();
     if (S.over || S.awakenPause) break;
     if (!ai.field.includes(u) || !u.canAttack) continue;
-    if (spareBlocked(u)) { u.canAttack = false; log(`${u.card.name}: 공격할 대상이 없어 턴을 넘깁니다`, 'text-zinc-400'); floatText(`${u.card.name} 행동 안 함`, 'text-zinc-300 text-sm', 'ai'); await sleep(AI_DELAY()); continue; }
+    if (spareBlocked(u)) { u.canAttack = false; log(`${u.card.name}: 공격할 대상이 없어 턴을 넘겨요`, 'text-zinc-400'); floatText(`${u.card.name} 행동 안 함`, 'text-zinc-300 text-sm', 'ai'); await sleep(AI_DELAY()); continue; }
     const sk = S.at && !S.at.aiSkills ? null : aiPickSkill(u);
     if (sk) { await castSkill('ai', u, sk); await sleep(AI_DELAY()); continue; }
     const best = aiPickTarget(u, ai, me);
