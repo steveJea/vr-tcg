@@ -178,6 +178,34 @@ for (const pc of [true, false]) {
     await fileOk(expect);
   }
 }
+// 마이페이지 진행 챕터는 PC·모바일 모두 가로 배경 한 장 (16:7 칸). 허브 모바일은 세로 배경을 유지한다.
+vm.runInContext(await read('js/mypage.js'), ctx);
+const record = window.VRMyPage._test.sections.find(s => s.id === 'record');
+const poster = 'https://raw.githubusercontent.com/steveJea/vr-ideal-worldcup/main/img/bt_img/10491.webp';
+for (const starter of ['10111', '10224', '10265']) {
+  for (let id = 0; id <= 15; id++) {
+    if (id !== 1 && starter !== '10111') continue;
+    const key = id === 1 ? `1_${starter}` : String(id);
+    const art = window.VRStory.chapterArt({ bg: key, id, cover: id === 11 ? poster : '', order: ['pc', 'm'] });
+    assert.equal(art.src, `img/story/ch_bg_pc_${key}.webp`, `mypage ch ${id} ${starter}`);
+    assert.equal(String(art.src).includes(','), false);
+    assert.match(art.pos, /^\d+% \d+%$/);
+    await fileOk(art.src);
+    const html = record.render({ story: { current: { i: id, id, bg: key, title: `CHAPTER ${id}`, subtitle: '서브', phase: 3, boss: false, done: 1, total: 5, cover: id === 11 ? poster : null }, chapters: [], owned: [], decks: [] }, arcade: null, gallery: null, questBest: null });
+    const bg = html.match(/class="mp-story-bg" style="([^"]*)"/);
+    assert.ok(bg, html.slice(0, 200));
+    assert.deepEqual(urls(bg[1]), [art.src]);
+    assert.equal(bg[1].includes(`background-position:${art.pos}`), true);
+    assert.equal(bg[1].includes(','), false);
+    assert.equal(bg[1].includes('10491'), false);
+  }
+}
+window.__STORY_BG_FILES = { m: new Set(['7']), pc: new Set() };
+assert.equal(window.VRStory.chapterArt({ bg: '7', id: 7, cover: poster, order: ['pc', 'm'] }).src, 'img/story/ch_bg_7.webp');
+window.__STORY_BG_FILES = { m: new Set(), pc: new Set() };
+assert.equal(window.VRStory.chapterArt({ bg: '11', id: 11, cover: poster, order: ['pc', 'm'] }).src, poster);
+assert.equal(window.VRStory.chapterArt({ bg: '11', id: 11, cover: '', order: ['pc', 'm'] }).src, 'img/story/opening_poster.webp');
+delete window.__STORY_BG_FILES;
 console.log('story map bg: one url per viewport, every chapter 0-15 has a real image on PC and mobile OK');
 
 if (process.env.SKIP_CHROME === '1') process.exit(0);
