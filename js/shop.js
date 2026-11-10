@@ -24,12 +24,18 @@
     const base = free ? `유료 ${n(paid)} + 보너스 ${n(free)}` : `심연석 ${n(total)}`;
     return p.first_open ? `${base} · 첫 구매 ${n(total * 2)}` : base;
   }
+  // 표시 문구만. 지급 내용(grant)은 서버 그대로.
+  const PASS_BLURB = {
+    pass_2: '즉시 소환권 10 + 매일 소환권 1 (30일 총 40) · 매일 행동력 150, 골드 10,000, 무료 심연석 50',
+    pass_3: '즉시 소환권 30 + 유료 심연석 300 · 매일 소환권 1 (30일 총 60) · 매일 무료 심연석 100, 행동력 200, 골드·피·조각 10,000',
+  };
   function card(p) {
     const used = p.month_used | 0, max = p.month_max, left = max == null ? null : Math.max(0, max - used);
     const limit = max == null ? '' : `<p>이번 달 ${used}/${max}</p>`;
     const payOn = !!(window.VRPayments?.enabled && p.tab === 'charge' && p.payment_sku);
     const label = left === 0 ? '이번 달 완료' : (payOn ? `${n(p.price_krw)}원 결제` : `${n(p.price_krw)}원 테스트 지급`);
-    return `<article class="shop-card"><b>${esc(p.name)}</b><p>${esc(p.blurb || '')}</p><p class="shop-price">${n(p.price_krw)}원</p>${p.tab === 'charge' ? `<p class="shop-bonus">${esc(gemText(p))}</p>` : ''}${limit}<button type="button" class="shop-go ${payOn ? '' : 'test'}" data-sku="${esc(p.sku)}" ${left === 0 ? 'disabled' : ''}>${label}</button></article>`;
+    const blurb = PASS_BLURB[p.sku] || p.blurb || '';
+    return `<article class="shop-card"><b>${esc(p.name)}</b><p>${esc(blurb)}</p><p class="shop-price">${n(p.price_krw)}원</p>${p.tab === 'charge' ? `<p class="shop-bonus">${esc(gemText(p))}</p>` : ''}${limit}<button type="button" class="shop-go ${payOn ? '' : 'test'}" data-sku="${esc(p.sku)}" ${left === 0 ? 'disabled' : ''}>${label}</button></article>`;
   }
   function passRows() {
     const rows = cache?.passes || [];
@@ -72,10 +78,9 @@
   async function paintConsume(box) {
     if (!box) return;
     await Promise.all([window.VRGem?.status?.(true), window.VRDrink?.status?.()].map(p => Promise.resolve(p).catch(() => null)));
-    const util = ['stamina', 'gold10k', 'ticket'].map(k => window.VRGem?.priceBtn?.(k) || '').join('');
-    box.innerHTML = `<p class="shop-note">체력의 드링크는 심연석으로 사요. 무료 심연석을 먼저 쓰고, 모자라면 유료를 씁니다. 행동력 최대 충전과는 다른 상품이에요.</p>${window.VRDrink?.html?.() || ''}<h3 class="shop-sub">심연석으로 사는 것</h3><div class="shop-util">${util || '<p class="shop-note">심연석 상점 준비 중</p>'}</div>`;
+    // 소모품 탭은 드링크만. 행동력 충전·골드·소환권(gem shop)은 이 페이지 라인업이 아니라 각자 화면에서 산다.
+    box.innerHTML = `<p class="shop-note">체력의 드링크는 심연석으로 사요. 무료 심연석을 먼저 쓰고, 모자라면 유료를 씁니다. 행동력 최대 충전과는 다른 상품이에요.</p>${window.VRDrink?.html?.() || ''}`;
     window.VRDrink?.bind?.(box, () => paintConsume(box));
-    box.querySelectorAll('[data-gem-buy]').forEach(b => b.onclick = async () => { b.disabled = true; const r = await window.VRGem.buy(b.dataset.gemBuy); if (r) toast('구매했어요'); if (box.isConnected) paintConsume(box); });
   }
   function draw(body) { host = body; host.innerHTML = '<div class="shop"><div class="shop-note">불러오는 중…</div></div>'; refresh(true).then(() => { if (host === body) paint(); }); }
   function open() {

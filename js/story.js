@@ -406,6 +406,7 @@
     if (ch0Pending()) { autoCh0(); return 'gate'; }
     if (pullPending()) { forcedPull(); return 'gate'; }   // 챕터 0 클리어 후 강제 10회 프리미엄 영입 (끝낼 때까지 매번)   // 챕터 0 미클리어(새·기존 사용자 모두): 목록 대신 바로 시작 (클리어 기록 = 서버 진행, 비로그인 모의는 localStorage)
     if (!save.starter) { renderSelect(); return 'gate'; }
+    if (mode === 'quiet') return;   // 소환 등 목적 화면만 열 때 허브를 먼저 그리지 않음 (PvP→소환에 스토리 허브가 잠깐 비치던 것)
     renderHub();
     if (mode === 'go' && nextPlay()) goContinue();
     // 스탯 규칙 변경 안내 (한 번만)
@@ -1624,7 +1625,7 @@
     save.owned.forEach(norm);
     const ds = decksOf(), slot = i => { const d = ds[i], list = (d?.uids || []).map(byUid).filter(Boolean);
       return `<button class="story-deck-slot ${list.length ? '' : 'empty'}" data-deck="${i}"><div class="story-deck-h"><b>${esc(deckName(d, i))}</b><small>${list.length}/${DECK_CARDS}</small></div>
-        <div class="story-deck-row">${list.length ? list.map(o => { const c = shown(o); return c ? `<span class="story-deck-th ${rcls(c)}"><img src="${cardThumb(c.id)}" alt="${esc(c.name)}" loading="lazy" onerror="this.style.visibility='hidden'"><i>Lv.${o.level}</i></span>` : ''; }).join('') : '<span class="story-deck-plus">＋</span>'}</div></button>`; };
+        <div class="story-deck-row">${list.length ? list.map(o => { const c = shown(o); return c ? `<span class="story-deck-th ${rcls(c)}"><img src="${cardThumb(c.id)}" alt="${esc(c.name)}" loading="lazy" onerror="this.style.visibility='hidden'">${isLeader(o) ? `<span class="story-deck-crown" title="리더">${ic('crown', { alt: '리더' })}</span>` : ''}<i>Lv.${o.level}</i></span>` : ''; }).join('') : '<span class="story-deck-plus">＋</span>'}</div></button>`; };
     show(`${topBar('🗂 마이 덱', 'cards')}<div class="story-cards-meta">${ds.filter(d => d?.uids?.length).length}/${DECK_MAX} · 🔒 자동 잠금</div>
       <div class="story-decks">${Array.from({ length: DECK_MAX }, (_, i) => slot(i)).join('')}</div>`);
     bind({ cards: () => renderCards() });
@@ -2131,7 +2132,7 @@
     /** 마지막으로 고른 출전 카드 (없으면 빈 배열). 보유 카드가 출전 수 이하면 전부 */
     lastDeck: (mode = 'tower') => { const all = deckInstances(); if (all.length <= MAX_PICK()) return all; let last = []; try { last = JSON.parse(pickKeyRead(mode) || '[]'); } catch {} const by = new Map(all.map(o => [o.uid, o])); return last.map(u => by.get(u)).filter(Boolean).slice(0, MAX_PICK()); },
   };
-  const openPage = async fn => { if ((await enter()) === 'gate') return; if (save?.starter) fn(); };   // 오프닝·챕터 0·강제 영입·캐릭터 고르기 중이면 그 화면 유지 (위에 다른 화면 덮지 않음)
+  const openPage = async (fn, quiet) => { if ((await enter(quiet ? 'quiet' : undefined)) === 'gate') return; if (save?.starter) fn(); };   // 오프닝·챕터 0·강제 영입·캐릭터 고르기 중이면 그 화면 유지 (위에 다른 화면 덮지 않음)
   // 보유 인재·덱은 챕터 0 이어하기(autoCh0)를 타면 안 됨. enter()는 ch0이 안 끝났으면 사냥 같은 다음 페이즈를 바로 연다.
   async function openRoster(fn) {
     if (!user()) {
@@ -2154,5 +2155,5 @@
     sort: (list, st) => { const k0 = cardSort; cardSort = st; try { return sortInst(list); } finally { cardSort = k0; } },
     next: (st, k) => st.k === k ? { k, desc: !st.desc } : { k, desc: true },
   };
-  window.VRStory = { hubSections: HUB_SECTIONS, play: () => enter('go'), canDraw: () => canDraw(), trainCard, canMergeUid, sortTool, skBadge, lendCards, reloadLend: () => loadLend(true), partyOf, pickDeck, openMap: i => openPage(() => renderMap(i)), openCards: () => openRoster(renderCards), openDecks: () => openRoster(renderDecks), openShop: () => openPage(renderShop), api, bgm, BGM, endingVideo, videoOf, conditionsOf, battleRules, summary, enter, openGacha, renderHub, renderShop, drawOnce, kstDay, get save() { return save; }, renderMap, renderCards, openStats, renderSelect, playLines };
+  window.VRStory = { hubSections: HUB_SECTIONS, play: () => enter('go'), canDraw: () => canDraw(), trainCard, canMergeUid, sortTool, skBadge, lendCards, reloadLend: () => loadLend(true), partyOf, pickDeck, openMap: i => openPage(() => renderMap(i)), openCards: () => openRoster(renderCards), openDecks: () => openRoster(renderDecks), openShop: () => openPage(renderShop, true), api, bgm, BGM, endingVideo, videoOf, conditionsOf, battleRules, summary, enter, openGacha, renderHub, renderShop, drawOnce, kstDay, get save() { return save; }, renderMap, renderCards, openStats, renderSelect, playLines };
 })();
