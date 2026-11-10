@@ -122,7 +122,7 @@
     const chs = s?.chapters || [], done = chs.reduce((x, c) => x + c.done, 0), tot = chs.reduce((x, c) => x + c.total, 0);
     const games = a ? a.wins + a.losses + a.draws : 0;
     return `<div class="mp-rec">
-      ${s?.current ? (() => { const c = s.current; const bg = c.bg || c.id; const generic = String(bg) !== String(c.id) && String(c.id) !== '1' ? `url(img/story/ch_bg_${esc(c.id)}.webp),` : ''; return `<button type="button" class="mp-story" data-nav="story" data-ch="${c.i}" aria-label="스토리 맵"><span class="mp-story-bg" style="background-image:url(img/story/ch_bg_${esc(bg)}.webp),${generic}${c.cover && !/\/NORMAL\.webp$/.test(c.cover) ? `url(${esc(c.cover)}),` : ''}url(img/story/opening_poster.webp)"></span>
+      ${s?.current ? (() => { const c = s.current; const art = window.VRStory?.chapterArt?.({ bg: c.bg || c.id, id: c.id, cover: c.cover, order: ['pc', 'm'] }) || { src: 'img/story/opening_poster.webp', pos: '' }; return `<button type="button" class="mp-story" data-nav="story" data-ch="${c.i}" aria-label="스토리 맵"><span class="mp-story-bg" style="background-image:url(${esc(art.src)})${art.pos ? `;background-position:${esc(art.pos)}` : ''}"></span>
         <span class="mp-story-t"><small>${esc(c.title)}</small><b>${esc(c.subtitle)}</b><i>${c.phase ? `Phase.${c.phase}${c.boss ? ' · BOSS' : ''}` : `✔ ${c.done}/${c.total}`}</i></span></button>`; })() : ''}
       <div class="mp-stat"><span>아케이드 · 검증 전적</span><b>${a ? `${a.wins}승 ${a.losses}패${a.draws ? ` ${a.draws}무` : ''}` : '-'}</b><small>${a && games ? `승률 ${pct(a.wins, games)}%` : '기록 없음'}</small></div>
       <div class="mp-stat"><span>시련의 탑</span><b>${ctx.questBest != null ? `${ctx.questBest}층` : '-'}</b><small>최고 기록</small></div>

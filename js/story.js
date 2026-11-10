@@ -235,8 +235,21 @@
   const bgSets = () => window.__STORY_BG_FILES || { m: BG_M, pc: BG_PC };
   // PC: 가로 그림 한 장. 그 파일이 없으면 세로 그림 한 장. 모바일: 세로 그림 한 장만.
   const mapBgSrc = base => { const keys = bgKeysOf(base), sets = bgSets(); return mapPc() ? (bgFile(keys, sets.pc, 'ch_bg_pc_') || bgFile(keys, sets.m, 'ch_bg_')) : bgFile(keys, sets.m, 'ch_bg_'); };
-  const hubFocus = base => BG_FOCUS[bgKey(base)] || BG_FOCUS[String(base.id)] || '50% 30%';
-  const hubFocusM = base => BG_FOCUS_M[bgKey(base)] || BG_FOCUS_M[String(base.id)] || '50% 30%';
+  /** 챕터 그림 한 장. order 가 고르는 순서 (pc = 가로 ch_bg_pc_, m = 세로 ch_bg_). 없으면 초상화, 그것도 없으면 오프닝 포스터.
+   *  허브: PC 는 ['pc'], 모바일은 ['m','pc']. 마이페이지 진행 챕터는 가로가 맞아 ['pc','m'] (세로 그림은 그 칸에서 어색하다). */
+  function chapterArt({ bg, id, cover, order = ['pc', 'm'] } = {}) {
+    const key = String(bg ?? id ?? ''), cid = String(id ?? '');
+    const keys = [key];
+    if (key && cid && key !== cid && !BG_NO_GENERIC.has(cid | 0)) keys.push(cid);
+    const sets = bgSets();
+    const at = (table) => table[key] || table[cid] || '50% 30%';
+    for (const kind of order) {
+      if (kind === 'pc') { const src = bgFile(keys, sets.pc, 'ch_bg_pc_'); if (src) return { src, pos: at(BG_FOCUS) }; }
+      else if (kind === 'm') { const src = bgFile(keys, sets.m, 'ch_bg_'); if (src) return { src, pos: at(BG_FOCUS_M) }; }
+    }
+    const portrait = cover && !/\/NORMAL\.webp$/.test(String(cover)) ? String(cover) : 'img/story/opening_poster.webp';
+    return { src: portrait, pos: '' };
+  }
   // 허브에 보이는 지금 챕터와 이웃만. 16챕터를 한꺼번에 받지 않는다.
   function preloadMapBgs(idxs) {
     const seen = new Set();
@@ -775,17 +788,10 @@
     const open = chapterOpen(i), ch = chapterFor(base), n = clearedOf(ch).length, tot = ch.phases.length, done = open && n >= tot, cv = chCover(base);
     const why = open ? '' : (i && !chapterDone(D.chapters[i - 1]) ? '이전 챕터 클리어 후' : chLvLock(D.chapters[i]) ? `Lv ${chNeedLv(D.chapters[i])}` : '');
     const st = !open ? `🔒 ${why}` : done ? '✔ 클리어 · 다시 하기' : n ? `진행 중 ${n}/${tot}` : '새 챕터';
-    // 슬롯마다 그림 한 장. PC 는 가로 배경, 모바일은 세로 배경(없으면 가로 배경). 둘 다 없을 때만 인재 초상화, 초상화 id 도 없으면 오프닝 포스터.
-    const keys = bgKeysOf(base), sets = bgSets(), id = coverId(cv);
-    const portrait = id ? `${IMG}${id}.webp` : 'img/story/opening_poster.webp';
-    let src = '', pos = '';
-    if (mapPc()) { src = bgFile(keys, sets.pc, 'ch_bg_pc_'); if (src) pos = hubFocus(base); }
-    else {
-      src = bgFile(keys, sets.m, 'ch_bg_'); if (src) pos = hubFocusM(base);
-      if (!src) { src = bgFile(keys, sets.pc, 'ch_bg_pc_'); if (src) pos = hubFocus(base); }
-    }
-    if (!src) src = portrait;
-    const img = pos ? `background-image:url(${src});background-position:${pos}` : `background-image:url(${src})`;
+    // 슬롯마다 그림 한 장. PC 는 가로 배경만, 모바일은 세로 배경(없으면 가로). 없을 때만 초상화·오프닝 포스터.
+    const id = coverId(cv);
+    const art = chapterArt({ bg: bgKey(base), id: base.id, cover: id ? `${IMG}${id}.webp` : '', order: mapPc() ? ['pc'] : ['m', 'pc'] });
+    const img = art.pos ? `background-image:url(${art.src});background-position:${art.pos}` : `background-image:url(${art.src})`;
     return `<button class="hub-ch-slot ${size} ${open ? '' : 'locked'} ${done ? 'done' : ''}" data-hubch="${i}" ${open ? '' : 'disabled'}>
       <span class="hub-ch-img" style="${img}"></span>
       <span class="hub-ch-txt"><small>${esc(base.title)}</small><b>${esc(ch.subtitle || base.title)}</b><i>${st}</i></span>
@@ -2258,5 +2264,5 @@
     sort: (list, st) => { const k0 = cardSort; cardSort = st; try { return sortInst(list); } finally { cardSort = k0; } },
     next: (st, k) => st.k === k ? { k, desc: !st.desc } : { k, desc: true },
   };
-  window.VRStory = { hubSections: HUB_SECTIONS, play: () => enter('go'), canDraw: () => canDraw(), trainCard, canMergeUid, sortTool, skBadge, lendCards, reloadLend: () => loadLend(true), partyOf, pickDeck, openMap: i => openPage(() => renderMap(i)), openCards: from => openRoster(() => { rosterFrom = from === 'mypage' ? 'mypage' : null; renderCards(); }), openDecks: from => openRoster(() => { rosterFrom = from === 'mypage' ? 'mypage' : null; renderDecks(); }), openShop: () => openSummon(), api, bgm, BGM, endingVideo, videoOf, conditionsOf, battleRules, summary, enter, openGacha, renderHub, renderShop, drawOnce, kstDay, get save() { return save; }, renderMap, renderCards, openStats, renderSelect, playLines };
+  window.VRStory = { hubSections: HUB_SECTIONS, play: () => enter('go'), canDraw: () => canDraw(), trainCard, canMergeUid, sortTool, skBadge, lendCards, reloadLend: () => loadLend(true), partyOf, pickDeck, openMap: i => openPage(() => renderMap(i)), openCards: from => openRoster(() => { rosterFrom = from === 'mypage' ? 'mypage' : null; renderCards(); }), openDecks: from => openRoster(() => { rosterFrom = from === 'mypage' ? 'mypage' : null; renderDecks(); }), openShop: () => openSummon(), api, bgm, BGM, endingVideo, videoOf, conditionsOf, battleRules, summary, enter, openGacha, renderHub, renderShop, drawOnce, kstDay, chapterArt, get save() { return save; }, renderMap, renderCards, openStats, renderSelect, playLines };
 })();
