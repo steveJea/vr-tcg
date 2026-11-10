@@ -611,7 +611,7 @@ declare lv int; begin begin select (_player_sync(p_uid)).level into lv; exceptio
 create or replace function public._dsp_owned(p_uid uuid) returns jsonb language sql stable security definer set search_path = public as $$
   select coalesce((select case when jsonb_typeof(data->'owned') = 'array' then data->'owned' end from story_progress where user_id = p_uid), '[]'::jsonb) $$;
 
--- 게시판 채우기 (p_all: 전부 새로 / 아니면 아직 안 보낸 의뢰만). 가진 카드 중 최고 등급(UR까지)으로 갈 수 있는 곳만
+-- 게시판 채우기 (p_all: 전부 새로 / 아니면 아직 안 보낸 의뢰만). 보낸 의뢰(taken)는 지역을 바꾸지 않는다.
 create or replace function public._dsp_fill(p_uid uuid, p_all boolean) returns void language plpgsql security definer set search_path = public as $$
 declare best int; s int; z text; els text[] := array['WIND','FIRE','ICE','DARK','LIGHT']; cl text[] := array['CHARGE','CRUSH','DEFENSE','SUPPORT','DISTURB','FASCINATION'];
 begin
@@ -623,7 +623,8 @@ begin
     select id into z from dispatch_zones where grp = case when s <= 4 then 'exile' else 'safe' end and min_grade <= best
       order by -ln(greatest(random(), 1e-9)) / (1 + min_grade) limit 1;
     insert into dispatch_offers (user_id, slot, day, zone, el, cls, taken) values (p_uid, s, _dsp_day(), z, els[1 + floor(random() * 5)::int], cl[1 + floor(random() * 6)::int], false)
-      on conflict (user_id, slot) do update set day = excluded.day, zone = excluded.zone, el = excluded.el, cls = excluded.cls, taken = false;
+      on conflict (user_id, slot) do update set day = excluded.day, zone = excluded.zone, el = excluded.el, cls = excluded.cls, taken = false
+      where dispatch_offers.taken = false;
   end loop;
 end $$;
 
