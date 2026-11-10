@@ -985,6 +985,8 @@ window.STORY_DATA.chapterPortraits = { 0: { '임유리': 'im_yuri_c0', '황보�
 // 페이즈별 화자 초상화 덮어쓰기 (임포트 스크립트가 대사 줄 slug 로 넣음): phaseSlug[챕터][페이즈][화자]
 window.STORY_DATA.phaseSlug = { 13: { 1: { '안지수': 'an_jisu_7' }, 2: { '안지수': 'an_jisu_12' } } };
 window.STORY_DATA.exprAlt = { smile: 'playful', playful: 'smile', crazy: 'playful', cold: 'angry', sneer: 'playful', yawn: 'base', hurt: 'sad' };
+// 챕터 0 임유리 시트에는 화난 표정이 없다. 없는 파일을 요청하지 않고 공용 화난 초상화를 쓴다.
+window.STORY_DATA.portraitAlias = { im_yuri_c0_angry: 'im_yuri_angry' };
 
 // ===== 일일 카드 뽑기 확률 (서버 supabase/gacha.sql 과 동일하게 유지) =====
 window.STORY_DATA.gacha = { rates: [['NORMAL', 0.70], ['RARE', 0.20], ['HIGH RARE', 0.065], ['SUPER RARE', 0.03], ['ULTRA RARE', 0.005]],

@@ -49,7 +49,7 @@ console.log('phase5 UI: durable retries/lost responses, account isolation, no ra
  const randomMath=Object.create(Math);randomMath.random=()=>expected==='me'?.99:.01;
  const c=vm.createContext({Math:randomMath,Event:class{},window:{VRCloud:{user:{id:'one'}}},startArcadeVerified:async()=>({seed:123,options,_owner:'one',id:'42'}),createArcade,POOL:pool,RULES,allowedGrades,
  ArcadeOpts:{DEF:options,load:()=>{loads++;return loads===1?options:{grades:['NORMAL'],turns:40,clearFirst:true};},isDefault:o=>o.grades===null&&o.turns===40&&!o.clearFirst,summary:()=>''},
- rngOn(){},AUTO_KEY:()=>'',localStorage:{getItem:()=>null},setSpare(){},newPlayer:()=>({}),Merc:{roll:()=>assert.fail('canonical merc offers must not reroll')},$:node,
+ rngOn(){},applyAutoPref(){},renderAutoBtn(){},localStorage:{getItem:()=>null},setSpare(){},newPlayer:()=>({}),Merc:{roll:()=>assert.fail('canonical merc offers must not reroll')},$:node,
  leaveBattleVoices(){},primeBattleMedia(){},dockStoryBuff(){},setBattleBg(){},preloadHit(){},preloadFx(){},fxQueue:[],mrCancel:null,fitBoardSoon(){},initPlayers:()=>assert.fail('canonical skill/foe/first context must not initialize twice'),log(){},vsIntro:()=>null,startTurn:who=>{called=who;},GRADE_SHORT:{},render(){},crypto,setTimeout(){}});
  await vm.runInContext(section('async function startGame(', '/** 3-2 VS 인트로')+';startGame()',c);
  assert.equal(c.S.first,expected);assert.equal(called,expected);assert.equal(loads,1);assert.deepEqual(c.S.opts,options);assert.equal(c.S.me.clearFirst,false);

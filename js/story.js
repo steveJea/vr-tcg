@@ -364,6 +364,7 @@
   let curCh = null;
   // 챕터 전용 초상화 (STORY_DATA.chapterPortraits[챕터id][화자] = slug). 없으면 공통 portraits
   const pslug = nm => nm ? (D.chapterPortraits?.[D.chapters[curCh]?.id]?.[nm] || D.portraits?.[nm]) : null;          // 보고 있는 챕터 위치 (D.chapters 기준)
+  const portraitSrc = (slug, ex) => { if (!slug) return null; const alias = D.portraitAlias?.[`${slug}_${ex}`]; return `img/story/portraits/${alias || `${slug}_${ex}`}.webp`; };
   let chReady = {};          // 서버에 페이즈 설정이 있는 챕터 (서버 모드에서만 확인)
   const chapterDone = base => base.phases.every(p => (save.cleared[base.id] || []).includes(p.no));
   const CH1 = () => Math.max(0, D.chapters.findIndex(c => c.id === 1));   // 챕터 1 위치 (앞에 챕터 0 튜토리얼이 있으면 1)
@@ -891,7 +892,7 @@
         const pc = who(L), sp = L.speaker === 'starter' ? starter?.name : L.speaker === 'enemy' ? enemy?.name : L.speaker;
         const nm = pc ? pc.name : sp, slug = L.slug || pslug(nm), slug0 = nm && D.portraits?.[nm];
         const ex = D.exprSlug?.[String(L.expr || '').trim().toLowerCase()] || D.exprSlug?.[String(L.expr || '').trim()] || 'base';
-        const src = slug ? `img/story/portraits/${slug}_${ex}.webp` : pc ? picOf(pc) : null;
+        const src = slug ? portraitSrc(slug, ex) : pc ? picOf(pc) : null;
         if (!src || seen.has(src)) continue; seen.add(src);
         const im = new Image(); im.decoding = 'async'; im.src = window.cardImgOverride ? window.cardImgOverride(src) : src; im.decode?.().catch(() => {});
         (playLines.cache ||= []).push(im); if (playLines.cache.length > 40) playLines.cache.shift();
@@ -912,7 +913,7 @@
       const left = pc ? heroes.includes(pc) : !slug;
       const ex = D.exprSlug?.[String(L.expr || '').trim().toLowerCase()] || D.exprSlug?.[String(L.expr || '').trim()] || 'base';
       show(`<div class="story-dlg" id="story-dlg">
-        <div class="story-dlg-stage">${pc || slug ? (slug ? `<img class="story-portrait sp ${left ? 'left' : 'right'}" src="img/story/portraits/${slug}_${ex}.webp" alt="${esc(pc?.name || sp)}" data-fb="${[...[D.exprAlt?.[ex]].filter(Boolean).map(x => `${slug}_${x}`), ...(slug0 && slug0 !== slug && ex !== 'base' ? [ex, D.exprAlt?.[ex]].filter(Boolean).map(x => `${slug0}_${x}`) : []), ex !== 'base' && `${slug}_base`].filter(Boolean).map(x => `img/story/portraits/${x}.webp`).join('|')}" onerror="const q=(this.dataset.fb||'').split('|').filter(Boolean);if(q.length){this.dataset.fb=q.slice(1).join('|');this.src=q[0]}else{this.onerror=null;this.classList.remove('sp');${pc ? `this.src='${picOf(pc)}'` : `this.remove()`}}">` : `<img class="story-portrait ${left ? 'left' : 'right'}" src="${picOf(pc)}" alt="${esc(pc?.name || sp)}">`) : ''}</div>
+        <div class="story-dlg-stage">${pc || slug ? (slug ? `<img class="story-portrait sp ${left ? 'left' : 'right'}" src="${portraitSrc(slug, ex)}" alt="${esc(pc?.name || sp)}" data-fb="${[...[D.exprAlt?.[ex]].filter(Boolean).map(x => `${slug}_${x}`), ...(slug0 && slug0 !== slug && ex !== 'base' ? [ex, D.exprAlt?.[ex]].filter(Boolean).map(x => `${slug0}_${x}`) : []), ex !== 'base' && `${slug}_base`].filter(Boolean).map(x => `img/story/portraits/${x}.webp`).join('|')}" onerror="const q=(this.dataset.fb||'').split('|').filter(Boolean);if(q.length){this.dataset.fb=q.slice(1).join('|');this.src=q[0]}else{this.onerror=null;this.classList.remove('sp');${pc ? `this.src='${picOf(pc)}'` : `this.remove()`}}">` : `<img class="story-portrait ${left ? 'left' : 'right'}" src="${picOf(pc)}" alt="${esc(pc?.name || sp)}">`) : ''}</div>
         <div class="story-dlg-box">${sp ? `<div class="story-dlg-name">${esc(sp)}</div>` : ''}<div class="story-dlg-text">${esc(L.text)}</div><div class="story-dlg-next">▼ ${i + 1}/${lines.length}</div></div>
         <button class="story-dlg-skip" id="story-dlg-skip">건너뛰기 ⏭</button></div>`, track);
       media.fit();
