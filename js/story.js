@@ -216,6 +216,13 @@
     '8': '50% 17%', '9': '50% 0%', '10': '50% 44%', '11': '50% 31%', '12': '50% 0%', '13': '50% 21%',
     '14': '50% 30%', '15': '50% 30%',
   };
+  // 모바일 허브 큰 칸(세로 그림 1008×1792 를 넓은 칸에 cover). OpenCV YuNet 으로 ch_bg_*.webp 얼굴을 잡아 칸 높이 약 40%에 맞춤.
+  const BG_FOCUS_M = {
+    '0': '50% 43%', '1_10111': '50% 17%', '1_10224': '50% 15%', '1_10265': '50% 26%',
+    '2': '50% 16%', '3': '50% 25%', '4': '50% 11%', '5': '50% 6%', '6': '50% 10%', '7': '50% 29%',
+    '8': '50% 23%', '9': '50% 22%', '10': '50% 17%', '11': '50% 28%', '12': '50% 8%', '13': '50% 11%',
+    '14': '50% 18%', '15': '50% 14%',
+  };
   // css/story.css 에서 쓰던 PC 맵 조건과 같다 (가로 4:3 이상 · 너비 901px 이상).
   const mapPc = () => matchMedia('(min-aspect-ratio: 4/3) and (min-width: 901px)').matches;
   const bgKeysOf = base => {
@@ -229,6 +236,7 @@
   // PC: 가로 그림 한 장. 그 파일이 없으면 세로 그림 한 장. 모바일: 세로 그림 한 장만.
   const mapBgSrc = base => { const keys = bgKeysOf(base), sets = bgSets(); return mapPc() ? (bgFile(keys, sets.pc, 'ch_bg_pc_') || bgFile(keys, sets.m, 'ch_bg_')) : bgFile(keys, sets.m, 'ch_bg_'); };
   const hubFocus = base => BG_FOCUS[bgKey(base)] || BG_FOCUS[String(base.id)] || '50% 30%';
+  const hubFocusM = base => BG_FOCUS_M[bgKey(base)] || BG_FOCUS_M[String(base.id)] || '50% 30%';
   // 허브에 보이는 지금 챕터와 이웃만. 16챕터를 한꺼번에 받지 않는다.
   function preloadMapBgs(idxs) {
     const seen = new Set();
@@ -767,10 +775,17 @@
     const open = chapterOpen(i), ch = chapterFor(base), n = clearedOf(ch).length, tot = ch.phases.length, done = open && n >= tot, cv = chCover(base);
     const why = open ? '' : (i && !chapterDone(D.chapters[i - 1]) ? '이전 챕터 클리어 후' : chLvLock(D.chapters[i]) ? `Lv ${chNeedLv(D.chapters[i])}` : '');
     const st = !open ? `🔒 ${why}` : done ? '✔ 클리어 · 다시 하기' : n ? `진행 중 ${n}/${tot}` : '새 챕터';
-    // PC 큰 칸은 챕터 가로 배경 한 장(얼굴 위치). 그 파일이 없을 때만 인재 초상화, 초상화도 없으면 오프닝 포스터. 모바일은 초상화를 유지한다. url 은 항상 하나.
-    const pcBanner = mapPc() ? bgFile(bgKeysOf(base), bgSets().pc, 'ch_bg_pc_') : '';
-    const id = coverId(cv);
-    const img = pcBanner ? `background-image:url(${pcBanner});background-position:${hubFocus(base)}` : `background-image:url(${id ? `${IMG}${id}.webp` : 'img/story/opening_poster.webp'})`;
+    // 슬롯마다 그림 한 장. PC 는 가로 배경, 모바일은 세로 배경(없으면 가로 배경). 둘 다 없을 때만 인재 초상화, 초상화 id 도 없으면 오프닝 포스터.
+    const keys = bgKeysOf(base), sets = bgSets(), id = coverId(cv);
+    const portrait = id ? `${IMG}${id}.webp` : 'img/story/opening_poster.webp';
+    let src = '', pos = '';
+    if (mapPc()) { src = bgFile(keys, sets.pc, 'ch_bg_pc_'); if (src) pos = hubFocus(base); }
+    else {
+      src = bgFile(keys, sets.m, 'ch_bg_'); if (src) pos = hubFocusM(base);
+      if (!src) { src = bgFile(keys, sets.pc, 'ch_bg_pc_'); if (src) pos = hubFocus(base); }
+    }
+    if (!src) src = portrait;
+    const img = pos ? `background-image:url(${src});background-position:${pos}` : `background-image:url(${src})`;
     return `<button class="hub-ch-slot ${size} ${open ? '' : 'locked'} ${done ? 'done' : ''}" data-hubch="${i}" ${open ? '' : 'disabled'}>
       <span class="hub-ch-img" style="${img}"></span>
       <span class="hub-ch-txt"><small>${esc(base.title)}</small><b>${esc(ch.subtitle || base.title)}</b><i>${st}</i></span>

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import {spawn} from 'node:child_process';
 import {createServer} from 'node:http';
-import {readFile, readdir, mkdir, writeFile} from 'node:fs/promises';
+import {readFile, readdir, mkdir, writeFile, access} from 'node:fs/promises';
 import {extname} from 'node:path';
 import {parseHTML} from 'linkedom';
 
@@ -23,6 +23,9 @@ assert.equal(listed('BG_PC').has('1'), false);
 const focusBlock = storySrc.match(/const BG_FOCUS = \{([\s\S]*?)\};/)[1];
 const focusKeys = [...focusBlock.matchAll(/'([^']+)':\s*'(\d+% \d+%)'/g)];
 assert.deepEqual(focusKeys.map(m => m[1]).sort(), [...disk('pc')].sort(), '얼굴 초점이 가로 배경마다 있다');
+const focusMBlock = storySrc.match(/const BG_FOCUS_M = \{([\s\S]*?)\};/)[1];
+const focusMKeys = [...focusMBlock.matchAll(/'([^']+)':\s*'(\d+% \d+%)'/g)];
+assert.deepEqual(focusMKeys.map(m => m[1]).sort(), [...disk('m')].sort(), '모바일 얼굴 초점이 세로 배경마다 있다');
 assert.match(storySrc, /bgFile\(keys, sets\.pc, 'ch_bg_pc_'\) \|\| bgFile\(keys, sets\.m, 'ch_bg_'\)/);
 assert.match(css, /\.hub-ch-slot::after\{[^}]*linear-gradient\(180deg,rgba\(0,0,0,0\) 30%,rgba\(0,0,0,\.85\)\)/);
 assert.match(css, /\.hub-ch-slot\.small::after\{[^}]*linear-gradient\(90deg/);
@@ -98,8 +101,10 @@ assert.equal(mob.getAttribute('style').includes('ch_bg_pc_'), false);
 loads.length = 0;
 window.VRStory.renderHub();
 const mobSlot = screen().querySelector('.hub-ch-slot.big .hub-ch-img');
-assert.deepEqual(urls(mobSlot.getAttribute('style')), ['https://raw.githubusercontent.com/steveJea/vr-ideal-worldcup/main/img/bt_img/10111.webp']);
-assert.equal(mobSlot.getAttribute('style').includes('ch_bg'), false);
+assert.deepEqual(urls(mobSlot.getAttribute('style')), ['img/story/ch_bg_1_10111.webp']);
+assert.equal(mobSlot.getAttribute('style').includes('background-position:50% 17%'), true);
+assert.equal(mobSlot.getAttribute('style').includes(','), false);
+assert.equal(mobSlot.getAttribute('style').includes('ch_bg_pc_'), false);
 assert.deepEqual([...loads].sort(), ['img/story/ch_bg_0.webp', 'img/story/ch_bg_1_10111.webp', 'img/story/ch_bg_2.webp'].sort());
 
 // 가로 파일이 없고 세로 파일만 있으면 맵은 세로 한 장, 허브 배너는 초상화 한 장.
@@ -132,7 +137,48 @@ assert.equal(none.getAttribute('style'), null);
 assert.equal(none.classList.contains('story-map-bg'), true);
 assert.equal(loads.length, 0);
 assert.doesNotMatch(screen().innerHTML, /ch_bg_/);
-console.log('story map bg: one url per viewport, hub banner uses ch_bg_pc on PC OK');
+
+// 챕터 0–15 는 PC·모바일 모두 디스크에 있는 배경 한 장으로 그려진다. 챕터 11 초상화 10491.webp 는 404 라 쓰면 빈 칸이 된다.
+const fileOk = async rel => access(new URL(rel, root));
+async function hubSlots(id, starter) {
+  const cleared = {};
+  for (const c of D.chapters) if (c.id < id) cleared[c.id] = c.phases.map(p => p.no);
+  store.set('vrTcgStory.v1:tester', JSON.stringify(saveOf({starter, owned: [{uid: 'u1', id: starter, level: 1, boost: {}}], cleared})));
+  await window.VRStory.enter('quiet');
+  window.VRStory.renderHub();
+  const by = {};
+  for (const b of screen().querySelectorAll('[data-hubch]')) {
+    const style = b.querySelector('.hub-ch-img').getAttribute('style') || '';
+    const u = urls(style);
+    assert.equal(u.length, 1, style);
+    assert.equal(style.includes(','), false, style);
+    by[D.chapters[+b.dataset.hubch].id] = {style, url: u[0]};
+  }
+  return by;
+}
+for (const pc of [true, false]) {
+  pcMode.on = pc;
+  for (let id = 0; id <= 15; id++) {
+    const shown = await hubSlots(id === 0 ? 1 : id, '10111');
+    const hit = shown[id];
+    assert.ok(hit, `chapter ${id} slot missing`);
+    const key = id === 1 ? '1_10111' : String(id);
+    const expect = pc ? `img/story/ch_bg_pc_${key}.webp` : `img/story/ch_bg_${key}.webp`;
+    assert.equal(hit.url, expect, `${pc ? 'pc' : 'mobile'} chapter ${id}`);
+    await fileOk(hit.url);
+    if (id === 11) {
+      assert.equal(hit.style.includes('10491'), false);
+      assert.equal(hit.style.includes(pc ? 'background-position:50% 31%' : 'background-position:50% 28%'), true);
+    }
+  }
+  for (const starter of ['10224', '10265']) {
+    const shown = await hubSlots(1, starter);
+    const expect = pc ? `img/story/ch_bg_pc_1_${starter}.webp` : `img/story/ch_bg_1_${starter}.webp`;
+    assert.equal(shown[1].url, expect);
+    await fileOk(expect);
+  }
+}
+console.log('story map bg: one url per viewport, every chapter 0-15 has a real image on PC and mobile OK');
 
 if (process.env.SKIP_CHROME === '1') process.exit(0);
 
@@ -228,8 +274,9 @@ try {
   await evalJs(`VRStory.renderHub()`);
   await sleep(400);
   const mHub = JSON.parse(await evalJs(`(()=>{const el=document.querySelector('.hub-ch-slot.big .hub-ch-img'); const s=getComputedStyle(el); return JSON.stringify({img:s.backgroundImage,pos:s.backgroundPosition,box:el.parentElement.getBoundingClientRect(),w:innerWidth,h:innerHeight,pc:matchMedia('(min-aspect-ratio: 4/3) and (min-width: 901px)').matches});})()`));
-  assert.equal(mHub.img.includes('10111.webp'), true);
-  assert.equal(mHub.img.includes('ch_bg'), false);
+  assert.equal(mHub.img.includes('ch_bg_1_10111.webp'), true);
+  assert.equal(mHub.img.includes('ch_bg_pc_'), false);
+  assert.equal(mHub.pos, '50% 17%');
   assert.equal(mHub.img.includes(','), false);
   await writeFile('/tmp/faces/live-mobile-hub.json', JSON.stringify(mHub));
   await shot(`JSON.stringify(document.querySelector('.hub-ch-slot.big').getBoundingClientRect())`, '/tmp/faces/live-mobile-hub.png');
