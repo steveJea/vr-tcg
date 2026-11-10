@@ -464,7 +464,7 @@ function showResult(s, rep) {
     <div class="pvp-vs">${emb(tierOf(s.opp_rating))}<span>${esc(s.opp_name)}${s.bot ? ' 🤖' : ''}</span><small>🏆 ${s.opp_rating}</small></div>
     ${rep.streak >= 2 ? `<div class="pvp-res-streak"><span class="pvp-streak big">🔥${rep.streak}</span>${rep.streak_reward ? `<span class="pvp-rw">${rwHtml(rep.streak_reward)}</span>` : ''}</div>` : ''}
     ${rep.forfeit ? '<div class="pvp-empty">기한 만료/중단 · 보상 없는 패배</div>' : ''}
-    ${rounds.map((r, i) => boss ? `<div class="pvp-round pvp-round-boss ${r.win ? 'win' : 'lose'}"><div class="pvp-result-side"><strong>상대${r.win ? ' · 진영 파괴' : ''}</strong><div class="pvp-side foe">${snapThumbs(s.opp[i])}</div></div><div class="pvp-result-side"><strong>나${r.win ? '' : ' · 패배'}</strong><div class="pvp-side">${snapThumbs(s.me[i])}</div></div></div>` : `<div class="pvp-round ${r.win ? 'win' : 'lose'}"><div class="pvp-side">${snapThumbs(s.me[i])}</div><b>${r.win ? '○' : '✕'}</b><div class="pvp-side foe">${snapThumbs(s.opp[i])}</div></div>`).join('')}
+    ${rounds.map((r, i) => boss ? `<div class="pvp-round pvp-round-boss ${r.win ? 'win' : 'lose'}"><div class="pvp-result-side"><strong>상대${r.win ? ' · 진영 파괴' : ''}</strong><div class="pvp-side foe">${snapThumbs(s.opp[i])}</div></div><div class="pvp-result-side"><strong>나${r.win ? '' : ' · 패배'}</strong><div class="pvp-side">${snapThumbs(s.me[i])}</div></div></div>` : `<div class="pvp-round ${r.win ? 'win' : 'lose'}"><div class="pvp-side">${snapThumbs(s.me[i])}</div><b data-noemoji>${r.win ? '○' : '✕'}</b><div class="pvp-side foe">${snapThumbs(s.opp[i])}</div></div>`).join('')}
     <div class="pvp-delta ${delta >= 0 ? 'up' : 'down'}">${emb(tierOf(rep.rating))} ${rep.rating} <b>${delta >= 0 ? '+' : ''}${delta}</b></div>
     <div class="pvp-acts"><button class="pvp-go" data-x>확인</button></div>`, 'pvp-sub');
   m.addEventListener('click', e => { if (e.target === m || e.target.closest('[data-x]')) backToMatch(); });
@@ -566,7 +566,7 @@ export async function friendFight(friend, mode = '1v1') {
   modal('pvp-result', `<button class="pvp-x" data-x>✕</button>
     <div class="pvp-res ${res.win ? 'win' : 'lose'}">${res.win ? 'WIN' : 'LOSE'}</div>
     <div class="pvp-vs"><span>👥 ${esc(s.opp_name)}</span><small>${s.mode}</small></div>
-    ${res.rounds.map((r, i) => `<div class="pvp-round ${r.win ? 'win' : 'lose'}"><div class="pvp-side">${snapThumbs(s.me[i])}</div><b>${r.win ? '○' : '✕'}</b><div class="pvp-side foe">${snapThumbs(s.opp[i])}</div></div>`).join('')}
+    ${res.rounds.map((r, i) => `<div class="pvp-round ${r.win ? 'win' : 'lose'}"><div class="pvp-side">${snapThumbs(s.me[i])}</div><b data-noemoji>${r.win ? '○' : '✕'}</b><div class="pvp-side foe">${snapThumbs(s.opp[i])}</div></div>`).join('')}
     ${rep?.record ? `<div class="pvp-delta up">상대 전적 ${rep.record.w}승 ${rep.record.l}패</div>` : ''}
     <div class="pvp-acts"><button class="pvp-go" data-x>확인</button></div>`, 'pvp-sub');
   return rep;

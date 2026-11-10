@@ -217,7 +217,7 @@
     const snd = window.VRSound; snd?.hold?.(true);
     const el = document.createElement('div'); el.className = 'story-vcut';
     el.innerHTML = `<video playsinline preload="auto" src="${esc(src)}"></video>
-      <button class="story-vcut-skip" type="button">건너뛰기 ▶▶</button>
+      <button class="story-vcut-skip" type="button" data-noemoji>건너뛰기 ▶▶</button>
       <div class="story-ovp-tap hidden"><button type="button">▶</button></div>`;
     document.body.appendChild(el);
     const v = el.querySelector('video'), tap = el.querySelector('.story-ovp-tap');
@@ -448,7 +448,7 @@
     document.getElementById('story-opening-fx')?.remove();
     const el = document.createElement('div'); el.id = 'story-opening-fx'; el.className = 'story-ovp';
     el.innerHTML = `<video playsinline preload="auto" ${o.poster ? `poster="${esc(o.poster)}"` : ''} src="${esc(o.video)}"></video>
-      <button class="story-ovp-skip on" type="button">건너뛰기 ▶▶</button>
+      <button class="story-ovp-skip on" type="button" data-noemoji>건너뛰기 ▶▶</button>
       <div class="story-ovp-tap hidden"><button type="button">▶</button></div>`;
     document.body.appendChild(el);
     const v = el.querySelector('video'), skip = el.querySelector('.story-ovp-skip'), tap = el.querySelector('.story-ovp-tap');
@@ -1932,7 +1932,7 @@
     v.muted = true; v.defaultMuted = true; v.playsInline = true; v.setAttribute('playsinline', ''); v.setAttribute('muted', ''); v.poster = `${GVID}${n}.webp`;
     v.className = 'gr-vid-v'; v.controls = false; v.disablePictureInPicture = true;
     const ov = document.createElement('div'); ov.className = 'gr-vid'; ov.id = 'gr-vid'; ov.setAttribute('aria-label', '영입 연출');
-    const sk = document.createElement('button'); sk.type = 'button'; sk.className = 'gr-vid-skip'; sk.textContent = 'SKIP ▶▶';
+    const sk = document.createElement('button'); sk.type = 'button'; sk.className = 'gr-vid-skip'; sk.setAttribute('data-noemoji', ''); sk.textContent = 'SKIP ▶▶';
     ov.append(v, sk); document.body.appendChild(ov);
     const sAt = GVSTING[n], g = GLOW[grade] || 'n', sting = g === 'sr' ? 'gacha_sr' : ['ur', 'mr', 'lr'].includes(g) ? 'gacha_ur' : null;
     let stung = !sting; const fire = () => { if (stung) return; stung = true; window.TCG?.playStinger?.(`audio/${sting}.mp3`); };
