@@ -5,8 +5,8 @@ import npcCsv from '../data/npc_cards.csv';
 import skillsJson from '../data/skills.json';
 import combosJson from '../data/combos.json';
 import questJson from '../data/quest.json';
-import { parseCSV, skillCountMult, RULES, canSummon, makeUnit, resolveAttack, refillMana, endTurnXp, aiPickTarget, attackTargets, canTarget, doAction, aiSummonOrder, aiPickSacrifice, aiWantAccel, aiWantFieldHeal, aiWantBuff, aiWantHeal, sacrifice, setCardPool, levelUpOnce, xpToNext, gainXp, swapField } from './rules.js';
-import { setSkillData, skillsOf, setRng, setEmitter, getEmitter, setSpare, initPlayers, placeUnit, turnStart, turnEnd, useSkill, skillState, aiPickSkill, refreshAll, checkDeath } from './skills.js';
+import { parseCSV, skillCountMult, RULES, canSummon, makeUnit, resolveAttack, refillMana, endTurnXp, aiPickTarget, canTarget, doAction, aiSummonOrder, aiPickSacrifice, aiWantAccel, aiWantFieldHeal, aiWantBuff, aiWantHeal, aiWantShuffle, aiPickItem, sacrifice, clearBuff, equip, setCardPool, levelUpOnce, xpToNext, gainXp, swapField } from './rules.js';
+import { setSkillData, skillsOf, setRng, setEmitter, getEmitter, setSpare, initPlayers, placeUnit, turnStart, turnEnd, useSkill, skillState, aiPickSkill, refreshAll, checkDeath, spareBlocked } from './skills.js';
 import { snapCard } from './pvp-core.js';
 import { leaderSkill } from './sweep-core.js';
 import './quest-gen.js';
@@ -131,6 +131,9 @@ function raiseLevels(u, lv) {
   while (u.level < Math.min(lv | 0, RULES.LEVEL_MAX)) levelUpOnce(u);
 }
 
+function sideSnap(p) {
+  return { hp: p.hp | 0, max: p.maxHp | 0, units: p.field.map(u => ({ id: String(u.card.id), hp: u.hp | 0, max: u.maxHp | 0 })) };
+}
 function pack(state, win, reason) {
   const turns = Math.max(1, Math.min(40, state.totalTurns | 0 || 1));
   return {
@@ -212,8 +215,8 @@ export function runDirect(spec, actions, rng = null) {
   const aiCards = (spec.ai || []).filter(Boolean).slice(0, 12);
   if (!meCards.length || !aiCards.length) throw new Error('unsupported battle');
   const mana = spec.mana == null ? null : Math.max(0, Math.round(spec.mana));
-  const me = { name: '나', hp: RULES.HERO_HP, maxHp: RULES.HERO_HP, deck: meCards.map(c => ({ ...c })), hand: [], field: [], mana: 0, maxMana: 0, noBase: true, noActs: true };
-  const ai = { name: '적', hp: spec.win === 'ko' ? (spec.aiHp || 3000) : RULES.HERO_HP, maxHp: spec.win === 'ko' ? (spec.aiHp || 3000) : RULES.HERO_HP, deck: aiCards.map(c => ({ ...c })), hand: [], field: [], mana: 0, maxMana: 0, noBase: spec.win !== 'ko', noActs: true, heroGuard: spec.heroGuard || 0 };
+  const me = { name: '나', hp: RULES.HERO_HP, maxHp: RULES.HERO_HP, deck: meCards.map(c => ({ ...c })), hand: [], field: [], mana: 0, maxMana: 0, noBase: true, noActs: true, limitedAids: true };
+  const ai = { name: '적', hp: spec.win === 'ko' ? (spec.aiHp || 3000) : RULES.HERO_HP, maxHp: spec.win === 'ko' ? (spec.aiHp || 3000) : RULES.HERO_HP, deck: aiCards.map(c => ({ ...c })), hand: [], field: [], mana: 0, maxMana: 0, noBase: spec.win !== 'ko', noActs: true, limitedAids: true, heroGuard: spec.heroGuard || 0 };
   const state = { me, ai, turn: spec.first === 'ai' ? 'ai' : 'me', first: spec.first === 'ai' ? 'ai' : 'me', turnNo: 0, totalTurns: 0, myTurns: 0, over: false, win: null, reason: null, rules: spec.rules || {}, awaken: spec.awaken, awakened: false, joinAlly: spec.joinAlly, allyJoined: false, mustSummon: null, reserve: [], reviveUsed: {}, pairShield: null };
   initPlayers(me, ai, state.first === 'ai' ? ai : me);
   const bossIds = [spec.bossId, spec.rules?.invuln].filter(x => x != null).map(String);
@@ -226,7 +229,7 @@ export function runDirect(spec, actions, rng = null) {
       if (who === 'me' && spec.leaderUid && c.uid === spec.leaderUid) { u.isLeader = true; p.leaderSkill = { ...leaderSkill(c), uid: c.uid, deathPenalty: 0.3 }; }
       if (who === 'me' && spec.meLevels) raiseLevels(u, spec.meLevels[String(c.id)] || 0);
       if (who === 'me' && spec.fullMp) u.mp = u.maxMp;
-      if (who === 'ai' && spec.bossId != null && String(c.id) === String(spec.bossId)) { u.undying = true; u.boss = true; }
+      if (who === 'ai' && spec.bossId != null && String(c.id) === String(spec.bossId) && !p.field.some(x => x.undying)) { u.undying = true; u.boss = true; }
       if (who === 'ai' && spec.enemyLevels) raiseLevels(u, spec.enemyLevels[String(c.id)] || 0);
       if (who === 'ai' && (spec.rules?.undying || []).map(String).includes(String(c.id))) u.undying = true;
       if (who === 'ai' && spec.rules?.invuln != null && String(c.id) === String(spec.rules.invuln)) { u.undying = true; u.noDamage = true; u.boss = true; }
@@ -249,7 +252,7 @@ export function runDirect(spec, actions, rng = null) {
   refreshAll(me); refreshAll(ai);
   let cursor = 0;
   const done = (win, reason) => { if (!state.over) { state.over = true; state.win = win; state.reason = reason; } return true; };
-  const gone = p => !p.field.some(u => u.hp > 0) && !p.hand.length && !p.deck.length;
+  const gone = p => !p.field.length && !p.hand.length && !p.deck.length;
   const mustLeft = () => state.mustSummon ? state.mustSummon.ids.filter(id => !me.field.some(u => String(u.card.id) === id) && me.hand.some(c => String(c.id) === id)) : [];
   const affordable = () => me.hand.filter(c => { try { return canSummon(c, me, ai).ok; } catch { return false; } });
   function checkEnd() {
@@ -258,7 +261,7 @@ export function runDirect(spec, actions, rng = null) {
     awaken();
     if (state.mustLiveDown) return done(false, 'mustlive');
     if (spec.win === 'wipe' && gone(ai)) return done(true, 'wipe');
-    if (me.manaPool ? !me.field.some(u => u.hp > 0) && !affordable().length : gone(me)) return done(false, 'wipe');
+    if (me.manaPool ? !me.field.length && !affordable().length : gone(me)) return done(false, 'wipe');
     return false;
   }
   function awaken() {
@@ -322,8 +325,9 @@ export function runDirect(spec, actions, rng = null) {
     if (state.rules.expire && state.rules.invuln != null && state.turnNo > state.rules.expire) {
       for (const u of [...ai.field]) { u.undying = false; u.noDamage = false; u.hp = 0; checkDeath(u); }
     }
+    clearBuff(who === 'me' ? ai : me);
     refillMana(p);
-    p.field.forEach(u => { if (u.hp > 0) u.canAttack = true; });
+    p.field.forEach(u => { u.canAttack = true; });
     turnStart(p);
     checkEnd();
   }
@@ -334,15 +338,18 @@ export function runDirect(spec, actions, rng = null) {
       if (script.skill && u) { const s = (u.sk || []).find(x => x.name === script.skill); if (s) useSkill(u, s); }
       if (script.end !== false) { if (!state.over) { endTurnXp(ai); turnEnd(ai); checkEnd(); } return; }
     }
-    const order = aiSummonOrder(ai.hand);
-    for (const c of order) if (canSummon(c, ai, me).ok) { ai.mana -= c.cost; ai.hand.splice(ai.hand.indexOf(c), 1); placeUnit(ai, c, makeUnit, true); }
+    if (aiWantShuffle(ai, me)) doAction('shuffle', ai);
+    if (aiWantAccel(ai, true)) doAction('accel', ai);
     const sac = aiPickSacrifice(ai, me);
     if (sac) sacrifice(sac, ai);
-    if (aiWantAccel(ai, true)) doAction('accel', ai);
+    for (const c of aiSummonOrder(ai.hand)) if (canSummon(c, ai, me).ok) { ai.mana -= c.cost; ai.hand.splice(ai.hand.indexOf(c), 1); placeUnit(ai, c, makeUnit, true); }
+    for (let it; (it = aiPickItem(ai, me));) equip(it[0], it[1], ai);
+    if (aiWantAccel(ai)) doAction('accel', ai);
     if (aiWantFieldHeal(ai)) doAction('fieldheal', ai);
     if (aiWantBuff(ai)) doAction('buff', ai);
     for (const u of [...ai.field]) {
-      if (state.over || u.hp <= 0 || !u.canAttack || !ai.field.includes(u)) continue;
+      if (state.over || !u.canAttack || !ai.field.includes(u)) continue;
+      if (spareBlocked(u)) { u.canAttack = false; continue; }
       const sk = aiPickSkill(u);
       if (sk) { useSkill(u, sk); checkEnd(); continue; }
       const target = aiPickTarget(u, ai, me);
@@ -435,7 +442,9 @@ export function runDirect(spec, actions, rng = null) {
     if (!state.over) done(false, 'timeout');
   } finally { setSpare(null); setEmitter(oldEmit); }
   if (cursor < actions.length && state.reason !== 'giveup') throw new Error('tampered');
-  return pack(state, state.win, state.reason);
+  const out = pack(state, state.win, state.reason);
+  if (!out.win) out.debug = { turn: state.turnNo | 0, my_turns: state.myTurns | 0, action: cursor, reason: state.reason, me: sideSnap(state.me), ai: sideSnap(state.ai) };
+  return out;
 }
 
 if (typeof window !== 'undefined' && !window.VRDirect) window.VRDirect = { rngOf, rollRank };

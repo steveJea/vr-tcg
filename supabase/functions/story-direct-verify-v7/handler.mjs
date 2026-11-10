@@ -60,7 +60,8 @@ export function createHandler(env, fetcher = fetch) {
       body = JSON.parse(new TextDecoder().decode(bytes));
       operation = body?.op === 'direct' || body?.op === 'status' ? body.op : 'unknown';
       if (body?.op === 'direct') {
-        if (!exact(body, ['op', 'id', 'version', 'actions', 'cards']) || typeof body.id !== 'string' || !UUID.test(body.id) || !actionsOk(body.actions) || !cardsOk(body.cards)) {
+        const claimed = Object.prototype.hasOwnProperty.call(body, 'win');
+        if (!exact(body, claimed ? ['op', 'id', 'version', 'actions', 'cards', 'win'] : ['op', 'id', 'version', 'actions', 'cards']) || typeof body.id !== 'string' || !UUID.test(body.id) || (claimed && typeof body.win !== 'boolean') || !actionsOk(body.actions) || !cardsOk(body.cards)) {
           if (body?.version && body.version !== ENGINE_VERSION && typeof body.id === 'string' && UUID.test(body.id)) return respond(409, { error: '새 전투 버전으로 새로고침해 주세요' });
           throw new Error('invalid direct');
         }
@@ -94,10 +95,19 @@ export function createHandler(env, fetcher = fetch) {
       if (s.status === 'settled') duplicate = true;
       let result = null;
       if (s.status === 'issued' || s.status === 'settled') {
+        // body.cards is the story XP list (kills and blocks). The fight deck is session.snapshot.cards, saved at battle start. An empty cards array does not change the replay.
         try { result = verifyDirect(s, body.actions); }
         catch (e) {
           const message = String(e.message || '').startsWith('tampered') ? KO.tampered : (KO[e.message] || '전투 결과를 서버가 확인하지 못했어요');
           return respond(422, { error: message });
+        }
+        if (body.win === true && result?.win !== true) {
+          const d = result?.debug;
+          console.info(JSON.stringify({ tag: 'story-direct-verify-v7', event: 'replay-divergence', trace, session: body.id, reason: result?.reason || null, turn: d?.turn ?? null, action: d?.action ?? null, me: d?.me || null, ai: d?.ai || null }));
+        }
+        if (result && Object.prototype.hasOwnProperty.call(result, 'debug')) {
+          result = { ...result };
+          delete result.debug;
         }
       }
       const settled = await rpc('battle_direct_settle_v7', {

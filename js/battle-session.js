@@ -19,17 +19,18 @@
     data.readyAt = Date.now() + Number(data.min_seconds || 0) * 1000 + 250;
     return data;
   }
-  const DIRECT_V7 = '0904ad4e08e96482b927d2719f6c2f250a884e7a442cf2b109c0665e126e0d0b';
+  const DIRECT_V7 = '373d23543f1d06170461817df6a500711fd7f83f6b608de7b68bbcc0ec30a7b8';
   function replayError(message) {
     const err = new Error(message || '전투 결과를 서버가 확인하지 못했어요');
     err.replayNotReady = /verifier unavailable|staging verifier unavailable|Failed to send a request to the Edge Function|Function not found|404 Not Found/i.test(err.message);
     err.unverifiedFight = /서버가 다시 계산할 수 없어요/.test(err.message);
+    err.rejected = /전투 기록이 맞지|새로고침해 주세요/.test(err.message);
     return err;
   }
   async function verifyDirect(session, report) {
     const c = window.VRCloud;
     if (!c?.sb || !session?.session) throw new Error('전투 시작 기록이 없어요');
-    const body = { op: 'direct', id: session.session, version: DIRECT_V7,
+    const body = { op: 'direct', id: session.session, version: DIRECT_V7, win: !!report?.win,
       actions: (Array.isArray(report?.actions) ? report.actions : []).slice(0, 200),
       cards: (Array.isArray(report?.cards) ? report.cards : []).slice(0, 30).map(c => ({ uid: String(c.uid || ''), kills: c.kills | 0, blocks: c.blocks | 0 })).filter(c => c.uid) };
     let last;
@@ -39,6 +40,7 @@
       let message = data?.error || '';
       if (error) { try { message = (await error.context?.json())?.error || error.message; } catch { message = error.message; } }
       last = replayError(message);
+      if (last.rejected) break;
       if (n === 0 && !last.replayNotReady) {
         const again = await c.sb.functions.invoke('story-direct-verify-v7', { body: { op: 'status', id: session.session } });
         if (!again.error && again.data?.settlement?.ok) return again.data.settlement;
