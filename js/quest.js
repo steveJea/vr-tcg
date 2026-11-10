@@ -212,8 +212,13 @@
   }
 // AUTO·X2 로 빨리 끝나도 서버 최소 전투 시간(_quest_min_secs 5초)을 채운 뒤 기록 → 'too fast' 방지. 서버 검사는 그대로
   const MIN_BATTLE_MS = 5600; let startedAt = 0, towerSession = null;
+  function clearTowerPane() {
+    const s = $('story-screen');
+    if (s) s.innerHTML = '<div class="text-center py-10 text-zinc-400">전투를 준비하고 있어요.</div>';
+  }
   async function battle(n, list) {
     const api = A(), g = enemiesOf(n);
+    clearTowerPane();
     try { towerSession = M() ? null : await window.VRBattleSession.start('tower', `${TOWER}:${n}`, list.map(o => o.uid)); if (M()) await trpc('quest_start', { p_floor: n }); }
     catch (e) { const m = String(e?.message || ''); api.toast(ERR(m) || (/locked/.test(m) ? '아직 열리지 않은 층이에요' : `⚠️ 시작 실패: ${m}`)); return render(); }
     startedAt = Date.now();
@@ -231,7 +236,7 @@
       if (towerSession) { try { await window.VRBattleSession.finish(towerSession, window.VRBattleSession.report(false, reason, st)); } catch (e) { api.toast(`⚠️ 패배 기록 저장 실패: ${e?.message || e}`); } }
       api.show(`<div class="text-center py-10"><div class="story-chapter-big text-red-400">DEFEAT</div><div class="text-zinc-300 mt-2">${n}층 · ${reason === 'giveup' ? '도전을 포기했어요.' : reason === 'timeout' ? `${cfg.maxTurns || 40}턴 안에 적을 모두 쓰러뜨리지 못했어요.` : '내 인재가 모두 쓰러졌어요.'}</div>
         <div class="flex flex-col gap-2 max-w-xs mx-auto mt-6"><button class="story-btn" id="q-retry">다시 도전</button><button class="story-back" id="q-back">탑으로</button></div></div>`, 'tower');
-      $('q-retry').onclick = () => challenge(n); $('q-back').onclick = render; return;
+      $('q-retry').onclick = () => { clearTowerPane(); challenge(n); }; $('q-back').onclick = render; return;
     }
     { const wait = startedAt + MIN_BATTLE_MS - Date.now(); if (wait > 0) await new Promise(r => setTimeout(r, wait)); }
     let res;
@@ -244,7 +249,7 @@
     if (res && res.cleared === false) {
       api.show(`<div class="text-center py-10"><div class="story-chapter-big text-red-400">DEFEAT</div><div class="text-zinc-300 mt-2">${n}층 · 서버가 이 전투를 다시 계산한 결과는 패배예요. 보상은 없어요.</div>
         <div class="flex flex-col gap-2 max-w-xs mx-auto mt-6"><button class="story-btn" id="q-retry">다시 도전</button><button class="story-back" id="q-back">탑으로</button></div></div>`, 'tower');
-      $('q-retry').onclick = () => challenge(n); $('q-back').onclick = render; return;
+      $('q-retry').onclick = () => { clearTowerPane(); challenge(n); }; $('q-back').onclick = render; return;
     }
     status = { ...status, best_floor: res.best_floor ?? Math.max(best(), n), today: res.today ?? status?.today, unpaid_floors: (status?.unpaid_floors || []).filter(f => f !== n) };
     const rw = res.first ? res.reward : null, got = rw && (rw.tickets || rw.gold);
