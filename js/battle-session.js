@@ -19,7 +19,7 @@
     data.readyAt = Date.now() + Number(data.min_seconds || 0) * 1000 + 250;
     return data;
   }
-  const DIRECT_V7 = '1dbdb45994799cdcf3db14bd6eb44689d35678a733774caffcfd9867df85685c';
+  const DIRECT_V7 = '5e73c7207dba21bec951a2272295c1af42565e2f8d71568f4b87c66828e061a3';
   function replayError(message) {
     const err = new Error(message || '전투 결과를 서버가 확인하지 못했어요');
     err.replayNotReady = /verifier unavailable|staging verifier unavailable|Failed to send a request to the Edge Function|Function not found|404 Not Found/i.test(err.message);
@@ -29,9 +29,8 @@
   async function verifyDirect(session, report) {
     const c = window.VRCloud;
     if (!c?.sb || !session?.session) throw new Error('전투 시작 기록이 없어요');
-    const outcome = report?.reason === 'giveup' ? 'giveup' : report?.win ? 'claim' : 'loss';
-    const body = { op: 'direct', id: session.session, version: DIRECT_V7, outcome,
-      mana: report?.mana == null || Number.isNaN(Number(report.mana)) ? null : Math.max(0, Math.min(99999, Math.trunc(Number(report.mana)))),
+    const body = { op: 'direct', id: session.session, version: DIRECT_V7,
+      actions: (Array.isArray(report?.actions) ? report.actions : []).slice(0, 200),
       cards: (Array.isArray(report?.cards) ? report.cards : []).slice(0, 30).map(c => ({ uid: String(c.uid || ''), kills: c.kills | 0, blocks: c.blocks | 0 })).filter(c => c.uid) };
     let last;
     for (let n = 0; n < 2; n++) {
@@ -54,7 +53,8 @@
       try { return await verifyDirect(session, report); }
       catch (e) { if (!e.replayNotReady && !e.unverifiedFight) throw e; }
     }
-    try { return await rpc('battle_session_finish_v2', { p_session: session.session, p_report: report }); }
+    const { actions, ...plain } = report || {};
+    try { return await rpc('battle_session_finish_v2', { p_session: session.session, p_report: plain }); }
     catch (e) {
       if (/direct replay required/.test(String(e?.message || e))) throw new Error('전투 결과를 서버가 확인하지 못했어요. 다시 도전해 주세요.');
       throw e;
@@ -62,7 +62,8 @@
   }
   const report = (win, reason, st = {}, cards = []) => ({ win: !!win, reason: String(reason || ''),
     turns: Number(st.totalTurns ?? st.turns ?? 0), my_turns: Number(st.myTurns ?? Math.ceil((st.totalTurns ?? st.turns ?? 0) / 2)),
-    mana: st.mana == null ? null : Number(st.mana), skills: Number(st.skills || 0), cards });
+    mana: st.mana == null ? null : Number(st.mana), skills: Number(st.skills || 0), cards,
+    actions: Array.isArray(st.actions) ? st.actions.slice(0, 200) : [] });
   const abort = session => session?.session ? rpc('battle_session_abort_v2', { p_session: session.session }) : Promise.resolve(null);
   window.VRBattleSession = { start, finish, report, abort, verifyDirect };
 })();

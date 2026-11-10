@@ -3,27 +3,40 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { PGlite } from '@electric-sql/pglite';
 import { buildSql, INSTALL_ACK } from './build_staging_sql.mjs';
-import { ENGINE_VERSION as SWEEP_HASH } from '../supabase/functions/_shared/sweep-engine-v6.mjs';
+import { ENGINE_VERSION as SWEEP_HASH, verifySweep } from '../supabase/functions/_shared/sweep-engine-v6.mjs';
 import { ENGINE_VERSION as ARCADE_HASH } from '../supabase/functions/_shared/arcade-engine-v5.mjs';
-import { ENGINE_VERSION, verifyDirect } from '../supabase/functions/story-direct-verify-v7/engine.mjs';
-import { verifySweep } from '../supabase/functions/_shared/sweep-engine-v6.mjs';
+import { ENGINE_VERSION, verifyDirect, runDirect, towerEnemies } from '../supabase/functions/story-direct-verify-v7/engine.mjs';
+import { runSweep } from '../js/sweep-core.js';
+import { initPlayers, placeUnit, turnStart, turnEnd, useSkill, aiPickSkill, refreshAll, setRng, setEmitter, getEmitter } from '../js/skills.js';
+import { clearBuff, refillMana, endTurnXp, makeUnit, resolveAttack, aiPickTarget } from '../js/rules.js';
 import { createHandler } from '../supabase/functions/story-direct-verify-v7/handler.mjs';
 import { dashboardHandler } from './load_phase7_dashboard.mjs';
 
 assert.equal(SWEEP_HASH, '1dbdb45994799cdcf3db14bd6eb44689d35678a733774caffcfd9867df85685c');
 assert.equal(ARCADE_HASH, 'e792c491ffafe19d047aa6f58db1920e5767e4059e14816611dd38d473871161');
-assert.equal(ENGINE_VERSION, SWEEP_HASH);
+assert.notEqual(ENGINE_VERSION, SWEEP_HASH);
 
-const probe = { mode: 'tower', target: 'wind:1', seed: 3, snapshot: { cards: [{ id: '10111', uid: 'u1', level: 80 }], leader: 'u1' } };
-for (const tower of ['wind', 'ice', 'fire', 'light', 'dark', 'normal']) {
-  const result = verifyDirect({ ...probe, target: `${tower}:3` }, 'claim');
-  assert.equal(typeof result.win, 'boolean');
-  assert.equal(result.my_turns, Math.ceil(result.turns / 2));
+assert.throws(() => verifySweep({ mode: 'tower_sweep', target: 'normal:10', seed: 3, snapshot: { cards: [{ id: '10111', uid: 'u1', level: 80 }] } }), /boss floor/);
+const claimBody = (id, actions = [], cards = []) => ({ op: 'direct', id, version: ENGINE_VERSION, actions, cards });
+function legalLog(session) {
+  const log = [];
+  for (let n = 0; n < 40; n++) {
+    let res;
+    try { res = verifyDirect(session, log); } catch { return null; }
+    if (res.win) return { res, log };
+    if (res.reason !== 'incomplete') return { res, log };
+    const t = res.my_turns;
+    const opts = [];
+    for (let i = 0; i < 6; i++) opts.push({ t, k: 'atk', i, g: -1 });
+    for (let i = 0; i < 6; i++) for (let g = 0; g < 8; g++) opts.push({ t, k: 'atk', i, g });
+    opts.push({ t, k: 'end' });
+    let picked = null;
+    for (const opt of opts) { try { verifyDirect(session, log.concat(opt)); picked = opt; break; } catch { /* illegal action */ } }
+    if (!picked) return { res, log };
+    log.push(picked);
+  }
+  return null;
 }
-assert.throws(() => verifyDirect({ ...probe, target: 'normal:10' }, 'claim'), /boss floor/);
-assert.equal(verifyDirect({ mode: 'story', target: '12:14', seed: 1, snapshot: { stage: { loseClears: true }, cards: [] } }, 'loss').scripted, 'loseClears');
-assert.equal(verifyDirect({ mode: 'story', target: '12:14', seed: 1, snapshot: { stage: { loseClears: true }, cards: [] } }, 'giveup').reason, 'giveup');
-assert.throws(() => verifyDirect({ mode: 'story', target: '1:1', seed: 1, snapshot: { stage: { type: 'normal', enemies: { count: 1, rank: [0, 30] } }, cards: probe.snapshot.cards } }, 'claim'), /unsupported battle/);
 
 const rd = p => readFile(new URL('../' + p, import.meta.url), 'utf8');
 const db = new PGlite();
@@ -84,7 +97,6 @@ const http = async (body, token = 'fixture-me') => {
   delete data.trace;
   return { status: r.status, data };
 };
-const claimBody = (id, extra = {}) => ({ op: 'direct', id, version: ENGINE_VERSION, outcome: 'claim', mana: null, cards: [], ...extra });
 async function unlockBefore(chapter, phase) {
   await q(`with phases as (
      select chapter, phase from story_phase_config
@@ -136,7 +148,8 @@ try {
   await db.exec(sql);
   await db.exec(sql);
   assert.equal(await val('select enabled v from battle_replay_policy_v7'), false);
-  assert.equal(await val('select engine_hash v from battle_replay_policy_v7'), SWEEP_HASH);
+  assert.equal(await val('select engine_hash v from battle_replay_policy_v7'), ENGINE_VERSION);
+  assert.notEqual(ENGINE_VERSION, SWEEP_HASH);
   assert.equal(await val(`select enabled v from battle_replay_policy_v6`), false);
   await reject(`select battle_direct_settle_v7($1,$2,$3,$4::jsonb,$5::jsonb)`, [me, req(1), SWEEP_HASH, '{"win":false,"reason":"wipe","turns":2,"my_turns":1}', '{"mana":null,"cards":[]}']);
   await reject(`select _phase7_prev_finish_v2($1,$2::jsonb)`, [req(1), '{}']);
@@ -157,112 +170,108 @@ try {
   const forgedStory = await start('story', '1:1', [owned.uid, 'guest:10112'], req(20));
   await reject(`select battle_session_finish_v2($1,$2::jsonb)`, [forgedStory.session, JSON.stringify({ ...report, mana: forgedStory.snapshot.mana, cards: [] })], /direct replay required/);
   assert.equal(await storyReceipts('1:1'), 0);
-  assert.equal(await gold(), beforeStoryGold);
-  await q(`update battle_sessions_v2 set snapshot=jsonb_set(snapshot,'{stage,enemies,boost}','{"10210":{"HP":9000000,"ATK":1,"DEF":1}}'::jsonb) where id=$1`, [forgedStory.session]);
-  const forgedStoryHttp = await http(claimBody(forgedStory.session, { mana: Math.trunc(forgedStory.snapshot.mana) }));
+  const forgedStoryHttp = await http(claimBody(forgedStory.session, []));
   assert.equal(forgedStoryHttp.status, 200, JSON.stringify(forgedStoryHttp));
-  assert.equal(forgedStoryHttp.data.validation, 'replay-v7');
   assert.equal(forgedStoryHttp.data.cleared, false);
   assert.equal(forgedStoryHttp.data.win, false);
-  assert.equal(await storyReceipts('1:1'), 0);
   assert.equal(await gold(), beforeStoryGold);
 
-  const legitStory = await start('story', '1:1', [owned.uid, 'guest:10112'], req(21));
-  await q(`update battle_sessions_v2 set snapshot=jsonb_set(jsonb_set(snapshot,'{cards,0,level}','80'::jsonb),'{cards,1,level}','80'::jsonb) where id=$1`, [legitStory.session]);
-  let winningStory = null;
-  for (let seed = 1; seed <= 20 && !winningStory; seed++) {
-    const loaded = await as(null, () => val(`select battle_direct_session_v7($1,$2) v`, [me, legitStory.session]), 'service_role');
-    loaded.seed = seed;
-    const result = verifyDirect(loaded, 'claim');
-    if (result.win) winningStory = { seed, result };
-  }
-  assert.ok(winningStory, 'expected a deterministic story win');
-  await q(`update battle_sessions_v2 set seed=$2 where id=$1`, [legitStory.session, winningStory.seed]);
-  await age(legitStory.session);
-  const storyCall = claimBody(legitStory.session, { mana: Math.trunc(legitStory.snapshot.mana), cards: [{ uid: owned.uid, kills: 1, blocks: 0 }] });
-  assert.equal((await http({ ...storyCall, win: true })).status, 400);
+  const bossStory = await start('story', '1:1', [owned.uid, 'guest:10112'], req(21));
+  const bossStage = { type: 'boss', baseHp: 250, bossId: '10051', enemies: { ids: ['10074', '10051'], boost: { '10051': { HP: 999999, ATK: 20, DEF: 50 } } } };
+  const bossSnap = bossStory.snapshot;
+  bossSnap.stage = bossStage;
+  bossSnap.cards = [{ id: '10111', uid: owned.uid, level: 40 }];
+  bossSnap.mana = null;
+  await q(`update battle_sessions_v2 set seed=4, snapshot=$2::jsonb where id=$1`, [bossStory.session, JSON.stringify(bossSnap)]);
+  const bossLoaded = await as(null, () => val(`select battle_direct_session_v7($1,$2) v`, [me, bossStory.session]), 'service_role');
+  const manual = legalLog(bossLoaded);
+  assert.equal(manual?.res?.win, true, JSON.stringify(manual?.res));
+  assert.equal(manual.res.reason, 'ko');
+  const swept = runSweep(
+    { initPlayers, placeUnit, turnStart, turnEnd, useSkill, aiPickSkill, refreshAll, setRng, setEmitter, getEmitter },
+    { clearBuff, refillMana, endTurnXp, makeUnit, resolveAttack, aiPickTarget },
+    { me: [{ id: '10111', HP: 800, ATK: 200, DEF: 80, grade: 'RARE', class: 'FIRE', attribute: 'CHARGE', PHY: 70, MEN: 40, MOR: 40, cost: 20, power: 5000, uid: owned.uid }],
+      ai: [{ id: '10074', HP: 80, ATK: 10, DEF: 5, grade: 'NORMAL', class: 'WIND', attribute: 'DEFENSE', PHY: 10, MEN: 10, MOR: 10, cost: 5, power: 300 }, { id: '10051', HP: 999999, ATK: 20, DEF: 50, grade: 'ULTRA RARE', class: 'FIRE', attribute: 'CHARGE', PHY: 80, MEN: 40, MOR: 40, cost: 40, power: 80000 }],
+      seed: 4, maxTurns: 40 });
+  assert.equal(swept.win, false);
+  await age(bossStory.session);
+  const storyCall = claimBody(bossStory.session, manual.log);
   const storyWin = await http(storyCall);
   assert.equal(storyWin.status, 200, JSON.stringify(storyWin));
   assert.equal(storyWin.data.validation, 'replay-v7');
-  assert.equal(storyWin.data.cleared, true);
   assert.equal(storyWin.data.win, true);
-  assert.ok(storyWin.data.stars >= 1);
+  assert.equal(storyWin.data.cleared, true);
   const storyGold = await gold();
   const storyAgain = await http(storyCall);
   assert.deepEqual(storyAgain.data, storyWin.data);
   assert.equal(await gold(), storyGold);
-  assert.equal(await storyReceipts('1:1'), 1);
+  const tampered = manual.log.map(a => a.k === 'atk' ? { ...a, g: 9 } : a);
+  const bad = await http(claimBody(bossStory.session, tampered));
+  assert.equal(bad.status, 422);
+  assert.match(bad.data.error, /전투 기록/);
+  assert.equal(await gold(), storyGold);
 
-  await q(`update tower_progress set best_floor=38 where user_id=$1 and tower='normal'`, [me]);
-  await q(`update battle_legacy_access_v2 set tower_best=jsonb_set(coalesce(tower_best,'{}'),'{normal}','38'::jsonb) where user_id=$1`, [me]);
-  const forgedTower = await start('tower', 'normal:39', [owned.uid], req(30));
-  const towerGold = await gold();
-  const towerReceiptsBefore = await towerReceipts();
-  await reject(`select battle_session_finish_v2($1,$2::jsonb)`, [forgedTower.session, JSON.stringify(report)], /direct replay required/);
-  assert.equal(await gold(), towerGold);
-  assert.equal(await towerReceipts(), towerReceiptsBefore);
-  const forgedTowerHttp = await http(claimBody(forgedTower.session));
-  assert.equal(forgedTowerHttp.status, 200, JSON.stringify(forgedTowerHttp));
-  assert.equal(forgedTowerHttp.data.validation, 'replay-v7');
-  assert.equal(forgedTowerHttp.data.win, false);
-  assert.equal(forgedTowerHttp.data.cleared, false);
-  assert.equal(await val(`select best_floor::int v from tower_progress where user_id=$1 and tower='normal'`, [me]), 38);
-  assert.equal(await gold(), towerGold);
-  assert.equal(await towerReceipts(), towerReceiptsBefore);
+  const ids = ['10051', '10323', '10058', '10311', '10118'];
+  const made = [];
+  for (const id of ids) made.push(await val(`select _story_new_card($1) v`, [id]));
+  await q(`update story_progress set data=jsonb_set(data,'{owned}', data->'owned' || $2::jsonb) where user_id=$1`, [me, JSON.stringify(made)]);
+  await q(`update battle_legacy_access_v2 set tower_best=jsonb_set(coalesce(tower_best,'{}'),'{normal}','9'::jsonb) where user_id=$1`, [me]);
+  const floor = await start('tower', 'normal:10', made.map(c => c.uid), req(30));
+  const floorSnap = floor.snapshot;
+  floorSnap.cards = made.map(c => ({ ...c, level: 60 }));
+  await q(`update battle_sessions_v2 set seed=3, snapshot=$2::jsonb where id=$1`, [floor.session, JSON.stringify(floorSnap)]);
+  const floorLoaded = await as(null, () => val(`select battle_direct_session_v7($1,$2) v`, [me, floor.session]), 'service_role');
+  const floorLog = legalLog(floorLoaded);
+  assert.equal(floorLog?.res?.win, true, JSON.stringify(floorLog?.res));
+  assert.equal(floorLog.res.reason, 'ko');
+  const beforeFloor = await gold();
+  const floorHttp = await http(claimBody(floor.session, floorLog.log));
+  assert.equal(floorHttp.status, 200, JSON.stringify(floorHttp));
+  assert.equal(floorHttp.data.win, true);
+  assert.equal(floorHttp.data.floor, 10);
+  const floorGold = await gold();
+  assert.ok(floorGold >= beforeFloor);
+  const floorAgain = await http(claimBody(floor.session, floorLog.log));
+  assert.deepEqual(floorAgain.data, floorHttp.data);
+  assert.equal(await gold(), floorGold);
+  const otherRoster = { ...floorLoaded, snapshot: { ...floorLoaded.snapshot, cards: [{ id: '10074', uid: 'w', level: 1 }] } };
+  assert.throws(() => verifyDirect(otherRoster, floorLog.log), /tampered/);
 
-  const legitTower = await start('tower', 'normal:2', [owned.uid], req(31));
-  await q(`update battle_sessions_v2 set snapshot=jsonb_set(snapshot,'{cards,0,level}','80'::jsonb) where id=$1`, [legitTower.session]);
-  let winningTower = null;
-  for (let seed = 1; seed <= 30 && !winningTower; seed++) {
-    const loaded = await as(null, () => val(`select battle_direct_session_v7($1,$2) v`, [me, legitTower.session]), 'service_role');
-    loaded.seed = seed;
-    const result = verifyDirect(loaded, 'claim');
-    if (result.win) winningTower = { seed, result };
-  }
-  assert.ok(winningTower, 'expected a deterministic tower win');
-  await q(`update battle_sessions_v2 set seed=$2 where id=$1`, [legitTower.session, winningTower.seed]);
-  const towerCall = claimBody(legitTower.session);
-  const towerWin = await http(towerCall);
-  assert.equal(towerWin.status, 200, JSON.stringify(towerWin));
-  assert.equal(towerWin.data.validation, 'replay-v7');
-  assert.equal(towerWin.data.win, true);
-  assert.equal(towerWin.data.cleared, true);
-  assert.equal(towerWin.data.floor, 2);
-  const paid = await gold();
-  assert.ok(paid >= towerGold);
-  const towerAgain = await http(towerCall);
-  assert.deepEqual(towerAgain.data, towerWin.data);
-  assert.equal(await gold(), paid);
-  assert.equal(await towerReceipts(), towerReceiptsBefore + 1);
+  const add = await start('story', '1:2', [owned.uid], req(40));
+  const addSnap = add.snapshot;
+  addSnap.mana = null;
+  addSnap.cards = [{ id: '10074', uid: owned.uid, level: 1 }];
+  addSnap.stage = { type: 'normal', enemies: { ids: ['10051'], boost: { '10051': { HP: 800, ATK: 400, DEF: 20 } } }, awaken: { on: '10074', id: '10311', battleLevel: 40 } };
+  await q(`update battle_sessions_v2 set seed=4, snapshot=$2::jsonb where id=$1`, [add.session, JSON.stringify(addSnap)]);
+  const addLoaded = await as(null, () => val(`select battle_direct_session_v7($1,$2) v`, [me, add.session]), 'service_role');
+  const addLog = legalLog(addLoaded);
+  assert.equal(addLog?.res?.win, true, JSON.stringify(addLog?.res));
+  const without = { ...addLoaded, snapshot: { ...addLoaded.snapshot, stage: { ...addSnap.stage, awaken: null } } };
+  let noAwaken = false;
+  try { noAwaken = verifyDirect(without, addLog.log).win; } catch { noAwaken = false; }
+  assert.equal(noAwaken, false);
+  await age(add.session);
+  const addHttp = await http(claimBody(add.session, addLog.log));
+  assert.equal(addHttp.status, 200, JSON.stringify(addHttp));
+  assert.equal(addHttp.data.cleared, true);
+  assert.equal(addHttp.data.win, true);
 
   await unlockBefore(12, 14);
-  const scripted = await start('story', '12:14', [heroine.uid], req(40));
-  await reject(`select battle_session_finish_v2($1,$2::jsonb)`, [scripted.session, JSON.stringify(report)], /direct replay required/);
+  const scripted = await start('story', '12:14', [heroine.uid], req(50));
   await age(scripted.session);
-  const scriptedHttp = await http(claimBody(scripted.session, { outcome: 'loss', mana: Math.trunc(scripted.snapshot.mana || 0) }));
+  const scriptedHttp = await http(claimBody(scripted.session, [{ t: 1, k: 'end' }]));
   assert.equal(scriptedHttp.status, 200, JSON.stringify(scriptedHttp));
   assert.equal(scriptedHttp.data.cleared, true);
   assert.equal(scriptedHttp.data.win, false);
   assert.equal(scriptedHttp.data.stars, 3);
-  const give = await start('story', '12:14', [heroine.uid], req(41));
-  const gave = await http(claimBody(give.session, { outcome: 'giveup' }));
+  const give = await start('story', '12:14', [heroine.uid], req(51));
+  const gave = await http(claimBody(give.session, [{ t: 1, k: 'giveup' }]));
   assert.equal(gave.status, 200, JSON.stringify(gave));
   assert.equal(gave.data.cleared, false);
 
-  await unlockBefore(1, 5);
-  const boss = await start('story', '1:5', [owned.uid], req(50));
-  const bossHttp = await http(claimBody(boss.session, { mana: boss.snapshot.mana == null ? null : Math.trunc(boss.snapshot.mana) }));
-  assert.equal(bossHttp.status, 422);
-  assert.equal(bossHttp.data.error, '이 전투는 서버가 다시 계산할 수 없어요');
-  await age(boss.session);
-  const bossFinish = await finish(boss.session, { ...report, mana: boss.snapshot.mana, cards: [] });
-  assert.equal(bossFinish.validation, 'plausibility-v3');
-  const towerBoss = await start('tower', 'normal:10', [owned.uid], req(51));
-  const towerBossHttp = await http(claimBody(towerBoss.session));
-  assert.equal(towerBossHttp.status, 422);
-  assert.equal(towerBossHttp.data.error, '보스 층은 서버가 다시 계산할 수 없어요');
-
   await q(`update battle_replay_policy_v6 set enabled=true where singleton`);
+  await q(`update tower_progress set best_floor=38 where user_id=$1 and tower='normal'`, [me]);
+  await q(`update battle_legacy_access_v2 set tower_best=jsonb_set(coalesce(tower_best,'{}'),'{normal}','38'::jsonb) where user_id=$1`, [me]);
   const sweep = await start('tower_sweep', 'normal:39', [owned.uid], req(60));
   await reject(`select battle_session_finish_v2($1,$2::jsonb)`, [sweep.session, JSON.stringify(report)], /sweep replay required/);
   const loadedSweep = await as(null, () => val(`select battle_sweep_session_v6($1,$2) v`, [me, sweep.session]), 'service_role');
@@ -270,8 +279,9 @@ try {
   const sweepSettled = await as(null, () => val(`select battle_sweep_settle_v6($1,$2,$3,$4::jsonb) v`, [me, sweep.session, SWEEP_HASH, JSON.stringify(sweepResult)]), 'service_role');
   assert.equal(sweepSettled.validation, 'replay-v6');
   assert.equal(sweepSettled.win, sweepResult.win);
+  assert.ok(towerEnemies('normal', 10).bossId);
 
-  console.log('phase7 SQL + ' + (process.argv.includes('--dashboard') ? 'Dashboard' : 'modular') + ' handler: forged story/tower wins rejected, verified win granted, phase6 sweep kept');
+  console.log('phase7 SQL + ' + (process.argv.includes('--dashboard') ? 'Dashboard' : 'modular') + ' handler: manual replay grants, forged and tampered logs rejected, phase6 sweep kept');
 } catch (e) {
   console.error(e);
   process.exitCode = 1;

@@ -21,33 +21,16 @@ create table if not exists public.battle_replay_policy_v7 (
  engine_hash text not null check (engine_hash ~ '^[a-f0-9]{64}$'));
 -- Starts off. Re-running this file updates the engine hash only and does not turn enforcement on.
 insert into public.battle_replay_policy_v7(singleton, enabled, engine_hash)
- values (true, false, '1dbdb45994799cdcf3db14bd6eb44689d35678a733774caffcfd9867df85685c')
+ values (true, false, '5e73c7207dba21bec951a2272295c1af42565e2f8d71568f4b87c66828e061a3')
  on conflict (singleton) do update set engine_hash = excluded.engine_hash;
 alter table public.battle_replay_policy_v7 enable row level security;
 revoke all on public.battle_replay_policy_v7 from public, anon, authenticated;
 
 create or replace function public._phase7_replayable(p_mode text, p_target text, p_stage jsonb) returns boolean
 language sql stable as $$
-select case
- when p_mode = 'tower' then split_part(p_target, ':', 2) ~ '^[0-9]+$'
-  and split_part(p_target, ':', 2)::int >= 1
-  and split_part(p_target, ':', 2)::int % 10 <> 0
- when p_mode = 'story' and coalesce((p_stage->>'loseClears')::boolean, false) then true
- when p_mode = 'story' then
-  not coalesce((p_stage->>'tutorial')::boolean, false)
-  and p_stage->>'type' is distinct from 'boss'
-  and not coalesce(p_stage ? 'baseHp', false)
-  and not coalesce(p_stage ? 'mustSummon', false)
-  and not coalesce(p_stage ? 'awaken', false)
-  and not coalesce(p_stage ? 'joinAlly', false)
-  and not coalesce(jsonb_typeof(p_stage->'reserve') = 'array' and jsonb_array_length(p_stage->'reserve') > 0, false)
-  and not coalesce(p_stage->'rules' ? 'mustSummon', false)
-  and not coalesce(p_stage->'rules' ? 'revive', false)
-  and not coalesce(p_stage->'rules' ? 'undying', false)
-  and not coalesce(p_stage->'rules' ? 'invuln', false)
-  and not coalesce(p_stage->'rules' ? 'expire', false)
-  and coalesce(jsonb_typeof(p_stage->'enemies'->'ids') = 'array' and jsonb_array_length(p_stage->'enemies'->'ids') > 0, false)
- else false end
+select p_mode = 'story' and p_target ~ '^[0-9]+:[0-9]+$'
+ or p_mode = 'tower' and split_part(p_target, ':', 2) ~ '^[0-9]+$'
+  and split_part(p_target, ':', 2)::int between 1 and 350
 $$;
 
 do $$ begin
@@ -116,8 +99,8 @@ begin
   raise exception 'completion rate limit';
  end if;
  if jsonb_typeof(p_result) is distinct from 'object'
-  or not (p_result ?& array['win','reason','turns','my_turns'])
-  or exists (select 1 from jsonb_object_keys(p_result) k where k not in ('win','reason','turns','my_turns','scripted'))
+  or not (p_result ?& array['win','reason','turns','my_turns','mana','max_mana'])
+  or exists (select 1 from jsonb_object_keys(p_result) k where k not in ('win','reason','turns','my_turns','mana','max_mana','scripted'))
   or jsonb_typeof(p_result->'win') is distinct from 'boolean'
   or p_result->>'turns' !~ '^[0-9]{1,2}$' or p_result->>'my_turns' !~ '^[0-9]{1,2}$' then raise exception 'invalid replay'; end if;
  win_ := (p_result->>'win')::boolean;
@@ -126,14 +109,14 @@ begin
  tr := (p_result->>'turns')::int;
  mt := (p_result->>'my_turns')::int;
  cfg := s.snapshot->'stage';
- if tr < 1 or tr > 40 or mt <> ceil(tr / 2.0)::int then raise exception 'invalid replay'; end if;
+ if tr < 1 or tr > 80 or mt < 1 or mt > tr then raise exception 'invalid replay'; end if;
  if scripted_ is not null and scripted_ <> 'loseClears' then raise exception 'invalid replay'; end if;
- if scripted_ = 'loseClears' and (not coalesce((cfg->>'loseClears')::boolean, false) or win_ or reason_ <> 'wipe') then raise exception 'invalid replay'; end if;
+ if scripted_ = 'loseClears' and (not coalesce((cfg->>'loseClears')::boolean, false) or win_ or reason_ = 'giveup') then raise exception 'invalid replay'; end if;
  if reason_ = 'giveup' and win_ then raise exception 'invalid replay'; end if;
  if scripted_ is null and reason_ <> 'giveup' then
   if win_ and reason_ = 'survive' and cfg->'rules'->>'survive' is null then raise exception 'invalid replay'; end if;
-  if win_ and reason_ not in ('wipe', 'survive') then raise exception 'invalid replay'; end if;
-  if not win_ and reason_ not in ('wipe', 'timeout') then raise exception 'invalid replay'; end if;
+  if win_ and reason_ not in ('wipe', 'survive', 'ko') then raise exception 'invalid replay'; end if;
+  if not win_ and reason_ not in ('wipe', 'timeout', 'incomplete', 'ko') then raise exception 'invalid replay'; end if;
  end if;
  if jsonb_typeof(p_client) is distinct from 'object'
   or exists (select 1 from jsonb_object_keys(p_client) k where k not in ('mana','cards'))
@@ -164,14 +147,13 @@ begin
     blocks_ := least(blocks_, 3, greatest(0, cap_ * 2 - bsum)); bsum := bsum + blocks_;
     stats := stats || jsonb_build_object('uid', uid_, 'kills', kills_, 'blocks', blocks_);
    end loop;
-   maxmana := (s.snapshot->>'mana')::int;
-   if maxmana is not null and jsonb_typeof(p_client->'mana') = 'number' and p_client->>'mana' ~ '^[0-9]{1,5}$' then
-    mana_ := (p_client->>'mana')::int;
-    if mana_ > maxmana then raise exception 'implausible mana'; end if;
+   maxmana := case when jsonb_typeof(p_result->'max_mana') = 'number' then (p_result->>'max_mana')::int else null end;
+   mana_ := case when jsonb_typeof(p_result->'mana') = 'number' then (p_result->>'mana')::int else null end;
+   if maxmana is not null and maxmana >= 0 and mana_ is not null and mana_ >= 0 and mana_ <= maxmana then
     stars_ := 1 + case when mt <= coalesce((cfg->>'starTurns')::int, 10) then 1 else 0 end
      + case when mana_ >= ceil(maxmana * coalesce((cfg->>'starMana')::numeric, 0.3)) then 1 else 0 end;
    elsif maxmana is not null then
-    stars_ := 1 + case when mt <= coalesce((cfg->>'starTurns')::int, 10) then 1 else 0 end;
+    raise exception 'invalid replay';
    end if;
    if coalesce((cfg->>'loseClears')::boolean, false) then stars_ := 3; end if;
    res := public._phase2_old_story_complete_phase(ch, ph, stats);
@@ -198,7 +180,7 @@ begin
  else
   tw := split_part(s.target, ':', 1);
   fl := split_part(s.target, ':', 2)::int;
-  if fl % 10 = 0 or fl < 1 then raise exception 'boss floor or invalid floor'; end if;
+  if fl < 1 or fl > 350 then raise exception 'boss floor or invalid floor'; end if;
   tp := public._tower_row(p_uid, tw);
   perform public._tower_gate(p_uid, tw, tp);
   if not clear_ then

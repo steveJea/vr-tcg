@@ -1,10 +1,14 @@
 import { build } from 'esbuild';
+import { createHash } from 'node:crypto';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 const root = new URL('../', import.meta.url);
 const check = process.argv.includes('--check');
+const rulesBefore = await readFile(new URL('js/rules.js', root));
+const sweepBefore = await readFile(new URL('supabase/functions/_shared/sweep-engine-v6.mjs', root));
+const arcadeBefore = await readFile(new URL('supabase/functions/_shared/arcade-engine-v5.mjs', root));
 const r = await build({
   absWorkingDir: root.pathname,
-  entryPoints: ['tools/direct-engine-entry.mjs'],
+  entryPoints: ['js/direct-battle-core.js'],
   bundle: true,
   platform: 'neutral',
   format: 'esm',
@@ -13,19 +17,29 @@ const r = await build({
   write: false,
   metafile: true,
 });
-const banned = ['js/rules.js', 'supabase/functions/_shared/sweep-engine-v6.mjs', 'supabase/functions/_shared/arcade-engine-v5.mjs', 'supabase/functions/_shared/pvp-engine-v3.mjs', 'supabase/functions/_shared/guildbattle-engine-v4.mjs'];
-for (const file of banned) {
-  const before = await readFile(new URL(file, root));
-  const after = await readFile(new URL(file, root));
-  if (!before.equals(after)) throw new Error('phase7 build mutated ' + file);
+if (!rulesBefore.equals(await readFile(new URL('js/rules.js', root)))) throw new Error('phase7 build mutated rules.js');
+if (!sweepBefore.equals(await readFile(new URL('supabase/functions/_shared/sweep-engine-v6.mjs', root)))) throw new Error('phase7 build mutated sweep engine');
+if (!arcadeBefore.equals(await readFile(new URL('supabase/functions/_shared/arcade-engine-v5.mjs', root)))) throw new Error('phase7 build mutated arcade engine');
+const h = createHash('sha256');
+for (const f of Object.keys(r.metafile.inputs).sort()) {
+  if (f.endsWith('js/rules.js') || f.includes('_shared/')) continue;
+  h.update(f).update('\0').update(await readFile(new URL(f, root))).update('\0');
 }
-const text = '// GENERATED: node tools/build_phase7_engine.mjs\n' + r.outputFiles[0].text;
+const version = h.digest('hex');
+const text = '// GENERATED: node tools/build_phase7_engine.mjs\nexport const ENGINE_VERSION=' + JSON.stringify(version) + ';\n' + r.outputFiles[0].text;
 const out = new URL('supabase/functions/story-direct-verify-v7/engine.mjs', root);
-if (check) {
-  if (await readFile(out, 'utf8') !== text) throw new Error('stale direct engine; run node tools/build_phase7_engine.mjs');
-} else {
-  await mkdir(new URL('.', out), { recursive: true });
-  await writeFile(out, text);
+async function put(url, next) {
+  if (check) { if (await readFile(url, 'utf8') !== next) throw new Error('stale ' + url.pathname); }
+  else { await mkdir(new URL('.', url), { recursive: true }); await writeFile(url, next); }
 }
-if (!text.includes('1dbdb45994799cdcf3db14bd6eb44689d35678a733774caffcfd9867df85685c')) throw new Error('direct engine lost the sweep hash');
-console.log('Phase7 direct engine bytes ' + Buffer.byteLength(text));
+await put(out, text);
+const sqlUrl = new URL('supabase/security_phase7_direct_replay.sql', root);
+const sql = await readFile(sqlUrl, 'utf8');
+const nextSql = sql.replace(/values \(true, false, '[a-f0-9]{64}'\)/, "values (true, false, '" + version + "')");
+await put(sqlUrl, nextSql);
+const sessionUrl = new URL('js/battle-session.js', root);
+const session = await readFile(sessionUrl, 'utf8');
+const nextSession = session.replace(/const DIRECT_V7 = '[a-f0-9]{64}';/, "const DIRECT_V7 = '" + version + "';");
+await put(sessionUrl, nextSession);
+if (!text.includes('export function verifyDirect') && !text.includes('function verifyDirect')) throw new Error('direct bundle missing verifyDirect');
+console.log('Phase7 direct engine ' + version);

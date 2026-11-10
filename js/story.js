@@ -189,9 +189,10 @@
   const rand = a => a[Math.floor(Math.random() * a.length)];
   /** 스토리 레벨 배율만 적용한 카드 (적 enemies.storyLevels · 각성 난입): HP·ATK·DEF × (1 + 등급 비율 × (Lv−1)) */
   function lvScaled(c, lv) { const m = 1 + (LV_RATE[c.grade] || 0.01) * (Math.max(1, lv) - 1); const o = { ...c, HP: Math.round(c.HP * m), ATK: Math.round(c.ATK * m), DEF: Math.round(c.DEF * m), storyLv: lv, storyBoost: true }; o.power = window.TCG?.calcPower ? TCG.calcPower(o) : c.power; return o; }
-  function pickEnemies(ph) {
+  function pickEnemies(ph, rng) {
     // enemies.boost: { 카드 id: { HP, ATK, DEF, power } } 이 페이즈에서만 쓰는 적 능력치 (카드 원본은 그대로)
     if (ph.enemies.ids) return ph.enemies.ids.map(card).filter(Boolean).map(c => { const sl = ph.enemies.storyLevels?.[String(c.id)]; if (sl) c = lvScaled(c, sl); const b = ph.enemies.boost?.[String(c.id)]; if (!b) return { ...c }; const e = { ...c, ...b, storyBoost: true }; e.power = window.TCG?.calcPower ? TCG.calcPower(e) : (b.power ?? c.power); return e; });   // boost power = 옵션 B 공식(boost 스탯)   // 같은 id 적 여러 명(CH6 J×5 등)도 서로 다른 객체로
+    if (rng && window.VRDirect?.rollRank) return window.VRDirect.rollRank(ph, rng, normals());
     const [a, b] = ph.enemies.rank || [0, 0], list = normals().slice(a, b), out = [];
     while (out.length < ph.enemies.count && list.length) out.push(list.splice(Math.floor(Math.random() * list.length), 1)[0]);
     return out;
@@ -1068,6 +1069,8 @@
     const st = await act('battle_session_start_v2', { p_mode: 'story', p_target: `${ch.id}:${ph.no}`, p_party: (picked || deckInstances()).slice(0, pickMax(ch, ph)).map(o => o.uid) }, () => {}, r => r.data);
     storySession = st.raw || null;
     if (!st.ok) { const em = st.error?.message || '', lvM = /level required.*level (\d+)/.exec(em); if (lvM) toast(`🔒 Lv ${lvM[1]}`); else if (/stamina/.test(em)) staminaShort(await P?.status(true)); return renderMap(); }
+    const battleRng = storySession?.seed && window.VRDirect?.rngOf ? window.VRDirect.rngOf(storySession.seed) : null;
+    if (battleRng && !ph.enemies?.ids) enemies = pickEnemies(ph, battleRng);
     if (ps) P.status(true);
     root().classList.add('hidden');
     const boss = ph.type === 'boss';
@@ -1087,6 +1090,7 @@
       chapter: ch.id,   // 전투 배경 키 story_ch{n}(_boss)
       me, ai, leader: (() => { const lo = me.find(c => c.uid === save.leader), le = lo && leaderEff(lo.id); return le ? { ...le, uid: lo.uid } : undefined; })(), win: boss ? 'ko' : 'wipe', aiHp: boss ? bossHp(ch, ph) : undefined, bossId: bc ? String(bc.id) : undefined, enemyLevels: ph.enemies?.levels, aiName: ph.enemyName || (boss ? '보스' : '적군'), rules: battleRules(ch, ph), first: ph.enemyFirst ? 'ai' : 'me',   // 기본 내가 선공, 페이즈 enemyFirst 면 적 선공
      
+      seed: storySession?.seed, rng: battleRng,
       spare: { ...STORY_SPARE, ...(ph.spare || {}) },
       tutorial: ph.tutorial,
       // 챕터 0: reserve = 소환 대기 카드(소환 버튼으로 필드에) · fullMp = 시작 MP 가득 · meLevels = 내 카드 전투 시작 레벨 · awaken = 쓰러지면 난입

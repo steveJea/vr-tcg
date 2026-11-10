@@ -10,10 +10,19 @@ function key(env, plural, legacy) {
 }
 const SAFE = ['battle session not found', 'submission conflict', 'direct replay required', 'sweep replay required', 'verifier unavailable', 'too fast', 'daily limit', 'floor locked', 'tower closed today', 'level too low', 'boss floor or invalid floor', 'invalid replay', 'unsupported battle', 'reward verification pending', 'battle not started', 'completion rate limit', 'server settlement failed'];
 const KO = {
-  'boss floor': '보스 층은 서버가 다시 계산할 수 없어요',
+  tampered: '전투 기록이 맞지 않아요. 다시 도전해 주세요.',
   'unsupported battle': '이 전투는 서버가 다시 계산할 수 없어요',
   'boss floor or invalid floor': '보스 층은 서버가 다시 계산할 수 없어요',
 };
+const ACT = new Set(['summon', 'atk', 'skill', 'end', 'reserve', 'buff', 'undo', 'giveup', 'swap']);
+function actionsOk(list) {
+  if (!Array.isArray(list) || list.length > 200) return false;
+  return list.every(a => a && typeof a === 'object' && !Array.isArray(a) && ACT.has(a.k) && Number.isInteger(a.t) && a.t >= 0 && a.t <= 40
+    && (a.i == null || (Number.isInteger(a.i) && a.i >= -1 && a.i <= 12))
+    && (a.g == null || (Number.isInteger(a.g) && a.g >= -1 && a.g <= 12))
+    && (a.id == null || (typeof a.id === 'string' && a.id.length <= 12))
+    && (a.s == null || (typeof a.s === 'string' && a.s.length <= 40)));
+}
 
 function cardsOk(cards) {
   if (!Array.isArray(cards) || cards.length > 30) return false;
@@ -51,9 +60,7 @@ export function createHandler(env, fetcher = fetch) {
       body = JSON.parse(new TextDecoder().decode(bytes));
       operation = body?.op === 'direct' || body?.op === 'status' ? body.op : 'unknown';
       if (body?.op === 'direct') {
-        const manaOk = body.mana === null || (Number.isInteger(body.mana) && body.mana >= 0 && body.mana <= 99999);
-        if (!exact(body, ['op', 'id', 'version', 'outcome', 'mana', 'cards']) || typeof body.id !== 'string' || !UUID.test(body.id)
-          || (body.outcome !== 'claim' && body.outcome !== 'loss' && body.outcome !== 'giveup') || !manaOk || !cardsOk(body.cards)) {
+        if (!exact(body, ['op', 'id', 'version', 'actions', 'cards']) || typeof body.id !== 'string' || !UUID.test(body.id) || !actionsOk(body.actions) || !cardsOk(body.cards)) {
           if (body?.version && body.version !== ENGINE_VERSION && typeof body.id === 'string' && UUID.test(body.id)) return respond(409, { error: '새 전투 버전으로 새로고침해 주세요' });
           throw new Error('invalid direct');
         }
@@ -87,9 +94,9 @@ export function createHandler(env, fetcher = fetch) {
       if (s.status === 'settled') duplicate = true;
       let result = null;
       if (s.status === 'issued' || s.status === 'settled') {
-        try { result = verifyDirect(s, body.outcome); }
+        try { result = verifyDirect(s, body.actions); }
         catch (e) {
-          const message = KO[e.message] || '전투 결과를 서버가 확인하지 못했어요';
+          const message = String(e.message || '').startsWith('tampered') ? KO.tampered : (KO[e.message] || '전투 결과를 서버가 확인하지 못했어요');
           return respond(422, { error: message });
         }
       }

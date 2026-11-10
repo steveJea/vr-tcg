@@ -4,7 +4,8 @@ import { fieldCount, GUARD_GRADES, GUARD_SWAP_TURNS, guardOf, levelUpOnce, RULES
 import { autoNext, noteUsed } from './auto-ai.js';
 import { batchAttackReady, nextBatchAttack } from './battle-view-controls.js';
 import { initStatusFx, tickFx, statusApplyFx, paraSkipFx, confuseAllyFx, tauntPullFx, statusClasses, statusDecor, statusIconUrl, isStatusFxKind } from './status-fx.js';
-import { skillCd, skillMp, setSpare, spareBlocked, setSkillData, setEmitter, initPlayers, placeUnit, turnStart, turnEnd, useSkill, forceSkill, skillState, aiPickSkill, skillLvOf, skillCdAt, skillLvMult, skillLvProb, SKILL_LV_MAX, refreshAll, statusIcons, skillsOf, combos, STATUS, SK, maleLure, checkDeath } from './skills.js';
+import { skillCd, skillMp, setSpare, spareBlocked, setSkillData, setEmitter, setRng, initPlayers, placeUnit, turnStart, turnEnd, useSkill, forceSkill, skillState, aiPickSkill, skillLvOf, skillCdAt, skillLvMult, skillLvProb, SKILL_LV_MAX, refreshAll, statusIcons, skillsOf, combos, STATUS, SK, maleLure, checkDeath } from './skills.js';
+import { rngOf } from './direct-rng.js';
 
 const IMG = 'https://raw.githubusercontent.com/steveJea/vr-ideal-worldcup/main/img/bt_img/';
 const NF = new Intl.NumberFormat('ko-KR');
@@ -188,13 +189,15 @@ async function startGame(story = null, at = null) {
   autoOn = localStorage.getItem(AUTO_KEY()) === '1';
   if (story && typeof story.then === 'function' || story instanceof Event) story = null;
   setSpare(story?.spare);   // 스토리 보호 규칙 (없으면 해제)
-  let first = at?.first || story?.first || (Math.random() < 0.5 ? 'me' : 'ai');   // 선공 동전 던지기
+  const battleRng = story?.rng || (story?.seed ? rngOf(story.seed) : null);
+  let first = at?.first || story?.first || (battleRng ? (battleRng() < 0.5 ? 'me' : 'ai') : (Math.random() < 0.5 ? 'me' : 'ai'));   // 선공: 서버 시드. 시드가 없으면 예전 동전
+  if (battleRng) setRng(battleRng);
   if (!story) { try { window.VRSound?.setTrack?.('audio/arcade_battle.mp3'); } catch {} }   // 아케이드 전용 BGM (ARCADE_MODE) (나가면 메인으로)
   const fs = !!story;   // 스토리: 손패 없이 출전 카드 전부 필드에서 시작
   const MP = story && Number.isFinite(story.manaPool) ? Math.max(0, Math.round(story.manaPool)) : null;   // 스토리 제한 마나: 전투 시작에 한 번, 다시 차지 않음 (story.js 에서만 줌)
   const ao = story || at ? ArcadeOpts.DEF : (arcadeSession?.options || ArcadeOpts.load()), grades = story || at ? null : allowedGrades(ao);
   const gPool = grades ? POOL.filter(c => grades.has(c.grade)) : null;
-  S = { me: newPlayer('나', first !== 'me', at ? at.me : story?.me, at?.meHp || story?.meHp, fs, grades, !!at), ai: newPlayer(story?.aiName || '적군', first !== 'ai', at ? (at.aiDeck || []) : story?.ai, at?.aiHp || story?.aiHp, fs, grades, !!at), opts: ao, at, tutorial: at?.tutorial || null, maxTurns: story ? (story.rules?.maxTurns || RULES.MAX_TURNS) : (ao.turns || Infinity), first, story, turn: first, turnNo: 0, totalTurns: 0, myTurns: 0, over: false, busy: false, fxSeen: new Set(), mercBought: 0, mercHired: null, mercOffer: [], log: { dmg: new Map(), total: 0, skills: 0, merc: null, played: new Set(), kills: {}, blocks: {} } };
+  S = { me: newPlayer('나', first !== 'me', at ? at.me : story?.me, at?.meHp || story?.meHp, fs, grades, !!at), ai: newPlayer(story?.aiName || '적군', first !== 'ai', at ? (at.aiDeck || []) : story?.ai, at?.aiHp || story?.aiHp, fs, grades, !!at), opts: ao, at, tutorial: at?.tutorial || null, maxTurns: story ? (story.rules?.maxTurns || RULES.MAX_TURNS) : (ao.turns || Infinity), first, story, turn: first, turnNo: 0, totalTurns: 0, myTurns: 0, over: false, busy: false, fxSeen: new Set(), mercBought: 0, mercHired: null, mercOffer: [], directLog: story?.seed ? [] : null, log: { dmg: new Map(), total: 0, skills: 0, merc: null, played: new Set(), kills: {}, blocks: {} } };
   if (!story && !at) { const core=createArcade(arcadeSession?.seed ?? crypto.getRandomValues(new Uint32Array(1))[0],arcadeSession?.options || ao,POOL); S=Object.assign(core.state,{arcade:core,arcadeSession,story:null,at:null,busy:false,fxSeen:new Set(),account:arcadeSession?._owner||window.VRCloud?.user?.id||null}); first=S.first; }
   // 아케이드 일반대전(기본 설정)만 기지 보강·필드 회복·용병 고용 가능. 스토리·퀘스트·아케이드 변형 설정은 공격력 강화만
   S.limitedAids = !!story || !ArcadeOpts.isDefault(ao);
@@ -352,6 +355,7 @@ function useAction(who, type) {
   if(S?.arcade)return arcadeSimple(who,{k:'action',name:type});
   const p = S[who], r = doAction(type, p);
   if (!r.ok) return r;
+  if (who === 'me' && type === 'buff') noteAct('buff');
   if (who === 'me') S.undo = null;
   const a = ACTIONS[type];
   const detail = type === 'accel' ? `다음 턴부터 매 턴 마나 +${r.n * RULES.ACCEL_BONUS} (${r.n}/${RULES.ACCEL_MAX})` : type === 'shuffle' ? `전체 카드에서 새 카드 ${r.n}장` : type === 'heal' ? `진영 HP +${fmt(r.healed)}` : type === 'fieldheal' ? `필드 ${r.n}장 HP 총 +${fmt(r.healed)}` : `필드 ${r.n}장 이번 턴 ATK +${Math.round(RULES.BUFF_RATIO * 100)}%`;
@@ -378,11 +382,17 @@ function equipItem(who, unit, type) {
 
 function opp(who) { return who === 'me' ? S.ai : S.me; }
 
+function noteAct(k, extra = {}) {
+  if (!S?.directLog || S.view) return;
+  const row = { t: S.myTurns | 0, k };
+  for (const [key, value] of Object.entries(extra)) if (value != null) row[key] = value;
+  S.directLog.push(row);
+}
 function summon(who, card) {
   if(S?.arcade)return arcadeSimple(who,{k:'summon',id:String(card.id)});
   const p = S[who], check = canSummon(card, p, opp(who));
   if (!check.ok) return check;
-  if (who === 'me') { S.awakenPause = false; S.meActed = true; }
+  if (who === 'me') { noteAct('summon', { id: String(card.id) }); S.awakenPause = false; S.meActed = true; }
   p.mana -= card.cost;
   p.hand.splice(p.hand.indexOf(card), 1);
   log(`${p.name}: ${card.name} 소환 (코스트 ${card.cost})`);
@@ -416,6 +426,7 @@ function canUndoSummon(unit) {
 function undoSummon(unit) {
   if(S?.arcade)return arcadeSimple('me',{k:'undo',i:S.me.field.indexOf(unit)});
   if (!canUndoSummon(unit)) return { ok: false };
+  noteAct('undo', { id: String(unit.card.id) });
   const d = S.undo; S.undo = null;
   S.me.field = S.me.field.filter(x => x !== unit);
   S.me.hand.push(d.card);
@@ -866,6 +877,7 @@ async function attack(who, unit, target, fromBatch = false) {
   if (!fromBatch && who === 'me' && S.busy) return;
   if (who === 'me') S.undo = null;
   if (!canTarget(p, o, target, unit)) { if (who === 'me') { const r = attackTargets(p, o, unit).reason; log(r, 'text-red-400'); floatText(r, 'text-red-400 text-sm', 'ai'); if (!target) TUT('hero_blocked'); } return; }
+  if (who === 'me') noteAct('atk', { i: p.field.indexOf(unit), g: target ? o.field.indexOf(target) : -1 });
   const prevBusy = S.busy;
   if (who === 'me') { S.awakenPause = false; S.meActed = true; }
   S.busy = true; selected = null;
@@ -984,7 +996,7 @@ function finish(win, reason) {
   if (S.story) {   // 스토리 모드: 아케이드 전적·랭킹·갤러리에 기록하지 않고 스토리 화면으로 결과 전달
     render();
     const cb = S.story.onEnd;
-    setTimeout(() => { dockStoryBuff(false); $('game').classList.add('hidden'); try { cb?.(win, reason, { turns: S.turnNo, totalTurns: S.totalTurns, skills: S.log.skills, myTurns: S.myTurns, mana: S.me.manaPool ? S.me.mana : null, maxMana: S.me.manaPool ? S.me.maxMana : null, damage: S.log.total, played: [...S.log.played], kills: { ...S.log.kills }, blocks: { ...(S.log.blocks || {}) } }); } catch (err) { reportError('storyEnd', err); } }, FX_OFF() ? 0 : 900);
+    setTimeout(() => { dockStoryBuff(false); $('game').classList.add('hidden'); try { cb?.(win, reason, { turns: S.turnNo, totalTurns: S.totalTurns, skills: S.log.skills, myTurns: S.myTurns, mana: S.me.manaPool ? S.me.mana : null, maxMana: S.me.manaPool ? S.me.maxMana : null, damage: S.log.total, played: [...S.log.played], kills: { ...S.log.kills }, blocks: { ...(S.log.blocks || {}) }, actions: S.directLog || [] }); } catch (err) { reportError('storyEnd', err); } }, FX_OFF() ? 0 : 900);
     return true;
   }
   if(!window.VRCloud?.user) Stats.record(win);
@@ -1137,6 +1149,7 @@ function summonReserve() {
   const r = S?.reserve?.[0];
   if (!r || S.turn !== 'me' || S.over || S.busy) return;
   if ((r.cost || 0) > S.me.mana) return;
+  noteAct('reserve', { id: String(r.card.id) });
   S.me.mana -= r.cost || 0; S.reserve.shift();
   const ownHold = !S.holdPassive; if (ownHold) S.holdPassive = [];
   const u = placeUnit(S.me, { ...r.card }, makeUnit);
@@ -1158,6 +1171,7 @@ function endTurn() {
   if(S?.arcade){if(S.turn!=='me'||S.over||S.busy)return;arcadeRun('me',{k:'end'});selected=null;render();if(!checkEnd()&&S.arcade.nextWho)startTurn(S.arcade.nextWho);return;}
   if (S?.view) { S.view.ask?.({ k: 'end' }); return; }
   if (S.turn !== 'me' || S.over || S.busy) return;
+  noteAct('end');
   S.awakenPause = false;
   selected = null; S.undo = null;
   endTurnXp(S.me); turnEnd(S.me);
@@ -1612,6 +1626,7 @@ async function castSkill(who, u, s, force = false) {
   if (S?.view) { if (who === 'me' && S.view.ask && skillState(u, s).ok) S.view.ask({ k: 'skill', i: S.view.A0.indexOf(u), s: s.name }); return; }   // PvP·전쟁 화면: 엔진에 입력만 넘김
   const p = S[who];
   if (S.over || !p.field.includes(u) || !(force || skillState(u, s).ok)) return;
+  if (who === 'me' && !force) noteAct('skill', { i: p.field.indexOf(u), s: s.name });
   if (who === 'me') S.undo = null;
   const prevBusy = S.busy; S.busy = true; selected = null; if (who === 'me') { S.awakenPause = false; S.meActed = true; }
   try {
@@ -2124,7 +2139,7 @@ function onUnitClick(who, u) {
       selected = null; if (r.ok) { if (!r.view) endTurn(); return; } if (r.reason) floatText(r.reason, 'text-red-300 text-sm', 'me'); render(); return;
     }
     if (myTurn && u.guard && selected !== u.uid) { selected = u.uid; render(); return; }
-    if (myTurn && cur && cur !== u && !u.undying) { if (S.arcade ? arcadeSimple('me',{k:'move',i:S.me.field.indexOf(cur),t:S.me.field.indexOf(u)}).ok : swapField(S.me, cur, u)) { selected = null; playSe(4); render(); TUT('swapped'); return; } }
+    if (myTurn && cur && cur !== u && !u.undying) { const si = S.me.field.indexOf(cur), sg = S.me.field.indexOf(u); if (S.arcade ? arcadeSimple('me',{k:'move',i:si,t:sg}).ok : swapField(S.me, cur, u)) { if (!S.arcade) noteAct('swap', { i: si, g: sg }); selected = null; playSe(4); render(); TUT('swapped'); return; } }
     if (myTurn && !u.undying && selected === u.uid && window.VRTutorial?.active?.wait === 'card_selected') { TUT('card_selected', { index: S.me.field.indexOf(u) }); return; }   // 가이드가 '선택'을 기다리는데 이미 선택된 카드를 또 탭: 선택 해제·정보 창 대신 선택으로 처리
     if (myTurn && !u.undying && selected !== u.uid) { selected = u.uid; render(); TUT('card_selected', { index: S.me.field.indexOf(u) }); return; }
     if (selected === u.uid) { selected = null; render(); }
@@ -2393,7 +2408,7 @@ function giveUp() {
   if (!ov) { ov = document.createElement('div'); ov.id = 'giveup-confirm'; ov.className = 'fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4'; document.body.appendChild(ov); }
   ov.innerHTML = `<div class="giveup-box bg-zinc-900 border border-white/15 rounded-2xl p-5 max-w-xs w-full text-center"><div class="text-lg font-black mb-1">도전을 포기할까요?</div><div class="text-sm text-zinc-400 mb-4">패배로 처리돼요. 전투 EXP·보상은 받지 않아요.</div><div class="flex gap-2"><button class="flex-1 py-2.5 rounded-xl bg-zinc-700 font-bold" data-gu="no">계속 싸우기</button><button class="flex-1 py-2.5 rounded-xl bg-red-600 font-bold" data-gu="yes">포기</button></div></div>`;
   ov.classList.remove('hidden');
-  ov.onclick = e => { const b = e.target.closest('[data-gu]'); if (!b && e.target.closest('.giveup-box')) return; ov.classList.add('hidden'); if (b?.dataset.gu !== 'yes' || S?.over) return; if (S?.view) { S.view.abandon = true; S.view.ask?.({ k: 'end' }); return; } finish(false, 'giveup'); };
+  ov.onclick = e => { const b = e.target.closest('[data-gu]'); if (!b && e.target.closest('.giveup-box')) return; ov.classList.add('hidden'); if (b?.dataset.gu !== 'yes' || S?.over) return; if (S?.view) { S.view.abandon = true; S.view.ask?.({ k: 'end' }); return; } noteAct('giveup'); finish(false, 'giveup'); };
 }
 $('story-giveup')?.addEventListener('click', giveUp);
 function startStory(cfg) { hideModal('detail'); startGame(cfg); }
