@@ -40,7 +40,7 @@ set local check_function_bodies = off;
 
 do $vr_install_part$
 begin
-  if exists (select 1 from vr_staging_install.parts where bundle_hash <> '580ba692ace7d90123f771f896d6d224a1da07f8118f6139760a81ccfe07437f' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
+  if exists (select 1 from vr_staging_install.parts where bundle_hash <> '4865c74f256feb41fff1e4fb89b5acf4b05ac5c3b4ea13de07ab10a52975d4b3' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
     raise exception 'STOP: 다른 버전/DB의 설치 기록입니다. 파일을 섞지 마세요.';
   end if;
   if exists (select 1 from vr_staging_install.parts where part_no = 13) then
@@ -1330,7 +1330,7 @@ drop trigger if exists gear_raid_drop_v4 on guild_raid_attempts_v4;$vr_statement
  select count(*) from (select user_id,guild_id,day from guildbattle_events_v4 where kind='raid' union all select user_id,guild_id,day from guildbattle_sweeps_v4) x where (u is null or user_id=u) and guild_id=g and day between d and e $$;$vr_statement$;
 
   insert into vr_staging_install.parts(part_no, bundle_hash, part_hash, project_ref, db_id)
-  values (13, '580ba692ace7d90123f771f896d6d224a1da07f8118f6139760a81ccfe07437f', '4747304d60dc9f2c89cb5ea4ce373af242103844a7e822526ddec2fb3642705a', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
+  values (13, '4865c74f256feb41fff1e4fb89b5acf4b05ac5c3b4ea13de07ab10a52975d4b3', '4747304d60dc9f2c89cb5ea4ce373af242103844a7e822526ddec2fb3642705a', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
 end $vr_install_part$;
 commit;
 select '13_install.sql: 완료 또는 이미 완료 (13/14)' as result;
