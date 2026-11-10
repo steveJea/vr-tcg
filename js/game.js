@@ -539,7 +539,7 @@ async function attackAll() {
     S.view.nextBatch?.(); return;
   }
   if (S.turn !== 'me' || S.over || S.busy) return;
-  const ready = S.me.field.filter(u => u.canAttack);
+  const ready = S.me.field.filter(u => u.canAttack && u.hp > 0);
   if (!ready.length) return;
   S.awakenPause = false;
   S.busy = true; selected = null; render();
@@ -548,7 +548,7 @@ async function attackAll() {
     for (const u of ready) {
       if (S.over || S.awakenPause) break;
       await passiveWait(); await vidWait();   // 앞 공격에서 뜬 패시브 컷인(부활 등)이 끝난 뒤 다음 공격
-      if (S.over || !S.me.field.includes(u) || !u.canAttack) continue;
+      if (S.over || !S.me.field.includes(u) || !u.canAttack || u.hp <= 0) continue;
       const t = autoTarget(u, S.me, S.ai);
       if (t === undefined) continue;          // 공격할 수 있는 대상 없음 (첫 턴 등)
       await attack('me', u, t, true);
@@ -877,7 +877,10 @@ async function attack(who, unit, target, fromBatch = false) {
   if (!fromBatch && who === 'me' && S.busy) return;
   if (who === 'me') S.undo = null;
   if (!canTarget(p, o, target, unit)) { if (who === 'me') { const r = attackTargets(p, o, unit).reason; log(r, 'text-red-400'); floatText(r, 'text-red-400 text-sm', 'ai'); if (!target) TUT('hero_blocked'); } return; }
-  if (who === 'me') noteAct('atk', { i: p.field.indexOf(unit), g: target ? o.field.indexOf(target) : -1 });
+  if (unit.hp <= 0) return;
+  const atkI = p.field.indexOf(unit), atkG = target ? o.field.indexOf(target) : -1;
+  if (atkI < 0 || (target && atkG < 0)) return;
+  if (who === 'me') noteAct('atk', { i: atkI, g: atkG });
   const prevBusy = S.busy;
   if (who === 'me') { S.awakenPause = false; S.meActed = true; }
   S.busy = true; selected = null;
@@ -2093,7 +2096,23 @@ function moveFieldCard(u, to) {
   const f = S.me.field, units = f.filter(x => !x.undying), from = units.indexOf(u);
   if (from < 0 || S.turn !== 'me' || S.busy || S.over) return;
   to = Math.max(0, Math.min(units.length - 1, to));
-  if (!S.arcade) { const i = f.indexOf(u); f.splice(i, 1); const anchor = units.filter(x => x !== u)[to]; f.splice(anchor ? f.indexOf(anchor) : f.length, 0, u); return; }
+  if (from === to) return;
+  if (!S.arcade) {
+    // Drag used to reorder the field without a log entry, so later attack indexes
+    // no longer matched the server deck order and the replay rejected the fight.
+    let guard = 0;
+    while (guard++ < 12) {
+      const list = S.me.field.filter(x => !x.undying);
+      const at = list.indexOf(u);
+      if (at < 0 || at === to) return;
+      const other = list[at + (at < to ? 1 : -1)];
+      if (!other) return;
+      const i = S.me.field.indexOf(u), g = S.me.field.indexOf(other);
+      if (!swapField(S.me, u, other)) return;
+      noteAct('swap', { i, g });
+    }
+    return;
+  }
   const step = to > from ? 1 : -1;
   for (let i = from; i !== to; i += step) {
     const other = units[i + step];
