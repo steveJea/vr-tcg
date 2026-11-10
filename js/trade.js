@@ -136,7 +136,7 @@
           const secs = (new Date(l.expires_at) - Date.now()) / 1000, gr = GO[Math.min(GO.length - 1, gIdx(l))];
           return `<button class="tr-gc g-${gr}" data-l="${l.id}"><span class="tr-gc-img">${c0 ? `<img src="${cardThumb(c0.id)}" alt="" loading="lazy">` : d ? `<img class="gear" src="${gearIcon(d)}" alt="" loading="lazy">` : ''}
             <i class="tr-gc-gr">${c0 ? gradeOf(c0.id) : d ? TIER[d.tier] : ''}</i>${cnt > 1 ? `<i class="tr-gc-n">+${cnt - 1}</i>` : ''}${l.to_me ? '<i class="tr-gc-tag dir">🤝 나에게</i>' : l.mine ? `<i class="tr-gc-tag">${l.direct ? `🤝 ${esc(l.target_name || '지정')}` : '내 글'}</i>` : l.my_offer ? '<i class="tr-gc-tag">제안함</i>' : ''}</span>
-            <b>${esc(m0?.name || d?.name || '판매 글')}${c0?.level ? ` <small>Lv.${c0.level}</small>` : ''}</b><span class="tr-gc-seller">${esc(l.seller_name || '플레이어')}</span>${(l.want_ids || []).length ? `<span class="tr-gc-wid ${l.want_ids.some(w => mineSet.has(String(w.id))) ? 'have' : ''}">🎯 ${esc(itemName(l.want_ids[0].k, l.want_ids[0].id))}${l.want_ids.length > 1 ? ` 외 ${l.want_ids.length - 1}` : ''}</span>` : ''}${l.want ? `<span class="tr-gc-want">${esc(l.want)}</span>` : '<span class="tr-gc-want dim">희망 조건 없음</span>'}
+            <b>${esc(m0?.name || d?.name || '판매 글')}${c0?.level ? ` <small>Lv.${c0.level}</small>` : ''}</b><span class="tr-gc-seller">${esc(l.seller_name || '플레이어')}</span>${(l.want_ids || []).length ? `<span class="tr-gc-wid ${l.want_ids.some(w => mineSet.has(String(w.id))) ? 'have' : ''}">🎯 ${esc(itemName(l.want_ids[0].k, l.want_ids[0].id))}${l.want_ids.length > 1 ? ` 외 ${l.want_ids.length - 1}` : ''}</span>` : ''}${l.want ? `<span class="tr-gc-want" data-clarity-mask="true">${esc(l.want)}</span>` : '<span class="tr-gc-want dim">희망 조건 없음</span>'}
             ${buyTxt(l) ? `<span class="tr-gc-buy">⚡ ${buyTxt(l)}</span>` : ''}<span class="tr-gc-meta"><span class="${secs < 3 * 3600 ? 'soon' : ''}">${I('timer')}${left(l.expires_at)}</span><span>${I('trade_offer')}${l.offers}</span></span></button>`; };
         // 필터 (PR4): 불러온 글 안에서만 — 종류(인재/장비 포함)·등급(글 안 물건 중 하나라도)·이름(물건 이름 일부)
         const itemGr = l => [...(l.cards || []).map(c => gradeOf(c.id)), ...(l.gear || []).map(g => GO[Math.max(0, Math.min(6, (defOf(g.def_id || g.def)?.tier || 0) - 2))])];
@@ -320,7 +320,7 @@
   function detail(l, after) {
     if (l.direct && l.to_me) return directDetail(l, after);
     const m = pop(`<div class="tr-head"><b>${l.direct ? `🤝 지정 거래${l.target_name ? ` → ${esc(l.target_name)}` : ''}` : '판매 글'}</b><span>${I('timer')}${left(l.expires_at)} · ${I('trade_offer')}제안 ${l.offers}</span></div>
-      <div class="tr-dets">${detRows(l.cards, l.gear)}</div>${wantsHTML(l.want_ids, myIds())}${l.want ? `<div class="tr-want">${I('trade_want')}${esc(l.want)}</div>` : ''}<div class="tr-trend-w"></div>
+      <div class="tr-dets">${detRows(l.cards, l.gear)}</div>${wantsHTML(l.want_ids, myIds())}${l.want ? `<div class="tr-want" data-clarity-mask="true">${I('trade_want')}${esc(l.want)}</div>` : ''}<div class="tr-trend-w"></div>
       <div class="tr-note">다른 사람의 제안 내용은 보이지 않아요</div>
       <div class="tr-acts">${l.my_offer ? '<button class="tr-btn" data-c>내 제안 취소</button>' : '<button class="tr-btn main" data-o>제안하기</button>'}</div>`.replace('<div class="tr-acts">', buyTxt(l) && !l.my_offer ? `<div class="tr-buybox"><div><b>⚡ 즉시 구매</b><span>${buyTxt(l)}</span></div><small>이 가격으로 바로 거래돼요. 판매자는 ${cfg.fee_pct || 10}% 수수료를 뺀 만큼 받아요</small><button class="tr-btn main tr-buy" data-buy>⚡ ${buyTxt(l)}에 바로 사기</button></div><div class="tr-acts">` : '<div class="tr-acts">'), '', ['exchange-post', '판매 글']);
     if ((l.cards?.length || 0) + (l.gear?.length || 0) === 1) trendLine(m.querySelector('.tr-trend-w'), l.cards?.length ? 'card' : 'gear', l.cards?.length ? l.cards[0].id : (l.gear[0].def_id || l.gear[0].def));
@@ -439,7 +439,7 @@
       ${gates.length ? `<div class="tr-gate">${gates.map(g => `<p>⛔ ${esc(g)}</p>`).join('')}</div>` : ''}
       <section data-step="1"><div class="tr-note">팔 인재·장비를 골라 주세요 (최대 ${max}개). 흐린 것은 눌러 보면 이유가 나와요.</div><div class="tr-pickwrap"></div></section>
       <section data-step="2" hidden><div class="tr-note">원하는 조건을 적어 주세요 (선택, 100자). 다른 사람이 제안할 때 참고해요.</div>
-        <div class="tr-items tr-sel2"></div><div class="tr-wbox"><button type="button" class="tr-btn" data-wpick>🎯 원하는 물건 고르기 <small>(선택 · 최대 5)</small></button><div class="tr-wcur"></div></div><textarea class="tr-input tr-want-in" maxlength="100" rows="3" placeholder="예: 드링크 2,000 이상 · SR 인재와 교환"></textarea><small class="tr-wc">0 / 100</small></section>
+        <div class="tr-items tr-sel2"></div><div class="tr-wbox"><button type="button" class="tr-btn" data-wpick>🎯 원하는 물건 고르기 <small>(선택 · 최대 5)</small></button><div class="tr-wcur"></div></div><textarea class="tr-input tr-want-in" data-clarity-mask="true" maxlength="100" rows="3" placeholder="예: 드링크 2,000 이상 · SR 인재와 교환"></textarea><small class="tr-wc">0 / 100</small></section>
       <section data-step="3" hidden><div class="tr-cf"></div></section>
       <div class="tr-acts tr-step-acts"><button class="tr-btn" data-prev>이전</button><span class="tr-cnt">0 / ${max}</span><button class="tr-btn main" data-next disabled>다음</button></div>`;
     const next = B.querySelector('[data-next]'), prev = B.querySelector('[data-prev]'), cnt = B.querySelector('.tr-cnt'), ta = B.querySelector('.tr-want-in');
@@ -450,7 +450,7 @@
       next.textContent = k === 3 ? '📤 올리기' : '다음'; next.disabled = !p?.count() || (k === 3 && gates.length > 0);
       if (k === 2) B.querySelector('.tr-sel2').innerHTML = p.tiles();
       if (k === 3) { want = ta.value.trim();
-        B.querySelector('[data-step="3"] .tr-cf').innerHTML = `${cfRow('올릴 물건', p.tiles())}<div class="tr-cf-row"><div class="tr-cf-l">희망 조건</div><div>${want ? esc(want) : '<span class="tr-cf-none">없음</span>'}</div></div>${wantIds.length ? `<div class="tr-cf-row"><div class="tr-cf-l">원하는 물건</div><div class="tr-wants">${wantIds.map(w => wantChip(w)).join('')}</div></div>` : ''}
+        B.querySelector('[data-step="3"] .tr-cf').innerHTML = `${cfRow('올릴 물건', p.tiles())}<div class="tr-cf-row" data-clarity-mask="true"><div class="tr-cf-l">희망 조건</div><div>${want ? esc(want) : '<span class="tr-cf-none">없음</span>'}</div></div>${wantIds.length ? `<div class="tr-cf-row"><div class="tr-cf-l">원하는 물건</div><div class="tr-wants">${wantIds.map(w => wantChip(w)).join('')}</div></div>` : ''}
           <div class="tr-trend-w"></div><div class="tr-sec">허용 가격 범위 (등급별 · 서버 기준)</div>${bandRows(p.keys())}
           <div class="tr-buyset"><label class="tr-buy-on"><input type="checkbox" data-buyon ${buy.on ? 'checked' : ''}> ⚡ 즉시 구매가 정하기 <small>(선택)</small></label>
             <div class="tr-buy-in" ${buy.on ? '' : 'hidden'}>${goldOk() ? `<div class="tr-fchips"><button type="button" data-bcur="d" class="${buy.cur === 'd' ? 'on' : ''}">🥤 드링크</button><button type="button" data-bcur="g" class="${buy.cur === 'g' ? 'on' : ''}">🪙 골드</button></div>` : ''}
@@ -543,7 +543,7 @@
     const m = pop(`<div class="tr-head"><b>🤝 ${esc(l.seller_name || '플레이어')}님의 지정 거래</b><span>${I('timer')}${left(l.expires_at)}</span></div>
       <div class="tr-sec">받을 것</div><div class="tr-dets">${detRows(l.cards, l.gear)}</div>
       ${l.give_drinks ? `<div class="tr-dgive">🥤 드링크 <b>${n(l.give_drinks)}</b> <small>(받을 때 ${pct}% 소각 → ${n(l.give_drinks - Math.ceil(l.give_drinks * pct / 100))})</small></div>` : ''}
-      ${wantsHTML(l.want_ids, myIds())}${l.want ? `<div class="tr-want">${I('trade_want')}${esc(l.want)}</div>` : ''}
+      ${wantsHTML(l.want_ids, myIds())}${l.want ? `<div class="tr-want" data-clarity-mask="true">${I('trade_want')}${esc(l.want)}</div>` : ''}
       <div class="tr-note">수락하면 원하는 물건을 내고 바로 거래가 끝나요. 거래 규칙(Lv.10 · 가입 7일 · 하루 5번 · 같은 상대 7일 3번)은 똑같이 적용돼요.</div>
       <div class="tr-acts"><button class="tr-btn danger" data-dec>거절</button><button class="tr-btn main" data-acc>수락하기</button></div>`, 'wide', ['exchange-detail', '🤝 지정 거래']);
     m.querySelector('[data-acc]').onclick = () => { const inPage = m.classList.contains('vr-in-page'); if (!inPage) m.remove(); makeOffer(l, inPage ? () => { if (m.isConnected) m.remove(); after?.(); } : after, true); };
@@ -556,12 +556,12 @@
     const dr = await window.VRDrink?.status?.();
     const m = pop('', 'wide', ['exchange-direct', '🤝 지정 거래']); const B = body(m);
     B.innerHTML = `<div class="tr-head"><b>🤝 지정 거래 보내기</b></div>
-      <div class="tr-sec">1. 받는 사람</div><div class="tr-dwho"></div>
+      <div class="tr-sec">1. 받는 사람</div><div class="tr-dwho" data-clarity-mask="true"></div>
       <div class="tr-sec">2. 내가 줄 것 (인재·장비 최대 ${max}개 · 드링크 · 드링크만도 가능)</div>
       <div class="tr-cur-in"><label>🥤 드링크 <input type="number" min="0" step="1" value="0" data-d><small>거래 가능 ${n((dr?.tradable || 0) - (dr?.locked || 0))}</small></label></div>
       <div class="tr-pickwrap"></div>
       <div class="tr-sec">3. 원하는 것</div><div class="tr-wbox"><button type="button" class="tr-btn" data-wpick>🎯 원하는 물건 고르기 <small>(최대 5)</small></button><div class="tr-wcur"></div></div>
-      <div class="tr-sec">4. 메시지 (우편으로 가요)</div><textarea class="tr-input tr-dmsg" maxlength="200" rows="2" placeholder="예: 김성진이랑 바꿔요! UR 5장 + 드링크 드릴게요"></textarea>
+      <div class="tr-sec">4. 메시지 (우편으로 가요)</div><textarea class="tr-input tr-dmsg" data-clarity-mask="true" maxlength="200" rows="2" placeholder="예: 김성진이랑 바꿔요! UR 5장 + 드링크 드릴게요"></textarea>
       <div class="tr-note">보내면 물건·드링크가 보관되고, 상대가 수락하면 바로 거래가 끝나요. 거절·만료되면 그대로 돌아와요. 받는 사람도 똑같은 거래 규칙이 적용돼요.</div>
       <div class="tr-acts"><button class="tr-btn main" data-send disabled>🤝 보내기</button></div>`;
     const send = B.querySelector('[data-send]'), dIn = B.querySelector('[data-d]');

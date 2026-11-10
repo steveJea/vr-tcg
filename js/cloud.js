@@ -97,7 +97,7 @@ function render(p) {
   const box = $('acct-box'); if (!box) return;
   if (!ready) { paintOAuth(); box.innerHTML = ''; return; }
   if (!user) {
-    box.innerHTML = `<div class="oauth-row"><button id="acct-login" type="button" class="main-btn acct-login" data-oauth-provider="google">구글 로그인</button><button id="acct-login-kakao" type="button" class="main-btn acct-login oauth-kakao" data-oauth-provider="kakao" aria-label="카카오 로그인" hidden><img src="img/ui/kakao-symbol.svg" class="oauth-symbol" width="18" height="18" alt="">로그인</button><button id="acct-login-x" type="button" class="main-btn acct-login oauth-x" data-oauth-provider="x" hidden>X 로그인</button></div>`;
+    box.innerHTML = `<div class="oauth-row" data-clarity-mask="true"><button id="acct-login" type="button" class="main-btn acct-login" data-oauth-provider="google">구글 로그인</button><button id="acct-login-kakao" type="button" class="main-btn acct-login oauth-kakao" data-oauth-provider="kakao" aria-label="카카오 로그인" hidden><img src="img/ui/kakao-symbol.svg" class="oauth-symbol" width="18" height="18" alt="">로그인</button><button id="acct-login-x" type="button" class="main-btn acct-login oauth-x" data-oauth-provider="x" hidden>X 로그인</button></div>`;
     $('acct-login').onclick = () => login('google');
     $('acct-login-kakao').onclick = () => login('kakao');
     $('acct-login-x').onclick = () => login('x');
@@ -105,7 +105,7 @@ function render(p) {
     const av = p?.avatar_url
       ? `<img src="${esc(p.avatar_url)}" alt="" referrerpolicy="no-referrer" class="acct-avatar" onerror="this.onerror=null;this.src='img/ui/profile.webp'">`
       : `<img src="img/ui/profile.webp" alt="" class="acct-avatar">`;
-    box.innerHTML = `<div class="acct-chip" title="로그인됨 · 진행 상황이 클라우드에 저장 중">
+    box.innerHTML = `<div class="acct-chip" data-clarity-mask="true" title="로그인됨 · 진행 상황이 클라우드에 저장 중">
       ${av}<span class="acct-name">${esc(p?.nickname)}님</span>
       <button id="acct-logout" type="button" class="acct-logout">로그아웃</button></div>`;
     $('acct-logout').onclick = logout;
@@ -133,7 +133,7 @@ function paintOAuth() {
 function chooseLogin() {
   if (document.getElementById('oauth-choose')) return;
   const ov = document.createElement('div'); ov.id = 'oauth-choose'; ov.className = 'oauth-overlay';
-  ov.innerHTML = `<div class="oauth-card" role="dialog" aria-modal="true" aria-labelledby="oauth-title"><h2 id="oauth-title">로그인</h2><div class="oauth-row"><button type="button" class="main-btn" data-oauth-provider="google">구글 로그인</button><button type="button" class="main-btn oauth-kakao" data-oauth-provider="kakao"><img src="img/ui/kakao-symbol.svg" class="oauth-symbol" width="18" height="18" alt="">카카오 로그인</button><button type="button" class="main-btn oauth-x" data-oauth-provider="x" hidden>X 로그인</button></div><button type="button" class="main-btn oauth-close">닫기</button></div>`;
+  ov.innerHTML = `<div class="oauth-card" data-clarity-mask="true" role="dialog" aria-modal="true" aria-labelledby="oauth-title"><h2 id="oauth-title">로그인</h2><div class="oauth-row"><button type="button" class="main-btn" data-oauth-provider="google">구글 로그인</button><button type="button" class="main-btn oauth-kakao" data-oauth-provider="kakao"><img src="img/ui/kakao-symbol.svg" class="oauth-symbol" width="18" height="18" alt="">카카오 로그인</button><button type="button" class="main-btn oauth-x" data-oauth-provider="x" hidden>X 로그인</button></div><button type="button" class="main-btn oauth-close">닫기</button></div>`;
   const close = () => { ov.remove(); document.removeEventListener('keydown', onKey); };
   const onKey = e => { if (e.key === 'Escape') close(); };
   ov.querySelectorAll('[data-oauth-provider]').forEach(b => { b.onclick = () => { close(); login(b.dataset.oauthProvider); }; });
@@ -252,7 +252,7 @@ function askNickname(first) {
   #nick-box button.go{background:#f59e0b;color:#1a1200}#nick-box button:disabled{opacity:.5}`; document.head.appendChild(c); }
   const cur = profile?.nick_set ? profile.nickname : '', paid = !first && !!profile?.nick_set;
   const ov = document.createElement('div'); ov.id = 'nick-ov';
-  ov.innerHTML = `<div id="nick-box" role="dialog" aria-label="닉네임"><h3>${first ? '닉네임을 정해 주세요' : '닉네임 변경'}</h3>
+  ov.innerHTML = `<div id="nick-box" data-clarity-mask="true" role="dialog" aria-label="닉네임"><h3>${first ? '닉네임을 정해 주세요' : '닉네임 변경'}</h3>
     <p>${first ? '랭킹·PvP·친구 목록에 이 이름으로 나와요.<br>' : ''}2~12글자 · 다른 사람과 겹칠 수 없어요${paid ? `<br><b>변경할 때마다 🔮 심연석 ${NICK_PRICE}개가 들어요</b>` : first ? '<br>처음 한 번은 무료예요' : ''}</p>
     <input maxlength="12" autocomplete="off" spellcheck="false" placeholder="닉네임" value="${esc(cur)}"><div class="nk-msg"></div>
     <div class="nk-btns">${first ? '' : '<button class="no" type="button">취소</button>'}<button class="go" type="button">${first ? '시작하기' : paid ? `🔮${NICK_PRICE} 변경` : '저장'}</button></div></div>`;

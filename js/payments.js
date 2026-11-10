@@ -38,8 +38,8 @@ async function loadSDK(clientKey){try{if(window.TossPayments)return Promise.reso
 async function open(){
  if(!on)return;
  const c=window.VRCloud,uid=c?.user?.id;if(!c?.sb||!uid)return toast('로그인이 필요해요.');
- document.querySelector('[data-payment-modal]')?.remove();const modal=document.createElement('div');modal.className='gem-pop payment-pop';modal.dataset.paymentModal='1';
- const panel=document.createElement('div');panel.className='gem-panel';panel.setAttribute('role','dialog');panel.setAttribute('aria-label','테스트 충전 · 임시가');
+ document.querySelector('[data-payment-modal]')?.remove();const modal=document.createElement('div');modal.className='gem-pop payment-pop';modal.dataset.paymentModal='1';modal.setAttribute('data-clarity-mask','true');
+ const panel=document.createElement('div');panel.className='gem-panel';panel.setAttribute('data-clarity-mask','true');panel.setAttribute('role','dialog');panel.setAttribute('aria-label','테스트 충전 · 임시가');
  const close=document.createElement('button');close.className='gem-x';close.textContent='✕';close.setAttribute('aria-label','닫기');close.onclick=()=>modal.remove();
  const title=document.createElement('h2');title.textContent='테스트 충전 · 임시가';panel.append(close,title);modal.append(panel);document.body.append(modal);modal.onclick=e=>{if(e.target===modal)modal.remove();};
  const button=(text,fn)=>{const b=document.createElement('button');b.type='button';b.className='gem-charge payment-product';b.textContent=text;b.onclick=async()=>{if(buying)return;buying=true;panel.querySelectorAll('button.payment-product').forEach(x=>x.disabled=true);try{if(c.user?.id!==uid)throw Error('login required');await fn();}catch(e){if(['payment refunded','payment closed','order expired'].includes(e?.message)&&c.user?.id===uid){localStorage.removeItem(pendingKey(uid));modal.remove();}toast(paymentError(e?.code||e?.message,e?.sdkMessage));}finally{buying=false;panel.querySelectorAll('button.payment-product').forEach(x=>x.disabled=false);}};panel.append(b);return b;};

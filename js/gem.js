@@ -53,7 +53,7 @@
     if (window.VRShop?.open) return window.VRShop.open();
     document.querySelector('.gem-pop:not(.vr-in-page):not(.friend-pop):not(.daily-pop)')?.remove();
     const m = document.createElement('div'); m.className = 'gem-pop';
-    const draw = () => { m.innerHTML = `<div class="gem-panel" role="dialog" aria-label="${NAME}"><button class="gem-x" data-x aria-label="닫기">✕</button>
+    const draw = () => { m.innerHTML = `<div class="gem-panel" data-clarity-mask="true" role="dialog" aria-label="${NAME}"><button class="gem-x" data-x aria-label="닫기">✕</button>
       <div class="gem-big"><span class="gem-orb">${ICON}</span><b>${n(cache?.gem)}</b></div>
       <div class="gem-split">무료 ${n(cache?.free)} · 유료 ${n(cache?.paid)}</div>
       <button type="button" class="gem-charge" data-charge>＋ 충전</button><div class="gem-soon" hidden>💳 충전은 준비 중이에요</div>

@@ -80,7 +80,7 @@
   function guildPop(g) {
     if (!g) return;
     const m = pop(`<div class="gd-gp">${emb(g.emblem, 'huge')}<div class="gd-gp-n">${esc(g.name)}</div><div class="gd-gp-s">Lv.${g.level} · ${gi('ic_members', '👥')} ${g.members}/${g.max_members} · ${MODE[g.join_mode].join(' ')}</div>
-      <div class="gd-gp-i">${esc(g.intro || '')}</div><div class="gd-gp-b">${gi('role_boss', '👑')} ${esc(g.boss_name || '')}</div>
+      <div class="gd-gp-i" data-clarity-mask="true">${esc(g.intro || '')}</div><div class="gd-gp-b" data-clarity-mask="true">${gi('role_boss', '👑')} ${esc(g.boss_name || '')}</div>
       ${g.join_mode === 'closed' ? '' : `<button class="gd-big" data-join>${g.join_mode === 'open' ? (gi('cur_loyalty', '🩸') + ' 가입') : (gi('join_approval', '✋') + ' 가입 신청')}</button>`}</div>`);
     const j = m.querySelector('[data-join]'); if (j) j.onclick = async () => { j.disabled = true; const r = await act('guild_apply', { p_gid: g.id }); if (r) { toast(r.joined ? '🩸 조직에 들어왔어요' : '✋ 신청했어요'); m.remove(); } else j.disabled = false; };
   }
@@ -88,7 +88,7 @@
     let e = 1, mode = 'open';
     const m = pop(`<div class="gd-h big">${gi('cur_loyalty', '🩸')} 조직 창설</div>
       <div class="gd-embs">${EMB.map((_, i) => `<button data-e="${i + 1}" class="${i === 0 ? 'on' : ''}">${emb(i + 1)}</button>`).join('')}</div>
-      <input id="gd-cn" maxlength="8" placeholder="조직 이름 (2~8자)"><input id="gd-ci" maxlength="60" placeholder="한 줄 소개 (선택)">
+      <input id="gd-cn" maxlength="8" placeholder="조직 이름 (2~8자)"><input id="gd-ci" data-clarity-mask="true" maxlength="60" placeholder="한 줄 소개 (선택)">
       <div class="gd-modes">${Object.entries(MODE).map(([k, [ic, l]]) => `<button data-m="${k}" class="${k === mode ? 'on' : ''}">${ic}<small>${l}</small></button>`).join('')}</div>
       <div class="gd-pay"><button data-pay="gold">${gi('cur_gold', '🪙')} <b>${n(st.cost.gold)}</b></button><button data-pay="gem">${gi('cur_gem', '🔮')} <b>${n(st.cost.gem)}</b></button></div>`, 'wide');
     m.querySelectorAll('[data-e]').forEach(b => b.onclick = () => { e = +b.dataset.e; m.querySelectorAll('[data-e]').forEach(x => x.classList.toggle('on', x === b)); });
@@ -117,7 +117,7 @@
     p.innerHTML = `<button class="gd-x" data-close aria-label="닫기">${gi('ic_close', '✕')}</button>
       <div class="gd-hero">${emb(g.emblem, 'huge')}<div class="gd-hero-m"><div class="gd-hero-n">${esc(g.name)}</div><div class="gd-hero-s"><b>Lv.${g.level}</b> · ${gi('ic_members', '👥')} ${g.members}/${g.max_members} · ${MODE[g.join_mode][0]}</div>
         <div class="gd-bar" title="세력 ${n(g.exp)}${g.exp_next ? ` / ${n(g.exp_next)}` : ''}"><i style="width:${pct.toFixed(1)}%"></i></div><small class="gd-exp">세력 ${n(g.exp)}${g.exp_next ? ` / ${n(g.exp_next)}` : ' · MAX'}</small></div></div>
-      ${g.notice ? `<div class="gd-notice">${gi('ic_notice', '📢')} ${esc(g.notice)}</div>` : ''}
+      ${g.notice ? `<div class="gd-notice" data-clarity-mask="true">${gi('ic_notice', '📢')} ${esc(g.notice)}</div>` : ''}
       <div class="gd-me"><span>${ROLE[me.role][0]} ${ROLE[me.role][1]}</span><span class="gd-loy">${LOYI} <b>${n(st.loyalty)}</b></span><small>오늘 세력 ${gi('ic_story', '📖')}${me.today?.story || 0}/100 · ${gi('role_officer', '⚔️')}${me.today?.pvp || 0}/100</small></div>
       <div class="gd-tiles">
         <button data-t="shop"><span>${gi('tile_shop', '🛒')}</span>상점</button>
@@ -128,7 +128,7 @@
         <button data-t="war"><span class="gd-tic"><img src="img/ui/guild/war_icon.webp" alt="" onerror="this.remove()"><i>🏴</i></span>전쟁<i class="gd-dot" data-dot="war" title="보상 · 전쟁 덱 편성하기" hidden></i></button></div>
       <div class="gd-h">${gi('ic_members', '👥')} 조직원</div>
       <div class="gd-mem">${st.members.map(x => `<button class="gd-m r-${x.role}" data-u="${x.user_id}">${x.card ? `<img src="${cardThumb(x.card)}" alt="" loading="lazy" onerror="this.remove()">` : '<span class="gd-m-no">👤</span>'}
-        ${x.role !== 'member' ? `<i class="gd-m-role">${ROLE[x.role][0]}</i>` : ''}<span class="gd-m-n" data-cn="${x.user_id}">${esc(x.name)}</span><small>${LOYI}${n(x.loyalty_total)}</small></button>`).join('')}</div>
+        ${x.role !== 'member' ? `<i class="gd-m-role">${ROLE[x.role][0]}</i>` : ''}<span class="gd-m-n" data-cn="${x.user_id}" data-clarity-mask="true">${esc(x.name)}</span><small>${LOYI}${n(x.loyalty_total)}</small></button>`).join('')}</div>
       <div class="gd-foot">${me.can_claim ? '<button data-claim>👑 보스 승계</button>' : ''}<button data-leave>${me.role === 'boss' && g.members <= 1 ? '조직 해산' : '조직 나가기'}</button></div>`;
     p.querySelector('[data-t="shop"]').onclick = shopPop;
     p.querySelector('[data-t="rally"]').onclick = rallyPop;
@@ -153,7 +153,7 @@
     const canKick = (me.role === 'boss' && x.role !== 'boss') || (me.role === 'officer' && x.role === 'member');
     const boss = me.role === 'boss' && x.role !== 'boss';
     const m = pop(`<div class="gd-mp">${x.card ? `<img class="gd-mp-img" src="${cardThumb(x.card)}" alt="" onerror="this.remove()">` : '<div class="gd-mp-no">👤</div>'}
-      <div class="gd-mp-n" data-mpn>${ROLE[x.role][0]} ${esc(x.name)}</div><div class="gd-mp-s">${ROLE[x.role][1]} · ${new Date(x.joined_at).toLocaleDateString('ko-KR')} 가입</div><div class="gd-mp-d">…</div>
+      <div class="gd-mp-n" data-mpn data-clarity-mask="true">${ROLE[x.role][0]} ${esc(x.name)}</div><div class="gd-mp-s">${ROLE[x.role][1]} · ${new Date(x.joined_at).toLocaleDateString('ko-KR')} 가입</div><div class="gd-mp-d">…</div>
       <div class="gd-mp-a">${boss ? `<button data-role="${x.role === 'officer' ? 'member' : 'officer'}">${x.role === 'officer' ? '간부 해제' : (gi('role_officer', '⚔️') + ' 간부 임명')}</button><button data-tr>${gi('role_boss', '👑')} 보스 이관</button>` : ''}${canKick ? '<button class="bad" data-kick>추방</button>' : ''}</div></div>`);
     const ago = t => { const h = (Date.now() - new Date(t)) / 36e5; return h < 1 ? '방금' : h < 24 ? `${Math.floor(h)}시간 전` : `${Math.floor(h / 24)}일 전`; };
     window.VRCosmo?.lookup?.([x.user_id]).then(map => { const c = map?.[x.user_id]; const el = m.querySelector('[data-mpn]'); if (el && c?.title_name) el.insertAdjacentHTML('beforeend', ` <i class="cosmo-ttl t-${c.title}">${c.title_name}</i>`); });
@@ -219,8 +219,8 @@
     draw(m);
   }
   function reqPop() {
-    const m = subPop('req', '📨 가입 신청', `<div class="gd-h big">${gi('ic_invite', '📨')} 가입 신청</div><div class="gd-reqs">${st.requests.map(r => `<div class="gd-rq"><b>${esc(r.name)}</b><small>Lv.${r.level}</small><button class="gd-ok" data-a="${r.id}">승인</button><button data-r="${r.id}">거절</button></div>`).join('') || '<div class="gd-empty">신청이 없어요</div>'}</div>
-      <div class="gd-h">➕ 초대</div><div class="gd-search"><input id="gd-inv" maxlength="20" placeholder="닉네임"><button id="gd-invgo">초대</button></div>`);
+    const m = subPop('req', '📨 가입 신청', `<div class="gd-h big">${gi('ic_invite', '📨')} 가입 신청</div><div class="gd-reqs">${st.requests.map(r => `<div class="gd-rq"><b data-clarity-mask="true">${esc(r.name)}</b><small>Lv.${r.level}</small><button class="gd-ok" data-a="${r.id}">승인</button><button data-r="${r.id}">거절</button></div>`).join('') || '<div class="gd-empty">신청이 없어요</div>'}</div>
+      <div class="gd-h">➕ 초대</div><div class="gd-search" data-clarity-mask="true"><input id="gd-inv" maxlength="20" placeholder="닉네임"><button id="gd-invgo">초대</button></div>`);
     m.querySelectorAll('[data-a]').forEach(b => b.onclick = async () => { if (await act('guild_respond', { p_req: +b.dataset.a, p_accept: true }, '🩸 새 조직원')) b.closest('.gd-rq').remove(); });
     m.querySelectorAll('[data-r]').forEach(b => b.onclick = async () => { if (await act('guild_respond', { p_req: +b.dataset.r, p_accept: false })) b.closest('.gd-rq').remove(); });
     m.querySelector('#gd-invgo').onclick = () => { const v = m.querySelector('#gd-inv').value.trim(); if (v) act('guild_invite', { p_nick: v }, '📨 초대를 보냈어요'); };
@@ -228,8 +228,8 @@
   function setPop() {
     const g = st.guild, boss = st.me.role === 'boss'; let e = g.emblem, mode = g.join_mode;
     const m = subPop('set', '⚙️ 조직 설정', `<div class="gd-h big">${gi('tile_settings', '⚙️')} 조직 설정</div>
-      <label class="gd-l">${gi('ic_notice', '📢')} 공지</label><textarea id="gd-sn" maxlength="100" rows="2">${esc(g.notice || '')}</textarea>
-      ${boss ? `<label class="gd-l">소개</label><input id="gd-si" maxlength="60" value="${esc(g.intro || '')}">
+      <label class="gd-l">${gi('ic_notice', '📢')} 공지</label><textarea id="gd-sn" data-clarity-mask="true" maxlength="100" rows="2">${esc(g.notice || '')}</textarea>
+      ${boss ? `<label class="gd-l">소개</label><input id="gd-si" data-clarity-mask="true" maxlength="60" value="${esc(g.intro || '')}">
       <div class="gd-embs">${EMB.map((_, i) => `<button data-e="${i + 1}" class="${i + 1 === e ? 'on' : ''}">${emb(i + 1)}</button>`).join('')}</div>
       <div class="gd-modes">${Object.entries(MODE).map(([k, [ic, l]]) => `<button data-m="${k}" class="${k === mode ? 'on' : ''}">${ic}<small>${l}</small></button>`).join('')}</div>` : ''}
       <button class="gd-big" data-save>저장</button>
@@ -242,7 +242,7 @@
   }
   function logPop() {
     const A = { create: '창설', join: '가입', leave: '탈퇴', kick: '추방', role: '역할 변경', transfer: '보스 넘김', claim_boss: '보스 승계', invite: '초대', update: '설정 변경', level_up: '레벨 업', disband: '해산' };
-    subPop('log', '📜 기록', `<div class="gd-h big">${gi('tile_log', '📜')} 기록</div><div class="gd-log">${st.log.map(l => `<div><span>${esc(A[l.action] || l.action)}${l.action === 'level_up' ? ` Lv.${l.meta?.level}` : ''}</span><b>${esc(l.actor || '')}${l.target && l.target !== l.actor ? ` → ${esc(l.target)}` : ''}</b><small>${new Date(l.at).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' })}</small></div>`).join('') || '<div class="gd-empty">기록 없음</div>'}</div>`);
+    subPop('log', '📜 기록', `<div class="gd-h big">${gi('tile_log', '📜')} 기록</div><div class="gd-log">${st.log.map(l => `<div><span>${esc(A[l.action] || l.action)}${l.action === 'level_up' ? ` Lv.${l.meta?.level}` : ''}</span><b data-clarity-mask="true">${esc(l.actor || '')}${l.target && l.target !== l.actor ? ` → ${esc(l.target)}` : ''}</b><small>${new Date(l.at).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' })}</small></div>`).join('') || '<div class="gd-empty">기록 없음</div>'}</div>`);
   }
   // ---- 2단계: 집결 · 의뢰 (guild2.sql) ----
   const QIC = { phase: '🗡️', stamina: '🔋', pvp_win: '⚔️', tower: '🗼', draw: '🎴', boss: '💀', raid: '🐉', levelup: '⬆️', checkin: '🕯️' };

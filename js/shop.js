@@ -70,7 +70,7 @@
       : !cache ? '<div class="shop-err">상점 정보를 불러오지 못했어요.</div>'
       : tab === 'consume' ? '<div data-consume></div>'
       : `<p class="shop-note">${tab === 'charge' ? '상품마다 첫 구매 한 번은 표기 수량과 같은 양을 한 번 더 드려요 (2배).' : tab === 'pass' ? '같은 패스를 다시 사면, 지금 패스가 끝난 다음 날부터 30일이 이어집니다.' : '스페셜 소환권은 지금 쓰는 소환권으로 들어와요. 픽업 소환은 아직 열리지 않았어요.'}</p><div class="shop-grid">${list.map(card).join('') || '<div class="shop-empty">상품이 없어요.</div>'}</div>${tab === 'pass' ? passRows() : ''}`;
-    host.innerHTML = `<div class="shop"><div class="shop-bal"><span>🔮 <b>${n(cache?.gem)}</b></span><small>무료 ${n(cache?.free)} · 유료 ${n(cache?.paid)}</small></div><div class="shop-tabs">${TABS.map(([id, name]) => `<button type="button" data-tab="${id}" class="${tab === id ? 'on' : ''}">${name}</button>`).join('')}</div>${body}</div>`;
+    host.innerHTML = `<div class="shop" data-clarity-mask="true"><div class="shop-bal"><span>🔮 <b>${n(cache?.gem)}</b></span><small>무료 ${n(cache?.free)} · 유료 ${n(cache?.paid)}</small></div><div class="shop-tabs">${TABS.map(([id, name]) => `<button type="button" data-tab="${id}" class="${tab === id ? 'on' : ''}">${name}</button>`).join('')}</div>${body}</div>`;
     host.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { tab = b.dataset.tab; paint(); });
     host.querySelectorAll('[data-sku]').forEach(b => b.onclick = () => buy(b.dataset.sku));
     if (tab === 'consume') paintConsume(host.querySelector('[data-consume]'));
@@ -82,13 +82,13 @@
     box.innerHTML = `<p class="shop-note">체력의 드링크는 심연석으로 사요. 무료 심연석을 먼저 쓰고, 모자라면 유료를 씁니다. 행동력 최대 충전과는 다른 상품이에요.</p>${window.VRDrink?.html?.() || ''}`;
     window.VRDrink?.bind?.(box, () => paintConsume(box));
   }
-  function draw(body) { host = body; host.innerHTML = '<div class="shop"><div class="shop-note">불러오는 중…</div></div>'; refresh(true).then(() => { if (host === body) paint(); }); }
+  function draw(body) { host = body; host.innerHTML = '<div class="shop" data-clarity-mask="true"><div class="shop-note">불러오는 중…</div></div>'; refresh(true).then(() => { if (host === body) paint(); }); }
   function open() {
     const logged = window.VRCloud?.user || window.__SHOP_MOCK || window.__GEM_MOCK;
     if (!logged) return toast('로그인이 필요해요');
     if (window.VRPages?.open) return window.VRPages.open('shop');
     const m = document.createElement('div'); m.className = 'gem-pop'; document.body.appendChild(m);
-    const panel = document.createElement('div'); panel.className = 'gem-panel'; m.appendChild(panel);
+    const panel = document.createElement('div'); panel.className = 'gem-panel'; panel.setAttribute('data-clarity-mask', 'true'); m.appendChild(panel);
     m.addEventListener('click', e => { if (e.target === m) m.remove(); });
     draw(panel);
   }

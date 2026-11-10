@@ -272,6 +272,14 @@
   #cutin{max-width:100vw;contain:paint}
   .modal-x{position:sticky;top:0;float:right;margin:-.5rem -.5rem .25rem .5rem;z-index:10;box-shadow:0 2px 8px rgba(0,0,0,.6)}
 </style>
+  <!-- Microsoft Clarity: this project is only for the production game host. -->
+  <script type="text/javascript">
+    try {
+      if (location.hostname === "ag.violenceroyale.com") {
+        (function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);})(window, document, "clarity", "script", "zbavh1z42t");
+      }
+    } catch (e) {}
+  </script>
   <!-- Google tag (gtag.js) -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-NP3VPPBRKL"></script>
   <script>
@@ -317,7 +325,7 @@
   <div class="intro-body">
     <img src="img/ui/main/logo_v2.webp" alt="Violence Royale : The Abyss Gate" class="intro-logo" width="1200" height="595">
     <div class="intro-acts">
-      <div class="oauth-row">
+      <div class="oauth-row" data-clarity-mask="true">
         <button id="intro-login" data-oauth-provider="google" class="main-btn intro-btn" type="button"><img src="img/ui/login.webp" alt="" class="ui-ic"> 구글 로그인</button>
         <button id="intro-login-kakao" class="main-btn intro-btn oauth-kakao" type="button" data-oauth-provider="kakao" hidden><img src="img/ui/kakao-symbol.svg" class="oauth-symbol" width="18" height="18" alt="">카카오 로그인</button>
         <button id="intro-login-x" class="main-btn intro-btn oauth-x" type="button" data-oauth-provider="x" hidden>X 로그인</button>
@@ -340,7 +348,7 @@
   <canvas id="embers" class="absolute inset-0 w-full h-full pointer-events-none"></canvas>
   <div class="main-vignette absolute inset-0 pointer-events-none"></div>
   <div class="main-top absolute top-0 inset-x-0 z-20 flex items-center justify-between gap-2">
-    <div id="acct-box" class="acct-box min-w-0"></div>
+    <div id="acct-box" class="acct-box min-w-0" data-clarity-mask="true"></div>
     <div id="main-cur" class="main-cur" aria-label="재화"></div>
     <span data-idlebtn class="main-idle"></span>
     <span data-achbtn class="main-ach"></span>
@@ -384,10 +392,10 @@
         <button id="arcade-opts-btn" class="gm-btn" type="button" aria-haspopup="dialog"><img src="img/ui/v2/icon_arcade_settings.webp" alt=""><span>아케이드 설정 <small id="arcade-opts-sum"></small></span></button>
         <button id="main-rank" class="gm-btn" type="button"><img src="img/ui/v2/icon_ranking.webp" alt=""><span>랭킹</span></button>
         <button id="main-gallery" class="gm-btn" type="button"><img src="img/ui/v2/icon_gallery.webp" alt=""><span>갤러리</span></button>
-        <button id="main-link-google" class="gm-btn" type="button" hidden><span>구글 연결</span></button>
-        <button id="main-link-kakao" class="gm-btn" type="button" hidden><span>카카오 연결</span></button>
-        <button id="main-link-x" class="gm-btn" type="button" hidden><span>X 연결</span></button>
-        <button id="main-logout" class="gm-btn hidden" type="button"><img src="img/ui/login.webp" alt=""><span>로그아웃</span></button>
+        <button id="main-link-google" class="gm-btn" type="button" hidden data-clarity-mask="true"><span>구글 연결</span></button>
+        <button id="main-link-kakao" class="gm-btn" type="button" hidden data-clarity-mask="true"><span>카카오 연결</span></button>
+        <button id="main-link-x" class="gm-btn" type="button" hidden data-clarity-mask="true"><span>X 연결</span></button>
+        <button id="main-logout" class="gm-btn hidden" type="button" data-clarity-mask="true"><img src="img/ui/login.webp" alt=""><span>로그아웃</span></button>
       </div>
       <nav id="settings-legal-links" class="legal-links" aria-label="서비스 정책"><a href="/terms.html" target="_blank" rel="noopener noreferrer">이용약관</a><a href="/privacy.html" target="_blank" rel="noopener noreferrer">개인정보처리방침</a></nav>
       <div id="gm-foot" class="gm-foot"></div>
