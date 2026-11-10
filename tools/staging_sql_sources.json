@@ -152,7 +152,8 @@
     "payments_refunds_staging.sql": "Staging-cluster-guarded optional Toss refund add-on; run after payments_staging.sql, tested by test:payments, not a fresh-cluster/production installer.",
     "payments_webhook_staging.sql": "Staging-cluster-guarded Toss cancel reconciliation; run after payments_refunds_staging.sql, not a fresh-cluster/production installer.",
     "staging_sweep_fixture.sql": "Owner-pasted staging-only sweep test account. Not a fresh installer. Guarded to system_identifier 7703759698107299042.",
-    "staging_sweep_settle_timing.sql": "Owner-pasted staging patch: replayed tower sweeps no longer fail the per-floor wall-clock check. Not a fresh installer."
+    "staging_sweep_settle_timing.sql": "Owner-pasted staging patch: replayed tower sweeps no longer fail the per-floor wall-clock check. Not a fresh installer.",
+    "security_phase7_direct_replay.sql": "Owner-pasted staging upgrade after phase 6. Direct story and tower replay. Does not replace the phase 6 sweep settle. Not a fresh installer."
   },
   "partial": {
     "card_id_remap.sql": "card_id_alias 설정 자료 + 최신 _war_npc_deck만; 기존 사용자 ID 일괄 변경은 제외"

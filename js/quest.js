@@ -37,7 +37,7 @@
     }
     return rpc(name, Object.keys(args).length ? args : undefined);
   }
-  const ERR = m => /bag full/.test(m) ? '🎒 장비 가방이 꽉 찼어요. 가방을 정리하거나 칸을 늘린 뒤 도전해 주세요' : /daily limit/.test(m) ? `오늘 도전 가능한 층을 다 썼어요 (하루 ${status?.daily ?? 30}층, 한국 시간 자정에 초기화)` : /level too low/.test(m) ? `유저 레벨 ${status?.min_level ?? 5} 이상부터 도전할 수 있어요` : /closed today/.test(m) ? '오늘은 열리지 않는 탑이에요' : null;
+  const ERR = m => /서버가 다시 계산|확인해 주세요|확인하지 못했어요/.test(m) ? m : /bag full/.test(m) ? '🎒 장비 가방이 꽉 찼어요. 가방을 정리하거나 칸을 늘린 뒤 도전해 주세요' : /daily limit/.test(m) ? `오늘 도전 가능한 층을 다 썼어요 (하루 ${status?.daily ?? 30}층, 한국 시간 자정에 초기화)` : /level too low/.test(m) ? `유저 레벨 ${status?.min_level ?? 5} 이상부터 도전할 수 있어요` : /closed today/.test(m) ? '오늘은 열리지 않는 탑이에요' : /direct replay required/.test(m) ? '전투 결과를 서버가 확인하지 못했어요. 다시 도전해 주세요.' : null;
   async function rpc(name, args) {
     if (M()?.rpc) return M().rpc(name, args);
     const sb = window.VRCloud?.sb; if (!sb) throw new Error('서버에 연결할 수 없어요');
@@ -240,6 +240,11 @@
       const m = String(e?.message || ''), why = /too fast/.test(m) ? '전투가 너무 빨리 끝나서 기록이 인정되지 않았어요.' : ERR(m) ? ERR(m) : /battle not started/.test(m) ? '전투 시작 기록이 없어요. (다른 기기에서 전투를 시작했을 수 있어요)' : `기록 실패: ${m}`;
       api.show(`<div class="text-center py-10"><div class="story-chapter-big text-amber-300">!</div><div class="text-zinc-300 mt-2">${esc(why)}<br>다시 도전해 주세요.</div><div class="flex flex-col gap-2 max-w-xs mx-auto mt-6"><button class="story-btn" id="q-retry">다시 도전</button><button class="story-back" id="q-back">탑으로</button></div></div>`, 'tower');
       $('q-retry').textContent = '결과 다시 저장'; $('q-retry').onclick = () => result(n, win, reason, st); $('q-back').onclick = render; return;
+    }
+    if (res && res.cleared === false) {
+      api.show(`<div class="text-center py-10"><div class="story-chapter-big text-red-400">DEFEAT</div><div class="text-zinc-300 mt-2">${n}층 · 서버가 이 전투를 다시 계산한 결과는 패배예요. 보상은 없어요.</div>
+        <div class="flex flex-col gap-2 max-w-xs mx-auto mt-6"><button class="story-btn" id="q-retry">다시 도전</button><button class="story-back" id="q-back">탑으로</button></div></div>`, 'tower');
+      $('q-retry').onclick = () => challenge(n); $('q-back').onclick = render; return;
     }
     status = { ...status, best_floor: res.best_floor ?? Math.max(best(), n), today: res.today ?? status?.today, unpaid_floors: (status?.unpaid_floors || []).filter(f => f !== n) };
     const rw = res.first ? res.reward : null, got = rw && (rw.tickets || rw.gold);

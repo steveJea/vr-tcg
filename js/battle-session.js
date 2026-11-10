@@ -19,14 +19,50 @@
     data.readyAt = Date.now() + Number(data.min_seconds || 0) * 1000 + 250;
     return data;
   }
+  const DIRECT_V7 = '1dbdb45994799cdcf3db14bd6eb44689d35678a733774caffcfd9867df85685c';
+  function replayError(message) {
+    const err = new Error(message || '전투 결과를 서버가 확인하지 못했어요');
+    err.replayNotReady = /verifier unavailable|staging verifier unavailable|Failed to send a request to the Edge Function|Function not found|404 Not Found/i.test(err.message);
+    err.unverifiedFight = /서버가 다시 계산할 수 없어요/.test(err.message);
+    return err;
+  }
+  async function verifyDirect(session, report) {
+    const c = window.VRCloud;
+    if (!c?.sb || !session?.session) throw new Error('전투 시작 기록이 없어요');
+    const outcome = report?.reason === 'giveup' ? 'giveup' : report?.win ? 'claim' : 'loss';
+    const body = { op: 'direct', id: session.session, version: DIRECT_V7, outcome,
+      mana: report?.mana == null || Number.isNaN(Number(report.mana)) ? null : Math.max(0, Math.min(99999, Math.trunc(Number(report.mana)))),
+      cards: (Array.isArray(report?.cards) ? report.cards : []).slice(0, 30).map(c => ({ uid: String(c.uid || ''), kills: c.kills | 0, blocks: c.blocks | 0 })).filter(c => c.uid) };
+    let last;
+    for (let n = 0; n < 2; n++) {
+      const { data, error } = await c.sb.functions.invoke('story-direct-verify-v7', { body });
+      if (!error && data?.ok) return data;
+      let message = data?.error || '';
+      if (error) { try { message = (await error.context?.json())?.error || error.message; } catch { message = error.message; } }
+      last = replayError(message);
+      if (n === 0 && !last.replayNotReady) {
+        const again = await c.sb.functions.invoke('story-direct-verify-v7', { body: { op: 'status', id: session.session } });
+        if (!again.error && again.data?.settlement?.ok) return again.data.settlement;
+      }
+    }
+    throw last;
+  }
   async function finish(session, report) {
     if (!session?.session) throw new Error('전투 시작 기록이 없어요');
     await wait(Math.max(0, (session.readyAt || 0) - Date.now()));
-    return rpc('battle_session_finish_v2', { p_session: session.session, p_report: report });
+    if (session.mode === 'story' || session.mode === 'tower') {
+      try { return await verifyDirect(session, report); }
+      catch (e) { if (!e.replayNotReady && !e.unverifiedFight) throw e; }
+    }
+    try { return await rpc('battle_session_finish_v2', { p_session: session.session, p_report: report }); }
+    catch (e) {
+      if (/direct replay required/.test(String(e?.message || e))) throw new Error('전투 결과를 서버가 확인하지 못했어요. 다시 도전해 주세요.');
+      throw e;
+    }
   }
   const report = (win, reason, st = {}, cards = []) => ({ win: !!win, reason: String(reason || ''),
     turns: Number(st.totalTurns ?? st.turns ?? 0), my_turns: Number(st.myTurns ?? Math.ceil((st.totalTurns ?? st.turns ?? 0) / 2)),
     mana: st.mana == null ? null : Number(st.mana), skills: Number(st.skills || 0), cards });
   const abort = session => session?.session ? rpc('battle_session_abort_v2', { p_session: session.session }) : Promise.resolve(null);
-  window.VRBattleSession = { start, finish, report, abort };
+  window.VRBattleSession = { start, finish, report, abort, verifyDirect };
 })();
