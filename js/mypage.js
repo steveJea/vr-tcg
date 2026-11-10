@@ -146,7 +146,7 @@
     m.addEventListener('click', e => { if (e.target === m) close(); });   // 바깥 클릭 = 닫기 (팝업일 때)
     m.querySelector('.mp-panel').addEventListener('click', e => { if (e.target.closest('#mp-close')) return close();   // 판에 달아 둠: 페이지로 옮겨가도 동작
       const nv = e.target.closest('[data-nav]'); if (nv) { if (nv.dataset.nav === 'gearbag') return window.VRGear?.bag?.(); if (nv.dataset.nav === 'camp') return window.VRCamp?.open?.();   // 장비 가방은 팝업이라 마이페이지는 그대로
-        close(); const S = window.VRStory; return nv.dataset.nav === 'story' ? S?.openMap?.(+nv.dataset.ch) : nv.dataset.nav === 'decks' ? S?.openDecks?.() : S?.openCards?.(); }
+        close(); const S = window.VRStory; return nv.dataset.nav === 'story' ? S?.openMap?.(+nv.dataset.ch) : nv.dataset.nav === 'decks' ? S?.openDecks?.('mypage') : S?.openCards?.('mypage'); }
       const t = e.target.closest('.mp-card[data-uid]'); if (t) openCard(t.dataset.uid, t.dataset.id); });   // 바깥 클릭 = 닫기
     document.addEventListener('keydown', e => { if (e.key === 'Escape' && !m.classList.contains('hidden')) close(); });
     return m;

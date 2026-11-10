@@ -86,15 +86,33 @@
   }
   const byUid = u => save.owned.find(o => o.uid === u);
   const copiesOf = id => save.owned.filter(o => o.id === String(id));
+  const uidEq = (a, b) => a != null && b != null && String(a) === String(b);
+  const idEq = (a, b) => uidEq(window.cardIdNew ? window.cardIdNew(a) : a, window.cardIdNew ? window.cardIdNew(b) : b);
+  /** 화면에 왕관을 붙일 인스턴스. 저장된 leader uid 가 보유 목록과 안 맞으면(타입·옛 id) 시작 캐릭터, 그다음 마지막 출전 첫 장, 그다음 가장 강한 장. 마이페이지 대표 카드와 같은 장 */
+  function leaderUidNow() {
+    const owned = save?.owned || [];
+    if (owned.some(o => uidEq(o.uid, save?.leader))) return String(save.leader);
+    if (save?.starter) { const o = owned.find(x => idEq(x.id, save.starter)); if (o) return String(o.uid); }
+    let deck = [];
+    try { deck = JSON.parse(localStorage.getItem(`vrTcgPick:story:${user()?.id || 'guest'}`) || '[]'); } catch {}
+    const by = new Map(owned.map(o => [String(o.uid), o]));
+    const first = (Array.isArray(deck) ? deck : []).map(u => by.get(String(u))).find(Boolean);
+    if (first) return String(first.uid);
+    let best = null, bp = -1;
+    for (const o of owned) { const c = card(o.id); const p = Math.round((+c?.power || 0) * (1 + Math.max(0, +o.exb || 0) / 100)); if (!best || p > bp || (p === bp && (o.level | 0) > (best.level | 0))) { best = o; bp = p; } }
+    return best ? String(best.uid) : null;
+  }
+  const isLeader = o => !!o && uidEq(o.uid, leaderUidNow());
   /** 전투 출전 카드: 카드마다 1장 (리더 인스턴스, 아니면 레벨·EX 가 가장 높은 장) */
   function deckInstances() {
+    const lead = leaderUidNow();
     const best = new Map();
     for (const o of save.owned) {
-      const b = best.get(o.id), score = x => (x.uid === save.leader ? 1e9 : 0) + (x.ex | 0) * 1e5 + (x.level | 0);
+      const b = best.get(o.id), score = x => (uidEq(x.uid, lead) ? 1e9 : 0) + (x.ex | 0) * 1e5 + (x.level | 0);
       if (!b || score(o) > score(b)) best.set(o.id, o);
     }
     const list = [...best.values()];
-    return list.sort((a, b) => (b.uid === save.leader) - (a.uid === save.leader));
+    return list.sort((a, b) => (uidEq(b.uid, lead) - uidEq(a.uid, lead)));
   }
   const repOf = id => deckInstances().find(o => o.id === String(id));
   function cacheLocal() { try { localStorage.setItem(KEY(), JSON.stringify(save)); } catch {} }
@@ -332,7 +350,7 @@
   /** 바깥 화면에서 인재 육성 (레벨업·합성·장비): 보유 인재 + 상세 열기 → 돌아가기/처음으로 = done() */
   const trainCard = (uid, done, label) => openPage(() => { ext = { done, label }; renderCards(); if (byUid(uid)) cardDetail(uid); });
   const canMergeUid = uid => { const o = save?.owned?.find(x => x.uid === uid); return !!o && canMerge(o); };
-  const topBar = (title, back = 'home', nav = true) => (back === 'hub' && !save?.starter && (back = 'home'), nav && !save?.starter && (nav = false), 0) || `<div class="story-top"><button class="story-back" data-go="${back}">← ${back === 'home' ? '처음으로' : back === 'hub' ? '스토리 메인' : '돌아가기'}</button><div class="story-top-title">${title}</div>${nav ? `<span class="flex gap-1.5"><button class="story-mycards story-gacha-btn" data-go="gacha">🎴 인재영입${canDraw() ? '<i class="story-badge">1</i>' : ''}</button><button class="story-mycards" data-go="cards">🃏 보유 인재</button><button class="story-mycards" data-go="decks">🗂 덱</button></span>` : '<span></span>'}</div>`;
+  const topBar = (title, back = 'home', nav = true) => (back === 'hub' && !save?.starter && (back = 'home'), nav && !save?.starter && (nav = false), 0) || `<div class="story-top"><button class="story-back" data-go="${back}">← ${back === 'home' ? '처음으로' : back === 'hub' ? '스토리 메인' : back === 'mypage' ? '마이페이지' : '돌아가기'}</button><div class="story-top-title">${title}</div>${nav ? `<span class="flex gap-1.5"><button class="story-mycards story-gacha-btn" data-go="gacha">🎴 인재영입${canDraw() ? '<i class="story-badge">1</i>' : ''}</button><button class="story-mycards" data-go="cards">🃏 보유 인재</button><button class="story-mycards" data-go="decks">🗂 덱</button></span>` : '<span></span>'}</div>`;
   function bind(extra = {}) {
     root().querySelectorAll('[data-go]').forEach(b => b.onclick = () => ({ home, hub: renderHub, map: renderMap, cards: renderCards, decks: renderDecks, gacha: renderShop, bonds: renderBonds, ...extra })[b.dataset.go]?.());
   }
@@ -710,6 +728,7 @@
       ${done && videoOf(base) ? `<span class="story-hub-vid" role="button" data-hubvid="${i}" title="엔딩 영상 다시 보기">🎬</span>` : ''}</button>`;
   }
   function renderHub() {
+    rosterFrom = null;
     if (pullPending()) return forcedPull();
     const nx = nextPlay(), cur = hubCurIdx();
     if (hubC == null || hubC > cur || hubCur !== cur) { hubC = cur; hubCur = cur; }
@@ -1299,7 +1318,8 @@
 
   // ----- 보유 카드 (카드별로 묶어서 보여 주고, 펼치면 한 장씩) -----
   const cptsTotal = () => save.owned.reduce((a, o) => a + (o.cpts | 0), 0);
-  const isLeader = o => !!o && o.uid === save.leader;
+  let rosterFrom = null;   // 'mypage': 마이페이지에서 연 보유 인재·덱. ← 는 스토리 메인이 아니라 마이페이지
+  const backMyPage = () => { rosterFrom = null; home(); window.VRMyPage?.open?.(); };
   /** 분해 잠금: 직접 잠근 카드 + 리더(자동 잠금). 잠긴 카드는 분해·합성 재료로 못 씀 (서버도 같은 검사) */
   // ----- 마이 덱 (최대 10개, 덱에 든 카드는 자동 잠금 · 서버 story_set_decks) · 즐겨찾기 (story_set_fav) -----
   const DECK_MAX = 10;
@@ -1407,7 +1427,7 @@
   function renderCards() {
     const k = D.statPerPoint; save.owned.forEach(norm);
     const anyPts = save.points || cptsTotal(), all = groups(), gs = all.filter(g => passFilter(g.id, g.list));
-    show(`${ext ? `<button class="story-extback" data-pvpback>← ${esc(ext.label || '돌아가기')}</button>` : ''}${topBar('🃏 보유 인재', 'hub')}<div class="story-cards-meta">${all.length}종 · ${save.owned.length}명 · P ${save.points}${cptsTotal() ? ` · 전용 ${cptsTotal()}` : ''}
+    show(`${ext ? `<button class="story-extback" data-pvpback>← ${esc(ext.label || '돌아가기')}</button>` : ''}${topBar('🃏 보유 인재', rosterFrom === 'mypage' ? 'mypage' : 'hub')}<div class="story-cards-meta">${all.length}종 · ${save.owned.length}명 · P ${save.points}${cptsTotal() ? ` · 전용 ${cptsTotal()}` : ''}
       <span class="story-cards-acts"><button class="story-mini" data-go="decks">🗂 덱</button>${serverMode && window.VRGear && !window.VRGear.off ? '<button class="story-mini" data-go="gearbag">🎒 장비</button>' : ''}${save.owned.length > 1 ? '<button class="story-mini story-mini-red" data-go="bulk">' + ic('discard', { alt: '' }) + ' 일괄 분해</button>' : ''}</span></div>
       ${(() => { const lo = byUid(save.leader), le = lo && leaderEff(lo.id); return le ? `<div class="story-leader-bar" title="${esc(le.text)}"><div class="min-w-0">${ic('crown', { alt: '' })} <b>${esc(exName(lo, card(lo.id)?.name))}</b> <small>${esc(le.label)}</small></div><button class="story-mini" data-go="leader" ${leaderUnlocked() ? '' : 'disabled title="챕터 1 클리어 후"'}>${leaderUnlocked() ? '변경' : '🔒 CH1'}</button></div>` : ''; })()}
       ${all.length > 1 ? sortBar() + filterBar() : ''}${gs.length ? '' : '<div class="story-empty">없음</div>'}<div class="story-grid">${gs.map(gr => { const o = gr.rep, c = shown(o); if (!c) return ''; const b = o.boost || {}, n = gr.list.length;
@@ -1416,7 +1436,7 @@
         return `<div class="story-group"><div data-uid="${o.uid}" class="story-owned">${ownTile(o, c, `${gr.list.some(x => (x.locked || inDeck(x)) && !isLeader(x)) ? '<div class="story-lockbadge" title="잠금">🔒</div>' : ''}${gr.list.some(isFav) ? '<div class="story-favbadge">★</div>' : ''}`, `${mergeable ? `<button class="story-merge-mini" data-merge="${(gr.list.find(canMerge)).uid}" title="합성" aria-label="합성">${ic('merge', { alt: '합성' }) || '✦'}</button>` : ''}${n > 1 ? `<button class="story-expand" data-expand="${gr.id}" title="${n}명 보기" aria-label="같은 인재 ${n}명 보기">x${n}</button>` : ''}`)}</div>
           </div>`; }).join('')}</div>
       ${anyPts ? '<div class="text-center mt-4"><button class="story-btn" data-go="stats">📈 스탯 분배하기</button></div>' : ''}`);
-    bind({ gearbag: () => window.VRGear?.bag?.(), stats: () => openStats(renderCards), bulk: () => bulkDiscard(), leader: () => pickLeader(), decks: () => renderDecks() });
+    bind({ gearbag: () => window.VRGear?.bag?.(), stats: () => openStats(renderCards), bulk: () => bulkDiscard(), leader: () => pickLeader(), decks: () => { rosterFrom = rosterFrom === 'mypage' ? 'mypage-deck' : null; renderDecks(); }, mypage: backMyPage });
     bindFilter(renderCards);
     root().querySelectorAll('[data-uid]').forEach(el => el.onclick = () => cardDetail(el.dataset.uid));
     root().querySelectorAll('[data-merge]').forEach(b => b.onclick = e => { e.stopPropagation(); mergePreview(b.dataset.merge); });
@@ -1626,9 +1646,9 @@
     const ds = decksOf(), slot = i => { const d = ds[i], list = (d?.uids || []).map(byUid).filter(Boolean);
       return `<button class="story-deck-slot ${list.length ? '' : 'empty'}" data-deck="${i}"><div class="story-deck-h"><b>${esc(deckName(d, i))}</b><small>${list.length}/${DECK_CARDS}</small></div>
         <div class="story-deck-row">${list.length ? list.map(o => { const c = shown(o); return c ? `<span class="story-deck-th ${rcls(c)}"><img src="${cardThumb(c.id)}" alt="${esc(c.name)}" loading="lazy" onerror="this.style.visibility='hidden'">${isLeader(o) ? `<span class="story-deck-crown" title="리더">${ic('crown', { alt: '리더' })}</span>` : ''}<i>Lv.${o.level}</i></span>` : ''; }).join('') : '<span class="story-deck-plus">＋</span>'}</div></button>`; };
-    show(`${topBar('🗂 마이 덱', 'cards')}<div class="story-cards-meta">${ds.filter(d => d?.uids?.length).length}/${DECK_MAX} · 🔒 자동 잠금</div>
+    show(`${topBar('🗂 마이 덱', rosterFrom === 'mypage' ? 'mypage' : 'cards')}<div class="story-cards-meta">${ds.filter(d => d?.uids?.length).length}/${DECK_MAX} · 🔒 자동 잠금</div>
       <div class="story-decks">${Array.from({ length: DECK_MAX }, (_, i) => slot(i)).join('')}</div>`);
-    bind({ cards: () => renderCards() });
+    bind({ cards: () => { if (rosterFrom === 'mypage') rosterFrom = 'mypage'; else if (rosterFrom === 'mypage-deck') rosterFrom = 'mypage'; renderCards(); }, mypage: backMyPage });
     root().querySelectorAll('[data-deck]').forEach(b => b.onclick = () => editDeck(+b.dataset.deck));
   }
   function editDeck(i) {
@@ -2110,9 +2130,10 @@
     const inst = deckInstances(), byUid = new Map(save.owned.map(o => [o.uid, o]));
     let deck = []; try { deck = JSON.parse(pickKeyRead('story') || '[]').filter(u => byUid.has(u)); } catch {}
     if (!deck.length) deck = inst.slice().sort((a, b) => (b.uid === save.leader) - (a.uid === save.leader) || (shown(b)?.power || 0) - (shown(a)?.power || 0)).slice(0, MAX_PICK()).map(o => o.uid);
-    const view = o => { const b = shown(o) || {}; return { uid: o.uid, id: o.id, name: b.name || card(o.id)?.name || o.id, grade: b.grade || card(o.id)?.grade, level: o.level | 0, ex: o.ex | 0, power: b.power || 0, locked: isLocked(o), fav: isFav(o), leader: o.uid === save.leader }; };
+    const lead = leaderUidNow();
+    const view = o => { const b = shown(o) || {}; return { uid: o.uid, id: o.id, name: b.name || card(o.id)?.name || o.id, grade: b.grade || card(o.id)?.grade, level: o.level | 0, ex: o.ex | 0, power: b.power || 0, locked: isLocked(o), fav: isFav(o), leader: uidEq(o.uid, lead) }; };
     return {
-      ok: true, serverMode, leaderUid: save.leader || null, deckUids: deck, tickets: tk, decks: decksOf().map((d, i) => ({ name: deckName(d, i), uids: (d?.uids || []).filter(u => byUid.has(u)) })),
+      ok: true, serverMode, leaderUid: lead, deckUids: deck, tickets: tk, decks: decksOf().map((d, i) => ({ name: deckName(d, i), uids: (d?.uids || []).filter(u => byUid.has(u)) })),
       owned: save.owned.map(view), uniq: inst.length,
       chapters: D.chapters.map(ch => ({ id: ch.id, title: ch.title, done: (save.cleared?.[ch.id] || []).filter(no => ch.phases.some(p => p.no === no)).length, total: ch.phases.length })),
       current: (() => { try { const i = hubCurIdx(), base = D.chapters[i], ch = chapterFor(base), nx = nextPlay(), n = clearedOf(ch).length, cv = chCover(base);
@@ -2133,6 +2154,22 @@
     lastDeck: (mode = 'tower') => { const all = deckInstances(); if (all.length <= MAX_PICK()) return all; let last = []; try { last = JSON.parse(pickKeyRead(mode) || '[]'); } catch {} const by = new Map(all.map(o => [o.uid, o])); return last.map(u => by.get(u)).filter(Boolean).slice(0, MAX_PICK()); },
   };
   const openPage = async (fn, quiet) => { if ((await enter(quiet ? 'quiet' : undefined)) === 'gate') return; if (save?.starter) fn(); };   // 오프닝·챕터 0·강제 영입·캐릭터 고르기 중이면 그 화면 유지 (위에 다른 화면 덮지 않음)
+  // 하단 소환 탭. enter()는 챕터 0이 안 끝났으면 autoCh0(사냥)을 quiet 보다 먼저 연다. 소환은 그 사냥 화면을 타면 안 되고 뽑기로 바로 간다.
+  async function openSummon() {
+    if (!user()) {
+      popup(`<div class="text-xl font-black mb-2">🎴 인재영입</div>
+        <button id="story-login" class="w-full py-3 rounded-xl bg-amber-400 text-black font-bold">${ic('login', { alt: '' })} 로그인</button><button data-close-pop class="w-full mt-2 py-2 rounded-xl bg-white/10">닫기</button>`);
+      $('story-login').onclick = () => window.VRCloud?.login?.();
+      return;
+    }
+    if (!window.TCG?.ready) return;
+    await load();
+    if (!save) return;
+    if (serverMode) { try { await window.VRGear?.load?.(); } catch {} }
+    await checkChapters(); curCh = null; tickets = null;
+    if (pullPending()) return forcedPull();   // 챕터 0 클리어 보상 10연차는 뽑기 화면 자체
+    renderShop();
+  }
   // 보유 인재·덱은 챕터 0 이어하기(autoCh0)를 타면 안 됨. enter()는 ch0이 안 끝났으면 사냥 같은 다음 페이즈를 바로 연다.
   async function openRoster(fn) {
     if (!user()) {
@@ -2155,5 +2192,5 @@
     sort: (list, st) => { const k0 = cardSort; cardSort = st; try { return sortInst(list); } finally { cardSort = k0; } },
     next: (st, k) => st.k === k ? { k, desc: !st.desc } : { k, desc: true },
   };
-  window.VRStory = { hubSections: HUB_SECTIONS, play: () => enter('go'), canDraw: () => canDraw(), trainCard, canMergeUid, sortTool, skBadge, lendCards, reloadLend: () => loadLend(true), partyOf, pickDeck, openMap: i => openPage(() => renderMap(i)), openCards: () => openRoster(renderCards), openDecks: () => openRoster(renderDecks), openShop: () => openPage(renderShop, true), api, bgm, BGM, endingVideo, videoOf, conditionsOf, battleRules, summary, enter, openGacha, renderHub, renderShop, drawOnce, kstDay, get save() { return save; }, renderMap, renderCards, openStats, renderSelect, playLines };
+  window.VRStory = { hubSections: HUB_SECTIONS, play: () => enter('go'), canDraw: () => canDraw(), trainCard, canMergeUid, sortTool, skBadge, lendCards, reloadLend: () => loadLend(true), partyOf, pickDeck, openMap: i => openPage(() => renderMap(i)), openCards: from => openRoster(() => { rosterFrom = from === 'mypage' ? 'mypage' : null; renderCards(); }), openDecks: from => openRoster(() => { rosterFrom = from === 'mypage' ? 'mypage' : null; renderDecks(); }), openShop: () => openSummon(), api, bgm, BGM, endingVideo, videoOf, conditionsOf, battleRules, summary, enter, openGacha, renderHub, renderShop, drawOnce, kstDay, get save() { return save; }, renderMap, renderCards, openStats, renderSelect, playLines };
 })();

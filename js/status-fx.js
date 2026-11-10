@@ -3,20 +3,30 @@
 const KIND = { para: 'paralyze', confuse: 'confuse', bleed: 'bleed', taunt: 'taunt', freeze: 'freeze', burn: 'burn' };
 const LABEL = { para: '마비!', confuse: '혼란!', bleed: '출혈!', taunt: '도발!', freeze: '동결!', burn: '화상!' };
 const ASSET = {};   // 'paralyze_icon' → url | null(없음) | undefined(확인 중)
-const url = n => `img/effects/${n}.webp`;
+// 있는 파일만 요청. effects/ 에 없는 도발·동결·화상은 같은 그림이 있는 ui 아이콘을 쓴다. 중독 전용 그림은 없음.
+const EFFECT_URL = {
+  paralyze_icon: 'img/effects/paralyze_icon.webp', paralyze_fx: 'img/effects/paralyze_fx.webp',
+  confuse_icon: 'img/effects/confuse_icon.webp', confuse_fx: 'img/effects/confuse_fx.webp',
+  bleed_icon: 'img/effects/bleed_icon.webp', bleed_fx: 'img/effects/bleed_fx.webp',
+  taunt_icon: 'img/ui/taunt.webp', taunt_fx: 'img/ui/taunt.webp',
+  freeze_icon: 'img/ui/el_freeze.webp', freeze_fx: 'img/ui/el_freeze.webp',
+  burn_icon: 'img/ui/el_fire.webp', burn_fx: 'img/ui/el_fire.webp',
+};
 function probe(n) {
   if (n in ASSET) return ASSET[n];
+  const src = EFFECT_URL[n]; if (!src) { ASSET[n] = null; return null; }
   ASSET[n] = undefined;
   const im = new Image();
-  im.onload = () => { ASSET[n] = url(n); };
+  im.onload = () => { ASSET[n] = src; };
   im.onerror = () => { ASSET[n] = null; };
-  im.src = url(n);
+  im.src = src;
   return undefined;
 }
 Object.values(KIND).forEach(k => { probe(k + '_icon'); probe(k + '_fx'); });
-// 지속 피해(중독·저주)·지속 회복(재생) 틱 이미지 자리 (img/fx/status/<kind>.webp) — 없으면 CSS 거품·반짝이
+// 틱 그림. img/fx/status/ 는 없음. 출혈·저주·재생·화상·동결은 있는 아이콘, 중독은 CSS만.
 const TICK_ASSET = {};
-['poison', 'curse', 'regen', 'bleed', 'burn', 'freeze'].forEach(k => { const im = new Image(); im.onload = () => { TICK_ASSET[k] = im.src; }; im.onerror = () => { TICK_ASSET[k] = null; }; im.src = `img/fx/status/${k}.webp`; });
+const TICK_URL = { bleed: 'img/ui/bleed.webp', curse: 'img/ui/st_curse.webp', regen: 'img/ui/heal.webp', burn: 'img/ui/el_fire.webp', freeze: 'img/ui/el_freeze.webp' };
+Object.entries(TICK_URL).forEach(([k, src]) => { const im = new Image(); im.onload = () => { TICK_ASSET[k] = src; }; im.onerror = () => { TICK_ASSET[k] = null; }; im.src = src; });
 export const isStatusFxKind = k => k in KIND;
 /** 상태 아이콘 이미지 URL (에셋이 있을 때만) */
 export const statusIconUrl = k => (KIND[k] && ASSET[KIND[k] + '_icon']) || null;

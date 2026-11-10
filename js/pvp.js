@@ -219,7 +219,7 @@ function editDeck(slot, keep) {
   const L = LEAGUES[view.league];
   let query = keep?.query || '', maxCost = keep?.maxCost ?? '';
   const usedElsewhere = new Set(st.decks.filter(d => d.slot !== slot).flatMap(d => d.uids.map(u => owned.find(o => o.uid === u)?.id)));
-  const pool = [...new Map(owned.filter(o => !L.grades || L.grades.includes(card(o.id)?.grade)).sort((a, b) => b.power - a.power).map(o => [o.id, o])).values()];   // 같은 카드는 가장 센 1장
+  const pool = [...new Map(owned.filter(o => !L.grades || L.grades.includes(card(o.id)?.grade)).sort((a, b) => (b.leader === true) - (a.leader === true) || b.power - a.power).map(o => [o.id, o])).values()];   // 같은 카드는 리더 장, 없으면 가장 센 1장
   const m = modal('pvp-edit', '', 'pvp-sub');
   // 보스리그: ① 리더(수비대장 1장 · HR 이하) → ② 멤버(1~5장) → ③ 확인 (sel[0] = 리더)
   const BOSS = !!MODES[view.mode].boss, gradeOf = u => card(owned.find(o => o.uid === u)?.id)?.grade;
