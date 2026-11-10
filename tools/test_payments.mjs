@@ -29,7 +29,11 @@ try{
  await db.exec(`create function public.test_payment_control() returns table(system_identifier text) language sql as $$select current_setting('test.payment_db',true)$$; select set_config('test.payment_db','7692130048193495360',false);`);
  await assert.rejects(db.exec(migration),/STOP: payments staging/);await db.exec('rollback');assert.equal(await val("select to_regclass('public.payment_products') v"),null);
  await db.exec("select set_config('test.payment_db','7703759698107299042',false)");await db.exec(migration);await db.exec(migration);
- assert.equal(await val('select count(*)::int v from payment_products'),4);
+ assert.equal(await val('select count(*)::int v from payment_products'),5);
+ assert.deepEqual(await q('select id,amount,paid_gems,bonus_gems from payment_products order by sort'),[
+  {id:'gem_100',amount:1100,paid_gems:100,bonus_gems:0},{id:'gem_500',amount:5500,paid_gems:500,bonus_gems:25},
+  {id:'gem_1000',amount:11000,paid_gems:1050,bonus_gems:0},{id:'gem_3000',amount:33000,paid_gems:3200,bonus_gems:0},
+  {id:'gem_55000',amount:55000,paid_gems:5500,bonus_gems:0}]);
  await q("update payment_products set amount=6600 where id='gem_500'");await db.exec(migration);assert.equal(await val("select amount v from payment_products where id='gem_500'"),6600);
  for(const s of ["insert into payment_products(id,name,amount,paid_gems) values ('gem_9','forged',100,9999)","update payment_products set amount=100","delete from payment_products","update payment_orders set status='paid'","delete from payment_orders","insert into payment_orders(user_id,request_id,product_id,order_name,amount,currency,paid_gems,bonus_gems) values ('"+u+"',gen_random_uuid(),'gem_100','forged',100,'KRW',999,0)"])
   await assert.rejects(role('authenticated',()=>q(s)),/permission denied/);
@@ -46,9 +50,10 @@ try{
  // A DB exception AFTER _gem_add must roll back both balance and ledger.
  await db.exec(`create function test_payment_failure() returns trigger language plpgsql as $$begin if new.status='paid' then raise exception 'forced failure';end if;return new;end$$;create trigger fail_payment before update on payment_orders for each row execute function test_payment_failure();`);
  await assert.rejects(settle(o),/forced failure/);assert.equal(await val("select count(*)::int v from gem_ledger where ref='toss:'||$1",[o.order_id]),0);
- await db.exec('drop trigger fail_payment on payment_orders');const receipt=await settle(o);assert.equal(receipt.paidGems,100);assert.deepEqual(await settle(o),receipt);
- assert.equal(await val('select gem_paid::int v from player_wallet where user_id=$1',[u]),100);assert.equal(await val("select count(*)::int v from gem_ledger where ref='toss:'||$1",[o.order_id]),1);
- await q("update payment_products set paid_gems=9999,amount=9999 where id='gem_500'");await bind(b,'bonus_key',b.amount,other);await settle(b,'bonus_key');assert.equal(await val('select gem_free::int v from player_wallet where user_id=$1',[other]),25);assert.equal(await val('select gem_paid::int v from player_wallet where user_id=$1',[other]),500);
+ await db.exec('drop trigger fail_payment on payment_orders');const receipt=await settle(o);assert.equal(receipt.paidGems,200);assert.equal(receipt.firstBonus,true);assert.deepEqual(await settle(o),receipt);
+ assert.equal(await val('select gem_paid::int v from player_wallet where user_id=$1',[u]),200);assert.equal(await val("select count(*)::int v from gem_ledger where ref='toss:'||$1",[o.order_id]),1);
+ const again=await create('gem_100','eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee');await bind(again,'second_key');const second=await settle(again,'second_key');assert.equal(second.paidGems,100);assert.equal(second.firstBonus,false);assert.equal(await val('select gem_paid::int v from player_wallet where user_id=$1',[u]),300);
+ await q("update payment_products set paid_gems=9999,amount=9999 where id='gem_500'");await bind(b,'bonus_key',b.amount,other);await settle(b,'bonus_key');assert.equal(await val('select gem_free::int v from player_wallet where user_id=$1',[other]),50);assert.equal(await val('select gem_paid::int v from player_wallet where user_id=$1',[other]),1000);
  const exp=await create('gem_100','cccccccc-cccc-4ccc-8ccc-cccccccccccc');await q("update payment_orders set expires_at=now()-interval '1 second' where order_id=$1",[exp.order_id]);await assert.rejects(bind(exp,'expired'),/order expired/);
  await db.exec("select set_config('test.payment_db','7692130048193495360',false)");await assert.rejects(create('gem_100','dddddddd-dddd-4ddd-8ddd-dddddddddddd'),/payments unavailable/);
  console.log('Payments SQL: prod/unknown guard, repeat install/data preservation, own-row RLS, no direct writes/helper calls, server snapshots, opaque unique keys, atomic rollback/once-only paid+bonus ledger, expiry/runtime guard OK');

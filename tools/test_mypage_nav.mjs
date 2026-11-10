@@ -1,0 +1,25 @@
+// 챕터 0 이 안 끝났을 때 마이페이지 보유 인재·덱 설정이 스토리 이어하기(사냥)로 새지 않는지.
+import assert from 'node:assert/strict';
+import vm from 'node:vm';
+import {readFile} from 'node:fs/promises';
+import {parseHTML} from 'linkedom';
+const src=await readFile(new URL('../js/story.js',import.meta.url),'utf8');
+const {window}=parseHTML('<html><body><div id="start-screen"></div><div id="story-screen" class="hidden"></div><div id="game" class="hidden"></div></body></html>');
+const store=new Map();
+const card={id:'10325',name:'임유리',grade:'ULTRA RARE',ATK:10,HP:10,DEF:10,power:100,class:'LIGHT',region:'서울',cost:1};
+window.STORY_DATA={chapters:[{id:0,title:'CHAPTER 0',subtitle:'공허한 여신',phases:[{no:1,type:'normal',title:'각성'},{no:2,type:'normal',title:'사냥'}]}],statPoints:{normal:3,boss:5},statPerPoint:{ATK:1,HP:1,DEF:1},statFull:10,statRuleV:1,battleCards:5,poolCards:10};
+window.TCG={ready:true,POOL:[card],NPC:[],skillsOf:()=>[]};
+window.VRCloud={user:{id:'tester'}};
+window.cardThumb=()=>'img/x.webp';
+store.set('vrTcgStory.v1:tester',JSON.stringify({v:1,openingSeen:true,starter:null,owned:[{uid:'u1',id:'10325',level:50,boost:{}}],points:0,cleared:{'0':[1]},leader:'u1',decks:[],statV:1}));
+const localStorage={getItem:k=>store.get(k)??null,setItem:(k,v)=>store.set(k,v),removeItem:k=>store.delete(k)};
+const ctx=vm.createContext({window,document:window.document,console,localStorage,crypto,performance,cardThumb:()=>'img/x.webp',setTimeout,clearTimeout,setInterval:()=>0,clearInterval(){},addEventListener(){},innerWidth:400,requestAnimationFrame:f=>f(),getComputedStyle:()=>({display:'block'}),history:{pushState(){},replaceState(){},back(){}},location:{search:'',hash:'',pathname:'/'},matchMedia:()=>({matches:false})});
+vm.runInContext(src,ctx);
+await window.VRStory.openCards();
+assert.match(window.document.getElementById('story-screen').textContent,/보유 인재/);
+assert.equal(window.document.getElementById('story-dlg'),null);
+assert.doesNotMatch(window.document.getElementById('story-screen').textContent,/사냥/);
+await window.VRStory.openDecks();
+assert.match(window.document.getElementById('story-screen').textContent,/마이 덱/);
+assert.equal(window.document.getElementById('story-dlg'),null);
+console.log('Mypage nav: chapter 0 phase 2 opens collection and decks, not the hunt continue OK');

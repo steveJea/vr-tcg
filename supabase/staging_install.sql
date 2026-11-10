@@ -7401,13 +7401,17 @@ grant execute on function public.war_signup(boolean), public.war_ui() to authent
 --    닉네임 · 계정 레벨 · 리더 카드 id · 해당 리그/모드 PvP 덱(카드 id·레벨) · 소속 조직(이름·엠블럼)
 create or replace function public.pvp_user_info(p_league text, p_mode text, p_rank int) returns jsonb
 language plpgsql stable security definer set search_path = public as $$
-declare uid uuid := auth.uid(); s date := _pvp_season(); t uuid; g record; deck jsonb; lead text;
+declare uid uuid := auth.uid(); t uuid; g record; deck jsonb; lead text;
 begin
   if uid is null then raise exception 'login required' using errcode = '42501'; end if;
   perform _pvp_ok(p_league, p_mode);
   if p_rank is null or p_rank < 1 or p_rank > 100 then raise exception 'bad rank'; end if;
-  select x.user_id into t from (select r.user_id, row_number() over (order by r.rating desc, r.wins desc, r.user_id) rn
-      from pvp_ratings r where r.league = p_league and r.mode = p_mode and r.season = s and r.wins + r.losses > 0) x where x.rn = p_rank;
+  select x.user_id into t from (
+    select user_id, row_number() over (order by rating desc, wins desc, user_id) rn from (
+      select distinct on (r.user_id) r.user_id, r.rating, r.wins, r.losses
+        from pvp_ratings r
+       where r.league = p_league and r.mode = p_mode and r.wins + r.losses > 0
+       order by r.user_id, r.season desc) z) x where x.rn = p_rank;
   if t is null then raise exception 'not found'; end if;
   select o->>'id' into lead from story_progress sp, jsonb_array_elements(case when jsonb_typeof(sp.data->'owned') = 'array' then sp.data->'owned' else '[]'::jsonb end) o
     where sp.user_id = t and o->>'uid' = sp.data->>'leader' limit 1;
@@ -8806,7 +8810,9 @@ where jsonb_typeof(sp.data->'owned') = 'array'
 -- ===== SOURCE: trade_drink.sql =====
 -- ===== 거래 PR2: 체력의 드링크 🥤 =====
 -- 선행: gem.sql (player_wallet.gem_free/gem_paid · _gem_add) · phaseE_2.sql (_player_sync · _player_stamina_add). 여러 번 실행해도 안전
--- 유료 심연석으로만 구매 → 거래 가능분(tradable). 이벤트·보상·운영 지급 → 귀속분(bound). 거래에 묶인 분(locked)은 거래 PR 에서 사용
+-- 심연석으로 구매 → 거래 가능분(tradable). 무료 심연석을 먼저 쓰고 모자라면 유료 (2026-11-10 BM. 예전에는 유료만).
+-- 이벤트·보상·운영 지급 → 귀속분(bound). 거래에 묶인 분(locked)은 거래 PR 에서 사용
+-- 행동력 최대 충전(gem_shop.stamina)과는 다른 상품. 드링크 1개 = 행동력 +200, 상한 999.
 -- 사용: 1개당 행동력 +200, 최대치를 넘어도 쌓이지만 상한(임시 999)을 넘게는 못 씀. 귀속분부터 사용
 
 create table if not exists public.player_items (
@@ -8839,7 +8845,7 @@ create index if not exists item_log_user_idx on public.item_log (user_id, create
 alter table public.item_log enable row level security;
 revoke all on public.item_log from public, anon, authenticated;
 
--- 판매 상품 (조정 가능, 임시값). price = 유료 심연석
+-- 판매 상품. price = 심연석 (무료 우선, 그다음 유료). 1/100 · 10/950 · 30/2700
 create table if not exists public.drink_shop (
   sku    text primary key,
   qty    int  not null check (qty > 0),
@@ -8888,7 +8894,7 @@ begin
   select * into r from player_items where user_id = p_uid and item = 'drink';
   select * into w from player_wallet where user_id = p_uid;
   return jsonb_build_object('ok', true, 'tradable', coalesce(r.tradable, 0), 'bound', coalesce(r.bound, 0), 'locked', coalesce(r.locked, 0),
-    'total', coalesce(r.tradable, 0) + coalesce(r.bound, 0), 'paid_gem', coalesce(w.gem_paid, 0),
+    'total', coalesce(r.tradable, 0) + coalesce(r.bound, 0), 'paid_gem', coalesce(w.gem_paid, 0), 'free_gem', coalesce(w.gem_free, 0),
     'per', _drink_cfg('stamina_per'), 'cap', _drink_cfg('stamina_cap'),
     'shop', (select coalesce(jsonb_agg(jsonb_build_object('sku', sku, 'qty', qty, 'price', price) order by ord), '[]'::jsonb) from drink_shop where active));
 end $$;
@@ -8899,7 +8905,7 @@ begin
   return _drink_json(auth.uid());
 end $$;
 
--- 구매: 유료 심연석만 차감 (무료분은 안 씀)
+-- 구매: 무료 심연석을 먼저 쓰고, 모자라면 유료 (gem_shop 행동력 충전과 같은 _gem_spend). 산 드링크는 거래 가능.
 create or replace function public.drink_buy(p_sku text) returns jsonb language plpgsql security definer set search_path = public as $$
 declare uid uuid := auth.uid(); s drink_shop; g jsonb;
 begin
@@ -8908,9 +8914,8 @@ begin
   select * into s from drink_shop where sku = p_sku and active;
   if s.sku is null then raise exception 'invalid item'; end if;
   insert into player_wallet (user_id) values (uid) on conflict (user_id) do nothing;
-  if (select gem_paid from player_wallet where user_id = uid) < s.price then raise exception 'not enough paid gem'; end if;
-  g := _gem_add(uid, 0, -s.price, 'buy:' || s.sku, null, jsonb_build_object('qty', s.qty, 'price', s.price));
-  perform _item_add(uid, 'drink', s.qty, 0, 'buy:' || s.sku, null, jsonb_build_object('paid_gem', s.price));
+  g := _gem_spend(uid, s.price, 'buy:' || s.sku, jsonb_build_object('qty', s.qty, 'price', s.price));
+  perform _item_add(uid, 'drink', s.qty, 0, 'buy:' || s.sku, null, jsonb_build_object('price', s.price));
   return _drink_json(uid) || jsonb_build_object('gem', g, 'bought', s.qty);
 end $$;
 
@@ -13149,7 +13154,9 @@ grant execute on function public.dispatch_status(), public.dispatch_refresh(), p
 
 
 -- ===== SOURCE: dispatch_safeupdate.sql =====
--- 파견 일괄 보내기 'DELETE requires a WHERE clause' 수정 (2026-11-04). dispatch.sql 뒤에 실행. create or replace 만 (데이터 변경 없음)
+-- 파견 일괄 보내기 'DELETE requires a WHERE clause' 수정 (2026-11-04).
+-- 최신 함수(같은 카드 id 중복 금지 포함)는 supabase/dispatch_where_clause.sql 을 실행하세요.
+-- 이 파일만 다시 실행하면 그 중복 검사가 빠집니다. dispatch.sql 뒤에만, batch_ui_bugs.sql 이전 데이터베이스용.
 -- 원인: dispatch_start 안 임시표 비우기 'delete from _dsp_pick;' 에 WHERE 가 없어 pg_safeupdate 가 막음 → 'where true' 추가 (동작 같음)
 create or replace function public.dispatch_start(p_slot int, p_uids text[], p_hours int) returns jsonb language plpgsql security definer set search_path = public as $$
 declare uid uuid := auth.uid(); o dispatch_offers; z dispatch_zones; owned jsonb; n int; mx int; bon int := 0; ne int; nc int; over boolean; k text; v numeric; rw jsonb := '{}'::jsonb; f numeric; great boolean := false; cnt int; d dispatch_daily;
@@ -15530,21 +15537,29 @@ end $$;
 
 create or replace function public.pvp_rankings(p_league text, p_mode text, p_season date default null) returns jsonb
 language plpgsql stable security definer set search_path = public as $$
-declare uid uuid := auth.uid(); s date := coalesce(p_season, _pvp_season()); top jsonb; mine jsonb;
+declare uid uuid := auth.uid(); s date := p_season; top jsonb; mine jsonb;
 begin
   perform _pvp_ok(p_league, p_mode);
-  with t as (select r.user_id, r.rating, r.wins, r.losses, rank() over (order by r.rating desc, r.wins desc) rk
-             from pvp_ratings r where r.league = p_league and r.mode = p_mode and r.season = s and r.wins + r.losses > 0)
+  with latest as (
+    select distinct on (r.user_id) r.user_id, r.rating, r.wins, r.losses
+      from pvp_ratings r
+     where r.league = p_league and r.mode = p_mode and (s is null or r.season = s) and r.wins + r.losses > 0
+     order by r.user_id, r.season desc),
+  t as (select user_id, rating, wins, losses, rank() over (order by rating desc, wins desc) rk from latest)
   select coalesce(jsonb_agg(jsonb_build_object('rank', rk, 'name', coalesce(p.nickname, '플레이어'), 'rating', rating, 'wins', wins, 'losses', losses,
            'me', t.user_id = uid, 'tier', _pvp_tier(rating),
            'abyss', exists (select 1 from pvp_titles x where x.user_id = t.user_id and x.title = 'abyss'),
            'title', coalesce(p.cosmo_title, 'recruit'), 'frame', coalesce(p.cosmo_frame, 'frame_basic'),
            'title_name', coalesce((select d->>'name' from jsonb_array_elements(_cosmo_title_defs()) d where d->>'id' = coalesce(p.cosmo_title, 'recruit')), '')) order by rk), '[]'::jsonb)
     into top from (select * from t order by rk limit 100) t left join profiles p on p.id = t.user_id;
-  with t as (select r.user_id, r.rating, r.wins, r.losses, rank() over (order by r.rating desc, r.wins desc) rk
-             from pvp_ratings r where r.league = p_league and r.mode = p_mode and r.season = s and r.wins + r.losses > 0)
+  with latest as (
+    select distinct on (r.user_id) r.user_id, r.rating, r.wins, r.losses
+      from pvp_ratings r
+     where r.league = p_league and r.mode = p_mode and (s is null or r.season = s) and r.wins + r.losses > 0
+     order by r.user_id, r.season desc),
+  t as (select user_id, rating, wins, losses, rank() over (order by rating desc, wins desc) rk from latest)
   select jsonb_build_object('rank', rk, 'rating', rating, 'wins', wins, 'losses', losses, 'tier', _pvp_tier(rating)) into mine from t where t.user_id = uid;
-  return jsonb_build_object('season', s, 'top', top, 'me', mine);
+  return jsonb_build_object('season', coalesce(s, _pvp_season()), 'top', top, 'me', mine);
 end $$;
 
 revoke all on function public.tower_rankings(text), public.story_rankings(), public.pvp_rankings(text, text, date) from public;
@@ -18726,8 +18741,11 @@ create table if not exists public.pvp_events_v3(
 create or replace function public._pvp_lock_v3(l text,m text,s date) returns void language sql security definer
 set search_path=pg_catalog,public,pg_temp as $$ select pg_advisory_xact_lock(hashtext('pvp3:'||l||':'||m||':'||s::text)) $$;
 create or replace function public._pvp_rating_v3(u uuid,l text,m text,s date) returns public.pvp_ratings_v3 language plpgsql security definer
-set search_path=pg_catalog,public,pg_temp as $$ declare r public.pvp_ratings_v3; begin
- insert into public.pvp_ratings_v3(user_id,league,mode,season) values(u,l,m,s) on conflict do nothing;
+set search_path=pg_catalog,public,pg_temp as $$ declare r public.pvp_ratings_v3; p public.pvp_ratings_v3; begin
+ select * into p from public.pvp_ratings_v3 where user_id=u and league=l and mode=m and season<s order by season desc limit 1;
+ insert into public.pvp_ratings_v3(user_id,league,mode,season,rating,wins,losses,def_wins,def_losses)
+  values(u,l,m,s,coalesce(p.rating,1000),coalesce(p.wins,0),coalesce(p.losses,0),coalesce(p.def_wins,0),coalesce(p.def_losses,0))
+  on conflict do nothing;
  select * into r from public.pvp_ratings_v3 where user_id=u and league=l and mode=m and season=s; return r;
 end $$;
 create or replace function public._pvp_session_json_v3(a public.pvp_attempts,s public.pvp_sessions_v3) returns jsonb language sql stable security definer

@@ -76,7 +76,7 @@ try{
  const late=await fixture();await q("update payment_orders set paid_at=now()-interval '8 days' where order_id=$1",[late.order_id]);await assert.rejects(prepare(late),/refund cs review/);
  await q("update payment_orders set paid_at=now()-interval '8 days' where order_id=$1",[old.order_id]);assert.equal((await prepare(old)).refund.state,'held','existing hold remains recoverable after seven-day deadline');
  const atomic=await fixture('gem_500');await db.exec("create function test_refund_fail() returns trigger language plpgsql as $$begin raise exception 'forced refund failure';end$$;create trigger refund_fail before insert on payment_refunds for each row execute function test_refund_fail();");
- await assert.rejects(prepare(atomic),/forced refund failure/);assert.deepEqual(await wallet(atomic),{paid:500,free:25});assert.equal(await v('select count(*)::int v from gem_ledger where ref=$1',['toss-refund-hold:'+atomic.order_id]),0);await db.exec('drop trigger refund_fail on payment_refunds');
+ await assert.rejects(prepare(atomic),/forced refund failure/);assert.deepEqual(await wallet(atomic),{paid:1000,free:50});assert.equal(await v('select count(*)::int v from gem_ledger where ref=$1',['toss-refund-hold:'+atomic.order_id]),0);await db.exec('drop trigger refund_fail on payment_refunds');
  const pending=await call('authenticated',user,'payment_create_v1($1,$2)',['gem_100',randomUUID()]);
  await assert.rejects(call('authenticated',admin,'payment_abandon_v1($1,$2)',[pending.order_id,'canceled']),/order not found/);
  assert.equal((await call('authenticated',user,'payment_abandon_v1($1,$2)',[pending.order_id,'canceled'])).state,'canceled');

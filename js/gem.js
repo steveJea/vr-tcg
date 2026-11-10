@@ -1,5 +1,5 @@
 // ===== 심연석 🔮 (유료 재화) — 서버: supabase/gem.sql =====
-// 화면: 상단 재화 칩(VRPlayer.chip 에 붙음) · 탭하면 팝업(잔액 · + 충전 준비 중 · 간단 상점) · 바깥 누르면 닫힘
+// 화면: 상단 재화 칩(VRPlayer.chip 에 붙음) · 탭하면 상점 페이지(js/shop.js). 페이지가 없으면 예전 팝업
 // 사용처: 카드 뽑기(소환권 1장 150 / 10회 1500) · 행동력 충전 · PvP 추가 도전 · 골드 10,000 (가격은 서버 gem_shop 이 기준)
 // SQL 실행 전이거나 비로그인이면 칩·버튼이 안 보임
 (() => {
@@ -50,6 +50,7 @@
   const priceBtn = (k, cls = '', label = '') => { const s = item(k); if (!s) return ''; const [ic, q] = ITEM[k] || ['', ''];
     return `<button type="button" class="gem-buy ${cls}" data-gem-buy="${k}" ${s.left === 0 ? 'disabled' : ''}><span class="gem-buy-get">${label || `${ic}<b>${q}</b>`}</span><span class="gem-buy-p">${ICON}${n(s.price)}</span>${s.left != null ? `<small>${s.left}</small>` : ''}</button>`; };
   function open() {
+    if (window.VRShop?.open) return window.VRShop.open();
     document.querySelector('.gem-pop:not(.vr-in-page):not(.friend-pop):not(.daily-pop)')?.remove();
     const m = document.createElement('div'); m.className = 'gem-pop';
     const draw = () => { m.innerHTML = `<div class="gem-panel" role="dialog" aria-label="${NAME}"><button class="gem-x" data-x aria-label="닫기">✕</button>

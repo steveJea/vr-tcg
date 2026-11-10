@@ -40,11 +40,11 @@ set local check_function_bodies = off;
 
 do $vr_install_part$
 begin
-  if exists (select 1 from vr_staging_install.parts where bundle_hash <> 'd7d89da318ab1607c923a8d19e4fbc0734a34a5763a279ee027425b6e83045d7' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
+  if exists (select 1 from vr_staging_install.parts where bundle_hash <> '580ba692ace7d90123f771f896d6d224a1da07f8118f6139760a81ccfe07437f' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
     raise exception 'STOP: 다른 버전/DB의 설치 기록입니다. 파일을 섞지 마세요.';
   end if;
   if exists (select 1 from vr_staging_install.parts where part_no = 12) then
-    if not exists (select 1 from vr_staging_install.parts where part_no = 12 and part_hash = '8983c53714dc23d04f4791cb5f1130304b847504c3dfaa6bdaf7ded4860b9974') then
+    if not exists (select 1 from vr_staging_install.parts where part_no = 12 and part_hash = '09b3484da2c530577aa8915f1edd6819c46d09821f4ac360c2ec45789adea202') then
       raise exception 'STOP: 완료한 파일과 내용이 다릅니다.';
     end if;
     raise notice '12_install.sql: 이미 완료, 변경 없이 건너뜀';
@@ -55,6 +55,63 @@ begin
   end if;
   -- 설치 도중에는 클라이언트가 미완성 게임 스키마에 접근하지 못함. 마지막에만 개방.
   revoke usage on schema public from public, anon, authenticated;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10070','{"class":"ICE","gender":"MALE","MOR":78,"cost":39,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10113','{"class":"ICE","gender":"MALE","MOR":30,"cost":7,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10364','{"class":"ICE","gender":"MALE","MOR":17,"cost":10,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10410','{"class":"WIND","gender":"MALE","MOR":45,"cost":9,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10419','{"class":"WIND","gender":"MALE","MOR":12,"cost":25,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10053','{"class":"DARK","gender":"MALE","MOR":1,"cost":45,"grade":"ULTRA RARE"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10176','{"class":"LIGHT","gender":"MALE","MOR":90,"cost":49,"grade":"ULTRA RARE"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10200','{"class":"DARK","gender":"MALE","MOR":15,"cost":38,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10234','{"class":"FIRE","gender":"MALE","MOR":20,"cost":16,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10123','{"class":"FIRE","gender":"MALE","MOR":12,"cost":29,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10304','{"class":"DARK","gender":"MALE","MOR":85,"cost":51,"grade":"ULTRA RARE"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10434','{"class":"FIRE","gender":"MALE","MOR":25,"cost":9,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10430','{"class":"WIND","gender":"MALE","MOR":22,"cost":9,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10379','{"class":"WIND","gender":"MALE","MOR":70,"cost":14,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10325','{"class":"DARK","gender":"FEMALE","MOR":1,"cost":46,"grade":"ULTRA RARE"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10260','{"class":"ICE","gender":"FEMALE","MOR":58,"cost":13,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10300','{"class":"DARK","gender":"FEMALE","MOR":72,"cost":20,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10462','{"class":"WIND","gender":"FEMALE","MOR":65,"cost":15,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10072','{"class":"DARK","gender":"FEMALE","MOR":10,"cost":26,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10256','{"class":"DARK","gender":"FEMALE","MOR":55,"cost":21,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10115','{"class":"WIND","gender":"FEMALE","MOR":89,"cost":19,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10348','{"class":"ICE","gender":"FEMALE","MOR":24,"cost":8,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10339','{"class":"ICE","gender":"FEMALE","MOR":28,"cost":8,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10394','{"class":"LIGHT","gender":"FEMALE","MOR":88,"cost":25,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10047','{"class":"WIND","gender":"FEMALE","MOR":82,"cost":27,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10188','{"class":"WIND","gender":"FEMALE","MOR":80,"cost":34,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10132','{"class":"WIND","gender":"FEMALE","MOR":81,"cost":21,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10087','{"class":"ICE","gender":"FEMALE","MOR":21,"cost":29,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10202','{"class":"FIRE","gender":"FEMALE","MOR":45,"cost":19,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10184','{"class":"WIND","gender":"FEMALE","MOR":31,"cost":8,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10103','{"class":"DARK","gender":"FEMALE","MOR":89,"cost":19,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10265','{"class":"WIND","gender":"FEMALE","MOR":79,"cost":25,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10266','{"class":"WIND","gender":"FEMALE","MOR":88,"cost":18,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10465','{"class":"WIND","gender":"FEMALE","MOR":85,"cost":43,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10466','{"class":"WIND","gender":"FEMALE","MOR":88,"cost":22,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10002','{"class":"WIND","gender":"FEMALE","MOR":31,"cost":9,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10289','{"class":"WIND","gender":"FEMALE","MOR":52,"cost":9,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10083','{"class":"WIND","gender":"FEMALE","MOR":11,"cost":5,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10079','{"class":"FIRE","gender":"FEMALE","MOR":13,"cost":11,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10338','{"class":"WIND","gender":"FEMALE","MOR":70,"cost":34,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10336','{"class":"WIND","gender":"FEMALE","MOR":78,"cost":34,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10418','{"class":"ICE","gender":"FEMALE","MOR":74,"cost":40,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10323','{"class":"FIRE","gender":"FEMALE","MOR":72,"cost":49,"grade":"ULTRA RARE"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10403','{"class":"ICE","gender":"FEMALE","MOR":70,"cost":14,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10185','{"class":"FIRE","gender":"FEMALE","MOR":88,"cost":9,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10308','{"class":"ICE","gender":"FEMALE","MOR":55,"cost":28,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10413','{"class":"WIND","gender":"FEMALE","MOR":88,"cost":35,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10415','{"class":"DARK","gender":"FEMALE","MOR":90,"cost":43,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10414','{"class":"ICE","gender":"FEMALE","MOR":85,"cost":35,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10186','{"class":"ICE","gender":"FEMALE","MOR":43,"cost":37,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10295','{"class":"WIND","gender":"FEMALE","MOR":25,"cost":12,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10297','{"class":"WIND","gender":"FEMALE","MOR":92,"cost":23,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10317','{"class":"ICE","gender":"FEMALE","MOR":72,"cost":41,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10108','{"class":"LIGHT","gender":"FEMALE","MOR":90,"cost":41,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10417','{"class":"ICE","gender":"FEMALE","MOR":78,"cost":17,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10172','{"class":"FIRE","gender":"FEMALE","MOR":21,"cost":6,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10262','{"class":"WIND","gender":"FEMALE","MOR":40,"cost":8,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
   execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10261','{"class":"WIND","gender":"FEMALE","MOR":58,"cost":20,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
   execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10290','{"class":"LIGHT","gender":"FEMALE","MOR":99,"cost":17,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
   execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10384','{"class":"WIND","gender":"FEMALE","MOR":55,"cost":16,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
@@ -793,151 +850,9 @@ begin
  end loop;
  return jsonb_build_object('ok',true,'level',coalesce(lv,1),'dow',public._tower_dow(),'day',today_,'towers',out_);
 end $$;$vr_statement$;
-  execute $vr_statement$create or replace function public.story_sweep(p_chapter int,p_phase int,p_runs int default 1) returns jsonb language plpgsql security definer set search_path=pg_catalog,public,pg_temp as $$
-declare u uuid:=auth.uid(); begin
- if u is null then raise exception 'login required'; end if;
- perform pg_advisory_xact_lock(hashtext('battle-v2:'||u::text)); perform pg_advisory_xact_lock(hashtext('gem:'||u::text));
- if not public._clear_enabled_v2('story') then raise exception 'reward verification pending'; end if;
- if not exists(select 1 from public.battle_clear_receipts_v2 where user_id=u and mode='story' and target=p_chapter::text||':'||p_phase::text) then raise exception 'verified clear required for sweep'; end if;
- return public._phase2_old_story_sweep(p_chapter,p_phase,p_runs);
-end $$;$vr_statement$;
-  execute $vr_statement$create or replace function public.story_abort_phase() returns jsonb language plpgsql security definer set search_path=pg_catalog,public,pg_temp as $$
-declare u uuid:=auth.uid(); s public.battle_sessions_v2; begin
- if u is null then raise exception 'login required'; end if;
- perform pg_advisory_xact_lock(hashtext('battle-v2:'||u::text)); perform pg_advisory_xact_lock(hashtext('gem:'||u::text));
- select * into s from public.battle_sessions_v2 where user_id=u and mode='story' and status='issued' for update;
- if found then perform public._clear_close_v2(s,'aborted'); end if;
- return public._player_json(u);
-end $$;$vr_statement$;
-  execute $vr_statement$do $acl$
-declare f record; t text; c record;
-begin
- for f in select p.oid::regprocedure sig from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.prokind='f' and
- (left(p.proname,1)='_' or p.proname=any(array['story_start_phase','story_complete_phase','story_set_stars','tower_start','tower_complete','tower_sweep_start','tower_sweep_complete','quest_start','quest_complete','quest_sweep_start','quest_sweep_complete','battle_session_start_v2','battle_session_finish_v2','battle_session_status_v2','battle_session_abort_v2','story_star_claim','arcade_tut_claim','story_sweep','daily_claim','weekly_claim','story_abort_phase'])) loop
- execute format('revoke all on function %s from public,anon,authenticated',f.sig); end loop;
- foreach t in array array['battle_policy_v2','battle_legacy_access_v2','battle_session_seeds_v2','battle_sessions_v2','battle_clear_receipts_v2','battle_events_v2','battle_acquisitions_v2','battle_card_meta_v2','battle_story_defs_v2','battle_tutorial_defs_v2','tower_progress','quest_progress','story_phase_config'] loop
- execute format('alter table public.%I enable row level security',t);
- if t in ('tower_progress','quest_progress','story_phase_config') then execute format('revoke insert,update,delete,truncate,references,trigger on public.%I from public,anon,authenticated',t);
- else execute format('revoke all on public.%I from public,anon,authenticated',t); end if;
- for c in select attname from pg_attribute where attrelid=to_regclass('public.'||t) and attnum>0 and not attisdropped loop
- execute format('revoke insert(%I),update(%I),references(%I) on public.%I from public,anon,authenticated',c.attname,c.attname,c.attname,t);
- if t not in ('tower_progress','quest_progress','story_phase_config') then execute format('revoke select(%I) on public.%I from public,anon,authenticated',c.attname,t); end if;
- end loop; end loop;
-end $acl$;$vr_statement$;
-  execute $vr_statement$grant execute on function public.battle_session_start_v2(text,text,jsonb,uuid),public.battle_session_finish_v2(uuid,jsonb),public.battle_session_status_v2(uuid),public.battle_session_abort_v2(uuid),public.arcade_tut_claim(int),public.story_star_claim(int,text),public.story_sweep(int,int,int),public.daily_claim(text),public.weekly_claim(text),public.story_abort_phase() to authenticated;$vr_statement$;
-  execute $vr_statement$notify pgrst,'reload schema';$vr_statement$;
-  execute $vr_statement$-- 설치본의 단일 트랜잭션에 포함
-
-
--- ===== SOURCE: security_phase3_pvp.sql =====
--- STAGING ONLY. After security_phase1_rewards.sql and security_phase2_clears.sql.
--- No credentials, backfill certification, resets or deletes. Deploy pvp-verify-v3 too.
--- 설치본의 단일 트랜잭션에 포함
--- Standalone phase3 guard: enforced by installer entry guard instead.
-
-create table if not exists public.pvp_policy_v3(
- singleton boolean primary key default true check(singleton), engine_hash text not null check(length(engine_hash)=64), enabled boolean not null default true);$vr_statement$;
-  execute $vr_statement$insert into public.pvp_policy_v3(singleton,engine_hash) values(true,'5a38b4b72651fcb8632fb1bfe14e1cd18a758d08249dbb18b0cfd223123c7a67')
- on conflict(singleton) do update set engine_hash=excluded.engine_hash;$vr_statement$;
-  execute $vr_statement$-- A clean, verified ladder. Legacy rows remain intact, NOT copied as proof.
-create table if not exists public.pvp_ratings_v3(
- user_id uuid not null references auth.users(id), league text not null, mode text not null, season date not null,
- rating int not null default 1000, wins int not null default 0, losses int not null default 0,
- def_wins int not null default 0, def_losses int not null default 0, streak int not null default 0,
- games_verified int not null default 0, updated_at timestamptz not null default now(),
- primary key(user_id,league,mode,season));$vr_statement$;
-  execute $vr_statement$create table if not exists public.pvp_sessions_v3(
- id bigint primary key references public.pvp_attempts(id), user_id uuid not null references auth.users(id),
- request_id uuid not null, control text not null check(control in('auto','actions')), engine_hash text not null,
- issued_at timestamptz not null default clock_timestamp(), expires_at timestamptz not null,
- status text not null default 'issued' check(status in('issued','settled')),
- submission jsonb, result jsonb, verified boolean not null default false,
- unique(user_id,request_id));$vr_statement$;
-  execute $vr_statement$create index if not exists pvp_sessions_v3_pending on public.pvp_sessions_v3(user_id,status);$vr_statement$;
-  execute $vr_statement$create table if not exists public.pvp_events_v3(
- session_id bigint primary key references public.pvp_sessions_v3(id), user_id uuid not null references auth.users(id),
- day date not null, week date not null, win boolean not null, skills int not null check(skills between 0 and 4800));$vr_statement$;
-  execute $vr_statement$create or replace function public._pvp_lock_v3(l text,m text,s date) returns void language sql security definer
-set search_path=pg_catalog,public,pg_temp as $$ select pg_advisory_xact_lock(hashtext('pvp3:'||l||':'||m||':'||s::text)) $$;$vr_statement$;
-  execute $vr_statement$create or replace function public._pvp_rating_v3(u uuid,l text,m text,s date) returns public.pvp_ratings_v3 language plpgsql security definer
-set search_path=pg_catalog,public,pg_temp as $$ declare r public.pvp_ratings_v3; begin
- insert into public.pvp_ratings_v3(user_id,league,mode,season) values(u,l,m,s) on conflict do nothing;
- select * into r from public.pvp_ratings_v3 where user_id=u and league=l and mode=m and season=s; return r;
-end $$;$vr_statement$;
-  execute $vr_statement$create or replace function public._pvp_session_json_v3(a public.pvp_attempts,s public.pvp_sessions_v3) returns jsonb language sql stable security definer
-set search_path=pg_catalog,public,pg_temp as $$ select jsonb_build_object('id',a.id::text,'mode',a.mode,'league',a.league,'season',a.season,
- 'seed',a.seed,'me',a.my_snap,'opp',a.opp_snap,'opp_name',a.opp_name,'opp_rating',a.opp_rating,'rating',a.my_rating,
- 'dw',a.dw,'dl',a.dl,'bot',a.opp_user is null,'control',s.control,'engine_hash',s.engine_hash,'expires_at',s.expires_at,'status',s.status,'result',s.result) $$;$vr_statement$;
-  execute $vr_statement$-- Private ledger grants. Do NOT reopen the old _pvp_grant or global battle feeds.
-create or replace function public._pvp_grant_v3(u uuid,rw jsonb,kind text,ref_ text,l text,m text,s date) returns jsonb language plpgsql security definer
-set search_path=pg_catalog,public,pg_temp as $$
-declare prior public.reward_claims; res jsonb:='{}'; k text; v jsonb; tk int; g jsonb;
-begin
- if kind not in('pvp_streak_v3','pvp_tier_v3','pvp_rank_v3') then raise exception 'invalid grant kind'; end if;
- for k,v in select * from jsonb_each(rw-'title') loop
-  if k not in('gold','blood','shard','soul','gem','tickets') or jsonb_typeof(v)<>'number' or v::text !~ '^[0-9]+$' or v::numeric>2147483647 then raise exception 'invalid reward'; end if;
- end loop;
- if rw ? 'title' and rw->>'title'<>'abyss' then raise exception 'invalid title'; end if;
- perform pg_advisory_xact_lock(hashtext('gem:'||u::text));
- select * into prior from public.reward_claims where user_id=u and reward_kind=kind and source_or_period=ref_;
- if found then return prior.result; end if;
- insert into public.reward_claims(user_id,reward_kind,source_or_period,reward,rule_version) values(u,kind,ref_,rw,4);
- if rw-'gem'-'tickets'-'title'<>'{}' then res:=res||jsonb_build_object('wallet',public._wallet_add(u,rw-'gem'-'tickets'-'title',kind)); end if;
- if coalesce((rw->>'gem')::int,0)>0 then
-  g:=public._gem_add(u,(rw->>'gem')::int,0,kind,'p3:'||ref_,jsonb_build_object('validation','server-replay-v3'));
-  res:=res||jsonb_build_object('gem',g->'gem');
- end if;
- if coalesce((rw->>'tickets')::int,0)>0 then
-  insert into public.story_gacha(user_id,last_draw) values(u,public._gem_day()-1) on conflict do nothing;
-  update public.story_gacha set tickets=tickets+(rw->>'tickets')::int,updated_at=now() where user_id=u returning tickets into tk;
-  res:=res||jsonb_build_object('tickets',tk);
- end if;
- if rw->>'title'='abyss' then insert into public.pvp_titles(user_id,title,league,mode,season) values(u,'abyss',l,m,s) on conflict do nothing; end if;
- res:=res||jsonb_build_object('gave',rw);
- update public.reward_claims set result=res where user_id=u and reward_kind=kind and source_or_period=ref_;
- return res;
-end $$;$vr_statement$;
-  execute $vr_statement$-- Restore ONLY verified ranked wins' old guild EXP/loyalty feed (10/win, 100/KST day).
--- Global _guild_feed remains held for other unverified modes. Unique source is the PvP receipt.
-create or replace function public._pvp_guild_feed_v3(u uuid,aid bigint) returns int language plpgsql security definer
-set search_path=pg_catalog,public,pg_temp as $$ declare m public.guild_members; used_ int; n int; ref_ text:='pvp3:'||aid; begin
- select * into m from public.guild_members where user_id=u; if not found then return 0; end if;
- perform public._guild_lock(m.guild_id);
- if not exists(select 1 from public.guild_members where user_id=u and guild_id=m.guild_id) then return 0; end if;
- if exists(select 1 from public.guild_exp_log where guild_id=m.guild_id and ref=ref_) then return 0; end if;
- perform public._guild_event(u,'pvp_win',1);
- select coalesce(sum(amount),0)::int into used_ from public.guild_exp_log where user_id=u and day=public._guild_day() and src='pvp';
- n:=least(10,greatest(0,100-used_)); if n=0 then return 0; end if;
- perform public._guild_exp(m.guild_id,u,n,'pvp',ref_);
- perform public._loyalty_add(u,n,'feed:pvp',ref_,jsonb_build_object('guild',m.guild_id,'session',aid)); return n;
-end $$;$vr_statement$;
-  execute $vr_statement$-- Unsubmitted/replaced sessions are server-defined forfeits, already loss-reserved at start.
--- They NEVER produce verified participation, wins, events, streak money, tier/rank eligibility.
-create or replace function public._pvp_forfeit_v3(a public.pvp_attempts,s public.pvp_sessions_v3) returns jsonb language plpgsql security definer
-set search_path=pg_catalog,public,pg_temp as $$ declare res jsonb; r int; begin
- if s.status='settled' then return s.result; end if;
- update public.pvp_ratings_v3 set streak=0 where user_id=a.user_id and league=a.league and mode=a.mode and season=a.season returning rating into r;
- res:=jsonb_build_object('ok',true,'verified',false,'forfeit',true,'win',false,'wins',0,'losses',case when a.mode='3v3' then 2 else 1 end,
-  'rounds','[]'::jsonb,'rating',r,'delta',-a.dl,'streak',0);
- update public.pvp_sessions_v3 set status='settled',submission='{"forfeit":true}',result=res where id=a.id;
- update public.pvp_attempts set reported_at=clock_timestamp(),win=false,wins=0,losses=case when a.mode='3v3' then 2 else 1 end,verified=false,streak=0 where id=a.id;
- return res;
-end $$;$vr_statement$;
-  execute $vr_statement$-- Server-owned fresh snapshots, including HR guard checks and cross-deck uniqueness.
-create or replace function public._pvp_decks_v3(u uuid,l text,m text) returns jsonb language plpgsql stable security definer
-set search_path=pg_catalog,public,pg_temp as $$ declare n int:=public._pvp_ok(l,m); d record; out_ jsonb:='[]'; c jsonb; begin
- for d in select * from public.pvp_decks where user_id=u and league=l and mode=m and slot>=0 and slot<n order by slot loop
-  c:=public._pvp_snap_mode(u,d.uids,l,m)->'cards';
-  if m='boss' and not exists(select 1 from public.pvp_card_meta where id=c->0->>'id' and grade in('NORMAL','RARE','HIGH RARE')) then raise exception 'guard grade'; end if;
-  out_:=out_||jsonb_build_array(c);
- end loop;
- if jsonb_array_length(out_)<>n then raise exception 'deck required'; end if;
- if exists(select x->>'id' from jsonb_array_elements(out_) dk cross join lateral jsonb_array_elements(dk) x group by x->>'id' having count(*)>1) then raise exception 'duplicate card'; end if;
- return out_;
-end $$;$vr_statement$;
 
   insert into vr_staging_install.parts(part_no, bundle_hash, part_hash, project_ref, db_id)
-  values (12, 'd7d89da318ab1607c923a8d19e4fbc0734a34a5763a279ee027425b6e83045d7', '8983c53714dc23d04f4791cb5f1130304b847504c3dfaa6bdaf7ded4860b9974', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
+  values (12, '580ba692ace7d90123f771f896d6d224a1da07f8118f6139760a81ccfe07437f', '09b3484da2c530577aa8915f1edd6819c46d09821f4ac360c2ec45789adea202', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
 end $vr_install_part$;
 commit;
 select '12_install.sql: 완료 또는 이미 완료 (12/14)' as result;
