@@ -16,7 +16,12 @@
 .pvp-plus{font-size:26px;color:#71717a;margin:auto}
 .pvp-cost{position:absolute;right:8px;bottom:4px;font-size:10px;color:#a1a1aa}
 .pvp-th{position:relative;width:46px;aspect-ratio:3/4;border-radius:8px;overflow:hidden;background:#000;border:2px solid #52525b;flex:none}
-.pvp-th img{width:100%;height:100%;object-fit:cover}.pvp-th i{position:absolute;left:0;right:0;bottom:0;font-size:9px;font-style:normal;text-align:center;background:rgba(0,0,0,.65);color:#fff}
+.pvp-th > img{width:100%;height:100%;object-fit:cover}.pvp-th i{position:absolute;left:0;right:0;bottom:0;font-size:9px;font-style:normal;text-align:center;background:rgba(0,0,0,.65);color:#fff}
+.pvp-crown{position:absolute;top:1px;right:1px;z-index:4;line-height:0;pointer-events:none;filter:drop-shadow(0 0 2px #000)}
+.pvp-crown .ui-ic{width:14px;height:14px;object-fit:contain}
+.pvp-th.is-lead .story-skn.sm{top:16px}
+.pvp-th.is-lead .pvp-n{left:2px;right:auto}
+.pvp-th.is-lead .pvp-fire{left:1px;right:auto;top:16px}
 /* 등급 색 (전 화면 공통): MR·LR 붉은색 · UR 금색 · SR 보라 · HR 파랑 · R 녹색 · N 회색 */
 .g-N{--gc:#9ca3af}.g-R{--gc:#84cc16}.g-HR{--gc:#3b82f6}.g-SR{--gc:#a855f7}.g-UR{--gc:#eab308}.g-MR,.g-LR{--gc:#ef4444}
 .pvp-th[class*="g-"]{border-color:var(--gc)}.pvp-th[class*="g-"] i{background:color-mix(in srgb,var(--gc) 70%,#000)}

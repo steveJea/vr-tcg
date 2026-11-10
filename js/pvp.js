@@ -82,7 +82,8 @@ function modal(id, html, cls = '') {
   const pg = PAGES[id]; if (pg && window.VRPages && (id === 'pvp-modal' || inPvp())) window.VRPages.host(pg[0], pg[1], m, null, null, id === 'pvp-edit' ? () => !!editBack?.() : null);   // 실패하면 예전 팝업
   return m;
 }
-const thumb = (c, extra = '') => c ? `<div class="pvp-th g-${GS[c.grade] || 'N'}" title="${esc(c.name)}"><img src="${cardThumb(c.id)}" alt="${esc(c.name)}" loading="lazy" onerror="this.style.visibility='hidden'"><i>${c.level ? 'Lv' + c.level : GS[c.grade] || ''}</i>${window.VRStory?.skBadge?.(c.id, 'sm') || ''}${extra}</div>` : '';   // ✦ 기술 배지 (탭하면 기술 보기)
+const leadMark = () => { const ic = window.VRIcon?.icon?.('crown', { alt: '리더' }); return ic ? `<span class="pvp-crown" title="리더">${ic}</span>` : ''; };
+const thumb = (c, extra = '') => c ? `<div class="pvp-th g-${GS[c.grade] || 'N'}${c.leader ? ' is-lead' : ''}" title="${esc(c.name)}"><img src="${cardThumb(c.id)}" alt="${esc(c.name)}" loading="lazy" onerror="this.style.visibility='hidden'"><i>${c.level ? 'Lv' + c.level : GS[c.grade] || ''}</i>${c.leader ? leadMark() : ''}${window.VRStory?.skBadge?.(c.id, 'sm') || ''}${extra}</div>` : '';   // ✦ 기술 배지 (탭하면 기술 보기). 리더는 오른쪽 위 왕관, 기술 수는 그 아래
 const snapThumbs = list => (list || []).map(o => { const c = card(o.id); return thumb(c && { ...c, level: o.level }); }).join('');
 // ---- 티어 (서버 pvp_tier_table 과 같은 경계) · 엠블럼은 그림순이 그림 전까지 CSS+이모지 (img/ui/tier/<key>.webp 가 생기면 자동 사용) ----
 export const TIERS = [
@@ -126,7 +127,7 @@ function paint() {
       <span class="pvp-sep"></span>${Object.keys(MODES).map(k => `<button data-mode="${k}" data-unlock="${window.VRUnlocks?.pvpKey(view.league,k) || ''}" class="${view.mode === k ? 'on' : ''}">${MODES[k].label ? `👑 ${MODES[k].label}` : k}</button>`).join('')}</div>
     ${myRank()}
     <div class="pvp-decks">${decks.map((d, i) => `<button class="pvp-deck ${d ? '' : 'empty'}" data-edit="${i}">
-      <span class="pvp-deck-no">${n > 1 ? i + 1 : '🛡'}</span><span class="pvp-deck-row">${d ? d.uids.map(u => thumb(byUid.get(u) && { ...card(byUid.get(u).id), level: byUid.get(u).level })).join('') : '<span class="pvp-plus">＋</span>'}</span>
+      <span class="pvp-deck-no">${n > 1 ? i + 1 : '🛡'}</span><span class="pvp-deck-row">${d ? d.uids.map(u => { const o = byUid.get(u); return thumb(o && { ...card(o.id), level: o.level, leader: o.leader }); }).join('') : '<span class="pvp-plus">＋</span>'}</span>
       ${view.league === 'hr' && d ? `<small class="pvp-cost">${d.cost}/150</small>` : ''}</button>`).join('')}</div>
     <div class="pvp-bmode">${modeToggle()}</div>
     <div class="pvp-acts"><button class="pvp-rank" data-rank title="랭킹">🏅</button><button class="pvp-rank" data-shop title="PvP 상점">🛒</button>${st.left <= 0 && window.VRGem?.item?.('pvp_try') ? `<button class="pvp-gemtry" data-gemtry ${window.VRGem.item('pvp_try').left === 0 ? 'disabled' : ''} title="추가 도전 (하루 3회)">🎫+1 <small>🔮${window.VRGem.item('pvp_try').price}</small></button>` : ''}<button class="pvp-go" data-go ${ready ? '' : 'disabled'}>${pendingStart() ? '매칭 다시 확인' : '⚔️ 매칭'}</button></div>
@@ -227,11 +228,11 @@ function editDeck(slot, keep) {
   if (BOSS && !(sel.length && isGuard(sel[0]))) { sel = []; step = 'leader'; }
   const oOf = u => owned.find(o => o.uid === u);
   const fire = u => window.VRStory?.canMergeUid?.(u) ? '<b class="pvp-fire" title="합성 가능">🔥</b>' : '';
-  const pickBtn = (o, on, badge) => { const c = card(o.id); return c ? `<button data-u="${o.uid}" class="g-${GS[c.grade] || 'N'} ${on ? 'on' : ''}" ${usedElsewhere.has(o.id) ? 'disabled' : ''}>${thumb({ ...c, level: o.level }, (on ? badge : '') + fire(o.uid))}<span class="pvp-card-cost">💰 ${+c.cost || 0}</span><span class="pvp-card-name">${esc(c.name)}</span></button>` : ''; };
+  const pickBtn = (o, on, badge) => { const c = card(o.id); return c ? `<button data-u="${o.uid}" class="g-${GS[c.grade] || 'N'} ${on ? 'on' : ''}" ${usedElsewhere.has(o.id) ? 'disabled' : ''}>${thumb({ ...c, level: o.level, leader: !!o.leader }, (on ? badge : '') + fire(o.uid))}<span class="pvp-card-cost">💰 ${+c.cost || 0}</span><span class="pvp-card-name">${esc(c.name)}</span></button>` : ''; };
   // 맨 윗줄 (화면 위 고정): 현재 덱 칸 · 전투력 합 · HR 코스트 · 자동 채우기 · 덱 설정 완료
   const topRow = bad => {
     const cards = sel.map(oOf).filter(Boolean), pw = cards.reduce((a, o) => a + (+o.power || 0), 0), cost = cards.reduce((a, o) => a + (+card(o.id)?.cost || 0), 0);
-    const slotTh = (u, lab) => { const o = u && oOf(u), c = o && card(o.id); return c ? `<button class="pvp-slot g-${GS[c.grade] || 'N'}" data-rm="${u}" title="빼기">${thumb({ ...c, level: o.level })}${lab ? `<b class="pvp-n">${lab}</b>` : ''}</button>` : `<span class="pvp-slot empty">${lab || '＋'}</span>`; };
+    const slotTh = (u, lab) => { const o = u && oOf(u), c = o && card(o.id); return c ? `<button class="pvp-slot g-${GS[c.grade] || 'N'}" data-rm="${u}" title="빼기">${thumb({ ...c, level: o.level, leader: !!o.leader })}${lab ? `<b class="pvp-n">${lab}</b>` : ''}</button>` : `<span class="pvp-slot empty">${lab || '＋'}</span>`; };
     const slots = BOSS ? [slotTh(sel[0], '👑'), ...Array.from({ length: BOSS_MEMBERS[1] }, (_, i) => slotTh(sel[i + 1]))] : Array.from({ length: 5 }, (_, i) => slotTh(sel[i]));
     return `<div class="pvp-deckbar"><div class="pvp-slots">${slots.join('')}</div>
       <div class="pvp-dstat"><span class="pvp-pw">⚡ ${pw.toLocaleString('ko-KR')}</span>${L.costCap ? `<span class="pvp-cst ${cost > L.costCap ? 'over' : ''}">💰 ${cost}/${L.costCap}</span>` : ''}
@@ -292,7 +293,7 @@ function editDeck(slot, keep) {
   const drawBoss = () => {
     const cards = sel.map(u => card(owned.find(o => o.uid === u)?.id)).filter(Boolean), bad = deckCheck(cards, view.league, view.mode), cost = cards.reduce((a, c) => a + (+c.cost || 0), 0);
     const lead = sel[0], mem = sel.slice(1);
-    const th = u => { const o = oOf(u), c = o && card(o.id); return c ? thumb({ ...c, level: o.level }) : ''; };
+    const th = u => { const o = oOf(u), c = o && card(o.id); return c ? thumb({ ...c, level: o.level, leader: !!o.leader }) : ''; };
     const stepBar = `<div class="pvp-steps">${[['leader', '① 리더'], ['members', '② 멤버'], ['confirm', '③ 확인']].map(([k, l]) => `<button data-step="${k}" class="${step === k ? 'on' : ''}" ${k !== 'leader' && !lead ? 'disabled' : k === 'confirm' && !mem.length ? 'disabled' : ''}>${l}</button>`).join('')}</div>`;
     const head = `<button class="pvp-x" data-x>✕</button><div class="pvp-h">👑 보스리그 덱 <small>리더 ${lead ? 1 : 0}/1 · 멤버 ${mem.length}/${BOSS_MEMBERS[1]}${L.costCap ? ` · ${cost}/${L.costCap}` : ''}</small></div>${stepBar}`;
     let body = '', acts = '';

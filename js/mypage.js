@@ -75,8 +75,9 @@
 
   // ---- 기본 섹션 ----
   const pct = (a, b) => b ? Math.floor(a / b * 100) : 0;
+  const leadMark = cls => { const ic = window.VRIcon?.icon?.('crown', { alt: '리더' }); return `<span class="${cls}" title="리더">${ic || '👑'}</span>`; };
   const thumb = (o, cls = '', cnt = 1) => `<button type="button" class="mp-card rar-${SHORT[o.grade] || 'N'} ${cls}" data-uid="${esc(o.uid)}" data-id="${esc(o.id)}" title="${esc(o.name)}${cnt > 1 ? ` x${cnt}` : ''}" aria-label="${esc(o.name)} 인재 정보"><img loading="lazy" src="${cardThumb(o.id)}" alt="${esc(o.name)}" onerror="this.style.visibility='hidden'">
-    <span class="mp-rar">${SHORT[o.grade] || ''}</span>${o.leader ? '<span class="mp-lead">👑</span>' : ''}${o.fav ? '<span class="mp-fav">★</span>' : ''}${cnt > 1 ? `<span class="mp-cnt">x${cnt}</span>` : ''}<span class="mp-lv">Lv.${o.level || 1}</span><span class="mp-nm">${esc(o.name)}</span></button>`;
+    <span class="mp-rar">${SHORT[o.grade] || ''}</span>${o.leader ? leadMark('mp-lead') : ''}${o.fav ? '<span class="mp-fav">★</span>' : ''}${cnt > 1 ? `<span class="mp-cnt">x${cnt}</span>` : ''}<span class="mp-lv">Lv.${o.level || 1}</span><span class="mp-nm">${esc(o.name)}</span></button>`;
   /** 같은 카드(id) 여러 장은 한 칸으로: 대표 = 리더 > 덱 > 레벨·EX 높은 것, 개수는 x<n> */
   function groupOwned(owned, deck) {
     const g = new Map();
@@ -97,6 +98,7 @@
     const s = ctx.story, L = s?.owned.find(o => o.uid === s.leaderUid) || s?.owned.find(o => s.deckUids?.[0] === o.uid);
     if (!L) return `<div class="mp-leader empty"><div class="mp-empty">—</div></div>`;
     return `<div class="mp-leader rar-${SHORT[L.grade] || 'N'}" id="mp-leader" data-id="${esc(L.id)}"><img src="${IMG}${L.id}.webp" alt="${esc(L.name)}" class="mp-leader-img" onerror="this.style.visibility='hidden'">
+      ${leadMark('mp-crown')}
       <div class="mp-leader-cap"><span class="mp-rar">${SHORT[L.grade] || ''}</span><b>${esc(L.name)}</b><small>리더 · Lv.${L.level || 1}${L.power ? ` · ⚡ ${Number(L.power).toLocaleString('ko-KR')}` : ''}</small></div>
       <span class="mp-play" aria-hidden="true">▶</span></div>`;
   } });

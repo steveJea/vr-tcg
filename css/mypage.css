@@ -14,7 +14,10 @@
 .mp-movie{opacity:0;transition:opacity .45s ease}.mp-leader.playing .mp-movie{opacity:1}
 .mp-leader-cap{position:absolute;left:0;right:0;bottom:0;padding:24px 12px 10px;background:linear-gradient(transparent,rgba(0,0,0,.85));color:#fff;display:flex;flex-direction:column;gap:2px;z-index:2}
 .mp-leader-cap b{font-size:20px}.mp-leader-cap small{opacity:.85}
+.mp-crown{position:absolute;top:8px;right:8px;z-index:4;line-height:0;pointer-events:none;filter:drop-shadow(0 1px 2px #000)}
+.mp-crown .ui-ic,.mp-crown img{width:26px;height:26px;object-fit:contain}
 .mp-play{display:none;position:absolute;top:10px;right:10px;z-index:2;background:rgba(0,0,0,.55);color:#fff;border-radius:999px;width:34px;height:34px;align-items:center;justify-content:center}
+.mp-leader.has-movie .mp-play{top:42px}
 .mp-leader.has-movie{cursor:pointer}.mp-leader.has-movie .mp-play{display:flex}.mp-leader.playing .mp-play{opacity:0}
 .mp-rar{display:inline-block;font-size:11px;font-weight:900;padding:1px 6px;border-radius:6px;background:#374151;color:#fff;align-self:flex-start}
 .rar-R .mp-rar{background:#84cc16}.rar-HR .mp-rar{background:#3b82f6}.rar-SR .mp-rar{background:#a855f7}.rar-UR .mp-rar{background:#f59e0b}.rar-MR .mp-rar{background:#ef4444}

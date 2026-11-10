@@ -10,7 +10,9 @@ const calls=[];let payments=false;const checkouts=[];
 const products=[
  {sku:'gem_100',tab:'charge',name:'심연석 100',blurb:'첫 구매 2배',price_krw:1100,month_max:null,month_used:0,grant:{gem_paid:100,gem_free:0,first_double:true},payment_sku:'gem_100',first_open:true},
  {sku:'ticket_10',tab:'pack',name:'스페셜 소환권 10장',blurb:'월 1회',price_krw:1100,month_max:1,month_used:0,grant:{tickets:10},payment_sku:null,first_open:false},
- {sku:'pass_1',tab:'pass',name:'시즌패스 1',blurb:'매일',price_krw:5500,month_max:null,month_used:0,grant:{pass:true},payment_sku:null,first_open:false}
+ {sku:'pass_1',tab:'pass',name:'시즌패스 1',blurb:'매일',price_krw:5500,month_max:null,month_used:0,grant:{pass:true},payment_sku:null,first_open:false},
+ {sku:'pass_2',tab:'pass',name:'시즌패스 2',blurb:'즉시 소환권 10 · 매일 소환권 1, 무료 심연석 50',price_krw:22000,month_max:null,month_used:0,grant:{pass:true},payment_sku:null,first_open:false},
+ {sku:'pass_3',tab:'pass',name:'시즌패스 3',blurb:'즉시 소환권 30 + 유료 심연석 300 · 매일 소환권 1, 무료 심연석 100',price_krw:44000,month_max:null,month_used:0,grant:{pass:true},payment_sku:null,first_open:false}
 ];
 const status=()=>({ok:true,gem:10,free:4,paid:6,products,passes:[]});
 window.__SHOP_MOCK=async(name,args)=>{calls.push({name,args});if(name==='shop_buy')return {...status(),first_bonus:true,paid:206};return {...status(),claimed:[]};};
@@ -36,8 +38,20 @@ assert.equal(checkouts.length,0);assert.equal(calls.at(-1).name,'shop_buy');asse
 payments=true;document.querySelector('[data-sku="gem_100"]').click();
 await new Promise(r=>setTimeout(r,0));
 assert.equal(checkouts.length,1);assert.equal(checkouts[0].id,'gem_100');
+document.querySelector('[data-tab="charge"]').click();
+assert.match(document.body.textContent,/2배/);
+assert.doesNotMatch(document.body.textContent,/200%/);
+document.querySelector('[data-tab="pass"]').click();
+const pass = document.body.textContent;
+assert.match(pass,/30일 총 40/);
+assert.match(pass,/30일 총 60/);
+assert.match(pass,/매일 무료 심연석 100/);
+assert.match(pass,/유료 심연석 300/);
 document.querySelector('[data-tab="consume"]').click();
 await new Promise(r=>setTimeout(r,0));
 assert.match(document.body.textContent,/무료 심연석을 먼저/);
 assert.match(document.body.textContent,/행동력 최대 충전과는 다른/);
-console.log('Shop UI: tabs, empty skins, 2x copy, test grant, Toss only for gems OK');
+assert.match(document.body.textContent,/드링크/);
+assert.equal(document.querySelector('[data-gem-buy]'), null);
+assert.doesNotMatch(document.body.textContent,/심연석으로 사는 것/);
+console.log('Shop UI: tabs, empty skins, 2x copy, pass totals, drinks only, test grant, Toss only for gems OK');
