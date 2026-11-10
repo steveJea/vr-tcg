@@ -161,7 +161,7 @@
     const m = ensure(), body = $('mp-body');
     if (!(window.VRPages?.current === 'mypage' || window.VRPages?.open?.('mypage'))) { m.classList.remove('hidden'); document.body.classList.add('gal-lock'); }
     if (!user()) {
-      body.innerHTML = `<div class="mp-guest"><img src="img/ui/profile.webp" alt="" width="72" height="72"><b>로그인 필요</b>${cloud()?.sb ? '<button id="mp-login" class="main-btn mp-login">로그인</button>' : '<small>오프라인</small>'}</div>`;
+      body.innerHTML = `<div class="mp-guest" data-clarity-mask="true"><img src="img/ui/profile.webp" alt="" width="72" height="72"><b>로그인 필요</b>${cloud()?.sb ? '<button id="mp-login" class="main-btn mp-login">로그인</button>' : '<small>오프라인</small>'}</div>`;
       if ($('mp-login')) $('mp-login').onclick = () => cloud().login();
       return;
     }
@@ -176,7 +176,7 @@
     const av = leadAv || meta.avatar_url || null;
     const whoChip = window.VRCosmo?.chip?.({ name: nick, title: eq.title, title_name: window.VRCosmo.titleName?.(eq.title), frame: eq.frame, avatar: av })
       || `<img src="${av ? esc(av) : 'img/ui/profile.webp'}" referrerpolicy="no-referrer" alt="" class="mp-av" onerror="this.src='img/ui/profile.webp'"><b class="mp-nick">${esc(nick)}</b>`;
-    body.innerHTML = `<div class="mp-who">${whoChip}<button id="mp-cosmo" class="mp-cosmo" type="button"><img class="ui-btn-ic" src="img/ui/icon/cosmetics.webp" alt="꾸미기" width="16" height="16">꾸미기</button><button id="mp-nick-edit" class="mp-nick-edit" type="button">닉네임 변경${cloud()?.profile?.nick_set ? ' <small>🔮200</small>' : ''}</button></div>`
+    body.innerHTML = `<div class="mp-who" data-clarity-mask="true">${whoChip}<button id="mp-cosmo" class="mp-cosmo" type="button"><img class="ui-btn-ic" src="img/ui/icon/cosmetics.webp" alt="꾸미기" width="16" height="16">꾸미기</button><button id="mp-nick-edit" class="mp-nick-edit" type="button">닉네임 변경${cloud()?.profile?.nick_set ? ' <small>🔮200</small>' : ''}</button></div>`
       + sections.map(s => { let h = ''; try { h = s.render(ctx) || ''; } catch (e) { console.warn('[mypage] section', s.id, e); }
         return h ? `<section class="mp-sec" data-sec="${s.id}">${s.title ? `<h3>${s.title}</h3>` : ''}${h}</section>` : ''; }).join('');
     const ne = $('mp-nick-edit'); if (ne) ne.onclick = async () => { const n = await cloud()?.askNickname?.(); if (n) { const b = body.querySelector('.cosmo-nm, .mp-nick'); if (b) b.textContent = n; } };

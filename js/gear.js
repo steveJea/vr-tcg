@@ -231,7 +231,7 @@
   function msgPop(ml, after) {
     if (!ml) return; const att = hasAtt(ml.payload);
     if (!ml.read) sb().rpc('mail_read', { p_id: ml.id }).then(() => refreshUnread());
-    const q = pop(`<b class="gear-msg-t">${esc(ml.title || '알림')}</b><div class="gear-msg-b">${esc(ml.body || '').replace(/\n/g, '<br>')}</div>
+    const q = pop(`<b class="gear-msg-t" data-clarity-mask="true">${esc(ml.title || '알림')}</b><div class="gear-msg-b" data-clarity-mask="true">${esc(ml.body || '').replace(/\n/g, '<br>')}</div>
       ${att ? `<div class="gear-msg-a">${attTxt(ml.payload)}</div>` : ''}<div class="gear-dim">기한 ${esc(fmtExp(ml.expires_at))}까지</div>
       <div class="gear-acts"><button class="gear-btn main" data-c>${att ? '받기' : '확인 (삭제)'}</button></div>`, 'item');
     q.querySelector('[data-c]').onclick = async e => { e.target.disabled = true; const r = await rpc('mail_msg_claim', { p_id: ml.id }); q.remove();
@@ -247,7 +247,7 @@
     const draw = async () => {
       const { data: list, error } = await sb().rpc('mail_list'); refreshUnread(); if (error) { m.remove(); return toast(`⚠️ ${error.message}`); }
       m.querySelector('.gear-pop').innerHTML = `<div class="gear-bag-top"><b><img class="ui-ic" src="img/ui/mailbox.webp" alt="">우편함</b><small><img class="ui-ic" src="img/ui/bag.webp" alt="">${st.count}/${st.slots}</small></div>
-        ${list.filter(x => x.kind === 'msg').map(ml => `<button class="gear-msg ${ml.read && !hasAtt(ml.payload) ? 'read' : ''}" data-msg="${ml.id}"><b>${ml.read ? '' : '<i class="gear-badge">N</i> '}${esc(ml.title || '알림')}</b><span>${attTxt(ml.payload) || '메시지'}</span><small>~${esc(fmtExp(ml.expires_at))}</small></button>`).join('')}
+        ${list.filter(x => x.kind === 'msg').map(ml => `<button class="gear-msg ${ml.read && !hasAtt(ml.payload) ? 'read' : ''}" data-msg="${ml.id}" data-clarity-mask="true"><b>${ml.read ? '' : '<i class="gear-badge">N</i> '}${esc(ml.title || '알림')}</b><span>${attTxt(ml.payload) || '메시지'}</span><small>~${esc(fmtExp(ml.expires_at))}</small></button>`).join('')}
         <div class="gear-grid">${list.filter(x => x.kind !== 'msg').map(ml => { const p = ml.payload || {}, d = defs[p.def_id];
           if (ml.kind === 'sigil_frag') return `<button class="gear-cell" data-m="${ml.id}">${img('', 'sigil')}<i>×${p.n}</i></button>`;
           return ml.kind === 'box' ? `<button class="gear-cell gt${p.tier}" data-m="${ml.id}"><span class="gear-box"><img class="ui-ic" src="img/ui/gear_box.webp" alt=""></span></button>`
