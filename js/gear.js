@@ -180,7 +180,7 @@
       m.querySelector('.gear-pop').innerHTML = `<div class="gear-bag-top"><b><img class="ui-ic" src="img/ui/bag.webp" alt="">${st.count}/${st.slots}</b>${nx ? `<button class="gear-btn" data-x>+10칸 ${window.VRGem?.ICON || '💎'} ${nx.gem}</button>` : '<small>최대</small>'}</div>
         <div class="gear-tabs">${[['all', '전체'], ...SLOTS].map(([k, l]) => `<button data-f="${k}" class="${filt === k ? 'on' : ''}">${k === 'all' ? '' : img(sil(k), k)}${l}</button>`).join('')}</div>
         ${ctx.cardId ? '' : `<div class="gear-sel">${pick ? `${[1, 2, 3, 4, 5].map(t => `<button data-t="${t}" class="gt${t}">${TIER[t]}</button>`).join('')}<button data-pk>취소</button>` : `<small><img class="ui-ic" src="img/ui/cur_dust.webp" alt="">가루 ${fmt(st.dust || 0)}</small><button class="gear-btn" data-pk>☑️ 여러 개 정리</button>`}</div>`}
-        <div class="gear-grid">${list.map(g => { const d = defs[g.def]; return `<button class="gear-cell gt${d.tier} ${pick?.has(g.id) ? 'pick' : ''} ${pick && (g.locked || g.card) ? 'nopick' : ''}" data-g="${g.id}">${img(iconOf(d), slotOf(g))}${g.plus ? `<i>+${g.plus}</i>` : ''}${g.card ? '<b class="gear-eq">E</b>' : ''}${g.locked ? '<b class="gear-lk"><img class="ui-ic" src="img/ui/lock.webp" alt=""></b>' : ''}</button>`; }).join('') || '<div class="gear-dim">아직 장비가 없어요. 소탕·탑·토벌에서 얻을 수 있어요</div>'}</div>`;
+        <div class="gear-grid">${list.map(g => { const d = defs[g.def]; return `<button class="gear-cell gt${d.tier} ${pick?.has(g.id) ? 'pick' : ''} ${pick && (g.locked || g.card) ? 'nopick' : ''}" data-g="${g.id}">${img(iconOf(d), slotOf(g))}${g.plus ? `<i>+${g.plus}</i>` : ''}${g.card ? '<b class="gear-eq">E</b>' : ''}${g.locked ? '<b class="gear-lk"><img class="ui-ic" src="img/ui/lock.webp" alt=""></b>' : ''}</button>`; }).join('') || '<div class="gear-dim">ℹ️ 장비 없음</div>'}</div>`;
       if (pick) { const sel = st.gear.filter(g => pick.has(g.id)), sum = k => sel.reduce((a, g) => a + (cost.salv[defs[g.def].tier]?.[k] || 0), 0);
         m.querySelector('.gear-pop').insertAdjacentHTML('beforeend', `<div class="gear-acts gear-bulk"><b>${sel.length}개 선택</b><button class="gear-btn" data-bk="dis" ${sel.length ? '' : 'disabled'}>🔨 분해 <img class="ui-ic" src="img/ui/cur_dust.webp" alt="">+${sum('dust')}</button><button class="gear-btn main" data-bk="sell" ${sel.length ? '' : 'disabled'}><img class="ui-ic" src="img/ui/cur_gold.webp" alt="">매각 +${fmt(sum('gold'))}</button></div>`);
         m.querySelectorAll('[data-bk]').forEach(b => b.onclick = async () => { const dis = b.dataset.bk === 'dis', hi = sel.some(g => defs[g.def].tier >= 5);
@@ -300,7 +300,7 @@
     const m = pop('<div class="gear-dim">불러오는 중…</div>', 'bag');
     window.VRPages?.host?.('pvpshop', '🛒 PvP 상점', m);   // 페이지 시스템
     const draw = async () => {
-      const { data: S, error } = await sb().rpc('pvp_shop_status'); if (error) { m.remove(); return toast(/pvp_shop|schema cache|Could not find/.test(error.message) ? '🔒' : `⚠️ ${error.message}`); }
+      const { data: S, error } = await sb().rpc('pvp_shop_status'); if (error) { m.remove(); return toast(/pvp_shop|schema cache|Could not find/.test(error.message) ? '🔒 PvP 상점' : `⚠️ ${error.message}`); }
       const shown = new Set();
       m.querySelector('.gear-pop').innerHTML = `<div class="gear-bag-top"><b>🛒 PvP 상점</b><span>🔥 혼 <b>${fmt(S.soul)}</b></span></div>
         <div class="shop-grid">${S.items.map(it => { const first = !shown.has(it.grp); shown.add(it.grp);
@@ -325,7 +325,7 @@
     return { gear, sigil: sg?.plus ?? null };
   }
   // 장비 바뀜 → PvP 방어 덱·구역 전쟁 덱은 저장할 때 서버가 장비를 담아 둠 (supabase/gear_snap.sql) → 다시 저장 안내
-  const deckNote = () => toast('⚠️ 재저장 필요');
+  const deckNote = () => toast('⚠️ PvP 방어·구역 전쟁 덱 재저장');
   // 로그인하면 장비 미리 불러오기 (전투·인재 화면에 바로 장비 반영)
   const pre = () => { if (window.VRCloud?.user) load().catch(() => {}); };
   let lastU = null; window.addEventListener('vr:user', () => { const u = window.VRCloud?.user?.id || null; if (u !== lastU) { lastU = u; st = null; pre(); } }); setTimeout(pre, 1500);

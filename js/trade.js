@@ -26,7 +26,7 @@
     'nothing to reject': '거절할 제안을 골라 주세요', 'duplicate card': '같은 인재를 두 번 골랐어요', 'duplicate gear': '같은 장비를 두 번 골랐어요', 'invalid amount': '수량을 확인해 주세요', 'too many wants': '원하는 물건은 5개까지예요', 'direct only': '🤝 지정 거래는 받는 사람만 응할 수 있어요', 'target cannot trade': '상대가 아직 거래할 수 없어요 (Lv.10 · 가입 7일)', 'invalid target': '거래 상대를 다시 골라 주세요', 'too many direct': '같은 상대에게 열린 지정 거래는 3개까지예요', 'want required': '드링크만 보낼 땐 원하는 물건을 하나 이상 골라 주세요', 'invalid want': '원하는 물건을 다시 골라 주세요',
     'cancel limit': '오늘 제안 취소가 너무 많아요. 내일 다시 제안할 수 있어요', 'drink send limit': '🥤 오늘 보낼 수 있는 드링크 양을 넘어요', 'drink recv limit': '🥤 오늘 받을 수 있는 드링크 양을 넘어요 (하루 10,000)'
   };
-  const errText = m => { m = String(m || ''); const k = Object.keys(ERR).find(x => m.includes(x)); return k ? ERR[k] : /trade_|schema cache|Could not find/.test(m) ? '🔒' : `⚠️ ${m.slice(0, 60)}`; };
+  const errText = m => { m = String(m || ''); const k = Object.keys(ERR).find(x => m.includes(x)); return k ? ERR[k] : /trade_|schema cache|Could not find/.test(m) ? '🔒 거래소' : `⚠️ ${m.slice(0, 60)}`; };
   const MISSING = /schema cache|Could not find the function|does not exist|PGRST202/;
   async function rpc(fn, args, quiet) {   // quiet: 서버에 함수가 없으면(SQL 실행 전) 토스트 없이 'missing'
     const mk = window.__TRADE_MOCK; if (mk) { try { return await mk(fn, args); } catch (e) { if (quiet && MISSING.test(e.message)) return 'missing'; toast(errText(e.message)); return null; } }
@@ -204,7 +204,7 @@
   const itemName = (k, id) => k === 'card' ? (cardOf(id)?.name || '인재') : (defOf(id)?.name || '장비');
   const itemImg = (k, id) => k === 'card' ? `<img src="${cardThumb(id)}" alt="" loading="lazy">` : defOf(id) ? `<img class="gear" src="${gearIcon(defOf(id))}" alt="" loading="lazy">` : '';
   const statTxt = st => [st?.drink && `${I('cur_drink')}${n(st.drink.median)}`, st?.gold && `${I('cur_gold')}${n(st.gold.median)}`].filter(Boolean).join(' · ');
-  const PSOON = '<div class="tr-empty">📈 🔒</div>';
+  const PSOON = '<div class="tr-empty"><b>📈 🔒 준비 중</b></div>';
   function spark(daily, f) { const v = (daily || []).map(d => d[f]).filter(x => x != null); if (v.length < 2) return '';
     const lo = Math.min(...v), hi = Math.max(...v), W = 100, H = 24, pts = v.map((x, i) => `${(i / (v.length - 1) * W).toFixed(1)},${(H - 2 - (hi === lo ? 0.5 : (x - lo) / (hi - lo)) * (H - 4)).toFixed(1)}`).join(' ');
     return `<svg class="tr-spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true"><polyline points="${pts}"/></svg>`; }
@@ -220,7 +220,7 @@
     if (!r) { P.innerHTML = '<div class="tr-empty"><b>불러오지 못했어요</b></div>'; return; }
     const it = r.items || [];
     if (!it.length) { P.innerHTML = `<div class="tr-empty"><b>시세 없음 (최근 ${pDays}일)</b></div>`; return; }
-    P.innerHTML = (r.total < 5 ? `<div class="tr-fcount">최근 ${pDays}일 거래 ${r.total}건 · 아직 적어서 참고용이에요</div>` : '') + it.map(x => `<button class="tr-prow" data-pi="${x.kind}:${esc(x.id)}"><span class="tr-pimg">${itemImg(x.kind, x.id)}</span>
+    P.innerHTML = (r.total < 5 ? `<div class="tr-fcount">ℹ️ 참고용 · 최근 ${pDays}일 ${r.total}건</div>` : '') + it.map(x => `<button class="tr-prow" data-pi="${x.kind}:${esc(x.id)}"><span class="tr-pimg">${itemImg(x.kind, x.id)}</span>
       <span class="tr-pmain"><b>${esc(itemName(x.kind, x.id))}</b><small>${x.n}건${x.buy_now ? ` · ⚡ ${x.buy_now}` : ''} · ${left0(x.last_at)}</small></span><span class="tr-pval">${statTxt(x) || '-'}</span></button>`).join('');
     P.querySelectorAll('[data-pi]').forEach(b => b.onclick = () => { const [k, ...id] = b.dataset.pi.split(':'); priceHistory(k, id.join(':')); });
   }
@@ -485,8 +485,8 @@
       next.disabled = true;
       const base = { p_cards: [...p.sel.cards], p_gear: [...p.sel.gear], p_want: want };
       let r;
-      if (wantIds.length) { r = await rpc('trade_list3', { ...base, p_buy_drinks: buy.on && buy.cur === 'd' ? buy.amt : null, p_buy_gold: buy.on && buy.cur === 'g' ? buy.amt : null, p_want_ids: wantIds }, true); if (r === 'missing') { r = null; toast('🔒'); } }
-      else if (buy.on) { r = await rpc('trade_list2', { ...base, p_buy_drinks: buy.cur === 'd' ? buy.amt : null, p_buy_gold: buy.cur === 'g' ? buy.amt : null }, true); if (r === 'missing') { r = null; toast('🔒'); } }
+      if (wantIds.length) { r = await rpc('trade_list3', { ...base, p_buy_drinks: buy.on && buy.cur === 'd' ? buy.amt : null, p_buy_gold: buy.on && buy.cur === 'g' ? buy.amt : null, p_want_ids: wantIds }, true); if (r === 'missing') { r = null; toast('🔒 원하는 물건'); } }
+      else if (buy.on) { r = await rpc('trade_list2', { ...base, p_buy_drinks: buy.cur === 'd' ? buy.amt : null, p_buy_gold: buy.cur === 'g' ? buy.amt : null }, true); if (r === 'missing') { r = null; toast('🔒 즉시 구매 · 가격 없이 올리려면 체크를 꺼 주세요'); } }
       else r = await rpc('trade_list', base);
       if (r) { toast('📤 판매 글을 올렸어요'); m.remove(); refreshMine(); after?.(); } else next.disabled = false;
     };
@@ -572,7 +572,7 @@
       W.innerHTML = `<input type="search" class="tr-input tr-dq" placeholder="🔍 닉네임으로 찾기"><div class="tr-dres"></div>`;
       const q = W.querySelector('.tr-dq'), R = W.querySelector('.tr-dres'); q.focus();
       q.oninput = () => { clearTimeout(qT); qT = setTimeout(async () => { const v = q.value.trim(); if (!v) { R.innerHTML = ''; return; }
-        const r = await rpc('trade_user_find', { p_q: v }, true); if (r === 'missing') { R.innerHTML = '<small>🔒</small>'; return; }
+        const r = await rpc('trade_user_find', { p_q: v }, true); if (r === 'missing') { R.innerHTML = '<small>🔒 지정 거래</small>'; return; }
         const us = r?.users || []; R.innerHTML = us.length ? us.map(u => `<button class="tr-wchip on" data-uid="${esc(u.id)}">${esc(u.nick)}</button>`).join('') : '<small class="tr-cf-none">찾는 사람이 없어요</small>';
         R.querySelectorAll('[data-uid]').forEach(b => b.onclick = () => { who = us.find(u => u.id === b.dataset.uid); paintWho(); ok(); }); }, 300); };
     };
@@ -586,7 +586,7 @@
       if (!await ask(`<b>${esc(who.nick)}</b>님에게 지정 거래를 보낼까요?<div class="tr-cf">${cfRow('내가 주는 것', p.tiles(), curTxt(d, 0))}${cfRow('원하는 것', wantIds.map(w => wantChip(w)).join(''))}</div>`)) return;
       send.disabled = true;
       const r = await rpc('trade_direct_list', { p_target: who.id, p_cards: [...p.sel.cards], p_gear: [...p.sel.gear], p_drinks: d, p_want: '', p_want_ids: wantIds, p_msg: msg }, true);
-      if (r === 'missing') { toast('🔒'); send.disabled = false; return; }
+      if (r === 'missing') { toast('🔒 지정 거래'); send.disabled = false; return; }
       if (r) { toast(`🤝 ${who.nick}님에게 보냈어요 (우편으로 알렸어요)`); m.remove(); refreshMine(); after?.(); } else send.disabled = false;
     };
     return m;
@@ -608,7 +608,7 @@
         <div class="tr-items big">${itemsHTML(l.cards, l.gear)}</div>
         ${l.status !== 'open' ? '<div class="tr-note">끝난 글이에요</div>' : `
         <div class="tr-head sm"><b>📨 제안 ${offs.length}개</b><span><button class="tr-btn ${sort === 'cur' ? 'on' : ''}" data-sort="cur">재화 많은 순</button><button class="tr-btn" data-sort="new">새 순</button></span></div>
-        <div class="tr-offs">${list().map(row).join('') || '<div class="tr-empty">아직 제안이 없어요</div>'}</div>
+        <div class="tr-offs">${list().map(row).join('') || '<div class="tr-empty">ℹ️ 제안 없음</div>'}</div>
         ${offs.length ? `<div class="tr-bulk"><button class="tr-btn" data-rsel>선택 거절</button>
           <span>조건 아래 전부 거절: ${I('cur_drink')}<input type="number" min="0" data-md placeholder="최소"> ${I('cur_gold')}<input type="number" min="0" data-mg placeholder="최소"> <label><input type="checkbox" data-ni> 물건 없는 제안</label></span><button class="tr-btn" data-rbelow>거절</button></div>` : ''}
         <div class="tr-acts"><button class="tr-btn danger" data-down>글 내리기</button></div>`}`;

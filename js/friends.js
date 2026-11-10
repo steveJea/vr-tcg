@@ -50,7 +50,7 @@
     if (window.VRUnlocks && !window.VRUnlocks.guard('friends')) return;
     document.querySelector('.friend-pop:not(.vr-in-page)')?.remove();
     const pop = document.createElement('div'); pop.className = 'gem-pop friend-pop';
-    const act = async (fn, args, msg) => { try { const r = await rpc(fn, args); if (r == null && /friend_gift/i.test(fn)) { toast('🔒'); return; } if (msg) toast(msg); } catch (e) { toast(errText(e)); } await load(); if (found && lastQ) await search(lastQ, true); draw(); };
+    const act = async (fn, args, msg) => { try { const r = await rpc(fn, args); if (r == null && /friend_gift/i.test(fn)) { toast('🔒 선물'); return; } if (msg) toast(msg); } catch (e) { toast(errText(e)); } await load(); if (found && lastQ) await search(lastQ, true); draw(); };
     async function search(q, quiet) { lastQ = q; try { found = await rpc('friends_search', { p_q: q }) || []; } catch (e) { found = null; if (!quiet) toast(errText(e)); } }
     const draw = () => {
       const s = cache;

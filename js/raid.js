@@ -79,7 +79,7 @@ function paint() {
     <div class="rd-h">처치 단계 <button class="rd-info" data-info>보상표 ⓘ</button></div>
     <div class="rd-stages">${s.stages.map(x => `<span class="${x.cleared ? (x.claimed ? 'done' : 'ready') : 'cur'}">${bossImg(x.boss)}<b>${x.stage}</b>${x.cleared ? (x.claimed ? gi('ic_check', '✔') : gi('ic_gift', '🎁')) : ''}</span>`).join('')}</div>
     <div class="rd-h">이번 주 피해 순위</div>
-    <div class="rd-rk">${s.ranking.length ? s.ranking.map((x, i) => `<div class="${x.me ? 'me' : ''}"><b>${[gi('rank_1', '🥇'), gi('rank_2', '🥈'), gi('rank_3', '🥉')][i] || i + 1}</b><span>${esc(x.name)}</span><small>${x.attempts}회</small><em>${big(x.damage)}</em></div>`).join('') : '<div class="rd-empty">아직 아무도 토벌하지 않았어요</div>'}</div>`;
+    <div class="rd-rk">${s.ranking.length ? s.ranking.map((x, i) => `<div class="${x.me ? 'me' : ''}"><b>${[gi('rank_1', '🥇'), gi('rank_2', '🥈'), gi('rank_3', '🥉')][i] || i + 1}</b><span>${esc(x.name)}</span><small>${x.attempts}회</small><em>${big(x.damage)}</em></div>`).join('') : '<div class="rd-empty">ℹ️ 순위 없음</div>'}</div>`;
   const q = sel => M.querySelector(sel);
   q('[data-go]').onclick = fight; bindMode(M);
   q('[data-sweep]').onclick = sweep;

@@ -8,7 +8,8 @@
   const level = () => { const uid=window.VRCloud?.user?.id; if(uid && account && uid!==account) return 1; return Number(state?.level || window.VRPlayer?.now?.()?.level || 1); };
   const need = key => P.features[key] ?? Infinity;
   const allowed = key => level() >= need(key);
-  const cue = key => `🔒 Lv${need(key)}`;
+  // 표에 없는 키(훈련소 칸 번호 등)는 Infinity 로 찍지 않는다.
+  const cue = key => { const n = P.features[key]; return Number.isFinite(n) ? `🔒 Lv${n}` : '🔒'; };
   const pvpKey = (league, mode) => mode === 'boss' ? 'pvp_boss' : mode === '3v3' ? 'pvp_3v3' : league === 'hr' ? 'pvp_hr' : 'pvp_open';
   const toast = text => { if (window.VRGem?.toast) return window.VRGem.toast(text); const el = document.createElement('div'); el.className = 'ul-toast'; el.textContent = text; document.body.appendChild(el); setTimeout(() => el.remove(), 1800); };
   const guard = key => { if (allowed(key)) return true; toast(cue(key)); return false; };
@@ -35,7 +36,9 @@
     ['[data-merge]','merge'], ['[data-skup]','skill'], ['[data-gslot="sigil"]','sigil'],
   ];
   function feature(el) {
-    if (el.dataset.unlock) return el.dataset.unlock;
+    // data-unlock 은 해금 키일 때만. 훈련소 칸 버튼은 칸 번호(2~5)라 여기 오면 LvInfinity 가 된다.
+    const tagged = el.dataset.unlock;
+    if (tagged && Object.prototype.hasOwnProperty.call(P.features, tagged)) return tagged;
     if (el.matches('.th-card[data-tower]')) return el.dataset.tower === 'normal' ? 'tower' : 'tower_' + el.dataset.tower;
     for (const [sel, key] of selectors) if (el.matches(sel)) return key;
     return null;

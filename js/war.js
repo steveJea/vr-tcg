@@ -32,7 +32,7 @@ function signupWindow(s) {
 /** 칸 배치가 잠긴 이유 (없으면 ''). 자동 참가(조직 Lv.3+) · 잠금 전 모든 칸 · 잠금 뒤 아지트(14)만, 전투 시간 제외 (war_auto.sql) */
 const minLv = () => +(X.min_level ?? 3);
 function slotLockReason(s, slot) {
-  if (!s.entry) return X.guild_level != null && X.guild_level < minLv() ? `조직 레벨 ${minLv()}부터 자동 참가해요 (지금 Lv.${X.guild_level})` : '🔒';
+  if (!s.entry) return X.guild_level != null && X.guild_level < minLv() ? `조직 레벨 ${minLv()}부터 자동 참가해요 (지금 Lv.${X.guild_level})` : '🔒 참가 명단';
   if (s.guild?.role !== 'boss') return '보스만 배치할 수 있어요';
   if (!s.entry.locked) return '';
   if (s.phase === 'live') return '전투 시간(09~23시)에는 배치를 바꿀 수 없어요';
@@ -164,7 +164,7 @@ function mapView(list, foe) {
 function rankView() {
   const st = S.standings || [];
   return `<div class="rd-h">시즌 순위 <small>승 ${S.numbers.standings.win} · 무 ${S.numbers.standings.draw} · 보스 격파 +${S.numbers.standings.boss_bonus}</small></div>
-    <div class="rd-rk">${st.length ? st.map(x => `<div class="${x.me ? 'me' : ''}"><b>${[gi('rank_1', '🥇'), gi('rank_2', '🥈'), gi('rank_3', '🥉')][x.rank - 1] || x.rank}</b><span>${esc(x.name)}</span><small>${x.wins}승 ${x.draws}무 ${x.losses}패</small><em>${x.points}점</em></div>`).join('') : '<div class="rd-empty">아직 참가한 조직이 없어요</div>'}</div>
+    <div class="rd-rk">${st.length ? st.map(x => `<div class="${x.me ? 'me' : ''}"><b>${[gi('rank_1', '🥇'), gi('rank_2', '🥈'), gi('rank_3', '🥉')][x.rank - 1] || x.rank}</b><span>${esc(x.name)}</span><small>${x.wins}승 ${x.draws}무 ${x.losses}패</small><em>${x.points}점</em></div>`).join('') : '<div class="rd-empty">ℹ️ 참가 없음</div>'}</div>
     <div class="rd-h">시즌 보상</div><table class="rd-tb">${S.numbers.season_rank.map(r => `<tr><th>${r.from === r.to ? `${r.from}위` : `${r.from}~${r.to}위`}</th><td>${rwTxt(r.reward)}</td></tr>`).join('')}
       <tr><th>참가 조직원</th><td>${rwTxt(S.numbers.season_member)} <small>(순위 보상에 더해서)</small></td></tr><tr><th>경기 승리</th><td>${rwTxt(S.numbers.match_win)} · 보스 격파 +${rwTxt(S.numbers.match_boss_kill)}</td></tr><tr><th>무승부</th><td>${rwTxt(S.numbers.match_draw)}</td></tr><tr><th>패배</th><td>${rwTxt(S.numbers.match_loss)}</td></tr></table>`;
 }

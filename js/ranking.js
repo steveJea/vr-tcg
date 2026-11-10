@@ -118,14 +118,14 @@ import { config } from './config.js';
     if (main !== 'arcade') {
       $('.rl').innerHTML = '<div class="empty">불러오는 중...</div>'; $('.mine').innerHTML = '';
       const logged = !!window.VRCloud?.user, cur = key();
-      $('.rf').innerHTML = logged ? '' : `<button id="rank-login">${IC('login')} 🔑 로그인</button>`;
+      $('.rf').innerHTML = logged ? '' : `<button id="rank-login">${IC('login')} 로그인</button>`;
       const lb = $('#rank-login'); if (lb) lb.onclick = () => window.VRCloud ? window.VRCloud.login() : (window.VRGem?.toast || alert)('지금은 로그인 서버에 연결할 수 없어요.');
       return loadOther(cur, logged ? await token() : null);
     }
-    $('.rn').textContent = tab === 'weekly' ? `⏱ ${(() => { const now = Date.now() + 9 * 3600e3, day = 86400e3, wd = (Math.floor(now / day) + 4) % 7, into = now % day, ahead = (1 - wd + 7) % 7, ms = ahead === 0 ? (into === 0 ? 7 * day : 7 * day - into) : ahead * day - into, h = Math.floor(ms / 3600e3), m = Math.floor(ms % 3600e3 / 6e4); return Math.floor(h / 24) + '일 ' + (h % 24) + ':' + String(m).padStart(2, '0'); })()} · 승3 무1` : '승3 무1';
+    $('.rn').textContent = tab === 'weekly' ? `⏱ 남은 시간 ${(() => { const now = Date.now() + 9 * 3600e3, day = 86400e3, wd = (Math.floor(now / day) + 4) % 7, into = now % day, ahead = (1 - wd + 7) % 7, ms = ahead === 0 ? (into === 0 ? 7 * day : 7 * day - into) : ahead * day - into, h = Math.floor(ms / 3600e3), m = Math.floor(ms % 3600e3 / 6e4); return Math.floor(h / 24) + '일 ' + (h % 24) + ':' + String(m).padStart(2, '0'); })()} · 승3 무1` : '승3 무1';
     $('.rl').innerHTML = '<div class="empty">불러오는 중...</div>'; $('.mine').innerHTML = '';
     const logged = !!window.VRCloud?.user;
-    $('.rf').innerHTML = logged ? '' : `<button id="rank-login">${IC('login')} 🔑 로그인</button>`;
+    $('.rf').innerHTML = logged ? '' : `<button id="rank-login">${IC('login')} 로그인</button>`;
     const lb = $('#rank-login'); if (lb) lb.onclick = () => window.VRCloud ? window.VRCloud.login() : (window.VRGem?.toast || alert)('지금은 로그인 서버에 연결할 수 없어요.');
     const view = tab === 'weekly' ? 'rankings_weekly' : 'rankings_all', cur = key();
     const tok = logged ? await token() : null;

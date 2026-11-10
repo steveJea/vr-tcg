@@ -61,7 +61,7 @@ async function retryResult() {
   try { const rep = await finishVerified(p.body); pendingResult(null); showResult(p.session, rep); }
   catch (e) { toast('결과 미정산 · ' + errText(e)); }
 }
-const ERR = { 'PvP verifier unavailable': '🔒', 'rate limited': '잠시 후 다시 도전해 주세요', 'server settlement failed': '서버 정산 실패 · 다시 저장해 주세요', 'reward verification pending': '지급 보류', 'guard grade': '리더(수비대장)는 HR 이하', 'boss members': '멤버 1장 이상', 'no attempts left': '오늘 횟수 끝', 'not enough gem': '🔮 부족', 'deck required': '덱 필요', 'card not owned': '없는 인재', 'duplicate card': '중복', 'grade not allowed': 'HR 이하만', 'cost over 150': '코스트 150 초과', 'card used in another deck': '다른 덱에 있음', 'login required': '로그인 필요' };
+const ERR = { 'PvP verifier unavailable': 'PvP 검증 서버 준비 중', 'rate limited': '잠시 후 다시 도전해 주세요', 'server settlement failed': '서버 정산 실패 · 다시 저장해 주세요', 'reward verification pending': '지급 보류', 'guard grade': '리더(수비대장)는 HR 이하', 'boss members': '멤버 1장 이상', 'no attempts left': '오늘 횟수 끝', 'not enough gem': '🔮 부족', 'deck required': '덱 필요', 'card not owned': '없는 인재', 'duplicate card': '중복', 'grade not allowed': 'HR 이하만', 'cost over 150': '코스트 150 초과', 'card used in another deck': '다른 덱에 있음', 'login required': '로그인 필요' };
 const errText = e => { const m = String(e?.message || e); const k = Object.keys(ERR).find(x => m.includes(x)); return k ? ERR[k] : m.slice(0, 40); };
 function toast(t) { const el = document.createElement('div'); el.className = 'pvp-toast'; el.textContent = t; document.body.appendChild(el); setTimeout(() => el.remove(), 1800); }
 

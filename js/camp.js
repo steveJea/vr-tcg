@@ -87,7 +87,7 @@
   async function open() {
     if (window.VRUnlocks && !window.VRUnlocks.guard('camp')) return;
     const box = shell('🏋️ 훈련소'); box.querySelector('.cbody').innerHTML = '<div class="camp-empty">불러오는 중...</div>';
-    try { await load(); } catch (e) { box.querySelector('.cbody').innerHTML = `<div class="camp-empty">${off ? '🔒' : esc(errText(e))}</div>`; return; }
+    try { await load(); } catch (e) { box.querySelector('.cbody').innerHTML = `<div class="camp-empty">${off ? '🔒 훈련소' : esc(errText(e))}</div>`; return; }
     if (await autoClaim()) return;
     draw();
   }
@@ -153,8 +153,11 @@
   }
   const jobOf = (k, slot = 1) => (st.jobs || []).find(j => j.kind === k && j.slot === slot);
   const jobState = j => { const fin = j.done || new Date(j.ends_at) <= Date.now(); return fin ? '<small class="camp-pend">완료!</small>' : `<small data-left="${esc(j.ends_at)}">⏳ ${left(j.ends_at)}</small>`; };
+  // 연마소·도장은 훈련소 건물 레벨이 아니라 계정 레벨(기본 20)로 잠근다. 레벨을 모르면 가격 버튼을 열지 않는다.
+  const facilityNeed = kind => { const n = Number(st[kind + '_account_level']); return Number.isFinite(n) && n > 0 ? n : 20; };
+  const facilityLocked = kind => { const lv = Number(st.level); return st[kind + '_open'] === false || !Number.isFinite(lv) || lv < facilityNeed(kind); };
   function forgeHTML() {
-    const need = st.forge_account_level ?? 20, lock = st.level < need, j = jobOf('forge');
+    const need = facilityNeed('forge'), lock = facilityLocked('forge'), j = jobOf('forge');
     let row;
     if (lock) row = `<div class="camp-slot locked"><span class="camp-no">🔒</span><div class="grow"><b>연마소</b></div><button class="go" disabled>Lv${need}</button></div>`;
     else if (j) { const fin = j.done || new Date(j.ends_at) <= Date.now();
@@ -163,14 +166,15 @@
     return `<div class="camp-sec">⚒️ 연마소</div>${row}`;
   }
   function dojoHTML() {
-    const need = st.dojo_account_level ?? 20, lock = st.level < need; let rows = '';
+    const need = facilityNeed('dojo'), lock = facilityLocked('dojo'); let rows = '';
     if (lock) rows = `<div class="camp-slot locked"><span class="camp-no">🔒</span><div class="grow"><b>도장</b></div><button class="go" disabled>Lv${need}</button></div>`;
     else {
       for (let s = 1; s <= st.dojo_slots; s++) { const j = jobOf('dojo', s);
         if (j) { const fin = j.done || new Date(j.ends_at) <= Date.now(), c = meta(rawOwned(j.card_uid).id ? rawOwned(j.card_uid) : { id: j.card });
           rows += `<div class="camp-slot ${fin ? 'ready' : ''}"><span style="--cg:${GC[c.g]};display:flex">${thumbImg(c.id, c.name)}</span><div class="grow"><b>${esc(c.name)}</b><small>「${esc(skillName(c.id, j.skill))}」 Lv${j.from} → Lv${j.from + 1}</small>${jobState(j)}</div>${fin ? `<button class="go" data-jclaim="${j.id}">받기</button>` : ''}</div>`; }
         else rows += `<div class="camp-slot"><span class="camp-no">${s}</span><div class="grow"><b>비어 있어요</b></div><button class="go" data-dojo="${s}">넣기</button></div>`; }
-      if (st.dojo_slots < 2) rows += `<div class="camp-slot locked"><span class="camp-no">🔒</span><div class="grow"><b>${st.dojo_slots ? '도장 2번 칸' : '도장'}</b></div><button class="go" data-dojounlock>🔮 ${fmt(st.dojo_next_cost)}</button></div>`;
+      // 계정 Lv 해금 뒤의 칸 구매. 잠금 표시가 아니라 가격 버튼이다 (동작은 그대로).
+      if (st.dojo_slots < 2) rows += `<div class="camp-slot"><span class="camp-no">${(st.dojo_slots | 0) + 1}</span><div class="grow"><b>도장 ${(st.dojo_slots | 0) + 1}번 칸</b></div><button class="go" data-dojounlock>🔮 ${fmt(st.dojo_next_cost)}</button></div>`;
     }
     return `<div class="camp-sec">🥋 도장</div>${rows}`;
   }
