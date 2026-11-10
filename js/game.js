@@ -183,7 +183,7 @@ async function startGame(story = null, at = null) {
   leaveBattleVoices();   // 다시하기는 서버 응답을 기다리는 동안에도 이전 결과 음성을 끊음
   if (story instanceof Event || story && typeof story.then === 'function') story = null;
   let arcadeSession=null;
-  if (!story && !at && window.VRCloud?.user) { try { arcadeSession=await startArcadeVerified(ArcadeOpts.load()); } catch(e) { (window.VRGem?.toast || alert)(e.message); return; } }
+  if (!story && !at && window.VRCloud?.user) { try { arcadeSession=await startArcadeVerified(ArcadeOpts.load()); } catch(e) { if (e?.code === 'account-changed') return; (window.VRGem?.toast || alert)(e.message); return; } }
   at = at && at.arcadeTut ? at : null; if (at) story = null; rngOn(!at);
   try { window.VRArcadeHub?.close?.(); } catch {}   // 아케이드 설정 [시작]으로 바로 시작하면 허브 창이 전투 위에 남아 있었음
   autoOn = localStorage.getItem(AUTO_KEY()) === '1';
@@ -196,7 +196,7 @@ async function startGame(story = null, at = null) {
   const ao = story || at ? ArcadeOpts.DEF : (arcadeSession?.options || ArcadeOpts.load()), grades = story || at ? null : allowedGrades(ao);
   const gPool = grades ? POOL.filter(c => grades.has(c.grade)) : null;
   S = { me: newPlayer('나', first !== 'me', at ? at.me : story?.me, at?.meHp || story?.meHp, fs, grades, !!at), ai: newPlayer(story?.aiName || '적군', first !== 'ai', at ? (at.aiDeck || []) : story?.ai, at?.aiHp || story?.aiHp, fs, grades, !!at), opts: ao, at, tutorial: at?.tutorial || null, maxTurns: story ? (story.rules?.maxTurns || RULES.MAX_TURNS) : (ao.turns || Infinity), first, story, turn: first, turnNo: 0, totalTurns: 0, myTurns: 0, over: false, busy: false, fxSeen: new Set(), mercBought: 0, mercHired: null, mercOffer: [], log: { dmg: new Map(), total: 0, skills: 0, merc: null, played: new Set(), kills: {}, blocks: {} } };
-  if (!story && !at) { const core=createArcade(arcadeSession?.seed ?? crypto.getRandomValues(new Uint32Array(1))[0],arcadeSession?.options || ao,POOL); S=Object.assign(core.state,{arcade:core,arcadeSession,story:null,at:null,busy:false,fxSeen:new Set()}); first=S.first; }
+  if (!story && !at) { const core=createArcade(arcadeSession?.seed ?? crypto.getRandomValues(new Uint32Array(1))[0],arcadeSession?.options || ao,POOL); S=Object.assign(core.state,{arcade:core,arcadeSession,story:null,at:null,busy:false,fxSeen:new Set(),account:arcadeSession?._owner||window.VRCloud?.user?.id||null}); first=S.first; }
   // 아케이드 일반대전(기본 설정)만 기지 보강·필드 회복·용병 고용 가능. 스토리·퀘스트·아케이드 변형 설정은 공격력 강화만
   S.limitedAids = !!story || !ArcadeOpts.isDefault(ao);
   if (!S.arcade) S.mercOffer = S.limitedAids ? [] : at ? (at.mercs || []) : Merc.roll(gPool || POOL, S.me);
@@ -969,7 +969,7 @@ function finish(win, reason) {
   if(S?.arcadeSession&&!S.arcadeSettled){
    if(S.arcadeSaving)return true;const battle=S, view=battleViewEpoch;S.arcadeSaving=true;S.arcadeError=null;S.over=true;S.busy=true;
    $('end-title').textContent='';for(const id of ['end-text','end-mvp-wrap','end-stats','end-share-msg'])$(id).textContent='';S.endShare=null;$('share-btn').disabled=true;$('restart-btn').disabled=true;$('end-screen').classList.remove('end-win','end-lose','end-draw');$('end-screen').classList.add('end-pending','hidden');setArcadeWait(true);$('end-screen').setAttribute('aria-busy','true');if($('gal-end'))$('gal-end').textContent='';
-   finishArcadeVerified(S.arcadeSession,S.arcade.result?S.arcade.actions:null).then(r=>{if(S!==battle)return;S.arcadeSettled=true;S.arcadeSaving=false;S.arcadeReceipt=r;S.log.total=r.damage;S.log.skills=r.skills;S.turnNo=r.turns;S.busy=false;if(view!==battleViewEpoch||$('game').classList.contains('hidden'))return;finish(r.result==='draw'?null:r.result==='win',r.reason);}).catch(e=>{if(S!==battle)return;S.arcadeSaving=false;S.busy=false;S.arcadeError={message:e.message,trace:e.trace};if(view!==battleViewEpoch||$('game').classList.contains('hidden'))return;setArcadeWait(false);$('end-screen').classList.remove('hidden');$('end-screen').setAttribute('aria-busy','false');$('end-title').textContent='검증을 완료하지 못했어요';$('end-text').textContent=e.message||'다시 시도해 주세요.';const b=document.createElement('button');b.className='main-btn';b.textContent='다시 시도';b.onclick=()=>finish(win,reason);$('end-text').appendChild(b);(window.VRGem?.toast||console.warn)(e.message);});return true;
+   finishArcadeVerified(S.arcadeSession,S.arcade.result?S.arcade.actions:null).then(r=>{if(S!==battle)return;S.arcadeSettled=true;S.arcadeSaving=false;S.arcadeReceipt=r;S.log.total=r.damage;S.log.skills=r.skills;S.turnNo=r.turns;S.busy=false;if(view!==battleViewEpoch||$('game').classList.contains('hidden'))return;finish(r.result==='draw'?null:r.result==='win',r.reason);}).catch(e=>{if(S!==battle)return;if(e?.code==='account-changed'){S.arcadeSettled=true;S.arcadeSaving=false;S.busy=false;$('game').classList.add('hidden');$('end-screen').classList.add('hidden');setArcadeWait(false);S=null;return;}S.arcadeSaving=false;S.busy=false;S.arcadeError={message:e.message,trace:e.trace};if(view!==battleViewEpoch||$('game').classList.contains('hidden'))return;setArcadeWait(false);$('end-screen').classList.remove('hidden');$('end-screen').setAttribute('aria-busy','false');$('end-title').textContent='검증을 완료하지 못했어요';$('end-text').textContent=e.message||'다시 시도해 주세요.';const b=document.createElement('button');b.className='main-btn';b.textContent='다시 시도';b.onclick=()=>finish(win,reason);$('end-text').appendChild(b);(window.VRGem?.toast||console.warn)(e.message);});return true;
   }
 
   $('share-btn').disabled=false;$('restart-btn').disabled=false;$('end-screen').setAttribute('aria-busy','false');
@@ -2395,7 +2395,7 @@ function giveUp() {
   if (!ov) { ov = document.createElement('div'); ov.id = 'giveup-confirm'; ov.className = 'fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4'; document.body.appendChild(ov); }
   ov.innerHTML = `<div class="giveup-box bg-zinc-900 border border-white/15 rounded-2xl p-5 max-w-xs w-full text-center"><div class="text-lg font-black mb-1">도전을 포기할까요?</div><div class="text-sm text-zinc-400 mb-4">패배로 처리돼요. 전투 EXP·보상은 받지 않아요.</div><div class="flex gap-2"><button class="flex-1 py-2.5 rounded-xl bg-zinc-700 font-bold" data-gu="no">계속 싸우기</button><button class="flex-1 py-2.5 rounded-xl bg-red-600 font-bold" data-gu="yes">포기</button></div></div>`;
   ov.classList.remove('hidden');
-  ov.onclick = e => { const b = e.target.closest('[data-gu]'); if (!b && e.target.closest('.giveup-box')) return; ov.classList.add('hidden'); if (b?.dataset.gu === 'yes' && !S.over) finish(false, 'giveup'); };
+  ov.onclick = e => { const b = e.target.closest('[data-gu]'); if (!b && e.target.closest('.giveup-box')) return; ov.classList.add('hidden'); if (b?.dataset.gu !== 'yes' || S?.over) return; if (S?.view) { S.view.abandon = true; S.view.ask?.({ k: 'end' }); return; } finish(false, 'giveup'); };
 }
 $('story-giveup')?.addEventListener('click', giveUp);
 function startStory(cfg) { hideModal('detail'); startGame(cfg); }
@@ -2437,7 +2437,14 @@ function openArcadeOpts() {
 }
 $('arcade-opts-btn')?.addEventListener('click', e => { e.stopPropagation(); playSe(4); openArcadeOpts(); });
 renderArcadeOptsBtn();
-window.addEventListener('vr:user', renderStats);   // 로그인·로그아웃·계정 변경 시 바로 갱신
+window.addEventListener('vr:user', () => {
+  renderStats();
+  const id = window.VRCloud?.user?.id || null;
+  if (!S?.account || S.account === id) return;
+  // A different account signed in. Do not settle or alert with the previous match.
+  if (S.view) { S.view.accountChanged = true; S.view.abandon = true; S.view.ask?.({ k: 'end' }); return; }
+  if (S.arcadeSession) { S.arcadeSettled = true; $('game')?.classList.add('hidden'); $('end-screen')?.classList.add('hidden'); setArcadeWait(false); S = null; }
+});   // 로그인·로그아웃·계정 변경 시 바로 갱신
 
 (async () => {
   try {
@@ -2508,7 +2515,7 @@ async function viewBattle0({ session, aiName = '상대', bg = 'normal', bgKey = 
   const hubWasOn = !$('start-screen').classList.contains('hidden');   // 메인 허브: 전투 후 class 'hidden' 도 원래대로 (조직 닫으면 검은 화면 방지)
   let x = session.next();
   const V = { auto: auto ?? !manual, A0: x.value.A0, B0: x.value.B0, ask: null }; fastForward = false;
-  S = { me: x.value.A, ai: x.value.B, view: V, story: { win: x.value.B.noBase ? 'wipe' : 'ko', view: true, aiName }, maxTurns: mt, first: 'me', turn: 'me', turnNo: 0, totalTurns: 0, myTurns: 0, over: false, busy: true, fxSeen: new Set(), mercBought: 0, mercHired: null, mercOffer: [], limitedAids: true,
+  S = { me: x.value.A, ai: x.value.B, view: V, account: window.VRCloud?.user?.id || null, story: { win: x.value.B.noBase ? 'wipe' : 'ko', view: true, aiName }, maxTurns: mt, first: 'me', turn: 'me', turnNo: 0, totalTurns: 0, myTurns: 0, over: false, busy: true, fxSeen: new Set(), mercBought: 0, mercHired: null, mercOffer: [], limitedAids: true,
     log: { dmg: new Map(), total: 0, skills: 0, merc: null, played: new Set(), kills: {}, blocks: {} } };
   S.me.name = '나'; S.ai.name = aiName;
   for (const w of ['me', 'ai']) { $(`${w}-hp`).classList.toggle('hidden', S[w].noBase); $(`${w}-hpbar`).parentElement.classList.toggle('hidden', S[w].noBase); }   // 보스리그: 진영 HP 표시
@@ -2557,8 +2564,11 @@ async function viewBattle0({ session, aiName = '상대', bg = 'normal', bgKey = 
     const seen = new Map(); for (const e of evs) { if (e.type === 'refund') continue; if (raid && e.type === 'dmg' && e.unit === V.B0[0]) continue;   /* 보스 원래 피해 숫자 대신 상한 적용 피해(bossNum) */
     try { onEngine(e); } catch (err) { reportError('view', err); }   // ⚠️ 주석 뒤에 붙이면 통째로 꺼짐 (#190~#195 스킬 타격·상태·레벨업 연출 누락 원인)
     if (gap && e.unit && ['levelup', 'mp', 'status', 'heal', 'immune', 'miss', 'resist', 'elfx'].includes(e.type)) { const n = (seen.get(e.unit) || 0) + 1; seen.set(e.unit, n); if (n > 0) await sleep(fxMs(gap)); } } await vidWait(); await passiveWait(); };
+  const give = $('story-giveup'); const giveHidden = give?.classList.contains('hidden');
+  if (!tutorial) give?.classList.remove('hidden');   // PvP·토벌·전쟁: 중도 포기는 패배. 특강 잠금은 그대로
   try {
     for (let g = 0; !x.done && g < 20000; g++) {
+      if (V.abandon) return { win: false, abandon: true, accountChanged: !!V.accountChanged };
       const v = x.value;
       if (V.skip) { drain(); x = v.ask ? session.next({ k: 'auto' }) : session.next(); continue; }   // SKIP 뒤: 연출 없이 엔진만
       if (v.anim) {
@@ -2590,7 +2600,8 @@ async function viewBattle0({ session, aiName = '상대', bg = 'normal', bgKey = 
         // Re-evaluate targets after EVERY action. null = base; undefined = blocked.
         const fromBatch = () => nextBatchAttack(V, S.me, S.ai);
         const inp = V.auto ? { k: 'auto' } : fromBatch() || await new Promise(res => { V.ask = i => { V.ask = null; V.nextBatch = null; res(i); }; V.nextBatch = () => { const b = fromBatch(); if (b) V.ask(b); }; });
-        V.ask = null; selected = null; S.busy = true; if (inp && inp.k !== 'end' && inp.k !== 'auto') S.meActed = true;
+        V.ask = null; selected = null; S.busy = true; if (V.abandon) return { win: false, abandon: true, accountChanged: !!V.accountChanged };
+        if (inp && inp.k !== 'end' && inp.k !== 'auto') S.meActed = true;
         x = session.next(inp); continue;
       }
       x = session.next();
@@ -2603,6 +2614,7 @@ async function viewBattle0({ session, aiName = '상대', bg = 'normal', bgKey = 
     await sleep(window.TCG_FAST ? 0 : 1200);
     return x.value;
   } finally {
+    if (giveHidden) give?.classList.add('hidden');
     clearInterval(tick); RB?.remove(); SKB.remove();
     mrCancel?.();
     dockStoryBuff(false); $('game').classList.remove('view-battle', 'view-raid', 'view-boss', 'story-field'); $('game').classList.add('hidden');

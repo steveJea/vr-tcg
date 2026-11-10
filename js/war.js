@@ -1,7 +1,7 @@
 // ===== 조직 전쟁 「구역 전쟁」 화면 =====
 // 서버: security_phase4_raid_guildwar.sql + guildbattle-verify-v4. 승패·HP·점수는 서버 재생만.
 // 그림: img/ui/guild/war_banner.webp · war_bg.webp · war_icon.webp · war_role_<def|atk|mid|boss|etc>.webp · war_ajit.webp · war_npc.webp (없으면 이모지). 카드는 IMG
-import { startVerified,finishVerified,recoverVerified } from './guildbattle-session.js';
+import { startVerified,finishVerified,forfeitVerified,recoverVerified } from './guildbattle-session.js';
 import { runWar, warSession, warDeck, warCard, WAR_ROLES } from './war-core.js';
 import { WAR_DECKS, deckLabel, pairedDeck, deckLock, pickPool, draftProblem } from './war-deck-controls.js';
 import { modeToggle, bindMode, battleMode } from './manual-ui.js';
@@ -98,7 +98,7 @@ let recovering=null;
 async function recoverPage(c) {
  if(!S||!visiblePage(c)||recovering===c.root)return;recovering=c.root;
  try{const r=await recoverVerified('war');if(r&&samePage(c)){await reload(c);if(visiblePage(c))showVerifiedResult(r);}}
- catch(e){if(visiblePage(c))toast(errText(e));}finally{if(recovering===c.root)recovering=null;}
+ catch(e){if(visiblePage(c)&&e?.code!=='account-changed')toast(errText(e));}finally{if(recovering===c.root)recovering=null;}
 }
 export async function open() {
     if (window.VRUnlocks && !window.VRUnlocks.guard('war')) return;
@@ -195,6 +195,7 @@ async function attack(slot, deck) {
     const ses = warSession(A, B, st.seed, log, { view: true, manual: true });
     // AUTO 도 실제 판 (AUTO 로 시작, 버튼으로 PLAY 전환 가능). 화면 결과를 신뢰하지 않고 행동 의도만 서버에 전송
     res = await V({ session: ses, aiName, manual: true, auto: !manual, maxTurns: 40, bg: 'war', music: window.VR_BGM?.guildBattle, title: `🏴 구역 전쟁 · ${aiName}` });
+    if (res?.abandon) { if (!res.accountChanged) { try { const r = await forfeitVerified('war', st); await reload(c); if (visiblePage(c)) showVerifiedResult(r); } catch (er) { if (visiblePage(c)) toast(errText(er)); } } paint(); return; }
     actions=ses.acts;
   } else { res = runWar(A, B, st.seed, log); await playback(res, log, t0); }
   try {const r=await finishVerified('war',st,actions);await reload(c);if(visiblePage(c))showVerifiedResult(r);}catch(er){if(visiblePage(c))toast('결과 미정산 · '+errText(er));}

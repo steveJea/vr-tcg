@@ -5,13 +5,17 @@
 --    닉네임 · 계정 레벨 · 리더 카드 id · 해당 리그/모드 PvP 덱(카드 id·레벨) · 소속 조직(이름·엠블럼)
 create or replace function public.pvp_user_info(p_league text, p_mode text, p_rank int) returns jsonb
 language plpgsql stable security definer set search_path = public as $$
-declare uid uuid := auth.uid(); s date := _pvp_season(); t uuid; g record; deck jsonb; lead text;
+declare uid uuid := auth.uid(); t uuid; g record; deck jsonb; lead text;
 begin
   if uid is null then raise exception 'login required' using errcode = '42501'; end if;
   perform _pvp_ok(p_league, p_mode);
   if p_rank is null or p_rank < 1 or p_rank > 100 then raise exception 'bad rank'; end if;
-  select x.user_id into t from (select r.user_id, row_number() over (order by r.rating desc, r.wins desc, r.user_id) rn
-      from pvp_ratings r where r.league = p_league and r.mode = p_mode and r.season = s and r.wins + r.losses > 0) x where x.rn = p_rank;
+  select x.user_id into t from (
+    select user_id, row_number() over (order by rating desc, wins desc, user_id) rn from (
+      select distinct on (r.user_id) r.user_id, r.rating, r.wins, r.losses
+        from pvp_ratings r
+       where r.league = p_league and r.mode = p_mode and r.wins + r.losses > 0
+       order by r.user_id, r.season desc) z) x where x.rn = p_rank;
   if t is null then raise exception 'not found'; end if;
   select o->>'id' into lead from story_progress sp, jsonb_array_elements(case when jsonb_typeof(sp.data->'owned') = 'array' then sp.data->'owned' else '[]'::jsonb end) o
     where sp.user_id = t and o->>'uid' = sp.data->>'leader' limit 1;

@@ -1,4 +1,6 @@
--- 파견 일괄 보내기 'DELETE requires a WHERE clause' 수정 (2026-11-04). dispatch.sql 뒤에 실행. create or replace 만 (데이터 변경 없음)
+-- 파견 일괄 보내기 'DELETE requires a WHERE clause' 수정 (2026-11-04).
+-- 최신 함수(같은 카드 id 중복 금지 포함)는 supabase/dispatch_where_clause.sql 을 실행하세요.
+-- 이 파일만 다시 실행하면 그 중복 검사가 빠집니다. dispatch.sql 뒤에만, batch_ui_bugs.sql 이전 데이터베이스용.
 -- 원인: dispatch_start 안 임시표 비우기 'delete from _dsp_pick;' 에 WHERE 가 없어 pg_safeupdate 가 막음 → 'where true' 추가 (동작 같음)
 create or replace function public.dispatch_start(p_slot int, p_uids text[], p_hours int) returns jsonb language plpgsql security definer set search_path = public as $$
 declare uid uuid := auth.uid(); o dispatch_offers; z dispatch_zones; owned jsonb; n int; mx int; bon int := 0; ne int; nc int; over boolean; k text; v numeric; rw jsonb := '{}'::jsonb; f numeric; great boolean := false; cnt int; d dispatch_daily;

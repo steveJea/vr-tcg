@@ -688,7 +688,7 @@ begin
   if n < 1 or n > z.size or (select count(distinct u) from unnest(p_uids) u) <> n then raise exception 'bad cards'; end if;
   owned := _dsp_owned(uid);
   -- 가진 카드인지 + 카드 정보
-  create temp table if not exists _dsp_pick (uid text, grade int, el text, cls text) on commit drop; delete from _dsp_pick;
+  create temp table if not exists _dsp_pick (uid text, grade int, el text, cls text) on commit drop; delete from _dsp_pick where true;
   insert into _dsp_pick select u, m.grade, m.el, m.cls from unnest(p_uids) u
     join lateral (select x from jsonb_array_elements(owned) x where x->>'uid' = u limit 1) ox on true
     join dispatch_card_meta m on m.id = ox.x->>'id';

@@ -34,8 +34,11 @@ create table if not exists public.pvp_events_v3(
 create or replace function public._pvp_lock_v3(l text,m text,s date) returns void language sql security definer
 set search_path=pg_catalog,public,pg_temp as $$ select pg_advisory_xact_lock(hashtext('pvp3:'||l||':'||m||':'||s::text)) $$;
 create or replace function public._pvp_rating_v3(u uuid,l text,m text,s date) returns public.pvp_ratings_v3 language plpgsql security definer
-set search_path=pg_catalog,public,pg_temp as $$ declare r public.pvp_ratings_v3; begin
- insert into public.pvp_ratings_v3(user_id,league,mode,season) values(u,l,m,s) on conflict do nothing;
+set search_path=pg_catalog,public,pg_temp as $$ declare r public.pvp_ratings_v3; p public.pvp_ratings_v3; begin
+ select * into p from public.pvp_ratings_v3 where user_id=u and league=l and mode=m and season<s order by season desc limit 1;
+ insert into public.pvp_ratings_v3(user_id,league,mode,season,rating,wins,losses,def_wins,def_losses)
+  values(u,l,m,s,coalesce(p.rating,1000),coalesce(p.wins,0),coalesce(p.losses,0),coalesce(p.def_wins,0),coalesce(p.def_losses,0))
+  on conflict do nothing;
  select * into r from public.pvp_ratings_v3 where user_id=u and league=l and mode=m and season=s; return r;
 end $$;
 create or replace function public._pvp_session_json_v3(a public.pvp_attempts,s public.pvp_sessions_v3) returns jsonb language sql stable security definer
