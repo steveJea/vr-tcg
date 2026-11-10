@@ -1171,7 +1171,7 @@ function endTurn() {
   if(S?.arcade){if(S.turn!=='me'||S.over||S.busy)return;arcadeRun('me',{k:'end'});selected=null;render();if(!checkEnd()&&S.arcade.nextWho)startTurn(S.arcade.nextWho);return;}
   if (S?.view) { S.view.ask?.({ k: 'end' }); return; }
   if (S.turn !== 'me' || S.over || S.busy) return;
-  noteAct('end');
+  if (S.directLog && !S.view) S.directLog.push({ t: S.myTurns | 0, k: 'end' });
   S.awakenPause = false;
   selected = null; S.undo = null;
   endTurnXp(S.me); turnEnd(S.me);

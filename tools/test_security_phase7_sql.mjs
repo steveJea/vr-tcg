@@ -17,6 +17,21 @@ assert.equal(ARCADE_HASH, 'e792c491ffafe19d047aa6f58db1920e5767e4059e14816611dd3
 assert.notEqual(ENGINE_VERSION, SWEEP_HASH);
 
 assert.throws(() => verifySweep({ mode: 'tower_sweep', target: 'normal:10', seed: 3, snapshot: { cards: [{ id: '10111', uid: 'u1', level: 80 }] } }), /boss floor/);
+function bossCdFight(cd) {
+  const session = { mode: 'story', target: '10:17', seed: 8, snapshot: { mana: null, leader: null, cards: [{ id: '10311', uid: 'p', level: 1 }],
+    stage: { type: 'boss', bossId: '10051', bossCdMinus: cd, baseHp: 999999, enemies: { ids: ['10051'], levels: { '10051': 2 }, boost: { '10051': { ATK: 200 } } } } } };
+  const log = [];
+  for (let n = 0; n < 40; n++) {
+    const res = verifyDirect(session, log);
+    if (res.reason !== 'incomplete') return res;
+    log.push({ t: res.my_turns, k: 'end' });
+  }
+  return null;
+}
+const bossCdPlain = bossCdFight(0), bossCdCut = bossCdFight(2);
+assert.equal(bossCdPlain.reason, 'wipe');
+assert.equal(bossCdCut.reason, 'wipe');
+assert.ok(bossCdCut.turns < bossCdPlain.turns, `bossCdMinus should make the boss skill return sooner (${bossCdCut.turns} vs ${bossCdPlain.turns})`);
 const claimBody = (id, actions = [], cards = []) => ({ op: 'direct', id, version: ENGINE_VERSION, actions, cards });
 function legalLog(session) {
   const log = [];

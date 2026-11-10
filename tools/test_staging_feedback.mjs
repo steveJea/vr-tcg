@@ -68,7 +68,7 @@ const game = read('js/game.js'), story = read('js/story.js');
   const gnb = read('js/gnb.js');
   vm.runInContext(section(gnb, '  const busy = ', '  const active = ') + ';globalThis.busy = busy;', ctx);
   assert.equal(ctx.busy(), true); result = false; assert.equal(ctx.busy(), false);
-  assert.equal((story.match(/show\(`<div class="story-battle-result /g) || []).length, 3, 'victory, defeat and result-save error');
+  assert.equal((story.match(/show\(`<div class="story-battle-result /g) || []).length, 4, 'victory, local defeat, server-replay defeat, and result-save error');
   assert(story.includes('window.VRGnb?.paint?.(); window.VRTnb?.paint?.();'), 'synchronously update navigation before measuring dialogue');
 }
 

@@ -106,6 +106,17 @@ export function towerEnemies(tower, floor) {
   return { enemies: [boss, ...(mins.length === 5 ? mins : (generated.enemies || []))], bossId: String(boss.id), aiHp: towerBossHp(floor), win: 'ko', heroGuard: 5 };
 }
 
+// Same card the live story battle picks, then the same gear.cd add (js/story.js bossOf + bossCdMinus).
+function applyBossCd(stage, enemies) {
+  if (stage?.type !== 'boss' || !stage.bossCdMinus || !enemies?.length) return enemies;
+  const bc = (stage.bossId != null && enemies.find(c => String(c.id) === String(stage.bossId)))
+    || (stage.enemyName && enemies.find(c => c.name === stage.enemyName))
+    || (stage.enemies?.ids ? enemies[0] : [...enemies].sort((a, b) => (b.power || 0) - (a.power || 0))[0]);
+  if (!bc) return enemies;
+  bc.gear = { ...(bc.gear || {}), cd: (bc.gear?.cd || 0) + (stage.bossCdMinus | 0) };
+  return enemies;
+}
+
 function combatCard(raw) {
   const src = raw?.loan && typeof raw.loan === 'object'
     ? { ...raw.loan, id: raw.id, uid: raw.uid, gear: raw.gear || raw.loan.gear || [], sigil: raw.sigil ?? raw.loan.sigil ?? null }
@@ -143,7 +154,7 @@ function specFrom(session, rng) {
       first: rng() < 0.5 ? 'me' : 'ai', mana: null, rules: {}, leaderUid: snap.leader || null,
     };
   }
-  const enemies = storyEnemies(stage, rng);
+  const enemies = applyBossCd(stage, storyEnemies(stage, rng));
   if (!enemies.length) throw new Error('unsupported battle');
   const mana = snap.mana == null ? null : Number(snap.mana);
   const boss = stage.type === 'boss' || stage.baseHp != null;
