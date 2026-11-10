@@ -1,5 +1,33 @@
 /* ===== 앱 같은 손맛 (js/polish.js 와 짝). transform·opacity 만, 게임 로직·전투 속도는 그대로 ===== */
-html { -webkit-tap-highlight-color: transparent; }
+/* 한글 줄바꿈: 단어(띄어쓰기) 단위. 한 단어가 칸보다 길면 그 단어만 자름 (index.html 과 같음) */
+html { word-break: keep-all; overflow-wrap: anywhere; -webkit-tap-highlight-color: transparent; }
+/* 대사·설명·팝업·상점·미션 본문. 기호 앞 줄바꿈을 줄이고 줄 끝을 고르게 (지원 브라우저만, 나머지는 무시) */
+.story-dlg-text,
+.story-intro-text,
+.story-skpop-d,
+.story-detail-skills,
+.story-leader-eff,
+.story-bond-eff,
+.story-pop-panel .text-sm,
+.story-pop-panel .text-xs,
+.shop-note,
+.shop-card p,
+.shop-empty,
+.daily-mt,
+.ci-sk,
+.tut-txt p,
+#tut-box .tt-text,
+#howto .ht-lines,
+.gear-msg-b,
+.gem-toast,
+.story-toast,
+.gd-toast,
+.pvp-toast,
+#help li,
+#help .text-zinc-400 {
+  line-break: strict;
+  text-wrap: pretty;
+}
 button, a, [role="button"], [data-go], .story-chip, .main-tile, .gr-go { touch-action: manipulation; }   /* 더블탭 확대 지연 없앰 */
 button, [role="button"], .main-tile, .gr-go, .story-chip, .set-toggle, .cd-sm, .cd-ic { transition: scale .12s ease, filter .12s ease; }
 button:not(:disabled):active, [role="button"]:active, .main-tile:active, .story-chip:active { scale: .96; filter: brightness(1.08); }   /* scale 속성: 원래 transform(가운데 정렬 등)과 겹쳐도 안 틀어짐 */

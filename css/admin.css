@@ -1,4 +1,4 @@
-*{box-sizing:border-box}body{margin:0;background:#0f0c18;color:#e5e7eb;font:14px/1.45 system-ui,-apple-system,'Apple SD Gothic Neo','Malgun Gothic',sans-serif}
+*{box-sizing:border-box}body{margin:0;background:#0f0c18;color:#e5e7eb;font:14px/1.45 system-ui,-apple-system,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;word-break:keep-all;overflow-wrap:anywhere}
 .ad-top{display:flex;align-items:center;gap:12px;padding:10px 14px;background:#17122a;border-bottom:1px solid #3b2f63;position:sticky;top:0;z-index:5}
 .ad-top h1{font-size:17px;margin:0;color:#f5c96a}.ad-home{color:#c4b5fd;text-decoration:none}.ad-who{margin-left:auto;font-size:12px;opacity:.75}
 .ad-root{max-width:1100px;margin:0 auto;padding:14px}
@@ -25,5 +25,5 @@
 .ad-nrow{display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap}.ad-nrow label{flex:1;min-width:120px}#ad-ncnt{opacity:.6;font-size:12px}
 .ad-nlist{display:flex;flex-direction:column;gap:6px;margin-top:10px}
 .ad-nitem{display:flex;gap:6px;align-items:center;padding:8px;border-radius:8px;background:rgba(255,255,255,.05)}.ad-nitem.pin{background:rgba(245,201,106,.14)}
-.ad-ntext{flex:1;min-width:0;word-break:break-all}.ad-ntext small{display:block;opacity:.55;font-size:11px;margin-top:2px}
+.ad-ntext{flex:1;min-width:0;word-break:keep-all}.ad-ntext small{display:block;opacity:.55;font-size:11px;margin-top:2px}
 .ad-btn.ad-del,.ad-danger .ad-btn{background:#b3261e;color:#fff}.ad-danger{border:1px solid #b3261e55;border-radius:8px;padding:8px}.ad-btn:disabled{opacity:.45;cursor:not-allowed}

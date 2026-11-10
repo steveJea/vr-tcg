@@ -3,7 +3,7 @@
 .legal-links a{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:4px 8px;color:#f5d58d;font:600 16px/1.5 system-ui,sans-serif;text-decoration:underline;text-underline-offset:4px}
 .legal-links a:hover{color:#fff0ca}.legal-links a:focus-visible{outline:2px solid #f5d58d;outline-offset:3px;border-radius:4px}
 .legal-links a[aria-current=page]{color:#fff0ca;text-decoration-thickness:3px}
-.legal-page{margin:0;color:#f4e8d6;background:radial-gradient(ellipse at top,#371017 0,#14070b 45%,#080407 100%);font:400 16px/1.85 system-ui,-apple-system,"Noto Sans KR",sans-serif;overflow-wrap:anywhere;color-scheme:dark}
+.legal-page{margin:0;color:#f4e8d6;background:radial-gradient(ellipse at top,#371017 0,#14070b 45%,#080407 100%);font:400 16px/1.85 system-ui,-apple-system,"Noto Sans KR",sans-serif;word-break:keep-all;overflow-wrap:anywhere;line-break:strict;text-wrap:pretty;color-scheme:dark}
 .legal-page *{box-sizing:border-box}.legal-shell{width:min(1080px,calc(100% - 32px));margin:0 auto;padding:24px 0 40px}
 .legal-header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;padding:8px 0 20px;border-bottom:1px solid #91673a}
 .legal-brand{color:#f5d58d;font:bold clamp(20px,4vw,28px)/1.3 Georgia,serif;letter-spacing:.05em;text-decoration:none}
