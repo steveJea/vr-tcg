@@ -267,7 +267,7 @@
 .turns-warn-p i.on{background:#fb923c!important}.turns-crit-p i.on{background:#ef4444!important}
 .last-turn-toast{position:fixed;left:50%;top:40%;transform:translate(-50%,-50%);z-index:60;padding:14px 28px;border-radius:18px;background:linear-gradient(135deg,#dc2626,#f97316);color:#fff;font-weight:900;font-size:clamp(22px,6vw,40px);box-shadow:0 0 40px #ef4444;pointer-events:none;animation:toastIn 2.2s ease forwards}
 @keyframes toastIn{0%{opacity:0;transform:translate(-50%,-50%) scale(.6)}12%{opacity:1;transform:translate(-50%,-50%) scale(1.1)}20%{transform:translate(-50%,-50%) scale(1)}80%{opacity:1}100%{opacity:0;transform:translate(-50%,-60%) scale(1)}}
-#me-field .unit.dragging { opacity: .9; filter: drop-shadow(0 0 12px #a78bfa); cursor: grabbing; } #me-hand::-webkit-scrollbar { height: 6px; } #me-hand::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 3px; }
+#me-field .unit, #me-field .unit img { -webkit-user-drag: none; user-select: none; } #me-field .unit.dragging { opacity: .9; filter: drop-shadow(0 0 12px #a78bfa); cursor: grabbing; } #me-hand::-webkit-scrollbar { height: 6px; } #me-hand::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 3px; }
     /* 모바일: 상단 버튼이 상대 진영 칸을 좁히지 않게 버튼 줄 → 상대 진영(전체 폭) 두 줄 배치 (내 진영과 같은 모양) */
     @media (max-width: 640px) {
       #top-bar { flex-wrap: wrap; justify-content: flex-end; row-gap: .4rem; }
