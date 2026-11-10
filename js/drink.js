@@ -29,16 +29,16 @@
   function ask(host, text) {
     return new Promise(res => {
       const a = document.createElement('div'); a.className = 'drink-ask';
-      a.innerHTML = `<div class="drink-ask-box"><p>${text}</p><div><button type="button" data-no>취소</button><button type="button" data-yes>확인</button></div></div>`;
+      a.innerHTML = `<div class="drink-ask-box" role="dialog">${text}<div class="drink-ask-acts"><button type="button" data-no>취소</button><button type="button" data-yes>확인</button></div></div>`;
       a.addEventListener('click', e => { e.stopPropagation(); if (e.target === a || e.target.closest('[data-no]')) { a.remove(); res(false); } else if (e.target.closest('[data-yes]')) { a.remove(); res(true); } });
-      host.appendChild(a);
+      document.body.appendChild(a);
     });
   }
   /** 심연석 팝업에 붙이기: 버튼 연결, 끝나면 redraw() */
   function bind(host, redraw) {
     host.querySelectorAll('[data-drink-buy]').forEach(b => b.onclick = async e => {
       e.stopPropagation(); const k = cache?.shop?.find(x => x.sku === b.dataset.drinkBuy); if (!k) return;
-      if (!await ask(host.querySelector('.gem-panel') || host, `${ICH} ${NAME} ${k.qty}개를<br>심연석 ${GEM}${n(k.price)}로 살까요?<br><small>무료 심연석을 먼저 써요</small>`)) return;
+      if (!await ask(host.querySelector('.gem-panel') || host, `<p>${ICH} ${NAME} ${k.qty}개를</p><p>심연석 ${n(k.price)}개로 살까요?</p><p class="drink-ask-note">무료 심연석을 먼저 써요</p>`)) return;
       b.disabled = true;
       try { const r = await rpc('drink_buy', { p_sku: k.sku }); if (r?.ok) { cache = r; toast(`${IC} ${NAME} +${r.bought}`); window.VRGem?.status?.(true); } }
       catch (er) { toast(errText(er)); }
@@ -46,7 +46,7 @@
     });
     host.querySelectorAll('[data-drink-use]').forEach(b => b.onclick = async e => {
       e.stopPropagation(); if (!cache) return;
-      if (!await ask(host.querySelector('.gem-panel') || host, `${ICH} 1개를 마셔서 행동력 +${cache.per}?`)) return;
+      if (!await ask(host.querySelector('.gem-panel') || host, `<p>${ICH} 1개를 마셔서</p><p>행동력 +${cache.per}?</p>`)) return;
       b.disabled = true;
       try { const r = await rpc('drink_use', { p_n: 1 }); if (r?.ok) { cache = r; toast(`🔋 행동력 +${r.used * r.per} (지금 ${n(r.stamina)})`); window.VRPlayer?.status?.(true); } }
       catch (er) { toast(errText(er)); }

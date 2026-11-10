@@ -55,6 +55,9 @@ assert.doesNotMatch(document.body.textContent,/행동력 최대 충전과는 다
 const drinkSrc=await read('js/drink.js');
 assert.equal((drinkSrc.match(/무료 심연석을 먼저/g)||[]).length,1);
 assert.match(drinkSrc,/무료 심연석을 먼저 써요/);
+assert.match(drinkSrc,/개를<\/p><p>심연석 \$\{n\(k\.price\)\}개로 살까요\?/);
+assert.match(drinkSrc,/1개를 마셔서<\/p><p>행동력/);
+assert.doesNotMatch(drinkSrc,/개를<br>심연석/);
 assert.equal((await read('js/shop.js')).includes('무료 심연석을 먼저'),false);
 assert.equal(document.querySelector('[data-gem-buy]'), null);
 assert.doesNotMatch(document.body.textContent,/심연석으로 사는 것/);

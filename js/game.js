@@ -22,8 +22,7 @@ const Stats = {
   record(win) { const s = this.load(); win === null ? s.draws++ : win ? s.wins++ : s.losses++; localStorage.setItem(this.KEY, JSON.stringify(s)); return s; },
 };
 
-// 카드 그림 대체: bt_img(외부 저장소)에 없는 카드(NPC 등)는 img/cards/<id>.webp
-document.addEventListener('error', e => { const t = e.target; if (t?.tagName !== 'IMG' || t.dataset.fb) return; const m = /\/bt_img\/(\d+)\.webp$/.exec(t.src || ''); if (m) { t.dataset.fb = '1'; t.src = `img/cards/${m[1]}.webp`; } }, true);
+// 카드 그림 대체는 js/img-fallback.js 가 맡는다. 여기선 없는 img/cards/<id>.webp 를 요청하지 않는다.
 let POOL = [], NPC = [];   // NPC: 스토리 적 전용 카드
 const isNpc = c => !!c && /^(1|true|npc|y)$/i.test(String(c.npc || '').trim());
 

@@ -37,7 +37,11 @@
     bar.querySelector('.tnb-back').onclick = back;
     bar.querySelector('.tnb-mail').onclick = () => { const G = window.VRGear; if (G && !G.off) G.mailbox({ back: () => G.unread?.() }); else document.querySelector('.story-mailbtn')?.click(); };
     bar.querySelector('.tnb-set').onclick = () => { if (where() === 'lobby') $('main-settings')?.click(); else window.VRSettings?.open?.(); };
-    bar.querySelectorAll('[data-cur]').forEach(b => b.onclick = () => window.VRGem?.open?.());
+    bar.querySelectorAll('[data-cur]').forEach(b => b.onclick = () => {
+      // 드링크 + 는 소모품(드링크) 탭. 마지막에 보던 패스 탭으로 다시 열리지 않게 한다.
+      if (b.dataset.cur === 'drink' && window.VRShop?.open) return window.VRShop.open('consume');
+      window.VRGem?.open?.();
+    });
   };
   build();
   document.body.appendChild(bar);
