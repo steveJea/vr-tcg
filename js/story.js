@@ -1063,6 +1063,8 @@
   /** 스토리 보호 규칙: 공격자 id → 공격하지 않는 카드 id (기본 공격·스킬·반격·광역 모두) */
   const STORY_SPARE = { '10383': ['10384'] };   // 조윤이 → 조윤하
   async function battle(ch, ph, enemies, picked) {
+    const hold = document.querySelector('.story-battle-result');
+    if (hold) hold.innerHTML = '<div class="text-center py-10 text-zinc-400">전투를 준비하고 있어요.</div>';
     const P = window.VRPlayer, ps = serverMode && P ? await P.status(true) : null;
     if (ps && ps.stamina < P.cost) { staminaShort(ps); return renderMap(); }
     await gearReady();

@@ -136,4 +136,14 @@ test('card border remains decorative; every equipped cosmetic stays supported', 
   assert.match(css, /#game \.card-frame > \.cosmo-bdr\s*\{[^}]*mix-blend-mode:\s*screen/);
   assert.match(css, /html\.ios #game \.card-frame > \.cosmo-bdr\s*\{display:none\}/);
 });
+test('field drag lands on the card under the pointer, including a move to the left', () => {
+  const h = harness();
+  vm.runInContext(section('function fieldDropTo(', 'function moveFieldCard('), h);
+  const rects = [{ left: 0, right: 80, width: 80 }, { left: 90, right: 170, width: 80 }, { left: 180, right: 260, width: 80 }];
+  assert.equal(h.fieldDropTo(rects, 1, 40), 0);
+  assert.equal(h.fieldDropTo(rects, 0, 130), 1);
+  assert.equal(h.fieldDropTo(rects, 0, 400), 2);
+  assert.equal(h.fieldDropTo(rects, 0, 175), 1);
+  assert.equal(h.fieldDropTo(rects, 2, -10), 0);
+});
 console.log(`${checks} battle presentation regressions passed`);

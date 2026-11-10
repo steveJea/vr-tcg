@@ -173,7 +173,10 @@ function specFrom(session, rng) {
     ai: enemies,
     win: boss ? 'ko' : 'wipe',
     aiHp: boss ? storyBossHp(chapter, stage) : null,
-    bossId: stage.bossId != null ? String(stage.bossId) : (stage.rules?.invuln != null ? String(stage.rules.invuln) : null),
+    // The live fight only puts a card in the boss slot when the phase type is boss.
+    // Normal phases still carry bossId in the chapter data; treating that as undying
+    // leaves the card at 1 HP and the wipe never finishes.
+    bossId: stage.type === 'boss' && stage.bossId != null ? String(stage.bossId) : (stage.rules?.invuln != null ? String(stage.rules.invuln) : null),
     heroGuard: 0,
     first: stage.enemyFirst ? 'ai' : 'me',
     mana: Number.isFinite(mana) ? mana : null,
