@@ -2132,6 +2132,20 @@
     lastDeck: (mode = 'tower') => { const all = deckInstances(); if (all.length <= MAX_PICK()) return all; let last = []; try { last = JSON.parse(pickKeyRead(mode) || '[]'); } catch {} const by = new Map(all.map(o => [o.uid, o])); return last.map(u => by.get(u)).filter(Boolean).slice(0, MAX_PICK()); },
   };
   const openPage = async fn => { if ((await enter()) === 'gate') return; if (save?.starter) fn(); };   // 오프닝·챕터 0·강제 영입·캐릭터 고르기 중이면 그 화면 유지 (위에 다른 화면 덮지 않음)
+  // 보유 인재·덱은 챕터 0 이어하기(autoCh0)를 타면 안 됨. enter()는 ch0이 안 끝났으면 사냥 같은 다음 페이즈를 바로 연다.
+  async function openRoster(fn) {
+    if (!user()) {
+      popup(`<div class="text-xl font-black mb-2">보유 인재</div>
+        <button id="story-login" class="w-full py-3 rounded-xl bg-amber-400 text-black font-bold">${ic('login', { alt: '' })} 로그인</button><button data-close-pop class="w-full mt-2 py-2 rounded-xl bg-white/10">닫기</button>`);
+      $('story-login').onclick = () => window.VRCloud?.login?.();
+      return;
+    }
+    if (!window.TCG?.ready) return;
+    await load();
+    if (!save) return;
+    if (serverMode) { try { await window.VRGear?.load?.(); } catch {} }
+    fn();
+  }
   /** 조직 대여 등록용: 내 인재 목록 (카드마다 1장) */
   async function lendCards() { if (!user()) return []; if (!save) await load(); return (save ? deckInstances() : []).map(o => ({ uid: o.uid, id: o.id, name: card(o.id)?.name || o.id, level: o.level | 0, grade: card(o.id)?.grade, _i: save.owned.indexOf(o) })); }
   /** 다른 창(조직 대여)용 정렬 탭: 상태 st = { k, desc } 를 따로 들고 (스토리 저장 정렬은 안 바꿈) */
@@ -2140,5 +2154,5 @@
     sort: (list, st) => { const k0 = cardSort; cardSort = st; try { return sortInst(list); } finally { cardSort = k0; } },
     next: (st, k) => st.k === k ? { k, desc: !st.desc } : { k, desc: true },
   };
-  window.VRStory = { hubSections: HUB_SECTIONS, play: () => enter('go'), canDraw: () => canDraw(), trainCard, canMergeUid, sortTool, skBadge, lendCards, reloadLend: () => loadLend(true), partyOf, pickDeck, openMap: i => openPage(() => renderMap(i)), openCards: () => openPage(renderCards), openDecks: () => openPage(renderDecks), openShop: () => openPage(renderShop), api, bgm, BGM, endingVideo, videoOf, conditionsOf, battleRules, summary, enter, openGacha, renderHub, renderShop, drawOnce, kstDay, get save() { return save; }, renderMap, renderCards, openStats, renderSelect, playLines };
+  window.VRStory = { hubSections: HUB_SECTIONS, play: () => enter('go'), canDraw: () => canDraw(), trainCard, canMergeUid, sortTool, skBadge, lendCards, reloadLend: () => loadLend(true), partyOf, pickDeck, openMap: i => openPage(() => renderMap(i)), openCards: () => openRoster(renderCards), openDecks: () => openRoster(renderDecks), openShop: () => openPage(renderShop), api, bgm, BGM, endingVideo, videoOf, conditionsOf, battleRules, summary, enter, openGacha, renderHub, renderShop, drawOnce, kstDay, get save() { return save; }, renderMap, renderCards, openStats, renderSelect, playLines };
 })();

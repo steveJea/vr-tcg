@@ -40,11 +40,11 @@ set local check_function_bodies = off;
 
 do $vr_install_part$
 begin
-  if exists (select 1 from vr_staging_install.parts where bundle_hash <> 'd7d89da318ab1607c923a8d19e4fbc0734a34a5763a279ee027425b6e83045d7' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
+  if exists (select 1 from vr_staging_install.parts where bundle_hash <> '580ba692ace7d90123f771f896d6d224a1da07f8118f6139760a81ccfe07437f' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
     raise exception 'STOP: 다른 버전/DB의 설치 기록입니다. 파일을 섞지 마세요.';
   end if;
   if exists (select 1 from vr_staging_install.parts where part_no = 8) then
-    if not exists (select 1 from vr_staging_install.parts where part_no = 8 and part_hash = '88b786d177f12a46ca801845bbeb154575ba785421933e5efbc0d107939c19ad') then
+    if not exists (select 1 from vr_staging_install.parts where part_no = 8 and part_hash = '97449d92e869486a7ccc32fd279b4028b45d3dbfb8e32f18ff93c237e6d72ffe') then
       raise exception 'STOP: 완료한 파일과 내용이 다릅니다.';
     end if;
     raise notice '08_install.sql: 이미 완료, 변경 없이 건너뜀';
@@ -55,6 +55,32 @@ begin
   end if;
   -- 설치 도중에는 클라이언트가 미완성 게임 스키마에 접근하지 못함. 마지막에만 개방.
   revoke usage on schema public from public, anon, authenticated;
+  execute $vr_statement$-- ===== SOURCE: friend_battle.sql =====
+-- =====================================================================
+-- ⚔️ 친구 대전 (2단계) — 여러 번 실행해도 안전, 삭제 없음
+-- 선행: friends.sql(friendships, _is_friend) · pvp.sql(pvp_decks, _pvp_snap, _pvp_day) · manual_battle.sql(_battle_acts_ok)
+-- 방식: 기존 PvP 와 같은 비동기. 상대 = 친구의 PvP 방어 덱(무제한 리그) 스냅샷, 서버 seed 발급
+-- 레이팅·랭킹·보상 없음. 하루 20회(KST). 결과 + seed + 양쪽 스냅샷 + 수동 행동 기록 저장 → 3단계 리플레이 공유가 이 행(id)을 참조
+-- 공개 RPC: friend_battle_start(p_friend uuid, p_mode text) · friend_battle_report(p_id bigint, p_wins int, p_losses int, p_actions jsonb)
+--           friend_battle_history(p_friend uuid default null)
+-- =====================================================================
+
+create table if not exists public.friend_battles (
+  id          bigint generated always as identity primary key,
+  user_id     uuid not null references auth.users(id) on delete cascade,   -- 도전한 사람
+  opp_user    uuid not null references auth.users(id) on delete cascade,   -- 친구 (방어 덱)
+  mode        text not null check (mode in ('1v1','3v3')),
+  day         date not null,
+  seed        bigint not null,
+  my_snap     jsonb not null,
+  opp_snap    jsonb not null,
+  manual      boolean not null default false,
+  actions     jsonb,                                                       -- 수동 전투 행동 기록 (리플레이용)
+  created_at  timestamptz not null default now(),
+  reported_at timestamptz, wins smallint, losses smallint, win boolean
+);$vr_statement$;
+  execute $vr_statement$create index if not exists friend_battles_user_idx on public.friend_battles (user_id, created_at desc);$vr_statement$;
+  execute $vr_statement$create index if not exists friend_battles_opp_idx on public.friend_battles (opp_user, created_at desc);$vr_statement$;
   execute $vr_statement$alter table public.friend_battles enable row level security;$vr_statement$;
   execute $vr_statement$revoke all on public.friend_battles from public, anon, authenticated;$vr_statement$;
   execute $vr_statement$create or replace function public._fb_daily_max() returns int language sql immutable as $$ select 20 $$;$vr_statement$;
@@ -1000,7 +1026,9 @@ end $$;$vr_statement$;
   execute $vr_statement$revoke all on function public.dispatch_status(), public.dispatch_refresh(), public.dispatch_start(int, text[], int), public.dispatch_recall(bigint), public.dispatch_claim(bigint) from public, anon;$vr_statement$;
   execute $vr_statement$grant execute on function public.dispatch_status(), public.dispatch_refresh(), public.dispatch_start(int, text[], int), public.dispatch_recall(bigint), public.dispatch_claim(bigint) to authenticated;$vr_statement$;
   execute $vr_statement$-- ===== SOURCE: dispatch_safeupdate.sql =====
--- 파견 일괄 보내기 'DELETE requires a WHERE clause' 수정 (2026-11-04). dispatch.sql 뒤에 실행. create or replace 만 (데이터 변경 없음)
+-- 파견 일괄 보내기 'DELETE requires a WHERE clause' 수정 (2026-11-04).
+-- 최신 함수(같은 카드 id 중복 금지 포함)는 supabase/dispatch_where_clause.sql 을 실행하세요.
+-- 이 파일만 다시 실행하면 그 중복 검사가 빠집니다. dispatch.sql 뒤에만, batch_ui_bugs.sql 이전 데이터베이스용.
 -- 원인: dispatch_start 안 임시표 비우기 'delete from _dsp_pick;' 에 WHERE 가 없어 pg_safeupdate 가 막음 → 'where true' 추가 (동작 같음)
 create or replace function public.dispatch_start(p_slot int, p_uids text[], p_hours int) returns jsonb language plpgsql security definer set search_path = public as $$
 declare uid uuid := auth.uid(); o dispatch_offers; z dispatch_zones; owned jsonb; n int; mx int; bon int := 0; ne int; nc int; over boolean; k text; v numeric; rw jsonb := '{}'::jsonb; f numeric; great boolean := false; cnt int; d dispatch_daily;
@@ -1795,44 +1823,9 @@ end $$;$vr_statement$;
   execute $vr_statement$revoke all on function public.story_star_status(), public.story_star_claim(int, text) from public, anon;$vr_statement$;
   execute $vr_statement$grant execute on function public.story_star_status(), public.story_star_claim(int, text) to authenticated;$vr_statement$;
   execute $vr_statement$select 'story_star_rewards ok' as result;$vr_statement$;
-  execute $vr_statement$-- ===== SOURCE: camp.sql =====
--- ===== 훈련소 1단계 (인재를 넣어 두면 시간이 지나며 EXP 가 쌓임) =====
--- Supabase SQL Editor 에서 실행. 여러 번 실행해도 안전 (테이블·데이터 삭제 없음)
--- 선행: phaseE_1.sql(_wallet_add) · phaseE_2.sql(_player_sync) · gem.sql(_gem_spend) · story_levels.sql / story_merge.sql(_story_gain · _story_cap · 인재 uid)
--- 규칙
---  * 칸 5개: 1칸 플레이어 Lv10 무료 · 2칸 Lv20 골드 2만 · 3칸 Lv35 골드 5만 · 4칸 Lv50 심연석 300 · 5칸 Lv70 심연석 800
---  * EXP: 칸 하나에 시간당 20 + 플레이어 레벨 × 1.5 (받을 때 레벨 기준). 마지막으로 받은 뒤 최대 24시간까지만 쌓임
---  * 레벨 상한: min(등급 최대 레벨(EX 포함), 플레이어 레벨 − 5). 상한에 닿으면 더 안 쌓임
---  * 시간은 서버 now() 만 사용. 훈련 중인 인재도 덱·스토리·PvP 사용 가능
---  * 훈련 중인 인재는 거래 등록·분해·합성 재료로 못 씀 (story_progress 에서 빠지려 하면 거부하는 트리거)
-
--- 1) 테이블 (행이 있으면 그 칸은 열린 것)
-create table if not exists public.camp_slots (
-  user_id  uuid not null references auth.users(id) on delete cascade,
-  slot     int  not null check (slot between 1 and 5),
-  card_uid text,
-  last_at  timestamptz,
-  opened_at timestamptz not null default now(),
-  primary key (user_id, slot));$vr_statement$;
-  execute $vr_statement$create unique index if not exists camp_slots_card on public.camp_slots (user_id, card_uid) where card_uid is not null;$vr_statement$;
-  execute $vr_statement$alter table public.camp_slots enable row level security;$vr_statement$;
-  execute $vr_statement$revoke all on public.camp_slots from anon, authenticated;$vr_statement$;
-  execute $vr_statement$drop policy if exists camp_slots_own on public.camp_slots;$vr_statement$;
-  execute $vr_statement$create policy camp_slots_own on public.camp_slots for select using (user_id = auth.uid());$vr_statement$;
-  execute $vr_statement$grant select on public.camp_slots to authenticated;$vr_statement$;
-  execute $vr_statement$-- 2) 수치
-create or replace function public._camp_need_level(s int) returns int language sql immutable as $$ select case s when 1 then 10 when 2 then 20 when 3 then 35 when 4 then 50 when 5 then 70 end $$;$vr_statement$;
-  execute $vr_statement$create or replace function public._camp_cost(s int) returns jsonb language sql immutable as $$
-  select case s when 1 then '{}'::jsonb when 2 then '{"gold":20000}'::jsonb when 3 then '{"gold":50000}'::jsonb when 4 then '{"gem":300}'::jsonb when 5 then '{"gem":800}'::jsonb end $$;$vr_statement$;
-  execute $vr_statement$create or replace function public._camp_rate(plv int) returns numeric language sql immutable as $$ select 20 + 1.5 * greatest(plv, 1) $$;$vr_statement$;
-  execute $vr_statement$create or replace function public._camp_max_hours() returns int language sql immutable as $$ select 24 $$;$vr_statement$;
-  execute $vr_statement$create or replace function public._camp_cap(g text, ex int, plv int) returns int language sql immutable as $$ select least(_story_cap(g, ex), plv - 5) $$;$vr_statement$;
-  execute $vr_statement$-- 3) 도우미
-create or replace function public._camp_plv(p_uid uuid) returns int language plpgsql security definer set search_path = public as $$
-declare lv int; begin select (_player_sync(p_uid)).level into lv; return coalesce(lv, 1); end $$;$vr_statement$;
 
   insert into vr_staging_install.parts(part_no, bundle_hash, part_hash, project_ref, db_id)
-  values (8, 'd7d89da318ab1607c923a8d19e4fbc0734a34a5763a279ee027425b6e83045d7', '88b786d177f12a46ca801845bbeb154575ba785421933e5efbc0d107939c19ad', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
+  values (8, '580ba692ace7d90123f771f896d6d224a1da07f8118f6139760a81ccfe07437f', '97449d92e869486a7ccc32fd279b4028b45d3dbfb8e32f18ff93c237e6d72ffe', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
 end $vr_install_part$;
 commit;
 select '08_install.sql: 완료 또는 이미 완료 (8/14)' as result;

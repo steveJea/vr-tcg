@@ -13,10 +13,13 @@ create table if not exists public.payment_products (
  bonus_gems integer not null default 0 check(bonus_gems between 0 and 100000), currency text not null default 'KRW' check(currency='KRW'),
  active boolean not null default true, placeholder boolean not null default true check(placeholder), sort integer not null default 0
 );
--- 최초 설치에만 임시가 삽입. 재실행해도 운영자가 수정한 테스트 가격/활성 상태 보존.
+-- BM 2026-11-10 심연석 충전. 최초 설치에만 넣음. 재실행은 운영자가 바꾼 가격을 덮지 않음 (do nothing).
+-- 이미 깔린 테스트 DB의 옛 수량(gem_1000 1,000+100, gem_3000 3,000+450)은 supabase/shop_bm_staging.sql 이 고친다.
+-- gem_500 의 25는 표기 수량 525 안의 기본 보너스(유료 500+무료 25)이지, 첫 구매 2배와 별개다.
 insert into public.payment_products(id,name,amount,paid_gems,bonus_gems,sort) values
- ('gem_100','심연석 100',1100,100,0,1),('gem_500','심연석 500 + 25',5500,500,25,2),
- ('gem_1000','심연석 1,000 + 100',11000,1000,100,3),('gem_3000','심연석 3,000 + 450',33000,3000,450,4)
+ ('gem_100','심연석 100',1100,100,0,1),('gem_500','심연석 525',5500,500,25,2),
+ ('gem_1000','심연석 1,050',11000,1050,0,3),('gem_3000','심연석 3,200',33000,3200,0,4),
+ ('gem_55000','심연석 5,500',55000,5500,0,5)
 on conflict(id) do nothing;
 create table if not exists public.payment_orders (
  order_id text primary key default ('vrs_'||replace(gen_random_uuid()::text,'-','')) check(order_id ~ '^vrs_[a-f0-9]{32}$'),
@@ -30,6 +33,8 @@ create table if not exists public.payment_orders (
  check((status='paid')=(receipt is not null and paid_at is not null)), check(status<>'paid' or payment_key is not null)
 );
 create index if not exists payment_orders_user_time on public.payment_orders(user_id,created_at desc);
+-- 첫 구매 2배(BM 2026-11-10, 3배는 아님)를 정산 때 주문 스냅샷에 반영했는지. 환불은 이 스냅샷과 원장을 맞춘다.
+alter table public.payment_orders add column if not exists first_bonus boolean not null default false;
 alter table public.payment_products enable row level security;
 alter table public.payment_orders enable row level security;
 revoke all on public.payment_products,public.payment_orders from public,anon,authenticated;
@@ -87,9 +92,16 @@ begin
  if p_key is null or o.payment_key is distinct from p_key or p_amount is distinct from o.amount or p_currency is distinct from o.currency
  or p_status is distinct from 'DONE' or p_balance is distinct from o.amount or coalesce(p_approved,'')='' then raise exception 'payment mismatch'; end if;
  if o.status='paid' then return o.receipt; end if;
- g:=public._gem_add(p_uid,o.bonus_gems,o.paid_gems,'iap','toss:'||o.order_id,jsonb_build_object('provider','toss-test','orderId',o.order_id,'amount',o.amount,'product',o.product_id));
+ -- 2× first purchase, once per SKU: listed grant PLUS an equal bonus (100 → 200). Not 3×.
+ -- Built-in bonus (gem_500 +25 free) is part of the listed grant and is doubled with it.
+ -- The order snapshot is doubled before the ledger insert so refunds still match d_paid/d_free.
+ perform pg_advisory_xact_lock(hashtextextended('payments:'||p_uid::text,0));
+ if not exists (select 1 from public.payment_orders where user_id=p_uid and product_id=o.product_id and status='paid' and order_id<>o.order_id) then
+  update public.payment_orders set paid_gems=paid_gems*2, bonus_gems=bonus_gems*2, first_bonus=true where order_id=o.order_id returning * into o;
+ end if;
+ g:=public._gem_add(p_uid,o.bonus_gems,o.paid_gems,'iap','toss:'||o.order_id,jsonb_build_object('provider','toss-test','orderId',o.order_id,'amount',o.amount,'product',o.product_id,'firstBonus',o.first_bonus));
  if g is null then raise exception 'ledger conflict'; end if;
- r:=jsonb_build_object('ok',true,'orderId',o.order_id,'paidGems',o.paid_gems,'bonusGems',o.bonus_gems,'wallet',g);
+ r:=jsonb_build_object('ok',true,'orderId',o.order_id,'paidGems',o.paid_gems,'bonusGems',o.bonus_gems,'firstBonus',o.first_bonus,'wallet',g);
  update public.payment_orders set status='paid',paid_at=clock_timestamp(),receipt=r where order_id=o.order_id;
  return r;
 end $$;

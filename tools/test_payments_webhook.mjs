@@ -48,7 +48,7 @@ try{
  await db.exec("select set_config('test.payment_db','7703759698107299042',false)");
  await db.exec(migration);await db.exec(migration);
  for(const who of ['anon','authenticated'])for(const expr of ["_payment_external_reconcile_v1('x','x',100,'KRW','CANCELED',0,'[]','mid')","_payment_provider_key_v1('x')"])await assert.rejects(call(who,user,expr),/permission denied/);
- const fresh=await paid();assert.deepEqual(await wallet(fresh.user_id),{paid:100,free:0});
+ const fresh=await paid();assert.deepEqual(await wallet(fresh.user_id),{paid:200,free:0});
  const done=await reconcile(fresh,{status:'DONE',balance:fresh.amount,cancels:[]});assert.equal(done.state,'open');assert.equal(await holds(fresh.user_id),0);
  const once=await reconcile(fresh);assert.equal(once.state,'refunded');assert.deepEqual(await wallet(fresh.user_id),{paid:0,free:0});assert.equal(await holds(fresh.user_id),1);
  assert.equal((await q('select cancel_origin from payment_orders where order_id=$1',[fresh.order_id]))[0].cancel_origin,'toss');
@@ -60,7 +60,7 @@ try{
  assert.equal((await reconcile(late)).state,'refunded');assert.deepEqual(await wallet(late.user_id),{paid:0,free:0});
  const part=await paid();const partCancels=proof(100,'partial_transaction');
  const partial=await reconcile(part,{status:'PARTIAL_CANCELED',balance:part.amount-100,cancels:partCancels});
- assert.equal(partial.state,'review');assert.equal(partial.reason,'external partial');assert.equal(partial.reclaimed,false);assert.deepEqual(await wallet(part.user_id),{paid:100,free:0});assert.equal(await holds(part.user_id),0);
+ assert.equal(partial.state,'review');assert.equal(partial.reason,'external partial');assert.equal(partial.reclaimed,false);assert.deepEqual(await wallet(part.user_id),{paid:200,free:0});assert.equal(await holds(part.user_id),0);
  assert.equal((await q('select cancel_status,cancel_amount,provider_status,cancel_source from payment_orders where order_id=$1',[part.order_id]))[0].cancel_amount,100);
  assert.equal((await q('select cancel_origin from payment_orders where order_id=$1',[part.order_id]))[0].cancel_origin,'toss');
  assert.equal((await reconcile(part)).state,'refunded');assert.deepEqual(await wallet(part.user_id),{paid:0,free:0});assert.equal(await holds(part.user_id),1);

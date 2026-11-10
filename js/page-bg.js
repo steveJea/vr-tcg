@@ -3,7 +3,7 @@
 (() => {
   const MAP = [
     [/^quest$/, null],
-    [/^exchange/, 'exchange'], [/^pvpshop$|^gem$/, 'shop'], [/^pvp/, 'pvp'], [/^guild/, 'guild'], [/^raid/, 'raid'], [/^war/, 'war'],
+    [/^exchange/, 'exchange'], [/^pvpshop$|^gem$|^shop$/, 'shop'], [/^pvp/, 'pvp'], [/^guild/, 'guild'], [/^raid/, 'raid'], [/^war/, 'war'],
     [/^friends/, 'social'], [/^ranking/, 'ranking'], [/^daily/, 'daily'], [/^mypage/, 'mypage'], [/^gallery/, 'gallery'],
     [/^dispatch/, 'dispatch'], [/^gearbag/, 'gear'], [/^story-p/, 'story'],
   ];

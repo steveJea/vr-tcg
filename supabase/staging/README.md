@@ -1,4 +1,4 @@
-# 테스트 DB 분할 설치 — 01번부터 13번까지
+# 테스트 DB 분할 설치 — 01번부터 14번까지
 
 **이미 설치된 테스트 DB에는 새 설치본을 재실행하지 마세요.** bundle 해시가 달라집니다. [보안 3단계 migration 안내](../../docs/SECURITY_PHASE3.md)에 따라 기존 DB는 1단계 → 2단계 → 3단계 개별 SQL만 적용하세요. 새 설치본은 1단계 지급 보호와 2단계 tutorial/story/tower와 3단계 서버 PvP 정산을 포함합니다. PvP Edge Function도 별도 배포해야 합니다.
 
@@ -16,15 +16,16 @@
 2. [`02_install.sql`](02_install.sql) — 129,719바이트
 3. [`03_install.sql`](03_install.sql) — 129,493바이트
 4. [`04_install.sql`](04_install.sql) — 128,821바이트
-5. [`05_install.sql`](05_install.sql) — 129,677바이트
-6. [`06_install.sql`](06_install.sql) — 129,777바이트
-7. [`07_install.sql`](07_install.sql) — 129,784바이트
-8. [`08_install.sql`](08_install.sql) — 129,623바이트
-9. [`09_install.sql`](09_install.sql) — 129,647바이트
-10. [`10_install.sql`](10_install.sql) — 125,063바이트
-11. [`11_install.sql`](11_install.sql) — 129,596바이트
-12. [`12_install.sql`](12_install.sql) — 128,904바이트
-13. [`13_install.sql`](13_install.sql) — 27,768바이트
+5. [`05_install.sql`](05_install.sql) — 129,767바이트
+6. [`06_install.sql`](06_install.sql) — 128,133바이트
+7. [`07_install.sql`](07_install.sql) — 129,630바이트
+8. [`08_install.sql`](08_install.sql) — 128,345바이트
+9. [`09_install.sql`](09_install.sql) — 127,746바이트
+10. [`10_install.sql`](10_install.sql) — 116,817바이트
+11. [`11_install.sql`](11_install.sql) — 129,566바이트
+12. [`12_install.sql`](12_install.sql) — 129,366바이트
+13. [`13_install.sql`](13_install.sql) — 128,953바이트
+14. [`14_install.sql`](14_install.sql) — 80,796바이트
 
 ## 안전장치
 

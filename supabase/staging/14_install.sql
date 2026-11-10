@@ -40,11 +40,11 @@ set local check_function_bodies = off;
 
 do $vr_install_part$
 begin
-  if exists (select 1 from vr_staging_install.parts where bundle_hash <> 'd7d89da318ab1607c923a8d19e4fbc0734a34a5763a279ee027425b6e83045d7' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
+  if exists (select 1 from vr_staging_install.parts where bundle_hash <> '580ba692ace7d90123f771f896d6d224a1da07f8118f6139760a81ccfe07437f' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
     raise exception 'STOP: 다른 버전/DB의 설치 기록입니다. 파일을 섞지 마세요.';
   end if;
   if exists (select 1 from vr_staging_install.parts where part_no = 14) then
-    if not exists (select 1 from vr_staging_install.parts where part_no = 14 and part_hash = '4751c85533585c16010801da7d598e22e802fe20588fabc1661d076f8ac267aa') then
+    if not exists (select 1 from vr_staging_install.parts where part_no = 14 and part_hash = '5f43011c9266af48fb2e2adf81a32bdc84a916900913f7527930021412e6030d') then
       raise exception 'STOP: 완료한 파일과 내용이 다릅니다.';
     end if;
     raise notice '14_install.sql: 이미 완료, 변경 없이 건너뜀';
@@ -55,6 +55,113 @@ begin
   end if;
   -- 설치 도중에는 클라이언트가 미완성 게임 스키마에 접근하지 못함. 마지막에만 개방.
   revoke usage on schema public from public, anon, authenticated;
+  execute $vr_statement$-- Only raid quests reopen here. Other unverified quest kinds and daily-all bonuses
+-- retain phase1's hold. Never use old q.progress or old contribution as evidence.
+create or replace function public.guild_quest_claim(p_slot int) returns jsonb language plpgsql security definer set search_path=pg_catalog,public,pg_temp as $$
+declare u uuid:=auth.uid();m guild_members;q guild_daily_quests;p guild_quest_pool;r jsonb;
+begin
+ perform _guildbattle_guard_v4();perform pg_advisory_xact_lock(hashtext('guildbattle:v4'));
+ select * into m from guild_members where user_id=u for update;if not found then raise exception 'not in guild';end if;
+ select * into q from guild_daily_quests where user_id=u and day=_guild_day() and slot=p_slot for update;
+ select * into p from guild_quest_pool where key=q.qkey;
+ if p.event is distinct from 'raid' then raise exception 'reward verification pending';end if;
+ if q.claimed_at is not null then raise exception 'already claimed';end if;
+ if _guildbattle_raid_count_v4(u,m.guild_id,_guild_day(),_guild_day())<q.goal then raise exception 'not reached';end if;
+ r:=_guild_reward_v4(u,m.guild_id,p.reward,'guild_daily','dq:'||_guild_day()||':'||p_slot);
+ update guild_daily_quests set claimed_at=now() where user_id=u and day=_guild_day() and slot=p_slot;
+ return guild_quests()||jsonb_build_object('got',p.reward,'wallet',r->'wallet');
+end $$;$vr_statement$;
+  execute $vr_statement$create or replace function public.guild_weekly_claim(p_slot int,p_tier int) returns jsonb language plpgsql security definer set search_path=pg_catalog,public,pg_temp as $$
+declare u uuid:=auth.uid();m guild_members;q guild_weekly_quests;p guild_quest_pool;t jsonb;w date:=_guild_week();n bigint;r jsonb;
+begin
+ perform _guildbattle_guard_v4();perform pg_advisory_xact_lock(hashtext('guildbattle:v4'));
+ select * into m from guild_members where user_id=u for update;if not found then raise exception 'not in guild';end if;
+ select * into q from guild_weekly_quests where guild_id=m.guild_id and week=w and slot=p_slot for update;
+ select * into p from guild_quest_pool where key=q.qkey;if p.event is distinct from 'raid' then raise exception 'reward verification pending';end if;
+ select x into t from jsonb_array_elements(_guild_weekly_tiers()) x where (x->>'tier')::int=p_tier;if t is null then raise exception 'bad tier';end if;
+ if _guildbattle_raid_count_v4(null,m.guild_id,w,w+6)*100<q.goal*p_tier then raise exception 'not reached';end if;
+ if _guildbattle_raid_count_v4(u,m.guild_id,w,w+6)<ceil(q.goal*_guild_weekly_min_pct()) then raise exception 'contribution too low';end if;
+ r:=_guild_reward_v4(u,m.guild_id,t->'reward','guild_weekly','wq:'||w||':'||p_slot||':'||p_tier);
+ perform _guild_exp(m.guild_id,null,(t->>'exp')::int,'weekly_quest','wq:v4:'||w||':'||p_slot||':'||p_tier);
+ return guild_quests()||jsonb_build_object('got',t->'reward','wallet',r->'wallet');
+end $$;$vr_statement$;
+  execute $vr_statement$revoke all on function public.guild_quest_claim(int),public.guild_weekly_claim(int,int) from public,anon;$vr_statement$;
+  execute $vr_statement$grant execute on function public.guild_quest_claim(int),public.guild_weekly_claim(int,int) to authenticated;$vr_statement$;
+  execute $vr_statement$-- Close every legacy signature and every old/new private helper, including column
+-- ACLs and default function EXECUTE inherited from PUBLIC. No client raw writes.
+do $phase4_acl$ declare f record; t record; colrec record; begin
+ for f in select p.oid::regprocedure sig from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and (p.proname~'^_?(raid_|war_)' or p.proname~'^_?guildbattle_' or p.proname='_guild_reward_v4') loop
+  execute format('revoke all on function %s from public,anon,authenticated',f.sig);
+  if exists(select 1 from pg_roles where rolname='service_role') then execute format('revoke all on function %s from service_role',f.sig); end if;
+ end loop;
+ for t in select c.oid,c.relname from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relkind in('r','p') and (c.relname~'^guildbattle_' or c.relname~'^guild_raid' or c.relname~'^war_') loop
+  execute format('alter table public.%I enable row level security',t.relname);
+  execute format('revoke all on public.%I from public,anon,authenticated',t.relname);
+  for colrec in select attname from pg_attribute where attrelid=t.oid and attnum>0 and not attisdropped loop
+   execute format('revoke select(%1$I),insert(%1$I),update(%1$I),references(%1$I) on public.%2$I from public,anon,authenticated',colrec.attname,t.relname);
+  end loop;
+ end loop;
+ for t in select c.relname from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relkind='S' and (c.relname~'^guildbattle_' or c.relname~'^guild_raid' or c.relname~'^war_') loop execute format('revoke all on sequence public.%I from public,anon,authenticated',t.relname); end loop;
+ if exists(select 1 from pg_roles where rolname='service_role') then
+  grant execute on function public.guildbattle_engine_session_v4(uuid,bigint),public.guildbattle_engine_settle_v4(uuid,bigint,text,jsonb,jsonb) to service_role;
+ end if;
+end $phase4_acl$;$vr_statement$;
+  execute $vr_statement$grant execute on function public.guildbattle_start_v4(text,jsonb,uuid,text,text),public.raid_sweep_v4(uuid) to authenticated;$vr_statement$;
+  execute $vr_statement$-- PUBLIC_READ_WRAPPERS generated below, with a single transaction lock and gate.
+
+create or replace function public.guildbattle_lookup_v4(p_kind text,p_request uuid) returns jsonb language sql stable security definer set search_path=pg_catalog,public,pg_temp as $$
+ select snapshot||jsonb_build_object('id',id::text,'status',status,'result',result) from guildbattle_sessions_v4 where user_id=auth.uid() and kind=p_kind and request_id=p_request $$;$vr_statement$;
+  execute $vr_statement$revoke all on function public.guildbattle_lookup_v4(text,uuid) from public,anon;$vr_statement$;
+  execute $vr_statement$grant execute on function public.guildbattle_lookup_v4(text,uuid) to authenticated;$vr_statement$;
+  execute $vr_statement$create or replace function public.guild_quests() returns jsonb language plpgsql security definer set search_path=pg_catalog,public,pg_temp as $$
+declare uid uuid := auth.uid(); m guild_members; d date := _guild_day(); w date := _guild_week();
+begin
+  m := _guild_me(uid);
+  if m.user_id is null then raise exception 'not in guild'; end if;
+  perform _guild_roll_daily(uid); perform _guild_roll_weekly(m.guild_id);
+  return jsonb_build_object('ok', true, 'day', d, 'week', w, 'week_end', ((w + 7)::timestamp at time zone 'Asia/Seoul'),
+    'daily', (select jsonb_agg(jsonb_build_object('slot', q.slot, 'key', q.qkey, 'label', p.label, 'icon', p.icon, 'event', p.event, 'goal', q.goal, 'progress', (case when p.event='raid' then _guildbattle_raid_count_v4(case when p.kind='daily' then uid else null end,m.guild_id,case when p.kind='daily' then d else w end,case when p.kind='daily' then d else w+6 end) else q.progress end),
+                'reward', p.reward, 'claimed', q.claimed_at is not null) order by q.slot) from guild_daily_quests q join guild_quest_pool p on p.key = q.qkey where q.user_id = uid and q.day = d),
+    'reroll_left', case when exists (select 1 from guild_daily_quests where user_id = uid and day = d and rerolled) then 0 else 1 end,
+    'all_reward', _guild_daily_all_reward(), 'all_claimed', exists (select 1 from guild_claims where user_id = uid and ref = 'dqall:' || d),
+    'weekly', (select jsonb_agg(jsonb_build_object('slot', q.slot, 'key', q.qkey, 'label', p.label, 'icon', p.icon, 'event', p.event, 'goal', q.goal, 'progress', (case when p.event='raid' then _guildbattle_raid_count_v4(case when p.kind='daily' then uid else null end,m.guild_id,case when p.kind='daily' then d else w end,case when p.kind='daily' then d else w+6 end) else q.progress end),
+                'mine', case when p.event='raid' then _guildbattle_raid_count_v4(uid,m.guild_id,w,w+6) else coalesce((select amount from guild_weekly_contrib c where c.guild_id = q.guild_id and c.week = w and c.slot = q.slot and c.user_id = uid),0) end,
+                'min', ceil(q.goal * _guild_weekly_min_pct())::int,
+                'tiers', (select jsonb_agg(t || jsonb_build_object('reached', (case when p.event='raid' then _guildbattle_raid_count_v4(case when p.kind='daily' then uid else null end,m.guild_id,case when p.kind='daily' then d else w end,case when p.kind='daily' then d else w+6 end) else q.progress end) * 100 >= q.goal * (t->>'tier')::int,
+                            'claimed', exists (select 1 from guild_claims where user_id = uid and ref = 'wq:' || w || ':' || q.slot || ':' || (t->>'tier') || case when p.event='raid' then ':v4' else '' end))) from jsonb_array_elements(_guild_weekly_tiers()) t),
+                'top', (select coalesce(jsonb_agg(jsonb_build_object('name', coalesce(pr.nickname, '조직원'), 'amount', c.amount) order by c.amount desc), '[]'::jsonb)
+                        from (select * from guild_weekly_contrib c2 where c2.guild_id = q.guild_id and c2.week = w and c2.slot = q.slot order by amount desc limit 5) c left join profiles pr on pr.id = c.user_id))
+              order by q.slot) from guild_weekly_quests q join guild_quest_pool p on p.key = q.qkey where q.guild_id = m.guild_id and q.week = w));
+end $$;$vr_statement$;
+  execute $vr_statement$create or replace function public.raid_status() returns jsonb language plpgsql security definer set search_path=pg_catalog,public,pg_temp as $$ begin perform _guildbattle_guard_v4(); perform pg_advisory_xact_lock(hashtext('guildbattle:v4')); return _raid_status_v4(); end $$;$vr_statement$;
+  execute $vr_statement$revoke all on function public.raid_status() from public,anon;$vr_statement$;
+  execute $vr_statement$grant execute on function public.raid_status() to authenticated;$vr_statement$;
+  execute $vr_statement$create or replace function public.raid_claimable() returns int language plpgsql security definer set search_path=pg_catalog,public,pg_temp as $$ begin perform _guildbattle_guard_v4(); perform pg_advisory_xact_lock(hashtext('guildbattle:v4')); return _raid_claimable_v4(); end $$;$vr_statement$;
+  execute $vr_statement$revoke all on function public.raid_claimable() from public,anon;$vr_statement$;
+  execute $vr_statement$grant execute on function public.raid_claimable() to authenticated;$vr_statement$;
+  execute $vr_statement$create or replace function public.raid_set_difficulty(p_diff text) returns jsonb language plpgsql security definer set search_path=pg_catalog,public,pg_temp as $$ begin perform _guildbattle_guard_v4(); perform pg_advisory_xact_lock(hashtext('guildbattle:v4')); return _raid_set_difficulty_v4(p_diff); end $$;$vr_statement$;
+  execute $vr_statement$revoke all on function public.raid_set_difficulty(text) from public,anon;$vr_statement$;
+  execute $vr_statement$grant execute on function public.raid_set_difficulty(text) to authenticated;$vr_statement$;
+  execute $vr_statement$create or replace function public.raid_claim() returns jsonb language plpgsql security definer set search_path=pg_catalog,public,pg_temp as $$ begin perform _guildbattle_guard_v4(); perform pg_advisory_xact_lock(hashtext('guildbattle:v4')); return _raid_claim_v4(); end $$;$vr_statement$;
+  execute $vr_statement$revoke all on function public.raid_claim() from public,anon;$vr_statement$;
+  execute $vr_statement$grant execute on function public.raid_claim() to authenticated;$vr_statement$;
+  execute $vr_statement$create or replace function public.war_set_deck(p_kind text, p_uids jsonb) returns jsonb language plpgsql security definer set search_path=pg_catalog,public,pg_temp as $$ begin perform _guildbattle_guard_v4(); perform pg_advisory_xact_lock(hashtext('guildbattle:v4')); return _war_set_deck_v4(p_kind,p_uids); end $$;$vr_statement$;
+  execute $vr_statement$revoke all on function public.war_set_deck(text,jsonb) from public,anon;$vr_statement$;
+  execute $vr_statement$grant execute on function public.war_set_deck(text,jsonb) to authenticated;$vr_statement$;
+  execute $vr_statement$create or replace function public.war_set_slot(p_slot int, p_user uuid) returns jsonb language plpgsql security definer set search_path=pg_catalog,public,pg_temp as $$ begin perform _guildbattle_guard_v4(); perform pg_advisory_xact_lock(hashtext('guildbattle:v4')); return _war_set_slot_v4(p_slot,p_user); end $$;$vr_statement$;
+  execute $vr_statement$revoke all on function public.war_set_slot(int,uuid) from public,anon;$vr_statement$;
+  execute $vr_statement$grant execute on function public.war_set_slot(int,uuid) to authenticated;$vr_statement$;
+  execute $vr_statement$create or replace function public.war_status() returns jsonb language plpgsql security definer set search_path=pg_catalog,public,pg_temp as $$ begin perform _guildbattle_guard_v4(); perform pg_advisory_xact_lock(hashtext('guildbattle:v4')); return _war_status_v4(); end $$;$vr_statement$;
+  execute $vr_statement$revoke all on function public.war_status() from public,anon;$vr_statement$;
+  execute $vr_statement$grant execute on function public.war_status() to authenticated;$vr_statement$;
+  execute $vr_statement$create or replace function public.war_claimable() returns int language plpgsql security definer set search_path=pg_catalog,public,pg_temp as $$ begin perform _guildbattle_guard_v4(); perform pg_advisory_xact_lock(hashtext('guildbattle:v4')); return _war_claimable_v4(); end $$;$vr_statement$;
+  execute $vr_statement$revoke all on function public.war_claimable() from public,anon;$vr_statement$;
+  execute $vr_statement$grant execute on function public.war_claimable() to authenticated;$vr_statement$;
+  execute $vr_statement$create or replace function public.war_claim() returns jsonb language plpgsql security definer set search_path=pg_catalog,public,pg_temp as $$ begin perform _guildbattle_guard_v4(); perform pg_advisory_xact_lock(hashtext('guildbattle:v4')); return _war_claim_v4(); end $$;$vr_statement$;
+  execute $vr_statement$revoke all on function public.war_claim() from public,anon;$vr_statement$;
+  execute $vr_statement$grant execute on function public.war_claim() to authenticated;$vr_statement$;
+  execute $vr_statement$create or replace function public.war_ui() returns jsonb language plpgsql security definer set search_path=pg_catalog,public,pg_temp as $$ begin perform _guildbattle_guard_v4(); perform pg_advisory_xact_lock(hashtext('guildbattle:v4')); return _war_ui_v4(); end $$;$vr_statement$;
+  execute $vr_statement$revoke all on function public.war_ui() from public,anon;$vr_statement$;
   execute $vr_statement$grant execute on function public.war_ui() to authenticated;$vr_statement$;
   execute $vr_statement$create or replace function public.war_auto_assign() returns jsonb language plpgsql security definer set search_path=pg_catalog,public,pg_temp as $$ begin perform _guildbattle_guard_v4(); perform pg_advisory_xact_lock(hashtext('guildbattle:v4')); return _war_auto_assign_v4(); end $$;$vr_statement$;
   execute $vr_statement$revoke all on function public.war_auto_assign() from public,anon;$vr_statement$;
@@ -651,7 +758,7 @@ end $staging_verify$;$vr_statement$;
 
   grant usage on schema public to public, anon, authenticated;
   insert into vr_staging_install.parts(part_no, bundle_hash, part_hash, project_ref, db_id)
-  values (14, 'd7d89da318ab1607c923a8d19e4fbc0734a34a5763a279ee027425b6e83045d7', '4751c85533585c16010801da7d598e22e802fe20588fabc1661d076f8ac267aa', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
+  values (14, '580ba692ace7d90123f771f896d6d224a1da07f8118f6139760a81ccfe07437f', '5f43011c9266af48fb2e2adf81a32bdc84a916900913f7527930021412e6030d', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
 end $vr_install_part$;
 commit;
 select '14_install.sql: 완료 또는 이미 완료 (14/14)' as result;
