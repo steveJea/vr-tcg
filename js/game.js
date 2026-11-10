@@ -101,7 +101,7 @@ const CUT_OFF = () => !!(window.TCG_FAST || SWEEPING());
 const CUT_QUICK = 600;
 // 자동 전투: 스토리·탑(S.story)에서만. 사용자별 localStorage. 전투 중 언제든 끄면 다음 행동부터 수동
 const AUTO_KEY = () => `vrTcgAuto:${window.VRCloud?.user?.id || 'guest'}`;
-let autoOn = localStorage.getItem(AUTO_KEY()) === '1', autoRunning = false;
+let autoOn = localStorage.getItem(AUTO_KEY()) === '1', autoRunning = false, autoGen = 0;
 // 자동 전투 해금: 계정 레벨(플레이어 레벨, player_status.level) 5 이상
 const AUTO_LV = 5;
 const autoLocked = () => (window.VRPlayer?.now?.()?.level ?? 0) < AUTO_LV;
@@ -110,7 +110,7 @@ const autoHeld = () => { if (S && TUT_LOCK('auto')) S.autoHold = true; return !!
 const autoActive = () => !S?.awakenPause && autoOn && !autoLocked() && !!S?.story && !S.over && !S.view && !autoHeld();
 function renderAutoBtn() {
   const b = $('auto-btn'); if (!b) return;
-  b.classList.toggle('hidden', !S?.story); b.classList.toggle('on', autoOn);
+  b.classList.toggle('hidden', !S?.story);
   if (S?.view) { const on = S.view.auto; b.classList.toggle('on', on); b.classList.remove('locked'); b.title = '자동 전투'; b.setAttribute('aria-pressed', String(on)); b.textContent = on ? '⏸ AUTO' : '▶ AUTO'; return; }
   const lk = autoLocked(); b.classList.toggle('locked', lk); b.title = lk ? `자동 전투 · 계정 Lv${AUTO_LV}부터` : '자동 전투';
   const on = autoOn && !lk && !autoHeld(); b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); b.textContent = lk ? '🔒 AUTO' : on ? '⏸ AUTO' : '▶ AUTO';
@@ -120,12 +120,12 @@ function renderAutoBtn() {
 const autoBlocked = () => [...document.querySelectorAll('#story-cond, #story-dlg, .story-pop')].some(e => e.getClientRects().length && getComputedStyle(e).visibility !== 'hidden');
 async function autoTurn() {
   if (autoRunning) return; autoRunning = true;
-  const turn = { used: new Set(), scopes: new Set() };
+  const gen = autoGen, turn = { used: new Set(), scopes: new Set() };
   try {
     for (let guard = 0; guard < 40; guard++) {
       await vidWait();
       while ((S.busy || autoBlocked()) && !S.over) await sleep(80);
-      if (!autoActive() || S.turn !== 'me') return;
+      if (gen !== autoGen || !autoActive() || S.turn !== 'me') return;
       if (S.me.manaPool) {   // 제한 마나 자동: 필수 인재 먼저, 그다음 낼 수 있는 가장 비싼 카드로 빈 칸 채우기
         const can = affordable(), must = mustLeft(), c = can.find(x => must.includes(String(x.id))) || can.sort((a, b) => b.cost - a.cost)[0];
         if (c) { summon('me', c); await sleep(AI_DELAY()); continue; }
@@ -136,8 +136,8 @@ async function autoTurn() {
       else { const before = a.u.canAttack; await attack('me', a.u, a.t); if (before && a.u.canAttack) a.u.canAttack = false; }
       await sleep(AI_DELAY());
     }
-    while (S.busy && !S.over) await sleep(50);
-    if (autoActive() && S.turn === 'me') endTurn();
+    while (S.busy && !S.over && gen === autoGen) await sleep(50);
+    if (gen === autoGen && autoActive() && S.turn === 'me') endTurn();
   } catch (err) { reportError('autoTurn', err); }
   finally { autoRunning = false; }
 }
@@ -186,7 +186,7 @@ async function startGame(story = null, at = null) {
   if (!story && !at && window.VRCloud?.user) { try { arcadeSession=await startArcadeVerified(ArcadeOpts.load()); } catch(e) { if (e?.code === 'account-changed') return; (window.VRGem?.toast || alert)(e.message); return; } }
   at = at && at.arcadeTut ? at : null; if (at) story = null; rngOn(!at);
   try { window.VRArcadeHub?.close?.(); } catch {}   // 아케이드 설정 [시작]으로 바로 시작하면 허브 창이 전투 위에 남아 있었음
-  autoOn = localStorage.getItem(AUTO_KEY()) === '1';
+  autoGen++; autoRunning = false; autoOn = localStorage.getItem(AUTO_KEY()) === '1';
   if (story && typeof story.then === 'function' || story instanceof Event) story = null;
   setSpare(story?.spare);   // 스토리 보호 규칙 (없으면 해제)
   const battleRng = story?.rng || (story?.seed ? rngOf(story.seed) : null);
@@ -220,7 +220,7 @@ async function startGame(story = null, at = null) {
   $('ai-name').textContent = story ? (story.aiName || '적군') : '';   // 아케이드: 이름·아이콘 없음
   primeBattleMedia();
   selected = null; $('log').innerHTML = ''; fxQueue.length = 0; mrCancel?.(); vidGate = Promise.resolve();
-  $('end-screen').classList.add('hidden'); $('start-screen').classList.add('hidden'); $('game').classList.remove('hidden', 'bfx-final', 'bfx-lose'); fitBoardSoon();
+  $('end-screen').classList.add('hidden'); $('start-screen').classList.add('hidden'); renderAutoBtn(); $('game').classList.remove('hidden', 'bfx-final', 'bfx-lose'); fitBoardSoon();
   if(!S.arcade) initPlayers(S.me, S.ai, S[first]);   // 0턴 배치 상태(불사·회피 등) 지속 턴 기준 = 선공
   if (at) atSetup(at);
   if (fs) {   // 스토리: 양측 카드 전부 필드에 배치 (최대 FIELD_MAX)
@@ -2092,6 +2092,21 @@ function renderSortBar() {
 // ===== 필드 카드 드래그 앤 드롭 (내 턴만) =====
 let dragJustEnded = false;
 const DRAG_THRESHOLD = 8;
+/** Where a dragged field card lands. Over another card, that card's slot. In a gap, the slot the pointer has passed. */
+function fieldDropTo(rects, from, x) {
+  for (let i = 0; i < rects.length; i++) {
+    if (i === from) continue;
+    const r = rects[i];
+    if (x >= r.left && x <= r.right) return i;
+  }
+  let to = 0;
+  for (let i = 0; i < rects.length; i++) {
+    if (i === from) continue;
+    const r = rects[i];
+    if (x > r.left + r.width / 2) to++;
+  }
+  return rects.length ? Math.max(0, Math.min(rects.length - 1, to)) : 0;
+}
 function moveFieldCard(u, to) {
   const f = S.me.field, units = f.filter(x => !x.undying), from = units.indexOf(u);
   if (from < 0 || S.turn !== 'me' || S.busy || S.over) return;
@@ -2135,12 +2150,10 @@ function enableDrag(el, u) {
       window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', up);
       if (!dragging) return;
       dragJustEnded = true; setTimeout(() => { dragJustEnded = false; }, 0);
-      const f = S.me.field, from = f.indexOf(u);
-      if (ev.type !== 'pointercancel' && from >= 0 && S.turn === 'me' && !S.busy && !S.over) {
-        const others = [...$('me-field').children].filter(x => x !== el && x.dataset.uid);
-        let to = others.findIndex(x => { const r = x.getBoundingClientRect(); return ev.clientX < r.left + r.width / 2; });
-        if (to < 0) to = others.length;
-        moveFieldCard(u, to);
+      if (ev.type !== 'pointercancel' && S.turn === 'me' && !S.busy && !S.over && S.me.field.includes(u)) {
+        const cards = [...$('me-field').children].filter(c => c.dataset?.uid);
+        const rects = cards.map(c => { const r = c.getBoundingClientRect(); return { left: r.left, right: r.right, width: r.width }; });
+        moveFieldCard(u, fieldDropTo(rects, Math.max(0, cards.indexOf(el)), ev.clientX));
       }
       render();
     };
