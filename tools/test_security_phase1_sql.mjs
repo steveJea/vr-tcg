@@ -120,10 +120,12 @@ try {
   console.log('Real daily/ticket draws -> canonical event + gallery; duplicate/date/owner/sold-card rules: OK');
   // Two independent consumers of the same acquisition evidence: collect + draw
   // achievements. Neither browser kind/n nor another account's rows can advance them.
+  // 25% milestone needs a quarter of the catalog (grows with cards.csv): keep 110 as the floor.
+  const have=Math.max(110,Math.ceil(await val(`select count(*)::int v from reward_card_catalog`)*0.25)+1);
   await q(`insert into story_gacha_log(user_id,card_id,grade)
     select $1,c.card_id,p.grade from reward_card_catalog c join story_card_pool p on p.id=c.card_id
-    order by c.card_id limit 110`,[other]);
-  assert.equal(await val(`select _gallery_have($1) v`,[other]),110);
+    order by c.card_id limit ${have}`,[other]);
+  assert.equal(await val(`select _gallery_have($1) v`,[other]),have);
   const milestone=await role('authenticated',()=>val('select gallery_reward_claim(25) v'),other);
   assert.equal(milestone.got.tickets,10);
   const afterMilestone=await snapshot();

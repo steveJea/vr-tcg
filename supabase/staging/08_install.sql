@@ -40,11 +40,11 @@ set local check_function_bodies = off;
 
 do $vr_install_part$
 begin
-  if exists (select 1 from vr_staging_install.parts where bundle_hash <> '9c2af48c02c3cc678fec379f67d248fd19aaa81a42036235ff2ae7e2ed605408' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
+  if exists (select 1 from vr_staging_install.parts where bundle_hash <> '0de1c4c99b089cc7f9f74aaa86e121366ac0e9debbb98e0cf981775b66cb8b66' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
     raise exception 'STOP: 다른 버전/DB의 설치 기록입니다. 파일을 섞지 마세요.';
   end if;
   if exists (select 1 from vr_staging_install.parts where part_no = 8) then
-    if not exists (select 1 from vr_staging_install.parts where part_no = 8 and part_hash = '97449d92e869486a7ccc32fd279b4028b45d3dbfb8e32f18ff93c237e6d72ffe') then
+    if not exists (select 1 from vr_staging_install.parts where part_no = 8 and part_hash = '7f9c888ca804d338519718175ab6b1aab63a41fd459349e1af84ae06fbb33755') then
       raise exception 'STOP: 완료한 파일과 내용이 다릅니다.';
     end if;
     raise notice '08_install.sql: 이미 완료, 변경 없이 건너뜀';
@@ -1679,6 +1679,88 @@ on conflict (id) do update set grade = excluded.grade, cost = excluded.cost;$vr_
 select 'pool' k, id, grade, name, gacha::text from public.story_card_pool where id = '10509'
 union all select 'skill', card_id, idx::text, unlock::text, null from public.story_skill_meta where card_id = '10509'
 union all select 'pvp', id, grade, cost::text, null from public.pvp_card_meta where id = '10509';$vr_statement$;
+  execute $vr_statement$-- ===== SOURCE: card_newcards_1111.sql =====
+-- =====================================================================
+-- 2026-11-11 신규 카드 16장 (10511~10513, 10520~10532): 카드 목록 · 스킬 해금 레벨 · PVP 덱 검증
+-- 뽑기 풀에는 넣지 않음 (gacha = false). 뽑기·스토리 무작위 보상 둘 다 gacha 행만 고르므로 획득 경로 없음.
+-- 도감(reward_card_catalog)이 story_card_pool을 참조하므로 행은 필요. 뽑기 공개는 gacha만 true로 바꾸면 됨.
+-- 여러 번 실행해도 안전. 삭제 없음.
+-- =====================================================================
+insert into public.story_card_pool (id, grade, name, gacha) values
+  ('10511','SUPER RARE','최수아',false),
+  ('10512','HIGH RARE','고세연',false),
+  ('10513','ULTRA RARE','[각성] 고세연',false),
+  ('10520','RARE','황경민',false),
+  ('10521','SUPER RARE','이혜림',false),
+  ('10522','ULTRA RARE','이수영',false),
+  ('10523','SUPER RARE','천혜영',false),
+  ('10524','ULTRA RARE','이동주',false),
+  ('10525','ULTRA RARE','김수진',false),
+  ('10526','SUPER RARE','조태진',false),
+  ('10527','ULTRA RARE','김한철',false),
+  ('10528','ULTRA RARE','김진호',false),
+  ('10529','SUPER RARE','김태희',false),
+  ('10530','SUPER RARE','박승규',false),
+  ('10531','SUPER RARE','김경섭',false),
+  ('10532','SUPER RARE','천기철',false)
+on conflict (id) do update set grade = excluded.grade, name = excluded.name;$vr_statement$;
+  execute $vr_statement$insert into public.story_skill_meta (card_id, idx, unlock) values
+  ('10511',1,2),
+  ('10511',2,5),
+  ('10512',1,2),
+  ('10512',2,5),
+  ('10513',1,2),
+  ('10513',2,5),
+  ('10513',3,7),
+  ('10520',1,2),
+  ('10521',1,2),
+  ('10521',2,5),
+  ('10522',1,2),
+  ('10522',2,5),
+  ('10522',3,7),
+  ('10523',1,2),
+  ('10523',2,5),
+  ('10524',1,2),
+  ('10524',2,5),
+  ('10524',3,7),
+  ('10525',1,2),
+  ('10525',2,5),
+  ('10525',3,7),
+  ('10526',1,2),
+  ('10526',2,5),
+  ('10527',1,2),
+  ('10527',2,5),
+  ('10527',3,7),
+  ('10528',1,2),
+  ('10528',2,5),
+  ('10528',3,7),
+  ('10529',1,2),
+  ('10529',2,5),
+  ('10530',1,2),
+  ('10530',2,5),
+  ('10531',1,2),
+  ('10531',2,5),
+  ('10532',1,2),
+  ('10532',2,5)
+on conflict (card_id, idx) do update set unlock = excluded.unlock;$vr_statement$;
+  execute $vr_statement$insert into public.pvp_card_meta (id, grade, cost) values
+  ('10511','SUPER RARE',42),
+  ('10512','HIGH RARE',27),
+  ('10513','ULTRA RARE',53),
+  ('10520','RARE',18),
+  ('10521','SUPER RARE',44),
+  ('10522','ULTRA RARE',54),
+  ('10523','SUPER RARE',45),
+  ('10524','ULTRA RARE',53),
+  ('10525','ULTRA RARE',49),
+  ('10526','SUPER RARE',41),
+  ('10527','ULTRA RARE',46),
+  ('10528','ULTRA RARE',53),
+  ('10529','SUPER RARE',43),
+  ('10530','SUPER RARE',37),
+  ('10531','SUPER RARE',35),
+  ('10532','SUPER RARE',35)
+on conflict (id) do update set grade = excluded.grade, cost = excluded.cost;$vr_statement$;
   execute $vr_statement$-- ===== SOURCE: gacha_premium_ur.sql =====
 -- =====================================================================
 -- 고급 소환(소환권 뽑기) UR 고정 목록. 새 UR 카드는 자동으로 들어가지 않음 (이 표에 넣어야 나옴)
@@ -1800,32 +1882,9 @@ begin
   for c in select distinct chapter from story_phase_config order by 1 loop r := r || _star_chapter(d, c); end loop;
   return r;
 end $$;$vr_statement$;
-  execute $vr_statement$-- 받기: 서버가 별을 다시 합산 · 한 번만
-create or replace function public.story_star_claim(p_chapter int, p_key text) returns jsonb language plpgsql security definer set search_path = public as $$
-declare me uuid := auth.uid(); d jsonb; st jsonb; m jsonb; got jsonb; t int; w jsonb;
-begin
-  if me is null then raise exception 'login required'; end if;
-  d := _story_lock(me);
-  st := _star_chapter(d, p_chapter);
-  select x into m from jsonb_array_elements(st->'milestones') x where x->>'key' = p_key;
-  if m is null then raise exception 'invalid milestone'; end if;
-  if (m->>'claimed')::boolean then raise exception 'already claimed'; end if;
-  if not (m->>'ready')::boolean then raise exception 'not enough stars'; end if;
-  got := coalesce(d->'starClaims'->(p_chapter::text), '[]'::jsonb) || to_jsonb(p_key);
-  if jsonb_typeof(d->'starClaims') is distinct from 'object' then d := jsonb_set(d, '{starClaims}', '{}'::jsonb); end if;
-  d := _story_save(me, jsonb_set(d, array['starClaims', p_chapter::text], got));
-  insert into story_gacha (user_id, last_draw) values (me, (now() at time zone 'Asia/Seoul')::date - 1) on conflict (user_id) do nothing;
-  update story_gacha set tickets = tickets + (m->>'tickets')::int, updated_at = now() where user_id = me returning tickets into t;
-  w := _wallet_add(me, jsonb_build_object('gold', (m->>'gold')::int), 'star_reward');
-  return jsonb_build_object('ok', true, 'tickets', t, 'wallet', w, 'gave', jsonb_build_object('tickets', (m->>'tickets')::int, 'gold', (m->>'gold')::int), 'status', _star_chapter(d, p_chapter));
-end $$;$vr_statement$;
-  execute $vr_statement$revoke all on function public._star_milestones(), public._star_chapter(jsonb, int) from public, anon, authenticated;$vr_statement$;
-  execute $vr_statement$revoke all on function public.story_star_status(), public.story_star_claim(int, text) from public, anon;$vr_statement$;
-  execute $vr_statement$grant execute on function public.story_star_status(), public.story_star_claim(int, text) to authenticated;$vr_statement$;
-  execute $vr_statement$select 'story_star_rewards ok' as result;$vr_statement$;
 
   insert into vr_staging_install.parts(part_no, bundle_hash, part_hash, project_ref, db_id)
-  values (8, '9c2af48c02c3cc678fec379f67d248fd19aaa81a42036235ff2ae7e2ed605408', '97449d92e869486a7ccc32fd279b4028b45d3dbfb8e32f18ff93c237e6d72ffe', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
+  values (8, '0de1c4c99b089cc7f9f74aaa86e121366ac0e9debbb98e0cf981775b66cb8b66', '7f9c888ca804d338519718175ab6b1aab63a41fd459349e1af84ae06fbb33755', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
 end $vr_install_part$;
 commit;
 select '08_install.sql: 완료 또는 이미 완료 (8/14)' as result;

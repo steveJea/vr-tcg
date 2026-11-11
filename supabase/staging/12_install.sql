@@ -40,11 +40,11 @@ set local check_function_bodies = off;
 
 do $vr_install_part$
 begin
-  if exists (select 1 from vr_staging_install.parts where bundle_hash <> '9c2af48c02c3cc678fec379f67d248fd19aaa81a42036235ff2ae7e2ed605408' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
+  if exists (select 1 from vr_staging_install.parts where bundle_hash <> '0de1c4c99b089cc7f9f74aaa86e121366ac0e9debbb98e0cf981775b66cb8b66' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
     raise exception 'STOP: 다른 버전/DB의 설치 기록입니다. 파일을 섞지 마세요.';
   end if;
   if exists (select 1 from vr_staging_install.parts where part_no = 12) then
-    if not exists (select 1 from vr_staging_install.parts where part_no = 12 and part_hash = 'af2227f77561910fd403d93da9938942e0c63ac12dbe270fd3cabaeeb35da4cd') then
+    if not exists (select 1 from vr_staging_install.parts where part_no = 12 and part_hash = '22b586f7a1d2632e4885d85fc5d6f6f264aa04171dea5fb124223ed6fb4f3a65') then
       raise exception 'STOP: 완료한 파일과 내용이 다릅니다.';
     end if;
     raise notice '12_install.sql: 이미 완료, 변경 없이 건너뜀';
@@ -329,6 +329,22 @@ begin
   execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10440','{"class":"WIND","gender":"FEMALE","MOR":8,"cost":51,"grade":"ULTRA RARE"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
   execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10267','{"class":"ICE","gender":"FEMALE","MOR":80,"cost":35,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
   execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10509','{"class":"WIND","gender":"FEMALE","MOR":55,"cost":33,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10511','{"class":"FIRE","gender":"FEMALE","MOR":85,"cost":42,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10512','{"class":"WIND","gender":"FEMALE","MOR":80,"cost":27,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10513','{"class":"WIND","gender":"FEMALE","MOR":80,"cost":53,"grade":"ULTRA RARE"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10520','{"class":"FIRE","gender":"MALE","MOR":12,"cost":18,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10521','{"class":"ICE","gender":"FEMALE","MOR":80,"cost":44,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10522','{"class":"WIND","gender":"FEMALE","MOR":75,"cost":54,"grade":"ULTRA RARE"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10523','{"class":"DARK","gender":"FEMALE","MOR":80,"cost":45,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10524','{"class":"ICE","gender":"MALE","MOR":65,"cost":53,"grade":"ULTRA RARE"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10525','{"class":"FIRE","gender":"FEMALE","MOR":55,"cost":49,"grade":"ULTRA RARE"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10526','{"class":"FIRE","gender":"MALE","MOR":76,"cost":41,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10527','{"class":"ICE","gender":"MALE","MOR":78,"cost":46,"grade":"ULTRA RARE"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10528','{"class":"FIRE","gender":"MALE","MOR":65,"cost":53,"grade":"ULTRA RARE"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10529','{"class":"WIND","gender":"FEMALE","MOR":80,"cost":43,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10530','{"class":"WIND","gender":"MALE","MOR":68,"cost":37,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10531','{"class":"WIND","gender":"MALE","MOR":25,"cost":35,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10532','{"class":"ICE","gender":"MALE","MOR":77,"cost":35,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
   execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10301','{"class":"DARK","gender":"FEMALE","MOR":75,"cost":45,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
   execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10210','{"class":"WIND","gender":"MALE","MOR":55,"cost":30,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
   execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10143','{"class":"FIRE","gender":"MALE","MOR":10,"cost":10,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
@@ -801,45 +817,9 @@ begin
  end loop;
  return jsonb_build_object('chapter',p_chapter,'total',tot,'max',mx,'milestones',ms);
 end $$;$vr_statement$;
-  execute $vr_statement$create or replace function public.story_star_claim(p_chapter int,p_key text) returns jsonb language plpgsql security definer set search_path=pg_catalog,public,pg_temp as $$
-declare u uuid:=auth.uid(); d jsonb; m jsonb; st jsonb; res jsonb;
-begin
- if u is null then raise exception 'login required'; end if;
- perform pg_advisory_xact_lock(hashtext('battle-v2:'||u::text)); perform pg_advisory_xact_lock(hashtext('gem:'||u::text));
- if not public._clear_enabled_v2('story') then raise exception 'reward verification pending'; end if;
- d:=public._story_lock(u); st:=public._star_chapter(d,p_chapter);
- select x into m from jsonb_array_elements(st->'milestones') x where x->>'key'=p_key;
- if m is null then raise exception 'invalid milestone'; end if;
- if (m->>'claimed')::boolean then raise exception 'already claimed'; end if;
- if not (m->>'ready')::boolean then raise exception 'not enough stars'; end if;
- res:=public._clear_grant_v2(u,jsonb_build_object('tickets',(m->>'tickets')::int,'gold',(m->>'gold')::int),'star_v2','star:'||p_chapter||':'||p_key);
- if jsonb_typeof(d->'starClaims') is distinct from 'object' then d:=jsonb_set(d,'{starClaims}','{}'); end if;
- d:=public._story_save(u,jsonb_set(d,array['starClaims',p_chapter::text],coalesce(d->'starClaims'->p_chapter::text,'[]')||to_jsonb(p_key)));
- return res||jsonb_build_object('ok',true,'status',public._star_chapter(d,p_chapter));
-end $$;$vr_statement$;
-  execute $vr_statement$create or replace function public._gallery_have(p_uid uuid) returns int language sql stable security definer set search_path=pg_catalog,public,pg_temp as $$
- select count(*)::int from public.reward_card_catalog c where c.card_id in(
- select card_id from public.verified_game_events where user_id=p_uid and event_kind='card_acquired'
- union select card_id from public.battle_acquisitions_v2 where user_id=p_uid)
-$$;$vr_statement$;
-  execute $vr_statement$create or replace function public._ach_prog(p_uid uuid,p_id text) returns int language plpgsql stable security definer set search_path=pg_catalog,public,pg_temp as $$
-declare n int; begin
- case p_id when 'story_ch' then select count(*)::int into n from public.reward_claims where user_id=p_uid and reward_kind='chapter_v2';
- when 'story_stars' then select sum(stars)::int into n from public.battle_clear_receipts_v2 where user_id=p_uid and mode='story';
- when 'skill_uses' then select sum(skills)::int into n from public.battle_events_v2 where user_id=p_uid;
- when 'tower_normal' then select max(split_part(target,':',2)::int) into n from public.battle_clear_receipts_v2 where user_id=p_uid and mode='tower' and target like 'normal:%';
- when 'tower_elem' then select max(split_part(target,':',2)::int) into n from public.battle_clear_receipts_v2 where user_id=p_uid and mode='tower' and split_part(target,':',1) in ('wind','ice','fire');
- when 'tower_light' then select max(split_part(target,':',2)::int) into n from public.battle_clear_receipts_v2 where user_id=p_uid and mode='tower' and split_part(target,':',1) in ('light','dark');
- else return public._phase2_old_ach_prog(p_uid,p_id); end case;
- return coalesce(n,0);
-end $$;$vr_statement$;
-  execute $vr_statement$do $$ declare src text; begin
- src:=pg_get_functiondef('public._ach_json(uuid)'::regprocedure);
- execute replace(src,'''gifts_sent'')','''gifts_sent'',''story_ch'',''story_stars'',''tower_normal'',''tower_elem'',''tower_light'',''skill_uses'')');
-end $$;$vr_statement$;
 
   insert into vr_staging_install.parts(part_no, bundle_hash, part_hash, project_ref, db_id)
-  values (12, '9c2af48c02c3cc678fec379f67d248fd19aaa81a42036235ff2ae7e2ed605408', 'af2227f77561910fd403d93da9938942e0c63ac12dbe270fd3cabaeeb35da4cd', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
+  values (12, '0de1c4c99b089cc7f9f74aaa86e121366ac0e9debbb98e0cf981775b66cb8b66', '22b586f7a1d2632e4885d85fc5d6f6f264aa04171dea5fb124223ed6fb4f3a65', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
 end $vr_install_part$;
 commit;
 select '12_install.sql: 완료 또는 이미 완료 (12/14)' as result;
