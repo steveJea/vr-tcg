@@ -10,6 +10,7 @@ import { setSkillData, skillsOf, initPlayers, placeUnit, turnStart, turnEnd, use
 import { clearBuff, refillMana, endTurnXp, makeUnit, resolveAttack, aiPickTarget } from '../js/rules.js';
 import { snapCard } from '../js/pvp-core.js';
 import { runSweep, leaderSkill } from '../js/sweep-core.js';
+import '../js/enemy-mr.js';
 import '../js/quest-gen.js';
 
 const cards = parseCSV(cardsCsv);

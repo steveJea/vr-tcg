@@ -40,7 +40,7 @@ set local check_function_bodies = off;
 
 do $vr_install_part$
 begin
-  if exists (select 1 from vr_staging_install.parts where bundle_hash <> '54d6625d06876bdcfb94a46163f92d8c3802d76c35bbddb31221004f89548d48' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
+  if exists (select 1 from vr_staging_install.parts where bundle_hash <> '33b887dc47cd39a541ec7e8b546346416cbaf9d2aa104e996a2cda9c476b2e2f' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
     raise exception 'STOP: 다른 버전/DB의 설치 기록입니다. 파일을 섞지 마세요.';
   end if;
   if exists (select 1 from vr_staging_install.parts where part_no = 9) then
@@ -1696,7 +1696,7 @@ end $$;$vr_statement$;
   execute $vr_statement$grant execute on function public.idle_box_boost() to authenticated;$vr_statement$;
 
   insert into vr_staging_install.parts(part_no, bundle_hash, part_hash, project_ref, db_id)
-  values (9, '54d6625d06876bdcfb94a46163f92d8c3802d76c35bbddb31221004f89548d48', '0f7ee44e59bb320a9d45a89704d4a6271d3e3b8ed3ae8253cbcd761e03da7690', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
+  values (9, '33b887dc47cd39a541ec7e8b546346416cbaf9d2aa104e996a2cda9c476b2e2f', '0f7ee44e59bb320a9d45a89704d4a6271d3e3b8ed3ae8253cbcd761e03da7690', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
 end $vr_install_part$;
 commit;
 select '09_install.sql: 완료 또는 이미 완료 (9/14)' as result;

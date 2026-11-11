@@ -19,8 +19,9 @@
   const pick = (r, list) => list[Math.floor(r() * list.length)];
   /** 레벨 L 적 카드 (전투용 카드 객체): 스탯·전투력 반영 */
   function leveled(c, L) {
-    const m = 1 + lvPct(c.grade, L) / 100;
-    return { ...c, HP: Math.round(+c.HP * m), ATK: Math.round(+c.ATK * m), DEF: Math.round(+c.DEF * m), power: powerAt(c, L), qLevel: L };
+    const src = globalThis.VREnemyMrApply ? globalThis.VREnemyMrApply(c) : c;
+    const m = 1 + lvPct(src.grade, L) / 100;
+    return { ...src, HP: Math.round(+src.HP * m), ATK: Math.round(+src.ATK * m), DEF: Math.round(+src.DEF * m), power: Math.round((+src.power || 0) * m), qLevel: L };
   }
   /** 목표 이하로 가장 큰 레벨 */
   function bestLevel(c, T) { let L = 0; for (let l = 1; l <= capOf(c.grade); l++) if (matchAt(c, l) <= T) L = l; return L; }
