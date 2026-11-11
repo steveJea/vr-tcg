@@ -7,7 +7,7 @@
 -- P16-12 · P17-7 · P17-12 · P17-15 는 전투 없는 스토리 페이즈 (enemy_count=0, story_complete_scene).
 -- 보유 마나·별점·출전 조건·각성 난입은 클라이언트(js/story-data-ch16.js · ch17.js)와
 -- battle_story_defs_v2 (아래 카탈로그 insert) 에 있음.
--- 입장 레벨: 챕터 16 = 26, 챕터 17 = 27
+-- 입장: 이전 챕터 완료로 개방. 레벨 정책은 level_unlocks_staging.sql (이 파일에서 _player_unlock_level 재정의 금지)
 -- =====================================================================
 do $$
 begin
@@ -26,13 +26,8 @@ insert into public.story_phase_config (chapter, phase, type, points, reward_grad
   (17,13,'normal',3,null,5), (17,14,'normal',3,null,6), (17,15,'normal',3,null,0)
 on conflict (chapter, phase) do update set type = excluded.type, points = excluded.points, reward_grade = excluded.reward_grade, enemy_count = excluded.enemy_count;
 
-create or replace function public._player_unlock_level(p_key text) returns int language sql immutable as $$
-  select case p_key when 'sweep' then 5 when 'skill' then 10 when 'equip' then 15 when 'equip_merge' then 20
-    when 'chapter_2' then 7 when 'chapter_3' then 9 when 'chapter_4' then 11 when 'chapter_5' then 12 when 'chapter_6' then 14
-    when 'chapter_7' then 15 when 'chapter_8' then 16 when 'chapter_9' then 18 when 'chapter_10' then 20 when 'chapter_11' then 21
-    when 'chapter_12' then 22 when 'chapter_13' then 23 when 'chapter_14' then 24 when 'chapter_15' then 25
-    when 'chapter_16' then 26 when 'chapter_17' then 27
-    else null end $$;
+-- 입장 레벨은 여기서 정하지 않는다. 계정레벨 해금 정책(2026-11-08)은 level_unlocks_staging.sql 의
+-- public._player_unlock_level 하나뿐 (챕터 = 이전 챕터 완료로 개방, 레벨 벽 없음). 이 파일에서 재정의 금지.
 
 -- 전투 없는 스토리 페이즈 클리어 (enemy_count=0 만). 세션·리플레이 없이 진행도만 기록.
 create or replace function public.story_complete_scene(p_chapter int, p_phase int) returns jsonb
@@ -73,7 +68,6 @@ grant execute on function public.story_complete_scene(int, int) to authenticated
 
 -- 확인:
 -- select chapter, phase, type, points, enemy_count from public.story_phase_config where chapter in (16,17) order by 1,2;
--- select public._player_unlock_level('chapter_16'), public._player_unlock_level('chapter_17');
 
 -- battle_story_defs_v2 for chapters 16–17 (from tools/build_phase2_catalog.mjs)
 do $cat$

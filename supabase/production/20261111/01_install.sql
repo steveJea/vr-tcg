@@ -23,7 +23,7 @@ begin
  end if;
  select bundle_hash into h from vr_rollout_private.releases where release_id='20261111';
  if found then
-  if h is distinct from '0ff698bcba19a3c92e6bed94c90aa1719511ac5980af7e2295c135880b38209a' then raise exception 'STOP: release content changed after installation; use a reviewed follow-up migration'; end if;
+  if h is distinct from 'dd2b7a28c5ddb524ab2c5f86da9fbae096e7926bdcc231332ff52d5f24a241da' then raise exception 'STOP: release content changed after installation; use a reviewed follow-up migration'; end if;
   raise notice 'Production release 20261111 already installed: no data/function/policy changes'; return;
  end if;
  -- Do not rotate an unknown live engine silently; v6/v7 must not exist yet.
@@ -389,7 +389,7 @@ end $$;
 
 select 'phase7 direct replay installed — staging only, switch off, phase6 sweep untouched' as result;
 
--- ===== REVIEWED NEW SOURCE: story_ch16_17.sql (dropped: cluster guard; _player_unlock_level (keeps level_unlocks policy); staging v7 hash rotation) =====
+-- ===== REVIEWED NEW SOURCE: story_ch16_17.sql (dropped: cluster guard; staging v7 hash rotation) =====
 insert into public.story_phase_config (chapter, phase, type, points, reward_grade, enemy_count) values
   (16,1,'normal',3,null,5), (16,2,'normal',3,null,5), (16,3,'normal',3,null,5), (16,4,'normal',3,null,5),
   (16,5,'normal',3,null,5), (16,6,'normal',3,null,1), (16,7,'normal',3,null,5), (16,8,'normal',3,null,5),
@@ -838,7 +838,7 @@ $vr_production_payload$;
  perform set_config('check_function_bodies','on',true);
  for f in select pg_get_functiondef(oid) ddl from pg_proc where pronamespace='public'::regnamespace and prokind='f' and proname=any(array['_daily_defs','_drink_json','_dsp_fill','_phase7_replayable','_pvp_rating_v3','_unlock_intros','_weekly_defs','battle_direct_session_v7','battle_direct_settle_v7','battle_session_finish_v2','battle_sweep_session_v6','battle_sweep_settle_v6','dispatch_start','drink_buy','pvp_rankings','pvp_user_info','story_complete_scene']) loop execute f.ddl; end loop;
  if exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.prosecdef and left(p.proname,1)='_' and pg_get_function_result(p.oid)<>'trigger' and (has_function_privilege('anon',p.oid,'execute') or has_function_privilege('authenticated',p.oid,'execute'))) then raise exception 'STOP: public-callable internal definer function'; end if;
- insert into vr_rollout_private.releases(release_id,bundle_hash,db_id) values('20261111','0ff698bcba19a3c92e6bed94c90aa1719511ac5980af7e2295c135880b38209a',(select system_identifier::text from pg_catalog.pg_control_system()));
+ insert into vr_rollout_private.releases(release_id,bundle_hash,db_id) values('20261111','dd2b7a28c5ddb524ab2c5f86da9fbae096e7926bdcc231332ff52d5f24a241da',(select system_identifier::text from pg_catalog.pg_control_system()));
 end $production_install$;
 notify pgrst,'reload schema';
 commit;

@@ -47,6 +47,11 @@ const r17 = (await db.query("select count(*)::int n, sum(points)::int pts, sum(e
 ok(r16.n === 12 && r16.pts === 36, `story_phase_config 16: ${JSON.stringify(r16)}`);
 ok(r17.n === 15 && r17.pts === 45, `story_phase_config 17: ${JSON.stringify(r17)}`);
 ok((await db.query("select enemy_count from public.story_phase_config where chapter=16 and phase=12")).rows[0].enemy_count === 0, '16-12 enemy_count=0');
-const g = await db.query("select public._player_unlock_level('chapter_16') a, public._player_unlock_level('chapter_17') b, public._player_unlock_level('chapter_15') c");
-ok(g.rows[0].a === 26 && g.rows[0].b === 27 && g.rows[0].c === 25, '입장 레벨 16=26 · 17=27 · 15=25 유지');
+// 2026-11-08 해금 정책 보호: CH16/17 SQL은 _player_unlock_level 을 다시 만들지 않는다 (챕터 레벨 벽 없음).
+const chSrc = readFileSync(new URL('../supabase/story_ch16_17.sql', import.meta.url), 'utf8');
+ok(!/create\s+or\s+replace\s+function\s+public\._player_unlock_level\s*\(/i.test(chSrc), 'story_ch16_17.sql 이 _player_unlock_level 을 재정의하지 않음');
+const lu = readFileSync(new URL('../supabase/level_unlocks_staging.sql', import.meta.url), 'utf8').match(/create or replace function public\._player_unlock_level\(p_key text\)[\s\S]*?\n\$\$;/)[0];
+await db.exec(lu); await db.exec(sql16);
+const g = await db.query("select public._player_unlock_level('chapter_16') a, public._player_unlock_level('chapter_17') b, public._player_unlock_level('skill') s, public._player_unlock_level('equip') e");
+ok(g.rows[0].a === 1 && g.rows[0].b === 1 && g.rows[0].s === 13 && g.rows[0].e === 3, '재실행 후에도 11-08 정책 유지 (챕터 1 · 스킬 13 · 장비 3)');
 console.log(fails ? `${fails} FAIL` : 'ALL OK'); process.exit(fails ? 1 : 0);
