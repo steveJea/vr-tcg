@@ -1,0 +1,36 @@
+release 20261111 (after 20261108)
+functions created/replaced (new sources + final-state diff): 17 names
+  fn _daily_defs
+  fn _drink_json
+  fn _dsp_fill
+  fn _phase7_replayable
+  fn _pvp_rating_v3
+  fn _unlock_intros
+  fn _weekly_defs
+  fn battle_direct_session_v7
+  fn battle_direct_settle_v7
+  fn battle_session_finish_v2
+  fn battle_sweep_session_v6
+  fn battle_sweep_settle_v6
+  fn dispatch_start
+  fn drink_buy
+  fn pvp_rankings
+  fn pvp_user_info
+  fn story_complete_scene
+config tables touched (126 rows):
+  arcade_policy_v5
+  battle_card_meta_v2
+  dispatch_card_meta
+  guildbattle_policy_v4
+  pvp_card_meta
+  pvp_policy_v3
+  reward_card_catalog
+  story_card_pool
+  story_skill_meta
+functions in production but not in target (left untouched): 0
+policy hashes after install:
+  pvp_policy_v3 bef887c77a009121ae99301ca91db7d73a7bd9ce30d70e1ec7a18d10742cd16f
+  guildbattle_policy_v4 819b116c1e1ccd7d66ba589e3bc5e4e8d436a43ebf2dfe4543c250cbf5166cd0
+  arcade_policy_v5 7c47d4ccb224c0cd7cf8ff9a11a465e68fd645510588249fabb6c8859a39663a
+  battle_replay_policy_v6 32f0e5059ddb994d56865b16054d64f3f2c1f389df672be4f113e13c5d4112c2
+  battle_replay_policy_v7 c128e31ac46bd40d34f934af334021693f998f48a6d5b47ad8c414a62588688e

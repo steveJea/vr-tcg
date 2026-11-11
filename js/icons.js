@@ -128,6 +128,14 @@
     element_note: { src: 'element_note.webp', alt: '등급과 속성' },
     shop: { src: 'shop.webp', alt: '상점' },
     settings_text: { src: 'gear.webp', alt: '설정' },
+    // set4 (2026-11-10 그림순이)
+    check_done: { src: 'check_done.webp', alt: '완료' },
+    play: { src: 'play.webp', alt: '재생' },
+    camp_train: { src: 'camp_train.webp', alt: '훈련' },
+    camp_forge: { src: 'camp_forge.webp', alt: '연마소' },
+    camp_dojo: { src: 'camp_dojo.webp', alt: '도장' },
+    info: { src: 'info.webp', alt: '안내' },
+    skill_mark: { src: 'skill_mark.webp', alt: '스킬' },
   };
   // 이모지 → 아이콘 이름 (UI 라벨용. 대사·본문에는 쓰지 않음)
   const EMOJI = { '💧': 'mana', '♥': 'hp', '👑': 'crown', '🗑️': 'discard', '🗑': 'discard', '🗡️': 'weapon', '🎬': 'opening', '🔊': 'sound_on', '🔇': 'sound_off',
@@ -327,7 +335,19 @@
     "🕊": "peace",
     "☁": "cloud_save",
     "🟢": "online",
-    "🟠": "orange_marker"
+    "🟠": "orange_marker",
+    // set4 (그림순이) — 정규화로 U+FE0F 는 빠진 형태로 등록
+    "✕": "close",
+    "✖": "close",
+    "✔": "check_done",
+    "✓": "check_done",
+    "☑": "check_done",
+    "▶": "play",
+    "🏋": "camp_train",
+    "⚒": "camp_forge",
+    "🥋": "camp_dojo",
+    "ℹ": "info",
+    "✦": "skill_mark"
   };
   const norm = s => s.replace(/\uFE0F/g, '');
   // 자동 교체 표 = EMOJI(예전 표) + EMOJI2. 예전엔 EMOJI2 만 봐서 소환 제목 '🎴 인재 영입' 같은 글자가 이모지로 남았음 (2026-11-04)
@@ -337,7 +357,7 @@
   for (const [e, k] of Object.entries(EMOJI)) { const n = norm(e); if (!NO_AUTO.has(n)) AUTO[n] = k; }
   for (const [e, k] of Object.entries(EMOJI2)) { const n = norm(e); if (!NO_AUTO.has(n)) AUTO[n] = k; }
   const E2RE = new RegExp(Object.keys(AUTO).sort((a, b) => b.length - a.length).map(e => e.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\uFE0F?').join('|'), 'gu');
-  const SKIP_SEL = '.story-dlg, #story-dlg, #event-layer, .ev-line, input, textarea, select, script, style, [contenteditable], [data-noemoji], .stfx-text';
+  const SKIP_SEL = '.story-dlg, #story-dlg, #event-layer, .ev-line, input, textarea, select, script, style, [contenteditable], [data-noemoji], .stfx-text, .stfx-stars';
   function swapText(tn) {
     const t = tn.nodeValue; E2RE.lastIndex = 0; if (!t || !E2RE.test(t)) return;
     const p = tn.parentElement; if (!p || p.closest(SKIP_SEL)) return;

@@ -40,11 +40,11 @@ set local check_function_bodies = off;
 
 do $vr_install_part$
 begin
-  if exists (select 1 from vr_staging_install.parts where bundle_hash <> '8157203b9aa6e793a649e2e327c69fce2bfdfa17b0dc7a81d0e845baa5d34adf' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
+  if exists (select 1 from vr_staging_install.parts where bundle_hash <> '1e7a91f656cb089116c27629c13947ec0c769796933ace7bb576f39ba0920d4e' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
     raise exception 'STOP: 다른 버전/DB의 설치 기록입니다. 파일을 섞지 마세요.';
   end if;
   if exists (select 1 from vr_staging_install.parts where part_no = 6) then
-    if not exists (select 1 from vr_staging_install.parts where part_no = 6 and part_hash = '85dd15d3077ee860c9d54559aa998b130fa31a03bf6387b8ea5f95b038a38dbc') then
+    if not exists (select 1 from vr_staging_install.parts where part_no = 6 and part_hash = '3ab57a984bef501ac1a360805d30dbd17b38cc4fae1ed81a01209fdf40f3d679') then
       raise exception 'STOP: 완료한 파일과 내용이 다릅니다.';
     end if;
     raise notice '06_install.sql: 이미 완료, 변경 없이 건너뜀';
@@ -61,7 +61,9 @@ begin
 -- ===== SOURCE: trade_drink.sql =====
 -- ===== 거래 PR2: 체력의 드링크 🥤 =====
 -- 선행: gem.sql (player_wallet.gem_free/gem_paid · _gem_add) · phaseE_2.sql (_player_sync · _player_stamina_add). 여러 번 실행해도 안전
--- 유료 심연석으로만 구매 → 거래 가능분(tradable). 이벤트·보상·운영 지급 → 귀속분(bound). 거래에 묶인 분(locked)은 거래 PR 에서 사용
+-- 심연석으로 구매 → 거래 가능분(tradable). 무료 심연석을 먼저 쓰고 모자라면 유료 (2026-11-10 BM. 예전에는 유료만).
+-- 이벤트·보상·운영 지급 → 귀속분(bound). 거래에 묶인 분(locked)은 거래 PR 에서 사용
+-- 행동력 최대 충전(gem_shop.stamina)과는 다른 상품. 드링크 1개 = 행동력 +200, 상한 999.
 -- 사용: 1개당 행동력 +200, 최대치를 넘어도 쌓이지만 상한(임시 999)을 넘게는 못 씀. 귀속분부터 사용
 
 create table if not exists public.player_items (
@@ -92,7 +94,7 @@ create table if not exists public.player_items (
   execute $vr_statement$create index if not exists item_log_user_idx on public.item_log (user_id, created_at desc);$vr_statement$;
   execute $vr_statement$alter table public.item_log enable row level security;$vr_statement$;
   execute $vr_statement$revoke all on public.item_log from public, anon, authenticated;$vr_statement$;
-  execute $vr_statement$-- 판매 상품 (조정 가능, 임시값). price = 유료 심연석
+  execute $vr_statement$-- 판매 상품. price = 심연석 (무료 우선, 그다음 유료). 1/100 · 10/950 · 30/2700
 create table if not exists public.drink_shop (
   sku    text primary key,
   qty    int  not null check (qty > 0),
@@ -137,7 +139,7 @@ begin
   select * into r from player_items where user_id = p_uid and item = 'drink';
   select * into w from player_wallet where user_id = p_uid;
   return jsonb_build_object('ok', true, 'tradable', coalesce(r.tradable, 0), 'bound', coalesce(r.bound, 0), 'locked', coalesce(r.locked, 0),
-    'total', coalesce(r.tradable, 0) + coalesce(r.bound, 0), 'paid_gem', coalesce(w.gem_paid, 0),
+    'total', coalesce(r.tradable, 0) + coalesce(r.bound, 0), 'paid_gem', coalesce(w.gem_paid, 0), 'free_gem', coalesce(w.gem_free, 0),
     'per', _drink_cfg('stamina_per'), 'cap', _drink_cfg('stamina_cap'),
     'shop', (select coalesce(jsonb_agg(jsonb_build_object('sku', sku, 'qty', qty, 'price', price) order by ord), '[]'::jsonb) from drink_shop where active));
 end $$;$vr_statement$;
@@ -146,7 +148,7 @@ begin
   if auth.uid() is null then raise exception 'login required'; end if;
   return _drink_json(auth.uid());
 end $$;$vr_statement$;
-  execute $vr_statement$-- 구매: 유료 심연석만 차감 (무료분은 안 씀)
+  execute $vr_statement$-- 구매: 무료 심연석을 먼저 쓰고, 모자라면 유료 (gem_shop 행동력 충전과 같은 _gem_spend). 산 드링크는 거래 가능.
 create or replace function public.drink_buy(p_sku text) returns jsonb language plpgsql security definer set search_path = public as $$
 declare uid uuid := auth.uid(); s drink_shop; g jsonb;
 begin
@@ -155,9 +157,8 @@ begin
   select * into s from drink_shop where sku = p_sku and active;
   if s.sku is null then raise exception 'invalid item'; end if;
   insert into player_wallet (user_id) values (uid) on conflict (user_id) do nothing;
-  if (select gem_paid from player_wallet where user_id = uid) < s.price then raise exception 'not enough paid gem'; end if;
-  g := _gem_add(uid, 0, -s.price, 'buy:' || s.sku, null, jsonb_build_object('qty', s.qty, 'price', s.price));
-  perform _item_add(uid, 'drink', s.qty, 0, 'buy:' || s.sku, null, jsonb_build_object('paid_gem', s.price));
+  g := _gem_spend(uid, s.price, 'buy:' || s.sku, jsonb_build_object('qty', s.qty, 'price', s.price));
+  perform _item_add(uid, 'drink', s.qty, 0, 'buy:' || s.sku, null, jsonb_build_object('price', s.price));
   return _drink_json(uid) || jsonb_build_object('gem', g, 'bought', s.qty);
 end $$;$vr_statement$;
   execute $vr_statement$-- 사용: 귀속분 먼저, 그다음 거래 가능분(묶인 분 제외). 상한을 넘기면 거부
@@ -1793,30 +1794,9 @@ end $$;$vr_statement$;
   execute $vr_statement$revoke all on function public.guild_lend_notices() from public, anon;$vr_statement$;
   execute $vr_statement$grant execute on function public.guild_lend_notices() to authenticated;$vr_statement$;
   execute $vr_statement$select 'guild_lend_notice ok' as result;$vr_statement$;
-  execute $vr_statement$-- ===== SOURCE: story_stars.sql =====
--- 스토리 별점(★1~3, 마나 전투) — 페이즈별 최고 별 저장. 여러 번 실행해도 안전 (함수만, 데이터 삭제 없음)
--- 저장 위치: story_progress.data.stars = { "<챕터>": { "<페이즈>": 1~3 } } · 이미 클리어한 페이즈만, 더 높을 때만 갱신
--- 별 계산은 클라이언트(보상 없음): ★1 클리어 · +★ 내 턴 10턴 이내 · +★ 남은 마나 30% 이상
-create or replace function public.story_set_stars(p_chapter int, p_phase int, p_stars int) returns jsonb language plpgsql security definer set search_path = public as $$
-declare me uuid := auth.uid(); d jsonb; cur int; s int := greatest(1, least(3, coalesce(p_stars, 1)));
-begin
-  if me is null then raise exception 'login required'; end if;
-  if not exists (select 1 from story_phase_config where chapter = p_chapter and phase = p_phase) then raise exception 'invalid phase'; end if;
-  d := _story_lock(me);
-  if not (coalesce(d->'cleared'->(p_chapter::text), '[]'::jsonb) @> to_jsonb(p_phase)) then raise exception 'not cleared'; end if;
-  cur := coalesce((d->'stars'->(p_chapter::text)->>(p_phase::text))::int, 0);
-  if s > cur then
-    if jsonb_typeof(d->'stars') is distinct from 'object' then d := jsonb_set(d, '{stars}', '{}'::jsonb); end if;
-    if jsonb_typeof(d->'stars'->(p_chapter::text)) is distinct from 'object' then d := jsonb_set(d, array['stars', p_chapter::text], '{}'::jsonb); end if;
-    d := jsonb_set(d, array['stars', p_chapter::text, p_phase::text], to_jsonb(s));
-    d := _story_save(me, d); cur := s;
-  end if;
-  return jsonb_build_object('ok', true, 'stars', cur, 'all', coalesce(d->'stars', '{}'::jsonb));
-end $$;$vr_statement$;
-  execute $vr_statement$revoke all on function public.story_set_stars(int, int, int) from public, anon;$vr_statement$;
 
   insert into vr_staging_install.parts(part_no, bundle_hash, part_hash, project_ref, db_id)
-  values (6, '8157203b9aa6e793a649e2e327c69fce2bfdfa17b0dc7a81d0e845baa5d34adf', '85dd15d3077ee860c9d54559aa998b130fa31a03bf6387b8ea5f95b038a38dbc', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
+  values (6, '1e7a91f656cb089116c27629c13947ec0c769796933ace7bb576f39ba0920d4e', '3ab57a984bef501ac1a360805d30dbd17b38cc4fae1ed81a01209fdf40f3d679', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
 end $vr_install_part$;
 commit;
 select '06_install.sql: 완료 또는 이미 완료 (6/14)' as result;

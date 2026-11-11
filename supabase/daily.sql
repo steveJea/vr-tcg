@@ -28,11 +28,11 @@ revoke all on public.daily_attend from public, anon, authenticated;
 
 -- 미션 정의 (한 곳에서 조정). per = daily_track 1회 호출로 올릴 수 있는 최대
 create or replace function public._daily_defs() returns jsonb language sql immutable as $$ select '[
-  {"key":"arcade","name":"아케이드 1판 플레이","goal":1,"per":1,"reward":{"gold":1000}},
-  {"key":"win","name":"전투 3회 승리","goal":3,"per":1,"reward":{"gold":2000}},
-  {"key":"story","name":"스토리 스테이지 2회 클리어","goal":2,"per":1,"reward":{"gold":2000,"gem":10}},
-  {"key":"tower","name":"시련의 탑 1회 도전","goal":1,"per":1,"reward":{"gold":1500,"gem":10}},
-  {"key":"skill","name":"고유기술 10회 사용","goal":10,"per":20,"reward":{"gold":1500}}
+  {"key":"arcade","name":"아케이드 플레이 x 1","goal":1,"per":1,"reward":{"gold":1000}},
+  {"key":"win","name":"전투 승리 x 3","goal":3,"per":1,"reward":{"gold":2000}},
+  {"key":"story","name":"스토리 스테이지 클리어 x 2","goal":2,"per":1,"reward":{"gold":2000,"gem":10}},
+  {"key":"tower","name":"시련의 탑 도전 x 1","goal":1,"per":1,"reward":{"gold":1500,"gem":10}},
+  {"key":"skill","name":"고유기술 사용 x 10","goal":10,"per":20,"reward":{"gold":1500}}
 ]'::jsonb $$;
 create or replace function public._daily_all_reward() returns jsonb language sql immutable as $$ select '{"gem":30}'::jsonb $$;
 -- 출석 7일 주기 (빠진 날이 있어도 끊기지 않고 다음 칸으로. 7일째 받으면 1일째부터 다시)

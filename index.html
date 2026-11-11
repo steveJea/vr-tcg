@@ -11,31 +11,35 @@
   <meta name="theme-color" content="#0b0b12">
   <link rel="stylesheet" href="css/story.css">
   <link rel="stylesheet" href="css/gear.css">
-  <link rel="canonical" href="https://tcg.mbbs.kr/">
+  <link rel="canonical" href="https://ag.violenceroyale.com/">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Violence Royale : The Abyss Gate">
   <meta property="og:locale" content="ko_KR">
   <meta property="og:title" content="Violence Royale : The Abyss Gate | 어비스 게이트 - 웹 카드 배틀 TCG">
   <meta property="og:description" content="VR 시리즈 캐릭터 카드로 덱을 꾸려 상대 진영을 무너뜨리는 웹 카드 배틀 TCG. 마나와 스킬, 시너지 조합, 등급별 카드로 전략 대결을 펼치세요. 설치 없이 PC·모바일에서 무료 플레이.">
-  <meta property="og:url" content="https://tcg.mbbs.kr/">
-  <meta property="og:image" content="https://tcg.mbbs.kr/img/og_v2.jpg">
+  <meta property="og:url" content="https://ag.violenceroyale.com/">
+  <meta property="og:image" content="https://ag.violenceroyale.com/img/og_v2.jpg">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Violence Royale : The Abyss Gate | 어비스 게이트 - 웹 카드 배틀 TCG">
   <meta name="twitter:description" content="VR 시리즈 캐릭터 카드로 덱을 꾸려 상대 진영을 무너뜨리는 웹 카드 배틀 TCG. 마나와 스킬, 시너지 조합, 등급별 카드로 전략 대결을 펼치세요. 설치 없이 PC·모바일에서 무료 플레이.">
-  <meta name="twitter:image" content="https://tcg.mbbs.kr/img/og_v2.jpg">
-  <script type="application/ld+json">{"@context": "https://schema.org", "@type": "VideoGame", "name": "Violence Royale : The Abyss Gate", "description": "VR 시리즈 캐릭터 카드로 덱을 꾸려 상대 진영을 무너뜨리는 웹 카드 배틀 TCG. 마나와 스킬, 시너지 조합, 등급별 카드로 전략 대결을 펼치세요. 설치 없이 PC·모바일에서 무료 플레이.", "url": "https://tcg.mbbs.kr/", "image": "https://tcg.mbbs.kr/img/og_v2.jpg", "inLanguage": "ko", "genre": "CardGame", "gamePlatform": ["Web browser", "PC", "Mobile"], "applicationCategory": "Game", "operatingSystem": "Any", "offers": {"@type": "Offer", "price": "0", "priceCurrency": "KRW"}}</script>
+  <meta name="twitter:image" content="https://ag.violenceroyale.com/img/og_v2.jpg">
+  <script type="application/ld+json">{"@context": "https://schema.org", "@type": "VideoGame", "name": "Violence Royale : The Abyss Gate", "description": "VR 시리즈 캐릭터 카드로 덱을 꾸려 상대 진영을 무너뜨리는 웹 카드 배틀 TCG. 마나와 스킬, 시너지 조합, 등급별 카드로 전략 대결을 펼치세요. 설치 없이 PC·모바일에서 무료 플레이.", "url": "https://ag.violenceroyale.com/", "image": "https://ag.violenceroyale.com/img/og_v2.jpg", "inLanguage": "ko", "genre": "CardGame", "gamePlatform": ["Web browser", "PC", "Mobile"], "applicationCategory": "Game", "operatingSystem": "Any", "offers": {"@type": "Offer", "price": "0", "priceCurrency": "KRW"}}</script>
   <link rel="icon" href="favicon.ico" sizes="any">
   <link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png">
   <link rel="apple-touch-icon" sizes="180x180" href="img/apple-touch-icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/main-screen.css">
+  <link rel="stylesheet" href="css/legal.css">
+  <link rel="stylesheet" href="css/payments.css">
   <link rel="stylesheet" href="css/howto.css">
   <script src="js/id-alias.js"></script>   <!-- 카드 ID 변경 대비: 옛 ID → 새 ID (가장 먼저) -->
   <script src="js/img-fallback.js"></script>
   <style>
+    /* 한글은 띄어쓰기(단어)에서만 줄바꿈. 칸보다 긴 URL·코드·닉네임만 그 자리에서 자름 */
+    html { word-break: keep-all; overflow-wrap: anywhere; }
     .zoom-btn{width:22px;height:22px;border-radius:9999px;background:rgba(0,0,0,.6);border:1px solid rgba(255,255,255,.35);font-size:11px;line-height:1;display:flex;align-items:center;justify-content:center;z-index:5;cursor:zoom-in;touch-action:manipulation}
     .zoom-btn:hover{background:rgba(0,0,0,.85)}
     /* 모바일/터치: 배틀 손패·필드 카드 모서리 돋보기 숨김 (상세창 돋보기는 유지) */
@@ -75,6 +79,16 @@
     .log-body{max-height:60vh;overflow-y:auto;background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.08);border-radius:.75rem;padding:.4rem .7rem;margin-top:8px}
     .ui-ic { display: inline-block; width: 1.2em; height: 1.2em; vertical-align: -0.25em; object-fit: contain; pointer-events: none; user-select: none; }
     .ui-ic-sm { width: 1em; height: 1em; vertical-align: -0.15em; }
+    /* set4: 닫기·재생·완료 아이콘이 버튼/배지 안에서 글자 크기에 맞게 */
+    .modal-x .ui-ic, .main-pop-x .ui-ic, .pvp-x .ui-ic, .gem-x .ui-ic, .gd-x .ui-ic,
+    .ht-x .ui-ic, .gal-x .ui-ic, .vh-x .ui-ic, .gn-x .ui-ic, .hub-x .ui-ic,
+    .story-video-x .ui-ic, .story-cond-x .ui-ic, .story-zoom-x .ui-ic, .story-cp-x .ui-ic {
+      width: 1.05em; height: 1.05em; vertical-align: middle;
+    }
+    #auto-btn .ui-ic { width: 1.15em; height: 1.15em; vertical-align: -0.2em; }
+    .ht-arrow .ui-ic { width: 18px; height: 18px; }
+    .camp-no .ui-ic { width: 16px; height: 16px; }
+    .story-skn .ui-ic, .sk-count .ui-ic, .skill-btn .ui-ic { width: 1em; height: 1em; vertical-align: -0.15em; }
     /* 어두운 남색 배경에서 어둠 속성 아이콘이 묻히지 않게 옅은 외곽광 */
     .ui-ic-el_dark { filter: drop-shadow(0 0 1px rgba(255,255,255,.75)) drop-shadow(0 0 2px rgba(196,181,253,.55)); }
     .ht-icon .ui-ic { width: 1em; height: 1em; }
@@ -118,7 +132,7 @@
     #game.view-raid #ai-field .unit .hp-bar, #game.view-raid #ai-field .unit .mp-bar { display:none; }
     .fx-dmg.fx-dmg-raid { font-size:34px !important; }
     /* PvP·구역 전쟁 화면(TCG.viewBattle): 마나 없음 → 마나 액션·손패·마나 표시 숨김 */
-    #game.view-battle #action-bar, #game.view-battle #me-hand, #game.view-battle #act-sort, #game.view-battle #hand-sort, #game.view-battle #story-giveup, #game.view-battle .mana-line, #game.view-battle #act-merc { display: none !important; }
+    #game.view-battle #action-bar, #game.view-battle #me-hand, #game.view-battle #act-sort, #game.view-battle #hand-sort, #game.view-battle .mana-line, #game.view-battle #act-merc { display: none !important; }
     @media (min-aspect-ratio: 1/1) {
       #battle-bg[data-bg="normal"] { background-image: url(img/ui/bg_normal_wide.webp); }
       #battle-bg[data-bg="boss"] { background-image: url(img/ui/bg_boss_wide.webp); }
@@ -147,7 +161,7 @@
     .cutin.cutin-img { top: 0; bottom: 0; margin: auto !important; padding: 0; aspect-ratio: 16/9; max-height: 70vh; width: min(100vw, calc(70vh * 16 / 9)); margin: 0 auto; overflow: hidden; border-block: 2px solid rgba(255,255,255,.35); box-shadow: 0 0 40px rgba(0,0,0,.8); }
     .cutin-img .cutin-media { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center; }
     .cutin-img .cutin-text { position: absolute; left: 0; right: 0; top: 0; padding: .6rem .75rem 1.6rem; display: flex; flex-direction: column-reverse; align-items: center; gap: 2px; background: linear-gradient(rgba(0,0,0,.9) 0%, rgba(0,0,0,.65) 60%, transparent); }
-    .cutin-img .cutin-text > div:last-child { font-size: clamp(26px, 5.2vw, 56px) !important; line-height: 1.1; font-weight: 900; letter-spacing: -.01em; overflow-wrap: anywhere; -webkit-text-stroke: 1.5px rgba(0,0,0,.9); paint-order: stroke fill; text-shadow: 0 0 6px #000, 0 0 18px currentColor, 0 3px 0 #000; }
+    .cutin-img .cutin-text > div:last-child { font-size: clamp(26px, 5.2vw, 56px) !important; line-height: 1.1; font-weight: 900; letter-spacing: -.01em; word-break: keep-all; overflow-wrap: anywhere; -webkit-text-stroke: 1.5px rgba(0,0,0,.9); paint-order: stroke fill; text-shadow: 0 0 6px #000, 0 0 18px currentColor, 0 3px 0 #000; }
     .cutin-img .cutin-text.cutin-text-bottom { top: auto; bottom: 0; padding: 1.6rem .75rem .7rem; background: linear-gradient(transparent, rgba(0,0,0,.6) 45%, rgba(0,0,0,.88)); }
     .cutin-img .cutin-text > div:first-child:not(:last-child) { font-size: clamp(12px, 2vw, 18px) !important; font-weight: 700; color: #e4e4e7 !important; text-shadow: 0 1px 3px #000; }
     .cutin-img.cutin-me .cutin-text > div:last-child { color: #a7f3d0; } .cutin-img.cutin-ai .cutin-text > div:last-child { color: #fecaca; }
@@ -244,7 +258,6 @@
     @media (prefers-reduced-motion: reduce) { .fx-shake { animation-duration: .06s; } .fx-knock, .fx-screen { animation: none; } .fx-dmg { animation-duration: .5s; } }
     #my-turns{display:inline-flex;align-items:baseline;gap:2px;padding:1px 8px;border-radius:999px;font-weight:800;font-size:11px;border:1px solid;white-space:nowrap}
 #my-turns b{font-size:15px;line-height:1}#my-turns .of{opacity:.6;font-size:10px}
-@media (max-width:640px){#my-turns .lbl{display:none}#my-turns::before{content:'⏳'}}
 .turns-ok{color:#6ee7b7;border-color:#10b98166;background:#064e3b88}
 .turns-warn{color:#fdba74;border-color:#f97316;background:#7c2d1299}
 .turns-crit{color:#fff;border-color:#ef4444;background:#b91c1c;animation:turnPulse 1s ease-in-out infinite}
@@ -254,7 +267,7 @@
 .turns-warn-p i.on{background:#fb923c!important}.turns-crit-p i.on{background:#ef4444!important}
 .last-turn-toast{position:fixed;left:50%;top:40%;transform:translate(-50%,-50%);z-index:60;padding:14px 28px;border-radius:18px;background:linear-gradient(135deg,#dc2626,#f97316);color:#fff;font-weight:900;font-size:clamp(22px,6vw,40px);box-shadow:0 0 40px #ef4444;pointer-events:none;animation:toastIn 2.2s ease forwards}
 @keyframes toastIn{0%{opacity:0;transform:translate(-50%,-50%) scale(.6)}12%{opacity:1;transform:translate(-50%,-50%) scale(1.1)}20%{transform:translate(-50%,-50%) scale(1)}80%{opacity:1}100%{opacity:0;transform:translate(-50%,-60%) scale(1)}}
-#me-field .unit.dragging { opacity: .9; filter: drop-shadow(0 0 12px #a78bfa); cursor: grabbing; } #me-hand::-webkit-scrollbar { height: 6px; } #me-hand::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 3px; }
+#me-field .unit, #me-field .unit img { -webkit-user-drag: none; user-select: none; } #me-field .unit.dragging { opacity: .9; filter: drop-shadow(0 0 12px #a78bfa); cursor: grabbing; } #me-hand::-webkit-scrollbar { height: 6px; } #me-hand::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 3px; }
     /* 모바일: 상단 버튼이 상대 진영 칸을 좁히지 않게 버튼 줄 → 상대 진영(전체 폭) 두 줄 배치 (내 진영과 같은 모양) */
     @media (max-width: 640px) {
       #top-bar { flex-wrap: wrap; justify-content: flex-end; row-gap: .4rem; }
@@ -270,6 +283,14 @@
   #cutin{max-width:100vw;contain:paint}
   .modal-x{position:sticky;top:0;float:right;margin:-.5rem -.5rem .25rem .5rem;z-index:10;box-shadow:0 2px 8px rgba(0,0,0,.6)}
 </style>
+  <!-- Microsoft Clarity: this project is only for the production game host. -->
+  <script type="text/javascript">
+    try {
+      if (location.hostname === "ag.violenceroyale.com") {
+        (function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);})(window, document, "clarity", "script", "zbavh1z42t");
+      }
+    } catch (e) {}
+  </script>
   <!-- Google tag (gtag.js) -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-NP3VPPBRKL"></script>
   <script>
@@ -283,6 +304,7 @@
   <link rel="stylesheet" href="css/pvp.css">
   <link rel="stylesheet" href="css/guild.css">
   <link rel="stylesheet" href="css/gem.css">
+  <link rel="stylesheet" href="css/shop.css">
   <link rel="stylesheet" href="css/trade.css">
   <link rel="stylesheet" href="css/hubs.css">
 <link rel="stylesheet" href="css/tutorial.css">
@@ -314,8 +336,13 @@
   <div class="intro-body">
     <img src="img/ui/main/logo_v2.webp" alt="Violence Royale : The Abyss Gate" class="intro-logo" width="1200" height="595">
     <div class="intro-acts">
-      <button id="intro-login" class="main-btn intro-btn" type="button"><img src="img/ui/login.webp" alt="" class="ui-ic"> 구글 로그인</button>
+      <div class="oauth-row" data-clarity-mask="true">
+        <button id="intro-login" data-oauth-provider="google" class="main-btn intro-btn" type="button"><img src="img/ui/login.webp" alt="" class="ui-ic"> 구글 로그인</button>
+        <button id="intro-login-kakao" class="main-btn intro-btn oauth-kakao" type="button" data-oauth-provider="kakao" hidden><img src="img/ui/kakao-symbol.svg" class="oauth-symbol" width="18" height="18" alt="">카카오 로그인</button>
+        <button id="intro-login-x" class="main-btn intro-btn oauth-x" type="button" data-oauth-provider="x" hidden>X 로그인</button>
+      </div>
       <button id="intro-guest" class="intro-guest" type="button">게스트로 시작</button>
+      <nav id="intro-legal-links" class="legal-links" aria-label="서비스 정책"><a href="/terms.html" target="_blank" rel="noopener noreferrer">이용약관</a><a href="/privacy.html" target="_blank" rel="noopener noreferrer">개인정보처리방침</a></nav>
     </div>
   </div>
 </section>
@@ -332,7 +359,7 @@
   <canvas id="embers" class="absolute inset-0 w-full h-full pointer-events-none"></canvas>
   <div class="main-vignette absolute inset-0 pointer-events-none"></div>
   <div class="main-top absolute top-0 inset-x-0 z-20 flex items-center justify-between gap-2">
-    <div id="acct-box" class="acct-box min-w-0"></div>
+    <div id="acct-box" class="acct-box min-w-0" data-clarity-mask="true"></div>
     <div id="main-cur" class="main-cur" aria-label="재화"></div>
     <span data-idlebtn class="main-idle"></span>
     <span data-achbtn class="main-ach"></span>
@@ -348,9 +375,9 @@
     </h1>
     <div id="notice-line" class="notice-line hidden" role="marquee" aria-live="off"><img src="img/ui/v2/icon_notice.webp" alt="" class="notice-ic" width="20" height="20"><div class="notice-track"><span id="notice-text"></span></div></div>
     <div class="main-menu main-grid w-full" role="group" aria-label="메뉴">
-      <button id="story-btn" disabled class="main-tile tile-story main-cta" type="button" data-mode="story" data-auth title="스토리 · 챕터 · 카드 수집">
+      <button id="story-btn" disabled class="main-tile tile-story main-cta" type="button" data-mode="story" data-auth>
         <img src="img/ui/v2/btn_story.webp" alt="" class="main-tile-img" decoding="async" data-alt="img/ui/main/story_banner.webp"><span class="main-cta-t"><small id="main-cta-sub">STORY</small><b class="main-tile-t">▶ 스토리 이어하기</b></span><i class="main-tile-lock">🔒</i></button>
-      <button id="start-btn" disabled class="main-tile tile-arcade" type="button" data-mode="arcade" title="아케이드 · 바로 붙는 랜덤 카드 대전">
+      <button id="start-btn" disabled class="main-tile tile-arcade" type="button" data-mode="arcade">
         <img src="img/ui/v2/btn_arcade.webp" alt="" class="main-tile-img" decoding="async"><b class="main-tile-t main-banner-title">불러오는 중...</b></button>
       <button id="main-pvp" class="main-tile tile-pvp" type="button" data-mode="pvp" data-auth title="PvP">
         <img src="img/ui/v2/btn_pvp.webp" alt="" class="main-tile-img" decoding="async"><b class="main-tile-t">PVP</b><i class="main-tile-lock">🔒</i></button>
@@ -372,22 +399,28 @@
         <button id="main-help" class="gm-btn" type="button"><img src="img/ui/v2/icon_help.webp" alt=""><span>도움말</span></button>
         <button id="main-help-q" class="gm-btn" type="button" onclick="window.VRHelp&&VRHelp.open()"><b class="gm-q">?</b><span>가이드</span></button>
         <button id="main-howto" class="gm-btn" type="button"><img src="img/ui/v2/icon_howto.webp" alt=""><span>HOW TO PLAY</span></button>
-        <button id="main-tutorial" class="gm-btn hidden" type="button"><img src="img/ui/v2/icon_tutorial.webp" alt=""><span>튜토리얼</span></button>
-        <button id="arcade-opts-btn" class="gm-btn" type="button" aria-haspopup="dialog"><img src="img/ui/v2/icon_arcade_settings.webp" alt=""><span>아케이드 설정 <small id="arcade-opts-sum"></small></span></button>
-        <button id="main-rank" class="gm-btn" type="button"><img src="img/ui/v2/icon_ranking.webp" alt=""><span>랭킹</span></button>
-        <button id="main-gallery" class="gm-btn" type="button"><img src="img/ui/v2/icon_gallery.webp" alt=""><span>갤러리</span></button>
-        <button id="main-logout" class="gm-btn hidden" type="button"><img src="img/ui/login.webp" alt=""><span>로그아웃</span></button>
+        <button id="main-tutorial" class="gm-btn hidden" type="button" data-gm-home><img src="img/ui/v2/icon_tutorial.webp" alt=""><span>튜토리얼</span></button>
+        <button id="arcade-opts-btn" class="gm-btn" type="button" aria-haspopup="dialog" data-gm-home><img src="img/ui/v2/icon_arcade_settings.webp" alt=""><span>아케이드 설정 <small id="arcade-opts-sum"></small></span></button>
+        <button id="main-rank" class="gm-btn" type="button" data-gm-nobattle><img src="img/ui/v2/icon_ranking.webp" alt=""><span>랭킹</span></button>
+        <button id="main-gallery" class="gm-btn" type="button" data-gm-nobattle><img src="img/ui/v2/icon_gallery.webp" alt=""><span>갤러리</span></button>
+        <button id="main-link-google" class="gm-btn" type="button" data-gm-nobattle hidden data-clarity-mask="true"><span>구글 연결</span></button>
+        <button id="main-link-kakao" class="gm-btn" type="button" data-gm-nobattle hidden data-clarity-mask="true"><span>카카오 연결</span></button>
+        <button id="main-link-x" class="gm-btn" type="button" data-gm-nobattle hidden data-clarity-mask="true"><span>X 연결</span></button>
+        <button id="main-logout" class="gm-btn hidden" type="button" data-gm-nobattle data-clarity-mask="true"><img src="img/ui/login.webp" alt=""><span>로그아웃</span></button>
       </div>
+      <nav id="settings-legal-links" class="legal-links" aria-label="서비스 정책"><a href="/terms.html" target="_blank" rel="noopener noreferrer">이용약관</a><a href="/privacy.html" target="_blank" rel="noopener noreferrer">개인정보처리방침</a></nav>
       <div id="gm-foot" class="gm-foot"></div>
     </div>
   </div>
   <div id="main-settings-pop" class="main-pop hidden" role="dialog" aria-modal="true" aria-labelledby="main-settings-title">
     <div class="main-pop-card">
       <div class="flex items-center justify-between mb-3"><h2 id="main-settings-title" class="main-pop-title">설정</h2><button class="main-pop-x" type="button" data-close-settings aria-label="닫기">✕</button></div>
-      <div class="set-row"><span class="set-label"><img src="img/ui/opening.webp" alt="" class="ui-ic"> 공격 연출 스킵<small>전투 애니메이션을 빠르게 넘겨요</small></span><button id="main-skip" class="set-toggle" type="button" role="switch" aria-checked="false" aria-label="공격 연출 스킵">OFF</button></div>
-      <div class="set-row"><span class="set-label"><img src="img/ui/sound_on.webp" alt="" class="ui-ic" id="main-sound-ic"> 배경음악<small id="main-sound-note">메인·스토리 BGM</small></span><button id="main-sound" class="set-toggle" type="button" role="switch" aria-checked="true" aria-label="배경음악">ON</button></div>
-      <div class="set-row"><span class="set-label">🔔 효과음<small>타격·소환·버튼 소리</small></span><button id="main-se" class="set-toggle" type="button" role="switch" aria-checked="true" aria-label="효과음">ON</button></div>
-      <div class="set-row"><span class="set-label">📳 진동<small>버튼 누를 때 짧게 (지원 기기만)</small></span><button id="main-haptic" class="set-toggle on" type="button" role="switch" aria-checked="true" aria-label="진동">ON</button></div>
+      <div class="set-row"><span class="set-label"><img src="img/ui/opening.webp" alt="" class="ui-ic"> 공격 연출 스킵</span><button id="main-skip" class="set-toggle" type="button" role="switch" aria-checked="false" aria-label="공격 연출 스킵">OFF</button></div>
+      <div class="set-row"><span class="set-label"><img src="img/ui/sound_on.webp" alt="" class="ui-ic" id="main-sound-ic"> 배경음악</span><button id="main-sound" class="set-toggle" type="button" role="switch" aria-checked="true" aria-label="배경음악">ON</button></div>
+      <div class="set-row"><span class="set-label">🔔 효과음</span><button id="main-se" class="set-toggle" type="button" role="switch" aria-checked="true" aria-label="효과음">ON</button></div>
+      <div class="set-row"><span class="set-label">🎙️ 스킬 보이스</span><button id="main-voice" class="set-toggle on" type="button" role="switch" aria-checked="true" aria-label="스킬 보이스">ON</button></div>
+      <div class="set-row"><span class="set-label">🔉 보이스·효과음 음량</span><input id="main-voice-vol" class="set-range" type="range" min="0" max="100" step="5" aria-label="보이스·효과음 음량"></div>
+      <div class="set-row"><span class="set-label">📳 진동</span><button id="main-haptic" class="set-toggle on" type="button" role="switch" aria-checked="true" aria-label="진동">ON</button></div>
       <button class="main-btn w-full mt-4" type="button" data-close-settings>닫기</button>
     </div>
   </div>
@@ -396,9 +429,9 @@
 <div id="arcade-opts" class="hidden fixed inset-0 bg-black/80 items-center justify-center z-50 p-4" role="dialog" aria-modal="true" aria-labelledby="arcade-opts-title">
   <div class="ao-card modal-panel">
     <div class="flex items-center justify-between mb-2"><h2 id="arcade-opts-title" class="text-lg font-black">🎛️ 아케이드 설정</h2><button class="modal-x w-8 h-8 rounded-full bg-zinc-800 hover:bg-zinc-700" data-ao-close aria-label="닫기">✕</button></div>
-    <div class="ao-sec"><div class="ao-h">등급 룰 <small>양쪽 덱 모두 허용 등급에서만 뽑아요</small></div><div id="ao-presets" class="ao-chips"></div><div id="ao-grades" class="ao-chips mt-1.5"></div><div id="ao-rates" class="ao-note"></div></div>
+    <div class="ao-sec"><div class="ao-h">등급 룰</div><div id="ao-presets" class="ao-chips"></div><div id="ao-grades" class="ao-chips mt-1.5"></div><div id="ao-rates" class="ao-note"></div></div>
     <div class="ao-sec"><div class="ao-h">턴 제한 <small>도달하면 진영 HP·카드 수로 판정</small></div><div id="ao-turns" class="ao-chips"></div></div>
-    <div class="ao-sec"><div class="ao-h flex items-center justify-between">카드 먼저 제거<button id="ao-clear" class="set-toggle" type="button" role="switch" aria-checked="false">OFF</button></div><div class="ao-note">켜면 양쪽 모두 상대 필드 카드를 전부 쓰러뜨린 뒤에만 진영을 공격할 수 있어요 (기본: 상대 필드 3장 이하면 진영 공격 가능)</div></div>
+    <div class="ao-sec"><div class="ao-h flex items-center justify-between">카드 먼저 제거<button id="ao-clear" class="set-toggle" type="button" role="switch" aria-checked="false">OFF</button></div><div class="ao-note">상대 필드 0장일 때만 진영 공격</div></div>
     <div class="flex gap-2 mt-3"><button id="ao-reset" class="flex-1 py-2.5 rounded-xl bg-zinc-700 hover:bg-zinc-600 font-bold" type="button">기본값</button><button id="ao-start" class="flex-1 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold" type="button">이 설정으로 시작</button></div>
   </div>
 </div>
@@ -418,7 +451,7 @@
     <button id="bset-btn" class="w-10 h-10 shrink-0 rounded-full bg-zinc-800 border border-white/20 hover:border-emerald-400 text-lg leading-none" title="설정" aria-label="전투 설정" aria-expanded="false"><img class="ui-btn-ic" src="img/ui/icon/battle_settings.webp" alt="설정" width="22" height="22"></button>
     <div id="bset-pop" class="bset-pop hidden" role="dialog" aria-label="전투 설정">
     <div class="flex items-center gap-1 shrink-0 h-10 px-2 rounded-full bg-zinc-800 border border-white/20"><button id="se-toggle" class="text-base leading-none" title="효과음" aria-label="효과음"><img src="img/ui/se_on.webp" alt="" class="ui-ic" width="64" height="64"></button><button id="voice-toggle" class="text-base leading-none" title="스킬 보이스"><img src="img/ui/sound_on.webp" alt="소리 켜짐" class="ui-ic ui-ic-sound_on" width="64" height="64"></button><input id="voice-vol" type="range" min="0" max="100" step="5" class="hidden min-[400px]:block w-14 md:w-20 accent-emerald-400" title="보이스 볼륨" aria-label="보이스 볼륨"></div>
-    <button id="fx-skip" class="h-10 shrink-0 px-2 rounded-full bg-zinc-800 border border-white/20 hover:border-emerald-400 text-xs font-bold whitespace-nowrap" title="공격 연출을 생략합니다 (연출 중 화면을 누르면 빨리 감기)"><img src="img/ui/opening.webp" alt="연출" class="ui-ic ui-ic-opening" width="64" height="64"><span class="hidden min-[400px]:inline"> 연출</span></button>
+    <button id="fx-skip" class="h-10 shrink-0 px-2 rounded-full bg-zinc-800 border border-white/20 hover:border-emerald-400 text-xs font-bold whitespace-nowrap"><img src="img/ui/opening.webp" alt="연출" class="ui-ic ui-ic-opening" width="64" height="64"><span class="hidden min-[400px]:inline"> 연출</span></button>
     <button id="help-btn" class="w-10 h-10 shrink-0 rounded-full bg-zinc-800 border border-white/20 hover:border-emerald-400 font-bold" title="속성 상성">?</button>
     </div>
   </div>
@@ -446,7 +479,7 @@
         <span class="hud-who font-bold text-emerald-400"><img src="img/ui/me.webp" alt="" class="ui-ic" width="64" height="64"> 나 <span id="me-order" class="ml-0.5 px-1.5 py-0.5 rounded bg-white/10 text-[10px] text-zinc-300"></span></span>
         <span class="mana-line hud-mana text-[11px] md:text-xs text-zinc-400"><span class="text-sky-300 font-bold"><img src="img/ui/mana.webp" alt="마나" class="ui-ic" width="64" height="64"> <span id="me-mana"></span></span><span class="deck-info"> · 덱 <span id="me-deck"></span> · 손패 <span id="me-handcount"></span></span></span>
         <span id="me-syn" class="hud-syn empty:hidden"></span>
-        <span class="hud-right"><span id="my-turns" title="내 턴 남은 횟수 (현재 턴 포함)"><span class="lbl">내 턴 남은 횟수</span> <b id="my-turns-n"></b><span class="of" id="my-turns-max">/20</span></span><span id="me-hp" class="font-bold"></span></span>
+        <span class="hud-right"><span id="my-turns" aria-label="내 턴 남은 횟수"><span class="lbl">⏳</span> <b id="my-turns-n"></b><span class="of" id="my-turns-max">/20</span></span><span id="me-hp" class="font-bold"></span></span>
       </div>
       <div class="hud-hp bg-white/10 rounded-full overflow-hidden"><div id="me-hpbar" class="h-full bg-emerald-400 transition-all"></div></div>
       <div id="my-turns-pips" class="mt-1"></div>
@@ -494,7 +527,7 @@
   <div class="bg-zinc-900 border border-amber-400/50 rounded-3xl p-5 w-full max-w-md relative modal-panel">
     <button data-close="merc" aria-label="닫기" class="modal-x w-8 h-8 rounded-full bg-zinc-800 hover:bg-zinc-700">✕</button>
     <div class="text-xl font-black mb-1"><img src="img/ui/merc_hire.webp" alt="용병" class="ui-ic ui-ic-merc" width="64" height="64"> 용병 고용</div>
-    <div class="text-xs text-zinc-400 mb-3">마나로 HR·SR·UR 카드를 고용해요. 한 판에 1명, 고용한 카드는 <b class="text-amber-300">이번 판 동안</b> 손패에 들어와요 (판이 끝나면 리셋).<br>가격: HR ×1.2 · SR ×1.5 · UR ×1.8 (올림)</div>
+    <div class="text-xs text-zinc-400 mb-3">1판 1명 · 이번 판만<br>가격: HR ×1.2 · SR ×1.5 · UR ×1.8 (올림)</div>
     <div id="merc-list" class="flex justify-center gap-2 flex-wrap"></div>
     <div id="merc-msg" class="text-center text-xs mt-3 text-zinc-400"></div>
   </div>
@@ -543,7 +576,7 @@
         <li>XP: 처치 시 처치한 카드 코스트 × (1 + 그 카드 레벨 × 0.2) + 공격할 때마다 5 + 내 턴 종료 시 살아있는 카드마다 4. 최대 <b>Lv10</b> (<img src="img/ui/leader_crown.webp" alt="왕관" class="ui-ic ui-ic-crown" width="64" height="64"> 영웅 카드), 레벨이 오를수록 필요 XP 증가<br><span class="text-zinc-400">Lv2~5: 원본 ATK·HP +10% / Lv6~10: +5%</span></li>
         <li>아이템 (필드 카드를 눌러 장착): <img src="img/ui/merc.webp" alt="무기" class="ui-ic ui-ic-weapon" width="64" height="64"> 무기 <img src="img/ui/mana.webp" alt="마나" class="ui-ic" width="64" height="64">30 ATK +15% · 🛡️ 방어구 <img src="img/ui/mana.webp" alt="마나" class="ui-ic" width="64" height="64">30 HP +20% (카드당 각 1개)</li>
         <li><img src="img/ui/opening.webp" alt="연출" class="ui-ic ui-ic-opening" width="64" height="64"> 연출 스킵 버튼: 켜면 공격 연출 생략. 연출 중 화면을 누르면 빨리 감기</li>
-        <li><b>✦ 스킬</b>: 스킬 카드는 MP(파란 바)를 씁니다. 최대 MP = 50 + 정신력(MEN), 자기 턴마다 4 + 품성(MOR)×0.16 회복. 마나(<img src="img/ui/mana.webp" alt="마나" class="ui-ic" width="64" height="64">)와는 별개</li>
+        <li><b>✦ 스킬</b>: 스킬 카드는 MP(파란 바)를 써요. 최대 MP = 50 + 정신력(MEN), 자기 턴마다 4 + 품성(MOR)×0.16 회복. 마나(<img src="img/ui/mana.webp" alt="마나" class="ui-ic" width="64" height="64">)와는 별개</li>
         <li>액티브 스킬은 그 턴의 <b>공격 대신</b> 사용 (카드당 턴에 1번 행동). 쿨타임은 자기 턴 기준, 레벨이 해금 레벨 이상이어야 사용 가능. 필드 카드의 ✦스킬 버튼이나 상세 화면에서 사용</li>
         <li>패시브: 해금 레벨에 도달하면 자동 적용. "발동 시" 패시브는 해금 순간 1번 발동</li>
         <li>상태: <img src="img/ui/bleed.webp" alt="출혈" class="ui-ic ui-ic-bleed" width="64" height="64">출혈(ATK·DEF -5%, 걸릴 때 HP -5%, 매 턴 HP -3%) · 🔥화상(주는 피해 -5%, 매 턴 HP -3%) · ⚡마비(행동 불가, 2턴 연속 불가) · 💫혼란(자기 턴에 아군 공격) · 🌀교란(자기 본진 공격) · <img src="img/ui/immune.webp" alt="면역" class="ui-ic ui-ic-immune" width="64" height="64">피해 면역 · ✳️디버프 면역 · <img src="img/ui/taunt.webp" alt="도발" class="ui-ic ui-ic-taunt" width="64" height="64">도발 · 🔺🔻능력치 증감 · 💨회피(기본 공격을 확률로 피함, 스킬은 불가) · 🌵반격 강화(받는 피해 감소·반격 증가, 반격으로는 쓰러지지 않음) · 👻영혼 강탈(기본 공격한 상대 MP -20%) · 🔒고유기술 봉인(셔플·보강·강화·필드 회복 불가)</li>
@@ -554,10 +587,10 @@
         <li><img src="img/ui/heal.webp" alt="회복" class="ui-ic ui-ic-heal" width="64" height="64"> 필드 회복 <img src="img/ui/mana.webp" alt="마나" class="ui-ic" width="64" height="64">20: 내 필드 카드 전체 최대 HP의 10% 회복 (턴당 1회)</li>
         <li><img src="img/ui/mana_accel.webp" alt="가속기" class="ui-ic ui-ic-accel" width="64" height="64"> 마나 가속기 <img src="img/ui/mana.webp" alt="마나" class="ui-ic" width="64" height="64">30: 다음 턴부터 매 턴 마나 +5 (최대 5회 중첩)</li>
         <li><img src="img/ui/bleed.webp" alt="출혈" class="ui-ic ui-ic-bleed" width="64" height="64"> 희생: 필드 카드를 없애고 코스트의 50% 마나 (턴당 1회, 카드 상세에서)</li>
-        <li><img src="img/ui/mana.webp" alt="마나" class="ui-ic" width="64" height="64"> 마나는 이월됩니다: 첫 턴 40, 이후 매 턴 +20, 최대 100</li>
+        <li><img src="img/ui/mana.webp" alt="마나" class="ui-ic" width="64" height="64"> 마나는 이월돼요: 첫 턴 40, 이후 매 턴 +20, 최대 100</li>
         <li><img src="img/ui/el_death.webp" alt="심연" class="ui-ic ui-ic-el_death" width="64" height="64"> 처치 마나: 공격이나 스킬로 적 카드를 처치하면 즉시 그 카드 코스트 × 0.3 마나 (최대 100까지)</li>
         <li>⏱️ 전체 40턴(각자 20턴) 후 판정: 진영 HP → 남은 필드 카드 수 → 무승부</li>
-        <li>🌟 MR(미식 레어) 카드는 진영에 피해의 20%만 줍니다</li>
+        <li>🌟 MR(미식 레어) 카드는 진영에 피해의 20%만 줘요</li>
       </ul>
       <div class="text-zinc-400 pt-2 border-t border-white/10">데미지 = max(1, ⌊ATK × 1.5 × 배율 − 대상 DEF ÷ 2⌋) · 진영은 DEF 0</div>
     </div>
@@ -578,7 +611,7 @@
       <button id="share-btn" class="flex-1 py-3 rounded-2xl bg-sky-500 hover:bg-sky-400 text-black text-sm font-bold">공유하기</button>
       <button id="home-btn" class="flex-1 py-3 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20 text-sm">처음으로</button>
     </div>
-    <div id="end-share-msg" class="text-xs text-sky-300 mt-1 min-h-[1rem] break-all"></div>
+    <div id="end-share-msg" class="text-xs text-sky-300 mt-1 min-h-[1rem]"></div>
   </div>
 </div>
 
@@ -616,15 +649,19 @@
 <script src="js/story-data-ch13.js"></script>
 <script src="js/story-data-ch14.js"></script>
 <script src="js/story-data-ch15.js"></script>
+<script src="js/story-data-ch16.js"></script>
+<script src="js/story-data-ch17.js"></script>
 <script src="js/player.js"></script>
 <script src="js/unlock-policy.js"></script>
 <script src="js/unlocks.js"></script>
 <script src="js/gem.js"></script>
+<script type="module" src="js/payments.js"></script>
 <script src="js/daily.js"></script>
 <script src="js/achievements.js"></script>
 <script src="js/idle-box.js"></script>
 <script src="js/friends.js"></script>
 <script src="js/drink.js"></script>
+<script src="js/shop.js"></script>
 <script src="js/trade.js"></script>
 <script src="js/notice-global.js"></script>
 <script type="module" src="js/gear-core.js"></script>

@@ -8,10 +8,25 @@
   const level = () => { const uid=window.VRCloud?.user?.id; if(uid && account && uid!==account) return 1; return Number(state?.level || window.VRPlayer?.now?.()?.level || 1); };
   const need = key => P.features[key] ?? Infinity;
   const allowed = key => level() >= need(key);
-  const cue = key => `🔒 Lv${need(key)}`;
+  // 표에 없는 키(훈련소 칸 번호 등)는 Infinity 로 찍지 않는다.
+  const cue = key => { const n = P.features[key]; return Number.isFinite(n) ? `🔒 Lv${n}` : '🔒'; };
   const pvpKey = (league, mode) => mode === 'boss' ? 'pvp_boss' : mode === '3v3' ? 'pvp_3v3' : league === 'hr' ? 'pvp_hr' : 'pvp_open';
   const toast = text => { if (window.VRGem?.toast) return window.VRGem.toast(text); const el = document.createElement('div'); el.className = 'ul-toast'; el.textContent = text; document.body.appendChild(el); setTimeout(() => el.remove(), 1800); };
   const guard = key => { if (allowed(key)) return true; toast(cue(key)); return false; };
+  function levelPop(n) {
+    document.getElementById('ul-lockpop')?.remove();
+    const el = document.createElement('div'); el.id = 'ul-lockpop'; el.className = 'ul-lockpop';
+    el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true');
+    const box = document.createElement('div'); box.className = 'ul-lockpop-box';
+    const p = document.createElement('p'); p.textContent = `계정레벨 ${n} 이후 이용할 수 있어요`;
+    const b = document.createElement('button'); b.type = 'button'; b.textContent = '확인';
+    const close = () => { el.remove(); document.removeEventListener('keydown', onKey); };
+    const onKey = e => { if (e.key === 'Escape') close(); };
+    b.onclick = close;
+    el.addEventListener('click', e => { if (e.target === el) close(); });
+    document.addEventListener('keydown', onKey);
+    box.append(p, b); el.append(box); document.body.append(el); b.focus();
+  }
   const selectors = [
     ['#main-pvp,[data-gnb="pvp"]','pvp_hr'], ['#main-guild,[data-guild-open],[data-gnb="guild"]','guild'],
     ['[data-gnb="tower"],#main-quest','tower'], ['[data-dispatchbtn] button','dispatch'],
@@ -21,7 +36,9 @@
     ['[data-merge]','merge'], ['[data-skup]','skill'], ['[data-gslot="sigil"]','sigil'],
   ];
   function feature(el) {
-    if (el.dataset.unlock) return el.dataset.unlock;
+    // data-unlock 은 해금 키일 때만. 훈련소 칸 버튼은 칸 번호(2~5)라 여기 오면 LvInfinity 가 된다.
+    const tagged = el.dataset.unlock;
+    if (tagged && Object.prototype.hasOwnProperty.call(P.features, tagged)) return tagged;
     if (el.matches('.th-card[data-tower]')) return el.dataset.tower === 'normal' ? 'tower' : 'tower_' + el.dataset.tower;
     for (const [sel, key] of selectors) if (el.matches(sel)) return key;
     return null;
@@ -30,9 +47,10 @@
   function paint() {
     document.querySelectorAll(match).forEach(el => {
       const key = feature(el); if (!key) return;
-      const locked = !allowed(key), badge = el.querySelector(':scope > .ul-lock');
+      const locked = !allowed(key), tab = el.matches('.gnb-t'), badge = el.querySelector(':scope > .ul-lock');
       el.classList.toggle('ul-locked', locked);
-      if (locked && !badge) { const b = document.createElement('span'); b.className = 'ul-lock'; b.textContent = cue(key); el.appendChild(b); }
+      if (tab) badge?.remove();   // 하단 탭은 Lv 뱃지 없음
+      else if (locked && !badge) { const b = document.createElement('span'); b.className = 'ul-lock'; b.textContent = cue(key); el.appendChild(b); }
       else if (locked && badge && badge.textContent !== cue(key)) badge.textContent = cue(key);
       else if (!locked) badge?.remove();
       if (locked) el.setAttribute('data-level-locked', ''); else el.removeAttribute('data-level-locked');
@@ -40,7 +58,9 @@
   }
   document.addEventListener('click', e => {
     const el = e.target.closest?.(match), key = el && feature(el);
-    if (key && !guard(key)) { e.preventDefault(); e.stopImmediatePropagation(); }
+    if (!key || allowed(key)) return;
+    e.preventDefault(); e.stopImmediatePropagation();
+    if (el.matches('.gnb-t')) levelPop(need(key)); else toast(cue(key));
   }, true);
   // Native keyboard activation produces a click, and the same guard applies to it.
   const visible = el => !!el && !el.classList.contains('hidden') && !el.hidden;

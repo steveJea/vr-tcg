@@ -53,8 +53,8 @@
   function openLog() {
     document.querySelector('.gn-log')?.remove(); unseen = 0; badge();
     const m = document.createElement('div'); m.className = 'gn-log';
-    m.innerHTML = `<div class="gn-panel" role="dialog" aria-label="전체 소식"><div class="gn-head"><b>📢 전체 소식</b><small>UR 이상 획득 · 이름을 누르면 지정 거래</small><button class="gn-x" aria-label="닫기">✕</button></div>
-      <div class="gn-list">${list.length ? list.map(n => `<div class="gn-row"><img src="${cardThumb(esc(n.card_id))}" alt="" loading="lazy"><div><span>${line(n)}</span><small>${esc(SRC[n.src] || n.src || '')} · ${ago(n.created_at)}</small></div></div>`).join('') : '<div class="gn-empty">아직 소식이 없어요</div>'}</div></div>`;
+    m.innerHTML = `<div class="gn-panel" role="dialog" aria-label="전체 소식"><div class="gn-head"><b>📢 전체 소식</b><small>UR↑ 획득</small><button class="gn-x" aria-label="닫기">✕</button></div>
+      <div class="gn-list">${list.length ? list.map(n => `<div class="gn-row"><img src="${cardThumb(esc(n.card_id))}" alt="" loading="lazy"><div><span>${line(n)}</span><small>${esc(SRC[n.src] || n.src || '')} · ${ago(n.created_at)}</small></div></div>`).join('') : '<div class="gn-empty">ℹ️ 소식 없음</div>'}</div></div>`;
     m.onclick = e => { if (e.target === m || e.target.closest('.gn-x')) m.remove(); };
     bindNames(m); document.body.appendChild(m);
   }

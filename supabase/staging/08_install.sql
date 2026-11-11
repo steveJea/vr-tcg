@@ -40,11 +40,11 @@ set local check_function_bodies = off;
 
 do $vr_install_part$
 begin
-  if exists (select 1 from vr_staging_install.parts where bundle_hash <> '8157203b9aa6e793a649e2e327c69fce2bfdfa17b0dc7a81d0e845baa5d34adf' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
+  if exists (select 1 from vr_staging_install.parts where bundle_hash <> '1e7a91f656cb089116c27629c13947ec0c769796933ace7bb576f39ba0920d4e' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
     raise exception 'STOP: 다른 버전/DB의 설치 기록입니다. 파일을 섞지 마세요.';
   end if;
   if exists (select 1 from vr_staging_install.parts where part_no = 8) then
-    if not exists (select 1 from vr_staging_install.parts where part_no = 8 and part_hash = '88b786d177f12a46ca801845bbeb154575ba785421933e5efbc0d107939c19ad') then
+    if not exists (select 1 from vr_staging_install.parts where part_no = 8 and part_hash = '7f9c888ca804d338519718175ab6b1aab63a41fd459349e1af84ae06fbb33755') then
       raise exception 'STOP: 완료한 파일과 내용이 다릅니다.';
     end if;
     raise notice '08_install.sql: 이미 완료, 변경 없이 건너뜀';
@@ -55,6 +55,32 @@ begin
   end if;
   -- 설치 도중에는 클라이언트가 미완성 게임 스키마에 접근하지 못함. 마지막에만 개방.
   revoke usage on schema public from public, anon, authenticated;
+  execute $vr_statement$-- ===== SOURCE: friend_battle.sql =====
+-- =====================================================================
+-- ⚔️ 친구 대전 (2단계) — 여러 번 실행해도 안전, 삭제 없음
+-- 선행: friends.sql(friendships, _is_friend) · pvp.sql(pvp_decks, _pvp_snap, _pvp_day) · manual_battle.sql(_battle_acts_ok)
+-- 방식: 기존 PvP 와 같은 비동기. 상대 = 친구의 PvP 방어 덱(무제한 리그) 스냅샷, 서버 seed 발급
+-- 레이팅·랭킹·보상 없음. 하루 20회(KST). 결과 + seed + 양쪽 스냅샷 + 수동 행동 기록 저장 → 3단계 리플레이 공유가 이 행(id)을 참조
+-- 공개 RPC: friend_battle_start(p_friend uuid, p_mode text) · friend_battle_report(p_id bigint, p_wins int, p_losses int, p_actions jsonb)
+--           friend_battle_history(p_friend uuid default null)
+-- =====================================================================
+
+create table if not exists public.friend_battles (
+  id          bigint generated always as identity primary key,
+  user_id     uuid not null references auth.users(id) on delete cascade,   -- 도전한 사람
+  opp_user    uuid not null references auth.users(id) on delete cascade,   -- 친구 (방어 덱)
+  mode        text not null check (mode in ('1v1','3v3')),
+  day         date not null,
+  seed        bigint not null,
+  my_snap     jsonb not null,
+  opp_snap    jsonb not null,
+  manual      boolean not null default false,
+  actions     jsonb,                                                       -- 수동 전투 행동 기록 (리플레이용)
+  created_at  timestamptz not null default now(),
+  reported_at timestamptz, wins smallint, losses smallint, win boolean
+);$vr_statement$;
+  execute $vr_statement$create index if not exists friend_battles_user_idx on public.friend_battles (user_id, created_at desc);$vr_statement$;
+  execute $vr_statement$create index if not exists friend_battles_opp_idx on public.friend_battles (opp_user, created_at desc);$vr_statement$;
   execute $vr_statement$alter table public.friend_battles enable row level security;$vr_statement$;
   execute $vr_statement$revoke all on public.friend_battles from public, anon, authenticated;$vr_statement$;
   execute $vr_statement$create or replace function public._fb_daily_max() returns int language sql immutable as $$ select 20 $$;$vr_statement$;
@@ -158,11 +184,11 @@ create table if not exists public.daily_progress (
   execute $vr_statement$revoke all on public.daily_attend from public, anon, authenticated;$vr_statement$;
   execute $vr_statement$-- 미션 정의 (한 곳에서 조정). per = daily_track 1회 호출로 올릴 수 있는 최대
 create or replace function public._daily_defs() returns jsonb language sql immutable as $$ select '[
-  {"key":"arcade","name":"아케이드 1판 플레이","goal":1,"per":1,"reward":{"gold":1000}},
-  {"key":"win","name":"전투 3회 승리","goal":3,"per":1,"reward":{"gold":2000}},
-  {"key":"story","name":"스토리 스테이지 2회 클리어","goal":2,"per":1,"reward":{"gold":2000,"gem":10}},
-  {"key":"tower","name":"시련의 탑 1회 도전","goal":1,"per":1,"reward":{"gold":1500,"gem":10}},
-  {"key":"skill","name":"고유기술 10회 사용","goal":10,"per":20,"reward":{"gold":1500}}
+  {"key":"arcade","name":"아케이드 플레이 x 1","goal":1,"per":1,"reward":{"gold":1000}},
+  {"key":"win","name":"전투 승리 x 3","goal":3,"per":1,"reward":{"gold":2000}},
+  {"key":"story","name":"스토리 스테이지 클리어 x 2","goal":2,"per":1,"reward":{"gold":2000,"gem":10}},
+  {"key":"tower","name":"시련의 탑 도전 x 1","goal":1,"per":1,"reward":{"gold":1500,"gem":10}},
+  {"key":"skill","name":"고유기술 사용 x 10","goal":10,"per":20,"reward":{"gold":1500}}
 ]'::jsonb $$;$vr_statement$;
   execute $vr_statement$create or replace function public._daily_all_reward() returns jsonb language sql immutable as $$ select '{"gem":30}'::jsonb $$;$vr_statement$;
   execute $vr_statement$-- 출석 7일 주기 (빠진 날이 있어도 끊기지 않고 다음 칸으로. 7일째 받으면 1일째부터 다시)
@@ -864,7 +890,7 @@ create or replace function public._dsp_cost(n int) returns int language sql immu
 declare lv int; begin begin select (_player_sync(p_uid)).level into lv; exception when others then lv := 1; end; return coalesce(lv, 1); end $$;$vr_statement$;
   execute $vr_statement$create or replace function public._dsp_owned(p_uid uuid) returns jsonb language sql stable security definer set search_path = public as $$
   select coalesce((select case when jsonb_typeof(data->'owned') = 'array' then data->'owned' end from story_progress where user_id = p_uid), '[]'::jsonb) $$;$vr_statement$;
-  execute $vr_statement$-- 게시판 채우기 (p_all: 전부 새로 / 아니면 아직 안 보낸 의뢰만). 가진 카드 중 최고 등급(UR까지)으로 갈 수 있는 곳만
+  execute $vr_statement$-- 게시판 채우기 (p_all: 전부 새로 / 아니면 아직 안 보낸 의뢰만). 보낸 의뢰(taken)는 지역을 바꾸지 않는다.
 create or replace function public._dsp_fill(p_uid uuid, p_all boolean) returns void language plpgsql security definer set search_path = public as $$
 declare best int; s int; z text; els text[] := array['WIND','FIRE','ICE','DARK','LIGHT']; cl text[] := array['CHARGE','CRUSH','DEFENSE','SUPPORT','DISTURB','FASCINATION'];
 begin
@@ -876,7 +902,8 @@ begin
     select id into z from dispatch_zones where grp = case when s <= 4 then 'exile' else 'safe' end and min_grade <= best
       order by -ln(greatest(random(), 1e-9)) / (1 + min_grade) limit 1;
     insert into dispatch_offers (user_id, slot, day, zone, el, cls, taken) values (p_uid, s, _dsp_day(), z, els[1 + floor(random() * 5)::int], cl[1 + floor(random() * 6)::int], false)
-      on conflict (user_id, slot) do update set day = excluded.day, zone = excluded.zone, el = excluded.el, cls = excluded.cls, taken = false;
+      on conflict (user_id, slot) do update set day = excluded.day, zone = excluded.zone, el = excluded.el, cls = excluded.cls, taken = false
+      where dispatch_offers.taken = false;
   end loop;
 end $$;$vr_statement$;
   execute $vr_statement$create or replace function public._dsp_json(p_uid uuid) returns jsonb language plpgsql security definer set search_path = public as $$
@@ -937,7 +964,7 @@ begin
   if n < 1 or n > z.size or (select count(distinct u) from unnest(p_uids) u) <> n then raise exception 'bad cards'; end if;
   owned := _dsp_owned(uid);
   -- 가진 카드인지 + 카드 정보
-  create temp table if not exists _dsp_pick (uid text, grade int, el text, cls text) on commit drop; delete from _dsp_pick;
+  create temp table if not exists _dsp_pick (uid text, grade int, el text, cls text) on commit drop; delete from _dsp_pick where true;
   insert into _dsp_pick select u, m.grade, m.el, m.cls from unnest(p_uids) u
     join lateral (select x from jsonb_array_elements(owned) x where x->>'uid' = u limit 1) ox on true
     join dispatch_card_meta m on m.id = ox.x->>'id';
@@ -999,7 +1026,9 @@ end $$;$vr_statement$;
   execute $vr_statement$revoke all on function public.dispatch_status(), public.dispatch_refresh(), public.dispatch_start(int, text[], int), public.dispatch_recall(bigint), public.dispatch_claim(bigint) from public, anon;$vr_statement$;
   execute $vr_statement$grant execute on function public.dispatch_status(), public.dispatch_refresh(), public.dispatch_start(int, text[], int), public.dispatch_recall(bigint), public.dispatch_claim(bigint) to authenticated;$vr_statement$;
   execute $vr_statement$-- ===== SOURCE: dispatch_safeupdate.sql =====
--- 파견 일괄 보내기 'DELETE requires a WHERE clause' 수정 (2026-11-04). dispatch.sql 뒤에 실행. create or replace 만 (데이터 변경 없음)
+-- 파견 일괄 보내기 'DELETE requires a WHERE clause' 수정 (2026-11-04).
+-- 최신 함수(같은 카드 id 중복 금지 포함)는 supabase/dispatch_where_clause.sql 을 실행하세요.
+-- 이 파일만 다시 실행하면 그 중복 검사가 빠집니다. dispatch.sql 뒤에만, batch_ui_bugs.sql 이전 데이터베이스용.
 -- 원인: dispatch_start 안 임시표 비우기 'delete from _dsp_pick;' 에 WHERE 가 없어 pg_safeupdate 가 막음 → 'where true' 추가 (동작 같음)
 create or replace function public.dispatch_start(p_slot int, p_uids text[], p_hours int) returns jsonb language plpgsql security definer set search_path = public as $$
 declare uid uuid := auth.uid(); o dispatch_offers; z dispatch_zones; owned jsonb; n int; mx int; bon int := 0; ne int; nc int; over boolean; k text; v numeric; rw jsonb := '{}'::jsonb; f numeric; great boolean := false; cnt int; d dispatch_daily;
@@ -1650,6 +1679,88 @@ on conflict (id) do update set grade = excluded.grade, cost = excluded.cost;$vr_
 select 'pool' k, id, grade, name, gacha::text from public.story_card_pool where id = '10509'
 union all select 'skill', card_id, idx::text, unlock::text, null from public.story_skill_meta where card_id = '10509'
 union all select 'pvp', id, grade, cost::text, null from public.pvp_card_meta where id = '10509';$vr_statement$;
+  execute $vr_statement$-- ===== SOURCE: card_newcards_1111.sql =====
+-- =====================================================================
+-- 2026-11-11 신규 카드 16장 (10511~10513, 10520~10532): 카드 목록 · 스킬 해금 레벨 · PVP 덱 검증
+-- 뽑기 풀에는 넣지 않음 (gacha = false). 뽑기·스토리 무작위 보상 둘 다 gacha 행만 고르므로 획득 경로 없음.
+-- 도감(reward_card_catalog)이 story_card_pool을 참조하므로 행은 필요. 뽑기 공개는 gacha만 true로 바꾸면 됨.
+-- 여러 번 실행해도 안전. 삭제 없음.
+-- =====================================================================
+insert into public.story_card_pool (id, grade, name, gacha) values
+  ('10511','SUPER RARE','최수아',false),
+  ('10512','HIGH RARE','고세연',false),
+  ('10513','ULTRA RARE','[각성] 고세연',false),
+  ('10520','RARE','황경민',false),
+  ('10521','SUPER RARE','이혜림',false),
+  ('10522','ULTRA RARE','이수영',false),
+  ('10523','SUPER RARE','천혜영',false),
+  ('10524','ULTRA RARE','이동주',false),
+  ('10525','ULTRA RARE','김수진',false),
+  ('10526','SUPER RARE','조태진',false),
+  ('10527','ULTRA RARE','김한철',false),
+  ('10528','ULTRA RARE','김진호',false),
+  ('10529','SUPER RARE','김태희',false),
+  ('10530','SUPER RARE','박승규',false),
+  ('10531','SUPER RARE','김경섭',false),
+  ('10532','SUPER RARE','천기철',false)
+on conflict (id) do update set grade = excluded.grade, name = excluded.name;$vr_statement$;
+  execute $vr_statement$insert into public.story_skill_meta (card_id, idx, unlock) values
+  ('10511',1,2),
+  ('10511',2,5),
+  ('10512',1,2),
+  ('10512',2,5),
+  ('10513',1,2),
+  ('10513',2,5),
+  ('10513',3,7),
+  ('10520',1,2),
+  ('10521',1,2),
+  ('10521',2,5),
+  ('10522',1,2),
+  ('10522',2,5),
+  ('10522',3,7),
+  ('10523',1,2),
+  ('10523',2,5),
+  ('10524',1,2),
+  ('10524',2,5),
+  ('10524',3,7),
+  ('10525',1,2),
+  ('10525',2,5),
+  ('10525',3,7),
+  ('10526',1,2),
+  ('10526',2,5),
+  ('10527',1,2),
+  ('10527',2,5),
+  ('10527',3,7),
+  ('10528',1,2),
+  ('10528',2,5),
+  ('10528',3,7),
+  ('10529',1,2),
+  ('10529',2,5),
+  ('10530',1,2),
+  ('10530',2,5),
+  ('10531',1,2),
+  ('10531',2,5),
+  ('10532',1,2),
+  ('10532',2,5)
+on conflict (card_id, idx) do update set unlock = excluded.unlock;$vr_statement$;
+  execute $vr_statement$insert into public.pvp_card_meta (id, grade, cost) values
+  ('10511','SUPER RARE',42),
+  ('10512','HIGH RARE',27),
+  ('10513','ULTRA RARE',53),
+  ('10520','RARE',18),
+  ('10521','SUPER RARE',44),
+  ('10522','ULTRA RARE',54),
+  ('10523','SUPER RARE',45),
+  ('10524','ULTRA RARE',53),
+  ('10525','ULTRA RARE',49),
+  ('10526','SUPER RARE',41),
+  ('10527','ULTRA RARE',46),
+  ('10528','ULTRA RARE',53),
+  ('10529','SUPER RARE',43),
+  ('10530','SUPER RARE',37),
+  ('10531','SUPER RARE',35),
+  ('10532','SUPER RARE',35)
+on conflict (id) do update set grade = excluded.grade, cost = excluded.cost;$vr_statement$;
   execute $vr_statement$-- ===== SOURCE: gacha_premium_ur.sql =====
 -- =====================================================================
 -- 고급 소환(소환권 뽑기) UR 고정 목록. 새 UR 카드는 자동으로 들어가지 않음 (이 표에 넣어야 나옴)
@@ -1771,67 +1882,9 @@ begin
   for c in select distinct chapter from story_phase_config order by 1 loop r := r || _star_chapter(d, c); end loop;
   return r;
 end $$;$vr_statement$;
-  execute $vr_statement$-- 받기: 서버가 별을 다시 합산 · 한 번만
-create or replace function public.story_star_claim(p_chapter int, p_key text) returns jsonb language plpgsql security definer set search_path = public as $$
-declare me uuid := auth.uid(); d jsonb; st jsonb; m jsonb; got jsonb; t int; w jsonb;
-begin
-  if me is null then raise exception 'login required'; end if;
-  d := _story_lock(me);
-  st := _star_chapter(d, p_chapter);
-  select x into m from jsonb_array_elements(st->'milestones') x where x->>'key' = p_key;
-  if m is null then raise exception 'invalid milestone'; end if;
-  if (m->>'claimed')::boolean then raise exception 'already claimed'; end if;
-  if not (m->>'ready')::boolean then raise exception 'not enough stars'; end if;
-  got := coalesce(d->'starClaims'->(p_chapter::text), '[]'::jsonb) || to_jsonb(p_key);
-  if jsonb_typeof(d->'starClaims') is distinct from 'object' then d := jsonb_set(d, '{starClaims}', '{}'::jsonb); end if;
-  d := _story_save(me, jsonb_set(d, array['starClaims', p_chapter::text], got));
-  insert into story_gacha (user_id, last_draw) values (me, (now() at time zone 'Asia/Seoul')::date - 1) on conflict (user_id) do nothing;
-  update story_gacha set tickets = tickets + (m->>'tickets')::int, updated_at = now() where user_id = me returning tickets into t;
-  w := _wallet_add(me, jsonb_build_object('gold', (m->>'gold')::int), 'star_reward');
-  return jsonb_build_object('ok', true, 'tickets', t, 'wallet', w, 'gave', jsonb_build_object('tickets', (m->>'tickets')::int, 'gold', (m->>'gold')::int), 'status', _star_chapter(d, p_chapter));
-end $$;$vr_statement$;
-  execute $vr_statement$revoke all on function public._star_milestones(), public._star_chapter(jsonb, int) from public, anon, authenticated;$vr_statement$;
-  execute $vr_statement$revoke all on function public.story_star_status(), public.story_star_claim(int, text) from public, anon;$vr_statement$;
-  execute $vr_statement$grant execute on function public.story_star_status(), public.story_star_claim(int, text) to authenticated;$vr_statement$;
-  execute $vr_statement$select 'story_star_rewards ok' as result;$vr_statement$;
-  execute $vr_statement$-- ===== SOURCE: camp.sql =====
--- ===== 훈련소 1단계 (인재를 넣어 두면 시간이 지나며 EXP 가 쌓임) =====
--- Supabase SQL Editor 에서 실행. 여러 번 실행해도 안전 (테이블·데이터 삭제 없음)
--- 선행: phaseE_1.sql(_wallet_add) · phaseE_2.sql(_player_sync) · gem.sql(_gem_spend) · story_levels.sql / story_merge.sql(_story_gain · _story_cap · 인재 uid)
--- 규칙
---  * 칸 5개: 1칸 플레이어 Lv10 무료 · 2칸 Lv20 골드 2만 · 3칸 Lv35 골드 5만 · 4칸 Lv50 심연석 300 · 5칸 Lv70 심연석 800
---  * EXP: 칸 하나에 시간당 20 + 플레이어 레벨 × 1.5 (받을 때 레벨 기준). 마지막으로 받은 뒤 최대 24시간까지만 쌓임
---  * 레벨 상한: min(등급 최대 레벨(EX 포함), 플레이어 레벨 − 5). 상한에 닿으면 더 안 쌓임
---  * 시간은 서버 now() 만 사용. 훈련 중인 인재도 덱·스토리·PvP 사용 가능
---  * 훈련 중인 인재는 거래 등록·분해·합성 재료로 못 씀 (story_progress 에서 빠지려 하면 거부하는 트리거)
-
--- 1) 테이블 (행이 있으면 그 칸은 열린 것)
-create table if not exists public.camp_slots (
-  user_id  uuid not null references auth.users(id) on delete cascade,
-  slot     int  not null check (slot between 1 and 5),
-  card_uid text,
-  last_at  timestamptz,
-  opened_at timestamptz not null default now(),
-  primary key (user_id, slot));$vr_statement$;
-  execute $vr_statement$create unique index if not exists camp_slots_card on public.camp_slots (user_id, card_uid) where card_uid is not null;$vr_statement$;
-  execute $vr_statement$alter table public.camp_slots enable row level security;$vr_statement$;
-  execute $vr_statement$revoke all on public.camp_slots from anon, authenticated;$vr_statement$;
-  execute $vr_statement$drop policy if exists camp_slots_own on public.camp_slots;$vr_statement$;
-  execute $vr_statement$create policy camp_slots_own on public.camp_slots for select using (user_id = auth.uid());$vr_statement$;
-  execute $vr_statement$grant select on public.camp_slots to authenticated;$vr_statement$;
-  execute $vr_statement$-- 2) 수치
-create or replace function public._camp_need_level(s int) returns int language sql immutable as $$ select case s when 1 then 10 when 2 then 20 when 3 then 35 when 4 then 50 when 5 then 70 end $$;$vr_statement$;
-  execute $vr_statement$create or replace function public._camp_cost(s int) returns jsonb language sql immutable as $$
-  select case s when 1 then '{}'::jsonb when 2 then '{"gold":20000}'::jsonb when 3 then '{"gold":50000}'::jsonb when 4 then '{"gem":300}'::jsonb when 5 then '{"gem":800}'::jsonb end $$;$vr_statement$;
-  execute $vr_statement$create or replace function public._camp_rate(plv int) returns numeric language sql immutable as $$ select 20 + 1.5 * greatest(plv, 1) $$;$vr_statement$;
-  execute $vr_statement$create or replace function public._camp_max_hours() returns int language sql immutable as $$ select 24 $$;$vr_statement$;
-  execute $vr_statement$create or replace function public._camp_cap(g text, ex int, plv int) returns int language sql immutable as $$ select least(_story_cap(g, ex), plv - 5) $$;$vr_statement$;
-  execute $vr_statement$-- 3) 도우미
-create or replace function public._camp_plv(p_uid uuid) returns int language plpgsql security definer set search_path = public as $$
-declare lv int; begin select (_player_sync(p_uid)).level into lv; return coalesce(lv, 1); end $$;$vr_statement$;
 
   insert into vr_staging_install.parts(part_no, bundle_hash, part_hash, project_ref, db_id)
-  values (8, '8157203b9aa6e793a649e2e327c69fce2bfdfa17b0dc7a81d0e845baa5d34adf', '88b786d177f12a46ca801845bbeb154575ba785421933e5efbc0d107939c19ad', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
+  values (8, '1e7a91f656cb089116c27629c13947ec0c769796933ace7bb576f39ba0920d4e', '7f9c888ca804d338519718175ab6b1aab63a41fd459349e1af84ae06fbb33755', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
 end $vr_install_part$;
 commit;
 select '08_install.sql: 완료 또는 이미 완료 (8/14)' as result;

@@ -7401,13 +7401,17 @@ grant execute on function public.war_signup(boolean), public.war_ui() to authent
 --    닉네임 · 계정 레벨 · 리더 카드 id · 해당 리그/모드 PvP 덱(카드 id·레벨) · 소속 조직(이름·엠블럼)
 create or replace function public.pvp_user_info(p_league text, p_mode text, p_rank int) returns jsonb
 language plpgsql stable security definer set search_path = public as $$
-declare uid uuid := auth.uid(); s date := _pvp_season(); t uuid; g record; deck jsonb; lead text;
+declare uid uuid := auth.uid(); t uuid; g record; deck jsonb; lead text;
 begin
   if uid is null then raise exception 'login required' using errcode = '42501'; end if;
   perform _pvp_ok(p_league, p_mode);
   if p_rank is null or p_rank < 1 or p_rank > 100 then raise exception 'bad rank'; end if;
-  select x.user_id into t from (select r.user_id, row_number() over (order by r.rating desc, r.wins desc, r.user_id) rn
-      from pvp_ratings r where r.league = p_league and r.mode = p_mode and r.season = s and r.wins + r.losses > 0) x where x.rn = p_rank;
+  select x.user_id into t from (
+    select user_id, row_number() over (order by rating desc, wins desc, user_id) rn from (
+      select distinct on (r.user_id) r.user_id, r.rating, r.wins, r.losses
+        from pvp_ratings r
+       where r.league = p_league and r.mode = p_mode and r.wins + r.losses > 0
+       order by r.user_id, r.season desc) z) x where x.rn = p_rank;
   if t is null then raise exception 'not found'; end if;
   select o->>'id' into lead from story_progress sp, jsonb_array_elements(case when jsonb_typeof(sp.data->'owned') = 'array' then sp.data->'owned' else '[]'::jsonb end) o
     where sp.user_id = t and o->>'uid' = sp.data->>'leader' limit 1;
@@ -8806,7 +8810,9 @@ where jsonb_typeof(sp.data->'owned') = 'array'
 -- ===== SOURCE: trade_drink.sql =====
 -- ===== 거래 PR2: 체력의 드링크 🥤 =====
 -- 선행: gem.sql (player_wallet.gem_free/gem_paid · _gem_add) · phaseE_2.sql (_player_sync · _player_stamina_add). 여러 번 실행해도 안전
--- 유료 심연석으로만 구매 → 거래 가능분(tradable). 이벤트·보상·운영 지급 → 귀속분(bound). 거래에 묶인 분(locked)은 거래 PR 에서 사용
+-- 심연석으로 구매 → 거래 가능분(tradable). 무료 심연석을 먼저 쓰고 모자라면 유료 (2026-11-10 BM. 예전에는 유료만).
+-- 이벤트·보상·운영 지급 → 귀속분(bound). 거래에 묶인 분(locked)은 거래 PR 에서 사용
+-- 행동력 최대 충전(gem_shop.stamina)과는 다른 상품. 드링크 1개 = 행동력 +200, 상한 999.
 -- 사용: 1개당 행동력 +200, 최대치를 넘어도 쌓이지만 상한(임시 999)을 넘게는 못 씀. 귀속분부터 사용
 
 create table if not exists public.player_items (
@@ -8839,7 +8845,7 @@ create index if not exists item_log_user_idx on public.item_log (user_id, create
 alter table public.item_log enable row level security;
 revoke all on public.item_log from public, anon, authenticated;
 
--- 판매 상품 (조정 가능, 임시값). price = 유료 심연석
+-- 판매 상품. price = 심연석 (무료 우선, 그다음 유료). 1/100 · 10/950 · 30/2700
 create table if not exists public.drink_shop (
   sku    text primary key,
   qty    int  not null check (qty > 0),
@@ -8888,7 +8894,7 @@ begin
   select * into r from player_items where user_id = p_uid and item = 'drink';
   select * into w from player_wallet where user_id = p_uid;
   return jsonb_build_object('ok', true, 'tradable', coalesce(r.tradable, 0), 'bound', coalesce(r.bound, 0), 'locked', coalesce(r.locked, 0),
-    'total', coalesce(r.tradable, 0) + coalesce(r.bound, 0), 'paid_gem', coalesce(w.gem_paid, 0),
+    'total', coalesce(r.tradable, 0) + coalesce(r.bound, 0), 'paid_gem', coalesce(w.gem_paid, 0), 'free_gem', coalesce(w.gem_free, 0),
     'per', _drink_cfg('stamina_per'), 'cap', _drink_cfg('stamina_cap'),
     'shop', (select coalesce(jsonb_agg(jsonb_build_object('sku', sku, 'qty', qty, 'price', price) order by ord), '[]'::jsonb) from drink_shop where active));
 end $$;
@@ -8899,7 +8905,7 @@ begin
   return _drink_json(auth.uid());
 end $$;
 
--- 구매: 유료 심연석만 차감 (무료분은 안 씀)
+-- 구매: 무료 심연석을 먼저 쓰고, 모자라면 유료 (gem_shop 행동력 충전과 같은 _gem_spend). 산 드링크는 거래 가능.
 create or replace function public.drink_buy(p_sku text) returns jsonb language plpgsql security definer set search_path = public as $$
 declare uid uuid := auth.uid(); s drink_shop; g jsonb;
 begin
@@ -8908,9 +8914,8 @@ begin
   select * into s from drink_shop where sku = p_sku and active;
   if s.sku is null then raise exception 'invalid item'; end if;
   insert into player_wallet (user_id) values (uid) on conflict (user_id) do nothing;
-  if (select gem_paid from player_wallet where user_id = uid) < s.price then raise exception 'not enough paid gem'; end if;
-  g := _gem_add(uid, 0, -s.price, 'buy:' || s.sku, null, jsonb_build_object('qty', s.qty, 'price', s.price));
-  perform _item_add(uid, 'drink', s.qty, 0, 'buy:' || s.sku, null, jsonb_build_object('paid_gem', s.price));
+  g := _gem_spend(uid, s.price, 'buy:' || s.sku, jsonb_build_object('qty', s.qty, 'price', s.price));
+  perform _item_add(uid, 'drink', s.qty, 0, 'buy:' || s.sku, null, jsonb_build_object('price', s.price));
   return _drink_json(uid) || jsonb_build_object('gem', g, 'bought', s.qty);
 end $$;
 
@@ -12283,11 +12288,11 @@ revoke all on public.daily_attend from public, anon, authenticated;
 
 -- 미션 정의 (한 곳에서 조정). per = daily_track 1회 호출로 올릴 수 있는 최대
 create or replace function public._daily_defs() returns jsonb language sql immutable as $$ select '[
-  {"key":"arcade","name":"아케이드 1판 플레이","goal":1,"per":1,"reward":{"gold":1000}},
-  {"key":"win","name":"전투 3회 승리","goal":3,"per":1,"reward":{"gold":2000}},
-  {"key":"story","name":"스토리 스테이지 2회 클리어","goal":2,"per":1,"reward":{"gold":2000,"gem":10}},
-  {"key":"tower","name":"시련의 탑 1회 도전","goal":1,"per":1,"reward":{"gold":1500,"gem":10}},
-  {"key":"skill","name":"고유기술 10회 사용","goal":10,"per":20,"reward":{"gold":1500}}
+  {"key":"arcade","name":"아케이드 플레이 x 1","goal":1,"per":1,"reward":{"gold":1000}},
+  {"key":"win","name":"전투 승리 x 3","goal":3,"per":1,"reward":{"gold":2000}},
+  {"key":"story","name":"스토리 스테이지 클리어 x 2","goal":2,"per":1,"reward":{"gold":2000,"gem":10}},
+  {"key":"tower","name":"시련의 탑 도전 x 1","goal":1,"per":1,"reward":{"gold":1500,"gem":10}},
+  {"key":"skill","name":"고유기술 사용 x 10","goal":10,"per":20,"reward":{"gold":1500}}
 ]'::jsonb $$;
 create or replace function public._daily_all_reward() returns jsonb language sql immutable as $$ select '{"gem":30}'::jsonb $$;
 -- 출석 7일 주기 (빠진 날이 있어도 끊기지 않고 다음 칸으로. 7일째 받으면 1일째부터 다시)
@@ -13004,7 +13009,7 @@ declare lv int; begin begin select (_player_sync(p_uid)).level into lv; exceptio
 create or replace function public._dsp_owned(p_uid uuid) returns jsonb language sql stable security definer set search_path = public as $$
   select coalesce((select case when jsonb_typeof(data->'owned') = 'array' then data->'owned' end from story_progress where user_id = p_uid), '[]'::jsonb) $$;
 
--- 게시판 채우기 (p_all: 전부 새로 / 아니면 아직 안 보낸 의뢰만). 가진 카드 중 최고 등급(UR까지)으로 갈 수 있는 곳만
+-- 게시판 채우기 (p_all: 전부 새로 / 아니면 아직 안 보낸 의뢰만). 보낸 의뢰(taken)는 지역을 바꾸지 않는다.
 create or replace function public._dsp_fill(p_uid uuid, p_all boolean) returns void language plpgsql security definer set search_path = public as $$
 declare best int; s int; z text; els text[] := array['WIND','FIRE','ICE','DARK','LIGHT']; cl text[] := array['CHARGE','CRUSH','DEFENSE','SUPPORT','DISTURB','FASCINATION'];
 begin
@@ -13016,7 +13021,8 @@ begin
     select id into z from dispatch_zones where grp = case when s <= 4 then 'exile' else 'safe' end and min_grade <= best
       order by -ln(greatest(random(), 1e-9)) / (1 + min_grade) limit 1;
     insert into dispatch_offers (user_id, slot, day, zone, el, cls, taken) values (p_uid, s, _dsp_day(), z, els[1 + floor(random() * 5)::int], cl[1 + floor(random() * 6)::int], false)
-      on conflict (user_id, slot) do update set day = excluded.day, zone = excluded.zone, el = excluded.el, cls = excluded.cls, taken = false;
+      on conflict (user_id, slot) do update set day = excluded.day, zone = excluded.zone, el = excluded.el, cls = excluded.cls, taken = false
+      where dispatch_offers.taken = false;
   end loop;
 end $$;
 
@@ -13081,7 +13087,7 @@ begin
   if n < 1 or n > z.size or (select count(distinct u) from unnest(p_uids) u) <> n then raise exception 'bad cards'; end if;
   owned := _dsp_owned(uid);
   -- 가진 카드인지 + 카드 정보
-  create temp table if not exists _dsp_pick (uid text, grade int, el text, cls text) on commit drop; delete from _dsp_pick;
+  create temp table if not exists _dsp_pick (uid text, grade int, el text, cls text) on commit drop; delete from _dsp_pick where true;
   insert into _dsp_pick select u, m.grade, m.el, m.cls from unnest(p_uids) u
     join lateral (select x from jsonb_array_elements(owned) x where x->>'uid' = u limit 1) ox on true
     join dispatch_card_meta m on m.id = ox.x->>'id';
@@ -13148,7 +13154,9 @@ grant execute on function public.dispatch_status(), public.dispatch_refresh(), p
 
 
 -- ===== SOURCE: dispatch_safeupdate.sql =====
--- 파견 일괄 보내기 'DELETE requires a WHERE clause' 수정 (2026-11-04). dispatch.sql 뒤에 실행. create or replace 만 (데이터 변경 없음)
+-- 파견 일괄 보내기 'DELETE requires a WHERE clause' 수정 (2026-11-04).
+-- 최신 함수(같은 카드 id 중복 금지 포함)는 supabase/dispatch_where_clause.sql 을 실행하세요.
+-- 이 파일만 다시 실행하면 그 중복 검사가 빠집니다. dispatch.sql 뒤에만, batch_ui_bugs.sql 이전 데이터베이스용.
 -- 원인: dispatch_start 안 임시표 비우기 'delete from _dsp_pick;' 에 WHERE 가 없어 pg_safeupdate 가 막음 → 'where true' 추가 (동작 같음)
 create or replace function public.dispatch_start(p_slot int, p_uids text[], p_hours int) returns jsonb language plpgsql security definer set search_path = public as $$
 declare uid uuid := auth.uid(); o dispatch_offers; z dispatch_zones; owned jsonb; n int; mx int; bon int := 0; ne int; nc int; over boolean; k text; v numeric; rw jsonb := '{}'::jsonb; f numeric; great boolean := false; cnt int; d dispatch_daily;
@@ -13850,6 +13858,92 @@ on conflict (id) do update set grade = excluded.grade, cost = excluded.cost;
 select 'pool' k, id, grade, name, gacha::text from public.story_card_pool where id = '10509'
 union all select 'skill', card_id, idx::text, unlock::text, null from public.story_skill_meta where card_id = '10509'
 union all select 'pvp', id, grade, cost::text, null from public.pvp_card_meta where id = '10509';
+
+
+-- ===== SOURCE: card_newcards_1111.sql =====
+-- =====================================================================
+-- 2026-11-11 신규 카드 16장 (10511~10513, 10520~10532): 카드 목록 · 스킬 해금 레벨 · PVP 덱 검증
+-- 뽑기 풀에는 넣지 않음 (gacha = false). 뽑기·스토리 무작위 보상 둘 다 gacha 행만 고르므로 획득 경로 없음.
+-- 도감(reward_card_catalog)이 story_card_pool을 참조하므로 행은 필요. 뽑기 공개는 gacha만 true로 바꾸면 됨.
+-- 여러 번 실행해도 안전. 삭제 없음.
+-- =====================================================================
+insert into public.story_card_pool (id, grade, name, gacha) values
+  ('10511','SUPER RARE','최수아',false),
+  ('10512','HIGH RARE','고세연',false),
+  ('10513','ULTRA RARE','[각성] 고세연',false),
+  ('10520','RARE','황경민',false),
+  ('10521','SUPER RARE','이혜림',false),
+  ('10522','ULTRA RARE','이수영',false),
+  ('10523','SUPER RARE','천혜영',false),
+  ('10524','ULTRA RARE','이동주',false),
+  ('10525','ULTRA RARE','김수진',false),
+  ('10526','SUPER RARE','조태진',false),
+  ('10527','ULTRA RARE','김한철',false),
+  ('10528','ULTRA RARE','김진호',false),
+  ('10529','SUPER RARE','김태희',false),
+  ('10530','SUPER RARE','박승규',false),
+  ('10531','SUPER RARE','김경섭',false),
+  ('10532','SUPER RARE','천기철',false)
+on conflict (id) do update set grade = excluded.grade, name = excluded.name;
+
+insert into public.story_skill_meta (card_id, idx, unlock) values
+  ('10511',1,2),
+  ('10511',2,5),
+  ('10512',1,2),
+  ('10512',2,5),
+  ('10513',1,2),
+  ('10513',2,5),
+  ('10513',3,7),
+  ('10520',1,2),
+  ('10521',1,2),
+  ('10521',2,5),
+  ('10522',1,2),
+  ('10522',2,5),
+  ('10522',3,7),
+  ('10523',1,2),
+  ('10523',2,5),
+  ('10524',1,2),
+  ('10524',2,5),
+  ('10524',3,7),
+  ('10525',1,2),
+  ('10525',2,5),
+  ('10525',3,7),
+  ('10526',1,2),
+  ('10526',2,5),
+  ('10527',1,2),
+  ('10527',2,5),
+  ('10527',3,7),
+  ('10528',1,2),
+  ('10528',2,5),
+  ('10528',3,7),
+  ('10529',1,2),
+  ('10529',2,5),
+  ('10530',1,2),
+  ('10530',2,5),
+  ('10531',1,2),
+  ('10531',2,5),
+  ('10532',1,2),
+  ('10532',2,5)
+on conflict (card_id, idx) do update set unlock = excluded.unlock;
+
+insert into public.pvp_card_meta (id, grade, cost) values
+  ('10511','SUPER RARE',42),
+  ('10512','HIGH RARE',27),
+  ('10513','ULTRA RARE',53),
+  ('10520','RARE',18),
+  ('10521','SUPER RARE',44),
+  ('10522','ULTRA RARE',54),
+  ('10523','SUPER RARE',45),
+  ('10524','ULTRA RARE',53),
+  ('10525','ULTRA RARE',49),
+  ('10526','SUPER RARE',41),
+  ('10527','ULTRA RARE',46),
+  ('10528','ULTRA RARE',53),
+  ('10529','SUPER RARE',43),
+  ('10530','SUPER RARE',37),
+  ('10531','SUPER RARE',35),
+  ('10532','SUPER RARE',35)
+on conflict (id) do update set grade = excluded.grade, cost = excluded.cost;
 
 
 -- ===== SOURCE: gacha_premium_ur.sql =====
@@ -14664,11 +14758,11 @@ create or replace function public._weekly_week() returns date language sql stabl
   select date_trunc('week', _gem_day()::timestamp)::date $$;
 
 create or replace function public._weekly_defs() returns jsonb language sql immutable as $$ select '[
-  {"key":"arcade","name":"아케이드 7판 플레이","goal":7,"per":2,"reward":{"gold":8000,"tickets":1}},
-  {"key":"win","name":"전투 15회 승리","goal":15,"per":3,"reward":{"gold":10000,"gem":30}},
-  {"key":"story","name":"스토리 스테이지 10회 클리어","goal":10,"per":2,"reward":{"gold":10000,"gem":30}},
-  {"key":"tower","name":"시련의 탑 5회 도전","goal":5,"per":1,"reward":{"gold":8000,"gem":20}},
-  {"key":"skill","name":"고유기술 50회 사용","goal":50,"per":40,"reward":{"gold":8000,"gem":20}}
+  {"key":"arcade","name":"아케이드 플레이 x 7","goal":7,"per":2,"reward":{"gold":8000,"tickets":1}},
+  {"key":"win","name":"전투 승리 x 15","goal":15,"per":3,"reward":{"gold":10000,"gem":30}},
+  {"key":"story","name":"스토리 스테이지 클리어 x 10","goal":10,"per":2,"reward":{"gold":10000,"gem":30}},
+  {"key":"tower","name":"시련의 탑 도전 x 5","goal":5,"per":1,"reward":{"gold":8000,"gem":20}},
+  {"key":"skill","name":"고유기술 사용 x 50","goal":50,"per":40,"reward":{"gold":8000,"gem":20}}
 ]'::jsonb $$;
 create or replace function public._weekly_all_reward() returns jsonb language sql immutable as $$ select '{"gem":100,"tickets":2}'::jsonb $$;
 
@@ -15529,21 +15623,29 @@ end $$;
 
 create or replace function public.pvp_rankings(p_league text, p_mode text, p_season date default null) returns jsonb
 language plpgsql stable security definer set search_path = public as $$
-declare uid uuid := auth.uid(); s date := coalesce(p_season, _pvp_season()); top jsonb; mine jsonb;
+declare uid uuid := auth.uid(); s date := p_season; top jsonb; mine jsonb;
 begin
   perform _pvp_ok(p_league, p_mode);
-  with t as (select r.user_id, r.rating, r.wins, r.losses, rank() over (order by r.rating desc, r.wins desc) rk
-             from pvp_ratings r where r.league = p_league and r.mode = p_mode and r.season = s and r.wins + r.losses > 0)
+  with latest as (
+    select distinct on (r.user_id) r.user_id, r.rating, r.wins, r.losses
+      from pvp_ratings r
+     where r.league = p_league and r.mode = p_mode and (s is null or r.season = s) and r.wins + r.losses > 0
+     order by r.user_id, r.season desc),
+  t as (select user_id, rating, wins, losses, rank() over (order by rating desc, wins desc) rk from latest)
   select coalesce(jsonb_agg(jsonb_build_object('rank', rk, 'name', coalesce(p.nickname, '플레이어'), 'rating', rating, 'wins', wins, 'losses', losses,
            'me', t.user_id = uid, 'tier', _pvp_tier(rating),
            'abyss', exists (select 1 from pvp_titles x where x.user_id = t.user_id and x.title = 'abyss'),
            'title', coalesce(p.cosmo_title, 'recruit'), 'frame', coalesce(p.cosmo_frame, 'frame_basic'),
            'title_name', coalesce((select d->>'name' from jsonb_array_elements(_cosmo_title_defs()) d where d->>'id' = coalesce(p.cosmo_title, 'recruit')), '')) order by rk), '[]'::jsonb)
     into top from (select * from t order by rk limit 100) t left join profiles p on p.id = t.user_id;
-  with t as (select r.user_id, r.rating, r.wins, r.losses, rank() over (order by r.rating desc, r.wins desc) rk
-             from pvp_ratings r where r.league = p_league and r.mode = p_mode and r.season = s and r.wins + r.losses > 0)
+  with latest as (
+    select distinct on (r.user_id) r.user_id, r.rating, r.wins, r.losses
+      from pvp_ratings r
+     where r.league = p_league and r.mode = p_mode and (s is null or r.season = s) and r.wins + r.losses > 0
+     order by r.user_id, r.season desc),
+  t as (select user_id, rating, wins, losses, rank() over (order by rating desc, wins desc) rk from latest)
   select jsonb_build_object('rank', rk, 'rating', rating, 'wins', wins, 'losses', losses, 'tier', _pvp_tier(rating)) into mine from t where t.user_id = uid;
-  return jsonb_build_object('season', s, 'top', top, 'me', mine);
+  return jsonb_build_object('season', coalesce(s, _pvp_season()), 'top', top, 'me', mine);
 end $$;
 
 revoke all on function public.tower_rankings(text), public.story_rankings(), public.pvp_rankings(text, text, date) from public;
@@ -15784,7 +15886,7 @@ begin
   n := coalesce(array_length(p_uids, 1), 0);
   if n < 1 or n > z.size or (select count(distinct u) from unnest(p_uids) u) <> n then raise exception 'bad cards'; end if;
   owned := _dsp_owned(uid);
-  create temp table if not exists _dsp_pick (uid text, id text, grade int, el text, cls text) on commit drop; delete from _dsp_pick;
+  create temp table if not exists _dsp_pick (uid text, id text, grade int, el text, cls text) on commit drop; delete from _dsp_pick where true;
   insert into _dsp_pick select u, ox.x->>'id', m.grade, m.el, m.cls from unnest(p_uids) u
     join lateral (select x from jsonb_array_elements(owned) x where x->>'uid' = u limit 1) ox on true
     join dispatch_card_meta m on m.id = ox.x->>'id';
@@ -16713,7 +16815,23 @@ insert into public.reward_card_catalog(card_id) values
   ('10367'),
   ('10440'),
   ('10267'),
-  ('10509')
+  ('10509'),
+  ('10511'),
+  ('10512'),
+  ('10513'),
+  ('10520'),
+  ('10521'),
+  ('10522'),
+  ('10523'),
+  ('10524'),
+  ('10525'),
+  ('10526'),
+  ('10527'),
+  ('10528'),
+  ('10529'),
+  ('10530'),
+  ('10531'),
+  ('10532')
 on conflict do nothing;
 
 create or replace function public._gallery_total() returns int
@@ -17690,7 +17808,34 @@ insert into public.battle_story_defs_v2(chapter,phase,variant,definition) values
 (15,15,'','{"no":15,"type":"normal","enemies":{"ids":["10025","10143","10144","10153","10154"],"boost":{"10025":{"HP":1568,"ATK":246,"DEF":291,"storyLv":88,"power":138803},"10143":{"HP":94,"ATK":21,"DEF":15,"storyLv":88,"power":1279},"10144":{"HP":94,"ATK":22,"DEF":17,"storyLv":88,"power":1326},"10153":{"HP":112,"ATK":19,"DEF":13,"storyLv":88,"power":1413},"10154":{"HP":131,"ATK":21,"DEF":15,"storyLv":88,"power":1626}}},"party":{"forced":["10024"],"maxGrade":"HIGH RARE","noMale":true,"mustLive":["10024"],"levels":{"10024":88}},"bossId":"10025","mana":80,"starTurns":8,"starMana":0.3,"hero":"10290","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb)
 on conflict (chapter,phase,variant) do update set definition=excluded.definition;
 insert into public.battle_story_defs_v2(chapter,phase,variant,definition) values
-(15,16,'','{"no":16,"type":"normal","enemies":{"ids":["10200","10143","10143","10143","10143"],"boost":{"10143":{"HP":65,"ATK":14,"DEF":10,"storyLv":31,"power":869},"10200":{"HP":1756,"ATK":319,"DEF":160,"storyLv":90,"power":151890}}},"party":{"forced":["10024"],"maxGrade":"HIGH RARE","noMale":true,"mustLive":["10024"],"levels":{"10024":90}},"bossId":"10200","mana":150,"starTurns":10,"starMana":0,"rules":{"survive":10,"revive":[{"id":"10143","delay":2,"level":"keep"}]},"hero":"10290","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb)
+(15,16,'','{"no":16,"type":"normal","enemies":{"ids":["10200","10143","10143","10143","10143"],"boost":{"10143":{"HP":65,"ATK":14,"DEF":10,"storyLv":31,"power":869},"10200":{"HP":1756,"ATK":319,"DEF":160,"storyLv":90,"power":151890}}},"party":{"forced":["10024"],"maxGrade":"HIGH RARE","noMale":true,"mustLive":["10024"],"levels":{"10024":90}},"bossId":"10200","mana":150,"starTurns":10,"starMana":0,"rules":{"survive":10,"revive":[{"id":"10143","delay":2,"level":"keep"}]},"hero":"10290","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(16,1,'','{"no":1,"type":"normal","enemies":{"ids":["10514","10143","10144","10145","10146"],"boost":{"10143":{"HP":72,"ATK":16,"DEF":12,"storyLv":45,"power":985},"10144":{"HP":72,"ATK":17,"DEF":13,"storyLv":45,"power":1018},"10145":{"HP":86,"ATK":19,"DEF":14,"storyLv":45,"power":1170},"10146":{"HP":101,"ATK":20,"DEF":16,"storyLv":45,"power":1393},"10514":{"HP":113,"ATK":19,"DEF":19,"storyLv":45,"power":3412}}},"party":{"forced":["10406"],"mustLive":["10406"],"levels":{"10406":40},"battleLevels":{"10406":1},"noFemale":true,"maxGrade":"SUPER RARE"},"bossId":"10514","mana":100,"rules":{"maxTurns":20},"hero":"10406","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(16,2,'','{"no":2,"type":"normal","enemies":{"ids":["10147","10143","10144","10145","10146"],"boost":{"10143":{"HP":72,"ATK":16,"DEF":12,"storyLv":45,"power":985},"10144":{"HP":72,"ATK":17,"DEF":13,"storyLv":45,"power":1018},"10145":{"HP":86,"ATK":19,"DEF":14,"storyLv":45,"power":1170},"10146":{"HP":101,"ATK":20,"DEF":16,"storyLv":45,"power":1393},"10147":{"HP":115,"ATK":22,"DEF":17,"storyLv":45,"power":1553}}},"party":{"forced":["10406"],"mustLive":["10406"],"levels":{"10406":40},"battleLevels":{"10406":1},"noFemale":true,"maxGrade":"SUPER RARE"},"bossId":"10147","mana":100,"rules":{"maxTurns":20},"hero":"10406","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(16,3,'','{"no":3,"type":"normal","enemies":{"ids":["10155","10154","10155","10143","10144"],"boost":{"10143":{"HP":72,"ATK":16,"DEF":12,"storyLv":45,"power":985},"10144":{"HP":72,"ATK":17,"DEF":13,"storyLv":45,"power":1018},"10154":{"HP":101,"ATK":16,"DEF":12,"storyLv":45,"power":1257},"10155":{"HP":115,"ATK":17,"DEF":13,"storyLv":45,"power":1399}}},"party":{"forced":["10406"],"mustLive":["10406"],"levels":{"10406":40},"battleLevels":{"10406":1},"noFemale":true,"maxGrade":"SUPER RARE"},"bossId":"10155","mana":100,"rules":{"maxTurns":20},"hero":"10406","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(16,4,'','{"no":4,"type":"normal","enemies":{"ids":["10157","10145","10146","10156","10152"],"boost":{"10145":{"HP":86,"ATK":19,"DEF":14,"storyLv":45,"power":1170},"10146":{"HP":101,"ATK":20,"DEF":16,"storyLv":45,"power":1393},"10152":{"HP":534,"ATK":104,"DEF":104,"storyLv":45,"power":34342},"10156":{"HP":130,"ATK":19,"DEF":14,"storyLv":45,"power":1664},"10157":{"HP":144,"ATK":20,"DEF":16,"storyLv":45,"power":1831}}},"party":{"forced":["10406"],"mustLive":["10406"],"levels":{"10406":40},"battleLevels":{"10406":1},"noFemale":true,"maxGrade":"SUPER RARE"},"bossId":"10157","mana":100,"rules":{"maxTurns":20},"hero":"10406","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(16,5,'','{"no":5,"type":"normal","enemies":{"ids":["10158","10159","10160","10147","10148"],"boost":{"10147":{"HP":115,"ATK":22,"DEF":17,"storyLv":45,"power":1553},"10148":{"HP":169,"ATK":28,"DEF":19,"storyLv":45,"power":5275},"10158":{"HP":144,"ATK":22,"DEF":22,"storyLv":45,"power":1969},"10159":{"HP":188,"ATK":38,"DEF":30,"storyLv":45,"power":6526},"10160":{"HP":226,"ATK":47,"DEF":39,"storyLv":45,"power":8019}}},"party":{"forced":["10406"],"mustLive":["10406"],"levels":{"10406":40},"battleLevels":{"10406":1},"noFemale":true,"maxGrade":"SUPER RARE"},"bossId":"10158","mana":100,"rules":{"maxTurns":20},"hero":"10406","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(16,6,'','{"no":6,"type":"normal","enemies":{"ids":["10383"],"boost":{"10383":{"HP":966,"ATK":124,"DEF":138,"storyLv":45,"power":116253}}},"party":{"forced":["10123","10025","10183"],"mustLive":["10123","10025","10183"],"levels":{"10025":50,"10123":50,"10183":50},"battleLevels":{"10025":1,"10123":1,"10183":1},"solo":true},"bossId":"10383","mana":200,"rules":{"maxTurns":20},"hero":"10406","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(16,7,'','{"no":7,"type":"normal","enemies":{"ids":["10150","10149","10145","10144","10143"],"boost":{"10143":{"HP":72,"ATK":16,"DEF":12,"storyLv":45,"power":985},"10144":{"HP":72,"ATK":17,"DEF":13,"storyLv":45,"power":1018},"10145":{"HP":86,"ATK":19,"DEF":14,"storyLv":45,"power":1170},"10149":{"HP":207,"ATK":38,"DEF":28,"storyLv":45,"power":7240},"10150":{"HP":282,"ATK":56,"DEF":47,"storyLv":45,"power":10434}}},"party":{"forced":["10406"],"mustLive":["10406"],"levels":{"10406":40},"battleLevels":{"10406":1},"noFemale":true,"maxGrade":"SUPER RARE"},"bossId":"10150","mana":100,"rules":{"maxTurns":20},"hero":"10406","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(16,8,'','{"no":8,"type":"normal","enemies":{"ids":["10151","10161","10162","10163","10164"],"boost":{"10151":{"HP":464,"ATK":70,"DEF":70,"storyLv":45,"power":25251},"10161":{"HP":244,"ATK":51,"DEF":43,"storyLv":45,"power":9248},"10162":{"HP":282,"ATK":56,"DEF":49,"storyLv":45,"power":10515},"10163":{"HP":418,"ATK":70,"DEF":60,"storyLv":45,"power":23092},"10164":{"HP":441,"ATK":70,"DEF":60,"storyLv":45,"power":23844}}},"party":{"forced":["10406"],"mustLive":["10406"],"levels":{"10406":40},"battleLevels":{"10406":1},"noFemale":true,"maxGrade":"SUPER RARE"},"bossId":"10151","mana":100,"rules":{"maxTurns":20},"hero":"10406","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(16,9,'','{"no":9,"type":"normal","enemies":{"ids":["10152","10146","10165","10166","10167"],"boost":{"10146":{"HP":101,"ATK":20,"DEF":16,"storyLv":45,"power":1393},"10152":{"HP":534,"ATK":104,"DEF":104,"storyLv":45,"power":34342},"10165":{"HP":464,"ATK":70,"DEF":70,"storyLv":45,"power":25251},"10166":{"HP":487,"ATK":81,"DEF":81,"storyLv":45,"power":27586},"10167":{"HP":534,"ATK":93,"DEF":93,"storyLv":45,"power":30851}}},"party":{"forced":["10406"],"mustLive":["10406"],"levels":{"10406":40},"battleLevels":{"10406":1},"noFemale":true,"maxGrade":"SUPER RARE"},"bossId":"10152","mana":100,"rules":{"maxTurns":20},"hero":"10406","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(16,10,'','{"no":10,"type":"normal","enemies":{"ids":["10025","10143","10144","10153","10154"],"boost":{"10025":{"HP":966,"ATK":152,"DEF":179,"storyLv":45,"power":85539},"10143":{"HP":72,"ATK":16,"DEF":12,"storyLv":45,"power":985},"10144":{"HP":72,"ATK":17,"DEF":13,"storyLv":45,"power":1018},"10153":{"HP":86,"ATK":14,"DEF":10,"storyLv":45,"power":1074},"10154":{"HP":101,"ATK":16,"DEF":12,"storyLv":45,"power":1257}},"levels":{"10025":2,"10143":2,"10144":2,"10153":2,"10154":2}},"party":{"forced":["10406"],"mustLive":["10406"],"levels":{"10406":40},"battleLevels":{"10406":1},"noFemale":true,"maxGrade":"SUPER RARE"},"bossId":"10025","mana":100,"rules":{"maxTurns":20},"hero":"10406","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(16,11,'','{"no":11,"type":"normal","enemies":{"ids":["10406","10290","10383","10097","10393","10306"],"boost":{"10097":{"HP":235,"ATK":30,"DEF":56,"storyLv":45,"power":10455},"10290":{"HP":179,"ATK":19,"DEF":21,"storyLv":45,"power":7682},"10306":{"HP":179,"ATK":30,"DEF":34,"storyLv":45,"power":7943},"10383":{"HP":966,"ATK":124,"DEF":138,"storyLv":45,"power":116253},"10393":{"HP":499,"ATK":70,"DEF":81,"storyLv":45,"power":38466},"10406":{"HP":580,"ATK":81,"DEF":81,"storyLv":45,"power":38309}}},"party":{"forced":["10200"],"mustLive":["10200"],"levels":{"10200":60},"battleLevels":{"10200":1},"noFemale":true},"bossId":"10406","mana":200,"rules":{"maxTurns":20,"revive":[{"id":"10290","become":"10291","delay":0,"storyLevel":100,"battleLevel":10}]},"hero":"10406","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(16,12,'','{"no":12,"type":"normal","hero":"10406","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none","party":{"forced":["10406"]}}'::jsonb),
+(17,1,'','{"no":1,"type":"normal","enemies":{"ids":["10147","10146","10145","10144","10143"],"boost":{"10143":{"HP":70,"ATK":15,"DEF":11,"storyLv":40,"power":938},"10144":{"HP":70,"ATK":17,"DEF":13,"storyLv":40,"power":1003},"10145":{"HP":83,"ATK":18,"DEF":14,"storyLv":40,"power":1131},"10146":{"HP":97,"ATK":19,"DEF":15,"storyLv":40,"power":1328},"10147":{"HP":111,"ATK":21,"DEF":17,"storyLv":40,"power":1503}}},"party":{"forced":["10307"],"mustLive":["10307"],"levels":{"10307":45},"battleLevels":{"10307":1},"noMale":true,"maxGrade":"SUPER RARE"},"bossId":"10147","mana":100,"rules":{"maxTurns":20},"hero":"10307","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(17,2,'','{"no":2,"type":"normal","enemies":{"ids":["10152","10149","10148","10160","10146"],"boost":{"10146":{"HP":97,"ATK":19,"DEF":15,"storyLv":40,"power":1328},"10148":{"HP":160,"ATK":27,"DEF":18,"storyLv":40,"power":5017},"10149":{"HP":196,"ATK":36,"DEF":27,"storyLv":40,"power":6877},"10152":{"HP":499,"ATK":98,"DEF":98,"storyLv":40,"power":32215},"10160":{"HP":214,"ATK":44,"DEF":37,"storyLv":40,"power":7573}}},"party":{"forced":["10307"],"mustLive":["10307"],"levels":{"10307":45},"battleLevels":{"10307":1},"noMale":true,"maxGrade":"SUPER RARE"},"bossId":"10152","mana":100,"rules":{"maxTurns":20},"hero":"10307","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(17,3,'','{"no":3,"type":"normal","enemies":{"ids":["10025","10152","10152","10152","10152"],"boost":{"10025":{"HP":896,"ATK":141,"DEF":166,"storyLv":40,"power":79339},"10152":{"HP":499,"ATK":98,"DEF":98,"storyLv":40,"power":32215}}},"party":{"forced":["10307"],"mustLive":["10307"],"levels":{"10307":45},"battleLevels":{"10307":1},"noMale":true},"bossId":"10025","mana":100,"rules":{"maxTurns":20},"hero":"10307","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(17,4,'','{"no":4,"type":"normal","enemies":{"ids":["10158","10157","10156","10155","10154"],"boost":{"10154":{"HP":97,"ATK":15,"DEF":11,"storyLv":40,"power":1192},"10155":{"HP":111,"ATK":17,"DEF":13,"storyLv":40,"power":1368},"10156":{"HP":125,"ATK":18,"DEF":14,"storyLv":40,"power":1604},"10157":{"HP":139,"ATK":19,"DEF":15,"storyLv":40,"power":1754},"10158":{"HP":139,"ATK":21,"DEF":21,"storyLv":40,"power":1892}}},"party":{"forced":["10307"],"mustLive":["10307"],"levels":{"10307":45},"battleLevels":{"10307":1},"maxGrade":"HIGH RARE"},"bossId":"10158","mana":100,"rules":{"maxTurns":20},"hero":"10307","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(17,5,'','{"no":5,"type":"normal","enemies":{"ids":["10158","10149","10147","10146","10153"],"boost":{"10146":{"HP":97,"ATK":19,"DEF":15,"storyLv":40,"power":1328},"10147":{"HP":111,"ATK":21,"DEF":17,"storyLv":40,"power":1503},"10149":{"HP":196,"ATK":36,"DEF":27,"storyLv":40,"power":6877},"10153":{"HP":83,"ATK":14,"DEF":10,"storyLv":40,"power":1051},"10158":{"HP":139,"ATK":21,"DEF":21,"storyLv":40,"power":1892}}},"party":{"forced":["10307"],"mustLive":["10307"],"levels":{"10307":45},"battleLevels":{"10307":1},"maxGrade":"HIGH RARE"},"bossId":"10158","mana":100,"rules":{"maxTurns":20},"hero":"10307","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(17,6,'','{"no":6,"type":"normal","enemies":{"ids":["10161","10149","10149","10149","10149"],"boost":{"10149":{"HP":196,"ATK":36,"DEF":27,"storyLv":40,"power":6877},"10161":{"HP":231,"ATK":48,"DEF":41,"storyLv":40,"power":8753}}},"party":{"forced":["10307"],"mustLive":["10307"],"levels":{"10307":45},"battleLevels":{"10307":1},"maxGrade":"HIGH RARE"},"bossId":"10161","mana":100,"rules":{"maxTurns":20},"hero":"10307","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(17,7,'','{"no":7,"type":"normal","hero":"10307","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none","party":{"forced":["10307"]}}'::jsonb),
+(17,8,'','{"no":8,"type":"normal","enemies":{"ids":["10025","10164","10164","10164","10164"],"boost":{"10025":{"HP":896,"ATK":141,"DEF":166,"storyLv":40,"power":79339},"10164":{"HP":412,"ATK":65,"DEF":56,"storyLv":40,"power":22242}}},"party":{"forced":["10307"],"mustLive":["10307"],"levels":{"10307":45},"battleLevels":{"10307":1},"maxGrade":"SUPER RARE"},"bossId":"10025","mana":100,"rules":{"maxTurns":20},"hero":"10307","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(17,9,'','{"no":9,"type":"normal","enemies":{"ids":["10166","10166","10166","10166","10166"],"boost":{"10166":{"HP":456,"ATK":76,"DEF":76,"storyLv":40,"power":25853}}},"party":{"forced":["10307"],"mustLive":["10307"],"levels":{"10307":45},"battleLevels":{"10307":1},"maxGrade":"HIGH RARE"},"bossId":"10166","mana":100,"rules":{"maxTurns":20},"hero":"10307","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(17,10,'','{"no":10,"type":"normal","enemies":{"ids":["10025","10166","10166","10166","10166"],"boost":{"10025":{"HP":966,"ATK":152,"DEF":179,"storyLv":45,"power":85539},"10166":{"HP":487,"ATK":81,"DEF":81,"storyLv":45,"power":27586}}},"party":{"forced":["10307"],"mustLive":["10307"],"levels":{"10307":45},"battleLevels":{"10307":1},"maxGrade":"HIGH RARE"},"bossId":"10025","mana":100,"rules":{"maxTurns":20},"hero":"10307","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(17,11,'','{"no":11,"type":"normal","enemies":{"ids":["10025","10166","10166","10166","10166"],"boost":{"10025":{"HP":966,"ATK":152,"DEF":179,"storyLv":45,"power":85539},"10166":{"HP":487,"ATK":81,"DEF":81,"storyLv":45,"power":27586}}},"party":{"forced":["10307"],"mustLive":["10307"],"levels":{"10307":45},"battleLevels":{"10307":1},"maxGrade":"HIGH RARE"},"bossId":"10025","mana":100,"rules":{"maxTurns":20},"hero":"10307","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(17,12,'','{"no":12,"type":"normal","hero":"10307","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none","party":{"forced":["10307"]}}'::jsonb),
+(17,13,'','{"no":13,"type":"normal","enemies":{"ids":["10200","10025","10151","10151","10151"],"boost":{"10025":{"HP":1036,"ATK":163,"DEF":192,"storyLv":50,"power":91739},"10151":{"HP":494,"ATK":74,"DEF":74,"storyLv":50,"power":26808},"10200":{"HP":1140,"ATK":207,"DEF":104,"storyLv":50,"power":98609}}},"party":{"forced":["10307"],"mustLive":["10307"],"levels":{"10307":45},"battleLevels":{"10307":1},"maxGrade":"SUPER RARE"},"bossId":"10200","mana":100,"rules":{"maxTurns":20},"hero":"10307","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(17,14,'','{"no":14,"type":"normal","enemies":{"ids":["10200","10025","10151","10151","10151","10151"],"boost":{"10025":{"HP":1036,"ATK":163,"DEF":192,"storyLv":50,"power":91739},"10151":{"HP":494,"ATK":74,"DEF":74,"storyLv":50,"power":26808},"10200":{"HP":1140,"ATK":207,"DEF":104,"storyLv":50,"power":98609}}},"party":{"forced":["10307"],"mustLive":["10311"],"levels":{"10307":45},"battleLevels":{"10307":1},"solo":true},"bossId":"10200","enemyFirst":true,"mana":200,"rules":{"maxTurns":20},"awaken":{"on":"10307","id":"10311","storyLevel":50,"battleLevel":1},"hero":"10307","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(17,15,'','{"no":15,"type":"normal","hero":"10307","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none","party":{"forced":["10307"]}}'::jsonb)
 on conflict (chapter,phase,variant) do update set definition=excluded.definition;
 insert into public.battle_card_meta_v2(id,definition) values ('10118','{"class":"FIRE","gender":"MALE","MOR":72,"cost":43,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;
 insert into public.battle_card_meta_v2(id,definition) values ('10019','{"class":"FIRE","gender":"MALE","MOR":25,"cost":17,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
@@ -18130,6 +18275,22 @@ insert into public.battle_card_meta_v2(id,definition) values ('10367','{"class":
 insert into public.battle_card_meta_v2(id,definition) values ('10440','{"class":"WIND","gender":"FEMALE","MOR":8,"cost":51,"grade":"ULTRA RARE"}') on conflict(id) do update set definition=excluded.definition;
 insert into public.battle_card_meta_v2(id,definition) values ('10267','{"class":"ICE","gender":"FEMALE","MOR":80,"cost":35,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
 insert into public.battle_card_meta_v2(id,definition) values ('10509','{"class":"WIND","gender":"FEMALE","MOR":55,"cost":33,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10511','{"class":"FIRE","gender":"FEMALE","MOR":85,"cost":42,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10512','{"class":"WIND","gender":"FEMALE","MOR":80,"cost":27,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10513','{"class":"WIND","gender":"FEMALE","MOR":80,"cost":53,"grade":"ULTRA RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10520','{"class":"FIRE","gender":"MALE","MOR":12,"cost":18,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10521','{"class":"ICE","gender":"FEMALE","MOR":80,"cost":44,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10522','{"class":"WIND","gender":"FEMALE","MOR":75,"cost":54,"grade":"ULTRA RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10523','{"class":"DARK","gender":"FEMALE","MOR":80,"cost":45,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10524','{"class":"ICE","gender":"MALE","MOR":65,"cost":53,"grade":"ULTRA RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10525','{"class":"FIRE","gender":"FEMALE","MOR":55,"cost":49,"grade":"ULTRA RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10526','{"class":"FIRE","gender":"MALE","MOR":76,"cost":41,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10527','{"class":"ICE","gender":"MALE","MOR":78,"cost":46,"grade":"ULTRA RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10528','{"class":"FIRE","gender":"MALE","MOR":65,"cost":53,"grade":"ULTRA RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10529','{"class":"WIND","gender":"FEMALE","MOR":80,"cost":43,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10530','{"class":"WIND","gender":"MALE","MOR":68,"cost":37,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10531','{"class":"WIND","gender":"MALE","MOR":25,"cost":35,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10532','{"class":"ICE","gender":"MALE","MOR":77,"cost":35,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;
 insert into public.battle_card_meta_v2(id,definition) values ('10301','{"class":"DARK","gender":"FEMALE","MOR":75,"cost":45,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;
 insert into public.battle_card_meta_v2(id,definition) values ('10210','{"class":"WIND","gender":"MALE","MOR":55,"cost":30,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
 insert into public.battle_card_meta_v2(id,definition) values ('10143','{"class":"FIRE","gender":"MALE","MOR":10,"cost":10,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
@@ -18202,6 +18363,12 @@ insert into public.battle_card_meta_v2(id,definition) values ('10506','{"class":
 insert into public.battle_card_meta_v2(id,definition) values ('10507','{"class":"ICE","gender":"FEMALE","MOR":16,"cost":30,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
 insert into public.battle_card_meta_v2(id,definition) values ('10508','{"class":"FIRE","gender":"MALE","MOR":76,"cost":45,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;
 insert into public.battle_card_meta_v2(id,definition) values ('10510','{"class":"FIRE","gender":"FEMALE","MOR":34,"cost":30,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10514','{"class":"FIRE","gender":"MALE","MOR":20,"cost":20,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10515','{"class":"FIRE","gender":"FEMALE","MOR":77,"cost":10,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10516','{"class":"ICE","gender":"FEMALE","MOR":80,"cost":30,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10517','{"class":"DARK","gender":"MALE","MOR":3,"cost":55,"grade":"ULTRA RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10518','{"class":"DARK","gender":"MALE","MOR":21,"cost":30,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10519','{"class":"WIND","gender":"MALE","MOR":16,"cost":10,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
 -- END GENERATED PHASE2 STORY
 
 create or replace function public._clear_enabled_v2(m text) returns boolean language sql stable security definer
@@ -18701,7 +18868,7 @@ notify pgrst,'reload schema';
 
 create table if not exists public.pvp_policy_v3(
  singleton boolean primary key default true check(singleton), engine_hash text not null check(length(engine_hash)=64), enabled boolean not null default true);
-insert into public.pvp_policy_v3(singleton,engine_hash) values(true,'5a38b4b72651fcb8632fb1bfe14e1cd18a758d08249dbb18b0cfd223123c7a67')
+insert into public.pvp_policy_v3(singleton,engine_hash) values(true,'bef887c77a009121ae99301ca91db7d73a7bd9ce30d70e1ec7a18d10742cd16f')
  on conflict(singleton) do update set engine_hash=excluded.engine_hash;
 -- A clean, verified ladder. Legacy rows remain intact, NOT copied as proof.
 create table if not exists public.pvp_ratings_v3(
@@ -18725,8 +18892,11 @@ create table if not exists public.pvp_events_v3(
 create or replace function public._pvp_lock_v3(l text,m text,s date) returns void language sql security definer
 set search_path=pg_catalog,public,pg_temp as $$ select pg_advisory_xact_lock(hashtext('pvp3:'||l||':'||m||':'||s::text)) $$;
 create or replace function public._pvp_rating_v3(u uuid,l text,m text,s date) returns public.pvp_ratings_v3 language plpgsql security definer
-set search_path=pg_catalog,public,pg_temp as $$ declare r public.pvp_ratings_v3; begin
- insert into public.pvp_ratings_v3(user_id,league,mode,season) values(u,l,m,s) on conflict do nothing;
+set search_path=pg_catalog,public,pg_temp as $$ declare r public.pvp_ratings_v3; p public.pvp_ratings_v3; begin
+ select * into p from public.pvp_ratings_v3 where user_id=u and league=l and mode=m and season<s order by season desc limit 1;
+ insert into public.pvp_ratings_v3(user_id,league,mode,season,rating,wins,losses,def_wins,def_losses)
+  values(u,l,m,s,coalesce(p.rating,1000),coalesce(p.wins,0),coalesce(p.losses,0),coalesce(p.def_wins,0),coalesce(p.def_losses,0))
+  on conflict do nothing;
  select * into r from public.pvp_ratings_v3 where user_id=u and league=l and mode=m and season=s; return r;
 end $$;
 create or replace function public._pvp_session_json_v3(a public.pvp_attempts,s public.pvp_sessions_v3) returns jsonb language sql stable security definer
@@ -19039,7 +19209,7 @@ revoke all on sequence public.pvp_attempts_id_seq from public,anon,authenticated
 -- Phase4 cluster guard is enforced by installer outer guard.
 set local check_function_bodies=off;
 create table if not exists public.guildbattle_policy_v4(singleton boolean primary key default true check(singleton),engine_hash text not null,enabled boolean not null default true);
-insert into public.guildbattle_policy_v4(singleton,engine_hash) values(true,'c570973669776971316dfb650482e1401c5628c5ba73e57d23b879b9320c719a') on conflict(singleton) do update set engine_hash=excluded.engine_hash;
+insert into public.guildbattle_policy_v4(singleton,engine_hash) values(true,'819b116c1e1ccd7d66ba589e3bc5e4e8d436a43ebf2dfe4543c250cbf5166cd0') on conflict(singleton) do update set engine_hash=excluded.engine_hash;
 do $$ begin
  if not exists(select 1 from pvp_policy_v3) then raise exception 'STOP: install phases 1-3 first'; end if;
 end $$;
@@ -20126,7 +20296,7 @@ grant execute on function public.war_meta() to authenticated;
 -- 설치본의 단일 트랜잭션에 포함
 -- Unlock cluster guard is enforced by installer outer guard.
 create or replace function public._unlock_levels() returns jsonb language sql immutable as $$select '{"pvp_hr":3,"gear":3,"dispatch":5,"guild":6,"friends":8,"tower":10,"raid":11,"camp":12,"merge":13,"skill":13,"lend":13,"sigil":14,"pvp_open":15,"trade":15,"pvp_3v3":17,"war":18,"pvp_boss":20,"tower_wind":25,"tower_ice":25,"tower_fire":25,"tower_light":40,"tower_dark":40,"forge":20,"dojo":20}'::jsonb$$;
-create or replace function public._unlock_intros() returns jsonb language sql immutable as $$select '[{"key":"ch0","level":1,"title":"프리미엄 소환","text":"챕터 0을 완료했어요. 프리미엄 10회 소환으로 새로운 인재를 만나 보세요.","reward":{},"route":"summon","trigger":"ch0","source_text":"챕터0 클리어- 소환(프리미엄) 10회"},{"key":"leader","level":1,"title":"인재 레벨업","text":"지급된 리더를 레벨업해 보세요. 1레벨씩 또는 10레벨씩 올릴 수 있어요.","reward":{"blood":5000,"gold":5000},"route":"cards","trigger":"1:1","source_text":"ch1 P1클리어- 지급된 리더 레벨업. lv1업, lv10업"},{"key":"deck","level":1,"title":"덱 설정","text":"덱에 출전할 인재를 배치하고 리더를 정해 보세요.","reward":{"gold":5000},"route":"decks","trigger":"1:3","source_text":"ch1 p3클리어- 덱 설정 및 방법 설명"},{"key":"pvp_hr","level":3,"title":"PvP · 장비 가방","text":"HR 이하 1대1 리그가 열렸어요. PvP 덱을 배치하고 장비를 확인해 보세요.","reward":{"gold":5000},"route":"pvp","trigger":"","source_text":"pvp덱배치 및 다른 pvp설명."},{"key":"dispatch","level":5,"title":"파견","text":"인재를 파견하면 시간이 지난 뒤 보상을 받아요. 파견할 인재와 의뢰를 골라 보세요.","reward":{"gold":5000},"route":"dispatch","trigger":"","source_text":"레벨5 되면 파견 설명 및 실행"},{"key":"guild","level":6,"title":"조직","text":"조직에 가입하거나 직접 만들 수 있어요. 가입은 지금 하지 않아도 괜찮아요.","reward":{"gold":5000,"boxes":2},"route":"guild","trigger":"","source_text":"레벨6 되면 조직 가입 또는 창설 설명"},{"key":"friends","level":8,"title":"친구 · 선물","text":"친구를 추가하고 행동력 선물을 주고받을 수 있어요.","reward":{},"route":"friends","trigger":"","source_text":"친구를 추가하고 행동력 선물을 주고받을 수 있어요."},{"key":"tower","level":10,"title":"시련의 탑","text":"덱을 골라 일반 전투 한 판만 도전해 보세요. 소탕은 원할 때 사용할 수 있어요.","reward":{"gold":5000,"boxes":2},"route":"tower","trigger":"","source_text":"시련의탑 설명, 강제 실행(일반+소탕)"},{"key":"raid","level":11,"title":"토벌","text":"조직원들과 보스를 토벌할 수 있어요. 아직 조직이 없어도 안내와 보상은 받을 수 있어요.","reward":{"tickets":10},"route":"raid","trigger":"","source_text":"토벌 방법 및 내용 설명, 시행(길드 가입자 한정)"},{"key":"camp","level":12,"title":"훈련소","text":"인재를 맡기면 훈련 경험치가 쌓여요. 가장 낮은 레벨 인재를 추천하지만 직접 골라도 돼요.","reward":{"gold":5000,"boxes":2},"route":"camp","trigger":"","source_text":"훈련소 설명 및 강제 배정(가장 레벨 낮은 캐릭터)"},{"key":"skill","level":13,"title":"EX 합성 · 스킬 강화 · 대여","text":"인재를 EX 합성하거나 스킬을 강화할 수 있어요. 조직 인재 대여도 열렸어요.","reward":{"soul":1000,"gold":5000},"route":"cards","trigger":"","source_text":"스킬 강화 방법 알려줌"},{"key":"sigil","level":14,"title":"증표","text":"인재 전용 증표를 만들고 강화할 수 있어요. 선택 상자는 우편에서 받을 수 있어요.","reward":{"sigil_boxes":10},"route":"cards","trigger":"","source_text":"증표 설명"},{"key":"trade","level":15,"title":"무제한 1대1 · 거래소","text":"무제한 1대1 리그와 거래소가 열렸어요. 거래소는 계정 생성 후 7일이 지나면 이용할 수 있어요.","reward":{"tickets":10},"route":"trade","trigger":"","source_text":"거래소 설명 및 방법"},{"key":"pvp_3v3","level":17,"title":"3대3 리그","text":"세 덱으로 겨루는 3대3 리그가 열렸어요. 두 리그에서 모두 도전할 수 있어요.","reward":{},"route":"pvp","trigger":"","source_text":"세 덱으로 겨루는 3대3 리그가 열렸어요. 두 리그에서 모두 도전할 수 있어요."},{"key":"war","level":18,"title":"조직전","text":"조직원들과 방어 덱을 배치하고 상대 조직에 도전해 보세요.","reward":{},"route":"war","trigger":"","source_text":"조직원들과 방어 덱을 배치하고 상대 조직에 도전해 보세요."},{"key":"pvp_boss","level":20,"title":"보스 리그","text":"진영 보스를 지키는 보스 리그가 열렸어요. 두 리그에서 모두 도전할 수 있어요.","reward":{},"route":"pvp","trigger":"","source_text":"진영 보스를 지키는 보스 리그가 열렸어요. 두 리그에서 모두 도전할 수 있어요."},{"key":"facilities","level":20,"title":"연마소 · 도장","text":"연마소에서 장비를, 도장에서 스킬을 강화할 수 있어요. 훈련소 건물 레벨과 무관하게 이용하며 기존 재료와 도장 개방 비용은 필요해요.","reward":{"gold":5000},"route":"camp","trigger":"","source_text":"연마소, 도장 설명"},{"key":"attr25","level":25,"title":"바람 · 얼음 · 불의 탑","text":"같은 속성 인재로 도전하는 세 탑이 열렸어요. 각 탑의 개방 요일에 도전해 보세요.","reward":{},"route":"tower","trigger":"","source_text":"같은 속성 인재로 도전하는 세 탑이 열렸어요. 각 탑의 개방 요일에 도전해 보세요."},{"key":"attr40","level":40,"title":"빛의 섬 · 어둠의 늪","text":"빛과 어둠의 인재를 위한 두 탑이 열렸어요. 각 탑의 개방 요일에 도전해 보세요.","reward":{},"route":"tower","trigger":"","source_text":"빛과 어둠의 인재를 위한 두 탑이 열렸어요. 각 탑의 개방 요일에 도전해 보세요."}]'::jsonb$$;
+create or replace function public._unlock_intros() returns jsonb language sql immutable as $$select '[{"key":"ch0","level":1,"title":"프리미엄 소환","text":"🎟️ 프리미엄 10회 소환 오픈","reward":{},"route":"summon","trigger":"ch0","source_text":"챕터0 클리어- 소환(프리미엄) 10회"},{"key":"leader","level":1,"title":"인재 레벨업","text":"리더 레벨업 (+1 / +10)","reward":{"blood":5000,"gold":5000},"route":"cards","trigger":"1:1","source_text":"ch1 P1클리어- 지급된 리더 레벨업. lv1업, lv10업"},{"key":"deck","level":1,"title":"덱 설정","text":"🗂 덱 설정 오픈","reward":{"gold":5000},"route":"decks","trigger":"1:3","source_text":"ch1 p3클리어- 덱 설정 및 방법 설명"},{"key":"pvp_hr","level":3,"title":"PvP · 장비 가방","text":"⚔️ HR 이하 1대1 리그 오픈","reward":{"gold":5000},"route":"pvp","trigger":"","source_text":"pvp덱배치 및 다른 pvp설명."},{"key":"dispatch","level":5,"title":"파견","text":"🧭 파견 오픈 · 시간 지나면 보상","reward":{"gold":5000},"route":"dispatch","trigger":"","source_text":"레벨5 되면 파견 설명 및 실행"},{"key":"guild","level":6,"title":"조직","text":"조직 오픈 · 가입/창설","reward":{"gold":5000,"boxes":2},"route":"guild","trigger":"","source_text":"레벨6 되면 조직 가입 또는 창설 설명"},{"key":"friends","level":8,"title":"친구 · 선물","text":"👥 친구 오픈 · 🎁 행동력 선물","reward":{},"route":"friends","trigger":"","source_text":"친구를 추가하고 행동력 선물을 주고받을 수 있어요."},{"key":"tower","level":10,"title":"시련의 탑","text":"🗼 시련의 탑 오픈","reward":{"gold":5000,"boxes":2},"route":"tower","trigger":"","source_text":"시련의탑 설명, 강제 실행(일반+소탕)"},{"key":"raid","level":11,"title":"토벌","text":"🐉 토벌 오픈","reward":{"tickets":10},"route":"raid","trigger":"","source_text":"토벌 방법 및 내용 설명, 시행(길드 가입자 한정)"},{"key":"camp","level":12,"title":"훈련소","text":"🏋️ 훈련소 오픈 · 맡기면 EXP","reward":{"gold":5000,"boxes":2},"route":"camp","trigger":"","source_text":"훈련소 설명 및 강제 배정(가장 레벨 낮은 캐릭터)"},{"key":"skill","level":13,"title":"EX 합성 · 스킬 강화 · 대여","text":"EX 합성 · 스킬 강화 · 대여 오픈","reward":{"soul":1000,"gold":5000},"route":"cards","trigger":"","source_text":"스킬 강화 방법 알려줌"},{"key":"sigil","level":14,"title":"증표","text":"증표 오픈 · 📬 선택 상자","reward":{"sigil_boxes":10},"route":"cards","trigger":"","source_text":"증표 설명"},{"key":"trade","level":15,"title":"무제한 1대1 · 거래소","text":"무제한 1대1 · 거래소 오픈 (가입 7일 후)","reward":{"tickets":10},"route":"trade","trigger":"","source_text":"거래소 설명 및 방법"},{"key":"pvp_3v3","level":17,"title":"3대3 리그","text":"3대3 리그 오픈","reward":{},"route":"pvp","trigger":"","source_text":"세 덱으로 겨루는 3대3 리그가 열렸어요. 두 리그에서 모두 도전할 수 있어요."},{"key":"war","level":18,"title":"조직전","text":"🏴 구역 전쟁 오픈","reward":{},"route":"war","trigger":"","source_text":"조직원들과 방어 덱을 배치하고 상대 조직에 도전해 보세요."},{"key":"pvp_boss","level":20,"title":"보스 리그","text":"👑 보스 리그 오픈","reward":{},"route":"pvp","trigger":"","source_text":"진영 보스를 지키는 보스 리그가 열렸어요. 두 리그에서 모두 도전할 수 있어요."},{"key":"facilities","level":20,"title":"연마소 · 도장","text":"⚒️ 연마소 · 🥋 도장 오픈","reward":{"gold":5000},"route":"camp","trigger":"","source_text":"연마소, 도장 설명"},{"key":"attr25","level":25,"title":"바람 · 얼음 · 불의 탑","text":"속성 탑 3곳 오픈 · 요일별","reward":{},"route":"tower","trigger":"","source_text":"같은 속성 인재로 도전하는 세 탑이 열렸어요. 각 탑의 개방 요일에 도전해 보세요."},{"key":"attr40","level":40,"title":"빛의 섬 · 어둠의 늪","text":"빛·어둠 탑 오픈 · 요일별","reward":{},"route":"tower","trigger":"","source_text":"빛과 어둠의 인재를 위한 두 탑이 열렸어요. 각 탑의 개방 요일에 도전해 보세요."}]'::jsonb$$;
 -- Account levels never change here. Existing stamina->account EXP rules are untouched.
 create or replace function public._unlock_require(p_key text) returns void language plpgsql security definer
 set search_path=pg_catalog,public,pg_temp as $$
@@ -20289,7 +20459,7 @@ end $$;
 -- Facilities are account-Lv20 features, NOT training-building upgrades.
 -- Preserve every existing receipt, building level, EXP rate, price, material and job.
 do $facility_policy$
-declare levels jsonb:=public._unlock_levels(); intros jsonb:=public._unlock_intros(); e jsonb:='{"key":"facilities","level":20,"title":"연마소 · 도장","text":"연마소에서 장비를, 도장에서 스킬을 강화할 수 있어요. 훈련소 건물 레벨과 무관하게 이용하며 기존 재료와 도장 개방 비용은 필요해요.","reward":{"gold":5000},"route":"camp","trigger":"","source_text":"연마소, 도장 설명"}'::jsonb;
+declare levels jsonb:=public._unlock_levels(); intros jsonb:=public._unlock_intros(); e jsonb:='{"key":"facilities","level":20,"title":"연마소 · 도장","text":"⚒️ 연마소 · 🥋 도장 오픈","reward":{"gold":5000},"route":"camp","trigger":"","source_text":"연마소, 도장 설명"}'::jsonb;
 begin
  levels:=levels||'{"forge":20,"dojo":20}'::jsonb;
  if not exists(select 1 from jsonb_array_elements(intros) x where x->>'key'=e->>'key') then
@@ -20336,7 +20506,7 @@ notify pgrst,'reload schema';
 -- Phase5 cluster guard is enforced by installer outer guard.
 create table if not exists public.arcade_policy_v5 (
  singleton boolean primary key default true check(singleton), enabled boolean not null default true, engine_hash text not null check(engine_hash ~ '^[a-f0-9]{64}$'));
-insert into public.arcade_policy_v5(singleton,engine_hash) values(true,'e792c491ffafe19d047aa6f58db1920e5767e4059e14816611dd38d473871161')
+insert into public.arcade_policy_v5(singleton,engine_hash) values(true,'7c47d4ccb224c0cd7cf8ff9a11a465e68fd645510588249fabb6c8859a39663a')
 on conflict(singleton) do update set engine_hash=excluded.engine_hash;
 create table if not exists public.arcade_sessions_v5 (
  id bigint generated always as identity primary key,
@@ -20559,6 +20729,145 @@ do $$declare f record;begin if exists(select 1 from pg_roles where rolname='serv
  end if;end $$;
 -- 설치본의 단일 트랜잭션에 포함
 select 'phase5 arcade verification installed — staging only' as result;
+
+
+-- ===== SOURCE: security_phase6_story_tower.sql =====
+-- 보안 6단계: 시련의 탑 소탕만 서버가 같은 전투를 다시 계산한다.
+-- 스토리·수동 탑·특강은 기존 plausibility-v3 그대로다. 이 파일은 그 승패를 다시 증명하지 않는다.
+-- 기존 스테이징 업그레이드 전용. 전체 파일 1회 실행(재실행 안전). 운영 금지.
+-- 진행·잔액·이미 받은 보상은 지우거나 다시 주지 않는다.
+-- 설치본의 단일 트랜잭션에 포함
+-- Phase6 cluster guard is enforced by installer outer guard.
+
+create table if not exists public.battle_replay_policy_v6 (
+ singleton boolean primary key default true check (singleton),
+ enabled boolean not null default false,
+ engine_hash text not null check (engine_hash ~ '^[a-f0-9]{64}$'));
+-- Starts off. Re-running this file updates the engine hash only and does not turn enforcement on.
+insert into public.battle_replay_policy_v6(singleton, enabled, engine_hash)
+ values (true, false, '32f0e5059ddb994d56865b16054d64f3f2c1f389df672be4f113e13c5d4112c2')
+ on conflict (singleton) do update set engine_hash = excluded.engine_hash;
+alter table public.battle_replay_policy_v6 enable row level security;
+revoke all on public.battle_replay_policy_v6 from public, anon, authenticated;
+
+do $$ begin
+ if to_regprocedure('public._phase6_old_finish_v2(uuid,jsonb)') is null then
+  alter function public.battle_session_finish_v2(uuid, jsonb) rename to _phase6_old_finish_v2;
+ end if;
+end $$;
+
+create or replace function public.battle_session_finish_v2(p_session uuid, p_report jsonb) returns jsonb
+language plpgsql security definer set search_path=pg_catalog,public,pg_temp as $$
+declare m text;
+begin
+ select mode into m from public.battle_sessions_v2 where id = p_session and user_id = auth.uid();
+ if m = 'tower_sweep' and coalesce((select enabled from public.battle_replay_policy_v6 where singleton), false) then
+  raise exception 'sweep replay required';
+ end if;
+ return public._phase6_old_finish_v2(p_session, p_report);
+end $$;
+
+create or replace function public.battle_sweep_session_v6(p_uid uuid, p_id uuid) returns jsonb
+language plpgsql security definer set search_path=pg_catalog,public,pg_temp as $$
+declare s public.battle_sessions_v2;
+begin
+ if p_uid is null or p_id is null then raise exception 'battle session not found'; end if;
+ select * into s from public.battle_sessions_v2 where id = p_id and user_id = p_uid;
+ if not found or s.mode <> 'tower_sweep' then raise exception 'battle session not found'; end if;
+ return jsonb_build_object('ok', true, 'id', s.id, 'mode', s.mode, 'target', s.target, 'seed', s.seed,
+  'snapshot', s.snapshot, 'status', s.status, 'expires_at', s.expires_at, 'submission', s.submission, 'settlement', s.settlement);
+end $$;
+
+create or replace function public.battle_sweep_settle_v6(p_uid uuid, p_id uuid, p_engine_hash text, p_result jsonb) returns jsonb
+language plpgsql security definer set search_path=pg_catalog,public,pg_temp as $$
+declare s public.battle_sessions_v2; pol public.battle_replay_policy_v6; tp public.tower_progress;
+ tw text; fl int; win_ boolean; reason_ text; tr int; mt int; first_ boolean; baseline int;
+ rw jsonb; cur jsonb; pay jsonb := '{}'::jsonb; res jsonb;
+begin
+ if p_uid is null or p_id is null then raise exception 'battle session not found'; end if;
+ perform pg_advisory_xact_lock(hashtext('battle-v2:' || p_uid::text));
+ perform pg_advisory_xact_lock(hashtext('gem:' || p_uid::text));
+ select * into pol from public.battle_replay_policy_v6 where singleton;
+ select * into s from public.battle_sessions_v2 where id = p_id and user_id = p_uid for update;
+ if not found or s.mode <> 'tower_sweep' then raise exception 'battle session not found'; end if;
+ if s.status = 'settled' then
+  if p_result is null or s.submission is distinct from p_result then raise exception 'submission conflict'; end if;
+  return s.settlement;
+ end if;
+ if s.status <> 'issued' then raise exception 'battle session closed'; end if;
+ if s.expires_at <= clock_timestamp() then
+  update public.battle_sessions_v2 set status = 'expired', finished_at = clock_timestamp() where id = s.id and status = 'issued';
+  return jsonb_build_object('ok', false, 'session', s.id, 'status', 'expired', 'reward_held', true, 'validation', 'replay-v6');
+ end if;
+ if pol.enabled is not true or pol.engine_hash is distinct from p_engine_hash or p_engine_hash !~ '^[a-f0-9]{64}$' then
+  raise exception 'verifier unavailable';
+ end if;
+ -- The replay is the proof of the floor. min_seconds is a wall-clock stand-in for
+ -- client-reported wins. A sweep opens one session per floor and settles it as soon
+ -- as the replay returns; the client paces from the sweep start, so a later floor's
+ -- session can be younger than 1 second and the check rejects a normal sweep.
+ -- Volume stays limited per request by the daily session issuance cap and the tower
+ -- daily floor cap, not by a minimum combat duration.
+ if not public._clear_enabled_v2('tower') then raise exception 'reward verification pending'; end if;
+ if jsonb_typeof(p_result) is distinct from 'object'
+  or (select count(*) from jsonb_object_keys(p_result)) <> 4
+  or not (p_result ?& array['win','reason','turns','my_turns'])
+  or jsonb_typeof(p_result->'win') is distinct from 'boolean'
+  or p_result->>'turns' !~ '^[0-9]{1,2}$' or p_result->>'my_turns' !~ '^[0-9]{1,2}$' then raise exception 'invalid replay'; end if;
+ win_ := (p_result->>'win')::boolean;
+ reason_ := p_result->>'reason';
+ tr := (p_result->>'turns')::int;
+ mt := (p_result->>'my_turns')::int;
+ if tr < 1 or tr > 40 or mt <> ceil(tr / 2.0)::int then raise exception 'invalid replay'; end if;
+ if win_ and reason_ <> 'wipe' or not win_ and reason_ not in ('wipe', 'timeout') then raise exception 'invalid replay'; end if;
+ tw := split_part(s.target, ':', 1);
+ fl := split_part(s.target, ':', 2)::int;
+ if fl % 10 = 0 or fl < 1 then raise exception 'boss floor or invalid floor'; end if;
+ tp := public._tower_row(p_uid, tw);
+ perform public._tower_gate(p_uid, tw, tp);
+ if fl > 1 and not public._clear_access_v2(p_uid, 'tower', tw || ':' || (fl - 1)::text) then raise exception 'floor locked'; end if;
+ if not win_ then
+  res := jsonb_build_object('ok', true, 'session', s.id, 'status', 'settled', 'win', false, 'cleared', false,
+   'reward_held', false, 'validation', 'replay-v6', 'reason', reason_, 'turns', tr, 'reward', '{}'::jsonb, 'currency', '{}'::jsonb);
+  update public.battle_sessions_v2 set status = 'settled', submission = p_result, settlement = res, finished_at = clock_timestamp() where id = s.id;
+  return res;
+ end if;
+ baseline := coalesce((select (tower_paid->>tw)::int from public.battle_legacy_access_v2 where user_id = p_uid), 0);
+ first_ := fl > baseline and not exists(select 1 from public.battle_clear_receipts_v2 where user_id = p_uid and mode = 'tower' and target = s.target);
+ rw := case when first_ then public._tower_reward(tw, fl) else '{}'::jsonb end;
+ cur := case when first_ then public._tower_currency(tw, fl) else '{}'::jsonb end;
+ if first_ then pay := public._clear_grant_v2(p_uid, rw || cur, 'tower_v2', 'tower:' || s.target); end if;
+ insert into public.battle_clear_receipts_v2(user_id, mode, target, session_id) values (p_uid, 'tower', s.target, s.id) on conflict do nothing;
+ update public.tower_progress set battle = null, clears = clears + 1, day_floors = day_floors + 1, best_floor = greatest(best_floor, fl),
+  paid_floor = case when first_ then greatest(paid_floor, fl) else paid_floor end,
+  rewards = (select jsonb_object_agg(k, coalesce((rewards->>k)::int, 0) + coalesce((rw->>k)::int, 0) + coalesce((cur->>k)::int, 0)) from unnest(array['tickets','gold','blood','shard','soul']) k),
+  updated_at = now()
+  where user_id = p_uid and tower = tw;
+ insert into public.battle_events_v2(session_id, user_id, mode, win, skills, day, week)
+  values (s.id, p_uid, 'tower', true, 0, public._gem_day(), public._weekly_week())
+  on conflict (session_id) do update set win = true, skills = 0;
+ res := jsonb_build_object('tower', tw, 'floor', fl, 'best_floor', greatest(tp.best_floor, fl), 'first', first_, 'paid', first_,
+  'reward', rw, 'currency', cur, 'tickets', pay->'tickets', 'today', tp.day_floors + 1, 'daily', public._tower_daily(tw),
+  'ok', true, 'session', s.id, 'status', 'settled', 'win', true, 'cleared', true, 'reward_held', false,
+  'validation', 'replay-v6', 'reason', reason_, 'turns', tr);
+ update public.battle_sessions_v2 set status = 'settled', submission = p_result, settlement = res, finished_at = clock_timestamp() where id = s.id;
+ return res;
+end $$;
+
+revoke all on function public._phase6_old_finish_v2(uuid, jsonb), public.battle_session_finish_v2(uuid, jsonb),
+ public.battle_sweep_session_v6(uuid, uuid), public.battle_sweep_settle_v6(uuid, uuid, text, jsonb) from public, anon, authenticated;
+grant execute on function public.battle_session_finish_v2(uuid, jsonb) to authenticated;
+do $$ begin
+ if exists (select 1 from pg_roles where rolname = 'service_role') then
+  revoke all on function public._phase6_old_finish_v2(uuid, jsonb), public.battle_session_finish_v2(uuid, jsonb),
+   public.battle_sweep_session_v6(uuid, uuid), public.battle_sweep_settle_v6(uuid, uuid, text, jsonb) from service_role;
+  revoke all on public.battle_replay_policy_v6 from service_role;
+  grant execute on function public.battle_sweep_session_v6(uuid, uuid), public.battle_sweep_settle_v6(uuid, uuid, text, jsonb) to service_role;
+ end if;
+end $$;
+notify pgrst, 'reload schema';
+-- 설치본의 단일 트랜잭션에 포함
+select 'phase6 tower sweep replay installed — staging only, story and manual tower remain plausibility-v3' as result;
 
 -- 공개 게임 설정만 명시적으로 조회 허용 (사용자 자료 아님).
 grant select on public.story_card_pool, public.story_phase_config, public.story_premium_ur,

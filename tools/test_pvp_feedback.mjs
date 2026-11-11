@@ -96,6 +96,22 @@ const tick = async () => { for (let i = 0; i < 15; i++) await Promise.resolve();
   const canceled = ctx.mrVideo(make(5), skills[0]), skipped = ctx.mrVideo(make(6), skills[0]); await tick();
   ctx.S.view.skip = true; vm.runInContext('mrCancel?.()', ctx); await canceled; assert.equal(await skipped, false); assert.equal(shown.size, 0);
   ctx.S.view.skip = false; const stalled = ctx.mrVideo(make(7), skills[0]); await tick(); await advance(15001); assert.equal(await stalled, true);
+  const before = videos.length;
+  ctx.S.story = { chapter: 0 };
+  assert.equal(await ctx.mrVideo(make('10326'), skills[0]), false, 'story 10326 uses image cut-in');
+  assert.equal(videos.length, before, 'story 10326 does not open an MR video');
+  ctx.S.story = { quest: true };
+  const tower = ctx.mrVideo(make('10326'), skills[0]); await tick();
+  assert.equal(videos.length, before + 1, 'tower still plays 10326 MR video');
+  videos.at(-1).onended(); assert.equal(await tower, true);
+  ctx.S.story = { view: true };
+  const viewed = ctx.mrVideo(make('10326'), skills[0]); await tick();
+  assert.equal(videos.length, before + 2, 'view battles still play 10326 MR video');
+  videos.at(-1).onended(); assert.equal(await viewed, true);
+  ctx.S.story = null;
+  const arcade = ctx.mrVideo(make('10326'), skills[0]); await tick();
+  assert.equal(videos.length, before + 3, 'arcade still plays 10326 MR video');
+  videos.at(-1).onended(); assert.equal(await arcade, true);
 }
 console.log('PASS shared passive/active MR queue, 40s full playback, ended/tap/SKIP, first-use, missing/stalled-media recovery');
 
@@ -156,7 +172,7 @@ console.log(`PASS real view stepper: batch base attack lunge/focus, video wait, 
 
 // Rule cue, legacy completion isolation, result rows and responsive layout.
 {
-  assert(game.includes('첫 2턴에는 보스를 공격할 수 없습니다.'));
+  assert(game.includes('첫 2턴에는 보스를 공격할 수 없어요.'));
   const ctx = vm.createContext({ S: { over: false, view: {}, ai: { hp: 0 }, me: { hp: 1 } }, finish: () => { throw Error('legacy completion must not run'); } });
   vm.runInContext(section(game, 'function checkEnd() {', '/** 챕터 0 P3:'), ctx); assert.equal(ctx.checkEnd(), false);
   let html = '';

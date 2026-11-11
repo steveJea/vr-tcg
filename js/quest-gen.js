@@ -12,15 +12,21 @@
   /** 적 최대 레벨 = 최대 레벨 + EX 최대 단계 × 5 (플레이어가 EX 합성으로 올릴 수 있는 끝까지) */
   const capOf = g => (LV_CAP[g] || 20) + 5 * (MAX_EX[g] || 1);
   const lvPct = (g, L) => Math.round((LV_RATE[g] || 0.01) * (Math.max(1, L) - 1) * 100);
-  const powerAt = (c, L) => Math.round((+c.power || 0) * (1 + lvPct(c.grade, L) / 100));
+  // 적 고르기는 전투와 같은 적측 전투력. MR 4장은 js/enemy-mr.js 의 너프 전 power.
+  const selectPower = c => {
+    const src = globalThis.VREnemyMrApply ? globalThis.VREnemyMrApply(c) : c;
+    return +src.power || 0;
+  };
+  const powerAt = (c, L) => Math.round(selectPower(c) * (1 + lvPct(c.grade, L) / 100));
   /** 층 목표 맞춤용 전투력: 스킬 수 보정(skillMult)을 뺀 값 → 스킬 전투력 반영 전과 같은 적 선택 유지. 표시 전투력은 powerAt(스킬 포함) */
-  const matchAt = (c, L) => Math.round((+c.power || 0) / (globalThis.VRQuestSkillMult?.(c) || 1) * (1 + lvPct(c.grade, L) / 100));
+  const matchAt = (c, L) => Math.round(selectPower(c) / (globalThis.VRQuestSkillMult?.(c) || 1) * (1 + lvPct(c.grade, L) / 100));
   function rngOf(seed) { let a = (seed * 2654435761 + 0x9e3779b9) >>> 0; return () => { a = (a + 0x6d2b79f5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
   const pick = (r, list) => list[Math.floor(r() * list.length)];
   /** 레벨 L 적 카드 (전투용 카드 객체): 스탯·전투력 반영 */
   function leveled(c, L) {
-    const m = 1 + lvPct(c.grade, L) / 100;
-    return { ...c, HP: Math.round(+c.HP * m), ATK: Math.round(+c.ATK * m), DEF: Math.round(+c.DEF * m), power: powerAt(c, L), qLevel: L };
+    const src = globalThis.VREnemyMrApply ? globalThis.VREnemyMrApply(c) : c;
+    const m = 1 + lvPct(src.grade, L) / 100;
+    return { ...src, HP: Math.round(+src.HP * m), ATK: Math.round(+src.ATK * m), DEF: Math.round(+src.DEF * m), power: Math.round((+src.power || 0) * m), qLevel: L };
   }
   /** 목표 이하로 가장 큰 레벨 */
   function bestLevel(c, T) { let L = 0; for (let l = 1; l <= capOf(c.grade); l++) if (matchAt(c, l) <= T) L = l; return L; }
@@ -36,7 +42,7 @@
     }
     if (prefer) { const pc = cands.filter(x => prefer.has(String(x.c.id)) && x.ratio >= 0.9); if (pc.length) { const x = pick(r, pc); return { c: x.c, L: x.L }; } }
     if (!cands.length) {   // 목표가 그 등급 최저보다 낮음 → 가장 약한 카드 Lv.1
-      const g = pool.filter(c => c.grade === f.grade).sort((a, b) => a.power - b.power)[0];
+      const g = pool.filter(c => c.grade === f.grade).sort((a, b) => selectPower(a) - selectPower(b))[0];
       return g ? { c: g, L: 1 } : null;
     }
     cands.sort((a, b) => b.ratio - a.ratio);

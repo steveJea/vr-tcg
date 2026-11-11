@@ -49,11 +49,11 @@
     });
     g.fillStyle = '#e2e8f0'; g.font = '600 34px system-ui, sans-serif'; g.textAlign = 'center';
     g.fillText(`수집 ${info.count ?? 0}회 · MVP ${info.mvp ?? 0}회${info.first ? ` · 처음 수집 ${info.first}` : ''}`, W / 2, 1320);
-    g.fillStyle = '#94a3b8'; g.font = '700 34px system-ui, sans-serif'; g.fillText(`Violence Royale : The Abyss Gate  ·  ${info.site || 'tcg.mbbs.kr'}`, W / 2, 1420);
+    g.fillStyle = '#94a3b8'; g.font = '700 34px system-ui, sans-serif'; g.fillText(`Violence Royale : The Abyss Gate  ·  ${info.site || 'ag.violenceroyale.com'}`, W / 2, 1420);
     return cv;
   }
   const toBlob = cv => new Promise((res, rej) => cv.toBlob(b => b ? res(b) : rej(new Error('toBlob failed')), 'image/png'));
-  const GAME_URL = 'https://tcg.mbbs.kr/';
+  const GAME_URL = 'https://ag.violenceroyale.com/';
   /** 링크 복사 (실패해도 조용히 false) */
   async function copyLink(t) { try { await navigator.clipboard.writeText(t); return true; } catch { return false; } }
   /** 공유 (가능하면 Web Share 파일 + 문구 + 게임 링크, 아니면 다운로드).

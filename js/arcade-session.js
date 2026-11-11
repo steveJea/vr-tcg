@@ -1,6 +1,6 @@
 // Intent transcript only. Result/metrics/seed never come from a browser report.
 import {ARCADE_ENGINE_VERSION as version} from './arcade-engine-version.js';
-const cloud=owner=>{const c=window.VRCloud;if(!c?.sb||!c.user)throw Error('로그인이 필요해요');if(owner&&owner!==c.user.id)throw Error('로그인 계정이 바뀌었어요');return c;};
+const cloud=owner=>{const c=window.VRCloud;if(!c?.sb||!c.user)throw Error('로그인이 필요해요');if(owner&&owner!==c.user.id)throw Object.assign(Error('로그인 계정이 바뀌었어요'),{code:'account-changed'});return c;};
 const key=owner=>'vrArcade.pendingV5:'+owner;
 const save=(owner,p)=>p===null?localStorage.removeItem(key(owner)):localStorage.setItem(key(owner),JSON.stringify(p));
 const REQUEST_WINDOW_MS=15000;
@@ -57,7 +57,7 @@ export async function startArcadeVerified(options){
 async function startSession(options){
  const owner=cloud().user.id;let p=JSON.parse(localStorage.getItem(key(owner))||'null');
  if(p){if(p.phase==='start'){const s=await rpc(p.body,owner);p={phase:'active',session:s};save(owner,p);}
-  if(p.phase==='active'){if(!await window.VRAsk?.('이전 아케이드 전투를 포기하고 새로 시작할까요?'))throw Error('이전 전투 확인 필요');p={phase:'finish',body:{op:'forfeit',id:p.session.id}};save(owner,p);}
+  if(p.phase==='active'){p={phase:'finish',body:{op:'forfeit',id:p.session.id}};save(owner,p);}
   receiptOf(await settle(p.body,owner));save(owner,null);refresh(owner);
  }
  const body={op:'start',request:crypto.randomUUID(),options,version};save(owner,{phase:'start',body});const s={...await rpc(body,owner),_owner:owner};save(owner,{phase:'active',session:s});return s;

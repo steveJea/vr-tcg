@@ -23,14 +23,22 @@ evaluate(await rd('js/unlock-policy.js'));evaluate(await rd('js/unlocks.js'));
 const U=w.VRUnlocks;
 for(const[key,n]of Object.entries(policy.features)){level=n-1;assert.equal(U.allowed(key),false,key);level=n;assert.equal(U.allowed(key),true,key);}
 level=1;U.paint();
+const gnb=d.createElement('button');gnb.className='gnb-t';gnb.dataset.gnb='tower';gnb.textContent='탑';d.body.append(gnb);
+U.paint();
+assert.equal(gnb.querySelector('.ul-lock'),null,'bottom tabs have no Lv badge');
+assert.equal(gnb.classList.contains('ul-locked'),true);
 assert.equal(d.querySelector('#main-pvp .ul-lock').textContent,'🔒 Lv3');
 assert.equal(d.querySelector('#main-guild .ul-lock').textContent,'🔒 Lv6');
 assert.equal(d.querySelector('#main-trade .ul-lock').textContent,'🔒 Lv15');
 assert.equal(d.querySelector('#arcade .ul-lock'),null);assert.equal(d.querySelector('#shop .ul-lock'),null);
 let clicks=0;const capture=listeners.find(x=>x.type==='click'&&x.capture===true).fn;
 function clickPvp(){let stopped=false;capture({target:d.querySelector('#main-pvp'),preventDefault(){},stopImmediatePropagation(){stopped=true;}});if(!stopped)clicks++;}
-clickPvp();assert.equal(clicks,0);
+clickPvp();assert.equal(clicks,0);assert.equal(d.querySelector('#ul-lockpop'),null,'lobby tiles keep the toast, not the tab popup');
+let gnbStopped=false;capture({target:gnb,preventDefault(){},stopImmediatePropagation(){gnbStopped=true;}});
+assert.equal(gnbStopped,true);assert.match(d.querySelector('#ul-lockpop p').textContent,/계정레벨 10 이후 이용할 수 있어요/);
+d.querySelector('#ul-lockpop button').click();assert.equal(d.querySelector('#ul-lockpop'),null);
 level=3;U.paint();assert.equal(d.querySelector('#main-pvp .ul-lock'),null);clickPvp();assert.equal(clicks,1);
+assert.equal(gnb.classList.contains('ul-locked'),true,'tower tab stays locked at the pvp level');
 entries.find(e=>e.key==='pvp_hr').eligible=true;
 d.querySelector('#game').classList.remove('hidden');await U.tick();assert.equal(d.querySelector('#unlock-intro'),null);assert.equal(requests.length,0);
 d.querySelector('#game').classList.add('hidden');
@@ -62,10 +70,14 @@ d.querySelector('.camp-grid [data-u="high"]').click();await new Promise(r=>setIm
 assert.equal(requests.find(x=>x.name==='camp_put').args.p_uid,'high');
 for(const[file,key]of [['js/quest.js','tower'],['js/pvp.js','pvp_hr'],['js/guild.js','guild'],['js/raid.js','raid'],['js/war.js','war'],['js/dispatch.js','dispatch'],['js/camp.js','camp'],['js/friends.js','friends'],['js/trade.js','trade'],['js/gear.js','gear'],['js/story.js','merge']])assert((await rd(file)).includes(`VRUnlocks.guard('${key}')`),file+' direct guard');
 // Facility UI is account-level based even when training-building level differs.
-const facilityState={level:19,camp_lv:10,forge_lv:5,dojo_lv:8,forge_account_level:20,dojo_account_level:20,dojo_slots:0,dojo_max:7,dojo_next_cost:1500,jobs:[],slots:[{slot:1,open:true,need_level:12,uid:null}],next:{lv:3,need_level:25,cost:{gold:20000}}};
+const facilityState={level:19,camp_lv:10,forge_lv:5,dojo_lv:8,forge_account_level:20,dojo_account_level:20,dojo_slots:0,dojo_max:7,dojo_next_cost:1500,jobs:[],slots:[{slot:1,open:true,need_level:12,uid:null},{slot:2,open:false,need_level:20,cost:{gold:20000}},{slot:3,open:false,need_level:35,cost:{gold:50000}},{slot:4,open:false,need_level:50,cost:{gem:300}},{slot:5,open:false,need_level:70,cost:{gem:800}}],next:{lv:3,need_level:25,cost:{gold:20000}}};
 w.VRCamp._set(facilityState,[]);w.VRCamp._draw();
+w.VRUnlocks.paint();
 assert.equal(d.querySelector('[data-forge]'),null);assert.equal(d.querySelector('[data-dojounlock]'),null);
-assert.equal(Array.from(d.querySelectorAll('#camp-box .camp-slot.locked button')).filter(b=>b.textContent==='Lv20').length,2);
+assert.equal(Array.from(d.querySelectorAll('#camp-box .camp-slot.locked button:not([data-unlock])')).filter(b=>b.textContent==='Lv20').length,2);
+assert.equal(d.querySelector('[data-unlock="2"]').textContent,'Lv20');
+assert.equal(d.querySelector('[data-unlock="5"]').textContent,'Lv70');
+assert.equal(d.body.textContent.includes('Infinity'),false,'camp slot numbers are not unlock keys');
 level=20;await U.refresh(true);facilityState.level=20;facilityState.camp_lv=1;w.VRCamp._set(facilityState,[]);w.VRCamp._draw();
 assert(d.querySelector('[data-forge]'),'forge opens at account20/camp1');assert(d.querySelector('[data-dojounlock]'),'dojo purchase is available at account20/camp1');
 assert.equal(d.querySelector('[data-lvup]').textContent,'Lv25','training building account lock is unchanged');

@@ -1564,7 +1564,7 @@ window.STORY_DATA.chapters.push({
   }
  ],
  "tagline": "",
- "warning": "이 챕터에는 학교 폭력·협박·자해 암시 묘사가 포함되어 있습니다.",
+ "warning": "이 챕터에는 학교 폭력·협박·자해 암시 묘사가 포함되어 있어요.",
  "start": [
   {
    "speaker": "민유연",

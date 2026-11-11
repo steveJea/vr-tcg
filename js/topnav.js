@@ -36,8 +36,12 @@
         <button type="button" class="tnb-chip tnb-cur" data-cur="gem" hidden></button><button type="button" class="tnb-chip tnb-cur" data-cur="gold" hidden></button><button type="button" class="tnb-chip tnb-cur" data-cur="drink" hidden></button></div>`;
     bar.querySelector('.tnb-back').onclick = back;
     bar.querySelector('.tnb-mail').onclick = () => { const G = window.VRGear; if (G && !G.off) G.mailbox({ back: () => G.unread?.() }); else document.querySelector('.story-mailbtn')?.click(); };
-    bar.querySelector('.tnb-set').onclick = () => { if (where() === 'lobby') $('main-settings')?.click(); else window.VRSettings?.open?.(); };
-    bar.querySelectorAll('[data-cur]').forEach(b => b.onclick = () => window.VRGem?.open?.());
+    bar.querySelector('.tnb-set').onclick = e => { e?.stopPropagation?.(); if (window.VRMenu) window.VRMenu.toggle(); else if (where() === 'lobby') $('main-settings')?.click(); else window.VRSettings?.open?.(); };   // 어디서나 홈과 같은 게임설정 창
+    bar.querySelectorAll('[data-cur]').forEach(b => b.onclick = () => {
+      // 드링크 + 는 소모품(드링크) 탭. 마지막에 보던 패스 탭으로 다시 열리지 않게 한다.
+      if (b.dataset.cur === 'drink' && window.VRShop?.enabled && window.VRShop.open) return window.VRShop.open('consume');
+      window.VRGem?.open?.();
+    });
   };
   build();
   document.body.appendChild(bar);
@@ -99,7 +103,7 @@
       se.classList.toggle('low', P.stamina < (P.cost?.story || 6));
       if (!se.firstChild) se.innerHTML = `${ic('stamina')}<b></b><small></small><em></em>`; se.querySelector('b').textContent = P.stamina; se.querySelector('small').textContent = '/' + P.stamina_max; se.querySelector('em').textContent = full ? '' : mm; se.title = full ? '행동력 가득' : `행동력 · +1 까지 ${mm}`; }
     const cur = (k, v, img, name) => { const b = bar.querySelector(`[data-cur="${k}"]`); b.hidden = v == null; if (v == null) return;
-      const h = `${img ? `<img src="${img}" alt="">` : ic(k)}<b>${n(v)}</b><i class="tnb-plus">${ic('plus')}</i>`; if (b.dataset.v !== n(v)) { b.dataset.v = n(v); b.innerHTML = h; } b.title = `${name} ${full(v)} · 눌러서 충전`; b.setAttribute('aria-label', `${name} ${full(v)} · 충전`); };
+      const h = `${img ? `<img src="${img}" alt="">` : ic(k)}<b>${n(v)}</b><i class="tnb-plus">${ic('plus')}</i>`; if (b.dataset.v !== n(v)) { b.dataset.v = n(v); b.innerHTML = h; } b.title = `${name} ${full(v)}`; b.setAttribute('aria-label', `${name} ${full(v)}`); };
     cur('gem', G?.gem, null, '심연석'); cur('gold', W?.gold, CUR_IMG.gold, '골드'); cur('drink', D ? D.total : null, CUR_IMG.drink, '체력의 드링크');
     const key = w + t; if (key !== last) { last = key; document.body.dataset.tnb = w; }
   }

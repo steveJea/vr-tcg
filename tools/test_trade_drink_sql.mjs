@@ -1,4 +1,4 @@
-// supabase/trade_drink.sql 검증 (PGlite): 유료 심연석만 구매 · 귀속/거래 가능 분리 · 사용 +200 · 상한 · 권한
+// supabase/trade_drink.sql 검증 (PGlite): 무료 심연석 우선 구매 · 귀속/거래 가능 분리 · 사용 +200 · 상한 · 권한
 import { readFileSync } from 'fs';
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
@@ -24,11 +24,15 @@ const sv = async s => Object.values((await db.query(s)).rows[0])[0];
 let fails = 0; const ok = (c, m) => { if (!c) { fails++; console.log('FAIL', m); } else console.log('ok  ', m); };
 const as = async (sub, sql, role = 'authenticated') => { await db.exec(`reset role; select set_config('request.jwt.claims', '${JSON.stringify(sub ? { sub } : {})}', false); set role ${role};`); try { return (await db.query(sql)).rows[0]?.r; } catch (e) { return { err: e.message }; } finally { await db.exec('reset role'); } };
 ok(+await sv(`select count(*) from drink_shop`) === 3 && await sv(`select string_agg(qty||'/'||price, ',' order by ord) from drink_shop`) === '1/100,10/950,30/2700', '상품 3종 1/100·10/950·30/2700 (재실행 중복 없음)');
-await db.exec(`insert into player_wallet (user_id, gem_free, gem_paid) values ('${U}', 5000, 150) on conflict (user_id) do update set gem_free = 5000, gem_paid = 150`);
-let r = await as(U, `select drink_buy('drink10') r`);
-ok(/not enough paid gem/.test(r.err), '무료 5,000 있어도 유료 150 이면 10개(950) 구매 불가');
+await db.exec(`insert into player_wallet (user_id, gem_free, gem_paid) values ('${U}', 0, 50) on conflict (user_id) do update set gem_free = 0, gem_paid = 50`);
+let r = await as(U, `select drink_buy('drink1') r`);
+ok(/not enough gem/.test(r.err), '무료 0 · 유료 50 이면 1개(100) 구매 불가');
+await db.exec(`update player_wallet set gem_free = 5000, gem_paid = 0 where user_id = '${U}'`);
+r = await as(U, `select drink_buy('drink10') r`);
+ok(r.tradable === 10 && r.bound === 0 && r.paid_gem === 0 && r.free_gem === 4050 && r.gem.free === 4050 && r.gem.paid === 0, '유료 0이어도 무료 5,000으로 10개 구매, 무료 −950');
+await db.exec(`delete from player_items where user_id = '${U}'; delete from item_log where user_id = '${U}'; update player_wallet set gem_free = 80, gem_paid = 30 where user_id = '${U}'`);
 r = await as(U, `select drink_buy('drink1') r`);
-ok(r.tradable === 1 && r.bound === 0 && r.paid_gem === 50 && r.gem.free === 5000, '1개 구매: 유료 −100, 무료 그대로, 거래 가능 +1');
+ok(r.tradable === 1 && r.bound === 0 && r.free_gem === 0 && r.paid_gem === 10 && r.gem.free === 0 && r.gem.paid === 10, '1개 100: 무료 80을 먼저 쓰고 유료 20');
 await db.exec(`select _drink_grant_bound('${U}', 2, 'event', 'event:t1'); select _drink_grant_bound('${U}', 2, 'event', 'event:t1');`);
 r = await as(U, `select drink_status() r`);
 ok(r.bound === 2 && r.tradable === 1 && r.total === 3, '이벤트 지급은 귀속, 같은 ref 두 번이어도 1번');

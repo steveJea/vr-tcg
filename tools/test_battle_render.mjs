@@ -5,7 +5,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
-import { RULES, ELEMENTS, ITEMS, SKILLS, parseCSV, makeUnit, endTurnXp } from '../js/rules.js';
+import { RULES, ELEMENTS, ITEMS, SKILLS, parseCSV, makeUnit, endTurnXp, swapField } from '../js/rules.js';
 import { setSkillData, setEmitter, initPlayers, placeUnit, turnEnd, refreshAll, skillsOf } from '../js/skills.js';
 
 const source = fs.readFileSync(process.argv[2] || 'js/game.js', 'utf8');
@@ -135,5 +135,67 @@ test('card border remains decorative; every equipped cosmetic stays supported', 
   assert.match(css, /#game \.card-frame\s*\{[^}]*isolation:\s*isolate/);
   assert.match(css, /#game \.card-frame > \.cosmo-bdr\s*\{[^}]*mix-blend-mode:\s*screen/);
   assert.match(css, /html\.ios #game \.card-frame > \.cosmo-bdr\s*\{display:none\}/);
+});
+test('field drag lands on the card under the pointer, including a move to the left', () => {
+  const h = harness();
+  vm.runInContext(section('function fieldDropTo(', 'function moveFieldCard('), h);
+  const rects = [{ left: 0, right: 80, width: 80 }, { left: 90, right: 170, width: 80 }, { left: 180, right: 260, width: 80 }];
+  assert.equal(h.fieldDropTo(rects, 1, 40), 0);
+  assert.equal(h.fieldDropTo(rects, 0, 130), 1);
+  assert.equal(h.fieldDropTo(rects, 0, 400), 2);
+  assert.equal(h.fieldDropTo(rects, 0, 175), 1);
+  assert.equal(h.fieldDropTo(rects, 2, -10), 0);
+  const row = [0, 1, 2, 3, 4].map(i => ({ left: i * 70, right: i * 70 + 64, width: 64 }));
+  assert.equal(h.fieldDropTo(row, 4, 250), 3);
+  assert.equal(h.fieldDropTo(row, 4, 300, { left: 230, right: 294, width: 64 }), 3);
+  assert.equal(h.fieldDropTo(row, 4, 330, { left: 270, right: 334, width: 64 }), 4);
+  const home = { left: 801, right: 892, width: 91 }, neighbor = { left: 698, right: 789, width: 91 };
+  const packed = [{ left: 388, right: 479, width: 91 }, { left: 491, right: 582, width: 91 }, { left: 594, right: 685, width: 91 }, neighbor, home];
+  assert.equal(h.fieldDropTo(packed, 4, 807, { left: 760, right: 857, width: 97, pointerY: 498 }), 3);
+  assert.equal(h.fieldDropTo(row, 4, 32), 0);
+});
+test('dropping the rightmost tower card onto the card at its left logs one swap', () => {
+  const h = harness({ story: true, mine: false });
+  const units = [];
+  for (let i = 0; i < 5; i++) { const u = placeUnit(h.S.me, card, makeUnit); u.uid = 'u' + i; units.push(u); }
+  h.S.directLog = []; h.S.myTurns = 1; h.swapField = swapField;
+  h.noteAct = (k, extra) => { h.S.directLog.push({ t: h.S.myTurns, k, ...extra }); };
+  vm.runInContext(section('function fieldDropTo(', 'function enableDrag('), h);
+  const row = [0, 1, 2, 3, 4].map(i => ({ left: i * 70, right: i * 70 + 64, width: 64 }));
+  const to = h.fieldDropTo(row, 4, 300, { left: 230, right: 294, width: 64 });
+  h.moveFieldCard(units[4], to);
+  assert.deepEqual(h.S.me.field.map(u => u.uid), ['u0', 'u1', 'u2', 'u4', 'u3']);
+  assert.deepEqual(h.S.directLog, [{ t: 1, k: 'swap', i: 4, g: 3 }]);
+});
+test('a new floor keeps AUTO off after the player turned it off', () => {
+  const store = new Map();
+  const h = vm.createContext({
+    localStorage: { getItem: k => store.has(k) ? store.get(k) : null, setItem: (k, v) => store.set(k, v) },
+    window: { VRCloud: { user: { id: 'player-1' } } },
+    autoOn: true, autoPinned: false, autoRunning: true, autoGen: 0,
+  });
+  vm.runInContext(`const AUTO_STORE = 'vrTcgAuto';
+const AUTO_KEY = () => { const id = window.VRCloud?.user?.id; return id ? 'vrTcgAuto:' + id : 'vrTcgAuto:guest'; };
+` + section('function readAuto(', '// 자동 전투 해금'), h);
+  store.set('vrTcgAuto:player-1', '1');
+  assert.equal(h.readAuto(), true);
+  h.writeAuto(false); h.autoPinned = true; h.autoOn = false;
+  assert.equal(store.get('vrTcgAuto'), '0');
+  assert.equal(store.get('vrTcgAuto:player-1'), '0');
+  store.set('vrTcgAuto:player-1', '1');
+  h.applyAutoPref();
+  assert.equal(h.autoOn, false);
+  h.autoPinned = false; h.applyAutoPref();
+  assert.equal(h.autoOn, false);
+  store.delete('vrTcgAuto'); h.applyAutoPref();
+  assert.equal(h.autoOn, true);
+});
+test('chapter 0 angry portrait uses an existing file', () => {
+  const data = fs.readFileSync('js/story-data.js', 'utf8');
+  const story = fs.readFileSync('js/story.js', 'utf8');
+  assert.match(data, /im_yuri_c0_angry:\s*'im_yuri_angry'/);
+  assert.match(story, /portraitSrc\(slug, ex\)/);
+  assert.equal(fs.existsSync('img/story/portraits/im_yuri_angry.webp'), true);
+  assert.equal(fs.existsSync('img/story/portraits/im_yuri_c0_angry.webp'), false);
 });
 console.log(`${checks} battle presentation regressions passed`);

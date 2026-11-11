@@ -43,14 +43,14 @@
       if (badgeN() > 0) b.insertAdjacentHTML('beforeend', `<i class="story-badge">${badgeN()}</i>`);
     }
   }
-  const row = (p, btns) => `<div class="fr-row"><span class="fr-dot ${p.online ? 'on' : ''}"></span><div class="fr-info">${window.VRCosmo?.chip?.({ name: p.name, title: p.title, title_name: p.title_name, frame: p.frame, avatar: p.avatar }, { sm: true }) || `<b>${esc(p.name)}</b>`}<small>Lv.${p.level | 0} · ${esc(p.code)} · ${p.online ? '🟢 접속 중' : ago(p.seen_at)}</small></div><div class="fr-btns">${btns}</div></div>`;
+  const row = (p, btns) => `<div class="fr-row"><span class="fr-dot ${p.online ? 'on' : ''}"></span><div class="fr-info" data-clarity-mask="true">${window.VRCosmo?.chip?.({ name: p.name, title: p.title, title_name: p.title_name, frame: p.frame, avatar: p.avatar }, { sm: true }) || `<b>${esc(p.name)}</b>`}<small>Lv.${p.level | 0} · ${esc(p.code)} · ${p.online ? '🟢 접속 중' : ago(p.seen_at)}</small></div><div class="fr-btns">${btns}</div></div>`;
   const empty = t => `<div class="fr-empty">${t}</div>`;
 
   function open() {
     if (window.VRUnlocks && !window.VRUnlocks.guard('friends')) return;
     document.querySelector('.friend-pop:not(.vr-in-page)')?.remove();
     const pop = document.createElement('div'); pop.className = 'gem-pop friend-pop';
-    const act = async (fn, args, msg) => { try { const r = await rpc(fn, args); if (r == null && /friend_gift/i.test(fn)) { toast('아직 준비 중이에요'); return; } if (msg) toast(msg); } catch (e) { toast(errText(e)); } await load(); if (found && lastQ) await search(lastQ, true); draw(); };
+    const act = async (fn, args, msg) => { try { const r = await rpc(fn, args); if (r == null && /friend_gift/i.test(fn)) { toast('🔒 선물'); return; } if (msg) toast(msg); } catch (e) { toast(errText(e)); } await load(); if (found && lastQ) await search(lastQ, true); draw(); };
     async function search(q, quiet) { lastQ = q; try { found = await rpc('friends_search', { p_q: q }) || []; } catch (e) { found = null; if (!quiet) toast(errText(e)); } }
     const draw = () => {
       const s = cache;
@@ -65,7 +65,7 @@
         body = s.friends.length ? (rec ? `<div class="fr-fb">⚔️ 친구 대전 <button class="fr-tab ${fbMode === '1v1' ? 'on' : ''}" data-fbm="1v1">1v1</button><button class="fr-tab ${fbMode === '3v3' ? 'on' : ''}" data-fbm="3v3">3v3</button><small>오늘 ${rec.left}회 · 무제한 리그 덱</small></div>` : '')
           + (sendable.length ? `<div class="fr-giftbar"><button class="fr-b" data-sendall>🎁 모두 보내기 (${sendable.length})</button><small>${rwGift(s.gifts?.reward)}</small></div>` : '')
           + s.friends.map(f => row(f, `${rec ? `${rec.records?.[f.user_id] ? `<span class="fr-st">${rec.records[f.user_id].w}승 ${rec.records[f.user_id].l}패</span>` : ''}<button class="fr-b" data-fb="${f.user_id}">⚔️ 대전</button>` : ''}${hasGift ? `<button class="fr-b ${f.gift_sent ? 'ghost' : ''}" data-gift="${f.user_id}" ${f.gift_sent ? 'disabled' : ''}>${f.gift_sent ? '보냄' : '🎁'}</button>` : ''}<button class="fr-b ghost" data-rm="${f.user_id}" data-nm="${esc(f.name)}">삭제</button>`)).join('')
-          : empty('아직 친구가 없어요. 🔍 찾기에서 친구를 추가해 보세요!');
+          : empty('친구 없음');
       } else if (tab === 'gift') {
         const g = s.gifts || {};
         body = `<div class="fr-giftbar"><span>오늘 ${g.claimed_today | 0}/${g.cap | 20} · ${rwGift(g.reward)}</span>${(g.inbox || []).length && (g.left | 0) > 0 ? `<button class="fr-b" data-claimall>모두 받기</button>` : ''}</div>`
@@ -73,12 +73,12 @@
             : empty((g.claimed_today | 0) >= (g.cap | 20) ? '오늘 받을 수 있는 선물을 다 받았어요' : '받은 선물이 없어요'));
       } else if (tab === 'in') body = s.incoming.length ? s.incoming.map(r => row(r, `<button class="fr-b" data-acc="${r.req_id}">수락</button><button class="fr-b ghost" data-dec="${r.req_id}">거절</button>`)).join('') : empty('받은 신청이 없어요');
       else if (tab === 'out') body = s.outgoing.length ? s.outgoing.map(r => row(r, `<button class="fr-b ghost" data-cancel="${r.req_id}">취소</button>`)).join('') : empty('보낸 신청이 없어요');
-      else body = `<form class="fr-search"><input name="q" maxlength="20" placeholder="닉네임 또는 친구 코드" value="${esc(lastQ)}" autocomplete="off"><button class="fr-b">검색</button></form>
-        ${found == null ? empty('닉네임 일부나 친구 코드(8자리)로 찾을 수 있어요') : found.length ? found.map(p => row(p,
+      else body = `<form class="fr-search" data-clarity-mask="true"><input name="q" maxlength="20" placeholder="닉네임 또는 친구 코드" value="${esc(lastQ)}" autocomplete="off"><button class="fr-b">검색</button></form>
+        ${found == null ? empty('닉네임 / 코드') : found.length ? found.map(p => row(p,
           p.state === 'friend' ? '<span class="fr-st">친구</span>' : p.state === 'sent' ? '<span class="fr-st">신청함</span>'
           : p.state === 'received' ? `<button class="fr-b" data-req="${p.user_id}">수락</button>` : `<button class="fr-b" data-req="${p.user_id}">신청</button>`)).join('') : empty('검색 결과가 없어요')}`;
       pop.innerHTML = `<div class="gem-panel friend-panel" role="dialog" aria-label="친구"><button class="gem-x" data-x aria-label="닫기">✕</button>
-        <h3 class="daily-h">👥 친구 ${s ? `<small>내 코드 <b class="fr-code" title="눌러서 복사">${esc(s.me.code)}</b></small>` : ''}</h3>
+        <h3 class="daily-h">👥 친구 ${s ? `<small>내 코드 <b class="fr-code" data-clarity-mask="true" title="눌러서 복사">${esc(s.me.code)}</b></small>` : ''}</h3>
         <div class="fr-tabs">${tabs.map(([k, l]) => `<button class="fr-tab ${tab === k ? 'on' : ''}" data-tab="${k}">${l}</button>`).join('')}</div>
         <div class="fr-body">${body}</div></div>`;
       pop.querySelector('[data-x]').onclick = () => pop.remove();

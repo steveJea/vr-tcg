@@ -8,6 +8,13 @@ assert.equal(prod.enabled, true);
 assert.equal(prod.supabaseUrl, 'https://htarwisgkkphutxxnuak.supabase.co');
 assert.equal(prod.isStaging, false);
 assert.deepEqual(select('tcg.mbbs.kr', '?vrEnv=staging'), prod);
+assert.deepEqual(select('vr-tcg-prod.notcold.workers.dev'), prod);
+assert.deepEqual(select('ag.violenceroyale.com'), prod);
+assert.deepEqual(select('ag.violenceroyale.com', '?vrEnv=staging'), prod);
+for (const host of ['violenceroyale.com', 'www.violenceroyale.com', 'ag.violenceroyale.com.evil.test', 'evil.ag.violenceroyale.com']) assert.equal(select(host).enabled, false, host);
+assert.deepEqual(select('vr-tcg-prod.notcold.workers.dev', '?vrEnv=staging'), prod);
+assert.equal(select('vr-tcg-prod.notcold.workers.dev.evil.test').enabled, false);
+assert.equal(select('vr-tcg-prod.evil.workers.dev').enabled, false);
 for (const host of ['unknown.example', 'tcg.mbbs.kr.evil.test', 'fake.workers.dev', 'stevejea.github.io', '', 'localhost', '127.0.0.1', '[::1]']) {
   const c = select(host);
   assert.equal(c.enabled, false, host);

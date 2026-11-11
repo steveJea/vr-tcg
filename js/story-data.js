@@ -5,9 +5,9 @@ window.STORY_DATA = {
   // 오프닝: 메인 스토리 첫 진입 시 1번 재생. video 경로를 넣으면 영상, 비어 있으면 자리표시 화면
   opening: { video: 'video/opening.mp4', poster: 'img/story/opening_poster.webp', title: 'OPENING', text: '' },
   starters: [
-    { id: '10111', name: '문지예', tagline: '(소개 문구 준비 중)' },
-    { id: '10265', name: '용지혜', tagline: '(소개 문구 준비 중)' },
-    { id: '10224', name: '안리', tagline: '(소개 문구 준비 중)' },
+    { id: '10111', name: '문지예', tagline: '🔒' },
+    { id: '10265', name: '용지혜', tagline: '🔒' },
+    { id: '10224', name: '안리', tagline: '🔒' },
   ],
   // 밸런스: 승리 시 스탯 포인트, 포인트 1당 상승량
   statPoints: { normal: 3, boss: 5 },
@@ -958,7 +958,9 @@ window.STORY_DATA.chapters[0].byStarter['10265'] = {
 window.STORY_DATA.portraits = { '문지예': 'mun_jiye', '문지아': 'mun_jia', '용지혜': 'yong_jihye', '안리': 'an_ri', '이민채': 'lee_minchae', '홍가영': 'gayoung', '오명준': 'myungjun', '송철순': 'cheolsun', '문희찬': 'heechan', '곽재준': 'kwak_jaejun', '한겨울': 'han_gyeoul', '임유리': 'im_yuri', '진하린': 'jin_harin', '민유연': 'min_yuyeon', '민홍기': 'min_honggi', '유가을': 'yu_gaeul', '강태안': 'kang_taean', '강태준': 'kang_taejun', '이민수': 'lee_minsu', '김철민': 'kim_cheolmin', '유연 아버지': 'min_father', '유연 어머니': 'min_mother', '[각성] 임유리': 'im_yuri_awake', '오유나': 'o_yuna' ,
   // 10/31: 챕터 전용이던 표정 초상화를 모든 챕터 공용으로 (같은 이름 = 같은 인물만. 복장·나이 변형·[염원]·학부모·친구·선생님은 챕터 전용 유지, 챕터 전용 지정이 있으면 그쪽 우선)
   '서태우': 'seo_taeu', '윤진아': 'yun_jina', '고세린': 'go_serin', '소민섭': 'so_minseop', '박성관': 'park_seonggwan', '동지선': 'dong_jiseon', '박인아': 'park_ina', '최국선': 'choi_gukseon',   // 11/1 그림순이 (CH15 · CH3 에도 같은 인물)
-  '안지윤': 'an_jiyun', '안소라': 'an_sora', '최윤아': 'choi_yuna', '최윤정': 'choi_yunjeong', '이지영': 'lee_jiyoung', '백시훈': 'baek_sihun', '한도겸': 'han_dogyeom', '오세찬': 'oh_sechan', '장민규': 'jang_mingyu', '배현오': 'bae_hyeono', '마동철': 'ma_dongcheol', '구태만': 'gu_taeman', '독곰': 'dokgom', '쇳덩이': 'soetdeongi', '바위': 'bawi', '서하늘': 'seo_haneul', '진다솜': 'jin_dasom', '권명호': 'kwon_myeongho', '남궁현': 'namgung_hyeon', '도강혁': 'do_ganghyeok', '김지수': 'kim_jisu', '김정란': 'kim_jeongran', '루비에르 회장 김정란': 'kim_jeongran', '김지우': 'kim_jiwoo', '안지수': 'an_jisu', '안혜진': 'an_hyejin', '한서린': 'han_seorin', '도예나': 'do_yena', '최태석': 'choi_taeseok', '강보람': 'kang_boram', '관장 안태호': 'an_taeho', '안태호': 'an_taeho', '이혜경': 'lee_hyegyeong', '이진경': 'lee_jingyeong', '김성진': 'kim_seongjin', '설달': 'seol_dal', '서오성': 'seo_oseong', '추나리': 'chu_nari', '윤우람': 'yun_uram', '백천주': 'baek_cheonju', '서진성': 'seo_jinseong', '풍건': 'pung_geon', '문재': 'mun_jae', '강철훈': 'kang_cheolhun', '강철진': 'kang_cheoljin', '김동욱': 'kim_dongwook' };
+  '안지윤': 'an_jiyun', '안소라': 'an_sora', '최윤아': 'choi_yuna', '최윤정': 'choi_yunjeong', '이지영': 'lee_jiyoung', '백시훈': 'baek_sihun', '한도겸': 'han_dogyeom', '오세찬': 'oh_sechan', '장민규': 'jang_mingyu', '배현오': 'bae_hyeono', '마동철': 'ma_dongcheol', '구태만': 'gu_taeman', '독곰': 'dokgom', '쇳덩이': 'soetdeongi', '바위': 'bawi', '서하늘': 'seo_haneul', '진다솜': 'jin_dasom', '권명호': 'kwon_myeongho', '남궁현': 'namgung_hyeon', '도강혁': 'do_ganghyeok', '김지수': 'kim_jisu', '김정란': 'kim_jeongran', '루비에르 회장 김정란': 'kim_jeongran', '김지우': 'kim_jiwoo', '안지수': 'an_jisu', '안혜진': 'an_hyejin', '한서린': 'han_seorin', '도예나': 'do_yena', '최태석': 'choi_taeseok', '강보람': 'kang_boram', '관장 안태호': 'an_taeho', '안태호': 'an_taeho', '이혜경': 'lee_hyegyeong', '이진경': 'lee_jingyeong', '김성진': 'kim_seongjin', '설달': 'seol_dal', '서오성': 'seo_oseong', '추나리': 'chu_nari', '윤우람': 'yun_uram', '백천주': 'baek_cheonju', '서진성': 'seo_jinseong', '풍건': 'pung_geon', '문재': 'mun_jae', '강철훈': 'kang_cheolhun', '강철진': 'kang_cheoljin', '김동욱': 'kim_dongwook',
+  // 11/11 그림순이 CH16·17: 이영하(흉터 포함 전 표정) · 고정태 · 주예서 · 주예린 · 조윤하 · 최수아 · 강두식 · 이세라(영하 엄마)
+  '이영하': 'lee_youngha', '고정태': 'go_jeongtae', '주예서': 'ju_yeseo', '주예린': 'ju_yerin', '조윤하': 'jo_yunha', '최수아': 'choi_sua', '강두식': 'kang_dusik', '이세라': 'lee_sera' };
 window.STORY_DATA.exprSlug = { '기본': 'base', '보통': 'base', '화남': 'angry', '분노': 'angry', '웃음': 'smile', '슬픔': 'sad', '놀람': 'surprised', '장난': 'playful',
   base: 'base', normal: 'base', angry: 'angry', smile: 'smile', sad: 'sad', surprised: 'surprised', playful: 'playful',
   '미침': 'crazy', '싸늘': 'cold', '우울': 'sad', crazy: 'crazy', cold: 'cold',
@@ -981,10 +983,19 @@ window.STORY_DATA.chapterPortraits = { 0: { '임유리': 'im_yuri_c0', '황보�
   // 챕터 14 「작은 아씨들」 (lee_hyegyeong_school = 이혜경 교복, 아직 대사에 안 씀)
   14: { '이혜경': 'lee_hyegyeong', '이진경': 'lee_jingyeong', '김성진': 'kim_seongjin', '설달': 'seol_dal', '서오성': 'seo_oseong', '추나리': 'chu_nari', '윤우람': 'yun_uram', '백천주': 'baek_cheonju', '서진성': 'seo_jinseong', '풍건': 'pung_geon', '문재': 'mun_jae', '강철훈': 'kang_cheolhun', '강철진': 'kang_cheoljin', '김동욱': 'kim_dongwook' },
   // 챕터 15 「검은 늪」 전용: 조윤이 교복(학교 장면 · 챕터 3 조윤이는 카드 그림 그대로) · 할머니/아빠 = 윤진아 할머니·아버지 (챕터 14 '아빠'는 다른 인물)
-  15: { '조윤이': 'jo_yuni_school', '할머니': 'yun_jina_grandma', '아빠': 'yun_jina_father', '윤진아 할머니': 'yun_jina_grandma', '윤진아 아버지': 'yun_jina_father' } };
+  15: { '조윤이': 'jo_yuni_school', '할머니': 'yun_jina_grandma', '아빠': 'yun_jina_father', '윤진아 할머니': 'yun_jina_grandma', '윤진아 아버지': 'yun_jina_father' },
+  // 챕터 16 「젊은 베르테르의 슬픔」: 표정 초상화만 연결 (스토리 데이터 아직 없음).
+  // 조윤이 복장은 시트에 명시 없어 교복 지정 안 함. 국선 엄마/아빠 초상화 아직 없음. '아빠'는 국선 아버지라 15장 윤진아 아버지 맵을 쓰지 않음.
+  // '할머니'는 윤진아 할머니(단칸방). 16-11 적5 이영아 vs 이영하 는 시트가 아직 이영아.
+  16: { '강두식': 'kang_dusik', '최수아': 'choi_sua', '조윤하': 'jo_yunha', '고정태': 'go_jeongtae', '주예서': 'ju_yeseo', '조윤이': 'jo_yuni_school', '할머니': 'yun_jina_grandma', '윤진아 할머니': 'yun_jina_grandma' },
+  // 챕터 17 「폭풍의 언덕」: 표정 초상화만 연결 (스토리 데이터 아직 없음).
+  // 최윤희 복장(교복/일상/홈웨어) 시트에 명시 없음. 영순 이모 초상화 아직 없음. 엔딩 영상 URL 빈칸.
+  17: { '이영하': 'lee_youngha', '고정태': 'go_jeongtae', '이세라': 'lee_sera', '주예린': 'ju_yerin', '최윤희': 'choi_yunhee_school' } };
 // 페이즈별 화자 초상화 덮어쓰기 (임포트 스크립트가 대사 줄 slug 로 넣음): phaseSlug[챕터][페이즈][화자]
 window.STORY_DATA.phaseSlug = { 13: { 1: { '안지수': 'an_jisu_7' }, 2: { '안지수': 'an_jisu_12' } } };
 window.STORY_DATA.exprAlt = { smile: 'playful', playful: 'smile', crazy: 'playful', cold: 'angry', sneer: 'playful', yawn: 'base', hurt: 'sad' };
+// 챕터 0 임유리 시트에는 화난 표정이 없다. 없는 파일을 요청하지 않고 공용 화난 초상화를 쓴다.
+window.STORY_DATA.portraitAlias = { im_yuri_c0_angry: 'im_yuri_angry' };
 
 // ===== 일일 카드 뽑기 확률 (서버 supabase/gacha.sql 과 동일하게 유지) =====
 window.STORY_DATA.gacha = { rates: [['NORMAL', 0.70], ['RARE', 0.20], ['HIGH RARE', 0.065], ['SUPER RARE', 0.03], ['ULTRA RARE', 0.005]],

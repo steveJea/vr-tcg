@@ -40,11 +40,11 @@ set local check_function_bodies = off;
 
 do $vr_install_part$
 begin
-  if exists (select 1 from vr_staging_install.parts where bundle_hash <> '8157203b9aa6e793a649e2e327c69fce2bfdfa17b0dc7a81d0e845baa5d34adf' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
+  if exists (select 1 from vr_staging_install.parts where bundle_hash <> '1e7a91f656cb089116c27629c13947ec0c769796933ace7bb576f39ba0920d4e' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
     raise exception 'STOP: 다른 버전/DB의 설치 기록입니다. 파일을 섞지 마세요.';
   end if;
   if exists (select 1 from vr_staging_install.parts where part_no = 7) then
-    if not exists (select 1 from vr_staging_install.parts where part_no = 7 and part_hash = '718e613270adfe78f559a0d89a9908277e1a392adcf0b342886578c9d7c8fdb8') then
+    if not exists (select 1 from vr_staging_install.parts where part_no = 7 and part_hash = '768c24c4cee8a3b3eef3a22d9c2c25ce20fb8b4efd3c697620862aa1c8fc36e7') then
       raise exception 'STOP: 완료한 파일과 내용이 다릅니다.';
     end if;
     raise notice '07_install.sql: 이미 완료, 변경 없이 건너뜀';
@@ -55,6 +55,27 @@ begin
   end if;
   -- 설치 도중에는 클라이언트가 미완성 게임 스키마에 접근하지 못함. 마지막에만 개방.
   revoke usage on schema public from public, anon, authenticated;
+  execute $vr_statement$-- ===== SOURCE: story_stars.sql =====
+-- 스토리 별점(★1~3, 마나 전투) — 페이즈별 최고 별 저장. 여러 번 실행해도 안전 (함수만, 데이터 삭제 없음)
+-- 저장 위치: story_progress.data.stars = { "<챕터>": { "<페이즈>": 1~3 } } · 이미 클리어한 페이즈만, 더 높을 때만 갱신
+-- 별 계산은 클라이언트(보상 없음): ★1 클리어 · +★ 내 턴 10턴 이내 · +★ 남은 마나 30% 이상
+create or replace function public.story_set_stars(p_chapter int, p_phase int, p_stars int) returns jsonb language plpgsql security definer set search_path = public as $$
+declare me uuid := auth.uid(); d jsonb; cur int; s int := greatest(1, least(3, coalesce(p_stars, 1)));
+begin
+  if me is null then raise exception 'login required'; end if;
+  if not exists (select 1 from story_phase_config where chapter = p_chapter and phase = p_phase) then raise exception 'invalid phase'; end if;
+  d := _story_lock(me);
+  if not (coalesce(d->'cleared'->(p_chapter::text), '[]'::jsonb) @> to_jsonb(p_phase)) then raise exception 'not cleared'; end if;
+  cur := coalesce((d->'stars'->(p_chapter::text)->>(p_phase::text))::int, 0);
+  if s > cur then
+    if jsonb_typeof(d->'stars') is distinct from 'object' then d := jsonb_set(d, '{stars}', '{}'::jsonb); end if;
+    if jsonb_typeof(d->'stars'->(p_chapter::text)) is distinct from 'object' then d := jsonb_set(d, array['stars', p_chapter::text], '{}'::jsonb); end if;
+    d := jsonb_set(d, array['stars', p_chapter::text, p_phase::text], to_jsonb(s));
+    d := _story_save(me, d); cur := s;
+  end if;
+  return jsonb_build_object('ok', true, 'stars', cur, 'all', coalesce(d->'stars', '{}'::jsonb));
+end $$;$vr_statement$;
+  execute $vr_statement$revoke all on function public.story_set_stars(int, int, int) from public, anon;$vr_statement$;
   execute $vr_statement$grant execute on function public.story_set_stars(int, int, int) to authenticated;$vr_statement$;
   execute $vr_statement$select 'story_stars ok' as result;$vr_statement$;
   execute $vr_statement$-- ===== SOURCE: blood_rebalance.sql =====
@@ -1427,35 +1448,9 @@ end $$;$vr_statement$;
   public.friend_request(uuid), public.friend_respond(bigint, boolean), public.friend_cancel(bigint), public.friend_remove(uuid) from public, anon;$vr_statement$;
   execute $vr_statement$grant execute on function public.friends_ping(), public.friends_pending_count(), public.friends_list(), public.friends_search(text),
   public.friend_request(uuid), public.friend_respond(bigint, boolean), public.friend_cancel(bigint), public.friend_remove(uuid) to authenticated;$vr_statement$;
-  execute $vr_statement$-- ===== SOURCE: friend_battle.sql =====
--- =====================================================================
--- ⚔️ 친구 대전 (2단계) — 여러 번 실행해도 안전, 삭제 없음
--- 선행: friends.sql(friendships, _is_friend) · pvp.sql(pvp_decks, _pvp_snap, _pvp_day) · manual_battle.sql(_battle_acts_ok)
--- 방식: 기존 PvP 와 같은 비동기. 상대 = 친구의 PvP 방어 덱(무제한 리그) 스냅샷, 서버 seed 발급
--- 레이팅·랭킹·보상 없음. 하루 20회(KST). 결과 + seed + 양쪽 스냅샷 + 수동 행동 기록 저장 → 3단계 리플레이 공유가 이 행(id)을 참조
--- 공개 RPC: friend_battle_start(p_friend uuid, p_mode text) · friend_battle_report(p_id bigint, p_wins int, p_losses int, p_actions jsonb)
---           friend_battle_history(p_friend uuid default null)
--- =====================================================================
-
-create table if not exists public.friend_battles (
-  id          bigint generated always as identity primary key,
-  user_id     uuid not null references auth.users(id) on delete cascade,   -- 도전한 사람
-  opp_user    uuid not null references auth.users(id) on delete cascade,   -- 친구 (방어 덱)
-  mode        text not null check (mode in ('1v1','3v3')),
-  day         date not null,
-  seed        bigint not null,
-  my_snap     jsonb not null,
-  opp_snap    jsonb not null,
-  manual      boolean not null default false,
-  actions     jsonb,                                                       -- 수동 전투 행동 기록 (리플레이용)
-  created_at  timestamptz not null default now(),
-  reported_at timestamptz, wins smallint, losses smallint, win boolean
-);$vr_statement$;
-  execute $vr_statement$create index if not exists friend_battles_user_idx on public.friend_battles (user_id, created_at desc);$vr_statement$;
-  execute $vr_statement$create index if not exists friend_battles_opp_idx on public.friend_battles (opp_user, created_at desc);$vr_statement$;
 
   insert into vr_staging_install.parts(part_no, bundle_hash, part_hash, project_ref, db_id)
-  values (7, '8157203b9aa6e793a649e2e327c69fce2bfdfa17b0dc7a81d0e845baa5d34adf', '718e613270adfe78f559a0d89a9908277e1a392adcf0b342886578c9d7c8fdb8', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
+  values (7, '1e7a91f656cb089116c27629c13947ec0c769796933ace7bb576f39ba0920d4e', '768c24c4cee8a3b3eef3a22d9c2c25ce20fb8b4efd3c697620862aa1c8fc36e7', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
 end $vr_install_part$;
 commit;
 select '07_install.sql: 완료 또는 이미 완료 (7/14)' as result;

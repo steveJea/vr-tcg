@@ -2,10 +2,13 @@
 import {readFile,writeFile,mkdir} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
+import {execFileSync} from 'node:child_process';
 import {splitStatements,stripLeadingComments} from './sql_statements.mjs';
 export const root=new URL('../',import.meta.url);
 export const config=JSON.parse(await readFile(new URL('tools/production/config.json',root),'utf8'));
 export const rd=p=>readFile(new URL(p,root),'utf8');
+// Released packages are frozen: rebuild from the exact sources at config.sourceCommit, never from later staging edits.
+export const src=p=>config.sourceCommit?execFileSync('git',['show',config.sourceCommit+':'+p],{cwd:fileURLToPath(root),encoding:'utf8',maxBuffer:1<<28}):rd(p);
 export const versions={pvp_policy_v3:'5a38b4b72651fcb8632fb1bfe14e1cd18a758d08249dbb18b0cfd223123c7a67',guildbattle_policy_v4:'c570973669776971316dfb650482e1401c5628c5ba73e57d23b879b9320c719a',arcade_policy_v5:'e792c491ffafe19d047aa6f58db1920e5767e4059e14816611dd38d473871161'};
 const guards={ 'security_phase3_pvp.sql':'phase3_staging_guard','security_phase4_raid_guildwar.sql':'phase4_staging_guard','level_unlocks_staging.sql':'guard','security_phase5_arcade.sql':'phase5_staging_guard'};
 const productionBudget=`create or replace function public._guildbattle_used_v4(p_uid uuid,p_kind text,p_mid bigint default null) returns bigint language plpgsql stable security definer set search_path=pg_catalog,public,pg_temp as $budget$
@@ -23,8 +26,18 @@ end $budget$;`;
 export async function payload() {
  const sections=[],names=new Set();
  for(const name of config.sources){
-  let sql=await rd('supabase/'+name),guardCount=0,clockCount=0,budgetCount=0,entryCount=0;
-  const statements=[];
+  const {statements,names:fns}=productionStatements(name,await src('supabase/'+name));
+  for(const fn of fns)names.add(fn);
+  sections.push('-- ===== REVIEWED DELTA SOURCE: '+name+' =====\n'+statements.join('\n\n'));
+ }
+ const sql=sections.join('\n\n');
+ if(/guildbattle_test_|sec4_fixture|sec4fixture|7703759698107299042/.test(sql))throw Error('staging-only capability leaked');
+ return {sql,names:[...names].sort()};
+}
+// Reviewed production transform of ONE source (guards removed, phase4 real clock/budget, no test fixtures).
+export function productionStatements(name,sql){
+  let guardCount=0,clockCount=0,budgetCount=0,entryCount=0;
+  const statements=[],names=new Set();
   for(let statement of splitStatements(sql)){
    let s=stripLeadingComments(statement);
    if(/^(begin|commit);$/i.test(s.trim()))continue;
@@ -50,11 +63,7 @@ export async function payload() {
   }
   if(guards[name]&&guardCount!==1)throw Error(name+' guard drift');
   if(name==='security_phase4_raid_guildwar.sql'&&(clockCount!==1||budgetCount!==1||entryCount!==1))throw Error('phase4 production transform drift');
-  sections.push('-- ===== REVIEWED DELTA SOURCE: '+name+' =====\n'+statements.join('\n\n'));
- }
- const sql=sections.join('\n\n');
- if(/guildbattle_test_|sec4_fixture|sec4fixture|7703759698107299042/.test(sql))throw Error('staging-only capability leaked');
- return {sql,names:[...names].sort()};
+  return {statements,names:[...names]};
 }
 export async function buildProductionSql({systemId=config.productionSystemId}={}){
  const {sql,names}=await payload(),hash=createHash('sha256').update(sql).digest('hex'),pin=systemId??'PRODUCTION_SYSTEM_ID_REQUIRED';
@@ -109,7 +118,7 @@ select 'Production DB delta installed; deploy all THREE production Edge bundles 
 `;
 }
 export async function productionBundle(name){
- const source=await rd('supabase/functions/'+name+'/dashboard_single_file.ts');
+ const source=await src('supabase/functions/'+name+'/dashboard_single_file.ts');
  const staging='cuyqchmdcnsgzkwyclji';
  if(source.split(staging).length-1!==2||source.split('staging verifier unavailable').length-1!==1)throw Error(name+' target transform drift');
  return '// PRODUCTION ONLY — generated from the unchanged, regression-tested staging handler/engine.\n'+source.replaceAll(staging,config.productionProject).replaceAll('Staging ','Production ').replaceAll('staging verifier unavailable','production verifier unavailable').replace(/node tools\/build_phase[345]_dashboard\.mjs/g,'node tools/build_production_rollout.mjs');

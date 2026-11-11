@@ -40,11 +40,11 @@ set local check_function_bodies = off;
 
 do $vr_install_part$
 begin
-  if exists (select 1 from vr_staging_install.parts where bundle_hash <> '8157203b9aa6e793a649e2e327c69fce2bfdfa17b0dc7a81d0e845baa5d34adf' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
+  if exists (select 1 from vr_staging_install.parts where bundle_hash <> '1e7a91f656cb089116c27629c13947ec0c769796933ace7bb576f39ba0920d4e' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
     raise exception 'STOP: 다른 버전/DB의 설치 기록입니다. 파일을 섞지 마세요.';
   end if;
   if exists (select 1 from vr_staging_install.parts where part_no = 5) then
-    if not exists (select 1 from vr_staging_install.parts where part_no = 5 and part_hash = '36159c6e4af34f16f2f136076e662ced8f72f04777cb4fd9ce107af11f5810e2') then
+    if not exists (select 1 from vr_staging_install.parts where part_no = 5 and part_hash = 'a76fd1f8e73c144cb17b7ab191f735e7a2a7e9e101d52f5719ba02c5097b4036') then
       raise exception 'STOP: 완료한 파일과 내용이 다릅니다.';
     end if;
     raise notice '05_install.sql: 이미 완료, 변경 없이 건너뜀';
@@ -253,13 +253,17 @@ end $$;$vr_statement$;
 --    닉네임 · 계정 레벨 · 리더 카드 id · 해당 리그/모드 PvP 덱(카드 id·레벨) · 소속 조직(이름·엠블럼)
 create or replace function public.pvp_user_info(p_league text, p_mode text, p_rank int) returns jsonb
 language plpgsql stable security definer set search_path = public as $$
-declare uid uuid := auth.uid(); s date := _pvp_season(); t uuid; g record; deck jsonb; lead text;
+declare uid uuid := auth.uid(); t uuid; g record; deck jsonb; lead text;
 begin
   if uid is null then raise exception 'login required' using errcode = '42501'; end if;
   perform _pvp_ok(p_league, p_mode);
   if p_rank is null or p_rank < 1 or p_rank > 100 then raise exception 'bad rank'; end if;
-  select x.user_id into t from (select r.user_id, row_number() over (order by r.rating desc, r.wins desc, r.user_id) rn
-      from pvp_ratings r where r.league = p_league and r.mode = p_mode and r.season = s and r.wins + r.losses > 0) x where x.rn = p_rank;
+  select x.user_id into t from (
+    select user_id, row_number() over (order by rating desc, wins desc, user_id) rn from (
+      select distinct on (r.user_id) r.user_id, r.rating, r.wins, r.losses
+        from pvp_ratings r
+       where r.league = p_league and r.mode = p_mode and r.wins + r.losses > 0
+       order by r.user_id, r.season desc) z) x where x.rn = p_rank;
   if t is null then raise exception 'not found'; end if;
   select o->>'id' into lead from story_progress sp, jsonb_array_elements(case when jsonb_typeof(sp.data->'owned') = 'array' then sp.data->'owned' else '[]'::jsonb end) o
     where sp.user_id = t and o->>'uid' = sp.data->>'leader' limit 1;
@@ -1562,7 +1566,7 @@ where jsonb_typeof(sp.data->'owned') = 'array'
                  or (z->>'src' = 'story' and not (z ? 'got_at') and z->>'id' = sp.data->>'starter'));$vr_statement$;
 
   insert into vr_staging_install.parts(part_no, bundle_hash, part_hash, project_ref, db_id)
-  values (5, '8157203b9aa6e793a649e2e327c69fce2bfdfa17b0dc7a81d0e845baa5d34adf', '36159c6e4af34f16f2f136076e662ced8f72f04777cb4fd9ce107af11f5810e2', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
+  values (5, '1e7a91f656cb089116c27629c13947ec0c769796933ace7bb576f39ba0920d4e', 'a76fd1f8e73c144cb17b7ab191f735e7a2a7e9e101d52f5719ba02c5097b4036', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
 end $vr_install_part$;
 commit;
 select '05_install.sql: 완료 또는 이미 완료 (5/14)' as result;

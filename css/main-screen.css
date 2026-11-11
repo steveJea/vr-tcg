@@ -308,3 +308,25 @@
 .main-story-hub{position:absolute;top:8px;right:8px;z-index:3;padding:5px 11px;border-radius:999px;border:1px solid rgba(245,201,106,.6);background:rgba(18,8,10,.82);color:#f5c96a;font-weight:800;font-size:12px;line-height:1.2;box-shadow:0 2px 8px rgba(0,0,0,.6);cursor:pointer}
 .main-story-hub:active{transform:scale(.95)}
 #story-btn:disabled .main-story-hub{display:none}
+
+/* Shared OAuth controls. Kakao is exposed only after Supabase enables it. */
+.oauth-row{display:flex;flex-wrap:wrap;gap:8px;align-items:stretch;width:100%}
+.oauth-row>button{flex:1 1 140px;min-width:0;min-height:44px;white-space:nowrap}
+[data-oauth-provider][hidden],#main-link-google[hidden],#main-link-kakao[hidden],#main-link-x[hidden]{display:none!important}
+.oauth-kakao,.main-btn.oauth-kakao{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:#fee500;color:rgba(0,0,0,.85);border-color:#fee500;border-radius:12px;font-family:system-ui,sans-serif;text-shadow:none}
+.oauth-x,.main-btn.oauth-x{display:inline-flex;align-items:center;justify-content:center;background:#000;color:#fff;border:1px solid #777;border-image:none;border-radius:12px;font-family:system-ui,sans-serif;text-shadow:none}
+.oauth-symbol{width:18px;height:18px;flex:none;object-fit:contain}
+#intro .intro-acts{width:min(92vw,480px)}#intro .oauth-row .intro-btn{font-size:16px}
+#intro .oauth-row{width:100%}#intro .oauth-row .intro-btn{padding-left:8px;padding-right:8px}
+#acct-box .oauth-row{width:auto}#acct-box .oauth-row .acct-login{flex:0 1 auto;padding:7px 10px;min-height:36px;font-size:14px!important}
+.oauth-overlay{position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;padding:16px}
+.oauth-card{width:min(100%,360px);padding:20px;border-radius:16px;background:#1e1530;border:1px solid #91673a}
+.oauth-card h2{font-size:20px;margin:0 0 16px}.oauth-card .oauth-row{margin-bottom:12px}.oauth-close{width:100%}
+
+/* 게임설정 창 하나로 통일 (js/main-menu.js VRMenu): 전투 중엔 전투 설정을 맨 위에, 이탈 항목 숨김 */
+.gm-battle { display: none; }
+#main-menu-pop.gm-in-battle .gm-battle { display: block; margin-bottom: .6rem; }
+#main-menu-pop .gm-battle #bset-pop { position: static !important; display: flex !important; flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 8px; padding: 8px; border-radius: 12px; background: rgba(0,0,0,.35); border: 1px solid rgba(245,201,106,.25); box-shadow: none; }
+#main-menu-pop.gm-in-battle [data-gm-nobattle], #main-menu-pop.gm-in-battle [data-gm-home], #main-menu-pop.gm-away [data-gm-home] { display: none !important; }
+#main-menu-pop:not(.hidden) { z-index: 9600 !important; }
+.set-range { width: 8.5rem; accent-color: #f5c96a; }

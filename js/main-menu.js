@@ -13,7 +13,7 @@
     });
   }
   window.VRConfirm = confirmYN;   // 다른 화면에서도 같은 Y/N 확인창 (예: 인재 상세 버튼)
-  const login = () => window.VRCloud?.login ? window.VRCloud.login() : (window.VRGem?.toast || alert)('로그인 서버 연결 중이에요. 잠시 뒤 다시 눌러 주세요.');
+  const login = provider => window.VRCloud?.login ? window.VRCloud.login(provider) : (window.VRGem?.toast || alert)('⏳ 연결 중…');
 
   // --- 인트로: 처음 방문(로그인 안 됨)일 때만 ---
   const intro = $('intro');
@@ -33,9 +33,11 @@
     } catch {}
   }
   const hideIntro = () => { localStorage.setItem(INTRO_KEY, '1'); intro.classList.add('hidden'); const v = $('intro-video'); v.pause(); };
-  $('intro-login').onclick = () => { localStorage.setItem(INTRO_KEY, '1'); login(); };
+  $('intro-login').onclick = () => { localStorage.setItem(INTRO_KEY, '1'); login('google'); };
+  $('intro-login-kakao').onclick = () => { localStorage.setItem(INTRO_KEY, '1'); login('kakao'); };
+  $('intro-login-x').onclick = () => { localStorage.setItem(INTRO_KEY, '1'); login('x'); };
   $('intro-guest').onclick = async () => {
-    if (await confirmYN('<b>게스트는 아케이드만</b> 플레이할 수 있어요.<br>인재 수집·소환은 할 수 없어요.<div class="vc-q">그래도 게스트로 하시겠어요?</div>')) hideIntro();
+    if (await confirmYN('게스트: 아케이드만 · 수집 불가. 계속?')) hideIntro();
   };
   if (localStorage.getItem(INTRO_KEY) !== '1' && !/[?&]code=|access_token=/.test(location.search + location.hash)) {
     // 이미 로그인된 세션이면 바로 메인
@@ -51,7 +53,7 @@
   document.querySelectorAll('#start-screen [data-auth]').forEach(b => b.addEventListener('click', async e => {
     if (user()) return;
     e.stopImmediatePropagation(); e.preventDefault();
-    if (await confirmYN('로그인하시겠어요?')) login();
+    if (await confirmYN('로그인할까요?')) login();
   }, true));
   // 로그아웃하면 인트로(로그인/게스트 선택)를 다시 보여 줌
   let hadUser = !!user();
@@ -62,12 +64,43 @@
     hadUser = now;
   });
 
-  // --- 게임설정 메뉴 ---
+  // --- 게임설정 메뉴 = 모든 톱니(홈 · 상단바 · 전투)가 여는 하나뿐인 설정 창 (window.VRMenu) ---
+  // 홈이 아닌 곳(페이지·스토리·탑·PvP 화면)에서는 #start-screen 이 숨어 있으니 body 로 옮겨 띄우고, 닫히면 제자리로.
+  // 전투 중: 전투 설정(#bset-pop: 효과음·스킬 보이스·음량·연출 스킵·속성 상성)을 이 창 맨 위로 옮겨 그대로 쓰고,
+  //   전투를 떠나게 만드는 항목(튜토리얼·아케이드 설정·랭킹·갤러리·계정 연결·로그아웃)은 숨김 → 싸움 중 이탈/로그아웃 없음.
+  // 홈 밖(전투 아님): 새 판을 바로 시작하는 튜토리얼·아케이드 설정만 숨김 (홈 톱니에서는 그대로).
   const gear = $('main-settings'), pop = $('main-menu-pop');
-  const close = () => { pop.classList.add('hidden'); gear.setAttribute('aria-expanded', 'false'); };
-  gear.addEventListener('click', e => { e.stopPropagation(); pop.classList.toggle('hidden'); gear.setAttribute('aria-expanded', String(!pop.classList.contains('hidden'))); paintTut(); });
+  const popHome = { p: pop.parentNode, n: pop.nextSibling };
+  const bset = $('bset-pop'), bsetHome = bset && { p: bset.parentNode, n: bset.nextSibling };
+  const slot = document.createElement('div'); slot.className = 'gm-battle'; slot.setAttribute('aria-label', '전투 설정');
+  pop.querySelector('.gm-grid')?.before(slot);
+  slot.addEventListener('click', e => { if (e.target.closest('#help-btn')) setTimeout(close, 0); }, true);   // 속성 상성 창은 이 창 위로 뜨게 먼저 닫음
+  const visible = el => !!el && !el.classList.contains('hidden') && el.getClientRects().length > 0;
+  const inBattle = () => visible($('game'));
+  const restore = () => {
+    pop.classList.remove('gm-in-battle', 'gm-away');
+    if (bset && bset.parentNode === slot) { bset.classList.add('hidden'); bsetHome.p.insertBefore(bset, bsetHome.n?.parentNode === bsetHome.p ? bsetHome.n : null); }
+    if (pop.parentNode !== popHome.p) popHome.p.insertBefore(pop, popHome.n?.parentNode === popHome.p ? popHome.n : null);
+    gear.setAttribute('aria-expanded', 'false'); $('bset-btn')?.setAttribute('aria-expanded', 'false');
+  };
+  const close = () => { pop.classList.add('hidden'); restore(); };
+  const open = () => {
+    const battle = inBattle(), ss = $('start-screen');
+    const away = !battle && (!visible(ss) || document.body.classList.contains('vr-page-on'));
+    restore();
+    if (battle || away) document.body.appendChild(pop);
+    pop.classList.toggle('gm-in-battle', battle); pop.classList.toggle('gm-away', away);
+    if (battle && bset) { slot.appendChild(bset); bset.classList.remove('hidden'); $('bset-btn')?.setAttribute('aria-expanded', 'true'); }
+    pop.classList.remove('hidden'); gear.setAttribute('aria-expanded', 'true'); paintTut();
+  };
+  const toggle = () => pop.classList.contains('hidden') ? open() : close();
+  // 다른 곳(뒤로가기 가드 등)이 hidden 만 붙여 닫아도 제자리 복귀
+  new MutationObserver(() => { if (pop.classList.contains('hidden') && (pop.parentNode !== popHome.p || bset?.parentNode === slot)) restore(); })
+    .observe(pop, { attributes: true, attributeFilter: ['class'] });
+  window.VRMenu = { open, close, toggle, get isOpen() { return !pop.classList.contains('hidden'); } };
+  gear.addEventListener('click', e => { e.stopPropagation(); toggle(); });
   pop.addEventListener('click', e => { if (e.target === pop || e.target.closest('[data-close-menu]')) return close(); if (e.target.closest('.gm-btn')) close(); });
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !pop.classList.contains('hidden')) close(); });
   $('main-settings-open').addEventListener('click', () => setTimeout(() => window.VRSettings?.open(), 0));
   $('main-tutorial').addEventListener('click', () => { const go = (n = 0) => window.TCG?.POOL?.length ? window.HowTo?.Tutorial.start() : n < 50 && setTimeout(() => go(n + 1), 200); go(); });
 

@@ -1,7 +1,7 @@
 // ===== 조직 전쟁 「구역 전쟁」 화면 =====
 // 서버: security_phase4_raid_guildwar.sql + guildbattle-verify-v4. 승패·HP·점수는 서버 재생만.
 // 그림: img/ui/guild/war_banner.webp · war_bg.webp · war_icon.webp · war_role_<def|atk|mid|boss|etc>.webp · war_ajit.webp · war_npc.webp (없으면 이모지). 카드는 IMG
-import { startVerified,finishVerified,recoverVerified } from './guildbattle-session.js';
+import { startVerified,finishVerified,forfeitVerified,recoverVerified } from './guildbattle-session.js';
 import { runWar, warSession, warDeck, warCard, WAR_ROLES } from './war-core.js';
 import { WAR_DECKS, deckLabel, pairedDeck, deckLock, pickPool, draftProblem } from './war-deck-controls.js';
 import { modeToggle, bindMode, battleMode } from './manual-ui.js';
@@ -32,7 +32,7 @@ function signupWindow(s) {
 /** 칸 배치가 잠긴 이유 (없으면 ''). 자동 참가(조직 Lv.3+) · 잠금 전 모든 칸 · 잠금 뒤 아지트(14)만, 전투 시간 제외 (war_auto.sql) */
 const minLv = () => +(X.min_level ?? 3);
 function slotLockReason(s, slot) {
-  if (!s.entry) return X.guild_level != null && X.guild_level < minLv() ? `조직 레벨 ${minLv()}부터 자동 참가해요 (지금 Lv.${X.guild_level})` : '이번 시즌 참가 명단을 준비 중이에요';
+  if (!s.entry) return X.guild_level != null && X.guild_level < minLv() ? `조직 레벨 ${minLv()}부터 자동 참가해요 (지금 Lv.${X.guild_level})` : '🔒 참가 명단';
   if (s.guild?.role !== 'boss') return '보스만 배치할 수 있어요';
   if (!s.entry.locked) return '';
   if (s.phase === 'live') return '전투 시간(09~23시)에는 배치를 바꿀 수 없어요';
@@ -98,7 +98,7 @@ let recovering=null;
 async function recoverPage(c) {
  if(!S||!visiblePage(c)||recovering===c.root)return;recovering=c.root;
  try{const r=await recoverVerified('war');if(r&&samePage(c)){await reload(c);if(visiblePage(c))showVerifiedResult(r);}}
- catch(e){if(visiblePage(c))toast(errText(e));}finally{if(recovering===c.root)recovering=null;}
+ catch(e){if(visiblePage(c)&&e?.code!=='account-changed')toast(errText(e));}finally{if(recovering===c.root)recovering=null;}
 }
 export async function open() {
     if (window.VRUnlocks && !window.VRUnlocks.guard('war')) return;
@@ -150,7 +150,7 @@ function signupView() {
   const groups = ROLE_ORDER.map(r => `<div class="wr-row r-${r}"><div class="wr-slots ${r}">${s.roster.filter(x => x.role === r).map(slot).join('')}</div></div>`).join('');
   const why = slotLockReason(s), why14 = why && slotLockReason(s, 14);
   const note = why14 || why;
-  return `<div class="wr-sign"><div>${gi('ic_check', '✅')} 자동 참가 · 조직원 ${s.guild.members}명${e.locked ? ' · ' + gi('ic_lock', '🔒') : ''}</div>${boss && !e.locked ? '<button class="gd-big" data-auto>⚡ 자동 배치 (전투력 순)</button>' : ''}</div><small class="rd-note">빈 칸은 동네 불량배가 지켜요 · 안 넣은 조직원은 시즌 시작 때 전투력 순으로 들어가요</small>${note ? `<small class="rd-note wr-lock-why">🔒 ${esc(note)}</small>` : ''}${groups}`;
+  return `<div class="wr-sign"><div>${gi('ic_check', '✅')} 자동 참가 · 조직원 ${s.guild.members}명${e.locked ? ' · ' + gi('ic_lock', '🔒') : ''}</div>${boss && !e.locked ? '<button class="gd-big" data-auto>⚡ 자동 배치 (전투력 순)</button>' : ''}</div><details class="vr-tip"><summary>ⓘ</summary><p>빈 칸은 동네 불량배가 지켜요 · 안 넣은 조직원은 시즌 시작 때 전투력 순으로 들어가요</p></details>${note ? `<small class="rd-note wr-lock-why">🔒 ${esc(note)}</small>` : ''}${groups}`;
 }
 const roleBuff = r => { const x = WAR_ROLES[r], t = []; if (x.atk > 1 && x.def > 1) t.push(`공방 +${Math.round((x.atk - 1) * 100)}%`); else { if (x.atk > 1) t.push(`공격 +${Math.round((x.atk - 1) * 100)}%`); if (x.def > 1) t.push(`방어 +${Math.round((x.def - 1) * 100)}%`); } return `${t.join(' ')} · ${n(S.numbers.points[r])}점`; };
 function mapView(list, foe) {
@@ -164,7 +164,7 @@ function mapView(list, foe) {
 function rankView() {
   const st = S.standings || [];
   return `<div class="rd-h">시즌 순위 <small>승 ${S.numbers.standings.win} · 무 ${S.numbers.standings.draw} · 보스 격파 +${S.numbers.standings.boss_bonus}</small></div>
-    <div class="rd-rk">${st.length ? st.map(x => `<div class="${x.me ? 'me' : ''}"><b>${[gi('rank_1', '🥇'), gi('rank_2', '🥈'), gi('rank_3', '🥉')][x.rank - 1] || x.rank}</b><span>${esc(x.name)}</span><small>${x.wins}승 ${x.draws}무 ${x.losses}패</small><em>${x.points}점</em></div>`).join('') : '<div class="rd-empty">아직 참가한 조직이 없어요</div>'}</div>
+    <div class="rd-rk">${st.length ? st.map(x => `<div class="${x.me ? 'me' : ''}"><b>${[gi('rank_1', '🥇'), gi('rank_2', '🥈'), gi('rank_3', '🥉')][x.rank - 1] || x.rank}</b><span>${esc(x.name)}</span><small>${x.wins}승 ${x.draws}무 ${x.losses}패</small><em>${x.points}점</em></div>`).join('') : '<div class="rd-empty">ℹ️ 참가 없음</div>'}</div>
     <div class="rd-h">시즌 보상</div><table class="rd-tb">${S.numbers.season_rank.map(r => `<tr><th>${r.from === r.to ? `${r.from}위` : `${r.from}~${r.to}위`}</th><td>${rwTxt(r.reward)}</td></tr>`).join('')}
       <tr><th>참가 조직원</th><td>${rwTxt(S.numbers.season_member)} <small>(순위 보상에 더해서)</small></td></tr><tr><th>경기 승리</th><td>${rwTxt(S.numbers.match_win)} · 보스 격파 +${rwTxt(S.numbers.match_boss_kill)}</td></tr><tr><th>무승부</th><td>${rwTxt(S.numbers.match_draw)}</td></tr><tr><th>패배</th><td>${rwTxt(S.numbers.match_loss)}</td></tr></table>`;
 }
@@ -195,6 +195,7 @@ async function attack(slot, deck) {
     const ses = warSession(A, B, st.seed, log, { view: true, manual: true });
     // AUTO 도 실제 판 (AUTO 로 시작, 버튼으로 PLAY 전환 가능). 화면 결과를 신뢰하지 않고 행동 의도만 서버에 전송
     res = await V({ session: ses, aiName, manual: true, auto: !manual, maxTurns: 40, bg: 'war', music: window.VR_BGM?.guildBattle, title: `🏴 구역 전쟁 · ${aiName}` });
+    if (res?.abandon) { if (!res.accountChanged) { try { const r = await forfeitVerified('war', st); await reload(c); if (visiblePage(c)) showVerifiedResult(r); } catch (er) { if (visiblePage(c)) toast(errText(er)); } } paint(); return; }
     actions=ses.acts;
   } else { res = runWar(A, B, st.seed, log); await playback(res, log, t0); }
   try {const r=await finishVerified('war',st,actions);await reload(c);if(visiblePage(c))showVerifiedResult(r);}catch(er){if(visiblePage(c))toast('결과 미정산 · '+errText(er));}

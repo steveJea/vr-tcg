@@ -40,11 +40,11 @@ set local check_function_bodies = off;
 
 do $vr_install_part$
 begin
-  if exists (select 1 from vr_staging_install.parts where bundle_hash <> '8157203b9aa6e793a649e2e327c69fce2bfdfa17b0dc7a81d0e845baa5d34adf' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
+  if exists (select 1 from vr_staging_install.parts where bundle_hash <> '1e7a91f656cb089116c27629c13947ec0c769796933ace7bb576f39ba0920d4e' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
     raise exception 'STOP: 다른 버전/DB의 설치 기록입니다. 파일을 섞지 마세요.';
   end if;
   if exists (select 1 from vr_staging_install.parts where part_no = 9) then
-    if not exists (select 1 from vr_staging_install.parts where part_no = 9 and part_hash = 'badd9a664f0995f8b26e84fce26922c4989c9e7aeb6c596f8d7c52066d8cdc40') then
+    if not exists (select 1 from vr_staging_install.parts where part_no = 9 and part_hash = '8f1352ee2993a2d373c74b4677c6d99b3f6ffa5e7004f3c228ea3502230c96b9') then
       raise exception 'STOP: 완료한 파일과 내용이 다릅니다.';
     end if;
     raise notice '09_install.sql: 이미 완료, 변경 없이 건너뜀';
@@ -55,6 +55,64 @@ begin
   end if;
   -- 설치 도중에는 클라이언트가 미완성 게임 스키마에 접근하지 못함. 마지막에만 개방.
   revoke usage on schema public from public, anon, authenticated;
+  execute $vr_statement$-- 받기: 서버가 별을 다시 합산 · 한 번만
+create or replace function public.story_star_claim(p_chapter int, p_key text) returns jsonb language plpgsql security definer set search_path = public as $$
+declare me uuid := auth.uid(); d jsonb; st jsonb; m jsonb; got jsonb; t int; w jsonb;
+begin
+  if me is null then raise exception 'login required'; end if;
+  d := _story_lock(me);
+  st := _star_chapter(d, p_chapter);
+  select x into m from jsonb_array_elements(st->'milestones') x where x->>'key' = p_key;
+  if m is null then raise exception 'invalid milestone'; end if;
+  if (m->>'claimed')::boolean then raise exception 'already claimed'; end if;
+  if not (m->>'ready')::boolean then raise exception 'not enough stars'; end if;
+  got := coalesce(d->'starClaims'->(p_chapter::text), '[]'::jsonb) || to_jsonb(p_key);
+  if jsonb_typeof(d->'starClaims') is distinct from 'object' then d := jsonb_set(d, '{starClaims}', '{}'::jsonb); end if;
+  d := _story_save(me, jsonb_set(d, array['starClaims', p_chapter::text], got));
+  insert into story_gacha (user_id, last_draw) values (me, (now() at time zone 'Asia/Seoul')::date - 1) on conflict (user_id) do nothing;
+  update story_gacha set tickets = tickets + (m->>'tickets')::int, updated_at = now() where user_id = me returning tickets into t;
+  w := _wallet_add(me, jsonb_build_object('gold', (m->>'gold')::int), 'star_reward');
+  return jsonb_build_object('ok', true, 'tickets', t, 'wallet', w, 'gave', jsonb_build_object('tickets', (m->>'tickets')::int, 'gold', (m->>'gold')::int), 'status', _star_chapter(d, p_chapter));
+end $$;$vr_statement$;
+  execute $vr_statement$revoke all on function public._star_milestones(), public._star_chapter(jsonb, int) from public, anon, authenticated;$vr_statement$;
+  execute $vr_statement$revoke all on function public.story_star_status(), public.story_star_claim(int, text) from public, anon;$vr_statement$;
+  execute $vr_statement$grant execute on function public.story_star_status(), public.story_star_claim(int, text) to authenticated;$vr_statement$;
+  execute $vr_statement$select 'story_star_rewards ok' as result;$vr_statement$;
+  execute $vr_statement$-- ===== SOURCE: camp.sql =====
+-- ===== 훈련소 1단계 (인재를 넣어 두면 시간이 지나며 EXP 가 쌓임) =====
+-- Supabase SQL Editor 에서 실행. 여러 번 실행해도 안전 (테이블·데이터 삭제 없음)
+-- 선행: phaseE_1.sql(_wallet_add) · phaseE_2.sql(_player_sync) · gem.sql(_gem_spend) · story_levels.sql / story_merge.sql(_story_gain · _story_cap · 인재 uid)
+-- 규칙
+--  * 칸 5개: 1칸 플레이어 Lv10 무료 · 2칸 Lv20 골드 2만 · 3칸 Lv35 골드 5만 · 4칸 Lv50 심연석 300 · 5칸 Lv70 심연석 800
+--  * EXP: 칸 하나에 시간당 20 + 플레이어 레벨 × 1.5 (받을 때 레벨 기준). 마지막으로 받은 뒤 최대 24시간까지만 쌓임
+--  * 레벨 상한: min(등급 최대 레벨(EX 포함), 플레이어 레벨 − 5). 상한에 닿으면 더 안 쌓임
+--  * 시간은 서버 now() 만 사용. 훈련 중인 인재도 덱·스토리·PvP 사용 가능
+--  * 훈련 중인 인재는 거래 등록·분해·합성 재료로 못 씀 (story_progress 에서 빠지려 하면 거부하는 트리거)
+
+-- 1) 테이블 (행이 있으면 그 칸은 열린 것)
+create table if not exists public.camp_slots (
+  user_id  uuid not null references auth.users(id) on delete cascade,
+  slot     int  not null check (slot between 1 and 5),
+  card_uid text,
+  last_at  timestamptz,
+  opened_at timestamptz not null default now(),
+  primary key (user_id, slot));$vr_statement$;
+  execute $vr_statement$create unique index if not exists camp_slots_card on public.camp_slots (user_id, card_uid) where card_uid is not null;$vr_statement$;
+  execute $vr_statement$alter table public.camp_slots enable row level security;$vr_statement$;
+  execute $vr_statement$revoke all on public.camp_slots from anon, authenticated;$vr_statement$;
+  execute $vr_statement$drop policy if exists camp_slots_own on public.camp_slots;$vr_statement$;
+  execute $vr_statement$create policy camp_slots_own on public.camp_slots for select using (user_id = auth.uid());$vr_statement$;
+  execute $vr_statement$grant select on public.camp_slots to authenticated;$vr_statement$;
+  execute $vr_statement$-- 2) 수치
+create or replace function public._camp_need_level(s int) returns int language sql immutable as $$ select case s when 1 then 10 when 2 then 20 when 3 then 35 when 4 then 50 when 5 then 70 end $$;$vr_statement$;
+  execute $vr_statement$create or replace function public._camp_cost(s int) returns jsonb language sql immutable as $$
+  select case s when 1 then '{}'::jsonb when 2 then '{"gold":20000}'::jsonb when 3 then '{"gold":50000}'::jsonb when 4 then '{"gem":300}'::jsonb when 5 then '{"gem":800}'::jsonb end $$;$vr_statement$;
+  execute $vr_statement$create or replace function public._camp_rate(plv int) returns numeric language sql immutable as $$ select 20 + 1.5 * greatest(plv, 1) $$;$vr_statement$;
+  execute $vr_statement$create or replace function public._camp_max_hours() returns int language sql immutable as $$ select 24 $$;$vr_statement$;
+  execute $vr_statement$create or replace function public._camp_cap(g text, ex int, plv int) returns int language sql immutable as $$ select least(_story_cap(g, ex), plv - 5) $$;$vr_statement$;
+  execute $vr_statement$-- 3) 도우미
+create or replace function public._camp_plv(p_uid uuid) returns int language plpgsql security definer set search_path = public as $$
+declare lv int; begin select (_player_sync(p_uid)).level into lv; return coalesce(lv, 1); end $$;$vr_statement$;
   execute $vr_statement$create or replace function public._camp_owned(p_uid uuid) returns jsonb language sql stable security definer set search_path = public as $$
   select coalesce((select case when jsonb_typeof(data->'owned') = 'array' then data->'owned' end from story_progress where user_id = p_uid), '[]'::jsonb) $$;$vr_statement$;
   execute $vr_statement$create or replace function public._camp_grade(p_id text) returns text language sql stable security definer set search_path = public as $$
@@ -631,11 +689,11 @@ create table if not exists public.weekly_progress (
 create or replace function public._weekly_week() returns date language sql stable as $$
   select date_trunc('week', _gem_day()::timestamp)::date $$;$vr_statement$;
   execute $vr_statement$create or replace function public._weekly_defs() returns jsonb language sql immutable as $$ select '[
-  {"key":"arcade","name":"아케이드 7판 플레이","goal":7,"per":2,"reward":{"gold":8000,"tickets":1}},
-  {"key":"win","name":"전투 15회 승리","goal":15,"per":3,"reward":{"gold":10000,"gem":30}},
-  {"key":"story","name":"스토리 스테이지 10회 클리어","goal":10,"per":2,"reward":{"gold":10000,"gem":30}},
-  {"key":"tower","name":"시련의 탑 5회 도전","goal":5,"per":1,"reward":{"gold":8000,"gem":20}},
-  {"key":"skill","name":"고유기술 50회 사용","goal":50,"per":40,"reward":{"gold":8000,"gem":20}}
+  {"key":"arcade","name":"아케이드 플레이 x 7","goal":7,"per":2,"reward":{"gold":8000,"tickets":1}},
+  {"key":"win","name":"전투 승리 x 15","goal":15,"per":3,"reward":{"gold":10000,"gem":30}},
+  {"key":"story","name":"스토리 스테이지 클리어 x 10","goal":10,"per":2,"reward":{"gold":10000,"gem":30}},
+  {"key":"tower","name":"시련의 탑 도전 x 5","goal":5,"per":1,"reward":{"gold":8000,"gem":20}},
+  {"key":"skill","name":"고유기술 사용 x 50","goal":50,"per":40,"reward":{"gold":8000,"gem":20}}
 ]'::jsonb $$;$vr_statement$;
   execute $vr_statement$create or replace function public._weekly_all_reward() returns jsonb language sql immutable as $$ select '{"gem":100,"tickets":2}'::jsonb $$;$vr_statement$;
   execute $vr_statement$create or replace function public._weekly_json(p_uid uuid) returns jsonb language plpgsql stable security definer set search_path = public as $$
@@ -1434,21 +1492,29 @@ begin
 end $$;$vr_statement$;
   execute $vr_statement$create or replace function public.pvp_rankings(p_league text, p_mode text, p_season date default null) returns jsonb
 language plpgsql stable security definer set search_path = public as $$
-declare uid uuid := auth.uid(); s date := coalesce(p_season, _pvp_season()); top jsonb; mine jsonb;
+declare uid uuid := auth.uid(); s date := p_season; top jsonb; mine jsonb;
 begin
   perform _pvp_ok(p_league, p_mode);
-  with t as (select r.user_id, r.rating, r.wins, r.losses, rank() over (order by r.rating desc, r.wins desc) rk
-             from pvp_ratings r where r.league = p_league and r.mode = p_mode and r.season = s and r.wins + r.losses > 0)
+  with latest as (
+    select distinct on (r.user_id) r.user_id, r.rating, r.wins, r.losses
+      from pvp_ratings r
+     where r.league = p_league and r.mode = p_mode and (s is null or r.season = s) and r.wins + r.losses > 0
+     order by r.user_id, r.season desc),
+  t as (select user_id, rating, wins, losses, rank() over (order by rating desc, wins desc) rk from latest)
   select coalesce(jsonb_agg(jsonb_build_object('rank', rk, 'name', coalesce(p.nickname, '플레이어'), 'rating', rating, 'wins', wins, 'losses', losses,
            'me', t.user_id = uid, 'tier', _pvp_tier(rating),
            'abyss', exists (select 1 from pvp_titles x where x.user_id = t.user_id and x.title = 'abyss'),
            'title', coalesce(p.cosmo_title, 'recruit'), 'frame', coalesce(p.cosmo_frame, 'frame_basic'),
            'title_name', coalesce((select d->>'name' from jsonb_array_elements(_cosmo_title_defs()) d where d->>'id' = coalesce(p.cosmo_title, 'recruit')), '')) order by rk), '[]'::jsonb)
     into top from (select * from t order by rk limit 100) t left join profiles p on p.id = t.user_id;
-  with t as (select r.user_id, r.rating, r.wins, r.losses, rank() over (order by r.rating desc, r.wins desc) rk
-             from pvp_ratings r where r.league = p_league and r.mode = p_mode and r.season = s and r.wins + r.losses > 0)
+  with latest as (
+    select distinct on (r.user_id) r.user_id, r.rating, r.wins, r.losses
+      from pvp_ratings r
+     where r.league = p_league and r.mode = p_mode and (s is null or r.season = s) and r.wins + r.losses > 0
+     order by r.user_id, r.season desc),
+  t as (select user_id, rating, wins, losses, rank() over (order by rating desc, wins desc) rk from latest)
   select jsonb_build_object('rank', rk, 'rating', rating, 'wins', wins, 'losses', losses, 'tier', _pvp_tier(rating)) into mine from t where t.user_id = uid;
-  return jsonb_build_object('season', s, 'top', top, 'me', mine);
+  return jsonb_build_object('season', coalesce(s, _pvp_season()), 'top', top, 'me', mine);
 end $$;$vr_statement$;
   execute $vr_statement$revoke all on function public.tower_rankings(text), public.story_rankings(), public.pvp_rankings(text, text, date) from public;$vr_statement$;
   execute $vr_statement$grant execute on function public.tower_rankings(text), public.story_rankings(), public.pvp_rankings(text, text, date) to anon, authenticated;$vr_statement$;
@@ -1650,74 +1716,9 @@ begin
   return _idle_json(uid, r) || res || jsonb_build_object('got', got, 'gem', gem);
 end $$;$vr_statement$;
   execute $vr_statement$revoke all on function public.idle_box_boost() from public, anon;$vr_statement$;
-  execute $vr_statement$grant execute on function public.idle_box_boost() to authenticated;$vr_statement$;
-  execute $vr_statement$-- 2) dispatch_start: 같은 카드 id(사본 포함) 한 파티·진행 중 파견에 중복 금지
-create or replace function public.dispatch_start(p_slot int, p_uids text[], p_hours int) returns jsonb language plpgsql security definer set search_path = public as $$
-declare uid uuid := auth.uid(); o dispatch_offers; z dispatch_zones; owned jsonb; n int; mx int; bon int := 0; ne int; nc int; over boolean; k text; v numeric; rw jsonb := '{}'::jsonb; f numeric; great boolean := false; cnt int; d dispatch_daily;
-begin
-  if uid is null then raise exception 'login required'; end if;
-  if p_hours not in (1, 4, 8, 12) then raise exception 'bad hours'; end if;
-  perform pg_advisory_xact_lock(hashtext('dsp:' || uid::text));
-  select * into o from dispatch_offers where user_id = uid and slot = p_slot for update;
-  if o.user_id is null or o.day <> _dsp_day() then raise exception 'no offer'; end if;
-  if o.taken then raise exception 'taken'; end if;
-  select * into z from dispatch_zones where id = o.zone;
-  if (select count(*) from dispatch_runs where user_id = uid and claimed_at is null) >= _dsp_slots(_dsp_level(uid)) then raise exception 'slots full'; end if;
-  select * into d from dispatch_daily where user_id = uid and day = _dsp_day();
-  if coalesce(d.starts, 0) >= _dsp_cap() then raise exception 'daily cap'; end if;
-  n := coalesce(array_length(p_uids, 1), 0);
-  if n < 1 or n > z.size or (select count(distinct u) from unnest(p_uids) u) <> n then raise exception 'bad cards'; end if;
-  owned := _dsp_owned(uid);
-  create temp table if not exists _dsp_pick (uid text, id text, grade int, el text, cls text) on commit drop; delete from _dsp_pick;
-  insert into _dsp_pick select u, ox.x->>'id', m.grade, m.el, m.cls from unnest(p_uids) u
-    join lateral (select x from jsonb_array_elements(owned) x where x->>'uid' = u limit 1) ox on true
-    join dispatch_card_meta m on m.id = ox.x->>'id';
-  if (select count(*) from _dsp_pick) <> n then raise exception 'not owned'; end if;
-  if (select count(*) from _dsp_pick) <> (select count(distinct id) from _dsp_pick) then raise exception 'duplicate card'; end if;
-  if exists (select 1 from dispatch_runs r where r.user_id = uid and r.claimed_at is null and r.uids && p_uids) then raise exception 'busy'; end if;
-  -- 이미 파견 나간 인재(같은 카드 id, 다른 사본)도 막음
-  if exists (
-    select 1 from dispatch_runs r, unnest(r.uids) ru
-      join lateral (select x->>'id' as id from jsonb_array_elements(owned) x where x->>'uid' = ru limit 1) ox on true
-      join _dsp_pick p on p.id = ox.id
-    where r.user_id = uid and r.claimed_at is null
-  ) then raise exception 'busy'; end if;
-  if exists (select 1 from _dsp_pick where grade >= 5) then raise exception 'banned grade'; end if;
-  select max(grade) into mx from _dsp_pick;
-  if mx < z.min_grade then raise exception 'need grade'; end if;
-  select count(*) filter (where el = o.el), count(*) filter (where cls = o.cls) into ne, nc from _dsp_pick;
-  bon := least(60, 15 * (ne + nc)) + case when mx > z.min_grade then 10 else 0 end;
-  great := least(60, 15 * (ne + nc)) >= 60 and random() < 0.10;
-  f := _dsp_mult(p_hours) * (1 + bon / 100.0) * case when great then 2 else 1 end;
-  for k, v in select key, value::numeric from jsonb_each_text(z.rw) loop
-    v := v * f; cnt := floor(v)::int + case when random() < v - floor(v) then 1 else 0 end;
-    if cnt > 0 then rw := rw || jsonb_build_object(k, cnt); end if;
-  end loop;
-  update dispatch_offers set taken = true where user_id = uid and slot = p_slot;
-  insert into dispatch_daily (user_id, day, starts) values (uid, _dsp_day(), 1) on conflict (user_id, day) do update set starts = dispatch_daily.starts + 1;
-  insert into dispatch_runs (user_id, zone, el, cls, hours, uids, bonus, great, reward, ends_at)
-    values (uid, z.id, o.el, o.cls, p_hours, p_uids, bon, great, rw, now() + make_interval(hours => p_hours));
-  return _dsp_json(uid);
-end $$;$vr_statement$;
-  execute $vr_statement$revoke all on function public.dispatch_start(int, text[], int) from public, anon;$vr_statement$;
-  execute $vr_statement$grant execute on function public.dispatch_start(int, text[], int) to authenticated;$vr_statement$;
-  execute $vr_statement$-- 3) 거래소 게시판: 일반 글에도 올린 사람 닉네임
-create or replace function public._trade_listing_json(l trade_listings, uid uuid) returns jsonb language sql stable security definer set search_path = public as $$
-  select jsonb_build_object('id', l.id, 'mine', l.seller = uid, 'want', l.want,
-    'cards', (select coalesce(jsonb_agg(x->'card' || jsonb_build_object('gkey', x->>'gkey')), '[]'::jsonb) from jsonb_array_elements(l.cards) x),
-    'gear', (select coalesce(jsonb_agg((x->'row') - 'user_id' || jsonb_build_object('gkey', x->>'gkey')), '[]'::jsonb) from jsonb_array_elements(l.gear) x),
-    'offers', (select count(*) from trade_offers o where o.listing_id = l.id and o.status = 'pending'),
-    'my_offer', (select o.id from trade_offers o where o.listing_id = l.id and o.offerer = uid and o.status = 'pending'),
-    'buy_drinks', l.buy_drinks, 'want_ids', l.want_ids,
-    'direct', l.target is not null, 'give_drinks', l.give_drinks, 'to_me', l.target = uid,
-    'seller_name', (select nickname from profiles where id = l.seller),
-    'target_name', case when l.target is not null and l.seller = uid then (select nickname from profiles where id = l.target) end,
-    'buy_gold', l.buy_gold,
-    'expires_at', l.expires_at, 'created_at', l.created_at) $$;$vr_statement$;
-  execute $vr_statement$revoke all on function public._trade_listing_json(trade_listings, uuid) from public, anon, authenticated;$vr_statement$;
 
   insert into vr_staging_install.parts(part_no, bundle_hash, part_hash, project_ref, db_id)
-  values (9, '8157203b9aa6e793a649e2e327c69fce2bfdfa17b0dc7a81d0e845baa5d34adf', 'badd9a664f0995f8b26e84fce26922c4989c9e7aeb6c596f8d7c52066d8cdc40', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
+  values (9, '1e7a91f656cb089116c27629c13947ec0c769796933ace7bb576f39ba0920d4e', '8f1352ee2993a2d373c74b4677c6d99b3f6ffa5e7004f3c228ea3502230c96b9', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
 end $vr_install_part$;
 commit;
 select '09_install.sql: 완료 또는 이미 완료 (9/14)' as result;

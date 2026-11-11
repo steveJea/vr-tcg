@@ -33,7 +33,7 @@ window.VR_UNLOCK_POLICY = {
       "key": "ch0",
       "level": 1,
       "title": "프리미엄 소환",
-      "text": "챕터 0을 완료했어요. 프리미엄 10회 소환으로 새로운 인재를 만나 보세요.",
+      "text": "🎟️ 프리미엄 10회 소환 오픈",
       "reward": {},
       "route": "summon",
       "trigger": "ch0",
@@ -43,7 +43,7 @@ window.VR_UNLOCK_POLICY = {
       "key": "leader",
       "level": 1,
       "title": "인재 레벨업",
-      "text": "지급된 리더를 레벨업해 보세요. 1레벨씩 또는 10레벨씩 올릴 수 있어요.",
+      "text": "리더 레벨업 (+1 / +10)",
       "reward": {
         "blood": 5000,
         "gold": 5000
@@ -56,7 +56,7 @@ window.VR_UNLOCK_POLICY = {
       "key": "deck",
       "level": 1,
       "title": "덱 설정",
-      "text": "덱에 출전할 인재를 배치하고 리더를 정해 보세요.",
+      "text": "🗂 덱 설정 오픈",
       "reward": {
         "gold": 5000
       },
@@ -68,7 +68,7 @@ window.VR_UNLOCK_POLICY = {
       "key": "pvp_hr",
       "level": 3,
       "title": "PvP · 장비 가방",
-      "text": "HR 이하 1대1 리그가 열렸어요. PvP 덱을 배치하고 장비를 확인해 보세요.",
+      "text": "⚔️ HR 이하 1대1 리그 오픈",
       "reward": {
         "gold": 5000
       },
@@ -80,7 +80,7 @@ window.VR_UNLOCK_POLICY = {
       "key": "dispatch",
       "level": 5,
       "title": "파견",
-      "text": "인재를 파견하면 시간이 지난 뒤 보상을 받아요. 파견할 인재와 의뢰를 골라 보세요.",
+      "text": "🧭 파견 오픈 · 시간 지나면 보상",
       "reward": {
         "gold": 5000
       },
@@ -92,7 +92,7 @@ window.VR_UNLOCK_POLICY = {
       "key": "guild",
       "level": 6,
       "title": "조직",
-      "text": "조직에 가입하거나 직접 만들 수 있어요. 가입은 지금 하지 않아도 괜찮아요.",
+      "text": "조직 오픈 · 가입/창설",
       "reward": {
         "gold": 5000,
         "boxes": 2
@@ -105,7 +105,7 @@ window.VR_UNLOCK_POLICY = {
       "key": "friends",
       "level": 8,
       "title": "친구 · 선물",
-      "text": "친구를 추가하고 행동력 선물을 주고받을 수 있어요.",
+      "text": "👥 친구 오픈 · 🎁 행동력 선물",
       "reward": {},
       "route": "friends",
       "trigger": "",
@@ -115,7 +115,7 @@ window.VR_UNLOCK_POLICY = {
       "key": "tower",
       "level": 10,
       "title": "시련의 탑",
-      "text": "덱을 골라 일반 전투 한 판만 도전해 보세요. 소탕은 원할 때 사용할 수 있어요.",
+      "text": "🗼 시련의 탑 오픈",
       "reward": {
         "gold": 5000,
         "boxes": 2
@@ -128,7 +128,7 @@ window.VR_UNLOCK_POLICY = {
       "key": "raid",
       "level": 11,
       "title": "토벌",
-      "text": "조직원들과 보스를 토벌할 수 있어요. 아직 조직이 없어도 안내와 보상은 받을 수 있어요.",
+      "text": "🐉 토벌 오픈",
       "reward": {
         "tickets": 10
       },
@@ -140,7 +140,7 @@ window.VR_UNLOCK_POLICY = {
       "key": "camp",
       "level": 12,
       "title": "훈련소",
-      "text": "인재를 맡기면 훈련 경험치가 쌓여요. 가장 낮은 레벨 인재를 추천하지만 직접 골라도 돼요.",
+      "text": "🏋️ 훈련소 오픈 · 맡기면 EXP",
       "reward": {
         "gold": 5000,
         "boxes": 2
@@ -153,7 +153,7 @@ window.VR_UNLOCK_POLICY = {
       "key": "skill",
       "level": 13,
       "title": "EX 합성 · 스킬 강화 · 대여",
-      "text": "인재를 EX 합성하거나 스킬을 강화할 수 있어요. 조직 인재 대여도 열렸어요.",
+      "text": "EX 합성 · 스킬 강화 · 대여 오픈",
       "reward": {
         "soul": 1000,
         "gold": 5000
@@ -166,7 +166,7 @@ window.VR_UNLOCK_POLICY = {
       "key": "sigil",
       "level": 14,
       "title": "증표",
-      "text": "인재 전용 증표를 만들고 강화할 수 있어요. 선택 상자는 우편에서 받을 수 있어요.",
+      "text": "증표 오픈 · 📬 선택 상자",
       "reward": {
         "sigil_boxes": 10
       },
@@ -178,7 +178,7 @@ window.VR_UNLOCK_POLICY = {
       "key": "trade",
       "level": 15,
       "title": "무제한 1대1 · 거래소",
-      "text": "무제한 1대1 리그와 거래소가 열렸어요. 거래소는 계정 생성 후 7일이 지나면 이용할 수 있어요.",
+      "text": "무제한 1대1 · 거래소 오픈 (가입 7일 후)",
       "reward": {
         "tickets": 10
       },
@@ -190,7 +190,7 @@ window.VR_UNLOCK_POLICY = {
       "key": "pvp_3v3",
       "level": 17,
       "title": "3대3 리그",
-      "text": "세 덱으로 겨루는 3대3 리그가 열렸어요. 두 리그에서 모두 도전할 수 있어요.",
+      "text": "3대3 리그 오픈",
       "reward": {},
       "route": "pvp",
       "trigger": "",
@@ -200,7 +200,7 @@ window.VR_UNLOCK_POLICY = {
       "key": "war",
       "level": 18,
       "title": "조직전",
-      "text": "조직원들과 방어 덱을 배치하고 상대 조직에 도전해 보세요.",
+      "text": "🏴 구역 전쟁 오픈",
       "reward": {},
       "route": "war",
       "trigger": "",
@@ -210,7 +210,7 @@ window.VR_UNLOCK_POLICY = {
       "key": "pvp_boss",
       "level": 20,
       "title": "보스 리그",
-      "text": "진영 보스를 지키는 보스 리그가 열렸어요. 두 리그에서 모두 도전할 수 있어요.",
+      "text": "👑 보스 리그 오픈",
       "reward": {},
       "route": "pvp",
       "trigger": "",
@@ -220,7 +220,7 @@ window.VR_UNLOCK_POLICY = {
       "key": "facilities",
       "level": 20,
       "title": "연마소 · 도장",
-      "text": "연마소에서 장비를, 도장에서 스킬을 강화할 수 있어요. 훈련소 건물 레벨과 무관하게 이용하며 기존 재료와 도장 개방 비용은 필요해요.",
+      "text": "⚒️ 연마소 · 🥋 도장 오픈",
       "reward": {
         "gold": 5000
       },
@@ -232,7 +232,7 @@ window.VR_UNLOCK_POLICY = {
       "key": "attr25",
       "level": 25,
       "title": "바람 · 얼음 · 불의 탑",
-      "text": "같은 속성 인재로 도전하는 세 탑이 열렸어요. 각 탑의 개방 요일에 도전해 보세요.",
+      "text": "속성 탑 3곳 오픈 · 요일별",
       "reward": {},
       "route": "tower",
       "trigger": "",
@@ -242,7 +242,7 @@ window.VR_UNLOCK_POLICY = {
       "key": "attr40",
       "level": 40,
       "title": "빛의 섬 · 어둠의 늪",
-      "text": "빛과 어둠의 인재를 위한 두 탑이 열렸어요. 각 탑의 개방 요일에 도전해 보세요.",
+      "text": "빛·어둠 탑 오픈 · 요일별",
       "reward": {},
       "route": "tower",
       "trigger": "",

@@ -32,7 +32,7 @@
    서버/SQL/브라우저 버전이 맞지 않으면 시작 전에 거절한다. 이미 발급된 구버전 세션은 1시간/시즌 말에 만료한다.
 5. 아래 실제 staging smoke test를 소유자 테스트 계정 두 개로 진행한다.
 
-**신규 빈 테스트 DB만** 같은 커밋의 `supabase/staging/01_install.sql`~`13_install.sql`을 번호순 설치한다.
+**신규 빈 테스트 DB만** 같은 커밋의 `supabase/staging/01_install.sql`~`14_install.sql`을 번호순 설치한다.
 기존 10/12개짜리 bundle 설치 DB에 새 bundle을 섞지 않는다. 기존 DB는 개별 migration만 사용한다.
 옛 기능 SQL/1·2단계를 나중에 재실행하면 새 정의를 덮어쓸 수 있으므로 항상 **1→2→3** 순서다.
 

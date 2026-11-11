@@ -50,12 +50,16 @@
 
   // ---- 리더 영상 훅 ----
   const movieCache = new Map();
+  // 저장소에 있는 영상만 요청한다. 없는 id 는 HEAD 로 404 를 내지 않는다.
+  const MOVIES = new Set(['10012', '10051', '10053', '10058', '10060', '10062', '10256', '10291', '10300', '10304', '10311', '10323', '10324', '10326', '10359', '10442']);
   async function movieFor(id) {
-    if (movieCache.has(id)) return movieCache.get(id);
-    const url = `data/movie/${id}.mp4`;
+    const key = String(id);
+    if (movieCache.has(key)) return movieCache.get(key);
+    if (!MOVIES.has(key)) { movieCache.set(key, null); return null; }
+    const url = `data/movie/${key}.mp4`;
     let ok = false;
     try { const r = await fetch(url, { method: 'HEAD' }); ok = r.ok && /video|octet/.test(r.headers.get('content-type') || 'video/mp4'); } catch {}
-    movieCache.set(id, ok ? url : null); return ok ? url : null;
+    movieCache.set(key, ok ? url : null); return ok ? url : null;
   }
   function bindLeaderVideo(box, url) {
     if (!box || !url) return;
@@ -75,8 +79,9 @@
 
   // ---- 기본 섹션 ----
   const pct = (a, b) => b ? Math.floor(a / b * 100) : 0;
+  const leadMark = cls => { const ic = window.VRIcon?.icon?.('crown', { alt: '리더' }); return `<span class="${cls}" title="리더">${ic || '👑'}</span>`; };
   const thumb = (o, cls = '', cnt = 1) => `<button type="button" class="mp-card rar-${SHORT[o.grade] || 'N'} ${cls}" data-uid="${esc(o.uid)}" data-id="${esc(o.id)}" title="${esc(o.name)}${cnt > 1 ? ` x${cnt}` : ''}" aria-label="${esc(o.name)} 인재 정보"><img loading="lazy" src="${cardThumb(o.id)}" alt="${esc(o.name)}" onerror="this.style.visibility='hidden'">
-    <span class="mp-rar">${SHORT[o.grade] || ''}</span>${o.leader ? '<span class="mp-lead">👑</span>' : ''}${o.fav ? '<span class="mp-fav">★</span>' : ''}${cnt > 1 ? `<span class="mp-cnt">x${cnt}</span>` : ''}<span class="mp-lv">Lv.${o.level || 1}</span><span class="mp-nm">${esc(o.name)}</span></button>`;
+    <span class="mp-rar">${SHORT[o.grade] || ''}</span>${o.leader ? leadMark('mp-lead') : ''}${o.fav ? '<span class="mp-fav">★</span>' : ''}${cnt > 1 ? `<span class="mp-cnt">x${cnt}</span>` : ''}<span class="mp-lv">Lv.${o.level || 1}</span><span class="mp-nm">${esc(o.name)}</span></button>`;
   /** 같은 카드(id) 여러 장은 한 칸으로: 대표 = 리더 > 덱 > 레벨·EX 높은 것, 개수는 x<n> */
   function groupOwned(owned, deck) {
     const g = new Map();
@@ -97,6 +102,7 @@
     const s = ctx.story, L = s?.owned.find(o => o.uid === s.leaderUid) || s?.owned.find(o => s.deckUids?.[0] === o.uid);
     if (!L) return `<div class="mp-leader empty"><div class="mp-empty">—</div></div>`;
     return `<div class="mp-leader rar-${SHORT[L.grade] || 'N'}" id="mp-leader" data-id="${esc(L.id)}"><img src="${IMG}${L.id}.webp" alt="${esc(L.name)}" class="mp-leader-img" onerror="this.style.visibility='hidden'">
+      ${leadMark('mp-crown')}
       <div class="mp-leader-cap"><span class="mp-rar">${SHORT[L.grade] || ''}</span><b>${esc(L.name)}</b><small>리더 · Lv.${L.level || 1}${L.power ? ` · ⚡ ${Number(L.power).toLocaleString('ko-KR')}` : ''}</small></div>
       <span class="mp-play" aria-hidden="true">▶</span></div>`;
   } });
@@ -106,7 +112,7 @@
       <div class="mp-pinfo"><div class="mp-pxp"><span>EXP</span><span>${p.xp_next ? `${p.xp.toLocaleString('ko-KR')} / ${p.xp_next.toLocaleString('ko-KR')}` : '최대 레벨'}</span></div><div class="mp-bar"><i style="width:${pct}%"></i></div>
       <div class="mp-pxp"><span>${window.VRIcon?.cur?.('stamina') || '🔋'}</span><span><b>${p.stamina}</b> / ${p.stamina_max}</span></div><div class="mp-bar st"><i style="width:${Math.min(100, Math.round(p.stamina / p.stamina_max * 100))}%"></i></div></div></div>`; } });
   addSection({ id: 'wallet', order: 20, render: ctx => `<div class="mp-wallet">${CURRENCIES.map(c => { const v = c.value(ctx);
-    return `<div class="mp-cur ${c.soon ? 'soon' : ''}" data-cur="${c.key}" title="${esc(c.label)}"><span class="mp-cur-ic">${window.VRIcon?.cur?.(c.key, { alt: c.label }) || c.icon}</span><b>${v == null ? (c.soon ? '준비 중' : '-') : Number(v).toLocaleString('ko-KR')}</b></div>`; }).join('')}</div>` });
+    return `<div class="mp-cur ${c.soon ? 'soon' : ''}" data-cur="${c.key}" title="${esc(c.label)}"><span class="mp-cur-ic">${window.VRIcon?.cur?.(c.key, { alt: c.label }) || c.icon}</span><b>${v == null ? (c.soon ? '🔒 준비 중' : '-') : Number(v).toLocaleString('ko-KR')}</b></div>`; }).join('')}</div>` });
   // 조직 (guild.sql · js/guild.js): 엠블럼 · 이름 · 레벨 → 조직 화면
   addSection({ id: 'guild', order: 11, render: ctx => ctx.guild ? window.VRGuild?.myCard?.(ctx.guild) || '' : '' });
   // 심연석 (gem.sql · js/gem.js): 잔액 + 최근 20건
@@ -116,7 +122,7 @@
     const chs = s?.chapters || [], done = chs.reduce((x, c) => x + c.done, 0), tot = chs.reduce((x, c) => x + c.total, 0);
     const games = a ? a.wins + a.losses + a.draws : 0;
     return `<div class="mp-rec">
-      ${s?.current ? (() => { const c = s.current; return `<button type="button" class="mp-story" data-nav="story" data-ch="${c.i}" aria-label="스토리 맵"><span class="mp-story-bg" style="background-image:url(img/story/ch_bg_${esc(c.bg || c.id)}.webp),url(img/story/ch_bg_${esc(c.id)}.webp)${c.cover ? `,url(${esc(c.cover)})` : ''},url(img/story/opening_poster.webp)"></span>
+      ${s?.current ? (() => { const c = s.current; const art = window.VRStory?.chapterArt?.({ bg: c.bg || c.id, id: c.id, cover: c.cover, order: ['pc', 'm'] }) || { src: 'img/story/opening_poster.webp', pos: '' }; return `<button type="button" class="mp-story" data-nav="story" data-ch="${c.i}" aria-label="스토리 맵"><span class="mp-story-bg" style="background-image:url(${esc(art.src)})${art.pos ? `;background-position:${esc(art.pos)}` : ''}"></span>
         <span class="mp-story-t"><small>${esc(c.title)}</small><b>${esc(c.subtitle)}</b><i>${c.phase ? `Phase.${c.phase}${c.boss ? ' · BOSS' : ''}` : `✔ ${c.done}/${c.total}`}</i></span></button>`; })() : ''}
       <div class="mp-stat"><span>아케이드 · 검증 전적</span><b>${a ? `${a.wins}승 ${a.losses}패${a.draws ? ` ${a.draws}무` : ''}` : '-'}</b><small>${a && games ? `승률 ${pct(a.wins, games)}%` : '기록 없음'}</small></div>
       <div class="mp-stat"><span>시련의 탑</span><b>${ctx.questBest != null ? `${ctx.questBest}층` : '-'}</b><small>최고 기록</small></div>
@@ -144,7 +150,7 @@
     m.addEventListener('click', e => { if (e.target === m) close(); });   // 바깥 클릭 = 닫기 (팝업일 때)
     m.querySelector('.mp-panel').addEventListener('click', e => { if (e.target.closest('#mp-close')) return close();   // 판에 달아 둠: 페이지로 옮겨가도 동작
       const nv = e.target.closest('[data-nav]'); if (nv) { if (nv.dataset.nav === 'gearbag') return window.VRGear?.bag?.(); if (nv.dataset.nav === 'camp') return window.VRCamp?.open?.();   // 장비 가방은 팝업이라 마이페이지는 그대로
-        close(); const S = window.VRStory; return nv.dataset.nav === 'story' ? S?.openMap?.(+nv.dataset.ch) : nv.dataset.nav === 'decks' ? S?.openDecks?.() : S?.openCards?.(); }
+        close(); const S = window.VRStory; return nv.dataset.nav === 'story' ? S?.openMap?.(+nv.dataset.ch) : nv.dataset.nav === 'decks' ? S?.openDecks?.('mypage') : S?.openCards?.('mypage'); }
       const t = e.target.closest('.mp-card[data-uid]'); if (t) openCard(t.dataset.uid, t.dataset.id); });   // 바깥 클릭 = 닫기
     document.addEventListener('keydown', e => { if (e.key === 'Escape' && !m.classList.contains('hidden')) close(); });
     return m;
@@ -159,7 +165,7 @@
     const m = ensure(), body = $('mp-body');
     if (!(window.VRPages?.current === 'mypage' || window.VRPages?.open?.('mypage'))) { m.classList.remove('hidden'); document.body.classList.add('gal-lock'); }
     if (!user()) {
-      body.innerHTML = `<div class="mp-guest"><img src="img/ui/profile.webp" alt="" width="72" height="72"><b>로그인 필요</b>${cloud()?.sb ? '<button id="mp-login" class="main-btn mp-login">구글 로그인</button>' : '<small>오프라인</small>'}</div>`;
+      body.innerHTML = `<div class="mp-guest" data-clarity-mask="true"><img src="img/ui/profile.webp" alt="" width="72" height="72"><b>로그인 필요</b>${cloud()?.sb ? '<button id="mp-login" class="main-btn mp-login">로그인</button>' : '<small>오프라인</small>'}</div>`;
       if ($('mp-login')) $('mp-login').onclick = () => cloud().login();
       return;
     }
@@ -174,7 +180,7 @@
     const av = leadAv || meta.avatar_url || null;
     const whoChip = window.VRCosmo?.chip?.({ name: nick, title: eq.title, title_name: window.VRCosmo.titleName?.(eq.title), frame: eq.frame, avatar: av })
       || `<img src="${av ? esc(av) : 'img/ui/profile.webp'}" referrerpolicy="no-referrer" alt="" class="mp-av" onerror="this.src='img/ui/profile.webp'"><b class="mp-nick">${esc(nick)}</b>`;
-    body.innerHTML = `<div class="mp-who">${whoChip}<button id="mp-cosmo" class="mp-cosmo" type="button"><img class="ui-btn-ic" src="img/ui/icon/cosmetics.webp" alt="꾸미기" width="16" height="16">꾸미기</button><button id="mp-nick-edit" class="mp-nick-edit" type="button">닉네임 변경${cloud()?.profile?.nick_set ? ' <small>🔮200</small>' : ''}</button></div>`
+    body.innerHTML = `<div class="mp-who" data-clarity-mask="true">${whoChip}<button id="mp-cosmo" class="mp-cosmo" type="button"><img class="ui-btn-ic" src="img/ui/icon/cosmetics.webp" alt="꾸미기" width="16" height="16">꾸미기</button><button id="mp-nick-edit" class="mp-nick-edit" type="button">닉네임 변경${cloud()?.profile?.nick_set ? ' <small>🔮200</small>' : ''}</button></div>`
       + sections.map(s => { let h = ''; try { h = s.render(ctx) || ''; } catch (e) { console.warn('[mypage] section', s.id, e); }
         return h ? `<section class="mp-sec" data-sec="${s.id}">${s.title ? `<h3>${s.title}</h3>` : ''}${h}</section>` : ''; }).join('');
     const ne = $('mp-nick-edit'); if (ne) ne.onclick = async () => { const n = await cloud()?.askNickname?.(); if (n) { const b = body.querySelector('.cosmo-nm, .mp-nick'); if (b) b.textContent = n; } };

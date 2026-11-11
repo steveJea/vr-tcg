@@ -1,5 +1,5 @@
 // ===== 체력의 드링크 🥤 — 서버: supabase/trade_drink.sql =====
-// 심연석 팝업 안에 보유량(거래 가능 · 귀속) + 사용 + 구매(유료 심연석만) 칸. 구매·사용 전 확인, 확인창 바깥 누르면 취소
+// 심연석 팝업·소모품 탭: 보유량(거래 가능 · 귀속) + 사용 + 구매(무료분부터 차감). 구매·사용 전 확인, 확인창 바깥 누르면 취소
 // SQL 실행 전이거나 비로그인이면 칸이 안 보임
 (() => {
   const IC = '🥤', NAME = '체력의 드링크';
@@ -14,7 +14,7 @@
     return data;
   }
   const n = v => Number(v || 0).toLocaleString('ko-KR');
-  const ERR = { 'not enough paid gem': '🔮 유료 심연석이 부족해요 (무료분은 못 써요)', 'not enough drink': `${IC} 드링크가 부족해요`, 'stamina cap': '🔋 행동력이 너무 많아요. 조금 쓰고 마셔요', 'login required': '로그인이 필요해요' };
+  const ERR = { 'not enough gem': '🔮 심연석이 부족해요', 'not enough paid gem': '🔮 심연석이 부족해요', 'not enough drink': `${IC} 드링크가 부족해요`, 'stamina cap': '🔋 행동력 가득', 'login required': '로그인이 필요해요' };
   const errText = e => { const m = String(e?.message || e); const k = Object.keys(ERR).find(x => m.includes(x)); return k ? ERR[k] : m.slice(0, 60); };
   const toast = t => window.VRGem?.toast?.(t);
   async function status() { if (off) return null; try { const r = await rpc('drink_status'); if (r?.ok) cache = r; } catch (e) { console.warn('[drink]', e?.message); } return cache; }
@@ -24,21 +24,21 @@
       <small>거래 가능 ${n(s.tradable - s.locked)} · 귀속 ${n(s.bound)}${s.locked ? ` · 🔒거래중 ${n(s.locked)}` : ''}</small></div>
       <button type="button" class="drink-use" data-drink-use ${s.total - s.locked > 0 ? '' : 'disabled'}>마시기 +${s.per}${ST}</button></div>
       <div class="drink-shop">${(s.shop || []).map(k => `<button type="button" class="gem-buy" data-drink-buy="${k.sku}"><span class="gem-buy-get">${ICH}<b>×${k.qty}</b></span><span class="gem-buy-p">${GEM}${n(k.price)}</span></button>`).join('')}</div>
-      <div class="drink-how">유료 심연석 ${n(s.paid_gem)}개로만 살 수 있어요 · 산 드링크는 거래 가능, 이벤트 드링크는 귀속</div></div>`;
+      <details class="vr-tip drink-how"><summary>ⓘ</summary><p>산 드링크는 거래 가능, 이벤트 드링크는 귀속</p></details></div>`;
   }
   function ask(host, text) {
     return new Promise(res => {
       const a = document.createElement('div'); a.className = 'drink-ask';
-      a.innerHTML = `<div class="drink-ask-box"><p>${text}</p><div><button type="button" data-no>취소</button><button type="button" data-yes>확인</button></div></div>`;
+      a.innerHTML = `<div class="drink-ask-box" role="dialog">${text}<div class="drink-ask-acts"><button type="button" data-no>취소</button><button type="button" data-yes>확인</button></div></div>`;
       a.addEventListener('click', e => { e.stopPropagation(); if (e.target === a || e.target.closest('[data-no]')) { a.remove(); res(false); } else if (e.target.closest('[data-yes]')) { a.remove(); res(true); } });
-      host.appendChild(a);
+      document.body.appendChild(a);
     });
   }
   /** 심연석 팝업에 붙이기: 버튼 연결, 끝나면 redraw() */
   function bind(host, redraw) {
     host.querySelectorAll('[data-drink-buy]').forEach(b => b.onclick = async e => {
       e.stopPropagation(); const k = cache?.shop?.find(x => x.sku === b.dataset.drinkBuy); if (!k) return;
-      if (!await ask(host.querySelector('.gem-panel') || host, `${ICH} ${NAME} ${k.qty}개를<br>유료 심연석 ${GEM}${n(k.price)}로 살까요?`)) return;
+      if (!await ask(host.querySelector('.gem-panel') || host, `<p>${ICH} ${NAME} ${k.qty}개를</p><p>심연석 ${n(k.price)}개로 살까요?</p><p class="drink-ask-note">무료 심연석을 먼저 써요</p>`)) return;
       b.disabled = true;
       try { const r = await rpc('drink_buy', { p_sku: k.sku }); if (r?.ok) { cache = r; toast(`${IC} ${NAME} +${r.bought}`); window.VRGem?.status?.(true); } }
       catch (er) { toast(errText(er)); }
@@ -46,7 +46,7 @@
     });
     host.querySelectorAll('[data-drink-use]').forEach(b => b.onclick = async e => {
       e.stopPropagation(); if (!cache) return;
-      if (!await ask(host.querySelector('.gem-panel') || host, `${ICH} 1개를 마셔서 행동력 +${cache.per}?<br><small>귀속 드링크부터 써요</small>`)) return;
+      if (!await ask(host.querySelector('.gem-panel') || host, `<p>${ICH} 1개를 마셔서</p><p>행동력 +${cache.per}?</p>`)) return;
       b.disabled = true;
       try { const r = await rpc('drink_use', { p_n: 1 }); if (r?.ok) { cache = r; toast(`🔋 행동력 +${r.used * r.per} (지금 ${n(r.stamina)})`); window.VRPlayer?.status?.(true); } }
       catch (er) { toast(errText(er)); }

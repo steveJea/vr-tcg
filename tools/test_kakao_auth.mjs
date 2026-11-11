@@ -1,0 +1,160 @@
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import vm from 'node:vm';
+import {build} from 'esbuild';
+import {parseHTML} from 'linkedom';
+import {OAUTH_PROVIDERS,profileSeed,hasIdentity,oauthRequest,discoverKakao,cleanOAuthCallback} from '../js/auth-oauth.js';
+const root = new URL('../',import.meta.url);
+const source = await readFile(new URL('js/cloud.js',root),'utf8');
+const html = await readFile(new URL('index.html',root),'utf8');
+const bundle = (await build({stdin:{contents:source.replace('import(SDK)','Promise.resolve(window.__authSdk)'),resolveDir:new URL('js/',root).pathname},bundle:true,write:false,format:'iife',logLevel:'silent'})).outputFiles[0].text;
+const tick=()=>new Promise(r=>setImmediate(r));
+const plain=o=>JSON.parse(JSON.stringify(o));
+function fixture({u=null,enabled=true,profiles={},authError=null,linkError=null,fetchError=false,href='https://vr-tcg-staging.notcold.workers.dev/',deferredProfile=null,linkIntent=null,serverUser=u,initError=null,external=null,probeEnabled=false,probeError=false}={}) {
+ const {window}=parseHTML(html),document=window.document;
+ const location=new URL(href),calls=[],messages=[],replaces=[],timers=new Map();let seq=0,listener;
+ class Storage { constructor(){this.data=new Map();} getItem(k){return this.data.get(k)??null;} setItem(k,v){this.data.set(k,String(v));} removeItem(k){this.data.delete(k);} }
+ const localStorage=new Storage(),sessionStorage=new Storage();if(linkIntent)sessionStorage.setItem('vrTcgOAuthLink.v1:https://cuyqchmdcnsgzkwyclji.supabase.co',JSON.stringify({...linkIntent,startedAt:Date.now()}));localStorage.setItem('vrTcgIntroSeen','1');
+ const sb={auth:{
+  initialize:async()=>({error:initError}),
+  getUser:async()=>{calls.push(['getUser']);return {data:{user:serverUser},error:null};},
+  getSession:async()=>({data:{session:u?{user:u}:null},error:null}),
+  onAuthStateChange:fn=>{listener=fn;return {data:{subscription:{unsubscribe(){}}}};},
+  signInWithOAuth:async req=>{calls.push(['signInWithOAuth',plain(req)]);return {error:authError};},
+  linkIdentity:async req=>{calls.push(['linkIdentity',plain(req)]);return {error:linkError};},
+  signOut:async()=>{listener('SIGNED_OUT',null);return {error:null};}
+ },from:table=>({
+   select:()=>({eq:(key,id)=>({maybeSingle:async()=>{
+     calls.push(['select',table,key,id]);
+     if(table==='profiles'&&deferredProfile&&id===deferredProfile.id)return deferredProfile.promise;
+     return {data:table==='profiles'?(profiles[id]??null):null,error:null};
+   }})}),
+   upsert:async row=>{calls.push(['upsert',table,plain(row)]);return {error:null};}
+ }),rpc:async(name,args)=>{calls.push(['rpc',name,plain(args??{})]);return {data:name==='arcade_record_v5'?{wins:0,losses:0,draws:0}:null,error:null};}};
+ window.__authSdk={createClient:(url,key,options)=>{calls.push(['createClient',url,key,plain(options)]);return sb;}};
+ window.VRGem={toast:m=>messages.push(m)};window.VRConfirm=async()=>true;
+ const context=vm.createContext({window,document,location,history:{replaceState:(...a)=>{replaces.push(a);location.href=new URL(a[2],location).href;}},Storage,localStorage,sessionStorage,console,URL,URLSearchParams,AbortController,CustomEvent:window.CustomEvent,alert:m=>messages.push(m),atob,
+ setTimeout:(fn,ms)=>{timers.set(++seq,{fn,ms});return seq;},clearTimeout:id=>timers.delete(id),
+ fetch:async(url,options)=>{calls.push(['fetch',url,plain({headers:options.headers,cache:options.cache})]);if(fetchError)throw Error('offline');if(url.includes('/authorize?')){if(probeError)throw Error('probe offline');return {status:400,json:async()=>({error_code:'validation_failed',msg:probeEnabled?'PKCE flow requires code_challenge_method and code_challenge':'Unsupported provider: provider is not enabled'})};}return {ok:true,json:async()=>({external:external??{google:true,kakao:enabled,x:false,twitter:false}})};}
+ });
+ vm.runInContext(bundle,context);
+ return {window,document,calls,messages,replaces,timers,localStorage,sessionStorage,settle:async()=>{for(let i=0;i<5;i++)await tick();},emit:(event,next)=>listener(event,next?{user:next}:null),fireTimer:ms=>{for(const[id,t]of timers)if(t.ms===ms){timers.delete(id);t.fn();}}};
+}
+assert.deepEqual(Object.keys(OAUTH_PROVIDERS),['google','kakao','x','twitter']);
+for(const u of [null,{}, {email:null}, {email:''}, {email:{bad:1},user_metadata:{name:{bad:1},avatar_url:123}}, {email:'   ',user_metadata:{name:'  '}}])assert.equal(profileSeed(u).nickname,'플레이어');
+assert.deepEqual(profileSeed({user_metadata:{name:' 카카오형 ',picture:'https://example.com/p.png'}}),{nickname:'카카오형',avatar_url:'https://example.com/p.png'});
+assert.equal(profileSeed({user_metadata:{name:'가'.repeat(40)}}).nickname.length,20);
+assert(hasIdentity({identities:[{provider:'kakao'}]},'kakao'));assert(!hasIdentity({},'kakao'));
+assert.throws(()=>oauthRequest('github','https://example.com/'));
+const cfg={enabled:true,supabaseUrl:'https://example.supabase.co',anonKey:'PUBLIC_ANON'};
+assert.equal(await discoverKakao({...cfg,enabled:false},()=>{throw Error('must not fetch')}),false);
+assert.equal(await discoverKakao(cfg,async()=>({ok:true,json:async()=>({external:{kakao:'true'}})})),false);
+assert.equal(await discoverKakao(cfg,async()=>({ok:false,json:async()=>({external:{kakao:true}})})),false);
+assert.equal(await discoverKakao(cfg,()=>new Promise(()=>{}),5),false,'even a fetch that ignores abort is bounded');
+for(const input of ['https://example.com/?vrEnv=staging&code=secret#normal','https://example.com/?foo=1#error=access_denied&error_description=private','https://example.com/#access_token=secret&refresh_token=secret&token_type=bearer']){
+ let out;const loc=new URL(input);cleanOAuthCallback(loc,{replaceState:(_a,_b,url)=>out=url});assert(out);assert.doesNotMatch(out,/secret|private|error|access_token|refresh_token/);
+ if(input.includes('vrEnv'))assert.equal(out,'/?vrEnv=staging#normal');
+}
+for(const provider of ['google','kakao']){
+ const f=fixture();await f.settle();assert(f.window.VRCloud.ready);assert.equal(f.document.getElementById('intro-login-kakao').hidden,false);
+ await f.window.VRCloud.login(provider);await f.window.VRCloud.login(provider);
+ const auth=f.calls.filter(c=>c[0]==='signInWithOAuth');assert.equal(auth.length,1,'PKCE double click guarded');
+ assert.deepEqual(auth[0][1],{provider,options:{redirectTo:'https://vr-tcg-staging.notcold.workers.dev/'}});
+ assert.equal(f.calls[0][3].auth.flowType,'pkce');
+ f.fireTimer(10000);await f.window.VRCloud.login(provider);assert.equal(f.calls.filter(c=>c[0]==='signInWithOAuth').length,2,'blocked navigation can be retried');
+}
+for(const opts of [{enabled:false},{fetchError:true}]){
+ const f=fixture(opts);await f.settle();assert.equal(f.document.getElementById('acct-login-kakao').hidden,true);assert.equal(f.document.getElementById('intro-login-kakao').hidden,true);
+ await f.window.VRCloud.login('kakao');assert.equal(f.calls.filter(c=>c[0]==='signInWithOAuth').length,0);await f.window.VRCloud.login();assert.equal(f.calls.find(c=>c[0]==='signInWithOAuth')[1].provider,'google');
+}
+{
+ const f=fixture();await f.settle();await f.window.VRCloud.login();assert(f.document.getElementById('oauth-choose'));
+ f.document.querySelector('#oauth-choose [data-oauth-provider="kakao"]').click();await f.settle();assert.equal(f.calls.find(c=>c[0]==='signInWithOAuth')[1].provider,'kakao');assert(!f.document.getElementById('oauth-choose'));
+}
+{
+ const f=fixture({authError:{code:'provider_disabled'}});await f.settle();await f.window.VRCloud.login('kakao');await f.window.VRCloud.login('google');assert.equal(f.calls.filter(c=>c[0]==='signInWithOAuth').length,2);assert.equal(f.messages.length,2);
+}
+{
+ const f=fixture({u:{id:'missing-profile',email:'',identities:[{provider:'kakao'}]}});await f.settle();assert(f.document.getElementById('nick-ov'));assert(f.calls.some(c=>c[0]==='upsert'&&c[1]==='profiles'&&c[2].nickname==='플레이어'));
+}
+const kakao={id:'kakao-no-email',email:'',identities:[{provider:'kakao'}],user_metadata:{}};
+{
+ const f=fixture({u:kakao,profiles:{[kakao.id]:{nickname:'플레이어',nick_set:false,avatar_url:null}}});await f.settle();
+ assert.equal(f.window.VRCloud.user.id,kakao.id);assert(f.document.getElementById('nick-ov'),'same first-login nickname onboarding');
+ assert.equal(f.document.getElementById('main-link-kakao').hidden,true);assert.equal(f.document.getElementById('main-link-google').hidden,false);
+ assert(f.calls.some(c=>c[0]==='select'&&c[1]==='profiles'&&c[3]===kakao.id));assert(!f.calls.some(c=>JSON.stringify(c).includes('"email",')),'never query identity by email');
+ await f.window.VRCloud.login('google');assert(!f.calls.some(c=>c[0]==='signInWithOAuth'),'signed-in account cannot be replaced');
+ await f.window.VRCloud.linkProvider('google');assert.equal(f.calls.find(c=>c[0]==='linkIdentity')[1].provider,'google');assert.equal(f.window.VRCloud.user.id,kakao.id);
+}
+{
+ const google={id:'existing-google',email:'a@example.com',identities:[{provider:'google'}]};
+ const f=fixture({u:google,profiles:{[google.id]:{nickname:'기존형',nick_set:true}}});await f.settle();await f.window.VRCloud.linkProvider('kakao');
+ assert.deepEqual(f.calls.find(c=>c[0]==='linkIdentity')[1],{provider:'kakao',options:{redirectTo:'https://vr-tcg-staging.notcold.workers.dev/'}});
+ assert(!f.calls.some(c=>c[0]==='signInWithOAuth'));f.emit('USER_UPDATED',{...google,identities:[...google.identities,{provider:'kakao'}]});await f.settle();assert(f.document.getElementById('main-link-kakao').hidden);assert.equal(f.window.VRCloud.user.id,google.id);
+}
+for(const error of [{code:'manual_linking_disabled'},{code:'identity_already_exists'}]){
+ const f=fixture({u:kakao,profiles:{[kakao.id]:{nickname:'카카오형',nick_set:true}},linkError:error});await f.settle();await f.window.VRCloud.linkProvider('google');assert(f.messages.length);assert.equal(f.window.VRCloud.user.id,kakao.id);assert(!f.calls.some(c=>c[0]==='signInWithOAuth'));
+}
+{
+ const f=fixture({u:kakao,profiles:{[kakao.id]:{nickname:'카카오형',nick_set:true}}});await f.settle();f.window.VRConfirm=async()=>false;await f.window.VRCloud.linkProvider('google');assert(!f.calls.some(c=>c[0]==='linkIdentity'));
+ f.window.VRConfirm=async()=>{f.emit('SIGNED_OUT',null);await f.settle();return true;};await f.window.VRCloud.linkProvider('google');assert(!f.calls.some(c=>c[0]==='linkIdentity'),'account change during confirmation cancels linking');
+}
+{
+ let resolve;const promise=new Promise(r=>resolve=r);const old={id:'old',identities:[{provider:'google'}]};
+ const f=fixture({u:old,deferredProfile:{id:'old',promise},profiles:{[kakao.id]:{nickname:'새계정',nick_set:true}}});await f.settle();f.emit('SIGNED_IN',kakao);await f.settle();resolve({data:{nickname:'옛계정',nick_set:false},error:null});await f.settle();assert.equal(f.window.VRCloud.profile.nickname,'새계정');assert(!f.document.getElementById('nick-ov'));assert(!f.document.getElementById('acct-box').textContent.includes('옛계정'));
+}
+{
+ const f=fixture({href:'https://vr-tcg-staging.notcold.workers.dev/?error=access_denied&error_description=PRIVATE'});await f.settle();assert(f.window.VRCloud.ready);assert(f.messages[0].includes('취소'));assert.equal(f.replaces[0][2],'/');
+}
+{
+ const f=fixture({href:'https://unknown.example/'});await f.settle();assert.equal(f.window.VRCloud.ready,false);assert.equal(f.calls.length,0,'unregistered hostname cannot start discovery/SDK');
+}
+// Real callback error shape: preserve original Kakao UUID and explain conflict.
+{
+ const f=fixture({u:kakao,serverUser:kakao,linkIntent:{uid:kakao.id,provider:'google'},profiles:{[kakao.id]:{nickname:'카카오형',nick_set:true}},href:'https://vr-tcg-staging.notcold.workers.dev/#error=server_error&error_code=identity_already_exists&error_description=Identity+is+already+linked+to+another+user'});
+ await f.settle();assert.equal(f.window.VRCloud.user.id,kakao.id);assert.equal(f.messages[0],'이미 다른 계정에 연결된 구글 계정이에요.');assert(!f.messages.some(m=>m.includes('취소')));assert(f.calls.some(c=>c[0]==='getUser'));
+}
+{
+ const linked={...kakao,identities:[...kakao.identities,{provider:'google'}]};
+ const f=fixture({u:kakao,serverUser:linked,linkIntent:{uid:kakao.id,provider:'google'},profiles:{[kakao.id]:{nickname:'유지',nick_set:true}},href:'https://vr-tcg-staging.notcold.workers.dev/?code=FAKE_TEST_CODE'});await f.settle();assert.equal(f.messages[0],'구글 계정이 연결되었어요.');assert(f.document.getElementById('main-link-google').hidden);assert.equal(f.window.VRCloud.user.id,kakao.id);
+ // SDK initial/focus notifications may still contain the old session identities.
+ for(const event of ['INITIAL_SESSION','SIGNED_IN']) { f.emit(event,kakao);await f.settle();assert(hasIdentity(f.window.VRCloud.user,'google'),'cached SDK event must not overwrite the server-verified link'); }
+}
+// X UI is one logical button, with exact x/twitter backend identities.
+for(const [external,actual,probeEnabled,probeError] of [
+ [{google:true,kakao:true,x:true,twitter:true},'x',false,false],
+ [{google:true,kakao:true,x:false,twitter:true},'twitter',false,false],
+ [{google:true,kakao:true,twitter:true},'x',true,false],
+ [{google:true,kakao:true,twitter:true},'twitter',false,false],
+]) {
+ const f=fixture({external,probeEnabled,probeError});await f.settle();
+ for(const id of ['intro-login-x','acct-login-x'])assert.equal(f.document.getElementById(id).hidden,false);
+ await f.window.VRCloud.login();assert(f.document.getElementById('oauth-choose'));f.document.querySelector('#oauth-choose [data-oauth-provider="x"]').click();await f.settle();
+ assert.deepEqual(f.calls.find(c=>c[0]==='signInWithOAuth')[1],{provider:actual,options:{redirectTo:'https://vr-tcg-staging.notcold.workers.dev/'}});
+ assert.equal(f.calls[0][3].auth.flowType,'pkce');
+ const google={id:'existing-x-link-owner',identities:[{provider:'google'}]};
+ const g=fixture({u:google,external,probeEnabled,probeError,profiles:{[google.id]:{nickname:'유지',nick_set:true}}});await g.settle();assert(!g.document.getElementById('main-link-x').hidden);
+ await g.window.VRCloud.linkProvider('x');assert.equal(g.calls.find(c=>c[0]==='linkIdentity')[1].provider,actual);assert.equal(g.window.VRCloud.user.id,google.id);
+ assert.equal(JSON.parse(g.sessionStorage.getItem('vrTcgOAuthLink.v1:https://cuyqchmdcnsgzkwyclji.supabase.co')).provider,actual);
+ const linked={...google,identities:[...google.identities,{provider:actual}]};g.emit('USER_UPDATED',linked);await g.settle();assert(g.document.getElementById('main-link-x').hidden);
+ const back=fixture({u:google,serverUser:linked,linkIntent:{uid:google.id,provider:actual},external,probeEnabled,probeError,profiles:{[google.id]:{nickname:'유지',nick_set:true}},href:'https://vr-tcg-staging.notcold.workers.dev/?code=FAKE_X_CODE'});await back.settle();assert.equal(back.messages[0],'X 계정이 연결되었어요.');assert(back.document.getElementById('main-link-x').hidden);assert.equal(back.window.VRCloud.profile.nickname,'유지');
+ const conflict=fixture({u:google,linkIntent:{uid:google.id,provider:actual},external,probeEnabled,probeError,profiles:{[google.id]:{nickname:'유지',nick_set:true}},href:'https://vr-tcg-staging.notcold.workers.dev/#error=server_error&error_code=identity_already_exists&error_description=Identity+is+already+linked+to+another+user'});await conflict.settle();assert.equal(conflict.messages[0],'이미 다른 계정에 연결된 X 계정이에요.');assert.equal(conflict.window.VRCloud.user.id,google.id);
+}
+for(const opts of [{external:{google:true,kakao:true,x:false,twitter:false}},{external:{google:true,kakao:true,twitter:false}},{external:{google:true,kakao:true,x:'true',twitter:'true'}},{external:{google:true,kakao:true,twitter:true},probeError:true},{fetchError:true}]) {
+ const f=fixture(opts);await f.settle();assert(f.document.getElementById('intro-login-x').hidden);assert(f.document.getElementById('acct-login-x').hidden);await f.window.VRCloud.login('x');assert(!f.calls.some(c=>c[0]==='signInWithOAuth'));
+ if(!opts.fetchError){await f.window.VRCloud.login();assert(f.document.querySelector('#oauth-choose [data-oauth-provider="x"]').hidden);}
+}
+for(const actual of ['x','twitter']) {
+ const u={id:'no-email-'+actual,email:'',identities:[{provider:actual}],user_metadata:{preferred_username:'X사용자',picture:'https://example.com/x.png'}};
+ const f=fixture({u,external:{google:true,kakao:true,x:actual==='x',twitter:actual==='twitter'}});await f.settle();assert(f.document.getElementById('nick-ov'));assert(f.document.getElementById('main-link-x').hidden);assert.equal(f.window.VRCloud.user.id,u.id);assert(f.calls.some(c=>c[0]==='upsert'&&c[1]==='profiles'&&c[2].nickname==='X사용자'));assert(!f.calls.some(c=>JSON.stringify(c).includes('"email",')));
+}
+{
+ const legacy={id:'old-twitter-user',identities:[{provider:'twitter'}]};const f=fixture({u:legacy,external:{google:true,kakao:true,x:true,twitter:true},profiles:{[legacy.id]:{nickname:'유지',nick_set:true}}});await f.settle();assert(!f.document.getElementById('main-link-x').hidden,'a legacy Twitter identity is NOT an already-linked OAuth2 X identity');
+}
+const mainMenu=await readFile(new URL('js/main-menu.js',root),'utf8');assert.match(mainMenu,/intro-login-x.*login\('x'\)/);
+const css=await readFile(new URL('css/main-screen.css',root),'utf8');assert.match(css,/oauth-row\{[^}]*flex-wrap:wrap/);assert.match(css,/#main-link-x\[hidden\]/);
+// Existing story enrollment/starter RPCs are provider agnostic and UUID-keyed.
+const story=await readFile(new URL('js/story.js',root),'utf8');
+assert.match(story,/story_choose_starter/);assert.match(story,/vrTcgStory\.v1/);assert.doesNotMatch(story,/user_metadata.*(?:google|kakao)|\.email/);
+for(const f of ['js/story.js','js/mypage.js','js/quest.js','js/ranking.js'])assert.doesNotMatch(await readFile(new URL(f,root),'utf8'),/구글(?:로)? 로그인/,'generic entry must not force Google');
+console.log('OAuth UI: Google/Kakao/X + legacy Twitter, discovery gating, shared PKCE/redirect, email-less onboarding, exact-identity linking/conflict/account-switch regressions OK');

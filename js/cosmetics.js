@@ -14,7 +14,7 @@
     return data;
   }
   function toast(t) { const el = document.createElement('div'); el.className = 'gem-toast'; el.textContent = t; document.body.appendChild(el); setTimeout(() => el.remove(), 2600); }
-  const ERR = { 'not owned': '아직 없어요', 'already owned': '이미 있어요', 'not for sale': '살 수 없어요', 'not enough gem': '심연석이 부족해요', 'login required': '로그인이 필요해요', 'invalid': '잘못된 요청이에요' };
+  const ERR = { 'not owned': '보유하지 않았어요', 'already owned': '이미 있어요', 'not for sale': '살 수 없어요', 'not enough gem': '심연석이 부족해요', 'login required': '로그인이 필요해요', 'invalid': '잘못된 요청이에요' };
   const errText = e => { const m = String(e?.message || e); const k = Object.keys(ERR).find(x => m.includes(x)); return k ? ERR[k] : m.slice(0, 60); };
   function set(s) {
     if (s?.ok) {

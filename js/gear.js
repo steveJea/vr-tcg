@@ -57,7 +57,7 @@
   async function rpc(fn, args) {
     const { data, error } = await sb().rpc(fn, args);
     if (error) { const m = error.message || ''; toast(/not enough gold/.test(m) ? '🪙 골드가 부족해요' : /not enough dust/.test(m) ? '✨ 장비 가루가 부족해요' : `⚠️ ${m}`); return null; }
-    if (data && data.ok === false) { toast(`⚠️ ${({ 'card not owned': '이 인재가 서버에 아직 없어요', gem: `보석이 부족해요 (${data.need})`, max: '가방이 최대예요', 'not found': '장비를 찾을 수 없어요', 'bag full': '🎒 가방이 꽉 찼어요. 정리한 뒤 받아 주세요', 'locked or equipped': '🔒 잠금·장착 중인 장비는 팔거나 분해할 수 없어요', 'max plus': '이미 +5예요', 'not enough frags': '조각이 부족해요', 'already crafted': '이미 만든 증표예요', 'not crafted': '먼저 증표를 만들어 주세요', 'not selectable': '이 인재는 고를 수 없어요', 'no exchange': '교환할 수 없는 인재예요', 'no options': '부옵션이 없는 장비예요', 'event only': '이벤트 전용이에요', unsupported: '아직 받을 수 없는 우편이에요' })[data.reason] || data.reason}`); return null; }
+    if (data && data.ok === false) { toast(`⚠️ ${({ 'card not owned': '서버에 없는 인재예요', gem: `보석이 부족해요 (${data.need})`, max: '가방이 최대예요', 'not found': '장비를 찾을 수 없어요', 'bag full': '🎒 가방이 꽉 찼어요. 정리한 뒤 받아 주세요', 'locked or equipped': '🔒 잠금·장착 중인 장비는 팔거나 분해할 수 없어요', 'max plus': '이미 +5예요', 'not enough frags': '조각이 부족해요', 'already crafted': '이미 만든 증표예요', 'not crafted': '먼저 증표를 만들어 주세요', 'not selectable': '이 인재는 고를 수 없어요', 'no exchange': '교환할 수 없는 인재예요', 'no options': '부옵션이 없는 장비예요', 'event only': '이벤트 전용이에요', unsupported: '아직 받을 수 없는 우편이에요' })[data.reason] || data.reason}`); return null; }
     await load(true); return data || {};
   }
 
@@ -86,7 +86,7 @@
     if (window.VRUnlocks && !window.VRUnlocks.guard('sigil')) return;
     cardId = String(cardId);
     const sg = sigils[cardId], own = (st.sigils || []).find(s => s.card === cardId);
-    if (!sg) return pop(`<div class="gear-big">${img('', 'sigil')}</div><b>증표</b><p class="gear-dim">이 인재의 증표는 아직 준비 중이에요</p>`);
+    if (!sg) return pop(`<div class="gear-big">${img('', 'sigil')}</div><b>증표</b><p class="gear-dim">🔒</p>`);
     const cur = own?.plus ?? null, fr = own?.frags || 0, step = (sg.steps || [])[cur ?? 0], nx = cur == null ? 0 : cur + 1, need = cost.sig[nx], max = cur === 5;
     const srcs = cost.src.filter(x => x.card_id === cardId && (x.source !== 'story_boss' || cost.storyOn)).map(x => SRC_TXT[x.source] || x.source);
     const m = pop(`<div class="gear-big">${img(sigIcon(cardId), 'sigil', cur == null ? 'dim' : '')}</div><b>${esc(sg.name)}</b> ${cur != null ? `<span class="gear-plus">+${cur}</span>` : ''}
@@ -180,7 +180,7 @@
       m.querySelector('.gear-pop').innerHTML = `<div class="gear-bag-top"><b><img class="ui-ic" src="img/ui/bag.webp" alt="">${st.count}/${st.slots}</b>${nx ? `<button class="gear-btn" data-x>+10칸 ${window.VRGem?.ICON || '💎'} ${nx.gem}</button>` : '<small>최대</small>'}</div>
         <div class="gear-tabs">${[['all', '전체'], ...SLOTS].map(([k, l]) => `<button data-f="${k}" class="${filt === k ? 'on' : ''}">${k === 'all' ? '' : img(sil(k), k)}${l}</button>`).join('')}</div>
         ${ctx.cardId ? '' : `<div class="gear-sel">${pick ? `${[1, 2, 3, 4, 5].map(t => `<button data-t="${t}" class="gt${t}">${TIER[t]}</button>`).join('')}<button data-pk>취소</button>` : `<small><img class="ui-ic" src="img/ui/cur_dust.webp" alt="">가루 ${fmt(st.dust || 0)}</small><button class="gear-btn" data-pk>☑️ 여러 개 정리</button>`}</div>`}
-        <div class="gear-grid">${list.map(g => { const d = defs[g.def]; return `<button class="gear-cell gt${d.tier} ${pick?.has(g.id) ? 'pick' : ''} ${pick && (g.locked || g.card) ? 'nopick' : ''}" data-g="${g.id}">${img(iconOf(d), slotOf(g))}${g.plus ? `<i>+${g.plus}</i>` : ''}${g.card ? '<b class="gear-eq">E</b>' : ''}${g.locked ? '<b class="gear-lk"><img class="ui-ic" src="img/ui/lock.webp" alt=""></b>' : ''}</button>`; }).join('') || '<div class="gear-dim">아직 장비가 없어요. 소탕·탑·토벌에서 얻을 수 있어요</div>'}</div>`;
+        <div class="gear-grid">${list.map(g => { const d = defs[g.def]; return `<button class="gear-cell gt${d.tier} ${pick?.has(g.id) ? 'pick' : ''} ${pick && (g.locked || g.card) ? 'nopick' : ''}" data-g="${g.id}">${img(iconOf(d), slotOf(g))}${g.plus ? `<i>+${g.plus}</i>` : ''}${g.card ? '<b class="gear-eq">E</b>' : ''}${g.locked ? '<b class="gear-lk"><img class="ui-ic" src="img/ui/lock.webp" alt=""></b>' : ''}</button>`; }).join('') || '<div class="gear-dim">ℹ️ 장비 없음</div>'}</div>`;
       if (pick) { const sel = st.gear.filter(g => pick.has(g.id)), sum = k => sel.reduce((a, g) => a + (cost.salv[defs[g.def].tier]?.[k] || 0), 0);
         m.querySelector('.gear-pop').insertAdjacentHTML('beforeend', `<div class="gear-acts gear-bulk"><b>${sel.length}개 선택</b><button class="gear-btn" data-bk="dis" ${sel.length ? '' : 'disabled'}>🔨 분해 <img class="ui-ic" src="img/ui/cur_dust.webp" alt="">+${sum('dust')}</button><button class="gear-btn main" data-bk="sell" ${sel.length ? '' : 'disabled'}><img class="ui-ic" src="img/ui/cur_gold.webp" alt="">매각 +${fmt(sum('gold'))}</button></div>`);
         m.querySelectorAll('[data-bk]').forEach(b => b.onclick = async () => { const dis = b.dataset.bk === 'dis', hi = sel.some(g => defs[g.def].tier >= 5);
@@ -213,9 +213,15 @@
     const { data, error } = await sb().rpc('gear_drops_take'); if (error || !data?.length) return [];
     if (!defs) await load(true); else load(true);
     const mail = data.some(x => x.mail || x.kind === 'box');
-    pop(`<div class="gear-drops-h"><img class="ui-ic" src="img/ui/cur_dust.webp" alt="">장비 획득</div><div class="gear-drops">${data.map(tileOf).join('')}</div>
-      ${mail ? '<div class="gear-dim"><img class="ui-ic" src="img/ui/mailbox.webp" alt="">상자와 가방에 못 넣은 장비는 우편함에 있어요</div><button class="gear-btn main" data-mb><img class="ui-ic" src="img/ui/mailbox.webp" alt="">우편함</button>' : ''}`, 'drops')
-      .querySelector('[data-mb]')?.addEventListener('click', e => { e.target.closest('.gear-pop-bg').remove(); mailbox(); });
+    const m = pop(`<div class="gear-drops-h"><img class="ui-ic" src="img/ui/cur_dust.webp" alt="">장비 획득</div><div class="gear-drops">${data.map(tileOf).join('')}</div>
+      ${mail ? '<div class="gear-dim">📬 일부 우편함</div><button class="gear-btn main" data-mb><img class="ui-ic" src="img/ui/mailbox.webp" alt="">우편함</button>' : ''}<div class="gear-acts"><button class="gear-btn main" data-ok>확인</button></div>`, 'drops');
+    m.querySelector('[data-mb]')?.addEventListener('click', e => { e.target.closest('.gear-pop-bg').remove(); mailbox(); });
+    m.querySelector('[data-ok]')?.addEventListener('click', () => m.remove());
+    await new Promise(res => {
+      if (!m.isConnected) return res();
+      const o = new MutationObserver(() => { if (!m.isConnected) { o.disconnect(); res(); } });
+      o.observe(document.body, { childList: true });
+    });
     return data;
   }
   // 우편함: 장비는 받기, 상자는 슬롯 골라 열기
@@ -231,7 +237,7 @@
   function msgPop(ml, after) {
     if (!ml) return; const att = hasAtt(ml.payload);
     if (!ml.read) sb().rpc('mail_read', { p_id: ml.id }).then(() => refreshUnread());
-    const q = pop(`<b class="gear-msg-t">${esc(ml.title || '알림')}</b><div class="gear-msg-b">${esc(ml.body || '').replace(/\n/g, '<br>')}</div>
+    const q = pop(`<b class="gear-msg-t" data-clarity-mask="true">${esc(ml.title || '알림')}</b><div class="gear-msg-b" data-clarity-mask="true">${esc(ml.body || '').replace(/\n/g, '<br>')}</div>
       ${att ? `<div class="gear-msg-a">${attTxt(ml.payload)}</div>` : ''}<div class="gear-dim">기한 ${esc(fmtExp(ml.expires_at))}까지</div>
       <div class="gear-acts"><button class="gear-btn main" data-c>${att ? '받기' : '확인 (삭제)'}</button></div>`, 'item');
     q.querySelector('[data-c]').onclick = async e => { e.target.disabled = true; const r = await rpc('mail_msg_claim', { p_id: ml.id }); q.remove();
@@ -247,12 +253,12 @@
     const draw = async () => {
       const { data: list, error } = await sb().rpc('mail_list'); refreshUnread(); if (error) { m.remove(); return toast(`⚠️ ${error.message}`); }
       m.querySelector('.gear-pop').innerHTML = `<div class="gear-bag-top"><b><img class="ui-ic" src="img/ui/mailbox.webp" alt="">우편함</b><small><img class="ui-ic" src="img/ui/bag.webp" alt="">${st.count}/${st.slots}</small></div>
-        ${list.filter(x => x.kind === 'msg').map(ml => `<button class="gear-msg ${ml.read && !hasAtt(ml.payload) ? 'read' : ''}" data-msg="${ml.id}"><b>${ml.read ? '' : '<i class="gear-badge">N</i> '}${esc(ml.title || '알림')}</b><span>${attTxt(ml.payload) || '메시지'}</span><small>~${esc(fmtExp(ml.expires_at))}</small></button>`).join('')}
+        ${list.filter(x => x.kind === 'msg').map(ml => `<button class="gear-msg ${ml.read && !hasAtt(ml.payload) ? 'read' : ''}" data-msg="${ml.id}" data-clarity-mask="true"><b>${ml.read ? '' : '<i class="gear-badge">N</i> '}${esc(ml.title || '알림')}</b><span>${attTxt(ml.payload) || '메시지'}</span><small>~${esc(fmtExp(ml.expires_at))}</small></button>`).join('')}
         <div class="gear-grid">${list.filter(x => x.kind !== 'msg').map(ml => { const p = ml.payload || {}, d = defs[p.def_id];
           if (ml.kind === 'sigil_frag') return `<button class="gear-cell" data-m="${ml.id}">${img('', 'sigil')}<i>×${p.n}</i></button>`;
           return ml.kind === 'box' ? `<button class="gear-cell gt${p.tier}" data-m="${ml.id}"><span class="gear-box"><img class="ui-ic" src="img/ui/gear_box.webp" alt=""></span></button>`
             : d ? `<button class="gear-cell gt${d.tier}" data-m="${ml.id}">${img(iconOf(d), d.slot)}</button>` : ''; }).join('') || (list.length ? '' : '<div class="gear-dim">우편이 없어요</div>')}</div>
-        <div class="gear-dim">보관 7일 · 상자 14일 · 메시지는 적힌 기한까지</div>`;
+        <details class="vr-tip"><summary>ⓘ</summary><p>보관 7일 · 상자 14일 · 메시지는 적힌 기한까지</p></details>`;
       m.querySelectorAll('[data-msg]').forEach(b => b.onclick = () => msgPop(list.find(x => String(x.id) === b.dataset.msg), () => { if (m.isConnected) draw(); }));
       m.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { const ml = list.find(x => String(x.id) === b.dataset.m), p = ml.payload || {};
         if (ml.kind === 'sigil_frag') {
@@ -300,7 +306,7 @@
     const m = pop('<div class="gear-dim">불러오는 중…</div>', 'bag');
     window.VRPages?.host?.('pvpshop', '🛒 PvP 상점', m);   // 페이지 시스템
     const draw = async () => {
-      const { data: S, error } = await sb().rpc('pvp_shop_status'); if (error) { m.remove(); return toast(/pvp_shop|schema cache|Could not find/.test(error.message) ? '🛒 PvP 상점은 준비 중이에요' : `⚠️ ${error.message}`); }
+      const { data: S, error } = await sb().rpc('pvp_shop_status'); if (error) { m.remove(); return toast(/pvp_shop|schema cache|Could not find/.test(error.message) ? '🔒 PvP 상점' : `⚠️ ${error.message}`); }
       const shown = new Set();
       m.querySelector('.gear-pop').innerHTML = `<div class="gear-bag-top"><b>🛒 PvP 상점</b><span>🔥 혼 <b>${fmt(S.soul)}</b></span></div>
         <div class="shop-grid">${S.items.map(it => { const first = !shown.has(it.grp); shown.add(it.grp);
@@ -325,7 +331,7 @@
     return { gear, sigil: sg?.plus ?? null };
   }
   // 장비 바뀜 → PvP 방어 덱·구역 전쟁 덱은 저장할 때 서버가 장비를 담아 둠 (supabase/gear_snap.sql) → 다시 저장 안내
-  const deckNote = () => toast('🛡️ PvP 방어 덱·구역 전쟁 덱에 넣은 인재라면 덱을 다시 저장해야 반영돼요');
+  const deckNote = () => toast('⚠️ PvP 방어·구역 전쟁 덱 재저장');
   // 로그인하면 장비 미리 불러오기 (전투·인재 화면에 바로 장비 반영)
   const pre = () => { if (window.VRCloud?.user) load().catch(() => {}); };
   let lastU = null; window.addEventListener('vr:user', () => { const u = window.VRCloud?.user?.id || null; if (u !== lastU) { lastU = u; st = null; pre(); } }); setTimeout(pre, 1500);

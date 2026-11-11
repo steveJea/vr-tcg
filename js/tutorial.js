@@ -35,14 +35,34 @@ function resolve(t) {
 
 function build() {
   const ov = document.createElement('div'); ov.className = 'tut-ov';
-  ov.innerHTML = '<div class="tut-ring"></div><div class="tut-hand"></div><div class="tut-bub"><img class="tut-face" alt=""><div class="tut-txt"><b class="tut-who"></b><p></p><small class="tut-tap">탭하여 계속</small></div></div><button class="tut-skip" type="button">건너뛰기</button>';
+  ov.innerHTML = '<div class="tut-ring"></div><div class="tut-hand"></div><div class="tut-bub"><img class="tut-face" alt=""><div class="tut-txt"><b class="tut-who"></b><p></p><small class="tut-tap vr-more">▼</small></div></div><button class="tut-skip" type="button">건너뛰기</button>';
   document.body.appendChild(ov);
   ov.querySelector('.tut-skip').onclick = e => { e.stopPropagation(); finish(true); };
   return { ov, ring: ov.querySelector('.tut-ring'), hand: ov.querySelector('.tut-hand'), bub: ov.querySelector('.tut-bub') };
 }
 
+function battleHeld() {
+  const S = window.TCG?.S, cut = document.getElementById('cutin');
+  return !!(S?.busy) || !!(cut && cut.classList.contains('cutin') && !cut.classList.contains('hidden'));
+}
+function infoStep(st) { return !!(st && !st.silent && (!st.wait || st.wait === 'tap')); }
+function freshTap() {
+  const now = performance.now();
+  if (T.tapStamp && now - T.tapStamp < 40) return false;   // 같은 탭의 pointerup 중복만 무시
+  T.tapStamp = now; return true;
+}
+function queueInfo() {
+  if (!T || T.advancing) return;
+  if (!infoStep(T.def.steps[T.i])) return;
+  if (battleHeld()) { T.queuedTap = true; return; }
+  T.queuedTap = false; next();
+}
 function place() {
   if (!T) return;
+  if (T.queuedTap) {
+    if (infoStep(T.def.steps[T.i]) && !battleHeld()) { T.queuedTap = false; next(); if (!T) return; }
+    else if (!infoStep(T.def.steps[T.i])) T.queuedTap = false;
+  }
   if (T.def.anchor && !document.querySelector(T.def.anchor)) { if (!T.anchorMiss) T.anchorMiss = performance.now(); else if (performance.now() - T.anchorMiss > 600) return abort(); } else T.anchorMiss = 0;   // anchor: 그 화면이 사라지면 가이드 종료 (막힘 방지)
   const st = T.def.steps[T.i], { ring, bub, hand, ov } = T.el;
   const tgt = st && resolve(st.target);
@@ -82,17 +102,25 @@ function show() {
   T.waitTarget = 0;   // 대상이 아직 없으면(다음 렌더 대기) place 가 계속 찾음
 }
 
-function next() { if (!T) return; T.advancing = false; T.i++; if (T.i >= T.def.steps.length) finish(false); else show(); }
+function next() { if (!T) return; T.advancing = false; T.queuedTap = false; T.i++; if (T.i >= T.def.steps.length) finish(false); else show(); }
 
 /** 정보 단계 탭 · 대상 아닌 곳 탭 막기 (capture 단계) */
 function guard(e) {
   if (!T) return;
+  if (e.type === 'pointerdown') T.sawPointer = 0;
+  if (T.tapStamp && performance.now() - T.tapStamp < 40 && e.type !== 'pointerdown' && !e.target.closest?.('.tut-skip')) { e.stopPropagation(); if (e.type === 'click') e.preventDefault(); return; }
+  if (T.sawPointer && e.type === 'click' && performance.now() - T.sawPointer < 700 && !e.target.closest?.('.tut-skip')) { e.stopPropagation(); e.preventDefault(); return; }   // pointerup 으로 이미 넘긴 탭의 click
   if (T.advancing && !e.target.closest?.('.tut-skip')) { e.stopPropagation(); if (e.type === 'click') e.preventDefault(); return; }   // 다음 단계로 넘어가는 중(이벤트 뒤 대기): 연타가 다른 동작(정보 창 열기 등)이 되지 않게
   const st = T.def.steps[T.i]; if (!st || st.silent) return;
   if (e.target.closest?.('.tut-skip')) return;
-  const info = !st.wait || st.wait === 'tap';
+  const info = infoStep(st);
   const hard = e.type === 'click';   // pointerdown 등은 전파만 막음 (preventDefault 하면 모바일에서 click 이 사라짐)
-  if (info) { e.stopPropagation(); if (hard) { e.preventDefault(); next(); } return; }
+  if (info) {
+    e.stopPropagation(); if (hard) e.preventDefault();
+    if (e.type === 'pointerup') { T.sawPointer = performance.now(); if (freshTap()) queueInfo(); return; }   // 말풍선·딤. 컷인·busy 면 풀릴 때 진행
+    if (hard && freshTap()) queueInfo();
+    return;
+  }
   const tgt = resolve(st.target);
   // 상세 창(스킬 사용)은 대상이 그 안에 있으면 그 창 안 탭은 허용
   if (tgt && tgt.contains(e.target)) { if (e.type === 'click' && st.wait === 'tap_target') setTimeout(next, 0); return; }

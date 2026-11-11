@@ -245,7 +245,7 @@
     const s = SHORT[c.grade], t = crownTier(o), d = new Date(o.first_at);
     return { name: c.name, short: s, label: LABEL[s], portrait: `${IMG}${c.id}.webp`, hp: c.HP, atk: c.ATK, def: c.DEF, power: c.power,
       count: o.count, mvp: o.mvp_count, crown: t ? { e: TIERS[t].e, n: TIERS[t].n } : null,
-      first: isNaN(d) ? '' : d.toLocaleDateString('ko-KR'), site: location.hostname || 'tcg.mbbs.kr' };
+      first: isNaN(d) ? '' : d.toLocaleDateString('ko-KR'), site: location.hostname || 'ag.violenceroyale.com' };
   }
   function galToast(t) { const el = document.createElement('div'); el.className = 'story-toast'; el.style.zIndex = '120'; el.textContent = t; document.body.appendChild(el); setTimeout(() => el.remove(), 3200); }
   async function shareCard(id, btn) {
@@ -257,14 +257,14 @@
       if (btn && r === 'downloaded') { btn.textContent = '✅ 저장됨'; setTimeout(() => { btn.textContent = old; }, 1600); }
       else if (btn) btn.textContent = old;
       if (r === 'downloaded') galToast(copied ? '이미지를 저장하고 게임 링크를 복사했어요' : `이미지를 저장했어요 · 게임 링크: ${VRShareCard.GAME_URL}`);
-      else if (r === 'shared' && copied) galToast('게임 링크도 복사해 뒀어요 · 링크가 빠졌다면 붙여넣기 하세요');
+      else if (r === 'shared' && copied) galToast('🔗 링크 복사됨');
     } catch (e) { console.warn('[gallery] share failed', e); if (btn) btn.textContent = old; (window.VRGem?.toast || alert)('이미지를 만들지 못했어요. 잠시 후 다시 시도해 주세요.'); }
     finally { if (btn) btn.disabled = false; }
   }
   // 카카오톡 공유 (js/kakao-share.js): 공유 이미지를 카카오에 올려 피드로. SDK·업로드 실패 시 기존 공유(파일 공유·저장)로
   async function kakaoCard(id, btn) {
     const info = shareInfo(id); if (!info || !window.VRShareCard) return;
-    const old = btn?.textContent; if (btn) { btn.disabled = true; btn.textContent = '준비 중...'; }
+    const old = btn?.textContent; if (btn) { btn.disabled = true; btn.textContent = '만드는 중...'; }
     try {
       if (!window.VRKakaoShare) throw new Error('no kakao');
       const cv = await VRShareCard.render(info), file = await VRShareCard.toFile(cv, `violence-royale_${id}.png`);
@@ -272,7 +272,7 @@
     } catch (e) {
       console.warn('[gallery] kakao share failed', e, (() => { try { return JSON.stringify(e); } catch { return ''; } })());
       const why = window.VRKakaoShare?.describe?.(e);
-      galToast(`카카오톡 공유를 열지 못했어요${why ? ` (${why})` : ''} · 다른 방법으로 공유할게요`);
+      galToast(`카카오톡 공유를 열지 못했어요${why ? ` (${why})` : ''}`);
       if (btn) btn.textContent = old;
       return shareCard(id, null);
     } finally { if (btn) { btn.disabled = false; btn.textContent = old; } }

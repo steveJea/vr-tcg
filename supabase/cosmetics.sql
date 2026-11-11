@@ -290,21 +290,29 @@ end $$;
 
 create or replace function public.pvp_rankings(p_league text, p_mode text, p_season date default null) returns jsonb
 language plpgsql stable security definer set search_path = public as $$
-declare uid uuid := auth.uid(); s date := coalesce(p_season, _pvp_season()); top jsonb; mine jsonb;
+declare uid uuid := auth.uid(); s date := p_season; top jsonb; mine jsonb;
 begin
   perform _pvp_ok(p_league, p_mode);
-  with t as (select r.user_id, r.rating, r.wins, r.losses, rank() over (order by r.rating desc, r.wins desc) rk
-             from pvp_ratings r where r.league = p_league and r.mode = p_mode and r.season = s and r.wins + r.losses > 0)
+  with latest as (
+    select distinct on (r.user_id) r.user_id, r.rating, r.wins, r.losses
+      from pvp_ratings r
+     where r.league = p_league and r.mode = p_mode and (s is null or r.season = s) and r.wins + r.losses > 0
+     order by r.user_id, r.season desc),
+  t as (select user_id, rating, wins, losses, rank() over (order by rating desc, wins desc) rk from latest)
   select coalesce(jsonb_agg(jsonb_build_object('rank', rk, 'name', coalesce(p.nickname, '플레이어'), 'rating', rating, 'wins', wins, 'losses', losses,
            'me', t.user_id = uid, 'tier', _pvp_tier(rating),
            'abyss', exists (select 1 from pvp_titles x where x.user_id = t.user_id and x.title = 'abyss'),
            'title', coalesce(p.cosmo_title, 'recruit'), 'frame', coalesce(p.cosmo_frame, 'frame_basic'),
            'title_name', coalesce((select d->>'name' from jsonb_array_elements(_cosmo_title_defs()) d where d->>'id' = coalesce(p.cosmo_title, 'recruit')), '')) order by rk), '[]'::jsonb)
     into top from (select * from t order by rk limit 100) t left join profiles p on p.id = t.user_id;
-  with t as (select r.user_id, r.rating, r.wins, r.losses, rank() over (order by r.rating desc, r.wins desc) rk
-             from pvp_ratings r where r.league = p_league and r.mode = p_mode and r.season = s and r.wins + r.losses > 0)
+  with latest as (
+    select distinct on (r.user_id) r.user_id, r.rating, r.wins, r.losses
+      from pvp_ratings r
+     where r.league = p_league and r.mode = p_mode and (s is null or r.season = s) and r.wins + r.losses > 0
+     order by r.user_id, r.season desc),
+  t as (select user_id, rating, wins, losses, rank() over (order by rating desc, wins desc) rk from latest)
   select jsonb_build_object('rank', rk, 'rating', rating, 'wins', wins, 'losses', losses, 'tier', _pvp_tier(rating)) into mine from t where t.user_id = uid;
-  return jsonb_build_object('season', s, 'top', top, 'me', mine);
+  return jsonb_build_object('season', coalesce(s, _pvp_season()), 'top', top, 'me', mine);
 end $$;
 
 revoke all on function public.tower_rankings(text), public.story_rankings(), public.pvp_rankings(text, text, date) from public;

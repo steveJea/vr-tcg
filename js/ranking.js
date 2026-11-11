@@ -87,13 +87,13 @@ import { config } from './config.js';
   const SPEC = {
     tower: { th: ['최고 층'], td: r => [`${r.floor}층`], note: () => '탑마다 가장 높이 올라간 층 기준이에요 · 같은 층이면 먼저 도달한 사람이 위' },
     pvp: { th: ['점수', '승/패'], td: r => [r.rating, `${r.wins}/${r.losses}`], note: () => '이번 시즌 PvP 점수 기준이에요 · 매주 새 시즌' },
-    story: { th: ['진행'], td: r => [`${r.ch}-${r.ph}`], note: () => '깬 곳 중 가장 먼 챕터-페이즈예요 (예: 9-15 = 9챕터 15페이즈)' },
+    story: { th: ['진행'], td: r => [`${r.ch}-${r.ph}`], note: () => '<details class="vr-tip"><summary>ⓘ</summary><p>깬 곳 중 가장 먼 챕터-페이즈예요 (예: 9-15 = 9챕터 15페이즈)</p></details>' },
   };
   const nmCell = (r, nm) => { const label = (nm ?? r.name) + (r.me && nm == null ? ' (나)' : ''); const t = r.title_name || ''; return window.VRCosmo ? `${esc(label)}${t ? `<i class="cosmo-ttl t-${esc(r.title || '')}"> ${esc(t)}</i>` : ''}` : esc(label); };
   const row2 = (sp, r, nm) => `<tr class="${r.me ? 'me' : ''}"><td>${medal(r.rank)}</td><td class="nm">${nmCell(r, nm)}</td>${sp.td(r).map(v => `<td>${esc(v)}</td>`).join('')}</tr>`;
   async function loadOther(cur, tok) {
     const sp = SPEC[main];
-    $('.rn').textContent = sp.note();
+    $('.rn').innerHTML = sp.note();
     let r;
     try {
       r = main === 'tower' ? await rpc('tower_rankings', { p_tower: tower }, tok)
@@ -102,7 +102,7 @@ import { config } from './config.js';
     } catch { if (cur === key()) $('.rl').innerHTML = '<div class="empty">랭킹 서버에 연결할 수 없어요.<br>잠시 후 다시 시도해 주세요.</div>'; return; }
     if (cur !== key()) return;
     const top = r?.top || [];
-    if (!top.length) { $('.rl').innerHTML = '<div class="empty">아직 기록이 없어요</div>'; return; }
+    if (!top.length) { $('.rl').innerHTML = '<div class="empty">기록 없음</div>'; return; }
     $('.rl').innerHTML = `<table><tr><th>순위</th><th style="text-align:left">닉네임</th>${sp.th.map(h => `<th>${h}</th>`).join('')}</tr>${top.map(x => row2(sp, x)).join('')}</table>`;
     if (r.me && !top.some(x => x.me)) $('.mine').innerHTML = `<table>${row2(sp, { ...r.me, me: true }, '나')}</table>`;
   }
@@ -118,14 +118,14 @@ import { config } from './config.js';
     if (main !== 'arcade') {
       $('.rl').innerHTML = '<div class="empty">불러오는 중...</div>'; $('.mine').innerHTML = '';
       const logged = !!window.VRCloud?.user, cur = key();
-      $('.rf').innerHTML = logged ? '' : `로그인하면 랭킹에 참여할 수 있어요!<button id="rank-login">${IC('login')} 구글로 로그인</button>`;
+      $('.rf').innerHTML = logged ? '' : `<button id="rank-login">${IC('login')} 로그인</button>`;
       const lb = $('#rank-login'); if (lb) lb.onclick = () => window.VRCloud ? window.VRCloud.login() : (window.VRGem?.toast || alert)('지금은 로그인 서버에 연결할 수 없어요.');
       return loadOther(cur, logged ? await token() : null);
     }
-    $('.rn').textContent = tab === 'weekly' ? '주간 랭킹은 매주 월요일 0시(한국 시간)에 초기화돼요 · 승 3점, 무 1점' : '서비스 시작부터 누적된 점수예요 · 승 3점, 무 1점';
+    $('.rn').textContent = tab === 'weekly' ? `⏱ 남은 시간 ${(() => { const now = Date.now() + 9 * 3600e3, day = 86400e3, wd = (Math.floor(now / day) + 4) % 7, into = now % day, ahead = (1 - wd + 7) % 7, ms = ahead === 0 ? (into === 0 ? 7 * day : 7 * day - into) : ahead * day - into, h = Math.floor(ms / 3600e3), m = Math.floor(ms % 3600e3 / 6e4); return Math.floor(h / 24) + '일 ' + (h % 24) + ':' + String(m).padStart(2, '0'); })()} · 승3 무1` : '승3 무1';
     $('.rl').innerHTML = '<div class="empty">불러오는 중...</div>'; $('.mine').innerHTML = '';
     const logged = !!window.VRCloud?.user;
-    $('.rf').innerHTML = logged ? '' : `로그인하면 랭킹에 참여할 수 있어요!<button id="rank-login">${IC('login')} 구글로 로그인</button>`;
+    $('.rf').innerHTML = logged ? '' : `<button id="rank-login">${IC('login')} 로그인</button>`;
     const lb = $('#rank-login'); if (lb) lb.onclick = () => window.VRCloud ? window.VRCloud.login() : (window.VRGem?.toast || alert)('지금은 로그인 서버에 연결할 수 없어요.');
     const view = tab === 'weekly' ? 'rankings_weekly' : 'rankings_all', cur = key();
     const tok = logged ? await token() : null;
@@ -133,13 +133,13 @@ import { config } from './config.js';
     try { rows = await q(`${view}?select=*&order=rank.asc&limit=50`, tok); }
     catch { if (cur === key()) $('.rl').innerHTML = '<div class="empty">랭킹 서버에 연결할 수 없어요.<br>잠시 후 다시 시도해 주세요.</div>'; return; }
     if (cur !== key()) return;
-    if (!rows.length) { $('.rl').innerHTML = '<div class="empty">아직 기록이 없어요</div>'; return; }
+    if (!rows.length) { $('.rl').innerHTML = '<div class="empty">기록 없음</div>'; return; }
     $('.rl').innerHTML = `<table>${head}${rows.map(row).join('')}</table>`;
     if (tok && !rows.some(r => r.is_me)) {
       try {
         const me = await q(`${view}?select=*&is_me=eq.true&limit=1`, tok);
         if (cur === key() && me[0]) $('.mine').innerHTML = `<table>${row(me[0])}</table>`;
-        else if (cur === key()) $('.rf').textContent = tab === 'weekly' ? '이번 주 기록이 아직 없어요. 한 판 해보세요!' : '아직 기록이 없어요. 한 판 해보세요!';
+        else if (cur === key()) $('.rf').textContent = '기록 없음';
       } catch {}
     }
   }

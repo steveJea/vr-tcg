@@ -1,7 +1,7 @@
 // ===== 조직 토벌 「균열 토벌」 화면 =====
 // 서버: security_phase4_raid_guildwar.sql + guildbattle-verify-v4. 공식 피해·보상은 서버 재생만.
 // 그림: img/ui/guild/raid_banner.webp · raid_bg.webp · raid_icon.webp · raid_diff_<normal|hard|abyss>.webp (없으면 이모지). 보스는 카드 그림(IMG)
-import { startVerified,finishVerified,recoverVerified,sweepVerified,recoverSweepVerified } from './guildbattle-session.js';
+import { startVerified,finishVerified,forfeitVerified,recoverVerified,sweepVerified,recoverSweepVerified } from './guildbattle-session.js';
 import { snapCard } from './pvp-core.js';
 import { runRaid, manualRaid, hitCap, RAID_DIFF, RAID_BOSSES, RAID_TURNS } from './raid-core.js';
 import { modeToggle, bindMode, battleMode, playManual } from './manual-ui.js';
@@ -58,7 +58,7 @@ export async function open() {
   window.VRPages?.host?.('raid', '🐉 균열 토벌', M);   // 페이지 시스템 (실패하면 예전 팝업)
   try { [S, DL] = await Promise.all([rpc('raid_status'), decks()]); } catch (e) { toast(errText(e)); M.remove(); return; }
   paint();
-  try { const r=await recoverVerified('raid');if(r){S=await rpc('raid_status');paint();result(r);}const sw=await recoverSweepVerified(rpc);if(sw){S=await rpc('raid_status');paint();result(sw.result);} } catch(e){toast(errText(e));}
+  try { const r=await recoverVerified('raid');if(r){S=await rpc('raid_status');paint();result(r);}const sw=await recoverSweepVerified(rpc);if(sw){S=await rpc('raid_status');paint();result(sw.result);} } catch(e){ if (e?.code !== 'account-changed') toast(errText(e)); }
 }
 function paint() {
   if (!M?.isConnected) return;
@@ -79,7 +79,7 @@ function paint() {
     <div class="rd-h">처치 단계 <button class="rd-info" data-info>보상표 ⓘ</button></div>
     <div class="rd-stages">${s.stages.map(x => `<span class="${x.cleared ? (x.claimed ? 'done' : 'ready') : 'cur'}">${bossImg(x.boss)}<b>${x.stage}</b>${x.cleared ? (x.claimed ? gi('ic_check', '✔') : gi('ic_gift', '🎁')) : ''}</span>`).join('')}</div>
     <div class="rd-h">이번 주 피해 순위</div>
-    <div class="rd-rk">${s.ranking.length ? s.ranking.map((x, i) => `<div class="${x.me ? 'me' : ''}"><b>${[gi('rank_1', '🥇'), gi('rank_2', '🥈'), gi('rank_3', '🥉')][i] || i + 1}</b><span>${esc(x.name)}</span><small>${x.attempts}회</small><em>${big(x.damage)}</em></div>`).join('') : '<div class="rd-empty">아직 아무도 토벌하지 않았어요</div>'}</div>`;
+    <div class="rd-rk">${s.ranking.length ? s.ranking.map((x, i) => `<div class="${x.me ? 'me' : ''}"><b>${[gi('rank_1', '🥇'), gi('rank_2', '🥈'), gi('rank_3', '🥉')][i] || i + 1}</b><span>${esc(x.name)}</span><small>${x.attempts}회</small><em>${big(x.damage)}</em></div>`).join('') : '<div class="rd-empty">ℹ️ 순위 없음</div>'}</div>`;
   const q = sel => M.querySelector(sel);
   q('[data-go]').onclick = fight; bindMode(M);
   q('[data-sweep]').onclick = sweep;
@@ -132,6 +132,7 @@ async function fight(e) {
     try {
       res = await V({ session: feed, aiName: st.boss.name, manual, maxTurns: RAID_TURNS * 2, music: window.VR_BGM?.raid, bg: 'raid', title: `🐉 균열 토벌 · ${st.stage}단계 ${st.boss.name}`,
         raid: { stage: st.stage, bossId: st.boss.id, bossName: st.boss.name, hpLeft: +S?.hp_left || 0, hpMax: +S?.hp_max || 0, cap: hitCap(st.stage), weakLabel: ATTR[st.boss.weak] || st.boss.weak || '', deadline: new Date(st.expires_at).getTime() || started + 20 * 60000 } });
+      if (res?.abandon) { if (!res.accountChanged) { try { const r = await forfeitVerified('raid', st); S = await rpc('raid_status'); result(r); } catch (er) { toast(errText(er)); } } paint(); return; }
     } finally { if (M?.style) M.style.display = ''; }
     actions=ses.acts;
   } else if (battleMode() === 'manual') {   // 수동: 같은 seed·스냅샷으로 내가 조작. 행동 기록을 서버에 남겨 tools/raid_verify.mjs 로 재생 검증
