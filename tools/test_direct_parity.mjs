@@ -3,6 +3,9 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { runDirect, verifyDirect, towerEnemies, rngOf as engineRngOf } from '../supabase/functions/story-direct-verify-v7/engine.mjs';
+import { bossCard } from '../js/raid-core.js';
+import { snapCard } from '../js/pvp-core.js';
+import { ENEMY_MR_BASE } from '../js/enemy-mr.js';
 import { rngOf } from '../js/direct-rng.js';
 import { leaderSkill } from '../js/sweep-core.js';
 import { autoNext, noteUsed } from '../js/auto-ai.js';
@@ -313,3 +316,36 @@ for (const [target, bossId, ids, card] of [
   assert.equal(fought.res.win, true);
 }
 console.log('direct parity ok');
+
+const scale = (base, level) => {
+  const m = 1 + 0.06 * (level - 1);
+  return { HP: Math.round(base.HP * m), ATK: Math.round(base.ATK * m), DEF: Math.round(base.DEF * m) };
+};
+const byCsv = new Map(parseCSV(rd('../data/cards.csv')).map(c => [String(c.id), c]));
+const tower210 = towerEnemies('normal', 210);
+const shin = tower210.enemies.find(c => String(c.id) === '10062');
+assert.ok(shin, 'tower 210 boss is 김신현');
+assert.equal(String(tower210.bossId), '10062');
+const expectShin = scale(ENEMY_MR_BASE['10062'], shin.qLevel);
+assert.deepEqual({ HP: shin.HP, ATK: shin.ATK, DEF: shin.DEF }, expectShin);
+assert.notEqual(shin.ATK, scale(byCsv.get('10062'), shin.qLevel).ATK);
+const dark350 = towerEnemies('dark', 350);
+const yuri = dark350.enemies.find(c => String(c.id) === '10326');
+assert.ok(yuri, 'dark tower 350 boss is awakened 임유리');
+assert.deepEqual({ HP: yuri.HP, ATK: yuri.ATK, DEF: yuri.DEF }, scale(ENEMY_MR_BASE['10326'], yuri.qLevel));
+let normalMr = null;
+for (let floor = 1; floor <= 350 && !normalMr; floor++) {
+  if (floor % 10 === 0) continue;
+  for (const c of towerEnemies('normal', floor).enemies) if (ENEMY_MR_BASE[String(c.id)]) { normalMr = c; break; }
+}
+if (normalMr) assert.deepEqual({ HP: normalMr.HP, ATK: normalMr.ATK, DEF: normalMr.DEF }, scale(ENEMY_MR_BASE[String(normalMr.id)], normalMr.qLevel));
+const raidBoss = bossCard(3, 'normal', id => byCsv.get(String(id)));
+const raidUp = 1 + 0.12 * 2;
+assert.equal(raidBoss.ATK, Math.round(ENEMY_MR_BASE['10062'].ATK * 0.8 * raidUp));
+assert.equal(raidBoss.DEF, Math.round(ENEMY_MR_BASE['10062'].DEF * 0.2 * raidUp));
+assert.notEqual(raidBoss.ATK, Math.round(byCsv.get('10062').ATK * 0.8 * raidUp));
+const playerRaid = snapCard({ id: '10062', uid: 'mine', level: 1 }, id => byCsv.get(String(id)), 'raid');
+assert.equal(playerRaid.ATK, byCsv.get('10062').ATK);
+assert.equal(playerRaid.HP, byCsv.get('10062').HP);
+assert.equal(playerRaid.DEF, byCsv.get('10062').DEF);
+console.log('enemy MR pre-nerf stats ok');

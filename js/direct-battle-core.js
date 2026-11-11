@@ -9,6 +9,7 @@ import { parseCSV, skillCountMult, RULES, canSummon, makeUnit, resolveAttack, re
 import { setSkillData, skillsOf, setRng, setEmitter, getEmitter, setSpare, initPlayers, placeUnit, turnStart, turnEnd, useSkill, skillState, aiPickSkill, refreshAll, checkDeath, spareBlocked } from './skills.js';
 import { snapCard } from './pvp-core.js';
 import { leaderSkill } from './sweep-core.js';
+import './enemy-mr.js';
 import './quest-gen.js';
 import { rngOf, rollRank } from './direct-rng.js';
 export { rngOf, rollRank };

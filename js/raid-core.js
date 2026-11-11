@@ -2,6 +2,7 @@
 // 서버(raid_start)가 준 seed + 내 덱 스냅샷 + 보스 정보로 자동 전투(auto-ai.js). 같은 입력이면 결과가 항상 같아 tools/raid_verify.mjs 로 재검증.
 // 보스는 쓰러지지 않음(즉사 시 되돌림). 매 행동 뒤 입힌 피해를 세고(행동 1번당 상한) HP 를 다시 채운다 → 즉사·%피해 스킬도 상한까지만.
 import { initPlayers, placeUnit, turnStart, turnEnd, useSkill, refreshAll } from './skills.js';
+import { applyEnemyMr } from './enemy-mr.js';
 import { makeUnit, resolveAttack, refillMana, clearBuff, endTurnXp } from './rules.js';
 import { autoNext, noteUsed } from './auto-ai.js';
 import { rngOf, stepper, replay, resolveAct } from './pvp-core.js';
@@ -23,7 +24,8 @@ export const bossOf = stage => RAID_BOSSES[(Math.max(1, stage) - 1) % RAID_BOSSE
 export const hitCap = stage => Math.round(6000 * Math.pow(1.1, Math.max(0, stage - 1)));
 /** 보스 전투 카드 */
 export function bossCard(stage, diff, cardById) {
-  const b = bossOf(stage), c = cardById(b.id || b.stand); if (!c) return null;
+  const b = bossOf(stage), raw = cardById(b.id || b.stand); if (!raw) return null;
+  const c = applyEnemyMr(raw);
   const D = RAID_DIFF[diff] || RAID_DIFF.normal, up = 1 + 0.12 * (Math.max(1, stage) - 1);
   return { ...c, id: c.id, name: b.name, HP: BOSS_BAR, ATK: Math.round(c.ATK * 0.8 * D.atk * up), DEF: Math.round(c.DEF * 0.2 * D.def * up) };
 }
