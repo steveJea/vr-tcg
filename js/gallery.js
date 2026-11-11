@@ -245,7 +245,7 @@
     const s = SHORT[c.grade], t = crownTier(o), d = new Date(o.first_at);
     return { name: c.name, short: s, label: LABEL[s], portrait: `${IMG}${c.id}.webp`, hp: c.HP, atk: c.ATK, def: c.DEF, power: c.power,
       count: o.count, mvp: o.mvp_count, crown: t ? { e: TIERS[t].e, n: TIERS[t].n } : null,
-      first: isNaN(d) ? '' : d.toLocaleDateString('ko-KR'), site: location.hostname || 'tcg.mbbs.kr' };
+      first: isNaN(d) ? '' : d.toLocaleDateString('ko-KR'), site: location.hostname || 'ag.violenceroyale.com' };
   }
   function galToast(t) { const el = document.createElement('div'); el.className = 'story-toast'; el.style.zIndex = '120'; el.textContent = t; document.body.appendChild(el); setTimeout(() => el.remove(), 3200); }
   async function shareCard(id, btn) {

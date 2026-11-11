@@ -1249,7 +1249,7 @@ function showEnding(win, reason) {
   S.endVoice = kind === 'win' && mvp ? () => mvpVoice(mvp.card) : kind === 'lose' && mvp && voiceSet?.has(`${mvp.card.id}_8`) ? () => playVoiceKey(`${mvp.card.id}_8`) : null;   // 패배 보이스 <id>_8
 }
 async function shareResult() {
-  const url = 'https://tcg.mbbs.kr/', text = S?.endShare || 'Violence Royale : The Abyss Gate';
+  const url = 'https://ag.violenceroyale.com/', text = S?.endShare || 'Violence Royale : The Abyss Gate';
   const msg = $('end-share-msg');
   try { if (navigator.share) { await navigator.share({ title: 'Violence Royale : The Abyss Gate', text, url }); return; } } catch (e) { if (e?.name === 'AbortError') return; }
   try { await navigator.clipboard.writeText(`${text} ${url}`); msg.textContent = '링크를 복사했어요!'; }

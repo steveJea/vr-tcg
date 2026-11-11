@@ -1,10 +1,10 @@
 // ===== 카카오톡 공유 (갤러리). Kakao JS SDK 는 처음 누를 때만 불러옴 =====
-// 카카오 개발자 콘솔: [앱] → [플랫폼 키] → [JavaScript 키] → [JavaScript SDK 도메인]에 https://tcg.mbbs.kr 등록 필수
+// 카카오 개발자 콘솔: [앱] → [플랫폼 키] → [JavaScript 키] → [JavaScript SDK 도메인]에 https://ag.violenceroyale.com 등록 필수 (기존 https://tcg.mbbs.kr 도 유지)
 // (안 되어 있으면 uploadImage·sendDefault 가 {code:-401, msg:'domain mismatched! ...'} 로 실패). JavaScript 키는 공개 키
 (function () {
   const SDK = 'https://t1.kakaocdn.net/kakao_js_sdk/2.7.6/kakao.min.js';
   const KEY = '839f298caef8022398724020f36bd2d8';
-  const GAME_URL = 'https://tcg.mbbs.kr/';
+  const GAME_URL = 'https://ag.violenceroyale.com/';
   let loading = null;
   /** SDK 로드 + init. 실패하면 reject */
   function ready() {

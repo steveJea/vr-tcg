@@ -1,7 +1,7 @@
 /* mbbs.kr 공통 푸터 (독립 파일) */
 (function(){
   var s=document.currentScript, cur=s.getAttribute('data-current')||'', mode=s.getAttribute('data-mode')||'flow', show=s.getAttribute('data-show');
-  var games=[['tcg','Violence Royale : The Abyss Gate','https://tcg.mbbs.kr/'],['shoot','Shooting Masters','https://shoot.mbbs.kr/'],['wcup','이상형 월드컵','https://wcup.mbbs.kr/'],['battle','Battle Masters','https://battle.mbbs.kr/'],['home','Ent.INCODE','https://www.mbbs.kr/']];
+  var games=[['tcg','Violence Royale : The Abyss Gate','https://ag.violenceroyale.com/'],['shoot','Shooting Masters','https://shoot.mbbs.kr/'],['wcup','이상형 월드컵','https://wcup.mbbs.kr/'],['battle','Battle Masters','https://battle.mbbs.kr/'],['home','Ent.INCODE','https://www.mbbs.kr/']];
   var css='#mbbs-footer{font:12px/1.5 system-ui,"Malgun Gothic",sans-serif;color:rgba(255,255,255,.55);text-align:center;padding:10px 12px calc(10px + env(safe-area-inset-bottom));}'+
   '#mbbs-footer.mf-fixed{position:fixed;left:0;right:0;bottom:0;z-index:40;background:linear-gradient(transparent,rgba(0,0,0,.75) 45%);padding-top:22px;pointer-events:none}'+
   '#mbbs-footer.mf-fixed *{pointer-events:auto}#mbbs-footer.mf-flow{background:#111;border-top:1px solid rgba(255,255,255,.08)}'+
