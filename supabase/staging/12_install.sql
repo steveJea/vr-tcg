@@ -40,11 +40,11 @@ set local check_function_bodies = off;
 
 do $vr_install_part$
 begin
-  if exists (select 1 from vr_staging_install.parts where bundle_hash <> '40b68905df2c6bf0c180eac763ec76ff28e4302479406446e8dfd4ef4253b0b0' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
+  if exists (select 1 from vr_staging_install.parts where bundle_hash <> '9c2af48c02c3cc678fec379f67d248fd19aaa81a42036235ff2ae7e2ed605408' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
     raise exception 'STOP: 다른 버전/DB의 설치 기록입니다. 파일을 섞지 마세요.';
   end if;
   if exists (select 1 from vr_staging_install.parts where part_no = 12) then
-    if not exists (select 1 from vr_staging_install.parts where part_no = 12 and part_hash = '09b3484da2c530577aa8915f1edd6819c46d09821f4ac360c2ec45789adea202') then
+    if not exists (select 1 from vr_staging_install.parts where part_no = 12 and part_hash = 'af2227f77561910fd403d93da9938942e0c63ac12dbe270fd3cabaeeb35da4cd') then
       raise exception 'STOP: 완료한 파일과 내용이 다릅니다.';
     end if;
     raise notice '12_install.sql: 이미 완료, 변경 없이 건너뜀';
@@ -401,6 +401,12 @@ begin
   execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10507','{"class":"ICE","gender":"FEMALE","MOR":16,"cost":30,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
   execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10508','{"class":"FIRE","gender":"MALE","MOR":76,"cost":45,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
   execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10510','{"class":"FIRE","gender":"FEMALE","MOR":34,"cost":30,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10514','{"class":"FIRE","gender":"MALE","MOR":20,"cost":20,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10515','{"class":"FIRE","gender":"FEMALE","MOR":77,"cost":10,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10516','{"class":"ICE","gender":"FEMALE","MOR":80,"cost":30,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10517','{"class":"DARK","gender":"MALE","MOR":3,"cost":55,"grade":"ULTRA RARE"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10518','{"class":"DARK","gender":"MALE","MOR":21,"cost":30,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
+  execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10519','{"class":"WIND","gender":"MALE","MOR":16,"cost":10,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
   execute $vr_statement$-- END GENERATED PHASE2 STORY
 
 create or replace function public._clear_enabled_v2(m text) returns boolean language sql stable security definer
@@ -831,28 +837,9 @@ end $$;$vr_statement$;
  src:=pg_get_functiondef('public._ach_json(uuid)'::regprocedure);
  execute replace(src,'''gifts_sent'')','''gifts_sent'',''story_ch'',''story_stars'',''tower_normal'',''tower_elem'',''tower_light'',''skill_uses'')');
 end $$;$vr_statement$;
-  execute $vr_statement$-- Show held legacy floors so honest players can select and replay them for settlement.
-create or replace function public.tower_status() returns jsonb language plpgsql security definer set search_path=pg_catalog,public,pg_temp as $$
-declare u uuid:=auth.uid(); lv int; out_ jsonb:='{}'; tw text; r public.tower_progress; today_ date:=public._tower_today(); paid_ int; pending_ jsonb;
-begin
- if u is null then raise exception 'login required'; end if;
- select level into lv from public.player_state where user_id=u;
- foreach tw in array array['normal','wind','ice','fire','light','dark'] loop
-  select * into r from public.tower_progress where user_id=u and tower=tw;
-  select coalesce((tower_paid->>tw)::int,0) into paid_ from public.battle_legacy_access_v2 where user_id=u;
-  select coalesce(jsonb_agg(f order by f),'[]') into pending_ from generate_series(coalesce(paid_,0)+1,coalesce(r.best_floor,0)) f
-   where not exists(select 1 from public.battle_clear_receipts_v2 v where v.user_id=u and v.mode='tower' and v.target=tw||':'||f::text);
-  out_:=out_||jsonb_build_object(tw,jsonb_build_object('best_floor',coalesce(r.best_floor,0),'paid_floor',coalesce(r.paid_floor,0),'max_floor',public._tower_max_floor(tw),
-   'clears',coalesce(r.clears,0),'rewards',coalesce(r.rewards,'{}'),'unpaid_floors',pending_,'reward_held',not public._clear_enabled_v2('tower'),
-   'today',case when r.day=today_ then r.day_floors else 0 end,'daily',public._tower_daily(tw),
-   'open_today',public._tower_dow()=any(public._tower_days(tw)),'days',to_jsonb(public._tower_days(tw)),
-   'min_level',public._tower_min_level(tw),'unlocked',coalesce(lv,1)>=public._tower_min_level(tw)));
- end loop;
- return jsonb_build_object('ok',true,'level',coalesce(lv,1),'dow',public._tower_dow(),'day',today_,'towers',out_);
-end $$;$vr_statement$;
 
   insert into vr_staging_install.parts(part_no, bundle_hash, part_hash, project_ref, db_id)
-  values (12, '40b68905df2c6bf0c180eac763ec76ff28e4302479406446e8dfd4ef4253b0b0', '09b3484da2c530577aa8915f1edd6819c46d09821f4ac360c2ec45789adea202', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
+  values (12, '9c2af48c02c3cc678fec379f67d248fd19aaa81a42036235ff2ae7e2ed605408', 'af2227f77561910fd403d93da9938942e0c63ac12dbe270fd3cabaeeb35da4cd', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
 end $vr_install_part$;
 commit;
 select '12_install.sql: 완료 또는 이미 완료 (12/14)' as result;

@@ -40,11 +40,11 @@ set local check_function_bodies = off;
 
 do $vr_install_part$
 begin
-  if exists (select 1 from vr_staging_install.parts where bundle_hash <> '40b68905df2c6bf0c180eac763ec76ff28e4302479406446e8dfd4ef4253b0b0' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
+  if exists (select 1 from vr_staging_install.parts where bundle_hash <> '9c2af48c02c3cc678fec379f67d248fd19aaa81a42036235ff2ae7e2ed605408' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
     raise exception 'STOP: 다른 버전/DB의 설치 기록입니다. 파일을 섞지 마세요.';
   end if;
   if exists (select 1 from vr_staging_install.parts where part_no = 13) then
-    if not exists (select 1 from vr_staging_install.parts where part_no = 13 and part_hash = '6b2787826cb913dbc4173fb766eb209e8947197b99bd0ee864fc66b9e799d69a') then
+    if not exists (select 1 from vr_staging_install.parts where part_no = 13 and part_hash = 'd0bf38cbdf1df2c65a7575728b4eac01d0762387c693fcc3714385dd474413b1') then
       raise exception 'STOP: 완료한 파일과 내용이 다릅니다.';
     end if;
     raise notice '13_install.sql: 이미 완료, 변경 없이 건너뜀';
@@ -55,6 +55,25 @@ begin
   end if;
   -- 설치 도중에는 클라이언트가 미완성 게임 스키마에 접근하지 못함. 마지막에만 개방.
   revoke usage on schema public from public, anon, authenticated;
+  execute $vr_statement$-- Show held legacy floors so honest players can select and replay them for settlement.
+create or replace function public.tower_status() returns jsonb language plpgsql security definer set search_path=pg_catalog,public,pg_temp as $$
+declare u uuid:=auth.uid(); lv int; out_ jsonb:='{}'; tw text; r public.tower_progress; today_ date:=public._tower_today(); paid_ int; pending_ jsonb;
+begin
+ if u is null then raise exception 'login required'; end if;
+ select level into lv from public.player_state where user_id=u;
+ foreach tw in array array['normal','wind','ice','fire','light','dark'] loop
+  select * into r from public.tower_progress where user_id=u and tower=tw;
+  select coalesce((tower_paid->>tw)::int,0) into paid_ from public.battle_legacy_access_v2 where user_id=u;
+  select coalesce(jsonb_agg(f order by f),'[]') into pending_ from generate_series(coalesce(paid_,0)+1,coalesce(r.best_floor,0)) f
+   where not exists(select 1 from public.battle_clear_receipts_v2 v where v.user_id=u and v.mode='tower' and v.target=tw||':'||f::text);
+  out_:=out_||jsonb_build_object(tw,jsonb_build_object('best_floor',coalesce(r.best_floor,0),'paid_floor',coalesce(r.paid_floor,0),'max_floor',public._tower_max_floor(tw),
+   'clears',coalesce(r.clears,0),'rewards',coalesce(r.rewards,'{}'),'unpaid_floors',pending_,'reward_held',not public._clear_enabled_v2('tower'),
+   'today',case when r.day=today_ then r.day_floors else 0 end,'daily',public._tower_daily(tw),
+   'open_today',public._tower_dow()=any(public._tower_days(tw)),'days',to_jsonb(public._tower_days(tw)),
+   'min_level',public._tower_min_level(tw),'unlocked',coalesce(lv,1)>=public._tower_min_level(tw)));
+ end loop;
+ return jsonb_build_object('ok',true,'level',coalesce(lv,1),'dow',public._tower_dow(),'day',today_,'towers',out_);
+end $$;$vr_statement$;
   execute $vr_statement$create or replace function public.story_sweep(p_chapter int,p_phase int,p_runs int default 1) returns jsonb language plpgsql security definer set search_path=pg_catalog,public,pg_temp as $$
 declare u uuid:=auth.uid(); begin
  if u is null then raise exception 'login required'; end if;
@@ -1305,32 +1324,9 @@ begin
  update guildbattle_sessions_v4 set status='settled',submission=p_submission,result=rw,verified=not bad where id=s.id;
  return jsonb_build_object('ok',true,'status','settled','result',rw);
 end $$;$vr_statement$;
-  execute $vr_statement$create or replace function public.raid_sweep_v4(p_request uuid) returns jsonb language plpgsql security definer set search_path=pg_catalog,public,pg_temp as $$
-declare u uuid:=auth.uid(); m guild_members; r guild_raids_v4; a guild_raid_attempts_v4; best bigint; rw jsonb;
-begin
- perform _guildbattle_guard_v4(); if u is null or p_request is null then raise exception 'login required'; end if;
- perform pg_advisory_xact_lock(hashtext('guildbattle:v4'));
- select result into rw from guildbattle_sweeps_v4 where user_id=u and request_id=p_request; if found then return rw; end if;
- select * into m from guild_members where user_id=u for update; if not found then raise exception 'not in guild'; end if;
- if _raid_now_v4()>=_raid_end_v4(_raid_week_v4()) then raise exception 'raid ended'; end if;
- if _guildbattle_used_v4(u,'raid')>=3 then raise exception 'no attempts'; end if;
- select max(fight.damage) into best from guild_raid_attempts_v4 fight join guildbattle_sessions_v4 sess on sess.kind='raid' and sess.attempt_id=fight.id and sess.verified and sess.status='settled'
- where fight.user_id=u and fight.guild_id=m.guild_id and fight.week=_raid_week_v4() and fight.day=_raid_day_v4() and fight.kind='fight' and not fight.voided;
- if coalesce(best,0)<=0 then raise exception 'fight first'; end if;
- r:=_raid_get_v4(m.guild_id,_raid_week_v4());
- insert into guild_raid_attempts_v4(user_id,guild_id,week,day,kind,stage,difficulty) values(u,m.guild_id,r.week,_raid_day_v4(),'sweep',r.stage,r.difficulty) returning * into a;
- rw:=jsonb_build_object('result',_raid_close_v4(a,best*90/100));
- insert into guildbattle_sweeps_v4 values(u,p_request,rw,m.guild_id,_guild_day()); return rw;
-end $$;$vr_statement$;
-  execute $vr_statement$-- Apply the existing random gear trigger ONLY when a new verified fight or
--- server-derived sweep atomically finishes. Failed transactions roll it back.
-drop trigger if exists gear_raid_drop_v4 on guild_raid_attempts_v4;$vr_statement$;
-  execute $vr_statement$create trigger gear_raid_drop_v4 after update on guild_raid_attempts_v4 for each row execute function public._gear_raid_attempt_trg();$vr_statement$;
-  execute $vr_statement$create or replace function public._guildbattle_raid_count_v4(u uuid,g bigint,d date,e date) returns bigint language sql stable security definer set search_path=pg_catalog,public,pg_temp as $$
- select count(*) from (select user_id,guild_id,day from guildbattle_events_v4 where kind='raid' union all select user_id,guild_id,day from guildbattle_sweeps_v4) x where (u is null or user_id=u) and guild_id=g and day between d and e $$;$vr_statement$;
 
   insert into vr_staging_install.parts(part_no, bundle_hash, part_hash, project_ref, db_id)
-  values (13, '40b68905df2c6bf0c180eac763ec76ff28e4302479406446e8dfd4ef4253b0b0', '6b2787826cb913dbc4173fb766eb209e8947197b99bd0ee864fc66b9e799d69a', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
+  values (13, '9c2af48c02c3cc678fec379f67d248fd19aaa81a42036235ff2ae7e2ed605408', 'd0bf38cbdf1df2c65a7575728b4eac01d0762387c693fcc3714385dd474413b1', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
 end $vr_install_part$;
 commit;
 select '13_install.sql: 완료 또는 이미 완료 (13/14)' as result;

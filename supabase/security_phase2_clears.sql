@@ -845,6 +845,12 @@ insert into public.battle_card_meta_v2(id,definition) values ('10506','{"class":
 insert into public.battle_card_meta_v2(id,definition) values ('10507','{"class":"ICE","gender":"FEMALE","MOR":16,"cost":30,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
 insert into public.battle_card_meta_v2(id,definition) values ('10508','{"class":"FIRE","gender":"MALE","MOR":76,"cost":45,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;
 insert into public.battle_card_meta_v2(id,definition) values ('10510','{"class":"FIRE","gender":"FEMALE","MOR":34,"cost":30,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10514','{"class":"FIRE","gender":"MALE","MOR":20,"cost":20,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10515','{"class":"FIRE","gender":"FEMALE","MOR":77,"cost":10,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10516','{"class":"ICE","gender":"FEMALE","MOR":80,"cost":30,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10517','{"class":"DARK","gender":"MALE","MOR":3,"cost":55,"grade":"ULTRA RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10518','{"class":"DARK","gender":"MALE","MOR":21,"cost":30,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10519','{"class":"WIND","gender":"MALE","MOR":16,"cost":10,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
 -- END GENERATED PHASE2 STORY
 
 create or replace function public._clear_enabled_v2(m text) returns boolean language sql stable security definer
