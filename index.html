@@ -399,14 +399,14 @@
         <button id="main-help" class="gm-btn" type="button"><img src="img/ui/v2/icon_help.webp" alt=""><span>도움말</span></button>
         <button id="main-help-q" class="gm-btn" type="button" onclick="window.VRHelp&&VRHelp.open()"><b class="gm-q">?</b><span>가이드</span></button>
         <button id="main-howto" class="gm-btn" type="button"><img src="img/ui/v2/icon_howto.webp" alt=""><span>HOW TO PLAY</span></button>
-        <button id="main-tutorial" class="gm-btn hidden" type="button"><img src="img/ui/v2/icon_tutorial.webp" alt=""><span>튜토리얼</span></button>
-        <button id="arcade-opts-btn" class="gm-btn" type="button" aria-haspopup="dialog"><img src="img/ui/v2/icon_arcade_settings.webp" alt=""><span>아케이드 설정 <small id="arcade-opts-sum"></small></span></button>
-        <button id="main-rank" class="gm-btn" type="button"><img src="img/ui/v2/icon_ranking.webp" alt=""><span>랭킹</span></button>
-        <button id="main-gallery" class="gm-btn" type="button"><img src="img/ui/v2/icon_gallery.webp" alt=""><span>갤러리</span></button>
-        <button id="main-link-google" class="gm-btn" type="button" hidden data-clarity-mask="true"><span>구글 연결</span></button>
-        <button id="main-link-kakao" class="gm-btn" type="button" hidden data-clarity-mask="true"><span>카카오 연결</span></button>
-        <button id="main-link-x" class="gm-btn" type="button" hidden data-clarity-mask="true"><span>X 연결</span></button>
-        <button id="main-logout" class="gm-btn hidden" type="button" data-clarity-mask="true"><img src="img/ui/login.webp" alt=""><span>로그아웃</span></button>
+        <button id="main-tutorial" class="gm-btn hidden" type="button" data-gm-home><img src="img/ui/v2/icon_tutorial.webp" alt=""><span>튜토리얼</span></button>
+        <button id="arcade-opts-btn" class="gm-btn" type="button" aria-haspopup="dialog" data-gm-home><img src="img/ui/v2/icon_arcade_settings.webp" alt=""><span>아케이드 설정 <small id="arcade-opts-sum"></small></span></button>
+        <button id="main-rank" class="gm-btn" type="button" data-gm-nobattle><img src="img/ui/v2/icon_ranking.webp" alt=""><span>랭킹</span></button>
+        <button id="main-gallery" class="gm-btn" type="button" data-gm-nobattle><img src="img/ui/v2/icon_gallery.webp" alt=""><span>갤러리</span></button>
+        <button id="main-link-google" class="gm-btn" type="button" data-gm-nobattle hidden data-clarity-mask="true"><span>구글 연결</span></button>
+        <button id="main-link-kakao" class="gm-btn" type="button" data-gm-nobattle hidden data-clarity-mask="true"><span>카카오 연결</span></button>
+        <button id="main-link-x" class="gm-btn" type="button" data-gm-nobattle hidden data-clarity-mask="true"><span>X 연결</span></button>
+        <button id="main-logout" class="gm-btn hidden" type="button" data-gm-nobattle data-clarity-mask="true"><img src="img/ui/login.webp" alt=""><span>로그아웃</span></button>
       </div>
       <nav id="settings-legal-links" class="legal-links" aria-label="서비스 정책"><a href="/terms.html" target="_blank" rel="noopener noreferrer">이용약관</a><a href="/privacy.html" target="_blank" rel="noopener noreferrer">개인정보처리방침</a></nav>
       <div id="gm-foot" class="gm-foot"></div>
@@ -418,6 +418,8 @@
       <div class="set-row"><span class="set-label"><img src="img/ui/opening.webp" alt="" class="ui-ic"> 공격 연출 스킵</span><button id="main-skip" class="set-toggle" type="button" role="switch" aria-checked="false" aria-label="공격 연출 스킵">OFF</button></div>
       <div class="set-row"><span class="set-label"><img src="img/ui/sound_on.webp" alt="" class="ui-ic" id="main-sound-ic"> 배경음악</span><button id="main-sound" class="set-toggle" type="button" role="switch" aria-checked="true" aria-label="배경음악">ON</button></div>
       <div class="set-row"><span class="set-label">🔔 효과음</span><button id="main-se" class="set-toggle" type="button" role="switch" aria-checked="true" aria-label="효과음">ON</button></div>
+      <div class="set-row"><span class="set-label">🎙️ 스킬 보이스</span><button id="main-voice" class="set-toggle on" type="button" role="switch" aria-checked="true" aria-label="스킬 보이스">ON</button></div>
+      <div class="set-row"><span class="set-label">🔉 보이스·효과음 음량</span><input id="main-voice-vol" class="set-range" type="range" min="0" max="100" step="5" aria-label="보이스·효과음 음량"></div>
       <div class="set-row"><span class="set-label">📳 진동</span><button id="main-haptic" class="set-toggle on" type="button" role="switch" aria-checked="true" aria-label="진동">ON</button></div>
       <button class="main-btn w-full mt-4" type="button" data-close-settings>닫기</button>
     </div>

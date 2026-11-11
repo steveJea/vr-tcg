@@ -64,12 +64,43 @@
     hadUser = now;
   });
 
-  // --- 게임설정 메뉴 ---
+  // --- 게임설정 메뉴 = 모든 톱니(홈 · 상단바 · 전투)가 여는 하나뿐인 설정 창 (window.VRMenu) ---
+  // 홈이 아닌 곳(페이지·스토리·탑·PvP 화면)에서는 #start-screen 이 숨어 있으니 body 로 옮겨 띄우고, 닫히면 제자리로.
+  // 전투 중: 전투 설정(#bset-pop: 효과음·스킬 보이스·음량·연출 스킵·속성 상성)을 이 창 맨 위로 옮겨 그대로 쓰고,
+  //   전투를 떠나게 만드는 항목(튜토리얼·아케이드 설정·랭킹·갤러리·계정 연결·로그아웃)은 숨김 → 싸움 중 이탈/로그아웃 없음.
+  // 홈 밖(전투 아님): 새 판을 바로 시작하는 튜토리얼·아케이드 설정만 숨김 (홈 톱니에서는 그대로).
   const gear = $('main-settings'), pop = $('main-menu-pop');
-  const close = () => { pop.classList.add('hidden'); gear.setAttribute('aria-expanded', 'false'); };
-  gear.addEventListener('click', e => { e.stopPropagation(); pop.classList.toggle('hidden'); gear.setAttribute('aria-expanded', String(!pop.classList.contains('hidden'))); paintTut(); });
+  const popHome = { p: pop.parentNode, n: pop.nextSibling };
+  const bset = $('bset-pop'), bsetHome = bset && { p: bset.parentNode, n: bset.nextSibling };
+  const slot = document.createElement('div'); slot.className = 'gm-battle'; slot.setAttribute('aria-label', '전투 설정');
+  pop.querySelector('.gm-grid')?.before(slot);
+  slot.addEventListener('click', e => { if (e.target.closest('#help-btn')) setTimeout(close, 0); }, true);   // 속성 상성 창은 이 창 위로 뜨게 먼저 닫음
+  const visible = el => !!el && !el.classList.contains('hidden') && el.getClientRects().length > 0;
+  const inBattle = () => visible($('game'));
+  const restore = () => {
+    pop.classList.remove('gm-in-battle', 'gm-away');
+    if (bset && bset.parentNode === slot) { bset.classList.add('hidden'); bsetHome.p.insertBefore(bset, bsetHome.n?.parentNode === bsetHome.p ? bsetHome.n : null); }
+    if (pop.parentNode !== popHome.p) popHome.p.insertBefore(pop, popHome.n?.parentNode === popHome.p ? popHome.n : null);
+    gear.setAttribute('aria-expanded', 'false'); $('bset-btn')?.setAttribute('aria-expanded', 'false');
+  };
+  const close = () => { pop.classList.add('hidden'); restore(); };
+  const open = () => {
+    const battle = inBattle(), ss = $('start-screen');
+    const away = !battle && (!visible(ss) || document.body.classList.contains('vr-page-on'));
+    restore();
+    if (battle || away) document.body.appendChild(pop);
+    pop.classList.toggle('gm-in-battle', battle); pop.classList.toggle('gm-away', away);
+    if (battle && bset) { slot.appendChild(bset); bset.classList.remove('hidden'); $('bset-btn')?.setAttribute('aria-expanded', 'true'); }
+    pop.classList.remove('hidden'); gear.setAttribute('aria-expanded', 'true'); paintTut();
+  };
+  const toggle = () => pop.classList.contains('hidden') ? open() : close();
+  // 다른 곳(뒤로가기 가드 등)이 hidden 만 붙여 닫아도 제자리 복귀
+  new MutationObserver(() => { if (pop.classList.contains('hidden') && (pop.parentNode !== popHome.p || bset?.parentNode === slot)) restore(); })
+    .observe(pop, { attributes: true, attributeFilter: ['class'] });
+  window.VRMenu = { open, close, toggle, get isOpen() { return !pop.classList.contains('hidden'); } };
+  gear.addEventListener('click', e => { e.stopPropagation(); toggle(); });
   pop.addEventListener('click', e => { if (e.target === pop || e.target.closest('[data-close-menu]')) return close(); if (e.target.closest('.gm-btn')) close(); });
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !pop.classList.contains('hidden')) close(); });
   $('main-settings-open').addEventListener('click', () => setTimeout(() => window.VRSettings?.open(), 0));
   $('main-tutorial').addEventListener('click', () => { const go = (n = 0) => window.TCG?.POOL?.length ? window.HowTo?.Tutorial.start() : n < 50 && setTimeout(() => go(n + 1), 200); go(); });
 
