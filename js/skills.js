@@ -18,6 +18,8 @@ let SKILL_DB = {}, COMBOS = [];
 export function setSkillData(skills, combos) { SKILL_DB = skills || {}; COMBOS = combos || []; }
 export const skillsOf = id => SKILL_DB[String(id)] || [];
 export const combos = () => COMBOS;
+/** AI keeps judging by the old type when a skill's displayed type was reclassified. */
+export const aiType = s => s?.aiType || s?.type;
 
 // ---- 이벤트 (UI 로그·연출, 시뮬 통계) ----
 let emitFn = () => {};
@@ -1172,12 +1174,12 @@ export function aiSkillScores(u, { noSave = false } = {}) {
       case '깨져버린 세상': case '더 이상 울기 싫어': sc = n >= 2 ? 88 + n * 3 : n ? 70 : 0; break;
       case '그게...최선인가?': sc = n >= 2 && !canKill ? 78 + n * 3 : 0; break;
       default:
-        if (s.type === '디버프') sc = n >= 3 && !canKill ? 80 + n * 3 : 0;
-        else if (s.type === '공격') sc = n || (/본진/.test(s.desc) && heroOk) ? (/적 전체|전체/.test(s.target + s.desc) ? 95 + n * 6 : 100) : 0;
+        if (aiType(s) === '디버프') sc = n >= 3 && !canKill ? 80 + n * 3 : 0;
+        else if (aiType(s) === '공격') sc = n || (/본진/.test(s.desc) && heroOk) ? (/적 전체|전체/.test(s.target + s.desc) ? 95 + n * 6 : 100) : 0;
     }
     // 상대 카드가 없으면 적 카드 대상 스킬은 무의미 (진영을 치는 스킬은 예외)
     if (sc && !n && /적/.test(s.target || '') && !/본진|진영/.test(s.desc || '')) sc = 0;
-    if (sc && canKill && s.type !== '공격' && s.type !== '회복' && !/眞|Cum amicis/.test(s.name)) sc -= 30;
+    if (sc && canKill && aiType(s) !== '공격' && aiType(s) !== '회복' && !/眞|Cum amicis/.test(s.name)) sc -= 30;
     if (sc) sc += s.unlock * 6;
     if (sc > 0) cands.push([s, sc]);
   }

@@ -1288,7 +1288,7 @@ async function fadeDying() {
     els.forEach(el => { el.classList.add('fx-dying'); if (!REDUCED() && el.isConnected) deathShards(el); });   // #6 붉은 섬광 → 흑백 → 가라앉음 + 파편
     await sleep(fxMs(300)); }   // fxMs 라서 FX_SPEED 따라 같이 빨라짐
 }
-const TYPE_COLOR = { '공격': 'bg-red-600', '도발': 'bg-orange-500', '회복': 'bg-emerald-600', '버프': 'bg-sky-600', '디버프': 'bg-purple-600' };
+const TYPE_COLOR = { '공격': 'bg-red-600', '도발': 'bg-orange-500', '회복': 'bg-emerald-600', '버프': 'bg-sky-600', '디버프': 'bg-purple-600', '보호': 'bg-teal-600' };
 
 
 /** 스킬 보이스: data/voice/<카드id>_<스킬번호>.mp3 (index.json에 있는 것만). 실패해도 게임은 그대로 진행 */
