@@ -12,7 +12,7 @@ import { clearBuff, refillMana, endTurnXp, makeUnit, resolveAttack, aiPickTarget
 import { createHandler } from '../supabase/functions/story-direct-verify-v7/handler.mjs';
 import { dashboardHandler } from './load_phase7_dashboard.mjs';
 
-assert.equal(SWEEP_HASH, '199a77eeb1d983463f3268fa8e8d8be6439ba2002d28eac59a7a9e7e6ee2694a');
+assert.equal(SWEEP_HASH, 'ae262e3b06d38fce69d7841cf87dead86bf3e52aa978284342f0665387797f6b');
 assert.equal(ARCADE_HASH, '965c50ee4c5da482b76ecdf0736c2522f8eff5c36b549dbd98fbd4a105c3ecf1');
 assert.notEqual(ENGINE_VERSION, SWEEP_HASH);
 

@@ -40,11 +40,11 @@ set local check_function_bodies = off;
 
 do $vr_install_part$
 begin
-  if exists (select 1 from vr_staging_install.parts where bundle_hash <> 'edfb7f601c2af09fe91dd92476196601d21e0762b12adb621400cb4b2731646e' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
+  if exists (select 1 from vr_staging_install.parts where bundle_hash <> '9c2af48c02c3cc678fec379f67d248fd19aaa81a42036235ff2ae7e2ed605408' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
     raise exception 'STOP: 다른 버전/DB의 설치 기록입니다. 파일을 섞지 마세요.';
   end if;
   if exists (select 1 from vr_staging_install.parts where part_no = 14) then
-    if not exists (select 1 from vr_staging_install.parts where part_no = 14 and part_hash = '97b6fff83a5a4f3ab819495cd6991d02e2c3cd8e88b543ac627bbf63ed3ace7c') then
+    if not exists (select 1 from vr_staging_install.parts where part_no = 14 and part_hash = 'd225fd4f4508dd0d3001f76e34d5883df3d11f5e5d6451a8584568c334487ff2') then
       raise exception 'STOP: 완료한 파일과 내용이 다릅니다.';
     end if;
     raise notice '14_install.sql: 이미 완료, 변경 없이 건너뜀';
@@ -55,6 +55,29 @@ begin
   end if;
   -- 설치 도중에는 클라이언트가 미완성 게임 스키마에 접근하지 못함. 마지막에만 개방.
   revoke usage on schema public from public, anon, authenticated;
+  execute $vr_statement$create or replace function public.raid_sweep_v4(p_request uuid) returns jsonb language plpgsql security definer set search_path=pg_catalog,public,pg_temp as $$
+declare u uuid:=auth.uid(); m guild_members; r guild_raids_v4; a guild_raid_attempts_v4; best bigint; rw jsonb;
+begin
+ perform _guildbattle_guard_v4(); if u is null or p_request is null then raise exception 'login required'; end if;
+ perform pg_advisory_xact_lock(hashtext('guildbattle:v4'));
+ select result into rw from guildbattle_sweeps_v4 where user_id=u and request_id=p_request; if found then return rw; end if;
+ select * into m from guild_members where user_id=u for update; if not found then raise exception 'not in guild'; end if;
+ if _raid_now_v4()>=_raid_end_v4(_raid_week_v4()) then raise exception 'raid ended'; end if;
+ if _guildbattle_used_v4(u,'raid')>=3 then raise exception 'no attempts'; end if;
+ select max(fight.damage) into best from guild_raid_attempts_v4 fight join guildbattle_sessions_v4 sess on sess.kind='raid' and sess.attempt_id=fight.id and sess.verified and sess.status='settled'
+ where fight.user_id=u and fight.guild_id=m.guild_id and fight.week=_raid_week_v4() and fight.day=_raid_day_v4() and fight.kind='fight' and not fight.voided;
+ if coalesce(best,0)<=0 then raise exception 'fight first'; end if;
+ r:=_raid_get_v4(m.guild_id,_raid_week_v4());
+ insert into guild_raid_attempts_v4(user_id,guild_id,week,day,kind,stage,difficulty) values(u,m.guild_id,r.week,_raid_day_v4(),'sweep',r.stage,r.difficulty) returning * into a;
+ rw:=jsonb_build_object('result',_raid_close_v4(a,best*90/100));
+ insert into guildbattle_sweeps_v4 values(u,p_request,rw,m.guild_id,_guild_day()); return rw;
+end $$;$vr_statement$;
+  execute $vr_statement$-- Apply the existing random gear trigger ONLY when a new verified fight or
+-- server-derived sweep atomically finishes. Failed transactions roll it back.
+drop trigger if exists gear_raid_drop_v4 on guild_raid_attempts_v4;$vr_statement$;
+  execute $vr_statement$create trigger gear_raid_drop_v4 after update on guild_raid_attempts_v4 for each row execute function public._gear_raid_attempt_trg();$vr_statement$;
+  execute $vr_statement$create or replace function public._guildbattle_raid_count_v4(u uuid,g bigint,d date,e date) returns bigint language sql stable security definer set search_path=pg_catalog,public,pg_temp as $$
+ select count(*) from (select user_id,guild_id,day from guildbattle_events_v4 where kind='raid' union all select user_id,guild_id,day from guildbattle_sweeps_v4) x where (u is null or user_id=u) and guild_id=g and day between d and e $$;$vr_statement$;
   execute $vr_statement$-- Only raid quests reopen here. Other unverified quest kinds and daily-all bonuses
 -- retain phase1's hold. Never use old q.progress or old contribution as evidence.
 create or replace function public.guild_quest_claim(p_slot int) returns jsonb language plpgsql security definer set search_path=pg_catalog,public,pg_temp as $$
@@ -610,7 +633,7 @@ create table if not exists public.battle_replay_policy_v6 (
  engine_hash text not null check (engine_hash ~ '^[a-f0-9]{64}$'));$vr_statement$;
   execute $vr_statement$-- Starts off. Re-running this file updates the engine hash only and does not turn enforcement on.
 insert into public.battle_replay_policy_v6(singleton, enabled, engine_hash)
- values (true, false, '199a77eeb1d983463f3268fa8e8d8be6439ba2002d28eac59a7a9e7e6ee2694a')
+ values (true, false, 'ae262e3b06d38fce69d7841cf87dead86bf3e52aa978284342f0665387797f6b')
  on conflict (singleton) do update set engine_hash = excluded.engine_hash;$vr_statement$;
   execute $vr_statement$alter table public.battle_replay_policy_v6 enable row level security;$vr_statement$;
   execute $vr_statement$revoke all on public.battle_replay_policy_v6 from public, anon, authenticated;$vr_statement$;
@@ -758,7 +781,7 @@ end $staging_verify$;$vr_statement$;
 
   grant usage on schema public to public, anon, authenticated;
   insert into vr_staging_install.parts(part_no, bundle_hash, part_hash, project_ref, db_id)
-  values (14, 'edfb7f601c2af09fe91dd92476196601d21e0762b12adb621400cb4b2731646e', '97b6fff83a5a4f3ab819495cd6991d02e2c3cd8e88b543ac627bbf63ed3ace7c', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
+  values (14, '9c2af48c02c3cc678fec379f67d248fd19aaa81a42036235ff2ae7e2ed605408', 'd225fd4f4508dd0d3001f76e34d5883df3d11f5e5d6451a8584568c334487ff2', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
 end $vr_install_part$;
 commit;
 select '14_install.sql: 완료 또는 이미 완료 (14/14)' as result;
