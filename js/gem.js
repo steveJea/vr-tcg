@@ -50,7 +50,7 @@
   const priceBtn = (k, cls = '', label = '') => { const s = item(k); if (!s) return ''; const [ic, q] = ITEM[k] || ['', ''];
     return `<button type="button" class="gem-buy ${cls}" data-gem-buy="${k}" ${s.left === 0 ? 'disabled' : ''}><span class="gem-buy-get">${label || `${ic}<b>${q}</b>`}</span><span class="gem-buy-p">${ICON}${n(s.price)}</span>${s.left != null ? `<small>${s.left}</small>` : ''}</button>`; };
   function open() {
-    if (window.VRShop?.open) return window.VRShop.open();
+    if (window.VRShop?.enabled && window.VRShop.open) return window.VRShop.open();
     document.querySelector('.gem-pop:not(.vr-in-page):not(.friend-pop):not(.daily-pop)')?.remove();
     const m = document.createElement('div'); m.className = 'gem-pop';
     const draw = () => { m.innerHTML = `<div class="gem-panel" data-clarity-mask="true" role="dialog" aria-label="${NAME}"><button class="gem-x" data-x aria-label="닫기">✕</button>

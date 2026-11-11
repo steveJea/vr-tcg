@@ -40,7 +40,7 @@ set local check_function_bodies = off;
 
 do $vr_install_part$
 begin
-  if exists (select 1 from vr_staging_install.parts where bundle_hash <> '0de1c4c99b089cc7f9f74aaa86e121366ac0e9debbb98e0cf981775b66cb8b66' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
+  if exists (select 1 from vr_staging_install.parts where bundle_hash <> '1e7a91f656cb089116c27629c13947ec0c769796933ace7bb576f39ba0920d4e' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
     raise exception 'STOP: 다른 버전/DB의 설치 기록입니다. 파일을 섞지 마세요.';
   end if;
   if exists (select 1 from vr_staging_install.parts where part_no = 2) then
@@ -1695,7 +1695,7 @@ begin
 end $$;$vr_statement$;
 
   insert into vr_staging_install.parts(part_no, bundle_hash, part_hash, project_ref, db_id)
-  values (2, '0de1c4c99b089cc7f9f74aaa86e121366ac0e9debbb98e0cf981775b66cb8b66', 'b2e3e0fc765b0a028e5ce9d64cb1bf5cd0e4ffef54946e0f5f6ed75fea633c6e', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
+  values (2, '1e7a91f656cb089116c27629c13947ec0c769796933ace7bb576f39ba0920d4e', 'b2e3e0fc765b0a028e5ce9d64cb1bf5cd0e4ffef54946e0f5f6ed75fea633c6e', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
 end $vr_install_part$;
 commit;
 select '02_install.sql: 완료 또는 이미 완료 (2/14)' as result;

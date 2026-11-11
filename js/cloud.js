@@ -290,5 +290,5 @@ function askNickname(first) {
   });
 }
 
-window.VRCloud = { get profile() { return profile; }, askNickname: () => askNickname(false), get user() { return user; }, get sb() { return sb; }, get ready() { return ready; }, loadRecord, login, logout, push, canLogin, linkProvider };
+window.VRCloud = { get isStaging() { return config.isStaging === true; }, get profile() { return profile; }, askNickname: () => askNickname(false), get user() { return user; }, get sb() { return sb; }, get ready() { return ready; }, loadRecord, login, logout, push, canLogin, linkProvider };
 init();

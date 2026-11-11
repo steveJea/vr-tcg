@@ -1,0 +1,26 @@
+{
+  "release": "20261111",
+  "previousRelease": "20261108",
+  "productionProject": "htarwisgkkphutxxnuak",
+  "productionSystemId": "7692130048193495360",
+  "stagingSystemId": "7703759698107299042",
+  "baselineCommit": "12c5e005ce4c1e184b6e4ffe013aa2a21e6329f5",
+  "outDir": "supabase/production/20261111",
+  "expectedExisting": {
+    "pvp_policy_v3": "5a38b4b72651fcb8632fb1bfe14e1cd18a758d08249dbb18b0cfd223123c7a67",
+    "guildbattle_policy_v4": "c570973669776971316dfb650482e1401c5628c5ba73e57d23b879b9320c719a",
+    "arcade_policy_v5": "e792c491ffafe19d047aa6f58db1920e5767e4059e14816611dd38d473871161"
+  },
+  "newSources": [
+    "security_phase6_story_tower.sql",
+    "security_phase7_direct_replay.sql",
+    "story_ch16_17.sql"
+  ],
+  "edges": [
+    "pvp-verify-v3",
+    "guildbattle-verify-v4",
+    "arcade-verify-v5",
+    "story-tower-verify-v6",
+    "story-direct-verify-v7"
+  ]
+}
