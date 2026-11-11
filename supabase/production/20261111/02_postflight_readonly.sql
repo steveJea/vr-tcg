@@ -4,7 +4,7 @@ select (select engine_hash from public.pvp_policy_v3)='bef887c77a009121ae99301ca
  (select engine_hash from public.guildbattle_policy_v4)='819b116c1e1ccd7d66ba589e3bc5e4e8d436a43ebf2dfe4543c250cbf5166cd0' guild_ok,
  (select engine_hash from public.arcade_policy_v5)='7c47d4ccb224c0cd7cf8ff9a11a465e68fd645510588249fabb6c8859a39663a' arcade_ok,
  (select engine_hash from public.battle_replay_policy_v6)='32f0e5059ddb994d56865b16054d64f3f2c1f389df672be4f113e13c5d4112c2' sweep_v6_ok,
- (select engine_hash from public.battle_replay_policy_v7)='c7957db40094278cd3593d56a0cb993634cbabdbdc565d2eb6827a2472b3c05e' direct_v7_ok,
+ (select engine_hash from public.battle_replay_policy_v7)='c128e31ac46bd40d34f934af334021693f998f48a6d5b47ad8c414a62588688e' direct_v7_ok,
  (select enabled from public.battle_replay_policy_v6)=false v6_off_ok, (select enabled from public.battle_replay_policy_v7)=false v7_off_ok;
 select (select count(*) from public.story_phase_config where chapter=16)=12 ch16_ok, (select count(*) from public.story_phase_config where chapter=17)=15 ch17_ok,
  (select count(*) from public.battle_story_defs_v2 where chapter in (16,17))=27 ch16_17_defs_ok,

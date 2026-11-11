@@ -1599,6 +1599,9 @@ window.STORY_DATA.chapters.push({
    "afterTitle": "전투 후",
    "rules": {
     "maxTurns": 20,
+    "mustKill": [
+     "10406"
+    ],
     "revive": [
      {
       "id": "10290",

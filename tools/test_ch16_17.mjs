@@ -34,7 +34,7 @@ ok(ch16 && ch16.phases.length === 12 && ch16.subtitle === '젊은 베르테르�
 ok(ch17 && ch17.phases.length === 15 && ch17.subtitle === '폭풍의 언덕' && ch17.hero === '10307' && ch17.endingVideo === 'jhBi0xojOOM', 'CH17 15페이즈 · 제목 · 주인공 이영하 · 엔딩 영상');
 ok([...ch16.phases, ...ch17.phases].filter(p => !p.scene).every(p => p.enemies.ids.every(id => cards[id])), '전투 페이즈 적 카드 모두 존재');
 ok(P(ch16, 1).enemies.ids[0] === '10514' && P(ch16, 11).enemies.ids.includes('10306') && P(ch16, 11).party.forced[0] === '10200', '16-1 강두식 · 16-11 이영아(10306) · 필수 소민섭');
-ok(P(ch16, 11).enemies.ids.length === 6 && P(ch16, 11).rules.revive[0].become === '10291', '16-11 적 6명 · 윤진아 사망 시 [각성] 윤진아');
+ok(P(ch16, 11).type === 'normal' && P(ch16, 11).rules.mustKill?.[0] === '10406' && P(ch16, 11).enemies.ids.length === 6 && P(ch16, 11).rules.revive[0].become === '10291', '16-11 최국선 mustKill · 적 6명 · 윤진아 사망 시 [각성] 윤진아 · type normal 유지');
 ok(P(ch16, 6).party.solo && P(ch16, 6).party.forced.join() === '10123,10025,10183' && P(ch16, 12).scene, '16-6 빈소 필수 3인 단독 · 16-12 스토리 페이즈');
 ok(P(ch16, 1).party.noFemale && P(ch16, 1).party.maxGrade === 'SUPER RARE' && P(ch16, 1).mana === 100, '16-1 여성 금지 · SR 이하 · 마나 100');
 ok(ch16.phases.some(p => (p.lines.default || []).some(L => L.slug === 'jo_yuni_school')), '조윤이 ch16 교복 slug');
@@ -54,4 +54,20 @@ const lu = readFileSync(new URL('../supabase/level_unlocks_staging.sql', import.
 await db.exec(lu); await db.exec(sql16);
 const g = await db.query("select public._player_unlock_level('chapter_16') a, public._player_unlock_level('chapter_17') b, public._player_unlock_level('skill') s, public._player_unlock_level('equip') e");
 ok(g.rows[0].a === 1 && g.rows[0].b === 1 && g.rows[0].s === 13 && g.rows[0].e === 3, '재실행 후에도 11-08 정책 유지 (챕터 1 · 스킬 13 · 장비 3)');
+ok(/mustKill":\["10406"\]/.test(chSrc) && (await db.query('select type, points from public.story_phase_config where chapter=16 and phase=11')).rows[0].type === 'normal' && (await db.query('select points from public.story_phase_config where chapter=16 and phase=11')).rows[0].points === 3, '16-11 catalog mustKill · type normal · points 3');
+const fix = readFileSync(new URL('../supabase/fix_16_11_mustkill.sql', import.meta.url), 'utf8');
+ok(fix.includes("7703759698107299042") && fix.includes("c128e31ac46bd40d34f934af334021693f998f48a6d5b47ad8c414a62588688e") && fix.includes("fe63c33c17f3019f771b7b393cd7c53325cb743aefe9ebc476ce082c3a0a68f7") && fix.includes("c7957db40094278cd3593d56a0cb993634cbabdbdc565d2eb6827a2472b3c05e"), 'fix_16_11_mustkill.sql 가드 + 양쪽 이전 해시 → 새 해시');
+ok(fix.includes("{rules,mustKill}") && fix.includes('["10406"]') && fix.includes('fix_direct_v7_become.sql'), '16-11 mustKill jsonb_set · become SQL 대체 명시');
+await db.exec(`create table if not exists public.battle_story_defs_v2 (chapter int, phase int, variant text default '', definition jsonb not null, primary key (chapter, phase, variant));
+create table if not exists public.battle_replay_policy_v7 (singleton boolean primary key default true, engine_hash text not null);
+truncate public.battle_story_defs_v2, public.battle_replay_policy_v7;
+insert into public.battle_story_defs_v2 values (16,11,'','{"type":"normal","rules":{"maxTurns":20,"revive":[{"id":"10290","become":"10291"}]}}'::jsonb);
+insert into public.battle_replay_policy_v7 values (true, 'fe63c33c17f3019f771b7b393cd7c53325cb743aefe9ebc476ce082c3a0a68f7');`);
+try { await db.exec(fix); ok(false, 'fix SQL 가드는 스테이징이 아니면 거부'); } catch (e) { ok(/STOP: 16-11 mustKill/.test(String(e.message||e)), 'fix SQL 가드는 스테이징이 아니면 거부'); }
+const local = fix.replace("is distinct from '7703759698107299042'", "is distinct from (select system_identifier::text from pg_catalog.pg_control_system())");
+await db.exec(local); await db.exec(local);
+ok((await db.query('select engine_hash v from public.battle_replay_policy_v7')).rows[0].v === 'c128e31ac46bd40d34f934af334021693f998f48a6d5b47ad8c414a62588688e' && (await db.query("select definition->'rules'->'mustKill'->>0 v from public.battle_story_defs_v2 where chapter=16 and phase=11 and variant=''")).rows[0].v === '10406', 'fix SQL: fe63c33c → 새 해시, mustKill 복구, 멱등');
+await db.exec("update public.battle_replay_policy_v7 set engine_hash='c7957db40094278cd3593d56a0cb993634cbabdbdc565d2eb6827a2472b3c05e'");
+await db.exec(local);
+ok((await db.query('select engine_hash v from public.battle_replay_policy_v7')).rows[0].v === 'c128e31ac46bd40d34f934af334021693f998f48a6d5b47ad8c414a62588688e', 'fix SQL: c7957db4(become)도 새 해시로 승계');
 console.log(fails ? `${fails} FAIL` : 'ALL OK'); process.exit(fails ? 1 : 0);
