@@ -238,7 +238,7 @@ async function startGame(story = null, at = null) {
   dockStoryBuff(!!story);
   setBattleBg(story?.win === 'ko' ? 'boss' : 'normal', { story, key: story?.bgKey }); preloadHit();
   $('ai-name').textContent = story ? (story.aiName || '적군') : '';   // 아케이드: 이름·아이콘 없음
-  primeBattleMedia();
+  primeBattleMedia(story ? 0 : 10);   // 아케이드: 덱 앞 10장씩 등장 그림까지 미리 디코드 (나머지는 뽑을 때 preloadFx)
   selected = null; $('log').innerHTML = ''; fxQueue.length = 0; mrCancel?.(); vidGate = Promise.resolve();
   $('end-screen').classList.add('hidden'); $('start-screen').classList.add('hidden'); renderAutoBtn(); $('game').classList.remove('hidden', 'bfx-final', 'bfx-lose'); fitBoardSoon();
   if(!S.arcade) initPlayers(S.me, S.ai, S[first]);   // 0턴 배치 상태(불사·회피 등) 지속 턴 기준 = 선공
@@ -1407,6 +1407,23 @@ function renderSeBtn() {
 document.addEventListener('pointerdown', e => { const b = e.target.closest?.('button'); if (b && !b.disabled && b.id !== 'se-toggle' && b.id !== 'main-se') playSe(4); }, true);
 /** 스킬 컷인: 스킬 이름 배너 + 연출 이미지(data/fx/<파일>, 16:9, 모바일 세로는 가운데 기준으로 양옆 잘림) */
 const fxLoaded = new Set();
+// 등장 컷인 그림: 전용 이미지가 있으면 그것, 없으면 프로필(신규 카드는 img/npc 로 바로). 덱이 정해지면 미리 받아 디코드.
+const entryHas = id => (EVENTS.entry.fx || []).map(String).includes(String(id));
+function entryImg(id) { return entryHas(id) ? `data/fx/${id}_0.webp` : portraitFull(id); }
+const entryWarm = new Map();
+function warmEntries(cards) {
+  for (const c of cards || []) {
+    const id = c?.id; if (id == null) continue;
+    const src = entryImg(id); if (entryWarm.has(src)) continue;
+    const im = new Image(); im.decoding = 'async'; im.src = src;
+    entryWarm.set(src, (im.decode ? im.decode() : Promise.resolve()).catch(() => {}));
+    if (entryWarm.size > 80) entryWarm.delete(entryWarm.keys().next().value);
+  }
+}
+function entryReady(src, ms = 250) {
+  const p = entryWarm.get(src); if (!p) return Promise.resolve();
+  return Promise.race([p, sleep(ms)]);
+}
 function preloadFx(cards) {
   for (const c of cards) for (const s of skillsOf(c.id)) {
     if (!s.fx || fxLoaded.has(s.fx) || /\.(mp4|webm)$/i.test(s.fx)) continue;
@@ -1414,6 +1431,7 @@ function preloadFx(cards) {
   }
   try { preloadVoice(cards); } catch {}
   warmPortraits(cards);
+  if (!S?.story) warmEntries(cards);   // 등장 컷인은 아케이드 전용
 }
 const thumbWarmed = new Map();
 function warmThumbs(cards) {
@@ -1425,8 +1443,9 @@ function warmThumbs(cards) {
     if (thumbWarmed.size > 96) thumbWarmed.delete(thumbWarmed.keys().next().value);
   }
 }
-function primeBattleMedia() {
+function primeBattleMedia(entryAhead = 0) {
   if (!S) return;
+  if (entryAhead && !S.story) warmEntries([...S.me.hand, ...S.ai.hand, ...S.me.deck.slice(0, entryAhead), ...S.ai.deck.slice(0, entryAhead)]);
   const visible = [...S.me.hand, ...S.ai.hand, ...S.me.field.map(u => u.base || u.card), ...S.ai.field.map(u => u.base || u.card)];
   const next = [...S.me.deck.slice(0, 2), ...S.ai.deck.slice(0, 2)];
   warmThumbs([...visible, ...next]);
@@ -1510,9 +1529,10 @@ function onEnter(who, u) {
   if (!S || !u) return;
   if (S.story) return;   // 등장 컷인·이벤트 매칭씬은 아케이드 전용 (스토리·탑·PvP·토벌·전쟁·튜토리얼은 생략)
   const id = String((u.base || u.card).id);
-  // 등장 컷인: 등장 보이스(<id>_0) 또는 전용 이미지(events.json entry.fx) 중 하나라도 있으면
+  // 등장 컷인: 모든 카드. 전용 이미지(events.json entry.fx → data/fx/<id>_0.webp)가 없으면 프로필 사진으로 대체.
+  // (예전엔 등장 보이스나 전용 이미지가 있어야만 떠서, 보이스 없는 신규 카드 10511~10532 는 아무것도 안 나왔다)
   if (S.undoneIds?.has(id)) { checkEvents(); return; }
-  if ((voiceSet?.has(`${id}_0`) || (EVENTS.entry.fx || []).map(String).includes(id)) && !S.fxSeen.has(`entry:${u.uid}`)) {
+  if (!S.fxSeen.has(`entry:${u.uid}`)) {
     S.fxSeen.add(`entry:${u.uid}`);
     fxQueue.push(() => entryCutIn(u, id)); runFxQueue();
   }
@@ -1535,7 +1555,9 @@ async function entryCutIn(u, id) {
   playVoiceKey(`${id}_0`);
   if (FX_OFF()) return;
   const el = $('cutin');
-  const img = (EVENTS.entry.fx || []).map(String).includes(id) ? `data/fx/${id}_0.webp` : `${IMG}${id}.webp`;
+  const img = entryImg(id);
+  await entryReady(img);   // 미리 받아 둔 그림이 디코드될 때까지 (최대 250ms) 기다렸다가 연출 시작
+  if (!S || S.over) return;
   el.innerHTML = `<img src="${img}" class="cutin-media ${img.startsWith('data/') ? '' : 'cutin-portrait'}" alt="" onerror="this.remove()"><div class="cutin-text"><div class="text-xl md:text-3xl font-black tracking-tight">${escHtml(u.card.name)}</div></div>`;
   const ms = cutinMs(1300);
   el.style.setProperty('--dur', `${ms}ms`);
