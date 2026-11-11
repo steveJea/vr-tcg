@@ -1335,7 +1335,7 @@ function trackVoice(a) {
   const off = () => { voiceActive.delete(a); setTimeout(voiceDuckSync, 60); }; // 60ms 유예: 보이스 교체 시 BGM 출렁임 방지
   ['ended', 'pause', 'error', 'abort', 'emptied'].forEach(ev => a.addEventListener(ev, off));
 }
-fetch('data/voice/index.json').then(r => r.ok ? r.json() : []).then(a => { voiceSet = new Set(a); const cards = [...voicePending.values()]; voicePending.clear(); preloadVoice(cards); }).catch(() => { voiceSet = new Set(); voicePending.clear(); });
+fetch('data/voice/index.json').then(r => r.ok ? r.json() : []).then(a => { voiceSet = new Set(a); const cards = [...voicePending.values()]; voicePending.clear(); preloadVoice(cards); if (S && !S.story) warmEntries(cards); }).catch(() => { voiceSet = new Set(); voicePending.clear(); });
 function voiceKey(u, name) {
   try { const i = skillsOf(u.card.id).findIndex(x => x.name === name); return i < 0 ? null : `${u.card.id}_${i + 1}`; } catch { return null; }
 }
@@ -1409,11 +1409,19 @@ document.addEventListener('pointerdown', e => { const b = e.target.closest?.('bu
 const fxLoaded = new Set();
 // 등장 컷인 그림: 전용 이미지가 있으면 그것, 없으면 프로필(신규 카드는 img/npc 로 바로). 덱이 정해지면 미리 받아 디코드.
 const entryHas = id => (EVENTS.entry.fx || []).map(String).includes(String(id));
+// 등장 컷인 대상: 전용 이미지(entry.fx)나 등장 보이스(<id>_0)가 있으면 등급 무관(#556 이전과 같음),
+// 둘 다 없으면 SR 이상(SR·UR·MR·LR)만 프로필 사진으로 대체.
+const ENTRY_PORTRAIT_GRADES = new Set(['SUPER RARE', 'ULTRA RARE', 'MYTHIC RARE', 'LEGENDARY RARE']);
+function hasEntryCutIn(card) {
+  if (!card || card.id == null) return false;
+  const id = String(card.id);
+  return entryHas(id) || !!voiceSet?.has(`${id}_0`) || ENTRY_PORTRAIT_GRADES.has(card.grade);
+}
 function entryImg(id) { return entryHas(id) ? `data/fx/${id}_0.webp` : portraitFull(id); }
 const entryWarm = new Map();
 function warmEntries(cards) {
   for (const c of cards || []) {
-    const id = c?.id; if (id == null) continue;
+    const id = c?.id; if (id == null || !hasEntryCutIn(c)) continue;   // 실제로 컷인이 뜨는 카드만
     const src = entryImg(id); if (entryWarm.has(src)) continue;
     const im = new Image(); im.decoding = 'async'; im.src = src;
     entryWarm.set(src, (im.decode ? im.decode() : Promise.resolve()).catch(() => {}));
@@ -1529,10 +1537,9 @@ function onEnter(who, u) {
   if (!S || !u) return;
   if (S.story) return;   // 등장 컷인·이벤트 매칭씬은 아케이드 전용 (스토리·탑·PvP·토벌·전쟁·튜토리얼은 생략)
   const id = String((u.base || u.card).id);
-  // 등장 컷인: 모든 카드. 전용 이미지(events.json entry.fx → data/fx/<id>_0.webp)가 없으면 프로필 사진으로 대체.
-  // (예전엔 등장 보이스나 전용 이미지가 있어야만 떠서, 보이스 없는 신규 카드 10511~10532 는 아무것도 안 나왔다)
+  // 등장 컷인: 전용 이미지(entry.fx)·등장 보이스가 있으면 등급 무관, 없으면 SR 이상만 프로필 사진으로 (hasEntryCutIn)
   if (S.undoneIds?.has(id)) { checkEvents(); return; }
-  if (!S.fxSeen.has(`entry:${u.uid}`)) {
+  if (hasEntryCutIn(u.base || u.card) && !S.fxSeen.has(`entry:${u.uid}`)) {
     S.fxSeen.add(`entry:${u.uid}`);
     fxQueue.push(() => entryCutIn(u, id)); runFxQueue();
   }
