@@ -1060,7 +1060,7 @@ function storyScaled(c, lv) {
 }
 function storyCardById(id) { return id == null ? null : (window.TCG?.cardById?.(id) || POOL.find(c => String(c.id) === String(id)) || NPC.find(c => String(c.id) === String(id)) || null); }
 function storyIntrusionCard(spec, fallback) {
-  const raw = spec?.card || storyCardById(spec?.id) || storyCardById(spec?.become) || fallback || null;
+  const raw = spec?.card || storyCardById(spec?.become) || storyCardById(spec?.id) || fallback || null;
   return storyScaled(raw, spec?.storyLevel);
 }
 

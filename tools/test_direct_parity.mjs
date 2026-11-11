@@ -40,7 +40,7 @@ function lvScaled(c, lv) {
 }
 const cardOf = id => pool.find(x => String(x.id) === String(id));
 function intrusionCard(spec, fallback) {
-  const raw = spec?.card || (spec?.id != null && cardOf(spec.id)) || (spec?.become != null && cardOf(spec.become)) || fallback || null;
+  const raw = spec?.card || (spec?.become != null && cardOf(spec.become)) || (spec?.id != null && cardOf(spec.id)) || fallback || null;
   return lvScaled(raw, spec?.storyLevel);
 }
 
@@ -61,18 +61,20 @@ function playClient(spec, seed, policy) {
   const me = { name: '나', hp: RULES.HERO_HP, maxHp: RULES.HERO_HP, deck: spec.me.map(clone), hand: [], field: [], mana: 0, maxMana: 0, noBase: true, noActs: true, limitedAids: true };
   const aiHp = spec.win === 'ko' ? (spec.aiHp || 3000) : RULES.HERO_HP;
   const ai = { name: '적', hp: aiHp, maxHp: aiHp, deck: spec.ai.map(clone), hand: [], field: [], mana: 0, maxMana: 0, noBase: spec.win !== 'ko', noActs: true, limitedAids: true, heroGuard: spec.heroGuard || 0 };
-  const state = { me, ai, turn: first, first, turnNo: 0, totalTurns: 0, myTurns: 0, over: false, win: null, reason: null };
+  const state = { me, ai, turn: first, first, turnNo: 0, totalTurns: 0, myTurns: 0, over: false, win: null, reason: null, rules: spec.rules || {} };
   initPlayers(me, ai, first === 'ai' ? ai : me);
   const bossIds = [spec.bossId].filter(x => x != null).map(String);
   for (const who of ['me', 'ai']) {
     const p = state[who];
     const nb = p.deck.slice(0, RULES.FIELD_MAX + bossIds.length).filter(c => who === 'ai' && bossIds.includes(String(c.id))).length;
-    for (const c of p.deck.splice(0, RULES.FIELD_MAX + (who === 'ai' ? nb : 0))) {
+    const extra = (who === 'ai' && !bossIds.length) ? Math.max(0, p.deck.length - RULES.FIELD_MAX) : 0;
+    for (const c of p.deck.splice(0, RULES.FIELD_MAX + (who === 'ai' ? nb : 0) + extra)) {
       const u = placeUnit(p, c, makeUnit);
       if (who === 'me' && spec.leaderUid && c.uid === spec.leaderUid) { u.isLeader = true; p.leaderSkill = { ...leaderSkill(c), uid: c.uid, deathPenalty: 0.3 }; }
       if (who === 'ai' && spec.bossId != null && String(c.id) === String(spec.bossId) && !p.field.some(x => x.undying)) { u.undying = true; u.boss = true; }
     }
     p.deck = [];
+    p.fieldCap = Math.max(RULES.FIELD_MAX, p.field.length);
   }
   refreshAll(me); refreshAll(ai);
   const log = [];
@@ -109,6 +111,7 @@ function playClient(spec, seed, policy) {
     }
   }
   function onDeath(u) {
+    if (u.owner === me && (spec.rules?.mustLive || []).map(String).includes(String(u.card.id))) state.mustLiveDown = true;
     if (u.owner !== ai) return;
     const r = (spec.rules?.revive || []).find(x => String(x.id) === String(u.card.id));
     if (!r) return;
@@ -123,6 +126,7 @@ function playClient(spec, seed, policy) {
     if (state.over) return true;
     if (ai.hp <= 0 || me.hp <= 0) return done(ai.hp <= 0, 'ko');
     awaken();
+    if (state.mustLiveDown) return done(false, 'mustlive');
     if (spec.win === 'wipe' && gone(ai)) return done(true, 'wipe');
     if (gone(me)) return done(false, 'wipe');
     return false;
@@ -294,6 +298,25 @@ const becomeLv = {
   rules: { maxTurns: 20, revive: [{ id: '10290', become: '10291', delay: 0, storyLevel: 100, battleLevel: 10 }] },
 };
 for (const seed of [4, 12]) for (const policy of ['auto', 'manual']) add('story become storyLevel', becomeLv, seed, policy);
+// Real 16-11 stage (6 enemies, mustLive 소민섭, 윤진아 → [각성] 윤진아). Server path has id+become and no pre-scaled card.
+const ch1611Boost = {
+  '10406': { HP: 580, ATK: 81, DEF: 81, storyLv: 45, power: 38309 },
+  '10290': { HP: 179, ATK: 19, DEF: 21, storyLv: 45, power: 7682 },
+  '10383': { HP: 966, ATK: 124, DEF: 138, storyLv: 45, power: 116253 },
+  '10097': { HP: 235, ATK: 30, DEF: 56, storyLv: 45, power: 10455 },
+  '10393': { HP: 499, ATK: 70, DEF: 81, storyLv: 45, power: 38466 },
+  '10306': { HP: 179, ATK: 30, DEF: 34, storyLv: 45, power: 7943 },
+};
+const ch1611 = {
+  me: deckAt(1, ['10200']),
+  ai: ['10406', '10290', '10383', '10097', '10393', '10306'].map(id => ({ ...clone(cardOf(id)), ...ch1611Boost[id] })),
+  win: 'wipe', aiHp: null, bossId: null, heroGuard: 0, first: 'me',
+  rules: {
+    maxTurns: 20, mustLive: ['10200'],
+    revive: [{ id: '10290', become: '10291', delay: 0, storyLevel: 100, battleLevel: 10 }],
+  },
+};
+for (const seed of [4, 7, 8, 12, 21, 100]) for (const policy of ['auto', 'manual']) add('story 16-11', ch1611, seed, policy);
 const joinLv = {
   me: deckAt(8, ['10074', '10080', '10445']),
   ai: deckAt(20, ['10051']).map(c => ({ ...c, HP: 800, ATK: 80, DEF: 40 })),
@@ -337,12 +360,21 @@ assert.ok(cases.some(c => c.label === 'story awaken' && c.client.win && c.server
 assert.ok(cases.filter(c => c.label === 'story awaken storyLevel').every(c => c.client.win === c.server?.win && c.client.reason === c.server?.reason && !c.error));
 assert.ok(cases.filter(c => c.label === 'story become storyLevel').every(c => c.client.win === c.server?.win && c.client.reason === c.server?.reason && !c.error));
 assert.ok(cases.filter(c => c.label === 'story joinAlly storyLevel').every(c => c.client.win === c.server?.win && c.client.reason === c.server?.reason && !c.error));
+assert.ok(cases.filter(c => c.label === 'story 16-11').every(c => c.client.win === c.server?.win && c.client.reason === c.server?.reason && c.client.turns === c.server?.turns && !c.error));
 const yj = cardOf('10291');
 const expectJina = lvScaled(yj, 100);
 assert.equal(storyIntrusionCard({ become: '10291', storyLevel: 100 }).HP, expectJina.HP);
 assert.equal(storyIntrusionCard({ become: '10291', storyLevel: 100 }).ATK, expectJina.ATK);
 assert.equal(storyIntrusionCard({ id: '10311', storyLevel: 50 }).HP, lvScaled(cardOf('10311'), 50).HP);
 assert.notEqual(storyIntrusionCard({ become: '10291', storyLevel: 100 }).HP, yj.HP);
+// Real path: the revive rule carries both the dying id and become. Must resolve 10291, not 10290.
+const becomeRule = { id: '10290', become: '10291', storyLevel: 100, battleLevel: 10 };
+const became = storyIntrusionCard(becomeRule);
+assert.equal(String(became.id), '10291');
+assert.equal(became.HP, expectJina.HP);
+assert.equal(became.ATK, expectJina.ATK);
+assert.notEqual(String(became.id), '10290');
+assert.notEqual(became.HP, lvScaled(cardOf('10290'), 100).HP);
 
 const batch1 = cases.filter(c => c.label === 'normal 1 batch');
 assert.ok(batch1.length === 4 && batch1.every(c => c.client.win === c.server?.win && c.client.reason === c.server?.reason));

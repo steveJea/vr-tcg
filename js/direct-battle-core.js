@@ -50,9 +50,10 @@ function scale(card, storyLv) {
 
 /** Mid-battle insertion (awaken / joinAlly / revive.become). storyLevel scales HP·ATK·DEF like enemyFrom; do not treat it as a battle level. */
 export function storyIntrusionCard(spec, fallback) {
+  // become (target) before id (dying card). A 16-11 revive rule has both: id=10290, become=10291.
   const raw = spec?.card
-    || (spec?.id != null && byId.get(String(spec.id)))
     || (spec?.become != null && byId.get(String(spec.become)))
+    || (spec?.id != null && byId.get(String(spec.id)))
     || fallback
     || null;
   if (!raw) return null;
