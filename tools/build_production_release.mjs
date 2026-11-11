@@ -38,8 +38,8 @@ export async function newSourceStatements(){
    if(/^do \$(phase6|phase7)_staging_guard\$/.test(s)){dropped.push('cluster guard');continue;}
    if(name==='story_ch16_17.sql'){
     if(/^do \$\$\s*begin\s*if \(select system_identifier::text from pg_catalog\.pg_control_system\(\)\) is distinct from '7703759698107299042' then\s*raise exception 'STOP: story ch16\/17 staging[^']*';\s*end if;\s*end \$\$;$/.test(s)){dropped.push('cluster guard');continue;}
-    // Production keeps release 20261108 level policy (story walls removed, skill 13 / equip 3). The ch16/17 file re-adds old per-chapter level walls.
-    if(s.startsWith('create or replace function public._player_unlock_level(')){dropped.push('_player_unlock_level (keeps level_unlocks policy)');continue;}
+    // Production keeps release 20261108 level policy (story walls removed, skill 13 / equip 3); the ch16/17 file must never override it.
+    if(s.startsWith('create or replace function public._player_unlock_level('))throw Error('story_ch16_17.sql must not redefine _player_unlock_level (2026-11-08 level policy)');
     // Staging-only engine hash rotation 3f9d..->0178..; production installs phase7 with 0178.. directly.
     if(s.includes("old_7 text := '3f9d8fd104b5ea50305841c1516780d03b1be6bdf1996d37a2d203ff6a5fbf9c'")){dropped.push('staging v7 hash rotation');continue;}
     if(s.startsWith('create or replace function public.story_complete_scene(')){
@@ -48,7 +48,7 @@ export async function newSourceStatements(){
    }
    kept.push(stripLeadingComments(st).trim());
   }
-  const expectDrop={ 'security_phase6_story_tower.sql':1,'security_phase7_direct_replay.sql':1,'story_ch16_17.sql':3 }[name];
+  const expectDrop={ 'security_phase6_story_tower.sql':1,'security_phase7_direct_replay.sql':1,'story_ch16_17.sql':2 }[name];
   if(dropped.length!==expectDrop)throw Error(name+' drop drift: '+dropped.join(', '));
   out.push({name,statements:kept,dropped});
  }
