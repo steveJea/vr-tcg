@@ -406,7 +406,7 @@ function equipItem(who, unit, type) {
 function opp(who) { return who === 'me' ? S.ai : S.me; }
 
 function noteAct(k, extra = {}) {
-  if (!S?.directLog || S.view) return;
+  if (!S?.directLog || S.view || S.over) return;   // 끝난 뒤 행동은 기록 안 함 (서버 재계산에서 tampered 방지)
   const row = { t: S.myTurns | 0, k };
   for (const [key, value] of Object.entries(extra)) if (value != null) row[key] = value;
   S.directLog.push(row);
