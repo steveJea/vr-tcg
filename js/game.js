@@ -1048,6 +1048,22 @@ function setArcadeWait(on) {
   $('game')?.setAttribute('aria-busy', String(on));
 }
 
+const STORY_LV_RATE = { NORMAL: 0.01, RARE: 0.02, 'HIGH RARE': 0.03, 'SUPER RARE': 0.04, 'ULTRA RARE': 0.05, 'MYTHIC RARE': 0.06, 'LEGENDARY RARE': 0.05 };
+function storyScaled(c, lv) {
+  if (!c || c.storyBoost || c.storyLv) return c;
+  const n = Math.max(1, Number(lv) || 1);
+  if (n <= 1) return c;
+  const m = 1 + (STORY_LV_RATE[c.grade] || 0.01) * (n - 1);
+  const o = { ...c, HP: Math.round(c.HP * m), ATK: Math.round(c.ATK * m), DEF: Math.round(c.DEF * m), storyLv: n, storyBoost: true };
+  o.power = calcPower(o, skillsOf(o.id));
+  return o;
+}
+function storyCardById(id) { return id == null ? null : (window.TCG?.cardById?.(id) || POOL.find(c => String(c.id) === String(id)) || NPC.find(c => String(c.id) === String(id)) || null); }
+function storyIntrusionCard(spec, fallback) {
+  const raw = spec?.card || storyCardById(spec?.id) || storyCardById(spec?.become) || fallback || null;
+  return storyScaled(raw, spec?.storyLevel);
+}
+
 // ===== 스토리 페이즈 규칙 (story.rules) =====
 // mustLive: [카드 id] 내 카드가 쓰러지면 패배 · revive: [{ id, level: 1|'keep', times, delay }] 적 카드가 쓰러지면 적의 delay 번째 턴 시작에 부활 (times 없으면 무제한)
 // 승리 판정: 그 순간 적 카드가 모두 쓰러져 있으면 승리 (부활 대기는 막지 않음)
@@ -1061,8 +1077,8 @@ function storyOnDeath(u) {
     if (r.times && (used[k] | 0) >= r.times) return;
     used[k] = (used[k] | 0) + 1;
     const delay = (r.delay == null || r.delay === '') ? 1 : Math.max(0, r.delay | 0);
-    const card0 = r.card || u.base;
-    const level = r.become ? (r.battleLevel || r.storyLevel || 1) : (r.level === 'keep' ? u.level : 1);
+    const card0 = r.become ? storyIntrusionCard(r, u.base) : (r.card || u.base);
+    const level = r.become ? (r.battleLevel || 1) : (r.level === 'keep' ? u.level : 1);
     (S.ai.reviveQ ||= []).push({ card: card0, level, slot: u.reviveSlot ?? u.uid, key: k, wait: delay, become: !!r.become });
     if (delay === 0) { log(`⚡ ${card0.name} 등장!`, 'text-fuchsia-300'); storyTurnRules('ai'); }
     else log(`🩸 ${u.card.name}: ${delay}턴 후 부활해요 (그 전에 적을 모두 쓰러뜨리면 승리)`, 'text-fuchsia-300');
@@ -1110,7 +1126,9 @@ function checkEnd() {
 /** 챕터 0 P3: story.awaken.on 카드가 필드에서 사라지면 각성 카드 난입 (한 번) — 전멸 판정보다 먼저 */
 function awakenCheck() {
   const A = S.story?.awaken;
-  if (!A || S.awakened || !A.card || S.me.field.some(u => String(u.card.id) === String(A.on))) return;
+  if (!A || S.awakened || S.me.field.some(u => String(u.card.id) === String(A.on))) return;
+  const awakenCard = storyIntrusionCard(A);
+  if (!awakenCard) return;
   S.awakened = true;
   if (A.pauseOnEntrance) {
     S.awakenPause = true; S.awakenPresenting = true;
@@ -1119,19 +1137,19 @@ function awakenCheck() {
     clearTimeout(autoEndTimer); autoEndTimer = null;
     S.busy = true;
   }
-  const u = placeUnit(S.me, { ...A.card }, makeUnit, true);
+  const u = placeUnit(S.me, { ...awakenCard }, makeUnit, true);
   while (u.level < Math.min(A.battleLevel || 1, RULES.LEVEL_MAX)) levelUpOnce(u);
   u.hp = u.maxHp; u.mp = u.maxMp; u.canAttack = true;
-  S.log.played.add(String(A.card.id));
-  log(`⚡ ${A.card.name} 난입!`, 'text-fuchsia-300');
+  S.log.played.add(String(awakenCard.id));
+  log(`⚡ ${awakenCard.name} 난입!`, 'text-fuchsia-300');
   render(); playSe(6);
   const battle = S;
   fxQueue.push(async () => {
     try {
-      const t = document.createElement('div'); t.className = 'awaken-toast'; if (A.image) t.style.backgroundImage = `linear-gradient(rgba(30,0,50,.35),rgba(30,0,50,.75)),url(${A.image})`; t.innerHTML = `<b>⚡ 각성</b><span>${escHtml(A.line || A.card.name)}</span>`;
+      const t = document.createElement('div'); t.className = 'awaken-toast'; if (A.image) t.style.backgroundImage = `linear-gradient(rgba(30,0,50,.35),rgba(30,0,50,.75)),url(${A.image})`; t.innerHTML = `<b>⚡ 각성</b><span>${escHtml(A.line || awakenCard.name)}</span>`;
       document.body.appendChild(t); setTimeout(() => t.remove(), 2600);
       await withTimeout(cutIn(u, '각성', null), 2500);
-      TUT('awaken', { id: A.card.id });
+      TUT('awaken', { id: awakenCard.id });
     } finally {
       if (A.pauseOnEntrance && S === battle) {
         S.awakenPresenting = false;
@@ -1145,16 +1163,18 @@ function awakenCheck() {
  *  필드가 가득 차면 다음 내 턴에 다시 시도. 손패·출전 조건·필수 인재와 무관, 플레이 기록(played)에 넣지 않음 */
 function joinAllyCheck() {
   const J = S.story?.joinAlly;
-  if (!J || S.allyJoined || !J.card || S.myTurns < (J.afterTurn || 1)) return;
-  if (fieldCount(S.me) >= RULES.FIELD_MAX) { if (!S.allyWait) { S.allyWait = true; log(`⏳ ${J.card.name} 난입 대기 (필드가 가득 참)`, 'text-zinc-400'); } return; }
+  if (!J || S.allyJoined || S.myTurns < (J.afterTurn || 1)) return;
+  const allyCard = storyIntrusionCard(J);
+  if (!allyCard) return;
+  if (fieldCount(S.me) >= RULES.FIELD_MAX) { if (!S.allyWait) { S.allyWait = true; log(`⏳ ${allyCard.name} 난입 대기 (필드가 가득 참)`, 'text-zinc-400'); } return; }
   S.allyJoined = true;
-  const u = placeUnit(S.me, { ...J.card }, makeUnit, true);
+  const u = placeUnit(S.me, { ...allyCard }, makeUnit, true);
   while (u.level < Math.min(J.battleLevel || 1, RULES.LEVEL_MAX)) levelUpOnce(u);
   u.hp = u.maxHp; u.canAttack = true; u.joinedAlly = true;
-  log(`⚡ ${J.card.name} 난입! 아군으로 합류`, 'text-fuchsia-300');
+  log(`⚡ ${allyCard.name} 난입! 아군으로 합류`, 'text-fuchsia-300');
   render(); playSe(6);
   fxQueue.push(async () => {
-    const t = document.createElement('div'); t.className = 'awaken-toast'; t.innerHTML = `<b>⚡ 난입</b><span>${escHtml(J.line || J.card.name)}</span>`;
+    const t = document.createElement('div'); t.className = 'awaken-toast'; t.innerHTML = `<b>⚡ 난입</b><span>${escHtml(J.line || allyCard.name)}</span>`;
     document.body.appendChild(t); setTimeout(() => t.remove(), 2600);
     await withTimeout(cutIn(u, '난입', null), 2500);
   });

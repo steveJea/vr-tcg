@@ -2,7 +2,7 @@
 // (field start, seeded RNG, AUTO or manual clicks). The replay must finish the same way.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { runDirect, verifyDirect, towerEnemies, rngOf as engineRngOf } from '../supabase/functions/story-direct-verify-v7/engine.mjs';
+import { runDirect, verifyDirect, towerEnemies, rngOf as engineRngOf, storyIntrusionCard } from '../supabase/functions/story-direct-verify-v7/engine.mjs';
 import { bossCard } from '../js/raid-core.js';
 import { snapCard } from '../js/pvp-core.js';
 import { ENEMY_MR_BASE } from '../js/enemy-mr.js';
@@ -13,6 +13,7 @@ import {
   RULES, canSummon, makeUnit, resolveAttack, refillMana, endTurnXp, canTarget, doAction, levelUpOnce,
   aiSummonOrder, aiPickSacrifice, aiWantAccel, aiWantFieldHeal, aiWantBuff, aiWantHeal, aiWantShuffle,
   sacrifice, aiPickTarget, autoTarget, attackTargets, clearBuff, aiPickItem, equip, swapField, setCardPool, parseCSV,
+  gainXp, xpToNext,
 } from '../js/rules.js';
 import {
   setSkillData, setRng, setEmitter, setSpare, initPlayers, placeUnit, turnStart, turnEnd,
@@ -29,6 +30,20 @@ await import('../js/quest-gen.js');
 const G = globalThis.VRQuestGen;
 
 const clone = c => ({ ...c, gear: c.gear ? { ...c.gear } : undefined });
+const LV_RATE = { NORMAL: 0.01, RARE: 0.02, 'HIGH RARE': 0.03, 'SUPER RARE': 0.04, 'ULTRA RARE': 0.05, 'MYTHIC RARE': 0.06, 'LEGENDARY RARE': 0.05 };
+function lvScaled(c, lv) {
+  if (!c || c.storyBoost || c.storyLv) return c;
+  const n = Math.max(1, Number(lv) || 1);
+  if (n <= 1) return { ...c };
+  const m = 1 + (LV_RATE[c.grade] || 0.01) * (n - 1);
+  return { ...c, HP: Math.round(c.HP * m), ATK: Math.round(c.ATK * m), DEF: Math.round(c.DEF * m), storyLv: n, storyBoost: true };
+}
+const cardOf = id => pool.find(x => String(x.id) === String(id));
+function intrusionCard(spec, fallback) {
+  const raw = spec?.card || (spec?.id != null && cardOf(spec.id)) || (spec?.become != null && cardOf(spec.become)) || fallback || null;
+  return lvScaled(raw, spec?.storyLevel);
+}
+
 function deckAt(level, ids) {
   return ids.map(id => {
     const c = pool.find(x => String(x.id) === String(id));
@@ -66,13 +81,44 @@ function playClient(spec, seed, policy) {
   function awaken() {
     const A = spec.awaken;
     if (!A || state.awakened || me.field.some(u => String(u.card.id) === String(A.on))) return;
-    const card = A.card || pool.find(c => String(c.id) === String(A.id));
+    const card = intrusionCard(A);
     if (!card) return;
     state.awakened = true;
     const u = placeUnit(me, { ...card }, makeUnit, true);
     while (u.level < Math.min(A.battleLevel || 1, RULES.LEVEL_MAX)) levelUpOnce(u);
     u.hp = u.maxHp; u.mp = u.maxMp; u.canAttack = true;
   }
+  function joinAlly() {
+    const J = spec.joinAlly;
+    if (!J || state.allyJoined || state.myTurns < (J.afterTurn || 1)) return;
+    const card = intrusionCard(J);
+    if (!card || me.field.filter(u => u.hp > 0).length >= RULES.FIELD_MAX) return;
+    state.allyJoined = true;
+    const u = placeUnit(me, { ...card }, makeUnit, true);
+    while (u.level < Math.min(J.battleLevel || 1, RULES.LEVEL_MAX)) levelUpOnce(u);
+    u.hp = u.maxHp; u.canAttack = true;
+  }
+  function revive(who) {
+    const p = state[who];
+    if (!p.reviveQ?.length) return;
+    const q = p.reviveQ.splice(0);
+    for (const r of q) {
+      if (--r.wait > 0 || p.field.filter(u => u.hp > 0).length >= (p.fieldCap || RULES.FIELD_MAX)) { p.reviveQ.push(r); continue; }
+      const u = placeUnit(p, { ...r.card }, makeUnit);
+      while (u.level < r.level) { const need = xpToNext(u.level) - (u.xp | 0); if (!isFinite(need) || !gainXp(u, Math.max(1, need))) break; }
+    }
+  }
+  function onDeath(u) {
+    if (u.owner !== ai) return;
+    const r = (spec.rules?.revive || []).find(x => String(x.id) === String(u.card.id));
+    if (!r) return;
+    const wait = (r.delay == null || r.delay === '') ? 1 : Math.max(0, r.delay | 0);
+    const card0 = r.become ? intrusionCard(r, u.base) : (r.card || u.base);
+    const level = r.become ? (r.battleLevel || 1) : (r.level === 'keep' ? u.level : 1);
+    (ai.reviveQ ||= []).push({ card: card0, level, wait });
+    if (wait === 0) revive('ai');
+  }
+  setEmitter(e => { if (e?.type === 'destroy' && e.unit) onDeath(e.unit); });
   function checkEnd() {
     if (state.over) return true;
     if (ai.hp <= 0 || me.hp <= 0) return done(ai.hp <= 0, 'ko');
@@ -88,7 +134,8 @@ function playClient(spec, seed, policy) {
     state.totalTurns++;
     const p = state[who];
     p.ownTurns = (p.ownTurns || 0) + 1;
-    if (who === 'me') state.myTurns++;
+    if (who === 'me') { state.myTurns++; joinAlly(); }
+    revive(who);
     clearBuff(who === 'me' ? ai : me);
     refillMana(p);
     p.field.forEach(u => { u.canAttack = true; });
@@ -231,6 +278,29 @@ const awaken = {
   awaken: { on: '10074', id: '10311', battleLevel: 30 },
 };
 for (const seed of [4, 12]) for (const policy of ['auto', 'manual']) add('story awaken', awaken, seed, policy);
+// 17-14 style: no pre-scaled card, storyLevel on the intrusion (이지영).
+const awakenLv = {
+  me: deckAt(8, ['10074', '10080', '10445', '10375', '10404']),
+  ai: deckAt(20, ['10051']).map(c => ({ ...c, HP: 400, ATK: 80, DEF: 40 })),
+  win: 'wipe', aiHp: null, bossId: null, heroGuard: 0,
+  awaken: { on: '10074', id: '10311', storyLevel: 50, battleLevel: 1 },
+};
+for (const seed of [4, 12]) for (const policy of ['auto', 'manual']) add('story awaken storyLevel', awakenLv, seed, policy);
+// 16-11 style: 윤진아 dies and becomes [각성] 윤진아 at storyLevel 100, battleLevel 10. No pre-scaled card.
+const becomeLv = {
+  me: deckAt(30, strong),
+  ai: [clone(cardOf('10290'))],
+  win: 'wipe', aiHp: null, bossId: null, heroGuard: 0, first: 'me',
+  rules: { maxTurns: 20, revive: [{ id: '10290', become: '10291', delay: 0, storyLevel: 100, battleLevel: 10 }] },
+};
+for (const seed of [4, 12]) for (const policy of ['auto', 'manual']) add('story become storyLevel', becomeLv, seed, policy);
+const joinLv = {
+  me: deckAt(8, ['10074', '10080', '10445']),
+  ai: deckAt(20, ['10051']).map(c => ({ ...c, HP: 800, ATK: 80, DEF: 40 })),
+  win: 'wipe', aiHp: null, bossId: null, heroGuard: 0, first: 'me',
+  joinAlly: { id: '10311', afterTurn: 1, storyLevel: 100, battleLevel: 10 },
+};
+for (const seed of [4, 12]) for (const policy of ['auto', 'manual']) add('story joinAlly storyLevel', joinLv, seed, policy);
 const floor1 = towerEnemies('normal', 1);
 const oyuna = { me: deckAt(50, ['10256', '10118', '10067', '10333', '10045']), ai: floor1.enemies, win: floor1.win, aiHp: floor1.aiHp, bossId: null, heroGuard: 0 };
 for (const seed of [3, 8, 21, 50]) add('normal 1 batch', oyuna, seed, 'batch');
@@ -264,6 +334,16 @@ if (bad) process.exit(1);
 const floor10 = cases.filter(c => c.label === 'normal 10 boss' && c.policy === 'manual');
 assert.ok(floor10.some(c => c.client.win && c.server?.win && c.client.reason === 'ko' && c.server.reason === 'ko'));
 assert.ok(cases.some(c => c.label === 'story awaken' && c.client.win && c.server?.win));
+assert.ok(cases.filter(c => c.label === 'story awaken storyLevel').every(c => c.client.win === c.server?.win && c.client.reason === c.server?.reason && !c.error));
+assert.ok(cases.filter(c => c.label === 'story become storyLevel').every(c => c.client.win === c.server?.win && c.client.reason === c.server?.reason && !c.error));
+assert.ok(cases.filter(c => c.label === 'story joinAlly storyLevel').every(c => c.client.win === c.server?.win && c.client.reason === c.server?.reason && !c.error));
+const yj = cardOf('10291');
+const expectJina = lvScaled(yj, 100);
+assert.equal(storyIntrusionCard({ become: '10291', storyLevel: 100 }).HP, expectJina.HP);
+assert.equal(storyIntrusionCard({ become: '10291', storyLevel: 100 }).ATK, expectJina.ATK);
+assert.equal(storyIntrusionCard({ id: '10311', storyLevel: 50 }).HP, lvScaled(cardOf('10311'), 50).HP);
+assert.notEqual(storyIntrusionCard({ become: '10291', storyLevel: 100 }).HP, yj.HP);
+
 const batch1 = cases.filter(c => c.label === 'normal 1 batch');
 assert.ok(batch1.length === 4 && batch1.every(c => c.client.win === c.server?.win && c.client.reason === c.server?.reason));
 assert.ok(batch1.some(c => c.client.log.filter(a => a.k === 'atk').length >= 2));
@@ -315,6 +395,33 @@ for (const [target, bossId, ids, card] of [
   assert.equal(fought.res?.reason, 'wipe', `${target} ${JSON.stringify(fought.res || fought.err)}`);
   assert.equal(fought.res.win, true);
 }
+const missSummon = verifyDirect({
+  mode: 'story', target: '16:1', seed: 4,
+  snapshot: {
+    mana: 200, leader: null,
+    cards: [{ id: '10406', uid: 'h', level: 1 }, { id: '10118', uid: 'a', level: 30 }],
+    stage: {
+      no: 1, type: 'normal', single: true, tutorial: false, mana: 200,
+      enemies: { ids: ['10143'], boost: { '10143': { HP: 1, ATK: 1, DEF: 1 } } },
+      party: { forced: ['10406'] },
+    },
+  },
+}, [{ t: 1, k: 'end' }, { t: 2, k: 'end' }]);
+assert.equal(missSummon.reason, 'mustsummon', JSON.stringify(missSummon));
+assert.equal(missSummon.win, false);
+const summonedOk = verifyDirect({
+  mode: 'story', target: '16:1', seed: 4,
+  snapshot: {
+    mana: 200, leader: null,
+    cards: [{ id: '10406', uid: 'h', level: 1 }, { id: '10118', uid: 'a', level: 30 }],
+    stage: {
+      no: 1, type: 'normal', single: true, tutorial: false, mana: 200,
+      enemies: { ids: ['10143'], boost: { '10143': { HP: 1, ATK: 1, DEF: 1 } } },
+      party: { forced: ['10406'] },
+    },
+  },
+}, [{ t: 1, k: 'end' }]);
+assert.notEqual(summonedOk.reason, 'mustsummon', 'one end-turn must not fail the 2-turn rule');
 console.log('direct parity ok');
 
 const scale = (base, level) => {

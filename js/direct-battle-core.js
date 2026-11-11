@@ -48,6 +48,24 @@ function scale(card, storyLv) {
   return { ...card, HP: Math.round(card.HP * m), ATK: Math.round(card.ATK * m), DEF: Math.round(card.DEF * m), slv: lv };
 }
 
+/** Mid-battle insertion (awaken / joinAlly / revive.become). storyLevel scales HP·ATK·DEF like enemyFrom; do not treat it as a battle level. */
+export function storyIntrusionCard(spec, fallback) {
+  const raw = spec?.card
+    || (spec?.id != null && byId.get(String(spec.id)))
+    || (spec?.become != null && byId.get(String(spec.become)))
+    || fallback
+    || null;
+  if (!raw) return null;
+  if (raw.storyBoost || raw.storyLv) return raw;
+  return spec?.storyLevel ? scale(raw, spec.storyLevel) : { ...raw };
+}
+
+function mustSummonOf(stage) {
+  if (stage?.mustSummon) return stage.mustSummon;
+  if (stage?.tutorial || stage?.single !== true) return null;
+  return stage.party?.forced || stage.party?.mustLive || null;
+}
+
 function enemyFrom(id, stage) {
   const base = byId.get(String(id));
   if (!base) return null;
@@ -182,7 +200,7 @@ function specFrom(session, rng) {
     first: stage.enemyFirst ? 'ai' : 'me',
     mana: Number.isFinite(mana) ? mana : null,
     rules: stage.rules || {},
-    mustSummon: stage.mustSummon || null,
+    mustSummon: mustSummonOf(stage),
     reserve: stage.reserve || [],
     awaken: stage.awaken || null,
     joinAlly: stage.joinAlly || null,
@@ -276,21 +294,21 @@ export function runDirect(spec, actions, rng = null) {
     const on = String(A.on || '');
     if (me.field.some(u => u.hp > 0 && String(u.card.id) === on)) { state.seenAwaken = true; return; }
     if (!state.seenAwaken) return;
-    const card = A.card || byId.get(String(A.id));
+    const card = storyIntrusionCard(A);
     if (!card) return;
     state.awakened = true;
     const u = placeUnit(me, { ...card }, makeUnit, true);
-    raiseLevels(u, A.battleLevel || A.storyLevel || 1);
+    raiseLevels(u, A.battleLevel || 1);
     u.hp = u.maxHp; u.mp = u.maxMp; u.canAttack = true;
   }
   function joinAlly() {
     const J = state.joinAlly;
     if (!J || state.allyJoined || state.myTurns < (J.afterTurn || 1)) return;
-    const card = J.card || byId.get(String(J.id));
+    const card = storyIntrusionCard(J);
     if (!card || me.field.filter(u => u.hp > 0).length >= RULES.FIELD_MAX) return;
     state.allyJoined = true;
     const u = placeUnit(me, { ...card }, makeUnit, true);
-    raiseLevels(u, J.battleLevel || J.storyLevel || 1);
+    raiseLevels(u, J.battleLevel || 1);
     u.hp = u.maxHp; u.canAttack = true;
   }
   function revive(who) {
@@ -314,8 +332,8 @@ export function runDirect(spec, actions, rng = null) {
       if (r.times && (state.reviveUsed[k] | 0) >= r.times) return;
       state.reviveUsed[k] = (state.reviveUsed[k] | 0) + 1;
       const wait = (r.delay == null || r.delay === '') ? 1 : Math.max(0, r.delay | 0);
-      const card0 = r.card || (r.become && byId.get(String(r.become))) || u.base;
-      const level = r.become ? (r.battleLevel || r.storyLevel || 1) : (r.level === 'keep' ? u.level : 1);
+      const card0 = r.become ? (storyIntrusionCard(r, u.base)) : (r.card || u.base);
+      const level = r.become ? (r.battleLevel || 1) : (r.level === 'keep' ? u.level : 1);
       (ai.reviveQ ||= []).push({ card: card0, level, wait });
       if (wait === 0) revive('ai');
     }
