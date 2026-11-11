@@ -863,19 +863,28 @@
     card0('', esc(ch.title), esc(ch.subtitle || ''), () => start.length ? playLines(start, [], () => phase(0), 'story', ch.hero) : phase(0));
   }
   function startPhase(ch, ph) {
-    const enemies = pickEnemies(ph);
+    const enemies = ph.enemies?.ids ? pickEnemies(ph) : [];
     show(`<div class="story-intro" id="story-intro"><div class="story-chapter-sub">${esc(ch.title)}</div><div class="story-chapter-big">Phase.${ph.no}</div><div class="story-chapter-name">${esc(ph.title)}${ph.type === 'boss' ? ' · BOSS' : ''}</div><div class="vr-more" aria-hidden="true">▼</div></div>`);
     // 재도전·이미 본 페이즈: 시작 전 대사 생략하고 바로 전투 준비 (첫 관람·튜토리얼 페이즈 첫 진입은 대사 그대로)
+    // scene: 전투 없는 스토리 페이즈 (CH16 P12 · CH17 P7/P12/P15). 대사 후 클리어.
     const skip = phaseSeen(ch, ph);
-    $('story-intro').onclick = () => skip ? pickDeck(ch, ph, enemies) : dialogue(ch, ph, enemies);
+    const proceed = () => {
+      if (ph.scene || !ph.enemies?.ids) {
+        const done = () => result(ch, ph, true, 'scene', {});
+        const after = ph.after || [];
+        return after.length ? playLines(after, [], done, /엔딩/.test(ph.afterTitle || '') ? 'ending' : 'story', ph.hero || ch.hero) : done();
+      }
+      pickDeck(ch, ph, enemies);
+    };
+    $('story-intro').onclick = () => skip ? proceed() : dialogue(ch, ph, enemies, proceed);
   }
   const PS_KEY = (ch, ph) => `vr-story-phseen-${ch.id}-${save.starter || ''}-${ph.no}`;
   function phaseSeen(ch, ph) {
     if (clearedOf(ch).includes(ph.no)) return true;
     try { return !!localStorage.getItem(PS_KEY(ch, ph)); } catch { return false; }
   }
-  function dialogue(ch, ph, enemies) {
-    playLines(ph.lines?.[save.starter] || ph.lines?.default || [], enemies, () => { try { localStorage.setItem(PS_KEY(ch, ph), '1'); } catch {} pickDeck(ch, ph, enemies); }, 'story', ph.hero || ch.hero);
+  function dialogue(ch, ph, enemies, next) {
+    playLines(ph.lines?.[save.starter] || ph.lines?.default || [], enemies, () => { try { localStorage.setItem(PS_KEY(ch, ph), '1'); } catch {} (next || (() => pickDeck(ch, ph, enemies)))(); }, 'story', ph.hero || ch.hero);
   }
   // 대사 초상화: 스토리 전용 NPC 카드는 이 저장소 img/npc/<id>.webp, 나머지는 bt_img (없으면 img-fallback.js 가 img/npc 로 재시도)
   const picOf = c => (window.TCG?.NPC || []).some(n => String(n.id) === String(c.id)) ? `img/npc/${c.id}.webp` : `${IMG}${c.id}.webp`;
@@ -1091,7 +1100,7 @@
     for (const o of reserve) if (!isGuest(o)) deckUid[o.id] = o.uid;
     window.TCG.startStory({
       chapter: ch.id,   // 전투 배경 키 story_ch{n}(_boss)
-      me, ai, leader: (() => { const lo = me.find(c => c.uid === save.leader), le = lo && leaderEff(lo.id); return le ? { ...le, uid: lo.uid } : undefined; })(), win: boss ? 'ko' : 'wipe', aiHp: boss ? bossHp(ch, ph) : undefined, bossId: bc ? String(bc.id) : undefined, enemyLevels: ph.enemies?.levels, aiName: ph.enemyName || (boss ? '보스' : '적군'), rules: battleRules(ch, ph), first: ph.enemyFirst ? 'ai' : 'me',   // 기본 내가 선공, 페이즈 enemyFirst 면 적 선공
+      me, ai, leader: (() => { const lo = me.find(c => c.uid === save.leader), le = lo && leaderEff(lo.id); return le ? { ...le, uid: lo.uid } : undefined; })(), win: boss ? 'ko' : 'wipe', aiHp: boss ? bossHp(ch, ph) : undefined, bossId: bc ? String(bc.id) : undefined, enemyLevels: ph.enemies?.levels, aiName: ph.enemyName || (boss ? '보스' : '적군'), rules: (r => { const out = { ...r, revive: (r.revive || []).map(x => x.become && card(x.become) ? { ...x, card: lvScaled(card(x.become), x.storyLevel || x.battleLevel || 1) } : { ...x }) }; if (!out.revive?.length) delete out.revive; return out; })(battleRules(ch, ph) || {}), first: ph.enemyFirst ? 'ai' : 'me',   // 기본 내가 선공, 페이즈 enemyFirst 면 적 선공
      
       seed: storySession?.seed, rng: battleRng,
       spare: { ...STORY_SPARE, ...(ph.spare || {}) },
@@ -1270,7 +1279,8 @@
     let first = !clearedOf(ch).includes(ph.no), reward = null, pts = 0;
     // 전투 EXP: 이번 전투에 낸 내 카드 + 처치 수 (서버가 보유 여부·처치 상한·배율을 다시 계산)
     const kills = st.kills || {}, blocks = st.blocks || {}, p_stats = [...new Set(st.played || [])].filter(id => deckUid[id] && !isGuest({ uid: deckUid[id] })).slice(0, 30).map(id => ({ uid: deckUid[id], id, kills: kills[id] | 0, blocks: blocks[id] | 0 }));
-    const res = await act(serverMode ? 'battle_session_finish_v2' : 'story_complete_phase', serverMode ? { p_report: window.VRBattleSession.report(win, reason, st, p_stats) } : { p_chapter: ch.id, p_phase: ph.no, p_stats }, () => {
+    const scene = !!(ph.scene || (!ph.enemies?.ids && win));
+    const res = await act(serverMode ? (scene ? 'story_complete_scene' : 'battle_session_finish_v2') : 'story_complete_phase', serverMode ? (scene ? { p_chapter: ch.id, p_phase: ph.no } : { p_report: window.VRBattleSession.report(win, reason, st, p_stats) }) : { p_chapter: ch.id, p_phase: ph.no, p_stats }, () => {
       const exp = [], cap = Math.max(0, (ph.enemies?.ids?.length || ph.enemies?.count || 99) - (ph.type === 'boss' ? 1 : 0)); let ksum = 0, bsum = 0; const bcap = Math.max(0, (ph.enemies?.ids?.length || ph.enemies?.count || 99)) * 2;   // 보스 카드는 쓰러지지 않음
       for (const s of p_stats) {
         const o = byUid(s.uid) || save.owned.find(x => x.id === s.id); if (!o) continue;
