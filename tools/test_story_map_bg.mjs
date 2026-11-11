@@ -32,7 +32,7 @@ assert.match(css, /\.hub-ch-slot\.small::after\{[^}]*linear-gradient\(90deg/);
 assert.match(css, /\.story-map-bg\{[^}]*#4a2414/);
 assert.doesNotMatch(css, /story-map-bg-pc\{display:\s*none\}/);
 
-const dataFiles = ['js/story-data.js', 'js/story-data-ch0.js', 'js/story-data-ch2.js', 'js/story-data-ch3.js', 'js/story-data-ch4.js', 'js/story-data-ch5.js', 'js/story-data-ch6.js', 'js/story-data-ch7.js', 'js/story-data-ch8.js', 'js/story-data-ch9.js', 'js/story-data-ch10.js', 'js/story-data-ch11.js', 'js/story-data-ch12.js', 'js/story-data-ch13.js', 'js/story-data-ch14.js', 'js/story-data-ch15.js'];
+const dataFiles = ['js/story-data.js', 'js/story-data-ch0.js', 'js/story-data-ch2.js', 'js/story-data-ch3.js', 'js/story-data-ch4.js', 'js/story-data-ch5.js', 'js/story-data-ch6.js', 'js/story-data-ch7.js', 'js/story-data-ch8.js', 'js/story-data-ch9.js', 'js/story-data-ch10.js', 'js/story-data-ch11.js', 'js/story-data-ch12.js', 'js/story-data-ch13.js', 'js/story-data-ch14.js', 'js/story-data-ch15.js', 'js/story-data-ch16.js', 'js/story-data-ch17.js'];
 const loads = [];
 const pcMode = {on: true};
 const {window} = parseHTML('<html><body><div id="start-screen"></div><div id="story-screen" class="hidden"></div><div id="game" class="hidden"></div></body></html>');

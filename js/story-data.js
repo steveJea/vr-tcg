@@ -987,10 +987,10 @@ window.STORY_DATA.chapterPortraits = { 0: { '임유리': 'im_yuri_c0', '황보�
   // 챕터 16 「젊은 베르테르의 슬픔」: 표정 초상화만 연결 (스토리 데이터 아직 없음).
   // 조윤이 복장은 시트에 명시 없어 교복 지정 안 함. 국선 엄마/아빠 초상화 아직 없음. '아빠'는 국선 아버지라 15장 윤진아 아버지 맵을 쓰지 않음.
   // '할머니'는 윤진아 할머니(단칸방). 16-11 적5 이영아 vs 이영하 는 시트가 아직 이영아.
-  16: { '강두식': 'kang_dusik', '최수아': 'choi_sua', '조윤하': 'jo_yunha', '고정태': 'go_jeongtae', '주예서': 'ju_yeseo', '할머니': 'yun_jina_grandma', '윤진아 할머니': 'yun_jina_grandma' },
+  16: { '강두식': 'kang_dusik', '최수아': 'choi_sua', '조윤하': 'jo_yunha', '고정태': 'go_jeongtae', '주예서': 'ju_yeseo', '조윤이': 'jo_yuni_school', '할머니': 'yun_jina_grandma', '윤진아 할머니': 'yun_jina_grandma' },
   // 챕터 17 「폭풍의 언덕」: 표정 초상화만 연결 (스토리 데이터 아직 없음).
   // 최윤희 복장(교복/일상/홈웨어) 시트에 명시 없음. 영순 이모 초상화 아직 없음. 엔딩 영상 URL 빈칸.
-  17: { '이영하': 'lee_youngha', '고정태': 'go_jeongtae', '이세라': 'lee_sera', '주예린': 'ju_yerin' } };
+  17: { '이영하': 'lee_youngha', '고정태': 'go_jeongtae', '이세라': 'lee_sera', '주예린': 'ju_yerin', '최윤희': 'choi_yunhee_school' } };
 // 페이즈별 화자 초상화 덮어쓰기 (임포트 스크립트가 대사 줄 slug 로 넣음): phaseSlug[챕터][페이즈][화자]
 window.STORY_DATA.phaseSlug = { 13: { 1: { '안지수': 'an_jisu_7' }, 2: { '안지수': 'an_jisu_12' } } };
 window.STORY_DATA.exprAlt = { smile: 'playful', playful: 'smile', crazy: 'playful', cold: 'angry', sneer: 'playful', yawn: 'base', hurt: 'sad' };

@@ -228,7 +228,8 @@ export function runDirect(spec, actions, rng = null) {
     const p = state[who];
     if (who === 'me' && mana != null) { p.hand = p.deck.splice(0); p.manaPool = true; p.mana = p.maxMana = mana; continue; }
     const nb = p.deck.slice(0, RULES.FIELD_MAX + bossIds.length).filter(c => bossIds.includes(String(c.id))).length;
-    for (const c of p.deck.splice(0, RULES.FIELD_MAX + nb)) {
+    const extra = (who === 'ai' && !bossIds.length) ? Math.max(0, p.deck.length - RULES.FIELD_MAX) : 0;
+    for (const c of p.deck.splice(0, RULES.FIELD_MAX + nb + extra)) {
       const u = placeUnit(p, c, makeUnit);
       if (who === 'me' && spec.leaderUid && c.uid === spec.leaderUid) { u.isLeader = true; p.leaderSkill = { ...leaderSkill(c), uid: c.uid, deathPenalty: 0.3 }; }
       if (who === 'me' && spec.meLevels) raiseLevels(u, spec.meLevels[String(c.id)] || 0);
@@ -241,6 +242,7 @@ export function runDirect(spec, actions, rng = null) {
       if (who === 'me' && blind) u.card.blindP = +blind;
     }
     p.deck = [];
+    p.fieldCap = Math.max(RULES.FIELD_MAX, p.field.length);
   }
   const reserveIds = Array.isArray(spec.reserve) ? spec.reserve : [];
   state.reserve = reserveIds.map(id => byId.get(String(id))).filter(Boolean).map(c => ({ card: c }));
@@ -296,7 +298,7 @@ export function runDirect(spec, actions, rng = null) {
     if (!p.reviveQ?.length) return;
     const q = p.reviveQ.splice(0);
     for (const r of q) {
-      if (--r.wait > 0 || p.field.filter(u => u.hp > 0).length >= RULES.FIELD_MAX) { p.reviveQ.push(r); continue; }
+      if (--r.wait > 0 || p.field.filter(u => u.hp > 0).length >= (p.fieldCap || RULES.FIELD_MAX)) { p.reviveQ.push(r); continue; }
       const u = placeUnit(p, { ...r.card }, makeUnit);
       while (u.level < r.level) { const need = xpToNext(u.level) - (u.xp | 0); if (!isFinite(need) || !gainXp(u, Math.max(1, need))) break; }
     }
@@ -311,7 +313,11 @@ export function runDirect(spec, actions, rng = null) {
       const k = id + ':' + (u.uid || 0);
       if (r.times && (state.reviveUsed[k] | 0) >= r.times) return;
       state.reviveUsed[k] = (state.reviveUsed[k] | 0) + 1;
-      (ai.reviveQ ||= []).push({ card: u.base, level: r.level === 'keep' ? u.level : 1, wait: Math.max(1, r.delay | 0 || 1) });
+      const wait = (r.delay == null || r.delay === '') ? 1 : Math.max(0, r.delay | 0);
+      const card0 = r.card || (r.become && byId.get(String(r.become))) || u.base;
+      const level = r.become ? (r.battleLevel || r.storyLevel || 1) : (r.level === 'keep' ? u.level : 1);
+      (ai.reviveQ ||= []).push({ card: card0, level, wait });
+      if (wait === 0) revive('ai');
     }
   }
   const oldEmit = getEmitter();

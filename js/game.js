@@ -251,7 +251,8 @@ async function startGame(story = null, at = null) {
       // 보스(bossId·invuln)는 진영 칸 → 필드 5칸과 따로. 보스가 덱 앞 5장 안에 있으면 부하를 1장 더 꺼냄
       const bossIds = who === 'ai' ? [story.bossId, story.rules?.invuln].filter(x => x != null).map(String) : [];
       const nb = p.deck.slice(0, RULES.FIELD_MAX + bossIds.length).filter(c => bossIds.includes(String(c.id))).length;
-      for (const c of p.deck.splice(0, RULES.FIELD_MAX + nb)) {
+      const extra = (who === 'ai' && !bossIds.length) ? Math.max(0, p.deck.length - RULES.FIELD_MAX) : 0;   // wipe 전투에 적 6명(CH16 P11 · CH17 P14)
+      for (const c of p.deck.splice(0, RULES.FIELD_MAX + nb + extra)) {
         const u = placeUnit(p, c, makeUnit);
         if (who === 'me') S.log.played.add(String(c.id));
         if (who === 'me') storyMeInit(u, c);
@@ -261,6 +262,7 @@ async function startGame(story = null, at = null) {
         if (who === 'ai' && story.rules?.invuln != null && String(c.id) === String(story.rules.invuln) && !p.field.some(x => x.noDamage)) { u.undying = true; u.noDamage = true; u.boss = true; }
       }
       p.deck = [];
+      p.fieldCap = Math.max(RULES.FIELD_MAX, p.field.length);
     }
     S.reserve = (story.reserve || []).map(c => ({ card: c, cost: 0 }));   // 소환 대기 (챕터 0). cost: 나중에 '마나 100 고정 · 코스트 소환' 설계에서 쓸 자리 (지금은 0 = 무료)
     { const PS = story.rules?.pairShield;   // 챕터 3 밸런스: 조윤하·조윤이가 둘 다 내 필드에 있으면 조윤하 처음 N턴 피해 무효
@@ -1058,9 +1060,12 @@ function storyOnDeath(u) {
     const used = (S.reviveUsed ||= {}), k = id + ':' + (u.reviveSlot ?? u.uid);
     if (r.times && (used[k] | 0) >= r.times) return;
     used[k] = (used[k] | 0) + 1;
-    const delay = Math.max(1, r.delay | 0 || 1);
-    (S.ai.reviveQ ||= []).push({ card: u.base, level: r.level === 'keep' ? u.level : 1, slot: u.reviveSlot ?? u.uid, key: k, wait: delay });
-    log(`🩸 ${u.card.name}: ${delay}턴 후 부활해요 (그 전에 적을 모두 쓰러뜨리면 승리)`, 'text-fuchsia-300');
+    const delay = (r.delay == null || r.delay === '') ? 1 : Math.max(0, r.delay | 0);
+    const card0 = r.card || u.base;
+    const level = r.become ? (r.battleLevel || r.storyLevel || 1) : (r.level === 'keep' ? u.level : 1);
+    (S.ai.reviveQ ||= []).push({ card: card0, level, slot: u.reviveSlot ?? u.uid, key: k, wait: delay, become: !!r.become });
+    if (delay === 0) { log(`⚡ ${card0.name} 등장!`, 'text-fuchsia-300'); storyTurnRules('ai'); }
+    else log(`🩸 ${u.card.name}: ${delay}턴 후 부활해요 (그 전에 적을 모두 쓰러뜨리면 승리)`, 'text-fuchsia-300');
   }
 }
 /** 턴 시작 규칙. true 를 돌려주면 전투가 끝남 */
@@ -1078,7 +1083,7 @@ function storyTurnRules(who) {
   if (p.reviveQ?.length) {
     const q = p.reviveQ.splice(0);
     for (const r of q) {
-      if (--r.wait > 0 || fieldCount(p) >= RULES.FIELD_MAX) { p.reviveQ.push(r); continue; }
+      if (--r.wait > 0 || fieldCount(p) >= (p.fieldCap || RULES.FIELD_MAX)) { p.reviveQ.push(r); continue; }
       const u = placeUnit(p, { ...r.card }, makeUnit); u.reviveSlot = r.slot;
       while (u.level < r.level) { const need = xpToNext(u.level) - (u.xp | 0); if (!isFinite(need) || !gainXp(u, Math.max(1, need))) break; }
       log(`🩸 ${u.card.name} 부활! (Lv${u.level})`, 'text-fuchsia-300');
