@@ -1370,6 +1370,9 @@ function renderVoiceBtn() {
   const b = document.getElementById('voice-toggle'), r = document.getElementById('voice-vol');
   if (b) { b.innerHTML = ic(voiceOn ? 'sound_on' : 'sound_off'); b.title = voiceOn ? '스킬 보이스 끄기' : '스킬 보이스 켜기'; }
   if (r) { r.value = String(Math.round(voiceVol * 100)); r.disabled = !voiceOn; }
+  const m = document.getElementById('main-voice'), mr = document.getElementById('main-voice-vol');
+  if (m) { m.textContent = voiceOn ? 'ON' : 'OFF'; m.setAttribute('aria-checked', String(voiceOn)); m.classList.toggle('on', voiceOn); }
+  if (mr) { mr.value = String(Math.round(voiceVol * 100)); mr.disabled = !voiceOn; }
 }
 // ===== 효과음 (SE 시트: 코드 → audio/se/00코드_0n.mp3, 변형 중 무작위) =====
 // 1 맞는 소리 · 2 카드 소환 · 3 본진 타격 · 4 버튼 클릭 · 5 UR 소환 · 6 MR 소환 · 7 공격하는 소리
@@ -2529,6 +2532,9 @@ $('main-se')?.addEventListener('click', e => { e.stopPropagation(); setSeOn(!seO
 renderSeBtn();
 $('voice-vol').oninput = e => { voiceVol = (+e.target.value || 0) / 100; localStorage.setItem(VOICE_VOL_KEY, String(voiceVol)); if (voiceCur) voiceCur.volume = voiceVol; };
 $('voice-vol').onclick = e => e.stopPropagation();
+// 게임설정 → 설정 창의 스킬 보이스·음량 (전투 설정과 같은 값)
+$('main-voice')?.addEventListener('click', e => { e.stopPropagation(); $('voice-toggle').click(); });
+$('main-voice-vol')?.addEventListener('input', e => { voiceVol = (+e.target.value || 0) / 100; localStorage.setItem(VOICE_VOL_KEY, String(voiceVol)); if (voiceCur) voiceCur.volume = voiceVol; renderVoiceBtn(); });
 renderVoiceBtn();
 $('fx-skip').onclick = e => { e.stopPropagation(); if (TUT_LOCK('skip')) return; skipFx = !skipFx; localStorage.setItem(SKIP_KEY, skipFx ? '1' : '0'); if (S?.busy) fastForward = true; renderSkipBtn(); };
 // 연출 중 화면을 누르면 현재 연출 빨리 감기
@@ -2794,7 +2800,11 @@ window.TCG = { get fxOff() { return FX_OFF(); }, kickoff: () => S?.kickGo?.(), v
     b.addEventListener('click', e => { e.stopPropagation(); const open = p.classList.contains('hidden'); document.querySelectorAll('.sort-pop, .bset-pop').forEach(x => x.classList.add('hidden')); p.classList.toggle('hidden', !open); p.classList.toggle('flex', open && popId === 'hand-sort'); b.setAttribute('aria-expanded', String(open)); });
     p.addEventListener('click', e => e.stopPropagation());
     document.addEventListener('click', () => { if (!p.classList.contains('hidden')) { p.classList.add('hidden'); p.classList.remove('flex'); b.setAttribute('aria-expanded', 'false'); } }); };
-  pop('act-sort', 'hand-sort'); pop('bset-btn', 'bset-pop');
+  pop('act-sort', 'hand-sort');
+  // 전투 톱니도 홈과 같은 게임설정 창 (js/main-menu.js VRMenu). 전투 설정(#bset-pop)은 그 창 맨 위에 그대로 들어감
+  $('bset-btn')?.addEventListener('click', e => { e.stopPropagation(); document.querySelectorAll('.sort-pop').forEach(x => { x.classList.add('hidden'); x.classList.remove('flex'); });
+    if (window.VRMenu) window.VRMenu.toggle(); else { const p = $('bset-pop'); p?.classList.toggle('hidden'); } });
+  $('bset-pop')?.addEventListener('click', e => e.stopPropagation());
   // 아이콘 버튼 이름: 길게 누르기·마우스 올리기 (title)
   document.querySelectorAll('#action-bar .act-btn').forEach(b => { if (!b.title) b.title = (b.textContent || '').replace(/\d+|회/g, '').trim(); });
 }

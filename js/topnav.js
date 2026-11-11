@@ -36,7 +36,7 @@
         <button type="button" class="tnb-chip tnb-cur" data-cur="gem" hidden></button><button type="button" class="tnb-chip tnb-cur" data-cur="gold" hidden></button><button type="button" class="tnb-chip tnb-cur" data-cur="drink" hidden></button></div>`;
     bar.querySelector('.tnb-back').onclick = back;
     bar.querySelector('.tnb-mail').onclick = () => { const G = window.VRGear; if (G && !G.off) G.mailbox({ back: () => G.unread?.() }); else document.querySelector('.story-mailbtn')?.click(); };
-    bar.querySelector('.tnb-set').onclick = () => { if (where() === 'lobby') $('main-settings')?.click(); else window.VRSettings?.open?.(); };
+    bar.querySelector('.tnb-set').onclick = e => { e?.stopPropagation?.(); if (window.VRMenu) window.VRMenu.toggle(); else if (where() === 'lobby') $('main-settings')?.click(); else window.VRSettings?.open?.(); };   // 어디서나 홈과 같은 게임설정 창
     bar.querySelectorAll('[data-cur]').forEach(b => b.onclick = () => {
       // 드링크 + 는 소모품(드링크) 탭. 마지막에 보던 패스 탭으로 다시 열리지 않게 한다.
       if (b.dataset.cur === 'drink' && window.VRShop?.enabled && window.VRShop.open) return window.VRShop.open('consume');
