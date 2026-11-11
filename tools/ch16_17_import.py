@@ -5,7 +5,7 @@
 엔딩 영상: CH16 Hr8_z9yFB_g · CH17 jhBi0xojOOM (형님 채팅 16:59 KST)
 조윤이 ch16 = jo_yuni_school · 최윤희 ch17 = choi_yunhee_school
 국선 엄마/아빠 · 영순 이모 = 초상화 없음
-16-11 적5 이영아(10306) 유지. 16-1/16-2·CH17 빈 승리조건 → 적 전멸, 빈 패배조건은 다른 동형 페이즈와 같게.
+16-11 적5 이영아(10306) 유지. 16-11 승리는 최국선 사망(mustKill; 윤진아를 남기고 이길 수 있음). 16-1/16-2·CH17 빈 승리조건 → 적 전멸, 빈 패배조건은 다른 동형 페이즈와 같게.
 """
 import csv, json, os, re, sys
 sys.path.insert(0, os.path.dirname(__file__)); from power import card_power
@@ -34,7 +34,7 @@ BATTLE = {
   8:  dict(forced=['최국선'], flv=40, elv=45, enemies=['I','S','T','U','V'], first='아군', bans=['여성','SR 초과'], win='적 전멸', lose='최국선 사망, 필수캐 미소환(2턴), 아군 전멸, 20턴 초과', pts=3, mana=100),
   9:  dict(forced=['최국선'], flv=40, elv=45, enemies=['J','D','W','X','Y'], first='아군', bans=['여성','SR 초과'], win='적 전멸', lose='최국선 사망, 필수캐 미소환(2턴), 아군 전멸, 20턴 초과', pts=3, mana=100),
  10:  dict(forced=['최국선'], flv=40, elv=45, blv=2, enemies=['고정태','A','B','K','L'], first='아군', bans=['여성','SR 초과'], win='적 전멸', lose='최국선 사망, 필수캐 미소환(2턴), 아군 전멸, 20턴 초과', pts=3, mana=100),
- 11:  dict(forced=['소민섭'], flv=60, elv=45, boss='최국선', enemies=['윤진아','조윤이','동지선','주예서','이영아'], first='아군', bans=['여성'], win='적 전멸', lose='소민섭 사망, 필수캐 미소환(2턴), 아군 전멸, 20턴 초과', note='각성윤진아', pts=3, mana=200),
+ 11:  dict(forced=['소민섭'], flv=60, elv=45, boss='최국선', enemies=['윤진아','조윤이','동지선','주예서','이영아'], first='아군', bans=['여성'], win='최국선 사망', lose='소민섭 사망, 필수캐 미소환(2턴), 아군 전멸, 20턴 초과', note='각성윤진아', pts=3, mana=200),
  12:  dict(story=True, pts=3, mana=100),
 },
 17: {
@@ -182,6 +182,8 @@ def build(chn, path, hero_name):
         if after:
             cur['after'] = after; cur['afterTitle'] = '전투 후'
         if b.get('note') == '각성윤진아':
+            # type은 normal 유지 (보스 타입은 불사+진영 HP). 최국선을 쓰러뜨리면 승리.
+            rules['mustKill'] = [cid('최국선')]
             rules.setdefault('revive', []).append({
                 'id': cid('윤진아'), 'become': cid('[각성] 윤진아'), 'delay': 0,
                 'storyLevel': 100, 'battleLevel': 10,

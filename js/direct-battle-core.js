@@ -285,6 +285,7 @@ export function runDirect(spec, actions, rng = null) {
     if (ai.hp <= 0 || me.hp <= 0) return done(ai.hp <= 0, 'ko');
     awaken();
     if (state.mustLiveDown) return done(false, 'mustlive');
+    if (state.mustKillDown) return done(true, 'mustkill');
     if (spec.win === 'wipe' && gone(ai)) return done(true, 'wipe');
     if (me.manaPool ? !me.field.length && !affordable().length : gone(me)) return done(false, 'wipe');
     return false;
@@ -326,6 +327,7 @@ export function runDirect(spec, actions, rng = null) {
   function onDeath(u) {
     const id = String(u.card.id);
     if (u.owner === me && (state.rules.mustLive || []).map(String).includes(id)) state.mustLiveDown = true;
+    if (u.owner === ai && (state.rules.mustKill || []).map(String).includes(id)) state.mustKillDown = true;
     if (u.owner === ai) {
       const r = (state.rules.revive || []).find(x => String(x.id) === id);
       if (!r) return;

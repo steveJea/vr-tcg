@@ -274,7 +274,8 @@ async function startGame(story = null, at = null) {
     after(() => { for (const w of ['me', 'ai']) for (const u of S[w].field) onEnter(w, u); flushHeldPassives(); }, 400);
     if (story.tutorial) after(async () => { for (let k = 0; k < 50 && (fxQueueRun || fxQueue.length); k++) await sleep(200); if (S === s0 && !S.over) window.VRTutorial?.start(story.tutorial, { force: !!story.tutorialForce }); }, 900);   // 등장 연출이 끝난 뒤 가이드   // 페이즈의 tutorial id → 가이드 (data/tutorials/<id>.json)   // 출전 카드 등장 컷인·이벤트
     if (S.me.leaderSkill) log(`👑 리더 스킬 [${S.me.leaderSkill.name} · ${S.me.leaderSkill.label}]: ${S.me.leaderSkill.text}. 리더가 쓰러지면 해제되고 아군 진영 HP −${Math.round((S.me.leaderSkill.deathPenalty ?? 0.3) * 100)}%`, 'text-amber-300');
-    log(story.win === 'ko' ? '👑 보스전: 보스는 진영 안에서 쓰러지지 않아요. 상대 진영 HP를 0으로!' : '⚔️ 일반전: 상대 카드를 모두 쓰러뜨리세요!', 'text-amber-300');
+    const kill = (story.rules?.mustKill || []).map(String);
+    log(story.win === 'ko' ? '👑 보스전: 보스는 진영 안에서 쓰러지지 않아요. 상대 진영 HP를 0으로!' : kill.length ? '👑 보스를 쓰러뜨리면 승리해요.' : '⚔️ 일반전: 상대 카드를 모두 쓰러뜨리세요!', 'text-amber-300');
   }
   if (MP != null) {
     S.me.manaPool = true; S.me.mana = S.me.maxMana = MP;
@@ -1071,6 +1072,7 @@ function storyIntrusionCard(spec, fallback) {
 function storyOnDeath(u) {
   const R = S.story.rules, id = String(u.card.id);
   if (u.owner === S.me && (R.mustLive || []).map(String).includes(id)) { S.mustLiveDown = u.card.name; log(`💔 ${u.card.name} 카드가 쓰러졌다! 이 페이즈는 ${u.card.name} 카드가 살아 있어야 해요`, 'text-red-400'); }
+  if (u.owner === S.ai && (R.mustKill || []).map(String).includes(id)) { S.mustKillDown = u.card.name; log(`👑 ${u.card.name}을(를) 쓰러뜨렸다!`, 'text-amber-300'); }
   if (u.owner === S.ai && !S.expired) {
     const r = (R.revive || []).find(x => String(x.id) === id); if (!r) return;
     const used = (S.reviveUsed ||= {}), k = id + ':' + (u.reviveSlot ?? u.uid);
@@ -1118,6 +1120,7 @@ function checkEnd() {
     const gone = p => !p.field.length && !p.hand.length && !p.deck.length;
     if (S.mustLiveDown) return finish(false, 'mustlive');
     awakenCheck();
+    if (S.mustKillDown) return finish(true, 'mustkill');
     if (S.story.win === 'wipe' && gone(S.ai)) return finish(true, 'wipe');   // 그 순간 적 카드가 모두 쓰러져 있으면 승리 (부활 대기 중이어도)
     if (S.me.manaPool ? !S.me.field.length && !affordable().length : gone(S.me)) return finish(false, 'wipe');   // 제한 마나: 필드가 비고 낼 수 있는 손패도 없으면 패배
   }
@@ -2000,7 +2003,7 @@ function render() {
   $('ai-hero').classList.toggle('ring-4', !!atkSel && tg.hero);
   $('ai-hero').classList.toggle('ring-red-500', !!atkSel && tg.hero);
   $('ai-hero').classList.toggle('opacity-70', S.turn === 'me' && !tg.hero);
-  $('hero-hint').innerHTML = bossView() ? (S.over ? '' : '첫 2턴에는 보스를 공격할 수 없어요.') : S.story && S.over ? '' : S.ai.noBase ? (S.over ? '' : $('game').classList.contains('view-raid') ? '🐉 균열 토벌: 15턴 동안 보스에게 최대한 큰 피해를!' : '⚔️ 일반전: 상대 카드를 모두 쓰러뜨리면 승리') : S.turn === 'me' && !S.over ? (tg.hero ? `${ic('taunt', { alt: '' })} 상대 진영 공격 가능` : `${ic('def', { alt: '' })} ${escHtml(tg.reason)}`) : '';
+  $('hero-hint').innerHTML = bossView() ? (S.over ? '' : '첫 2턴에는 보스를 공격할 수 없어요.') : S.story && S.over ? '' : S.ai.noBase ? (S.over ? '' : $('game').classList.contains('view-raid') ? '🐉 균열 토벌: 15턴 동안 보스에게 최대한 큰 피해를!' : (S.story?.rules?.mustKill || []).length ? '👑 보스를 쓰러뜨리면 승리' : '⚔️ 일반전: 상대 카드를 모두 쓰러뜨리면 승리') : S.turn === 'me' && !S.over ? (tg.hero ? `${ic('taunt', { alt: '' })} 상대 진영 공격 가능` : `${ic('def', { alt: '' })} ${escHtml(tg.reason)}`) : '';
   $('hero-hint').className = `text-center text-[11px] md:text-xs font-bold ${tg.hero ? 'text-emerald-400' : 'text-amber-300'}`;
 
   { // 체력 위기 (30% 이하): 화면 가장자리 붉은 깜빡임 + 체력바 색. 진영이 없으면(스토리) 필드 전체 HP 비율

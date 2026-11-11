@@ -112,6 +112,7 @@ function playClient(spec, seed, policy) {
   }
   function onDeath(u) {
     if (u.owner === me && (spec.rules?.mustLive || []).map(String).includes(String(u.card.id))) state.mustLiveDown = true;
+    if (u.owner === ai && (spec.rules?.mustKill || []).map(String).includes(String(u.card.id))) state.mustKillDown = true;
     if (u.owner !== ai) return;
     const r = (spec.rules?.revive || []).find(x => String(x.id) === String(u.card.id));
     if (!r) return;
@@ -127,6 +128,7 @@ function playClient(spec, seed, policy) {
     if (ai.hp <= 0 || me.hp <= 0) return done(ai.hp <= 0, 'ko');
     awaken();
     if (state.mustLiveDown) return done(false, 'mustlive');
+    if (state.mustKillDown) return done(true, 'mustkill');
     if (spec.win === 'wipe' && gone(ai)) return done(true, 'wipe');
     if (gone(me)) return done(false, 'wipe');
     return false;
@@ -312,11 +314,25 @@ const ch1611 = {
   ai: ['10406', '10290', '10383', '10097', '10393', '10306'].map(id => ({ ...clone(cardOf(id)), ...ch1611Boost[id] })),
   win: 'wipe', aiHp: null, bossId: null, heroGuard: 0, first: 'me',
   rules: {
-    maxTurns: 20, mustLive: ['10200'],
+    maxTurns: 20, mustLive: ['10200'], mustKill: ['10406'],
     revive: [{ id: '10290', become: '10291', delay: 0, storyLevel: 100, battleLevel: 10 }],
   },
 };
 for (const seed of [4, 7, 8, 12, 21, 100]) for (const policy of ['auto', 'manual']) add('story 16-11', ch1611, seed, policy);
+// Named-boss win: 최국선 dies first (low HP), 윤진아 is left alive so become must not be required to win.
+const mustKillLeft = {
+  me: deckAt(40, strong),
+  ai: [
+    { ...clone(cardOf('10406')), HP: 40, ATK: 10, DEF: 1 },
+    { ...clone(cardOf('10290')), HP: 8000, ATK: 10, DEF: 200 },
+  ],
+  win: 'wipe', aiHp: null, bossId: null, heroGuard: 0, first: 'me',
+  rules: {
+    maxTurns: 20, mustKill: ['10406'],
+    revive: [{ id: '10290', become: '10291', delay: 0, storyLevel: 100, battleLevel: 10 }],
+  },
+};
+for (const seed of [4, 7, 8, 12, 21, 100]) for (const policy of ['auto', 'manual']) add('story 16-11 mustKill', mustKillLeft, seed, policy);
 const joinLv = {
   me: deckAt(8, ['10074', '10080', '10445']),
   ai: deckAt(20, ['10051']).map(c => ({ ...c, HP: 800, ATK: 80, DEF: 40 })),
@@ -361,6 +377,10 @@ assert.ok(cases.filter(c => c.label === 'story awaken storyLevel').every(c => c.
 assert.ok(cases.filter(c => c.label === 'story become storyLevel').every(c => c.client.win === c.server?.win && c.client.reason === c.server?.reason && !c.error));
 assert.ok(cases.filter(c => c.label === 'story joinAlly storyLevel').every(c => c.client.win === c.server?.win && c.client.reason === c.server?.reason && !c.error));
 assert.ok(cases.filter(c => c.label === 'story 16-11').every(c => c.client.win === c.server?.win && c.client.reason === c.server?.reason && c.client.turns === c.server?.turns && !c.error));
+const mk = cases.filter(c => c.label === 'story 16-11 mustKill');
+assert.ok(mk.length && mk.every(c => c.client.win === c.server?.win && c.client.reason === c.server?.reason && c.client.turns === c.server?.turns && !c.error));
+assert.ok(mk.some(c => c.client.win && c.client.reason === 'mustkill' && c.server?.reason === 'mustkill'));
+
 const yj = cardOf('10291');
 const expectJina = lvScaled(yj, 100);
 assert.equal(storyIntrusionCard({ become: '10291', storyLevel: 100 }).HP, expectJina.HP);
