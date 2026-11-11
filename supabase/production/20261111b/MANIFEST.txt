@@ -1,0 +1,24 @@
+release 20261111b (follow-up after 20261111)
+bundle_hash c0898dcb7aa003ccbb9d2f0bdc79a1cac174f3fbe7ea8f7331f247366d2a9c9a
+source tools/ur_ticket/core.sql
+statements:
+  1. 1. UR 확정권 보유 수 (소환권과 같은 행)
+  2. 2. 전체 우편: 보낸 시각 이전 가입자만 받기
+  3. 3. 첨부 검증: UR 확정권(ur_tickets 0..10) 추가
+  4. 4. 전체 우편 → 내 우편함 복사: existing_only 우편은 보낸 시각 이전에 가입한 계정만
+  5. 5. 메시지 우편 받기: UR 확정권 지급 추가
+  6. 6. 관리자 전체 우편: p_existing_only (기본 false = 예전과 같음)
+  7. 7
+  8. 8. 보낸 전체 우편 목록에 existing_only
+  9. 9. UR 확정권 보유 수
+  10. 10. UR 확정권 사용: 고급 소환 UR 목록(story_premium_ur, 11명) 중 1명 무작위. 중복 허용. 뽑기 기록 → 갤러리·획득 기록은 기존 트리거
+  11. 11. 권한
+  12. 12
+  13. 13
+replaces (md5(prosrc) pinned):
+  _mail_clean_payload(jsonb) e012e11a2926c6ff2538c3110a908a7e
+  _mail_sync(uuid) 1e7c35b12855d08008ebe7a15d6b69f4
+  mail_msg_claim(bigint) 3429f085b2f8757fa990367d25f7fbe6
+  admin_mail_broadcast(text,text,jsonb,integer) 62d8597bec375c87839543e818a55927
+  admin_mail_broadcasts(integer) 6d64fed3850203290e87322c6a071a72
+files: 00_preflight_readonly.sql, 01_install.sql, 02_postflight_readonly.sql, 03_mark_currency_mail_existing_only.sql (optional)

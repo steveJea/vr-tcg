@@ -1940,10 +1940,28 @@
     }
     const r = localTicketSync(); tickets = r.tickets; return r;
   }
-  /** 특수 뽑기 n회 (1 또는 10). 반환 { ok, cards:[{card_id, grade}], tickets } */
-  async function drawTickets(n) {
+  // ----- UR 확정권 (우편으로 받음 · supabase/ur_ticket_mail_staging.sql): 1장 = 고급 소환 UR 11명 중 1명 (서버가 무작위) -----
+  let urTickets = null;   // null = 모름(로그아웃·서버 함수 없음) → 버튼 숨김
+  async function syncUrTickets() {
+    const sb = cloud()?.sb, u = cloud()?.user;
+    if (window.__TICKET_MOCK?.ur) { urTickets = (await window.__TICKET_MOCK.ur()) | 0; return urTickets; }
+    if (!serverMode || !sb || !u) { urTickets = null; return null; }
+    try { const { data, error } = await sb.rpc('story_ur_tickets'); urTickets = error ? null : (data?.ur_tickets | 0); } catch { urTickets = null; }
+    return urTickets;
+  }
+  const noDraw = x => x.dataset.ur ? (urTickets | 0) < 1 : (tickets | 0) < +x.dataset.draw;
+  /** 특수 뽑기 n회 (1 또는 10). ur = UR 확정권 1장. 반환 { ok, cards:[{card_id, grade}], tickets } */
+  async function drawTickets(n, ur = false) {
     const sb = cloud()?.sb, u = cloud()?.user;
     let res = null;
+    if (ur) {
+      if (window.__TICKET_MOCK?.urDraw) res = await window.__TICKET_MOCK.urDraw();
+      else if (serverMode && sb && u) { const { data, error } = await sb.rpc('story_ur_ticket_draw'); if (error) return { ok: false, reason: 'error', msg: error.message }; res = data; }
+      else return { ok: false, reason: 'error', msg: '로그인이 필요해요' };
+      if (res?.ur_tickets != null) urTickets = res.ur_tickets | 0;
+      if (res?.ok) { try { window.dispatchEvent(new CustomEvent('vr:gacha')); } catch {} if (!window.__TICKET_MOCK) await reload(); else for (const c of res.cards) addOwned(c.card_id); }
+      return res || { ok: false, reason: 'error' };
+    }
     if (window.__TICKET_MOCK) res = await window.__TICKET_MOCK.draw(n);
     else if (serverMode && sb && u && ticketSrv !== false) {
       const { data, error } = await sb.rpc('story_ticket_draw', { p_count: n });
@@ -2122,10 +2140,10 @@
         ? `<div class="gacha-stage gr-card" id="gacha-stage"><div class="gacha-card" id="gacha-card"><div class="gacha-face gacha-back"></div><div class="gacha-face gacha-front" id="gacha-front"></div></div></div>`
         : `<div id="tk-result" class="story-tk-result"></div>`}</div>
       <div id="gacha-msg" class="gr-msg"></div>
-      ${daily ? '' : `<div class="gr-own" id="gr-own">보유 소환권 ${ICN('ticket', '🎟️', '소환권')} <b>${tickets ?? '…'}</b></div>`}
+      ${daily ? '' : `<div class="gr-own" id="gr-own">보유 소환권 ${ICN('ticket', '🎟️', '소환권')} <b>${tickets ?? '…'}</b>${urTickets ? `<span class="gr-own-ur"> · UR 확정권 🎫 <b id="gr-own-ur">${urTickets}</b></span>` : ''}</div>`}
       <div class="gr-actions">${daily
         ? `${avail ? `<button id="gacha-go" class="gr-go">${ICN('gacha', '🎴')} 뽑기</button>` : ''}<div id="gacha-next" class="gr-next"></div>`
-        : `<button class="gr-go" data-draw="1" ${(tickets | 0) >= 1 ? '' : 'disabled'}>1회 <small>${ICN('ticket', '🎟️')}1</small></button><button class="gr-go gr-go10" data-draw="10" ${(tickets | 0) >= 10 ? '' : 'disabled'} title="HR 이상 1장 보장">10회 <small>${ICN('ticket', '🎟️')}10</small></button>`}</div>
+        : `<button class="gr-go" data-draw="1" ${(tickets | 0) >= 1 ? '' : 'disabled'}>1회 <small>${ICN('ticket', '🎟️')}1</small></button><button class="gr-go gr-go10" data-draw="10" ${(tickets | 0) >= 10 ? '' : 'disabled'} title="HR 이상 1장 보장">10회 <small>${ICN('ticket', '🎟️')}10</small></button>${urTickets ? `<button class="gr-go gr-go-ur" data-draw="1" data-ur="1" title="고급 소환 UR 11명 중 1명 확정">UR 확정 <small>🎫1</small></button>` : ''}`}</div>
       ${daily ? '' : `<div class="gr-gem" id="gr-gem">${gemRow()}</div>`}</div>`, 'gacha');
     gateLayout(); preloadGachaVideo();
     if (forcedPullOn) root().querySelector('.story-shop')?.classList.add('gr-forced');   // 강제 영입: 나가기·탭·1회·젬 숨김
@@ -2133,17 +2151,19 @@
     root().querySelectorAll('[data-tab]').forEach(b => b.onclick = () => renderShop(b.dataset.tab));
     $('gacha-rates').onclick = showRates;
     if (tickets == null) syncTickets().then(r => { if (root().querySelector('.story-shop')) { if (r.added) toast(`🎟️ 소환권 +${r.added} (챕터 클리어 보상)`); renderShop(); } });
+    if (!daily && !forcedPullOn) { const was = urTickets; syncUrTickets().then(n => { if ((n | 0) !== (was | 0) && shopTab === 'special' && root().querySelector('.story-shop') && !root().querySelector('#tk-result')?.children.length) renderShop(); }); }
     if (!daily) {
       bindGem();
       if (window.VRGem && !window.VRGem.now) window.VRGem.status().then(() => { const g = $('gr-gem'); if (g) { g.innerHTML = gemRow(); bindGem(); } });
       root().querySelectorAll('[data-draw]').forEach(b => b.onclick = async () => {
         root().querySelectorAll('[data-draw]').forEach(x => x.disabled = true); $('gacha-msg').textContent = ''; $('tk-result').innerHTML = ''; resultOn = false;
         const before = new Set(save.owned.map(o => o.uid));
-        const r = await drawTickets(+b.dataset.draw);
+        const r = await drawTickets(+b.dataset.draw, !!b.dataset.ur);
+        { const ou = $('gr-own-ur'); if (ou) ou.textContent = urTickets | 0; }
         { const ob = $('gr-own')?.querySelector('b'); if (ob) ob.textContent = tickets | 0; }
         if (!r.ok && forcedPullOn && r.reason === 'tickets') { forcedPullOn = false; await markPullDone(); toast('소환권이 부족해 강제 영입을 건너뛰어요.'); return enter(); }   // 막힘 방지
         if (!r.ok && forcedPullOn) root().querySelector('.story-shop')?.classList.remove('gr-forced');   // 다른 오류: 나가기 허용 (다음 접속 때 다시 안내)
-        if (!r.ok) { $('gacha-msg').textContent = r.reason === 'tickets' ? '소환권이 부족해요.' : `뽑기에 실패했어요: ${r.msg || ''}`; root().querySelectorAll('[data-draw]').forEach(x => x.disabled = (tickets | 0) < +x.dataset.draw); return; }
+        if (!r.ok) { $('gacha-msg').textContent = r.reason === 'tickets' ? '소환권이 부족해요.' : r.reason === 'ur_tickets' ? 'UR 확정권이 없어요.' : `뽑기에 실패했어요: ${r.msg || ''}`; root().querySelectorAll('[data-draw]').forEach(x => x.disabled = noDraw(x)); return; }
         const bestG = r.cards.reduce((a, c) => GORDER.indexOf(c.grade) > GORDER.indexOf(a) ? c.grade : a, 'NORMAL');
         root().querySelectorAll('.story-ticket b').forEach(x => x.textContent = tickets);
         const vid = await playSummonFx(bestG);
@@ -2179,7 +2199,7 @@
         if (forcedPullOn && r.cards.length === 10) { forcedPullOn = false; await markPullDone();
           const nb = document.createElement('button'); nb.className = 'gr-go gr-forced-next'; nb.id = 'forced-pull-next'; nb.textContent = '챕터1 시작하기';
           nb.onclick = () => beginChapter1(); root().querySelector('.gr-actions')?.replaceChildren(nb); return; }   // 강제 영입 결과: 허브 대신 챕터 1 시작
-        root().querySelectorAll('[data-draw]').forEach(x => x.disabled = (tickets | 0) < +x.dataset.draw); { const ob = $('gr-own')?.querySelector('b'); if (ob) ob.textContent = tickets | 0; }   // 보유 소환권 갱신
+        root().querySelectorAll('[data-draw]').forEach(x => x.disabled = noDraw(x)); { const ob = $('gr-own')?.querySelector('b'); if (ob) ob.textContent = tickets | 0; const ou = $('gr-own-ur'); if (ou) ou.textContent = urTickets | 0; }   // 보유 소환권 갱신
         if (!forcedPullOn) resultOn = true;
       });
       return;

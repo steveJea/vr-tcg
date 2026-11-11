@@ -1124,3 +1124,6 @@ body.gnb-on:not(.gnb-hidden) #story-screen { --wrap-pb: 12px; }   /* 하단 메�
 
 /* PvP boss rule cue: one readable sentence, not a tiny explanatory footer. */
 #game.view-boss #hero-hint { font-size: 14px; line-height: 1.5; }
+
+.gr-go-ur{background:linear-gradient(180deg,#f59e0b,#b45309);color:#1a0f00}
+.gr-own-ur b{color:#fcd34d}
