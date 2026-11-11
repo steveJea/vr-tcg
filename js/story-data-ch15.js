@@ -173,7 +173,8 @@ window.STORY_DATA.chapters.push({
      "speaker": "윤진아",
      "text": "저기요! 고맙습니다! 진짜 진짜 고마워요!",
      "expr": "기쁨",
-     "slug": "yun_jina_school"
+     "slug": "yun_jina_school",
+     "image": "img/story/ch15-03.webp"
     },
     {
      "speaker": "최국선",
@@ -454,7 +455,8 @@ window.STORY_DATA.chapters.push({
      {
       "speaker": "동지선",
       "text": "야, 돼지. 그 입 다물어. 배척지 냄새 어떤 건지 내가 직접 맡게 해 줄까?",
-      "expr": "분노"
+      "expr": "분노",
+      "image": "img/story/ch15-04.webp"
      },
      {
       "speaker": "동지선",
@@ -570,7 +572,8 @@ window.STORY_DATA.chapters.push({
      {
       "speaker": "조윤이",
       "text": "아니야. 진아는 머리 좋아. 그냥 맨날 할머니 생각하느라 바쁜 거지.",
-      "expr": "기쁨"
+      "expr": "기쁨",
+      "image": "img/story/ch15-05.webp"
      },
      {
       "speaker": "내레이션",
@@ -681,7 +684,8 @@ window.STORY_DATA.chapters.push({
      {
       "speaker": "고세린",
       "text": "짜잔! 진아 알바님 위문 공연 왔습니다! 오늘의 선물은 1+1 바나나우유!",
-      "expr": "기쁨"
+      "expr": "기쁨",
+      "image": "img/story/ch15-06.webp"
      },
      {
       "speaker": "윤진아",
@@ -953,7 +957,7 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "불량배-X",
-      "text": "뭐야, 꼬맹이. 그 얘기 어디서 들었어? 그거 성관이 형네 일이야. 위에 민섭 형님도 있고."
+      "text": "뭐야, 꼬맹이. 그 얘기 어디서 들었어? 그거 성관이 오빠네 일이야. 위에 민섭오빠도 있고."
      },
      {
       "speaker": "불량배-Y",
@@ -1753,7 +1757,8 @@ window.STORY_DATA.chapters.push({
      {
       "speaker": "고세린",
       "text": "안녕, 아저씨. 그 노래 재밌다. 나도 하나 지었는데 들어 볼래?",
-      "expr": "기쁨"
+      "expr": "기쁨",
+      "image": "img/story/ch15-07.webp"
      },
      {
       "speaker": "서태우",
@@ -1875,7 +1880,8 @@ window.STORY_DATA.chapters.push({
      {
       "speaker": "동지선",
       "text": "...그럼 쓰러뜨려 봐. 그 전엔 못 보내.",
-      "expr": "분노"
+      "expr": "분노",
+      "image": "img/story/ch15-08.webp"
      }
     ]
    },
@@ -2002,7 +2008,8 @@ window.STORY_DATA.chapters.push({
      {
       "speaker": "고정태",
       "text": "민섭 형님 사업이 그래. 사람을 사고, 팔고. 위에 사 가는 분들이 계시거든. 그 애는...얼굴도 예뻐서 값이 꽤 나갔지.",
-      "expr": "보통"
+      "expr": "보통",
+      "image": "img/story/ch15-09.webp"
      },
      {
       "speaker": "고세린",
@@ -2175,7 +2182,8 @@ window.STORY_DATA.chapters.push({
     {
      "speaker": "고세린",
      "text": "..노..란머리? 아...국선이...하...바보새끼..",
-     "expr": "다침"
+     "expr": "다침",
+     "image": "img/story/ch15-10.webp"
     },
     {
      "speaker": "내레이션",
@@ -2196,7 +2204,8 @@ window.STORY_DATA.chapters.push({
     {
      "speaker": "동지선",
      "text": "...이 바보야...바보야...!!!",
-     "expr": "슬픔"
+     "expr": "슬픔",
+     "image": "img/story/ch15-11.webp"
     },
     {
      "speaker": "내레이션",
@@ -2235,7 +2244,8 @@ window.STORY_DATA.chapters.push({
   },
   {
    "speaker": "내레이션",
-   "text": "하지만 엄마는 진아를 낳은 직후 세상을 떠났다. 개인택시를 몰던 아빠와 할머니가, 성심성의껏 진아를 키웠다."
+   "text": "하지만 엄마는 진아를 낳은 직후 세상을 떠났다. 개인택시를 몰던 아빠와 할머니가, 성심성의껏 진아를 키웠다.",
+   "video": "video/story/ch15-01.mp4"
   },
   {
    "speaker": "아빠",
@@ -2249,7 +2259,8 @@ window.STORY_DATA.chapters.push({
   },
   {
    "speaker": "내레이션",
-   "text": "진아가 7살이 되던 해. 아빠의 택시는 음주운전 차량에 들이받혔다. 아빠는 현장에서 즉사했다."
+   "text": "진아가 7살이 되던 해. 아빠의 택시는 음주운전 차량에 들이받혔다. 아빠는 현장에서 즉사했다.",
+   "image": "img/story/ch15-02.webp"
   },
   {
    "speaker": "내레이션",
@@ -2266,5 +2277,5 @@ window.STORY_DATA.chapters.push({
   }
  ],
  "ending": [],
- "endingVideo": ""
+ "endingVideo": "rMSMM9QLh20"
 });
