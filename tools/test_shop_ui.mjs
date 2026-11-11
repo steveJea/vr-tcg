@@ -61,4 +61,11 @@ assert.doesNotMatch(drinkSrc,/개를<br>심연석/);
 assert.equal((await read('js/shop.js')).includes('무료 심연석을 먼저'),false);
 assert.equal(document.querySelector('[data-gem-buy]'), null);
 assert.doesNotMatch(document.body.textContent,/심연석으로 사는 것/);
-console.log('Shop UI: tabs, empty skins, 2x copy, pass totals, drinks only, test grant, Toss only for gems OK');
+// Production (no staging flag, no mock): the BM shop page never opens; gem/drink chips use the old popup.
+{const mock=window.__SHOP_MOCK;delete window.__SHOP_MOCK;const cloud=window.VRCloud;window.VRCloud={...(cloud||{}),isStaging:false,user:{id:'u'}};
+ assert.equal(window.VRShop.enabled,false);assert.equal(window.VRShop.open(),null);
+ window.VRCloud={...(cloud||{}),isStaging:true,user:{id:'u'}};assert.equal(window.VRShop.enabled,true);
+ window.VRCloud=cloud;window.__SHOP_MOCK=mock;}
+for(const f of ['js/gem.js','js/topnav.js'])assert.match(await read(f),/window\.VRShop\?\.enabled && window\.VRShop\.open/);
+assert.match(await read('js/cloud.js'),/get isStaging\(\) \{ return config\.isStaging === true; \}/);
+console.log('Shop UI: tabs, empty skins, 2x copy, pass totals, drinks only, test grant, Toss only for gems, production gate OK');

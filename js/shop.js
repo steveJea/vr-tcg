@@ -8,6 +8,8 @@
   const n = v => Number(v || 0).toLocaleString('ko-KR');
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const ERR = { 'not enough gem': '심연석이 부족해요', 'monthly limit': '이번 달 구매 횟수를 다 썼어요', 'rate limited': '잠시 후 다시 시도해 주세요', 'invalid item': '없는 상품이에요', 'login required': '로그인이 필요해요', 'shop unavailable': '이 서버에서는 상점을 열 수 없어요' };
+  // 상점 BM(shop_bm_staging.sql)은 테스트 서버 전용. 운영에서는 상점 페이지를 열지 않고 예전 심연석 팝업을 쓴다.
+  const on = () => !!(window.__SHOP_MOCK || window.VRCloud?.isStaging === true);
   let tab = 'charge', cache = null, host = null;
   const toast = t => window.VRGem?.toast?.(t) || 0;
   const errText = e => { const m = String(e?.message || e); const k = Object.keys(ERR).find(x => m.includes(x)); return k ? ERR[k] : (missing(e) ? '🔒 상점' : m.slice(0, 80)); };
@@ -87,6 +89,7 @@
   function draw(body) { host = body; host.innerHTML = '<div class="shop" data-clarity-mask="true"><div class="shop-note">불러오는 중…</div></div>'; refresh(true).then(() => { if (host === body) paint(); }); }
   function open(next) {
     const logged = window.VRCloud?.user || window.__SHOP_MOCK || window.__GEM_MOCK;
+    if (!on()) return null;
     if (!logged) return toast('로그인이 필요해요');
     if (TABS.some(([id]) => id === next)) tab = next;
     if (window.VRPages?.open) return window.VRPages.open('shop');
@@ -96,5 +99,5 @@
     draw(panel);
   }
   window.VRPages?.register?.('shop', { title: '상점', render: draw });
-  window.VRShop = { open, refresh, get now() { return cache; } };
+  window.VRShop = { open, refresh, get enabled() { return on(); }, get now() { return cache; } };
 })();

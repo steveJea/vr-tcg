@@ -39,7 +39,7 @@
     bar.querySelector('.tnb-set').onclick = () => { if (where() === 'lobby') $('main-settings')?.click(); else window.VRSettings?.open?.(); };
     bar.querySelectorAll('[data-cur]').forEach(b => b.onclick = () => {
       // 드링크 + 는 소모품(드링크) 탭. 마지막에 보던 패스 탭으로 다시 열리지 않게 한다.
-      if (b.dataset.cur === 'drink' && window.VRShop?.open) return window.VRShop.open('consume');
+      if (b.dataset.cur === 'drink' && window.VRShop?.enabled && window.VRShop.open) return window.VRShop.open('consume');
       window.VRGem?.open?.();
     });
   };
