@@ -231,7 +231,7 @@
   const CURN = { gold: '🪙 골드', blood: '🩸 순수한 피', shard: '💠 이상한 조각', soul: '🔥 각성자의 혼' };
   const hasAtt = p => !!p && Object.keys(p).length > 0;
   const attTxt = p => { p = p || {}; const a = [];
-    if (p.gem) a.push(`${window.VRGem?.ICON || '💎'} 심연석 ${fmt(p.gem)}`); if (p.tickets) a.push(`🎟️ 소환권 ${p.tickets}`);
+    if (p.gem) a.push(`${window.VRGem?.ICON || '💎'} 심연석 ${fmt(p.gem)}`); if (p.tickets) a.push(`🎟️ 소환권 ${p.tickets}`); if (p.ur_tickets) a.push(`🎫 UR 확정권 ${p.ur_tickets}장`);
     Object.entries(p.cur || {}).forEach(([k, v]) => a.push(`${CURN[k] || k} ${fmt(v)}`)); if (p.gear) a.push(`🛡️ ${esc(defs[p.gear]?.name || '장비')}`); return a.join(' · '); };
   const fmtExp = t => { const d = new Date(t); return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
   function msgPop(ml, after) {

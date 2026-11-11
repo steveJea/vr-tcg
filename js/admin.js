@@ -190,9 +190,10 @@
   function mailForm(px) {
     return `<div class="ad-grant" style="flex-wrap:wrap"><input type="text" id="ad-${px}mt" maxlength="60" placeholder="제목 (필수)" style="flex:1 1 100%"></div>
       <textarea id="ad-${px}mb" maxlength="1000" rows="3" placeholder="메시지 (선택)" style="width:100%;box-sizing:border-box;margin:4px 0"></textarea>
-      <div class="ad-grant" style="flex-wrap:wrap">🔮<input type="number" id="ad-${px}m-gem" min="0" max="1000000" value="0" title="심연석(무료)">🎟️<input type="number" id="ad-${px}m-tk" min="0" max="1000" value="0" title="소환권">
+      <div class="ad-grant" style="flex-wrap:wrap">🔮<input type="number" id="ad-${px}m-gem" min="0" max="1000000" value="0" title="심연석(무료)">🎟️<input type="number" id="ad-${px}m-tk" min="0" max="1000" value="0" title="소환권">🎫<input type="number" id="ad-${px}m-ur" min="0" max="10" value="0" title="UR 확정권 (고급 소환 UR 11명 중 1명)">
         ${CUR.map(([k, ic, nm]) => `${ic}<input type="number" id="ad-${px}m-${k}" min="0" max="1000000" value="0" title="${nm}">`).join('')}
         <input type="text" id="ad-${px}m-gear" placeholder="장비 def_id (선택, 영웅 이하)"> 기한<input type="number" id="ad-${px}m-days" min="1" max="30" value="7">일
+        ${px === 'b' ? `<label title="보낸 시각 이후에 가입한 계정은 받지 못해요"><input type="checkbox" id="ad-bm-old" checked> 기존 가입자만</label>` : ''}
         <button class="ad-btn" id="ad-${px}m-go">보내기</button></div><div id="ad-${px}m-msg" style="margin-top:4px"></div>`;
   }
   function bindMail(px, uid, who) {
@@ -201,23 +202,27 @@
       const v = k => Math.trunc(+$(`ad-${px}m-${k}`).value || 0), msg = $(`ad-${px}m-msg`), title = $(`ad-${px}mt`).value.trim(), body = $(`ad-${px}mb`).value.trim(), days = v('days');
       const cur = {}; CUR.forEach(([k]) => { if (v(k) > 0) cur[k] = v(k); });
       const payload = { gem: v('gem'), tickets: v('tk'), cur, gear: $(`ad-${px}m-gear`).value.trim() || null };
+      if (v('ur') > 0) payload.ur_tickets = v('ur');
+      const oldOnly = !uid && !!$('ad-bm-old')?.checked;
       if (!title) { msg.innerHTML = '<span class="ad-err">제목을 적어 주세요</span>'; return; }
       if (days < 1 || days > 30) { msg.innerHTML = '<span class="ad-err">기한은 1~30일</span>'; return; }
-      if (!confirm(`${uid ? who : '전체 유저'} 에게 우편 「${title}」을 보낼까요?`)) return;
+      if (!confirm(`${uid ? who : oldOnly ? '지금까지 가입한 전체 유저(이후 가입자 제외)' : '전체 유저(기한 안 새 가입자 포함)'} 에게 우편 「${title}」을 보낼까요?`)) return;
       btn.disabled = true;
+      // 예전 DB(첨부 검증이 UR 확정권을 모름)에서는 첨부가 조용히 빠지므로, 먼저 설치 여부 확인
+      if (payload.ur_tickets) { try { await rpc('story_ur_tickets', {}); } catch (e) { msg.innerHTML = `<span class="ad-err">${esc(/story_ur_tickets|PGRST202|Could not find/.test(e?.message || '') ? 'UR 확정권 SQL(스테이징: supabase/ur_ticket_mail_staging.sql · 운영: 20261111b)을 먼저 실행해 주세요' : e?.message)}</span>`; btn.disabled = false; return; } }
       try { const r = uid ? await rpc('admin_mail_send', { p_user: uid, p_title: title, p_body: body, p_payload: payload, p_days: days })
-          : await rpc('admin_mail_broadcast', { p_title: title, p_body: body, p_payload: payload, p_days: days });
+          : await rpc('admin_mail_broadcast', oldOnly ? { p_title: title, p_body: body, p_payload: payload, p_days: days, p_existing_only: true } : { p_title: title, p_body: body, p_payload: payload, p_days: days });
         msg.innerHTML = '<span class="ad-ok">보냈어요</span>'; $(`ad-${px}mt`).value = ''; $(`ad-${px}mb`).value = ''; if (!uid) renderMail(); }
-      catch (e) { msg.innerHTML = `<span class="ad-err">${esc(/mail_send|mail_broadcast/.test(e?.message || '') ? 'supabase/mail_v2.sql 을 실행해 주세요' : e?.message)}</span>`; }
+      catch (e) { msg.innerHTML = `<span class="ad-err">${esc(/mail_send|mail_broadcast/.test(e?.message || '') ? (oldOnly || payload.ur_tickets ? 'supabase/ur_ticket_mail_staging.sql(운영: 20261111b)을 먼저 실행해 주세요' : 'supabase/mail_v2.sql 을 실행해 주세요') : /ur_tickets/.test(e?.message || '') ? 'UR 확정권은 0~10장, 그리고 ur_ticket_mail SQL 실행이 필요해요' : e?.message)}</span>`; }
       finally { btn.disabled = false; }
     };
   }
   async function renderMail() {
     const v = $('ad-view');
-    v.innerHTML = `<div class="ad-sec"><h3>📮 전체 유저에게 우편</h3><div style="font-size:12px;opacity:.75;margin-bottom:4px">한 번만 저장되고, 유저가 우편함을 열 때 받아요. 기한 안에 가입한 새 유저도 받아요.</div>${mailForm('b')}</div><div class="ad-sec"><h3>보낸 전체 우편</h3><div id="ad-bl" class="ad-msg">불러오는 중...</div></div>`;
+    v.innerHTML = `<div class="ad-sec"><h3>📮 전체 유저에게 우편</h3><div style="font-size:12px;opacity:.75;margin-bottom:4px">한 번만 저장되고, 유저가 우편함을 열 때 받아요. '기존 가입자만'을 켜면 보낸 시각 이후에 가입한 계정은 못 받아요 (끄면 기한 안 새 가입자도 받음).</div>${mailForm('b')}</div><div class="ad-sec"><h3>보낸 전체 우편</h3><div id="ad-bl" class="ad-msg">불러오는 중...</div></div>`;
     bindMail('b', null, null);
     try { const rows = await rpc('admin_mail_broadcasts', { p_limit: 30 }) || [];
-      $('ad-bl').outerHTML = `<div class="ad-wrap"><table class="ad-table"><thead><tr><th>보낸 시각</th><th>제목</th><th>첨부</th><th>만료</th><th>받은 수</th></tr></thead><tbody>${rows.map(r => `<tr><td>${fmt(r.created_at)}</td><td>${esc(r.title)}</td><td><small>${esc(JSON.stringify(r.payload))}</small></td><td>${fmt(r.expires_at)}</td><td>${r.claimed}</td></tr>`).join('') || '<tr><td colspan="5">없음</td></tr>'}</tbody></table></div>`; }
+      $('ad-bl').outerHTML = `<div class="ad-wrap"><table class="ad-table"><thead><tr><th>보낸 시각</th><th>제목</th><th>첨부</th><th>만료</th><th>받은 수</th></tr></thead><tbody>${rows.map(r => `<tr><td>${fmt(r.created_at)}</td><td>${esc(r.title)}${r.existing_only ? ' <small>(기존 가입자만)</small>' : ''}</td><td><small>${esc(JSON.stringify(r.payload))}</small></td><td>${fmt(r.expires_at)}</td><td>${r.claimed}</td></tr>`).join('') || '<tr><td colspan="5">없음</td></tr>'}</tbody></table></div>`; }
     catch (e) { $('ad-bl').innerHTML = `<span class="ad-err">${esc(e?.message)}</span>`; }
   }
   function bindGem(id, d) {
