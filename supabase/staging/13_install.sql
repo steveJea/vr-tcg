@@ -40,11 +40,11 @@ set local check_function_bodies = off;
 
 do $vr_install_part$
 begin
-  if exists (select 1 from vr_staging_install.parts where bundle_hash <> 'edfb7f601c2af09fe91dd92476196601d21e0762b12adb621400cb4b2731646e' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
+  if exists (select 1 from vr_staging_install.parts where bundle_hash <> '40b68905df2c6bf0c180eac763ec76ff28e4302479406446e8dfd4ef4253b0b0' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
     raise exception 'STOP: 다른 버전/DB의 설치 기록입니다. 파일을 섞지 마세요.';
   end if;
   if exists (select 1 from vr_staging_install.parts where part_no = 13) then
-    if not exists (select 1 from vr_staging_install.parts where part_no = 13 and part_hash = 'd9bbe7792e23d1bfcfa7989c17ee650090c26408321b412123e8a62711452889') then
+    if not exists (select 1 from vr_staging_install.parts where part_no = 13 and part_hash = '6b2787826cb913dbc4173fb766eb209e8947197b99bd0ee864fc66b9e799d69a') then
       raise exception 'STOP: 완료한 파일과 내용이 다릅니다.';
     end if;
     raise notice '13_install.sql: 이미 완료, 변경 없이 건너뜀';
@@ -438,7 +438,7 @@ end $acl$;$vr_statement$;
 -- Phase4 cluster guard is enforced by installer outer guard.
 set local check_function_bodies=off;$vr_statement$;
   execute $vr_statement$create table if not exists public.guildbattle_policy_v4(singleton boolean primary key default true check(singleton),engine_hash text not null,enabled boolean not null default true);$vr_statement$;
-  execute $vr_statement$insert into public.guildbattle_policy_v4(singleton,engine_hash) values(true,'d7b380a2680ba696fd5faefbda27a64b4cf8f624d01528258e0cc42365180728') on conflict(singleton) do update set engine_hash=excluded.engine_hash;$vr_statement$;
+  execute $vr_statement$insert into public.guildbattle_policy_v4(singleton,engine_hash) values(true,'26b881cf87a09a8f220cc3910106a92542677586c21ca9ce7b3cedb93e32684b') on conflict(singleton) do update set engine_hash=excluded.engine_hash;$vr_statement$;
   execute $vr_statement$do $$ begin
  if not exists(select 1 from pvp_policy_v3) then raise exception 'STOP: install phases 1-3 first'; end if;
 end $$;$vr_statement$;
@@ -1330,7 +1330,7 @@ drop trigger if exists gear_raid_drop_v4 on guild_raid_attempts_v4;$vr_statement
  select count(*) from (select user_id,guild_id,day from guildbattle_events_v4 where kind='raid' union all select user_id,guild_id,day from guildbattle_sweeps_v4) x where (u is null or user_id=u) and guild_id=g and day between d and e $$;$vr_statement$;
 
   insert into vr_staging_install.parts(part_no, bundle_hash, part_hash, project_ref, db_id)
-  values (13, 'edfb7f601c2af09fe91dd92476196601d21e0762b12adb621400cb4b2731646e', 'd9bbe7792e23d1bfcfa7989c17ee650090c26408321b412123e8a62711452889', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
+  values (13, '40b68905df2c6bf0c180eac763ec76ff28e4302479406446e8dfd4ef4253b0b0', '6b2787826cb913dbc4173fb766eb209e8947197b99bd0ee864fc66b9e799d69a', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
 end $vr_install_part$;
 commit;
 select '13_install.sql: 완료 또는 이미 완료 (13/14)' as result;

@@ -19058,7 +19058,7 @@ revoke all on sequence public.pvp_attempts_id_seq from public,anon,authenticated
 -- Phase4 cluster guard is enforced by installer outer guard.
 set local check_function_bodies=off;
 create table if not exists public.guildbattle_policy_v4(singleton boolean primary key default true check(singleton),engine_hash text not null,enabled boolean not null default true);
-insert into public.guildbattle_policy_v4(singleton,engine_hash) values(true,'d7b380a2680ba696fd5faefbda27a64b4cf8f624d01528258e0cc42365180728') on conflict(singleton) do update set engine_hash=excluded.engine_hash;
+insert into public.guildbattle_policy_v4(singleton,engine_hash) values(true,'26b881cf87a09a8f220cc3910106a92542677586c21ca9ce7b3cedb93e32684b') on conflict(singleton) do update set engine_hash=excluded.engine_hash;
 do $$ begin
  if not exists(select 1 from pvp_policy_v3) then raise exception 'STOP: install phases 1-3 first'; end if;
 end $$;
@@ -20594,7 +20594,7 @@ create table if not exists public.battle_replay_policy_v6 (
  engine_hash text not null check (engine_hash ~ '^[a-f0-9]{64}$'));
 -- Starts off. Re-running this file updates the engine hash only and does not turn enforcement on.
 insert into public.battle_replay_policy_v6(singleton, enabled, engine_hash)
- values (true, false, '199a77eeb1d983463f3268fa8e8d8be6439ba2002d28eac59a7a9e7e6ee2694a')
+ values (true, false, 'ae262e3b06d38fce69d7841cf87dead86bf3e52aa978284342f0665387797f6b')
  on conflict (singleton) do update set engine_hash = excluded.engine_hash;
 alter table public.battle_replay_policy_v6 enable row level security;
 revoke all on public.battle_replay_policy_v6 from public, anon, authenticated;
