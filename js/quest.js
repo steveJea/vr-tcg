@@ -268,7 +268,7 @@
 
   // ----- 소탕: 다음 층부터 연속된 일반 층을 내 덱으로 자동 전투 (supabase/quest_sweep.sql). 보스 층(10의 배수)에서 멈춤. 행동력 없음 -----
   const SWEEP_SECS = 1.1;   // 서버 최소 1초/층 + 여유
-  const SWEEP_V6 = 'acc69f350201a78835f8fbb62891698bde09ec3b1995ce72050d4703aa9ecc78';
+  const SWEEP_V6 = '199a77eeb1d983463f3268fa8e8d8be6439ba2002d28eac59a7a9e7e6ee2694a';
   const isBoss = k => k % 10 === 0;
   function sweepBtn() {
     const f = best() + 1; if (f > maxF()) return '';

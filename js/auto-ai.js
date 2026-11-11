@@ -3,7 +3,7 @@
 // 우선순위: ① 위급 회복 ② 한 방 처치(기본 공격) ③ 디버프 ④ 버프·도발 ⑤ 공격 스킬 ⑥ 기본 공격(집중 공격)
 // 도발: 한 번에 한 명만 — 아군에 도발이 살아 있으면 다시 안 씀, 후보 중 가장 오래 버티는 탱커(유효 HP·DEF·회피·무적/불사·지속 턴)
 // 같은 턴에 같은 스킬 중복 금지 · 같은 범위의 버프/도발 겹치기 금지 · 기본 공격으로 다 잡히면 MP 아낌 · 무적/불사류는 위급할 때만
-import { aiSkillScores, spareBlocked, isTauntSkill } from './skills.js';
+import { aiSkillScores, spareBlocked, isTauntSkill, aiType } from './skills.js';
 import { attackTargets, calcDamageG } from './rules.js';
 
 const PH = { heal: 600, kill: 500, debuff: 400, buff: 300, atkSkill: 200, attack: 100 };
@@ -31,9 +31,9 @@ const kills = (u, t) => calcDamageG(u.card, t.card) >= t.hp;
 /** 스킬 분류 */
 function phaseOf(s, ctx) {
   if (isTauntSkill(s)) return 'buff';
-  if (s.type === '회복') return ctx.lowAllies ? 'heal' : null;
-  if (s.type === '디버프') return 'debuff';
-  if (s.type === '버프') return 'buff';
+  if (aiType(s) === '회복') return ctx.lowAllies ? 'heal' : null;
+  if (aiType(s) === '디버프') return 'debuff';
+  if (aiType(s) === '버프') return 'buff';
   return 'atkSkill';
 }
 
@@ -54,7 +54,7 @@ export function autoNext(me, opp, turn = { used: new Set(), scopes: new Set() })
       if (turn.used.has(s.name)) continue;                                  // (a) 같은 스킬은 한 명만
       const ph = phaseOf(s, ctx); if (!ph) continue;
       if (isTauntSkill(s) && (tauntUp || turn.used.has('#taunt'))) continue;   // 도발은 한 명만, 살아 있으면 재사용 금지
-      const scope = `${s.type}|${s.target || ''}`;
+      const scope = `${aiType(s)}|${s.target || ''}`;
       if ((ph === 'buff' || ph === 'heal') && turn.scopes.has(scope) && /전체|아군/.test(s.target || '')) continue;   // 같은 범위 버프 겹치기 금지
       if (ph === 'buff' && SAVE_RX.test(s.desc || '') && !lowAllies) continue;   // 무적·불사류는 위급할 때만
       if (ph === 'atkSkill' && easy) continue;                               // 오버킬 방지
@@ -72,4 +72,4 @@ export function autoNext(me, opp, turn = { used: new Set(), scopes: new Set() })
   return best;
 }
 /** 스킬을 쓴 뒤 호출: 같은 턴 중복 방지 기록 */
-export function noteUsed(turn, s) { turn.used.add(s.name); if (isTauntSkill(s)) turn.used.add('#taunt'); turn.scopes.add(`${s.type}|${s.target || ''}`); }
+export function noteUsed(turn, s) { turn.used.add(s.name); if (isTauntSkill(s)) turn.used.add('#taunt'); turn.scopes.add(`${aiType(s)}|${s.target || ''}`); }
