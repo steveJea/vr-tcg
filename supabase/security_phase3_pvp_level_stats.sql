@@ -18,7 +18,7 @@ lock table public.pvp_policy_v3 in access exclusive mode;
 do $pvp_level_engine_upgrade$
 declare
  old_hash constant text := '16b61abb1c42f29f063b9b84de938ef950363cdd2a23262cddf05c27c0c038a6';
- new_hash constant text := 'e5d7b4060073b9a35814017aba477fa43f3ef678165970c2755b5f210e9cd0da'; -- GENERATED level-stat engine hash
+ new_hash constant text := '67debd87feae93d3f96fbad5fede4d5b660f0a2625f5a89eae7d01bafbfd7344'; -- GENERATED level-stat engine hash
  actual text;
 begin
  select engine_hash into actual from public.pvp_policy_v3 where singleton;

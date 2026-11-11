@@ -1,2 +1,2 @@
 // GENERATED
-export const ARCADE_ENGINE_VERSION="965c50ee4c5da482b76ecdf0736c2522f8eff5c36b549dbd98fbd4a105c3ecf1";
+export const ARCADE_ENGINE_VERSION="bf8db5d7533bc4a68e4077b6c6a34f4ebfdd35f73ce094dea35aaee12c0b5f74";
