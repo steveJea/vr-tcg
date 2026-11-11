@@ -13860,6 +13860,92 @@ union all select 'skill', card_id, idx::text, unlock::text, null from public.sto
 union all select 'pvp', id, grade, cost::text, null from public.pvp_card_meta where id = '10509';
 
 
+-- ===== SOURCE: card_newcards_1111.sql =====
+-- =====================================================================
+-- 2026-11-11 신규 카드 16장 (10511~10513, 10520~10532): 카드 목록 · 스킬 해금 레벨 · PVP 덱 검증
+-- 뽑기 풀에는 넣지 않음 (gacha = false). 뽑기·스토리 무작위 보상 둘 다 gacha 행만 고르므로 획득 경로 없음.
+-- 도감(reward_card_catalog)이 story_card_pool을 참조하므로 행은 필요. 뽑기 공개는 gacha만 true로 바꾸면 됨.
+-- 여러 번 실행해도 안전. 삭제 없음.
+-- =====================================================================
+insert into public.story_card_pool (id, grade, name, gacha) values
+  ('10511','SUPER RARE','최수아',false),
+  ('10512','HIGH RARE','고세연',false),
+  ('10513','ULTRA RARE','[각성] 고세연',false),
+  ('10520','RARE','황경민',false),
+  ('10521','SUPER RARE','이혜림',false),
+  ('10522','ULTRA RARE','이수영',false),
+  ('10523','SUPER RARE','천혜영',false),
+  ('10524','ULTRA RARE','이동주',false),
+  ('10525','ULTRA RARE','김수진',false),
+  ('10526','SUPER RARE','조태진',false),
+  ('10527','ULTRA RARE','김한철',false),
+  ('10528','ULTRA RARE','김진호',false),
+  ('10529','SUPER RARE','김태희',false),
+  ('10530','SUPER RARE','박승규',false),
+  ('10531','SUPER RARE','김경섭',false),
+  ('10532','SUPER RARE','천기철',false)
+on conflict (id) do update set grade = excluded.grade, name = excluded.name;
+
+insert into public.story_skill_meta (card_id, idx, unlock) values
+  ('10511',1,2),
+  ('10511',2,5),
+  ('10512',1,2),
+  ('10512',2,5),
+  ('10513',1,2),
+  ('10513',2,5),
+  ('10513',3,7),
+  ('10520',1,2),
+  ('10521',1,2),
+  ('10521',2,5),
+  ('10522',1,2),
+  ('10522',2,5),
+  ('10522',3,7),
+  ('10523',1,2),
+  ('10523',2,5),
+  ('10524',1,2),
+  ('10524',2,5),
+  ('10524',3,7),
+  ('10525',1,2),
+  ('10525',2,5),
+  ('10525',3,7),
+  ('10526',1,2),
+  ('10526',2,5),
+  ('10527',1,2),
+  ('10527',2,5),
+  ('10527',3,7),
+  ('10528',1,2),
+  ('10528',2,5),
+  ('10528',3,7),
+  ('10529',1,2),
+  ('10529',2,5),
+  ('10530',1,2),
+  ('10530',2,5),
+  ('10531',1,2),
+  ('10531',2,5),
+  ('10532',1,2),
+  ('10532',2,5)
+on conflict (card_id, idx) do update set unlock = excluded.unlock;
+
+insert into public.pvp_card_meta (id, grade, cost) values
+  ('10511','SUPER RARE',42),
+  ('10512','HIGH RARE',27),
+  ('10513','ULTRA RARE',53),
+  ('10520','RARE',18),
+  ('10521','SUPER RARE',44),
+  ('10522','ULTRA RARE',54),
+  ('10523','SUPER RARE',45),
+  ('10524','ULTRA RARE',53),
+  ('10525','ULTRA RARE',49),
+  ('10526','SUPER RARE',41),
+  ('10527','ULTRA RARE',46),
+  ('10528','ULTRA RARE',53),
+  ('10529','SUPER RARE',43),
+  ('10530','SUPER RARE',37),
+  ('10531','SUPER RARE',35),
+  ('10532','SUPER RARE',35)
+on conflict (id) do update set grade = excluded.grade, cost = excluded.cost;
+
+
 -- ===== SOURCE: gacha_premium_ur.sql =====
 -- =====================================================================
 -- 고급 소환(소환권 뽑기) UR 고정 목록. 새 UR 카드는 자동으로 들어가지 않음 (이 표에 넣어야 나옴)
@@ -16729,7 +16815,23 @@ insert into public.reward_card_catalog(card_id) values
   ('10367'),
   ('10440'),
   ('10267'),
-  ('10509')
+  ('10509'),
+  ('10511'),
+  ('10512'),
+  ('10513'),
+  ('10520'),
+  ('10521'),
+  ('10522'),
+  ('10523'),
+  ('10524'),
+  ('10525'),
+  ('10526'),
+  ('10527'),
+  ('10528'),
+  ('10529'),
+  ('10530'),
+  ('10531'),
+  ('10532')
 on conflict do nothing;
 
 create or replace function public._gallery_total() returns int
@@ -18146,6 +18248,22 @@ insert into public.battle_card_meta_v2(id,definition) values ('10367','{"class":
 insert into public.battle_card_meta_v2(id,definition) values ('10440','{"class":"WIND","gender":"FEMALE","MOR":8,"cost":51,"grade":"ULTRA RARE"}') on conflict(id) do update set definition=excluded.definition;
 insert into public.battle_card_meta_v2(id,definition) values ('10267','{"class":"ICE","gender":"FEMALE","MOR":80,"cost":35,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
 insert into public.battle_card_meta_v2(id,definition) values ('10509','{"class":"WIND","gender":"FEMALE","MOR":55,"cost":33,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10511','{"class":"FIRE","gender":"FEMALE","MOR":85,"cost":42,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10512','{"class":"WIND","gender":"FEMALE","MOR":80,"cost":27,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10513','{"class":"WIND","gender":"FEMALE","MOR":80,"cost":53,"grade":"ULTRA RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10520','{"class":"FIRE","gender":"MALE","MOR":12,"cost":18,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10521','{"class":"ICE","gender":"FEMALE","MOR":80,"cost":44,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10522','{"class":"WIND","gender":"FEMALE","MOR":75,"cost":54,"grade":"ULTRA RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10523','{"class":"DARK","gender":"FEMALE","MOR":80,"cost":45,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10524','{"class":"ICE","gender":"MALE","MOR":65,"cost":53,"grade":"ULTRA RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10525','{"class":"FIRE","gender":"FEMALE","MOR":55,"cost":49,"grade":"ULTRA RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10526','{"class":"FIRE","gender":"MALE","MOR":76,"cost":41,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10527','{"class":"ICE","gender":"MALE","MOR":78,"cost":46,"grade":"ULTRA RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10528','{"class":"FIRE","gender":"MALE","MOR":65,"cost":53,"grade":"ULTRA RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10529','{"class":"WIND","gender":"FEMALE","MOR":80,"cost":43,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10530','{"class":"WIND","gender":"MALE","MOR":68,"cost":37,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10531','{"class":"WIND","gender":"MALE","MOR":25,"cost":35,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;
+insert into public.battle_card_meta_v2(id,definition) values ('10532','{"class":"ICE","gender":"MALE","MOR":77,"cost":35,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;
 insert into public.battle_card_meta_v2(id,definition) values ('10301','{"class":"DARK","gender":"FEMALE","MOR":75,"cost":45,"grade":"SUPER RARE"}') on conflict(id) do update set definition=excluded.definition;
 insert into public.battle_card_meta_v2(id,definition) values ('10210','{"class":"WIND","gender":"MALE","MOR":55,"cost":30,"grade":"HIGH RARE"}') on conflict(id) do update set definition=excluded.definition;
 insert into public.battle_card_meta_v2(id,definition) values ('10143','{"class":"FIRE","gender":"MALE","MOR":10,"cost":10,"grade":"NORMAL"}') on conflict(id) do update set definition=excluded.definition;
@@ -18723,7 +18841,7 @@ notify pgrst,'reload schema';
 
 create table if not exists public.pvp_policy_v3(
  singleton boolean primary key default true check(singleton), engine_hash text not null check(length(engine_hash)=64), enabled boolean not null default true);
-insert into public.pvp_policy_v3(singleton,engine_hash) values(true,'e5d7b4060073b9a35814017aba477fa43f3ef678165970c2755b5f210e9cd0da')
+insert into public.pvp_policy_v3(singleton,engine_hash) values(true,'bef887c77a009121ae99301ca91db7d73a7bd9ce30d70e1ec7a18d10742cd16f')
  on conflict(singleton) do update set engine_hash=excluded.engine_hash;
 -- A clean, verified ladder. Legacy rows remain intact, NOT copied as proof.
 create table if not exists public.pvp_ratings_v3(
@@ -19064,7 +19182,7 @@ revoke all on sequence public.pvp_attempts_id_seq from public,anon,authenticated
 -- Phase4 cluster guard is enforced by installer outer guard.
 set local check_function_bodies=off;
 create table if not exists public.guildbattle_policy_v4(singleton boolean primary key default true check(singleton),engine_hash text not null,enabled boolean not null default true);
-insert into public.guildbattle_policy_v4(singleton,engine_hash) values(true,'26b881cf87a09a8f220cc3910106a92542677586c21ca9ce7b3cedb93e32684b') on conflict(singleton) do update set engine_hash=excluded.engine_hash;
+insert into public.guildbattle_policy_v4(singleton,engine_hash) values(true,'819b116c1e1ccd7d66ba589e3bc5e4e8d436a43ebf2dfe4543c250cbf5166cd0') on conflict(singleton) do update set engine_hash=excluded.engine_hash;
 do $$ begin
  if not exists(select 1 from pvp_policy_v3) then raise exception 'STOP: install phases 1-3 first'; end if;
 end $$;
@@ -20361,7 +20479,7 @@ notify pgrst,'reload schema';
 -- Phase5 cluster guard is enforced by installer outer guard.
 create table if not exists public.arcade_policy_v5 (
  singleton boolean primary key default true check(singleton), enabled boolean not null default true, engine_hash text not null check(engine_hash ~ '^[a-f0-9]{64}$'));
-insert into public.arcade_policy_v5(singleton,engine_hash) values(true,'965c50ee4c5da482b76ecdf0736c2522f8eff5c36b549dbd98fbd4a105c3ecf1')
+insert into public.arcade_policy_v5(singleton,engine_hash) values(true,'7c47d4ccb224c0cd7cf8ff9a11a465e68fd645510588249fabb6c8859a39663a')
 on conflict(singleton) do update set engine_hash=excluded.engine_hash;
 create table if not exists public.arcade_sessions_v5 (
  id bigint generated always as identity primary key,
@@ -20600,7 +20718,7 @@ create table if not exists public.battle_replay_policy_v6 (
  engine_hash text not null check (engine_hash ~ '^[a-f0-9]{64}$'));
 -- Starts off. Re-running this file updates the engine hash only and does not turn enforcement on.
 insert into public.battle_replay_policy_v6(singleton, enabled, engine_hash)
- values (true, false, 'ae262e3b06d38fce69d7841cf87dead86bf3e52aa978284342f0665387797f6b')
+ values (true, false, '32f0e5059ddb994d56865b16054d64f3f2c1f389df672be4f113e13c5d4112c2')
  on conflict (singleton) do update set engine_hash = excluded.engine_hash;
 alter table public.battle_replay_policy_v6 enable row level security;
 revoke all on public.battle_replay_policy_v6 from public, anon, authenticated;

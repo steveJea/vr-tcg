@@ -40,11 +40,11 @@ set local check_function_bodies = off;
 
 do $vr_install_part$
 begin
-  if exists (select 1 from vr_staging_install.parts where bundle_hash <> '9c2af48c02c3cc678fec379f67d248fd19aaa81a42036235ff2ae7e2ed605408' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
+  if exists (select 1 from vr_staging_install.parts where bundle_hash <> '0de1c4c99b089cc7f9f74aaa86e121366ac0e9debbb98e0cf981775b66cb8b66' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
     raise exception 'STOP: 다른 버전/DB의 설치 기록입니다. 파일을 섞지 마세요.';
   end if;
   if exists (select 1 from vr_staging_install.parts where part_no = 13) then
-    if not exists (select 1 from vr_staging_install.parts where part_no = 13 and part_hash = 'd0bf38cbdf1df2c65a7575728b4eac01d0762387c693fcc3714385dd474413b1') then
+    if not exists (select 1 from vr_staging_install.parts where part_no = 13 and part_hash = '40adad13148a173bc8f1f56a03c6a0943c603f6bbd5e461829f6d3af85142497') then
       raise exception 'STOP: 완료한 파일과 내용이 다릅니다.';
     end if;
     raise notice '13_install.sql: 이미 완료, 변경 없이 건너뜀';
@@ -55,6 +55,42 @@ begin
   end if;
   -- 설치 도중에는 클라이언트가 미완성 게임 스키마에 접근하지 못함. 마지막에만 개방.
   revoke usage on schema public from public, anon, authenticated;
+  execute $vr_statement$create or replace function public.story_star_claim(p_chapter int,p_key text) returns jsonb language plpgsql security definer set search_path=pg_catalog,public,pg_temp as $$
+declare u uuid:=auth.uid(); d jsonb; m jsonb; st jsonb; res jsonb;
+begin
+ if u is null then raise exception 'login required'; end if;
+ perform pg_advisory_xact_lock(hashtext('battle-v2:'||u::text)); perform pg_advisory_xact_lock(hashtext('gem:'||u::text));
+ if not public._clear_enabled_v2('story') then raise exception 'reward verification pending'; end if;
+ d:=public._story_lock(u); st:=public._star_chapter(d,p_chapter);
+ select x into m from jsonb_array_elements(st->'milestones') x where x->>'key'=p_key;
+ if m is null then raise exception 'invalid milestone'; end if;
+ if (m->>'claimed')::boolean then raise exception 'already claimed'; end if;
+ if not (m->>'ready')::boolean then raise exception 'not enough stars'; end if;
+ res:=public._clear_grant_v2(u,jsonb_build_object('tickets',(m->>'tickets')::int,'gold',(m->>'gold')::int),'star_v2','star:'||p_chapter||':'||p_key);
+ if jsonb_typeof(d->'starClaims') is distinct from 'object' then d:=jsonb_set(d,'{starClaims}','{}'); end if;
+ d:=public._story_save(u,jsonb_set(d,array['starClaims',p_chapter::text],coalesce(d->'starClaims'->p_chapter::text,'[]')||to_jsonb(p_key)));
+ return res||jsonb_build_object('ok',true,'status',public._star_chapter(d,p_chapter));
+end $$;$vr_statement$;
+  execute $vr_statement$create or replace function public._gallery_have(p_uid uuid) returns int language sql stable security definer set search_path=pg_catalog,public,pg_temp as $$
+ select count(*)::int from public.reward_card_catalog c where c.card_id in(
+ select card_id from public.verified_game_events where user_id=p_uid and event_kind='card_acquired'
+ union select card_id from public.battle_acquisitions_v2 where user_id=p_uid)
+$$;$vr_statement$;
+  execute $vr_statement$create or replace function public._ach_prog(p_uid uuid,p_id text) returns int language plpgsql stable security definer set search_path=pg_catalog,public,pg_temp as $$
+declare n int; begin
+ case p_id when 'story_ch' then select count(*)::int into n from public.reward_claims where user_id=p_uid and reward_kind='chapter_v2';
+ when 'story_stars' then select sum(stars)::int into n from public.battle_clear_receipts_v2 where user_id=p_uid and mode='story';
+ when 'skill_uses' then select sum(skills)::int into n from public.battle_events_v2 where user_id=p_uid;
+ when 'tower_normal' then select max(split_part(target,':',2)::int) into n from public.battle_clear_receipts_v2 where user_id=p_uid and mode='tower' and target like 'normal:%';
+ when 'tower_elem' then select max(split_part(target,':',2)::int) into n from public.battle_clear_receipts_v2 where user_id=p_uid and mode='tower' and split_part(target,':',1) in ('wind','ice','fire');
+ when 'tower_light' then select max(split_part(target,':',2)::int) into n from public.battle_clear_receipts_v2 where user_id=p_uid and mode='tower' and split_part(target,':',1) in ('light','dark');
+ else return public._phase2_old_ach_prog(p_uid,p_id); end case;
+ return coalesce(n,0);
+end $$;$vr_statement$;
+  execute $vr_statement$do $$ declare src text; begin
+ src:=pg_get_functiondef('public._ach_json(uuid)'::regprocedure);
+ execute replace(src,'''gifts_sent'')','''gifts_sent'',''story_ch'',''story_stars'',''tower_normal'',''tower_elem'',''tower_light'',''skill_uses'')');
+end $$;$vr_statement$;
   execute $vr_statement$-- Show held legacy floors so honest players can select and replay them for settlement.
 create or replace function public.tower_status() returns jsonb language plpgsql security definer set search_path=pg_catalog,public,pg_temp as $$
 declare u uuid:=auth.uid(); lv int; out_ jsonb:='{}'; tw text; r public.tower_progress; today_ date:=public._tower_today(); paid_ int; pending_ jsonb;
@@ -118,7 +154,7 @@ end $acl$;$vr_statement$;
 
 create table if not exists public.pvp_policy_v3(
  singleton boolean primary key default true check(singleton), engine_hash text not null check(length(engine_hash)=64), enabled boolean not null default true);$vr_statement$;
-  execute $vr_statement$insert into public.pvp_policy_v3(singleton,engine_hash) values(true,'e5d7b4060073b9a35814017aba477fa43f3ef678165970c2755b5f210e9cd0da')
+  execute $vr_statement$insert into public.pvp_policy_v3(singleton,engine_hash) values(true,'bef887c77a009121ae99301ca91db7d73a7bd9ce30d70e1ec7a18d10742cd16f')
  on conflict(singleton) do update set engine_hash=excluded.engine_hash;$vr_statement$;
   execute $vr_statement$-- A clean, verified ladder. Legacy rows remain intact, NOT copied as proof.
 create table if not exists public.pvp_ratings_v3(
@@ -457,7 +493,7 @@ end $acl$;$vr_statement$;
 -- Phase4 cluster guard is enforced by installer outer guard.
 set local check_function_bodies=off;$vr_statement$;
   execute $vr_statement$create table if not exists public.guildbattle_policy_v4(singleton boolean primary key default true check(singleton),engine_hash text not null,enabled boolean not null default true);$vr_statement$;
-  execute $vr_statement$insert into public.guildbattle_policy_v4(singleton,engine_hash) values(true,'26b881cf87a09a8f220cc3910106a92542677586c21ca9ce7b3cedb93e32684b') on conflict(singleton) do update set engine_hash=excluded.engine_hash;$vr_statement$;
+  execute $vr_statement$insert into public.guildbattle_policy_v4(singleton,engine_hash) values(true,'819b116c1e1ccd7d66ba589e3bc5e4e8d436a43ebf2dfe4543c250cbf5166cd0') on conflict(singleton) do update set engine_hash=excluded.engine_hash;$vr_statement$;
   execute $vr_statement$do $$ begin
  if not exists(select 1 from pvp_policy_v3) then raise exception 'STOP: install phases 1-3 first'; end if;
 end $$;$vr_statement$;
@@ -1268,65 +1304,9 @@ end $$;$vr_statement$;
  if not found then raise exception 'session not found'; end if;
  return s.snapshot||jsonb_build_object('id',s.id::text,'control',s.control,'engine_hash',s.engine_hash,'status',s.status,'result',s.result);
 end $$;$vr_statement$;
-  execute $vr_statement$-- Only the authenticated Edge verifier's service role can call this. Result is
--- canonical replay output, NEVER a player-reported win/damage/HP value.
-create or replace function public.guildbattle_engine_settle_v4(p_uid uuid,p_id bigint,p_engine_hash text,p_submission jsonb,p_result jsonb) returns jsonb language plpgsql security definer set search_path=pg_catalog,public,pg_temp as $$
-declare s guildbattle_sessions_v4; a guild_raid_attempts_v4; w war_attacks_v4; mt war_matches_v4; t war_ajits_v4; st war_atk_state_v4; m guild_members; rw jsonb; bad boolean:=false; oldsub text; oldclaims text; dmg bigint;
-begin
- perform pg_advisory_xact_lock(hashtext('guildbattle:v4'));
- select * into s from guildbattle_sessions_v4 where id=p_id and user_id=p_uid for update;
- if not found then raise exception 'session not found'; end if;
- if s.status='settled' then
-  if s.submission is distinct from p_submission then raise exception 'submission conflict'; end if;
-  return jsonb_build_object('ok',true,'status','settled','result',s.result);
- end if;
- if p_submission is null or not (p_submission='{"forfeit":true}' or (jsonb_typeof(p_submission)='object' and p_submission-'actions'='{}' and p_submission?'actions')) then raise exception 'invalid submission'; end if;
- if p_submission<>'{"forfeit":true}' and ((s.control='auto' and p_submission->'actions'<>'null') or (s.control='actions' and jsonb_typeof(p_submission->'actions') is distinct from 'array')) then raise exception 'invalid submission'; end if;
- select * into m from guild_members where user_id=p_uid for update;
- bad:=clock_timestamp()>s.expires_at or p_submission='{"forfeit":true}';
- if s.kind='raid' then
-  select * into a from guild_raid_attempts_v4 where id=s.attempt_id for update;
-  bad:=bad or a.finished_at is not null or m.guild_id is distinct from a.guild_id or a.week<>_raid_week_v4() or _raid_now_v4()>=_raid_end_v4(a.week)+interval '5 minutes';
- else
-  if exists(select 1 from guildbattle_policy_v4 where singleton and enabled) then perform _war_tick_v4(); end if;
-  select * into w from war_attacks_v4 where id=s.attempt_id for update;
-  select * into mt from war_matches_v4 where id=w.match_id for update;
-  select * into t from war_ajits_v4 where match_id=w.match_id and side=1-w.side and slot=w.target_slot for update;
-  select * into st from war_atk_state_v4 where match_id=w.match_id and user_id=p_uid and deck=w.atk_deck for update;
-  bad:=bad or w.finished_at is not null or mt.settled or mt.ended_at is not null or mt.season<>_war_season_v4() or _war_phase_v4(mt.season)<>'live' or mt.day<>_war_day_v4(mt.season)
-   or m.guild_id is distinct from case w.side when 0 then mt.guild_a else mt.guild_b end
-   or t.destroyed_at is not null or t.deck<>w.def_deck or t.locked_by is distinct from p_uid or t.locked_until<_war_now_v4()
-   or t.state is distinct from w.before->'def_state' and not(t.state is null and w.before->'def_state'='null')
-   or st.state is distinct from w.before->'atk_state' and not(st.state is null and w.before->'atk_state'='null');
- end if;
- if bad then
-  rw:='{"expired":true,"win":false,"damage":0}';
-  if s.kind='raid' then update guild_raid_attempts_v4 set finished_at=now(),damage=0,voided=true where id=s.attempt_id;
-  else update war_attacks_v4 set finished_at=now(),win=false,voided=true where id=s.attempt_id;
-   update war_ajits_v4 set locked_by=null,locked_until=null where match_id=w.match_id and side=1-w.side and slot=w.target_slot and locked_by=p_uid;
-  end if;
- else
-  perform _guildbattle_guard_v4();
-  if p_engine_hash is distinct from s.engine_hash or p_engine_hash is distinct from (select engine_hash from guildbattle_policy_v4 where singleton) then raise exception 'verifier unavailable'; end if;
-  if jsonb_typeof(p_result) is distinct from 'object' then raise exception 'verified result required'; end if;
-  if s.kind='raid' then
-   if jsonb_typeof(p_result->'damage') is distinct from 'number' or (p_result->>'damage')!~'^[0-9]+$' then raise exception 'invalid result'; end if;
-   dmg:=(p_result->>'damage')::bigint;
-   update guild_raid_attempts_v4 set actions=p_submission->'actions',reported=dmg where id=a.id;
-   rw:=_raid_close_v4(a,dmg);
-  else
-   if jsonb_typeof(p_result->'win') is distinct from 'boolean' or jsonb_typeof(p_result->'aHp') is distinct from 'object' or jsonb_typeof(p_result->'bHp') is distinct from 'object' then raise exception 'invalid result'; end if;
-   update war_attacks_v4 set actions=p_submission->'actions' where id=w.id;
-   rw:=_war_finish_v4(p_uid,w.id,(p_result->>'win')::boolean,p_result->'aHp',p_result->'bHp')->'result';
-  end if;
-  insert into guildbattle_events_v4(session_id,user_id,guild_id,kind,day,metrics) values(s.id,p_uid,m.guild_id,s.kind,_guild_day(),p_result);
- end if;
- update guildbattle_sessions_v4 set status='settled',submission=p_submission,result=rw,verified=not bad where id=s.id;
- return jsonb_build_object('ok',true,'status','settled','result',rw);
-end $$;$vr_statement$;
 
   insert into vr_staging_install.parts(part_no, bundle_hash, part_hash, project_ref, db_id)
-  values (13, '9c2af48c02c3cc678fec379f67d248fd19aaa81a42036235ff2ae7e2ed605408', 'd0bf38cbdf1df2c65a7575728b4eac01d0762387c693fcc3714385dd474413b1', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
+  values (13, '0de1c4c99b089cc7f9f74aaa86e121366ac0e9debbb98e0cf981775b66cb8b66', '40adad13148a173bc8f1f56a03c6a0943c603f6bbd5e461829f6d3af85142497', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
 end $vr_install_part$;
 commit;
 select '13_install.sql: 완료 또는 이미 완료 (13/14)' as result;

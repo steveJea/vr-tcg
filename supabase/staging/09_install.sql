@@ -40,11 +40,11 @@ set local check_function_bodies = off;
 
 do $vr_install_part$
 begin
-  if exists (select 1 from vr_staging_install.parts where bundle_hash <> '9c2af48c02c3cc678fec379f67d248fd19aaa81a42036235ff2ae7e2ed605408' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
+  if exists (select 1 from vr_staging_install.parts where bundle_hash <> '0de1c4c99b089cc7f9f74aaa86e121366ac0e9debbb98e0cf981775b66cb8b66' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
     raise exception 'STOP: 다른 버전/DB의 설치 기록입니다. 파일을 섞지 마세요.';
   end if;
   if exists (select 1 from vr_staging_install.parts where part_no = 9) then
-    if not exists (select 1 from vr_staging_install.parts where part_no = 9 and part_hash = '0f7ee44e59bb320a9d45a89704d4a6271d3e3b8ed3ae8253cbcd761e03da7690') then
+    if not exists (select 1 from vr_staging_install.parts where part_no = 9 and part_hash = '8f1352ee2993a2d373c74b4677c6d99b3f6ffa5e7004f3c228ea3502230c96b9') then
       raise exception 'STOP: 완료한 파일과 내용이 다릅니다.';
     end if;
     raise notice '09_install.sql: 이미 완료, 변경 없이 건너뜀';
@@ -55,6 +55,29 @@ begin
   end if;
   -- 설치 도중에는 클라이언트가 미완성 게임 스키마에 접근하지 못함. 마지막에만 개방.
   revoke usage on schema public from public, anon, authenticated;
+  execute $vr_statement$-- 받기: 서버가 별을 다시 합산 · 한 번만
+create or replace function public.story_star_claim(p_chapter int, p_key text) returns jsonb language plpgsql security definer set search_path = public as $$
+declare me uuid := auth.uid(); d jsonb; st jsonb; m jsonb; got jsonb; t int; w jsonb;
+begin
+  if me is null then raise exception 'login required'; end if;
+  d := _story_lock(me);
+  st := _star_chapter(d, p_chapter);
+  select x into m from jsonb_array_elements(st->'milestones') x where x->>'key' = p_key;
+  if m is null then raise exception 'invalid milestone'; end if;
+  if (m->>'claimed')::boolean then raise exception 'already claimed'; end if;
+  if not (m->>'ready')::boolean then raise exception 'not enough stars'; end if;
+  got := coalesce(d->'starClaims'->(p_chapter::text), '[]'::jsonb) || to_jsonb(p_key);
+  if jsonb_typeof(d->'starClaims') is distinct from 'object' then d := jsonb_set(d, '{starClaims}', '{}'::jsonb); end if;
+  d := _story_save(me, jsonb_set(d, array['starClaims', p_chapter::text], got));
+  insert into story_gacha (user_id, last_draw) values (me, (now() at time zone 'Asia/Seoul')::date - 1) on conflict (user_id) do nothing;
+  update story_gacha set tickets = tickets + (m->>'tickets')::int, updated_at = now() where user_id = me returning tickets into t;
+  w := _wallet_add(me, jsonb_build_object('gold', (m->>'gold')::int), 'star_reward');
+  return jsonb_build_object('ok', true, 'tickets', t, 'wallet', w, 'gave', jsonb_build_object('tickets', (m->>'tickets')::int, 'gold', (m->>'gold')::int), 'status', _star_chapter(d, p_chapter));
+end $$;$vr_statement$;
+  execute $vr_statement$revoke all on function public._star_milestones(), public._star_chapter(jsonb, int) from public, anon, authenticated;$vr_statement$;
+  execute $vr_statement$revoke all on function public.story_star_status(), public.story_star_claim(int, text) from public, anon;$vr_statement$;
+  execute $vr_statement$grant execute on function public.story_star_status(), public.story_star_claim(int, text) to authenticated;$vr_statement$;
+  execute $vr_statement$select 'story_star_rewards ok' as result;$vr_statement$;
   execute $vr_statement$-- ===== SOURCE: camp.sql =====
 -- ===== 훈련소 1단계 (인재를 넣어 두면 시간이 지나며 EXP 가 쌓임) =====
 -- Supabase SQL Editor 에서 실행. 여러 번 실행해도 안전 (테이블·데이터 삭제 없음)
@@ -1693,10 +1716,9 @@ begin
   return _idle_json(uid, r) || res || jsonb_build_object('got', got, 'gem', gem);
 end $$;$vr_statement$;
   execute $vr_statement$revoke all on function public.idle_box_boost() from public, anon;$vr_statement$;
-  execute $vr_statement$grant execute on function public.idle_box_boost() to authenticated;$vr_statement$;
 
   insert into vr_staging_install.parts(part_no, bundle_hash, part_hash, project_ref, db_id)
-  values (9, '9c2af48c02c3cc678fec379f67d248fd19aaa81a42036235ff2ae7e2ed605408', '0f7ee44e59bb320a9d45a89704d4a6271d3e3b8ed3ae8253cbcd761e03da7690', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
+  values (9, '0de1c4c99b089cc7f9f74aaa86e121366ac0e9debbb98e0cf981775b66cb8b66', '8f1352ee2993a2d373c74b4677c6d99b3f6ffa5e7004f3c228ea3502230c96b9', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
 end $vr_install_part$;
 commit;
 select '09_install.sql: 완료 또는 이미 완료 (9/14)' as result;

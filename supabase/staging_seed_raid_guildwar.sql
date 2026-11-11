@@ -22,7 +22,7 @@ declare
 begin
  perform pg_advisory_xact_lock(hashtext('guildbattle:v4'));
  -- Generated, atomic installer: existing staging needs ONLY this seed file, no Edge redeploy.
- if not exists(select 1 from guildbattle_policy_v4 where singleton and engine_hash='26b881cf87a09a8f220cc3910106a92542677586c21ca9ce7b3cedb93e32684b') then raise exception 'STOP: seed/phase4 engine version mismatch'; end if;
+ if not exists(select 1 from guildbattle_policy_v4 where singleton and engine_hash='819b116c1e1ccd7d66ba589e3bc5e4e8d436a43ebf2dfe4543c250cbf5166cd0') then raise exception 'STOP: seed/phase4 engine version mismatch'; end if;
 if to_regclass('public.guildbattle_sessions_v4') is null or exists(select 1 from unnest(array['public._raid_status_v4()','public._war_status_v4()','public._raid_start_v4(jsonb)','public._war_start_v4(integer,integer)','public.guildbattle_start_v4(text,jsonb,uuid,text,text)','public.raid_sweep_v4(uuid)']) sig where to_regprocedure(sig) is null) then raise exception 'STOP: install phase4 SQL first'; end if;
  execute $phase4_refill_install$
 -- Operator-only fixture budget baselines; never delete or relabel combat/reward evidence.

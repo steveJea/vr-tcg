@@ -40,11 +40,11 @@ set local check_function_bodies = off;
 
 do $vr_install_part$
 begin
-  if exists (select 1 from vr_staging_install.parts where bundle_hash <> '9c2af48c02c3cc678fec379f67d248fd19aaa81a42036235ff2ae7e2ed605408' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
+  if exists (select 1 from vr_staging_install.parts where bundle_hash <> '0de1c4c99b089cc7f9f74aaa86e121366ac0e9debbb98e0cf981775b66cb8b66' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
     raise exception 'STOP: 다른 버전/DB의 설치 기록입니다. 파일을 섞지 마세요.';
   end if;
   if exists (select 1 from vr_staging_install.parts where part_no = 10) then
-    if not exists (select 1 from vr_staging_install.parts where part_no = 10 and part_hash = 'fc8de29b75013a2f8f4be7d4a48bf27a616560161f72fce31da20fc44164be4f') then
+    if not exists (select 1 from vr_staging_install.parts where part_no = 10 and part_hash = 'ede483c33833e5a75f9da380b31d127d165ecd7547e39b4c69c94c31f85dc26e') then
       raise exception 'STOP: 완료한 파일과 내용이 다릅니다.';
     end if;
     raise notice '10_install.sql: 이미 완료, 변경 없이 건너뜀';
@@ -55,6 +55,7 @@ begin
   end if;
   -- 설치 도중에는 클라이언트가 미완성 게임 스키마에 접근하지 못함. 마지막에만 개방.
   revoke usage on schema public from public, anon, authenticated;
+  execute $vr_statement$grant execute on function public.idle_box_boost() to authenticated;$vr_statement$;
   execute $vr_statement$-- 2) dispatch_start: 같은 카드 id(사본 포함) 한 파티·진행 중 파견에 중복 금지
 create or replace function public.dispatch_start(p_slot int, p_uids text[], p_hours int) returns jsonb language plpgsql security definer set search_path = public as $$
 declare uid uuid := auth.uid(); o dispatch_offers; z dispatch_zones; owned jsonb; n int; mx int; bon int := 0; ne int; nc int; over boolean; k text; v numeric; rw jsonb := '{}'::jsonb; f numeric; great boolean := false; cnt int; d dispatch_daily;
@@ -978,7 +979,23 @@ create table if not exists public.reward_card_catalog (
   ('10367'),
   ('10440'),
   ('10267'),
-  ('10509')
+  ('10509'),
+  ('10511'),
+  ('10512'),
+  ('10513'),
+  ('10520'),
+  ('10521'),
+  ('10522'),
+  ('10523'),
+  ('10524'),
+  ('10525'),
+  ('10526'),
+  ('10527'),
+  ('10528'),
+  ('10529'),
+  ('10530'),
+  ('10531'),
+  ('10532')
 on conflict do nothing;$vr_statement$;
   execute $vr_statement$create or replace function public._gallery_total() returns int
 language sql stable security definer set search_path = pg_catalog, public, pg_temp as $$
@@ -1728,7 +1745,7 @@ on conflict (chapter,phase,variant) do update set definition=excluded.definition
 on conflict (chapter,phase,variant) do update set definition=excluded.definition;$vr_statement$;
 
   insert into vr_staging_install.parts(part_no, bundle_hash, part_hash, project_ref, db_id)
-  values (10, '9c2af48c02c3cc678fec379f67d248fd19aaa81a42036235ff2ae7e2ed605408', 'fc8de29b75013a2f8f4be7d4a48bf27a616560161f72fce31da20fc44164be4f', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
+  values (10, '0de1c4c99b089cc7f9f74aaa86e121366ac0e9debbb98e0cf981775b66cb8b66', 'ede483c33833e5a75f9da380b31d127d165ecd7547e39b4c69c94c31f85dc26e', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
 end $vr_install_part$;
 commit;
 select '10_install.sql: 완료 또는 이미 완료 (10/14)' as result;
