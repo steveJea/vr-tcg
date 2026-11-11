@@ -40,7 +40,7 @@ set local check_function_bodies = off;
 
 do $vr_install_part$
 begin
-  if exists (select 1 from vr_staging_install.parts where bundle_hash <> '33b887dc47cd39a541ec7e8b546346416cbaf9d2aa104e996a2cda9c476b2e2f' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
+  if exists (select 1 from vr_staging_install.parts where bundle_hash <> '11106f6fd344b3e2e4c8d86c2f669ac826112b596a369684416826f4b7a5dc2d' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
     raise exception 'STOP: 다른 버전/DB의 설치 기록입니다. 파일을 섞지 마세요.';
   end if;
   if exists (select 1 from vr_staging_install.parts where part_no = 8) then
@@ -1825,7 +1825,7 @@ end $$;$vr_statement$;
   execute $vr_statement$select 'story_star_rewards ok' as result;$vr_statement$;
 
   insert into vr_staging_install.parts(part_no, bundle_hash, part_hash, project_ref, db_id)
-  values (8, '33b887dc47cd39a541ec7e8b546346416cbaf9d2aa104e996a2cda9c476b2e2f', '97449d92e869486a7ccc32fd279b4028b45d3dbfb8e32f18ff93c237e6d72ffe', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
+  values (8, '11106f6fd344b3e2e4c8d86c2f669ac826112b596a369684416826f4b7a5dc2d', '97449d92e869486a7ccc32fd279b4028b45d3dbfb8e32f18ff93c237e6d72ffe', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
 end $vr_install_part$;
 commit;
 select '08_install.sql: 완료 또는 이미 완료 (8/14)' as result;
