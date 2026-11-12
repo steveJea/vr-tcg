@@ -64,6 +64,7 @@
 (function () {
   const EXTRA = {
     10321: ['10321_1.webp', '10321_2.webp'],   // 인창수 (2026-11-12 Drive)
+    10025: ['10025_1.webp', '10025_2.webp'],   // 고정태 (2026-11-12 Drive)
     10329: ['10329_1.webp', '10329_2.webp'],   // 임창열 (2026-11-12 Drive)
   };
   globalThis.VRSkillFx = sk => {
