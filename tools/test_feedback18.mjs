@@ -24,16 +24,17 @@ const dom = () => parseHTML('<html><body><div id="arcade-verifying" class="hidde
  assert(!source.includes("if (who === 'me') await peekBefore(tEl)"));
  console.log('PASS 18 enemy/player target focus excludes sticky dock and precedes lunge');
 }
-// 19: entry _0 as well as skills, including requests made before voice index resolves.
+// 19: battle prefetch = entry _0 only (skill voices via preloadSkillVoice for hand/field, 2026-11-12), including requests made before voice index resolves.
 {
  const {document}=dom();let resolveIndex;const audios=[];
  class Audio {constructor(){audios.push(this);}addEventListener(){}pause(){} }
- const c=vm.createContext({document,window:{VRVoice:{track(){}}},localStorage:{getItem:()=>null},Audio,fetch:()=>new Promise(r=>resolveIndex=r),skillsOf:()=>[{name:'skill'}],SWEEPING:()=>false,setTimeout(){},ic:()=>''});
+ const c=vm.createContext({document,S:null,performance:{now:()=>0},window:{VRVoice:{track(){}}},localStorage:{getItem:()=>null},Audio,fetch:()=>new Promise(r=>resolveIndex=r),skillsOf:()=>[{name:'skill'}],SWEEPING:()=>false,setTimeout(){},ic:()=>''});
  vm.runInContext(section('const VOICE_ON_KEY =','// ===== 효과음'),c);
  c.preloadVoice([{id:11}]);assert.equal(audios.length,0);
  resolveIndex({ok:true,json:async()=>['11_0','11_1','12_0']});for(let i=0;i<5;i++)await Promise.resolve();
- assert.deepEqual(audios.map(a=>a.src).sort(),['data/voice/11_0.mp3','data/voice/11_1.mp3']);
- c.preloadVoice([{id:11},{id:12},{id:13}]);assert.equal(audios.length,3);assert(audios.every(a=>a.preload==='auto'));
+ assert.deepEqual(audios.map(a=>a.src).sort(),['data/voice/11_0.mp3']);
+ c.preloadVoice([{id:11},{id:12},{id:13}]);assert.equal(audios.length,2);
+ c.preloadSkillVoice([{id:11},{id:13}]);assert.equal(audios.length,3);assert.equal(audios[2].src,'data/voice/11_1.mp3');assert(audios.every(a=>a.preload==='auto'));
  console.log('PASS 19 entry voices prefetch and late index catch-up without missing-file requests');
 }
 // 20: real keyed reconciliation keeps images across mana/class/sort/partial shuffle.

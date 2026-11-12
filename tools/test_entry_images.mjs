@@ -36,6 +36,6 @@ assert.match(g,/if \(hasEntryCutIn\(u\.base \|\| u\.card\) && !S\.fxSeen\.has\(`
 assert.match(g,/if \(id == null \|\| !hasEntryCutIn\(c\)\) continue;/,'preload only cards that will show');
 assert.match(g,/function entryImg\(id\) \{ return entryHas\(id\) \? `data\/fx\/\$\{id\}_0\.webp` : portraitFull\(id\); \}/);
 assert.match(g,/const img = entryImg\(id\);\n  await entryReady\(img\);/,'decode before the animation starts');
-assert.match(g,/primeBattleMedia\(story \? 0 : 10\)/,'arcade deck entry images preloaded');
+assert.match(g,/primeBattleMedia\(story \? 0 : 4\)/,'arcade entry images pre-decoded for hand + next 4');
 const n=g=>cards.filter(c=>c.grade===g&&shows(c)).length;
 console.log(`Entry images: ${show.length}/${cards.length} cards show a cut-in (SR ${n('SUPER RARE')}, UR ${n('ULTRA RARE')}, MR ${n('MYTHIC RARE')}, plus ${show.filter(c=>!SR_UP.has(c.grade)).length} below SR with scene/voice), all resolve; SR+ rule + preload/decode wired OK`);
