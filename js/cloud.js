@@ -2,6 +2,7 @@
 // 로그아웃 상태는 기존과 동일하게 게스트(브라우저 저장)로 플레이.
 // Supabase 접속 실패 시 조용히 게스트 모드로 동작.
 import { config } from './config.js';
+import { ensureConsent } from './consent.js';
 import { OAUTH_PROVIDERS, profileSeed, hasIdentity, oauthRequest, discoverOAuthProviders, cleanOAuthCallback, readOAuthCallback, saveLinkIntent, takeLinkIntent, oauthErrorCode, oauthFailureMessage, resolveOAuthReturn } from './auth-oauth.js';
 const SUPABASE_URL = config.supabaseUrl;
 const SUPABASE_ANON = config.anonKey;
@@ -182,7 +183,7 @@ async function linkProvider(provider) { return startOAuth(provider, true); }
 async function logout() {
   try { await push(); await sb.auth.signOut(); } catch {}
   takeLinkIntent(sessionStorage, SUPABASE_URL);
-  clearTimeout(oauthTimer); oauthTimer = null; oauthBusy = false; ++userVersion; document.getElementById('nick-ov')?.remove(); user = null; profile = null; render(); fireUser();
+  clearTimeout(oauthTimer); oauthTimer = null; oauthBusy = false; ++userVersion; document.getElementById('nick-ov')?.remove(); document.getElementById('consent-ov')?.remove(); user = null; profile = null; render(); fireUser();
 }
 
 // Arcade records are settled by arcade-verify-v5, never by a browser vr:match event.
@@ -217,6 +218,9 @@ async function init() {
       const nextProfile = await loadProfile(u);
       if (version !== userVersion) return;
       profile = nextProfile; render(profile);
+      // 첫 로그인 동의 (js/consent.js): 현재 버전 동의가 없으면 게임 전에 한 번. 동의 안 함 → 로그아웃(게스트)
+      if (!await ensureConsent(sb, u, { onDecline: logout })) return;
+      if (version !== userVersion) return;
       if (profile && profile.nick_set === false) askNickname(true);
     };
     // Register before profile I/O: account changes must invalidate old responses.

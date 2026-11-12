@@ -10,7 +10,7 @@ const html = await readFile(new URL('index.html',root),'utf8');
 const bundle = (await build({stdin:{contents:source.replace('import(SDK)','Promise.resolve(window.__authSdk)'),resolveDir:new URL('js/',root).pathname},bundle:true,write:false,format:'iife',logLevel:'silent'})).outputFiles[0].text;
 const tick=()=>new Promise(r=>setImmediate(r));
 const plain=o=>JSON.parse(JSON.stringify(o));
-function fixture({u=null,enabled=true,profiles={},authError=null,linkError=null,fetchError=false,href='https://vr-tcg-staging.notcold.workers.dev/',deferredProfile=null,linkIntent=null,serverUser=u,initError=null,external=null,probeEnabled=false,probeError=false}={}) {
+function fixture({u=null,enabled=true,profiles={},authError=null,linkError=null,fetchError=false,href='https://vr-tcg-staging.notcold.workers.dev/',deferredProfile=null,linkIntent=null,serverUser=u,initError=null,external=null,probeEnabled=false,probeError=false,noConsent=false}={}) {
  const {window}=parseHTML(html),document=window.document;
  const location=new URL(href),calls=[],messages=[],replaces=[],timers=new Map();let seq=0,listener;
  class Storage { constructor(){this.data=new Map();} getItem(k){return this.data.get(k)??null;} setItem(k,v){this.data.set(k,String(v));} removeItem(k){this.data.delete(k);} }
@@ -30,7 +30,7 @@ function fixture({u=null,enabled=true,profiles={},authError=null,linkError=null,
      return {data:table==='profiles'?(profiles[id]??null):null,error:null};
    }})}),
    upsert:async row=>{calls.push(['upsert',table,plain(row)]);return {error:null};}
- }),rpc:async(name,args)=>{calls.push(['rpc',name,plain(args??{})]);return {data:name==='arcade_record_v5'?{wins:0,losses:0,draws:0}:null,error:null};}};
+ }),rpc:async(name,args)=>{calls.push(['rpc',name,plain(args??{})]);return {data:name==='arcade_record_v5'?{wins:0,losses:0,draws:0}:name==='consent_status'?(noConsent?{current:false,record:null}:{current:true,record:{terms_version:'2026-11-draft',privacy_version:'2026-11-draft',age14:true,marketing:false,agreed_at:'2026-11-12'}}):null,error:null};}};
  window.__authSdk={createClient:(url,key,options)=>{calls.push(['createClient',url,key,plain(options)]);return sb;}};
  window.VRGem={toast:m=>messages.push(m)};window.VRConfirm=async()=>true;
  const context=vm.createContext({window,document,location,history:{replaceState:(...a)=>{replaces.push(a);location.href=new URL(a[2],location).href;}},Storage,localStorage,sessionStorage,console,URL,URLSearchParams,AbortController,CustomEvent:window.CustomEvent,alert:m=>messages.push(m),atob,
@@ -76,6 +76,10 @@ for(const opts of [{enabled:false},{fetchError:true}]){
 }
 {
  const f=fixture({u:{id:'missing-profile',email:'',identities:[{provider:'kakao'}]}});await f.settle();assert(f.document.getElementById('nick-ov'));assert(f.calls.some(c=>c[0]==='upsert'&&c[1]==='profiles'&&c[2].nickname==='플레이어'));
+}
+{
+ // 첫 로그인 동의 (js/consent.js): 기록이 없으면 닉네임 창보다 동의 창이 먼저
+ const f=fixture({noConsent:true,u:{id:'consent-new',email:'',identities:[{provider:'kakao'}]}});await f.settle();assert(f.document.getElementById('consent-ov'));assert(!f.document.getElementById('nick-ov'));
 }
 const kakao={id:'kakao-no-email',email:'',identities:[{provider:'kakao'}],user_metadata:{}};
 {
