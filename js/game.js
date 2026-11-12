@@ -1458,7 +1458,7 @@ function entryReady(src, ms = 250) {
 function preloadFx(cards) {
   for (const c of cards) for (const s of skillsOf(c.id)) {
     if (!s.fx || fxLoaded.has(s.fx) || /\.(mp4|webm)$/i.test(s.fx)) continue;
-    fxLoaded.add(s.fx); const img = new Image(); img.decoding = 'async'; img.src = `data/fx/${s.fx}`;
+    fxLoaded.add(s.fx); const img = new Image(); img.decoding = 'async'; img.fetchPriority = 'low'; img.src = `data/fx/${s.fx}`;
   }
   try { preloadVoice(cards); } catch {}
   warmPortraits(cards);
@@ -1470,6 +1470,7 @@ function warmThumbs(cards) {
     if (c?.id == null) continue;
     const src = cardThumb(c.id); if (thumbWarmed.has(src)) continue;
     const im = new Image(); im.decoding = 'async'; im.fetchPriority = 'high';
+    im._ok = !('onload' in im); im.onload = im.onerror = () => { im._ok = true; flushHeavy(); };   // 다 받으면 미뤄 둔 큰 그림·보이스 시작
     thumbWarmed.set(src, im); im.src = src;
     if (thumbWarmed.size > 96) thumbWarmed.delete(thumbWarmed.keys().next().value);
   }
@@ -1481,8 +1482,24 @@ function primeBattleMedia(entryAhead = 0) {
   const visible = [...S.me.hand, ...S.ai.hand, ...S.me.field.map(u => u.base || u.card), ...S.ai.field.map(u => u.base || u.card)];
   const next = [...S.me.deck.slice(0, 2), ...S.ai.deck.slice(0, 2)];
   warmThumbs([...visible, ...next]);
-  preloadFx([...visible, ...next]);
-  try { preloadSkillVoice([...S.me.hand, ...S.me.field.map(u => u.base || u.card), ...S.ai.field.map(u => u.base || u.card)]); } catch {}   // 스킬 보이스: 쓸 수 있는 카드만 (손패에 들어오거나 필드에 나오면 받기 시작)
+  queueHeavy([...visible, ...next], [...S.me.hand, ...S.me.field.map(u => u.base || u.card), ...S.ai.field.map(u => u.base || u.card)]);
+}
+// 썸네일 먼저: 새 카드(패 섞기·드로우)의 썸네일(장당 ~19KB)을 다 받을 때까지 큰 미디어(원본 초상화 ~120KB·스킬 연출 그림·보이스, 장당 ~250KB)는 잠깐 미룸.
+// 최대 1.2초만 기다림. 썸네일이 이미 있으면 예전처럼 바로 받음.
+const heavyFx = new Map(), heavySk = new Map(); let heavyT = 0;
+const thumbOk = c => { const im = thumbWarmed.get(cardThumb(c.id)); return !im || im._ok; };
+function queueHeavy(fxCards, skCards) {
+  for (const c of fxCards) if (c?.id != null) heavyFx.set(String(c.id), c);
+  for (const c of skCards) if (c?.id != null) heavySk.set(String(c.id), c);   // 스킬 보이스: 쓸 수 있는 카드만 (손패에 들어오거나 필드에 나오면 받기 시작)
+  flushHeavy();
+  if ((heavyFx.size || heavySk.size) && !heavyT) heavyT = setTimeout(() => flushHeavy(true), 1200);
+}
+function flushHeavy(force = false) {
+  if (!force && [...heavyFx.values()].some(c => !thumbOk(c))) return;
+  if (heavyT) { clearTimeout(heavyT); heavyT = 0; }
+  const fx = [...heavyFx.values()], sk = [...heavySk.values()]; heavyFx.clear(); heavySk.clear();
+  if (fx.length) preloadFx(fx);
+  try { if (sk.length) preloadSkillVoice(sk); } catch {}
 }
 // 상세 창 초상화: 손패·필드에 이미 뜬 썸네일(img/thumb)을 먼저 보여 주고, 원본(bt_img)이 디코드되면 교체.
 // GitHub raw 원본은 캐시가 짧아 모바일에서 까만 칸이 잠깐 보이던 문제를 막음.
@@ -1493,7 +1510,7 @@ function warmPortraits(cards) {
     const id = c?.id; if (id == null) continue;
     const k = String(id); if (portraitWarmed.has(k)) continue;
     portraitWarmed.add(k);
-    const im = new Image(); im.decoding = 'async'; im.src = portraitFull(id);
+    const im = new Image(); im.decoding = 'async'; im.fetchPriority = 'low'; im.src = portraitFull(id);   // 상세 창용 원본: 썸네일보다 뒤로
   }
 }
 function fillDetailPortrait(img, id) {
