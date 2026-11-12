@@ -23,7 +23,7 @@ const before = made.length; for (let i = 0; i < 10; i++) api.voiceAudio('burst' 
 api.setSet(new Set(['7_0', '7_1', '7_2', '7_9']));
 api.preloadVoice([{ id: 7 }]); assert(api.cache.has('7_0')); assert(!api.cache.has('7_1'), 'skill voice not preloaded up front');
 api.preloadSkillVoice([{ id: 7 }]); assert(api.cache.has('7_1') && api.cache.has('7_2')); assert(!api.cache.has('7_9'), 'win voice on demand');
-assert.match(g, /preloadSkillVoice\(\[\.\.\.S\.me\.hand, \.\.\.S\.me\.field\.map/, 'skill voices warmed for my hand + fields');
+assert.match(g, /queueHeavy\(\[\.\.\.visible, \.\.\.next\], \[\.\.\.S\.me\.hand, \.\.\.S\.me\.field\.map/, 'skill voices warmed for my hand + fields (after thumbs)');
 // VRVoice: 재생 중인 것만 들고 있음
 const w = { performance: { now: () => 0 }, document: { readyState: 'complete', getElementById: () => null, addEventListener() {} }, addEventListener() {}, MutationObserver: class { observe() {} } }; w.window = w;
 vm.runInContext(v, vm.createContext(w));
