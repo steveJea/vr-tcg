@@ -44,7 +44,7 @@
   let skills = null, voices = null;
   async function loadSkills() {
     if (skills) return;
-    try { skills = await (await fetch('data/skills.json')).json(); } catch { skills = {}; }
+    try { skills = await (await fetch('data/skills.json')).json(); globalThis.VRSkillFx?.(skills); } catch { skills = {}; }
     try { voices = new Set(await (await fetch('data/voice/index.json')).json()); } catch { voices = new Set(); }
   }
   const skillsOf = id => (skills && skills[id]) || [];

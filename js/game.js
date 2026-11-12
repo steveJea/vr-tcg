@@ -2682,6 +2682,7 @@ window.addEventListener('vr:user', () => {
       POOL = arcadePool(all); NPC = [...all.filter(isNpc), ...npc.filter(isNpc)]; }
     setCardPool(POOL);
     const [sk, co] = await Promise.all(['data/skills.json', 'data/combos.json'].map(u => fetch(u).then(r => r.json())));
+    globalThis.VRSkillFx?.(sk);   // 추가 스킬 연출 이미지 (js/img-fallback.js, 엔진 입력 skills.json 은 그대로)
     setSkillData(sk, co); setEmitter(onEngine); globalThis.VRQuestSkillMult = c => skillCountMult(skillsOf(c?.id));
     $('start-btn').disabled = false; setStartLabel('아케이드');
     $('start-btn').onclick = () => startGame();

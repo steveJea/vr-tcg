@@ -10,6 +10,7 @@ async function init() {
   if (!ready) ready = (async () => {
     const j = async p => (await fetch(p)).json();
     const [sk, co] = await Promise.all([j('data/skills.json'), j('data/combos.json')]);
+    globalThis.VRSkillFx?.(sk);   // 화면 전투와 같은 SKILL_DB 를 덮어쓰므로 연출 이미지도 같게
     SK.setSkillData(sk, co); SK.setEmitter(() => {});
   })();
   return ready;
