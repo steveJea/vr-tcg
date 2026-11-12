@@ -238,7 +238,7 @@ async function startGame(story = null, at = null) {
   dockStoryBuff(!!story);
   setBattleBg(story?.win === 'ko' ? 'boss' : 'normal', { story, key: story?.bgKey }); preloadHit();
   $('ai-name').textContent = story ? (story.aiName || '적군') : '';   // 아케이드: 이름·아이콘 없음
-  primeBattleMedia(story ? 0 : 10);   // 아케이드: 덱 앞 10장씩 등장 그림까지 미리 디코드 (나머지는 뽑을 때 preloadFx)
+  primeBattleMedia(story ? 0 : 4);   // 아케이드: 손패 + 덱 앞 4장씩 등장 그림 미리 디코드 (나머지는 뽑을 때 preloadFx)
   selected = null; $('log').innerHTML = ''; fxQueue.length = 0; mrCancel?.(); vidGate = Promise.resolve();
   $('end-screen').classList.add('hidden'); $('start-screen').classList.add('hidden'); renderAutoBtn(); $('game').classList.remove('hidden', 'bfx-final', 'bfx-lose'); fitBoardSoon();
   if(!S.arcade) initPlayers(S.me, S.ai, S[first]);   // 0턴 배치 상태(불사·회피 등) 지속 턴 기준 = 선공
@@ -1339,15 +1339,35 @@ fetch('data/voice/index.json').then(r => r.ok ? r.json() : []).then(a => { voice
 function voiceKey(u, name) {
   try { const i = skillsOf(u.card.id).findIndex(x => x.name === name); return i < 0 ? null : `${u.card.id}_${i + 1}`; } catch { return null; }
 }
+// 보이스 캐시: 최근에 쓴 순서(LRU)로 최대 VOICE_CACHE_MAX개만 유지. 오래 안 쓴 것은 연결을 끊어 메모리 반환
+// (재생 중이거나 5초 안에 쓴 것은 남김 → 한 화면에서 동시에 필요한 보이스가 많아도 다시 받는 일 없음)
+const VOICE_CACHE_MAX = 60, VOICE_KEEP_MS = 5000;
+function trimVoiceCache() {
+  if (voiceCache.size <= VOICE_CACHE_MAX) return;
+  const now = performance.now();
+  for (const [k, a] of voiceCache) {
+    if (voiceCache.size <= VOICE_CACHE_MAX) break;
+    if (a === voiceCur || !a.paused || now - (a._vUsed || 0) < VOICE_KEEP_MS) continue;
+    voiceCache.delete(k);
+    try { a.removeAttribute('src'); a.load(); } catch {}
+  }
+}
 function voiceAudio(k) {
   let a = voiceCache.get(k);
-  if (!a) { a = new Audio(); a.preload = 'auto'; a.src = `data/voice/${k}.mp3`; voiceCache.set(k, a); trackVoice(a); }
+  if (a) voiceCache.delete(k);   // 맨 뒤(가장 최근)로 옮김
+  else { a = new Audio(); a.preload = 'auto'; a.src = `data/voice/${k}.mp3`; trackVoice(a); }
+  a._vUsed = performance.now(); voiceCache.set(k, a); trimVoiceCache();
   return a;
 }
+/** 전투 미리 받기: 등장 보이스(<id>_0)만. 스킬 보이스는 내 손패·필드에 올라온 카드만 preloadSkillVoice 로 */
 function preloadVoice(cards) {
   if (!voiceSet) { for (const c of cards) voicePending.set(String(c.id), c); return; }
+  for (const c of cards) { const entry = `${c.id}_0`; if (voiceSet.has(entry)) voiceAudio(entry); }
+}
+function preloadSkillVoice(cards) {
+  if (!voiceSet) return;
   for (const c of cards) {
-    const entry = `${c.id}_0`; if (voiceSet.has(entry)) voiceAudio(entry);
+    if (c?.id == null) continue;
     skillsOf(c.id).forEach((s, i) => { const k = `${c.id}_${i + 1}`; if (voiceSet.has(k)) voiceAudio(k); });
   }
 }
@@ -1454,6 +1474,7 @@ function warmThumbs(cards) {
     if (thumbWarmed.size > 96) thumbWarmed.delete(thumbWarmed.keys().next().value);
   }
 }
+// 등장 컷인 그림 미리 디코드: 아케이드 시작 때 손패 + 덱 앞 4장 (예전 10장 → 4장, 큰 1792×1008 그림 디코드 부담 줄임)
 function primeBattleMedia(entryAhead = 0) {
   if (!S) return;
   if (entryAhead && !S.story) warmEntries([...S.me.hand, ...S.ai.hand, ...S.me.deck.slice(0, entryAhead), ...S.ai.deck.slice(0, entryAhead)]);
@@ -1461,6 +1482,7 @@ function primeBattleMedia(entryAhead = 0) {
   const next = [...S.me.deck.slice(0, 2), ...S.ai.deck.slice(0, 2)];
   warmThumbs([...visible, ...next]);
   preloadFx([...visible, ...next]);
+  try { preloadSkillVoice([...S.me.hand, ...S.me.field.map(u => u.base || u.card), ...S.ai.field.map(u => u.base || u.card)]); } catch {}   // 스킬 보이스: 쓸 수 있는 카드만 (손패에 들어오거나 필드에 나오면 받기 시작)
 }
 // 상세 창 초상화: 손패·필드에 이미 뜬 썸네일(img/thumb)을 먼저 보여 주고, 원본(bt_img)이 디코드되면 교체.
 // GitHub raw 원본은 캐시가 짧아 모바일에서 까만 칸이 잠깐 보이던 문제를 막음.

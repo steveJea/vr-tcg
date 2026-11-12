@@ -48,15 +48,22 @@
     try { voices = new Set(await (await fetch('data/voice/index.json')).json()); } catch { voices = new Set(); }
   }
   const skillsOf = id => (skills && skills[id]) || [];
+  // 도감 보이스 재생: 오디오 하나를 계속 다시 씀 (누를 때마다 새로 만들어 쌓이지 않게)
   let voiceAudio = null;
+  function galleryAudio() {
+    if (voiceAudio) return voiceAudio;
+    const a = voiceAudio = new Audio(); a.preload = 'auto'; window.VRVoice?.track(a);
+    a.addEventListener('playing', () => window.VRSound?.duck?.(true));
+    const off = () => setTimeout(() => { if (a.paused || a.ended) window.VRSound?.duck?.(false); }, 60);
+    a.addEventListener('ended', off); a.addEventListener('pause', off); a.addEventListener('error', off);
+    a._off = off;
+    return a;
+  }
   function playVoice(key) {
     try {
-      voiceAudio?.pause();
-      const a = voiceAudio = new Audio(`data/voice/${key}.mp3`); window.VRVoice?.track(a);
-      a.addEventListener('playing', () => window.VRSound?.duck?.(true));
-      const off = () => setTimeout(() => { if (voiceAudio === a || a.paused) window.VRSound?.duck?.(false); }, 60);
-      a.addEventListener('ended', off); a.addEventListener('pause', off); a.addEventListener('error', off);
-      a.play().catch(off);
+      const a = galleryAudio();
+      a.pause(); a.src = `data/voice/${key}.mp3`; a.currentTime = 0;
+      a.play().catch(a._off);
     } catch {}
   }
 

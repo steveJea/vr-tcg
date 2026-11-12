@@ -4,9 +4,13 @@
   const RATE = 1.15;   // 보이스 재생 속도 (음높이 유지). 여기만 바꾸면 전부 적용
   function rate(a) { try { a.preservesPitch = a.mozPreservesPitch = a.webkitPreservesPitch = true; a.defaultPlaybackRate = window.VRVoice.RATE; a.playbackRate = window.VRVoice.RATE; } catch {} }
   function track(a) {
-    if (!a || a._vrVoice) return a; a._vrVoice = true; set.add(a); rate(a);
+    if (!a || a._vrVoice) return a; a._vrVoice = true; rate(a);
+    if (!a.paused) set.add(a);
     a.addEventListener('loadedmetadata', () => rate(a));   // load() 때 속도가 기본값으로 돌아가는 브라우저 대비
-    a.addEventListener('play', () => { a._vt = performance.now(); rate(a); });
+    a.addEventListener('play', () => { a._vt = performance.now(); set.add(a); rate(a); });
+    // 재생 중인 것만 들고 있음: 끝나거나 멈추면 집합에서 빼서 오래 켜 둬도 쌓이지 않게 (다시 재생하면 다시 들어옴)
+    const off = () => set.delete(a);
+    ['pause', 'ended', 'error', 'abort', 'emptied'].forEach(ev => a.addEventListener(ev, off));
     return a;
   }
   /** minAge(ms): 그보다 최근에 시작한 보이스는 남김 (화면 전환과 같은 순간 시작한 새 화면 보이스 보호) */
