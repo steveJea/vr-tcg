@@ -1,0 +1,31 @@
+/* LR(레전더리 레어) 무지개 통일 — 모든 화면의 썸네일·카드 등급 배지와 테두리 (2026-11-12)
+   배지: index.html .rar-badge.rar-lr 와 같은 흐르는 무지개 그라디언트. 테두리: 무지개 색이 천천히 도는 테두리 + 광채.
+   움직임 줄이기 설정이면 멈춘 무지개로 표시. */
+:root { --lrg: linear-gradient(90deg,#f87171,#fbbf24,#a3e635,#22d3ee,#818cf8,#e879f9,#f87171); }
+.rar-LR, .g-LR { --gc: #e879f9; --rc: #e879f9; }
+/* 배지 */
+.rar-lr .rar-badge, .rar-lr .story-rar, .rar-LR .mp-rar, .rar-LR .gal-rar, .rar-LR .q-rar, .q-g.rar-LR,
+.tr-gr.g-LR, .gn-g.g-LR, .g-LR .tr-gc-gr, .gal-rar.rar-LR {
+  background: var(--lrg) 0 0/300% 100% !important; color: #fff !important; text-shadow: 0 1px 2px #000;
+  border: 1px solid rgba(255,255,255,.6) !important; animation: lrBadgeFlow 6s linear infinite;
+}
+@keyframes lrBadgeFlow { to { background-position: 300% 0; } }
+/* 테두리 (카드 프레임 .rar-lr 은 index.html 에 이미 무지개 테두리) */
+.mp-card.rar-LR, .mp-leader.rar-LR, .q-enemy.rar-LR, .gal-f.rar-LR, .gal-card.rar-LR, .gal-dbox.rar-LR,
+.story-card.rar-lr, .gear-who.rar-lr, .g-LR img, .tr-gc.g-LR {
+  border-color: #f87171 !important; animation: lrBorderHue 6s linear infinite;
+  box-shadow: 0 0 10px 1px rgba(232,121,249,.45), 0 0 18px 3px rgba(34,211,238,.18);
+}
+.g-LR img.gear { animation: none; box-shadow: none; }
+@keyframes lrBorderHue {
+  0%, 100% { border-color: #f87171; } 17% { border-color: #fbbf24; } 33% { border-color: #a3e635; }
+  50% { border-color: #22d3ee; } 67% { border-color: #818cf8; } 83% { border-color: #e879f9; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rar-lr .rar-badge, .rar-lr .story-rar, .rar-LR .mp-rar, .rar-LR .gal-rar, .rar-LR .q-rar, .q-g.rar-LR,
+  .tr-gr.g-LR, .gn-g.g-LR, .g-LR .tr-gc-gr, .gal-rar.rar-LR,
+  .mp-card.rar-LR, .mp-leader.rar-LR, .q-enemy.rar-LR, .gal-f.rar-LR, .gal-card.rar-LR, .gal-dbox.rar-LR,
+  .story-card.rar-lr, .gear-who.rar-lr, .g-LR img, .tr-gc.g-LR { animation: none !important; }
+  .mp-card.rar-LR, .mp-leader.rar-LR, .q-enemy.rar-LR, .gal-f.rar-LR, .gal-card.rar-LR, .gal-dbox.rar-LR,
+  .story-card.rar-lr, .gear-who.rar-lr, .g-LR img, .tr-gc.g-LR { border-color: #e879f9 !important; }
+}
