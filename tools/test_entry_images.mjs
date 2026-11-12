@@ -25,7 +25,7 @@ assert.deepEqual(bad,[],'cards without a working entry image:\n'+bad.join('\n'))
 const byId=Object.fromEntries(cards.map(c=>[c.id,c]));
 for(const id of ['10511','10512','10513',...Array.from({length:13},(_,i)=>String(10520+i))]){
  assert(override.has(id)&&await exists(`img/npc/${id}.webp`),id+' new card portrait');
- assert.equal(shows(byId[id]),SR_UP.has(byId[id].grade),id+' new card follows the SR+ rule');
+ assert.equal(shows(byId[id]),SR_UP.has(byId[id].grade)||voice.has(id+'_0')||fx.has(id),id+' new card follows the SR+ rule (entry voice/scene shows at any grade)');
 }
 assert(cards.some(c=>!shows(c)),'low-grade cards without scene/voice are skipped');
 assert(cards.some(c=>!SR_UP.has(c.grade)&&voice.has(c.id+'_0')),'voiced low-grade cards still show (pre-#556 behaviour)');
