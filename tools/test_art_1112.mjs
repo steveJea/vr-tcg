@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
 import vm from 'node:vm';
 const PORTRAITS = ['10059', '10321', '10329', '10459', '10460', '10461', '10470'];
-const FX = { 10321: ['10321_1.webp', '10321_2.webp'], 10329: ['10329_1.webp', '10329_2.webp'] };
+const FX = { 10025: ['10025_1.webp', '10025_2.webp'], 10321: ['10321_1.webp', '10321_2.webp'], 10329: ['10329_1.webp', '10329_2.webp'] };
 const dims = f => { const b = readFileSync(f); assert.equal(b.toString('ascii', 0, 4), 'RIFF', f); assert.equal(b.toString('ascii', 8, 12), 'WEBP', f);
   const k = b.toString('ascii', 12, 16);
   if (k === 'VP8X') return [1 + b.readUIntLE(24, 3), 1 + b.readUIntLE(27, 3)];
@@ -33,4 +33,12 @@ for (const id of Object.keys(skills)) if (!FX[id]) assert.equal(JSON.stringify(s
 const pre = JSON.parse(JSON.stringify(skills)); pre[10321][0].fx = 'keep.webp'; ctx.VRSkillFx(pre); assert.equal(pre[10321][0].fx, 'keep.webp');
 assert.equal(ctx.VRSkillFx(null), null);
 for (const [f, re] of [['js/game.js', /VRSkillFx\?\.\(sk\);[^\n]*\n\s*setSkillData\(sk, co\)/], ['js/gallery.js', /globalThis\.VRSkillFx\?\.\(skills\)/], ['js/quest-sim.js', /VRSkillFx\?\.\(sk\);[^\n]*\n\s*SK\.setSkillData/]]) assert.match(readFileSync(f, 'utf8'), re, f);
-console.log('Art 11-12: 7 portraits (576x864 + 300x450 thumb, OVERRIDE) · 4 skill fx (1792x1008) via VRSkillFx, skills.json untouched OK');
+// 모든 SUPER RARE 카드: 스킬마다 연출 이미지 (skills.json fx 또는 VRSkillFx 추가분), 파일 존재
+{ const rows = cards.trim().split('\n'), head = rows[0].split(','), gi = head.indexOf('grade');
+  const sr = rows.slice(1).map(l => l.split(',')).filter(c => c[gi] === 'SUPER RARE').map(c => c[0]);
+  assert.equal(sr.length, 50, 'SR count');
+  const miss = [];
+  for (const id of sr) { const list = sk[id] || []; if (!list.length) miss.push(id + ':none');
+    list.forEach((s, i) => { if (!s.fx || !existsSync('data/fx/' + s.fx)) miss.push(`${id}_${i + 1}`); }); }
+  assert.deepEqual(miss, [], 'SR skill images'); }
+console.log('Art 11-12: all 50 SR skills have images · 7 portraits (576x864 + 300x450 thumb, OVERRIDE) · 6 skill fx (1792x1008) via VRSkillFx, skills.json untouched OK');
