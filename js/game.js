@@ -2464,15 +2464,35 @@ function renderStats() {
 }
 
 // ===== 용병 고용 UI =====
+// 이스터에그 (보기 전용): 용병 창에 0.1% 확률로 장서현·장서아가 4번째 '유령 카드'로 슬쩍 보임. 고용 불가·엔진 행동 없음.
+// 진짜 용병 3명은 그대로 고용 가능. 확률은 엔진 RNG 가 아닌 브라우저 crypto 로 판마다 한 번. 테섭에서 ?egg=1 이면 항상 보임.
+const MERC_EGG_IDS = ['10335', '10334'], MERC_EGG_RATE = 0.001, mercEggOf = new WeakMap();
+const eggRand = () => { try { return crypto.getRandomValues(new Uint32Array(1))[0] / 4294967296; } catch { return 1; } };
+function mercEggPick(battle, { force = false, rand = eggRand, npc = NPC } = {}) {
+  if (!battle || battle.story || battle.at) return null;
+  if (!mercEggOf.has(battle)) {
+    const hit = force || rand() < MERC_EGG_RATE, id = MERC_EGG_IDS[rand() < 0.5 ? 0 : 1];
+    mercEggOf.set(battle, hit ? (npc.find(c => String(c.id) === id) || null) : null);
+  }
+  return mercEggOf.get(battle);
+}
+const mercEggForced = () => { try { return window.VRCloud?.isStaging === true && new URLSearchParams(location.search).get('egg') === '1'; } catch { return false; } };
+function mercEggHTML(c) {
+  return `<div class="merc-egg flex flex-col items-center gap-1" data-egg="${c.id}" title="???" style="filter:drop-shadow(0 0 10px rgba(232,121,249,.75))">${cardHTML(c)}
+      <button type="button" disabled class="w-full px-2 py-1.5 rounded-lg bg-fuchsia-900/70 text-fuchsia-200 text-xs font-bold">아직은 안 돼요~</button>
+      <div class="text-[10px] h-3 text-fuchsia-300">어라…? 뭐지?</div></div>`;
+}
 function renderMerc() {
+  const egg = mercEggPick(S, { force: mercEggForced() });
   $('merc-list').innerHTML = S.mercOffer.map(c => {
     const r = Merc.canBuy(c, S.me), price = Merc.price(c);
     return `<div class="flex flex-col items-center gap-1">${cardHTML(c, { dim: !r.ok })}
       <button data-merc="${c.id}" ${r.ok ? '' : 'disabled'} class="w-full px-2 py-1.5 rounded-lg bg-amber-400 hover:bg-amber-300 disabled:bg-zinc-700 disabled:text-zinc-400 text-black text-xs font-bold">${r.hired ? '✅ 고용됨' : `${ic('mana')}${price}`}</button>
       <div class="text-[10px] h-3 ${r.ok ? 'text-zinc-500' : r.hired ? 'text-amber-300' : 'text-red-400'}">${r.ok ? `기본 ${c.cost} ×${Merc.PRICE[c.grade]}` : r.reason}</div></div>`;
-  }).join('');
+  }).join('') + (egg ? mercEggHTML(egg) : '');
   $('merc-msg').innerHTML = `보유 마나 ${ic('mana')}${S.me.mana}`;
   $('merc-list').querySelectorAll('[data-merc]').forEach(b => b.onclick = () => buyMerc(b.dataset.merc));
+  $('merc-list').querySelector('[data-egg]')?.addEventListener('click', e => { e.stopPropagation(); playVoiceKey(`${e.currentTarget.dataset.egg}_0`); });   // 탭하면 등장 보이스 (보이스 설정·1.15배 그대로)
 }
 function buyMerc(id) {
   if(S?.arcade){if(S.turn!=='me'||S.over||S.busy)return;arcadeSimple('me',{k:'merc',id:String(id)});hideModal('merc');return;}
