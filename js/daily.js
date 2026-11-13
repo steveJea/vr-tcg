@@ -1,4 +1,5 @@
-// ===== 📅 일일 미션 + 출석 보상 + 📋 주간 미션 — 서버: supabase/daily.sql · daily_social.sql =====
+// ===== 📅 일일 미션 + 📋 주간 미션 — 서버: supabase/daily.sql · daily_social.sql =====
+// 예전 7일 출석(attend_claim)은 2026-11-13에 화면에서 뺐음. 출석 보상은 js/attendance.js (🎁 출석 버튼)
 // 버튼: [data-dailybtn] (메인 상단·스토리 허브) · 받을 수 있는 보상 수 뱃지 · 한국 시간 00:00 / 월요일 00:00 초기화
 // 진행도는 서버만 확정. 브라우저 전투 이벤트는 상태 새로고침만 요청한다.
 // SQL 실행 전이거나 비로그인이면 버튼이 안 보임
@@ -16,7 +17,7 @@
   function toast(t) { const el = document.createElement('div'); el.className = 'gem-toast'; el.textContent = t; document.body.appendChild(el); setTimeout(() => el.remove(), 2600); }
   const ERR = { 'already claimed': '이미 받았어요', 'not done': '아직 완료하지 않았어요', 'login required': '로그인이 필요해요', 'reward verification pending': '지급 보류' };
   const errText = e => { const m = String(e?.message || e); const k = Object.keys(ERR).find(x => m.includes(x)); return k ? ERR[k] : m.slice(0, 60); };
-  const readyDaily = s => !s ? 0 : (s.attend.today ? 0 : 1) + readyMissions(s);
+  const readyDaily = s => readyMissions(s);
   const readyWeek = s => readyMissions(s);
   const readyMissions = s => !s || s.reward_held ? 0 : s.missions.filter(m => !m.claimed && !m.held && m.prog >= m.goal).length + (!s.all.claimed && !s.all.held && s.all.done >= s.all.goal ? 1 : 0);
   const claimableKeys = s => {
@@ -53,7 +54,7 @@
     }
   }
   async function claim(fn, args) {
-    try { const r = await rpc(fn, args); if (!r) return; if (/weekly/.test(fn)) setWeek(r); else set(r); toast(`🎁 ${r.got_day ? `출석 ${r.got_day}일째 · ` : ''}${rwText(r.got || {})}`);
+    try { const r = await rpc(fn, args); if (!r) return; if (/weekly/.test(fn)) setWeek(r); else set(r); toast(`🎁 ${rwText(r.got || {})}`);
       if (r.wallet) window.VRPlayer?.setWallet?.(r.wallet); if (r.got?.gem) window.VRGem?.status?.(true); window.VRPlayer?.status?.(true); }
     catch (e) { toast(errText(e)); }
   }
@@ -85,22 +86,16 @@
     document.querySelector('.daily-pop:not(.vr-in-page)')?.remove();
     const pop = document.createElement('div'); pop.className = 'gem-pop daily-pop';
     const draw = () => { const s = cache; if (!s && !week) { pop.innerHTML = '<div class="gem-panel daily-panel">불러오는 중...</div>'; return; }
-      const a = s?.attend, nextStep = a ? (a.today ? a.step : a.step + 1) : 0;
       const tabs = TABS.filter(t => t.get());
       if (!tabs.some(t => t.id === tab)) tab = tabs[0]?.id || 'daily';
       const cur = tabs.find(t => t.id === tab), src = cur?.get() || null, ready = readyMissions(src);
       const keyAttr = cur?.id === 'weekly' ? 'data-w' : 'data-m';
       pop.innerHTML = `<div class="gem-panel daily-panel" role="dialog" aria-label="일일·주간 미션"><button class="gem-x" data-x aria-label="닫기">✕</button>
-        ${a ? `<h3 class="daily-h">🗓️ 출석 보상 <small>총 ${n(a.total)}일</small></h3>
-        <div class="daily-att">${a.rewards.map((r, i) => { const d = i + 1, got = d <= a.step, now = !a.today && d === nextStep;
-          return `<div class="daily-day ${got ? 'got' : ''} ${now ? 'now' : ''} ${d === 7 ? 'big' : ''}"><b>${d}일</b><span>${rwText(r).replace(/ · /g, '<br>')}</span>${got ? '<i>✔</i>' : ''}</div>`; }).join('')}</div>
-        <button class="daily-claim" data-att ${a.today ? 'disabled' : ''}>${a.today ? '오늘 출석 완료 ✔' : `${nextStep}일째 출석 보상 받기`}</button>` : ''}
         ${tabs.length ? `<div class="daily-tabs" role="tablist">${tabs.map(t => { const k = readyMissions(t.get()); return `<button type="button" class="daily-tab ${t.id === tab ? 'on' : ''}" role="tab" aria-selected="${t.id === tab}" data-tab="${t.id}">${t.label}${k ? `<i class="story-badge">${k}</i>` : ''}</button>`; }).join('')}</div>` : ''}
         ${src ? `<p class="daily-reset">${left(src.next_reset)}</p>
         <button class="daily-claim" data-all-ready ${ready ? '' : 'disabled'}>한번에 다 받기</button>
         <div class="daily-list">${missionRows(src.missions, src.all, keyAttr, src.reward_held)}</div>` : ''}</div>`;
       pop.querySelector('[data-x]').onclick = () => pop.remove();
-      pop.querySelector('[data-att]')?.addEventListener('click', async () => { await claim('attend_claim'); draw(); });
       pop.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { tab = b.dataset.tab; draw(); });
       pop.querySelector('[data-all-ready]')?.addEventListener('click', async () => { const keys = claimableKeys(cur.get()); if (!keys.length) return; await claimAll(cur.fn, keys); draw(); });
       pop.querySelectorAll('[data-go]').forEach(el => el.onclick = () => { const f = GO[el.dataset.go]; pop.remove(); f?.(); });
@@ -108,7 +103,7 @@
       pop.querySelectorAll('[data-w]').forEach(b => b.onclick = async () => { await claim('weekly_claim', { p_key: b.dataset.w }); draw(); });
     };
     pop.onclick = e => { if (e.target === pop) pop.remove(); };
-    if (!window.VRPages?.host?.('daily', '🗓️ 출석 · 미션', pop)) document.body.appendChild(pop);
+    if (!window.VRPages?.host?.('daily', '📅 미션', pop)) document.body.appendChild(pop);
     draw(); status().then(draw);
   }
   window.addEventListener('vr:daily', e => { if (e.detail?.k === 'battle') status(); });
