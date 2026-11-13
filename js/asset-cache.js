@@ -89,16 +89,36 @@
   }
   async function waitQuiet(signal) { while (busy() && !signal?.aborted) await sleep(400); }
   // 한 파일 받아서 기기 캐시에 넣기 (HTTP 캐시의 옛 파일 말고 서버 확인 후). 길을 비켜 주느라 끊기면 'yield'
-  async function save(c, p, h, signal, prio) {
+  // 큰 음악·영상(mp3·mp4)은 192KB 조각씩: 이미 보낸 요청은 끊어도 서버가 남은 걸 계속 밀어 넣어 회선을 막으므로,
+  // 한 번에 날아가는 양을 작게 해서 전투가 시작되면 곧바로 회선이 비게 함.
+  const CHUNK = 192 * 1024, CHUNK_MIN = 256 * 1024, RANGE_OK = /\.(mp3|mp4)$/i;
+  async function save(c, p, h, signal, prio, sz) {
     const ctl = new AbortController(), stop = () => ctl.abort(); signal?.addEventListener('abort', stop, { once: true });
     flying.add(ctl); guard();
+    const opt = extra => ({ cache: 'no-store', credentials: 'same-origin', signal: ctl.signal, priority: prio || 'low', headers: { 'x-vr-prefetch': '1', ...extra } });
     try {
-      const res = await fetch(p, { cache: 'no-cache', credentials: 'same-origin', signal: ctl.signal, priority: prio || 'low', headers: { 'x-vr-prefetch': '1' } });
-      if (res.status !== 200) throw Error('HTTP ' + res.status);
-      // 내용을 여기서 다 읽은 뒤 저장: 응답을 그대로 cache.put 에 넘기면 끊어도(abort) 브라우저가 뒤에서 계속 받아 회선을 막음
-      const buf = await res.arrayBuffer();
+      let body, headers;
+      if (sz > CHUNK_MIN && RANGE_OK.test(p)) {
+        const out = new Uint8Array(sz);
+        for (let s = 0; s < sz; s += CHUNK) {
+          if (ctl.signal.aborted) throw Error('aborted');
+          const e = Math.min(sz, s + CHUNK) - 1;
+          const r = await fetch(p, opt({ range: `bytes=${s}-${e}` }));
+          if (s === 0 && r.status === 200) { const all = new Uint8Array(await r.arrayBuffer()); if (all.length !== sz) throw Error('size'); out.set(all); headers = r.headers; break; }   // 조각 요청을 못 받는 서버: 통째로
+          if (r.status !== 206 || r.headers.get('content-range') !== `bytes ${s}-${e}/${sz}`) throw Error('HTTP ' + r.status);
+          const part = new Uint8Array(await r.arrayBuffer()); if (part.length !== e - s + 1) throw Error('short');
+          out.set(part, s); headers = headers || r.headers;
+        }
+        body = out.buffer;
+        headers = { 'content-type': headers.get('content-type') || 'application/octet-stream', 'content-length': String(sz), 'accept-ranges': 'bytes' };
+      } else {
+        const res = await fetch(p, opt());
+        if (res.status !== 200) throw Error('HTTP ' + res.status);
+        // 내용을 여기서 다 읽은 뒤 저장: 응답을 그대로 cache.put 에 넘기면 끊어도(abort) 브라우저가 뒤에서 계속 받음
+        body = await res.arrayBuffer(); headers = res.headers;
+      }
       if (ctl.signal.aborted) throw Error('aborted');
-      await c.put(keyUrl(p, h), new Response(buf, { status: 200, headers: res.headers }));
+      await c.put(keyUrl(p, h), new Response(body, { status: 200, headers }));
     } catch (e) { if (ctl.signal.aborted && !signal?.aborted) throw Error('yield'); throw e; }
     finally { flying.delete(ctl); signal?.removeEventListener('abort', stop); }
   }
@@ -121,7 +141,7 @@
         await waitQuiet(); if (slowNet()) return;
         await idle(); if (busy() || bgStop || fullRunning) continue;
         const it = list.shift(); if (!it) return;
-        try { await save(c, it[0], it[2], undefined, 'low'); used += it[1]; files++; } catch (e) { if (e.message === 'yield') list.unshift(it); }
+        try { await save(c, it[0], it[2], undefined, 'low', it[1]); used += it[1]; files++; } catch (e) { if (e.message === 'yield') list.unshift(it); }
       }
     };
     await Promise.all([worker(), worker()]);   // 동시에 2개까지만
@@ -142,11 +162,11 @@
       while (list.length && !ctl.signal.aborted) {
         await waitQuiet(ctl.signal); if (ctl.signal.aborted) return;
         const it = list.shift(); if (!it) return;
-        try { await save(c, it[0], it[2], ctl.signal, 'low'); } catch (e) { if (ctl.signal.aborted) return; if (e.message === 'yield') { list.unshift(it); continue; } fail++; }
+        try { await save(c, it[0], it[2], ctl.signal, 'low', it[1]); } catch (e) { if (ctl.signal.aborted) return; if (e.message === 'yield') { list.unshift(it); continue; } fail++; }
         doneB += it[1]; n++; onProgress?.(doneB, totalB, n, all);
       }
     };
-    job.done = Promise.all([0, 1, 2].map(worker)).then(() => ({ cancelled: ctl.signal.aborted, fail, doneB, totalB })).finally(() => { fullRunning = null; });
+    job.done = Promise.all([0, 1].map(worker)).then(() => ({ cancelled: ctl.signal.aborted, fail, doneB, totalB })).finally(() => { fullRunning = null; });
     return job;
   }
   async function clear() { bgStop = true; fullRunning?.cancel(); if (hasCache) await caches.delete(CACHE); }
