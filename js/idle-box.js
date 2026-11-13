@@ -1,6 +1,7 @@
 // ===== 🎁 방치 보상 상자 — 서버: supabase/idle_box.sql =====
 // 버튼: [data-idlebtn] (메인 상단 📅·🏆 옆) · 쌓인 보상 있으면 빨간 점
 // SQL 실행 전이거나 비로그인이면 버튼이 안 보임
+// 무료 드링크 (supabase/idle_drink_staging.sql): 쌓인 2시간당 1개 · 귀속(거래 불가). SQL 전이면 드링크 줄은 안 보임
 (() => {
   const missing = e => /PGRST202|PGRST205|42883|42P01|Could not find|does not exist/i.test(`${e?.code} ${e?.message}`);
   let cache = null, off = false, acting = false;
@@ -16,6 +17,7 @@
     r?.shard && `💠 ${n(r.shard)}`,
     r?.blood && `🩸 ${n(r.blood)}`,
     r?.dust && `✨ ${n(r.dust)}`,
+    r?.drink && `🥤 드링크 ${n(r.drink)}`,
   ].filter(Boolean).join(' · ');
   function toast(t) { const el = document.createElement('div'); el.className = 'gem-toast'; el.textContent = t; document.body.appendChild(el); setTimeout(() => el.remove(), 2600); }
   const ERR = {
@@ -49,6 +51,7 @@
       toast(`🎁 ${rwText(r.got || {}) || '받음'}`);
       if (r.wallet) window.VRPlayer?.setWallet?.(r.wallet);
       if (r.gem) window.VRGem?.status?.(true);
+      if (r.got?.drink) window.VRDrink?.status?.();
       window.VRPlayer?.status?.(true);
     } catch (e) { toast(errText(e)); } finally { acting = false; }
   }
@@ -72,7 +75,8 @@
         <div class="idle-bar-wrap"><div class="daily-bar idle-bar"><i style="width:${pct}%"></i></div>
           <small>${hrsTxt(s.hours)} / ${s.max_hours}시간${s.full ? ' · 가득' : ''}</small></div>
         <div class="idle-got">${rwText(p) || '—'}</div>
-        <div class="idle-rate">시간당 ${rwText(rate)}</div>
+        <div class="idle-rate">시간당 ${rwText(rate)}${rate.drink_every_h ? ` · 🥤 드링크 ${rate.drink_every_h}시간당 1` : ''}</div>
+        ${s.drink ? `<div class="idle-drink-note">무료 드링크 (거래 불가) · ${s.full ? '가득 찼어요' : `다음 1개까지 ${hrsTxt(s.drink.next_in_h)}`} · 한 번에 최대 ${s.drink.max_per_claim}개</div>` : ''}
         <button class="daily-claim" data-claim ${s.ready ? '' : 'disabled'}>쌓인 보상 받기 (무료)</button>
         <div class="idle-boost">
           <div class="idle-boost-h"><b>⚡ 빠른 보상 (심연석 사용)</b><small>오늘 ${b.left ?? 0}/${b.max ?? 2}</small></div>

@@ -214,3 +214,4 @@
 .att-claim{display:block;width:100%;margin-top:8px;padding:9px;border-radius:12px;font-weight:900;background:linear-gradient(#f59e0b,#b45309);color:#111}
 .att-claim:disabled{background:rgba(255,255,255,.1);color:#a1a1aa}
 .att-note{font-size:10px;color:#a1a1aa;margin:6px 0 0}
+.idle-drink-note{font-size:10px;color:#a1a1aa;text-align:center;margin:-4px 0 8px}
