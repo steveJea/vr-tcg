@@ -81,7 +81,7 @@
       ${sk.length ? `<div class="sp-intro-skills">${sk.map(x => `<div class="sp-intro-sk"><b>${esc(x.name)}</b> <small>${x.mode === 'passive' ? '패시브' : '액티브'}${x.type ? ` · ${esc(x.type)}` : ''}</small><p>${esc(x.desc)}</p></div>`).join('')}</div>` : ''}`);
   }
   // ----- 확률 공개 -----
-  const pct = p => `${+(p * 100).toFixed(4)}%`;
+  const pct = p => Number.isFinite(+p) ? `${+(p * 100).toFixed(4)}%` : '-';   // 숫자가 아니면 NaN% 대신 '-'
   /** 등급별 인재 목록: 서버 목록 우선, 없으면 게임 데이터(참고) */
   function pools() {
     const by = {}, ur = [];
@@ -100,8 +100,12 @@
   function ratesHtml() {
     const G = window.STORY_DATA?.gacha || {}, P = pools(), b = banner();
     const grades5 = [...GRADES, 'ULTRA RARE'];
-    const std = (rates) => grades5.map((g, i) => [g, rates?.[i] || 0, g === 'ULTRA RARE' ? P.ur : (P.by[g] || [])]);
-    const r = b.rates || CONFIG.rates, pick = { id: b.pickup_id, name: b.pickup_name || CONFIG.pickup_name };
+    // 게임 데이터 확률은 [['NORMAL', 0.70], …] 모양. 숫자 배열·{등급: 확률}도 받고, 못 읽으면 기본값
+    const STD_DEF = { rates: [0.70, 0.20, 0.065, 0.03, 0.005], special: [0.50, 0.30, 0.16, 0.032, 0.008] };
+    const rateOf = (src, g, i) => { const v = Array.isArray(src) ? (Array.isArray(src[i]) && src[i][0] === g ? src[i][1] : Array.isArray(src[i]) ? src.find(x => x?.[0] === g)?.[1] : src[i]) : src?.[g]; return Number.isFinite(+v) && v !== null && v !== '' ? +v : NaN; };
+    const std = (rates, def) => { const vals = grades5.map((g, i) => rateOf(rates, g, i)); const ok = vals.every(Number.isFinite); return grades5.map((g, i) => [g, ok ? vals[i] : def[i], g === 'ULTRA RARE' ? P.ur : (P.by[g] || [])]); };
+    const bpOk = x => x && ['pickup', 'other_ur', ...GRADES].every(k => Number.isFinite(+x[k]) && x[k] !== null);
+    const r = bpOk(b.rates) ? b.rates : CONFIG.rates, pick = { id: b.pickup_id, name: b.pickup_name || CONFIG.pickup_name };
     const sp = [...GRADES.map(g => [g, (r[g] || 0) / 10000, P.by[g] || []]),
       ['ULTRA RARE', (r.pickup || 0) / 10000, [pick], `UR 픽업 ${pick.name}`],
       ['ULTRA RARE', (r.other_ur || 0) / 10000, P.ur.filter(c => c.id !== pick.id), 'UR (픽업 외)']];
@@ -109,8 +113,8 @@
     const end = b.ends_at ? new Date(b.ends_at).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }) + ' (KST)' : '종료일 미정';
     return `<div class="sp-rates"><div class="text-lg font-black mb-2">확률 안내</div>
       ${table(`스페셜 소환 · 픽업 ${pick.name}`, sp, `스페셜 소환권 1장 = 1회 · 10회 = 10장<br>UR 천장: UR 없이 ${b.pity || CONFIG.pity}회째 소환은 UR 확정 (어떤 UR이든 나오면 초기화 · 확정 UR도 픽업:그 외 = 1:1)<br>픽업 확정: 픽업 아닌 UR이 ${after}번 나오면 다음 UR은 <b>${esc(pick.name)}</b> 확정 (${esc(pick.name)}가 나오면 초기화 · 처음부터 나올 수도 있어요) · 배너별 · 서버 기록<br>기간: ${new Date(b.starts_at || CONFIG.starts_at).toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul' })} ~ ${esc(end)}`)}
-      ${table('프리미엄 소환', std(G.special), '소환권 1장 = 1회 · 10회 소환은 HR 이상 1장 보장 · UR은 프리미엄 UR 목록에서만')}
-      ${table('일반 소환 (하루 1회 무료)', std(G.rates), '매일 자정(KST) 초기화 · UR은 프리미엄 UR 목록에서만')}
+      ${table('프리미엄 소환', std(G.special, STD_DEF.special), '소환권 1장 = 1회 · 10회 소환은 HR 이상 1장 보장 · UR은 프리미엄 UR 목록에서만')}
+      ${table('일반 소환 (하루 1회 무료)', std(G.rates, STD_DEF.rates), '매일 자정(KST) 초기화 · UR은 프리미엄 UR 목록에서만')}
       <div class="sp-rate-note">${P.server ? '인재 목록은 서버 기준입니다.' : '인재 목록은 게임 데이터 기준(참고)입니다. 로그인하면 서버 목록을 보여 줘요.'} 각 표를 누르면 인재별 확률이 보여요.</div>
       <button data-sp-close class="w-full mt-2 py-2 rounded-xl bg-white/10">닫기</button></div>`;
   }

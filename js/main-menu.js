@@ -5,10 +5,13 @@
   const user = () => window.VRCloud?.user;
 
   // --- Y/N 확인창 (바깥 클릭 = N) ---
-  function confirmYN(html) {
+  // opt: { y: 'Y 글자', n: 'N 글자', cls: '창에 붙일 class' } (없으면 Y / N)
+  function confirmYN(html, opt = {}) {
     return new Promise(res => {
-      const m = $('vr-confirm'); $('vr-confirm-msg').innerHTML = html; m.classList.remove('hidden');
-      const done = v => { m.classList.add('hidden'); m.onclick = null; res(v); };
+      const m = $('vr-confirm'), by = m.querySelector('[data-yn="y"]'), bn = m.querySelector('[data-yn="n"]');
+      $('vr-confirm-msg').innerHTML = html; by.textContent = opt.y || 'Y'; bn.textContent = opt.n || 'N';
+      if (opt.cls) m.classList.add(opt.cls); m.classList.remove('hidden');
+      const done = v => { m.classList.add('hidden'); if (opt.cls) m.classList.remove(opt.cls); by.textContent = 'Y'; bn.textContent = 'N'; m.onclick = null; res(v); };
       m.onclick = e => { const yn = e.target.closest('[data-yn]')?.dataset.yn; if (yn) done(yn === 'y'); else if (e.target === m) done(false); };
     });
   }
@@ -37,7 +40,12 @@
   $('intro-login-kakao').onclick = () => { localStorage.setItem(INTRO_KEY, '1'); login('kakao'); };
   $('intro-login-x').onclick = () => { localStorage.setItem(INTRO_KEY, '1'); login('x'); };
   $('intro-guest').onclick = async () => {
-    if (await confirmYN('게스트: 아케이드만 · 수집 불가. 계속?')) hideIntro();
+    const ok = await confirmYN('<b class="vc-guest-h">게스트는 아케이드만 할 수 있고, 기록은 저장되지 않아요.</b><span class="vc-guest-s">로그인하면 인재 모집, 스토리, PvP, 조직까지 다 즐길 수 있어요!</span>',
+      { y: '게스트로 시작', n: '로그인하기', cls: 'vc-guest' });
+    if (ok) return hideIntro();
+    // 로그인하기 → 인트로의 로그인 버튼으로 (눈에 띄게 반짝)
+    const row = intro.querySelector('.oauth-row'); row?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    const btn = [...(row?.querySelectorAll('button') || [])].find(b => !b.hidden && !b.disabled); if (btn) btn.focus({ preventScroll: true }); else if (row) { row.tabIndex = -1; row.focus({ preventScroll: true }); } row?.classList.remove('oauth-flash'); void row?.offsetWidth; row?.classList.add('oauth-flash');
   };
   if (localStorage.getItem(INTRO_KEY) !== '1' && !/[?&]code=|access_token=/.test(location.search + location.hash)) {
     // 이미 로그인된 세션이면 바로 메인
