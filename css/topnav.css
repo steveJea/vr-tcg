@@ -100,3 +100,6 @@ body.tnb-on { --tnb-pad: var(--tnb-h); }
 /* 상단 바가 숨는 대사 화면·출전 고르기: 바 자리 여백(78px)도 없앰 → 맨 위부터 (작은 확인창 등은 뒤 화면이 들썩이지 않게 그대로) */
 body.tnb-on.tnb-hidden.vr-story-focus { --tnb-pad: 0px; }
 body.tnb-on.tnb-hidden.vr-story-focus .vr-page, body.tnb-on.tnb-hidden.vr-story-focus > #story-screen { padding-top: env(safe-area-inset-top); }
+
+/* 행동력 + (드링크로 채우기) */
+.tnb-st-plus { display: inline-flex; align-items: center; margin-left: 3px; padding: 0; background: none; border: 0; cursor: pointer; line-height: 0; }

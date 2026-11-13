@@ -53,5 +53,37 @@
       if (host.isConnected) redraw();
     });
   }
-  window.VRDrink = { IC, NAME, status, html, bind, get now() { return cache; } };
+  /** 상단바 행동력 + : 드링크로 행동력 채우기. 서버 drink_use 가 귀속(무료) 드링크부터 씀 */
+  async function quick() {
+    if (document.querySelector('.drink-quick')) return;
+    const a = document.createElement('div'); a.className = 'drink-ask drink-quick';
+    const close = () => a.remove();
+    const draw = (busy) => {
+      const s = cache, P = window.VRPlayer?.now?.();
+      if (!s) { a.innerHTML = `<div class="drink-ask-box" role="dialog"><p>${off ? '드링크를 쓸 수 없어요' : '불러오는 중…'}</p><div class="drink-ask-acts"><button type="button" data-no>닫기</button></div></div>`; return; }
+      const free = s.bound | 0, other = Math.max(0, (s.tradable | 0) - (s.locked | 0)), have = free + other;
+      const st = P?.stamina, capped = st != null && s.cap && st + s.per > s.cap;
+      const why = !have ? '드링크가 없어요' : capped ? `행동력이 가득 찼어요 (최대 ${n(s.cap)})` : '';
+      a.innerHTML = `<div class="drink-ask-box" role="dialog" aria-label="행동력 채우기">
+        <p><b>${ST} 행동력 채우기</b></p>
+        ${st != null ? `<p class="drink-q-now">지금 ${ST} <b>${n(st)}</b>/${n(P.stamina_max)}</p>` : ''}
+        <div class="drink-q-cnt"><span>${ICH} 무료 드링크 <b>${n(free)}</b></span><span>${ICH} 일반 드링크 <b>${n(other)}</b>${s.locked ? ` <small>(🔒거래중 ${n(s.locked)})</small>` : ''}</span></div>
+        <p class="drink-ask-note">${why || `1개 마시면 행동력 +${n(s.per)} · 무료 드링크부터 써요`}</p>
+        <div class="drink-ask-acts"><button type="button" data-no>닫기</button>${have ? `<button type="button" data-yes data-q-use ${why || busy ? 'disabled' : ''}>마시기 +${n(s.per)}</button>` : '<button type="button" data-yes data-q-shop>상점 가기</button>'}</div></div>`;
+    };
+    a.addEventListener('click', async e => {
+      e.stopPropagation();
+      if (e.target === a || e.target.closest('[data-no]')) return close();
+      if (e.target.closest('[data-q-shop]')) { close(); if (window.VRShop?.enabled && window.VRShop.open) window.VRShop.open('consume'); else window.VRGem?.open?.(); return; }
+      const b = e.target.closest('[data-q-use]'); if (!b || b.disabled) return;
+      draw(true);
+      try { const r = await rpc('drink_use', { p_n: 1 }); if (r?.ok) { cache = r; toast(`🔋 행동력 +${r.used * r.per} (지금 ${n(r.stamina)})`); await window.VRPlayer?.status?.(true); } }
+      catch (er) { toast(errText(er)); }
+      if (a.isConnected) draw();
+    });
+    document.body.appendChild(a); draw();
+    await status(); window.VRPlayer?.status?.(true)?.then?.(() => a.isConnected && draw());
+    if (a.isConnected) draw();
+  }
+  window.VRDrink = { IC, NAME, status, html, bind, quick, get now() { return cache; } };
 })();
