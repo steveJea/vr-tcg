@@ -10,6 +10,16 @@
     starts_at: '2026-11-13T00:00:00+09:00', ends_at: null, pity: 50, pickup_after: 2,
     rates: { 'NORMAL': 5000, 'RARE': 3000, 'HIGH RARE': 1000, 'SUPER RARE': 800, pickup: 100, other_ur: 100 },
   };
+  /** 배너별 화면 설정 (배너 id 기준 · 여기만 고치면 됨)
+   *  bg.portrait = 세로(모바일 ~1080x1920) · bg.landscape = 가로(PC ~1920x1080). 화면 방향으로 고름, 없거나 안 열리면 기본 배경
+   *  intro = 픽업 인재 소개 창 한두 줄 */
+  const BANNER_UI = {
+    'hajihye-20261113': {
+      // 임시: 하지혜 스킬 그림. 형님이 세로·가로 배경을 주시면 바꾸기
+      bg: { portrait: 'data/fx/10440_1.webp', landscape: 'data/fx/10440_1.webp', focus: '58% 30%' },
+      intro: ['공격도 방어도 다 되는 공방 특화 UR!', '버티면서 반격까지 몰아치는 전략형 에이스예요.'],
+    },
+  };
   /** 프리미엄 UR 목록 (supabase/gacha_premium_ur.sql story_premium_ur 와 같아야 함). 스페셜 "그 외 UR" = 이 목록 − 픽업 */
   const PREMIUM_UR = ['10051', '10053', '10054', '10058', '10176', '10312', '10323', '10324', '10325', '10331', '10358'];
   let status = null, missing = false;
@@ -36,6 +46,39 @@
     if (data?.ok && status) Object.assign(status, { tickets: data.tickets, misses: data.misses, off_urs: data.off_urs });
     else if (data?.tickets != null && status) status.tickets = data.tickets;
     return data || { ok: false, reason: 'error' };
+  }
+  const ui = id => BANNER_UI[id || banner().banner_id] || {};
+  const bgOf = id => ui(id).bg || null;
+  function pop(id, inner) {
+    let m = document.getElementById(id);
+    if (!m) { m = document.createElement('div'); m.id = id; document.body.appendChild(m); }
+    m.className = 'sp-rates-pop';
+    m.innerHTML = `<div class="story-pop-panel sp-small-panel" role="dialog">${inner}<button data-sp-close class="w-full mt-3 py-2 rounded-xl bg-white/10">닫기</button></div>`;
+    m.onclick = e => { if (e.target === m || e.target.closest('[data-sp-close]')) m.remove(); };
+    return m;
+  }
+  /** 천장 안내 (? 버튼) */
+  function showPity() {
+    const b = banner(), nm = esc(b.pickup_name || CONFIG.pickup_name), lim = b.pity || CONFIG.pity, after = b.pickup_after ?? CONFIG.pickup_after;
+    pop('sp-pity-pop', `<div class="text-lg font-black mb-2">천장 안내</div><ul class="sp-pity-list">
+      <li><b>UR 천장</b> · UR 없이 ${lim}회째 소환은 UR 확정. 어떤 UR이든 나오면 다시 0부터</li>
+      <li><b>${nm} 확정</b> · ${nm}가 아닌 UR이 ${after}번 나오면 다음 UR은 ${nm}. ${nm}가 나오면 다시 0부터</li>
+      <li>운 좋으면 첫 UR부터 ${nm}일 수도 있어요</li></ul>`);
+  }
+  const GR = { 'NORMAL': 'N', 'RARE': 'R', 'HIGH RARE': 'HR', 'SUPER RARE': 'SR', 'ULTRA RARE': 'UR', 'MYTHIC RARE': 'MR', 'LEGENDARY RARE': 'LR' };
+  const EL = { DARK: '어둠', LIGHT: '빛', FIRE: '불', ICE: '얼음', WIND: '바람', ABYSS: '심연', VOID: '공허' };
+  const ROLE = { CHARGE: '돌격', CRUSH: '분쇄', DEFENSE: '방어', SUPPORT: '지원', DISTURB: '교란', FASCINATION: '매혹', OVERWHELMING: '압도', FURIOUS: '격노', PHENOMENAL: '경이' };
+  const PORTRAIT = id => `https://raw.githubusercontent.com/steveJea/vr-ideal-worldcup/main/img/bt_img/${id}.webp`;
+  /** 픽업 인재 소개 (i 버튼): 그림 · 이름 · 등급/속성 · 스킬 · 소개 */
+  function showIntro() {
+    const b = banner(), id = String(b.pickup_id || CONFIG.pickup_id), c = window.TCG?.cardById?.(id) || {};
+    const sk = (() => { try { return window.TCG?.skillsOf?.(id) || []; } catch { return []; } })();
+    const lines = ui(b.banner_id).intro || [];
+    pop('sp-intro-pop', `<div class="sp-intro"><img class="sp-intro-img" src="${PORTRAIT(id)}" alt="${esc(c.name || b.pickup_name)}" onerror="this.onerror=null;this.src='img/thumb/${esc(id)}.webp'">
+      <div class="sp-intro-txt"><div class="sp-intro-name"><span class="g-text-ur">${GR[c.grade] || 'UR'}</span> <b>${esc(c.name || b.pickup_name || CONFIG.pickup_name)}</b></div>
+      <div class="sp-intro-tags">${[EL[c.class] && `속성 ${EL[c.class]}`, ROLE[c.attribute] && `${ROLE[c.attribute]}형`, c.region, c.age && `${c.age}세`].filter(Boolean).map(t => `<span>${esc(t)}</span>`).join('')}</div>
+      ${lines.length ? `<p class="sp-intro-pitch">${lines.map(esc).join('<br>')}</p>` : ''}</div></div>
+      ${sk.length ? `<div class="sp-intro-skills">${sk.map(x => `<div class="sp-intro-sk"><b>${esc(x.name)}</b> <small>${x.mode === 'passive' ? '패시브' : '액티브'}${x.type ? ` · ${esc(x.type)}` : ''}</small><p>${esc(x.desc)}</p></div>`).join('')}</div>` : ''}`);
   }
   // ----- 확률 공개 -----
   const pct = p => `${+(p * 100).toFixed(4)}%`;
@@ -81,7 +124,7 @@
     m.onclick = e => { if (e.target === m || e.target.closest('[data-sp-close]')) close(); };
     m.querySelector('details')?.setAttribute('open', '');
   }
-  window.VRSpecial = { CONFIG, PREMIUM_UR, refresh, draw, showRates, ratesHtml, banner, get status() { return status; }, get missing() { return missing; },
+  window.VRSpecial = { CONFIG, PREMIUM_UR, BANNER_UI, bgOf, showPity, showIntro, refresh, draw, showRates, ratesHtml, banner, get status() { return status; }, get missing() { return missing; },
     get tickets() { return status ? status.tickets | 0 : null; }, get misses() { return status ? status.misses | 0 : 0; }, get offUrs() { return status ? status.off_urs | 0 : 0; },
     /** 하지혜 확정까지 남은 UR 수 (1 = 다음 UR 확정) */ get ursToPickup() { const b = banner(); return Math.max(1, (b.pickup_after ?? CONFIG.pickup_after) + 1 - (status ? status.off_urs | 0 : 0)); } };
 })();

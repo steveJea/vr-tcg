@@ -27,6 +27,19 @@ async def main():
     assert await pg.locator('.gr-bn-pickup .gr-bn-pick').count()==1
     assert (await pg.inner_text('#gacha-rates')).strip()=='확률'
     await pg.screenshot(path=f'{SHOTS}/special_summon.png')
+    # 배너 줄: 스크롤바 숨김 + 화살표 · 픽업 배경 · ? 천장 안내 · i 인재 소개
+    assert await pg.evaluate("getComputedStyle(document.querySelector('.gr-banners')).scrollbarWidth")=='none'
+    assert await pg.evaluate("(()=>{const i=document.querySelector('.gr-bg-pick img');return !!i && i.complete && i.naturalWidth>0 && i.currentSrc.includes('10440_')})()"), 'pickup bg'
+    await pg.click('.gr-bn-l'); await pg.wait_for_timeout(500); assert await pg.evaluate("document.querySelector('.gr-bn.on')?.dataset.tab")=='special'
+    assert await pg.locator('.gr-bg-pick').count()==0, 'premium keeps default bg'
+    await pg.click('.gr-bn-r'); await pg.wait_for_timeout(700); assert await pg.evaluate("document.querySelector('.gr-bn.on')?.dataset.tab")=='pickup'
+    await pg.click('[data-sp-help]'); await pg.wait_for_selector('#sp-pity-pop')
+    t=await pg.inner_text('#sp-pity-pop'); assert 'UR 없이 50회째' in t and '어떤 UR이든' in t and '하지혜가 아닌 UR이 2번' in t, t
+    await pg.screenshot(path=f'{SHOTS}/summon_pity_help.png'); await pg.click('#sp-pity-pop [data-sp-close]')
+    await pg.click('[data-sp-info]'); await pg.wait_for_selector('#sp-intro-pop')
+    assert await pg.evaluate("document.querySelector('.gr-bn.on')?.dataset.tab")=='pickup'
+    t=await pg.inner_text('#sp-intro-pop'); assert '하지혜' in t and '공방 특화' in t and '죽이지 않으면 죽어' in t and '바람' in t and 'UR' in t, t
+    await pg.wait_for_timeout(1200); await pg.screenshot(path=f'{SHOTS}/summon_pickup_intro.png'); await pg.click('#sp-intro-pop [data-sp-close]')
     await pg.click('[data-sp="1"][data-draw="10"]')
     for _ in range(40):
       if '10440' in (await pg.inner_html('#tk-result')): break
@@ -45,6 +58,9 @@ async def main():
     assert 'UR 확정' not in await pg.inner_text('.gr-actions') or True
     assert await pg.locator('[data-draw][data-sp]').count()==0, 'premium unchanged'
     assert not errs, errs
+    pl=await (await b.new_context(viewport={'width':1366,'height':768})).new_page(); await pl.add_init_script(MOCK); await pl.goto(URL)
+    await pl.wait_for_function("window.VRStory && window.TCG && TCG.POOL.length && window.VRSpecial"); await pl.evaluate("VRStory.enter()"); await pl.wait_for_timeout(1200)
+    await pl.evaluate("VRStory.openGacha('pickup')"); await pl.wait_for_timeout(1500); await pl.screenshot(path=f'{SHOTS}/special_summon_landscape.png')
     pg2,errs2=await page(b, off=True)
     t=await pg2.inner_text('#gr-own'); print(t); assert '준비 중' in t
     assert await pg2.locator('[data-sp][disabled]').count()==2
