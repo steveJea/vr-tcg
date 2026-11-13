@@ -673,7 +673,7 @@ span.story-lvpct { background: rgba(251,191,36,.12); border: 1px solid rgba(251,
 .kickoff-btn { padding: 16px 44px; border-radius: 999px; font-size: 22px; font-weight: 900; color: #1a1205; background: linear-gradient(#fde68a,#f59e0b); box-shadow: 0 0 24px rgba(245,158,11,.6); animation: kickPulse 1.4s ease-in-out infinite; }
 @keyframes kickPulse { 50% { transform: scale(1.06); } }
 /* 챕터 0 강제 10회 프리미엄 영입: 나가기·탭·1회·젬 숨김 */
-.gr-forced ~ * .story-back, body:has(.gr-forced) .story-back, body:has(.gr-forced) .story-nav, .gr-forced .gr-banners, .gr-forced [data-draw="1"], .gr-forced .gr-gem { display: none !important; }
+.gr-forced ~ * .story-back, body.vr-gr-forced .story-back, body.vr-gr-forced .story-nav, .gr-forced .gr-banners, .gr-forced [data-draw="1"], .gr-forced .gr-gem { display: none !important; }
 
 /* 전투 스킬 설명: ⓘ 버튼 · 길게 누르기 팝업 (바깥 누르면 닫힘) */
 .sk-info{flex:none;width:34px;border-radius:10px;background:#3f3f46;color:#e9d5ff;font:italic 900 15px/1 Georgia,serif;border:1px solid rgba(233,213,255,.35)}

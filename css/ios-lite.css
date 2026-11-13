@@ -27,3 +27,27 @@ html.ios #game .card-frame > .cosmo-bdr{display:none!important}
 html.ios .fx-attacker, html.ios .fx-attacker > .relative { animation: none !important; filter: none !important; }
 html.ios .fx-attacker { will-change: transform; }
 html.ios .fx-hitflash { filter: none !important; outline: 2px solid rgba(255,255,255,.9); box-shadow: 0 0 12px 2px rgba(255,255,255,.55) !important; }
+
+/* 충돌 경량화: 작은 그림/CRIT 링만 합성. 전장·페이지 전체를 움직이지 않음.
+   레이어는 body 아래 고정(z35, 기존 타격 그림과 같음): 돌진 카드(z30) 위, 데미지 숫자(z40)·모달·컷인 아래. 필드의 쌓임 맥락은 변경하지 않음. */
+html.ios #ios-hit-layer { position:fixed;inset:0;z-index:35;pointer-events:none;contain:strict; }
+html.ios .ios-hit-slot { position:absolute;pointer-events:none; }
+html.ios .ios-hit-slot[hidden] { display:none; }
+html.ios .ios-hit-impact,html.ios .ios-hit-crit,html.ios .ios-hit-flash { position:absolute;left:0;top:0;width:100%;height:100%;will-change:transform,opacity;pointer-events:none; }
+html.ios .ios-hit-impact { object-fit:contain; }
+html.ios .ios-hit-flash { border-radius:8px;background:rgba(255,255,255,.55);border:2px solid rgba(255,255,255,.95);box-sizing:border-box; }
+html.ios .ios-hit-crit { display:grid;place-items:center;border:2px solid #fde68a;border-radius:50%;background:radial-gradient(circle,rgba(255,251,200,.25),transparent 65%);font:900 19px/1 system-ui;color:#fff7ae;text-shadow:0 1px 2px #78350f; }
+/* 방어 규칙: 옛 충돌 클래스가 남아도 iOS에서는 필터/그림자/전장 흔들림을 켜지 않음 */
+html.ios .fx-hitflash { filter:none!important;box-shadow:none!important;outline:none!important; }
+html.ios .fx-screen,html.ios #field-box.fx-screen,html.ios .bfx #field-box.bfx-zoom { animation:none!important; }
+html.ios .bfx #game.bfx-hit::after { display:none!important; }
+/* HP/MP는 새 값으로 즉시 변경 (폭 전환은 카드 수만큼 매 프레임 layout을 유발). */
+html.ios .hp-fill,html.ios .hp-ghost,html.ios .mp-bar>div,html.ios .base-hp-fill,html.ios [id$='-hpbar'] { transition:none!important; }
+/* 상태 틱의 필터 맥박 대신 작은 opacity 맥박. 고정 상태 아이콘/색은 유지. */
+html.ios .stfx-pulse-poison,html.ios .stfx-pulse-curse,html.ios .stfx-pulse-regen,html.ios .stfx-pulse-bleed,html.ios .stfx-pulse-burn { animation:ios-status-pulse .45s ease-out!important;filter:none!important; }
+@keyframes ios-status-pulse { 0%,100% { opacity:1; } 35% { opacity:.7; } }
+html.ios .stfx-pop { animation:ios-status-pop .4s ease-out; }
+@keyframes ios-status-pop { 0%,100% { transform:scale(1); } 30% { transform:scale(1.05); } }
+/* 상태이상 일시 효과: 노드 16개 재사용(숨김 = display:none → 다시 보이면 애니메이션 처음부터). 모양은 그대로 */
+html.ios #stfx-layer > div[hidden] { display:none!important; }
+html.ios .hp-bar .hp-fill,html.ios .hp-bar .hp-ghost { transform-origin:left center; }

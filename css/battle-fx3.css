@@ -7,7 +7,7 @@
 /* 3-3 마지막 일격 슬로모션 · 패배 흑백 · MVP 카드 뒤집기 */
 .bfx #game.bfx-final #field-box { animation: bfxFinal .6s cubic-bezier(.2,.7,.2,1) forwards; }
 @keyframes bfxFinal { 0% { scale: 1; filter: brightness(1.6) contrast(1.1); } 100% { scale: 1.06; filter: brightness(.85); } }
-body.bfx:has(#game.bfx-final) .fx-dmg { animation-duration: 2.2s !important; }
+body.bfx.vr-bfx-final .fx-dmg { animation-duration: 2.2s !important; }
 .bfx #game.bfx-lose { filter: grayscale(1) brightness(.75); transition: filter .6s ease; }
 .bfx #end-screen.end-lose { backdrop-filter: grayscale(1); -webkit-backdrop-filter: grayscale(1); }
 .bfx .end-mvp.bfx-flip { animation: bfxFlip .6s cubic-bezier(.3,1.4,.5,1) both; transform-origin: 50% 50%; }

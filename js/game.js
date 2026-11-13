@@ -678,9 +678,97 @@ function restartCls(el, ...cls) {
   el.classList.remove(...cls); requestAnimationFrame(() => { if (el.isConnected) el.classList.add(...cls); });
 }
 window.VRRestartCls = restartCls;
+/** body:has(...) 대신 body 클래스. body 에 :has 가 걸려 있으면 전투 중 DOM 이 바뀔 때마다(타격 숫자·섬광 등)
+ *  body 와 그 아래 전체 스타일을 다시 계산해서 카드가 많을수록 끊김. 클래스는 같은 프레임 안(마이크로태스크)에 맞춰짐. */
+(function bodyStateSync() {
+  try {
+    if (typeof document === 'undefined' || typeof MutationObserver !== 'function' || !document.body) return;
+    const b = document.body, g = document.getElementById('game');
+    const syncGame = () => { b.classList.toggle('vr-battle-on', !!g && !g.classList.contains('hidden')); b.classList.toggle('vr-bfx-final', !!g && g.classList.contains('bfx-final')); };
+    const syncStory = () => {
+      const scr = document.getElementById('story-screen'), pop = document.getElementById('story-pop');
+      const dlg = !!document.getElementById('story-dlg'), pick = !!(scr?.querySelector('.story-deckpick') || pop?.querySelector('.story-deckpick'));
+      b.classList.toggle('vr-story-dlg', dlg); b.classList.toggle('vr-story-focus', dlg || pick);
+      b.classList.toggle('vr-gr-forced', !!(scr?.querySelector('.gr-forced') || pop?.querySelector('.gr-forced')));
+    };
+    if (g) new MutationObserver(syncGame).observe(g, { attributes: true, attributeFilter: ['class'] });
+    const fxOnly = t => !!(t?.closest?.('#game, #fx-host, #ios-hit-layer, #stfx-layer'));   // 전투·연출 안쪽 변화는 이야기 화면과 무관
+    new MutationObserver(recs => { if (!recs.every(r => fxOnly(r.target))) syncStory(); }).observe(b, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });   // 강제 영입은 class 로 붙음
+    syncGame(); syncStory();
+  } catch {}
+})();
+// iOS: 충돌은 화면 전체가 아니라 작은 고정 레이어 안에서만. DOM은 재사용하며 동시 효과 수를 제한.
+// body 직계에 효과를 매번 붙였다 떼면 :has()/형제 선택자가 전장까지 다시 계산하게 만듦.
+const iosHitPools = new Map();
+/** 타격마다 생겼다 사라지는 효과(숫자·입자·스프라이트)는 body 직계가 아니라 이 상자 안에 — 위치·쌓임 순서는 그대로(스타일 없는 상자) */
+function fxHost() { let h = document.getElementById('fx-host'); if (!h) { h = document.createElement('div'); h.id = 'fx-host'; h.setAttribute('aria-hidden', 'true'); document.body.appendChild(h); } return h; }
+function iosHitPool(kind) {
+  let root = document.getElementById('ios-hit-layer');
+  if (!root) { root = document.createElement('div'); root.id = 'ios-hit-layer'; root.setAttribute('aria-hidden', 'true'); document.body.appendChild(root); }
+  let pool = iosHitPools.get(kind);
+  if (!pool) {
+    pool = { next: 0, slots: [] }; iosHitPools.set(kind, pool);
+    for (let i = 0; i < (kind === 'impact' ? 6 : kind === 'flash' ? 4 : 3); i++) {
+      const outer = document.createElement('div'); outer.className = 'ios-hit-slot'; outer.hidden = true;
+      const inner = document.createElement(kind === 'impact' ? 'img' : 'div'); inner.className = 'ios-hit-' + kind;
+      if (kind === 'impact') { inner.src = HIT_IMG.impact; inner.alt = ''; } else if (kind === 'crit') inner.textContent = 'CRIT';
+      outer.appendChild(inner); root.appendChild(outer); pool.slots.push({ outer, inner, anim: null });
+    }
+  }
+  return pool;
+}
+function iosHitFx(el, kind = 'impact') {
+  const r = fxRect(el); if (!r.width) return;
+  const pk = kind === 'crit' || kind === 'flash' ? kind : 'impact', pool = iosHitPool(pk);
+  const slot = pool.slots.find(s => !s.anim) || pool.slots[pool.next++ % pool.slots.length];
+  if (slot.anim) { slot.anim.onfinish = null; slot.anim.cancel(); }
+  const { outer, inner } = slot, crit = pk === 'crit', flash = pk === 'flash';
+  const size = Math.round(Math.min(crit ? 170 : 128, Math.max(r.width, r.height) * (crit ? 1.25 : 1.1)));
+  outer.style.cssText = flash ? `left:${r.left + r.width / 2}px;top:${r.top + r.height / 2}px;width:${Math.round(r.width)}px;height:${Math.round(r.height)}px`
+    : `left:${r.left + r.width / 2}px;top:${r.top + r.height / 2}px;width:${size}px;height:${size}px`;
+  if (pk === 'impact') { const src = HIT_IMG[kind] || HIT_IMG.impact; if (inner.getAttribute('src') !== src) inner.src = src; }
+  outer.hidden = false;
+  const frames = flash ? [
+    { transform: 'translate(-50%,-50%)', opacity: .9 },
+    { transform: 'translate(-50%,-50%)', opacity: 0 }
+  ] : crit ? [
+    { transform: 'translate(-50%,-50%) scale(.65) rotate(-8deg)', opacity: 0 },
+    { transform: 'translate(-50%,-50%) scale(1) rotate(-8deg)', opacity: 1, offset: .2 },
+    { transform: 'translate(-50%,-60%) scale(1.15) rotate(0deg)', opacity: 0 }
+  ] : [
+    { transform: 'translate(-50%,-50%) scale(.45)', opacity: 0 },
+    { transform: 'translate(-50%,-50%) scale(.9)', opacity: 1, offset: .2 },
+    { transform: 'translate(-50%,-50%) scale(1.2)', opacity: 0 }
+  ];
+  const anim = inner.animate(frames, { duration: crit ? 360 : flash ? 170 : 210, easing: 'ease-out', fill: 'both' }); slot.anim = anim;
+  anim.onfinish = () => { if (slot.anim !== anim) return; outer.hidden = true; anim.cancel(); slot.anim = null; };
+}
+/** iOS HP 바: 폭은 한 번에 새 값, 줄어드는 모습은 transform(scaleX)만 — 매 프레임 배치 계산 없음. 노란 잔상도 같은 방식으로 늦게 따라옴 */
+function iosHpBar(f, to) {
+  const old = parseFloat(f.style.width), nw = parseFloat(to), g = f.previousElementSibling, ghost = g?.classList.contains('hp-ghost') ? g : null;
+  if (!(old >= 0) || old === nw || REDUCED()) { f.style.width = to; if (ghost) ghost.style.width = to; return; }
+  f.style.width = to;
+  if (nw > 0) f.animate([{ transform: `scaleX(${(old / nw).toFixed(4)})` }, { transform: 'scaleX(1)' }], { duration: 350, easing: 'ease-out' });
+  if (!ghost) return;
+  if (nw > old) { ghost.style.width = to; return; }   // 회복: 잔상 없음
+  const gw = parseFloat(ghost.style.width), from = gw > nw ? gw : old;
+  ghost.getAnimations().forEach(x => x.cancel());
+  ghost.style.width = from + '%';
+  const anim = ghost.animate([{ transform: 'scaleX(1)' }, { transform: `scaleX(${(nw / from).toFixed(4)})` }], { duration: 450, delay: 300, easing: 'ease-out', fill: 'forwards' });
+  anim.onfinish = () => { ghost.style.width = to; anim.cancel(); };
+}
+const iosRecoil = new WeakMap();
+function iosCardRecoil(el, up, amp, k) {
+  const card = el.querySelector(':scope > .relative') || el;
+  const prev = iosRecoil.get(card); if (prev) prev.cancel();
+  const dy = (up ? -1 : 1) * Math.min(7, 3 + amp * .3);
+  const anim = card.animate([{ transform: 'translate3d(0,0,0)' }, { transform: `translate3d(0,${dy}px,0)`, offset: .25 }, { transform: 'translate3d(0,0,0)' }], { duration: Math.round(190*k), easing: 'ease-out' });
+  iosRecoil.set(card, anim); anim.onfinish = () => { if (iosRecoil.get(card) === anim) iosRecoil.delete(card); anim.cancel(); };
+}
 function hitFx(el, kind = 'impact') {
   peekHold(el);
   if (!el || FX_OFF() || REDUCED() || !el.isConnected) return;
+  if (IS_IOS()) { iosHitFx(el, kind); return; }
   const r = fxRect(el); if (!r.width) return;
   const img = document.createElement('img');
   img.src = HIT_IMG[kind] || HIT_IMG.impact; img.alt = ''; img.className = `fx-hit ${kind}`; img.setAttribute('aria-hidden', 'true');
@@ -688,24 +776,25 @@ function hitFx(el, kind = 'impact') {
   img.style.width = img.style.height = size + 'px';
   img.style.left = (r.left + r.width / 2) + 'px'; img.style.top = (r.top + r.height / 2) + 'px';
   img.style.setProperty('--rot', `${Math.round(Math.random() * 60 - 30)}deg`);
-  document.body.appendChild(img);
+  fxHost().appendChild(img);
   setTimeout(() => img.remove(), 225);
 }
 /** 1-1 속성 타격 입자 (BFX, CSS 만): 불=불씨 · 얼음=조각 · 바람=칼바람 · 빛=번개 · 어둠=흡수 · 심연=독 거품 · 공허=파문 */
 const EL_PART = { FIRE: 'fire', ICE: 'ice', WIND: 'wind', LIGHT: 'light', DARK: 'dark', ABYSS: 'abyss', VOID: 'void', drain: 'drain', poison: 'abyss' };
 function elemFx(el, kind) {
-  const k = EL_PART[kind]; if (!k || !el || !BFX() || FX_OFF() || REDUCED() || !el.isConnected) return;
+  const k = EL_PART[kind]; if (IS_IOS()) return;   // 충돌 그림과 수치는 유지, 타격마다 9개씩 나오는 입자만 생략
+  if (!k || !el || !BFX() || FX_OFF() || REDUCED() || !el.isConnected) return;
   const r = fxRect(el); if (!r.width) return;
   const box = document.createElement('div'); box.className = `fx-el fx-el-${k}`; box.setAttribute('aria-hidden', 'true');
   box.style.cssText = `left:${r.left + r.width / 2}px;top:${r.top + r.height / 2}px;--s:${Math.round(Math.max(r.width, 60))}px`;
   const n = k === 'light' ? 4 : k === 'void' ? 3 : 9;
   for (let i = 0; i < n; i++) { const a = (i / n) * Math.PI * 2 + Math.random() * 0.6, d = 0.35 + Math.random() * 0.35, q = document.createElement('i');
     q.style.setProperty('--dx', (Math.cos(a) * d).toFixed(2)); q.style.setProperty('--dy', (Math.sin(a) * d).toFixed(2)); q.style.setProperty('--i', i); q.style.setProperty('--rot', `${Math.round(a * 57)}deg`); box.appendChild(q); }
-  document.body.appendChild(box); setTimeout(() => box.remove(), 560);
+  fxHost().appendChild(box); setTimeout(() => box.remove(), 560);
 }
 let skillElAt = 0, skillEl = null;   // 최근 스킬 시전자의 속성 (스킬 피해 입자용)
 let hitPreloaded = false;
-function preloadHit() { if (hitPreloaded) return; hitPreloaded = true; for (const src of Object.values(HIT_IMG)) { const i = new Image(); i.src = src; } }
+function preloadHit() { if (IS_IOS()) { iosHitPool('impact'); iosHitPool('crit'); iosHitPool('flash'); } if (hitPreloaded) return; hitPreloaded = true; for (const src of Object.values(HIT_IMG)) { const i = new Image(); i.src = src; } }
 
 /** 새 전투 연출 (빈 진영 칸 얇게·체력 위기 경고·치명타 섬광/줌/진동·카드 HP 크게). localStorage vrBfx=0 이면 전부 끔 */
 const BFX = () => { try { return localStorage.getItem('vrBfx') !== '0'; } catch { return true; } };
@@ -765,6 +854,11 @@ function shake(el, o = {}) {
   const stop = Math.round((crit || big ? 110 : d >= 1000 ? 85 : 60) * k);   // 히트스톱 ms
   // 흔들림 세기(px): 피해량 로그 스케일 2~7, 치명타 ×1.5, UR/MR ×1.6, 최대 12
   const amp = Math.min(12, (2 + Math.min(5, Math.log10(d + 1) * 1.4)) * (crit ? 1.5 : 1) * (big ? 1.6 : 1));
+  if (IS_IOS()) {   // 전체 화면/전장 흔들기·줌·히트스톱·그림자 재도색 대신 피격 카드만 transform
+    iosHitFx(el, 'flash');   // 하얀 섬광: 카드 위 고정 레이어의 opacity만
+    if (!REDUCED()) iosCardRecoil(el, !!el.closest('#ai-field, #ai-boss, #ai-hero'), amp, k);
+    return;
+  }
   el.classList.remove('fx-shake', 'fx-knock');   // 섬광은 정지 효과라 다시 시작할 필요 없음, 흔들림은 아래 타이머에서 다시 붙음 (강제 재계산 X)
   el.classList.add('fx-hitflash');
   if (REDUCED()) { setTimeout(() => el.classList.remove('fx-hitflash'), 120); return; }
@@ -792,6 +886,7 @@ function shake(el, o = {}) {
 /** 치명타·큰 피해: 화면 가장자리 섬광 + 전장 살짝 줌 + 휴대폰 짧은 진동. CSS 애니메이션만 (턴 길이 그대로) */
 let bigHitTimer;
 function bigHitFx(strong) {
+  if (IS_IOS()) return;   // iOS 치명타는 작은 CRIT 링만 (전체 화면 flash/zoom 없음)
   const g = $('game'), fb = $('field-box'); if (!g) return;
   g.classList.toggle('bfx-hit-strong', !!strong); restartCls(g, 'bfx-hit'); restartCls(fb, 'bfx-zoom');
   clearTimeout(bigHitTimer); bigHitTimer = setTimeout(() => { g.classList.remove('bfx-hit', 'bfx-hit-strong'); fb?.classList.remove('bfx-zoom'); }, 320);
@@ -802,12 +897,13 @@ function bigHitFx(strong) {
 const critSet = new Set();
 function critFx(el) {
   if (!el || FX_OFF() || !el.isConnected) return;
+  if (IS_IOS()) { iosHitFx(el, 'crit'); return; }
   const r = fxRect(el); if (!r.width) return;
   const d = document.createElement('div'); d.className = 'fx-crit'; d.setAttribute('aria-hidden', 'true');
   const size = Math.round(Math.min(Math.max(r.width, r.height) * 1.5, 380));
   d.style.width = d.style.height = size + 'px'; d.style.left = (r.left + r.width / 2) + 'px'; d.style.top = (r.top + r.height / 2) + 'px';
   d.innerHTML = '<i></i><b>CRIT</b>';
-  document.body.appendChild(d); setTimeout(() => d.remove(), REDUCED() ? 250 : 520);
+  fxHost().appendChild(d); setTimeout(() => d.remove(), REDUCED() ? 250 : 520);
 }
 const critNum = (el, n, unit) => { const c = critSet.delete(unit); dmgNumber(el, `-${fmt(n)}`, c ? '#fde047' : undefined, false, c ? 'fx-dmg-crit' : ''); };
 const EL_FX = { guard: ['🛡️', '#7dd3fc', '얼음 방어: 피해 절반'], drain: ['🩸', '#f0abfc', '어둠 흡혈'], cleanse: ['✨', '#fef08a', '빛 정화: 디버프 해제'], darkCounter: ['🌑×2', '#c4b5fd', '어둠 반격 2배'], nullCounter: ['🚫', '#fef9c3', '빛: 반격 무효'] };
@@ -851,7 +947,7 @@ function dmgNumber(el, text, color, html = false, extra = '') {
   d.style.left = (r.left + r.width / 2 + (slot ? 0 : (Math.random() - 0.5) * 16)) + 'px';
   d.style.top = (r.top + r.height * 0.4 - (slot ? Math.min(slot.i, 4) * 26 : 0)) + 'px';
   slot?.push(d);
-  document.body.appendChild(d);
+  fxHost().appendChild(d);
   d.addEventListener('animationend', () => d.remove(), { once: true }); setTimeout(() => d.remove(), 1800);   // 천천히 사라짐 (CSS fxDmg 1.3s · 크리 1.5s)
 }
 
@@ -2204,7 +2300,7 @@ function render() {
     for (const [uid, fn] of binds) { const el = (box.querySelector(`[data-uid="${uid}"]`) || bossBox?.querySelector(`[data-uid="${uid}"]`)); if (el) fn(el); }
     fixImages(box); if (bossBox) fixImages(bossBox);
     stampSigs(box, nb); if (bossBox) stampSigs(bossBox, nbb);
-    requestAnimationFrame(() => [...box.querySelectorAll('.hp-fill'), ...(bossBox ? bossBox.querySelectorAll('.hp-fill') : [])].forEach(f => { const to = f.dataset.to + '%'; if (f.style.width !== to) f.style.width = to; const g = f.previousElementSibling; if (g?.classList.contains('hp-ghost') && g.style.width !== to) g.style.width = to;   /* 잔상 바: CSS 로 늦게 따라옴 */ hpPrev.set(f.closest('[data-uid]').dataset.uid, +f.dataset.to); }) || restampLen(box, bossBox));
+    requestAnimationFrame(() => [...box.querySelectorAll('.hp-fill'), ...(bossBox ? bossBox.querySelectorAll('.hp-fill') : [])].forEach(f => { const to = f.dataset.to + '%'; if (IS_IOS()) iosHpBar(f, to); else { if (f.style.width !== to) f.style.width = to; const g = f.previousElementSibling; if (g?.classList.contains('hp-ghost') && g.style.width !== to) g.style.width = to; }   /* 잔상 바: CSS 로 늦게 따라옴 */ hpPrev.set(f.closest('[data-uid]').dataset.uid, +f.dataset.to); }) || restampLen(box, bossBox));
   }
 
   closeStaleHandDetail();   // 손패 카드 상세가 떠 있는데 그 카드가 손패에서 빠졌으면(소환·회수·자동·이벤트 등 어떤 경로든) 닫기

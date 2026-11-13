@@ -42,15 +42,24 @@ function layer() {
   if (!l) { l = document.createElement('div'); l.id = 'stfx-layer'; l.setAttribute('aria-hidden', 'true'); document.body.appendChild(l); }
   return l;
 }
+const isIOS = () => document.documentElement.classList.contains('ios');
+const iosStatusPool = [];
 function spawn(cls, r, ms, extra) {
-  const d = document.createElement('div');
+  const lite = isIOS();
+  let d;
+  if (lite) {
+    d = iosStatusPool.find(e => e.hidden);
+    if (!d && iosStatusPool.length < 16) { d = document.createElement('div'); layer().appendChild(d); iosStatusPool.push(d); }
+    if (!d) d = iosStatusPool.reduce((a, b) => a._stAt < b._stAt ? a : b);   // 최대 16개: 가장 오래된 것 재사용
+    clearTimeout(d._stTimer); d.style.cssText = ''; d.textContent = ''; d._stAt = performance.now(); d.hidden = false;
+  } else d = document.createElement('div');
   d.className = cls;
   if (r) { d.style.left = (r.left + r.width / 2) + 'px'; d.style.top = (r.top + r.height / 2) + 'px'; d.style.setProperty('--w', r.width + 'px'); d.style.setProperty('--h', r.height + 'px'); }
   const dur = Math.max(120, Math.round(ms * scale()));
   d.style.setProperty('--d', dur + 'ms');
   if (extra) extra(d);
-  layer().appendChild(d);
-  setTimeout(() => d.remove(), dur + 60);
+  if (!lite) layer().appendChild(d);
+  d._stTimer = setTimeout(() => { if (lite) d.hidden = true; else d.remove(); }, dur + 60);
   return d;
 }
 function screen(cls, ms) { if (!opt.quick()) spawn(`stfx-screen ${cls}`, null, ms); }
@@ -103,7 +112,7 @@ export function bleedTickFx(el) {
 export function tickFx(el, kind) {
   if (!el || opt.off() || !el.isConnected) return;
   const r = rectOf(el); if (!r.width) return;
-  const n = opt.quick() ? 3 : kind === 'regen' ? 7 : 6;
+  const n = opt.quick() || isIOS() ? 3 : kind === 'regen' ? 7 : 6;   // iOS: 빨리감기와 같은 입자 수
   if (TICK_ASSET[kind]) spawn(`stfx-tick-img ${kind}`, r, 800, d => { d.style.backgroundImage = `url("${TICK_ASSET[kind]}")`; });
   for (let i = 0; i < n; i++) spawn(`stfx-tick ${kind}`, r, 900, d => { d.style.setProperty('--dx', ((Math.random() - .5) * r.width * .8) + 'px'); d.style.setProperty('--dy', (-(20 + Math.random() * 40)) + 'px'); d.style.animationDelay = Math.round(i * 70 * scale()) + 'ms'; });
   if (kind === 'bleed') screen('stfx-edge-red', 500);
