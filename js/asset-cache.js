@@ -95,7 +95,10 @@
     try {
       const res = await fetch(p, { cache: 'no-cache', credentials: 'same-origin', signal: ctl.signal, priority: prio || 'low', headers: { 'x-vr-prefetch': '1' } });
       if (res.status !== 200) throw Error('HTTP ' + res.status);
-      await c.put(keyUrl(p, h), res);
+      // 내용을 여기서 다 읽은 뒤 저장: 응답을 그대로 cache.put 에 넘기면 끊어도(abort) 브라우저가 뒤에서 계속 받아 회선을 막음
+      const buf = await res.arrayBuffer();
+      if (ctl.signal.aborted) throw Error('aborted');
+      await c.put(keyUrl(p, h), new Response(buf, { status: 200, headers: res.headers }));
     } catch (e) { if (ctl.signal.aborted && !signal?.aborted) throw Error('yield'); throw e; }
     finally { flying.delete(ctl); signal?.removeEventListener('abort', stop); }
   }
