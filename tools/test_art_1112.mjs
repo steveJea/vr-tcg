@@ -1,4 +1,4 @@
-// 2026-11-12 Drive 그림: 프로필 7장(img/npc 576x864 + img/thumb 300x450, OVERRIDE) · 스킬 연출 4장(data/fx 1792x1008)
+// 2026-11-12 Drive 그림: 프로필 7장(img/npc 576x864 + img/thumb 300x450, OVERRIDE) · 스킬 연출(data/fx, 2026-11-13부터 1280x720)
 // skills.json(엔진 입력)은 그대로 두고 js/img-fallback.js 의 VRSkillFx 로 화면 쪽 fx 만 채움.
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
@@ -23,7 +23,7 @@ for (const id of PORTRAITS) {
   assert(readFileSync(`img/npc/${id}.webp`).length <= 100000, id + ' ≤100KB (test_npc_img)');
 }
 const skills = JSON.parse(readFileSync('data/skills.json', 'utf8'));
-for (const [id, list] of Object.entries(FX)) for (const f of list) { assert(existsSync('data/fx/' + f), f); assert.deepEqual(dims('data/fx/' + f), [1792, 1008], f); }
+for (const [id, list] of Object.entries(FX)) for (const f of list) { assert(existsSync('data/fx/' + f), f); assert.deepEqual(dims('data/fx/' + f), [1280, 720], f); }
 // VRSkillFx: 빈 fx 만 채움, 원본 객체 외 다른 카드·기존 fx 는 그대로
 const ctx = { document: { addEventListener() {}, querySelectorAll: () => [], readyState: 'complete' }, window: {}, MutationObserver: class { observe() {} }, HTMLImageElement: class {}, setTimeout, console };
 ctx.globalThis = ctx; ctx.window = ctx; vm.createContext(ctx); vm.runInContext(src, ctx);
@@ -41,4 +41,4 @@ for (const [f, re] of [['js/game.js', /VRSkillFx\?\.\(sk\);[^\n]*\n\s*setSkillDa
   for (const id of sr) { const list = sk[id] || []; if (!list.length) miss.push(id + ':none');
     list.forEach((s, i) => { if (!s.fx || !existsSync('data/fx/' + s.fx)) miss.push(`${id}_${i + 1}`); }); }
   assert.deepEqual(miss, [], 'SR skill images'); }
-console.log('Art 11-12: all 50 SR skills have images · 7 portraits (576x864 + 300x450 thumb, OVERRIDE) · 6 skill fx (1792x1008) via VRSkillFx, skills.json untouched OK');
+console.log('Art 11-12: all 50 SR skills have images · 7 portraits (576x864 + 300x450 thumb, OVERRIDE) · 6 skill fx (1280x720) via VRSkillFx, skills.json untouched OK');

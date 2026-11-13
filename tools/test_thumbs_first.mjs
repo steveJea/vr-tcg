@@ -17,5 +17,5 @@ made[1].onerror(); assert.deepEqual(fx[0], [1, 2], 'heavy starts once thumbs set
 c.primeBattleMedia(); assert.equal(fx.length, 2, 'known thumbs → immediate like before');
 S.me.hand = [{ id: 3 }]; c.primeBattleMedia(); assert.equal(fx.length, 2); timers.at(-1)(); assert.deepEqual(fx[2], [3], 'safety timer flushes slow thumbs');
 assert.match(g, /im\.fetchPriority = 'low'; im\.src = portraitFull\(id\)/, 'portrait prefetch low priority');
-assert.match(g, /img\.fetchPriority = 'low'; img\.src = `data\/fx\/\$\{s\.fx\}`/, 'skill fx prefetch low priority');
+assert.match(g, /function warmFx\(src\)[^\n]*\n[^\n]*\n\s*const im = new Image\(\); im\.decoding = 'async'; im\.fetchPriority = 'low'; im\.src = src;/, 'skill fx prefetch low priority (warmFx)');
 console.log('Thumbs first: new hand thumbs load before portraits/skill art/voices (≤1.2s wait), low priority for big prefetch OK');
