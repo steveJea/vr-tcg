@@ -7,7 +7,7 @@
     { n: 2, id: 'arcade_2', name: '중급', title: '마나 없으면 넌 그냥 개미야', ready: true },
     { n: 3, id: 'arcade_3', name: '상급', title: '이 정도면 언니랑 놀 자격 있네', ready: true },
   ];
-  const FACE = 'https://raw.githubusercontent.com/steveJea/vr-ideal-worldcup/main/img/bt_img/10325.webp';
+  const FACE = '/img/bt_img/10325.webp';
   const GKEY = 'vrArcTut:guest';
   const key = () => window.VRCloud?.user?.id ? `vrArcTut:${window.VRCloud.user.id}` : GKEY;
   const load = () => { try { return JSON.parse(localStorage.getItem(key()) || '{}') || {}; } catch { return {}; } };
@@ -99,7 +99,7 @@
   function promo(force) {
     if (!force && (localStorage.getItem(PROMO_KEY) === '1' || sessionStorage.getItem(PROMO_SS) === '1' || window.VRCloud?.user)) return;
     try { sessionStorage.setItem(PROMO_SS, '1'); } catch {}
-    panel(`<div class="yt-promo"><img class="yt-promo-img" src="https://raw.githubusercontent.com/steveJea/vr-ideal-worldcup/main/img/bt_img/10325.webp" alt="임유리">
+    panel(`<div class="yt-promo"><img class="yt-promo-img" src="/img/bt_img/10325.webp" alt="임유리">
       <b class="yt-promo-t">📖 유리의 특강</b>
       <p>"하… 아케이드도 모르면서 들어온 거야? 언니가 딱 한 번만 알려줄게."</p>
       <p class="yt-note">초급·중급·상급 · 🎁 영입권 10 + 🔮 400</p>

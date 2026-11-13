@@ -6,7 +6,7 @@ import { snapCard } from './pvp-core.js';
 import { runRaid, manualRaid, hitCap, RAID_DIFF, RAID_BOSSES, RAID_TURNS } from './raid-core.js';
 import { modeToggle, bindMode, battleMode, playManual } from './manual-ui.js';
 
-const IMG = 'https://raw.githubusercontent.com/steveJea/vr-ideal-worldcup/main/img/bt_img/';
+const IMG = '/img/bt_img/';
 const UI = 'img/ui/guild/';
 const DECK_KEY = 'vrRaidDeck';
 const card = id => window.TCG?.cardById?.(id);

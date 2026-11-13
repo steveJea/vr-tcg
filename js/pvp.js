@@ -5,7 +5,7 @@ import { LEAGUES, MODES, snapCard, deckCheck, runSeries, manualMatch, roundSeed,
 const VIEW = () => window.TCG?.viewBattle;   // 스토리·탑과 같은 전투 화면 (js/game.js)
 import { PVP_ENGINE_VERSION } from './pvp-engine-version.js';
 import { modeToggle, bindMode, battleMode, playManual } from './manual-ui.js';
-const IMG = 'https://raw.githubusercontent.com/steveJea/vr-ideal-worldcup/main/img/bt_img/';
+const IMG = '/img/bt_img/';
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`);
 const GS = { 'NORMAL': 'N', 'RARE': 'R', 'HIGH RARE': 'HR', 'SUPER RARE': 'SR', 'ULTRA RARE': 'UR', 'MYTHIC RARE': 'MR', 'LEGENDARY RARE': 'LR' };

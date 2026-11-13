@@ -8,7 +8,7 @@ const LOCK_SEL = { auto: '#auto-btn', skip: '#fx-skip', attack_all: '#attack-all
 const key = id => `vrTut:${window.VRCloud?.user?.id || 'guest'}:${id}`;
 let T = null;
 // face: 'card:<카드id>' → 카드 그림 (없으면 img/cards/<id>.webp) · 그 밖엔 이미지 경로 그대로
-const faceSrc = f => { const m = /^card:(\d+)$/.exec(f); return m ? `https://raw.githubusercontent.com/steveJea/vr-ideal-worldcup/main/img/bt_img/${m[1]}.webp` : f; };   // { id, def, i, locks:Set, el:{ov,ring,bub}, raf, cb }
+const faceSrc = f => { const m = /^card:(\d+)$/.exec(f); return m ? `/img/bt_img/${m[1]}.webp` : f; };   // { id, def, i, locks:Set, el:{ov,ring,bub}, raf, cb }
 
 /** 의미 대상 → DOM 요소. 'my_card:0' 'enemy_card:0' 'skill_btn[:n]' 'skill_use' 'attack_all' 'end_turn' 'auto_btn' 또는 CSS 선택자 */
 function resolve(t) {

@@ -8,7 +8,7 @@ import { skillCd, skillMp, setSpare, spareBlocked, setSkillData, setEmitter, set
 import { rngOf } from './direct-rng.js';
 import './enemy-mr.js';
 
-const IMG = 'https://raw.githubusercontent.com/steveJea/vr-ideal-worldcup/main/img/bt_img/';
+const IMG = '/img/bt_img/';
 const NF = new Intl.NumberFormat('ko-KR');
 const fmt = n => NF.format(n);
 const $ = id => document.getElementById(id);
@@ -238,7 +238,7 @@ async function startGame(story = null, at = null) {
   dockStoryBuff(!!story);
   setBattleBg(story?.win === 'ko' ? 'boss' : 'normal', { story, key: story?.bgKey }); preloadHit();
   $('ai-name').textContent = story ? (story.aiName || '적군') : '';   // 아케이드: 이름·아이콘 없음
-  primeBattleMedia(story ? 0 : 10);   // 아케이드: 덱 앞 10장씩 등장 그림까지 미리 디코드 (나머지는 뽑을 때 preloadFx)
+  primeBattleMedia(story ? 0 : 4);   // 아케이드: 손패 + 덱 앞 4장씩 등장 그림 미리 디코드 (나머지는 뽑을 때 preloadFx)
   selected = null; $('log').innerHTML = ''; fxQueue.length = 0; mrCancel?.(); vidGate = Promise.resolve();
   $('end-screen').classList.add('hidden'); $('start-screen').classList.add('hidden'); renderAutoBtn(); $('game').classList.remove('hidden', 'bfx-final', 'bfx-lose'); fitBoardSoon();
   if(!S.arcade) initPlayers(S.me, S.ai, S[first]);   // 0턴 배치 상태(불사·회피 등) 지속 턴 기준 = 선공
@@ -406,7 +406,7 @@ function equipItem(who, unit, type) {
 function opp(who) { return who === 'me' ? S.ai : S.me; }
 
 function noteAct(k, extra = {}) {
-  if (!S?.directLog || S.view) return;
+  if (!S?.directLog || S.view || S.over) return;   // 끝난 뒤 행동은 기록 안 함 (서버 재계산에서 tampered 방지)
   const row = { t: S.myTurns | 0, k };
   for (const [key, value] of Object.entries(extra)) if (value != null) row[key] = value;
   S.directLog.push(row);
@@ -1339,15 +1339,35 @@ fetch('data/voice/index.json').then(r => r.ok ? r.json() : []).then(a => { voice
 function voiceKey(u, name) {
   try { const i = skillsOf(u.card.id).findIndex(x => x.name === name); return i < 0 ? null : `${u.card.id}_${i + 1}`; } catch { return null; }
 }
+// 보이스 캐시: 최근에 쓴 순서(LRU)로 최대 VOICE_CACHE_MAX개만 유지. 오래 안 쓴 것은 연결을 끊어 메모리 반환
+// (재생 중이거나 5초 안에 쓴 것은 남김 → 한 화면에서 동시에 필요한 보이스가 많아도 다시 받는 일 없음)
+const VOICE_CACHE_MAX = 60, VOICE_KEEP_MS = 5000;
+function trimVoiceCache() {
+  if (voiceCache.size <= VOICE_CACHE_MAX) return;
+  const now = performance.now();
+  for (const [k, a] of voiceCache) {
+    if (voiceCache.size <= VOICE_CACHE_MAX) break;
+    if (a === voiceCur || !a.paused || now - (a._vUsed || 0) < VOICE_KEEP_MS) continue;
+    voiceCache.delete(k);
+    try { a.removeAttribute('src'); a.load(); } catch {}
+  }
+}
 function voiceAudio(k) {
   let a = voiceCache.get(k);
-  if (!a) { a = new Audio(); a.preload = 'auto'; a.src = `data/voice/${k}.mp3`; voiceCache.set(k, a); trackVoice(a); }
+  if (a) voiceCache.delete(k);   // 맨 뒤(가장 최근)로 옮김
+  else { a = new Audio(); a.preload = 'auto'; a.src = `data/voice/${k}.mp3`; trackVoice(a); }
+  a._vUsed = performance.now(); voiceCache.set(k, a); trimVoiceCache();
   return a;
 }
+/** 전투 미리 받기: 등장 보이스(<id>_0)만. 스킬 보이스는 내 손패·필드에 올라온 카드만 preloadSkillVoice 로 */
 function preloadVoice(cards) {
   if (!voiceSet) { for (const c of cards) voicePending.set(String(c.id), c); return; }
+  for (const c of cards) { const entry = `${c.id}_0`; if (voiceSet.has(entry)) voiceAudio(entry); }
+}
+function preloadSkillVoice(cards) {
+  if (!voiceSet) return;
   for (const c of cards) {
-    const entry = `${c.id}_0`; if (voiceSet.has(entry)) voiceAudio(entry);
+    if (c?.id == null) continue;
     skillsOf(c.id).forEach((s, i) => { const k = `${c.id}_${i + 1}`; if (voiceSet.has(k)) voiceAudio(k); });
   }
 }
@@ -1435,10 +1455,29 @@ function entryReady(src, ms = 250) {
   const p = entryWarm.get(src); if (!p) return Promise.resolve();
   return Promise.race([p, sleep(ms)]);
 }
+// 스킬 연출 그림: 받기만 하던 것을 디코드까지 미리 해 둠 (컷인이 뜰 때 큰 그림 디코드로 버벅이던 문제).
+// 디코드된 그림은 메모리를 먹으므로 최근 24장만 붙잡아 둠 (1280×720 ≈ 3.7MB/장).
+const fxWarm = new Map();
+function warmFx(src) {
+  if (fxWarm.has(src)) { const v = fxWarm.get(src); fxWarm.delete(src); fxWarm.set(src, v); return v.p; }
+  const im = new Image(); im.decoding = 'async'; im.fetchPriority = 'low'; im.src = src;
+  const p = (im.decode ? im.decode() : new Promise(r => { im.onload = im.onerror = r; })).then(() => { v.ok = true; }, () => { v.ok = true; });
+  const v = { im, p, ok: false }; fxWarm.set(src, v);
+  while (fxWarm.size > 24) { const k = fxWarm.keys().next().value; fxWarm.delete(k); fxLoaded.delete(k.slice(8)); }
+  return p;
+}
+/** 컷인 직전: 그림이 아직 디코드 전이면 최대 ms 만 기다림 (안 받아 둔 그림이면 지금 받기 시작) */
+function fxReady(fx, ms = 220) {
+  if (!fx || /\.(mp4|webm)$/i.test(fx)) return Promise.resolve();
+  const src = `data/fx/${fx}`, v = fxWarm.get(src);
+  if (v?.ok) return Promise.resolve();
+  fxLoaded.add(fx);
+  return Promise.race([warmFx(src), sleep(ms)]);
+}
 function preloadFx(cards) {
   for (const c of cards) for (const s of skillsOf(c.id)) {
     if (!s.fx || fxLoaded.has(s.fx) || /\.(mp4|webm)$/i.test(s.fx)) continue;
-    fxLoaded.add(s.fx); const img = new Image(); img.decoding = 'async'; img.src = `data/fx/${s.fx}`;
+    fxLoaded.add(s.fx); warmFx(`data/fx/${s.fx}`);
   }
   try { preloadVoice(cards); } catch {}
   warmPortraits(cards);
@@ -1450,17 +1489,36 @@ function warmThumbs(cards) {
     if (c?.id == null) continue;
     const src = cardThumb(c.id); if (thumbWarmed.has(src)) continue;
     const im = new Image(); im.decoding = 'async'; im.fetchPriority = 'high';
+    im._ok = !('onload' in im); im.onload = im.onerror = () => { im._ok = true; flushHeavy(); };   // 다 받으면 미뤄 둔 큰 그림·보이스 시작
     thumbWarmed.set(src, im); im.src = src;
     if (thumbWarmed.size > 96) thumbWarmed.delete(thumbWarmed.keys().next().value);
   }
 }
+// 등장 컷인 그림 미리 디코드: 아케이드 시작 때 손패 + 덱 앞 4장 (예전 10장 → 4장, 큰 1792×1008 그림 디코드 부담 줄임)
 function primeBattleMedia(entryAhead = 0) {
   if (!S) return;
   if (entryAhead && !S.story) warmEntries([...S.me.hand, ...S.ai.hand, ...S.me.deck.slice(0, entryAhead), ...S.ai.deck.slice(0, entryAhead)]);
   const visible = [...S.me.hand, ...S.ai.hand, ...S.me.field.map(u => u.base || u.card), ...S.ai.field.map(u => u.base || u.card)];
   const next = [...S.me.deck.slice(0, 2), ...S.ai.deck.slice(0, 2)];
   warmThumbs([...visible, ...next]);
-  preloadFx([...visible, ...next]);
+  queueHeavy([...visible, ...next], [...S.me.hand, ...S.me.field.map(u => u.base || u.card), ...S.ai.field.map(u => u.base || u.card)]);
+}
+// 썸네일 먼저: 새 카드(패 섞기·드로우)의 썸네일(장당 ~19KB)을 다 받을 때까지 큰 미디어(원본 초상화 ~120KB·스킬 연출 그림·보이스, 장당 ~250KB)는 잠깐 미룸.
+// 최대 1.2초만 기다림. 썸네일이 이미 있으면 예전처럼 바로 받음.
+const heavyFx = new Map(), heavySk = new Map(); let heavyT = 0;
+const thumbOk = c => { const im = thumbWarmed.get(cardThumb(c.id)); return !im || im._ok; };
+function queueHeavy(fxCards, skCards) {
+  for (const c of fxCards) if (c?.id != null) heavyFx.set(String(c.id), c);
+  for (const c of skCards) if (c?.id != null) heavySk.set(String(c.id), c);   // 스킬 보이스: 쓸 수 있는 카드만 (손패에 들어오거나 필드에 나오면 받기 시작)
+  flushHeavy();
+  if ((heavyFx.size || heavySk.size) && !heavyT) heavyT = setTimeout(() => flushHeavy(true), 1200);
+}
+function flushHeavy(force = false) {
+  if (!force && [...heavyFx.values()].some(c => !thumbOk(c))) return;
+  if (heavyT) { clearTimeout(heavyT); heavyT = 0; }
+  const fx = [...heavyFx.values()], sk = [...heavySk.values()]; heavyFx.clear(); heavySk.clear();
+  if (fx.length) preloadFx(fx);
+  try { if (sk.length) preloadSkillVoice(sk); } catch {}
 }
 // 상세 창 초상화: 손패·필드에 이미 뜬 썸네일(img/thumb)을 먼저 보여 주고, 원본(bt_img)이 디코드되면 교체.
 // GitHub raw 원본은 캐시가 짧아 모바일에서 까만 칸이 잠깐 보이던 문제를 막음.
@@ -1471,7 +1529,7 @@ function warmPortraits(cards) {
     const id = c?.id; if (id == null) continue;
     const k = String(id); if (portraitWarmed.has(k)) continue;
     portraitWarmed.add(k);
-    const im = new Image(); im.decoding = 'async'; im.src = portraitFull(id);
+    const im = new Image(); im.decoding = 'async'; im.fetchPriority = 'low'; im.src = portraitFull(id);   // 상세 창용 원본: 썸네일보다 뒤로
   }
 }
 function fillDetailPortrait(img, id) {
@@ -1505,6 +1563,7 @@ async function cutIn(u, name, fx, passive = false) {
   playVoice(u, name);
   if (!passive) { skillEl = u?.card?.class; skillElAt = performance.now(); }
   if (CUT_OFF() || (FX_OFF() && !fx)) return;   // 연출 스킵 중엔 이미지 있는 스킬만 짧게
+  if (fx) await fxReady(fx);   // 디코드 전이면 잠깐(≤220ms) 기다렸다 띄움 → 반쯤 그려진 그림·멈칫 방지
   const el = $('cutin');
   el.innerHTML = cutInHTML(u, name, fx, passive);
   const ms = FX_OFF() ? CUT_QUICK : cutinMs(fx ? 1300 : passive ? 500 : 750);
@@ -1654,10 +1713,11 @@ function passiveCutIn(u, name) {
   }
   passiveCutInPlain(u, name, s, key);
 }
-function passiveCutInPlain(u, name, s, key = null) {
+async function passiveCutInPlain(u, name, s, key = null) {
   if (s?.fx || FX_OFF()) playVoice(u, name);
   if (CUT_OFF() || !s?.fx) { if (key && voiceKey(u, name)) S.fxSeen.add(key); return; }
   if (key) S.fxSeen.add(key);
+  const st = S; await fxReady(s.fx); if (S !== st) return;   // 디코드 전이면 잠깐(≤220ms) 기다림
   const el = $('cutin');
   el.innerHTML = cutInHTML(u, name, s.fx, true);
   const ms = FX_OFF() ? CUT_QUICK : cutinMs(1100);
@@ -2425,15 +2485,35 @@ function renderStats() {
 }
 
 // ===== 용병 고용 UI =====
+// 이스터에그 (보기 전용): 용병 창에 0.1% 확률로 장서현·장서아가 4번째 '유령 카드'로 슬쩍 보임. 고용 불가·엔진 행동 없음.
+// 진짜 용병 3명은 그대로 고용 가능. 확률은 엔진 RNG 가 아닌 브라우저 crypto 로 판마다 한 번. 테섭에서 ?egg=1 이면 항상 보임.
+const MERC_EGG_IDS = ['10335', '10334'], MERC_EGG_RATE = 0.001, mercEggOf = new WeakMap();
+const eggRand = () => { try { return crypto.getRandomValues(new Uint32Array(1))[0] / 4294967296; } catch { return 1; } };
+function mercEggPick(battle, { force = false, rand = eggRand, npc = NPC } = {}) {
+  if (!battle || battle.story || battle.at) return null;
+  if (!mercEggOf.has(battle)) {
+    const hit = force || rand() < MERC_EGG_RATE, id = MERC_EGG_IDS[rand() < 0.5 ? 0 : 1];
+    mercEggOf.set(battle, hit ? (npc.find(c => String(c.id) === id) || null) : null);
+  }
+  return mercEggOf.get(battle);
+}
+const mercEggForced = () => { try { return window.VRCloud?.isStaging === true && new URLSearchParams(location.search).get('egg') === '1'; } catch { return false; } };
+function mercEggHTML(c) {
+  return `<div class="merc-egg flex flex-col items-center gap-1" data-egg="${c.id}" title="???" style="filter:drop-shadow(0 0 10px rgba(232,121,249,.75))">${cardHTML(c)}
+      <button type="button" disabled class="w-full px-2 py-1.5 rounded-lg bg-fuchsia-900/70 text-fuchsia-200 text-xs font-bold">아직은 안 돼요~</button>
+      <div class="text-[10px] h-3 text-fuchsia-300">어라…? 뭐지?</div></div>`;
+}
 function renderMerc() {
+  const egg = mercEggPick(S, { force: mercEggForced() });
   $('merc-list').innerHTML = S.mercOffer.map(c => {
     const r = Merc.canBuy(c, S.me), price = Merc.price(c);
     return `<div class="flex flex-col items-center gap-1">${cardHTML(c, { dim: !r.ok })}
       <button data-merc="${c.id}" ${r.ok ? '' : 'disabled'} class="w-full px-2 py-1.5 rounded-lg bg-amber-400 hover:bg-amber-300 disabled:bg-zinc-700 disabled:text-zinc-400 text-black text-xs font-bold">${r.hired ? '✅ 고용됨' : `${ic('mana')}${price}`}</button>
       <div class="text-[10px] h-3 ${r.ok ? 'text-zinc-500' : r.hired ? 'text-amber-300' : 'text-red-400'}">${r.ok ? `기본 ${c.cost} ×${Merc.PRICE[c.grade]}` : r.reason}</div></div>`;
-  }).join('');
+  }).join('') + (egg ? mercEggHTML(egg) : '');
   $('merc-msg').innerHTML = `보유 마나 ${ic('mana')}${S.me.mana}`;
   $('merc-list').querySelectorAll('[data-merc]').forEach(b => b.onclick = () => buyMerc(b.dataset.merc));
+  $('merc-list').querySelector('[data-egg]')?.addEventListener('click', e => { e.stopPropagation(); playVoiceKey(`${e.currentTarget.dataset.egg}_0`); });   // 탭하면 등장 보이스 (보이스 설정·1.15배 그대로)
 }
 function buyMerc(id) {
   if(S?.arcade){if(S.turn!=='me'||S.over||S.busy)return;arcadeSimple('me',{k:'merc',id:String(id)});hideModal('merc');return;}
@@ -2623,6 +2703,7 @@ window.addEventListener('vr:user', () => {
       POOL = arcadePool(all); NPC = [...all.filter(isNpc), ...npc.filter(isNpc)]; }
     setCardPool(POOL);
     const [sk, co] = await Promise.all(['data/skills.json', 'data/combos.json'].map(u => fetch(u).then(r => r.json())));
+    globalThis.VRSkillFx?.(sk);   // 추가 스킬 연출 이미지 (js/img-fallback.js, 엔진 입력 skills.json 은 그대로)
     setSkillData(sk, co); setEmitter(onEngine); globalThis.VRQuestSkillMult = c => skillCountMult(skillsOf(c?.id));
     $('start-btn').disabled = false; setStartLabel('아케이드');
     $('start-btn').onclick = () => startGame();

@@ -4,7 +4,7 @@
 // 확장: VRMyPage.addSection({ id, title, order, render(ctx) => html }) / CURRENCIES 에 재화 추가
 // 리더 영상 훅: data/movie/<id>.mp4 가 있으면 리더 카드를 탭할 때 음소거 인라인 재생
 (() => {
-  const IMG = 'https://raw.githubusercontent.com/steveJea/vr-ideal-worldcup/main/img/bt_img/';
+  const IMG = '/img/bt_img/';
   const SHORT = { 'NORMAL': 'N', 'RARE': 'R', 'HIGH RARE': 'HR', 'SUPER RARE': 'SR', 'ULTRA RARE': 'UR', 'MYTHIC RARE': 'MR', 'LEGENDARY RARE': 'LR' };
   const $ = id => document.getElementById(id);
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -51,7 +51,7 @@
   // ---- 리더 영상 훅 ----
   const movieCache = new Map();
   // 저장소에 있는 영상만 요청한다. 없는 id 는 HEAD 로 404 를 내지 않는다.
-  const MOVIES = new Set(['10012', '10051', '10053', '10058', '10060', '10062', '10256', '10291', '10300', '10304', '10311', '10323', '10324', '10326', '10359', '10442']);
+  const MOVIES = new Set(['10012', '10051', '10053', '10054', '10058', '10060', '10062', '10118', '10176', '10231', '10256', '10291', '10300', '10304', '10311', '10312', '10317', '10322', '10323', '10324', '10325', '10326', '10331', '10358', '10359', '10435', '10440', '10442', '10511', '10512', '10513', '10521', '10522', '10523', '10524', '10525', '10526', '10527', '10528', '10529', '10530', '10531']);
   async function movieFor(id) {
     const key = String(id);
     if (movieCache.has(key)) return movieCache.get(key);

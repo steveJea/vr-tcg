@@ -330,3 +330,21 @@
 #main-menu-pop.gm-in-battle [data-gm-nobattle], #main-menu-pop.gm-in-battle [data-gm-home], #main-menu-pop.gm-away [data-gm-home] { display: none !important; }
 #main-menu-pop:not(.hidden) { z-index: 9600 !important; }
 .set-range { width: 8.5rem; accent-color: #f5c96a; }
+/* 게스트 시작 확인창: 두 줄 + 긴 버튼 글자 (모바일 줄바꿈) */
+#vr-confirm.vc-guest .vc-msg{display:flex;flex-direction:column;gap:8px;text-align:center;word-break:keep-all;overflow-wrap:anywhere;line-height:1.5}
+.vc-guest-h{font-weight:900;font-size:15px;text-wrap:balance}
+.vc-guest-s{font-size:13px;opacity:.85;text-wrap:balance}
+#vr-confirm.vc-guest .vc-row{flex-wrap:wrap;gap:8px}
+#vr-confirm.vc-guest .vc-row button{flex:1 1 120px;min-width:0;white-space:nowrap;padding-left:10px;padding-right:10px}
+.oauth-row.oauth-flash{animation:oauthFlash 1.4s ease 1}
+@keyframes oauthFlash{0%,100%{filter:none}30%,70%{filter:drop-shadow(0 0 10px rgba(251,191,36,.9)) brightness(1.15)}}
+@media (prefers-reduced-motion: reduce){.oauth-row.oauth-flash{animation:none;outline:2px solid #fbbf24;outline-offset:4px;border-radius:12px}}
+/* 설정: 전체 리소스 받기 / 캐시 삭제 */
+.set-label .as-sum{display:block;font-size:11px;font-weight:600;opacity:.7;margin-top:2px;word-break:keep-all}
+.as-btn{min-width:56px}
+.as-btn:disabled{opacity:.45}
+.as-prog{margin:2px 0 10px}
+.as-prog .as-bar{height:8px;border-radius:999px;background:rgba(255,255,255,.12);overflow:hidden;border:1px solid rgba(251,191,36,.35)}
+.as-prog .as-bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#b45309,#fbbf24);transition:width .2s}
+.as-prog-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:6px;font-size:12px;color:#fde7b0}
+.as-cancel{padding:4px 10px;border-radius:8px;background:#27272a;border:1px solid #52525b;color:#e4e4e7;font-size:12px;font-weight:800}

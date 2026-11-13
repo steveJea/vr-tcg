@@ -3,7 +3,7 @@
 // 조회는 Supabase gallery 테이블. 스킬 이미지는 VIP 왕관 등급으로 개방된 것만 노출.
 (() => {
   const IC = n => window.VRIcon?.icon(n) || '';   // js/icons.js
-  const IMG = 'https://raw.githubusercontent.com/steveJea/vr-ideal-worldcup/main/img/bt_img/';
+  const IMG = '/img/bt_img/';
   const ORDER = ['NORMAL', 'RARE', 'HIGH RARE', 'SUPER RARE', 'ULTRA RARE', 'MYTHIC RARE', 'LEGENDARY RARE'];
   const SHORT = { 'NORMAL': 'N', 'RARE': 'R', 'HIGH RARE': 'HR', 'SUPER RARE': 'SR', 'ULTRA RARE': 'UR', 'MYTHIC RARE': 'MR', 'LEGENDARY RARE': 'LR' };
   const LABEL = { N: '노멀', R: '레어', HR: '하이 레어', SR: '슈퍼 레어', UR: '울트라 레어', MR: '미식 레어' };
@@ -44,19 +44,26 @@
   let skills = null, voices = null;
   async function loadSkills() {
     if (skills) return;
-    try { skills = await (await fetch('data/skills.json')).json(); } catch { skills = {}; }
+    try { skills = await (await fetch('data/skills.json')).json(); globalThis.VRSkillFx?.(skills); } catch { skills = {}; }
     try { voices = new Set(await (await fetch('data/voice/index.json')).json()); } catch { voices = new Set(); }
   }
   const skillsOf = id => (skills && skills[id]) || [];
+  // 도감 보이스 재생: 오디오 하나를 계속 다시 씀 (누를 때마다 새로 만들어 쌓이지 않게)
   let voiceAudio = null;
+  function galleryAudio() {
+    if (voiceAudio) return voiceAudio;
+    const a = voiceAudio = new Audio(); a.preload = 'auto'; window.VRVoice?.track(a);
+    a.addEventListener('playing', () => window.VRSound?.duck?.(true));
+    const off = () => setTimeout(() => { if (a.paused || a.ended) window.VRSound?.duck?.(false); }, 60);
+    a.addEventListener('ended', off); a.addEventListener('pause', off); a.addEventListener('error', off);
+    a._off = off;
+    return a;
+  }
   function playVoice(key) {
     try {
-      voiceAudio?.pause();
-      const a = voiceAudio = new Audio(`data/voice/${key}.mp3`); window.VRVoice?.track(a);
-      a.addEventListener('playing', () => window.VRSound?.duck?.(true));
-      const off = () => setTimeout(() => { if (voiceAudio === a || a.paused) window.VRSound?.duck?.(false); }, 60);
-      a.addEventListener('ended', off); a.addEventListener('pause', off); a.addEventListener('error', off);
-      a.play().catch(off);
+      const a = galleryAudio();
+      a.pause(); a.src = `data/voice/${key}.mp3`; a.currentTime = 0;
+      a.play().catch(a._off);
     } catch {}
   }
 
