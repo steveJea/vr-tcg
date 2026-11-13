@@ -325,6 +325,25 @@
   <script>/* 아이폰·아이패드(사파리 엔진) 표시 → css/ios-lite.css 가벼운 연출 */(function(){var u=navigator.userAgent,i=/iP(hone|ad|od)/.test(u)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);if(i||/[?&]ioslite=1/.test(location.search))document.documentElement.classList.add("ios");})();</script>
 </head>
 <body class="bg-zinc-950 text-white min-h-screen select-none">
+<!-- 첫 화면 로딩: 꼭 필요한 그림만 기다렸다가 들어감 (js/asset-cache.js · 최대 8초) -->
+<div id="vr-boot" role="status" aria-live="polite" aria-label="게임 불러오는 중">
+  <style>
+    #vr-boot{position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;background:radial-gradient(ellipse at 50% 40%,#2a0d1a 0,#09060c 70%);color:#fde7b0;font-family:system-ui,-apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;animation:vbIn .25s ease .15s both;transition:opacity .3s}
+    #vr-boot.vb-out{opacity:0;pointer-events:none}
+    #vr-boot .vb-logo{width:min(72vw,420px);height:auto;filter:drop-shadow(0 6px 24px rgba(0,0,0,.7))}
+    #vr-boot .vb-bar{width:min(70vw,360px);height:8px;border-radius:999px;background:rgba(255,255,255,.12);overflow:hidden;border:1px solid rgba(251,191,36,.35)}
+    #vr-boot .vb-bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#b45309,#fbbf24,#fde68a);transition:width .2s}
+    #vr-boot .vb-txt{font-size:14px;font-weight:800;letter-spacing:-.2px}#vr-boot .vb-pct{color:#fbbf24;margin-left:6px}
+    #vr-boot .vb-tip{font-size:12px;opacity:.65;text-align:center;word-break:keep-all;text-wrap:balance}
+    @keyframes vbIn{from{opacity:0}to{opacity:1}}
+    @media (prefers-reduced-motion: reduce){#vr-boot,#vr-boot .vb-bar i{animation:none;transition:none}}
+  </style>
+  <img class="vb-logo" fetchpriority="high" src="img/ui/main/logo_boot.webp" alt="Violence Royale : The Abyss Gate" width="600" height="298">
+  <div class="vb-bar"><i></i></div>
+  <div class="vb-txt">게임을 준비하고 있어요…<span class="vb-pct">0%</span></div>
+  <div class="vb-tip">처음 한 번만 조금 걸려요. 다음부턴 기기에 저장해 두고 빨리 열어 줄게요!</div>
+</div>
+<script src="js/asset-cache.js"></script>
 
 <!-- 시작 화면 -->
 <section id="intro" class="intro hidden" aria-label="Violence Royale : The Abyss Gate">
@@ -423,6 +442,9 @@
       <div class="set-row"><span class="set-label">🎙️ 스킬 보이스</span><button id="main-voice" class="set-toggle on" type="button" role="switch" aria-checked="true" aria-label="스킬 보이스">ON</button></div>
       <div class="set-row"><span class="set-label">🔉 보이스·효과음 음량</span><input id="main-voice-vol" class="set-range" type="range" min="0" max="100" step="5" aria-label="보이스·효과음 음량"></div>
       <div class="set-row"><span class="set-label">📳 진동</span><button id="main-haptic" class="set-toggle on" type="button" role="switch" aria-checked="true" aria-label="진동">ON</button></div>
+      <div class="set-row set-assets"><span class="set-label">📦 전체 리소스 받기<small id="as-sum" class="as-sum"></small></span><button id="as-dl" class="set-toggle as-btn" type="button">받기</button></div>
+      <div id="as-prog" class="as-prog" hidden><div class="as-bar"><i></i></div><div class="as-prog-row"><span class="as-txt">0%</span><button id="as-cancel" class="as-cancel" type="button">그만 받기</button></div></div>
+      <div class="set-row"><span class="set-label">🧹 캐시 삭제<small id="as-have" class="as-sum"></small></span><button id="as-clear" class="set-toggle as-btn" type="button">삭제</button></div>
       <div id="consent-settings" class="hidden" data-clarity-mask="true"></div>
       <button class="main-btn w-full mt-4" type="button" data-close-settings>닫기</button>
     </div>
