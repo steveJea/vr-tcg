@@ -2133,10 +2133,11 @@
   const GACHA_BANNERS = [{ key: 'daily', label: '일반' }, { key: 'special', label: '프리미엄' }, { key: 'pickup', label: '스페셜', img: 'special' }];   // pickup = 스페셜 소환 (이벤트 픽업)
   const spBadge = () => `<span class="story-ticket sp-ticket" title="스페셜 소환권">✨ <b>${window.VRSpecial?.tickets ?? '…'}</b></span>`;
   /** 스페셜 소환 보유·천장 줄 */
+  const spPick = () => { const S = window.VRSpecial, k = S.ursToPickup, nm = esc(S.banner().pickup_name || ''); return k <= 1 ? `다음 UR은 ${nm} 확정` : `${nm} 확정까지 UR ${k}번`; };
   function spOwn() {
     const S = window.VRSpecial, b = S?.banner();
     if (!S || !b?.open) return `<div class="gr-own sp-own" id="gr-own">스페셜 소환 <b class="sp-prep">준비 중</b></div>`;
-    return `<div class="gr-own sp-own" id="gr-own">보유 스페셜 소환권 ✨ <b id="sp-own-n">${S.tickets ?? '…'}</b> · 천장 <b id="sp-pity">${S.misses}/${b.pity}</b> <small>(${b.pity}회째 ${esc(b.pickup_name || '')} 확정)</small></div>`;
+    return `<div class="gr-own sp-own" id="gr-own">보유 스페셜 소환권 ✨ <b id="sp-own-n">${S.tickets ?? '…'}</b> · UR 천장 <b id="sp-pity">${S.misses}/${b.pity}</b><br><small id="sp-pick">${spPick()}</small></div>`;
   }
   function renderShop(tab) {
     if (tab) shopTab = tab;
@@ -2164,8 +2165,8 @@
     root().querySelectorAll('[data-tab]').forEach(b => b.onclick = () => renderShop(b.dataset.tab));
     { const bn = root().querySelector('.gr-banners'), on = bn?.querySelector('.gr-bn.on'); if (bn && on && shopTab === 'pickup') bn.scrollLeft = on.offsetLeft - bn.clientWidth + on.offsetWidth + 40; }   // 스페셜 배너가 오른쪽에 있으니 보이게
     $('gacha-rates').onclick = () => window.VRSpecial ? window.VRSpecial.showRates() : showRates();
-    if (pickup && window.VRSpecial && !window.__TICKET_MOCK?.noSpecial) { const was = JSON.stringify([window.VRSpecial.tickets, window.VRSpecial.misses, spOpen]);
-      window.VRSpecial.refresh().then(() => { if (shopTab === 'pickup' && root().querySelector('.story-shop') && !root().querySelector('#tk-result')?.children.length && JSON.stringify([window.VRSpecial.tickets, window.VRSpecial.misses, window.VRSpecial.banner().open]) !== was) renderShop(); }); }
+    if (pickup && window.VRSpecial && !window.__TICKET_MOCK?.noSpecial) { const was = JSON.stringify([window.VRSpecial.tickets, window.VRSpecial.misses, window.VRSpecial.offUrs, spOpen]);
+      window.VRSpecial.refresh().then(() => { if (shopTab === 'pickup' && root().querySelector('.story-shop') && !root().querySelector('#tk-result')?.children.length && JSON.stringify([window.VRSpecial.tickets, window.VRSpecial.misses, window.VRSpecial.offUrs, window.VRSpecial.banner().open]) !== was) renderShop(); }); }
     if (tickets == null) syncTickets().then(r => { if (root().querySelector('.story-shop')) { if (r.added) toast(`🎟️ 소환권 +${r.added} (챕터 클리어 보상)`); renderShop(); } });
     if (!daily && !forcedPullOn) { const was = urTickets; syncUrTickets().then(n => { if ((n | 0) !== (was | 0) && shopTab === 'special' && root().querySelector('.story-shop') && !root().querySelector('#tk-result')?.children.length) renderShop(); }); }
     if (!daily) {
@@ -2175,7 +2176,7 @@
         root().querySelectorAll('[data-draw]').forEach(x => x.disabled = true); $('gacha-msg').textContent = ''; $('tk-result').innerHTML = ''; resultOn = false;
         const before = new Set(save.owned.map(o => o.uid));
         const r = await drawTickets(+b.dataset.draw, !!b.dataset.ur, !!b.dataset.sp);
-        const spSync = () => { const S = window.VRSpecial; if (!pickup || !S) return; const n = $('sp-own-n'), p = $('sp-pity'); if (n) n.textContent = S.tickets | 0; if (p) p.textContent = `${S.misses}/${S.banner().pity}`; root().querySelectorAll('.sp-ticket b').forEach(x => x.textContent = S.tickets | 0); };
+        const spSync = () => { const S = window.VRSpecial; if (!pickup || !S) return; const n = $('sp-own-n'), p = $('sp-pity'); if (n) n.textContent = S.tickets | 0; if (p) p.textContent = `${S.misses}/${S.banner().pity}`; { const k = $('sp-pick'); if (k) k.innerHTML = spPick(); } root().querySelectorAll('.sp-ticket b').forEach(x => x.textContent = S.tickets | 0); };
         spSync();
         { const ou = $('gr-own-ur'); if (ou) ou.textContent = urTickets | 0; }
         if (!pickup) { const ob = $('gr-own')?.querySelector('b'); if (ob) ob.textContent = tickets | 0; }
