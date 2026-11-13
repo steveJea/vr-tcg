@@ -7,7 +7,7 @@
   /** 첫 스페셜 배너 (SQL insert 와 같아야 함 · tools/test_special_summon.mjs 가 확인) */
   const CONFIG = {
     banner_id: 'hajihye-20261113', pickup_id: '10440', pickup_name: '하지혜',
-    starts_at: '2026-11-13T00:00:00+09:00', ends_at: null, pity: 50,
+    starts_at: '2026-11-13T00:00:00+09:00', ends_at: null, pity: 50, pickup_after: 2,
     rates: { 'NORMAL': 5000, 'RARE': 3000, 'HIGH RARE': 1000, 'SUPER RARE': 800, pickup: 100, other_ur: 100 },
   };
   /** 프리미엄 UR 목록 (supabase/gacha_premium_ur.sql story_premium_ur 와 같아야 함). 스페셜 "그 외 UR" = 이 목록 − 픽업 */
@@ -28,12 +28,12 @@
     } catch { status = null; return null; }
   }
   async function draw(n) {
-    if (window.__SPECIAL_MOCK) { const r = await window.__SPECIAL_MOCK.draw(n); if (r?.ok && status) Object.assign(status, { tickets: r.tickets, misses: r.misses }); return r; }
+    if (window.__SPECIAL_MOCK) { const r = await window.__SPECIAL_MOCK.draw(n); if (r?.ok && status) Object.assign(status, { tickets: r.tickets, misses: r.misses, off_urs: r.off_urs }); return r; }
     const sb = cloud()?.sb, u = cloud()?.user;
     if (!sb || !u) return { ok: false, reason: 'error', msg: '로그인이 필요해요' };
     const { data, error } = await sb.rpc('special_summon_draw', { p_banner: banner().banner_id, p_count: n });
     if (error) { if (isMissing(error)) { missing = true; return { ok: false, reason: 'preparing' }; } return { ok: false, reason: 'error', msg: error.message }; }
-    if (data?.ok && status) Object.assign(status, { tickets: data.tickets, misses: data.misses });
+    if (data?.ok && status) Object.assign(status, { tickets: data.tickets, misses: data.misses, off_urs: data.off_urs });
     else if (data?.tickets != null && status) status.tickets = data.tickets;
     return data || { ok: false, reason: 'error' };
   }
@@ -62,9 +62,10 @@
     const sp = [...GRADES.map(g => [g, (r[g] || 0) / 10000, P.by[g] || []]),
       ['ULTRA RARE', (r.pickup || 0) / 10000, [pick], `UR 픽업 ${pick.name}`],
       ['ULTRA RARE', (r.other_ur || 0) / 10000, P.ur.filter(c => c.id !== pick.id), 'UR (픽업 외)']];
+    const after = b.pickup_after ?? CONFIG.pickup_after;
     const end = b.ends_at ? new Date(b.ends_at).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }) + ' (KST)' : '종료일 미정';
     return `<div class="sp-rates"><div class="text-lg font-black mb-2">확률 안내</div>
-      ${table(`스페셜 소환 · 픽업 ${pick.name}`, sp, `스페셜 소환권 1장 = 1회 · 10회 = 10장<br>천장: 픽업 없이 ${b.pity || CONFIG.pity}회째 소환은 <b>${esc(pick.name)}</b> 확정 (픽업을 얻으면 횟수 초기화 · 배너별 · 서버 기록)<br>기간: ${new Date(b.starts_at || CONFIG.starts_at).toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul' })} ~ ${esc(end)}`)}
+      ${table(`스페셜 소환 · 픽업 ${pick.name}`, sp, `스페셜 소환권 1장 = 1회 · 10회 = 10장<br>UR 천장: UR 없이 ${b.pity || CONFIG.pity}회째 소환은 UR 확정 (어떤 UR이든 나오면 초기화 · 확정 UR도 픽업:그 외 = 1:1)<br>픽업 확정: 픽업 아닌 UR이 ${after}번 나오면 다음 UR은 <b>${esc(pick.name)}</b> 확정 (${esc(pick.name)}가 나오면 초기화 · 처음부터 나올 수도 있어요) · 배너별 · 서버 기록<br>기간: ${new Date(b.starts_at || CONFIG.starts_at).toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul' })} ~ ${esc(end)}`)}
       ${table('프리미엄 소환', std(G.special), '소환권 1장 = 1회 · 10회 소환은 HR 이상 1장 보장 · UR은 프리미엄 UR 목록에서만')}
       ${table('일반 소환 (하루 1회 무료)', std(G.rates), '매일 자정(KST) 초기화 · UR은 프리미엄 UR 목록에서만')}
       <div class="sp-rate-note">${P.server ? '인재 목록은 서버 기준입니다.' : '인재 목록은 게임 데이터 기준(참고)입니다. 로그인하면 서버 목록을 보여 줘요.'} 각 표를 누르면 인재별 확률이 보여요.</div>
@@ -81,5 +82,6 @@
     m.querySelector('details')?.setAttribute('open', '');
   }
   window.VRSpecial = { CONFIG, PREMIUM_UR, refresh, draw, showRates, ratesHtml, banner, get status() { return status; }, get missing() { return missing; },
-    get tickets() { return status ? status.tickets | 0 : null; }, get misses() { return status ? status.misses | 0 : 0; } };
+    get tickets() { return status ? status.tickets | 0 : null; }, get misses() { return status ? status.misses | 0 : 0; }, get offUrs() { return status ? status.off_urs | 0 : 0; },
+    /** 하지혜 확정까지 남은 UR 수 (1 = 다음 UR 확정) */ get ursToPickup() { const b = banner(); return Math.max(1, (b.pickup_after ?? CONFIG.pickup_after) + 1 - (status ? status.off_urs | 0 : 0)); } };
 })();

@@ -3,7 +3,7 @@
 import asyncio, os
 from playwright.async_api import async_playwright
 URL=os.environ.get('URL','http://localhost:8767/'); SHOTS=os.environ.get('SHOTS','/tmp')
-MOCK="""window.__ur=0;window.__sp={t:23,m:48};window.__SPECIAL_MOCK=window.__SP_OFF?null:{status:async()=>({ok:true,tickets:window.__sp.t,misses:window.__sp.m,banner:{banner_id:'hajihye-20261113',pickup_id:'10440',pickup_name:'하지혜',starts_at:'2026-11-13T00:00:00+09:00',ends_at:null,pity:50,open:true,rates:{'NORMAL':5000,'RARE':3000,'HIGH RARE':1000,'SUPER RARE':800,pickup:100,other_ur:100}}}),draw:async n=>{if(window.__sp.t<n)return{ok:false,reason:'special_tickets',tickets:window.__sp.t};window.__sp.t-=n;const cards=[];for(let i=0;i<n;i++){window.__sp.m++;if(window.__sp.m>=50){cards.push({card_id:'10440',grade:'ULTRA RARE',guaranteed:true});window.__sp.m=0}else cards.push({card_id:'10111',grade:'NORMAL'})}return{ok:true,cards,tickets:window.__sp.t,misses:window.__sp.m}}};window.__TICKET_MOCK={sync:async()=>({tickets:3,added:0}),draw:async n=>({ok:false,reason:'tickets',tickets:3}),
+MOCK="""window.__ur=0;window.__sp={t:23,m:48,o:2};window.__SPECIAL_MOCK=window.__SP_OFF?null:{status:async()=>({ok:true,tickets:window.__sp.t,misses:window.__sp.m,off_urs:window.__sp.o,banner:{banner_id:'hajihye-20261113',pickup_id:'10440',pickup_name:'하지혜',starts_at:'2026-11-13T00:00:00+09:00',ends_at:null,pity:50,pickup_after:2,open:true,rates:{'NORMAL':5000,'RARE':3000,'HIGH RARE':1000,'SUPER RARE':800,pickup:100,other_ur:100}}}),draw:async n=>{if(window.__sp.t<n)return{ok:false,reason:'special_tickets',tickets:window.__sp.t};window.__sp.t-=n;const cards=[];for(let i=0;i<n;i++){if(window.__sp.m>=49){const pk=window.__sp.o>=2;cards.push({card_id:pk?'10440':'10325',grade:'ULTRA RARE',guaranteed:true,guarantee:pk?'pickup':'ur_pity'});window.__sp.m=0;window.__sp.o=pk?0:window.__sp.o+1}else{window.__sp.m++;cards.push({card_id:'10111',grade:'NORMAL'})}}return{ok:true,cards,tickets:window.__sp.t,misses:window.__sp.m,off_urs:window.__sp.o}}};window.__TICKET_MOCK={sync:async()=>({tickets:3,added:0}),draw:async n=>({ok:false,reason:'tickets',tickets:3}),
 ur:async()=>window.__ur,urDraw:async()=>{if(window.__ur<1)return{ok:false,reason:'ur_tickets',ur_tickets:0};window.__ur--;return{ok:true,cards:[{card_id:'10325',grade:'ULTRA RARE'}],ur_tickets:window.__ur,tickets:3}}};
 localStorage.setItem('vrTutorialDone','1');localStorage.setItem('vrTcgIntroSeen','1');localStorage.setItem('vrTcgSkipFx','1');
 (()=>{let save={v:1,openingSeen:true,startSeen:true,ch0Pull:true,starter:'10111',points:0,statV:99,cleared:{'1':[1,2,3]},leader:'u1',owned:[{uid:'u1',id:'10111',level:5}]};
@@ -23,7 +23,7 @@ async def main():
     b=await p.chromium.launch(**kw)
     pg,errs=await page(b)
     assert await pg.evaluate("document.querySelector('.gr-bn.on')?.dataset.tab")=='pickup'
-    own=await pg.inner_text('#gr-own'); print(own); assert '23' in own and '48/50' in own and '하지혜' in own, own
+    own=await pg.inner_text('#gr-own'); print(own); assert '23' in own and 'UR 천장 48/50' in own and '다음 UR은 하지혜 확정' in own, own
     assert await pg.locator('.gr-bn-pickup .gr-bn-pick').count()==1
     assert (await pg.inner_text('#gacha-rates')).strip()=='확률'
     await pg.screenshot(path=f'{SHOTS}/special_summon.png')
@@ -32,11 +32,11 @@ async def main():
       if '10440' in (await pg.inner_html('#tk-result')): break
       await pg.mouse.click(195,300); await pg.wait_for_timeout(500)
     assert '10440' in (await pg.inner_html('#tk-result')), '천장 하지혜'
-    await pg.wait_for_timeout(800); own=await pg.inner_text('#gr-own'); print(own); assert '13' in own and '8/50' in own, own
+    await pg.wait_for_timeout(800); own=await pg.inner_text('#gr-own'); print(own); assert '13' in own and 'UR 천장 8/50' in own and '하지혜 확정까지 UR 3번' in own, own
     await pg.screenshot(path=f'{SHOTS}/special_summon_result.png')
     await pg.evaluate("VRStory.openGacha('pickup')"); await pg.wait_for_timeout(800)
     await pg.click('#gacha-rates'); await pg.wait_for_selector('#sp-rates-pop')
-    t=await pg.inner_text('#sp-rates-pop'); assert all(x in t for x in ['스페셜 소환','프리미엄 소환','일반 소환','50회째','UR 픽업 하지혜','1명당']), t
+    t=await pg.inner_text('#sp-rates-pop'); assert all(x in t for x in ['스페셜 소환','프리미엄 소환','일반 소환','50회째 소환은 UR 확정','픽업 아닌 UR이 2번','UR 픽업 하지혜','1명당']), t
     await pg.screenshot(path=f'{SHOTS}/summon_rates.png')
     await pg.evaluate("document.querySelectorAll('#sp-rates-pop details').forEach(d=>d.open=true)"); await pg.wait_for_timeout(200)
     await pg.screenshot(path=f'{SHOTS}/summon_rates_all.png', full_page=True)
