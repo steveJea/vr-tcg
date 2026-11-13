@@ -70,14 +70,35 @@
     for (const [p, [sz, h]] of Object.entries(m.files)) { if (have.has(keyUrl(p, h))) haveB += sz; else { needB += sz; need.push([p, sz, h]); } }
     return { m, total: m.total, haveB, needB, need };
   }
-  // 한 파일 받아서 기기 캐시에 넣기 (HTTP 캐시의 옛 파일 말고 서버 확인 후)
-  async function save(c, p, h, signal, prio) {
-    const res = await fetch(p, { cache: 'no-cache', credentials: 'same-origin', signal, priority: prio });
-    if (res.status !== 200) throw Error('HTTP ' + res.status);
-    await c.put(keyUrl(p, h), res);
-  }
-  const waitVisible = () => document.hidden ? new Promise(r => document.addEventListener('visibilitychange', function f() { if (!document.hidden) { document.removeEventListener('visibilitychange', f); r(); } })) : null;
+  // ---------- 화면이 쓰는 그림이 늘 먼저 ----------
+  // 미리 받기·전체 받기는 화면이 조용할 때만 한 파일씩. 전투 화면이 열리거나 화면 그림이 받는 중이면
+  // 받던 미리 받기를 바로 끊고(나중에 다시) 길을 비켜 줌. 미리 받기 요청은 서비스 워커를 거치지 않음(x-vr-prefetch).
   const inBattle = () => { const g = $('game'); return !!g && !g.classList.contains('hidden') && g.getClientRects().length > 0; };
+  const pendingImgs = () => { for (const i of document.images) if (!i.complete && i.loading !== 'lazy' && i.getAttribute('src')) return true; return false; };
+  let lastDemand = 0;
+  try { new PerformanceObserver(l => { for (const e of l.getEntries()) if (e.initiatorType !== 'fetch' && e.initiatorType !== 'beacon' && e.initiatorType !== 'xmlhttprequest') lastDemand = performance.now(); }).observe({ type: 'resource' }); } catch {}
+  const busy = () => document.hidden || inBattle() || pendingImgs() || performance.now() - lastDemand < 1500;
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  const flying = new Set(); let guardT = 0;
+  function guard() {   // 받는 중에만 0.25초마다 확인
+    if (guardT) return;
+    guardT = setInterval(() => {
+      if (!flying.size) { clearInterval(guardT); guardT = 0; return; }
+      if (document.hidden || inBattle() || pendingImgs()) for (const c of flying) c.abort();
+    }, 250);
+  }
+  async function waitQuiet(signal) { while (busy() && !signal?.aborted) await sleep(400); }
+  // 한 파일 받아서 기기 캐시에 넣기 (HTTP 캐시의 옛 파일 말고 서버 확인 후). 길을 비켜 주느라 끊기면 'yield'
+  async function save(c, p, h, signal, prio) {
+    const ctl = new AbortController(), stop = () => ctl.abort(); signal?.addEventListener('abort', stop, { once: true });
+    flying.add(ctl); guard();
+    try {
+      const res = await fetch(p, { cache: 'no-cache', credentials: 'same-origin', signal: ctl.signal, priority: prio || 'low', headers: { 'x-vr-prefetch': '1' } });
+      if (res.status !== 200) throw Error('HTTP ' + res.status);
+      await c.put(keyUrl(p, h), res);
+    } catch (e) { if (ctl.signal.aborted && !signal?.aborted) throw Error('yield'); throw e; }
+    finally { flying.delete(ctl); signal?.removeEventListener('abort', stop); }
+  }
   const idle = () => new Promise(r => (window.requestIdleCallback || (f => setTimeout(f, 200)))(() => r(), { timeout: 3000 }));
 
   // ---------- 3) 한가할 때 조금씩 미리 받기 ----------
@@ -90,39 +111,39 @@
     const st = await status(); if (!st) return;
     const rank = p => { const i = BG_ORDER.findIndex(x => p.startsWith(x)); return i < 0 ? 99 : i; };
     const list = st.need.filter(([p, sz]) => rank(p) < 99 && sz <= BG_MAX_FILE).sort((a, b) => rank(a[0]) - rank(b[0]) || a[0].localeCompare(b[0]));
-    const c = await caches.open(CACHE); let used = 0, i = 0;
+    const c = await caches.open(CACHE); let used = 0, files = 0;
     const worker = async () => {
-      while (!bgStop && i < list.length && used < BG_BUDGET) {
+      while (!bgStop && list.length && used < BG_BUDGET) {
         if (fullRunning) return;
-        await waitVisible(); while (inBattle() && !bgStop) await new Promise(r => setTimeout(r, 5000));
-        if (slowNet()) return;
-        await idle();
-        const [p, sz, h] = list[i++]; used += sz;
-        try { await save(c, p, h, undefined, 'low'); } catch {}
+        await waitQuiet(); if (slowNet()) return;
+        await idle(); if (busy() || bgStop || fullRunning) continue;
+        const it = list.shift(); if (!it) return;
+        try { await save(c, it[0], it[2], undefined, 'low'); used += it[1]; files++; } catch (e) { if (e.message === 'yield') list.unshift(it); }
       }
     };
     await Promise.all([worker(), worker()]);   // 동시에 2개까지만
-    window.VRAssets.bgDone = { files: i, bytes: used };
+    window.VRAssets.bgDone = { files, bytes: used };
   }
 
   // ---------- 4) 전체 리소스 받기 ----------
+  // 게임하는 중에도 받을 수 있지만, 전투 중·화면 그림을 받는 중엔 잠깐 멈췄다가 이어서 받음.
   async function downloadAll(onProgress) {
     if (!hasCache) throw Error('이 브라우저는 저장을 지원하지 않아요');
     const st = await status(); if (!st) throw Error('목록을 못 불러왔어요');
     try { await navigator.storage?.persist?.(); } catch {}
     const ctl = new AbortController(), c = await caches.open(CACHE);
-    const list = st.need.slice(); let doneB = 0, fail = 0, i = 0; const totalB = st.needB;
+    const list = st.need.slice(), all = list.length; let doneB = 0, fail = 0, n = 0; const totalB = st.needB;
     const job = { cancel: () => ctl.abort(), signal: ctl.signal };
     fullRunning = job;
     const worker = async () => {
-      while (i < list.length && !ctl.signal.aborted) {
-        await waitVisible();
-        const [p, sz, h] = list[i++];
-        try { await save(c, p, h, ctl.signal); } catch (e) { if (ctl.signal.aborted) return; fail++; }
-        doneB += sz; onProgress?.(doneB, totalB, i, list.length);
+      while (list.length && !ctl.signal.aborted) {
+        await waitQuiet(ctl.signal); if (ctl.signal.aborted) return;
+        const it = list.shift(); if (!it) return;
+        try { await save(c, it[0], it[2], ctl.signal, 'low'); } catch (e) { if (ctl.signal.aborted) return; if (e.message === 'yield') { list.unshift(it); continue; } fail++; }
+        doneB += it[1]; n++; onProgress?.(doneB, totalB, n, all);
       }
     };
-    job.done = Promise.all([0, 1, 2, 3].map(worker)).then(() => ({ cancelled: ctl.signal.aborted, fail, doneB, totalB })).finally(() => { fullRunning = null; });
+    job.done = Promise.all([0, 1, 2].map(worker)).then(() => ({ cancelled: ctl.signal.aborted, fail, doneB, totalB })).finally(() => { fullRunning = null; });
     return job;
   }
   async function clear() { bgStop = true; fullRunning?.cancel(); if (hasCache) await caches.delete(CACHE); }
@@ -144,7 +165,7 @@
     $('main-settings-open')?.addEventListener('click', () => setTimeout(paint, 0));
     dl.onclick = async () => {
       const st = await status().catch(() => null); if (!st || st.needB <= 0) return paint();
-      const ok = await ask(`<b class="vc-guest-h">게임 리소스를 전부 받아 둘까요?</b><span class="vc-guest-s">약 ${MB(st.needB)}MB예요. 데이터가 많이 드니 와이파이에서 받는 걸 추천해요. 받는 중에도 게임은 할 수 있어요!</span>`, '받기', '다음에');
+      const ok = await ask(`<b class="vc-guest-h">게임 리소스를 전부 받아 둘까요?</b><span class="vc-guest-s">약 ${MB(st.needB)}MB예요. 데이터가 많이 드니 와이파이에서 받는 걸 추천해요. 받는 중에도 게임은 할 수 있어요! (전투 중엔 잠깐 멈췄다가 이어서 받아요)</span>`, '받기', '다음에');
       if (!ok) return;
       dl.disabled = true; prog.hidden = false; const fill = prog.querySelector('.as-bar i'), txt = prog.querySelector('.as-txt');
       const job = await downloadAll((d, t, n, all) => { const p = t ? Math.min(100, Math.floor(d / t * 100)) : 100; fill.style.width = p + '%'; txt.textContent = `${p}% · ${MB(d)} / ${MB(t)}MB (${n}/${all})`; });
@@ -160,7 +181,7 @@
     };
   }
 
-  window.VRAssets = { status, downloadAll, clear, background, manifest, paint, CACHE, keyUrl, get running() { return !!fullRunning; } };
+  window.VRAssets = { status, downloadAll, clear, background, manifest, paint, CACHE, keyUrl, get running() { return !!fullRunning; }, get prefetching() { return flying.size; } };
   const start = async () => {
     bindSettings();
     await registerSW();
