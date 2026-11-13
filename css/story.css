@@ -1127,3 +1127,17 @@ body.gnb-on:not(.gnb-hidden) #story-screen { --wrap-pb: 12px; }   /* 하단 메�
 
 .gr-go-ur{background:linear-gradient(180deg,#f59e0b,#b45309);color:#1a0f00}
 .gr-own-ur b{color:#fcd34d}
+/* 스페셜 소환 (픽업 배너 · js/special-summon.js) */
+.gr-bn-pickup{background:radial-gradient(120% 120% at 80% 10%,#be185d,#1a0310 70%);border-color:rgba(244,114,182,.5)}
+.gr-bn-pickup.on{border-color:#fbcfe8;box-shadow:0 0 18px rgba(236,72,153,.85)}
+.gr-bn-pickup img:first-child{filter:hue-rotate(-40deg) saturate(1.2)}
+.gr-bn img.gr-bn-pick{left:auto;right:0;width:46%;object-fit:cover;object-position:50% 12%;-webkit-mask-image:linear-gradient(90deg,transparent,#000 35%);mask-image:linear-gradient(90deg,transparent,#000 35%)}
+.gr-rates-txt{font-size:12px;font-weight:800;padding:4px 10px;border-radius:999px;background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.35);color:#fff}
+.sp-own small{opacity:.75;font-size:11px}.sp-prep{color:#fbcfe8}
+.sp-rates-panel{max-height:86vh;overflow:auto;max-width:520px;width:100%}
+.sp-rate-box{background:rgba(255,255,255,.06);border-radius:12px;padding:8px 10px;margin-bottom:8px}
+.sp-rate-box summary{cursor:pointer;list-style:none}.sp-rate-box summary::-webkit-details-marker{display:none}
+.sp-rate-grades{display:flex;flex-wrap:wrap;gap:2px 10px;font-size:12px;margin-top:4px}.sp-rate-grades b{margin-left:3px}
+.sp-rate-note{font-size:11px;color:#a1a1aa;margin:6px 0;line-height:1.5}
+.sp-rate-sec{margin-top:6px}.sp-rate-h{font-size:12px;font-weight:800}.sp-rate-names{font-size:11px;color:#d4d4d8;line-height:1.5}
+.sp-rates-pop{position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;padding:16px}

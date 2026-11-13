@@ -69,7 +69,8 @@
   function paint() {
     if (!host) return;
     const list = (cache?.products || []).filter(p => p.tab === tab);
-    const note = tab === 'pass' ? '<details class="vr-tip shop-note"><summary>ⓘ 재구매 시 +30일</summary><p>같은 패스를 다시 사면, 지금 패스가 끝난 다음 날부터 30일이 이어져요.</p></details>' : '';
+    const note = tab === 'pack' ? '<div class="shop-pack-head"><span class="shop-note">스페셜 소환권 1장 = 스페셜 소환 1회 (인재영입 › 스페셜)</span><button type="button" class="shop-rates" data-sp-rates>확률</button></div>'
+      : tab === 'pass' ? '<details class="vr-tip shop-note"><summary>ⓘ 재구매 시 +30일</summary><p>같은 패스를 다시 사면, 지금 패스가 끝난 다음 날부터 30일이 이어져요.</p></details>' : '';
     const body = tab === 'skin' ? '<div class="shop-empty"><b>🔒 준비 중</b></div>'
       : !cache ? '<div class="shop-err">상점 정보를 불러오지 못했어요.</div>'
       : tab === 'consume' ? '<div data-consume></div>'
@@ -77,6 +78,7 @@
     host.innerHTML = `<div class="shop" data-clarity-mask="true"><div class="shop-bal"><span>🔮 <b>${n(cache?.gem)}</b></span><small>무료 ${n(cache?.free)} · 유료 ${n(cache?.paid)}</small></div><div class="shop-tabs">${TABS.map(([id, name]) => `<button type="button" data-tab="${id}" class="${tab === id ? 'on' : ''}">${name}</button>`).join('')}</div>${body}</div>`;
     host.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { tab = b.dataset.tab; paint(); });
     host.querySelectorAll('[data-sku]').forEach(b => b.onclick = () => buy(b.dataset.sku));
+    host.querySelector('[data-sp-rates]')?.addEventListener('click', () => window.VRSpecial?.showRates());
     if (tab === 'consume') paintConsume(host.querySelector('[data-consume]'));
   }
   async function paintConsume(box) {

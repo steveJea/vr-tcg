@@ -28,3 +28,6 @@
 .shop-util, .shop .drink-shop, .shop .gem-shop { display: flex; flex-wrap: wrap; gap: 8px; }
 .shop .gem-buy { min-width: 96px; }
 .shop-err { padding: 24px 8px; text-align: center; color: #fca5a5; }
+.shop-rates{font-size:12px;font-weight:800;padding:4px 10px;border-radius:999px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.3)}
+.shop-pack-head .shop-note{margin:0;flex:1;min-width:0}.shop-pack-head .shop-rates{flex-shrink:0}
+.shop-pack-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:4px 0 8px}
