@@ -172,9 +172,10 @@ function newPlayer(name, second, deckOverride = null, hp = RULES.HERO_HP, fieldS
 function log(msg, cls = '') {
   const el = document.createElement('div');
   el.className = 'py-0.5 ' + cls; el.textContent = msg;
-  const lg = $('log'), atEnd = lg.scrollHeight - lg.scrollTop - lg.clientHeight < 24;
+  const lg = $('log'), open = !$('log-modal').classList.contains('hidden');   // 닫혀 있으면 스크롤 위치를 읽지 않음 (매 기록마다 화면 재계산 방지)
+  const atEnd = open && lg.scrollHeight - lg.scrollTop - lg.clientHeight < 24;
   lg.appendChild(el);
-  if (atEnd && !$('log-modal').classList.contains('hidden')) lg.scrollTop = lg.scrollHeight;
+  if (atEnd) lg.scrollTop = lg.scrollHeight;
 }
 
 const shuffleArr = a => { a = [...a]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
@@ -655,10 +656,32 @@ async function peekBefore(el) {
 /** 타격 때: 위에 올라가 있으면 복귀 타이머만 연장 (스크롤 안 함) */
 function peekHold(el) { if (peekOn && peekOk(el)) peekArm(); }
 function peekReset() { clearTimeout(peekT); peekOn = false; }
+/** 연출 위치 읽기: 한 번 재면 지금 실행 중인 코드가 끝날 때까지(또는 render 전까지) 전장 카드 위치를 재사용.
+ *  여러 장을 한꺼번에 때리는 스킬에서 대상마다 '이펙트 붙이기 → 다음 대상 위치 읽기'가 반복되면
+ *  읽을 때마다 화면 전체 스타일·배치를 다시 계산해서(카드가 많을수록 오래) 아이폰에서 끊겼음. */
+let fxRects = null;
+const FX_BOARD = '#ai-field [data-uid], #me-field [data-uid], #ai-boss [data-uid], #me-boss [data-uid], #ai-boss .base-ring, #me-boss .base-ring, #ai-hero, #me-hero';
+function fxRectReset() { fxRects = null; }
+function fxRect(el) {
+  if (fxRects?.has(el)) return fxRects.get(el);
+  if (!fxRects) { fxRects = new Map(); queueMicrotask(fxRectReset); }
+  const r = el.getBoundingClientRect(); fxRects.set(el, r);
+  if (!fxRects.__board) { fxRects.__board = true; for (const x of document.querySelectorAll(FX_BOARD)) if (!fxRects.has(x)) fxRects.set(x, x.getBoundingClientRect()); }   // 한 번 계산한 김에 전장 전체를 같이 재 둠
+  return r;
+}
+if (typeof window.addEventListener === 'function') { window.addEventListener('scroll', fxRectReset, { passive: true }); window.addEventListener('resize', fxRectReset); }
+window.VRFxRect = fxRect;
+/** 애니메이션 클래스 다시 시작: 안 붙어 있으면 바로 붙임(강제 재계산 없음), 이미 붙어 있으면 떼고 다음 프레임에 붙임 */
+function restartCls(el, ...cls) {
+  if (!el) return;
+  if (!cls.some(c => el.classList.contains(c))) { el.classList.add(...cls); return; }
+  el.classList.remove(...cls); requestAnimationFrame(() => { if (el.isConnected) el.classList.add(...cls); });
+}
+window.VRRestartCls = restartCls;
 function hitFx(el, kind = 'impact') {
   peekHold(el);
   if (!el || FX_OFF() || REDUCED() || !el.isConnected) return;
-  const r = el.getBoundingClientRect(); if (!r.width) return;
+  const r = fxRect(el); if (!r.width) return;
   const img = document.createElement('img');
   img.src = HIT_IMG[kind] || HIT_IMG.impact; img.alt = ''; img.className = `fx-hit ${kind}`; img.setAttribute('aria-hidden', 'true');
   const size = Math.round(Math.min(Math.max(r.width, r.height) * (kind === 'blood' ? 1.25 : 1.1), 340));
@@ -672,7 +695,7 @@ function hitFx(el, kind = 'impact') {
 const EL_PART = { FIRE: 'fire', ICE: 'ice', WIND: 'wind', LIGHT: 'light', DARK: 'dark', ABYSS: 'abyss', VOID: 'void', drain: 'drain', poison: 'abyss' };
 function elemFx(el, kind) {
   const k = EL_PART[kind]; if (!k || !el || !BFX() || FX_OFF() || REDUCED() || !el.isConnected) return;
-  const r = el.getBoundingClientRect(); if (!r.width) return;
+  const r = fxRect(el); if (!r.width) return;
   const box = document.createElement('div'); box.className = `fx-el fx-el-${k}`; box.setAttribute('aria-hidden', 'true');
   box.style.cssText = `left:${r.left + r.width / 2}px;top:${r.top + r.height / 2}px;--s:${Math.round(Math.max(r.width, 60))}px`;
   const n = k === 'light' ? 4 : k === 'void' ? 3 : 9;
@@ -742,7 +765,7 @@ function shake(el, o = {}) {
   const stop = Math.round((crit || big ? 110 : d >= 1000 ? 85 : 60) * k);   // 히트스톱 ms
   // 흔들림 세기(px): 피해량 로그 스케일 2~7, 치명타 ×1.5, UR/MR ×1.6, 최대 12
   const amp = Math.min(12, (2 + Math.min(5, Math.log10(d + 1) * 1.4)) * (crit ? 1.5 : 1) * (big ? 1.6 : 1));
-  el.classList.remove('fx-shake', 'fx-hitflash', 'fx-knock'); void el.offsetWidth;
+  el.classList.remove('fx-shake', 'fx-knock');   // 섬광은 정지 효과라 다시 시작할 필요 없음, 흔들림은 아래 타이머에서 다시 붙음 (강제 재계산 X)
   el.classList.add('fx-hitflash');
   if (REDUCED()) { setTimeout(() => el.classList.remove('fx-hitflash'), 120); return; }
   const root = document.querySelector('main') || document.body;
@@ -760,7 +783,7 @@ function shake(el, o = {}) {
       const sh = crit || big ? root : (document.getElementById('field-box') || root);   // #8 보통 타격은 전장만, 치명타·궁극기(UR/MR)만 화면 전체
       if (sh !== root) root.classList.remove('fx-screen'); else document.getElementById('field-box')?.classList.remove('fx-screen');
       sh.style.setProperty('--amp', `${amp.toFixed(1)}px`);
-      sh.classList.remove('fx-screen'); void sh.offsetWidth; sh.classList.add('fx-screen');
+      restartCls(sh, 'fx-screen');
       clearTimeout(screenTimer); screenTimer = setTimeout(() => sh.classList.remove('fx-screen'), Math.round((crit || big ? 260 : 180) * k));
     }
   }, stop);
@@ -770,8 +793,7 @@ function shake(el, o = {}) {
 let bigHitTimer;
 function bigHitFx(strong) {
   const g = $('game'), fb = $('field-box'); if (!g) return;
-  g.classList.remove('bfx-hit', 'bfx-hit-strong'); fb?.classList.remove('bfx-zoom'); void g.offsetWidth;
-  g.classList.add('bfx-hit'); if (strong) g.classList.add('bfx-hit-strong'); fb?.classList.add('bfx-zoom');
+  g.classList.toggle('bfx-hit-strong', !!strong); restartCls(g, 'bfx-hit'); restartCls(fb, 'bfx-zoom');
   clearTimeout(bigHitTimer); bigHitTimer = setTimeout(() => { g.classList.remove('bfx-hit', 'bfx-hit-strong'); fb?.classList.remove('bfx-zoom'); }, 320);
   try { if (navigator.vibrate && matchMedia('(pointer: coarse)').matches) navigator.vibrate(strong ? 35 : 20); } catch {}
 }
@@ -780,7 +802,7 @@ function bigHitFx(strong) {
 const critSet = new Set();
 function critFx(el) {
   if (!el || FX_OFF() || !el.isConnected) return;
-  const r = el.getBoundingClientRect(); if (!r.width) return;
+  const r = fxRect(el); if (!r.width) return;
   const d = document.createElement('div'); d.className = 'fx-crit'; d.setAttribute('aria-hidden', 'true');
   const size = Math.round(Math.min(Math.max(r.width, r.height) * 1.5, 380));
   d.style.width = d.style.height = size + 'px'; d.style.left = (r.left + r.width / 2) + 'px'; d.style.top = (r.top + r.height / 2) + 'px';
@@ -815,12 +837,12 @@ function fxStackSlot(key, text, repeat = 'times') {
   fxStacks.set(key, st);
   for (const k of fxStacks.keys()) if (k !== key && !(fxStacks.get(k) || []).some(x => x.d.isConnected)) fxStacks.delete(k);
   const same = text && st.find(x => x.text === text && x.repeat === repeat);
-  if (same) { same.n++; same.t = now; same.d.dataset.n = repeat === 'hits' ? `${same.n}타` : `×${same.n}`; same.d.classList.remove('fx-merged'); void same.d.offsetWidth; same.d.classList.add('fx-merged'); return { merged: true }; }
+  if (same) { same.n++; same.t = now; same.d.dataset.n = repeat === 'hits' ? `${same.n}타` : `×${same.n}`; restartCls(same.d, 'fx-merged'); return { merged: true }; }
   return { merged: false, i: st.length, push: d => st.push({ d, text, repeat, n: 1, t: now }) };
 }
 function dmgNumber(el, text, color, html = false, extra = '') {
   if (!el || FX_OFF()) return;
-  const r = el.getBoundingClientRect();
+  const r = fxRect(el);
   const slot = BFX() ? fxStackSlot(el, html ? null : text, extra.split(/\s+/).includes('fx-dmg-raid') ? 'hits' : 'times') : null;
   if (slot?.merged) return;
   const d = document.createElement('div');
@@ -2060,6 +2082,7 @@ function turnBanner(mine) {
   setTimeout(() => b.remove(), 650);
 }
 function render() {
+  fxRectReset();
   fitBoardSoon();
   renderAutoBtn();
   maybeAutoEndTurn();
