@@ -16,7 +16,7 @@ const report=api.report(true,'wipe',{turns:99,totalTurns:4,myTurns:2,mana:120,sk
 assert.equal(report.turns,4,'half-turn telemetry, not round count');
 respond=()=>({data:{ok:true,reward:{tickets:10}}});
 await api.finish(s,report); assert(waits.includes(3250));
-assert.strictEqual(calls.at(-1).args.p_report,report);
+{ const {actions:_a,...plain}=report; assert.equal(JSON.stringify(calls.at(-1).args.p_report),JSON.stringify(plain),'finish_v2 sends the report without the replay action log (phase 7: actions only go to the direct verifier)'); assert(!('actions' in calls.at(-1).args.p_report)); }
 assert.equal(calls.at(-1).name,'battle_session_finish_v2');
 respond=()=>({error:{message:'PGRST202 function unavailable'}}); let before=calls.length;
 await assert.rejects(api.finish(s,report),e=>e.message.includes('unavailable')); assert.equal(calls.length,before+1,'no legacy/local fallback');

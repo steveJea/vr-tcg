@@ -1,6 +1,6 @@
 -- PRODUCTION ONLY (htarwisgkkphutxxnuak). Single atomic DO block for SQL Editor; idempotent, no save/balance resets.
 -- Requires story gacha + premium UR. If shop BM exists, ticket_10/45/160/220 then grant special tickets. No SQL is executed automatically.
--- Production file is for the later approved release only. Initial banner starts 2026-11-13 KST, no end date yet.
+-- Production file is for the later approved release only. Initial banner 2026-11-13 00:00 KST ~ 2026-11-30 23:59:59 KST.
 -- v2 pity: UR 50 (any UR resets) + pickup after 2 non-pickup URs. Safe over v1 install (add-only columns, counters recomputed once from log).
 do $install$
 declare v2 boolean;
@@ -62,8 +62,9 @@ if not exists(select 1 from pg_policies where schemaname='public' and tablename=
  create policy special_summon_log_own on public.special_summon_log for select to authenticated using(user_id=auth.uid()); end if;
 grant select on public.special_summon_log to authenticated;
 insert into public.special_banners(id,pickup_id,starts_at,ends_at,pity_limit,rates)
-values('hajihye-20261113','10440','2026-11-13 00:00:00+09',null,50,'{"NORMAL":5000,"RARE":3000,"HIGH RARE":1000,"SUPER RARE":800,"pickup":100,"other_ur":100}')
+values('hajihye-20261113','10440','2026-11-13 00:00:00+09','2026-11-30 23:59:59+09',50,'{"NORMAL":5000,"RARE":3000,"HIGH RARE":1000,"SUPER RARE":800,"pickup":100,"other_ur":100}')
 on conflict(id) do nothing; -- rerun never resets event dates/config/pity
+update public.special_banners set ends_at='2026-11-30 23:59:59+09' where id='hajihye-20261113' and ends_at is null; -- 2026-11-13 결정: 11/30 마감 (이미 정한 종료일은 덮지 않음)
 execute $ddl$create or replace function public._special_banner_json(b public.special_banners) returns jsonb
 language sql stable security definer set search_path=pg_catalog,public as $fn$
  select jsonb_build_object('banner_id',b.id,'pickup_id',b.pickup_id,'pickup_name',(select name from public.story_card_pool where id=b.pickup_id),

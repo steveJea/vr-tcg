@@ -77,7 +77,7 @@ function lifecycleContext(){
  for(const fail of [false,true]){
   const h=lifecycleContext(),{c,document}=h;for(const id of ['end-title','end-text','end-mvp-wrap','end-stats','end-share-msg','share-btn','restart-btn']){const n=document.createElement('div');n.id=id;document.body.appendChild(n);}
   let resolve,reject;Object.assign(c,{S:{arcadeSession:{},arcade:{result:{},actions:[]},log:{}},finishArcadeVerified:()=>new Promise((r,j)=>{resolve=r;reject=j;}),console});
-  vm.runInContext(section('function finish(win, reason) {','// ===== 스토리 페이즈 규칙'),c);c.finish(true,'ko');
+  vm.runInContext(section('function finish(win, reason) {','function setArcadeWait('),c);c.finish(true,'ko');   // setArcadeWait~스토리 규칙(STORY_LV_RATE 포함)은 lifecycleContext 가 이미 넣음
   assert(document.getElementById('end-screen').classList.contains('end-pending'));assert.equal(document.getElementById('end-title').textContent,'');assert(document.getElementById('end-screen').classList.contains('hidden'));
   c.leaveBattleVoices();document.getElementById('game').classList.add('hidden');document.getElementById('end-screen').classList.add('hidden');
   if(fail)reject(Error('offline'));else resolve({result:'lose',reason:'hp',damage:42,skills:2,turns:5});for(let i=0;i<4;i++)await Promise.resolve();

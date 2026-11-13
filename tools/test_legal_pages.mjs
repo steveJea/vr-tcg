@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
+import {existsSync} from 'node:fs';
 import {execFileSync} from 'node:child_process';
 import {parseHTML} from 'linkedom';
 import {addLegalLinks} from './add_legal_links.mjs';
@@ -35,9 +36,21 @@ const css=await read('css/legal.css');assert.match(css,/font:600 16px/);assert.m
 for(const builder of ['tools/build_staging.mjs','tools/build_production_assets.mjs']){const s=await read(builder);for(const p of ['terms.html','privacy.html'])assert(s.includes("'"+p+"'"));}
 for(const [flag,dir]of [['--staging-build','.staging-dist'],['--production-build','.production-dist']])if(process.argv.includes(flag))for(const p of ['terms.html','privacy.html','css/legal.css','index.html'])assert.equal(await read(dir+'/'+p),await read(p),'actual static build includes '+p);
 if(process.argv.includes('--production-build')) {
- const base='b0a8dbab0f69f25b128bcf184bedcd0ffdaa271f';
- const baseline=execFileSync('git',['show',base+':index.html'],{cwd:root,encoding:'utf8'});assert.equal(index,addLegalLinks(baseline),'production index is ONLY the legal-link overlay');
- for(const p of ['js/cloud.js','js/config.js','js/main-menu.js','worker/media-range.mjs','worker/media-sizes.json','wrangler.production.jsonc'])assert.equal(await read(p),execFileSync('git',['show',base+':'+p],{cwd:root,encoding:'utf8'}),'production runtime unchanged '+p);
- const changed=execFileSync('git',['diff','--name-only',base,'--','js','css','data','img','audio','video','worker','index.html','admin.html','wrangler.production.jsonc'],{cwd:root,encoding:'utf8'}).trim().split('\n').filter(Boolean);assert(changed.every(p=>['index.html','css/legal.css'].includes(p)),'no staging game/auth/engine changes in production build');
+ // 운영 빌드 = 이번 출시 후보(staging 의 화면 그대로) + 기기 캐시. 예전 '법적 링크만' 기준(b0a8dbab)은 20261111 출시로 끝남.
+ // 바뀌면 안 되는 운영 런타임 설정은 지금 운영(main) 기준으로 비교.
+ const main=execFileSync('git',['rev-parse','origin/main'],{cwd:root,encoding:'utf8'}).trim();
+ for(const p of ['wrangler.production.jsonc','worker/media-range.mjs'])assert.equal(await read(p),execFileSync('git',['show',main+':'+p],{cwd:root,encoding:'utf8'}),'production runtime unchanged '+p);
+ const pidx=await read('.production-dist/index.html');
+ for(const id of ['vr-boot','as-dl','as-sum','as-prog','as-cancel','as-clear','as-have','intro-legal-links'])assert.match(pidx,new RegExp('id="'+id+'"'),'production index has '+id);
+ assert.match(pidx,/src="js\/asset-cache\.js"/);
+ assert.equal(await read('.production-dist/sw.js'),await read('sw.js'),'production sw.js = repo sw.js');
+ const man=JSON.parse(await read('.production-dist/asset-manifest.json'));assert(man.files['/js/asset-cache.js']&&man.files['/img/bt_img/10440.webp'],'production asset manifest lists js + card art');
+ assert(!Object.keys(man.files).some(k=>/^\/(supabase|tools|docs)\//.test(k)),'no server files in manifest');
+ const h=await read('.production-dist/_headers');
+ assert.match(h,/^https:\/\/vr-tcg-prod\.notcold\.workers\.dev\/\*\n  X-Robots-Tag: noindex, nofollow\n/,'only workers.dev host noindex');
+ for(const r of ['/data/fx/*','/data/event/*','/data/voice/*','/img/*'])assert(h.includes(r+'\n  Cache-Control: public, max-age=600, stale-while-revalidate=86400\n'),'media cache '+r);
+ for(const r of ['/sw.js','/asset-manifest.json'])assert(h.includes(r+'\n  Cache-Control: no-cache\n'),'no-cache '+r);
+ assert(!/^\/\*\n  X-Robots-Tag/m.test(h),'production domain stays indexable');
+ for(const p of ['payment-return.html','admin-payments.html'])assert(!existsSync(new URL('.production-dist/'+p,root)),'no payment pages in production');
 }
 console.log('Legal pages: Korean draft/placeholders, current data/analytics/share/retention gaps, statutory refund/minors, accessible link-only UI, no trackers/forms, build allowlists/idempotent isolated overlay OK');

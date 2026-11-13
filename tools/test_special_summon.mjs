@@ -18,10 +18,14 @@ const S = win.VRSpecial, C = JSON.parse(JSON.stringify(S.CONFIG)), SPU = [...S.P
 const sum = Object.values(C.rates).reduce((a, b) => a + b, 0);
 assert.equal(sum, 10000, 'rates sum 100%');
 assert.deepEqual(C.rates, { 'NORMAL': 5000, 'RARE': 3000, 'HIGH RARE': 1000, 'SUPER RARE': 800, pickup: 100, other_ur: 100 }, 'N50 R30 HR10 SR8 pickup1 otherUR1');
-const ins = /insert into public\.special_banners\(id,pickup_id,starts_at,ends_at,pity_limit,rates\)\s*values\('([^']+)','([^']+)','([^']+)',null,(\d+),'([^']+)'\)/.exec(files[0]);
-assert.ok(ins, 'banner insert'); assert.equal(ins[1], C.banner_id); assert.equal(ins[2], C.pickup_id); assert.equal(+ins[4], C.pity); assert.equal(C.pity, 50);
-assert.deepEqual(JSON.parse(ins[5]), C.rates, 'SQL rates = client rates');
+const ins = /insert into public\.special_banners\(id,pickup_id,starts_at,ends_at,pity_limit,rates\)\s*values\('([^']+)','([^']+)','([^']+)','([^']+)',(\d+),'([^']+)'\)/.exec(files[0]);
+assert.ok(ins, 'banner insert'); assert.equal(ins[1], C.banner_id); assert.equal(ins[2], C.pickup_id); assert.equal(+ins[5], C.pity); assert.equal(C.pity, 50);
+assert.deepEqual(JSON.parse(ins[6]), C.rates, 'SQL rates = client rates');
 assert.equal(new Date(ins[3].replace(' ', 'T').replace(/\+09$/, '+09:00')).getTime(), new Date(C.starts_at).getTime());
+const kst = t => new Date(t.replace(' ', 'T').replace(/\+09$/, '+09:00')).getTime();
+assert.equal(kst(ins[4]), new Date(C.ends_at).getTime(), 'SQL ends_at = client ends_at'); assert.equal(new Date(C.ends_at).toISOString(), '2026-11-30T14:59:59.000Z', '하지혜 픽업 11/30 23:59:59 KST 마감');
+for (const f of files) assert.match(f, /update public\.special_banners set ends_at='2026-11-30 23:59:59\+09' where id='hajihye-20261113' and ends_at is null;/, 'existing row gets the end date once');
+{ const e = await rd('supabase/special_summon_end_20261130_staging.sql'); assert.match(e, /'7703759698107299042'/); assert.doesNotMatch(e, /7692130048193495360/); assert.match(e, /set ends_at='2026-11-30 23:59:59\+09' where id='hajihye-20261113'/); }
 const prem = await rd('supabase/gacha_premium_ur.sql');
 const premIds = [...prem.slice(prem.indexOf('insert into public.story_premium_ur')).split(';')[0].matchAll(/\('(\d+)'/g)].map(m => m[1]);
 assert.deepEqual(SPU, premIds, 'client PREMIUM_UR = story_premium_ur');
