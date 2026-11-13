@@ -723,6 +723,16 @@
     p.el.querySelector('[data-x]').onclick = () => p.close(true);
     p.el.querySelectorAll('[data-runs]').forEach(b => b.onclick = () => { p.el.querySelectorAll('[data-runs]').forEach(x => x.disabled = true); doSweep(ch, ph, +b.dataset.runs, p); });
   }
+  // 회차별 보너스(이상한 조각·각성자의 혼)가 나온 회차만 글로: "보너스: 4회차 · 8회차 · 9회차 이상한 조각". 없으면 줄 숨김
+  function sweepBonus(per) {
+    const pr = Array.isArray(per) ? per : [];
+    const parts = [['shard', '이상한 조각'], ['soul', '각성자의 혼']].map(([k, nm]) => {
+      const at = pr.map((x, i) => (+x?.[k] > 0 ? i + 1 : 0)).filter(Boolean);
+      if (!at.length) return '';
+      return `${at.length === pr.length && pr.length > 1 ? '매 회차' : at.map(i => `${i}회차`).join(' · ')} ${nm}`;
+    }).filter(Boolean);
+    return parts.length ? `<div class="text-[11px] text-zinc-400 text-center mt-2">보너스: ${parts.join(' / ')}</div>` : '';
+  }
   async function doSweep(ch, ph, n, pop) {
     const { data: r, error } = await cloud().sb.rpc('story_sweep', { p_chapter: ch.id, p_phase: ph.no, p_runs: n });
     pop.close(true);
@@ -736,7 +746,7 @@
       <div class="story-sweep-res">${line('gold', CI('gold'), '골드')}${line('blood', CI('blood'), '순수한 피')}${line('shard', CI('shard'), '이상한 조각')}${line('soul', CI('soul'), '각성자의 혼')}
         <div class="story-sweep-get">⭐ 플레이어 경험치 <b>+${fmt(r.player?.gained_xp || 0)}</b></div></div>
       ${r.player?.levelups ? `<div class="text-center text-amber-300 font-bold mt-2">LEVEL UP! Lv.${r.player.level}${r.player.levelup_gold ? ` · 🪙 +${fmt(r.player.levelup_gold)}` : ''}</div>` : ''}
-      <div class="text-[11px] text-zinc-500 text-center mt-2">회차별: ${(r.per_run || []).map(x => x.shard ? '💠' : '·').join(' ')}</div>
+      ${sweepBonus(r.per_run)}
       <div class="story-phpop-a mt-3"><button class="story-btn ghost" data-x>확인</button><button class="story-btn story-btn-sw" data-again ${againOk ? '' : 'disabled'} title="${againOk ? '' : '행동력이 부족해요'}">${SW()} 소탕하기 ×${n}<small> 🔋 ${againCost}</small></button></div>`, () => afterSweepResult(r));
     res.el.querySelector('[data-x]').onclick = () => res.close();
     // 같은 페이즈·같은 횟수로 바로 다시 소탕 (한 번만 눌리게 잠금 → 결과 팝업 새로 뜸). 다시 소탕은 close(true)라 아래 후속은 안 탄다.
