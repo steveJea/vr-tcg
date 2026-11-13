@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import vm from 'node:vm';
-const calls=[],listeners=new Map(),box={textContent:''};
+const calls=[],listeners=new Map(),box={textContent:'',removed:false,remove(){this.removed=true;}};
 const document={readyState:'loading',body:{},
   querySelectorAll:()=>[],querySelector:()=>null,
   getElementById:id=>id==='gal-end'?box:null,addEventListener:()=>{}};
@@ -19,5 +19,6 @@ listeners.get('vr:daily')({detail:{k:'battle',mode:'arcade',win:true,n:214748364
 listeners.get('vr:match')({detail:{result:'win',fieldIds:['fake'],mvpId:'fake'}});
 await new Promise(resolve=>setImmediate(resolve));
 assert.deepEqual(calls,['daily_status','weekly_status'],'only authoritative status reads, never kind/n or gallery writes');
-assert.equal(box.textContent,'도감·MVP 반영 보류');
+assert.equal(box.textContent,'','no 도감·MVP 반영 보류 note on the end screen');
+assert.equal(box.removed,true,'leftover end-screen note box is removed (no empty box)');
 console.log('Browser event smoke: no counter/register RPC, no pending replay, exports intact: OK');

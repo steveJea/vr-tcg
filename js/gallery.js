@@ -86,19 +86,8 @@
     owned = new Map(data.map(r => [r.card_id, r]));
   }
   // --- 종료 화면 ---
-  function endBox() {
-    let el = $('gal-end');
-    if (!el) {
-      el = document.createElement('div'); el.id = 'gal-end'; el.className = 'gal-end';
-      const anchor = $('end-actions') || $('restart-btn');
-      anchor.parentNode.insertBefore(el, anchor);
-    }
-    return el;
-  }
-  window.addEventListener('vr:match', () => {
-    if (!logged()) return;
-    endBox().textContent = '도감·MVP 반영 보류';
-  });
+  // 종료 화면 '도감·MVP 반영 보류' 문구는 표시하지 않음 (빈 칸도 남기지 않게 혹시 있던 칸은 지움)
+  window.addEventListener('vr:match', () => { $('gal-end')?.remove(); });
 
   function promoNote(items, mvp) {
     const it = items.find(x => x.c.id === mvp && x.r); if (!it) return '';
