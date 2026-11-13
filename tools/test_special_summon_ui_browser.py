@@ -23,21 +23,34 @@ async def main():
     b=await p.chromium.launch(**kw)
     pg,errs=await page(b)
     assert await pg.evaluate("document.querySelector('.gr-bn.on')?.dataset.tab")=='pickup'
-    own=await pg.inner_text('#gr-own'); print(own); assert '23' in own and 'UR 천장 48/50' in own and '다음 UR은 하지혜 확정' in own, own
+    own=await pg.inner_text('#gr-own'); print(own); assert '23' in own and 'UR 천장' not in own and '다음 UR은 하지혜 확정' in own, own
     assert await pg.locator('.gr-bn-pickup .gr-bn-pick').count()==1
     assert (await pg.inner_text('#gacha-rates')).strip()=='확률'
     await pg.screenshot(path=f'{SHOTS}/special_summon.png')
     # 배너 줄: 스크롤바 숨김 + 화살표 · 픽업 배경 · ? 천장 안내 · i 인재 소개
-    assert await pg.evaluate("getComputedStyle(document.querySelector('.gr-banners')).scrollbarWidth")=='none'
+    # 배너는 한 번에 1개만 (옆 배너 안 보임), 배너에 소환권 수 없음
+    vis1 = "(()=>{const v=document.querySelector('.gr-banners').getBoundingClientRect();return [...document.querySelectorAll('.gr-bn')].filter(b=>{const r=b.getBoundingClientRect();return Math.min(r.right,v.right)-Math.max(r.left,v.left)>1}).map(b=>b.dataset.tab)})()"
+    assert await pg.evaluate(vis1)==['pickup'], await pg.evaluate(vis1)
+    assert await pg.locator('.gr-bn .story-ticket').count()==0
+    assert await pg.evaluate("getComputedStyle(document.querySelector('.gr-banners')).overflowX")=='hidden'
+    assert await pg.evaluate("getComputedStyle(document.querySelector('.gr-bn-track')).transitionDuration")!='' 
     assert await pg.evaluate("(()=>{const i=document.querySelector('.gr-bg-pick img');return !!i && i.complete && i.naturalWidth>0 && i.currentSrc.includes('10440_')})()"), 'pickup bg'
-    await pg.click('.gr-bn-l'); await pg.wait_for_timeout(500); assert await pg.evaluate("document.querySelector('.gr-bn.on')?.dataset.tab")=='special'
+    await pg.click('.gr-bn-l'); await pg.wait_for_timeout(150)
+    mid=await pg.evaluate("getComputedStyle(document.querySelector('.gr-bn-track')).transform"); print('mid slide', mid)
+    await pg.wait_for_timeout(700); assert await pg.evaluate("document.querySelector('.gr-bn.on')?.dataset.tab")=='special'
+    assert await pg.evaluate(vis1)==['special'], await pg.evaluate(vis1)
     assert await pg.locator('.gr-bg-pick').count()==0, 'premium keeps default bg'
     await pg.click('.gr-bn-r'); await pg.wait_for_timeout(700); assert await pg.evaluate("document.querySelector('.gr-bn.on')?.dataset.tab")=='pickup'
+    bb=await pg.locator('.gr-banners').bounding_box(); y=bb['y']+bb['height']/2
+    await pg.mouse.move(bb['x']+80,y); await pg.mouse.down(); await pg.mouse.move(bb['x']+180,y,steps=6); await pg.mouse.move(bb['x']+260,y,steps=6); await pg.mouse.up(); await pg.wait_for_timeout(800)
+    assert await pg.evaluate("document.querySelector('.gr-bn.on')?.dataset.tab")=='special', 'swipe'
+    await pg.click('.gr-bn-r'); await pg.wait_for_timeout(800); assert await pg.evaluate("document.querySelector('.gr-bn.on')?.dataset.tab")=='pickup'
     await pg.click('[data-sp-help]'); await pg.wait_for_selector('#sp-pity-pop')
     t=await pg.inner_text('#sp-pity-pop'); assert 'UR 없이 50회째' in t and '어떤 UR이든' in t and '하지혜가 아닌 UR이 2번' in t, t
     await pg.screenshot(path=f'{SHOTS}/summon_pity_help.png'); await pg.click('#sp-pity-pop [data-sp-close]')
     await pg.click('[data-sp-info]'); await pg.wait_for_selector('#sp-intro-pop')
     assert await pg.evaluate("document.querySelector('.gr-bn.on')?.dataset.tab")=='pickup'
+    assert await pg.evaluate("getComputedStyle(document.querySelector('.sp-intro-grade')).color")=='rgb(251, 191, 36)'
     t=await pg.inner_text('#sp-intro-pop'); assert '하지혜' in t and '공방 특화' in t and '죽이지 않으면 죽어' in t and '바람' in t and 'UR' in t, t
     await pg.wait_for_timeout(1200); await pg.screenshot(path=f'{SHOTS}/summon_pickup_intro.png'); await pg.click('#sp-intro-pop [data-sp-close]')
     await pg.click('[data-sp="1"][data-draw="10"]')
@@ -45,7 +58,7 @@ async def main():
       if '10440' in (await pg.inner_html('#tk-result')): break
       await pg.mouse.click(195,300); await pg.wait_for_timeout(500)
     assert '10440' in (await pg.inner_html('#tk-result')), '천장 하지혜'
-    await pg.wait_for_timeout(800); own=await pg.inner_text('#gr-own'); print(own); assert '13' in own and 'UR 천장 8/50' in own and '하지혜 확정까지 UR 3번' in own, own
+    await pg.wait_for_timeout(800); own=await pg.inner_text('#gr-own'); print(own); assert '13' in own and 'UR 천장' not in own and '하지혜 확정까지 UR 3번' in own, own
     await pg.screenshot(path=f'{SHOTS}/special_summon_result.png')
     await pg.evaluate("VRStory.openGacha('pickup')"); await pg.wait_for_timeout(800)
     await pg.click('#gacha-rates'); await pg.wait_for_selector('#sp-rates-pop')
