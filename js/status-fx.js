@@ -59,10 +59,13 @@ function textPop(r, kind) {
   spawn(`stfx-text stfx-text-${kind}`, r, 900, d => { d.textContent = LABEL[kind]; });
 }
 
+// 위치 읽기·애니메이션 다시 시작은 game.js 와 같은 방식 (같은 순간 여러 장에 걸릴 때 화면 재계산을 한 번만). game.js 가 없으면 예전 방식
+const rectOf = el => (window.VRFxRect ? window.VRFxRect(el) : el.getBoundingClientRect());
+const restart = (el, c) => { if (window.VRRestartCls) return window.VRRestartCls(el, c); el.classList.remove(c); void el.offsetWidth; el.classList.add(c); };
 /** 걸리는 순간 */
 export function statusApplyFx(el, kind) {
   if (!el || !KIND[kind] || opt.off() || !el.isConnected) return;
-  const r = el.getBoundingClientRect(); if (!r.width) return;
+  const r = rectOf(el); if (!r.width) return;
   const fx = KIND[kind] + '_fx';
   if (kind === 'para') {
     spawn('stfx-bolt', r, 520, d => sprite(d, fx));
@@ -86,40 +89,40 @@ export function statusApplyFx(el, kind) {
     screen('stfx-edge-red', 450);
   }
   textPop(r, kind);
-  el.classList.remove('stfx-pop'); void el.offsetWidth; el.classList.add('stfx-pop');
+  restart(el, 'stfx-pop');
   setTimeout(() => el.classList.remove('stfx-pop'), Math.round(500 * scale()));
 }
 /** 출혈 피해 틱: 화면 가장자리 붉은 맥박 + 카드 아래 핏방울 */
 export function bleedTickFx(el) {
   if (!el || opt.off() || !el.isConnected) return;
   screen('stfx-edge-red', 700);
-  const r = el.getBoundingClientRect(); if (!r.width) return;
+  const r = rectOf(el); if (!r.width) return;
   for (let i = 0; i < 3; i++) spawn('stfx-drip', r, 900, d => { d.style.setProperty('--dx', ((i - 1) * r.width * 0.25) + 'px'); d.style.animationDelay = (i * 120 * scale()) + 'ms'; });
 }
 /** 지속 피해/회복 틱: poison(초록·보라 거품) · curse(검보라 연기) · regen(초록·금빛 반짝이) + 카드 맥박 */
 export function tickFx(el, kind) {
   if (!el || opt.off() || !el.isConnected) return;
-  const r = el.getBoundingClientRect(); if (!r.width) return;
+  const r = rectOf(el); if (!r.width) return;
   const n = opt.quick() ? 3 : kind === 'regen' ? 7 : 6;
   if (TICK_ASSET[kind]) spawn(`stfx-tick-img ${kind}`, r, 800, d => { d.style.backgroundImage = `url("${TICK_ASSET[kind]}")`; });
   for (let i = 0; i < n; i++) spawn(`stfx-tick ${kind}`, r, 900, d => { d.style.setProperty('--dx', ((Math.random() - .5) * r.width * .8) + 'px'); d.style.setProperty('--dy', (-(20 + Math.random() * 40)) + 'px'); d.style.animationDelay = Math.round(i * 70 * scale()) + 'ms'; });
   if (kind === 'bleed') screen('stfx-edge-red', 500);
-  el.classList.remove('stfx-pulse-poison', 'stfx-pulse-curse', 'stfx-pulse-regen', 'stfx-pulse-bleed', 'stfx-pulse-burn'); void el.offsetWidth; el.classList.add('stfx-pulse-' + kind);
+  el.classList.remove(...['poison', 'curse', 'regen', 'bleed', 'burn'].filter(k => k !== kind).map(k => 'stfx-pulse-' + k)); restart(el, 'stfx-pulse-' + kind);
   setTimeout(() => el.classList.remove('stfx-pulse-' + kind), Math.round(650 * scale()));
 }
 /** 마비로 행동 불가: 지지직 떨림 */
 export function paraSkipFx(el, kind = 'para') {
   if (!el || opt.off() || !el.isConnected) return;
-  if (kind === 'freeze') { const r = el.getBoundingClientRect(); if (r.width) { spawn('stfx-ice-shatter', r, 600); for (let i = 0; i < 6; i++) spawn('stfx-tick freeze', r, 700, d => { const a = Math.random() * Math.PI * 2, s = 30 + Math.random() * 40; d.style.setProperty('--dx', Math.cos(a) * s + 'px'); d.style.setProperty('--dy', Math.sin(a) * s + 'px'); }); textPop(r, 'freeze'); } return; }
-  el.classList.remove('stfx-jitter'); void el.offsetWidth; el.classList.add('stfx-jitter');
+  if (kind === 'freeze') { const r = rectOf(el); if (r.width) { spawn('stfx-ice-shatter', r, 600); for (let i = 0; i < 6; i++) spawn('stfx-tick freeze', r, 700, d => { const a = Math.random() * Math.PI * 2, s = 30 + Math.random() * 40; d.style.setProperty('--dx', Math.cos(a) * s + 'px'); d.style.setProperty('--dy', Math.sin(a) * s + 'px'); }); textPop(r, 'freeze'); } return; }
+  restart(el, 'stfx-jitter');
   setTimeout(() => el.classList.remove('stfx-jitter'), Math.round(600 * scale()));
-  const r = el.getBoundingClientRect(); if (r.width) spawn('stfx-spark', r, 400);
+  const r = rectOf(el); if (r.width) spawn('stfx-spark', r, 400);
 }
 /** 혼란으로 아군 공격: 화면 소용돌이 */
 export function confuseAllyFx(el) {
   if (opt.off()) return;
   screen('stfx-screen-swirl', 600);
-  if (el?.isConnected) { const r = el.getBoundingClientRect(); if (r.width) spawn('stfx-swirl small', r, 500, d => sprite(d, 'confuse_fx')); }
+  if (el?.isConnected) { const r = rectOf(el); if (r.width) spawn('stfx-swirl small', r, 500, d => sprite(d, 'confuse_fx')); }
 }
 /** 도발 유닛을 공격할 때: 공격자 → 도발 유닛으로 끌려가는 붉은 선 */
 export function tauntPullFx(fromEl, toEl) {
