@@ -43,6 +43,9 @@
 .gear-drop img{width:72px;height:72px;object-fit:contain}
 .gear-drop span{font-size:.72rem;line-height:1.15}
 .gear-drop>b{position:absolute;top:2px;right:4px;font-size:1rem}
+/* 우편함행 표시: .gear-drop img(72px)가 배지 아이콘까지 키워 장비 그림을 가리던 문제 */
+.gear-drop>b{display:flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:8px;background:rgba(0,0,0,.55);line-height:1;z-index:1}
+.gear-drop>b img,.gear-drop>b .ui-ic{width:20px;height:20px;vertical-align:middle}
 .gear-drop.box>b{top:24px;right:auto;font-size:1.8rem}
 @keyframes gearIn{from{transform:scale(.6);opacity:0}to{transform:none;opacity:1}}
 .gear-box{font-size:2.6rem;line-height:72px;height:72px;display:block}.gear-cell .gear-box{font-size:1.8rem;line-height:1.4}.gear-box.big{font-size:3rem;line-height:1.6;height:auto}
