@@ -4,7 +4,7 @@
 // 역할: 보스 👑 · 간부 ⚔️ · 조직원. 개인 재화 충성 🩸 (세력에 기여한 만큼 + , 조직 상점에서 사용)
 // 2단계 (guild2.sql): 집결(출석) · 의뢰(일일/주간). 그림: img/ui/guild/rally_banner.webp · img/ui/guild/quest_<이벤트>.webp (없으면 이모지)
 (() => {
-  const IMG = 'https://raw.githubusercontent.com/steveJea/vr-ideal-worldcup/main/img/bt_img/';
+  const IMG = '/img/bt_img/';
   const EMB = ['💀', '🌹', '🐦‍⬛', '🦷', '⛓️', '👁️', '🗡️', '🐍', '🕷️', '🔥', '🌙', '🃏'];
   const gi = (n, e, c = '') => `<img class="gi ${c}" src="img/ui/guild/${n}.webp" alt="${e}" draggable="false" onerror="this.replaceWith(this.alt)">`;
   const ROLE = { boss: [gi('role_boss', '👑'), '보스'], officer: [gi('role_officer', '⚔️'), '간부'], member: ['', '조직원'] };

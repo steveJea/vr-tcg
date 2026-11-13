@@ -2,7 +2,7 @@
 // 게시판 목록 · 글 상세 · 판매 글 올리기 · 제안(인재·장비·드링크·골드) · 내 글(수락·거절·조건 거절·내리기) · 내 제안(취소)
 // 팝업은 바깥 누르면 닫힘, 돈·물건이 움직이는 동작은 모두 확인 후. SQL 없으면 "준비 중"
 (() => {
-  const IMG = 'https://raw.githubusercontent.com/steveJea/vr-ideal-worldcup/main/img/bt_img/';
+  const IMG = '/img/bt_img/';
   const TIER = ['', '낡은', '일반', '고급', '희귀', '영웅', '전설', '심연'];
   const GRADE = { NORMAL: 'N', RARE: 'R', 'HIGH RARE': 'HR', 'SUPER RARE': 'SR', 'ULTRA RARE': 'UR', 'MYTHIC RARE': 'MR', 'LEGENDARY RARE': 'LR' };
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));

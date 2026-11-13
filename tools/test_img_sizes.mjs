@@ -11,6 +11,8 @@ const bad = [];
 for (const f of webp('img/thumb')) { const [w] = dims('img/thumb/' + f); if (w !== 300) bad.push('thumb ' + f + ' w=' + w); }
 for (const f of webp('img/npc')) { if (/^(10334|10335)\./.test(f)) continue; const p = 'img/npc/' + f, [w, h] = dims(p);
   if (w !== 576 || h !== 864) bad.push(`npc ${f} ${w}x${h}`); if (readFileSync(p).length > 100000) bad.push('npc ' + f + ' >100KB'); }
+// 카드 원본 (vr-ideal-worldcup 에서 옮겨 온 것, tools/sync_card_art 참고): 576x864 이하·100KB 이하
+for (const f of webp('img/bt_img')) { const p = 'img/bt_img/' + f, [w, h] = dims(p); if (w > 576 || h > 864) bad.push(`bt_img ${f} ${w}x${h}`); if (readFileSync(p).length > 100000) bad.push('bt_img ' + f + ' >100KB'); }
 for (const f of webp('data/event')) { const [w, h] = dims('data/event/' + f); if (w !== 1280 || h !== 720) bad.push(`event ${f} ${w}x${h}`); }
 assert.deepEqual(bad, []);
-console.log('Image sizes: thumb 300w, npc 576x864 ≤100KB (except MR/LR 10334/10335), event 1280x720 OK');
+console.log('Image sizes: thumb 300w, npc 576x864 ≤100KB (except MR/LR 10334/10335), event 1280x720, bt_img ≤576x864 ≤100KB OK');

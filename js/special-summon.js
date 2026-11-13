@@ -68,7 +68,7 @@
   const GR = { 'NORMAL': 'N', 'RARE': 'R', 'HIGH RARE': 'HR', 'SUPER RARE': 'SR', 'ULTRA RARE': 'UR', 'MYTHIC RARE': 'MR', 'LEGENDARY RARE': 'LR' };
   const EL = { DARK: '어둠', LIGHT: '빛', FIRE: '불', ICE: '얼음', WIND: '바람', ABYSS: '심연', VOID: '공허' };
   const ROLE = { CHARGE: '돌격', CRUSH: '분쇄', DEFENSE: '방어', SUPPORT: '지원', DISTURB: '교란', FASCINATION: '매혹', OVERWHELMING: '압도', FURIOUS: '격노', PHENOMENAL: '경이' };
-  const PORTRAIT = id => `https://raw.githubusercontent.com/steveJea/vr-ideal-worldcup/main/img/bt_img/${id}.webp`;
+  const PORTRAIT = id => `/img/bt_img/${id}.webp`;
   /** 픽업 인재 소개 (i 버튼): 그림 · 이름 · 등급/속성 · 스킬 · 소개 */
   function showIntro() {
     const b = banner(), id = String(b.pickup_id || CONFIG.pickup_id), c = window.TCG?.cardById?.(id) || {};

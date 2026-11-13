@@ -4,7 +4,7 @@
 import { skillState } from './skills.js';
 import { attackTargets } from './rules.js';
 
-const IMG = 'https://raw.githubusercontent.com/steveJea/vr-ideal-worldcup/main/img/bt_img/';
+const IMG = '/img/bt_img/';
 const MODE_KEY = 'vrBattleMode';
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const n = v => Number(v || 0).toLocaleString('ko-KR');

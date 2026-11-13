@@ -6,7 +6,7 @@ import { runWar, warSession, warDeck, warCard, WAR_ROLES } from './war-core.js';
 import { WAR_DECKS, deckLabel, pairedDeck, deckLock, pickPool, draftProblem } from './war-deck-controls.js';
 import { modeToggle, bindMode, battleMode } from './manual-ui.js';
 
-const IMG = 'https://raw.githubusercontent.com/steveJea/vr-ideal-worldcup/main/img/bt_img/';
+const IMG = '/img/bt_img/';
 const UI = 'img/ui/guild/';
 const card = id => window.TCG?.cardById?.(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));

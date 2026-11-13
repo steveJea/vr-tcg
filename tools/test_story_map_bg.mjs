@@ -123,7 +123,7 @@ assert.deepEqual(urls(fall.getAttribute('style')), ['img/story/ch_bg_7.webp']);
 assert.equal(fall.getAttribute('style').includes(','), false);
 window.VRStory.renderHub();
 const fallSlot = screen().querySelector('.hub-ch-slot.big .hub-ch-img');
-assert.deepEqual(urls(fallSlot.getAttribute('style')), ['https://raw.githubusercontent.com/steveJea/vr-ideal-worldcup/main/img/bt_img/10115.webp']);
+assert.deepEqual(urls(fallSlot.getAttribute('style')), ['/img/bt_img/10115.webp']);
 assert.equal(loads.filter(u => u.includes('ch_bg')).every(u => u === 'img/story/ch_bg_7.webp'), true);
 
 // 시작 캐릭터 그림도 공용 그림도 없으면 요청하지 않고 밤색 그라데이션만 남긴다.
@@ -181,7 +181,7 @@ for (const pc of [true, false]) {
 // 마이페이지 진행 챕터는 PC·모바일 모두 가로 배경 한 장 (16:7 칸). 허브 모바일은 세로 배경을 유지한다.
 vm.runInContext(await read('js/mypage.js'), ctx);
 const record = window.VRMyPage._test.sections.find(s => s.id === 'record');
-const poster = 'https://raw.githubusercontent.com/steveJea/vr-ideal-worldcup/main/img/bt_img/10491.webp';
+const poster = '/img/bt_img/10491.webp';
 for (const starter of ['10111', '10224', '10265']) {
   for (let id = 0; id <= 15; id++) {
     if (id !== 1 && starter !== '10111') continue;
