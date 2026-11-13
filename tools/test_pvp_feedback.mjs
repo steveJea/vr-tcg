@@ -79,7 +79,7 @@ const tick = async () => { for (let i = 0; i < 15; i++) await Promise.resolve();
     document: { createElement: tag => { const el = tag === 'video' ? new Video() : new Node(); if (tag === 'video') videos.push(el); return el; },
       body: { appendChild: el => { shown.add(el); maxShown = Math.max(maxShown, shown.size); } } },
   });
-  vm.runInContext("let vidGate = Promise.resolve(), mrCancel = null; const vidWait = () => vidGate;" + section(game, 'function mrVideo(', 'async function castSkill(') + section(game, 'function passiveCutIn(', 'function passiveCutInPlain('), ctx);
+  vm.runInContext("let vidGate = Promise.resolve(), mrCancel = null; const vidWait = () => vidGate;" + section(game, 'function mrVideo(', 'async function castSkill(') + section(game, 'function passiveCutIn(', 'async function passiveCutInPlain('), ctx);
   const [a, b, c] = [make(1), make(2), make(3)];
   ctx.passiveCutIn(a, 'passive'); const active = ctx.mrVideo(b, skills[0]), next = ctx.mrVideo(c, skills[0]);
   await tick(); assert.equal(videos.length, 1); assert.equal(shown.size, 1);
@@ -176,7 +176,7 @@ console.log(`PASS real view stepper: batch base attack lunge/focus, video wait, 
   const ctx = vm.createContext({ S: { over: false, view: {}, ai: { hp: 0 }, me: { hp: 1 } }, finish: () => { throw Error('legacy completion must not run'); } });
   vm.runInContext(section(game, 'function checkEnd() {', '/** 챕터 0 P3:'), ctx); assert.equal(ctx.checkEnd(), false);
   let html = '';
-  const ui = vm.createContext({ MODES, view: { mode: 'boss' }, tierOf: () => ({}), emb: () => '', esc: String, snapThumbs: d => d.map(x => `<span class="pvp-th">${x.id}</span>`).join(''), modal: (id, body) => { html = body; return new Node(); } });
+  const ui = vm.createContext({ clearPendingResult: () => {}, concealLobby: () => {}, backToMatch: () => {}, rwHtml: () => '', MODES, view: { mode: 'boss' }, tierOf: () => ({}), emb: () => '', esc: String, snapThumbs: d => d.map(x => `<span class="pvp-th">${x.id}</span>`).join(''), modal: (id, body) => { html = body; return new Node(); } });
   vm.runInContext(section(pvp, 'function showResult(', '// ---- 수동:'), ui);
   const deck = Array.from({ length: 6 }, (_, i) => ({ id: i }));
   ui.showResult({ mode: 'boss', me: [deck], opp: [deck] }, { win: true, delta: 16, rounds: [{ win: true }] });

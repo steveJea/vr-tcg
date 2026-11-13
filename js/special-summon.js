@@ -7,7 +7,7 @@
   /** 첫 스페셜 배너 (SQL insert 와 같아야 함 · tools/test_special_summon.mjs 가 확인) */
   const CONFIG = {
     banner_id: 'hajihye-20261113', pickup_id: '10440', pickup_name: '하지혜',
-    starts_at: '2026-11-13T00:00:00+09:00', ends_at: null, pity: 50, pickup_after: 2,
+    starts_at: '2026-11-13T00:00:00+09:00', ends_at: '2026-11-30T23:59:59+09:00', pity: 50, pickup_after: 2,
     rates: { 'NORMAL': 5000, 'RARE': 3000, 'HIGH RARE': 1000, 'SUPER RARE': 800, pickup: 100, other_ur: 100 },
   };
   /** 배너별 화면 설정 (배너 id 기준 · 여기만 고치면 됨)

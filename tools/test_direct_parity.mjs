@@ -474,6 +474,21 @@ const summonedOk = verifyDirect({
   },
 }, [{ t: 1, k: 'end' }]);
 assert.notEqual(summonedOk.reason, 'mustsummon', 'one end-turn must not fail the 2-turn rule');
+// 15-11 (owner report 2026-11-11): 김백중 alone on T1, then a T2 wipe before the
+// required 윤진아 is summoned. A wipe inside the 2-turn window is a win on the server.
+{
+  const st1511 = { no: 11, type: 'normal', bossId: '10123', mana: 80, single: true, tutorial: false,
+    enemies: { ids: ['10123', '10151', '10151', '10151', '10151'], boost: { '10123': { HP: 768, ATK: 93, DEF: 152, storyLv: 83, power: 41636 }, '10151': { HP: 692, ATK: 104, DEF: 104, storyLv: 83, power: 37602 } } },
+    party: { forced: ['10290'], exclude: ['10383'], mustLive: ['10290'], levels: { '10290': 83 } } };
+  const s1511 = seed => ({ mode: 'story', target: '15:11', seed, snapshot: { mana: 80, leader: null, cards: [{ id: '10290', uid: 'j', level: 83 }, { id: '10058', uid: 'k', level: 100 }], stage: st1511 } });
+  const t1 = [{ t: 1, k: 'summon', id: '10058' }, { t: 1, k: 'end' }];
+  const wipe = verifyDirect(s1511(1), t1.concat({ t: 2, k: 'skill', i: 0, s: '다친다' }));
+  assert.equal(wipe.win, true, '15-11 T2 wipe before 윤진아 must be a win ' + JSON.stringify(wipe));
+  assert.equal(wipe.reason, 'wipe');
+  const late = verifyDirect(s1511(2), t1.concat({ t: 2, k: 'skill', i: 0, s: '다친다' }, { t: 2, k: 'end' }));
+  assert.equal(late.reason, 'mustsummon', '15-11 survivors at T2 end without 윤진아 = mustsummon');
+  assert.throws(() => verifyDirect(s1511(1), t1.concat({ t: 2, k: 'skill', i: 0, s: '다친다' }, { t: 2, k: 'summon', id: '10290' })), /tampered/, 'actions after the win are rejected');
+}
 console.log('direct parity ok');
 
 const scale = (base, level) => {
