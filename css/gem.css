@@ -193,3 +193,24 @@
 .cosmo-board-th img,.cosmo-border-th img{width:100%;height:100%;object-fit:cover;display:block}
 .cosmo-border-th{height:48px;width:36px}
 .cosmo-board-th.miss,.cosmo-border-th.miss{border:1px dashed rgba(255,255,255,.25)}
+/* 출석 보상 (js/attendance.js) */
+.att-btn-ic{font-style:normal;font-size:16px;line-height:1}
+.att-pop{position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,.78);display:flex;align-items:center;justify-content:center;padding:12px}
+.att-panel{width:100%;max-width:520px;max-height:90vh;overflow:auto;background:linear-gradient(#1f0d12,#0d0507);border:1px solid rgba(251,191,36,.35);border-radius:18px;padding:12px 12px 14px;color:#fafafa}
+.att-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}.att-top b{font-size:18px;font-weight:900}
+.att-x{width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.1)}
+.att-sec{background:rgba(255,255,255,.05);border-radius:14px;padding:8px;margin-top:8px}
+.att-lucky{background:linear-gradient(135deg,rgba(16,185,129,.16),rgba(255,255,255,.04))}
+.att-h{display:flex;align-items:baseline;justify-content:space-between;gap:6px;margin-bottom:6px}.att-h b{font-weight:900}.att-h small{font-size:11px;color:#a1a1aa}
+.att-grid{display:grid;gap:4px}.att-week{grid-template-columns:repeat(7,1fr)}.att-month{grid-template-columns:repeat(7,1fr)}
+.att-cell{position:relative;min-height:54px;border-radius:9px;background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.12);padding:2px;text-align:center;display:flex;flex-direction:column;align-items:center}
+.att-cell small{font-size:9px;color:#a1a1aa;align-self:flex-start;line-height:1}
+.att-cell.tail{border-color:rgba(192,132,252,.5)}
+.att-cell.next{border-color:#fbbf24;box-shadow:0 0 10px rgba(251,191,36,.6);background:rgba(251,191,36,.12)}
+.att-cell.done{opacity:.5}.att-cell em{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-style:normal;font-size:22px;color:#4ade80;text-shadow:0 1px 3px #000}
+.att-rws{display:flex;flex-wrap:wrap;justify-content:center;gap:1px 2px;margin-top:1px}
+.att-rw{display:inline-flex;flex-direction:column;align-items:center;line-height:1}.att-rw img{width:20px;height:20px;object-fit:contain}.att-rw i{font-style:normal;font-size:15px;height:20px}
+.att-rw b{font-size:9px;font-weight:800}
+.att-claim{display:block;width:100%;margin-top:8px;padding:9px;border-radius:12px;font-weight:900;background:linear-gradient(#f59e0b,#b45309);color:#111}
+.att-claim:disabled{background:rgba(255,255,255,.1);color:#a1a1aa}
+.att-note{font-size:10px;color:#a1a1aa;margin:6px 0 0}
