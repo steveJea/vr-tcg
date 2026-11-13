@@ -106,7 +106,7 @@ assert(html.indexOf('src="js/asset-cache.js"') < html.indexOf('src="js/id-alias.
 for (const id of ['as-dl', 'as-sum', 'as-prog', 'as-cancel', 'as-clear', 'as-have']) assert.match(html, new RegExp(`id="${id}"`), id);
 assert.match(js, /finish\('timeout'\)/); assert.match(js, /> 8000/, 'never blocks: 8s fallback');
 assert.match(js, /saveData/); assert.match(js, /effectiveType/); assert.match(js, /document\.hidden/); assert.match(js, /x-vr-prefetch/); assert.match(js, /pendingImgs\(\)/); assert.match(js, /'yield'/); assert.match(js, /inBattle\(\)/); assert.match(js, /\[worker\(\), worker\(\)\]/, 'background concurrency 2');
-assert.match(js, /와이파이 권장/); assert.match(js, /그만|cancel/);
+assert.match(js, /CHUNK = 192 \* 1024/); assert.match(js, /range: `bytes=\$\{s\}-\$\{e\}`/); assert.match(js, /content-range/); assert.match(js, /new Uint8Array\(sz\)/); assert.match(js, /와이파이 권장/); assert.match(js, /그만|cancel/);
 assert.match(build, /cp\(path\.join\(root, 'sw\.js'\)/); assert.match(build, /buildAssetManifest\(out\)/); assert.match(build, /\/asset-manifest\.json'\]\.map\(p => `\$\{p\}\\n  Cache-Control: no-cache/);
 assert.match(priv, /게임 리소스\(그림·음성·영상 등\)를 기기에 저장해 더 빠르게 불러올 수 있어요/);
 console.log('Asset cache: manifest hashes, SW passthrough (non-GET/cross-origin/navigate/auth), original-request first fetch + hash-checked store, prefetch bypass, stale manifest non-blocking, served from cache, update refetch + stale cleanup, Range 206, no-manifest passthrough, boot/settings/privacy wiring OK');
