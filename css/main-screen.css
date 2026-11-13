@@ -330,3 +330,12 @@
 #main-menu-pop.gm-in-battle [data-gm-nobattle], #main-menu-pop.gm-in-battle [data-gm-home], #main-menu-pop.gm-away [data-gm-home] { display: none !important; }
 #main-menu-pop:not(.hidden) { z-index: 9600 !important; }
 .set-range { width: 8.5rem; accent-color: #f5c96a; }
+/* 게스트 시작 확인창: 두 줄 + 긴 버튼 글자 (모바일 줄바꿈) */
+#vr-confirm.vc-guest .vc-msg{display:flex;flex-direction:column;gap:8px;text-align:center;word-break:keep-all;overflow-wrap:anywhere;line-height:1.5}
+.vc-guest-h{font-weight:900;font-size:15px;text-wrap:balance}
+.vc-guest-s{font-size:13px;opacity:.85;text-wrap:balance}
+#vr-confirm.vc-guest .vc-row{flex-wrap:wrap;gap:8px}
+#vr-confirm.vc-guest .vc-row button{flex:1 1 120px;min-width:0;white-space:nowrap;padding-left:10px;padding-right:10px}
+.oauth-row.oauth-flash{animation:oauthFlash 1.4s ease 1}
+@keyframes oauthFlash{0%,100%{filter:none}30%,70%{filter:drop-shadow(0 0 10px rgba(251,191,36,.9)) brightness(1.15)}}
+@media (prefers-reduced-motion: reduce){.oauth-row.oauth-flash{animation:none;outline:2px solid #fbbf24;outline-offset:4px;border-radius:12px}}

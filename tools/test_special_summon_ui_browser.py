@@ -11,6 +11,15 @@ const ok=d=>Promise.resolve({data:d,error:null});
 const sb={from:()=>({select:()=>({eq:()=>({maybeSingle:()=>ok({data:save})})})}),rpc:(n,a)=>{if(n==='player_status')return ok({ok:true,level:20,max_level:100,xp:1,xp_next:9,stamina:40,stamina_max:40,regen_secs:360,next_regen_secs:1,cost:{story:6},unlocks:{}});
  if(n==='story_tickets')return ok({tickets:3,added:0}); if(n==='wallet_status')return ok({ok:true,gold:1,blood:1,shard:0,soul:0}); return Promise.resolve({data:null,error:{message:'Could not find the function '+n,code:'PGRST202'}});}};
 const cloud={user:{id:'tuser',email:'a@b.c',user_metadata:{name:'형님'}},sb};window.__STORY_MOCK_CLOUD=cloud;window.__PLAYER_MOCK={cloud};})();"""
+async def check_rates(pg, tag):
+    rows=await pg.evaluate("[...document.querySelectorAll('#sp-rates-pop .sp-rate-box')].map(x=>[x.querySelector('summary > b').textContent,[...x.querySelectorAll('.sp-rate-grades b')].map(b=>b.textContent)])")
+    print(tag, rows); t=await pg.inner_text('#sp-rates-pop'); assert 'NaN' not in t and 'undefined' not in t, t
+    d={k:v for k,v in rows}
+    assert d['프리미엄 소환']==['50%','30%','16%','3.2%','0.8%'], d
+    assert d['일반 소환 (하루 1회 무료)']==['70%','20%','6.5%','3%','0.5%'], d
+    sp=[v for k,v in rows if k.startswith('스페셜 소환')][0]; assert len(sp)==6 and all(x.endswith('%') for x in sp), sp
+    tot=sum(float(x[:-1]) for x in sp); assert abs(tot-100)<1e-6, tot
+
 async def page(b, off=False):
   pg=await (await b.new_context(viewport={'width':390,'height':844},is_mobile=True,has_touch=True)).new_page(); errs=[]
   pg.on('pageerror',lambda e: errs.append(str(e)))
@@ -63,6 +72,7 @@ async def main():
     await pg.evaluate("VRStory.openGacha('pickup')"); await pg.wait_for_timeout(800)
     await pg.click('#gacha-rates'); await pg.wait_for_selector('#sp-rates-pop')
     t=await pg.inner_text('#sp-rates-pop'); assert all(x in t for x in ['스페셜 소환','프리미엄 소환','일반 소환','50회째 소환은 UR 확정','픽업 아닌 UR이 2번','UR 픽업 하지혜','1명당']), t
+    await check_rates(pg, 'login')
     await pg.screenshot(path=f'{SHOTS}/summon_rates.png')
     await pg.evaluate("document.querySelectorAll('#sp-rates-pop details').forEach(d=>d.open=true)"); await pg.wait_for_timeout(200)
     await pg.screenshot(path=f'{SHOTS}/summon_rates_all.png', full_page=True)
@@ -78,6 +88,15 @@ async def main():
     t=await pg2.inner_text('#gr-own'); print(t); assert '준비 중' in t
     assert await pg2.locator('[data-sp][disabled]').count()==2
     await pg2.screenshot(path=f'{SHOTS}/special_summon_preparing.png')
+    await pg2.evaluate("VRSpecial.showRates()"); await pg2.wait_for_selector('#sp-rates-pop'); await check_rates(pg2, 'special off')
+    # 손님 (로그인 X · 서버 없음): 게임 데이터 확률로
+    pgg=await (await b.new_context(viewport={'width':390,'height':844})).new_page(); await pgg.goto(URL)
+    await pgg.wait_for_function("window.VRSpecial && window.TCG && TCG.POOL.length")
+    await pgg.evaluate("VRSpecial.showRates()"); await pgg.wait_for_selector('#sp-rates-pop'); await check_rates(pgg, 'guest')
+    await pgg.screenshot(path=f'{SHOTS}/summon_rates_guest.png')
+    # 서버가 이상한 모양을 줘도 NaN 없음
+    await pgg.evaluate("STORY_DATA.gacha.rates=[1,2]; STORY_DATA.gacha.special={x:1}; document.getElementById('sp-rates-pop')?.remove(); VRSpecial.showRates()"); await pgg.wait_for_selector('#sp-rates-pop')
+    t=await pgg.inner_text('#sp-rates-pop'); assert 'NaN' not in t and '70%' in t and '0.8%' in t, t
     assert not errs2, errs2
     await b.close(); print('스페셜 소환 UI OK')
 asyncio.run(main())
