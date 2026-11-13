@@ -2137,7 +2137,7 @@
   function spOwn() {
     const S = window.VRSpecial, b = S?.banner();
     if (!S || !b?.open) return `<div class="gr-own sp-own" id="gr-own">스페셜 소환 <b class="sp-prep">준비 중</b></div>`;
-    return `<div class="gr-own sp-own" id="gr-own">보유 스페셜 소환권 ✨ <b id="sp-own-n">${S.tickets ?? '…'}</b> · UR 천장 <b id="sp-pity">${S.misses}/${b.pity}</b> <button type="button" class="sp-help" data-sp-help aria-label="천장 안내">?</button><br><small id="sp-pick">${spPick()}</small></div>`;
+    return `<div class="gr-own sp-own" id="gr-own">보유 스페셜 소환권 ✨ <b id="sp-own-n">${S.tickets ?? '…'}</b><br><small id="sp-pick">${spPick()}</small> <button type="button" class="sp-help" data-sp-help aria-label="천장 안내">?</button></div>`;
   }
   function renderShop(tab) {
     if (tab) shopTab = tab;
@@ -2146,11 +2146,11 @@
     const bg = `<picture class="gr-bg"><source media="(orientation: portrait), (max-aspect-ratio: 4/5)" srcset="${GDIR}bg_portrait_720.webp 720w, ${GDIR}bg_portrait.webp 1080w" sizes="100vw"><img src="${GDIR}bg_landscape.webp" srcset="${GDIR}bg_landscape_1280.webp 1280w, ${GDIR}bg_landscape.webp 1920w" sizes="100vw" alt=""></picture>`;
     // 스페셜(픽업) 배너: 배너별 배경 (세로·가로 · js/special-summon.js BANNER_UI). 못 열면 기본 배경이 그대로 보임
     const pbg = pickup ? window.VRSpecial?.bgOf?.() : null;
-    const pickBg = pbg ? `<picture class="gr-bg gr-bg-pick" style="--focus:${esc(pbg.focus || '50% 30%')}"><source media="(orientation: portrait), (max-aspect-ratio: 4/5)" srcset="${esc(pbg.portrait || pbg.landscape)}"><img src="${esc(pbg.landscape || pbg.portrait)}" alt="" onerror="this.closest('picture').remove()"></picture>` : '';
+    const pickBg = pbg ? `<picture class="gr-bg gr-bg-pick${pbg.art ? ' gr-bg-art' : ''}" style="--focus:${esc(pbg.focus || '50% 30%')};--bg-top-v:${+pbg.top?.portrait || 0}px;--bg-top-h:${+pbg.top?.landscape || 0}px"><source media="(orientation: portrait), (max-aspect-ratio: 4/5)" srcset="${esc(pbg.portrait || pbg.landscape)}"><img src="${esc(pbg.landscape || pbg.portrait)}" alt="" onerror="this.closest('picture').remove()"></picture>` : '';
     show(`<div class="gr-room${pickBg ? ' gr-room-pick' : ''}" id="gr-room">${bg}${pickBg}</div>${topBar(`${ICN('gacha', '🎴')} 인재영입`, 'hub', false)}<div class="story-shop gr-ui">
-      <div class="gr-bn-wrap"><button type="button" class="gr-bn-arrow gr-bn-l" data-bn-move="-1" aria-label="이전 배너">‹</button><div class="gr-banners" role="tablist">${GACHA_BANNERS.map(k => { const on = k.key === shopTab;
-        const sub = k.key === 'daily' ? (avail ? '오늘 1회' : '⏳') : k.key === 'special' ? ticketBadge(tickets) : k.key === 'pickup' ? spBadge() : esc(k.sub || '');
-        return `<button class="gr-bn gr-bn-${k.key} ${on ? 'on' : ''}" data-tab="${k.key}" role="tab" aria-selected="${on}"><img src="img/ui/gacha/banner_${k.img || k.key}.webp" alt="" onerror="this.remove()">${k.key === 'pickup' ? `<img class="gr-bn-pick" src="${IMG}${esc(window.VRSpecial?.banner().pickup_id || '10440')}.webp" alt="" onerror="this.remove()">` : ''}<b>${k.label}</b><small>${sub}</small>${k.key === 'pickup' ? '<span class="gr-bn-info" role="button" tabindex="0" data-sp-info aria-label="픽업 인재 소개">i</span>' : ''}${k.key === 'daily' && avail ? '<i class="story-badge">1</i>' : ''}</button>`; }).join('')}</div><button type="button" class="gr-bn-arrow gr-bn-r" data-bn-move="1" aria-label="다음 배너">›</button>
+      <div class="gr-bn-wrap"><button type="button" class="gr-bn-arrow gr-bn-l" data-bn-move="-1" aria-label="이전 배너">‹</button><div class="gr-banners"><div class="gr-bn-track" role="tablist" style="transform:translateX(-${Math.max(0, GACHA_BANNERS.findIndex(k => k.key === shopTab)) * 100}%)">${GACHA_BANNERS.map(k => { const on = k.key === shopTab;
+        const sub = k.key === 'daily' ? (avail ? '오늘 1회' : '⏳') : esc(k.sub || '');   // 소환권 수는 아래 '보유 …'에만 (배너에는 안 보임)
+        return `<button class="gr-bn gr-bn-${k.key} ${on ? 'on' : ''}" data-tab="${k.key}" role="tab" aria-selected="${on}"><img src="img/ui/gacha/banner_${k.img || k.key}.webp" alt="" onerror="this.remove()">${k.key === 'pickup' ? `<img class="gr-bn-pick" src="${IMG}${esc(window.VRSpecial?.banner().pickup_id || '10440')}.webp" alt="" onerror="this.remove()">` : ''}<b>${k.label}</b>${sub ? `<small>${sub}</small>` : ''}${k.key === 'pickup' ? '<span class="gr-bn-info" role="button" tabindex="0" data-sp-info aria-label="픽업 인재 소개">i</span>' : ''}${k.key === 'daily' && avail ? '<i class="story-badge">1</i>' : ''}</button>`; }).join('')}</div></div><button type="button" class="gr-bn-arrow gr-bn-r" data-bn-move="1" aria-label="다음 배너">›</button>
         <button class="gr-ic gr-rates gr-rates-txt" id="gacha-rates" title="확률 안내" aria-label="확률 안내">확률</button></div>
       <div class="gr-stage">${daily
         ? `<div class="gacha-stage gr-card" id="gacha-stage"><div class="gacha-card" id="gacha-card"><div class="gacha-face gacha-back"></div><div class="gacha-face gacha-front" id="gacha-front"></div></div></div>`
@@ -2166,16 +2166,25 @@
     if (forcedPullOn) root().querySelector('.story-shop')?.classList.add('gr-forced');   // 강제 영입: 나가기·탭·1회·젬 숨김
     bind(); resultOn = false; bindResultTap();
     root().querySelectorAll('[data-tab]').forEach(b => b.onclick = e => { if (e.target.closest('[data-sp-info]')) return; renderShop(b.dataset.tab); });
-    { const bn = root().querySelector('.gr-banners'), keys = GACHA_BANNERS.map(k => k.key);
-      const arrows = () => { if (!bn) return; const l = root().querySelector('.gr-bn-l'), r = root().querySelector('.gr-bn-r');
-        if (l) l.disabled = bn.scrollLeft <= 2; if (r) r.disabled = bn.scrollLeft + bn.clientWidth >= bn.scrollWidth - 2; };
-      // 화살표: 이전·다음 배너로 이동 (선택도 같이). 밀어서 넘기기는 그대로
-      root().querySelectorAll('[data-bn-move]').forEach(b => b.onclick = () => { const i = keys.indexOf(shopTab) + +b.dataset.bnMove; if (i >= 0 && i < keys.length) renderShop(keys[i]); });
-      bn?.addEventListener('scroll', arrows, { passive: true }); requestAnimationFrame(arrows); }
+    { // 배너: 한 번에 1개 (줄 전체), 화살표·밀기로 한 칸씩 · 0.3초 밀리는 효과 (움직임 줄이기 설정이면 바로)
+      const vp = root().querySelector('.gr-banners'), tr = vp?.querySelector('.gr-bn-track'), keys = GACHA_BANNERS.map(k => k.key), cur = Math.max(0, keys.indexOf(shopTab));
+      const l = root().querySelector('.gr-bn-l'), r = root().querySelector('.gr-bn-r'); if (l) l.disabled = cur <= 0; if (r) r.disabled = cur >= keys.length - 1;
+      let moving = false;
+      const go = d => { const i = cur + d; if (moving || !d || i < 0 || i >= keys.length) { if (tr) { tr.classList.add('anim'); tr.style.transform = `translateX(-${cur * 100}%)`; } return; }
+        moving = true; const done = () => renderShop(keys[i]);
+        if (!tr || matchMedia('(prefers-reduced-motion: reduce)').matches) return done();
+        tr.classList.add('anim'); tr.style.transform = `translateX(-${i * 100}%)`; let fired = false; const fin = () => { if (!fired) { fired = true; done(); } };
+        tr.addEventListener('transitionend', fin, { once: true }); setTimeout(fin, 420); };
+      root().querySelectorAll('[data-bn-move]').forEach(b => b.onclick = () => go(+b.dataset.bnMove));
+      if (vp && tr) { let x0 = null, y0 = 0, dx = 0, drag = false;
+        vp.addEventListener('pointerdown', e => { if (moving) return; x0 = e.clientX; y0 = e.clientY; dx = 0; drag = false; }, { passive: true });
+        vp.addEventListener('pointermove', e => { if (x0 == null) return; dx = e.clientX - x0; if (!drag && Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(e.clientY - y0)) { drag = true; tr.classList.remove('anim'); }
+          if (drag) tr.style.transform = `translateX(calc(-${cur * 100}% + ${dx}px))`; }, { passive: true });
+        const end = () => { if (x0 == null) return; x0 = null; if (!drag) return; const w = vp.clientWidth || 1; go(Math.abs(dx) > Math.min(60, w * .18) ? (dx < 0 ? 1 : -1) : 0); };
+        vp.addEventListener('pointerup', end); vp.addEventListener('pointercancel', end); vp.addEventListener('pointerleave', end);
+        vp.addEventListener('click', e => { if (drag) { e.stopPropagation(); e.preventDefault(); drag = false; } }, true); } }
     root().querySelectorAll('[data-sp-info]').forEach(x => { const go = e => { e.stopPropagation(); e.preventDefault(); window.VRSpecial?.showIntro?.(); }; x.onclick = go; x.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') go(e); }; });
     root().querySelector('[data-sp-help]')?.addEventListener('click', e => { e.stopPropagation(); window.VRSpecial?.showPity?.(); });
-    { const bn = root().querySelector('.gr-banners'), on = bn?.querySelector('.gr-bn.on');   // 고른 배너가 보이게
-      if (bn && on) { if (on.offsetLeft < bn.scrollLeft) bn.scrollLeft = on.offsetLeft - 8; else if (on.offsetLeft + on.offsetWidth > bn.scrollLeft + bn.clientWidth) bn.scrollLeft = on.offsetLeft + on.offsetWidth - bn.clientWidth + 8; } }
     $('gacha-rates').onclick = () => window.VRSpecial ? window.VRSpecial.showRates() : showRates();
     if (pickup && window.VRSpecial && !window.__TICKET_MOCK?.noSpecial) { const was = JSON.stringify([window.VRSpecial.tickets, window.VRSpecial.misses, window.VRSpecial.offUrs, spOpen]);
       window.VRSpecial.refresh().then(() => { if (shopTab === 'pickup' && root().querySelector('.story-shop') && !root().querySelector('#tk-result')?.children.length && JSON.stringify([window.VRSpecial.tickets, window.VRSpecial.misses, window.VRSpecial.offUrs, window.VRSpecial.banner().open]) !== was) renderShop(); }); }

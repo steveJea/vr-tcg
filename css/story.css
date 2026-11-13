@@ -1164,3 +1164,20 @@ body.gnb-on:not(.gnb-hidden) #story-screen { --wrap-pb: 12px; }   /* 하단 메�
 .sp-intro-pitch{font-size:13px;line-height:1.5;color:#fde68a;font-weight:700}
 .sp-intro-skills{margin-top:10px;max-height:40vh;overflow:auto}
 .sp-intro-sk{background:rgba(255,255,255,.06);border-radius:10px;padding:7px 9px;margin-top:6px}.sp-intro-sk small{color:#a1a1aa;font-size:11px}.sp-intro-sk p{font-size:12px;line-height:1.5;margin-top:2px;color:#e4e4e7}
+/* 전용 배너 배경(art): 흐림 없이, 글자가 있는 위·아래만 그라데이션으로 어둡게 */
+.gr-bg.gr-bg-pick.gr-bg-art img{filter:brightness(.88);transform:none}
+.gr-room-pick:has(.gr-bg-art)::after{background:linear-gradient(rgba(10,3,8,.55),rgba(10,3,8,0) 22%,rgba(10,3,8,0) 55%,rgba(10,3,8,.82) 88%)}
+.gr-bg.gr-bg-pick.gr-bg-art{top:var(--bg-top-h,0)}
+@media (orientation: portrait), (max-aspect-ratio: 4/5){.gr-bg.gr-bg-pick.gr-bg-art{top:var(--bg-top-v,0)}}
+.gr-bg.gr-bg-pick.gr-bg-art img{-webkit-mask-image:linear-gradient(transparent,#000 7%);mask-image:linear-gradient(transparent,#000 7%)}
+.gr-room-pick:has(.gr-bg-art)::after{background:linear-gradient(rgba(10,3,8,.25),rgba(10,3,8,0) 25%,rgba(10,3,8,0) 58%,rgba(10,3,8,.8) 86%)}
+/* 배너 줄: 한 번에 1개만 (옆 배너 안 보이게), 0.3초 밀림 */
+.gr-bn-wrap .gr-banners{display:block;overflow:hidden;scroll-snap-type:none;padding:4px 0 8px;border-radius:16px;touch-action:pan-y}
+.gr-bn-track{display:flex;gap:0;will-change:transform}
+.gr-bn-track.anim{transition:transform .3s ease}
+@media (prefers-reduced-motion: reduce){.gr-bn-track.anim{transition:none}}
+.gr-bn-wrap .gr-bn{flex:0 0 100%;width:100%;aspect-ratio:auto;height:clamp(120px,30vw,168px)}
+.gr-bn-l{left:6px}.gr-bn-r{right:6px}
+.gr-bn-wrap .gr-rates{right:8px;top:12px}
+.gr-bn-wrap .gr-bn .story-badge{right:auto;left:10px}
+.sp-intro-grade{font-weight:900;color:#fbbf24;background:linear-gradient(180deg,#fde68a,#f59e0b 60%,#b45309);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;text-shadow:none;filter:drop-shadow(0 0 4px rgba(251,191,36,.45))}

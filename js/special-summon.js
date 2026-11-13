@@ -15,8 +15,8 @@
    *  intro = 픽업 인재 소개 창 한두 줄 */
   const BANNER_UI = {
     'hajihye-20261113': {
-      // 임시: 하지혜 스킬 그림. 형님이 세로·가로 배경을 주시면 바꾸기
-      bg: { portrait: 'data/fx/10440_1.webp', landscape: 'data/fx/10440_1.webp', focus: '58% 30%' },
+      // 전용 배경 (세로 = 모바일, 가로 = PC). art: 전용 그림이라 흐림 없이 아래쪽만 살짝 어둡게
+      bg: { portrait: 'img/ui/gacha/bg_special_10440_v.webp', landscape: 'img/ui/gacha/bg_special_10440_h.webp', focus: '50% 0%', art: true, top: { portrait: 170, landscape: 120 } },  // top: 얼굴이 배너에 안 가리게 그림을 내리는 px
       intro: ['공격도 방어도 다 되는 공방 특화 UR!', '버티면서 반격까지 몰아치는 전략형 에이스예요.'],
     },
   };
@@ -75,7 +75,7 @@
     const sk = (() => { try { return window.TCG?.skillsOf?.(id) || []; } catch { return []; } })();
     const lines = ui(b.banner_id).intro || [];
     pop('sp-intro-pop', `<div class="sp-intro"><img class="sp-intro-img" src="${PORTRAIT(id)}" alt="${esc(c.name || b.pickup_name)}" onerror="this.onerror=null;this.src='img/thumb/${esc(id)}.webp'">
-      <div class="sp-intro-txt"><div class="sp-intro-name"><span class="g-text-ur">${GR[c.grade] || 'UR'}</span> <b>${esc(c.name || b.pickup_name || CONFIG.pickup_name)}</b></div>
+      <div class="sp-intro-txt"><div class="sp-intro-name"><span class="sp-intro-grade">${GR[c.grade] || 'UR'}</span> <b>${esc(c.name || b.pickup_name || CONFIG.pickup_name)}</b></div>
       <div class="sp-intro-tags">${[EL[c.class] && `속성 ${EL[c.class]}`, ROLE[c.attribute] && `${ROLE[c.attribute]}형`, c.region, c.age && `${c.age}세`].filter(Boolean).map(t => `<span>${esc(t)}</span>`).join('')}</div>
       ${lines.length ? `<p class="sp-intro-pitch">${lines.map(esc).join('<br>')}</p>` : ''}</div></div>
       ${sk.length ? `<div class="sp-intro-skills">${sk.map(x => `<div class="sp-intro-sk"><b>${esc(x.name)}</b> <small>${x.mode === 'passive' ? '패시브' : '액티브'}${x.type ? ` · ${esc(x.type)}` : ''}</small><p>${esc(x.desc)}</p></div>`).join('')}</div>` : ''}`);
