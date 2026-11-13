@@ -1455,10 +1455,29 @@ function entryReady(src, ms = 250) {
   const p = entryWarm.get(src); if (!p) return Promise.resolve();
   return Promise.race([p, sleep(ms)]);
 }
+// 스킬 연출 그림: 받기만 하던 것을 디코드까지 미리 해 둠 (컷인이 뜰 때 큰 그림 디코드로 버벅이던 문제).
+// 디코드된 그림은 메모리를 먹으므로 최근 24장만 붙잡아 둠 (1280×720 ≈ 3.7MB/장).
+const fxWarm = new Map();
+function warmFx(src) {
+  if (fxWarm.has(src)) { const v = fxWarm.get(src); fxWarm.delete(src); fxWarm.set(src, v); return v.p; }
+  const im = new Image(); im.decoding = 'async'; im.fetchPriority = 'low'; im.src = src;
+  const p = (im.decode ? im.decode() : new Promise(r => { im.onload = im.onerror = r; })).then(() => { v.ok = true; }, () => { v.ok = true; });
+  const v = { im, p, ok: false }; fxWarm.set(src, v);
+  while (fxWarm.size > 24) { const k = fxWarm.keys().next().value; fxWarm.delete(k); fxLoaded.delete(k.slice(8)); }
+  return p;
+}
+/** 컷인 직전: 그림이 아직 디코드 전이면 최대 ms 만 기다림 (안 받아 둔 그림이면 지금 받기 시작) */
+function fxReady(fx, ms = 220) {
+  if (!fx || /\.(mp4|webm)$/i.test(fx)) return Promise.resolve();
+  const src = `data/fx/${fx}`, v = fxWarm.get(src);
+  if (v?.ok) return Promise.resolve();
+  fxLoaded.add(fx);
+  return Promise.race([warmFx(src), sleep(ms)]);
+}
 function preloadFx(cards) {
   for (const c of cards) for (const s of skillsOf(c.id)) {
     if (!s.fx || fxLoaded.has(s.fx) || /\.(mp4|webm)$/i.test(s.fx)) continue;
-    fxLoaded.add(s.fx); const img = new Image(); img.decoding = 'async'; img.fetchPriority = 'low'; img.src = `data/fx/${s.fx}`;
+    fxLoaded.add(s.fx); warmFx(`data/fx/${s.fx}`);
   }
   try { preloadVoice(cards); } catch {}
   warmPortraits(cards);
@@ -1544,6 +1563,7 @@ async function cutIn(u, name, fx, passive = false) {
   playVoice(u, name);
   if (!passive) { skillEl = u?.card?.class; skillElAt = performance.now(); }
   if (CUT_OFF() || (FX_OFF() && !fx)) return;   // 연출 스킵 중엔 이미지 있는 스킬만 짧게
+  if (fx) await fxReady(fx);   // 디코드 전이면 잠깐(≤220ms) 기다렸다 띄움 → 반쯤 그려진 그림·멈칫 방지
   const el = $('cutin');
   el.innerHTML = cutInHTML(u, name, fx, passive);
   const ms = FX_OFF() ? CUT_QUICK : cutinMs(fx ? 1300 : passive ? 500 : 750);
@@ -1693,10 +1713,11 @@ function passiveCutIn(u, name) {
   }
   passiveCutInPlain(u, name, s, key);
 }
-function passiveCutInPlain(u, name, s, key = null) {
+async function passiveCutInPlain(u, name, s, key = null) {
   if (s?.fx || FX_OFF()) playVoice(u, name);
   if (CUT_OFF() || !s?.fx) { if (key && voiceKey(u, name)) S.fxSeen.add(key); return; }
   if (key) S.fxSeen.add(key);
+  const st = S; await fxReady(s.fx); if (S !== st) return;   // 디코드 전이면 잠깐(≤220ms) 기다림
   const el = $('cutin');
   el.innerHTML = cutInHTML(u, name, s.fx, true);
   const ms = FX_OFF() ? CUT_QUICK : cutinMs(1100);
