@@ -8,7 +8,7 @@ import { skillCd, skillMp, setSpare, spareBlocked, setSkillData, setEmitter, set
 import { rngOf } from './direct-rng.js';
 import './enemy-mr.js';
 
-const IMG = 'https://raw.githubusercontent.com/steveJea/vr-ideal-worldcup/main/img/bt_img/';
+const IMG = '/img/bt_img/';
 const NF = new Intl.NumberFormat('ko-KR');
 const fmt = n => NF.format(n);
 const $ = id => document.getElementById(id);

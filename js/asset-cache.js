@@ -81,7 +81,7 @@
   const idle = () => new Promise(r => (window.requestIdleCallback || (f => setTimeout(f, 200)))(() => r(), { timeout: 3000 }));
 
   // ---------- 3) 한가할 때 조금씩 미리 받기 ----------
-  const BG_ORDER = ['/img/ui/', '/css/', '/js/', '/img/effects/', '/data/event/', '/img/thumb/', '/data/fx/', '/img/battle/', '/data/voice/'];
+  const BG_ORDER = ['/img/ui/', '/css/', '/js/', '/img/effects/', '/data/event/', '/img/thumb/', '/img/bt_img/', '/data/fx/', '/img/battle/', '/data/voice/'];
   const BG_BUDGET = 80 * 1048576, BG_MAX_FILE = 6 * 1048576;
   let bgStop = false, fullRunning = null;
   function slowNet() { const c = navigator.connection; return !!c && (c.saveData || /(^|-)2g|3g/.test(c.effectiveType || '')); }

@@ -2,7 +2,7 @@
 // 5초마다(탭 보일 때) + 뽑기 직후 바로(vr:gacha) 새 알림만 받아 위쪽 토스트 · 📢 버튼/토스트 누르면 소식 창(최근 3일 50개) · 이름 누르면 지정 거래(거래소)
 // SQL 전(함수 없음)이면 조용히 멈춤. 전투 중엔 토스트 대신 쌓아 두었다가 소식 창에서 보기
 (() => {
-  const IMG = 'https://raw.githubusercontent.com/steveJea/vr-ideal-worldcup/main/img/bt_img/';
+  const IMG = '/img/bt_img/';
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const SRC = { daily: '일일 영입', ticket: '영입권', merge: '합성', event: '이벤트', premium: '프리미엄 영입' };
   let last = null, off = false, timer = 0, list = [], unseen = 0, uid = null;

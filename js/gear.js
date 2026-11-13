@@ -128,7 +128,7 @@
   const RSHORT = { 'NORMAL': 'n', 'RARE': 'r', 'HIGH RARE': 'hr', 'SUPER RARE': 'sr', 'ULTRA RARE': 'ur', 'MYTHIC RARE': 'mr', 'LEGENDARY RARE': 'lr' };
   function whoHTML(cardId) {
     if (!cardId) return ''; const c = window.TCG?.cardById?.(cardId);
-    const src = window.cardThumb ? window.cardThumb(cardId) : `https://raw.githubusercontent.com/steveJea/vr-ideal-worldcup/main/img/bt_img/${cardId}.webp`;
+    const src = window.cardThumb ? window.cardThumb(cardId) : `/img/bt_img/${cardId}.webp`;
     return `<span class="gear-who rar-${RSHORT[c?.grade] || 'n'}" title="장착: ${esc(c?.name || '')}"><img src="${src}" alt="${esc(c?.name || '장착한 인재')}" loading="lazy"></span>`;
   }
   function itemPop(g, ctx = {}) {
