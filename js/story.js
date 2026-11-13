@@ -1949,11 +1949,16 @@
     try { const { data, error } = await sb.rpc('story_ur_tickets'); urTickets = error ? null : (data?.ur_tickets | 0); } catch { urTickets = null; }
     return urTickets;
   }
-  const noDraw = x => x.dataset.ur ? (urTickets | 0) < 1 : (tickets | 0) < +x.dataset.draw;
+  const noDraw = x => x.dataset.sp ? !window.VRSpecial?.banner().open || (window.VRSpecial.tickets | 0) < +x.dataset.draw : x.dataset.ur ? (urTickets | 0) < 1 : (tickets | 0) < +x.dataset.draw;
   /** 특수 뽑기 n회 (1 또는 10). ur = UR 확정권 1장. 반환 { ok, cards:[{card_id, grade}], tickets } */
-  async function drawTickets(n, ur = false) {
+  async function drawTickets(n, ur = false, sp = false) {
     const sb = cloud()?.sb, u = cloud()?.user;
     let res = null;
+    if (sp) {   // 스페셜 소환 (픽업 배너 · js/special-summon.js): 스페셜 소환권만 사용
+      res = window.VRSpecial ? await window.VRSpecial.draw(n) : { ok: false, reason: 'preparing' };
+      if (res?.ok) { try { window.dispatchEvent(new CustomEvent('vr:gacha')); } catch {} if (!window.__SPECIAL_MOCK) await reload(); else for (const c of res.cards) addOwned(c.card_id); }
+      return res || { ok: false, reason: 'error' };
+    }
     if (ur) {
       if (window.__TICKET_MOCK?.urDraw) res = await window.__TICKET_MOCK.urDraw();
       else if (serverMode && sb && u) { const { data, error } = await sb.rpc('story_ur_ticket_draw'); if (error) return { ok: false, reason: 'error', msg: error.message }; res = data; }
@@ -2125,45 +2130,58 @@
     sh?.addEventListener('click', onTap); room?.addEventListener('click', onTap);
     sh?.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.closest('[data-pulled]')) { e.preventDefault(); onTap(e); } });
   }
-  const GACHA_BANNERS = [{ key: 'daily', label: '일반' }, { key: 'special', label: '프리미엄' }];
+  const GACHA_BANNERS = [{ key: 'daily', label: '일반' }, { key: 'special', label: '프리미엄' }, { key: 'pickup', label: '스페셜', img: 'special' }];   // pickup = 스페셜 소환 (이벤트 픽업)
+  const spBadge = () => `<span class="story-ticket sp-ticket" title="스페셜 소환권">✨ <b>${window.VRSpecial?.tickets ?? '…'}</b></span>`;
+  /** 스페셜 소환 보유·천장 줄 */
+  function spOwn() {
+    const S = window.VRSpecial, b = S?.banner();
+    if (!S || !b?.open) return `<div class="gr-own sp-own" id="gr-own">스페셜 소환 <b class="sp-prep">준비 중</b></div>`;
+    return `<div class="gr-own sp-own" id="gr-own">보유 스페셜 소환권 ✨ <b id="sp-own-n">${S.tickets ?? '…'}</b> · 천장 <b id="sp-pity">${S.misses}/${b.pity}</b> <small>(${b.pity}회째 ${esc(b.pickup_name || '')} 확정)</small></div>`;
+  }
   function renderShop(tab) {
     if (tab) shopTab = tab;
     clearInterval(gachaTimer);
-    const avail = canDraw(), daily = shopTab === 'daily';
+    const avail = canDraw(), daily = shopTab === 'daily', pickup = shopTab === 'pickup', spOpen = !!window.VRSpecial?.banner().open;
     const bg = `<picture class="gr-bg"><source media="(orientation: portrait), (max-aspect-ratio: 4/5)" srcset="${GDIR}bg_portrait_720.webp 720w, ${GDIR}bg_portrait.webp 1080w" sizes="100vw"><img src="${GDIR}bg_landscape.webp" srcset="${GDIR}bg_landscape_1280.webp 1280w, ${GDIR}bg_landscape.webp 1920w" sizes="100vw" alt=""></picture>`;
     show(`<div class="gr-room" id="gr-room">${bg}</div>${topBar(`${ICN('gacha', '🎴')} 인재영입`, 'hub', false)}<div class="story-shop gr-ui">
       <div class="gr-banners" role="tablist">${GACHA_BANNERS.map(k => { const on = k.key === shopTab;
-        const sub = k.key === 'daily' ? (avail ? '오늘 1회' : '⏳') : k.key === 'special' ? ticketBadge(tickets) : esc(k.sub || '');
-        return `<button class="gr-bn gr-bn-${k.key} ${on ? 'on' : ''}" data-tab="${k.key}" role="tab" aria-selected="${on}"><img src="img/ui/gacha/banner_${k.key}.webp" alt="" onerror="this.remove()"><b>${k.label}</b><small>${sub}</small>${k.key === 'daily' && avail ? '<i class="story-badge">1</i>' : ''}</button>`; }).join('')}
-        <button class="gr-ic gr-rates" id="gacha-rates" title="뽑기 확률" aria-label="뽑기 확률">${ICN('gacha_rates', '📊')}</button></div>
+        const sub = k.key === 'daily' ? (avail ? '오늘 1회' : '⏳') : k.key === 'special' ? ticketBadge(tickets) : k.key === 'pickup' ? spBadge() : esc(k.sub || '');
+        return `<button class="gr-bn gr-bn-${k.key} ${on ? 'on' : ''}" data-tab="${k.key}" role="tab" aria-selected="${on}"><img src="img/ui/gacha/banner_${k.img || k.key}.webp" alt="" onerror="this.remove()">${k.key === 'pickup' ? `<img class="gr-bn-pick" src="${IMG}${esc(window.VRSpecial?.banner().pickup_id || '10440')}.webp" alt="" onerror="this.remove()">` : ''}<b>${k.label}</b><small>${sub}</small>${k.key === 'daily' && avail ? '<i class="story-badge">1</i>' : ''}</button>`; }).join('')}
+        <button class="gr-ic gr-rates gr-rates-txt" id="gacha-rates" title="확률 안내" aria-label="확률 안내">확률</button></div>
       <div class="gr-stage">${daily
         ? `<div class="gacha-stage gr-card" id="gacha-stage"><div class="gacha-card" id="gacha-card"><div class="gacha-face gacha-back"></div><div class="gacha-face gacha-front" id="gacha-front"></div></div></div>`
         : `<div id="tk-result" class="story-tk-result"></div>`}</div>
       <div id="gacha-msg" class="gr-msg"></div>
-      ${daily ? '' : `<div class="gr-own" id="gr-own">보유 소환권 ${ICN('ticket', '🎟️', '소환권')} <b>${tickets ?? '…'}</b>${urTickets ? `<span class="gr-own-ur"> · UR 확정권 🎫 <b id="gr-own-ur">${urTickets}</b></span>` : ''}</div>`}
+      ${pickup ? spOwn() : daily ? '' : `<div class="gr-own" id="gr-own">보유 소환권 ${ICN('ticket', '🎟️', '소환권')} <b>${tickets ?? '…'}</b>${urTickets ? `<span class="gr-own-ur"> · UR 확정권 🎫 <b id="gr-own-ur">${urTickets}</b></span>` : ''}</div>`}
       <div class="gr-actions">${daily
         ? `${avail ? `<button id="gacha-go" class="gr-go">${ICN('gacha', '🎴')} 뽑기</button>` : ''}<div id="gacha-next" class="gr-next"></div>`
+        : pickup ? `<button class="gr-go" data-draw="1" data-sp="1" ${spOpen && (window.VRSpecial.tickets | 0) >= 1 ? '' : 'disabled'}>1회 <small>✨1</small></button><button class="gr-go gr-go10" data-draw="10" data-sp="1" ${spOpen && (window.VRSpecial.tickets | 0) >= 10 ? '' : 'disabled'}>10회 <small>✨10</small></button>`
         : `<button class="gr-go" data-draw="1" ${(tickets | 0) >= 1 ? '' : 'disabled'}>1회 <small>${ICN('ticket', '🎟️')}1</small></button><button class="gr-go gr-go10" data-draw="10" ${(tickets | 0) >= 10 ? '' : 'disabled'} title="HR 이상 1장 보장">10회 <small>${ICN('ticket', '🎟️')}10</small></button>${urTickets ? `<button class="gr-go gr-go-ur" data-draw="1" data-ur="1" title="고급 소환 UR 11명 중 1명 확정">UR 확정 <small>🎫1</small></button>` : ''}`}</div>
-      ${daily ? '' : `<div class="gr-gem" id="gr-gem">${gemRow()}</div>`}</div>`, 'gacha');
+      ${daily || pickup ? '' : `<div class="gr-gem" id="gr-gem">${gemRow()}</div>`}</div>`, 'gacha');
     gateLayout(); preloadGachaVideo();
     if (forcedPullOn) root().querySelector('.story-shop')?.classList.add('gr-forced');   // 강제 영입: 나가기·탭·1회·젬 숨김
     bind(); resultOn = false; bindResultTap();
     root().querySelectorAll('[data-tab]').forEach(b => b.onclick = () => renderShop(b.dataset.tab));
-    $('gacha-rates').onclick = showRates;
+    { const bn = root().querySelector('.gr-banners'), on = bn?.querySelector('.gr-bn.on'); if (bn && on && shopTab === 'pickup') bn.scrollLeft = on.offsetLeft - bn.clientWidth + on.offsetWidth + 40; }   // 스페셜 배너가 오른쪽에 있으니 보이게
+    $('gacha-rates').onclick = () => window.VRSpecial ? window.VRSpecial.showRates() : showRates();
+    if (pickup && window.VRSpecial && !window.__TICKET_MOCK?.noSpecial) { const was = JSON.stringify([window.VRSpecial.tickets, window.VRSpecial.misses, spOpen]);
+      window.VRSpecial.refresh().then(() => { if (shopTab === 'pickup' && root().querySelector('.story-shop') && !root().querySelector('#tk-result')?.children.length && JSON.stringify([window.VRSpecial.tickets, window.VRSpecial.misses, window.VRSpecial.banner().open]) !== was) renderShop(); }); }
     if (tickets == null) syncTickets().then(r => { if (root().querySelector('.story-shop')) { if (r.added) toast(`🎟️ 소환권 +${r.added} (챕터 클리어 보상)`); renderShop(); } });
     if (!daily && !forcedPullOn) { const was = urTickets; syncUrTickets().then(n => { if ((n | 0) !== (was | 0) && shopTab === 'special' && root().querySelector('.story-shop') && !root().querySelector('#tk-result')?.children.length) renderShop(); }); }
     if (!daily) {
-      bindGem();
+      if (!pickup) bindGem();
       if (window.VRGem && !window.VRGem.now) window.VRGem.status().then(() => { const g = $('gr-gem'); if (g) { g.innerHTML = gemRow(); bindGem(); } });
       root().querySelectorAll('[data-draw]').forEach(b => b.onclick = async () => {
         root().querySelectorAll('[data-draw]').forEach(x => x.disabled = true); $('gacha-msg').textContent = ''; $('tk-result').innerHTML = ''; resultOn = false;
         const before = new Set(save.owned.map(o => o.uid));
-        const r = await drawTickets(+b.dataset.draw, !!b.dataset.ur);
+        const r = await drawTickets(+b.dataset.draw, !!b.dataset.ur, !!b.dataset.sp);
+        const spSync = () => { const S = window.VRSpecial; if (!pickup || !S) return; const n = $('sp-own-n'), p = $('sp-pity'); if (n) n.textContent = S.tickets | 0; if (p) p.textContent = `${S.misses}/${S.banner().pity}`; root().querySelectorAll('.sp-ticket b').forEach(x => x.textContent = S.tickets | 0); };
+        spSync();
         { const ou = $('gr-own-ur'); if (ou) ou.textContent = urTickets | 0; }
-        { const ob = $('gr-own')?.querySelector('b'); if (ob) ob.textContent = tickets | 0; }
+        if (!pickup) { const ob = $('gr-own')?.querySelector('b'); if (ob) ob.textContent = tickets | 0; }
         if (!r.ok && forcedPullOn && r.reason === 'tickets') { forcedPullOn = false; await markPullDone(); toast('소환권이 부족해 강제 영입을 건너뛰어요.'); return enter(); }   // 막힘 방지
         if (!r.ok && forcedPullOn) root().querySelector('.story-shop')?.classList.remove('gr-forced');   // 다른 오류: 나가기 허용 (다음 접속 때 다시 안내)
-        if (!r.ok) { $('gacha-msg').textContent = r.reason === 'tickets' ? '소환권이 부족해요.' : r.reason === 'ur_tickets' ? 'UR 확정권이 없어요.' : `뽑기에 실패했어요: ${r.msg || ''}`; root().querySelectorAll('[data-draw]').forEach(x => x.disabled = noDraw(x)); return; }
+        if (!r.ok) { $('gacha-msg').textContent = r.reason === 'tickets' ? '소환권이 부족해요.' : r.reason === 'ur_tickets' ? 'UR 확정권이 없어요.' : r.reason === 'special_tickets' ? '스페셜 소환권이 부족해요.' : r.reason === 'preparing' ? '스페셜 소환은 준비 중이에요.' : r.reason === 'closed' ? '스페셜 소환 기간이 아니에요.' : `뽑기에 실패했어요: ${r.msg || ''}`; root().querySelectorAll('[data-draw]').forEach(x => x.disabled = noDraw(x)); return; }
         const bestG = r.cards.reduce((a, c) => GORDER.indexOf(c.grade) > GORDER.indexOf(a) ? c.grade : a, 'NORMAL');
         root().querySelectorAll('.story-ticket b').forEach(x => x.textContent = tickets);
         const vid = await playSummonFx(bestG);
@@ -2199,7 +2217,7 @@
         if (forcedPullOn && r.cards.length === 10) { forcedPullOn = false; await markPullDone();
           const nb = document.createElement('button'); nb.className = 'gr-go gr-forced-next'; nb.id = 'forced-pull-next'; nb.textContent = '챕터1 시작하기';
           nb.onclick = () => beginChapter1(); root().querySelector('.gr-actions')?.replaceChildren(nb); return; }   // 강제 영입 결과: 허브 대신 챕터 1 시작
-        root().querySelectorAll('[data-draw]').forEach(x => x.disabled = noDraw(x)); { const ob = $('gr-own')?.querySelector('b'); if (ob) ob.textContent = tickets | 0; const ou = $('gr-own-ur'); if (ou) ou.textContent = urTickets | 0; }   // 보유 소환권 갱신
+        root().querySelectorAll('[data-draw]').forEach(x => x.disabled = noDraw(x)); spSync(); if (!pickup) { const ob = $('gr-own')?.querySelector('b'); if (ob) ob.textContent = tickets | 0; } { const ou = $('gr-own-ur'); if (ou) ou.textContent = urTickets | 0; }   // 보유 소환권 갱신
         if (!forcedPullOn) resultOn = true;
       });
       return;
