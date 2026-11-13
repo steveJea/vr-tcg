@@ -215,3 +215,11 @@
 .att-claim:disabled{background:rgba(255,255,255,.1);color:#a1a1aa}
 .att-note{font-size:10px;color:#a1a1aa;margin:6px 0 0}
 .idle-drink-note{font-size:10px;color:#a1a1aa;text-align:center;margin:-4px 0 8px}
+
+/* 상단바 행동력 + 팝업 */
+.drink-quick { z-index: 9100; }
+.drink-q-now { margin-top: 6px !important; font-size: 14px; color: #e4e4e7; }
+.drink-q-cnt { display: grid; gap: 6px; margin-top: 12px; font-size: 14px; color: #e4e4e7; }
+.drink-q-cnt span { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 8px; border-radius: 10px; background: rgba(255,255,255,.05); }
+.drink-q-cnt small { color: #a1a1aa; }
+.drink-ask-acts button:disabled { opacity: .45; }

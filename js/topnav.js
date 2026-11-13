@@ -35,6 +35,7 @@
       <div class="tnb-r2"><span class="tnb-chip tnb-lv" hidden></span><span class="tnb-chip tnb-st" hidden></span><span class="tnb-sp"></span>
         <button type="button" class="tnb-chip tnb-cur" data-cur="gem" hidden></button><button type="button" class="tnb-chip tnb-cur" data-cur="gold" hidden></button><button type="button" class="tnb-chip tnb-cur" data-cur="drink" hidden></button></div>`;
     bar.querySelector('.tnb-back').onclick = back;
+    bar.querySelector('.tnb-st').onclick = e => { if (e.target.closest('[data-st-plus]')) { e.stopPropagation(); window.VRDrink?.quick?.(); } };   // 행동력 + → 드링크 마시기
     bar.querySelector('.tnb-mail').onclick = () => { const G = window.VRGear; if (G && !G.off) G.mailbox({ back: () => G.unread?.() }); else document.querySelector('.story-mailbtn')?.click(); };
     bar.querySelector('.tnb-set').onclick = e => { e?.stopPropagation?.(); if (window.VRMenu) window.VRMenu.toggle(); else if (where() === 'lobby') $('main-settings')?.click(); else window.VRSettings?.open?.(); };   // 어디서나 홈과 같은 게임설정 창
     bar.querySelectorAll('[data-cur]').forEach(b => b.onclick = () => {
@@ -101,7 +102,7 @@
     const se = bar.querySelector('.tnb-st'); se.hidden = !(P && st);
     if (P && st) { const full = P.stamina >= P.stamina_max, mm = window.VRPlayer.mmss?.(P.next_regen_secs) || '';
       se.classList.toggle('low', P.stamina < (P.cost?.story || 6));
-      if (!se.firstChild) se.innerHTML = `${ic('stamina')}<b></b><small></small><em></em>`; se.querySelector('b').textContent = P.stamina; se.querySelector('small').textContent = '/' + P.stamina_max; se.querySelector('em').textContent = full ? '' : mm; se.title = full ? '행동력 가득' : `행동력 · +1 까지 ${mm}`; }
+      if (!se.firstChild) se.innerHTML = `${ic('stamina')}<b></b><small></small><em></em><button type="button" class="tnb-st-plus" data-st-plus aria-label="드링크로 행동력 채우기"><i class="tnb-plus">${ic('plus')}</i></button>`; se.querySelector('b').textContent = P.stamina; se.querySelector('small').textContent = '/' + P.stamina_max; se.querySelector('em').textContent = full ? '' : mm; se.title = full ? '행동력 가득' : `행동력 · +1 까지 ${mm}`; }
     const cur = (k, v, img, name) => { const b = bar.querySelector(`[data-cur="${k}"]`); b.hidden = v == null; if (v == null) return;
       const h = `${img ? `<img src="${img}" alt="">` : ic(k)}<b>${n(v)}</b><i class="tnb-plus">${ic('plus')}</i>`; if (b.dataset.v !== n(v)) { b.dataset.v = n(v); b.innerHTML = h; } b.title = `${name} ${full(v)}`; b.setAttribute('aria-label', `${name} ${full(v)}`); };
     cur('gem', G?.gem, null, '심연석'); cur('gold', W?.gold, CUR_IMG.gold, '골드'); cur('drink', D ? D.total : null, CUR_IMG.drink, '체력의 드링크');
