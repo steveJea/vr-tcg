@@ -176,7 +176,10 @@
     "age_19plus_check_staging.sql": "Read-only staging check for age_19plus_staging.sql. Not a fresh installer.",
     "camp_auto_exp_staging.sql": "Owner-pasted staging-only 훈련소 자동 EXP 설치. Kept out of staging_install so release 20261111 stays frozen.",
     "camp_auto_exp_check_staging.sql": "Read-only staging check for camp_auto_exp_staging.sql. Not a fresh installer.",
-    "camp_auto_exp_rollback_staging.sql": "Owner-pasted staging-only rollback for camp_auto_exp_staging.sql. Not a fresh installer."
+    "camp_auto_exp_rollback_staging.sql": "Owner-pasted staging-only rollback for camp_auto_exp_staging.sql. Not a fresh installer.",
+    "age_verify_staging.sql": "Owner-pasted staging-only PortOne/Danal 본인인증 결과 저장(CI 해시). Kept out of staging_install so release 20261111 stays frozen.",
+    "age_verify_check_staging.sql": "Read-only staging check for age_verify_staging.sql. Not a fresh installer.",
+    "seasonpass_31_staging.sql": "Owner-pasted staging-only 시즌패스 31일. Kept out of staging_install so release 20261111 stays frozen."
   },
   "partial": {
     "card_id_remap.sql": "card_id_alias 설정 자료 + 최신 _war_npc_deck만; 기존 사용자 ID 일괄 변경은 제외"

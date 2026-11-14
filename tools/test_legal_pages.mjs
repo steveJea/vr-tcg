@@ -51,6 +51,6 @@ if(process.argv.includes('--production-build')) {
  for(const r of ['/data/fx/*','/data/event/*','/data/voice/*','/img/*'])assert(h.includes(r+'\n  Cache-Control: public, max-age=600, stale-while-revalidate=86400\n'),'media cache '+r);
  for(const r of ['/sw.js','/asset-manifest.json'])assert(h.includes(r+'\n  Cache-Control: no-cache\n'),'no-cache '+r);
  assert(!/^\/\*\n  X-Robots-Tag/m.test(h),'production domain stays indexable');
- for(const p of ['payment-return.html','admin-payments.html'])assert(!existsSync(new URL('.production-dist/'+p,root)),'no payment pages in production');
+ for(const p of ['payment-return.html','admin-payments.html','age-verify-return.html'])assert(!existsSync(new URL('.production-dist/'+p,root)),'no payment pages in production');
 }
 console.log('Legal pages: Korean draft/placeholders, current data/analytics/share/retention gaps, statutory refund/minors, accessible link-only UI, no trackers/forms, build allowlists/idempotent isolated overlay OK');
