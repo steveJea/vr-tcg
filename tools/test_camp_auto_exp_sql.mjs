@@ -36,7 +36,12 @@ try{
  const before=await card();await rpc('select camp_claim() v');const viaClaim=await card();
  // Restore the same card + 5h, install B1, then camp_status alone must give the identical result.
  await q("update story_progress set data=jsonb_set(data,'{owned,0}',$2::jsonb) where user_id=$1",[u,JSON.stringify(before)]);await age(5);
- const p=pin(B1);await db.exec(p);await db.exec(p);
+ // Real staging has camp.sql's body pasted with CRLF line endings (md5 b82026c8…): B1 must accept it, and a CRLF paste of B1 itself too.
+ const orig=(await rd('supabase/camp.sql')).match(/create or replace function public\.camp_status\(\)[^]*?as \$\$[^]*?\$\$;/)[0];
+ await db.exec(orig.replace(/\n/g,'\r\n'));
+ assert.equal(await val("select md5(prosrc) v from pg_proc where oid='public.camp_status()'::regprocedure"),'b82026c8e244f95c7920fd74537e38a8');
+ assert.match((await q(pin(B2))).find(r=>r.item==='camp_status').note,/원본/);
+ const p=pin(B1);await db.exec(p.replace(/\n/g,'\r\n'));await db.exec(p);
  assert.match((await q(pin(B2))).find(r=>r.item==='camp_status').note,/installed=true/);
  const r1=await rpc('select camp_status() v');
  assert.equal(r1.auto,true);assert.equal(r1.got[0].exp,pend5);assert.deepEqual(await card(),viaClaim,'same EXP/level as camp_claim');
