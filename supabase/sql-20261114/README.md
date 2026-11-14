@@ -5,6 +5,7 @@
   - 함수 5개 (이름이 같은 다른 버전도 모두): 지금 md5 · `same_as_mail_v2_baseline` · `same_as_20261111b_target` · 줄끝(CRLF) 무시 비교 `same_as_mail_v2_ignoring_crlf` / `same_as_20261111b_ignoring_crlf` · 공백을 뺀 md5 · 전체 정의
   - 유력: 스테이징 camp_status 가 줄끝만 CRLF 로 들어가 md5 가 달랐음 (내용 동일). 우편 함수도 `same_as_mail_v2_ignoring_crlf=true` 면 같은 이유 → 20261111b 를 CRLF 무시 비교로 다시 만들면 안전
   - 참고 줄: 배포 기록, `story_gacha.ur_tickets` / `mail_broadcast.existing_only` 칸이 이미 있는지
+  - 배포 기록 테이블(vr_rollout_private.releases)이 없으면 에러 대신 `missing` + 비슷한 이름의 테이블 목록을 보여 줌 (15:16 KST 수정)
 - 결과를 CSV로 내려받거나 (definition 칸 포함) 통째로 붙여 보내 주시면 repo 의 두 버전과 diff 함.
 - repo 기록으로 본 원인: mail_v2.sql 은 10/31 에 한 번만 만들어졌고 (4fa5719/#315), 그 뒤 5개 함수를 다시 만드는 SQL 은 20261111b 하나뿐.
   11/08 운영 설치의 함수 본문 자동 수정(unlock-policy 게이트)도 우편 함수는 건드리지 않음. → repo 밖에서 바뀐 것
