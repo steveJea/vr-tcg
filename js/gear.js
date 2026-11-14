@@ -132,12 +132,12 @@
     return `<span class="gear-who rar-${RSHORT[c?.grade] || 'n'}" title="장착: ${esc(c?.name || '')}"><img src="${src}" alt="${esc(c?.name || '장착한 인재')}" loading="lazy"></span>`;
   }
   function itemPop(g, ctx = {}) {
-    const d = defs[g.def], slot = slotOf(g);
+    const d = defs?.[g?.def]; if (!d) return; const slot = slotOf(g);
     const m = pop(`<div class="gear-big gt${d.tier}">${img(iconOf(d), slot)}${whoHTML(g.card)}</div>
-      <div class="gear-name gt${d.tier}"><small>${TIER[d.tier]}</small> ${esc(d.name)}${g.plus ? ` <span class="gear-plus">+${g.plus}</span>` : ''}</div>
+      <div class="gear-name gt${d.tier}"><small>${TIER[d.tier]}</small> ${esc(d.name)}${g.plus || ctx.readOnly ? ` <span class="gear-plus">+${g.plus || 0}</span>` : ''}</div>
       <div class="gear-main">${mainTxt(d)}</div>
       ${(g.opts || []).map(o => `<div class="gear-opt">${esc(OPT[o.opt] || o.opt)} +${o.v}${o.opt === 'cooldown' ? '' : '%'}</div>`).join('')}
-      <div class="gear-acts">
+      ${ctx.readOnly ? `<div class="gear-dim">현재 연마 +${g.plus || 0} · 보기 전용</div>` : `<div class="gear-acts">
         ${ctx.cardId && g.card !== String(ctx.cardId) ? '<button data-a="equip" class="gear-btn main">장착</button>' : ''}
         ${g.card ? '<button data-a="unequip" class="gear-btn">해제</button>' : ''}
         ${ctx.cardId && g.card === String(ctx.cardId) ? '<button data-a="swap" class="gear-btn">바꾸기</button>' : ''}
@@ -146,7 +146,7 @@
         ${cost.enh[g.plus + 1] ? `<button data-a="enh" class="gear-btn">⬆️ 강화 +${g.plus + 1}<small><img class="ui-ic" src="img/ui/cur_gold.webp" alt="">${fmt(cost.enh[g.plus + 1].gold)} <img class="ui-ic" src="img/ui/cur_dust.webp" alt="">${cost.enh[g.plus + 1].dust}</small></button>` : ''}
         ${d.opt_count && cost.rr[d.tier] ? `<button data-a="rr" class="gear-btn"><img class="ui-ic" src="img/ui/reroll.webp" alt="">재설정<small><img class="ui-ic" src="img/ui/cur_gold.webp" alt="">${fmt(cost.rr[d.tier].gold)} <img class="ui-ic" src="img/ui/cur_dust.webp" alt="">${cost.rr[d.tier].dust}</small></button>` : ''}
         ${!g.locked && !g.card && cost.salv[d.tier] ? `<button data-a="dis" class="gear-btn">🔨 분해<small><img class="ui-ic" src="img/ui/cur_dust.webp" alt="">+${cost.salv[d.tier].dust}</small></button><button data-a="sell" class="gear-btn"><img class="ui-ic" src="img/ui/cur_gold.webp" alt="">매각<small>+${fmt(cost.salv[d.tier].gold)}</small></button>` : ''}</div>
-      <div class="gear-dim"><img class="ui-ic" src="img/ui/cur_dust.webp" alt="">장비 가루 ${fmt(st.dust || 0)}</div>`, 'item');
+      <div class="gear-dim"><img class="ui-ic" src="img/ui/cur_dust.webp" alt="">장비 가루 ${fmt(st.dust || 0)}</div>`}`, 'item');
     const done = () => { m.remove(); ctx.reopen?.(); ctx.back?.(); };
     m.querySelectorAll('[data-a]').forEach(b => b.onclick = async () => { b.disabled = true; const a = b.dataset.a;
       if (a === 'swap') { m.remove(); return bag({ slot, cardId: ctx.cardId, reopen: ctx.reopen }); }
@@ -335,5 +335,5 @@
   // 로그인하면 장비 미리 불러오기 (전투·인재 화면에 바로 장비 반영)
   const pre = () => { if (window.VRCloud?.user) load().catch(() => {}); };
   let lastU = null; window.addEventListener('vr:user', () => { const u = window.VRCloud?.user?.id || null; if (u !== lastU) { lastU = u; st = null; pre(); } }); setTimeout(pre, 1500);
-  window.VRGear = { myGear: () => st?.gear || [], txt: { main: d => d ? mainTxt(d) : '', opt: o => `${OPT[o.opt] || o.opt} +${o.v}${o.opt === 'cooldown' ? '' : '%'}`, tier: t => TIER[t] || '' }, deckNote, unread: refreshUnread, load, forCard, slotsHTML, bind, bag, mailbox, showDrops, pvpShop, ask, shopIcon, get ready() { return !!st; }, get off() { return off; }, _defs: () => defs };
+  window.VRGear = { myGear: () => st?.gear || [], inspect: g => itemPop(g, { readOnly: true }), iconHTML: g => img(iconOf(defs?.[g?.def]), slotOf(g)), txt: { main: d => d ? mainTxt(d) : '', opt: o => `${OPT[o.opt] || o.opt} +${o.v}${o.opt === 'cooldown' ? '' : '%'}`, tier: t => TIER[t] || '' }, deckNote, unread: refreshUnread, load, forCard, slotsHTML, bind, bag, mailbox, showDrops, pvpShop, ask, shopIcon, get ready() { return !!st; }, get off() { return off; }, _defs: () => defs };
 })();
