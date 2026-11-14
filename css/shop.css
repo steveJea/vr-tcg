@@ -25,6 +25,14 @@
 .shop-empty b { display: block; margin-bottom: 6px; color: #f5c96a; font-size: 16px; }
 .shop-pass { margin-top: 8px; padding: 8px 10px; border-radius: 10px; background: rgba(0,0,0,.28); font-size: 12px; }
 .shop-pass i { font-style: normal; color: #86efac; }
+.shop-claim { width: 100%; margin: 0 0 4px; }
+.shop-cal { list-style: none; margin: 8px 0 2px; padding: 0; display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.shop-day { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 36px; border-radius: 7px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.08); color: #a8a29e; }
+.shop-day small { font-size: 9px; opacity: .75; }
+.shop-day span { font-size: 11px; font-weight: 700; min-height: 13px; }
+.shop-day.done { background: rgba(134,239,172,.16); border-color: rgba(134,239,172,.45); color: #86efac; }
+.shop-day.today { background: rgba(245,201,106,.18); border-color: #f5c96a; color: #f5c96a; box-shadow: 0 0 0 1px #f5c96a inset; }
+.shop-day.miss { opacity: .45; }
 .shop-util, .shop .drink-shop, .shop .gem-shop { display: flex; flex-wrap: wrap; gap: 8px; }
 .shop .gem-buy { min-width: 96px; }
 .shop-err { padding: 24px 8px; text-align: center; color: #fca5a5; }

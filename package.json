@@ -25,7 +25,7 @@
     "test:auth": "node tools/test_kakao_auth.mjs && node tools/test_kakao_profile_sql.mjs && node tools/test_oauth_link_callback.mjs && node tools/test_x_auth.mjs",
     "test:legal": "node tools/test_legal_pages.mjs && node tools/test_consent_sql.mjs && node tools/test_consent_ui.mjs && node tools/test_age_gate_sql.mjs",
     "test:payments": "node tools/build_payments_dashboard.mjs --check && node tools/build_payments_webhook.mjs --check && node tools/test_payments.mjs && node tools/test_payments_ui.mjs && node tools/test_payments_refunds.mjs && node tools/test_payments_webhook.mjs",
-    "test:shop": "node tools/test_trade_drink_sql.mjs && node tools/test_shop_bm_sql.mjs && node tools/test_shop_ui.mjs && node tools/test_mypage_nav.mjs",
+    "test:shop": "node tools/test_trade_drink_sql.mjs && node tools/test_shop_bm_sql.mjs && node tools/test_shop_ui.mjs && node tools/test_seasonpass_sql.mjs && node tools/test_seasonpass_ui.mjs && node tools/test_mypage_nav.mjs",
     "test:ur-ticket": "node tools/test_ur_ticket_mail.mjs && node tools/build_ur_ticket_mail.mjs --check"
   },
   "devDependencies": {
