@@ -26,7 +26,13 @@ with g as (
   from expected e left join pg_proc p on p.proname = e.name and p.pronamespace = 'public'::regnamespace
 ), ctx as (
   select 2, 'context', 'releases', '', null::text, null::boolean, null::boolean, null::boolean, null::boolean, null::text, null::int,
-         (select string_agg(release_id || ' @ ' || completed_at::text, E'\n' order by completed_at) from vr_rollout_private.releases)
+         -- 배포 기록 테이블이 없어도 에러 없이: 이름을 직접 쓰지 않고, 있을 때만 query_to_xml 로 읽음
+         case when to_regclass('vr_rollout_private.releases') is null then
+           'missing: vr_rollout_private.releases 없음' || coalesce(E'\n비슷한 테이블: ' || (
+             select string_agg(n.nspname || '.' || c.relname, ', ' order by n.nspname, c.relname) from pg_catalog.pg_class c join pg_catalog.pg_namespace n on n.oid = c.relnamespace
+             where c.relkind in ('r', 'p', 'v') and (c.relname ilike '%release%' or n.nspname ilike '%rollout%')), '')
+         else coalesce((xpath('/row/v/text()', query_to_xml(
+           'select string_agg(r::text, E''\n'') as v from vr_rollout_private.releases r', false, true, '')))[1]::text, '(비어 있음)') end
   union all
   select 3, 'context', 'columns', '', null::text, null::boolean, null::boolean, null::boolean, null::boolean, null::text, null::int,
          'story_gacha.ur_tickets=' || exists(select 1 from information_schema.columns where table_schema='public' and table_name='story_gacha' and column_name='ur_tickets')::text
