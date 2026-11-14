@@ -2600,7 +2600,7 @@ window.addEventListener('scroll', () => { if (window.scrollX) resetHScroll(); },
 
 function renderStats() {
   const s = Stats.load();
-  $('stats').textContent = `${window.VRCloud?.user ? '☁️ 아케이드 검증 전적' : '아케이드 연습 전적'}: ${s.wins}승 ${s.losses}패${s.draws ? ` ${s.draws}무` : ''}`;
+  $('stats').textContent = `${window.VRCloud?.user ? '☁️ 아케이드 전적' : '아케이드 연습 전적'}: ${s.wins}승 ${s.losses}패${s.draws ? ` ${s.draws}무` : ''}`;
 }
 
 // ===== 용병 고용 UI =====

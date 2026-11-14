@@ -124,9 +124,9 @@
     return `<div class="mp-rec">
       ${s?.current ? (() => { const c = s.current; const art = window.VRStory?.chapterArt?.({ bg: c.bg || c.id, id: c.id, cover: c.cover, order: ['pc', 'm'] }) || { src: 'img/story/opening_poster.webp', pos: '' }; return `<button type="button" class="mp-story" data-nav="story" data-ch="${c.i}" aria-label="스토리 맵"><span class="mp-story-bg" style="background-image:url(${esc(art.src)})${art.pos ? `;background-position:${esc(art.pos)}` : ''}"></span>
         <span class="mp-story-t"><small>${esc(c.title)}</small><b>${esc(c.subtitle)}</b><i>${c.phase ? `Phase.${c.phase}${c.boss ? ' · BOSS' : ''}` : `✔ ${c.done}/${c.total}`}</i></span></button>`; })() : ''}
-      <div class="mp-stat"><span>아케이드 · 검증 전적</span><b>${a ? `${a.wins}승 ${a.losses}패${a.draws ? ` ${a.draws}무` : ''}` : '-'}</b><small>${a && games ? `승률 ${pct(a.wins, games)}%` : '기록 없음'}</small></div>
-      <div class="mp-stat"><span>시련의 탑</span><b>${ctx.questBest != null ? `${ctx.questBest}층` : '-'}</b><small>최고 기록</small></div>
-      <div class="mp-stat"><span>갤러리</span><b>${g ? `${pct(g.have, g.total)}%` : '-'}</b><small>${g ? `${g.have}/${g.total} 수집` : ''}</small></div></div>`;
+      <button type="button" class="mp-stat" data-nav="arcade" aria-label="아케이드로 이동"><span>아케이드 전적</span><b>${a ? `${a.wins}승 ${a.losses}패${a.draws ? ` ${a.draws}무` : ''}` : '-'}</b><small>${a && games ? `승률 ${pct(a.wins, games)}%` : '기록 없음'}</small></button>
+      <button type="button" class="mp-stat" data-nav="quest" aria-label="시련의 탑으로 이동"><span>시련의 탑</span><b>${ctx.questBest != null ? `${ctx.questBest}층` : '-'}</b><small>최고 기록</small></button>
+      <button type="button" class="mp-stat" data-nav="gallery" aria-label="갤러리로 이동"><span>갤러리</span><b>${g ? `${pct(g.have, g.total)}%` : '-'}</b><small>${g ? `${g.have}/${g.total} 수집` : ''}</small></button></div>`;
   } });
   addSection({ id: 'nav', order: 12, render: ctx => ctx.story ? `<div class="mp-nav"><button type="button" class="mp-navbtn" data-nav="cards"><img class="ui-btn-ic" src="img/ui/icon/my_cards.webp" alt="인재" width="22" height="22">보유 인재<small>${ctx.story.owned.length}</small></button><button type="button" class="mp-navbtn" data-nav="decks"><img class="ui-btn-ic" src="img/ui/icon/decks.webp" alt="덱" width="22" height="22">덱 설정<small>${(ctx.story.decks || []).filter(d => d.uids.length).length}/10</small></button>${ctx.story.serverMode && window.VRGear && !window.VRGear.off ? '<button type="button" class="mp-navbtn mp-navbtn-wide" data-nav="gearbag"><img class="ui-btn-ic" src="img/ui/icon/gearbag.webp" alt="장비" width="22" height="22">장비 가방</button>' : ''}${ctx.story.serverMode && window.VRCamp && !window.VRCamp.off ? '<button type="button" class="mp-navbtn mp-navbtn-wide" data-nav="camp"><img class="ui-btn-ic" src="img/ui/icon/camp.webp" alt="훈련소" width="22" height="22">훈련소<i data-campdot></i></button>' : ''}</div>` : '' });
   addSection({ id: 'deck', order: 40, title: '마이 덱', render: ctx => {
@@ -149,7 +149,11 @@
     document.body.appendChild(m);
     m.addEventListener('click', e => { if (e.target === m) close(); });   // 바깥 클릭 = 닫기 (팝업일 때)
     m.querySelector('.mp-panel').addEventListener('click', e => { if (e.target.closest('#mp-close')) return close();   // 판에 달아 둠: 페이지로 옮겨가도 동작
-      const nv = e.target.closest('[data-nav]'); if (nv) { if (nv.dataset.nav === 'gearbag') return window.VRGear?.bag?.(); if (nv.dataset.nav === 'camp') return window.VRCamp?.open?.();   // 장비 가방은 팝업이라 마이페이지는 그대로
+      const nv = e.target.closest('[data-nav]'); if (nv) { if (nv.dataset.nav === 'gearbag') return window.VRGear?.bag?.(); if (nv.dataset.nav === 'camp') return window.VRCamp?.open?.();
+        // 전적 칸: 아케이드(홈 아케이드 타일과 같은 시작) · 시련의 탑 · 갤러리
+        if (nv.dataset.nav === 'arcade') { close(); const P = window.VRPages; while (P?.depth) P.closeNow(); if (!document.getElementById('story-screen')?.classList.contains('hidden')) window.VRStory?.api?.home?.(); const b = $('start-btn'); return b && !b.disabled ? b.click() : null; }
+        if (nv.dataset.nav === 'quest') { close(); return window.VRQuest?.open?.(); }
+        if (nv.dataset.nav === 'gallery') { close(); return window.VRGallery?.open?.(); }   // 장비 가방은 팝업이라 마이페이지는 그대로
         close(); const S = window.VRStory; return nv.dataset.nav === 'story' ? S?.openMap?.(+nv.dataset.ch) : nv.dataset.nav === 'decks' ? S?.openDecks?.('mypage') : S?.openCards?.('mypage'); }
       const t = e.target.closest('.mp-card[data-uid]'); if (t) openCard(t.dataset.uid, t.dataset.id); });   // 바깥 클릭 = 닫기
     document.addEventListener('keydown', e => { if (e.key === 'Escape' && !m.classList.contains('hidden')) close(); });

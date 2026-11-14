@@ -872,9 +872,9 @@
     const start = [...(ch.single && ch.tagline ? [{ speaker: '내레이션', text: ch.tagline.replace(/\n/g, ' ') }] : []), ...(ch.start || [])];
     card0('', esc(ch.title), esc(ch.subtitle || ''), () => start.length ? playLines(start, [], () => phase(0), 'story', ch.hero) : phase(0));
   }
-  function startPhase(ch, ph) {
+  function startPhase(ch, ph, opts = {}) {
     const enemies = ph.enemies?.ids ? pickEnemies(ph) : [];
-    show(`<div class="story-intro" id="story-intro"><div class="story-chapter-sub">${esc(ch.title)}</div><div class="story-chapter-big">Phase.${ph.no}</div><div class="story-chapter-name">${esc(ph.title)}${ph.type === 'boss' ? ' · BOSS' : ''}</div><div class="vr-more" aria-hidden="true">▼</div></div>`);
+    show(`<div class="story-intro" id="story-intro"><div class="story-chapter-sub">${opts.fromNext ? '다음 페이즈 · ' : ''}${esc(ch.title)}</div><div class="story-chapter-big">Phase.${ph.no}</div><div class="story-chapter-name">${esc(ph.title)}${ph.type === 'boss' ? ' · BOSS' : ''}</div><div class="vr-more" aria-hidden="true">▼</div></div>`);
     // 재도전·이미 본 페이즈: 시작 전 대사 생략하고 바로 전투 준비 (첫 관람·튜토리얼 페이즈 첫 진입은 대사 그대로)
     // scene: 전투 없는 스토리 페이즈 (CH16 P12 · CH17 P7/P12/P15). 대사 후 클리어.
     const skip = phaseSeen(ch, ph);
@@ -886,7 +886,9 @@
       }
       pickDeck(ch, ph, enemies);
     };
-    $('story-intro').onclick = () => skip ? proceed() : dialogue(ch, ph, enemies, proceed);
+    // 페이즈 제목 카드는 대사를 이미 봤어도 항상 보여 줌. 앞 화면(NEXT 등)에서 이어진 탭이 바로 넘기지 않게 잠깐 잠금
+    const shownAt = performance.now(), intro = $('story-intro');
+    intro.onclick = () => { if (performance.now() - shownAt < 600 || intro.dataset.go) return; intro.dataset.go = '1'; skip ? proceed() : dialogue(ch, ph, enemies, proceed); };
   }
   const PS_KEY = (ch, ph) => `vr-story-phseen-${ch.id}-${save.starter || ''}-${ph.no}`;
   function phaseSeen(ch, ph) {
@@ -1054,7 +1056,7 @@
     const draw = () => {
       popPage('story-pick', '출전 고르기');
       const pickNote = [opts?.note || '', !opts && isPool(ch, ph) ? `고른 인재 ${forced.length + slots}장이 손패가 돼요. 마나로 소환하고, 마나는 다시 차지 않아요. (필드 최대 5장 · 시작 마나 <b class="text-sky-300">${storyMana(ch, ph, deckInstances())}</b>)` : '', (ph.rules?.mustKill || []).length ? '👑 보스를 쓰러뜨리면 승리해요.' : boss ? '👑 보스전: 보스는 진영 안에서 쓰러지지 않아요. 상대 진영 HP를 0으로!' : ''].filter(Boolean).join('<br>');
-      const p = popup(`<div class="story-pop-title">출전 인재 선택 <span class="text-emerald-300">${forced.length + sel.length}/${forced.length + slots}</span></div>
+      const p = popup(`<div class="story-pop-title">출전 인재 선택 <span class="text-emerald-300">${forced.length + sel.length}/${forced.length + slots}</span></div>${ph?.no != null && ch?.title ? `<div class="story-pick-ph">${esc(ch.title)} · Phase.${ph.no}${ph.title ? ` ${esc(ph.title)}` : ''}${ph.type === 'boss' ? ' · BOSS' : ''}</div>` : ''}
         ${pickNote ? `<div class="text-xs text-zinc-400 mb-2">${pickNote}</div>` : ''}
         ${forced.length ? `<div class="story-forced-h">${ic('crown', { alt: '' })} 필수 출전 ${forced.length}장 <small>(게스트는 정해진 레벨(없으면 리더 레벨)로 함께 싸우고, 전투 EXP는 받지 않아요)</small></div><div class="story-grid story-deckpick story-forced">${forced.map(fTile).join('')}</div>
           <div class="story-forced-h">나머지 ${slots}장 고르기${notes.map(t => ` · <span class="text-red-300">${t}</span>`).join('')}</div>` : ''}${ph.enemyFirst ? '<div class="story-hint">⚡ 이번 페이즈는 적이 먼저 공격해요</div>' : ''}
@@ -1354,7 +1356,7 @@
       ${expList(r.exp)}
       ${pts ? `<div class="mt-4 text-lg">스탯 포인트 <b class="text-emerald-300">+${pts}</b> (보유 ${save.points})</div>` : ''}
       <div class="flex flex-col gap-2 max-w-xs mx-auto mt-5">${needVid ? '<button class="story-btn story-endvid" data-go="endvid">🎬 엔딩 보기</button>' : ''}<div class="story-split">${'<button class="story-btn" data-go="stats">📈 스탯업</button>'}${hasNext ? `<button class="story-btn story-next" ${needVid ? 'style="display:none"' : ''} data-go="nextch" ${nextOpen ? '' : 'disabled'} title="${nextPh ? `Phase.${nextPh.no}` : nextOpen ? esc(nextChB.title) : ''}">${nextOpen ? '▶' : '🔒'} NEXT</button>` : ''}</div><button class="story-back" data-go="map">챕터 지도로</button></div></div>`);
-    bind({ stats: () => openStats(renderMap), endvid: () => endingVideo(ch).then(() => { const n = root().querySelector('.story-next'); if (n) n.style.display = ''; }), nextch: () => { if (nextPh) startPhase(ch, nextPh); else if (nextOpen) { hubC = nextI; chapterCard(nextChB).then(() => renderMap(nextI)); } } });
+    bind({ stats: () => openStats(renderMap), endvid: () => endingVideo(ch).then(() => { const n = root().querySelector('.story-next'); if (n) n.style.display = ''; }), nextch: () => { if (nextPh) startPhase(ch, nextPh, { fromNext: true }); else if (nextOpen) { hubC = nextI; chapterCard(nextChB).then(() => renderMap(nextI)); } } });
     if (pr?.levelups) levelUpFx('PLAYER LEVEL UP!'); else if ((r.exp || []).some(e => e.level > e.from)) levelUpFx();
   }
   // 다음 챕터 진입 타이틀 카드: CHAPTER N / 부제 — 페이드 인 → 1.7초 → 페이드 아웃. 탭하면 건너뜀

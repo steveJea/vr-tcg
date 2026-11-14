@@ -57,7 +57,8 @@ export function showTestBadge(doc, selected = config) {
   badge.id = 'vr-test-badge';
   badge.textContent = selected.enabled ? 'TEST' : 'TEST · DB 미설정';
   badge.setAttribute('aria-label', '테스트 서버 · 운영 데이터와 별개');
-  badge.style.cssText = 'position:fixed;top:max(4px,env(safe-area-inset-top));left:6px;z-index:2147483647;padding:3px 7px;border-radius:5px;background:#fbbf24;color:#171717;font:700 11px/1.4 sans-serif;pointer-events:none;box-shadow:0 1px 4px #0008';
+  // 위 가운데 끝에 작은 탭 (왼쪽 위 로그인·뒤로 버튼을 가리지 않게)
+  badge.style.cssText = 'position:fixed;top:env(safe-area-inset-top,0px);left:50%;transform:translateX(-50%);z-index:2147483647;padding:0 6px;border-radius:0 0 5px 5px;background:#fbbf24;color:#171717;font:800 9px/1.35 sans-serif;letter-spacing:.04em;pointer-events:none;box-shadow:0 1px 3px #0008';
   doc.body.appendChild(badge);
 }
 if (typeof document !== 'undefined') {

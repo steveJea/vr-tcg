@@ -64,8 +64,11 @@ for(const provider of ['google','kakao']){
  f.fireTimer(10000);await f.window.VRCloud.login(provider);assert.equal(f.calls.filter(c=>c[0]==='signInWithOAuth').length,2,'blocked navigation can be retried');
 }
 for(const opts of [{enabled:false},{fetchError:true}]){
- const f=fixture(opts);await f.settle();assert.equal(f.document.getElementById('acct-login-kakao').hidden,true);assert.equal(f.document.getElementById('intro-login-kakao').hidden,true);
+ const f=fixture(opts);await f.settle();assert.equal(f.document.getElementById('acct-login-kakao'),null,'top bar has one 로그인 button');assert.equal(f.document.getElementById('acct-login').textContent,'로그인');assert.equal(f.document.getElementById('intro-login-kakao').hidden,true);
  await f.window.VRCloud.login('kakao');assert.equal(f.calls.filter(c=>c[0]==='signInWithOAuth').length,0);await f.window.VRCloud.login();assert.equal(f.calls.find(c=>c[0]==='signInWithOAuth')[1].provider,'google');
+}
+{
+ const f=fixture();await f.settle();f.document.getElementById('acct-login').click();await f.settle();assert(f.document.getElementById('oauth-choose'),'top bar 로그인 opens the chooser');f.document.getElementById('oauth-choose').remove();
 }
 {
  const f=fixture();await f.settle();await f.window.VRCloud.login();assert(f.document.getElementById('oauth-choose'));
@@ -132,7 +135,7 @@ for(const [external,actual,probeEnabled,probeError] of [
  [{google:true,kakao:true,twitter:true},'twitter',false,false],
 ]) {
  const f=fixture({external,probeEnabled,probeError});await f.settle();
- for(const id of ['intro-login-x','acct-login-x'])assert.equal(f.document.getElementById(id).hidden,false);
+ assert.equal(f.document.getElementById('intro-login-x').hidden,false);assert.equal(f.document.getElementById('acct-login-x'),null);
  await f.window.VRCloud.login();assert(f.document.getElementById('oauth-choose'));f.document.querySelector('#oauth-choose [data-oauth-provider="x"]').click();await f.settle();
  assert.deepEqual(f.calls.find(c=>c[0]==='signInWithOAuth')[1],{provider:actual,options:{redirectTo:'https://vr-tcg-staging.notcold.workers.dev/'}});
  assert.equal(f.calls[0][3].auth.flowType,'pkce');
@@ -145,7 +148,7 @@ for(const [external,actual,probeEnabled,probeError] of [
  const conflict=fixture({u:google,linkIntent:{uid:google.id,provider:actual},external,probeEnabled,probeError,profiles:{[google.id]:{nickname:'유지',nick_set:true}},href:'https://vr-tcg-staging.notcold.workers.dev/#error=server_error&error_code=identity_already_exists&error_description=Identity+is+already+linked+to+another+user'});await conflict.settle();assert.equal(conflict.messages[0],'이미 다른 계정에 연결된 X 계정이에요.');assert.equal(conflict.window.VRCloud.user.id,google.id);
 }
 for(const opts of [{external:{google:true,kakao:true,x:false,twitter:false}},{external:{google:true,kakao:true,twitter:false}},{external:{google:true,kakao:true,x:'true',twitter:'true'}},{external:{google:true,kakao:true,twitter:true},probeError:true},{fetchError:true}]) {
- const f=fixture(opts);await f.settle();assert(f.document.getElementById('intro-login-x').hidden);assert(f.document.getElementById('acct-login-x').hidden);await f.window.VRCloud.login('x');assert(!f.calls.some(c=>c[0]==='signInWithOAuth'));
+ const f=fixture(opts);await f.settle();assert(f.document.getElementById('intro-login-x').hidden);assert.equal(f.document.getElementById('acct-login-x'),null);await f.window.VRCloud.login('x');assert(!f.calls.some(c=>c[0]==='signInWithOAuth'));
  if(!opts.fetchError){await f.window.VRCloud.login();assert(f.document.querySelector('#oauth-choose [data-oauth-provider="x"]').hidden);}
 }
 for(const actual of ['x','twitter']) {

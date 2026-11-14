@@ -98,10 +98,9 @@ function render(p) {
   const box = $('acct-box'); if (!box) return;
   if (!ready) { paintOAuth(); box.innerHTML = ''; return; }
   if (!user) {
-    box.innerHTML = `<div class="oauth-row" data-clarity-mask="true"><button id="acct-login" type="button" class="main-btn acct-login" data-oauth-provider="google">구글 로그인</button><button id="acct-login-kakao" type="button" class="main-btn acct-login oauth-kakao" data-oauth-provider="kakao" aria-label="카카오 로그인" hidden><img src="img/ui/kakao-symbol.svg" class="oauth-symbol" width="18" height="18" alt="">로그인</button><button id="acct-login-x" type="button" class="main-btn acct-login oauth-x" data-oauth-provider="x" hidden>X 로그인</button></div>`;
-    $('acct-login').onclick = () => login('google');
-    $('acct-login-kakao').onclick = () => login('kakao');
-    $('acct-login-x').onclick = () => login('x');
+    // 상단 로그인: 버튼 하나 → 고르는 창(구글·카카오·X 중 켜진 것). 켜진 게 구글뿐이면 바로 구글
+    box.innerHTML = `<div class="oauth-row" data-clarity-mask="true"><button id="acct-login" type="button" class="main-btn acct-login" aria-haspopup="dialog">로그인</button></div>`;
+    $('acct-login').onclick = () => login();
   } else {
     const av = p?.avatar_url
       ? `<img src="${esc(p.avatar_url)}" alt="" referrerpolicy="no-referrer" class="acct-avatar" onerror="this.onerror=null;this.src='img/ui/profile.webp'">`

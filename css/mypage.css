@@ -81,3 +81,6 @@
 .mp-who{flex-wrap:wrap;gap:6px}
 .mp-who .cosmo-chip{flex:1;min-width:0}
 .mp-av{/* kept for guest */}
+
+/* 전적 칸 = 버튼 (아케이드·탑·갤러리로 이동) */
+button.mp-stat{font:inherit;text-align:left;border:0;cursor:pointer;-webkit-tap-highlight-color:transparent}button.mp-stat:active{background:rgba(255,255,255,.12)}
