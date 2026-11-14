@@ -87,7 +87,7 @@
   function close() { document.getElementById('camp-ov')?.remove(); clearInterval(tick); paint(); }
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.getElementById('camp-ov')) close(); });
 
-  async function load() { st = await rpc('camp_status'); try { const s = await window.VRStory?.summary?.(); owned = (s?.ok ? s.owned : []).map(meta); } catch { owned = []; } paint(); return st; }
+  async function load() { st = await status(); try { const s = await window.VRStory?.summary?.(); owned = (s?.ok ? s.owned : []).map(meta); } catch { owned = []; } paint(); return st; }
   async function open() {
     if (window.VRUnlocks && !window.VRUnlocks.guard('camp')) return;
     const box = shell('🏋️ 훈련소'); box.querySelector('.cbody').innerHTML = '<div class="camp-empty">불러오는 중...</div>';
@@ -99,7 +99,7 @@
   let auto = 0;
   async function autoClaim() {
     clearInterval(auto); auto = setInterval(async () => { if (!document.getElementById('camp-ov')) return clearInterval(auto);
-      try { const r = await rpc('camp_status'); if (r?.slots?.some(s => s.pending > 0)) done(await rpc('camp_claim')); } catch {} }, 600000);
+      try { const r = await status(); if (r?.got) return done(r, true); if (r?.slots?.some(s => s.pending > 0)) done(await rpc('camp_claim')); } catch {} }, 600000);
     if (!st?.slots?.some(s => s.uid && s.pending > 0)) return false;
     try { await done(await rpc('camp_claim')); return true; } catch { return false; }
   }
@@ -142,9 +142,16 @@
     paint();
   }
 
-  async function done(r) {
-    st = r; const got = (r.got || []).filter(x => x.exp > 0);
-    if (got.length) toast(`🏋️ EXP +${fmt(got.reduce((a, x) => a + x.exp, 0))}${got.some(x => x.level > x.from) ? ' · LEVEL UP!' : ''}`);
+  // 받은 EXP 알림 (camp_claim · 서버 자동 반영 camp_status 공통)
+  function gotToast(r) {
+    const got = (r?.got || []).filter(x => x.exp > 0);
+    if (got.length) toast(`🏋️ ${r.auto ? '훈련소 ' : ''}EXP +${fmt(got.reduce((a, x) => a + x.exp, 0))}${got.some(x => x.level > x.from) ? ' · LEVEL UP!' : ''}`);
+    return got.length > 0;
+  }
+  // 서버가 상태 조회(로그인 직후 · 10분마다)에서 쌓인 EXP 를 바로 반영함 (디버그 57). 반영됐으면 알림
+  async function status() { const r = await rpc('camp_status'); gotToast(r); return r; }
+  async function done(r, quiet) {
+    st = r; if (!quiet) gotToast(r);
     try { const s = await window.VRStory?.summary?.(); owned = (s?.ok ? s.owned : owned).map(meta); } catch {}
     draw();
   }
@@ -238,7 +245,7 @@
 
   // 마이페이지 버튼 빨간 점
   function paint() { document.querySelectorAll('[data-campdot]').forEach(el => { el.innerHTML = ready() ? '<i class="camp-dot" aria-label="받을 EXP 있음"></i>' : ''; }); }
-  async function refresh() { if (off || (!window.VRCloud?.user && !window.VRCamp?._mock)) return paint(); try { st = await rpc('camp_status'); } catch {} paint(); }
+  async function refresh() { if (off || (!window.VRCloud?.user && !window.VRCamp?._mock)) return paint(); try { st = await status(); } catch {} paint(); }
   window.addEventListener('vr:user', () => setTimeout(refresh, 2000));
   setInterval(refresh, 10 * 60e3);
   new MutationObserver(() => { if (document.querySelector('[data-campdot]:empty') && ready()) paint(); }).observe(document.body, { childList: true, subtree: true });
