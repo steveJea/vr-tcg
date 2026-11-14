@@ -13,7 +13,7 @@ let p = C.showModal(); const ov = document.getElementById('consent-ov'); assert(
 const go = ov.querySelector('.go'), ck = k => ov.querySelector(`[data-ck="${k}"]`), fire = el => el.onchange();
 assert.equal(go.disabled, true);
 assert.equal(ov.querySelectorAll('a[href="/terms.html"]').length, 1); assert.equal(ov.querySelectorAll('a[href="/privacy.html"]').length, 1);
-assert.match(ov.textContent, /\[필수\]이용약관 동의/); assert.match(ov.textContent, /\[필수\]만 14세 이상입니다/); assert.match(ov.textContent, /\[선택\]이벤트·혜택 알림 수신/);
+assert.match(ov.textContent, /\[필수\]이용약관 동의/); assert.match(ov.textContent, /\[필수\]만 19세 이상입니다/); assert.match(ov.textContent, /\[선택\]이벤트·혜택 알림 수신/);
 ck('terms').checked = true; fire(ck('terms')); ck('privacy').checked = true; fire(ck('privacy')); assert.equal(go.disabled, true, 'age14 still missing');
 ck('age14').checked = true; fire(ck('age14')); assert.equal(go.disabled, false, 'all required → enabled');
 const all = ov.querySelector('[data-all]'); all.checked = true; all.onchange(); assert.equal(ck('marketing').checked, true);
@@ -49,7 +49,8 @@ window.VRCloud = { user: null }; C.paintSettings(); assert(box.classList.contain
 // 6) 연결: 로그인 직후·닉네임 전에, 동의 안 함은 로그아웃
 const cloud = await readFile('js/cloud.js', 'utf8'), html = await readFile('index.html', 'utf8');
 assert.match(cloud, /import \{ ensureConsent \} from '\.\/consent\.js';/);
-assert.match(cloud, /if \(!await ensureConsent\(sb, u, \{ onDecline: logout \}\)\) return;\n\s*if \(version !== userVersion\) return;\n\s*if \(profile && profile\.nick_set === false\) askNickname\(true\);/);
+assert.match(cloud, /import \{ ensureAgeGate \} from '\.\/age-gate\.js';/);
+assert.match(cloud, /if \(!await ensureConsent\(sb, u, \{ onDecline: logout \}\)\) return;\n\s*if \(version !== userVersion\) return;\n\s*if \(!await ensureAgeGate\(sb, u\)\) return;\n\s*if \(version !== userVersion\) return;\n\s*if \(profile && profile\.nick_set === false\) askNickname\(true\);/);
 assert.match(html, /<div id="consent-settings" class="hidden" data-clarity-mask="true"><\/div>/);
 await tick();
 console.log('Consent UI: required 3 gate, 전체 동의, decline→logout, SQL-missing local save + later sync, re-ask on new version, settings marketing toggle OK');

@@ -1,9 +1,9 @@
-// ===== 첫 로그인 동의 (이용약관·개인정보·만 14세 [필수] + 이벤트·혜택 알림 [선택]) =====
+// ===== 첫 로그인 동의 (이용약관·개인정보·만 19세 이상 [필수] + 이벤트·혜택 알림 [선택]) =====
 // 로그인(구글·카카오·X 등) 뒤 현재 버전 동의 기록이 없으면 게임 들어가기 전에 한 번 보여 줌. 기존 회원도 기록이 없으면 한 번.
 // 게스트(로그인 안 함)·튜토리얼은 개인정보를 모으지 않으므로 묻지 않음 — 로그인하는 순간 물어봄.
 // 서버: supabase/consent_staging.sql (user_consents + consent_status / consent_accept / consent_set_marketing).
 // SQL 이 아직 없거나 네트워크가 끊겨도: 동의 창은 그대로 뜨고, 이 브라우저에 저장했다가 나중에 서버로 다시 보냄.
-export const TERMS_VERSION = '2026-11-draft', PRIVACY_VERSION = '2026-11-draft';
+export const TERMS_VERSION = '2026-11-19plus', PRIVACY_VERSION = '2026-11-19plus';
 const KEY = uid => `vrConsent.v1:${uid}`;
 const RETRY_MS = 30000;
 let retryTimer = 0, current = null;   // current: { sb, uid, rec }
@@ -71,7 +71,7 @@ function css() {
 const ITEMS = [
   ['terms', '필수', '이용약관 동의', '/terms.html'],
   ['privacy', '필수', '개인정보 수집·이용 안내 확인', '/privacy.html'],
-  ['age14', '필수', '만 14세 이상입니다', ''],
+  ['age14', '필수', '만 19세 이상입니다', ''],
   ['marketing', '선택', '이벤트·혜택 알림 수신', ''],
 ];
 export function showModal() {

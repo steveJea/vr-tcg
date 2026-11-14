@@ -16,7 +16,7 @@ for(const [i,html]of pages.entries()) {
  for(const a of d.querySelectorAll('a')){if(a.getAttribute('href').startsWith('mailto:'))assert.equal(a.getAttribute('href'),'mailto:contact@entincode.co.kr');assert(!/javascript:/i.test(a.href));}
  assert.equal(d.querySelector('nav [aria-current="page"]').textContent,i?'개인정보처리방침':'이용약관');
  assert(!/__\w+__|example\.com|test@example/i.test(html));
- for(const value of ['엔터인코드(ENT.INCODE)','장윤석','738-44-01302','contact@entincode.co.kr','만 15세 이상','등급분류 결과에 따라'])assert(d.body.textContent.includes(value),value);
+ for(const value of ['엔터인코드(ENT.INCODE)','장윤석','738-44-01302','contact@entincode.co.kr','만 19세 이상','등급분류 결과에 따라'])assert(d.body.textContent.includes(value),value);
  for(const stale of ['[법적 사업자명 입력 필요]','[대표자명 입력 필요]','[사업자등록번호 입력 필요]','[고객문의 이메일 입력 필요]','[개인정보 보호책임자 성명·직책 입력 필요]','[이용 가능 연령·확인 방식 확정 필요]','[만14세 미만 이용정책·법정대리인 동의절차 확정 필요]'])assert(!html.includes(stale),stale);
  assert(d.querySelector('a[href="mailto:contact@entincode.co.kr"]'));
 }
