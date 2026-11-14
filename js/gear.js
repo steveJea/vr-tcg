@@ -231,17 +231,18 @@
   const CURN = { gold: '🪙 골드', blood: '🩸 순수한 피', shard: '💠 이상한 조각', soul: '🔥 각성자의 혼' };
   const hasAtt = p => !!p && Object.keys(p).length > 0;
   const attTxt = p => { p = p || {}; const a = [];
-    if (p.gem) a.push(`${window.VRGem?.ICON || '💎'} 심연석 ${fmt(p.gem)}`); if (p.tickets) a.push(`🎟️ 소환권 ${p.tickets}`); if (p.ur_tickets) a.push(`🎫 UR 확정권 ${p.ur_tickets}장`);
+    if (p.gem) a.push(`${window.VRGem?.ICON || '💎'} 심연석 ${fmt(p.gem)}`); if (p.tickets) a.push(`🎟️ 소환권 ${p.tickets}`); if (p.ur_tickets) a.push(`🎫 UR 확정권 ${p.ur_tickets}장`); if (p.stamina) a.push(`⚡ 행동력 ${fmt(p.stamina)}`);
     Object.entries(p.cur || {}).forEach(([k, v]) => a.push(`${CURN[k] || k} ${fmt(v)}`)); if (p.gear) a.push(`🛡️ ${esc(defs[p.gear]?.name || '장비')}`); return a.join(' · '); };
-  const fmtExp = t => { const d = new Date(t); return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
+  const forever = t => !t || /infinity/i.test(String(t)) || !Number.isFinite(new Date(t).getTime()) || new Date(t).getFullYear() > 9000;
+  const fmtExp = t => { if (forever(t)) return '기한 없음'; const d = new Date(t); return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
   function msgPop(ml, after) {
     if (!ml) return; const att = hasAtt(ml.payload);
     if (!ml.read) sb().rpc('mail_read', { p_id: ml.id }).then(() => refreshUnread());
     const q = pop(`<b class="gear-msg-t" data-clarity-mask="true">${esc(ml.title || '알림')}</b><div class="gear-msg-b" data-clarity-mask="true">${esc(ml.body || '').replace(/\n/g, '<br>')}</div>
-      ${att ? `<div class="gear-msg-a">${attTxt(ml.payload)}</div>` : ''}<div class="gear-dim">기한 ${esc(fmtExp(ml.expires_at))}까지</div>
+      ${att ? `<div class="gear-msg-a">${attTxt(ml.payload)}</div>` : ''}<div class="gear-dim">${forever(ml.expires_at) ? '보관 기한 없음' : `기한 ${esc(fmtExp(ml.expires_at))}까지`}</div>
       <div class="gear-acts"><button class="gear-btn main" data-c>${att ? '받기' : '확인 (삭제)'}</button></div>`, 'item');
     q.querySelector('[data-c]').onclick = async e => { e.target.disabled = true; const r = await rpc('mail_msg_claim', { p_id: ml.id }); q.remove();
-      if (r) { if (r.wallet) window.VRPlayer?.setWallet?.(r.wallet); if (r.got?.gem) window.VRGem?.status?.(true); if (att) toast(`📬 받았어요: ${attTxt(ml.payload)}`.replace(/<[^>]+>/g, '')); }
+      if (r) { if (r.wallet) window.VRPlayer?.setWallet?.(r.wallet); if (r.got?.gem) window.VRGem?.status?.(true); if (r.got?.stamina || r.got?.tickets) window.VRPlayer?.status?.(true); if (att) toast(`📬 받았어요: ${attTxt(ml.payload)}`.replace(/<[^>]+>/g, '')); }
       await refreshUnread(); after?.(); };
   }
 
@@ -252,13 +253,19 @@
     const close = () => { ctx.back?.(); };
     const draw = async () => {
       const { data: list, error } = await sb().rpc('mail_list'); refreshUnread(); if (error) { m.remove(); return toast(`⚠️ ${error.message}`); }
+      const claimable = list.filter(x => x.kind === 'msg' && hasAtt(x.payload)).length;
       m.querySelector('.gear-pop').innerHTML = `<div class="gear-bag-top"><b><img class="ui-ic" src="img/ui/mailbox.webp" alt="">우편함</b><small><img class="ui-ic" src="img/ui/bag.webp" alt="">${st.count}/${st.slots}</small></div>
-        ${list.filter(x => x.kind === 'msg').map(ml => `<button class="gear-msg ${ml.read && !hasAtt(ml.payload) ? 'read' : ''}" data-msg="${ml.id}" data-clarity-mask="true"><b>${ml.read ? '' : '<i class="gear-badge">N</i> '}${esc(ml.title || '알림')}</b><span>${attTxt(ml.payload) || '메시지'}</span><small>~${esc(fmtExp(ml.expires_at))}</small></button>`).join('')}
+        ${claimable > 1 ? `<button type="button" class="gear-btn main gear-claim-all" data-claim-all>🎁 모두 받기 (${claimable})</button>` : ''}
+        ${list.filter(x => x.kind === 'msg').map(ml => `<button class="gear-msg ${ml.read && !hasAtt(ml.payload) ? 'read' : ''}" data-msg="${ml.id}" data-clarity-mask="true"><b>${ml.read ? '' : '<i class="gear-badge">N</i> '}${esc(ml.title || '알림')}</b><span>${attTxt(ml.payload) || '메시지'}</span><small>${forever(ml.expires_at) ? '기한 없음' : `~${esc(fmtExp(ml.expires_at))}`}</small></button>`).join('')}
         <div class="gear-grid">${list.filter(x => x.kind !== 'msg').map(ml => { const p = ml.payload || {}, d = defs[p.def_id];
           if (ml.kind === 'sigil_frag') return `<button class="gear-cell" data-m="${ml.id}">${img('', 'sigil')}<i>×${p.n}</i></button>`;
           return ml.kind === 'box' ? `<button class="gear-cell gt${p.tier}" data-m="${ml.id}"><span class="gear-box"><img class="ui-ic" src="img/ui/gear_box.webp" alt=""></span></button>`
             : d ? `<button class="gear-cell gt${d.tier}" data-m="${ml.id}">${img(iconOf(d), d.slot)}</button>` : ''; }).join('') || (list.length ? '' : '<div class="gear-dim">우편이 없어요</div>')}</div>
-        <details class="vr-tip"><summary>ⓘ</summary><p>보관 7일 · 상자 14일 · 메시지는 적힌 기한까지</p></details>`;
+        <details class="vr-tip"><summary>ⓘ</summary><p>보관 7일 · 상자 14일 · 메시지는 적힌 기한까지 · 시즌패스 보상은 기한 없음</p></details>`;
+      m.querySelector('[data-claim-all]')?.addEventListener('click', async e => { e.currentTarget.disabled = true; const r = await rpc('mail_claim_all');
+        if (r) { if (r.wallet) window.VRPlayer?.setWallet?.(r.wallet); else window.VRPlayer?.wallet?.(true); window.VRGem?.status?.(true); window.VRPlayer?.status?.(true);
+          toast(r.claimed ? `📬 ${r.claimed}통 받았어요${attTxt(r.got) ? ': ' + attTxt(r.got) : ''}${r.skipped ? ` · ${r.skipped}통은 남았어요 (가방 확인)` : ''}`.replace(/<[^>]+>/g, '') : '받을 우편이 없어요'); }
+        await refreshUnread(); if (m.isConnected) draw(); });
       m.querySelectorAll('[data-msg]').forEach(b => b.onclick = () => msgPop(list.find(x => String(x.id) === b.dataset.msg), () => { if (m.isConnected) draw(); }));
       m.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { const ml = list.find(x => String(x.id) === b.dataset.m), p = ml.payload || {};
         if (ml.kind === 'sigil_frag') {
