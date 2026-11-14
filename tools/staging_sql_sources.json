@@ -171,7 +171,12 @@
     "attendance_production.sql": "PRODUCTION ONLY 출석 보상 2종 (#585). Run in the production SQL Editor during the 20261113 release; never part of staging_install.",
     "idle_drink_staging.sql": "Owner-pasted staging-only 방치 보상 드링크 (#587). Kept out of staging_install so release 20261111 stays frozen.",
     "idle_drink_production.sql": "PRODUCTION ONLY 방치 보상 드링크 (#587). Run in the production SQL Editor during the 20261113 release; never part of staging_install.",
-    "fix_16_11_mustkill.sql": "Owner-pasted staging-only 16-11 mustKill phase7 engine_hash rotation (supersedes fix_direct_v7_become.sql)."
+    "fix_16_11_mustkill.sql": "Owner-pasted staging-only 16-11 mustKill phase7 engine_hash rotation (supersedes fix_direct_v7_become.sql).",
+    "age_19plus_staging.sql": "Owner-pasted staging-only 만 19세 동의 버전 갱신 + 본인인증 게이트 자리(기본 OFF). Kept out of staging_install so release 20261111 stays frozen.",
+    "age_19plus_check_staging.sql": "Read-only staging check for age_19plus_staging.sql. Not a fresh installer.",
+    "camp_auto_exp_staging.sql": "Owner-pasted staging-only 훈련소 자동 EXP 설치. Kept out of staging_install so release 20261111 stays frozen.",
+    "camp_auto_exp_check_staging.sql": "Read-only staging check for camp_auto_exp_staging.sql. Not a fresh installer.",
+    "camp_auto_exp_rollback_staging.sql": "Owner-pasted staging-only rollback for camp_auto_exp_staging.sql. Not a fresh installer."
   },
   "partial": {
     "card_id_remap.sql": "card_id_alias 설정 자료 + 최신 _war_npc_deck만; 기존 사용자 ID 일괄 변경은 제외"

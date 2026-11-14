@@ -3,6 +3,7 @@
 // Supabase 접속 실패 시 조용히 게스트 모드로 동작.
 import { config } from './config.js';
 import { ensureConsent } from './consent.js';
+import { ensureAgeGate } from './age-gate.js';
 import { OAUTH_PROVIDERS, profileSeed, hasIdentity, oauthRequest, discoverOAuthProviders, cleanOAuthCallback, readOAuthCallback, saveLinkIntent, takeLinkIntent, oauthErrorCode, oauthFailureMessage, resolveOAuthReturn } from './auth-oauth.js';
 const SUPABASE_URL = config.supabaseUrl;
 const SUPABASE_ANON = config.anonKey;
@@ -219,6 +220,8 @@ async function init() {
       profile = nextProfile; render(profile);
       // 첫 로그인 동의 (js/consent.js): 현재 버전 동의가 없으면 게임 전에 한 번. 동의 안 함 → 로그아웃(게스트)
       if (!await ensureConsent(sb, u, { onDecline: logout })) return;
+      if (version !== userVersion) return;
+      if (!await ensureAgeGate(sb, u)) return;
       if (version !== userVersion) return;
       if (profile && profile.nick_set === false) askNickname(true);
     };
