@@ -31,7 +31,7 @@ export function createHandler(env,fetcher=fetch,timeoutMs=9000) {
    for(;;){const {value,done}=await reader.read();if(done)break;size+=value.length;if(size>4096){await reader.cancel();return reply(413,{error:'invalid request'});}parts.push(value);}
    const bytes=new Uint8Array(size);let at=0;for(const p of parts){bytes.set(p,at);at+=p.length;}let b;try{b=JSON.parse(new TextDecoder().decode(bytes));}catch{return reply(400,{error:'invalid request'});}
    if(!b||typeof b!=='object'||Array.isArray(b))return reply(400,{error:'invalid request'});
-   if(b.op==='create') {if(!exact(b,['op','product','request'])||typeof b.product!=='string'||!/^gem_[0-9]+$/.test(b.product)||typeof b.request!=='string'||!UUID.test(b.request))return reply(400,{error:'invalid request'});}
+   if(b.op==='create') {if(!exact(b,['op','product','request'])||typeof b.product!=='string'||!/^(gem_[0-9]+|pass_[123])$/.test(b.product)||typeof b.request!=='string'||!UUID.test(b.request))return reply(400,{error:'invalid request'});}
    else if(b.op==='confirm') {if(!exact(b,['op','orderId','paymentKey','amount'])||typeof b.orderId!=='string'||!ORDER.test(b.orderId)||typeof b.paymentKey!=='string'||b.paymentKey.length<1||b.paymentKey.length>200||/[\x00-\x1f\x7f]/.test(b.paymentKey)||!Number.isSafeInteger(b.amount)||b.amount<100||b.amount>1000000)return reply(400,{error:'invalid request'});}
    else if(b.op==='abandon') {if(!exact(b,['op','orderId','reason'])||!ORDER.test(b.orderId||'')||!['canceled','failed'].includes(b.reason))return reply(400,{error:'invalid request'});}
    else if(['refund','refund-status'].includes(b.op)) {if(!exact(b,['op','orderId'])||typeof b.orderId!=='string'||!ORDER.test(b.orderId))return reply(400,{error:'invalid request'});}
