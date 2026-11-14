@@ -27,7 +27,7 @@ begin
     ('admin_mail_broadcast(text,text,jsonb,integer)','62d8597bec375c87839543e818a55927'),
     ('admin_mail_broadcasts(integer)','6d64fed3850203290e87322c6a071a72')
   ) e(sig,src) loop
-    if to_regprocedure(f.sig) is null or (select md5(prosrc) from pg_proc where oid=to_regprocedure(f.sig)) is distinct from f.src then raise exception 'STOP: % differs from mail_v2.sql baseline (hand-edited in production?)', f.sig; end if;
+    if to_regprocedure(f.sig) is null or (select md5(replace(prosrc, chr(13), '')) from pg_proc where oid=to_regprocedure(f.sig)) is distinct from f.src then raise exception 'STOP: % differs from mail_v2.sql baseline (hand-edited in production?)', f.sig; end if;
   end loop;
   if (select count(*) from public.story_premium_ur w join public.story_card_pool p on p.id=w.id and p.grade='ULTRA RARE') <> 11 then raise exception 'STOP: 고급 소환 UR 목록이 11명이 아님'; end if;
   -- 1. UR 확정권 보유 수 (소환권과 같은 행)
