@@ -44,9 +44,9 @@ async function open(){
  const title=document.createElement('h2');title.textContent='테스트 충전 · 임시가';panel.append(close,title);modal.append(panel);document.body.append(modal);modal.onclick=e=>{if(e.target===modal)modal.remove();};
  const button=(text,fn)=>{const b=document.createElement('button');b.type='button';b.className='gem-charge payment-product';b.textContent=text;b.onclick=async()=>{if(buying)return;buying=true;panel.querySelectorAll('button.payment-product').forEach(x=>x.disabled=true);try{if(c.user?.id!==uid)throw Error('login required');await fn();}catch(e){if(['payment refunded','payment closed','order expired'].includes(e?.message)&&c.user?.id===uid){localStorage.removeItem(pendingKey(uid));modal.remove();}toast(paymentError(e?.code||e?.message,e?.sdkMessage));}finally{buying=false;panel.querySelectorAll('button.payment-product').forEach(x=>x.disabled=false);}};panel.append(b);return b;};
  const prior=loadPending(localStorage,uid);
- if(prior?.paymentKey){button('충전 다시 확인',async()=>{const r=await api(c.sb,config,{op:'confirm',orderId:prior.orderId,paymentKey:prior.paymentKey,amount:prior.amount});if(c.user?.id!==uid)return;localStorage.removeItem(pendingKey(uid));void window.VRGem.status(true);toast('심연석 충전 완료');modal.remove();});return;}
+ if(prior?.paymentKey){button('충전 다시 확인',async()=>{const r=await api(c.sb,config,{op:'confirm',orderId:prior.orderId,paymentKey:prior.paymentKey,amount:prior.amount});if(c.user?.id!==uid)return;localStorage.removeItem(pendingKey(uid));void window.VRGem.status(true);toast(r?.kind==='pass'?'시즌패스 구매 완료':'심연석 충전 완료');modal.remove();});return;}
  try{
-  const {data,error}=await deadline(c.sb.from('payment_products').select('id,name,amount,paid_gems,bonus_gems').eq('active',true).order('sort'));if(error||!data?.length)throw Error('product unavailable');
+  const {data,error}=await deadline(c.sb.from('payment_products').select('id,name,amount,paid_gems,bonus_gems').eq('active',true).like('id','gem_%').order('sort'));if(error||!data?.length)throw Error('product unavailable');
   if(c.user?.id!==uid){modal.remove();return;}
   for(const p of data)button(`🔮 ${Number(p.paid_gems+p.bonus_gems).toLocaleString('ko-KR')} · ${Number(p.amount).toLocaleString('ko-KR')}원`,()=>startCheckout(p,c,uid));
  }catch(e){toast(paymentError(e.message));modal.remove();}
