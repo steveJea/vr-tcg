@@ -2,7 +2,8 @@
 // 상단 재화의 + 가 이 페이지를 연다. 탭: 충전 · 패키지 · 패스 · 소모품 · 스킨(비어 있음).
 // KRW 심연석 팩은 테스트 결제가 켜져 있으면 기존 토스 주문을 쓰고, 아니면 shop_buy(테스트 지급).
 // 시즌패스(31일)도 테스트 결제가 켜져 있고 payment_sku 가 있으면 토스 주문(seasonpass_31_staging.sql), 아니면 shop_buy.
-// 소환권·레벨업 팩은 shop_buy. 드링크는 심연석(무료 우선). 패스 보상은 '오늘 보상 받기' 버튼으로만 받는다(KST 당일, 놓친 날 소급 없음).
+// 소환권·레벨업 팩은 shop_buy. 드링크는 심연석(무료 우선).
+// 패스 매일 보상: seasonpass_mail_staging.sql 적용 후엔 우편함으로 지급(날짜별 1통, 기한 없음) → '우편함 가기'. 적용 전엔 예전 '오늘 보상 받기'.
 (() => {
   const TABS = [['charge', '충전'], ['pack', '패키지'], ['pass', '패스'], ['consume', '소모품'], ['skin', '스킨']];
   const missing = e => /PGRST202|PGRST205|42883|42P01|Could not find|does not exist|shop unavailable/i.test(`${e?.code} ${e?.message}`);
@@ -54,26 +55,31 @@
   }
   function calendar(p, today) {
     const total = Math.max(1, Math.min(90, Math.round((Date.parse(p.ends_on) - Date.parse(p.starts_on)) / 864e5) + 1));
-    const got = new Set(p.claimed || []);
+    const got = new Set(p.claimed || []), sent = new Set(p.sent || []);
     const cells = Array.from({ length: total }, (_, i) => {
-      const d = addDay(p.starts_on, i), done = got.has(d);
-      const cls = done ? 'done' : d === today ? 'today' : d < today ? 'miss' : 'future';
-      const mark = done ? '✓' : d === today ? '오늘' : d < today ? '–' : '';
-      return `<li class="shop-day ${cls}" title="${esc(d)}"><small>${i + 1}</small><span>${mark}</span></li>`;
+      const d = addDay(p.starts_on, i), done = got.has(d), mailed = sent.has(d), now = d === today, stopped = p.revoked_on && d >= p.revoked_on;
+      const cls = (done ? 'done' : mailed ? 'sent' : stopped ? 'past' : now ? 'today' : d > today ? 'future' : 'past') + (now ? ' is-today' : '');
+      const mark = done ? '✓' : mailed ? '📮' : stopped ? '중단' : now ? '오늘' : d > today ? '예정' : '';
+      const tip = done ? '받음' : mailed ? '지급됨 (우편함)' : stopped ? '환불 승인으로 중단' : now ? '오늘' : d > today ? '예정' : '';
+      return `<li class="shop-day ${cls}" title="${esc(d)} ${tip}"><small>${i + 1}</small><span>${mark}</span></li>`;
     }).join('');
     return `<ol class="shop-cal" aria-label="${esc(p.name || p.sku)} ${total}일">${cells}</ol>`;
   }
   function passRows() {
     const { today, list } = passList();
-    const rows = list.filter(p => p.state !== 'ended');
+    const rows = list; // 종료된 패스도 안 받은 우편이 있으면 달력에 남아요.
     if (!rows.length) return '';
     const names = Object.fromEntries((cache?.products || []).map(x => [x.sku, x.name]));
+    const viaMail = cal?.via === 'mail';
     const anyOpen = rows.some(p => p.state === 'active' && !(p.claimed || []).includes(today));
-    const btn = `<button type="button" class="shop-go shop-claim" data-pass-claim ${anyOpen ? '' : 'disabled'}>${anyOpen ? '오늘 보상 받기' : '오늘 보상 받음'}</button>`;
+    const pending = cal?.mail_pending | 0;
+    const btn = viaMail
+      ? `<button type="button" class="shop-go shop-claim" data-pass-mail>📮 우편함 가기${pending ? ` (${pending})` : ''}</button>`
+      : `<button type="button" class="shop-go shop-claim" data-pass-claim ${anyOpen ? '' : 'disabled'}>${anyOpen ? '오늘 보상 받기' : '오늘 보상 받음'}</button>`;
     return `<h3 class="shop-sub">내 패스</h3>${btn}` + rows.map(p => {
       const got = (p.claimed || []).length, total = Math.round((Date.parse(p.ends_on) - Date.parse(p.starts_on)) / 864e5) + 1;
       return `<div class="shop-pass"><b>${esc(p.name || names[p.sku] || p.sku)}</b> <i>${STATE[p.state] || ''}</i><div>${esc(p.starts_on)} ~ ${esc(p.ends_on)} · ${got}/${total}일 받음</div>${calendar(p, today)}</div>`;
-    }).join('') + '<p class="shop-note">✓ 받음 · 오늘 · – 지난 날(소급 지급 없음)</p>';
+    }).join('') + `<p class="shop-note">${viaMail ? '✓ 받음 · 📮 지급됨(우편함, 기한 없음) · 오늘 · 예정 — 매일 보상은 우편함으로 와요. 접속하지 않은 날도 쌓여요.' : '✓ 받음 · 오늘 · 예정'}</p>`;
   }
   async function loadDays() {
     try { const r = await rpc('shop_pass_days'); cal = r?.passes ? r : null; } catch (e) { cal = null; }
@@ -104,7 +110,7 @@
     if (!host) return;
     const list = (cache?.products || []).filter(p => p.tab === tab);
     const note = tab === 'pack' ? '<div class="shop-pack-head"><span class="shop-note">스페셜 소환권 1장 = 스페셜 소환 1회 (인재영입 › 스페셜)</span><button type="button" class="shop-rates" data-sp-rates>확률</button></div>'
-      : tab === 'pass' ? '<details class="vr-tip shop-note"><summary>ⓘ 31일 · 재구매 시 +31일</summary><p>매일 아래 ‘오늘 보상 받기’로 받아요 (한국 시간 기준, 놓친 날은 소급되지 않아요). 같은 패스를 다시 사면, 지금 패스가 끝난 다음 날부터 31일이 이어져요.</p></details>' : '';
+      : tab === 'pass' ? `<details class="vr-tip shop-note"><summary>ⓘ 31일 · 재구매 시 +31일</summary><p>${cal?.via === 'mail' ? '매일 보상은 우편함으로 와요 (한국 시간 기준, 하루 1통 · 보관 기한 없음 · 접속 안 한 날도 쌓여요).' : '매일 아래 ‘오늘 보상 받기’로 받아요 (한국 시간 기준).'} 같은 패스를 다시 사면, 지금 패스가 끝난 다음 날부터 31일이 이어져요.</p></details>` : '';
     const body = tab === 'skin' ? '<div class="shop-empty"><b>🔒 준비 중</b></div>'
       : !cache ? '<div class="shop-err">상점 정보를 불러오지 못했어요.</div>'
       : tab === 'consume' ? '<div data-consume></div>'
@@ -112,6 +118,7 @@
     host.innerHTML = `<div class="shop" data-clarity-mask="true"><div class="shop-bal"><span>🔮 <b>${n(cache?.gem)}</b></span><small>무료 ${n(cache?.free)} · 유료 ${n(cache?.paid)}</small></div><div class="shop-tabs">${TABS.map(([id, name]) => `<button type="button" data-tab="${id}" class="${tab === id ? 'on' : ''}">${name}</button>`).join('')}</div>${body}</div>`;
     host.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { tab = b.dataset.tab; paint(); });
     host.querySelectorAll('[data-sku]').forEach(b => b.onclick = () => buy(b.dataset.sku));
+    host.querySelector('[data-pass-mail]')?.addEventListener('click', () => { const G = window.VRGear; if (G && !G.off) G.mailbox({ back: () => { loadDays().then(() => { refresh(false).then(paint); }); } }); else toast('📮 우편함을 불러올 수 없어요'); });
     host.querySelector('[data-pass-claim]')?.addEventListener('click', async e => { e.currentTarget.disabled = true; await refresh(true); await loadDays(); paint(); });
     host.querySelector('[data-sp-rates]')?.addEventListener('click', () => window.VRSpecial?.showRates());
     if (tab === 'consume') paintConsume(host.querySelector('[data-consume]'));
