@@ -12,8 +12,8 @@ import { clearBuff, refillMana, endTurnXp, makeUnit, resolveAttack, aiPickTarget
 import { createHandler } from '../supabase/functions/story-direct-verify-v7/handler.mjs';
 import { dashboardHandler } from './load_phase7_dashboard.mjs';
 
-assert.equal(SWEEP_HASH, '3287b073666a4551cdb77d6c5e8f0f5ea994edf95852b6a221497c0a6f9966b2');
-assert.equal(ARCADE_HASH, 'ff2d9c9fdee9db3f098c9354ae522694864e44cf958543204c914d41234586d6');
+assert.equal(SWEEP_HASH, '3d99bb32199f214f1e77dd0eaedb8f9dd2b3393352b5619b1726d407c56f2180');
+assert.equal(ARCADE_HASH, '784dbc2ca538f7c597b39156bfc55cbb8dcd478a7c659a4ce999028f07d10226');
 assert.notEqual(ENGINE_VERSION, SWEEP_HASH);
 
 assert.throws(() => verifySweep({ mode: 'tower_sweep', target: 'normal:10', seed: 3, snapshot: { cards: [{ id: '10111', uid: 'u1', level: 80 }] } }), /boss floor/);
