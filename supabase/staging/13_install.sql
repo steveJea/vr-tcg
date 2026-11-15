@@ -40,11 +40,11 @@ set local check_function_bodies = off;
 
 do $vr_install_part$
 begin
-  if exists (select 1 from vr_staging_install.parts where bundle_hash <> '2e51781f300b93c84298e678ab1ea699a95d4d5bc29d23bc3cc785cdcfebdd30' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
+  if exists (select 1 from vr_staging_install.parts where bundle_hash <> 'f24c4895809875b61f5c173b9d40a6dea2e52629c22cb2edc935d21329501573' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
     raise exception 'STOP: 다른 버전/DB의 설치 기록입니다. 파일을 섞지 마세요.';
   end if;
   if exists (select 1 from vr_staging_install.parts where part_no = 13) then
-    if not exists (select 1 from vr_staging_install.parts where part_no = 13 and part_hash = '229e284d77ff2ce4fa99eff57bd7a521571593a1e55fe63c45bcf28061563aa9') then
+    if not exists (select 1 from vr_staging_install.parts where part_no = 13 and part_hash = '90502249ae63f77e1427eaadd099c45cf728c3424e8a65b6543df9660800fa83') then
       raise exception 'STOP: 완료한 파일과 내용이 다릅니다.';
     end if;
     raise notice '13_install.sql: 이미 완료, 변경 없이 건너뜀';
@@ -339,7 +339,7 @@ end $acl$;$vr_statement$;
 
 create table if not exists public.pvp_policy_v3(
  singleton boolean primary key default true check(singleton), engine_hash text not null check(length(engine_hash)=64), enabled boolean not null default true);$vr_statement$;
-  execute $vr_statement$insert into public.pvp_policy_v3(singleton,engine_hash) values(true,'bef887c77a009121ae99301ca91db7d73a7bd9ce30d70e1ec7a18d10742cd16f')
+  execute $vr_statement$insert into public.pvp_policy_v3(singleton,engine_hash) values(true,'de0b20eb9b97eabb27ed2bed2b77aec947eb7823bb5465b01da29f424191437f')
  on conflict(singleton) do update set engine_hash=excluded.engine_hash;$vr_statement$;
   execute $vr_statement$-- A clean, verified ladder. Legacy rows remain intact, NOT copied as proof.
 create table if not exists public.pvp_ratings_v3(
@@ -678,7 +678,7 @@ end $acl$;$vr_statement$;
 -- Phase4 cluster guard is enforced by installer outer guard.
 set local check_function_bodies=off;$vr_statement$;
   execute $vr_statement$create table if not exists public.guildbattle_policy_v4(singleton boolean primary key default true check(singleton),engine_hash text not null,enabled boolean not null default true);$vr_statement$;
-  execute $vr_statement$insert into public.guildbattle_policy_v4(singleton,engine_hash) values(true,'819b116c1e1ccd7d66ba589e3bc5e4e8d436a43ebf2dfe4543c250cbf5166cd0') on conflict(singleton) do update set engine_hash=excluded.engine_hash;$vr_statement$;
+  execute $vr_statement$insert into public.guildbattle_policy_v4(singleton,engine_hash) values(true,'11412c0cec381f8a0b268822fbf4815241b374f9553f968ef4303c30f78a6849') on conflict(singleton) do update set engine_hash=excluded.engine_hash;$vr_statement$;
   execute $vr_statement$do $$ begin
  if not exists(select 1 from pvp_policy_v3) then raise exception 'STOP: install phases 1-3 first'; end if;
 end $$;$vr_statement$;
@@ -1292,7 +1292,7 @@ begin
 end $$;$vr_statement$;
 
   insert into vr_staging_install.parts(part_no, bundle_hash, part_hash, project_ref, db_id)
-  values (13, '2e51781f300b93c84298e678ab1ea699a95d4d5bc29d23bc3cc785cdcfebdd30', '229e284d77ff2ce4fa99eff57bd7a521571593a1e55fe63c45bcf28061563aa9', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
+  values (13, 'f24c4895809875b61f5c173b9d40a6dea2e52629c22cb2edc935d21329501573', '90502249ae63f77e1427eaadd099c45cf728c3424e8a65b6543df9660800fa83', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
 end $vr_install_part$;
 commit;
 select '13_install.sql: 완료 또는 이미 완료 (13/14)' as result;
