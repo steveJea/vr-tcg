@@ -2,9 +2,9 @@
 -- 기대: ok=true
 select (
   (select system_identifier::text from pg_catalog.pg_control_system()) = '7703759698107299042'
-  and (select engine_hash from public.pvp_policy_v3 where singleton) = 'de0b20eb9b97eabb27ed2bed2b77aec947eb7823bb5465b01da29f424191437f'
-  and (select engine_hash from public.guildbattle_policy_v4 where singleton) = '11412c0cec381f8a0b268822fbf4815241b374f9553f968ef4303c30f78a6849'
-  and (select engine_hash from public.arcade_policy_v5 where singleton) = 'ff2d9c9fdee9db3f098c9354ae522694864e44cf958543204c914d41234586d6'
-  and (select engine_hash from public.battle_replay_policy_v6 where singleton) = '3287b073666a4551cdb77d6c5e8f0f5ea994edf95852b6a221497c0a6f9966b2'
-  and (select engine_hash from public.battle_replay_policy_v7 where singleton) = '0181e4ca3713942fa8e3fb8b5674164765c5bab7598b7d29abd6fa18dd3aa42b'
+  and (select engine_hash from public.pvp_policy_v3 where singleton) = '4d2a302eb51172b9db6f0ee380382cae747d9106d0158a7b3e19e1b34ff20d72'
+  and (select engine_hash from public.guildbattle_policy_v4 where singleton) = 'd2b099257f69e4ae3bdbd248e0e161c03a788be50b83ddb8affc23856d17ca31'
+  and (select engine_hash from public.arcade_policy_v5 where singleton) = '784dbc2ca538f7c597b39156bfc55cbb8dcd478a7c659a4ce999028f07d10226'
+  and (select engine_hash from public.battle_replay_policy_v6 where singleton) = '3d99bb32199f214f1e77dd0eaedb8f9dd2b3393352b5619b1726d407c56f2180'
+  and (select engine_hash from public.battle_replay_policy_v7 where singleton) = '7f7ee4ee627977cadd1e248b97a1edefe74c702349af776159d3454041439a0d'
 ) as ok;

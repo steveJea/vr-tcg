@@ -18868,7 +18868,7 @@ notify pgrst,'reload schema';
 
 create table if not exists public.pvp_policy_v3(
  singleton boolean primary key default true check(singleton), engine_hash text not null check(length(engine_hash)=64), enabled boolean not null default true);
-insert into public.pvp_policy_v3(singleton,engine_hash) values(true,'de0b20eb9b97eabb27ed2bed2b77aec947eb7823bb5465b01da29f424191437f')
+insert into public.pvp_policy_v3(singleton,engine_hash) values(true,'4d2a302eb51172b9db6f0ee380382cae747d9106d0158a7b3e19e1b34ff20d72')
  on conflict(singleton) do update set engine_hash=excluded.engine_hash;
 -- A clean, verified ladder. Legacy rows remain intact, NOT copied as proof.
 create table if not exists public.pvp_ratings_v3(
@@ -19209,7 +19209,7 @@ revoke all on sequence public.pvp_attempts_id_seq from public,anon,authenticated
 -- Phase4 cluster guard is enforced by installer outer guard.
 set local check_function_bodies=off;
 create table if not exists public.guildbattle_policy_v4(singleton boolean primary key default true check(singleton),engine_hash text not null,enabled boolean not null default true);
-insert into public.guildbattle_policy_v4(singleton,engine_hash) values(true,'11412c0cec381f8a0b268822fbf4815241b374f9553f968ef4303c30f78a6849') on conflict(singleton) do update set engine_hash=excluded.engine_hash;
+insert into public.guildbattle_policy_v4(singleton,engine_hash) values(true,'d2b099257f69e4ae3bdbd248e0e161c03a788be50b83ddb8affc23856d17ca31') on conflict(singleton) do update set engine_hash=excluded.engine_hash;
 do $$ begin
  if not exists(select 1 from pvp_policy_v3) then raise exception 'STOP: install phases 1-3 first'; end if;
 end $$;
@@ -20506,7 +20506,7 @@ notify pgrst,'reload schema';
 -- Phase5 cluster guard is enforced by installer outer guard.
 create table if not exists public.arcade_policy_v5 (
  singleton boolean primary key default true check(singleton), enabled boolean not null default true, engine_hash text not null check(engine_hash ~ '^[a-f0-9]{64}$'));
-insert into public.arcade_policy_v5(singleton,engine_hash) values(true,'ff2d9c9fdee9db3f098c9354ae522694864e44cf958543204c914d41234586d6')
+insert into public.arcade_policy_v5(singleton,engine_hash) values(true,'784dbc2ca538f7c597b39156bfc55cbb8dcd478a7c659a4ce999028f07d10226')
 on conflict(singleton) do update set engine_hash=excluded.engine_hash;
 create table if not exists public.arcade_sessions_v5 (
  id bigint generated always as identity primary key,
@@ -20745,7 +20745,7 @@ create table if not exists public.battle_replay_policy_v6 (
  engine_hash text not null check (engine_hash ~ '^[a-f0-9]{64}$'));
 -- Starts off. Re-running this file updates the engine hash only and does not turn enforcement on.
 insert into public.battle_replay_policy_v6(singleton, enabled, engine_hash)
- values (true, false, '3287b073666a4551cdb77d6c5e8f0f5ea994edf95852b6a221497c0a6f9966b2')
+ values (true, false, '3d99bb32199f214f1e77dd0eaedb8f9dd2b3393352b5619b1726d407c56f2180')
  on conflict (singleton) do update set engine_hash = excluded.engine_hash;
 alter table public.battle_replay_policy_v6 enable row level security;
 revoke all on public.battle_replay_policy_v6 from public, anon, authenticated;

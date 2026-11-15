@@ -521,18 +521,18 @@ const tauntSelf = (u, name, turns, def, endHeal = 0) => { addStatus(u, 'taunt', 
 const fixedBlast = (u, f, t, main, side, mp) => { if (!t) return; const nb = sides(f, t); damageUnit(t, main, u); nb.forEach(x => damageUnit(x, side, u)); let d = 0; [t, ...nb].forEach(x => { if (checkDeath(x, u)) d++; }); if (d) gainMp(u, u.maxMp * mp, '사망자 발생'); };
 /** 주 대상 피해 + 양 옆에 그 피해의 r */
 const splash = (u, f, t, pct, r) => { if (!t) return; const nb = sides(f, t); const d = damageUnit(t, skillDamage(u, t, pct), u); nb.forEach(x => damageUnit(x, Math.max(1, Math.round(d * r)), u)); [t, ...nb].forEach(x => checkDeath(x, u)); };
-/** 주 대상 n회 타격, 매 타격마다 양 옆에 그 피해의 r. 반환 { dead } */
+/** 주 대상 n회 타격, 매 타격마다 양 옆에 그 피해의 r. 반환 { dead, ts } (주 대상+양 옆) */
 function multiSplash(u, f, t, n, pct, r) {
-  if (!t) return { dead: true };
+  if (!t) return { dead: true, ts: [] };
   for (let i = 0; i < n; i++) {
     if (!t.owner.field.includes(t) || t.hp <= 0) break;
     const d = damageUnit(t, skillDamage(u, t, pct), u);
     sides(f, t).forEach(x => { if (f.field.includes(x) && x.hp > 0) damageUnit(x, Math.max(1, Math.round(d * r)), u); });
   }
-  const nb = sides(f, t);
+  const ts = [t, ...sides(f, t)];
   const dead = checkDeath(t, u);
-  nb.forEach(x => checkDeath(x, u));
-  return { dead };
+  ts.slice(1).forEach(x => checkDeath(x, u));
+  return { dead, ts };
 }
 const burnOn = t => addStatus(t, 'burn', 1, {}, 'burn');
 /** 적 전체 1회 타격, 처치된 카드의 초과 피해는 본진으로 (본진 공격 불가 턴·일반전은 무효) */
@@ -640,9 +640,9 @@ export const ACTIVE = {
   '가짜는 티가 나지': (u, p, f) => { const o = hitSet(u, f, live(f), 3, 0.3); ccEach(f, o.ts, 0.8, freezeOn); },
   '진짜가 뭔지 보여줄게': (u, p, f) => { const o = hitSet(u, f, live(f), 4, 0.3); ccEach(f, o.ts, 0.8, freezeOn); },
   // 김진호 10528
-  '범이 내려온다!': (u, p, f) => { const t = by(live(f), x => x.card.cost, -1); if (t && !multiSplash(u, f, t, 3, 0.4, 0.1).dead) burnOn(t); },
-  '대한 짐승이 내려온다!': (u, p, f) => { const t = by(live(f), x => x.card.cost, -1); if (t && !multiSplash(u, f, t, 3, 0.5, 0.1).dead) burnOn(t); },
-  '산천이 뒤집힌다!': (u, p, f) => { const t = by(live(f), x => x.card.cost, -1); if (t && !multiSplash(u, f, t, 4, 0.6, 0.1).dead) burnOn(t); },
+  '범이 내려온다!': (u, p, f) => { const t = by(live(f), x => x.card.cost, -1); if (!t) return; multiSplash(u, f, t, 3, 0.4, 0.1).ts.forEach(x => { if (f.field.includes(x) && x.hp > 0) burnOn(x); }); },
+  '대한 짐승이 내려온다!': (u, p, f) => { const t = by(live(f), x => x.card.cost, -1); if (!t) return; multiSplash(u, f, t, 3, 0.5, 0.1).ts.forEach(x => { if (f.field.includes(x) && x.hp > 0) burnOn(x); }); },
+  '산천이 뒤집힌다!': (u, p, f) => { const t = by(live(f), x => x.card.cost, -1); if (!t) return; multiSplash(u, f, t, 4, 0.6, 0.1).ts.forEach(x => { if (f.field.includes(x) && x.hp > 0) burnOn(x); }); },
   // 김태희 10529
   '누나가 더 강해요': (u, p, f) => { const t = by(males(f), x => x.card.cost, -1); if (t && !multiHit(u, t, 4, 0.2)) bleedOn(t, u, 1); },
   '누나가 더 멋져요': (u, p, f) => { const t = by(males(f), x => x.card.cost, -1); if (t && !multiHit(u, t, 4, 0.3) && sChance(0.5)) paraOn(t); },

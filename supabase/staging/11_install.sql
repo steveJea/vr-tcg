@@ -40,7 +40,7 @@ set local check_function_bodies = off;
 
 do $vr_install_part$
 begin
-  if exists (select 1 from vr_staging_install.parts where bundle_hash <> 'f24c4895809875b61f5c173b9d40a6dea2e52629c22cb2edc935d21329501573' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
+  if exists (select 1 from vr_staging_install.parts where bundle_hash <> '2d265953dfb2f6cbfe8b1ff0d49e2e929b292253844c851e51933c01dfc3904d' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
     raise exception 'STOP: 다른 버전/DB의 설치 기록입니다. 파일을 섞지 마세요.';
   end if;
   if exists (select 1 from vr_staging_install.parts where part_no = 11) then
@@ -348,7 +348,7 @@ on conflict (chapter,phase,variant) do update set definition=excluded.definition
   execute $vr_statement$insert into public.battle_card_meta_v2(id,definition) values ('10089','{"class":"WIND","gender":"MALE","MOR":8,"cost":22,"grade":"RARE"}') on conflict(id) do update set definition=excluded.definition;$vr_statement$;
 
   insert into vr_staging_install.parts(part_no, bundle_hash, part_hash, project_ref, db_id)
-  values (11, 'f24c4895809875b61f5c173b9d40a6dea2e52629c22cb2edc935d21329501573', 'c130679b9d1ef2ca2f42d21612a031164ba6f0ef963b346b9a97bbab3e9000f1', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
+  values (11, '2d265953dfb2f6cbfe8b1ff0d49e2e929b292253844c851e51933c01dfc3904d', 'c130679b9d1ef2ca2f42d21612a031164ba6f0ef963b346b9a97bbab3e9000f1', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
 end $vr_install_part$;
 commit;
 select '11_install.sql: 완료 또는 이미 완료 (11/14)' as result;
