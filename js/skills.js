@@ -73,6 +73,7 @@ export const STATUS = {
   decoy:   { icon: '🪞', img: 'st_decoy', label: '대신 맞기', desc: '이 카드를 향한 기본 공격을 상대 카드가 대신 맞음' },
   pleading:{ icon: '🛡️', img: 'st_pleading', label: '꼭 이래야해?', desc: '피해 50% 감면, 반격 250%, 종료 시 HP 30% 회복' },
   seed:    { icon: '🌱', img: 'st_seed', label: '쾌락의 씨앗', desc: '종료 시 HP 5% 회복' },
+  '존재의 증명': { icon: '⌛', img: 'st_dot', label: '존재의 증명', debuff: true, desc: '3턴 후 현재 HP의 80%를 잃음' },
   provoked:{ icon: '🎯', img: 'taunt', label: '도발당함', debuff: true, desc: '도발한 카드만 공격할 수 있고 스킬을 쓸 수 없음' },
   notweak: { icon: '😤', img: 'taunt', label: '나는 약하지 않아', desc: '도발 효과가 끝나면 최대 HP 30% 회복' },
   vow:     { icon: '🛡️', img: 'def', label: '지킨다', desc: '이영아가 같은 필드에 있는 동안 매 턴 DEF +0.4% 누적, 최대 HP 2% 회복' },
@@ -150,9 +151,7 @@ function refreshSide(p) {
   p.activeSyn = Object.entries(cnt).filter(([, n]) => n >= 2).map(([cls, n]) => ({ cls, n, pct: SK.SYNERGY[Math.min(5, n)] }));
   const ids = new Set(p.field.map(u => String(u.base.id)));
   p.activeCombos = COMBOS.filter(c => c.cards.every(id => ids.has(id)));
-  const nullus = foeHasPassive(p, 'Nullus Deus est');
   const symph = foeHasPassive(p, '자수정 눈물의 지옥 교향곡');
-  const male = foeHasPassive(p, 'Maledictio vel benedictio');
   const tough = foeHasPassive(p, '쉽게 보면 죽을 걸?'), sujin = foeHasPassive(p, '하지만 넌 안 될 거야');
   const lvAura = (side, name, base) => side.field.filter(x => hasPassive(x, name)).reduce((t, x) => t + base + 0.002 * (x.level - 1), 0);
   const auraA = lvAura(p, '비오는 밤', 0.03) - (p.foe ? lvAura(p.foe, '응? 어쩌라고?', 0.02) : 0);
@@ -167,9 +166,7 @@ function refreshSide(p) {
     for (const c of p.activeCombos) if (c.scope === 'all' || c.cards.includes(String(u.base.id))) { if (c.atk) a += c.value; if (c.def) d += c.value; if (c.hp) h += c.value; }
     for (const s of Object.values(u.st)) { a += s.atk || 0; d += s.def || 0; }
     if (u.st.esoteric) a -= 0.03 * (u.st.esoteric.stack || 0);
-    if (nullus && u.card.class !== 'LIGHT') d -= 0.2;
     a += auraA; d += auraD;
-    if (male) { a -= 0.5; d -= 0.5; }
     if (symph && u.curse) { a -= 0.02 * u.curse; d -= 0.02 * u.curse; }
     if (u.cry) { a += 0.05 * u.cry; d += 0.05 * u.cry; }
     if (hasPassive(u, '부덕의 괴력')) a += 0.1;   // 서태우
@@ -391,7 +388,7 @@ export function gainMp(u, amt, why = '') { const b = u.mp; u.mp = Math.min(u.max
 // ---- 레벨 변화 → 해금 패시브 발동 ----
 export function onLevelChange(u) { if (u.owner) { emit({ type: 'levelup', unit: u, level: u.level }); refreshAll(u.owner); onUnlockCheck(u); } }
 /** 효과가 계속 켜져 있어 따로 발동 이벤트가 없는 패시브: 해금(또는 해금된 채 소환)될 때 한 번 연출 */
-export const AURA_PASSIVES = new Set(['쉽게 보면 죽을 걸?', '뭐하는 건디...', '시도는 좋았어요', 'Nullus Deus est', '우습네요', 'Maledictio vel benedictio', '넌 안 된다니까?', '검은 늪', '비오는 밤', '응? 어쩌라고?', '마지막 바람', '이게 반격이야', '마르쉐', '플레쉬', '부덕의 괴력', '내가 지켜준다', '너도 언젠간 죽어', '나는 쓰러지지 않아']);
+export const AURA_PASSIVES = new Set(['쉽게 보면 죽을 걸?', '뭐하는 건디...', '시도는 좋았어요', '우습네요', '넌 안 된다니까?', '검은 늪', '비오는 밤', '응? 어쩌라고?', '마지막 바람', '이게 반격이야', '마르쉐', '플레쉬', '부덕의 괴력', '내가 지켜준다', '너도 언젠간 죽어', '나는 쓰러지지 않아']);
 function onUnlockCheck(u) {
   for (const s of u.sk || []) {
     if (s.mode === 'passive' && u.level >= s.unlock && AURA_PASSIVES.has(s.name) && !u.fired['aura:' + s.name]) {
@@ -415,7 +412,6 @@ export const stats = { counts: {}, count(n) { this.counts[n] = (this.counts[n] |
 const PASSIVE_ONCE = {
   '본투킬': u => { addStatus(u, 'taunt', 2, {}, 'taunt'); addStatus(u, 'immune', 2, {}, 'immune'); },
   'Noli spem tibi erigere': (u, p, f) => { for (const t of [...f.field]) { damageUnit(t, Math.ceil(t.maxHp * 0.95), null); checkDeath(t, u); } },
-  '진멸의 여제': (u, p) => { p.st.heroShield = { def: 3, t: 2 + (TURN.p === p ? 1 : 0) }; for (const a of p.field) addStatus(a, 'immune', 2, {}, 'immune'); },
   // 이민채: 해금(소환) 후 2턴 간 쓰러지지 않음
   '카르밀라...사랑해': u => addStatus(u, 'endure', 2, { label: '불사 2턴' }, 'endure'),
   // 10/25 신규·변경 패시브 (출전·해금 시 1회)
@@ -424,7 +420,6 @@ const PASSIVE_ONCE = {
   '언니는 강해요!': (u, p) => immuneAllies(p, a => a !== u && a.base.gender === 'FEMALE' && a.card.cost < u.card.cost, 2, '언니는 강해요!'),   // 정지선
   '몸은 약해요. 하지만 정신은 그렇지 않아!': u => { addStatus(u, 'taunt', 1, {}, 'taunt'); addStatus(u, 'endure', 1, { label: '최소 HP 1 유지' }, 'endure'); },   // 예유진
   '반야': u => { for (const [k, s] of Object.entries(u.st)) if (STATUS[s.kind]?.debuff || s.atk < 0 || s.def < 0) delete u.st[k]; u.curse = 0; },
-  '존재의 증명': (u, p) => { for (const a of [...p.field]) for (let i = 0; i < 2 && a.level < RULES.LEVEL_MAX; i++) { levelUpOnce(a); onLevelChange(a); } healHero(p, (p.maxHp || RULES.HERO_HP) * 0.5); },
 };
 
 // ===== 액티브 스킬 =====
@@ -681,6 +676,7 @@ export const ACTIVE = {
   'Da nunc': (u, p, f, s) => { const d = hitAll(u, f, 10, 0.2); u.cd[s.name] = Math.max(0, u.cd[s.name] - d); },
   // 봉인은 상대의 다음 턴 종료까지. 시전자에게 걸려 있던 별도 봉인은 건드리지 않는다.
   'Tempus est discerpi': (u, p, f) => { live(f).forEach(t => addStatus(t, 'disrupt', 1, {}, 'disrupt')); f.actionLock = Math.max(f.actionLock, 1); },
+  'Nullus Deus est': (u, p, f) => { const d = hitAll(u, f, 1, 1.0, { ignoreDef: 0.4 }); if (d) gainMp(u, 15 * d, '처치'); },
   // 김동욱
   '잘린다': (u, p, f) => { const ts = live(f); hitAll(u, f, 3, 0.2); ts.forEach(t => f.field.includes(t) && sChance(0.2) && bleedOn(t, u)); },
   '러시안룰렛': (u, p, f) => { const t = by(live(f), x => x.card.cost); if (t) instaKill(t, u);
@@ -743,6 +739,8 @@ export const ACTIVE = {
   '夜不談鬼': (u, p, f) => { let died = false; for (let i = 0; i < 5; i++) { if (died || !f.field.length) heroHitOr(u, f, 0.2); else { const ts = live(f); ts.forEach(t => damageUnit(t, skillDamage(u, t, 0.2), u)); ts.forEach(t => { if (checkDeath(t, u)) died = true; }); } } },
   // 김신현
   '신기하네요': (u, p, f, s) => { const t = by(live(f), x => x.card.ATK, -1); if (t && multiHit(u, t, 10, 0.2)) u.cd[s.name] = 0; },
+  '진멸의 여제': (u, p, f) => { const ts = live(f); hitAll(u, f, 2, 0.4); ts.forEach(t => { if (f.field.includes(t) && t.hp > 0) bleedOn(t, u, 2); }); },
+  '존재의 증명': (u, p, f) => { live(f).forEach(t => { const cls = String(t.card.class || '').toUpperCase(); if (cls === 'ABYSS' || cls === 'LIGHT') return; addStatus(t, '존재의 증명', 3, { hpCut: 0.8, caster: u, label: '존재의 증명: 3턴 후 현재 HP 80% 상실' }, '존재의 증명'); }); },
   // 임예리
   '달빛 속 배신의 속삭임': (u, p, f) => (hitAll(u, f, 1, 0.1), debuffAll(f, '달빛 속 배신의 속삭임', 2, { def: -0.2, label: '달빛: DEF -20%', mpOnDeath: 0.1, caster: u })),
   '장미가시의 세레나데': (u, p, f) => { hitAll(u, f, 1, 0.1); debuffAll(f, '장미가시의 세레나데', 3, { atk: -0.2, label: '장미가시: ATK -20%', rose: u }); addStatus(u, 'taunt', 1, {}, 'taunt'); },
@@ -753,6 +751,7 @@ export const ACTIVE = {
   'Incipit nunc sic': (u, p, f) => { const d = hitAll(u, f, 1, 0.5); if (d) gainMp(u, u.maxMp * 0.15 * d, '사망자 수'); },
   'Divina tibi poena adveniat': (u, p) => { addStatus(u, 'Divina', 2, { atk: 2.0, label: 'ATK +200%' }, 'mod'); live(p).filter(a => a !== u).forEach(a => addStatus(a, 'Divina', 2, { atk: 0.3, label: 'ATK +30%' }, 'mod')); },
   'Cum amicis meis sacris sum': (u, p, f) => debuffAll(f, 'Cum amicis', 2, { atk: -0.3, def: -0.3, label: 'ATK·DEF -30%', mpOnDeath: 0.1, caster: u }),
+  'Maledictio vel benedictio': (u, p, f) => { live(f).filter(t => (t.card.cost || 0) >= 53).forEach(t => { if (sChance(0.4)) instaKill(t, u); }); },
   // 이진경
   'My Black Sun': (u, p, f) => live(f).filter(t => t.card.cost < 40).forEach(t => addStatus(t, 'disrupt', 1, {}, 'disrupt')),
   'Esoteric Method': (u, p, f) => live(f).forEach(t => addStatus(t, 'esoteric', 3, { stack: 0 }, 'esoteric')),
@@ -1078,7 +1077,6 @@ export function afterBasicHit(attacker, target) {
 /** 자기 턴 시작 (마나 충전·드로우·canAttack 설정 후 호출) */
 export function turnStart(p) {
   TURN.p = p; const f = p.foe;
-  if (foeHasPassive(p, 'Nullus Deus est') && p.field.some(u => u.card.class !== 'LIGHT')) stats.count('Nullus Deus est');
   for (const u of p.field) {
     for (const k in u.cd) if (u.cd[k] > 0) u.cd[k]--;
     const sp = foeHasPassive(p, '사필귀정 모르세요?') && (u.base.MOR || 0) < 50;   // 장서아: 품성 50 미만 적 MP 회복 50%
@@ -1098,9 +1096,9 @@ export function turnStart(p) {
   for (const u of p.field) if (u.st.vow) { if (younga(p)) vowTick(u); else { delete u.st.vow; emit({ type: 'expire', unit: u, key: 'vow' }); } }
   // 황예영 [내 동생 건드리지마!]: 다음 턴 시작 시 예은 HP 10% 회복
   for (const u of p.field) { const g = u.st.guard; if (g?.heal) for (const a of [...p.field]) { const r = g.heal[String(a.base.id)]; if (r) heal(a, a.maxHp * r, '내 동생 건드리지마!'); } }
-  // 임혜리 주님의 기적: 아군·본진 5% 회복
+  // 임혜리 주님의 기적: 아군 최대 HP 10% 회복, 품성(MOR) 50 이상 +5%p. 본진은 회복하지 않음
   const hy = findPassiveUnit(p, '주님의 기적');
-  if (hy) { emit({ type: 'passive', unit: hy, name: '주님의 기적' }); stats.count('주님의 기적'); p.field.forEach(a => heal(a, a.maxHp * 0.05)); healHero(p, (p.maxHp || RULES.HERO_HP) * 0.05); }
+  if (hy) { emit({ type: 'passive', unit: hy, name: '주님의 기적' }); stats.count('주님의 기적'); p.field.forEach(a => heal(a, a.maxHp * ((a.base.MOR || 0) >= 50 ? 0.15 : 0.10))); }
   // [염원] 최윤아 지켜주고 싶어: 매 턴 아군 전체 HP 10% 회복
   const wy = findPassiveUnit(p, '지켜주고 싶어');
   if (wy) { emit({ type: 'passive', unit: wy, name: '지켜주고 싶어' }); stats.count('지켜주고 싶어'); p.field.forEach(a => heal(a, a.maxHp * 0.1, '지켜주고 싶어')); }
@@ -1174,6 +1172,12 @@ export function turnStart(p) {
 function onExpire(u, k, s) {
   if (k === 'sisterSwap') unswap(u, true);
   if (k === 'wingSummon' && u.summoned) unsummon(u);
+  if (s.hpCut && u.owner?.field.includes(u) && u.hp > 0) {
+    const src = s.caster || null;
+    damageUnit(u, Math.max(1, Math.round(u.hp * s.hpCut)), src);
+    checkDeath(u, src);
+    stats.count('존재의 증명');
+  }
   if (s.endHeal) heal(u, u.maxHp * s.endHeal, k);
   if (s.thenConfuse && u.owner?.field.includes(u) && u.hp > 0 && chance(s.thenConfuse)) addStatus(u, 'confuse', 1, {}, 'confuse');   // 이혜림: 마비·출혈 끝나면 혼란
   if (s.mpDrainEnd && u.mp > 0) { const m = Math.round(u.mp * s.mpDrainEnd); if (m > 0) { u.mp -= m; emit({ type: 'mp', unit: u, amt: -m }); emit({ type: 'log', text: `${u.card.name} [${s.label || k}] 종료 · MP -${m}` }); } }
