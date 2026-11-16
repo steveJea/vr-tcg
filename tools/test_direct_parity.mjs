@@ -312,14 +312,20 @@ const ch1611Boost = {
 const ch1611 = {
   me: deckAt(1, ['10200']),
   ai: ['10406', '10290', '10383', '10097', '10393', '10306'].map(id => ({ ...clone(cardOf(id)), ...ch1611Boost[id] })),
-  win: 'wipe', aiHp: null, bossId: null, heroGuard: 0, first: 'me',
+  win: 'ko', aiHp: 4250, bossId: '10406', heroGuard: 0, first: 'me',
   rules: {
-    maxTurns: 20, mustLive: ['10200'], mustKill: ['10406'],
+    maxTurns: 20, mustLive: ['10200'],
     revive: [{ id: '10290', become: '10291', delay: 0, storyLevel: 100, battleLevel: 10 }],
   },
 };
 for (const seed of [4, 7, 8, 12, 21, 100]) for (const policy of ['auto', 'manual']) add('story 16-11', ch1611, seed, policy);
-// Named-boss win: 최국선 dies first (low HP), 윤진아 is left alive so become must not be required to win.
+// Winnable 16-11: 여성 금지 준수 남성 덱으로 진영 HP 4250을 20턴 안에 깎을 수 있는지 확인.
+const ch1611Win = {
+  ...ch1611,
+  me: deckAt(60, ['10200', '10051', '10060', '10358', '10528']),
+};
+for (const seed of [4, 7, 8, 12, 21, 100]) for (const policy of ['auto', 'manual']) add('story 16-11 winnable', ch1611Win, seed, policy);
+// Named mustKill leftover: 지정 대상만 쓰러뜨리면 다른 적이 남아도 승리. 엔진 회귀용 (16-11 본경기는 더 이상 mustKill 이 아님).
 const mustKillLeft = {
   me: deckAt(40, strong),
   ai: [
@@ -332,7 +338,7 @@ const mustKillLeft = {
     revive: [{ id: '10290', become: '10291', delay: 0, storyLevel: 100, battleLevel: 10 }],
   },
 };
-for (const seed of [4, 7, 8, 12, 21, 100]) for (const policy of ['auto', 'manual']) add('story 16-11 mustKill', mustKillLeft, seed, policy);
+for (const seed of [4, 7, 8, 12, 21, 100]) for (const policy of ['auto', 'manual']) add('story mustKill leftover', mustKillLeft, seed, policy);
 const joinLv = {
   me: deckAt(8, ['10074', '10080', '10445']),
   ai: deckAt(20, ['10051']).map(c => ({ ...c, HP: 800, ATK: 80, DEF: 40 })),
@@ -377,7 +383,11 @@ assert.ok(cases.filter(c => c.label === 'story awaken storyLevel').every(c => c.
 assert.ok(cases.filter(c => c.label === 'story become storyLevel').every(c => c.client.win === c.server?.win && c.client.reason === c.server?.reason && !c.error));
 assert.ok(cases.filter(c => c.label === 'story joinAlly storyLevel').every(c => c.client.win === c.server?.win && c.client.reason === c.server?.reason && !c.error));
 assert.ok(cases.filter(c => c.label === 'story 16-11').every(c => c.client.win === c.server?.win && c.client.reason === c.server?.reason && c.client.turns === c.server?.turns && !c.error));
-const mk = cases.filter(c => c.label === 'story 16-11 mustKill');
+assert.ok(cases.filter(c => c.label === 'story 16-11').every(c => c.spec.win === 'ko' && c.spec.aiHp === 4250 && c.spec.bossId === '10406' && !c.spec.rules?.mustKill));
+const chWin = cases.filter(c => c.label === 'story 16-11 winnable');
+assert.ok(chWin.length && chWin.every(c => c.client.win === c.server?.win && c.client.reason === c.server?.reason && c.client.turns === c.server?.turns && !c.error));
+assert.ok(chWin.some(c => c.client.win && c.client.reason === 'ko' && c.server?.reason === 'ko'), '16-11 진영 HP 보스는 합법 덱으로 승리 가능');
+const mk = cases.filter(c => c.label === 'story mustKill leftover');
 assert.ok(mk.length && mk.every(c => c.client.win === c.server?.win && c.client.reason === c.server?.reason && c.client.turns === c.server?.turns && !c.error));
 assert.ok(mk.some(c => c.client.win && c.client.reason === 'mustkill' && c.server?.reason === 'mustkill'));
 

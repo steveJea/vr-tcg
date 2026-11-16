@@ -218,7 +218,7 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "내레이션",
-      "text": "소문은 꼬리에 꼬리를 물었다. B-43의 노란머리. 미친개. 이제 그 지역에서 국선을 모르는 사람은 없었다."
+      "text": "소문은 꼬리에 꼬리를 물었다. 그 지역의 노란머리. 미친개. 이제 그 지역에서 국선을 모르는 사람은 없었다."
      },
      {
       "speaker": "내레이션",
@@ -230,7 +230,7 @@ window.STORY_DATA.chapters.push({
      },
      {
       "speaker": "불량배-F",
-      "text": "형님이 오늘 저거 꺾으면 43지역 접수래. 가자."
+      "text": "형님이 오늘 저거 꺾으면 이 지역 접수래. 가자."
      },
      {
       "speaker": "최국선",
@@ -775,8 +775,43 @@ window.STORY_DATA.chapters.push({
     }
    },
    "lines": {
-    "default": [
-     {
+    "default": []
+   },
+   "party": {
+    "forced": [
+     "10123",
+     "10025",
+     "10183"
+    ],
+    "mustLive": [
+     "10123",
+     "10025",
+     "10183"
+    ],
+    "levels": {
+     "10123": 50,
+     "10025": 50,
+     "10183": 50
+    },
+    "battleLevels": {
+     "10123": 1,
+     "10025": 1,
+     "10183": 1
+    },
+    "solo": true
+   },
+   "hero": [
+    "10406"
+   ],
+   "bossId": "10383",
+   "mana": 200,
+   "after": [
+
+    {
+     "speaker": "내레이션",
+     "text": "그러던 중, 갑자기 조윤이가 세상을 떠났다. 아르바이트를 마치고 귀가하던 비 오는 밤이었다."
+    },
+{
       "speaker": "내레이션",
       "text": "살해당했다는 말이 돌았다. 범인이 동생 조윤하라는 소문도 있었다."
      },
@@ -821,41 +856,6 @@ window.STORY_DATA.chapters.push({
       "speaker": "내레이션",
       "text": "국선은 처음으로, 자신의 가슴을 움켜쥐었다. 아프다는 게 무엇인지, 처음으로 알 것 같았다."
      }
-    ]
-   },
-   "party": {
-    "forced": [
-     "10123",
-     "10025",
-     "10183"
-    ],
-    "mustLive": [
-     "10123",
-     "10025",
-     "10183"
-    ],
-    "levels": {
-     "10123": 50,
-     "10025": 50,
-     "10183": 50
-    },
-    "battleLevels": {
-     "10123": 1,
-     "10025": 1,
-     "10183": 1
-    },
-    "solo": true
-   },
-   "hero": [
-    "10406"
-   ],
-   "bossId": "10383",
-   "mana": 200,
-   "after": [
-    {
-     "speaker": "내레이션",
-     "text": "그러던 중, 갑자기 조윤이가 세상을 떠났다. 아르바이트를 마치고 귀가하던 비 오는 밤이었다."
-    }
    ],
    "afterTitle": "전투 후",
    "rules": {
@@ -1274,7 +1274,7 @@ window.STORY_DATA.chapters.push({
     },
     {
      "speaker": "불량배-W",
-     "text": "...폐공장. 배척지 4구역 끝에 있는...거기가 민섭 형님 사무실이야..."
+     "text": "...폐공장. 배척지 4구역 끝에 있는...거기가 민섭 오빠 사무실이야..."
     },
     {
      "speaker": "내레이션",
@@ -1425,7 +1425,7 @@ window.STORY_DATA.chapters.push({
   },
   {
    "no": 11,
-   "type": "normal",
+   "type": "boss",
    "enemyName": "최국선",
    "title": "거대한 장벽",
    "enemies": {
@@ -1599,9 +1599,6 @@ window.STORY_DATA.chapters.push({
    "afterTitle": "전투 후",
    "rules": {
     "maxTurns": 20,
-    "mustKill": [
-     "10406"
-    ],
     "revive": [
      {
       "id": "10290",

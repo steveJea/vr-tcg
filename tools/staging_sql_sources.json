@@ -183,7 +183,9 @@
     "jinho_hancheol_hash_staging.sql": "Owner-pasted staging-only engine hash rotation after 김진호·김한철 stat/skill update. Not a fresh installer.",
     "jinho_hancheol_hash_check_staging.sql": "Read-only staging check for jinho_hancheol_hash_staging.sql. Not a fresh installer.",
     "seasonpass_mail_staging.sql": "Owner-pasted staging-only season pass mailbox delivery (lazy, no expiry) + claim-all + stamina mail. Kept out of staging_install so release 20261111 stays frozen.",
-    "seasonpass_mail_check_staging.sql": "Read-only staging check for seasonpass_mail_staging.sql. Not a fresh installer."
+    "seasonpass_mail_check_staging.sql": "Read-only staging check for seasonpass_mail_staging.sql. Not a fresh installer.",
+    "fix_16_11_boss_staging.sql": "Owner-pasted staging-only 16-11 boss conversion (type=boss, camp HP, drop mustKill). No engine hash rotation. Guard 7703759698107299042.",
+    "fix_16_11_boss_check_staging.sql": "Single-SELECT check for fix_16_11_boss_staging.sql (type, mustKill removed, revive kept)."
   },
   "partial": {
     "card_id_remap.sql": "card_id_alias 설정 자료 + 최신 _war_npc_deck만; 기존 사용자 ID 일괄 변경은 제외"

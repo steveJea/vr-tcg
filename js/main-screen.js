@@ -103,7 +103,7 @@
     const a = getAudio(); if (!a) return;
     a.volume = 0;
     const target = () => baseVol * (ducked ? DUCK : 1);
-    if (soundOn && !held) a.play().catch(() => {});
+    if (soundOn && !held) void tryPlay();
     const v0 = old ? old.volume : 0, t0 = performance.now();
     const step = t => { const k = Math.min(1, Math.max(0, (t - t0) / ms));
       if (old) old.volume = Math.max(0, v0 * (1 - k));
@@ -113,7 +113,16 @@
   };
   // 일시 정지 유지(오프닝 영상 등): hold(true) 동안은 재생·트랙 전환 시 자동 재생을 막고, hold(false) 로 다시 재생
   let held = false;
-  const play = () => { if (!soundOn || held || jingleA) return; const a = getAudio(); if (a) a.play().catch(() => {}); };
+  const play = () => { void tryPlay(); };
+  // 안드로이드 크롬 자동재생: 제스처가 hold 중이거나 play()가 거절되면 리스너를 버리지 않고, 이후 제스처·hold 해제·탭 복귀에서 다시 시도.
+  const tryPlay = () => {
+    if (!soundOn || held || jingleA) return Promise.resolve(false);
+    const a = getAudio();
+    if (!a) return Promise.resolve(false);
+    const ret = a.play();
+    if (!ret || typeof ret.then !== 'function') return Promise.resolve(!a.paused);
+    return ret.then(() => true).catch(() => false);
+  };
   const stop = () => { killFading(); if (audio) audio.pause(); if (jingleA) { jingleA.pause(); jingleA = null; } };
   // 승리·패배 징글 (한 번만): 반복 BGM을 페이드아웃·일시정지 → 징글 → 끝나면 그때의 트랙을 페이드인. 음소거·덕킹·볼륨은 그대로
   const JINGLE = { victory: 'audio/victory.mp3', defeat: 'audio/defeat.mp3', draw: 'audio/draw.mp3' };
@@ -127,7 +136,7 @@
     const loop = audio, v0 = loop ? loop.volume : 0, t0 = performance.now();
     if (loop) { const fo = t => { const k = Math.min(1, (t - t0) / 300); if (audio === loop && jingleA) loop.volume = v0 * (1 - k); if (k < 1) requestAnimationFrame(fo); else if (jingleA) loop.pause(); }; requestAnimationFrame(fo); }
     const j = new Audio(url); j.loop = false; j.volume = baseVol * (ducked ? DUCK : 1); jingleA = j;
-    const done = () => { if (jingleA !== j) return; jingleA = null; const a = getAudio(); if (!a) return; a.volume = 0; if (soundOn && !held) { a.play().catch(() => {}); fadeTo(baseVol * (ducked ? DUCK : 1)); } };
+    const done = () => { if (jingleA !== j) return; jingleA = null; const a = getAudio(); if (!a) return; a.volume = 0; if (soundOn && !held) { void tryPlay(); fadeTo(baseVol * (ducked ? DUCK : 1)); } };
     j.addEventListener('ended', done); j.addEventListener('error', done);
     j.play().catch(done);
   };
@@ -142,9 +151,14 @@
   new MutationObserver(() => { for (let i = scopes.length - 1; i >= 0; i--) { const x = scopes[i]; if (x.el.isConnected || window.VRPages?.holds?.(x.el)) continue;   // 위 페이지에 가려 잠시 떼어진 페이지는 아직 열린 것
     scopes.splice(i, 1); if (src === x.src && !scopes.some(y => y.src === x.src)) setTrack(x.prev); } }).observe(document.body, { childList: true, subtree: true });   // 페이지 안에 들어간 화면이 빠져도 감지
   btn?.addEventListener('click', e => { e.stopPropagation(); soundOn = !soundOn; localStorage.setItem(KEY, soundOn ? '1' : '0'); soundOn ? play() : stop(); renderBtn(); });
-  // 브라우저 자동재생 정책: 첫 사용자 입력 후 재생
-  const first = () => { play(); removeEventListener('pointerdown', first); removeEventListener('keydown', first); };
-  addEventListener('pointerdown', first); addEventListener('keydown', first);
+  // 브라우저 자동재생 정책: 제스처가 성공할 때까지 계속 듣고, hold 해제·탭 복귀에도 재시도. 소리 OFF면 시도하지 않음.
+  const onUnlockGesture = () => { if (soundOn) void tryPlay(); };
+  addEventListener('pointerdown', onUnlockGesture, { passive: true });
+  addEventListener('touchstart', onUnlockGesture, { passive: true });
+  addEventListener('keydown', onUnlockGesture);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && soundOn) void tryPlay();
+  });
   renderBtn();
   window.VRSound = { play, stop, hold, duck, setVolume, setTrack, scope, jingle, get jingling() { return !!jingleA; }, get track() { return src; }, get held() { return held; }, get paused() { return !audio || audio.paused; }, get on() { return soundOn; }, get ducked() { return ducked; }, get volume() { return audio ? audio.volume : null; }, get baseVolume() { return baseVol; } };
 })();
