@@ -47,7 +47,8 @@ function play(st,holdForSkill=false) {
 }
 const deck=(offset=0)=>['10051','10060','10053','10054','10056'].map((id,i)=>({id,uid:'u'+(i+offset),level:5,skillLv:{2:1}}));
 const cards=(d,mode)=>d.map(o=>snapCard(o,card,mode));let fixtures=0;
-for(const mode of Object.keys(MODES))for(const seed of [1,13]) {
+// seed 14: 강북대장 액티브화 후 seed 13에서는 김성진이 필드에 안 나와 Tempus를 강제할 수 없음.
+for(const mode of Object.keys(MODES))for(const seed of [1,14]) {
  const M=MODES[mode],s={mode,seed,control:'auto',me:Array.from({length:M.decks},(_,i)=>deck(i*5)),opp:Array.from({length:M.decks},(_,i)=>deck(100+i*5))};
  const auto=runSeries(mode,s.me.map(d=>cards(d)),s.opp.map(d=>cards(d)),seed),server=verifyPvp(s,null);
  assert.deepEqual({win:server.win,wins:server.wins,losses:server.losses,rounds:server.rounds},auto);
@@ -56,7 +57,7 @@ for(const mode of Object.keys(MODES))for(const seed of [1,13]) {
  const replay=verifyPvp({...s,control:'actions'},acts);assert.deepEqual({win:replay.win,wins:replay.wins,losses:replay.losses,rounds:replay.rounds},{win:w>=M.need,wins:w,losses:l,rounds});
  assert(acts.some(a=>a.some(a=>a.k==='skill' && a.s===NAME)));fixtures++;
 }
-for(const seed of [1,13]) {
+for(const seed of [1,14]) {
  const d=deck().map(o=>({...o,level:80})),r={kind:'raid',control:'auto',seed,stage:1,difficulty:'normal',deck:d};
  assert.deepEqual(verifyGuild(r,null),runRaid(cards(d,'raid'),1,'normal',seed,card));
  const raid=manualRaid(cards(d,'raid'),1,'normal',seed,card,null,{view:true}),rr=play(raid,true);

@@ -6,7 +6,7 @@ do $phase4_staging_guard$ begin
 end $phase4_staging_guard$;
 set local check_function_bodies=off;
 create table if not exists public.guildbattle_policy_v4(singleton boolean primary key default true check(singleton),engine_hash text not null,enabled boolean not null default true);
-insert into public.guildbattle_policy_v4(singleton,engine_hash) values(true,'d2b099257f69e4ae3bdbd248e0e161c03a788be50b83ddb8affc23856d17ca31') on conflict(singleton) do update set engine_hash=excluded.engine_hash;
+insert into public.guildbattle_policy_v4(singleton,engine_hash) values(true,'40b95ca320f62733a9c962c26879e2f852620a35e16da88885f5528dc8bf9e63') on conflict(singleton) do update set engine_hash=excluded.engine_hash;
 do $$ begin
  if not exists(select 1 from pvp_policy_v3) then raise exception 'STOP: install phases 1-3 first'; end if;
 end $$;

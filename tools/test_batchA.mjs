@@ -83,4 +83,19 @@ ok('모든 신규 스킬 구현됨', ['10465', '10440', '10439', '10127', '10300
   ok('비오는 밤: 해금된 채 소환되면 패시브 컷인 이벤트', evs.some(e => e.type === 'passive' && e.name === '비오는 밤'));
   evs.length = 0; const u = placeUnit(a, C('10111'), (c, uid) => { const x = mk(c, uid); x.level = 1; return x; });
   ok('비오는 밤: 해금 전에는 없음', !evs.some(e => e.type === 'passive')); }
+// 2026-11-16 시트 반영: 강북대장 액티브화, 김경섭·천기철 스탯
+{ const s = skillsOf('10051').find(x => x.name === '강북대장');
+  ok('강북대장: 액티브 시트 값', s && s.mode === 'active' && s.mp === 60 && s.cooldown === 5 && s.unlock === 7 && s.target === '적 전체' && ACTIVE[s.name]);
+  ok('김경섭 ATK 60', +C('10531').ATK === 60 && +C('10531').power === 32108);
+  ok('천기철 ATK 60 DEF 55', +C('10532').ATK === 60 && +C('10532').DEF === 55 && +C('10532').power === 30046);
+  ok('김기림 power 69083', +C('10051').power === 69083); }
+{ evs.length = 0; setRng(() => 0.99); const { A, B, b } = sides(['10051'], ['10074', '10080']);
+  ok('강북대장: 소환 시 옛 패시브 버프 없음', !A[0].st['강북대장'] && !A[0].st.debuffImmune);
+  B.forEach(t => { t.maxHp = t.hp = 5000; });
+  const h = B.map(t => t.hp); const r = cast(A[0], '강북대장');
+  ok('강북대장: 사용 성공', r && r.ok !== false);
+  ok('강북대장: 적 전체 30% 3회 타격', B[0].hp < h[0] && B[1].hp < h[1] && b.field.includes(B[0]) && b.field.includes(B[1]));
+  ok('강북대장: 생존자 1턴 화상', !!(B[0].st.burn && B[1].st.burn && B[0].st.burn.t === 1 && B[1].st.burn.t === 1));
+  const d = sides(['10051'], ['10074']); d.B[0].hp = 1; cast(d.A[0], '강북대장');
+  ok('강북대장: 쓰러진 적에게는 화상 없음', !d.b.field.includes(d.B[0]) && !d.B[0].st.burn); }
 console.log(fails ? `${fails} FAIL` : 'ALL PASS');
