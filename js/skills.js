@@ -398,7 +398,7 @@ function onUnlockCheck(u) {
       u.fired['aura:' + s.name] = 1; emit({ type: 'passive', unit: u, name: s.name, skill: s, text: '활성화' });
     }
     if (s.mode !== 'passive' || u.level < s.unlock || !PASSIVE_ONCE[s.name]) continue;
-    const onceGame = /최초|게임 당/.test(s.note) || s.name === '강북대장';
+    const onceGame = /최초|게임 당/.test(s.note);
     if (u.fired[s.name] || (onceGame && u.owner.once[s.name])) continue;
     u.fired[s.name] = 1; if (onceGame) u.owner.once[s.name] = 1;
     emit({ type: 'passive', unit: u, name: s.name, skill: s });
@@ -413,8 +413,6 @@ export const stats = { counts: {}, count(n) { this.counts[n] = (this.counts[n] |
 
 // ===== 패시브: 해금 시 1회 발동 =====
 const PASSIVE_ONCE = {
-  // 최초 필드 출연 후 2턴(출연 턴 포함) → 3번째 자기 턴 시작 전에 해제
-  '강북대장': u => { u.st['강북대장'] = { kind: 'mod', atk: 0.2, label: '강북대장 ATK +20%', t: 2 }; u.st.debuffImmune = { kind: 'debuffImmune', t: 2 }; },
   '본투킬': u => { addStatus(u, 'taunt', 2, {}, 'taunt'); addStatus(u, 'immune', 2, {}, 'immune'); },
   'Noli spem tibi erigere': (u, p, f) => { for (const t of [...f.field]) { damageUnit(t, Math.ceil(t.maxHp * 0.95), null); checkDeath(t, u); } },
   '진멸의 여제': (u, p) => { p.st.heroShield = { def: 3, t: 2 + (TURN.p === p ? 1 : 0) }; for (const a of p.field) addStatus(a, 'immune', 2, {}, 'immune'); },
@@ -678,6 +676,7 @@ export const ACTIVE = {
   // 김기림
   '절망하라': (u, p, f, s) => { const t = by(live(f), x => x.card.cost); if (t && multiHit(u, t, 5, 0.3)) u.cd[s.name] = 0; },
   '아파하라': (u, p, f, s) => { const t = by(live(f), x => x.card.cost, -1); if (t && multiHit(u, t, 5, 0.4)) u.cd[s.name] = 0; },
+  '강북대장': (u, p, f) => { const ts = live(f); hitAll(u, f, 3, 0.3); ts.forEach(t => { if (f.field.includes(t) && t.hp > 0) burnOn(t); }); },
   // 김성진
   'Da nunc': (u, p, f, s) => { const d = hitAll(u, f, 10, 0.2); u.cd[s.name] = Math.max(0, u.cd[s.name] - d); },
   // 봉인은 상대의 다음 턴 종료까지. 시전자에게 걸려 있던 별도 봉인은 건드리지 않는다.

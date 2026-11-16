@@ -19,7 +19,7 @@
     data.readyAt = Date.now() + Number(data.min_seconds || 0) * 1000 + 250;
     return data;
   }
-  const DIRECT_V7 = '7f7ee4ee627977cadd1e248b97a1edefe74c702349af776159d3454041439a0d';
+  const DIRECT_V7 = '74816d5202bbcb70ef240b866d6ae0a02cfa6440d7f916bf54d9c27ab67b7074';
   function replayError(message) {
     const err = new Error(message || '전투 결과를 서버가 확인하지 못했어요');
     err.replayNotReady = /verifier unavailable|staging verifier unavailable|Failed to send a request to the Edge Function|Function not found|404 Not Found/i.test(err.message);
