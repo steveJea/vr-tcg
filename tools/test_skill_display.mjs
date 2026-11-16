@@ -10,7 +10,9 @@ const find = (id, name) => {
   if (!s) throw new Error(`missing ${id} ${name}`);
   return s;
 };
-assert.equal(find('10311', 'Maledictio vel benedictio').desc, '상시. 적 전체의 공격력·방어력 50% 하락. HP는 그대로. 이지영이 필드에 있는 동안 지속.');
+assert.equal(find('10311', 'Maledictio vel benedictio').desc, '필드 내 코스트 53 이상의 적을 40% 확률로 즉사 시킨다.');
+assert.equal(find('10311', 'Maledictio vel benedictio').mode, 'active');
+assert.equal(find('10311', 'Maledictio vel benedictio').type, '공격');
 assert.equal(find('10312', 'My Black Sun').desc, '코스트 40 미만인 적 전체를 1턴 간 교란(자기 턴에 자기 본진을 공격).');
 assert.equal(find('10322', '천사의 시').target, '적 전체');
 assert.equal(find('10322', '천사의 자장가').target, '적 전체');
