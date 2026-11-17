@@ -18,10 +18,13 @@ for chn in (18, 19):
     STORY[chn] = ch['phases']
 cfg = ', '.join(f"({c},{p['no']},'{p['type']}',3,null,{0 if p.get('scene') else len(p['enemies']['ids'])})" for c in (18, 19) for p in STORY[c])
 def h(f, pat=r'[0-9a-f]{64}'): return re.search(pat, open(f).read()).group(0)
+# PR #625 (머지 bbf63bd) 시점 엔진 해시로 고정. 이후 엔진 변경은 별도 해시 SQL (예: tools/build_young_age_sql.py).
 NEWH = {
-    'pvp_policy_v3': h('js/pvp-engine-version.js'), 'guildbattle_policy_v4': h('js/guildbattle-engine-version.js'),
-    'arcade_policy_v5': h('js/arcade-engine-version.js'), 'battle_replay_policy_v6': h('js/sweep-engine-version.js'),
-    'battle_replay_policy_v7': re.search(r'DIRECT_V7[^;]*?([0-9a-f]{64})', open('js/battle-session.js').read()).group(1),
+    'pvp_policy_v3': 'c5b478a735b1798bd7b9c51902ae85efe5ed861e9ab2936cecf753b4e250a648',
+    'guildbattle_policy_v4': '7fe844f6bd869991d25558341374dbce28308685365d586b4e0cd2281ae16b58',
+    'arcade_policy_v5': 'fc7c0deaec9781badc9adc4b6895bbc2bc39ffe42e51dc3ae4deab647790e063',
+    'battle_replay_policy_v6': 'ad59546b94862bbb09cbd63692b21709f9729e035ddf54456664ead9eb927d57',
+    'battle_replay_policy_v7': 'c326c57e218a5b6fe779d3835931c47a9917b17332740b16bd723cb0d05b3119',
 }
 # 66번(PR #624) 해시 SQL 이 허용하던 옛 값 + 66번 새 값 → 이번 새 값
 prev = open('supabase/sheet_skills66_hash_staging.sql', encoding='utf8').read()

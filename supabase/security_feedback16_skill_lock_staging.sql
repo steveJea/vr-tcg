@@ -15,7 +15,7 @@ declare
  old_pvp constant text := 'ff3c2c77c26429a0fbf85f1d1ab73edb882af342a152727c1aed64c49160dd2a';
  new_pvp constant text := 'c5b478a735b1798bd7b9c51902ae85efe5ed861e9ab2936cecf753b4e250a648';
  old_guild constant text := 'a00f5c9824515cfce4fcbd6d579deb5e971335035b264454d427fdb93669819e';
- new_guild constant text := '7fe844f6bd869991d25558341374dbce28308685365d586b4e0cd2281ae16b58';
+ new_guild constant text := 'c87d5a678229e2bbc3bcd92ff3f9f4b8e32291df874a9919c4295b14831d7d07';
  p text; g text;
 begin
  select engine_hash into p from public.pvp_policy_v3 where singleton;
