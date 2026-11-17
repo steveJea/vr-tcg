@@ -105,7 +105,7 @@
       if (!se.firstChild) se.innerHTML = `${ic('stamina')}<b></b><small></small><em></em><button type="button" class="tnb-st-plus" data-st-plus aria-label="드링크로 행동력 채우기"><i class="tnb-plus">${ic('plus')}</i></button>`; se.querySelector('b').textContent = P.stamina; se.querySelector('small').textContent = '/' + P.stamina_max; se.querySelector('em').textContent = full ? '' : mm; se.title = full ? '행동력 가득' : `행동력 · +1 까지 ${mm}`; }
     const cur = (k, v, img, name) => { const b = bar.querySelector(`[data-cur="${k}"]`); b.hidden = v == null; if (v == null) return;
       const h = `${img ? `<img src="${img}" alt="">` : ic(k)}<b>${n(v)}</b><i class="tnb-plus">${ic('plus')}</i>`; if (b.dataset.v !== n(v)) { b.dataset.v = n(v); b.innerHTML = h; } b.title = `${name} ${full(v)}`; b.setAttribute('aria-label', `${name} ${full(v)}`); };
-    cur('gem', G?.gem, null, '심연석'); cur('gold', W?.gold, CUR_IMG.gold, '골드'); cur('drink', D ? D.total : null, CUR_IMG.drink, '체력의 드링크');
+    cur('gem', G?.gem, null, '심연석'); cur('gold', W?.gold, CUR_IMG.gold, '골드'); cur('drink', D ? D.total : null, CUR_IMG.drink, D ? `체력의 드링크 (유료 ${n((D.tradable | 0) - (D.locked | 0))} · 무료 ${n(D.bound | 0)})` : '체력의 드링크');
     const key = w + t; if (key !== last) { last = key; document.body.dataset.tnb = w; }
   }
   // 재화 처음 불러오기 (로그인 뒤) — 각 모듈이 캐시를 채우면 paint 가 읽음

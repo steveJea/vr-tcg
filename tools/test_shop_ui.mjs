@@ -17,7 +17,7 @@ const products=[
 const gear=Array.from({length:9},(_,i)=>({slot_no:i+1,slot:['weapon','armor','acc'][Math.floor(i/3)],grade:i===8?'UR':i===4?'SR':'HR',tier:i===8?6:i===4?5:4,def_id:`${['weapon','armor','acc'][Math.floor(i/3)]}_4_${i%3+1}`,name:'장비'+(i+1),price:i===8?5000:i===4?1000:500,bought:i===0}));
 const status=()=>({ok:true,v:2,gem:10,free:4,paid:6,tickets:3,special_tickets:2,krw_test:true,products,passes:[],
  gem_items:[{sku:'gem_prem_ticket',name:'프리미엄 소환권',price:150,grant:{tickets:1},max_qty:99},{sku:'gem_spec_ticket',name:'스페셜 소환권',price:150,grant:{special_tickets:1},max_qty:99},{sku:'gem_drink',name:'유료 드링크',price:100,grant:{drink:1},max_qty:99}],
- gear,gear_rates:{HR:{weight:85},SR:{weight:14},UR:{weight:1}}});
+ gear,gear_rates:{HR:{weight:950},SR:{weight:49},UR:{weight:1}}});
 window.__SHOP_MOCK=async(name,args)=>{calls.push({name,args});if(name==='shop_pass_days')return {today:'2026-11-17',via:'mail',mail_pending:0,passes:[]};if(name==='shop_buy')return {...status(),first_bonus:true,mailed:true};return status();};
 window.VRAsk=async()=>true;window.VRPayments={enabled:true,checkout(p){checkouts.push(p);}};
 const toasts=[];
@@ -63,7 +63,9 @@ document.querySelector('[data-gem-item="gem_drink"]').click();await wait(()=>cal
 assert.deepEqual(JSON.parse(JSON.stringify(calls.find(c=>c.name==='shop_gem_buy').args)),{p_sku:'gem_drink',p_qty:3});
 await wait(()=>document.querySelectorAll('.shop-gear').length===9);
 assert.equal(document.querySelectorAll('.shop-gear').length,9);assert.equal(document.querySelector('[data-gear="1"]').disabled,true);
-assert.match(document.body.textContent,/HR 85% · SR 14% · UR 1%/);
+assert.match(document.body.textContent,/HR 95% · SR 4.9% · UR 0.1%/);
+// paid drink = gold icon + gold label in gem shop
+assert.ok(document.querySelector('.shop-qrow img[src="img/ui/cur_drink_paid.webp"]'),'paid drink icon');assert.ok(document.querySelector('.shop-qmeta .drk-name.paid'),'paid drink label');
 document.querySelector('[data-gear="9"]').click();await wait(()=>calls.some(c=>c.name==='shop_gear_buy'));
 assert.deepEqual(JSON.parse(JSON.stringify(calls.find(c=>c.name==='shop_gear_buy').args)),{p_slot:9});
 // summon = outlink

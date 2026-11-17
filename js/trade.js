@@ -6,7 +6,7 @@
   const TIER = ['', '낡은', '일반', '고급', '희귀', '영웅', '전설', '심연'];
   const GRADE = { NORMAL: 'N', RARE: 'R', 'HIGH RARE': 'HR', 'SUPER RARE': 'SR', 'ULTRA RARE': 'UR', 'MYTHIC RARE': 'MR', 'LEGENDARY RARE': 'LR' };
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const I = f => `<img class="tr-ic" src="img/ui/${f}.webp" alt="">`;   // 아이콘 (img/ui)
+  const I = f => `<img class="tr-ic" src="img/ui/${f === 'cur_drink' ? 'cur_drink_paid' : f}.webp" alt="">`;   // 거래 드링크 = 유료(금색)   // 아이콘 (img/ui)
   const n = v => Number(v || 0).toLocaleString('ko-KR');
   const toast = t => (window.VRGem?.toast || window.alert)(t);
   const ERR = {
