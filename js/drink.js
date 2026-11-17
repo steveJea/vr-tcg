@@ -74,7 +74,7 @@
     a.addEventListener('click', async e => {
       e.stopPropagation();
       if (e.target === a || e.target.closest('[data-no]')) return close();
-      if (e.target.closest('[data-q-shop]')) { close(); if (window.VRShop?.enabled && window.VRShop.open) window.VRShop.open('consume'); else window.VRGem?.open?.(); return; }
+      if (e.target.closest('[data-q-shop]')) { close(); if (window.VRShop?.enabled && window.VRShop.open) window.VRShop.open('gem'); else window.VRGem?.open?.(); return; }
       const b = e.target.closest('[data-q-use]'); if (!b || b.disabled) return;
       draw(true);
       try { const r = await rpc('drink_use', { p_n: 1 }); if (r?.ok) { cache = r; toast(`🔋 행동력 +${r.used * r.per} (지금 ${n(r.stamina)})`); await window.VRPlayer?.status?.(true); } }
