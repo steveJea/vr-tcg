@@ -125,13 +125,13 @@ try{
  const g0=await v('select count(*)::int v from player_gear where user_id=$1',[c]);
  await call('authenticated',c,'mail_msg_claim($1)',[m.at(-1).id]);
  assert.equal(await v('select count(*)::int v from player_gear where user_id=$1',[c]),g0+1);
- // grade roll ≈ 85/14/1 (tiers 4/5/6)
+ // grade roll ≈ 95/4.9/0.1 (tiers 4/5/6)
  await q("delete from shop_gear_daily");
  const counts={HR:0,SR:0,UR:0};
  for(let i=0;i<120;i++){const u=randomUUID();await q('insert into auth.users(id) values($1)',[u]);await q('select public._shop_gear_roll($1)',[u]);}
  for(const row of await q('select grade, count(*)::int n from shop_gear_daily group by grade'))counts[row.grade]=row.n;
  const n=counts.HR+counts.SR+counts.UR;assert.equal(n,1080);
- assert.ok(Math.abs(counts.HR/n-.85)<.05&&Math.abs(counts.SR/n-.14)<.05&&counts.UR/n<.04,JSON.stringify(counts));
+ assert.ok(Math.abs(counts.HR/n-.95)<.03&&counts.SR/n<.09&&counts.UR/n<.01,JSON.stringify(counts));
  // popup store: once per account; day 1 now (card + gold + blood), day 2/3 queued
  const owned=async uid=>(await v("select coalesce(jsonb_array_length(data->'owned'),0)::int v from story_progress where user_id=$1",[uid]))??0;
  const o0=await owned(d);
@@ -223,4 +223,32 @@ try{
   const chk=swap(await read('supabase/shop_v2_check_staging.sql'));const r=(await db3.query(chk)).rows[0];assert.equal(r.ok,true,JSON.stringify(r));
   console.log('shop v2 staging without ur_ticket_mail ok');
  }finally{await db3.close();}
+}
+
+// follow-up odds SQL on a DB that already ran shop_v2_staging.sql at bd8e0700 (85/14/1, check weight<=100)
+{
+ const {execSync}=await import('node:child_process');
+ const old=execSync('git show bd8e0700c7670e95674ada85ee5a3f09275f38b8:supabase/shop_v2_staging.sql',{encoding:'utf8',maxBuffer:1e8});
+ const db4=new PGlite();const q4=async(s,p=[])=>(await db4.query(s,p)).rows;
+ try{
+  await db4.exec(`create role anon;create role authenticated;create role service_role bypassrls;create schema auth;
+  create table auth.users(id uuid primary key,email text,raw_user_meta_data jsonb default '{}',raw_app_meta_data jsonb default '{}',created_at timestamptz default now(),last_sign_in_at timestamptz,email_confirmed_at timestamptz);
+  create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
+  create function auth.jwt() returns jsonb language sql stable as $$select coalesce(nullif(current_setting('request.jwt.claims',true),''),'{}')::jsonb$$;
+  grant usage on schema auth,public to anon,authenticated,service_role;
+  alter default privileges in schema public grant execute on functions to anon,authenticated;`);
+  await db4.exec((await buildSql()).replace(`confirmed_ref text := '${INSTALL_ACK}'`,"confirmed_ref text := 'abcdefghijklmnopqrst'"));
+  await db4.exec(`create function public.test_payment_control() returns table(system_identifier text) language sql as $$select current_setting('test.payment_db',true)$$;select set_config('test.payment_db','7703759698107299042',false);`);
+  for(const f of ['payments_staging','payments_refunds_staging','payments_webhook_staging','shop_bm_staging','seasonpass_31_staging','seasonpass_mail_staging','special_summon_staging'])await db4.exec(swap(await read('supabase/'+f+'.sql')));
+  await db4.exec(swap(old));
+  assert.equal((await q4("select string_agg(grade||'='||weight, ',' order by grade) v from shop_gear_grades"))[0].v,'HR=85,SR=14,UR=1');
+  const f=swap(await read('supabase/shop_v2_gear_odds_staging.sql'));await db4.exec(f);await db4.exec(f);
+  const r=(await db4.query(swap(await read('supabase/shop_v2_gear_odds_check_staging.sql')))).rows[0];
+  assert.equal(r.ok,true);assert.equal(r.odds,'HR 95% · SR 4.9% · UR 0.1%');
+  // main check still ok, and rerunning the new main file keeps the new odds
+  assert.equal((await db4.query(swap(await read('supabase/shop_v2_check_staging.sql')))).rows[0].ok,true);
+  await db4.exec(swap(await read('supabase/shop_v2_staging.sql')));
+  assert.equal((await db4.query(swap(await read('supabase/shop_v2_gear_odds_check_staging.sql')))).rows[0].ok,true);
+  console.log('shop v2 gear odds follow-up ok',r.odds);
+ }finally{await db4.close();}
 }

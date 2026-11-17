@@ -111,12 +111,12 @@ create table if not exists public.shop_gem_log (
  created_at timestamptz not null default clock_timestamp()
 );
 create index if not exists shop_gem_log_user on public.shop_gem_log (user_id, created_at);
--- 장비 칸: 등급 → 장비 단계(gear_defs.tier) · 가격 · 확률(가중치 합 100)
+-- 장비 칸: 등급 → 장비 단계(gear_defs.tier) · 가격 · 확률(가중치 합 1000 = 0.1% 단위)
 create table if not exists public.shop_gear_grades (
  grade text primary key check (grade in ('HR','SR','UR')),
  tier integer not null check (tier between 1 and 7),
  price_gem integer not null check (price_gem between 1 and 100000),
- weight integer not null check (weight between 0 and 100)
+ weight integer not null check (weight between 0 and 1000)
 );
 create table if not exists public.shop_gear_daily (
  user_id uuid not null references auth.users(id) on delete cascade,
@@ -181,8 +181,11 @@ insert into public.shop_gem_items (sku,name,price_gem,reward,max_qty,sort) value
  ('gem_spec_ticket','스페셜 소환권',150,'{"special_tickets":1}',99,2),
  ('gem_drink','유료 드링크',100,'{"drink":1}',99,3)
 on conflict (sku) do update set name=excluded.name, price_gem=excluded.price_gem, reward=excluded.reward, max_qty=excluded.max_qty, sort=excluded.sort, active=true;
+alter table public.shop_gear_grades drop constraint if exists shop_gear_grades_weight_check;
+alter table public.shop_gear_grades add constraint shop_gear_grades_weight_check check (weight between 0 and 1000);
+-- 확률 = 가중치/1000: 희귀 95% · 영웅 4.9% · 전설 0.1% (2026-11-17 형님 결정)
 -- 장비 등급 ↔ 장비 단계: HR=희귀(4) · SR=영웅(5) · UR=전설(6). 바꾸려면 이 표만 고치면 됨.
-insert into public.shop_gear_grades (grade,tier,price_gem,weight) values ('HR',4,500,85),('SR',5,1000,14),('UR',6,5000,1)
+insert into public.shop_gear_grades (grade,tier,price_gem,weight) values ('HR',4,500,950),('SR',5,1000,49),('UR',6,5000,1)
 on conflict (grade) do update set tier=excluded.tier, price_gem=excluded.price_gem, weight=excluded.weight;
 
 -- ── 지급 = 우편 ───────────────────────────────────────────────────────────

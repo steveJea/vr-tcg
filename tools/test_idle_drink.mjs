@@ -67,5 +67,5 @@ for (const [i, sql] of files.entries()) {
 }
 // ----- 클라이언트 표시 -----
 const js = await rd('js/idle-box.js');
-assert.match(js, /드링크 \$\{rate\.drink_every_h\}시간당 1/); assert.match(js, /r\?\.drink && `🥤 드링크/);
+assert.match(js, /무료 드링크<\/span> \$\{rate\.drink_every_h\}시간당 1/); assert.match(js, /cur_drink_free\.webp/); assert.match(js, /r\?\.drink && `🥤 무료 드링크/);
 console.log('Idle drink SQL: 2h/1 bound drink, 8h max 4, remainder carried, boost 4h = 2, rates unchanged, old attend_claim() off, new attend untouched, guards/idempotent OK');

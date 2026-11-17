@@ -20,7 +20,7 @@ missing as (select name from fn where oid is null
  union all select 'old_packs_active' where exists (select 1 from public.shop_products where sku in ('ticket_10','ticket_45','ticket_160','ticket_220') and active)
  union all select 'popup' where (select count(*) from public.shop_products where tab='popup' and active and acct_max=1 and reward->>'card'='10325') <> 2
  union all select 'gem_items' where (select string_agg(sku||'='||price_gem, ',' order by sku) from public.shop_gem_items where active) <> 'gem_drink=100,gem_prem_ticket=150,gem_spec_ticket=150'
- union all select 'gear_grades' where (select string_agg(grade||'='||tier||':'||price_gem||':'||weight, ',' order by grade) from public.shop_gear_grades) <> 'HR=4:500:85,SR=5:1000:14,UR=6:5000:1'
+ union all select 'gear_grades' where (select string_agg(grade||'='||tier||':'||price_gem||':'||weight, ',' order by grade) from public.shop_gear_grades) <> 'HR=4:500:950,SR=5:1000:49,UR=6:5000:1'
  union all select 'queue_table' where to_regclass('public.shop_mail_queue') is null
  union all select 'rls' where exists (select 1 from pg_class where oid in (to_regclass('public.shop_mail_queue'),to_regclass('public.shop_gem_items'),to_regclass('public.shop_gem_log'),to_regclass('public.shop_gear_grades'),to_regclass('public.shop_gear_daily')) and not relrowsecurity)
 )

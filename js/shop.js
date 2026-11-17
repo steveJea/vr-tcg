@@ -13,7 +13,8 @@
   // 상점은 테스트 서버 전용. 운영에서는 상점 페이지를 열지 않고 예전 심연석 팝업을 쓴다.
   const on = () => !!(window.__SHOP_MOCK || window.VRCloud?.isStaging === true);
   const GEM = '<img class="ui-ic" src="img/ui/guild/cur_gem.webp" alt="">', TK = '<img class="ui-ic" src="img/ui/ticket.webp" alt="">', SPT = '<img class="ui-ic" src="img/ui/ticket_special.webp" alt="" onerror="this.onerror=null;this.src=\'img/ui/ticket.webp\'">';
-  const DRK = '<img class="ui-ic" src="img/ui/cur_drink.webp" alt="">';
+  const DRK = '<img class="ui-ic drk-ic paid" src="img/ui/cur_drink_paid.webp" alt="유료 드링크">', DRF = '<img class="ui-ic drk-ic free" src="img/ui/cur_drink_free.webp" alt="무료 드링크">';   // 유료 = 금색 · 무료 = 초록
+  const drk = h => h.replace(/유료 드링크/g, `${DRK}<span class="drk-name paid">유료 드링크</span>`).replace(/무료 드링크/g, `${DRF}<span class="drk-name free">무료 드링크</span>`);
   const BANNER = { pass: 'img/ui/shop/pass_banner.webp', popup: 'img/ui/shop/popup_banner.webp' };   // 임시 그림 (그림순이 의뢰 · 1080×360)
   const GRADE = { HR: 'HIGH RARE', SR: 'SUPER RARE', UR: 'ULTRA RARE' };
   let tab = 'charge', cache = null, host = null, cal = null, busy = false;
@@ -52,7 +53,7 @@
     const ui = f => `<img class="ui-ic" src="img/ui/${f}.webp" alt="">`;
     const ic = p.tab === 'charge' ? GEM : p.tab === 'pass' ? ui('star') : p.tab === 'popup' ? ui('reward') : p.grant?.special_tickets ? SPT : p.grant?.tickets ? TK : ui('level_up');
     return `<article class="shop-card shop-${esc(p.tab)}">${x2}<div class="shop-card-h"><span class="shop-ic">${ic}</span><b>${esc(p.name)}</b></div>
-      ${p.tab === 'charge' ? `<p class="shop-bonus">${esc(gemText(p))}</p>` : `<p>${esc(p.blurb)}</p>`}
+      ${p.tab === 'charge' ? `<p class="shop-bonus">${esc(gemText(p))}</p>` : `<p>${drk(esc(p.blurb))}</p>`}
       <p class="shop-price">${n(p.price_krw)}원</p>${limitText(p)}
       <button type="button" class="shop-go ${done ? '' : 'test'}" data-sku="${esc(p.sku)}" ${done || !test ? 'disabled' : ''}>${label}</button></article>`;
   }
@@ -89,13 +90,14 @@
     const items = cache?.gem_items || [], gear = cache?.gear || [], R = cache?.gear_rates || {};
     const icOf = g => g.grant?.special_tickets ? SPT : g.grant?.tickets ? TK : g.grant?.drink ? DRK : GEM;
     const rows = items.map(g => { const k = qty[g.sku] || 1;
-      return `<div class="shop-qrow"><span class="shop-ic">${icOf(g)}</span><div class="shop-qmeta"><b>${esc(g.name)}</b><small>${GEM}${n(g.price)} / 1개</small></div>
+      return `<div class="shop-qrow"><span class="shop-ic">${icOf(g)}</span><div class="shop-qmeta"><b>${g.grant?.drink ? `<span class="drk-name paid">${esc(g.name)}</span>` : esc(g.name)}</b><small>${GEM}${n(g.price)} / 1개</small></div>
         <div class="shop-qty"><button type="button" data-q="${esc(g.sku)}" data-d="-1" aria-label="빼기">−</button><input type="number" inputmode="numeric" min="1" max="${g.max_qty | 0}" value="${k}" data-qi="${esc(g.sku)}" aria-label="${esc(g.name)} 수량"><button type="button" data-q="${esc(g.sku)}" data-d="1" aria-label="더하기">＋</button></div>
         <button type="button" class="shop-go" data-gem-item="${esc(g.sku)}">${GEM}${n(g.price * k)}</button></div>`; }).join('');
     const cells = gear.map(g => `<button type="button" class="shop-gear g-${esc(g.grade)} ${g.bought ? 'sold' : ''}" data-gear="${g.slot_no | 0}" ${g.bought ? 'disabled' : ''}>
         <span class="shop-gear-g">${esc(g.grade)}</span><img src="${gearIcon(g)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'"><b>${esc(g.name)}</b>
         <small>${g.bought ? '구매 완료' : `${GEM}${n(g.price)}`}</small></button>`).join('');
-    const rate = ['HR', 'SR', 'UR'].filter(k => R[k]).map(k => `${k} ${R[k].weight}%`).join(' · ');
+    const wt = ['HR', 'SR', 'UR'].reduce((t, k) => t + (R[k]?.weight | 0), 0);
+    const rate = wt ? ['HR', 'SR', 'UR'].filter(k => R[k]).map(k => `${k} ${Number(((R[k].weight | 0) / wt * 100).toFixed(2))}%`).join(' · ') : '';   // 가중치 합 1000 → 95 · 4.9 · 0.1
     return `<p class="shop-note">무료 심연석을 먼저 써요 · 원하는 수량을 골라 사세요.</p><div class="shop-qlist">${rows}</div>
       <h3 class="shop-sub">오늘의 장비 <small>매일 00시(한국 시간) 바뀌어요 · 칸마다 하루 1번${rate ? ` · ${rate}` : ''}</small></h3>
       <div class="shop-gears">${cells || '<div class="shop-empty">장비를 불러오지 못했어요.</div>'}</div>`;

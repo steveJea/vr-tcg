@@ -223,3 +223,10 @@
 .drink-q-cnt span { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 8px; border-radius: 10px; background: rgba(255,255,255,.05); }
 .drink-q-cnt small { color: #a1a1aa; }
 .drink-ask-acts button:disabled { opacity: .45; }
+
+/* 유료(금색) · 무료(초록) 드링크 구분 — img/ui/cur_drink_paid.webp · cur_drink_free.webp */
+.drk-name { font-weight: 700; }
+.drk-name.paid { color: #fbbf24; }
+.drk-name.free { color: #4ade80; }
+.drk-ic.paid { filter: drop-shadow(0 0 3px rgba(251, 191, 36, .55)); }
+.drk-ic.free { filter: drop-shadow(0 0 3px rgba(74, 222, 128, .5)); }
