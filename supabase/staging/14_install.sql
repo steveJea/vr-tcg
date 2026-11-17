@@ -40,11 +40,11 @@ set local check_function_bodies = off;
 
 do $vr_install_part$
 begin
-  if exists (select 1 from vr_staging_install.parts where bundle_hash <> '152a5ecf251ddab22e48c3207528707d795d25df81776f51043864037ba27df1' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
+  if exists (select 1 from vr_staging_install.parts where bundle_hash <> '14de29035b6a378d364aa94d3034704eebd4f8dd3f90b779efc5eb160bf48e67' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
     raise exception 'STOP: 다른 버전/DB의 설치 기록입니다. 파일을 섞지 마세요.';
   end if;
   if exists (select 1 from vr_staging_install.parts where part_no = 14) then
-    if not exists (select 1 from vr_staging_install.parts where part_no = 14 and part_hash = 'ba4811b832c8809aea613372bb1bdb8d633a421472d5bc8ea3481854b9bacf86') then
+    if not exists (select 1 from vr_staging_install.parts where part_no = 14 and part_hash = '743ecd1ad2c3a0c5a7dd1c952c214ba0577dc6919db16ee9734ee52c0399fa45') then
       raise exception 'STOP: 완료한 파일과 내용이 다릅니다.';
     end if;
     raise notice '14_install.sql: 이미 완료, 변경 없이 건너뜀';
@@ -1004,7 +1004,7 @@ create table if not exists public.battle_replay_policy_v6 (
  engine_hash text not null check (engine_hash ~ '^[a-f0-9]{64}$'));$vr_statement$;
   execute $vr_statement$-- Starts off. Re-running this file updates the engine hash only and does not turn enforcement on.
 insert into public.battle_replay_policy_v6(singleton, enabled, engine_hash)
- values (true, false, 'ad59546b94862bbb09cbd63692b21709f9729e035ddf54456664ead9eb927d57')
+ values (true, false, '1d1092662cfa90fd1c118baf7ffb4d83dcb767ef17564e30f9efdecfc3270bd7')
  on conflict (singleton) do update set engine_hash = excluded.engine_hash;$vr_statement$;
   execute $vr_statement$alter table public.battle_replay_policy_v6 enable row level security;$vr_statement$;
   execute $vr_statement$revoke all on public.battle_replay_policy_v6 from public, anon, authenticated;$vr_statement$;
@@ -1152,7 +1152,7 @@ end $staging_verify$;$vr_statement$;
 
   grant usage on schema public to public, anon, authenticated;
   insert into vr_staging_install.parts(part_no, bundle_hash, part_hash, project_ref, db_id)
-  values (14, '152a5ecf251ddab22e48c3207528707d795d25df81776f51043864037ba27df1', 'ba4811b832c8809aea613372bb1bdb8d633a421472d5bc8ea3481854b9bacf86', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
+  values (14, '14de29035b6a378d364aa94d3034704eebd4f8dd3f90b779efc5eb160bf48e67', '743ecd1ad2c3a0c5a7dd1c952c214ba0577dc6919db16ee9734ee52c0399fa45', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
 end $vr_install_part$;
 commit;
 select '14_install.sql: 완료 또는 이미 완료 (14/14)' as result;

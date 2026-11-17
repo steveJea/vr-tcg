@@ -14,7 +14,7 @@ const C = id => pool.find(c => String(c.id) === String(id));
 ok(cards.some(c => c.id == 10533) && !npcs.some(c => c.id == 10533) && C(10533).grade === 'RARE' && !SK['10533'], '우승찬 10533: 플레이어 카드(시트 NPC 칸 빈칸) · R · 스킬 없음');
 const NPC = Array.from({ length: 10 }, (_, i) => String(10534 + i));
 ok(NPC.every(id => npcs.some(c => String(c.id) === id && c.npc == 1)) && NPC.every(id => !cards.some(c => String(c.id) === id)), 'NPC 10534~10543 npc_cards.csv (뽑기 아님)');
-ok(C(10537).age == 7 && C(10538).age == 7 && C(10535).age == 9, '어린 민지은·장초롱 7살 (형님 답변, 시트는 16) · 어린 임예리 9살');
+ok(C(10537).age == 7 && C(10538).age == 7 && C(10535).age == 9 && C(10536).age == 9, '어린 민지은·장초롱 7살 · 어린 임예리·최국선 9살 (시트)');
 ok(['경호원A', '경호원B', '경호원C', '경호원D', '경호원E'].every((n, i) => C(10539 + i).name === n) && C(10543).grade === 'SUPER RARE' && C(10542).HP == 240, '경호원A~E 시트 스탯');
 ok(C(10534).base_id == 10118 && C(10536).base_id == 10406, '[상념] 민홍기·어린 최국선 base_id');
 const fallback = rd('js/img-fallback.js');
@@ -93,5 +93,10 @@ try { await db.exec(sql); ok(false, '가드: 스테이징 아니면 거부'); } 
 const local = s => s.replaceAll("'7703759698107299042'", '(select system_identifier::text from pg_catalog.pg_control_system())');
 await db.exec(local(sql)); await db.exec(local(sql));
 ok((await db.query(local(chk))).rows[0].ok === true, '실행 2번 (멱등) 후 확인 SQL ok=true · 66번 해시 → 새 해시');
+const ya = rd('supabase/young_age_hash_staging.sql'), yc = rd('supabase/young_age_hash_check_staging.sql');
+await db.exec(local(ya)); await db.exec(local(ya));
+ok((await db.query(yc)).rows[0].ok === true, '나이 해시 SQL 2번 후 확인 ok=true (#625 해시 → 새 해시)');
+try { await db.exec(ya); ok(false, '나이 해시 SQL 가드'); } catch (e) { ok(/STOP: young age/.test(String(e.message || e)), '나이 해시 SQL 가드: 스테이징 아니면 거부'); await db.exec('rollback'); }
+ok(/^select \($/m.test(yc) && !/^\s*(update|insert|delete) /im.test(yc), '나이 확인 SQL은 단일 SELECT');
 ok(/^select \($/m.test(chk) && !/^\s*(update|insert|delete) /im.test(chk), '확인 SQL은 단일 SELECT');
 console.log(fails ? `${fails} FAIL` : 'ALL OK'); process.exit(fails ? 1 : 0);

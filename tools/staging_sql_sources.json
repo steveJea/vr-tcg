@@ -203,6 +203,8 @@
     "sheet_skills66_hash_check_staging.sql": "Read-only staging check for sheet_skills66_hash_staging.sql. Not a fresh installer.",
     "story_ch18_19_staging.sql": "Owner-pasted staging patch for debug item 64: CH18/19 phase config + catalog, new cards 10533-10543 meta, 16-1 forced 10536, engine hash rotation (supersedes sheet_skills66_hash_staging.sql). Guard 7703759698107299042. Not a fresh installer; phase2 catalog already carries the defs.",
     "story_ch18_19_check_staging.sql": "Read-only single-SELECT check for story_ch18_19_staging.sql. Not a fresh installer.",
+    "young_age_hash_staging.sql": "Owner-pasted staging patch: 10536 age 15->9 changes engine hashes (guild v4, sweep v6, direct v7); rotates from PR #625 hashes. Guard 7703759698107299042. Not a fresh installer.",
+    "young_age_hash_check_staging.sql": "Read-only single-SELECT check for young_age_hash_staging.sql. Not a fresh installer.",
     "seasonpass_mail_staging.sql": "Owner-pasted staging-only season pass mailbox delivery (lazy, no expiry) + claim-all + stamina mail. Kept out of staging_install so release 20261111 stays frozen.",
     "seasonpass_mail_check_staging.sql": "Read-only staging check for seasonpass_mail_staging.sql. Not a fresh installer.",
     "fix_16_11_boss_staging.sql": "Owner-pasted staging-only 16-11 boss conversion (type=boss, camp HP, drop mustKill). No engine hash rotation. Guard 7703759698107299042.",
