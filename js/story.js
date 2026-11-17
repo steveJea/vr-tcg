@@ -1170,7 +1170,7 @@
       if (r.become) info.push(['⚠️', `${nm(r.id)}를 쓰러뜨리면 <b>${nm(r.become)}</b>이(가) 등장해요`, '쓰러뜨리지 않는 편이 유리해요']);
       else info.push(['🩸', `${nm(r.id)}: 쓰러지면 <b>${Math.max(1, r.delay | 0 || 1)}턴 후</b> 부활 (${r.level === 'keep' ? '레벨 유지' : 'Lv1'})${r.times ? ` · ${r.times}회` : ''}`]);
     }
-    if ((R.revive || []).some(r => !r.become) && !(R.expire && R.invuln != null) && !R.mustKill?.length) info.push(['✨', '부활 전에 적을 모두 쓰러뜨리면 승리']);
+    if ((R.revive || []).some(r => !r.become) && !(R.expire && R.invuln != null) && !R.mustKill?.length && !boss) info.push(['✨', '부활 전에 적을 모두 쓰러뜨리면 승리']);
     if (R.pairShield) info.push(['🛡️', `${nm(R.pairShield.id)} + ${nm(R.pairShield.with)} 함께 출전: ${nm(R.pairShield.id)} 처음 <b>${R.pairShield.turns}턴</b> 피해 무효`]);
     for (const [a, ts] of Object.entries(ph.spare || {})) info.push(['🕊️', `${nm(a)}는 ${ts.map(nm).join('·')}를 공격하지 않음`, `${ts.map(nm).join('·')}만 남으면 행동하지 않아요`]);
     for (const id of R.undying || []) info.push(['♾️', `${nm(id)}: 쓰러지지 않음 (불사)`]);

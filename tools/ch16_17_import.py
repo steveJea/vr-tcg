@@ -5,6 +5,7 @@
 엔딩 영상: CH16 Hr8_z9yFB_g · CH17 jhBi0xojOOM (형님 채팅 16:59 KST)
 조윤이 ch16 = jo_yuni_school · 최윤희 ch17 = choi_yunhee_school
 국선 엄마/아빠 · 영순 이모 = 초상화 없음
+16-1(강두식전)까지는 어린 최국선 10536 이 필수 출전 (형님 11/17, 디버그 64번). 대사 화자·초상화는 최국선 그대로
 16-11 적5 이영아(10306) 유지. 16-11은 보스전(type=boss, 진영 HP, 최국선 불사 보스). 윤진아 사망 시 [각성] 윤진아. 16-1/16-2·CH17 빈 승리조건 → 적 전멸, 빈 패배조건은 다른 동형 페이즈와 같게.
 """
 import csv, json, os, re, sys
@@ -24,7 +25,7 @@ for L in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ':
 # keys: forced, flv, elv, blv, boss, enemies, first, bans, win, lose, note, pts, mana, story
 BATTLE = {
 16: {
-  1:  dict(forced=['최국선'], flv=40, elv=45, enemies=['강두식','A','B','C','D'], first='아군', bans=['여성','SR 초과'], win='적 전멸', lose='최국선 사망, 필수캐 미소환(2턴), 아군 전멸, 20턴 초과', pts=3, mana=100),
+  1:  dict(forced=['어린 최국선'], flv=40, elv=45, enemies=['강두식','A','B','C','D'], first='아군', bans=['여성','SR 초과'], win='적 전멸', lose='최국선 사망, 필수캐 미소환(2턴), 아군 전멸, 20턴 초과', pts=3, mana=100),
   2:  dict(forced=['최국선'], flv=40, elv=45, enemies=['E','A','B','C','D'], first='아군', bans=['여성','SR 초과'], win='적 전멸', lose='최국선 사망, 필수캐 미소환(2턴), 아군 전멸, 20턴 초과', pts=3, mana=100),
   3:  dict(forced=['최국선'], flv=40, elv=45, enemies=['M','L','M','A','B'], first='아군', bans=['여성','SR 초과'], win='적 전멸', lose='최국선 사망, 필수캐 미소환(2턴), 아군 전멸, 20턴 초과', pts=3, mana=100),
   4:  dict(forced=['최국선'], flv=40, elv=45, enemies=['O','C','D','N','J'], first='아군', bans=['여성','SR 초과'], win='적 전멸', lose='최국선 사망, 필수캐 미소환(2턴), 아군 전멸, 20턴 초과', pts=3, mana=100),

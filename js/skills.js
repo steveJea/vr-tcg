@@ -511,6 +511,8 @@ const drainAll = (u, f, n, pct, r, why) => { const o = hitSet(u, f, live(f), n, 
 const tiredHits = (u, f, n, pct) => { let t = by(males(f), x => x.hp); for (let i = 0; i < n; i++) { if (!t || !f.field.includes(t) || t.hp <= 0) { const pool = live(f).filter(x => x.hp > 0); t = pool.length ? pool[Math.floor(rng() * pool.length)] : null; } if (!t) break; damageUnit(t, skillDamage(u, t, pct), u); if (checkDeath(t, u)) t = null; } };
 const LIM_DAUGHTERS = new Set(['10322', '10324', '10325', '10326']);   // 임규리·임예리·임유리·[각성] 임유리
 const YEJI_FRIENDS = new Set(['10324', '10341', '10117']);             // 임예리·장초롱·민지은
+/** 어린 임예리·민지은·장초롱 방어 스킬 대상: 품성(MOR) 75 이상 아군 여성 */
+const youngGuard = a => a.base.gender === 'FEMALE' && (a.base.MOR || 0) >= 75;
 /** 현재 HP의 pct 제거 (카드당 최대 cap) */
 const hpCut = (u, f, pct, cap) => { const ts = live(f); ts.forEach(t => damageUnit(t, Math.min(cap, Math.max(1, Math.round(t.hp * pct))), u)); ts.forEach(t => checkDeath(t, u)); };
 /** 필드 양 옆 카드 */
@@ -616,6 +618,21 @@ export const ACTIVE = {
   '진짜 힘을 아나?': (u, p, f) => { const o = hitSet(u, f, live(f), 5, 0.1); o.ts.forEach(t => f.field.includes(t) && t.hp > 0 && bleedOn(t, u, 1)); },
   // 구정휘 10518 (NPC)
   '제가 모시겠습니다.': (u, p, f) => ccEach(f, live(f), 0.3, t => paraOn(t)),
+  // ===== 2026-11-16 신규 NPC (캐릭터 시트 스킬 284~293행, 디버그 64번) =====
+  // [상념] 민홍기 10534: 적 전체 10%×3 / ×5, 살아남은 적마다 10% 혼란 1턴
+  '용서가...안...되는...데?': (u, p, f) => { const o = hitSet(u, f, live(f), 3, 0.1); ccEach(f, o.ts, 0.1, confOn); },
+  '절대...복수한...다...': (u, p, f) => { const o = hitSet(u, f, live(f), 5, 0.1); ccEach(f, o.ts, 0.1, confOn); },
+  // 어린 최국선 10536: 공격력 최고 적 + 양 옆 15%×4
+  '아무것도 느낄 수 없어!': (u, p, f) => { const t = by(live(f), x => x.card.ATK, -1); if (t) hitSet(u, f, [t, ...sides(f, t)], 4, 0.15); },
+  // 어린 민지은 10537 · 어린 장초롱 10538 · 어린 임예리 10535: 품성 75 이상 아군 여성 2턴 피해 면역 / 적 전체 20%×3
+  '이정도는 가뿐하다고요!': (u, p) => immuneAllies(p, youngGuard, 2),
+  '예리 언니만 있으면 돼!': (u, p) => immuneAllies(p, youngGuard, 2),
+  '어른들이란...': (u, p) => immuneAllies(p, youngGuard, 2),
+  '난...버려진 게 아니라고요!': (u, p, f) => hitAll(u, f, 3, 0.2),
+  '난 착한 어린이가 아니야!': (u, p, f) => hitAll(u, f, 3, 0.2),
+  '빠르고 쉽게 가시죠?': (u, p, f) => hitAll(u, f, 3, 0.2),
+  // 어린 임예리 10535: 적 전체 30%×5, 처치 수만큼 쿨타임 -1
+  '이게 여러분의 선택인가요?': (u, p, f, s) => { const d = hitAll(u, f, 5, 0.3); u.cd[s.name] = Math.max(0, u.cd[s.name] - d); },
   // 황경민 10520
   '따라오시지?': (u, p, f) => { const t = by(females(f), x => x.card.DEF); if (t && !multiHit(u, t, 5, 0.2) && sChance(0.3)) confOn(t); },
   // 이혜림 10521: 효과가 끝나면 10% 확률 1턴 혼란 (onExpire thenConfuse)
@@ -1308,6 +1325,8 @@ export function aiSkillScores(u, { noSave = false } = {}) {
       case '건드리지 마세요': sc = n && p.field.length >= 2 ? 80 + p.field.length * 2 : 0; break;
       case '훗...우습군.': case '진짜 힘을 아나?': case '영원한 건 없어': case '나만 영원할 걸?': sc = n >= 2 ? 92 + n * 4 : n ? 74 : 0; break;
       case '제가 모시겠습니다.': sc = n >= 2 && !canKill ? 84 + n * 3 : 0; break;
+      case '용서가...안...되는...데?': case '절대...복수한...다...': sc = n >= 2 ? 92 + n * 4 : n ? 74 : 0; break;
+      case '이정도는 가뿐하다고요!': case '예리 언니만 있으면 돼!': case '어른들이란...': { const c = p.field.filter(a => youngGuard(a) && !a.st.immune).length; sc = n && c >= 2 && !canKill ? 80 + c * 4 : 0; break; }
       case '그녀를 따라와요': case '그녀가 따라가요': case '꿈은 이룰 수 있어': { const k = males(f).length; sc = k ? 82 + k * 5 : 0; break; }
       case '백의의 천사가 꿈이었어': { const k = males(f).length; sc = k ? 88 + k * 6 : 0; break; }
       default:

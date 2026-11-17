@@ -97,16 +97,16 @@ window.STORY_DATA.chapters.push({
    },
    "party": {
     "forced": [
-     "10406"
+     "10536"
     ],
     "mustLive": [
-     "10406"
+     "10536"
     ],
     "levels": {
-     "10406": 40
+     "10536": 40
     },
     "battleLevels": {
-     "10406": 1
+     "10536": 1
     },
     "noFemale": true,
     "maxGrade": "SUPER RARE"
