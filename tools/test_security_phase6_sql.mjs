@@ -138,6 +138,27 @@ try {
     assert.equal(await val(local(check).replace(/^--.*$/gm, '').replace(/\) as ok;\s*$/, ') as v')), true, 'check is true after the fix');
     assert.match(check, /^select \($/m);
   }
+  // fix_start_v2_level_floor_*.sql: patch an installed pre-fix battle_session_start_v2 in place.
+  {
+    const fn = `public.battle_session_start_v2(text,text,jsonb,uuid)`;
+    const fx = await rd('supabase/fix_start_v2_level_floor_staging.sql');
+    const grab = k => fx.match(new RegExp(`${k} text := \\$q\\$([\\s\\S]*?)\\$q\\$;`))[1];
+    const def = await val(`select pg_get_functiondef($1::regprocedure) v`, [fn]);
+    assert.ok(def.includes(grab('new_guest')) && def.includes(grab('new_cid')), 'fresh install already floors story levels');
+    await db.exec(def.replace(grab('new_guest'), grab('old_guest')).replace(grab('new_cid'), grab('old_cid')));
+    assert.doesNotMatch(await val(`select prosrc v from pg_proc where oid=$1::regprocedure`, [fn]), /story floorLv/);
+    const check = await rd('supabase/fix_start_v2_level_floor_check_staging.sql');
+    const local = t => t.replaceAll("'7703759698107299042'", `'${system}'`);
+    const ok = async () => val(local(check).replace(/^--.*$/gm, '').replace(/\) as ok;\s*$/, ') as v'));
+    assert.equal(await ok(), false, 'check is false before the fix');
+    await assert.rejects(db.exec(fx), /STOP: this file is for staging only/);
+    await assert.rejects(db.exec(await rd('supabase/fix_start_v2_level_floor_production.sql')), /STOP: this file is for production only/);
+    await db.exec(local(fx)); await db.exec(local(fx));
+    assert.equal(await val(`select prosrc v from pg_proc where oid=$1::regprocedure`, [fn]), def.slice(def.indexOf('AS $function$') + 13, def.lastIndexOf('$function$')), 'patched body equals the fresh-install body');
+    assert.equal(await ok(), true, 'check is true after the fix');
+    assert.equal(await val(local((await rd('supabase/fix_start_v2_level_floor_check_production.sql')).replaceAll("'7692130048193495360'", `'${system}'`)).replace(/^--.*$/gm, '').replace(/\) as ok;\s*$/, ') as v')), true);
+    assert.match(check, /^select \($/m);
+  }
   assert.equal(await val('select enabled v from battle_replay_policy_v6'), false, 'install leaves sweep replay off');
   await reject(`select battle_sweep_session_v6($1,$2)`, [me, req(1)]);
   await reject(`select battle_sweep_settle_v6($1,$2,$3,$4::jsonb)`, [me, req(1), ENGINE_VERSION, '{"win":true,"reason":"wipe","turns":2,"my_turns":1}']);
@@ -196,6 +217,30 @@ try {
   assert.equal(killed.validation, 'plausibility-v3');
   assert.equal(killed.win, true);
   assert.equal(killed.cleared, true, 'mustkill win clears the phase');
+
+  // 16-11 소민섭 Lv60 style: an owned forced/loan card below the sheet level is snapshotted at the sheet level
+  // (client floorLv), a higher one keeps its own level, and a guest loan uses chapter loanLevel.
+  {
+    const rows0 = await q(`select variant, definition from battle_story_defs_v2 where chapter=1 and phase=3`);
+    const def0 = rows0.find(r => r.variant === '').definition;
+    // Same override on every variant row (1:3 may resolve to a starter variant); variantKind kept from the base row.
+    const put = d => d === def0 ? Promise.all(rows0.map(r => q(`update battle_story_defs_v2 set definition=$1::jsonb where chapter=1 and phase=3 and variant=$2`, [JSON.stringify(r.definition), r.variant])))
+      : Promise.all(rows0.map(r => q(`update battle_story_defs_v2 set definition=$1::jsonb where chapter=1 and phase=3 and variant=$2`, [JSON.stringify({ ...r.definition, ...d, variantKind: r.definition.variantKind }), r.variant])));
+    const lvOf = (s, uid) => s.snapshot.cards.find(c => c.uid === uid).level;
+    await put({ ...def0, party: { ...(def0.party || {}), forced: ['10229'], levels: { 10229: 60 } } });
+    const floored = await start('story', '1:3', [heroine.uid], req(126));
+    assert.equal(lvOf(floored, heroine.uid), 60, 'forced owned card fights at the sheet level');
+    await put({ ...def0, party: { ...(def0.party || {}), forced: ['10229'], levels: { 10229: 1 } } });
+    assert.equal(lvOf(await start('story', '1:3', [heroine.uid], req(127)), heroine.uid), heroine.level || 1, 'never lowered');
+    await put({ ...def0, party: { ...(def0.party || {}), forced: ['10229'], fixedLevel: { 10229: 70 } } });
+    assert.equal(lvOf(await start('story', '1:3', [heroine.uid], req(128)), heroine.uid), heroine.level || 1, 'fixedLevel is a guest-only rule');
+    await put({ ...def0, party: { ...(def0.party || {}), forced: [] }, loan: ['10229', '10300'], loanLevel: { 10229: 55, 10300: 80 } });
+    const loaned = await start('story', '1:3', [heroine.uid, 'guest:10300'], req(130));
+    assert.equal(lvOf(loaned, heroine.uid), 55, 'owned loan card fights at loanLevel');
+    assert.equal(lvOf(loaned, 'guest:10300'), 80, 'guest loan uses loanLevel');
+    await put(def0);
+    assert.equal(await val(`select level v from jsonb_to_recordset((select data->'owned' from story_progress where user_id=$1)) as x(uid text, level int) where uid=$2`, [me, heroine.uid]), heroine.level || 1, 'saved level untouched');
+  }
 
   const held = await start('tower_sweep', 'normal:1', [owned.uid], req(29));
   await age(held.session);
