@@ -40,6 +40,8 @@ const game = read('js/game.js'), story = read('js/story.js');
   ctx.media.dispose(); assert.equal(events.size, 0); assert.equal(viewportEvents.size, 0); assert.equal(observer.el, null);
   const css = read('css/story.css');
   assert.match(css, /\.story-media img, \.story-media video\s*\{[^}]*object-fit: contain/);
+  assert.match(css, /@media \(orientation: portrait\)\s*\{[^}]*\.story-media img\s*\{[^}]*object-fit: cover/);
+  assert.match(css, /\.story-zoom img\s*\{[^}]*object-fit: contain/);
   assert(!css.includes('storyKenBurns'), 'no animated zoom recropping the fitted image');
   assert.match(css, /#story-screen \.story-dlg \{[^}]*height: calc\(100dvh/);
 }
