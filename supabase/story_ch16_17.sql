@@ -60,6 +60,13 @@ begin
     d := jsonb_set(d, '{points}', to_jsonb(coalesce((d->>'points')::int, 0) + cfg.points));
   end if;
   d := public._story_save(uid, d);
+  -- Scene phases have no battle session, so no battle_clear_receipts_v2 row. Record access here so
+  -- battle_session_start_v2 (_clear_access_v2) opens the next phase (16-12 -> 17-1 'phase locked'). Access only, no rewards.
+  insert into public.battle_legacy_access_v2 as a (user_id, cleared)
+    values (uid, jsonb_build_object(p_chapter::text, jsonb_build_array(p_phase)))
+  on conflict (user_id) do update set cleared = jsonb_set(a.cleared, array[p_chapter::text],
+    case when jsonb_typeof(a.cleared->(p_chapter::text)) = 'array' then a.cleared->(p_chapter::text) else '[]'::jsonb end || to_jsonb(p_phase))
+  where not coalesce(a.cleared->(p_chapter::text), '[]'::jsonb) @> to_jsonb(p_phase);
   begin tickets := public._story_ticket_sync(uid); exception when others then tickets := null; end;
   return jsonb_build_object('data', d, 'first', first, 'points', case when first then cfg.points else 0 end, 'chapter_reward', tickets, 'exp', '[]'::jsonb);
 end $$;

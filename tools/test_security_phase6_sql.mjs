@@ -331,6 +331,39 @@ try {
   const restored = await http({ op: 'sweep', id: bad.session, version: ENGINE_VERSION });
   assert.equal(restored.status, 200, JSON.stringify(restored));
   assert.equal(restored.data.validation, 'replay-v6');
+  // fix_scene_access_*.sql: a story-only scene (16-12) must open the next phase on the server too.
+  {
+    const local = t => t.replaceAll("'7703759698107299042'", `'${system}'`);
+    const { execFileSync } = await import('node:child_process');
+    const preFix = execFileSync('git', ['show', 'origin/staging:supabase/story_ch16_17.sql'], { cwd: new URL('..', import.meta.url), encoding: 'utf8' });
+    if (preFix.includes('battle_legacy_access_v2')) throw Error('origin/staging already has the fix; pin the pre-fix ref');
+    await db.exec(local(preFix));
+    await unlockBefore(16, 12);
+    await q(`update battle_sessions_v2 set issued_at=issued_at-interval '2 days' where user_id=$1 and party='[]' and status='settled'`, [me]);   // fixture rows, not today's issuance
+    const access = t => val(`select _clear_access_v2($1,'story',$2) v`, [me, t]);
+    assert.equal(await access('16:11'), true);
+    await rpc(`select story_complete_scene(16,12) v`);
+    assert.equal(await access('16:12'), false, 'pre-fix: the scene is saved in story_progress only');
+    await reject(`select battle_session_start_v2('story','17:1',$1::jsonb,$2)`, [JSON.stringify([owned.uid]), req(140)], /phase locked/);
+    const fx = await rd('supabase/fix_scene_access_staging.sql'), check = await rd('supabase/fix_scene_access_check_staging.sql');
+    const ok = async () => (await q(local(check).replace(/^--.*$/gm, '')))[0];
+    assert.deepEqual(await ok(), { ok: false, stuck: 1 }, 'check sees the stuck scene before the fix');
+    await assert.rejects(db.exec(fx), /STOP: this file is for staging only/);
+    await assert.rejects(db.exec(await rd('supabase/fix_scene_access_production.sql')), /STOP: this file is for production only/);
+    await db.exec(local(fx)); await db.exec(local(fx));
+    assert.equal(await access('16:12'), true, 'backfill opens 17-1');
+    assert.deepEqual(await ok(), { ok: true, stuck: 0 });
+    const err = await as(me, () => q(`select battle_session_start_v2('story','17:1',$1::jsonb,$2)`, [JSON.stringify([owned.uid]), req(141)]).then(() => null, e => e.message));
+    assert.doesNotMatch(String(err), /phase locked/);
+    // Patched function records access itself (fresh scene clear: 17-7 after 17-1..6).
+    await db.exec(local(await rd('supabase/story_ch16_17.sql')));
+    assert.match(await val(`select prosrc v from pg_proc where oid='public.story_complete_scene(integer,integer)'::regprocedure`), /battle_legacy_access_v2 as a/, 'source = patched body');
+    await unlockBefore(17, 7);
+    await rpc(`select story_complete_scene(17,7) v`);
+    assert.equal(await access('17:7'), true, 'scene clear records access');
+    assert.equal(await val(`select count(*)::int v from battle_clear_receipts_v2 where user_id=$1 and target='17:7'`, [me]), 0, 'scene adds no receipt');
+    assert.equal((await ok()).ok, true);
+  }
   console.log('phase6 SQL + ' + (process.argv.includes('--dashboard') ? 'Dashboard' : 'modular') + ' handler: story plausibility kept, sweep replay/idempotency/ACL/locks OK');
 } catch (e) {
   console.error(e);
