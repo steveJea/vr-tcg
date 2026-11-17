@@ -18494,11 +18494,18 @@ begin
    elsif x like 'guest:%' then
     cid:=substr(x,7);
     if p_mode<>'story' or not allowed @> to_jsonb(cid) then raise exception 'guest not allowed'; end if;
-    o:=jsonb_build_object('uid',x,'id',cid,'guest',true,'level',coalesce((pp->'fixedLevel'->>cid)::int,(pp->'levels'->>cid)::int,lv));
+    o:=jsonb_build_object('uid',x,'id',cid,'guest',true,'level',coalesce((pp->'fixedLevel'->>cid)::int,case when not forced @> to_jsonb(cid) then (cfg->'loanLevel'->>cid)::int end,(pp->'levels'->>cid)::int,lv));
    else o:=public._pvp_snap(u,jsonb_build_array(x),'open')->'cards'->0;
    end if;
    if o is null then raise exception 'card not owned or loan expired'; end if;
    cid:=o->>'id';
+   -- story floorLv (js/story.js partyOf): an owned forced/loan card below the sheet level fights at the sheet level
+   -- for this battle only (saved level untouched). The v7 replay must see the same level or it reads 'tampered'.
+   if p_mode='story' and not coalesce((o->>'guest')::boolean,false) then
+    v:=case when forced @> to_jsonb(cid) then case when pp->'fixedLevel' ? cid then null else pp->'levels'->>cid end
+     when coalesce(cfg->'loan','[]') @> to_jsonb(cid) and not coalesce(pp->'guests','[]') @> to_jsonb(cid) then coalesce(cfg->'loanLevel'->>cid,pp->'levels'->>cid) end;
+    if v ~ '^[0-9]{1,3}$' and coalesce((o->>'level')::int,1) < least(100,greatest(1,v::int)) then o:=jsonb_set(o,'{level}',to_jsonb(least(100,greatest(1,v::int)))); end if;
+   end if;
    if p_mode='story' and not forced @> to_jsonb(cid) and not coalesce(pp->'guests','[]') @> to_jsonb(cid) then
     if coalesce((pp->>'solo')::boolean,false) or coalesce((pp->>'noExtra')::boolean,false) or coalesce(pp->'exclude','[]') @> to_jsonb(cid)
       or (pp ? 'only' and not pp->'only' @> to_jsonb(cid)) then raise exception 'party restriction'; end if;
