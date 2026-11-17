@@ -2145,13 +2145,13 @@
     sh?.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.closest('[data-pulled]')) { e.preventDefault(); onTap(e); } });
   }
   const GACHA_BANNERS = [{ key: 'daily', label: '일반' }, { key: 'special', label: '프리미엄' }, { key: 'pickup', label: '스페셜', img: 'special' }];   // pickup = 스페셜 소환 (이벤트 픽업)
-  const spBadge = () => `<span class="story-ticket sp-ticket" title="스페셜 소환권">✨ <b>${window.VRSpecial?.tickets ?? '…'}</b></span>`;
+  const spBadge = () => `<span class="story-ticket sp-ticket" title="스페셜 소환권"><img class="ui-ic tk-ic sp" src="img/ui/ticket_special.webp" alt="스페셜 소환권"> <b>${window.VRSpecial?.tickets ?? '…'}</b></span>`;
   /** 스페셜 소환 보유·천장 줄 */
   const spPick = () => { const S = window.VRSpecial, k = S.ursToPickup, nm = esc(S.banner().pickup_name || ''); return k <= 1 ? `다음 UR은 ${nm} 확정` : `${nm} 확정까지 UR ${k}번`; };
   function spOwn() {
     const S = window.VRSpecial, b = S?.banner();
     if (!S || !b?.open) return `<div class="gr-own sp-own" id="gr-own">스페셜 소환 <b class="sp-prep">준비 중</b></div>`;
-    return `<div class="gr-own sp-own" id="gr-own">보유 스페셜 소환권 ✨ <b id="sp-own-n">${S.tickets ?? '…'}</b><br><small id="sp-pick">${spPick()}</small> <button type="button" class="sp-help" data-sp-help aria-label="천장 안내">?</button></div>`;
+    return `<div class="gr-own sp-own" id="gr-own">보유 <span class="tk-name sp">스페셜 소환권</span> <img class="ui-ic tk-ic sp" src="img/ui/ticket_special.webp" alt="스페셜 소환권"> <b id="sp-own-n">${S.tickets ?? '…'}</b><br><small id="sp-pick">${spPick()}</small> <button type="button" class="sp-help" data-sp-help aria-label="천장 안내">?</button></div>`;
   }
   function renderShop(tab) {
     if (tab) shopTab = tab;
@@ -2173,7 +2173,7 @@
       ${pickup ? spOwn() : daily ? '' : `<div class="gr-own" id="gr-own">보유 소환권 ${ICN('ticket', '🎟️', '소환권')} <b>${tickets ?? '…'}</b>${urTickets ? `<span class="gr-own-ur"> · UR 확정권 🎫 <b id="gr-own-ur">${urTickets}</b></span>` : ''}</div>`}
       <div class="gr-actions">${daily
         ? `${avail ? `<button id="gacha-go" class="gr-go">${ICN('gacha', '🎴')} 뽑기</button>` : ''}<div id="gacha-next" class="gr-next"></div>`
-        : pickup ? `<button class="gr-go" data-draw="1" data-sp="1" ${spOpen && (window.VRSpecial.tickets | 0) >= 1 ? '' : 'disabled'}>1회 <small>✨1</small></button><button class="gr-go gr-go10" data-draw="10" data-sp="1" ${spOpen && (window.VRSpecial.tickets | 0) >= 10 ? '' : 'disabled'}>10회 <small>✨10</small></button>`
+        : pickup ? `<button class="gr-go" data-draw="1" data-sp="1" ${spOpen && (window.VRSpecial.tickets | 0) >= 1 ? '' : 'disabled'}>1회 <small><img class="ui-ic tk-ic sp" src="img/ui/ticket_special.webp" alt="스페셜 소환권">1</small></button><button class="gr-go gr-go10" data-draw="10" data-sp="1" ${spOpen && (window.VRSpecial.tickets | 0) >= 10 ? '' : 'disabled'}>10회 <small><img class="ui-ic tk-ic sp" src="img/ui/ticket_special.webp" alt="스페셜 소환권">10</small></button>`
         : `<button class="gr-go" data-draw="1" ${(tickets | 0) >= 1 ? '' : 'disabled'}>1회 <small>${ICN('ticket', '🎟️')}1</small></button><button class="gr-go gr-go10" data-draw="10" ${(tickets | 0) >= 10 ? '' : 'disabled'} title="HR 이상 1장 보장">10회 <small>${ICN('ticket', '🎟️')}10</small></button>${urTickets ? `<button class="gr-go gr-go-ur" data-draw="1" data-ur="1" title="고급 소환 UR 11명 중 1명 확정">UR 확정 <small>🎫1</small></button>` : ''}`}</div>
       ${daily || pickup ? '' : `<div class="gr-gem" id="gr-gem">${gemRow()}</div>`}</div>`, 'gacha');
     gateLayout(); preloadGachaVideo();

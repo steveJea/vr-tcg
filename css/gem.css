@@ -230,3 +230,9 @@
 .drk-name.free { color: #4ade80; }
 .drk-ic.paid { filter: drop-shadow(0 0 3px rgba(251, 191, 36, .55)); }
 .drk-ic.free { filter: drop-shadow(0 0 3px rgba(74, 222, 128, .5)); }
+
+/* 프리미엄(빨강) · 스페셜(청록) 소환권 구분 — img/ui/ticket.webp · ticket_special.webp */
+.tk-name { font-weight: 700; }
+.tk-name.prem { color: #f87171; }
+.tk-name.sp { color: #22d3ee; }
+.tk-ic.sp { filter: drop-shadow(0 0 3px rgba(34, 211, 238, .55)); }

@@ -52,7 +52,7 @@
     const x2 = p.tab === 'charge' && p.first_open ? '<span class="shop-x2">첫 구매 ×2</span>' : '';
     const ui = f => `<img class="ui-ic" src="img/ui/${f}.webp" alt="">`;
     const ic = p.tab === 'charge' ? GEM : p.tab === 'pass' ? ui('star') : p.tab === 'popup' ? ui('reward') : p.grant?.special_tickets ? SPT : p.grant?.tickets ? TK : ui('level_up');
-    return `<article class="shop-card shop-${esc(p.tab)}">${x2}<div class="shop-card-h"><span class="shop-ic">${ic}</span><b>${esc(p.name)}</b></div>
+    return `<article class="shop-card shop-${esc(p.tab)}">${x2}<div class="shop-card-h"><span class="shop-ic">${ic}</span><b${p.grant?.special_tickets ? ' class="tk-name sp"' : p.grant?.tickets && p.tab === 'pack' ? ' class="tk-name prem"' : ''}>${esc(p.name)}</b></div>
       ${p.tab === 'charge' ? `<p class="shop-bonus">${esc(gemText(p))}</p>` : `<p>${drk(esc(p.blurb))}</p>`}
       <p class="shop-price">${n(p.price_krw)}원</p>${limitText(p)}
       <button type="button" class="shop-go ${done ? '' : 'test'}" data-sku="${esc(p.sku)}" ${done || !test ? 'disabled' : ''}>${label}</button></article>`;
@@ -90,7 +90,7 @@
     const items = cache?.gem_items || [], gear = cache?.gear || [], R = cache?.gear_rates || {};
     const icOf = g => g.grant?.special_tickets ? SPT : g.grant?.tickets ? TK : g.grant?.drink ? DRK : GEM;
     const rows = items.map(g => { const k = qty[g.sku] || 1;
-      return `<div class="shop-qrow"><span class="shop-ic">${icOf(g)}</span><div class="shop-qmeta"><b>${g.grant?.drink ? `<span class="drk-name paid">${esc(g.name)}</span>` : esc(g.name)}</b><small>${GEM}${n(g.price)} / 1개</small></div>
+      return `<div class="shop-qrow"><span class="shop-ic">${icOf(g)}</span><div class="shop-qmeta"><b${g.grant?.special_tickets ? ' class="tk-name sp"' : g.grant?.tickets ? ' class="tk-name prem"' : ''}>${g.grant?.drink ? `<span class="drk-name paid">${esc(g.name)}</span>` : esc(g.name)}</b><small>${GEM}${n(g.price)} / 1개</small></div>
         <div class="shop-qty"><button type="button" data-q="${esc(g.sku)}" data-d="-1" aria-label="빼기">−</button><input type="number" inputmode="numeric" min="1" max="${g.max_qty | 0}" value="${k}" data-qi="${esc(g.sku)}" aria-label="${esc(g.name)} 수량"><button type="button" data-q="${esc(g.sku)}" data-d="1" aria-label="더하기">＋</button></div>
         <button type="button" class="shop-go" data-gem-item="${esc(g.sku)}">${GEM}${n(g.price * k)}</button></div>`; }).join('');
     const cells = gear.map(g => `<button type="button" class="shop-gear g-${esc(g.grade)} ${g.bought ? 'sold' : ''}" data-gear="${g.slot_no | 0}" ${g.bought ? 'disabled' : ''}>
