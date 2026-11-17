@@ -335,8 +335,8 @@ try {
   {
     const local = t => t.replaceAll("'7703759698107299042'", `'${system}'`);
     const { execFileSync } = await import('node:child_process');
-    const preFix = execFileSync('git', ['show', 'origin/staging:supabase/story_ch16_17.sql'], { cwd: new URL('..', import.meta.url), encoding: 'utf8' });
-    if (preFix.includes('battle_legacy_access_v2')) throw Error('origin/staging already has the fix; pin the pre-fix ref');
+    const preFix = execFileSync('git', ['show', '7c7a4e6da6aee9e09cb91628a7ba403becdda5f8:supabase/story_ch16_17.sql'], { cwd: new URL('..', import.meta.url), encoding: 'utf8' });
+    if (preFix.includes('battle_legacy_access_v2')) throw Error('pinned ref already has the fix');
     await db.exec(local(preFix));
     await unlockBefore(16, 12);
     await q(`update battle_sessions_v2 set issued_at=issued_at-interval '2 days' where user_id=$1 and party='[]' and status='settled'`, [me]);   // fixture rows, not today's issuance
