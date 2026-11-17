@@ -184,7 +184,7 @@
       let k = 0; img.onerror = () => { if (++k < urls.length) img.src = urls[k]; };
     });
     row.onclick = e => {
-      if (e.target.closest('#story-hub-btn, .main-story-hub')) return;
+      if (e.target.closest('#story-hub-btn, .main-story-hub, .ch-short-arrow, [data-ch-move]')) return;
       const b = e.target.closest('.ch-short'); if (!b || !row.contains(b)) return;
       if (b.classList.contains('locked') || b.getAttribute('aria-disabled') === 'true') {
         const msg = b.dataset.lock || '아직 열리지 않은 챕터예요';
@@ -195,8 +195,43 @@
       if (b.dataset.continue === '1') { window.VRStory?.playCurrent?.(); return; }
       if (Number.isFinite(i)) window.VRStory?.openMap?.(i);
     };
-    const cur = track.querySelector('.ch-short.cur') || track.querySelector('.ch-short:not(.locked)');
-    try { cur?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'instant' }); } catch {}
+    bindChSlider(row, Math.max(0, [...track.querySelectorAll('.ch-short')].findIndex(b => b.classList.contains('cur'))), track.querySelectorAll('.ch-short').length);
+  }
+  /** 소환 배너와 같이 한 장씩 · 화살표/밀기 · 0.3초 슬라이드. 첫 장은 왼쪽, 마지막은 오른쪽 화살표를 숨김 */
+  function bindChSlider(row, startIdx, n) {
+    const vp = $('ch-shortcuts-vp'), tr = $('ch-shortcuts-track');
+    const l = row.querySelector('.ch-short-l'), r = row.querySelector('.ch-short-r');
+    const st = row._chSlide || (row._chSlide = {});
+    st.n = n | 0; st.cur = Math.max(0, Math.min((n | 0) - 1, startIdx | 0)); st.moving = false;
+    const setArrows = () => { if (l) l.disabled = st.cur <= 0 || st.n <= 1; if (r) r.disabled = st.cur >= st.n - 1 || st.n <= 1; };
+    const setX = (i, anim) => { if (!tr) return; tr.classList.toggle('anim', !!anim); tr.style.transform = 'translateX(' + (-i * 100) + '%)'; };
+    const warm = i => { tr?.querySelectorAll('.ch-short-img').forEach((img, k) => { if (Math.abs(k - i) <= 1) img.loading = 'eager'; }); };
+    const reduce = () => !!(window.matchMedia || matchMedia)?.('(prefers-reduced-motion: reduce)')?.matches;
+    const go = d => {
+      const i = st.cur + d;
+      if (st.moving || !d || i < 0 || i >= st.n) { setX(st.cur, true); return; }
+      st.moving = true; st.cur = i; setArrows();
+      if (!tr || reduce()) { setX(i, false); st.moving = false; warm(i); return; }
+      setX(i, true);
+      let fired = false; const fin = ev => { if (ev && ev.propertyName && ev.propertyName !== 'transform') return; if (!fired) { fired = true; st.moving = false; warm(st.cur); } };
+      tr.addEventListener('transitionend', fin, { once: true }); setTimeout(fin, 420);
+    };
+    st.go = go;
+    setX(st.cur, false); setArrows(); warm(st.cur);
+    if (row.dataset.slideBound) return;
+    row.dataset.slideBound = '1';
+    row.querySelectorAll('[data-ch-move]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); st.go(+b.dataset.chMove); }));
+    if (!vp || !tr) return;
+    let x0 = null, y0 = 0, dx = 0, drag = false;
+    vp.addEventListener('pointerdown', e => { if (st.moving) return; x0 = e.clientX; y0 = e.clientY; dx = 0; drag = false; }, { passive: true });
+    vp.addEventListener('pointermove', e => {
+      if (x0 == null) return; dx = e.clientX - x0;
+      if (!drag && Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(e.clientY - y0)) { drag = true; tr.classList.remove('anim'); }
+      if (drag) tr.style.transform = 'translateX(calc(-' + (st.cur * 100) + '% + ' + dx + 'px))';
+    }, { passive: true });
+    const end = () => { if (x0 == null) return; x0 = null; if (!drag) return; const w = vp.clientWidth || 1; st.go(Math.abs(dx) > Math.min(60, w * .18) ? (dx < 0 ? 1 : -1) : 0); };
+    vp.addEventListener('pointerup', end); vp.addEventListener('pointercancel', end); vp.addEventListener('pointerleave', end);
+    vp.addEventListener('click', e => { if (drag) { e.stopPropagation(); e.preventDefault(); drag = false; } }, true);
   }
   async function paintHome() {
     const scr = $('start-screen'), u = user();
@@ -227,5 +262,5 @@
   // 패밀리 링크·저작권 → 설정 팝업 안으로
   { let k = 0; const mv = () => { const f = $('mbbs-footer'); if (f) $('gm-foot').appendChild(f); else if (++k < 40) setTimeout(mv, 150); }; mv(); }
   window.addEventListener('tcg:ready', paintHome);
-  window.VRMainMenu = { confirmYN, showIntro, hideIntro, paintHome, paintChShortcuts, chBannerSrcs };
+  window.VRMainMenu = { confirmYN, showIntro, hideIntro, paintHome, paintChShortcuts, chBannerSrcs, slideChShortcuts: d => { const row = $("ch-shortcuts"); row?._chSlide?.go?.(d); } };
 })();

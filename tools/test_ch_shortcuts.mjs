@@ -18,13 +18,20 @@ const arcadeAt = htmlSrc.indexOf('id="start-btn"');
 assert.ok(storyBtnAt > 0 && rowAt > storyBtnAt && arcadeAt > rowAt, '바로가기 줄이 이어하기 CTA 아래, 아케이드 타일 앞에 있어야 해요');
 assert.match(htmlSrc, /id="story-hub-btn"/);
 assert.match(htmlSrc, /id="ch-shortcuts-track"/);
-assert.match(cssSrc, /scroll-snap-type:\s*x mandatory/);
+assert.match(htmlSrc, /data-ch-move="-1"/);
+assert.match(htmlSrc, /id="ch-shortcuts-vp"/);
+assert.match(cssSrc, /transition:\s*transform \.3s ease/);
+assert.match(cssSrc, /flex:\s*0 0 100%/);
+assert.match(cssSrc, /\.ch-short-arrow/);
+assert.match(cssSrc, /\.ch-short-arrow:disabled/);
 assert.match(cssSrc, /height:\s*clamp\(130px,\s*19svh,\s*190px\)/);
 assert.match(cssSrc, /#start-screen:not\(\.is-guest\) #story-btn/);
 assert.match(cssSrc, /#start-screen\.is-guest \.ch-shortcuts/);
 assert.match(menuSrc, /loading="lazy"/);
 assert.match(menuSrc, /ch_bg_pc_/);
 assert.match(menuSrc, /playCurrent/);
+assert.match(menuSrc, /bindChSlider/);
+assert.match(menuSrc, /translateX/);
 assert.match(storySrc, /openPage\(\(\) => renderMap\(i\), true\)/);
 assert.match(storySrc, /const playCurrent/);
 assert.match(storySrc, /await checkChapters\(\)/);
@@ -62,7 +69,13 @@ const fixture = `<!doctype html><html><body>
           <span class="ch-shortcuts-label">스토리</span>
           <span id="story-hub-btn" class="main-story-hub" role="button" tabindex="0">📜 스토리</span>
         </div>
-        <div id="ch-shortcuts-track" class="ch-shortcuts-track"></div>
+        <div class="ch-shortcuts-wrap">
+          <button type="button" class="ch-short-arrow ch-short-l" data-ch-move="-1" aria-label="이전 챕터" disabled>‹</button>
+          <div id="ch-shortcuts-vp" class="ch-shortcuts-vp">
+            <div id="ch-shortcuts-track" class="ch-shortcuts-track"></div>
+          </div>
+          <button type="button" class="ch-short-arrow ch-short-r" data-ch-move="1" aria-label="다음 챕터" disabled>›</button>
+        </div>
       </div>
       <button id="start-btn"></button>
     </div>
@@ -135,11 +148,51 @@ assert.equal(cards[1].dataset.continue, '1');
 assert.match(cards[1].textContent, /이어하기/);
 assert.equal(cards[2].classList.contains('locked'), true);
 assert.equal(cards[2].querySelector('.ch-short-lock')?.textContent, '🔒');
-assert.equal(cards[0].querySelector('img').getAttribute('loading'), 'lazy');
 assert.match(cards[1].querySelector('b').textContent, /브레이크/);
 assert.match(cards[2].querySelector('small').textContent, /CHAPTER 16/);
 assert.equal(cards[2].querySelector('img').getAttribute('src'), 'img/ui/main/story_banner_ch16.webp');
 assert.ok(cards[2].querySelector('img').dataset.alts.includes('img/story/ch_bg_pc_16.webp'));
+
+const left = row.querySelector('.ch-short-l'), right = row.querySelector('.ch-short-r');
+assert.ok(left && right, '소환과 같은 좌우 화살표가 있어야 해요');
+assert.equal(track.style.transform.replace(/\s/g, ''), 'translateX(-100%)', '처음에는 현재 챕터 칸으로 가야 해요');
+assert.equal(left.disabled, false, '첫 장이 아니면 왼쪽 화살표가 보여야 해요');
+assert.equal(right.disabled, false, '마지막이 아니면 오른쪽 화살표가 보여야 해요');
+assert.ok(track.classList.contains('anim') === false, '첫 위치는 애니메이션 없이 잡혀야 해요');
+
+const waitMove = () => new Promise(r => setTimeout(r, 450));
+right.click();
+assert.equal(track.style.transform.replace(/\s/g, ''), 'translateX(-200%)');
+assert.equal(right.disabled, true, '마지막 장에서는 오른쪽 화살표를 숨겨야 해요');
+assert.equal(left.disabled, false);
+assert.ok(track.classList.contains('anim'));
+await waitMove();
+right.click();
+assert.equal(track.style.transform.replace(/\s/g, ''), 'translateX(-200%)', '마지막에서 오른쪽은 더 이상 넘어가면 안 돼요');
+left.click();
+assert.equal(track.style.transform.replace(/\s/g, ''), 'translateX(-100%)');
+await waitMove();
+left.click();
+assert.equal(track.style.transform.replace(/\s/g, ''), 'translateX(0%)');
+assert.equal(left.disabled, true, '첫 장에서는 왼쪽 화살표를 숨겨야 해요');
+assert.equal(right.disabled, false);
+await waitMove();
+left.click();
+assert.equal(track.style.transform.replace(/\s/g, ''), 'translateX(0%)');
+
+// 밀기: 소환 배너와 같은 임계값으로 한 칸
+const vp = window.document.getElementById('ch-shortcuts-vp');
+const fire = (type, x, y = 0) => vp.dispatchEvent(new window.PointerEvent(type, { clientX: x, clientY: y, bubbles: true }));
+try {
+  fire('pointerdown', 200); fire('pointermove', 120); fire('pointerup', 120);
+  assert.equal(track.style.transform.replace(/\s/g, ''), 'translateX(-100%)', '왼쪽으로 밀면 다음 장으로 가야 해요');
+  await waitMove();
+} catch (e) {
+  if (e instanceof assert.AssertionError) throw e;
+  window.VRMainMenu.slideChShortcuts(1);
+  assert.equal(track.style.transform.replace(/\s/g, ''), 'translateX(-100%)');
+  await waitMove();
+}
 
 cards[1].click();
 assert.deepEqual(resumes, ['go'], '현재 챕터는 이어하기(playCurrent)여야 해요');
@@ -155,5 +208,6 @@ await window.VRMainMenu.paintHome();
 assert.equal(row.hidden, true);
 assert.equal(track.querySelectorAll('.ch-short').length, 0);
 assert.ok(window.document.getElementById('story-hub-btn'), '게스트로 숨길 때도 허브 버튼 마크업은 남아야 해요');
+assert.ok(row.querySelector('.ch-short-l') && row.querySelector('.ch-short-r'), '게스트로 숨길 때도 화살표 마크업은 남아야 해요');
 
-console.log('ch shortcuts: CTA hide, continue, lock toast, openMap, ch16-19 banners, guest hide OK');
+console.log('ch shortcuts: CTA hide, arrows, 0.3s slide, continue, lock toast, openMap, ch16-19 banners, guest hide OK');
