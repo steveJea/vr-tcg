@@ -40,11 +40,11 @@ set local check_function_bodies = off;
 
 do $vr_install_part$
 begin
-  if exists (select 1 from vr_staging_install.parts where bundle_hash <> 'a0fec3baf9c691dbf5af19e48e24fae6d6874bd290507e2561bf81f42788e646' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
+  if exists (select 1 from vr_staging_install.parts where bundle_hash <> '152a5ecf251ddab22e48c3207528707d795d25df81776f51043864037ba27df1' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
     raise exception 'STOP: 다른 버전/DB의 설치 기록입니다. 파일을 섞지 마세요.';
   end if;
   if exists (select 1 from vr_staging_install.parts where part_no = 8) then
-    if not exists (select 1 from vr_staging_install.parts where part_no = 8 and part_hash = '7f9c888ca804d338519718175ab6b1aab63a41fd459349e1af84ae06fbb33755') then
+    if not exists (select 1 from vr_staging_install.parts where part_no = 8 and part_hash = '12b974d8c9c6dd6afe5acbe8907cce56008f87caa8c5461440fcc3adc8b0aa63') then
       raise exception 'STOP: 완료한 파일과 내용이 다릅니다.';
     end if;
     raise notice '08_install.sql: 이미 완료, 변경 없이 건너뜀';
@@ -1761,6 +1761,19 @@ on conflict (card_id, idx) do update set unlock = excluded.unlock;$vr_statement$
   ('10531','SUPER RARE',35),
   ('10532','SUPER RARE',35)
 on conflict (id) do update set grade = excluded.grade, cost = excluded.cost;$vr_statement$;
+  execute $vr_statement$-- ===== SOURCE: card_10533.sql =====
+-- =====================================================================
+-- 2026-11-17 신규 카드 우승찬(10533, RARE, 코스트 25): 카드 목록 · PVP 덱 검증 · 도감 카탈로그 FK
+-- 시트 NPC 칸이 비어 있어 플레이어 카드. 프로필만 있고 스킬 없음. 뽑기 풀에는 넣지 않음 (gacha = false, 11-11 신규 카드와 같음).
+-- staging_install.sql 에 포함 (security_phase1_rewards.sql 의 reward_card_catalog 보다 먼저). 여러 번 실행해도 안전. 삭제 없음.
+-- tools/build_ch18_19_sql.py 가 생성.
+-- =====================================================================
+insert into public.story_card_pool (id, grade, name, gacha) values
+  ('10533','RARE','우승찬',false)
+on conflict (id) do update set grade = excluded.grade, name = excluded.name;$vr_statement$;
+  execute $vr_statement$insert into public.pvp_card_meta (id, grade, cost) values
+  ('10533','RARE',25)
+on conflict (id) do update set grade = excluded.grade, cost = excluded.cost;$vr_statement$;
   execute $vr_statement$-- ===== SOURCE: gacha_premium_ur.sql =====
 -- =====================================================================
 -- 고급 소환(소환권 뽑기) UR 고정 목록. 새 UR 카드는 자동으로 들어가지 않음 (이 표에 넣어야 나옴)
@@ -1873,18 +1886,9 @@ begin
   end loop;
   return jsonb_build_object('chapter', p_chapter, 'total', tot, 'max', mx, 'milestones', ms);
 end $$;$vr_statement$;
-  execute $vr_statement$-- 전체 챕터 현황 (지도 표시용)
-create or replace function public.story_star_status() returns jsonb language plpgsql stable security definer set search_path = public as $$
-declare me uuid := auth.uid(); d jsonb; r jsonb := '[]'::jsonb; c int;
-begin
-  if me is null then raise exception 'login required'; end if;
-  select data into d from story_progress where user_id = me; d := coalesce(d, '{}'::jsonb);
-  for c in select distinct chapter from story_phase_config order by 1 loop r := r || _star_chapter(d, c); end loop;
-  return r;
-end $$;$vr_statement$;
 
   insert into vr_staging_install.parts(part_no, bundle_hash, part_hash, project_ref, db_id)
-  values (8, 'a0fec3baf9c691dbf5af19e48e24fae6d6874bd290507e2561bf81f42788e646', '7f9c888ca804d338519718175ab6b1aab63a41fd459349e1af84ae06fbb33755', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
+  values (8, '152a5ecf251ddab22e48c3207528707d795d25df81776f51043864037ba27df1', '12b974d8c9c6dd6afe5acbe8907cce56008f87caa8c5461440fcc3adc8b0aa63', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
 end $vr_install_part$;
 commit;
 select '08_install.sql: 완료 또는 이미 완료 (8/14)' as result;

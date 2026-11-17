@@ -40,11 +40,11 @@ set local check_function_bodies = off;
 
 do $vr_install_part$
 begin
-  if exists (select 1 from vr_staging_install.parts where bundle_hash <> 'a0fec3baf9c691dbf5af19e48e24fae6d6874bd290507e2561bf81f42788e646' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
+  if exists (select 1 from vr_staging_install.parts where bundle_hash <> '152a5ecf251ddab22e48c3207528707d795d25df81776f51043864037ba27df1' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
     raise exception 'STOP: 다른 버전/DB의 설치 기록입니다. 파일을 섞지 마세요.';
   end if;
   if exists (select 1 from vr_staging_install.parts where part_no = 10) then
-    if not exists (select 1 from vr_staging_install.parts where part_no = 10 and part_hash = 'ede483c33833e5a75f9da380b31d127d165ecd7547e39b4c69c94c31f85dc26e') then
+    if not exists (select 1 from vr_staging_install.parts where part_no = 10 and part_hash = '0da5d7fb51f7b8693fabeffe4de02914e249ee20d3bc91b932f60c598fd84da0') then
       raise exception 'STOP: 완료한 파일과 내용이 다릅니다.';
     end if;
     raise notice '10_install.sql: 이미 완료, 변경 없이 건너뜀';
@@ -55,6 +55,29 @@ begin
   end if;
   -- 설치 도중에는 클라이언트가 미완성 게임 스키마에 접근하지 못함. 마지막에만 개방.
   revoke usage on schema public from public, anon, authenticated;
+  execute $vr_statement$-- ===== SOURCE: batch_ui_bugs.sql =====
+-- 2026-11-05 batch UI bugs: 방치 빠른보상 · 파견 같은 인재 · 거래소 닉네임 · 스토리 소탕 미션
+-- 선행: idle_box.sql · dispatch.sql · trade_direct.sql · gear_sigil.sql(story_sweep) · daily.sql · daily_social.sql
+-- 여러 번 실행해도 안전 (함수 교체만)
+
+-- 1) idle_box_boost: boost_n 컬럼/변수 모호함 → 변수명 v_n
+create or replace function public.idle_box_boost() returns jsonb language plpgsql security definer set search_path = public as $$
+declare uid uuid := auth.uid(); r idle_box; today date := _gem_day(); v_n int; got jsonb; res jsonb; gem jsonb;
+begin
+  if uid is null then raise exception 'login required'; end if;
+  perform pg_advisory_xact_lock(hashtext('idle:' || uid::text));
+  perform pg_advisory_xact_lock(hashtext('gem:' || uid::text));
+  r := _idle_row(uid);
+  v_n := case when r.boost_day = today then r.boost_n else 0 end;
+  if v_n >= _idle_boost_max() then raise exception 'daily limit'; end if;
+  got := _idle_amt(_idle_rate(_idle_plv(uid)), _idle_boost_hours());
+  gem := _gem_spend(uid, _idle_boost_cost(), 'idle_boost', jsonb_build_object('hours', _idle_boost_hours()));
+  res := _idle_grant(uid, got, 'idle_boost');
+  update idle_box set boost_day = today, boost_n = v_n + 1, updated_at = now() where user_id = uid;
+  select * into r from idle_box where user_id = uid;
+  return _idle_json(uid, r) || res || jsonb_build_object('got', got, 'gem', gem);
+end $$;$vr_statement$;
+  execute $vr_statement$revoke all on function public.idle_box_boost() from public, anon;$vr_statement$;
   execute $vr_statement$grant execute on function public.idle_box_boost() to authenticated;$vr_statement$;
   execute $vr_statement$-- 2) dispatch_start: 같은 카드 id(사본 포함) 한 파티·진행 중 파견에 중복 금지
 create or replace function public.dispatch_start(p_slot int, p_uids text[], p_hours int) returns jsonb language plpgsql security definer set search_path = public as $$
@@ -995,7 +1018,8 @@ create table if not exists public.reward_card_catalog (
   ('10529'),
   ('10530'),
   ('10531'),
-  ('10532')
+  ('10532'),
+  ('10533')
 on conflict do nothing;$vr_statement$;
   execute $vr_statement$create or replace function public._gallery_total() returns int
 language sql stable security definer set search_path = pg_catalog, public, pg_temp as $$
@@ -1745,7 +1769,7 @@ on conflict (chapter,phase,variant) do update set definition=excluded.definition
 on conflict (chapter,phase,variant) do update set definition=excluded.definition;$vr_statement$;
 
   insert into vr_staging_install.parts(part_no, bundle_hash, part_hash, project_ref, db_id)
-  values (10, 'a0fec3baf9c691dbf5af19e48e24fae6d6874bd290507e2561bf81f42788e646', 'ede483c33833e5a75f9da380b31d127d165ecd7547e39b4c69c94c31f85dc26e', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
+  values (10, '152a5ecf251ddab22e48c3207528707d795d25df81776f51043864037ba27df1', '0da5d7fb51f7b8693fabeffe4de02914e249ee20d3bc91b932f60c598fd84da0', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
 end $vr_install_part$;
 commit;
 select '10_install.sql: 완료 또는 이미 완료 (10/14)' as result;

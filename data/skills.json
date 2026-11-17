@@ -4580,5 +4580,165 @@
    "fx": "10532_2.webp",
    "note": ""
   }
+ ],
+ "10534": [
+  {
+   "card": "[상념] 민홍기",
+   "name": "용서가...안...되는...데?",
+   "type": "공격",
+   "mode": "active",
+   "target": "적 전체",
+   "desc": "적 전체를 공격력 10%로 3회 타격한다. 10% 확률로 혼란.",
+   "value": "10%",
+   "duration": 1,
+   "mp": 50,
+   "cooldown": 5,
+   "unlock": 2,
+   "fx": "10534_1.webp",
+   "note": ""
+  },
+  {
+   "card": "[상념] 민홍기",
+   "name": "절대...복수한...다...",
+   "type": "공격",
+   "mode": "active",
+   "target": "적 전체",
+   "desc": "적 전체를 공격력 10%로 5회 타격한다. 10% 확률로 혼란.",
+   "value": "10%",
+   "duration": 1,
+   "mp": 60,
+   "cooldown": 6,
+   "unlock": 5,
+   "fx": "10534_2.webp",
+   "note": ""
+  }
+ ],
+ "10535": [
+  {
+   "card": "어린 임예리",
+   "name": "어른들이란...",
+   "type": "버프",
+   "mode": "active",
+   "target": "아군 전체",
+   "desc": "품성이 75 이상인 아군 여성은 2턴 간 피해 면역이 된다.",
+   "value": "",
+   "duration": 2,
+   "mp": 30,
+   "cooldown": 3,
+   "unlock": 2,
+   "fx": "10535_1.webp",
+   "note": ""
+  },
+  {
+   "card": "어린 임예리",
+   "name": "빠르고 쉽게 가시죠?",
+   "type": "공격",
+   "mode": "active",
+   "target": "적 전체",
+   "desc": "적 전체를 공격력 20%로 3회 타격한다.",
+   "value": "20%",
+   "duration": 0,
+   "mp": 40,
+   "cooldown": 4,
+   "unlock": 5,
+   "fx": "10535_2.webp",
+   "note": ""
+  },
+  {
+   "card": "어린 임예리",
+   "name": "이게 여러분의 선택인가요?",
+   "type": "공격",
+   "mode": "active",
+   "target": "적 전체",
+   "desc": "적 전체를 공격력 30%로 5회 타격한다. 상대방 사망 자 수에 비례하여 쿨타임이 회복된다. (사망자 수 * 쿨타임(-1))",
+   "value": "30%",
+   "duration": 0,
+   "mp": 50,
+   "cooldown": 5,
+   "unlock": 7,
+   "fx": "10535_3.webp",
+   "note": ""
+  }
+ ],
+ "10536": [
+  {
+   "card": "어린 최국선",
+   "name": "아무것도 느낄 수 없어!",
+   "type": "공격",
+   "mode": "active",
+   "target": "적 단일",
+   "desc": "가장 공격력이 높은 적과 양 옆의 적에게 공격력 15%로 4회 타격한다.",
+   "value": "15%",
+   "duration": 0,
+   "mp": 40,
+   "cooldown": 3,
+   "unlock": 2,
+   "fx": "10536_1.webp",
+   "note": ""
+  }
+ ],
+ "10537": [
+  {
+   "card": "어린 민지은",
+   "name": "이정도는 가뿐하다고요!",
+   "type": "버프",
+   "mode": "active",
+   "target": "아군 전체",
+   "desc": "품성이 75 이상인 아군 여성은 2턴 간 피해 면역이 된다.",
+   "value": "",
+   "duration": 2,
+   "mp": 30,
+   "cooldown": 3,
+   "unlock": 2,
+   "fx": "10537_1.webp",
+   "note": ""
+  },
+  {
+   "card": "어린 민지은",
+   "name": "난...버려진 게 아니라고요!",
+   "type": "공격",
+   "mode": "active",
+   "target": "적 전체",
+   "desc": "적 전체를 공격력 20%로 3회 타격한다.",
+   "value": "20%",
+   "duration": 0,
+   "mp": 40,
+   "cooldown": 4,
+   "unlock": 5,
+   "fx": "10537_2.webp",
+   "note": ""
+  }
+ ],
+ "10538": [
+  {
+   "card": "어린 장초롱",
+   "name": "예리 언니만 있으면 돼!",
+   "type": "버프",
+   "mode": "active",
+   "target": "아군 전체",
+   "desc": "품성이 75 이상인 아군 여성은 2턴 간 피해 면역이 된다.",
+   "value": "",
+   "duration": 2,
+   "mp": 30,
+   "cooldown": 3,
+   "unlock": 2,
+   "fx": "10538_1.webp",
+   "note": ""
+  },
+  {
+   "card": "어린 장초롱",
+   "name": "난 착한 어린이가 아니야!",
+   "type": "공격",
+   "mode": "active",
+   "target": "적 전체",
+   "desc": "적 전체를 공격력 20%로 3회 타격한다.",
+   "value": "20%",
+   "duration": 0,
+   "mp": 40,
+   "cooldown": 4,
+   "unlock": 5,
+   "fx": "10538_2.webp",
+   "note": ""
+  }
  ]
 }

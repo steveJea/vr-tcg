@@ -40,11 +40,11 @@ set local check_function_bodies = off;
 
 do $vr_install_part$
 begin
-  if exists (select 1 from vr_staging_install.parts where bundle_hash <> 'a0fec3baf9c691dbf5af19e48e24fae6d6874bd290507e2561bf81f42788e646' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
+  if exists (select 1 from vr_staging_install.parts where bundle_hash <> '152a5ecf251ddab22e48c3207528707d795d25df81776f51043864037ba27df1' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
     raise exception 'STOP: 다른 버전/DB의 설치 기록입니다. 파일을 섞지 마세요.';
   end if;
   if exists (select 1 from vr_staging_install.parts where part_no = 14) then
-    if not exists (select 1 from vr_staging_install.parts where part_no = 14 and part_hash = 'd0e181dd09eaeb4bebd771445ddd10fd01527420ffa911d3c477e55b3b768804') then
+    if not exists (select 1 from vr_staging_install.parts where part_no = 14 and part_hash = 'ba4811b832c8809aea613372bb1bdb8d633a421472d5bc8ea3481854b9bacf86') then
       raise exception 'STOP: 완료한 파일과 내용이 다릅니다.';
     end if;
     raise notice '14_install.sql: 이미 완료, 변경 없이 건너뜀';
@@ -55,6 +55,122 @@ begin
   end if;
   -- 설치 도중에는 클라이언트가 미완성 게임 스키마에 접근하지 못함. 마지막에만 개방.
   revoke usage on schema public from public, anon, authenticated;
+  execute $vr_statement$create or replace function public._war_sum_v4(a jsonb, b jsonb) returns jsonb language sql immutable as $$
+  select coalesce(jsonb_object_agg(k, coalesce((a->>k)::int, 0) + coalesce((b->>k)::int, 0)), '{}'::jsonb) from (select jsonb_object_keys(a) k union select jsonb_object_keys(b)) x $$;$vr_statement$;
+  execute $vr_statement$create or replace function public._war_pending_v4(p_uid uuid) returns jsonb language plpgsql stable security definer set search_path=pg_catalog,public,pg_temp as $$
+declare out jsonb := '[]'::jsonb; r record; N jsonb := _war_numbers_v4(); rk int;
+begin
+  for r in select mt.*, wr.guild_id gid from war_roster_v4 wr join war_matches_v4 mt on mt.season = wr.season and (mt.guild_a = wr.guild_id or mt.guild_b = wr.guild_id)
+            where wr.user_id = p_uid and mt.settled and wr.season >= _war_season_v4() - 62 loop
+    continue when exists (select 1 from guild_claims where user_id = p_uid and ref = 'warm:' || r.id || ':v4');
+    out := out || jsonb_build_object('ref', 'warm:' || r.id, 'gid', r.gid, 'reward', case when r.draw then N->'match_draw' when r.winner is distinct from r.gid then N->'match_loss' else (N->'match_win') ||
+      case when r.boss_kill then _war_sum_v4(N->'match_win', N->'match_boss_kill') else '{}'::jsonb end end);
+  end loop;
+  for r in select wr.season, wr.guild_id from war_roster_v4 wr join war_entries_v4 e on e.season = wr.season and e.guild_id = wr.guild_id and e.status = 'in' and e.locked and (select count(distinct wm.day) from war_matches_v4 wm where wm.season=wr.season and (wm.guild_a=wr.guild_id or wm.guild_b=wr.guild_id) and wm.settled)=5
+            where wr.user_id = p_uid and wr.season >= _war_season_v4() - 62 and _war_now_v4() >= _war_at_v4(wr.season, 5, (N->>'close_hour')::int) loop
+    continue when exists (select 1 from guild_claims where user_id = p_uid and ref = 'wars:' || r.season || ':v4');
+    select x.rk into rk from (select guild_id, row_number() over (order by points desc, boss_kills desc, score_total desc, guild_id) rk from war_entries_v4 where season = r.season and status = 'in') x where x.guild_id = r.guild_id;
+    out := out || jsonb_build_object('ref', 'wars:' || r.season, 'gid', r.guild_id, 'rank', rk, 'reward', _war_sum_v4(N->'season_member',
+      coalesce((select q->'reward' from jsonb_array_elements(N->'season_rank') q where rk between (q->>'from')::int and (q->>'to')::int), '{}'::jsonb)));
+  end loop;
+  return out;
+end $$;$vr_statement$;
+  execute $vr_statement$create or replace function public._war_claimable_v4() returns int language sql stable security definer set search_path=pg_catalog,public,pg_temp as $$ select jsonb_array_length(_war_pending_v4(auth.uid())) $$;$vr_statement$;
+  execute $vr_statement$create or replace function public._war_claim_v4() returns jsonb language plpgsql security definer set search_path=pg_catalog,public,pg_temp as $$
+declare uid uuid := auth.uid(); p jsonb; x jsonb; got jsonb := '{}'::jsonb; k text;
+begin
+  if uid is null then raise exception 'login required'; end if;
+  perform _war_tick_v4();
+  p := _war_pending_v4(uid);
+  if jsonb_array_length(p) = 0 then raise exception 'nothing to claim'; end if;
+  for x in select * from jsonb_array_elements(p) loop
+    perform _guild_reward_v4(uid, (x->>'gid')::bigint, x->'reward', 'war_reward', x->>'ref');
+    for k in select jsonb_object_keys(x->'reward') loop got := jsonb_set(got, array[k], to_jsonb(coalesce((got->>k)::int, 0) + (x->'reward'->>k)::int)); end loop;
+    if x ? 'rank' then got := got || jsonb_build_object('rank', x->'rank'); end if;
+  end loop;
+  return _war_status_v4() || jsonb_build_object('got', got);
+end $$;$vr_statement$;
+  execute $vr_statement$create or replace function public._war_leader_card_v4(p_uid uuid) returns text language sql stable security definer set search_path=pg_catalog,public,pg_temp as $$
+  select o->>'id' from story_progress sp, jsonb_array_elements(coalesce(sp.data->'owned', '[]'::jsonb)) o where sp.user_id = p_uid and o->>'uid' = sp.data->>'leader' limit 1 $$;$vr_statement$;
+  execute $vr_statement$create or replace function public._war_ui_v4() returns jsonb language plpgsql security definer set search_path=pg_catalog,public,pg_temp as $$
+declare uid uuid := auth.uid(); m guild_members; s date; d int; mid bigint;
+begin
+  if uid is null then raise exception 'login required'; end if;
+  s := _war_season_v4(); d := _war_day_v4(s); m := _guild_me(uid);
+  if m.user_id is null then return jsonb_build_object('ok', true, 'signed', '[]'::jsonb, 'me_signed', false, 'cards', '{}'::jsonb); end if;
+  select id into mid from war_matches_v4 where season = s and day = d and (guild_a = m.guild_id or guild_b = m.guild_id);
+  return jsonb_build_object('ok', true,
+    'signed', (select coalesce(jsonb_agg(user_id), '[]'::jsonb) from war_signups where season = s and guild_id = m.guild_id),
+    'me_signed', exists (select 1 from war_signups where season = s and user_id = uid),
+    'cards', (select coalesce(jsonb_object_agg(u, _war_leader_card_v4(u)) filter (where _war_leader_card_v4(u) is not null), '{}'::jsonb) from (
+       select gm.user_id u from guild_members gm where gm.guild_id = m.guild_id
+       union select a.user_id from war_ajits_v4 a where a.match_id = mid and a.user_id is not null) x));
+end $$;$vr_statement$;
+  execute $vr_statement$create or replace function public._war_min_level_v4() returns int language sql immutable as $$ select 3 $$;$vr_statement$;
+  execute $vr_statement$create or replace function public._war_card_score_v4(p_id text, p_level int, p_ex int) returns numeric language sql stable security definer set search_path=pg_catalog,public,pg_temp as $$
+  select coalesce((select case m.grade when 'LEGENDARY RARE' then 7 when 'MYTHIC RARE' then 6 when 'ULTRA RARE' then 5 when 'SUPER RARE' then 4 when 'HIGH RARE' then 3 when 'RARE' then 2 else 1 end
+                   from pvp_card_meta m where m.id = p_id), 0) * 1000 + coalesce(p_level, 1) * 20 + coalesce(p_ex, 0) * 50 $$;$vr_statement$;
+  execute $vr_statement$create or replace function public._war_power_v4(p_user uuid) returns numeric language sql stable security definer set search_path=pg_catalog,public,pg_temp as $$
+  select coalesce(sum(_war_card_score_v4(x->>'id', (x->>'level')::int, (x->>'ex')::int)), 0) from story_progress sp,
+    jsonb_array_elements(case when jsonb_typeof(sp.data->'owned') = 'array' then sp.data->'owned' else '[]'::jsonb end) x
+  where sp.user_id = p_user and x->>'uid' in (select jsonb_array_elements_text(_war_top5(p_user))) $$;$vr_statement$;
+  execute $vr_statement$create or replace function public._war_auto_deck_v4(p_user uuid) returns void language plpgsql security definer set search_path=pg_catalog,public,pg_temp as $$
+declare t jsonb; sn jsonb;
+begin
+  if p_user is null then return; end if;
+  if exists (select 1 from war_decks_v4 where user_id = p_user and def1 is not null and atk1 is not null) then return; end if;
+  t := _war_top5(p_user); if jsonb_array_length(t) = 0 then return; end if;
+  begin sn := _pvp_snap(p_user, t, 'open')->'cards'; exception when others then return; end;
+  insert into war_decks_v4 (user_id) values (p_user) on conflict do nothing;
+  update war_decks_v4 set def1 = coalesce(def1, case when def2 is null or not exists (select 1 from jsonb_array_elements(sn) a, jsonb_array_elements(def2) b where a->>'id' = b->>'id') then sn end),
+                       atk1 = coalesce(atk1, case when atk2 is null or not exists (select 1 from jsonb_array_elements(sn) a, jsonb_array_elements(atk2) b where a->>'id' = b->>'id') then sn end),
+                       updated_at = now() where user_id = p_user;
+end $$;$vr_statement$;
+  execute $vr_statement$create or replace function public._war_auto_enter_v4(p_season date) returns void language sql security definer set search_path=pg_catalog,public,pg_temp as $$
+  insert into war_entries_v4 (season, guild_id) select p_season, g.id from guilds g where g.level >= _war_min_level_v4() and (not exists(select 1 from guildbattle_test_clock_v4 where expires_at>clock_timestamp()) or g.id in(select unnest(guild_ids) from guildbattle_test_clock_v4 where singleton)) on conflict do nothing $$;$vr_statement$;
+  execute $vr_statement$create or replace function public._war_auto_assign_v4() returns jsonb language plpgsql security definer set search_path=pg_catalog,public,pg_temp as $$
+declare uid uuid := auth.uid(); m guild_members; s date := _war_tick_v4(); e war_entries_v4; u record; i int := 0;
+        ord int[] := array[14,1,2,3,4,5,6,7,8,9,10,11,12,13,15,16,17,18,19,20,21];
+begin
+  m := _guild_me(uid);
+  if m.user_id is null or m.role <> 'boss' then raise exception 'not allowed'; end if;
+  select * into e from war_entries_v4 where season = s and guild_id = m.guild_id;
+  if e.guild_id is null then raise exception 'not entered'; end if;
+  if e.locked then raise exception 'roster locked'; end if;
+  delete from war_roster_v4 where season = s and guild_id = m.guild_id;
+  for u in select gm.user_id from guild_members gm where gm.guild_id = m.guild_id order by _war_power_v4(gm.user_id) desc, gm.joined_at loop
+    i := i + 1; exit when i > 21;
+    insert into war_roster_v4 (season, guild_id, slot, user_id) values (s, m.guild_id, ord[i], u.user_id);
+    perform _war_auto_deck_v4(u.user_id);
+  end loop;
+  return _war_status_v4();
+end $$;$vr_statement$;
+  execute $vr_statement$create or replace function public._war_meta_v4() returns jsonb language plpgsql stable security definer set search_path=pg_catalog,public,pg_temp as $$
+declare uid uuid := auth.uid(); m guild_members;
+begin
+  if uid is null then raise exception 'login required'; end if;
+  m := _guild_me(uid);
+  return jsonb_build_object('ok', true, 'min_level', _war_min_level_v4(),
+    'guild_level', (select level from guilds where id = m.guild_id),
+    'need_deck', m.user_id is not null and not exists (select 1 from war_decks_v4 d where d.user_id = uid and d.def1 is not null and d.atk1 is not null));
+end $$;$vr_statement$;
+  execute $vr_statement$create or replace function public._raid_start_v4(p_uids jsonb) returns jsonb language plpgsql security definer set search_path=pg_catalog,public,pg_temp as $$
+declare uid uuid := auth.uid(); m guild_members; w date := _raid_week_v4(); r guild_raids_v4; N jsonb := _raid_numbers_v4(); snap jsonb; seed bigint; aid bigint;
+begin
+  m := _guild_me(uid);
+  if m.user_id is null then raise exception 'not in guild'; end if;
+  if _raid_now_v4() >= _raid_end_v4(w) then raise exception 'raid ended'; end if;
+  perform pg_advisory_xact_lock(hashtext('raid:' || uid));
+  -- 끝내지 않은 판은 0 피해로 마감 (횟수는 이미 씀)
+  update guild_raid_attempts_v4 set finished_at = now(), damage = 0 where user_id = uid and finished_at is null;
+  if _guildbattle_used_v4(uid,'raid') >= (N->>'attempts_per_day')::int then raise exception 'no attempts'; end if;
+  r := _raid_get_v4(m.guild_id, w);
+  snap := _pvp_snap(uid, p_uids, 'open')->'cards';
+  seed := floor(random() * 2147483647)::bigint;
+  insert into guild_raid_attempts_v4 (user_id, guild_id, week, day, kind, stage, difficulty, seed, snap)
+    values (uid, m.guild_id, w, _raid_day_v4(), 'fight', r.stage, r.difficulty, seed, snap) returning id into aid;
+  return jsonb_build_object('ok', true, 'id', aid, 'seed', seed, 'deck', snap, 'stage', r.stage, 'difficulty', r.difficulty, 'boss', _raid_boss_v4(r.stage));
+end $$;$vr_statement$;
   execute $vr_statement$create or replace function public._war_start_v4(p_slot int, p_deck int) returns jsonb language plpgsql security definer set search_path=pg_catalog,public,pg_temp as $$
 declare uid uuid := auth.uid(); s date; d int; N jsonb := _war_numbers_v4(); m guild_members; mt war_matches_v4; my int; me war_ajits_v4; t war_ajits_v4; st war_atk_state_v4; snap jsonb;
         atk jsonb; def jsonb; seed bigint; aid bigint; ab jsonb; db jsonb;
@@ -656,7 +772,7 @@ notify pgrst,'reload schema';$vr_statement$;
 -- Phase5 cluster guard is enforced by installer outer guard.
 create table if not exists public.arcade_policy_v5 (
  singleton boolean primary key default true check(singleton), enabled boolean not null default true, engine_hash text not null check(engine_hash ~ '^[a-f0-9]{64}$'));$vr_statement$;
-  execute $vr_statement$insert into public.arcade_policy_v5(singleton,engine_hash) values(true,'7da716ef3eaf736cda2f07bd87f5a96d399deb4f6b09dc9c1debf123a0133885')
+  execute $vr_statement$insert into public.arcade_policy_v5(singleton,engine_hash) values(true,'fc7c0deaec9781badc9adc4b6895bbc2bc39ffe42e51dc3ae4deab647790e063')
 on conflict(singleton) do update set engine_hash=excluded.engine_hash;$vr_statement$;
   execute $vr_statement$create table if not exists public.arcade_sessions_v5 (
  id bigint generated always as identity primary key,
@@ -888,7 +1004,7 @@ create table if not exists public.battle_replay_policy_v6 (
  engine_hash text not null check (engine_hash ~ '^[a-f0-9]{64}$'));$vr_statement$;
   execute $vr_statement$-- Starts off. Re-running this file updates the engine hash only and does not turn enforcement on.
 insert into public.battle_replay_policy_v6(singleton, enabled, engine_hash)
- values (true, false, '68de135b3c27c9f1bf5828605c0aa68b591c8ad18167dcb473e9aa5037748f9f')
+ values (true, false, 'ad59546b94862bbb09cbd63692b21709f9729e035ddf54456664ead9eb927d57')
  on conflict (singleton) do update set engine_hash = excluded.engine_hash;$vr_statement$;
   execute $vr_statement$alter table public.battle_replay_policy_v6 enable row level security;$vr_statement$;
   execute $vr_statement$revoke all on public.battle_replay_policy_v6 from public, anon, authenticated;$vr_statement$;
@@ -1036,7 +1152,7 @@ end $staging_verify$;$vr_statement$;
 
   grant usage on schema public to public, anon, authenticated;
   insert into vr_staging_install.parts(part_no, bundle_hash, part_hash, project_ref, db_id)
-  values (14, 'a0fec3baf9c691dbf5af19e48e24fae6d6874bd290507e2561bf81f42788e646', 'd0e181dd09eaeb4bebd771445ddd10fd01527420ffa911d3c477e55b3b768804', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
+  values (14, '152a5ecf251ddab22e48c3207528707d795d25df81776f51043864037ba27df1', 'ba4811b832c8809aea613372bb1bdb8d633a421472d5bc8ea3481854b9bacf86', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
 end $vr_install_part$;
 commit;
 select '14_install.sql: 완료 또는 이미 완료 (14/14)' as result;
