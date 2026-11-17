@@ -303,36 +303,48 @@
 #start-screen .acct-box { flex: 0 1 auto; min-width: 38px; }
 #start-screen .acct-chip { min-width: 0; overflow: hidden; }
 @media (max-width: 480px) { #start-screen .acct-box { flex: none; } #start-screen .acct-chip { padding: 3px; } #start-screen .acct-chip .acct-name, #start-screen .acct-chip .acct-lv { display: none; } }
-/* 로비 스토리 타일: 누르면 바로 이어하기 · 오른쪽 위 '📜 스토리' = 스토리 허브(챕터 목록) */
+/* 로그인 로비: 이어하기 CTA 숨김 · 게스트는 기존 작은 스토리 타일 유지 */
+#start-screen:not(.is-guest) #story-btn { display: none !important; }
 #story-btn{position:relative}
-.main-story-hub{position:absolute;top:8px;right:8px;z-index:3;padding:5px 11px;border-radius:999px;border:1px solid rgba(245,201,106,.6);background:rgba(18,8,10,.82);color:#f5c96a;font-weight:800;font-size:12px;line-height:1.2;box-shadow:0 2px 8px rgba(0,0,0,.6);cursor:pointer}
+.main-story-hub{padding:5px 11px;border-radius:999px;border:1px solid rgba(245,201,106,.6);background:rgba(18,8,10,.82);color:#f5c96a;font-weight:800;font-size:12px;line-height:1.2;box-shadow:0 2px 8px rgba(0,0,0,.6);cursor:pointer}
 .main-story-hub:active{transform:scale(.95)}
+#story-btn .main-story-hub{position:absolute;top:8px;right:8px;z-index:3}
 #story-btn:disabled .main-story-hub{display:none}
 
-/* 로비 챕터 바로가기: 이어하기 CTA 아래 가로 스냅 스크롤. 그림은 기존 story_banner / 맵 배경 재사용 */
+/* 로비 챕터 바로가기: 로그인 시 메인 스토리 줄. 그림은 기존 story_banner / 맵 배경 재사용 */
 #start-screen .ch-shortcuts {
-  grid-column: 1 / -1; order: -1; display: flex; gap: 8px; width: 100%; max-width: 520px;
-  overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch;
-  scrollbar-width: thin; scrollbar-color: rgba(245,201,106,.45) transparent; padding: 0 1px 2px;
+  grid-column: 1 / -1; order: -1; display: flex; flex-direction: column; gap: 6px;
+  width: 100%; max-width: 520px; overflow: visible;
 }
 #start-screen .ch-shortcuts[hidden], #start-screen.is-guest .ch-shortcuts { display: none !important; }
+.ch-shortcuts-head { display: flex; align-items: center; justify-content: space-between; padding: 0 2px; }
+.ch-shortcuts-label { font-weight: 800; font-size: .78rem; color: #fde7b0; letter-spacing: .06em; }
+#ch-shortcuts .main-story-hub { position: static; flex: none; }
+.ch-shortcuts-track {
+  display: flex; gap: 8px; overflow-x: auto; overflow-y: hidden;
+  scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin; scrollbar-color: rgba(245,201,106,.45) transparent; padding: 0 1px 4px;
+}
 .ch-short {
-  position: relative; flex: 0 0 auto; width: min(58%, 220px); height: clamp(80px, 10svh, 100px);
-  scroll-snap-align: start; overflow: hidden; border-radius: 12px; border: 1px solid rgba(245,201,106,.4);
+  position: relative; flex: 0 0 auto;
+  height: clamp(130px, 19svh, 190px);
+  width: min(86%, calc(clamp(130px, 19svh, 190px) * 18 / 7));
+  scroll-snap-align: center; overflow: hidden; border-radius: 18px; border: 1px solid rgba(245,201,106,.4);
   background: #120204; cursor: pointer; color: #fff3cf; text-align: left; padding: 0;
   box-shadow: 0 4px 12px rgba(0,0,0,.55);
 }
 .ch-short-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 70% 40%; }
 .ch-short::after { content: ''; position: absolute; inset: 0; pointer-events: none;
   background: linear-gradient(90deg, rgba(0,0,0,.82) 0%, rgba(0,0,0,.45) 42%, transparent 72%); }
-.ch-short-t { position: absolute; left: 10px; right: 28px; top: 50%; transform: translateY(-50%); z-index: 1;
+.ch-short-t { position: absolute; left: 16px; right: 28px; bottom: 14px; z-index: 1;
   display: flex; flex-direction: column; gap: 2px; pointer-events: none; }
-.ch-short-t small { font-size: .62rem; font-weight: 700; letter-spacing: .04em; color: #fca5a5; }
-.ch-short-t b { font-size: clamp(.78rem, 2.8vw, .95rem); font-weight: 900; color: #fff3cf;
+.ch-short-t small { font-size: .7rem; font-weight: 700; letter-spacing: .04em; color: #fca5a5; }
+.ch-short-t b { font-size: clamp(1.05rem, 4.2vw, 1.4rem); font-weight: 900; color: #fff3cf;
   text-shadow: 0 1px 2px #000; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ch-short.cur { border-color: #f5c96a; box-shadow: 0 0 0 1px #f5c96a, 0 4px 14px rgba(0,0,0,.6); }
+.ch-short-go { font-size: .72rem; font-weight: 800; color: #fde68a; text-shadow: 0 1px 2px #000; }
+.ch-short.cur { border-color: #f5c96a; box-shadow: 0 0 0 1px #f5c96a, 0 8px 22px rgba(0,0,0,.65); }
 .ch-short.locked { filter: grayscale(.85) brightness(.62); cursor: default; }
-.ch-short-lock { position: absolute; top: 6px; right: 7px; z-index: 2; font-style: normal; font-size: .9rem; filter: drop-shadow(0 1px 2px #000); }
+.ch-short-lock { position: absolute; top: 10px; right: 12px; z-index: 2; font-style: normal; font-size: 1rem; filter: drop-shadow(0 1px 2px #000); }
 .ch-short:hover:not(.locked) { filter: brightness(1.1); }
 .ch-short:active:not(.locked) { transform: scale(.98); }
 

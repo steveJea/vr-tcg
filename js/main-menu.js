@@ -154,31 +154,37 @@
   }
   function hideChShortcuts() {
     const row = $('ch-shortcuts'); if (!row) return;
-    row.innerHTML = ''; row.hidden = true; row.classList.add('hidden');
+    const track = $('ch-shortcuts-track'); if (track) track.innerHTML = '';
+    row.hidden = true; row.classList.add('hidden');
   }
   function paintChShortcuts(sm) {
     const row = $('ch-shortcuts'); if (!row) return;
+    const track = $('ch-shortcuts-track') || row;
     const list = sm?.ok && Array.isArray(sm.chapters) ? sm.chapters : [];
     if (!list.length) return hideChShortcuts();
-    const curI = sm.current?.i;
-    row.innerHTML = list.map(ch => {
+    const curI = sm.current?.i, curInfo = sm.current || {};
+    track.innerHTML = list.map(ch => {
       const open = !!ch.open, cur = ch.i === curI;
       const sub = ch.subtitle || '', ident = ch.id ?? ch.i;
       const title = sub && !new RegExp('^\\s*(CHAPTER|CH\\.?|챕터)\\s*0*' + ident + '\\s*$', 'i').test(sub) ? sub : (ch.title || '');
-      const label = `CHAPTER ${ident}`;
+      const phase = cur && curInfo.phase ? ` · PHASE ${curInfo.phase}` : (cur && curInfo.done != null && curInfo.total ? ` · ${curInfo.done}/${curInfo.total}` : '');
+      const label = `CHAPTER ${ident}${phase}`;
+      const go = cur && open ? (curInfo.phase || (curInfo.done < curInfo.total) ? '▶ 이어하기' : '✔ 클리어 · 다시 하기') : '';
       const urls = chBannerSrcs(ch);
       const why = ch.lockWhy || '아직 열리지 않은 챕터예요';
-      return `<button type="button" class="ch-short${open ? '' : ' locked'}${cur ? ' cur' : ''}" data-ch="${ch.i | 0}" ${open ? '' : `aria-disabled="true" data-lock="${escTxt(why)}"`} aria-label="${escTxt(label + (title ? ' · ' + title : '') + (open ? '' : ' (잠김)'))}">
+      const aria = label + (title ? ' · ' + title : '') + (go ? ' · ' + go : '') + (open ? '' : ' (잠김)');
+      return `<button type="button" class="ch-short${open ? '' : ' locked'}${cur ? ' cur' : ''}" data-ch="${ch.i | 0}" ${cur && open ? 'data-continue="1"' : ''} ${open ? '' : `aria-disabled="true" data-lock="${escTxt(why)}"`} aria-label="${escTxt(aria)}">
         <img class="ch-short-img" alt="" width="1080" height="420" loading="lazy" decoding="async" src="${escTxt(urls[0])}" data-alts="${escTxt(urls.slice(1).join('|'))}">
-        <span class="ch-short-t"><small>${escTxt(label)}</small><b>${escTxt(title)}</b></span>
+        <span class="ch-short-t"><small>${escTxt(label)}</small><b>${escTxt(title)}</b>${go ? `<span class="ch-short-go">${escTxt(go)}</span>` : ''}</span>
         ${open ? '' : '<i class="ch-short-lock" aria-hidden="true">🔒</i>'}</button>`;
     }).join('');
     row.hidden = false; row.classList.remove('hidden');
-    row.querySelectorAll('.ch-short-img').forEach(img => {
+    track.querySelectorAll('.ch-short-img').forEach(img => {
       const urls = [img.getAttribute('src'), ...(img.dataset.alts || '').split('|')].filter(Boolean);
       let k = 0; img.onerror = () => { if (++k < urls.length) img.src = urls[k]; };
     });
     row.onclick = e => {
+      if (e.target.closest('#story-hub-btn, .main-story-hub')) return;
       const b = e.target.closest('.ch-short'); if (!b || !row.contains(b)) return;
       if (b.classList.contains('locked') || b.getAttribute('aria-disabled') === 'true') {
         const msg = b.dataset.lock || '아직 열리지 않은 챕터예요';
@@ -186,9 +192,10 @@
         return;
       }
       const i = +b.dataset.ch;
+      if (b.dataset.continue === '1') { window.VRStory?.playCurrent?.(); return; }
       if (Number.isFinite(i)) window.VRStory?.openMap?.(i);
     };
-    const cur = row.querySelector('.ch-short.cur') || row.querySelector('.ch-short:not(.locked)');
+    const cur = track.querySelector('.ch-short.cur') || track.querySelector('.ch-short:not(.locked)');
     try { cur?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'instant' }); } catch {}
   }
   async function paintHome() {

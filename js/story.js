@@ -852,6 +852,8 @@
       startPhase(nx.ch, nx.ph);
     };
   }
+  /** 로비 현재 챕터 칸: 이어할 페이즈가 있으면 goContinue, 없으면 그 챕터 맵 */
+  const playCurrent = () => openPage(() => { if (nextPlay()) goContinue(); else renderMap(hubCurIdx()); }, true);
 
   // ----- 스토리 다시보기 (클리어한 챕터): 시작 대사 → P1~마지막 페이즈의 전·후 대사(멀티미디어 포함)를 순서대로. 전투·보상·EXP·행동력·진행 저장 없음 -----
   // 페이즈마다 제목 화면(누르면 계속 · 나가기). 대사 화면의 '건너뛰기'는 그 장면만 넘김. 엔딩 영상은 자동 재생 안 함 (지도 '🎬 엔딩' 버튼 따로)
@@ -2282,9 +2284,15 @@
   // 허브 추가 섹션 훅 (예: 이벤트 스토리). 함수가 HTML 문자열을 돌려주면 챕터 목록 위에 표시, 빈 문자열이면 아무것도 안 그림
   const HUB_SECTIONS = [];
   function mountButton() {
-    const ex = $('story-btn'); if (ex) { ex.disabled = !window.TCG?.ready; ex.onclick = () => enter('go'); window.addEventListener('tcg:ready', () => { ex.disabled = false; });
-      if (!$('story-hub-btn')) { ex.insertAdjacentHTML('beforeend', '<span id="story-hub-btn" class="main-story-hub" role="button" tabindex="0" title="스토리 챕터 목록">📜 스토리</span>'); const hb = $('story-hub-btn'); const go = e => { e.stopPropagation(); e.preventDefault(); if (!ex.disabled) enter(); }; hb.addEventListener('click', go); hb.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') go(e); }); }
-      return; }   // 메인 4버튼(index.html)
+    const ex = $('story-btn');
+    if (ex) { ex.disabled = !window.TCG?.ready; ex.onclick = () => enter('go'); window.addEventListener('tcg:ready', () => { ex.disabled = false; }); }
+    const hb = $('story-hub-btn');
+    if (hb && !hb.dataset.bound) {
+      hb.dataset.bound = '1';
+      const go = e => { e.stopPropagation(); e.preventDefault(); if (window.TCG?.ready) enter(); };
+      hb.addEventListener('click', go); hb.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') go(e); });
+    }
+    if (ex) return;   // 메인 4버튼(index.html)
     const start = $('start-btn'); if (!start || $('story-btn')) return;
     const b = document.createElement('button'); b.id = 'story-btn'; b.type = 'button'; b.className = 'main-banner banner-story'; b.title = '스토리 모드 · 캐릭터별 챕터 · 인재 수집';
     b.innerHTML = '<img src="img/ui/main/banner_story.webp" srcset="img/ui/main/banner_story_600.webp 600w, img/ui/main/banner_story.webp 1200w" sizes="(max-width: 520px) 92vw, 460px" alt="" class="main-banner-img" width="1200" height="360" decoding="async"><span class="main-banner-text"><b class="main-banner-title">스토리 모드</b></span>';
@@ -2369,5 +2377,5 @@
     sort: (list, st) => { const k0 = cardSort; cardSort = st; try { return sortInst(list); } finally { cardSort = k0; } },
     next: (st, k) => st.k === k ? { k, desc: !st.desc } : { k, desc: true },
   };
-  window.VRStory = { hubSections: HUB_SECTIONS, play: () => enter('go'), canDraw: () => canDraw(), trainCard, canMergeUid, sortTool, skBadge, lendCards, reloadLend: () => loadLend(true), partyOf, pickDeck, openMap: i => openPage(() => renderMap(i), true), /* quiet: 로비 바로가기는 허브를 건너뛰고, renderMap이 잠긴 챕터는 열린 챕터로 되돌림 */ openCards: from => openRoster(() => { rosterFrom = from === 'mypage' ? 'mypage' : null; renderCards(); }), openDecks: from => openRoster(() => { rosterFrom = from === 'mypage' ? 'mypage' : null; renderDecks(); }), openShop: () => openSummon(), api, bgm, BGM, endingVideo, videoOf, conditionsOf, battleRules, summary, enter, openGacha, renderHub, renderShop, drawOnce, kstDay, chapterArt, get save() { return save; }, renderMap, renderCards, openStats, renderSelect, playLines };
+  window.VRStory = { hubSections: HUB_SECTIONS, play: () => enter('go'), canDraw: () => canDraw(), trainCard, canMergeUid, sortTool, skBadge, lendCards, reloadLend: () => loadLend(true), partyOf, pickDeck, openMap: i => openPage(() => renderMap(i), true), /* quiet: 로비 바로가기는 허브를 건너뛰고, renderMap이 잠긴 챕터는 열린 챕터로 되돌림 */ playCurrent, goContinue, openCards: from => openRoster(() => { rosterFrom = from === 'mypage' ? 'mypage' : null; renderCards(); }), openDecks: from => openRoster(() => { rosterFrom = from === 'mypage' ? 'mypage' : null; renderDecks(); }), openShop: () => openSummon(), api, bgm, BGM, endingVideo, videoOf, conditionsOf, battleRules, summary, enter, openGacha, renderHub, renderShop, drawOnce, kstDay, chapterArt, get save() { return save; }, renderMap, renderCards, openStats, renderSelect, playLines };
 })();
