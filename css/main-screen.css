@@ -320,16 +320,25 @@
 .ch-shortcuts-head { display: flex; align-items: center; justify-content: space-between; padding: 0 2px; }
 .ch-shortcuts-label { font-weight: 800; font-size: .78rem; color: #fde7b0; letter-spacing: .06em; }
 #ch-shortcuts .main-story-hub { position: static; flex: none; }
-.ch-shortcuts-track {
-  display: flex; gap: 8px; overflow-x: auto; overflow-y: hidden;
-  scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch;
-  scrollbar-width: thin; scrollbar-color: rgba(245,201,106,.45) transparent; padding: 0 1px 4px;
+/* 소환(인재영입) 배너와 같은 한 장·화살표·0.3초 밀림 */
+.ch-shortcuts-wrap { position: relative; width: 100%; }
+.ch-shortcuts-vp { overflow: hidden; border-radius: 18px; touch-action: pan-y; }
+.ch-shortcuts-track { display: flex; gap: 0; will-change: transform; }
+.ch-shortcuts-track.anim { transition: transform .3s ease; }
+@media (prefers-reduced-motion: reduce) { .ch-shortcuts-track.anim { transition: none; } }
+.ch-short-arrow {
+  position: absolute; top: 50%; transform: translateY(-60%); z-index: 4;
+  width: 30px; height: 44px; border-radius: 12px; padding: 0;
+  background: rgba(0,0,0,.6); border: 1px solid rgba(255,255,255,.3);
+  color: #fff; font-size: 26px; font-weight: 900; line-height: 1;
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
 }
+.ch-short-l { left: 6px; } .ch-short-r { right: 6px; }
+.ch-short-arrow:disabled { opacity: 0; pointer-events: none; }
 .ch-short {
-  position: relative; flex: 0 0 auto;
+  position: relative; flex: 0 0 100%; width: 100%;
   height: clamp(130px, 19svh, 190px);
-  width: min(86%, calc(clamp(130px, 19svh, 190px) * 18 / 7));
-  scroll-snap-align: center; overflow: hidden; border-radius: 18px; border: 1px solid rgba(245,201,106,.4);
+  overflow: hidden; border-radius: 18px; border: 1px solid rgba(245,201,106,.4);
   background: #120204; cursor: pointer; color: #fff3cf; text-align: left; padding: 0;
   box-shadow: 0 4px 12px rgba(0,0,0,.55);
 }

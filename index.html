@@ -403,7 +403,13 @@
           <span class="ch-shortcuts-label">스토리</span>
           <span id="story-hub-btn" class="main-story-hub" role="button" tabindex="0" title="스토리 챕터 목록">📜 스토리</span>
         </div>
-        <div id="ch-shortcuts-track" class="ch-shortcuts-track"></div>
+        <div class="ch-shortcuts-wrap">
+          <button type="button" class="ch-short-arrow ch-short-l" data-ch-move="-1" aria-label="이전 챕터" disabled>‹</button>
+          <div id="ch-shortcuts-vp" class="ch-shortcuts-vp">
+            <div id="ch-shortcuts-track" class="ch-shortcuts-track"></div>
+          </div>
+          <button type="button" class="ch-short-arrow ch-short-r" data-ch-move="1" aria-label="다음 챕터" disabled>›</button>
+        </div>
       </div>
       <button id="start-btn" disabled class="main-tile tile-arcade" type="button" data-mode="arcade">
         <img src="img/ui/v2/btn_arcade.webp" alt="" class="main-tile-img" decoding="async"><b class="main-tile-t main-banner-title">불러오는 중...</b></button>
