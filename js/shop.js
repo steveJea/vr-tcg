@@ -15,7 +15,7 @@
   const GEM = '<img class="ui-ic" src="img/ui/guild/cur_gem.webp" alt="">', TK = '<img class="ui-ic" src="img/ui/ticket.webp" alt="">', SPT = '<img class="ui-ic" src="img/ui/ticket_special.webp" alt="" onerror="this.onerror=null;this.src=\'img/ui/ticket.webp\'">';
   const DRK = '<img class="ui-ic drk-ic paid" src="img/ui/cur_drink_paid.webp" alt="유료 드링크">', DRF = '<img class="ui-ic drk-ic free" src="img/ui/cur_drink_free.webp" alt="무료 드링크">';   // 유료 = 금색 · 무료 = 초록
   const drk = h => h.replace(/유료 드링크/g, `${DRK}<span class="drk-name paid">유료 드링크</span>`).replace(/무료 드링크/g, `${DRF}<span class="drk-name free">무료 드링크</span>`);
-  const BANNER = { pass: 'img/ui/shop/pass_banner.webp', popup: 'img/ui/shop/popup_banner.webp' };   // 임시 그림 (그림순이 의뢰 · 1080×360)
+  const BANNER = { pass: 'img/ui/shop/pass_banner.webp', popup: 'img/ui/shop/popup_banner.webp' };   // 그림순이 최종본 (1080×360)
   const GRADE = { HR: 'HIGH RARE', SR: 'SUPER RARE', UR: 'ULTRA RARE' };
   let tab = 'charge', cache = null, host = null, cal = null, busy = false;
   const qty = {};
