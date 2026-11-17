@@ -199,3 +199,28 @@ try{
   console.log('shop v2 production sql ok (KRW blocked, gem shop via mail)');
  }finally{await db2.close();}
 }
+
+// staging-like DB WITHOUT ur_ticket_mail (real staging state 2026-11-17): installs in one go, mail + gem shop + popup card work.
+{
+ const db3=new PGlite();const q3=async(s,p=[])=>(await db3.query(s,p)).rows;
+ try{
+  await db3.exec(`create role anon;create role authenticated;create role service_role bypassrls;create schema auth;
+  create table auth.users(id uuid primary key,email text,raw_user_meta_data jsonb default '{}',raw_app_meta_data jsonb default '{}',created_at timestamptz default now(),last_sign_in_at timestamptz,email_confirmed_at timestamptz);
+  create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
+  create function auth.jwt() returns jsonb language sql stable as $$select coalesce(nullif(current_setting('request.jwt.claims',true),''),'{}')::jsonb$$;
+  grant usage on schema auth,public to anon,authenticated,service_role;
+  alter default privileges in schema public grant execute on functions to anon,authenticated;`);
+  await db3.exec((await buildSql()).replace(`confirmed_ref text := '${INSTALL_ACK}'`,"confirmed_ref text := 'abcdefghijklmnopqrst'"));
+  await db3.exec(`create function public.test_payment_control() returns table(system_identifier text) language sql as $$select current_setting('test.payment_db',true)$$;select set_config('test.payment_db','7703759698107299042',false);`);
+  for(const f of ['payments_staging','payments_refunds_staging','payments_webhook_staging','shop_bm_staging','seasonpass_31_staging','seasonpass_mail_staging','special_summon_staging'])await db3.exec(swap(await read('supabase/'+f+'.sql')));
+  assert.equal((await q3("select count(*)::int v from information_schema.columns where table_name='story_gacha' and column_name='ur_tickets'"))[0].v,0,'no ur_ticket_mail');
+  const s3=swap(await read('supabase/shop_v2_staging.sql'));await db3.exec(s3);await db3.exec(s3);
+  const u=randomUUID();await q3('insert into auth.users(id) values($1)',[u]);
+  const as=async(expr,args=[])=>{await q3("select set_config('request.jwt.claim.sub',$1,false)",[u]);await db3.exec('set role authenticated');try{return (await q3('select '+expr+' v',args))[0].v;}finally{await db3.exec('reset role');}};
+  await as('shop_buy($1)',['popup_first']);await as('shop_buy($1)',['pass_2']);await as('shop_buy($1)',['gem_100']);
+  const all=await as('mail_claim_all()');
+  assert.equal(all.got.cards,1);assert.equal(all.got.gem_paid,200);assert.equal(all.got.tickets,11);assert.equal(all.got.drink_bound,2);
+  const chk=swap(await read('supabase/shop_v2_check_staging.sql'));const r=(await db3.query(chk)).rows[0];assert.equal(r.ok,true,JSON.stringify(r));
+  console.log('shop v2 staging without ur_ticket_mail ok');
+ }finally{await db3.close();}
+}

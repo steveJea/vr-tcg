@@ -1,7 +1,7 @@
 -- PRODUCTION (운영) · 상점 개편 (디버그 시트 68) — tools/build_shop_v2_sql.mjs 가 shop_v2_staging.sql 에서 생성. 직접 고치지 말 것.
 -- 형님 승인 후 다음 운영 업데이트 때만 실행. 원화 상품은 운영에서 구매 불가(payment not ready) — 심연석 상점·우편 확장만 동작.
 -- 운영 화면은 상점 페이지가 아직 꺼져 있음(js/shop.js 스테이징 전용). 실결제 연결 때 함께 켬.
--- 선행 (운영): mail_v2 + 20261111b(UR 확정권 우편) + gem·wallet·드링크 + special_summon_production. 없으면 STOP 으로 멈춤(아무것도 안 바뀜).
+-- 선행 (운영): mail_v2 + gem·wallet·드링크 + special_summon_production. 없으면 STOP 으로 멈춤(아무것도 안 바뀜).
 -- 이 파일 전체를 한 번에 실행. 재실행 안전(멱등). 유저 지갑·구매 기록·우편은 지우지 않음.
 --
 -- 바뀌는 것
@@ -29,10 +29,8 @@ begin
     or to_regprocedure('public._item_add(uuid,text,integer,integer,text,text,jsonb)') is null
     or to_regprocedure('public._story_lock(uuid)') is null or to_regprocedure('public._story_new_card(text)') is null
     or to_regprocedure('public._story_save(uuid,jsonb)') is null or to_regprocedure('public._story_owned(jsonb)') is null then
-  raise exception 'STOP: install mail_v2 + ur_ticket_mail + gem/wallet/stamina/drink + special summon first';
+  raise exception 'STOP: install mail_v2 + gem/wallet/stamina/drink + special summon first';
  end if;
- if not exists (select 1 from information_schema.columns where table_schema='public' and table_name='story_gacha' and column_name='ur_tickets') then
-  raise exception 'STOP: install ur_ticket_mail first'; end if;
 end $guard$;
 
 -- ── 기본 ────────────────────────────────────────────────────────────────

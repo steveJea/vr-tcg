@@ -10,7 +10,7 @@ export function productionSql(src){
  if(src.split(krw).length!==3)throw new Error('krw markers changed');
  let s=src.replaceAll(krw,`'payment-not-ready' /*krw: 운영은 실결제(PG) 연결 전까지 원화 테스트 지급 금지*/`);
  s=s.replace(/^-- STAGING ONLY · 상점 개편[^\n]*\n/,'-- PRODUCTION (운영) · 상점 개편 (디버그 시트 68) — tools/build_shop_v2_sql.mjs 가 shop_v2_staging.sql 에서 생성. 직접 고치지 말 것.\n-- 형님 승인 후 다음 운영 업데이트 때만 실행. 원화 상품은 운영에서 구매 불가(payment not ready) — 심연석 상점·우편 확장만 동작.\n-- 운영 화면은 상점 페이지가 아직 꺼져 있음(js/shop.js 스테이징 전용). 실결제 연결 때 함께 켬.\n');
- s=s.replace(/^-- 선행 \(스테이징엔 이미 있음\)[^\n]*\n/m,'-- 선행 (운영): mail_v2 + 20261111b(UR 확정권 우편) + gem·wallet·드링크 + special_summon_production. 없으면 STOP 으로 멈춤(아무것도 안 바뀜).\n');
+ s=s.replace(/^-- 선행 \(스테이징엔 이미 있음\)[^\n]*\n/m,'-- 선행 (운영): mail_v2 + gem·wallet·드링크 + special_summon_production. 없으면 STOP 으로 멈춤(아무것도 안 바뀜).\n');
  s=s.replace('STOP: shop v2 staging only','STOP: shop v2 production only');
  s=s.replaceAll(STAGE,PROD);
  if(s.includes(STAGE))throw new Error('staging id left');

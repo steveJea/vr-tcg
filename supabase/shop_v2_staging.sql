@@ -1,5 +1,5 @@
 -- STAGING ONLY · 상점 개편 (디버그 시트 68 · AG_상점구성 / 상점 구성안) — 운영 실행 금지 (운영본: shop_v2_production.sql)
--- 선행 (스테이징엔 이미 있음): mail_v2 → ur_ticket_mail_staging → shop_bm_staging → seasonpass_31_staging → seasonpass_mail_staging → special_summon_staging.
+-- 선행 (스테이징엔 이미 있음): mail_v2 · gem · 드링크 · special_summon_staging. UR 확정권 우편(ur_ticket_mail_staging)·상점 BM·시즌패스 SQL 은 있어도 되고 없어도 됨 (이 파일이 필요한 표·함수를 직접 만듦).
 -- 이 파일 전체를 한 번에 실행. 재실행 안전(멱등). 유저 지갑·구매 기록·우편은 지우지 않음.
 --
 -- 바뀌는 것
@@ -27,10 +27,8 @@ begin
     or to_regprocedure('public._item_add(uuid,text,integer,integer,text,text,jsonb)') is null
     or to_regprocedure('public._story_lock(uuid)') is null or to_regprocedure('public._story_new_card(text)') is null
     or to_regprocedure('public._story_save(uuid,jsonb)') is null or to_regprocedure('public._story_owned(jsonb)') is null then
-  raise exception 'STOP: install mail_v2 + ur_ticket_mail + gem/wallet/stamina/drink + special summon first';
+  raise exception 'STOP: install mail_v2 + gem/wallet/stamina/drink + special summon first';
  end if;
- if not exists (select 1 from information_schema.columns where table_schema='public' and table_name='story_gacha' and column_name='ur_tickets') then
-  raise exception 'STOP: install ur_ticket_mail first'; end if;
 end $guard$;
 
 -- ── 기본 ────────────────────────────────────────────────────────────────
