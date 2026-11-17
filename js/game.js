@@ -1383,7 +1383,9 @@ function showEnding(win, reason) {
       <div class="end-mvp-tag">MVP · ${mvp.card.name}${mvp.dmg ? ` · 피해 ${fmt(mvp.dmg)}` : ''}</div></div>` : '';
   const row = (k, v) => `<div class="flex justify-between gap-3 py-1 border-b border-white/10"><span class="text-zinc-400">${k}</span><span class="font-bold text-zinc-100">${v}</span></div>`;
   $('end-title').innerHTML = `<div class="end-slash"><div class="end-big">${title}</div></div>`;
-  $('end-mvp-wrap').innerHTML = mvpHTML;
+  // 서버가 다시 돌려본 아케이드 승리의 MVP만 도감에 등록됨 (receipt.gallery). 새로 등록된 카드면 한 줄 안내
+  const galNew = receipt?.gallery?.new === true && mvp ? `<div class="gal-promo vip-yellow end-gal-new">📖 ${escA(mvp.card.name)} 도감에 새로 등록됐어요!</div>` : '';
+  $('end-mvp-wrap').innerHTML = mvpHTML + galNew;
   $('end-stats').innerHTML = row('진행 턴', `${S.myTurns || S.turnNo}턴 (${S.turnNo}라운드)`) + row('준 피해 합계', BFX() ? `<span data-count="${L.total || 0}">${fmt(L.total)}</span>` : fmt(L.total)) + row('사용한 스킬', BFX() ? `<span data-count="${L.skills || 0}" data-suf="회">${L.skills}회</span>` : `${L.skills}회`)
     + row('고용한 용병', L.merc ? `${ic('merc')} ${L.merc.name}` : '없음') + row('진영 HP', `나 ${fmt(Math.max(0, S.me.hp))} : ${fmt(Math.max(0, S.ai.hp))} 상대`);
   S.endShare = `Violence Royale : The Abyss Gate에서 ${sub}${mvp ? ` MVP는 ${mvp.card.name}!` : ''} (${S.turnNo}라운드, 피해 ${fmt(L.total)})`;

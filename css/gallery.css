@@ -108,3 +108,5 @@ body.gal-lock { overflow: hidden; }
 @media (max-width: 420px) {
   .gal-mile span { font-size: 9px; }
 }
+/* 아케이드 종료: MVP 도감 신규 등록 안내 */
+.end-gal-new { display: inline-block; margin: 6px auto 2px; }
