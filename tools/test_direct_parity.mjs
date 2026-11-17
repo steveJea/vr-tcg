@@ -486,9 +486,10 @@ const summonedOk = verifyDirect({
 assert.notEqual(summonedOk.reason, 'mustsummon', 'one end-turn must not fail the 2-turn rule');
 // 15-11 (owner report 2026-11-11): 김백중 alone on T1, then a T2 wipe before the
 // required 윤진아 is summoned. A wipe inside the 2-turn window is a win on the server.
+// (11/17: 다친다가 시트대로 20%×3으로 약해져 적 HP를 낮춤. 이 테스트는 2턴 규칙만 본다.)
 {
   const st1511 = { no: 11, type: 'normal', bossId: '10123', mana: 80, single: true, tutorial: false,
-    enemies: { ids: ['10123', '10151', '10151', '10151', '10151'], boost: { '10123': { HP: 768, ATK: 93, DEF: 152, storyLv: 83, power: 41636 }, '10151': { HP: 692, ATK: 104, DEF: 104, storyLv: 83, power: 37602 } } },
+    enemies: { ids: ['10123', '10151', '10151', '10151', '10151'], boost: { '10123': { HP: 500, ATK: 93, DEF: 152, storyLv: 83, power: 41636 }, '10151': { HP: 450, ATK: 104, DEF: 104, storyLv: 83, power: 37602 } } },
     party: { forced: ['10290'], exclude: ['10383'], mustLive: ['10290'], levels: { '10290': 83 } } };
   const s1511 = seed => ({ mode: 'story', target: '15:11', seed, snapshot: { mana: 80, leader: null, cards: [{ id: '10290', uid: 'j', level: 83 }, { id: '10058', uid: 'k', level: 100 }], stage: st1511 } });
   const t1 = [{ t: 1, k: 'summon', id: '10058' }, { t: 1, k: 'end' }];

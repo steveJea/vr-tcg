@@ -4,7 +4,7 @@ import fs from 'fs';
 import { parseCSV, makeUnit, resolveAttack, calcDamage, RULES } from '../js/rules.js';
 // 스킬 수치 검증용: 성별 피해(7-1)·속성 회피(7-2)는 끄고 확인 (해당 규칙은 test_batchB.mjs에서 검증)
 RULES.GENDER_ON = false; RULES.EVADE_ON = false;
-import { setSkillData, initPlayers, placeUnit, skillsOf, ACTIVE, useSkill, skillState, turnStart, turnEnd, setRng, TURN, checkDeath, refreshAll, setEmitter } from '../js/skills.js';
+import { setSkillData, initPlayers, placeUnit, skillsOf, ACTIVE, useSkill, skillState, turnStart, turnEnd, setRng, TURN, checkDeath, refreshAll, setEmitter, skillDamage } from '../js/skills.js';
 if (process.env.DBG) setEmitter(e => console.log('  ev', e.type, e.unit?.card?.name || '', e.text || e.name || e.dmg || ''));
 setSkillData(JSON.parse(fs.readFileSync('data/skills.json')), JSON.parse(fs.readFileSync('data/combos.json')));
 const cards = parseCSV(fs.readFileSync('data/cards.csv', 'utf8')); const C = id => cards.find(c => String(c.id) === id);
@@ -21,19 +21,15 @@ const sk = (u, name) => u.sk.find(s => s.name === name);
 const cast = (u, name) => { u.canAttack = true; u.mp = u.maxMp; u.cd = {}; return useSkill(u, sk(u, name)); };
 const N = ['10074', '10080', '10445', '10375', '10404'];   // 상대용 아무 카드
 
-// 1) 임유리: 현재 HP 8% (최대 120) / 12% (최대 180)
+// 1) 임유리 (시트 11/17): 키스 공격력 15%×1 · 더 울어 30%×1 (여성 2배), 혼란 (난수 0.99 → 안 걸림)
 { setRng(() => 0.99); const { A, B } = sides(['10325'], N.slice(0, 3)); const yu = A[0]; const hp = B.map(t => t.hp);
   ok('임유리 스킬 존재', !!sk(yu, '아름다운 고통의 키스'), yu.sk.map(s => s.name).join(','));
-  cast(yu, '아름다운 고통의 키스'); ok('키스: 현재 HP 8% 제거 (cap 120)', B.every((t, i) => hp[i] - t.hp === Math.min(120, Math.max(1, Math.round(hp[i] * 0.08)))), B.map((t, i) => hp[i] - t.hp).join('/'));
-  B[0].hp = 3000; B[0].maxHp = 3000; const h2 = B.map(t => t.hp); cast(yu, '더 울어, 예쁘게!'); ok('더 울어: 12% cap 180', B[0].hp === 3000 - 180 && B.slice(1).every((t, i) => h2[i + 1] - t.hp === Math.max(1, Math.round(h2[i + 1] * 0.12))));
+  cast(yu, '아름다운 고통의 키스'); ok('키스: 공격력 15% 피해', B.every((t, i) => hp[i] - t.hp === skillDamage(yu, t, 0.15)), B.map((t, i) => hp[i] - t.hp).join('/'));
+  const h2 = B.map(t => t.hp); cast(yu, '더 울어, 예쁘게!'); ok('더 울어: 공격력 30%, 여성 2배, 교란 대신 혼란', B.every((t, i) => h2[i] - t.hp === skillDamage(yu, t, 0.3, { extra: t.base.gender === 'FEMALE' ? 2 : 1 }) && !t.st.disrupt), B.map((t, i) => h2[i] - t.hp).join('/'));
 }
-// 2) 임예리 장미가시: 10% 피해 + 도발 + 일반 반격 대신 100% 반격, 공격자 HP 1
+// 2) 임예리 장미가시 (시트 11/17): 30%×3 + 2턴 ATK -40%, 도발·반격 없음
 { setRng(() => 0.99); const { a, b, A, B } = sides(['10324', '10384'], ['10406']); const ye = A[0], foe = B[0]; const h = foe.hp;
-  cast(ye, '장미가시의 세레나데'); ok('장미가시: 적 피해 + ATK -20% + 임예리 도발', foe.hp < h && foe.st['장미가시의 세레나데'] && ye.st.taunt);
-  ye.hp = ye.maxHp; foe.hp = foe.maxHp; foe.canAttack = true; TURN.p = b;
-  const exp = Math.round(calcDamage(ye.card, foe.card)); const ev = resolveAttack(b, a, foe, ye);
-  ok('장미가시 반격 = 기본 공격 100% (일반 반격 대체, 1회)', ev[0].d2 === exp && foe.hp === foe.maxHp - exp, `d2=${ev[0].d2} exp=${exp}`);
-  foe.hp = 5; foe.canAttack = true; ye.hp = ye.maxHp; resolveAttack(b, a, foe, ye); ok('장미가시 반격으로는 HP 1에서 멈춤', foe.hp === 1 && b.field.includes(foe));
+  cast(ye, '장미가시의 세레나데'); ok('장미가시: 적 피해 + ATK -40% 2턴, 도발 없음', foe.hp < h && foe.st['장미가시의 세레나데']?.atk === -0.4 && !ye.st.taunt);
 }
 // 3) 정치욱 회피 40%
 { const { a, b, A, B } = sides(['10369'], ['10074']); const j = A[0], foe = B[0];

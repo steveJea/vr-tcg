@@ -17819,7 +17819,7 @@ insert into public.battle_story_defs_v2(chapter,phase,variant,definition) values
 (16,8,'','{"no":8,"type":"normal","enemies":{"ids":["10151","10161","10162","10163","10164"],"boost":{"10151":{"HP":464,"ATK":70,"DEF":70,"storyLv":45,"power":25251},"10161":{"HP":244,"ATK":51,"DEF":43,"storyLv":45,"power":9248},"10162":{"HP":282,"ATK":56,"DEF":49,"storyLv":45,"power":10515},"10163":{"HP":418,"ATK":70,"DEF":60,"storyLv":45,"power":23092},"10164":{"HP":441,"ATK":70,"DEF":60,"storyLv":45,"power":23844}}},"party":{"forced":["10406"],"mustLive":["10406"],"levels":{"10406":40},"battleLevels":{"10406":1},"noFemale":true,"maxGrade":"SUPER RARE"},"bossId":"10151","mana":100,"rules":{"maxTurns":20},"hero":"10406","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
 (16,9,'','{"no":9,"type":"normal","enemies":{"ids":["10152","10146","10165","10166","10167"],"boost":{"10146":{"HP":101,"ATK":20,"DEF":16,"storyLv":45,"power":1393},"10152":{"HP":534,"ATK":104,"DEF":104,"storyLv":45,"power":34342},"10165":{"HP":464,"ATK":70,"DEF":70,"storyLv":45,"power":25251},"10166":{"HP":487,"ATK":81,"DEF":81,"storyLv":45,"power":27586},"10167":{"HP":534,"ATK":93,"DEF":93,"storyLv":45,"power":30851}}},"party":{"forced":["10406"],"mustLive":["10406"],"levels":{"10406":40},"battleLevels":{"10406":1},"noFemale":true,"maxGrade":"SUPER RARE"},"bossId":"10152","mana":100,"rules":{"maxTurns":20},"hero":"10406","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
 (16,10,'','{"no":10,"type":"normal","enemies":{"ids":["10025","10143","10144","10153","10154"],"boost":{"10025":{"HP":966,"ATK":152,"DEF":179,"storyLv":45,"power":85539},"10143":{"HP":72,"ATK":16,"DEF":12,"storyLv":45,"power":985},"10144":{"HP":72,"ATK":17,"DEF":13,"storyLv":45,"power":1018},"10153":{"HP":86,"ATK":14,"DEF":10,"storyLv":45,"power":1074},"10154":{"HP":101,"ATK":16,"DEF":12,"storyLv":45,"power":1257}},"levels":{"10025":2,"10143":2,"10144":2,"10153":2,"10154":2}},"party":{"forced":["10406"],"mustLive":["10406"],"levels":{"10406":40},"battleLevels":{"10406":1},"noFemale":true,"maxGrade":"SUPER RARE"},"bossId":"10025","mana":100,"rules":{"maxTurns":20},"hero":"10406","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
-(16,11,'','{"no":11,"type":"normal","enemies":{"ids":["10406","10290","10383","10097","10393","10306"],"boost":{"10097":{"HP":235,"ATK":30,"DEF":56,"storyLv":45,"power":10455},"10290":{"HP":179,"ATK":19,"DEF":21,"storyLv":45,"power":7682},"10306":{"HP":179,"ATK":30,"DEF":34,"storyLv":45,"power":7943},"10383":{"HP":966,"ATK":124,"DEF":138,"storyLv":45,"power":116253},"10393":{"HP":499,"ATK":70,"DEF":81,"storyLv":45,"power":38466},"10406":{"HP":580,"ATK":81,"DEF":81,"storyLv":45,"power":38309}}},"party":{"forced":["10200"],"mustLive":["10200"],"levels":{"10200":60},"battleLevels":{"10200":1},"noFemale":true},"bossId":"10406","mana":200,"rules":{"maxTurns":20,"mustKill":["10406"],"revive":[{"id":"10290","become":"10291","delay":0,"storyLevel":100,"battleLevel":10}]},"hero":"10406","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
+(16,11,'','{"no":11,"type":"boss","enemies":{"ids":["10406","10290","10383","10097","10393","10306"],"boost":{"10097":{"HP":235,"ATK":30,"DEF":56,"storyLv":45,"power":10455},"10290":{"HP":179,"ATK":19,"DEF":21,"storyLv":45,"power":7682},"10306":{"HP":179,"ATK":30,"DEF":34,"storyLv":45,"power":7943},"10383":{"HP":966,"ATK":124,"DEF":138,"storyLv":45,"power":116253},"10393":{"HP":499,"ATK":70,"DEF":81,"storyLv":45,"power":38466},"10406":{"HP":580,"ATK":81,"DEF":81,"storyLv":45,"power":38309}}},"party":{"forced":["10200"],"mustLive":["10200"],"levels":{"10200":60},"battleLevels":{"10200":1},"noFemale":true},"bossId":"10406","mana":200,"rules":{"maxTurns":20,"revive":[{"id":"10290","become":"10291","delay":0,"storyLevel":100,"battleLevel":10}]},"hero":"10406","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
 (16,12,'','{"no":12,"type":"normal","hero":"10406","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none","party":{"forced":["10406"]}}'::jsonb),
 (17,1,'','{"no":1,"type":"normal","enemies":{"ids":["10147","10146","10145","10144","10143"],"boost":{"10143":{"HP":70,"ATK":15,"DEF":11,"storyLv":40,"power":938},"10144":{"HP":70,"ATK":17,"DEF":13,"storyLv":40,"power":1003},"10145":{"HP":83,"ATK":18,"DEF":14,"storyLv":40,"power":1131},"10146":{"HP":97,"ATK":19,"DEF":15,"storyLv":40,"power":1328},"10147":{"HP":111,"ATK":21,"DEF":17,"storyLv":40,"power":1503}}},"party":{"forced":["10307"],"mustLive":["10307"],"levels":{"10307":45},"battleLevels":{"10307":1},"noMale":true,"maxGrade":"SUPER RARE"},"bossId":"10147","mana":100,"rules":{"maxTurns":20},"hero":"10307","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
 (17,2,'','{"no":2,"type":"normal","enemies":{"ids":["10152","10149","10148","10160","10146"],"boost":{"10146":{"HP":97,"ATK":19,"DEF":15,"storyLv":40,"power":1328},"10148":{"HP":160,"ATK":27,"DEF":18,"storyLv":40,"power":5017},"10149":{"HP":196,"ATK":36,"DEF":27,"storyLv":40,"power":6877},"10152":{"HP":499,"ATK":98,"DEF":98,"storyLv":40,"power":32215},"10160":{"HP":214,"ATK":44,"DEF":37,"storyLv":40,"power":7573}}},"party":{"forced":["10307"],"mustLive":["10307"],"levels":{"10307":45},"battleLevels":{"10307":1},"noMale":true,"maxGrade":"SUPER RARE"},"bossId":"10152","mana":100,"rules":{"maxTurns":20},"hero":"10307","tutorial":false,"single":true,"loan":[],"loanLevel":{},"variantKind":"none"}'::jsonb),
@@ -18876,7 +18876,7 @@ notify pgrst,'reload schema';
 
 create table if not exists public.pvp_policy_v3(
  singleton boolean primary key default true check(singleton), engine_hash text not null check(length(engine_hash)=64), enabled boolean not null default true);
-insert into public.pvp_policy_v3(singleton,engine_hash) values(true,'fa0f4fef157422a35f3f5d4fab9d636aa0c8e008f4fd4a1341202d0a19946f41')
+insert into public.pvp_policy_v3(singleton,engine_hash) values(true,'96f5145ee300d001d3582762c6e81fb244c8e2428935931f821980601f35df1d')
  on conflict(singleton) do update set engine_hash=excluded.engine_hash;
 -- A clean, verified ladder. Legacy rows remain intact, NOT copied as proof.
 create table if not exists public.pvp_ratings_v3(
@@ -19217,7 +19217,7 @@ revoke all on sequence public.pvp_attempts_id_seq from public,anon,authenticated
 -- Phase4 cluster guard is enforced by installer outer guard.
 set local check_function_bodies=off;
 create table if not exists public.guildbattle_policy_v4(singleton boolean primary key default true check(singleton),engine_hash text not null,enabled boolean not null default true);
-insert into public.guildbattle_policy_v4(singleton,engine_hash) values(true,'1e5c20366403b1dd4ce0c687db01d2469fa660d044fbff1b54be5fc4f3ea3060') on conflict(singleton) do update set engine_hash=excluded.engine_hash;
+insert into public.guildbattle_policy_v4(singleton,engine_hash) values(true,'9f6b02bcae08b7a921516060f705ff9a8b579a80fc4807adbb3727ff7d66b267') on conflict(singleton) do update set engine_hash=excluded.engine_hash;
 do $$ begin
  if not exists(select 1 from pvp_policy_v3) then raise exception 'STOP: install phases 1-3 first'; end if;
 end $$;
@@ -20514,7 +20514,7 @@ notify pgrst,'reload schema';
 -- Phase5 cluster guard is enforced by installer outer guard.
 create table if not exists public.arcade_policy_v5 (
  singleton boolean primary key default true check(singleton), enabled boolean not null default true, engine_hash text not null check(engine_hash ~ '^[a-f0-9]{64}$'));
-insert into public.arcade_policy_v5(singleton,engine_hash) values(true,'a1c0a4262f84e741e06211e15fb5c5d967897adc8e02a3d592cffcf427f0f118')
+insert into public.arcade_policy_v5(singleton,engine_hash) values(true,'7da716ef3eaf736cda2f07bd87f5a96d399deb4f6b09dc9c1debf123a0133885')
 on conflict(singleton) do update set engine_hash=excluded.engine_hash;
 create table if not exists public.arcade_sessions_v5 (
  id bigint generated always as identity primary key,
@@ -20753,7 +20753,7 @@ create table if not exists public.battle_replay_policy_v6 (
  engine_hash text not null check (engine_hash ~ '^[a-f0-9]{64}$'));
 -- Starts off. Re-running this file updates the engine hash only and does not turn enforcement on.
 insert into public.battle_replay_policy_v6(singleton, enabled, engine_hash)
- values (true, false, 'c36ff1eff07d4611014466d4d7dfadc0391974abbddf3fc633a8b803e14ff4d5')
+ values (true, false, '68de135b3c27c9f1bf5828605c0aa68b591c8ad18167dcb473e9aa5037748f9f')
  on conflict (singleton) do update set engine_hash = excluded.engine_hash;
 alter table public.battle_replay_policy_v6 enable row level security;
 revoke all on public.battle_replay_policy_v6 from public, anon, authenticated;
