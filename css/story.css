@@ -789,7 +789,10 @@ body.story-media-on .story-dlg-skip { left: 4px; right: auto; top: calc(4px + en
 .story-zoom { position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,.94); display: flex; align-items: center; justify-content: center; animation: storyFade .25s; }
 .story-zoom img { max-width: 100vw; max-height: 100vh; object-fit: contain; }
 .story-zoom-x { position: absolute; top: calc(10px + env(safe-area-inset-top)); right: 12px; width: 44px; height: 44px; border-radius: 999px; background: rgba(255,255,255,.15); font-size: 20px; color: #fff; }
-/* 이벤트 원본 그림은 확대/크롭 없이 대사 위 가용 화면 안에 전부 표시. */
+/* 세로 화면: 가로 CG를 대사 상자 위 높이에 맞춰 채우고(cover) 양옆을 가운데 기준으로 자른다. PC·가로는 위 contain 그대로. 돋보기(.story-zoom)는 원본 전체를 보여 줌. */
+@media (orientation: portrait) {
+  .story-media img { object-fit: cover; object-position: center; }
+}
 
 /* 10회 뽑기 결과: 카드 뒷면 → 낮은 등급부터 차례로 뒤집힘 (--fd = 열리는 시각). SR 자주 · UR 이상 금색 반짝, 나머지 무지 */
 .story-tk-card.tk-flip{opacity:1;animation:none;background:transparent;border-color:transparent;box-shadow:none;overflow:visible;perspective:600px;transition:border-color .2s var(--fd),box-shadow .2s var(--fd)}
