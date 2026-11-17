@@ -40,11 +40,11 @@ set local check_function_bodies = off;
 
 do $vr_install_part$
 begin
-  if exists (select 1 from vr_staging_install.parts where bundle_hash <> 'fb4900de76bfe3c79cd14755e33a6d7ae8f58b8ab8a13e78f0d95afd63c1d9c4' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
+  if exists (select 1 from vr_staging_install.parts where bundle_hash <> '95078721fd054b9146bc80edae9e5afbe518e942b47be76a1de2c0f2d8dab907' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
     raise exception 'STOP: 다른 버전/DB의 설치 기록입니다. 파일을 섞지 마세요.';
   end if;
   if exists (select 1 from vr_staging_install.parts where part_no = 13) then
-    if not exists (select 1 from vr_staging_install.parts where part_no = 13 and part_hash = '274d37084da0d37de1a7d1d5f84b8872b4fd985e09e2d24f4eae5f1d0cf38aa6') then
+    if not exists (select 1 from vr_staging_install.parts where part_no = 13 and part_hash = 'd3ad7f8bcf9e8e02fdd29d8666fc287b2022f6c0a61038c0bef20964c0ad98a4') then
       raise exception 'STOP: 완료한 파일과 내용이 다릅니다.';
     end if;
     raise notice '13_install.sql: 이미 완료, 변경 없이 건너뜀';
@@ -83,8 +83,9 @@ begin
  or (win_ and reason_='giveup') or length(reason_)>40 then raise exception 'implausible turns or skills'; end if;
  -- Field-entry passives can legitimately win story/manual tower before turn 1.
  if s.mode in ('tower_sweep','tutorial') and win_ and tr<1 then raise exception 'implausible zero-turn win'; end if;
- if reason_ not in ('ko','wipe','survive','timeout','giveup','mustlive','mustsummon','hp','cards','draw')
+ if reason_ not in ('ko','wipe','survive','timeout','giveup','mustlive','mustsummon','hp','cards','draw','mustkill')
  or (win_ and reason_ in ('timeout','giveup','mustlive','mustsummon','draw'))
+ or (reason_='mustkill' and (not win_ or jsonb_typeof(cfg->'rules'->'mustKill') is distinct from 'array' or cfg->'rules'->'mustKill'='[]'::jsonb))
  or (reason_='survive' and (not win_ or cfg->'rules'->>'survive' is null or tr<2*(cfg->'rules'->>'survive')::int)) then raise exception 'implausible end reason'; end if;
  if (select count(*) from public.battle_events_v2 where user_id=u and day=public._gem_day() and session_id<>s.id)>=500 then raise exception 'completion rate limit'; end if;
  clear_:=win_ or (s.mode='story' and coalesce((cfg->>'loseClears')::boolean,false) and reason_ not in ('giveup',''));
@@ -1292,7 +1293,7 @@ begin
 end $$;$vr_statement$;
 
   insert into vr_staging_install.parts(part_no, bundle_hash, part_hash, project_ref, db_id)
-  values (13, 'fb4900de76bfe3c79cd14755e33a6d7ae8f58b8ab8a13e78f0d95afd63c1d9c4', '274d37084da0d37de1a7d1d5f84b8872b4fd985e09e2d24f4eae5f1d0cf38aa6', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
+  values (13, '95078721fd054b9146bc80edae9e5afbe518e942b47be76a1de2c0f2d8dab907', 'd3ad7f8bcf9e8e02fdd29d8666fc287b2022f6c0a61038c0bef20964c0ad98a4', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
 end $vr_install_part$;
 commit;
 select '13_install.sql: 완료 또는 이미 완료 (13/14)' as result;

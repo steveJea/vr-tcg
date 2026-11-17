@@ -119,6 +119,25 @@ try {
   const sql = migration.replaceAll("'7703759698107299042'", `'${system}'`);
   await db.exec(sql);
   await db.exec(sql);
+  // fix_finish_v2_mustkill_*.sql: patch an installed pre-fix legacy body (now _phase6_old_finish_v2) in place.
+  {
+    const legacy = `public._phase6_old_finish_v2(uuid,jsonb)`;
+    const mk = await rd('supabase/fix_finish_v2_mustkill_staging.sql');
+    const newRule = mk.match(/new_rule text := \$q\$([\s\S]*?)\$q\$;/)[1], oldRule = mk.match(/old_rule text := \$q\$([\s\S]*?)\$q\$;/)[1];
+    const def = await val(`select pg_get_functiondef($1::regprocedure) v`, [legacy]);
+    assert.ok(def.includes(newRule), 'fresh install already has the mustkill rule');
+    await db.exec(def.replace(newRule, oldRule).replace(`'draw','mustkill')`, `'draw')`));
+    assert.doesNotMatch(await val(`select prosrc v from pg_proc where oid=$1::regprocedure`, [legacy]), /mustkill/);
+    const check = await rd('supabase/fix_finish_v2_mustkill_check_staging.sql');
+    const local = t => t.replaceAll("'7703759698107299042'", `'${system}'`);
+    assert.equal(await val(local(check).replace(/^--.*$/gm, '').replace(/\) as ok;\s*$/, ') as v')), false, 'check is false before the fix');
+    await assert.rejects(db.exec(mk), /STOP: this file is for staging only/);
+    await assert.rejects(db.exec(await rd('supabase/fix_finish_v2_mustkill_production.sql')), /STOP: this file is for production only/);
+    await db.exec(local(mk)); await db.exec(local(mk));
+    assert.equal(await val(`select prosrc v from pg_proc where oid=$1::regprocedure`, [legacy]), def.slice(def.indexOf('AS $function$') + 13, def.lastIndexOf('$function$')), 'patched body equals the fresh-install body');
+    assert.equal(await val(local(check).replace(/^--.*$/gm, '').replace(/\) as ok;\s*$/, ') as v')), true, 'check is true after the fix');
+    assert.match(check, /^select \($/m);
+  }
   assert.equal(await val('select enabled v from battle_replay_policy_v6'), false, 'install leaves sweep replay off');
   await reject(`select battle_sweep_session_v6($1,$2)`, [me, req(1)]);
   await reject(`select battle_sweep_settle_v6($1,$2,$3,$4::jsonb)`, [me, req(1), ENGINE_VERSION, '{"win":true,"reason":"wipe","turns":2,"my_turns":1}']);
@@ -163,6 +182,20 @@ try {
   const survived = await finish(survive.session, { win: true, reason: 'survive', turns: 2, my_turns: 1, mana: survive.snapshot.mana, skills: 0, cards: [] });
   assert.equal(survived.validation, 'plausibility-v3', 'survive turns are still a bounded report, not a combat replay');
   assert.equal(survived.cleared, true);
+
+  // 16-11 style mustKill: win reason 'mustkill' is accepted only when the stage snapshot names a mustKill target.
+  await unlockBefore(1, 3);
+  const noKill = await start('story', '1:3', [owned.uid], req(24));
+  await age(noKill.session);
+  await reject(`select battle_session_finish_v2($1,$2::jsonb)`, [noKill.session, JSON.stringify({ ...report, reason: 'mustkill', mana: noKill.snapshot.mana })], /end reason/);
+  const kill = await start('story', '1:3', [owned.uid], req(25));
+  await q(`update battle_sessions_v2 set snapshot=jsonb_set(snapshot,'{stage,rules}',coalesce(snapshot->'stage'->'rules','{}')||'{"mustKill":["10406"]}') where id=$1`, [kill.session]);
+  await age(kill.session);
+  await reject(`select battle_session_finish_v2($1,$2::jsonb)`, [kill.session, JSON.stringify({ ...report, win: false, reason: 'mustkill', mana: kill.snapshot.mana })], /end reason/);
+  const killed = await finish(kill.session, { ...report, reason: 'mustkill', mana: kill.snapshot.mana, cards: [{ uid: owned.uid, kills: 1, blocks: 0 }] });
+  assert.equal(killed.validation, 'plausibility-v3');
+  assert.equal(killed.win, true);
+  assert.equal(killed.cleared, true, 'mustkill win clears the phase');
 
   const held = await start('tower_sweep', 'normal:1', [owned.uid], req(29));
   await age(held.session);

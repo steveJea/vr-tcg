@@ -18610,8 +18610,9 @@ begin
  or (win_ and reason_='giveup') or length(reason_)>40 then raise exception 'implausible turns or skills'; end if;
  -- Field-entry passives can legitimately win story/manual tower before turn 1.
  if s.mode in ('tower_sweep','tutorial') and win_ and tr<1 then raise exception 'implausible zero-turn win'; end if;
- if reason_ not in ('ko','wipe','survive','timeout','giveup','mustlive','mustsummon','hp','cards','draw')
+ if reason_ not in ('ko','wipe','survive','timeout','giveup','mustlive','mustsummon','hp','cards','draw','mustkill')
  or (win_ and reason_ in ('timeout','giveup','mustlive','mustsummon','draw'))
+ or (reason_='mustkill' and (not win_ or jsonb_typeof(cfg->'rules'->'mustKill') is distinct from 'array' or cfg->'rules'->'mustKill'='[]'::jsonb))
  or (reason_='survive' and (not win_ or cfg->'rules'->>'survive' is null or tr<2*(cfg->'rules'->>'survive')::int)) then raise exception 'implausible end reason'; end if;
  if (select count(*) from public.battle_events_v2 where user_id=u and day=public._gem_day() and session_id<>s.id)>=500 then raise exception 'completion rate limit'; end if;
  clear_:=win_ or (s.mode='story' and coalesce((cfg->>'loseClears')::boolean,false) and reason_ not in ('giveup',''));
