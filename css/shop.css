@@ -42,3 +42,48 @@
 .shop-rates{font-size:12px;font-weight:800;padding:4px 10px;border-radius:999px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.3)}
 .shop-pack-head .shop-note{margin:0;flex:1;min-width:0}.shop-pack-head .shop-rates{flex-shrink:0}
 .shop-pack-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:4px 0 8px}
+/* 상점 개편 (시트 68): 6탭 · 우편 지급 · 심연석 상점(수량·장비 9칸) · 팝업스토어 */
+.shop-bal { flex-wrap: wrap; align-items: center; }
+.shop-bal > span { display: inline-flex; align-items: center; gap: 4px; }
+.shop-bal small { margin-left: 4px; }
+.shop-tk { font-weight: 800; font-size: 13px; gap: 6px !important; }
+.shop-mailbtn { flex: none; width: 36px; height: 36px; border-radius: 10px; border: 1px solid rgba(245,201,106,.4); background: rgba(0,0,0,.35); font-size: 18px; line-height: 1; }
+.shop-mailbtn .ui-ic, .shop-mailbtn img { width: 22px; height: 22px; }
+.shop-mailnote { margin: 6px 2px 0; font-size: 11px; color: #a1a1aa; }
+.shop-tabs button.out { border-style: dashed; }
+.shop-banner { position: relative; width: 100%; aspect-ratio: 3 / 1; border-radius: 14px; overflow: hidden; margin: 0 0 10px; background: linear-gradient(120deg, #2a1050, #0b0614); }
+.shop-banner img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.shop-banner.miss img { display: none; }
+.shop-card-h { display: flex; align-items: center; gap: 6px; }
+.shop-ic { display: inline-flex; align-items: center; justify-content: center; flex: none; }
+.shop-ic .ui-ic { width: 24px; height: 24px; }
+.shop-card .shop-lim { color: #a5b4fc; font-weight: 700; }
+.shop-card .shop-lim.on { color: #86efac; }
+.shop-popup { border-color: rgba(244,114,182,.55); background: linear-gradient(160deg, rgba(190,24,93,.18), rgba(255,255,255,.04)); }
+.shop-pass { }
+.shop-qlist { display: flex; flex-direction: column; gap: 8px; }
+.shop-qrow { display: flex; align-items: center; gap: 8px; padding: 10px; border-radius: 12px; background: rgba(255,255,255,.05); border: 1px solid rgba(245,201,106,.25); }
+.shop-qmeta { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.shop-qmeta small { font-size: 11px; color: #d4d4d8; display: inline-flex; align-items: center; gap: 2px; }
+.shop-qty { display: flex; align-items: center; gap: 2px; }
+.shop-qty button { width: 28px; height: 30px; border-radius: 8px; border: 1px solid rgba(255,255,255,.25); background: rgba(0,0,0,.35); color: #fff; font-weight: 900; }
+.shop-qty input { width: 44px; height: 30px; text-align: center; border-radius: 8px; border: 1px solid rgba(255,255,255,.25); background: rgba(0,0,0,.45); color: #fff; font-weight: 800; -moz-appearance: textfield; }
+.shop-qty input::-webkit-outer-spin-button, .shop-qty input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.shop-qrow .shop-go { margin: 0; min-width: 78px; display: inline-flex; align-items: center; justify-content: center; gap: 2px; }
+.shop-sub small { font-weight: 500; color: #a1a1aa; font-size: 11px; margin-left: 4px; }
+.shop-gears { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.shop-gear { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 4px; border-radius: 12px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.15); color: #f4f4f5; }
+.shop-gear > img { width: 56px; height: 56px; object-fit: contain; }
+.shop-gear small .ui-ic, .shop-qmeta .ui-ic { width: 14px; height: 14px; }
+.shop-qrow .shop-go .ui-ic { width: 18px; height: 18px; }
+.shop-gear b { font-size: 12px; text-align: center; line-height: 1.2; }
+.shop-gear small { font-size: 11px; color: #f5c96a; display: inline-flex; align-items: center; gap: 2px; }
+.shop-gear-g { position: absolute; top: 4px; left: 4px; padding: 1px 6px; border-radius: 999px; font-size: 10px; font-weight: 900; background: #334155; }
+.shop-gear.g-SR { border-color: rgba(192,132,252,.6); } .shop-gear.g-SR .shop-gear-g { background: #7c3aed; }
+.shop-gear.g-UR { border-color: rgba(251,191,36,.8); box-shadow: 0 0 12px rgba(251,191,36,.35); } .shop-gear.g-UR .shop-gear-g { background: linear-gradient(#f5c96a, #d4a017); color: #1c1204; }
+.shop-gear.g-HR .shop-gear-g { background: #2563eb; }
+.shop-gear.sold { opacity: .45; }
+@media (min-width: 640px) { .shop-gears { grid-template-columns: repeat(9, 1fr); } .shop-gear > img { width: 48px; height: 48px; } }
+.shop .shop-tabs { display: grid; grid-template-columns: repeat(3, 1fr); overflow: visible; }
+.shop .shop-tabs button { padding: 8px 4px; font-size: 13px; white-space: nowrap; }
+@media (min-width: 640px) { .shop .shop-tabs { grid-template-columns: repeat(6, 1fr); } }
