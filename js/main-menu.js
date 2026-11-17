@@ -137,11 +137,65 @@
   paintLocks(); paintTut(); paintHome();
   let tries = 0; const poll = setInterval(() => { paintLocks(); if (window.VRCloud?.ready || ++tries > 40) clearInterval(poll); }, 250);
   // --- 개편 A: 상단 재화·레벨, 스토리 이어하기 카드, 하단 탭, 설정 안 푸터·로그아웃 ---
+  const escTxt = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  // 이어하기 타일·바로가기 칸 공통: 루트 배너 → 챕터 배너 → 맵 배경(PC/모바일) → 기본 그림. 파일만 추가되면 자동으로 첫 장이 쓰임.
+  function chBannerSrcs(ch) {
+    const n = ch.i | 0, bg = ch.bg, id = ch.id;
+    const urls = [
+      ch.variant && `img/ui/main/story_banner_ch${n}_${ch.variant}.webp`,
+      `img/ui/main/story_banner_ch${n}.webp`,
+      bg && `img/story/ch_bg_pc_${bg}.webp`,
+      bg && `img/story/ch_bg_${bg}.webp`,
+      id != null && String(bg) !== String(id) && `img/story/ch_bg_pc_${id}.webp`,
+      id != null && String(bg) !== String(id) && `img/story/ch_bg_${id}.webp`,
+      'img/ui/main/story_banner.webp',
+    ].filter(Boolean);
+    return [...new Set(urls)];
+  }
+  function hideChShortcuts() {
+    const row = $('ch-shortcuts'); if (!row) return;
+    row.innerHTML = ''; row.hidden = true; row.classList.add('hidden');
+  }
+  function paintChShortcuts(sm) {
+    const row = $('ch-shortcuts'); if (!row) return;
+    const list = sm?.ok && Array.isArray(sm.chapters) ? sm.chapters : [];
+    if (!list.length) return hideChShortcuts();
+    const curI = sm.current?.i;
+    row.innerHTML = list.map(ch => {
+      const open = !!ch.open, cur = ch.i === curI;
+      const sub = ch.subtitle || '', ident = ch.id ?? ch.i;
+      const title = sub && !new RegExp('^\\s*(CHAPTER|CH\\.?|챕터)\\s*0*' + ident + '\\s*$', 'i').test(sub) ? sub : (ch.title || '');
+      const label = `CHAPTER ${ident}`;
+      const urls = chBannerSrcs(ch);
+      const why = ch.lockWhy || '아직 열리지 않은 챕터예요';
+      return `<button type="button" class="ch-short${open ? '' : ' locked'}${cur ? ' cur' : ''}" data-ch="${ch.i | 0}" ${open ? '' : `aria-disabled="true" data-lock="${escTxt(why)}"`} aria-label="${escTxt(label + (title ? ' · ' + title : '') + (open ? '' : ' (잠김)'))}">
+        <img class="ch-short-img" alt="" width="1080" height="420" loading="lazy" decoding="async" src="${escTxt(urls[0])}" data-alts="${escTxt(urls.slice(1).join('|'))}">
+        <span class="ch-short-t"><small>${escTxt(label)}</small><b>${escTxt(title)}</b></span>
+        ${open ? '' : '<i class="ch-short-lock" aria-hidden="true">🔒</i>'}</button>`;
+    }).join('');
+    row.hidden = false; row.classList.remove('hidden');
+    row.querySelectorAll('.ch-short-img').forEach(img => {
+      const urls = [img.getAttribute('src'), ...(img.dataset.alts || '').split('|')].filter(Boolean);
+      let k = 0; img.onerror = () => { if (++k < urls.length) img.src = urls[k]; };
+    });
+    row.onclick = e => {
+      const b = e.target.closest('.ch-short'); if (!b || !row.contains(b)) return;
+      if (b.classList.contains('locked') || b.getAttribute('aria-disabled') === 'true') {
+        const msg = b.dataset.lock || '아직 열리지 않은 챕터예요';
+        (window.VRStory?.api?.toast || window.VRGem?.toast || (t => alert(t)))(msg);
+        return;
+      }
+      const i = +b.dataset.ch;
+      if (Number.isFinite(i)) window.VRStory?.openMap?.(i);
+    };
+    const cur = row.querySelector('.ch-short.cur') || row.querySelector('.ch-short:not(.locked)');
+    try { cur?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'instant' }); } catch {}
+  }
   async function paintHome() {
     const scr = $('start-screen'), u = user();
     scr.classList.toggle('is-guest', !u);
     $('main-logout').classList.toggle('hidden', !u);
-    const cur = $('main-cur'); if (!u) { cur.innerHTML = ''; return; }
+    const cur = $('main-cur'); if (!u) { cur.innerHTML = ''; hideChShortcuts(); return; }
     try {
       const [st, w, g] = await Promise.all([window.VRPlayer?.status?.(), window.VRPlayer?.wallet?.(), window.VRGem?.status?.()]);
       const n = v => (v | 0) >= 100000 ? Math.floor(v / 1000) + 'k' : (v | 0).toLocaleString();
@@ -153,7 +207,8 @@
       // 배너: 고른 시작 캐릭터/루트별(story_banner_ch{N}_{variant}) → 챕터(story_banner_ch{N}) → 기본 그림
       if (c) { const im = document.querySelector('#story-btn [data-alt]'); if (im) { const i = new Image(); const urls = [c.variant && `img/ui/main/story_banner_ch${c.i | 0}_${c.variant}.webp`, `img/ui/main/story_banner_ch${c.i | 0}.webp`].filter(Boolean); let k = 0; i.onload = () => { im.src = i.src; }; i.onerror = () => { if (++k < urls.length) i.src = urls[k]; }; i.src = urls[0]; } }
       if (c) $('main-cta-sub').textContent = `CHAPTER ${c.i} · ${c.phase ? 'PHASE ' + c.phase : `${c.done}/${c.total}`}${c.title && !new RegExp('^\\s*(CHAPTER|CH\\.?|챕터)\\s*0*' + c.i + '\\s*$', 'i').test(c.title) ? ' · ' + c.title : ''}`;
-    } catch {}
+      paintChShortcuts(sm);
+    } catch { hideChShortcuts(); }
   }
   $('tab-talent').addEventListener('click', () => { if (user()) window.VRStory?.openCards?.(); });
   $('tab-home').addEventListener('click', () => document.querySelectorAll('.main-pop:not(.hidden)').forEach(p => p.classList.add('hidden')));
@@ -165,5 +220,5 @@
   // 패밀리 링크·저작권 → 설정 팝업 안으로
   { let k = 0; const mv = () => { const f = $('mbbs-footer'); if (f) $('gm-foot').appendChild(f); else if (++k < 40) setTimeout(mv, 150); }; mv(); }
   window.addEventListener('tcg:ready', paintHome);
-  window.VRMainMenu = { confirmYN, showIntro, hideIntro };
+  window.VRMainMenu = { confirmYN, showIntro, hideIntro, paintHome, paintChShortcuts, chBannerSrcs };
 })();

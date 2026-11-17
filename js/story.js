@@ -2297,6 +2297,7 @@
   async function summary() {
     if (!user()) return { ok: false, reason: 'login' };
     await load(); if (!save) return { ok: false, reason: 'load' };
+    await checkChapters();
     let tk = null; try { const r = await syncTickets(); tk = r?.tickets ?? tickets; } catch {}
     const inst = deckInstances(), byUid = new Map(save.owned.map(o => [o.uid, o]));
     let deck = []; try { deck = JSON.parse(pickKeyRead('story') || '[]').filter(u => byUid.has(u)); } catch {}
@@ -2306,7 +2307,12 @@
     return {
       ok: true, serverMode, leaderUid: lead, deckUids: deck, tickets: tk, decks: decksOf().map((d, i) => ({ name: deckName(d, i), uids: (d?.uids || []).filter(u => byUid.has(u)) })),
       owned: save.owned.map(view), uniq: inst.length,
-      chapters: D.chapters.map(ch => ({ id: ch.id, title: ch.title, done: (save.cleared?.[ch.id] || []).filter(no => ch.phases.some(p => p.no === no)).length, total: ch.phases.length })),
+      chapters: D.chapters.map((base, i) => {
+        const ch = chapterFor(base), done = (save.cleared?.[base.id] || []).filter(no => ch.phases.some(p => p.no === no)).length, open = chapterOpen(i);
+        let lockWhy = '';
+        if (!open) lockWhy = (i && D.chapters[i - 1] && !chapterDone(D.chapters[i - 1])) ? '이전 챕터를 클리어하면 열려요' : (chLvLock(base) ? `Lv ${chNeedLv(base)}이 되면 열려요` : '아직 열리지 않은 챕터예요');
+        return { i, id: base.id, title: base.title, subtitle: ch.subtitle || base.subtitle || base.title, done, total: ch.phases.length, open, lockWhy, bg: bgKey(base), variant: base.byStarter ? (save?.starter || null) : routeOf(base) };
+      }),
       current: (() => { try { const i = hubCurIdx(), base = D.chapters[i], ch = chapterFor(base), nx = nextPlay(), n = clearedOf(ch).length, cv = chCover(base);
         return { i, id: base.id, bg: bgKey(base), title: base.title, subtitle: ch.subtitle || base.title, phase: nx && nx.i === i ? nx.ph.no : null, boss: nx && nx.i === i && nx.ph.type === 'boss', done: n, total: ch.phases.length, cover: coverId(cv) ? `${IMG}${coverId(cv)}.webp` : null, variant: base.byStarter ? (save?.starter || null) : routeOf(base) }; } catch { return null; } })(),
     };
@@ -2363,5 +2369,5 @@
     sort: (list, st) => { const k0 = cardSort; cardSort = st; try { return sortInst(list); } finally { cardSort = k0; } },
     next: (st, k) => st.k === k ? { k, desc: !st.desc } : { k, desc: true },
   };
-  window.VRStory = { hubSections: HUB_SECTIONS, play: () => enter('go'), canDraw: () => canDraw(), trainCard, canMergeUid, sortTool, skBadge, lendCards, reloadLend: () => loadLend(true), partyOf, pickDeck, openMap: i => openPage(() => renderMap(i)), openCards: from => openRoster(() => { rosterFrom = from === 'mypage' ? 'mypage' : null; renderCards(); }), openDecks: from => openRoster(() => { rosterFrom = from === 'mypage' ? 'mypage' : null; renderDecks(); }), openShop: () => openSummon(), api, bgm, BGM, endingVideo, videoOf, conditionsOf, battleRules, summary, enter, openGacha, renderHub, renderShop, drawOnce, kstDay, chapterArt, get save() { return save; }, renderMap, renderCards, openStats, renderSelect, playLines };
+  window.VRStory = { hubSections: HUB_SECTIONS, play: () => enter('go'), canDraw: () => canDraw(), trainCard, canMergeUid, sortTool, skBadge, lendCards, reloadLend: () => loadLend(true), partyOf, pickDeck, openMap: i => openPage(() => renderMap(i), true), /* quiet: 로비 바로가기는 허브를 건너뛰고, renderMap이 잠긴 챕터는 열린 챕터로 되돌림 */ openCards: from => openRoster(() => { rosterFrom = from === 'mypage' ? 'mypage' : null; renderCards(); }), openDecks: from => openRoster(() => { rosterFrom = from === 'mypage' ? 'mypage' : null; renderDecks(); }), openShop: () => openSummon(), api, bgm, BGM, endingVideo, videoOf, conditionsOf, battleRules, summary, enter, openGacha, renderHub, renderShop, drawOnce, kstDay, chapterArt, get save() { return save; }, renderMap, renderCards, openStats, renderSelect, playLines };
 })();
