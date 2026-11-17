@@ -10,7 +10,7 @@ let fails = 0; const ok = (c, m) => { if (!c) { fails++; console.log('FAIL', m);
 const fresh = casterId => { const A = { name: 'A', hp: 9999, field: [], hand: [], deck: [], mana: 0 }, B = { name: 'B', hp: 9999, field: [], hand: [], deck: [], mana: 0, actionLock: 0 }; initPlayers(A, B, A);
   const u = placeUnit(A, C(casterId), makeUnit); const fs = ['10051', '10053', '10054'].map(i => placeUnit(B, { ...C(i), HP: 99999 }, makeUnit)); return { A, B, u, fs }; };
 const seq = arr => { let i = 0; setRng(() => arr[i++ % arr.length]); };
-for (const [name, kind] of [['아름다운 고통의 키스(眞)', 'confuse'], ['더 울어, 예쁘게!(眞)', 'disrupt']]) {
+for (const [name, kind] of [['아름다운 고통의 키스(眞)', 'confuse'], ['더 울어, 예쁘게!(眞)', 'confuse']]) {
   const { A, B, u, fs } = fresh('10325'); seq([0.1, 0.9, 0.1]); ACTIVE[name](u, A, B);
   ok(fs[0].st[kind] && !fs[1].st[kind] && fs[2].st[kind], `${name}: 대상마다 판정 (걸림·안 걸림·걸림)`);
   ok(B.actionLock >= 1, `${name}: 고유기술 봉인은 항상`);

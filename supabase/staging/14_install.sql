@@ -40,11 +40,11 @@ set local check_function_bodies = off;
 
 do $vr_install_part$
 begin
-  if exists (select 1 from vr_staging_install.parts where bundle_hash <> 'cab59c4c83837ea501b7d747ee56f42ce3253e9f5cf4f867a52b6f07eacba008' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
+  if exists (select 1 from vr_staging_install.parts where bundle_hash <> 'a0fec3baf9c691dbf5af19e48e24fae6d6874bd290507e2561bf81f42788e646' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
     raise exception 'STOP: 다른 버전/DB의 설치 기록입니다. 파일을 섞지 마세요.';
   end if;
   if exists (select 1 from vr_staging_install.parts where part_no = 14) then
-    if not exists (select 1 from vr_staging_install.parts where part_no = 14 and part_hash = '3d6ce315190b0a7c6bacce490e6256cfedc365bef56fe395bca0ba99a1ef840a') then
+    if not exists (select 1 from vr_staging_install.parts where part_no = 14 and part_hash = 'd0e181dd09eaeb4bebd771445ddd10fd01527420ffa911d3c477e55b3b768804') then
       raise exception 'STOP: 완료한 파일과 내용이 다릅니다.';
     end if;
     raise notice '14_install.sql: 이미 완료, 변경 없이 건너뜀';
@@ -656,7 +656,7 @@ notify pgrst,'reload schema';$vr_statement$;
 -- Phase5 cluster guard is enforced by installer outer guard.
 create table if not exists public.arcade_policy_v5 (
  singleton boolean primary key default true check(singleton), enabled boolean not null default true, engine_hash text not null check(engine_hash ~ '^[a-f0-9]{64}$'));$vr_statement$;
-  execute $vr_statement$insert into public.arcade_policy_v5(singleton,engine_hash) values(true,'a1c0a4262f84e741e06211e15fb5c5d967897adc8e02a3d592cffcf427f0f118')
+  execute $vr_statement$insert into public.arcade_policy_v5(singleton,engine_hash) values(true,'7da716ef3eaf736cda2f07bd87f5a96d399deb4f6b09dc9c1debf123a0133885')
 on conflict(singleton) do update set engine_hash=excluded.engine_hash;$vr_statement$;
   execute $vr_statement$create table if not exists public.arcade_sessions_v5 (
  id bigint generated always as identity primary key,
@@ -888,7 +888,7 @@ create table if not exists public.battle_replay_policy_v6 (
  engine_hash text not null check (engine_hash ~ '^[a-f0-9]{64}$'));$vr_statement$;
   execute $vr_statement$-- Starts off. Re-running this file updates the engine hash only and does not turn enforcement on.
 insert into public.battle_replay_policy_v6(singleton, enabled, engine_hash)
- values (true, false, 'c36ff1eff07d4611014466d4d7dfadc0391974abbddf3fc633a8b803e14ff4d5')
+ values (true, false, '68de135b3c27c9f1bf5828605c0aa68b591c8ad18167dcb473e9aa5037748f9f')
  on conflict (singleton) do update set engine_hash = excluded.engine_hash;$vr_statement$;
   execute $vr_statement$alter table public.battle_replay_policy_v6 enable row level security;$vr_statement$;
   execute $vr_statement$revoke all on public.battle_replay_policy_v6 from public, anon, authenticated;$vr_statement$;
@@ -1036,7 +1036,7 @@ end $staging_verify$;$vr_statement$;
 
   grant usage on schema public to public, anon, authenticated;
   insert into vr_staging_install.parts(part_no, bundle_hash, part_hash, project_ref, db_id)
-  values (14, 'cab59c4c83837ea501b7d747ee56f42ce3253e9f5cf4f867a52b6f07eacba008', '3d6ce315190b0a7c6bacce490e6256cfedc365bef56fe395bca0ba99a1ef840a', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
+  values (14, 'a0fec3baf9c691dbf5af19e48e24fae6d6874bd290507e2561bf81f42788e646', 'd0e181dd09eaeb4bebd771445ddd10fd01527420ffa911d3c477e55b3b768804', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
 end $vr_install_part$;
 commit;
 select '14_install.sql: 완료 또는 이미 완료 (14/14)' as result;

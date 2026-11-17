@@ -63,9 +63,9 @@ const W4 = { stat: 'atk', pct: 8, plus: 0, opts: [{ opt: 'crit', v: 2 }] }, A5 =
   const t0 = tear(null), t1 = tear(0), t5 = tear(5);
   ok('천천히 찢는 사랑 +0 > 없음', t1 > t0 * 1.25, `${t0} → ${t1}`); ok('+5 ≈ 195/80 배', t5 > t0 * 2.2, `${t5}`);
   const kiss = sig => { const { A, B } = sides([applyGear(C(YURI), { sigil: sig }, 'story')], FOE); const h = B.map(x => x.hp); cast(A[0], '더 울어, 예쁘게!'); return h[0] - B[0].hp; };
-  ok('더 울어: 없음 180 상한 → +0 240 → +5 340', kiss(null) === 180 && kiss(0) === 240 && kiss(5) === 340, `${kiss(null)}/${kiss(0)}/${kiss(5)}`);
+  ok('더 울어 (시트 11/17 공격력 30%): 증표 HP% 비율만큼 피해 증가 — 없음 < +0 < +5', kiss(null) < kiss(0) && kiss(0) < kiss(5), `${kiss(null)}/${kiss(0)}/${kiss(5)}`);
   const { A } = sides([applyGear(C(YURI), { sigil: 3 }, 'story')], FOE);
-  ok('+3 키스 MP 35', skillMp(A[0], sk(A[0], '아름다운 고통의 키스')) === 35 && skillMp(A[0], sk(A[0], '천천히 찢는 사랑')) === 50);
+  ok('+3 키스 MP 35', skillMp(A[0], sk(A[0], '아름다운 고통의 키스')) === 35 && skillMp(A[0], sk(A[0], '천천히 찢는 사랑')) === 60);
   setRng(() => 0.45); const c = sides([applyGear(C(YURI), { sigil: 5 }, 'story')], FOE); cast(c.A[0], '아름다운 고통의 키스');
   ok('+5 혼란 60% (난수 0.45 → 걸림, 기본 30%면 안 걸림)', c.B.some(x => x.st.confuse));
   setRng(() => 0.45); const d = sides([C(YURI)], FOE); cast(d.A[0], '아름다운 고통의 키스'); ok('증표 없음: 0.45 → 안 걸림', !d.B.some(x => x.st.confuse));
