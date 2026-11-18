@@ -141,6 +141,13 @@ for(const error of [{code:'identity_already_exists'},{code:'manual_linking_disab
 
 const mainMenu=await readFile(new URL('js/main-menu.js',root),'utf8');
 assert.match(mainMenu,/intro-login-naver.*login\('naver'\)/);
+assert.match(mainMenu,/const hideIntro = \(\) => \{ localStorage\.setItem\(INTRO_KEY, '1'\)/);
+for (const [id, provider] of [['intro-login','google'],['intro-login-kakao','kakao'],['intro-login-x','x'],['intro-login-naver','naver']]) {
+  assert(mainMenu.includes(`$('`+id+`').onclick = () => { login('`+provider+`'); };`), id+' starts OAuth without marking intro seen');
+  assert(!mainMenu.includes(`$('`+id+`').onclick = () => { localStorage.setItem(INTRO_KEY, '1'); login('`+provider+`'); };`), id+' must not pre-mark intro seen');
+}
+assert.doesNotMatch(mainMenu,/INTRO_KEY\) !== '1' && !\/\[\?&\]code=/);
+assert.match(mainMenu,/if \(user\(\)\) localStorage\.setItem\(INTRO_KEY, '1'\);\s*else if \(localStorage\.getItem\(INTRO_KEY\) !== '1'\) showIntro\(\);/);
 const css=await readFile(new URL('css/main-screen.css',root),'utf8');
 assert.match(css,/#main-link-naver\[hidden\]/);
 assert.match(css,/\.oauth-naver[^}]*#03C75A/);
