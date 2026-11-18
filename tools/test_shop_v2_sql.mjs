@@ -56,7 +56,7 @@ try{
  assert.equal(st.v,2);assert.equal(st.krw_test,true);
  const P=Object.fromEntries(st.products.map(p=>[p.sku,p]));
  assert.deepEqual(Object.keys(P).sort(),['gem_100','gem_1000','gem_3000','gem_500','gem_55000','level_1','pass_1','pass_2','pass_3','popup_first','popup_special','prem_10','prem_25','prem_45','spec_10','spec_25','spec_45']);
- assert.deepEqual(['pass_1','pass_2','pass_3'].map(k=>[P[k].name,P[k].price_krw,P[k].grant.days]),[['프리미엄 시즌패스',5500,30],['스페셜 시즌패스',22000,30],['럭셔리 시즌패스',44000,30]]);
+ assert.deepEqual(['pass_1','pass_2','pass_3'].map(k=>[P[k].name,P[k].price_krw,P[k].grant.days]),[['프리미엄 시즌패스',5500,30],['플러스 시즌패스',22000,30],['럭셔리 시즌패스',44000,30]]);
  assert.deepEqual(['prem_10','prem_25','prem_45','spec_10','spec_25','spec_45','level_1'].map(k=>[P[k].price_krw,P[k].month_max]),[[11000,3],[33000,3],[66000,2],[11000,3],[33000,3],[66000,2],[22000,2]]);
  assert.deepEqual([P.prem_25.grant,P.prem_45.grant,P.spec_25.grant,P.spec_45.grant],[{tickets:25},{tickets:45},{special_tickets:25},{special_tickets:45}]);
  assert.deepEqual([P.popup_first.price_krw,P.popup_special.price_krw,P.popup_first.acct_max],[1650,16500,1]);
@@ -245,9 +245,11 @@ try{
   const f=swap(await read('supabase/shop_v2_gear_odds_staging.sql'));await db4.exec(f);await db4.exec(f);
   const r=(await db4.query(swap(await read('supabase/shop_v2_gear_odds_check_staging.sql')))).rows[0];
   assert.equal(r.ok,true);assert.equal(r.odds,'HR 95% · SR 4.9% · UR 0.1%');
-  // main check still ok, and rerunning the new main file keeps the new odds
-  assert.equal((await db4.query(swap(await read('supabase/shop_v2_check_staging.sql')))).rows[0].ok,true);
+  // 옛 shop_v2 에는 '스페셜 시즌패스'가 남아 있어 새 이름 확인만 빠짐. 본문을 다시 돌리면 이름·장비 확률이 함께 맞음.
+  const mid=(await db4.query(swap(await read('supabase/shop_v2_check_staging.sql')))).rows[0];
+  assert.equal(mid.missing,'pass_names',JSON.stringify(mid));
   await db4.exec(swap(await read('supabase/shop_v2_staging.sql')));
+  assert.equal((await db4.query(swap(await read('supabase/shop_v2_check_staging.sql')))).rows[0].ok,true);
   assert.equal((await db4.query(swap(await read('supabase/shop_v2_gear_odds_check_staging.sql')))).rows[0].ok,true);
   console.log('shop v2 gear odds follow-up ok',r.odds);
  }finally{await db4.close();}

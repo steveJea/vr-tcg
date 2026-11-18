@@ -9,7 +9,7 @@ const document=window.document;
 const calls=[];const checkouts=[];let summon=0;
 const P=(sku,tab,name,price,extra={})=>({sku,tab,name,blurb:extra.blurb||'',price_krw:price,month_max:null,acct_max:null,month_used:0,acct_used:0,grant:extra.grant||{},first_open:false,...extra});
 const products=[
- P('pass_1','pass','프리미엄 시즌패스',5500,{grant:{pass:true,days:30}}),P('pass_2','pass','스페셜 시즌패스',22000,{grant:{pass:true,days:30}}),P('pass_3','pass','럭셔리 시즌패스',44000,{grant:{pass:true,days:30},pass_until:'2026-12-16'}),
+ P('pass_1','pass','프리미엄 시즌패스',5500,{grant:{pass:true,days:30}}),P('pass_2','pass','플러스 시즌패스',22000,{grant:{pass:true,days:30}}),P('pass_3','pass','럭셔리 시즌패스',44000,{grant:{pass:true,days:30},pass_until:'2026-12-16'}),
  P('gem_100','charge','심연석 100',1100,{grant:{gem_paid:100,gem_free:0,first_double:true},first_open:true}),P('gem_500','charge','심연석 525',5500,{grant:{gem_paid:500,gem_free:25,first_double:true}}),
  P('prem_10','pack','프리미엄 소환권 10',11000,{grant:{tickets:10},month_max:3}),P('prem_25','pack','프리미엄 소환권 25',33000,{grant:{tickets:25},month_max:3,month_used:3}),P('spec_45','pack','스페셜 소환권 45',66000,{grant:{special_tickets:45},month_max:2}),
  P('level_1','pack','레벨업 패키지',22000,{grant:{gold:150000},month_max:2}),

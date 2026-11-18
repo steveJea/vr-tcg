@@ -6,7 +6,7 @@
 --
 -- 바뀌는 것
 --  1) 모든 상점 지급은 우편함으로만 (보관 기한 없음). 즉시 지급 = 바로 우편 1통, 기간 지급 = 날짜별 우편.
---  2) 시즌패스: 프리미엄 / 스페셜 / 럭셔리 (30일, 같은 패스는 기간 중 다시 못 삼, 서로 다른 패스는 함께 가능). 매일 보상은 시트대로(행동력 → 무료 드링크).
+--  2) 시즌패스: 프리미엄 / 플러스 / 럭셔리 (30일, 같은 패스는 기간 중 다시 못 삼, 서로 다른 패스는 함께 가능). 매일 보상은 시트대로(행동력 → 무료 드링크).
 --  3) 심연석 패키지: 100 / 525 / 1,050 / 3,200 / 5,500 (첫 구매 2배 그대로).
 --  4) 아이템 패키지: 프리미엄 소환권 10·25·45, 스페셜 소환권 10·25·45, 레벨업 패키지. 옛 스페셜 소환권 10/45/160/220 은 판매 종료(비활성).
 --  5) 심연석 상점(심연석으로 구매, 무료 심연석 먼저): 프리미엄 소환권 150 · 스페셜 소환권 150 · 유료 드링크 100 (수량 선택)
@@ -145,7 +145,7 @@ create unique index if not exists player_mail_pass_uniq on public.player_mail (u
 insert into public.shop_products (sku,tab,name,blurb,price_krw,month_max,acct_max,sort,reward,payment_sku) values
  ('pass_1','pass','프리미엄 시즌패스','30일 매일 프리미엄 소환권 1 · 무료 드링크 1 · 골드 5,000',5500,null,null,30,
   '{"pass":true,"days":30,"first":{},"daily":{"tickets":1,"drink_bound":1,"gold":5000}}',null),
- ('pass_2','pass','스페셜 시즌패스','즉시 프리미엄 소환권 10 · 30일 매일 프리미엄 소환권 1 · 무료 드링크 2 · 골드 10,000 · 무료 심연석 50',22000,null,null,31,
+ ('pass_2','pass','플러스 시즌패스','즉시 프리미엄 소환권 10 · 30일 매일 프리미엄 소환권 1 · 무료 드링크 2 · 골드 10,000 · 무료 심연석 50',22000,null,null,31,
   '{"pass":true,"days":30,"first":{"tickets":10},"daily":{"tickets":1,"drink_bound":2,"gold":10000,"gem_free":50}}',null),
  ('pass_3','pass','럭셔리 시즌패스','즉시 스페셜 소환권 30 · 유료 심연석 300 · 30일 매일 프리미엄 소환권 1 · 무료 드링크 2 · 골드·피·조각 10,000 · 무료 심연석 100',44000,null,null,32,
   '{"pass":true,"days":30,"first":{"special_tickets":30,"gem_paid":300},"daily":{"tickets":1,"drink_bound":2,"gold":10000,"blood":10000,"shard":10000,"gem_free":100}}',null),
