@@ -28,6 +28,10 @@ assert(css.includes('.ci-hmp'));
 assert(css.includes('.ci-hmp-fill.hp'));
 assert(css.includes('.ci-hmp-fill.mp'));
 assert(css.includes('.ci-cost'));
+assert(css.includes('.ci-statrow'));
+assert(css.includes('min-width: 768px'));
+assert(game.includes('function cardStatRow('));
+assert(css.includes('100dvh - 12rem'));
 // cost moved out of the battle detail/zoom tag line
 assert(!game.includes("cardTags(live, [power ? '' : `⚡${fmt(live.power)}`, `${ic('mana', { alt: '코스트' })}${c.cost}`])"));
 assert(!game.includes("cardTags(c, [`⚡${fmt(c.power)}`, `${ic('mana', { alt: '코스트' })}${c.cost}`])"));

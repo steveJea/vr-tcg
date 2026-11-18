@@ -48,8 +48,9 @@
     }
     #zoom-view{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.92);display:none;flex-direction:column;align-items:center;justify-content:center;padding:16px;gap:10px;-webkit-touch-callout:none;user-select:none}
     #zoom-view.open{display:flex}
-    #zoom-view .zoom-img{max-width:100%;max-height:calc(100dvh - 140px);object-fit:contain;border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,.6);-webkit-touch-callout:none}
-    #zoom-view .zoom-info{text-align:center;color:#fff}
+    #zoom-view .zoom-img{max-width:100%;max-height:calc(100dvh - 140px);object-fit:contain;border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,.6);-webkit-touch-callout:none;min-height:0}
+    #zoom-view .zoom-info{text-align:center;color:#fff;flex-shrink:0}
+    @media (min-width: 768px) { #zoom-view .zoom-img{max-height:calc(100dvh - 12rem)} }
     #zoom-view .zoom-close{position:absolute;top:12px;right:12px;width:40px;height:40px;border-radius:9999px;background:#27272a;color:#fff;font-size:18px}
     .card-img{-webkit-touch-callout:none}
     body { font-family: 'Inter', 'Noto Sans KR', system-ui, sans-serif; }
@@ -235,6 +236,7 @@
     /* 카드 정보 공통 (cardTitle·cardTags·cardStats) */
     .ci-name { font-weight: 900; } .ci-sub { font-size: .72em; font-weight: 600; color: #a1a1aa; }
     .ci-cost { font-size: .72em; font-weight: 800; color: #7dd3fc; letter-spacing: .04em; white-space: nowrap; }
+    .ci-statrow { display: flex; flex-direction: column; min-width: 0; width: 100%; }
     .ci-hmp { display: flex; gap: 8px; margin-top: 8px; width: 100%; min-width: 0; }
     .ci-hmp-col { flex: 1; min-width: 0; }
     .ci-hmp-lab { display: flex; justify-content: space-between; align-items: baseline; gap: 4px; font-size: 10px; font-weight: 700; color: #a1a1aa; margin-bottom: 2px; }
@@ -244,7 +246,16 @@
     .ci-hmp-fill.hp { background: #ef4444; }
     .ci-hmp-fill.mp { background: #3b82f6; }
     .zoom-info .ci-hmp { flex-basis: 100%; max-width: 22rem; margin-left: auto; margin-right: auto; }
+    .zoom-info .ci-statrow { align-items: stretch; justify-content: center; }
     @media (max-width: 379px) { .ci-hmp { gap: 6px; } .ci-hmp-lab { font-size: 9px; } .ci-head { font-size: 1.05rem; } }
+    /* PC: HP·MP 바를 공격력·방어력과 같은 줄, 방어력 옆에. 모바일 배치는 그대로 */
+    @media (min-width: 768px) {
+      .ci-statrow { flex-direction: row; flex-wrap: nowrap; align-items: flex-end; gap: 12px; }
+      .ci-statrow .ci-stats { flex: none; margin-top: 6px; }
+      .ci-statrow .ci-hmp { flex: 1 1 12rem; margin-top: 6px; max-width: 18rem; width: auto; }
+      .zoom-info .ci-hmp { flex-basis: auto; max-width: 18rem; margin: 0; }
+      .zoom-info .ci-statrow { justify-content: center; flex-wrap: wrap; }
+    }
     .ci-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 4px; font-size: 11px; justify-content: inherit; }
     .ci-tag { display: inline-flex; align-items: center; gap: 2px; padding: 1px 6px; border-radius: 999px; background: rgba(255,255,255,.08); color: #d4d4d8; font-weight: 700; white-space: nowrap; }
     .ci-tag img, .ci-el img, .ci-st img { width: 14px; height: 14px; }

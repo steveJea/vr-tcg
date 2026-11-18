@@ -2073,6 +2073,9 @@ function cardHmpBars(unit, hp) {
   const mpPct = maxMp ? Math.max(0, Math.min(100, curMp / maxMp * 100)) : 0;
   return `<div class="ci-hmp"><div class="ci-hmp-col" title="HP ${fmt(curHp)}/${fmt(maxHp)}"><div class="ci-hmp-lab"><span>HP</span><b>${fmt(curHp)}/${fmt(maxHp)}</b></div><div class="ci-hmp-track"><div class="ci-hmp-fill hp" style="width:${hpPct}%"></div></div></div><div class="ci-hmp-col" title="MP ${fmt(curMp)}/${fmt(maxMp)}"><div class="ci-hmp-lab"><span>MP</span><b>${fmt(curMp)}/${fmt(maxMp)}</b></div><div class="ci-hmp-track"><div class="ci-hmp-fill mp" style="width:${mpPct}%"></div></div></div></div>`;
 }
+function cardStatRow(c, hp, power, unit) {
+  return `<div class="ci-statrow">${cardStats(c, unit ? null : hp, power, !!unit)}${cardHmpBars(unit, hp)}</div>`;
+}
 /** 스킬 수 아이콘: 그림순이 img/ui/skill_count.webp (icons.js skill_count), 없으면 📜 */
 /** 태그줄: 등급 약자 · 속성 아이콘 · 스킬 수 · 클래스 + 작은 태그(추가) */
 function cardTags(c, extra = []) {
@@ -2545,8 +2548,7 @@ function showDetail(c, { fromHand = false, hp, unit = null, view = null, power =
       <div class="flex-1 min-w-0">
         <div class="text-xl font-black leading-tight ci-head">${cardTitle(live, '', true)}</div>
         ${cardTags(live, [power ? '' : `⚡${fmt(live.power)}`])}
-        ${cardStats(live, uInfo ? null : hp, power, !!uInfo)}
-        ${cardHmpBars(uInfo, hp)}
+        ${cardStatRow(live, hp, power, uInfo)}
       </div>
     </div>
     ${skillListHTML(live, uInfo, myTurn, level, { skillLv: live.skillLv })}
@@ -2887,7 +2889,7 @@ function zoomFromBtn(b) {
   openZoom({ src: `${IMG}${c.id}.webp`, stars: window.rarityStars?.(c, b.dataset.st || b.dataset.ex ? 'story' : 'base', 'rstars-lg', +b.dataset.ex || 0) || '',   // 스토리 EX 카드: 빨간 별
     title: cardTitle(c, '', true),
     sub: cardTags(c, [`⚡${fmt(c.power)}`]),
-    stats: `${cardStats(c, unit ? null : hp, false, !!unit)}${cardHmpBars(unit, hp)}` });
+    stats: cardStatRow(c, hp, false, unit) });
 }
 // 캡처 단계에서 가로채서 카드 선택/드래그/상세창이 같이 동작하지 않게 함
 ['pointerdown', 'mousedown', 'touchstart'].forEach(t => document.addEventListener(t, e => { if (e.target.closest?.('.zoom-btn')) e.stopPropagation(); }, { capture: true, passive: true }));
