@@ -40,3 +40,14 @@
 #intro .legal-links a{min-height:36px;font-size:13px;padding:2px 4px}
 #settings-legal-links{margin:8px 0 0}
 #settings-legal-links a{min-height:36px;font-size:13px;padding:2px 4px}
+
+.shop-card{margin:16px 0;padding:16px 18px;border:1px solid #805738;border-radius:12px;background:#1a0c10}
+.shop-card h3{margin:0 0 6px;color:#ffe7ac;font-size:18px}
+.shop-price{margin:0 0 10px;color:#ffe7ac;font-weight:800;font-size:18px}
+.shop-price small{font-weight:600;font-size:13px;color:#e0cbb7}
+.shop-card dl{display:grid;grid-template-columns:minmax(88px,7.5em) 1fr;gap:6px 14px;margin:0}
+.shop-card dt{color:#f5d58d;font-weight:650}
+.shop-card dd{margin:0}
+.shop-rates{display:flex;flex-wrap:wrap;gap:8px 16px;list-style:none;padding:0;margin:12px 0}
+.shop-rates li{margin:0;padding:6px 12px;border:1px solid #67402e;border-radius:8px;background:#2c1518}
+@media(max-width:600px){.shop-card dl{grid-template-columns:1fr;gap:2px}.shop-card dd{margin-bottom:8px}}
