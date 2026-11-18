@@ -56,7 +56,7 @@ function masked(html, re) {
 }
 masked(index, /<div id="acct-box"[^>]*>/);
 masked(index, /<div class="oauth-row"[^>]*>/);
-for (const id of ['main-link-google', 'main-link-kakao', 'main-link-x', 'main-logout']) masked(index, new RegExp(`<button id="${id}"[^>]*>`));
+for (const id of ['main-link-google', 'main-link-kakao', 'main-link-x', 'main-link-naver', 'main-logout']) masked(index, new RegExp(`<button id="${id}"[^>]*>`));
 
 const expect = {
   'js/cloud.js': ['class="oauth-row" data-clarity-mask="true"', 'class="acct-chip" data-clarity-mask="true"', 'class="oauth-card" data-clarity-mask="true"', 'id="nick-box" data-clarity-mask="true"'],
