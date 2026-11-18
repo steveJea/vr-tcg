@@ -401,5 +401,4 @@
 /* 로그인 화면 사업자 푸터 간격 */
 #intro .legal-links{margin:0;gap:0 8px}
 #intro .legal-links a{min-height:36px;font-size:13px;padding:2px 4px}
-.gm-foot #mbbs-footer .mf-biz{text-align:center}
-.main-pop-card{max-height:min(90vh,720px);overflow:auto}
+.main-pop-card{max-height:min(90vh,720px);overflow-x:hidden;overflow-y:auto}

@@ -97,4 +97,7 @@ const indexHtml=await read('index.html');
 assert.match(indexHtml,/id="intro-foot"/);
 assert(!/id="lobby-foot"/.test(indexHtml),'no lobby-foot on the game lobby');
 assert(!footerJs.includes('lobby-foot'),'footer.js does not render a lobby footer');
+assert(!footerJs.includes('gm-foot')&&!footerJs.includes('mbbs-footer'),'settings popup does not get the business footer');
+assert.match(indexHtml,/id="settings-legal-links"/);
+
 console.log('Legal pages: Korean draft/placeholders, current data/analytics/share/retention gaps, statutory refund/minors, accessible link-only UI, no trackers/forms, build allowlists/idempotent isolated overlay OK');
