@@ -15,11 +15,12 @@ function flattenNaverProfile(data) {
   if (data?.resultcode !== '00' || !profile || profile.id == null || String(profile.id).trim() === '') return null;
   const out = { sub: String(profile.id).trim() };
   const name = text(profile.name), nickname = text(profile.nickname);
-  const picture = text(profile.profile_image), email = text(profile.email);
+  const picture = text(profile.profile_image);
   if (name) out.name = name;
   if (nickname) out.nickname = nickname;
   if (picture) out.picture = picture;
-  if (email && email.includes('@')) out.email = email;
+  // Identifier-only: never forward email or invent a placeholder.
+  // An unverified email claim makes GoTrue send a confirmation message.
   return out;
 }
 

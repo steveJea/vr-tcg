@@ -26,7 +26,7 @@ Supabase(테섭 `cuyqchmdcnsgzkwyclji`) → **Authentication → Sign In / Provi
 
 ## Edge Function `naver-userinfo`
 
-네이버 프로필을 `{ sub, name?, nickname?, picture?, email? }` 형태로 바꿉니다. 시크릿은 없습니다. **JWT verification OFF** — Authorization 헤더는 네이버 access token입니다.
+네이버 프로필을 `{ sub, name?, nickname?, picture? }` 형태로 바꿉니다. 네이버가 이메일을 주더라도 넣지 않고, 가짜 이메일도 만들지 않습니다. 확인되지 않은 이메일을 넘기면 테섭 Auth가 확인 메일을 보내 한도에 걸릴 수 있고, 같은 이메일로 계정이 묶일 수도 있습니다. 시크릿은 없습니다. **JWT verification OFF** — Authorization 헤더는 네이버 access token입니다.
 
 - 소스: `supabase/functions/naver-userinfo/`
 - 대시보드 붙여넣기용: `supabase/functions/naver-userinfo/dashboard_single_file.ts` 전체

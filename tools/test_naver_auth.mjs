@@ -190,4 +190,5 @@ const dash=await readFile(new URL('supabase/functions/naver-userinfo/dashboard_s
 assert.match(dash,/JWT verification: OFF/);
 assert.match(dash,/cuyqchmdcnsgzkwyclji/);
 assert.doesNotMatch(dash,/service_role|CLIENT_SECRET/);
+assert.doesNotMatch(dash,/out\.email\s*=/,'dashboard paste file must not forward email');
 console.log('Naver OAuth UI: discovery probe, official button, hidden when off, custom:naver identity, link/conflict OK');
