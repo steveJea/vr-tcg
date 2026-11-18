@@ -7,8 +7,15 @@ assert.equal(flattenNaverProfile({resultcode:'024',message:'error',response:{id:
 assert.deepEqual(flattenNaverProfile({resultcode:'00',message:'success',response:{id:'  abc123  '}}),{sub:'abc123'});
 assert.deepEqual(flattenNaverProfile({resultcode:'00',response:{
   id:'abc123',name:'홍길동',nickname:'길동이',profile_image:'https://example.com/p.png',email:'user@example.com',age:'20-29'
-}}),{sub:'abc123',name:'홍길동',nickname:'길동이',picture:'https://example.com/p.png',email:'user@example.com'});
+}}),{sub:'abc123',name:'홍길동',nickname:'길동이',picture:'https://example.com/p.png'});
 assert.deepEqual(flattenNaverProfile({resultcode:'00',response:{id:'abc',name:'  ',nickname:'',profile_image:null,email:'not-an-email'}}),{sub:'abc'});
+{
+  const profile=flattenNaverProfile({resultcode:'00',response:{id:'abc',email:'user@example.com'}});
+  assert.deepEqual(profile,{sub:'abc'});
+  assert.equal('email' in profile,false);
+  assert.equal('email_verified' in profile,false);
+  assert(!JSON.stringify(profile).includes('@'),'must not invent a placeholder email');
+}
 assert.equal(flattenNaverProfile({resultcode:'00',response:{id:0}}).sub,'0');
 
 const calls=[];
