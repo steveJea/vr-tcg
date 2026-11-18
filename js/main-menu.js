@@ -39,6 +39,7 @@
   $('intro-login').onclick = () => { localStorage.setItem(INTRO_KEY, '1'); login('google'); };
   $('intro-login-kakao').onclick = () => { localStorage.setItem(INTRO_KEY, '1'); login('kakao'); };
   $('intro-login-x').onclick = () => { localStorage.setItem(INTRO_KEY, '1'); login('x'); };
+  $('intro-login-naver').onclick = () => { localStorage.setItem(INTRO_KEY, '1'); login('naver'); };
   $('intro-guest').onclick = async () => {
     const ok = await confirmYN('<b class="vc-guest-h">게스트는 아케이드만 할 수 있고, 기록은 저장되지 않아요.</b><span class="vc-guest-s">로그인하면 인재 모집, 스토리, PvP, 조직까지 다 즐길 수 있어요!</span>',
       { y: '게스트로 시작', n: '로그인하기', cls: 'vc-guest' });
