@@ -13,7 +13,7 @@ import {
   RULES, canSummon, makeUnit, resolveAttack, refillMana, endTurnXp, canTarget, doAction, levelUpOnce,
   aiSummonOrder, aiPickSacrifice, aiWantAccel, aiWantFieldHeal, aiWantBuff, aiWantHeal, aiWantShuffle,
   sacrifice, aiPickTarget, autoTarget, attackTargets, clearBuff, aiPickItem, equip, swapField, setCardPool, parseCSV,
-  gainXp, xpToNext,
+  gainXp, xpToNext, calcPower,
 } from '../js/rules.js';
 import {
   setSkillData, setRng, setEmitter, setSpare, initPlayers, placeUnit, turnStart, turnEnd,
@@ -41,7 +41,10 @@ function lvScaled(c, lv) {
 const cardOf = id => pool.find(x => String(x.id) === String(id));
 function intrusionCard(spec, fallback) {
   const raw = spec?.card || (spec?.become != null && cardOf(spec.become)) || (spec?.id != null && cardOf(spec.id)) || fallback || null;
-  return lvScaled(raw, spec?.storyLevel);
+  const o = lvScaled(raw, spec?.storyLevel);
+  // js/game.js storyScaled recomputes power from the scaled stats.
+  if (o && o !== raw && o.storyBoost && Number(spec?.storyLevel) > 1) o.power = calcPower(o, skillsOf(o.id));
+  return o;
 }
 
 function deckAt(level, ids) {
@@ -72,6 +75,7 @@ function playClient(spec, seed, policy) {
       const u = placeUnit(p, c, makeUnit);
       if (who === 'me' && spec.leaderUid && c.uid === spec.leaderUid) { u.isLeader = true; p.leaderSkill = { ...leaderSkill(c), uid: c.uid, deathPenalty: 0.3 }; }
       if (who === 'ai' && spec.bossId != null && String(c.id) === String(spec.bossId) && !p.field.some(x => x.undying)) { u.undying = true; u.boss = true; }
+      if (who === 'ai' && spec.enemyLevels) while (u.level < Math.min(spec.enemyLevels[String(c.id)] | 0, RULES.LEVEL_MAX)) levelUpOnce(u);
     }
     p.deck = [];
     p.fieldCap = Math.max(RULES.FIELD_MAX, p.field.length);
@@ -89,6 +93,9 @@ function playClient(spec, seed, policy) {
     const u = placeUnit(me, { ...card }, makeUnit, true);
     while (u.level < Math.min(A.battleLevel || 1, RULES.LEVEL_MAX)) levelUpOnce(u);
     u.hp = u.maxHp; u.mp = u.maxMp; u.canAttack = true;
+    // js/game.js pauseOnEntrance: aiTurn breaks out (S.awakenPause), skips heal and turn end,
+    // then awakenPlayerControl() hands the same my-turn back with every card ready, no startTurn.
+    if (A.pauseOnEntrance) { if (state.turn === 'ai') state.hold = true; me.field.forEach(x => { x.canAttack = true; }); }
   }
   function joinAlly() {
     const J = spec.joinAlly;
@@ -159,7 +166,8 @@ function playClient(spec, seed, policy) {
     if (aiWantFieldHeal(ai)) doAction('fieldheal', ai);
     if (aiWantBuff(ai)) doAction('buff', ai);
     for (const u of [...ai.field]) {
-      if (state.over || !ai.field.includes(u) || !u.canAttack) continue;
+      if (state.over || state.hold) break;
+      if (!ai.field.includes(u) || !u.canAttack) continue;
       if (spareBlocked(u)) { u.canAttack = false; continue; }
       const sk = aiPickSkill(u);
       if (sk) { useSkill(u, sk); checkEnd(); continue; }
@@ -168,7 +176,8 @@ function playClient(spec, seed, policy) {
       resolveAttack(ai, me, u, target);
       checkEnd();
     }
-    if (!state.over && aiWantHeal(ai)) doAction('heal', ai);
+    if (!state.over && !state.hold && aiWantHeal(ai)) doAction('heal', ai);
+    if (state.hold) return;
     if (!state.over) { endTurnXp(ai); turnEnd(ai); checkEnd(); }
   }
   function act(a) {
@@ -180,7 +189,8 @@ function playClient(spec, seed, policy) {
   }
   const max = spec.rules?.maxTurns || RULES.MAX_TURNS;
   while (!state.over && state.totalTurns < max) {
-    startTurn(state.turn);
+    if (state.held) state.held = false;
+    else startTurn(state.turn);
     if (state.over) break;
     if (state.turn === 'me') {
       const turn = { used: new Set(), scopes: new Set() };
@@ -218,6 +228,12 @@ function playClient(spec, seed, policy) {
             a = { t: state.myTurns, k: 'atk', i: me.field.indexOf(u), g: ai.field.indexOf(t) };
           } else if (tg.hero) a = { t: state.myTurns, k: 'atk', i: me.field.indexOf(u), g: -1 };
           else { u.canAttack = false; continue; }
+          if (policy === 'yuri3') {   // 0-3: [각성] 임유리 3번째 스킬 우선, 아니면 아무 스킬
+            const y = me.field.find(x => String(x.card.id) === '10326' && x.hp > 0 && x.canAttack);
+            const s3 = y && (y.sk || []).filter(x => x.mode === 'active')[2];
+            if (s3 && skillState(y, s3).ok) a = { t: state.myTurns, k: 'skill', i: me.field.indexOf(y), s: s3.name };
+            else { const s = (u.sk || []).find(x => skillState(u, x).ok); if (s) a = { t: state.myTurns, k: 'skill', i: me.field.indexOf(u), s: s.name }; }
+          }
           if (policy === 'skill') {
             const s = (u.sk || []).find(x => skillState(u, x).ok);
             if (s) a = { t: state.myTurns, k: 'skill', i: me.field.indexOf(u), s: s.name };
@@ -232,6 +248,7 @@ function playClient(spec, seed, policy) {
     } else {
       aiAct();
       if (!state.over) state.turn = 'me';
+      if (state.hold) { state.hold = false; if (!state.over) { state.held = true; me.field.forEach(x => { x.canAttack = true; }); } }
     }
   }
   if (!state.over) done(false, 'timeout');
@@ -339,6 +356,30 @@ const mustKillLeft = {
   },
 };
 for (const seed of [4, 7, 8, 12, 21, 100]) for (const policy of ['auto', 'manual']) add('story mustKill leftover', mustKillLeft, seed, policy);
+// Real chapter 0 phase 3: 임유리 dies on the enemy turn, [각성] 임유리 enters with pauseOnEntrance.
+// The client stops the enemy turn and gives back the same my-turn (no turn-start passives).
+{
+  const vm = await import('node:vm');
+  const data = { chapters: [] };
+  vm.runInNewContext(rd('../js/story-data-ch0.js'), { window: { STORY_DATA: data } });
+  const p3 = data.chapters[0].phases.find(p => p.no === 3);
+  const npcPool = parseCSV(rd('../data/npc_cards.csv'));
+  assert.equal(p3.awaken.pauseOnEntrance, true);
+  const ch03 = {
+    me: [...deckAt(1, ['10325']), ...deckAt(1, p3.party.guests)],
+    ai: p3.enemies.ids.map(id => lvScaled(clone(cardOf(id) || npcPool.find(x => String(x.id) === String(id))), p3.enemies.storyLevels?.[id])),
+    enemyLevels: p3.enemies.levels,
+    win: 'wipe', aiHp: null, bossId: null, heroGuard: 0, first: 'me',
+    awaken: p3.awaken,
+  };
+  let awakenedWins = 0;
+  for (const seed of [1, 2, 3, 4, 5, 7, 8, 12, 21, 100]) for (const policy of ['manual', 'skill', 'yuri3']) {
+    add('story 0-3 awaken pause', ch03, seed, policy);
+    const row = cases[cases.length - 1];
+    if (row.client.win && row.client.log.some(a => a.k === 'skill' && /眞/.test(a.s || ''))) awakenedWins++;
+  }
+  assert.ok(awakenedWins > 0, '0-3 sample must include wins with [각성] 임유리 skills');
+}
 const joinLv = {
   me: deckAt(8, ['10074', '10080', '10445']),
   ai: deckAt(20, ['10051']).map(c => ({ ...c, HP: 800, ATK: 80, DEF: 40 })),
