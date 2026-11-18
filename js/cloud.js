@@ -168,7 +168,9 @@ async function startOAuth(provider, linking) {
   } catch (e) {
     if (linking) takeLinkIntent(sessionStorage, SUPABASE_URL);
     const code = oauthErrorCode(e);
-    notify(code ? oauthFailureMessage(code, linking ? {provider} : null) : linking ? '로그인을 연결하지 못했어요. 기존 계정은 그대로예요.' : '로그인을 시작하지 못했어요. 다시 시도해 주세요.');
+    const message = code ? oauthFailureMessage(code, linking ? {provider} : null, e?.message) : linking ? '로그인을 연결하지 못했어요. 기존 계정은 그대로예요.' : '로그인을 시작하지 못했어요. 다시 시도해 주세요.';
+    console.warn('[cloud] oauth start failed', { code, message: e?.message, provider });
+    notify(message);
   } finally {
     if (!oauthTimer) { oauthBusy = false; paintOAuth(); }
   }
@@ -236,7 +238,10 @@ async function init() {
     await onUser(returned.user);
     // Successful PKCE exchange is owned by SDK.initialize(), exactly once.
     cleanOAuthCallback(location, history);
-    if (returned.message) notify(returned.message);
+    if (returned.message) {
+      if (callback.failed || initError) console.warn('[cloud] oauth return', { errorCode: callback.errorCode, errorDescription: callback.errorDescription, initError: initError ? { code: initError.code, message: initError.message } : null, message: returned.message });
+      notify(returned.message);
+    }
   } catch (e) {
     console.warn('[cloud] Supabase 연결 실패 - 게스트 모드', e);
     sb = null; ready = false; render();
