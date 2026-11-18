@@ -155,6 +155,17 @@ for(const [id,file] of Object.entries(icons)){
  assert.match(cloud,new RegExp(`data-oauth-provider="${id}"[^>]*>\\s*<img src="${src}"`));
 }
 assert.doesNotMatch(index,/<button id="intro-login"[^>]*>\s*<img src="img\/ui\/login\.webp"/);
+assert.match(index,/<div id="intro-login-title" class="intro-login-title">LOG IN<\/div>/);
+assert.match(css,/#intro \.intro-login-box\{/);
+assert.match(css,/#intro \.intro-login-box \.oauth-row>\.intro-sns\{[^}]*aspect-ratio:1/);
+for (const [id, label] of [['intro-login','구글로 로그인'],['intro-login-kakao','카카오로 로그인'],['intro-login-x','X로 로그인'],['intro-login-naver','네이버로 로그인']]) {
+  const btn = index.match(new RegExp(`<button id="${id}"[\\s\\S]*?<\\/button>`));
+  assert(btn, id);
+  assert.match(btn[0], new RegExp(`aria-label="${label}"`));
+  assert.match(btn[0], new RegExp(`title="${label}"`));
+  assert.doesNotMatch(btn[0], /구글 로그인|카카오 로그인|X 로그인|네이버 로그인/);
+}
+assert.match(cloud,/>구글 로그인<\/button>/, 'login chooser keeps text labels');
 const symbol=await readFile(new URL('img/ui/naver-symbol.svg',root),'utf8');
 assert.match(symbol,/developers\.naver\.com\/docs\/login\/bi/);
 const fn=await readFile(new URL('supabase/functions/naver-userinfo/handler.mjs',root),'utf8');
