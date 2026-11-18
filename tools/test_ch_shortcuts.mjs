@@ -46,7 +46,7 @@ for (const n of [16, 17, 18, 19]) {
 const fixture = `<!doctype html><html><body>
   <div id="intro" class="hidden"><video id="intro-video"></video>
     <button id="intro-login"></button><button id="intro-login-kakao"></button>
-    <button id="intro-login-x"></button><button id="intro-guest"></button>
+    <button id="intro-login-x"></button><button id="intro-login-naver"></button><button id="intro-guest"></button>
     <div class="oauth-row"></div></div>
   <div id="vr-confirm" class="hidden"><div id="vr-confirm-msg"></div>
     <button data-yn="y">Y</button><button data-yn="n">N</button></div>
@@ -200,6 +200,7 @@ assert.deepEqual(maps, [], '현재 챕터는 openMap 을 부르면 안 돼요');
 cards[0].click();
 assert.deepEqual(maps, [0], '다른 열린 챕터는 openMap(i)로 맵을 열어야 해요');
 cards[2].click();
+await new Promise(r => setTimeout(r, 30));   // 잠긴 칸: 최신 진행으로 다시 그린 뒤 안내
 assert.deepEqual(maps, [0], '잠긴 챕터는 openMap 을 호출하면 안 돼요');
 assert.ok(toasts.some(t => t.includes('이전 챕터')), '잠긴 챕터는 한국어 안내가 떠야 해요');
 

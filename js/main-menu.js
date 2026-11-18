@@ -196,12 +196,17 @@
     row.onclick = e => {
       if (e.target.closest('#story-hub-btn, .main-story-hub, .ch-short-arrow, [data-ch-move]')) return;
       const b = e.target.closest('.ch-short'); if (!b || !row.contains(b)) return;
+      const i = +b.dataset.ch;
       if (b.classList.contains('locked') || b.getAttribute('aria-disabled') === 'true') {
+        // 잠금 표시가 예전 진행으로 그려졌을 수 있음 → 최신 진행으로 다시 그린 뒤, 그래도 잠겨 있을 때만 안내
         const msg = b.dataset.lock || '아직 열리지 않은 챕터예요';
-        (window.VRStory?.api?.toast || window.VRGem?.toast || (t => alert(t)))(msg);
+        paintHome().then(() => {
+          const nb = track.querySelector(`.ch-short[data-ch="${i}"]`);
+          if (nb && !nb.classList.contains('locked')) { if (nb.dataset.continue === '1') window.VRStory?.playCurrent?.(); else window.VRStory?.openMap?.(i); return; }
+          (window.VRStory?.api?.toast || window.VRGem?.toast || (t => alert(t)))(nb?.dataset.lock || msg);
+        });
         return;
       }
-      const i = +b.dataset.ch;
       if (b.dataset.continue === '1') { window.VRStory?.playCurrent?.(); return; }
       if (Number.isFinite(i)) window.VRStory?.openMap?.(i);
     };
@@ -243,7 +248,9 @@
     vp.addEventListener('pointerup', end); vp.addEventListener('pointercancel', end); vp.addEventListener('pointerleave', end);
     vp.addEventListener('click', e => { if (drag) { e.stopPropagation(); e.preventDefault(); drag = false; } }, true);
   }
+  // 진행이 바뀐 뒤(스토리·탑 등에서 로비로 돌아옴) 다시 그림. 늦게 끝난 예전 요청이 새 결과를 덮지 않게 순번 확인
   async function paintHome() {
+    const seq = paintHome.seq = (paintHome.seq | 0) + 1, stale = () => seq !== paintHome.seq;
     const scr = $('start-screen'), u = user();
     scr.classList.toggle('is-guest', !u);
     $('main-logout').classList.toggle('hidden', !u);
@@ -251,11 +258,13 @@
     try {
       const [st, w, g] = await Promise.all([window.VRPlayer?.status?.(), window.VRPlayer?.wallet?.(), window.VRGem?.status?.()]);
       const n = v => (v | 0) >= 100000 ? Math.floor(v / 1000) + 'k' : (v | 0).toLocaleString();
-      if (st?.level != null) { const c = document.querySelector('#acct-box .acct-chip'); if (c && !c.querySelector('.acct-lv')) c.insertAdjacentHTML('beforeend', `<b class="acct-lv">Lv.${st.level | 0}</b>`); }
+      if (st?.level != null) { const c = document.querySelector('#acct-box .acct-chip'); if (c) { const lv = c.querySelector('.acct-lv'); if (lv) lv.textContent = `Lv.${st.level | 0}`; else c.insertAdjacentHTML('beforeend', `<b class="acct-lv">Lv.${st.level | 0}</b>`); } }
+      if (stale()) return;
       cur.innerHTML = [g && `<span title="심연석">🔮 ${n(g.gem)}</span>`, w && `<span title="골드">🪙 ${n(w.gold)}</span>`].filter(Boolean).join('');
     } catch {}
     try {
       const sm = await window.VRStory?.summary?.(), c = sm?.current;
+      if (stale()) return;
       // 배너: 고른 시작 캐릭터/루트별(story_banner_ch{N}_{variant}) → 챕터(story_banner_ch{N}) → 기본 그림
       if (c) { const im = document.querySelector('#story-btn [data-alt]'); if (im) { const i = new Image(); const urls = [c.variant && `img/ui/main/story_banner_ch${c.i | 0}_${c.variant}.webp`, `img/ui/main/story_banner_ch${c.i | 0}.webp`].filter(Boolean); let k = 0; i.onload = () => { im.src = i.src; }; i.onerror = () => { if (++k < urls.length) i.src = urls[k]; }; i.src = urls[0]; } }
       if (c) $('main-cta-sub').textContent = `CHAPTER ${c.i} · ${c.phase ? 'PHASE ' + c.phase : `${c.done}/${c.total}`}${c.title && !new RegExp('^\\s*(CHAPTER|CH\\.?|챕터)\\s*0*' + c.i + '\\s*$', 'i').test(c.title) ? ' · ' + c.title : ''}`;
@@ -272,5 +281,14 @@
   // 패밀리 링크·저작권 → 설정 팝업 안으로
   { let k = 0; const mv = () => { const f = $('mbbs-footer'); if (f) $('gm-foot').appendChild(f); else if (++k < 40) setTimeout(mv, 150); }; mv(); }
   window.addEventListener('tcg:ready', paintHome);
+  // 로비가 다시 보일 때마다 (스토리 처음으로·뒤로가기·다른 모드 종료) 챕터 바로가기를 최신 진행으로
+  { const scr = $('start-screen');
+    if (scr && typeof MutationObserver === 'function') {
+      let was = !scr.classList.contains('hidden'), t = 0;
+      new MutationObserver(() => { const vis = !scr.classList.contains('hidden'); if (vis && !was) { clearTimeout(t); t = setTimeout(paintHome, 60); } was = vis; }).observe(scr, { attributes: true, attributeFilter: ['class'] });
+    }
+    window.addEventListener('pageshow', e => { if (e.persisted) paintHome(); });
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && scr && !scr.classList.contains('hidden')) paintHome(); });
+  }
   window.VRMainMenu = { confirmYN, showIntro, hideIntro, paintHome, paintChShortcuts, chBannerSrcs, slideChShortcuts: d => { const row = $("ch-shortcuts"); row?._chSlide?.go?.(d); } };
 })();
