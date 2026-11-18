@@ -29,7 +29,7 @@ assert.match(pages[0],/7일/);assert.match(pages[0],/3영업일/);assert.match(p
 for(const name of ['Supabase','Cloudflare','Google','Kakao','X','Google Analytics','jsDelivr','GitHub Pages','localStorage','sessionStorage','법정대리인','국외','처리정지','계정삭제 버튼','공유 이미지','카카오에 업로드'])assert(pages[1].includes(name),name);
 assert.match(pages[1],/동의 배너·거부 스위치는 구현되어 있지/);assert.match(pages[1],/백업 보유·삭제 반영기간 확정 필요/);
 const index=await read('index.html'),{document:d}=parseHTML(index);
-for(const id of ['intro-legal-links','settings-legal-links']){const nav=d.getElementById(id);assert(nav);assert.deepEqual([...nav.querySelectorAll('a')].map(a=>[a.textContent,a.getAttribute('href')]),[['이용약관','/terms.html'],['개인정보처리방침','/privacy.html'],['서비스 소개','/about.html'],['연령 확인 (19+)','/age.html']]);assert(!nav.querySelector('small'));}
+for(const id of ['intro-legal-links','settings-legal-links']){const nav=d.getElementById(id);assert(nav);assert.deepEqual([...nav.querySelectorAll('a')].map(a=>[a.textContent,a.getAttribute('href')]),[['이용약관','/terms.html'],['개인정보처리방침','/privacy.html'],['서비스 소개','/about.html'],['상품 안내','/shop-info.html'],['연령 확인 (19+)','/age.html']]);assert(!nav.querySelector('small'));}
 assert.equal(addLegalLinks(index),index,'overlay idempotent');
 const stripped=index.replace('  <link rel="stylesheet" href="css/legal.css">\n','').replace(/\s*<nav id="(?:intro|settings)-legal-links"[^>]*>[\s\S]*?<\/nav>/g,'');
 assert.match(addLegalLinks(stripped),/intro-legal-links/);assert.throws(()=>addLegalLinks('<html></html>'));
@@ -37,8 +37,8 @@ assert.throws(()=>addLegalLinks(index.replace('id="intro-legal-links"','id="remo
 assert.throws(()=>addLegalLinks(stripped.replace('<head>','<head><link rel="stylesheet" href="css/legal.css">')));
 assert.throws(()=>addLegalLinks(index+'<nav id="intro-legal-links"></nav>'));
 const css=await read('css/legal.css');assert.match(css,/font:600 16px/);assert.match(css,/flex-wrap:wrap/);assert.match(css,/focus-visible/);assert(!/@import|https?:|url\(/i.test(css));
-for(const builder of ['tools/build_staging.mjs','tools/build_production_assets.mjs']){const s=await read(builder);for(const p of ['terms.html','privacy.html','about.html','age.html'])assert(s.includes("'"+p+"'"));}
-for(const [flag,dir]of [['--staging-build','.staging-dist'],['--production-build','.production-dist']])if(process.argv.includes(flag))for(const p of ['terms.html','privacy.html','about.html','age.html','css/legal.css','index.html','js/age-page.js','js/footer.js'])assert.equal(await read(dir+'/'+p),await read(p),'actual static build includes '+p);
+for(const builder of ['tools/build_staging.mjs','tools/build_production_assets.mjs']){const s=await read(builder);for(const p of ['terms.html','privacy.html','about.html','age.html','shop-info.html'])assert(s.includes("'"+p+"'"));}
+for(const [flag,dir]of [['--staging-build','.staging-dist'],['--production-build','.production-dist']])if(process.argv.includes(flag))for(const p of ['terms.html','privacy.html','about.html','age.html','shop-info.html','css/legal.css','index.html','js/age-page.js','js/footer.js'])assert.equal(await read(dir+'/'+p),await read(p),'actual static build includes '+p);
 if(process.argv.includes('--production-build')) {
  // 운영 빌드 = 이번 출시 후보(staging 의 화면 그대로) + 기기 캐시. 예전 '법적 링크만' 기준(b0a8dbab)은 20261111 출시로 끝남.
  // 바뀌면 안 되는 운영 런타임 설정은 지금 운영(main) 기준으로 비교.
@@ -66,14 +66,14 @@ assert(!/href=\"https:\/\/www\.mbbs\.kr\/?\"/.test(footerJs),'Ent.INCODE copyrig
 
 assert.match(footerJs,new RegExp(COMPANY.phone));
 assert.match(footerJs,/신고 준비중/);
-const publicPages=[['about.html','서비스 소개'],['age.html','연령 확인 (19+)']];
+const publicPages=[['about.html','서비스 소개'],['age.html','연령 확인 (19+)'],['shop-info.html','유료 상품 안내']];
 for(const [file,title] of publicPages){
   const html=await read(file); const {document:d}=parseHTML(html);
   assert.equal(d.documentElement.lang,'ko');
   assert(d.title.includes('Violence Royale : The Abyss Gate')||d.title.includes('VR: Abyss Gate'));
   assert(d.querySelector('h1').textContent.includes(title.split(' (')[0]));
   for(const v of [COMPANY.name,COMPANY.ceo,COMPANY.brn,COMPANY.address,COMPANY.phone,COMPANY.mailOrderNo])assert(html.includes(v),file+' '+v);
-  assert(d.querySelector('a[href="/terms.html"]')&&d.querySelector('a[href="/privacy.html"]')&&d.querySelector('a[href="/about.html"]')&&d.querySelector('a[href="/age.html"]')&&d.querySelector('a[href="/"]'));
+  assert(d.querySelector('a[href="/terms.html"]')&&d.querySelector('a[href="/privacy.html"]')&&d.querySelector('a[href="/about.html"]')&&d.querySelector('a[href="/shop-info.html"]')&&d.querySelector('a[href="/age.html"]')&&d.querySelector('a[href="/"]'));
   assert(d.querySelector('a[href="https://www.entincode.co.kr"]'),file+' company site link');
   assert(d.querySelector('.site-biz'));
   assert.equal(d.querySelector('meta[name="referrer"]').getAttribute('content'),'no-referrer');
@@ -99,5 +99,41 @@ assert(!/id="lobby-foot"/.test(indexHtml),'no lobby-foot on the game lobby');
 assert(!footerJs.includes('lobby-foot'),'footer.js does not render a lobby footer');
 assert(!footerJs.includes('gm-foot')&&!footerJs.includes('mbbs-footer'),'settings popup does not get the business footer');
 assert.match(indexHtml,/id="settings-legal-links"/);
+
+
+const shop=await read('shop-info.html');
+assert(!shop.includes('<script'));
+assert.match(shop,/부가세 포함/);
+assert.match(shop,/우편함/);
+assert.match(shop,/플러스 시즌패스/);
+assert(!/스페셜 시즌패스/.test(shop),'season pass uses 플러스, not 스페셜');
+assert.match(shop,/22,000원/);
+assert.match(shop,/5,500원/);
+assert.match(shop,/44,000원/);
+assert.match(shop,/1,100원/);
+assert.match(shop,/11,000원/);
+assert.match(shop,/33,000원/);
+assert.match(shop,/55,000원/);
+assert.match(shop,/66,000원/);
+assert.match(shop,/1,650원/);
+assert.match(shop,/16,500원/);
+assert.match(shop,/프리미엄 소환권 10/);
+assert.match(shop,/스페셜 소환권 45/);
+assert.match(shop,/레벨업 패키지/);
+assert.match(shop,/첫 구매 혜택/);
+assert.match(shop,/임유리/);
+assert.match(shop,/계정당 1회/);
+assert.match(shop,/월 3회/);
+assert.match(shop,/첫 구매/);
+assert.match(shop,/N 50%/);
+assert.match(shop,/픽업 UR 1%/);
+assert.match(shop,/하지혜/);
+assert.match(shop,/제7조/);
+assert.match(shop,/7일/);
+assert.match(shop,/3영업일/);
+assert.match(shop,/지급 즉시 무조건 환불 불가/);
+assert.match(shop,/href="\/terms.html#t7"/);
+const sitemap=await read('sitemap.xml');
+assert.match(sitemap,/shop-info\.html/);
 
 console.log('Legal pages: Korean draft/placeholders, current data/analytics/share/retention gaps, statutory refund/minors, accessible link-only UI, no trackers/forms, build allowlists/idempotent isolated overlay OK');
