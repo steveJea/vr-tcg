@@ -90,5 +90,6 @@ assert.match(ageJs,/age-verify-btn/);
 assert(!/portone|PortOne|cdn\.portone|requestIdentityVerification/i.test(ageJs));
 const indexHtml=await read('index.html');
 assert.match(indexHtml,/id="intro-foot"/);
-assert.match(indexHtml,/id="lobby-foot"/);
+assert(!/id="lobby-foot"/.test(indexHtml),'no lobby-foot on the game lobby');
+assert(!footerJs.includes('lobby-foot'),'footer.js does not render a lobby footer');
 console.log('Legal pages: Korean draft/placeholders, current data/analytics/share/retention gaps, statutory refund/minors, accessible link-only UI, no trackers/forms, build allowlists/idempotent isolated overlay OK');
