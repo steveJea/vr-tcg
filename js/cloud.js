@@ -16,7 +16,7 @@ const STATS_KEY = 'vrTcgStats.v1';
 const SYNC_KEYS = ['vrTcgSkipFx', 'vrTcgVoiceOn', 'vrTcgVoiceVol', 'vrTcgSound', 'tcg_hand_sort', 'tcg_skip_endturn_confirm', 'vrTutorialDone'];
 
 let sb = null, user = null, profile = null, ready = false, pushTimer = null, applying = false;
-let oauthProviders = { kakao:false, x:null };
+let oauthProviders = { kakao:false, x:null, naver:false };
 let oauthBusy = false, oauthTimer = null, userVersion = 0;
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -99,7 +99,7 @@ function render(p) {
   const box = $('acct-box'); if (!box) return;
   if (!ready) { paintOAuth(); box.innerHTML = ''; return; }
   if (!user) {
-    // 상단 로그인: 버튼 하나 → 고르는 창(구글·카카오·X 중 켜진 것). 켜진 게 구글뿐이면 바로 구글
+    // 상단 로그인: 버튼 하나 → 고르는 창(구글·카카오·X·네이버 중 켜진 것). 켜진 게 구글뿐이면 바로 구글
     box.innerHTML = `<div class="oauth-row" data-clarity-mask="true"><button id="acct-login" type="button" class="main-btn acct-login" aria-haspopup="dialog">로그인</button></div>`;
     $('acct-login').onclick = () => login();
   } else {
@@ -115,14 +115,14 @@ function render(p) {
 }
 
 const notify = message => (window.VRGem?.toast || alert)(message);
-const backendProvider = provider => ['x', 'twitter'].includes(provider) ? oauthProviders.x : provider;
-const canLogin = provider => !!sb && ready && (provider === 'google' || (provider === 'kakao' && oauthProviders.kakao) || (['x', 'twitter'].includes(provider) && !!oauthProviders.x));
+const backendProvider = provider => ['x', 'twitter'].includes(provider) ? oauthProviders.x : (provider === 'naver' || provider === 'custom:naver' ? 'custom:naver' : provider);
+const canLogin = provider => !!sb && ready && (provider === 'google' || (provider === 'kakao' && oauthProviders.kakao) || (['x', 'twitter'].includes(provider) && !!oauthProviders.x) || (['naver', 'custom:naver'].includes(provider) && oauthProviders.naver));
 function paintOAuth() {
   document.querySelectorAll('[data-oauth-provider]').forEach(button => {
     button.hidden = button.dataset.oauthProvider !== 'google' && !canLogin(button.dataset.oauthProvider);
     button.disabled = oauthBusy || !ready;
   });
-  for (const provider of ['google', 'kakao', 'x']) {
+  for (const provider of ['google', 'kakao', 'x', 'naver']) {
     const button = $('main-link-' + provider);
     if (!button) continue;
     button.hidden = !user || !canLogin(provider) || hasIdentity(user, backendProvider(provider));
@@ -134,7 +134,7 @@ function paintOAuth() {
 function chooseLogin() {
   if (document.getElementById('oauth-choose')) return;
   const ov = document.createElement('div'); ov.id = 'oauth-choose'; ov.className = 'oauth-overlay';
-  ov.innerHTML = `<div class="oauth-card" data-clarity-mask="true" role="dialog" aria-modal="true" aria-labelledby="oauth-title"><h2 id="oauth-title">로그인</h2><div class="oauth-row"><button type="button" class="main-btn" data-oauth-provider="google">구글 로그인</button><button type="button" class="main-btn oauth-kakao" data-oauth-provider="kakao"><img src="img/ui/kakao-symbol.svg" class="oauth-symbol" width="18" height="18" alt="">카카오 로그인</button><button type="button" class="main-btn oauth-x" data-oauth-provider="x" hidden>X 로그인</button></div><button type="button" class="main-btn oauth-close">닫기</button></div>`;
+  ov.innerHTML = `<div class="oauth-card" data-clarity-mask="true" role="dialog" aria-modal="true" aria-labelledby="oauth-title"><h2 id="oauth-title">로그인</h2><div class="oauth-row"><button type="button" class="main-btn" data-oauth-provider="google">구글 로그인</button><button type="button" class="main-btn oauth-kakao" data-oauth-provider="kakao"><img src="img/ui/kakao-symbol.svg" class="oauth-symbol" width="18" height="18" alt="">카카오 로그인</button><button type="button" class="main-btn oauth-x" data-oauth-provider="x" hidden>X 로그인</button><button type="button" class="main-btn oauth-naver" data-oauth-provider="naver" hidden><img src="img/ui/naver-symbol.svg" class="oauth-symbol" width="18" height="18" alt="">네이버 로그인</button></div><button type="button" class="main-btn oauth-close">닫기</button></div>`;
   const close = () => { ov.remove(); document.removeEventListener('keydown', onKey); };
   const onKey = e => { if (e.key === 'Escape') close(); };
   ov.querySelectorAll('[data-oauth-provider]').forEach(b => { b.onclick = () => { close(); login(b.dataset.oauthProvider); }; });
@@ -176,7 +176,7 @@ async function startOAuth(provider, linking) {
 async function login(provider) {
   if (user) return;
   if (!sb || !ready) return notify('지금은 로그인 서버에 연결할 수 없어요.');
-  if (provider === undefined) { if (canLogin('kakao') || canLogin('x')) return chooseLogin(); provider = 'google'; }
+  if (provider === undefined) { if (canLogin('kakao') || canLogin('x') || canLogin('naver')) return chooseLogin(); provider = 'google'; }
   return startOAuth(provider, false);
 }
 async function linkProvider(provider) { return startOAuth(provider, true); }

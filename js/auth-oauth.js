@@ -1,5 +1,5 @@
 // Public OAuth helpers only: provider secrets belong in Supabase, never in this bundle.
-export const OAUTH_PROVIDERS = Object.freeze({ google: '구글', kakao: '카카오', x: 'X', twitter: 'X' });
+export const OAUTH_PROVIDERS = Object.freeze({ google: '구글', kakao: '카카오', x: 'X', twitter: 'X', naver: '네이버', 'custom:naver': '네이버' });
 const text = v => typeof v === 'string' ? v.trim() : '';
 export function profileSeed(u) {
   const m = u?.user_metadata || {};
@@ -14,7 +14,7 @@ export function oauthRequest(provider, redirectTo) {
   return { provider, options: { redirectTo } };
 }
 export async function discoverOAuthProviders(config, fetcher = fetch, timeout = 4000) {
-  let known = { google:false, kakao:false, x:null };
+  let known = { google:false, kakao:false, x:null, naver:false };
   if (!config.enabled) return known;
   const controller = new AbortController();
   const options = { headers:{ apikey:config.anonKey }, credentials:'omit', redirect:'manual', signal:controller.signal, cache:'no-store' };
@@ -27,22 +27,40 @@ export async function discoverOAuthProviders(config, fetcher = fetch, timeout = 
         const external = (await res.json())?.external;
         if (!external || typeof external !== 'object' || Array.isArray(external)) return known;
         known = { google:external.google === true, kakao:external.kakao === true,
-          x:external.x === true ? 'x' : external.x === false && external.twitter === true ? 'twitter' : null };
-        // Auth v2.197.0 supports X but omits external.x from /settings.
+          x:external.x === true ? 'x' : external.x === false && external.twitter === true ? 'twitter' : null,
+          naver: external['custom:naver'] === true || external.naver === true };
+        // Auth v2.197+ may omit X and never lists custom providers in /settings.
         // An incomplete PKCE pair is rejected AFTER provider validation and BEFORE
         // any flow/session row, token or external request is created. Never follow redirects.
+        const pkceNeeded = error => error?.error_code === 'validation_failed' && error.msg === 'PKCE flow requires code_challenge_method and code_challenge';
+        const authorize = provider => fetcher(config.supabaseUrl + '/auth/v1/authorize?provider=' + encodeURIComponent(provider) + '&code_challenge_method=S256', options);
+        const probes = [];
         if (!Object.hasOwn(external, 'x')) {
-          try {
-            const probe = await fetcher(config.supabaseUrl + '/auth/v1/authorize?provider=x&code_challenge_method=S256', options);
-            if (probe.status === 400) {
-              const error = await probe.json();
-              if (error.error_code === 'validation_failed') {
-                if (error.msg === 'PKCE flow requires code_challenge_method and code_challenge') known = {...known, x:'x'};
-                else if (/^Unsupported provider: (?:provider is not enabled|Provider x could not be found)$/i.test(error.msg) && external.twitter === true) known = {...known, x:'twitter'};
+          probes.push((async () => {
+            try {
+              const probe = await authorize('x');
+              if (probe.status === 400) {
+                const error = await probe.json();
+                if (error.error_code === 'validation_failed') {
+                  if (pkceNeeded(error)) known = {...known, x:'x'};
+                  else if (/^Unsupported provider: (?:provider is not enabled|Provider x could not be found)$/i.test(error.msg) && external.twitter === true) known = {...known, x:'twitter'};
+                }
               }
-            }
-          } catch { /* Keep Google/Kakao; never switch identity namespaces on an unknown X status. */ }
+            } catch { /* Keep Google/Kakao; never switch identity namespaces on an unknown X status. */ }
+          })());
         }
+        if (!Object.hasOwn(external, 'custom:naver') && !Object.hasOwn(external, 'naver')) {
+          probes.push((async () => {
+            try {
+              const probe = await authorize('custom:naver');
+              if (probe.status === 400) {
+                const error = await probe.json();
+                if (pkceNeeded(error)) known = {...known, naver:true};
+              }
+            } catch { /* Keep Google/Kakao/X; hide Naver when status is unknown. */ }
+          })());
+        }
+        if (probes.length) await Promise.all(probes);
         return known;
       })(),
       new Promise(resolve => { timer = setTimeout(() => { controller.abort(); resolve(known); }, timeout); })

@@ -10,7 +10,7 @@ const html = await readFile(new URL('index.html',root),'utf8');
 const bundle = (await build({stdin:{contents:source.replace('import(SDK)','Promise.resolve(window.__authSdk)'),resolveDir:new URL('js/',root).pathname},bundle:true,write:false,format:'iife',logLevel:'silent'})).outputFiles[0].text;
 const tick=()=>new Promise(r=>setImmediate(r));
 const plain=o=>JSON.parse(JSON.stringify(o));
-function fixture({u=null,enabled=true,profiles={},authError=null,linkError=null,fetchError=false,href='https://vr-tcg-staging.notcold.workers.dev/',deferredProfile=null,linkIntent=null,serverUser=u,initError=null,external=null,probeEnabled=false,probeError=false,noConsent=false}={}) {
+function fixture({u=null,enabled=true,profiles={},authError=null,linkError=null,fetchError=false,href='https://vr-tcg-staging.notcold.workers.dev/',deferredProfile=null,linkIntent=null,serverUser=u,initError=null,external=null,probeEnabled=false,probeError=false,naverEnabled=false,naverError=false,noConsent=false}={}) {
  const {window}=parseHTML(html),document=window.document;
  const location=new URL(href),calls=[],messages=[],replaces=[],timers=new Map();let seq=0,listener;
  class Storage { constructor(){this.data=new Map();} getItem(k){return this.data.get(k)??null;} setItem(k,v){this.data.set(k,String(v));} removeItem(k){this.data.delete(k);} }
@@ -35,12 +35,12 @@ function fixture({u=null,enabled=true,profiles={},authError=null,linkError=null,
  window.VRGem={toast:m=>messages.push(m)};window.VRConfirm=async()=>true;
  const context=vm.createContext({window,document,location,history:{replaceState:(...a)=>{replaces.push(a);location.href=new URL(a[2],location).href;}},Storage,localStorage,sessionStorage,console,URL,URLSearchParams,AbortController,CustomEvent:window.CustomEvent,alert:m=>messages.push(m),atob,
  setTimeout:(fn,ms)=>{timers.set(++seq,{fn,ms});return seq;},clearTimeout:id=>timers.delete(id),
- fetch:async(url,options)=>{calls.push(['fetch',url,plain({headers:options.headers,cache:options.cache})]);if(fetchError)throw Error('offline');if(url.includes('/authorize?')){if(probeError)throw Error('probe offline');return {status:400,json:async()=>({error_code:'validation_failed',msg:probeEnabled?'PKCE flow requires code_challenge_method and code_challenge':'Unsupported provider: provider is not enabled'})};}return {ok:true,json:async()=>({external:external??{google:true,kakao:enabled,x:false,twitter:false}})};}
+ fetch:async(url,options)=>{calls.push(['fetch',url,plain({headers:options.headers,cache:options.cache})]);if(fetchError)throw Error('offline');if(url.includes('/authorize?')){const provider=new URL(url).searchParams.get('provider');if(provider==='custom:naver'){if(naverError)throw Error('naver probe offline');return {status:400,json:async()=>({error_code:'validation_failed',msg:naverEnabled?'PKCE flow requires code_challenge_method and code_challenge':'Unsupported provider: custom provider custom:naver not found'})};}if(probeError)throw Error('probe offline');return {status:400,json:async()=>({error_code:'validation_failed',msg:probeEnabled?'PKCE flow requires code_challenge_method and code_challenge':'Unsupported provider: provider is not enabled'})};}return {ok:true,json:async()=>({external:external??{google:true,kakao:enabled,x:false,twitter:false}})};}
  });
  vm.runInContext(bundle,context);
  return {window,document,calls,messages,replaces,timers,localStorage,sessionStorage,settle:async()=>{for(let i=0;i<5;i++)await tick();},emit:(event,next)=>listener(event,next?{user:next}:null),fireTimer:ms=>{for(const[id,t]of timers)if(t.ms===ms){timers.delete(id);t.fn();}}};
 }
-assert.deepEqual(Object.keys(OAUTH_PROVIDERS),['google','kakao','x','twitter']);
+assert.deepEqual(Object.keys(OAUTH_PROVIDERS),['google','kakao','x','twitter','naver','custom:naver']);
 for(const u of [null,{}, {email:null}, {email:''}, {email:{bad:1},user_metadata:{name:{bad:1},avatar_url:123}}, {email:'   ',user_metadata:{name:'  '}}])assert.equal(profileSeed(u).nickname,'플레이어');
 assert.deepEqual(profileSeed({user_metadata:{name:' 카카오형 ',picture:'https://example.com/p.png'}}),{nickname:'카카오형',avatar_url:'https://example.com/p.png'});
 assert.equal(profileSeed({user_metadata:{name:'가'.repeat(40)}}).nickname.length,20);

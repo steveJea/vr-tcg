@@ -361,9 +361,10 @@
 /* Shared OAuth controls. Kakao is exposed only after Supabase enables it. */
 .oauth-row{display:flex;flex-wrap:wrap;gap:8px;align-items:stretch;width:100%}
 .oauth-row>button{flex:1 1 140px;min-width:0;min-height:44px;white-space:nowrap}
-[data-oauth-provider][hidden],#main-link-google[hidden],#main-link-kakao[hidden],#main-link-x[hidden]{display:none!important}
+[data-oauth-provider][hidden],#main-link-google[hidden],#main-link-kakao[hidden],#main-link-x[hidden],#main-link-naver[hidden]{display:none!important}
 .oauth-kakao,.main-btn.oauth-kakao{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:#fee500;color:rgba(0,0,0,.85);border-color:#fee500;border-radius:12px;font-family:system-ui,sans-serif;text-shadow:none}
 .oauth-x,.main-btn.oauth-x{display:inline-flex;align-items:center;justify-content:center;background:#000;color:#fff;border:1px solid #777;border-image:none;border-radius:12px;font-family:system-ui,sans-serif;text-shadow:none}
+.oauth-naver,.main-btn.oauth-naver{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:#03C75A;color:#fff;border-color:#03C75A;border-image:none;border-radius:12px;font-family:system-ui,sans-serif;text-shadow:none}
 .oauth-symbol{width:18px;height:18px;flex:none;object-fit:contain}
 #intro .intro-acts{width:min(92vw,480px)}#intro .oauth-row .intro-btn{font-size:16px}
 #intro .oauth-row{width:100%}#intro .oauth-row .intro-btn{padding-left:8px;padding-right:8px}
