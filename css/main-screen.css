@@ -398,12 +398,8 @@
 .as-prog-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:6px;font-size:12px;color:#fde7b0}
 .as-cancel{padding:4px 10px;border-radius:8px;background:#27272a;border:1px solid #52525b;color:#e4e4e7;font-size:12px;font-weight:800}
 
-/* 로그인 화면·로비 사업자 푸터가 들어가도록 간격 조정 */
+/* 로그인 화면 사업자 푸터 간격 */
 #intro .legal-links{margin:0;gap:0 8px}
 #intro .legal-links a{min-height:36px;font-size:13px;padding:2px 4px}
-#start-screen .main-body{padding-bottom:calc(150px + env(safe-area-inset-bottom))}
-@media (min-width: 768px) {
-  #start-screen .main-body{padding-bottom:160px}
-}
 .gm-foot #mbbs-footer .mf-biz{text-align:center}
 .main-pop-card{max-height:min(90vh,720px);overflow:auto}

@@ -1,6 +1,6 @@
 /* mbbs.kr 공통 푸터 (독립 파일) */
 (function(){
-  /* ===== 사업자 정보 — 여기만 고치면 로그인 화면·로비·설정 푸터에 같이 반영됩니다. ===== */
+  /* ===== 사업자 정보 — 여기만 고치면 로그인 화면·설정 푸터에 같이 반영됩니다. ===== */
   var COMPANY = {
     name: '엔터인코드',
     ceo: '장윤석',
@@ -25,16 +25,13 @@
   '#mbbs-footer .mf-biz span{white-space:normal}#mbbs-footer .mf-biz span:not(:last-child)::after{content:" · ";white-space:pre;opacity:.7}'+
   '#mbbs-footer .mf-legal{margin:2px 0 4px}#mbbs-footer .mf-legal a{font-size:11px;text-decoration:underline;text-underline-offset:2px}'+
   '#mbbs-footer .mf-games{opacity:.85;font-size:10px}'+
-  '#intro-foot,#lobby-foot{width:100%;font:10px/1.5 system-ui,"Malgun Gothic","Noto Sans KR",sans-serif;color:rgba(255,255,255,.7);text-align:center;padding:4px 10px;word-break:keep-all}'+
-  '#intro-foot{position:relative;z-index:2;padding-bottom:calc(8px + env(safe-area-inset-bottom))}'+
-  '#intro-foot .mf-biz,#lobby-foot .mf-biz{margin:0 0 2px}#intro-foot .mf-biz span,#lobby-foot .mf-biz span{white-space:normal}'+
-  '#intro-foot .mf-biz span:not(:last-child)::after,#lobby-foot .mf-biz span:not(:last-child)::after{content:" · ";white-space:pre;opacity:.7}'+
-  '#intro-foot .mf-legal{display:none}#lobby-foot .mf-legal{display:flex;flex-wrap:wrap;justify-content:center;gap:0 10px;margin:2px 0}'+
-  '#intro-foot a,#lobby-foot a{color:rgba(255,232,180,.9);text-decoration:underline;text-underline-offset:2px}'+
-  '#intro-foot .mf-copy,#lobby-foot .mf-copy{margin:2px 0 0;font-size:9px;opacity:.75}'+
-  '#lobby-foot{position:absolute;left:0;right:0;bottom:calc(70px + env(safe-area-inset-bottom));z-index:25;padding:4px 10px 6px;background:linear-gradient(transparent,rgba(0,0,0,.72) 40%);pointer-events:none}'+
-  '#lobby-foot *{pointer-events:auto}'+
-  '@media (min-width:768px){#lobby-foot{left:50%;right:auto;transform:translateX(-50%);width:min(560px,100%);border-radius:10px 10px 0 0}#intro-foot .mf-biz span,#lobby-foot .mf-biz span,#mbbs-footer .mf-biz span{white-space:nowrap}}';
+  '#intro-foot{width:100%;font:10px/1.5 system-ui,"Malgun Gothic","Noto Sans KR",sans-serif;color:rgba(255,255,255,.7);text-align:center;padding:4px 10px calc(8px + env(safe-area-inset-bottom));word-break:keep-all;position:relative;z-index:2}'+
+  '#intro-foot .mf-biz{margin:0 0 2px}#intro-foot .mf-biz span{white-space:normal}'+
+  '#intro-foot .mf-biz span:not(:last-child)::after{content:" · ";white-space:pre;opacity:.7}'+
+  '#intro-foot .mf-legal{display:none}'+
+  '#intro-foot a{color:rgba(255,232,180,.9);text-decoration:underline;text-underline-offset:2px}'+
+  '#intro-foot .mf-copy{margin:2px 0 0;font-size:9px;opacity:.75}'+
+  '@media (min-width:768px){#intro-foot .mf-biz span,#mbbs-footer .mf-biz span{white-space:nowrap}}';
   var st=document.createElement('style');st.textContent=css+(s.getAttribute('data-css')||'');document.head.appendChild(st);
 
   function bizHtml(withGames){
@@ -65,12 +62,7 @@
   }
   function place(){
     fillSlot('intro-foot', bizHtml(false));
-    fillSlot('lobby-foot', bizHtml(false));
-    var intro=document.getElementById('intro');
-    var introOn=intro&&!intro.classList.contains('hidden');
     var foot=document.getElementById('gm-foot');
-    var lobby=document.getElementById('lobby-foot');
-    if(lobby) lobby.hidden=!!introOn;
     if(foot&&f.parentNode!==foot) foot.appendChild(f);
   }
   function upd(){
