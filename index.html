@@ -240,6 +240,7 @@
     .ci-hmp { display: flex; gap: 8px; margin-top: 8px; width: 100%; min-width: 0; }
     .ci-hmp-col { flex: 1; min-width: 0; }
     .ci-hmp-lab { display: flex; justify-content: space-between; align-items: baseline; gap: 4px; font-size: 10px; font-weight: 700; color: #a1a1aa; margin-bottom: 2px; }
+    .ci-hmp-lab, .ci-hmp-lab span, .ci-hmp-lab b { white-space: nowrap; overflow-wrap: normal; word-break: keep-all; }
     .ci-hmp-lab b { font-weight: 800; color: #e4e4e7; }
     .ci-hmp-track { height: 8px; border-radius: 999px; background: rgba(255,255,255,.1); overflow: hidden; }
     .ci-hmp-fill { height: 100%; border-radius: inherit; }
@@ -248,13 +249,14 @@
     .zoom-info .ci-hmp { flex-basis: 100%; max-width: 22rem; margin-left: auto; margin-right: auto; }
     .zoom-info .ci-statrow { align-items: stretch; justify-content: center; }
     @media (max-width: 379px) { .ci-hmp { gap: 6px; } .ci-hmp-lab { font-size: 9px; } .ci-head { font-size: 1.05rem; } }
-    /* PC: HP·MP 바를 공격력·방어력과 같은 줄, 방어력 옆에. 모바일 배치는 그대로 */
+    /* PC: HP·MP 바를 방어력 옆 한 줄에, 두 칸 너비 동일. 라벨·숫자(1,234/1,234)는 줄바꿈 없음. 모바일 배치는 그대로 */
     @media (min-width: 768px) {
-      .ci-statrow { flex-direction: row; flex-wrap: nowrap; align-items: flex-end; gap: 12px; }
-      .ci-statrow .ci-stats { flex: none; margin-top: 6px; }
-      .ci-statrow .ci-hmp { flex: 1 1 12rem; margin-top: 6px; max-width: 18rem; width: auto; }
-      .zoom-info .ci-hmp { flex-basis: auto; max-width: 18rem; margin: 0; }
-      .zoom-info .ci-statrow { justify-content: center; flex-wrap: wrap; }
+      .ci-statrow { flex-direction: row; flex-wrap: nowrap; align-items: flex-end; gap: 12px; width: auto; max-width: 100%; }
+      .ci-statrow .ci-stats { flex: 0 0 auto; margin-top: 6px; }
+      .ci-statrow .ci-hmp { flex: 0 0 16.5rem; width: 16.5rem; min-width: 16.5rem; max-width: 16.5rem; margin-top: 6px; gap: 8px; }
+      .ci-statrow .ci-hmp-col { flex: 1 1 0; width: 0; min-width: 0; }
+      .zoom-info .ci-hmp { flex-basis: 16.5rem; max-width: 16.5rem; margin: 0; }
+      .zoom-info .ci-statrow { justify-content: center; flex-wrap: nowrap; }
     }
     .ci-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 4px; font-size: 11px; justify-content: inherit; }
     .ci-tag { display: inline-flex; align-items: center; gap: 2px; padding: 1px 6px; border-radius: 999px; background: rgba(255,255,255,.08); color: #d4d4d8; font-weight: 700; white-space: nowrap; }
