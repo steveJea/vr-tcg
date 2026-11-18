@@ -10,7 +10,7 @@ const out = path.join(root, '.production-dist');
 await rm(out, { recursive: true, force: true });
 await mkdir(out, { recursive: true });
 // robots.txt·sitemap.xml·네이버 소유확인 파일: ag 운영 도메인 검색 등록용 (운영 robots는 Allow)
-for (const name of ['index.html', 'admin.html', 'terms.html', 'privacy.html', 'about.html', 'age.html', 'favicon.ico', 'robots.txt', 'sitemap.xml', 'naver34493a6b3ecfab810dabeb7bd30674d1.html', 'naver3f65526c87e433092cebf702df729832.html', 'js', 'css', 'data', 'img', 'audio', 'video']) {
+for (const name of ['index.html', 'admin.html', 'terms.html', 'privacy.html', 'about.html', 'age.html', 'shop-info.html', 'favicon.ico', 'robots.txt', 'sitemap.xml', 'naver34493a6b3ecfab810dabeb7bd30674d1.html', 'naver3f65526c87e433092cebf702df729832.html', 'js', 'css', 'data', 'img', 'audio', 'video']) {
   await cp(path.join(root, name), path.join(out, name), { recursive: true });
 }
 // 기기 캐시 (#593·#595~#597, 스테이징과 같은 규칙): 서비스 워커는 루트에서만 전체 범위 + 자산 목록(내용 해시)
