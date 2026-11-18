@@ -380,11 +380,14 @@
   <div class="intro-body">
     <img src="img/ui/main/logo_v2.webp" alt="Violence Royale : The Abyss Gate" class="intro-logo" width="1200" height="595">
     <div class="intro-acts">
-      <div class="oauth-row" data-clarity-mask="true">
-        <button id="intro-login" data-oauth-provider="google" class="main-btn intro-btn" type="button"><img src="img/ui/v2/icon_google.svg" alt="" class="oauth-symbol" width="24" height="24">구글 로그인</button>
-        <button id="intro-login-kakao" class="main-btn intro-btn oauth-kakao" type="button" data-oauth-provider="kakao" hidden><img src="img/ui/v2/icon_kakao.svg" alt="" class="oauth-symbol" width="24" height="24">카카오 로그인</button>
-        <button id="intro-login-x" class="main-btn intro-btn oauth-x" type="button" data-oauth-provider="x" hidden><img src="img/ui/v2/icon_x.svg" alt="" class="oauth-symbol" width="24" height="24">X 로그인</button>
-        <button id="intro-login-naver" class="main-btn intro-btn oauth-naver" type="button" data-oauth-provider="naver" hidden><img src="img/ui/v2/icon_naver.svg" alt="" class="oauth-symbol" width="24" height="24">네이버 로그인</button>
+      <div class="intro-login-box" role="group" aria-labelledby="intro-login-title">
+        <div id="intro-login-title" class="intro-login-title">LOG IN</div>
+        <div class="oauth-row" data-clarity-mask="true">
+          <button id="intro-login" data-oauth-provider="google" class="main-btn intro-btn intro-sns intro-sns-google" type="button" aria-label="구글로 로그인" title="구글로 로그인"><img src="img/ui/v2/icon_google.svg" alt="" class="oauth-symbol" width="24" height="24"></button>
+          <button id="intro-login-kakao" class="main-btn intro-btn intro-sns oauth-kakao" type="button" data-oauth-provider="kakao" hidden aria-label="카카오로 로그인" title="카카오로 로그인"><img src="img/ui/v2/icon_kakao.svg" alt="" class="oauth-symbol" width="24" height="24"></button>
+          <button id="intro-login-x" class="main-btn intro-btn intro-sns oauth-x" type="button" data-oauth-provider="x" hidden aria-label="X로 로그인" title="X로 로그인"><img src="img/ui/v2/icon_x.svg" alt="" class="oauth-symbol" width="24" height="24"></button>
+          <button id="intro-login-naver" class="main-btn intro-btn intro-sns oauth-naver" type="button" data-oauth-provider="naver" hidden aria-label="네이버로 로그인" title="네이버로 로그인"><img src="img/ui/v2/icon_naver.svg" alt="" class="oauth-symbol" width="24" height="24"></button>
+        </div>
       </div>
       <button id="intro-guest" class="intro-guest" type="button">게스트로 시작</button>
       <nav id="intro-legal-links" class="legal-links" aria-label="서비스 정책"><a href="/terms.html" target="_blank" rel="noopener noreferrer">이용약관</a><a href="/privacy.html" target="_blank" rel="noopener noreferrer">개인정보처리방침</a><a href="/about.html" target="_blank" rel="noopener noreferrer">서비스 소개</a><a href="/shop-info.html" target="_blank" rel="noopener noreferrer">상품 안내</a><a href="/age.html" target="_blank" rel="noopener noreferrer">연령 확인 (19+)</a></nav>

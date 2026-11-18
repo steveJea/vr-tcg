@@ -366,8 +366,30 @@
 .oauth-x,.main-btn.oauth-x{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:#000;color:#fff;border:1px solid #777;border-image:none;border-radius:12px;font-family:system-ui,sans-serif;text-shadow:none}
 .oauth-naver,.main-btn.oauth-naver{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:#03C75A;color:#fff;border-color:#03C75A;border-image:none;border-radius:12px;font-family:system-ui,sans-serif;text-shadow:none}
 .oauth-symbol{width:24px;height:24px;flex:none;object-fit:contain}
-#intro .intro-acts{width:min(92vw,480px)}#intro .oauth-row .intro-btn{font-size:16px}
-#intro .oauth-row{width:100%}#intro .oauth-row .intro-btn{padding-left:8px;padding-right:8px}
+#intro .intro-acts{width:min(92vw,360px)}
+#intro .intro-login-box{
+  width:100%;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;gap:.65rem;
+  padding:.7rem .8rem .9rem;
+  border:8px solid transparent;border-radius:4px;
+  border-image:url(../img/ui/main/frame_btn.webp) 24 / 12px / 4px stretch;
+  background:linear-gradient(180deg, rgba(70, 10, 14, .92), rgba(22, 3, 5, .94)) border-box;
+  box-shadow:0 4px 14px rgba(0,0,0,.6);
+}
+#intro .intro-login-title{
+  font-family:'Cinzel','Cinzel Decorative',serif;font-weight:700;letter-spacing:.22em;
+  font-size:clamp(1.05rem,4.2vw,1.25rem);color:#fde7b0;line-height:1.2;text-align:center;
+  text-shadow:0 1px 2px #000, 0 0 10px rgba(245,201,106,.25);
+}
+#intro .intro-login-box .oauth-row{width:100%;flex-wrap:nowrap;justify-content:center;align-items:center;gap:clamp(8px,2.4vw,12px)}
+#intro .intro-login-box .oauth-row>.intro-sns{
+  flex:0 0 auto;width:clamp(3.1rem,18vw,3.75rem);height:clamp(3.1rem,18vw,3.75rem);
+  min-width:0;min-height:0;padding:0;aspect-ratio:1;overflow:hidden;
+  border:0;border-image:none;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.45);
+}
+#intro .intro-login-box .intro-sns-google{background:#fff;color:#000}
+#intro .intro-login-box .oauth-x{border:1px solid #777}
+#intro .intro-login-box .oauth-symbol{width:100%;height:100%}
+#intro .intro-login-box .intro-sns:focus-visible{outline:2px solid #fde68a;outline-offset:3px}
 #acct-box .oauth-row{width:auto}#acct-box .oauth-row .acct-login{flex:0 1 auto;padding:7px 10px;min-height:36px;font-size:14px!important}
 .oauth-overlay{position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;padding:16px}
 .oauth-card{width:min(100%,360px);padding:20px;border-radius:16px;background:#1e1530;border:1px solid #91673a}
