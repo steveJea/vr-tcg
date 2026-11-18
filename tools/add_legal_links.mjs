@@ -9,7 +9,7 @@ export function addLegalLinks(html) {
   }
   const anchors=['<link rel="stylesheet" href="css/main-screen.css">','<div id="gm-foot" class="gm-foot"></div>'];
   if(!anchors.every(a=>html.split(a).length===2)||!/<button id="intro-guest"[^>]*>[^<]*<\/button>/.test(html))throw Error('unexpected index anchors; review before editing');
-  const nav=id=>`<nav id="${id}" class="legal-links" aria-label="서비스 정책"><a href="/terms.html" target="_blank" rel="noopener noreferrer">이용약관</a><a href="/privacy.html" target="_blank" rel="noopener noreferrer">개인정보처리방침</a></nav>`;
+  const nav=id=>`<nav id="${id}" class="legal-links" aria-label="서비스 정책"><a href="/terms.html" target="_blank" rel="noopener noreferrer">이용약관</a><a href="/privacy.html" target="_blank" rel="noopener noreferrer">개인정보처리방침</a><a href="/about.html" target="_blank" rel="noopener noreferrer">서비스 소개</a><a href="/age.html" target="_blank" rel="noopener noreferrer">연령 확인 (19+)</a></nav>`;
   return html.replace(anchors[0],anchors[0]+'\n  <link rel="stylesheet" href="css/legal.css">')
     .replace(/(<button id="intro-guest"[^>]*>[^<]*<\/button>)/,'$1\n      '+nav(ids[0]))
     .replace(anchors[1],nav(ids[1])+'\n      '+anchors[1]);
