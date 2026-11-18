@@ -206,7 +206,7 @@
 .gm-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: .5rem; }
 .gm-btn { display: flex; flex-direction: column; align-items: center; gap: .3rem; padding: .6rem .2rem; border-radius: 12px; background: rgba(0,0,0,.35);
   border: 1px solid rgba(245,201,106,.25); color: #fde7b0; font-size: .72rem; font-weight: 800; cursor: pointer; }
-.gm-btn img { width: 36px; height: 36px; object-fit: contain; }
+.gm-btn img { width: 36px; height: 36px; object-fit: contain; flex: none; }
 .gm-btn small { display: block; font-size: .6rem; opacity: .7; font-weight: 600; }
 .gm-btn:hover { border-color: #f5c96a; background: rgba(120,20,20,.35); }
 .gm-btn.hidden { display: none; }
