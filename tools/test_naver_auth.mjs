@@ -144,6 +144,17 @@ assert.match(mainMenu,/intro-login-naver.*login\('naver'\)/);
 const css=await readFile(new URL('css/main-screen.css',root),'utf8');
 assert.match(css,/#main-link-naver\[hidden\]/);
 assert.match(css,/\.oauth-naver[^}]*#03C75A/);
+assert.match(css,/\.oauth-symbol\{width:24px;height:24px/);
+assert.match(css,/\.oauth-row>button\{[^}]*gap:8px/);
+const icons={google:'icon_google.svg',kakao:'icon_kakao.svg',x:'icon_x.svg',naver:'icon_naver.svg'};
+const index=await readFile(new URL('index.html',root),'utf8');
+const cloud=await readFile(new URL('js/cloud.js',root),'utf8');
+for(const [id,file] of Object.entries(icons)){
+ const src=`img/ui/v2/${file}`;
+ assert.match(index,new RegExp(`id="intro-login${id==='google'?'':'-'+id}"[^>]*>\\s*<img src="${src}"`));
+ assert.match(cloud,new RegExp(`data-oauth-provider="${id}"[^>]*>\\s*<img src="${src}"`));
+}
+assert.doesNotMatch(index,/<button id="intro-login"[^>]*>\s*<img src="img\/ui\/login\.webp"/);
 const symbol=await readFile(new URL('img/ui/naver-symbol.svg',root),'utf8');
 assert.match(symbol,/developers\.naver\.com\/docs\/login\/bi/);
 const fn=await readFile(new URL('supabase/functions/naver-userinfo/handler.mjs',root),'utf8');
