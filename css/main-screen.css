@@ -223,7 +223,7 @@
 .intro-bg, .intro-bg img, .intro-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .intro-video.hidden { display: none; }
 .intro-shade { position: absolute; inset: 0; background: linear-gradient(rgba(0,0,0,.25), transparent 35%, rgba(0,0,0,.85)); }
-.intro-body { position: relative; z-index: 1; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 1.6rem; padding: 0 1.5rem 12vh; }
+.intro-body { position: relative; z-index: 1; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 1rem; padding: 0 1.5rem calc(8px + env(safe-area-inset-bottom)); }
 .intro-logo { width: min(84vw, 520px, 76svh); height: auto; filter: drop-shadow(0 4px 8px #000); }
 .intro-acts { display: flex; flex-direction: column; align-items: center; gap: .7rem; width: min(80vw, 320px); }
 .intro-btn { width: 100%; padding: .7rem 1rem; font-size: 1.05rem; }
@@ -397,3 +397,13 @@
 .as-prog .as-bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#b45309,#fbbf24);transition:width .2s}
 .as-prog-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:6px;font-size:12px;color:#fde7b0}
 .as-cancel{padding:4px 10px;border-radius:8px;background:#27272a;border:1px solid #52525b;color:#e4e4e7;font-size:12px;font-weight:800}
+
+/* 로그인 화면·로비 사업자 푸터가 들어가도록 간격 조정 */
+#intro .legal-links{margin:0;gap:0 8px}
+#intro .legal-links a{min-height:36px;font-size:13px;padding:2px 4px}
+#start-screen .main-body{padding-bottom:calc(150px + env(safe-area-inset-bottom))}
+@media (min-width: 768px) {
+  #start-screen .main-body{padding-bottom:160px}
+}
+.gm-foot #mbbs-footer .mf-biz{text-align:center}
+.main-pop-card{max-height:min(90vh,720px);overflow:auto}

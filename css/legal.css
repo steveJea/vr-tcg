@@ -20,3 +20,23 @@
 .legal-page code{white-space:normal;color:#f4d8b1}.legal-footer{padding-top:24px;text-align:center;color:#e0cbb7}.legal-skip{position:absolute;left:12px;top:-100px;padding:10px 16px;background:#160b10;color:#ffe7ac;z-index:1}.legal-skip:focus{top:12px}
 @media(max-width:600px){.legal-shell{width:calc(100% - 20px);padding-top:14px}.legal-header{justify-content:center}.legal-info{grid-template-columns:1fr;gap:4px}.legal-info dd{margin-bottom:12px}.legal-page h2{font-size:20px}}
 @media print{.legal-page{color:#111;background:#fff}.legal-page main{box-shadow:none;background:#fff;border-color:#999}.legal-page h1,.legal-page h2,.legal-info dt,.legal-page a,.legal-table th{color:#111}.legal-placeholder,.legal-draft,.legal-table th{color:#111;background:#eee}.legal-header,.legal-footer,.legal-skip{display:none}.legal-shell{width:100%;padding:0}.legal-table{overflow:visible}.legal-table table{min-width:0}.legal-page section{break-inside:avoid}}
+.site-biz{margin:0 0 8px;font-size:13px;line-height:1.6;color:#e0cbb7;word-break:keep-all}
+.about-hero{margin:0 0 8px;text-align:center}
+.about-hero img{width:min(100%,520px);height:auto;filter:drop-shadow(0 8px 24px #0008)}
+.about-features{list-style:none;padding:0;margin:16px 0;display:grid;gap:16px}
+.about-features li{display:grid;grid-template-columns:minmax(120px,200px) 1fr;gap:16px;align-items:center;padding:0;margin:0;border:1px solid #805738;border-radius:12px;overflow:hidden;background:#1a0c10}
+.about-features img{width:100%;height:120px;object-fit:cover;display:block}
+.about-features h3{margin:0 0 6px;color:#ffe7ac;font-size:18px}
+.about-features p{margin:0;padding-right:12px;font-size:15px}
+.about-cta{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:8px 22px;border-radius:10px;background:#f5c96a;color:#1a1200;font-weight:800;text-decoration:none}
+.about-cta:hover{background:#ffe08a;color:#1a1200}
+.age-badge{display:inline-block;margin:0 0 8px;padding:4px 14px;border:2px solid #f5c96a;border-radius:8px;color:#ffe7ac;font:800 28px/1.2 system-ui,sans-serif;letter-spacing:.04em}
+.age-actions{text-align:center;margin:24px 0 8px}
+.age-btn{display:inline-flex;align-items:center;justify-content:center;min-width:min(100%,280px);min-height:52px;padding:12px 24px;border:0;border-radius:12px;background:#f5c96a;color:#1a1200;font:800 18px/1.2 system-ui,sans-serif;cursor:pointer}
+.age-btn:hover{background:#ffe08a}.age-btn:focus-visible{outline:2px solid #ffe7ac;outline-offset:3px}
+.age-msg{margin:8px auto 16px;max-width:36em;padding:14px 16px;border:1px solid #cb8a3b;border-radius:10px;background:#342010;color:#ffe9b3;text-align:center}
+@media(max-width:600px){.about-features li{grid-template-columns:1fr}.about-features img{height:140px}.about-features p{padding:0 12px 12px}}
+#intro .legal-links{margin:0;gap:0 8px}
+#intro .legal-links a{min-height:36px;font-size:13px;padding:2px 4px}
+#settings-legal-links{margin:8px 0 0}
+#settings-legal-links a{min-height:36px;font-size:13px;padding:2px 4px}
