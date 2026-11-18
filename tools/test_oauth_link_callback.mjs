@@ -64,4 +64,17 @@ const auth=u=>({getUser:async()=>({data:{user:u},error:null})});
 assert((await resolveOAuthReturn(auth(linkedUser),cb,{uid,provider:'google'},oldUser)).message.includes('연결되었어요'),'server state wins when actually linked');
 assert((await resolveOAuthReturn(auth({...linkedUser,id:'different-account'}),cb,{uid,provider:'google'},oldUser)).message.includes('달라졌어요'),'other UUID can never count as link success');
 const timed=await resolveOAuthReturn({getUser:()=>new Promise(()=>{})},{attempted:true}, {uid,provider:'google'},oldUser,null,5);assert(timed.retry);assert(timed.message.includes('확인하지 못'));
-console.log('OAuth callback: actual pinned SDK conflict/session-loss reproduced; fixed preservation, exactly-one PKCE exchange, authoritative linked-state/UUID check, specific conflict/setting/cancel errors and deadlines OK');
+{
+ const rate='https://fixture.invalid/?error=server_error&error_code=over_email_send_rate_limit&error_description=Email+rate+limit+exceeded';
+ const c=readOAuthCallback(new URL(rate));
+ assert(c.failed);assert.equal(c.errorCode,'over_email_send_rate_limit');assert.equal(c.errorDescription,'Email rate limit exceeded');
+ const msg=oauthFailureMessage(c.errorCode,null,c.errorDescription);
+ assert(msg.includes('메일을 너무 많이'));assert(msg.includes('over_email_send_rate_limit'));assert(msg.includes('Email rate limit exceeded'));
+ const verdict=await resolveOAuthReturn({getUser:async()=>({data:{user:null},error:null})},c,null,null);
+ assert.equal(verdict.message,msg);
+ assert.equal(oauthFailureMessage('access_denied',null,'PRIVATE'),'로그인을 취소했어요.');
+ const generic=oauthFailureMessage('server_error',null,'something went wrong');
+ assert(generic.includes('완료되지 않았어요'));assert(generic.includes('server_error'));assert(generic.includes('something went wrong'));
+ assert(!oauthFailureMessage('server_error',null,'access_token=not-a-real-token').includes('access_token'),'token-like descriptions stay out of the toast');
+}
+console.log('OAuth callback: actual pinned SDK conflict/session-loss reproduced; fixed preservation, exactly-one PKCE exchange, authoritative linked-state/UUID check, specific conflict/setting/cancel/rate-limit errors and deadlines OK');

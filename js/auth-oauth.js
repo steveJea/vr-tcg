@@ -87,7 +87,8 @@ export function readOAuthCallback(loc) {
   const has = key => url.searchParams.has(key) || hash.has(key);
   const failed = ['error', 'error_code', 'error_description'].some(has);
   return { attempted: CALLBACK_KEYS.some(has), failed, hasCode: has('code'),
-    errorCode: failed ? oauthErrorCode({code:value('error_code'),message:value('error_description')}) || value('error') : '' };
+    errorCode: failed ? oauthErrorCode({code:value('error_code'),message:value('error_description')}) || value('error') : '',
+    errorDescription: failed ? value('error_description') : '' };
 }
 export function cleanOAuthCallback(loc, hist) {
   const url = new URL(loc.href), hash = new URLSearchParams(url.hash.slice(1));
@@ -113,18 +114,29 @@ export function takeLinkIntent(storage, project, now = Date.now()) {
     return intent && typeof intent.uid === 'string' && intent.uid && Object.hasOwn(OAUTH_PROVIDERS, intent.provider) && Number.isFinite(intent.startedAt) && intent.startedAt <= now && now - intent.startedAt <= 20 * 60 * 1000 ? intent : null;
   } catch { return null; }
 }
-export function oauthFailureMessage(code, intent = null) {
+function withErrorDetail(message, code, description) {
+  const c = text(code), d = text(description);
+  let detail = d;
+  if (detail.length > 160) detail = detail.slice(0, 157) + '...';
+  if (/eyJ[A-Za-z0-9_-]{20,}|access_token|refresh_token|secret|bearer\s+\S+/i.test(detail)) detail = '';
+  const bits = [c, detail].filter(v => v && !message.includes(v));
+  const unique = [...new Set(bits)];
+  return unique.length ? message + ' (' + unique.join(' · ') + ')' : message;
+}
+export function oauthFailureMessage(code, intent = null, description = '') {
   const name = OAUTH_PROVIDERS[intent?.provider];
   if (['identity_already_exists', 'email_exists'].includes(code)) return name ? `이미 다른 계정에 연결된 ${name} 계정이에요.` : '이미 다른 계정에 연결된 로그인이에요.';
   if (code === 'provider_disabled') return '지금은 이 로그인을 사용할 수 없어요.';
   if (code === 'manual_linking_disabled') return '계정 연결 기능이 아직 꺼져 있어요.';
   if (['access_denied', 'user_cancelled', 'user_canceled'].includes(code)) return intent ? '계정 연결을 취소했어요.' : '로그인을 취소했어요.';
   if (['bad_code_verifier', 'flow_state_expired', 'flow_state_not_found'].includes(code)) return '같은 브라우저에서 다시 시도해 주세요.';
-  return intent ? '계정 연결을 완료하지 못했어요. 다시 시도해 주세요.' : '로그인이 취소되었거나 완료되지 않았어요. 다시 시도해 주세요.';
+  if (code === 'over_email_send_rate_limit') return withErrorDetail('지금은 로그인 확인 메일을 너무 많이 보내서 잠시 막혀 있어요. 조금 뒤에 다시 시도해 주세요.', code, description);
+  return withErrorDetail(intent ? '계정 연결을 완료하지 못했어요. 다시 시도해 주세요.' : '로그인이 취소되었거나 완료되지 않았어요. 다시 시도해 주세요.', code, description);
 }
 export async function resolveOAuthReturn(auth, callback, intent, sessionUser, initError = null, timeout = 6000) {
   const code = callback.errorCode || oauthErrorCode(initError);
-  if (!intent) return { user:sessionUser, message:callback.failed || initError ? oauthFailureMessage(code) : '' };
+  const description = text(callback.errorDescription) || text(initError?.message);
+  if (!intent) return { user:sessionUser, message:callback.failed || initError ? oauthFailureMessage(code, null, description) : '' };
   let timer;
   try {
     const result = await Promise.race([
@@ -137,8 +149,8 @@ export async function resolveOAuthReturn(auth, callback, intent, sessionUser, in
     // A linked identity on the SAME server-verified UUID is the success criterion,
     // not a stale session cache, a successful redirect, or an error fragment alone.
     if (hasIdentity(verified, intent.provider)) return { user:verified, message:`${OAUTH_PROVIDERS[intent.provider]} 계정이 연결되었어요.` };
-    return { user:verified, message:oauthFailureMessage(code, intent) };
+    return { user:verified, message:oauthFailureMessage(code, intent, description) };
   } catch {
-    return { user:sessionUser, message:callback.failed || initError ? oauthFailureMessage(code, intent) : '연결 상태를 확인하지 못했어요. 새로고침해 주세요.', retry:!callback.failed && !initError };
+    return { user:sessionUser, message:callback.failed || initError ? oauthFailureMessage(code, intent, description) : '연결 상태를 확인하지 못했어요. 새로고침해 주세요.', retry:!callback.failed && !initError };
   } finally { clearTimeout(timer); }
 }
