@@ -36,10 +36,12 @@
     } catch {}
   }
   const hideIntro = () => { localStorage.setItem(INTRO_KEY, '1'); intro.classList.add('hidden'); const v = $('intro-video'); v.pause(); };
-  $('intro-login').onclick = () => { localStorage.setItem(INTRO_KEY, '1'); login('google'); };
-  $('intro-login-kakao').onclick = () => { localStorage.setItem(INTRO_KEY, '1'); login('kakao'); };
-  $('intro-login-x').onclick = () => { localStorage.setItem(INTRO_KEY, '1'); login('x'); };
-  $('intro-login-naver').onclick = () => { localStorage.setItem(INTRO_KEY, '1'); login('naver'); };
+  // SNS 버튼을 눌렀을 때는 인트로 완료로 미리 표시하지 않음.
+  // 미리 쓰면 로그인 실패하고 돌아왔을 때 게스트 확인 없이 로비로 들어가게 됨.
+  $('intro-login').onclick = () => { login('google'); };
+  $('intro-login-kakao').onclick = () => { login('kakao'); };
+  $('intro-login-x').onclick = () => { login('x'); };
+  $('intro-login-naver').onclick = () => { login('naver'); };
   $('intro-guest').onclick = async () => {
     const ok = await confirmYN('<b class="vc-guest-h">게스트는 아케이드만 할 수 있고, 기록은 저장되지 않아요.</b><span class="vc-guest-s">로그인하면 인재 모집, 스토리, PvP, 조직까지 다 즐길 수 있어요!</span>',
       { y: '게스트로 시작', n: '로그인하기', cls: 'vc-guest' });
@@ -48,9 +50,16 @@
     const row = intro.querySelector('.oauth-row'); row?.scrollIntoView({ block: 'center', behavior: 'smooth' });
     const btn = [...(row?.querySelectorAll('button') || [])].find(b => !b.hidden && !b.disabled); if (btn) btn.focus({ preventScroll: true }); else if (row) { row.tabIndex = -1; row.focus({ preventScroll: true }); } row?.classList.remove('oauth-flash'); void row?.offsetWidth; row?.classList.add('oauth-flash');
   };
-  if (localStorage.getItem(INTRO_KEY) !== '1' && !/[?&]code=|access_token=/.test(location.search + location.hash)) {
-    // 이미 로그인된 세션이면 바로 메인
-    let n = 0; const wait = () => { if (window.VRCloud?.ready || n++ > 30) { user() ? localStorage.setItem(INTRO_KEY, '1') : showIntro(); } else setTimeout(wait, 100); };
+  // OAuth로 돌아와도 VRCloud.ready까지 기다린 뒤 결정.
+  // 계정이 있으면 인트로 완료, 이미 게스트로 시작한 적 있으면 로비 유지, 아니면 인트로.
+  {
+    let n = 0;
+    const wait = () => {
+      if (window.VRCloud?.ready || n++ > 30) {
+        if (user()) localStorage.setItem(INTRO_KEY, '1');
+        else if (localStorage.getItem(INTRO_KEY) !== '1') showIntro();
+      } else setTimeout(wait, 100);
+    };
     wait();
   }
 
