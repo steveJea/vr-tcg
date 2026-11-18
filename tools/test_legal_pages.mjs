@@ -22,6 +22,7 @@ for(const [i,html]of pages.entries()) {
  for(const value of ['엔터인코드(ENT.INCODE)','장윤석','738-44-01302','contact@entincode.co.kr','만 19세 이상','등급분류 결과에 따라'])assert(d.body.textContent.includes(value),value);
  for(const stale of ['[법적 사업자명 입력 필요]','[대표자명 입력 필요]','[사업자등록번호 입력 필요]','[고객문의 이메일 입력 필요]','[개인정보 보호책임자 성명·직책 입력 필요]','[이용 가능 연령·확인 방식 확정 필요]','[만14세 미만 이용정책·법정대리인 동의절차 확정 필요]'])assert(!html.includes(stale),stale);
  assert(d.querySelector('a[href="mailto:contact@entincode.co.kr"]'));
+ assert(d.querySelector('a[href="https://www.entincode.co.kr"]'));
 }
 assert.match(pages[0],/2026-서울성북-1401 \(서울특별시 성북구\)/);assert.match(pages[1],/장윤석 \(대표,/);
 assert.match(pages[0],/7일/);assert.match(pages[0],/3영업일/);assert.match(pages[0],/가분적/);assert.match(pages[0],/법정대리인/);assert.match(pages[0],/청약철회를 이유로 위약금/);assert.match(pages[0],/현금 결제·심연석 충전은 준비 중/);
@@ -60,6 +61,9 @@ if(process.argv.includes('--production-build')) {
 const COMPANY={name:'엔터인코드',ceo:'장윤석',brn:'738-44-01302',address:'서울시 성북구 보국문로 95, 303호',phone:'070-5275-5361',mailOrderNo:'2026-서울성북-1401'};
 const footerJs=await read('js/footer.js');
 assert.match(footerJs,/mailOrderNo:\s*'2026-서울성북-1401'/);
+assert.match(footerJs,/https:\/\/www\.entincode\.co\.kr/);
+assert(!/href=\"https:\/\/www\.mbbs\.kr\/?\"/.test(footerJs),'Ent.INCODE copyright/home link is not mbbs.kr');
+
 assert.match(footerJs,new RegExp(COMPANY.phone));
 assert.match(footerJs,/신고 준비중/);
 const publicPages=[['about.html','서비스 소개'],['age.html','연령 확인 (19+)']];
@@ -70,6 +74,7 @@ for(const [file,title] of publicPages){
   assert(d.querySelector('h1').textContent.includes(title.split(' (')[0]));
   for(const v of [COMPANY.name,COMPANY.ceo,COMPANY.brn,COMPANY.address,COMPANY.phone,COMPANY.mailOrderNo])assert(html.includes(v),file+' '+v);
   assert(d.querySelector('a[href="/terms.html"]')&&d.querySelector('a[href="/privacy.html"]')&&d.querySelector('a[href="/about.html"]')&&d.querySelector('a[href="/age.html"]')&&d.querySelector('a[href="/"]'));
+  assert(d.querySelector('a[href="https://www.entincode.co.kr"]'),file+' company site link');
   assert(d.querySelector('.site-biz'));
   assert.equal(d.querySelector('meta[name="referrer"]').getAttribute('content'),'no-referrer');
 }
