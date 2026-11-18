@@ -234,6 +234,17 @@
     }
     /* 카드 정보 공통 (cardTitle·cardTags·cardStats) */
     .ci-name { font-weight: 900; } .ci-sub { font-size: .72em; font-weight: 600; color: #a1a1aa; }
+    .ci-cost { font-size: .72em; font-weight: 800; color: #7dd3fc; letter-spacing: .04em; white-space: nowrap; }
+    .ci-hmp { display: flex; gap: 8px; margin-top: 8px; width: 100%; min-width: 0; }
+    .ci-hmp-col { flex: 1; min-width: 0; }
+    .ci-hmp-lab { display: flex; justify-content: space-between; align-items: baseline; gap: 4px; font-size: 10px; font-weight: 700; color: #a1a1aa; margin-bottom: 2px; }
+    .ci-hmp-lab b { font-weight: 800; color: #e4e4e7; }
+    .ci-hmp-track { height: 8px; border-radius: 999px; background: rgba(255,255,255,.1); overflow: hidden; }
+    .ci-hmp-fill { height: 100%; border-radius: inherit; }
+    .ci-hmp-fill.hp { background: #ef4444; }
+    .ci-hmp-fill.mp { background: #3b82f6; }
+    .zoom-info .ci-hmp { flex-basis: 100%; max-width: 22rem; margin-left: auto; margin-right: auto; }
+    @media (max-width: 379px) { .ci-hmp { gap: 6px; } .ci-hmp-lab { font-size: 9px; } .ci-head { font-size: 1.05rem; } }
     .ci-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 4px; font-size: 11px; justify-content: inherit; }
     .ci-tag { display: inline-flex; align-items: center; gap: 2px; padding: 1px 6px; border-radius: 999px; background: rgba(255,255,255,.08); color: #d4d4d8; font-weight: 700; white-space: nowrap; }
     .ci-tag img, .ci-el img, .ci-st img { width: 14px; height: 14px; }
