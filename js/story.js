@@ -1934,7 +1934,9 @@
   }
   // ----- 소환권 (특수 뽑기): 챕터 첫 클리어마다 +10. 서버 모드는 서버(story_tickets / story_ticket_draw)가 기준 -----
   const G = () => D.gacha;
-  let tickets = null, ticketSrv = null;   // ticketSrv: 서버 함수 사용 여부 (null = 아직 모름)
+  let tickets = null, ticketSrv = null, ticketMisses = null, ticketPity = 50;   // ticketSrv: 서버 함수 사용 여부 (null = 아직 모름). ticketMisses: 프리미엄 UR 천장(50) 카운터, 서버만
+  const takePity = r => { if (r && r.misses != null) { ticketMisses = r.misses | 0; if (r.pity != null) ticketPity = r.pity | 0; } };
+  const premPityLine = () => { if (ticketMisses == null) return ''; const left = Math.max(0, (ticketPity || 50) - (ticketMisses | 0)); return `<br><small id="gr-pity">${left <= 1 ? '다음 소환은 UR 확정' : `UR 확정까지 ${left}회`}</small>`; };
   const ticketMissing = e => /story_ticket|PGRST202|42883|Could not find/i.test(`${e?.code} ${e?.message}`);
   function localTicketSync() {   // 브라우저 저장 모드: 다 깬 챕터마다 한 번 +10
     const got = new Set(save.ticketChs || []); let added = 0;
@@ -1945,10 +1947,10 @@
   /** 소환권 개수 갱신 (+ 새로 받은 양). 반환 { tickets, added } */
   async function syncTickets() {
     const sb = cloud()?.sb, u = cloud()?.user;
-    if (window.__TICKET_MOCK) { const r = await window.__TICKET_MOCK.sync(); tickets = r.tickets; return r; }
+    if (window.__TICKET_MOCK) { const r = await window.__TICKET_MOCK.sync(); tickets = r.tickets; takePity(r); return r; }
     if (serverMode && sb && u && ticketSrv !== false) {
       const { data, error } = await sb.rpc('story_tickets');
-      if (!error) { ticketSrv = true; tickets = data.tickets | 0; return data; }
+      if (!error) { ticketSrv = true; tickets = data.tickets | 0; takePity(data); return data; }
       if (!ticketMissing(error)) return { tickets: tickets | 0, added: 0, error: error.message };
       ticketSrv = false;
     }
@@ -1987,7 +1989,7 @@
       if (!error) res = data; else if (!ticketMissing(error)) return { ok: false, reason: 'error', msg: error.message }; else ticketSrv = false;
     }
     if (res) {
-      if (res.ok) { tickets = res.tickets | 0; try { window.dispatchEvent(new CustomEvent('vr:gacha')); } catch {} if (!window.__TICKET_MOCK) await reload(); else for (const c of res.cards) addOwned(c.card_id); }
+      if (res.ok) { tickets = res.tickets | 0; takePity(res); try { window.dispatchEvent(new CustomEvent('vr:gacha')); } catch {} if (!window.__TICKET_MOCK) await reload(); else for (const c of res.cards) addOwned(c.card_id); }
       return res;
     }
     // 브라우저 저장 모드 (서버 함수 없음)
@@ -2104,7 +2106,7 @@
   const pct = p => `${+(p * 100).toFixed(1)}%`;
   function showRates() {
     const row = (t, rs, note) => `<div class="mb-3"><div class="font-bold mb-1">${t}</div><div class="story-rates">${rs.map(([g, p]) => `<span class="g-text-${GLOW[g]}">${RAR[g]}</span><b>${pct(p)}</b>`).join('')}</div>${note ? `<div class="text-[11px] text-zinc-400 mt-1">${note}</div>` : ''}</div>`;
-    popup(`<div class="text-lg font-black mb-3">📊 뽑기 확률</div>${row('일반 뽑기 (하루 1회 무료)', G().rates, '매일 자정(KST, 한국 시간 00:00) 초기화')}${row('특수 뽑기 (소환권 1장 = 1회)', G().special, `10회 뽑기는 HR 이상 1장 보장 · 소환권은 챕터를 처음 다 깰 때마다 +${G().ticketsPerChapter}`)}<button data-close-pop class="w-full mt-1 py-2 rounded-xl bg-white/10">닫기</button>`);
+    popup(`<div class="text-lg font-black mb-3">📊 뽑기 확률</div>${row('일반 뽑기 (하루 1회 무료)', G().rates, '매일 자정(KST, 한국 시간 00:00) 초기화')}${row('특수 뽑기 (소환권 1장 = 1회)', G().special, `10회 뽑기는 HR 이상 1장 보장 · UR 없이 50회째는 UR 확정(프리미엄 UR 목록에서 무작위, 어떤 UR이든 나오면 초기화) · 소환권은 챕터를 처음 다 깰 때마다 +${G().ticketsPerChapter}`)}<button data-close-pop class="w-full mt-1 py-2 rounded-xl bg-white/10">닫기</button>`);
   }
   // ----- 심연석 🔮 으로 소환권 사기 (js/gem.js · gem.sql): 1장 150 · 10회 1500 (사서 바로 10회 뽑기 → 기존 HR 이상 보장) -----
   const gemRow = () => window.VRGem?.now ? `${window.VRGem.priceBtn('ticket')}${window.VRGem.priceBtn('pull10', 'gem-buy10', `<b>10회</b>`)}` : '';
@@ -2170,7 +2172,7 @@
         ? `<div class="gacha-stage gr-card" id="gacha-stage"><div class="gacha-card" id="gacha-card"><div class="gacha-face gacha-back"></div><div class="gacha-face gacha-front" id="gacha-front"></div></div></div>`
         : `<div id="tk-result" class="story-tk-result"></div>`}</div>
       <div id="gacha-msg" class="gr-msg"></div>
-      ${pickup ? spOwn() : daily ? '' : `<div class="gr-own" id="gr-own">보유 소환권 ${ICN('ticket', '🎟️', '소환권')} <b>${tickets ?? '…'}</b>${urTickets ? `<span class="gr-own-ur"> · UR 확정권 🎫 <b id="gr-own-ur">${urTickets}</b></span>` : ''}</div>`}
+      ${pickup ? spOwn() : daily ? '' : `<div class="gr-own" id="gr-own">보유 소환권 ${ICN('ticket', '🎟️', '소환권')} <b>${tickets ?? '…'}</b>${urTickets ? `<span class="gr-own-ur"> · UR 확정권 🎫 <b id="gr-own-ur">${urTickets}</b></span>` : ''}${premPityLine()}</div>`}
       <div class="gr-actions">${daily
         ? `${avail ? `<button id="gacha-go" class="gr-go">${ICN('gacha', '🎴')} 뽑기</button>` : ''}<div id="gacha-next" class="gr-next"></div>`
         : pickup ? `<button class="gr-go" data-draw="1" data-sp="1" ${spOpen && (window.VRSpecial.tickets | 0) >= 1 ? '' : 'disabled'}>1회 <small><img class="ui-ic tk-ic sp" src="img/ui/ticket_special.webp" alt="스페셜 소환권">1</small></button><button class="gr-go gr-go10" data-draw="10" data-sp="1" ${spOpen && (window.VRSpecial.tickets | 0) >= 10 ? '' : 'disabled'}>10회 <small><img class="ui-ic tk-ic sp" src="img/ui/ticket_special.webp" alt="스페셜 소환권">10</small></button>`

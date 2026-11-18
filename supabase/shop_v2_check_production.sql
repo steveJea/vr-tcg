@@ -14,7 +14,7 @@ missing as (select name from fn where oid is null
  union all select 'private:'||name from fn where oid is not null and name ~ '^public\._' and (has_function_privilege('anon', oid, 'execute') or has_function_privilege('authenticated', oid, 'execute'))
  union all select 'products' where (select count(*) from public.shop_products where active) <> 17
  union all select 'pass:'||sku from public.shop_products where sku in ('pass_1','pass_2','pass_3') and ((reward->>'days')::int <> 30 or payment_sku is not null or not active)
- union all select 'pass_names' where (select string_agg(name, '/' order by sku) from public.shop_products where sku in ('pass_1','pass_2','pass_3')) <> '프리미엄 시즌패스/스페셜 시즌패스/럭셔리 시즌패스'
+ union all select 'pass_names' where (select string_agg(name, '/' order by sku) from public.shop_products where sku in ('pass_1','pass_2','pass_3')) <> '프리미엄 시즌패스/플러스 시즌패스/럭셔리 시즌패스'
  union all select 'packs' where (select string_agg(sku||'='||price_krw||':'||month_max||':'||reward::text, ',' order by sku) from public.shop_products where tab='pack' and active)
    <> 'level_1=22000:2:{"gold": 150000, "blood": 150000, "shard": 50000},prem_10=11000:3:{"tickets": 10},prem_25=33000:3:{"tickets": 25},prem_45=66000:2:{"tickets": 45},spec_10=11000:3:{"special_tickets": 10},spec_25=33000:3:{"special_tickets": 25},spec_45=66000:2:{"special_tickets": 45}'
  union all select 'old_packs_active' where exists (select 1 from public.shop_products where sku in ('ticket_10','ticket_45','ticket_160','ticket_220') and active)
