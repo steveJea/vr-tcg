@@ -14,7 +14,7 @@
   if (typeof window !== 'undefined') window.VRCompany = COMPANY;
 
   var s=document.currentScript, cur=s.getAttribute('data-current')||'', mode=s.getAttribute('data-mode')||'flow', show=s.getAttribute('data-show');
-  var games=[['tcg','Violence Royale : The Abyss Gate','https://ag.violenceroyale.com/'],['shoot','Shooting Masters','https://shoot.mbbs.kr/'],['wcup','이상형 월드컵','https://wcup.mbbs.kr/'],['battle','Battle Masters','https://battle.mbbs.kr/'],['home','Ent.INCODE','https://www.mbbs.kr/']];
+  var games=[['tcg','Violence Royale : The Abyss Gate','https://ag.violenceroyale.com/'],['shoot','Shooting Masters','https://shoot.mbbs.kr/'],['wcup','이상형 월드컵','https://wcup.mbbs.kr/'],['battle','Battle Masters','https://battle.mbbs.kr/'],['home','Ent.INCODE','https://www.entincode.co.kr']];
   var css='#mbbs-footer{font:11px/1.55 system-ui,"Malgun Gothic","Noto Sans KR",sans-serif;color:rgba(255,255,255,.62);text-align:center;padding:8px 12px calc(8px + env(safe-area-inset-bottom));}'+
   '#mbbs-footer.mf-fixed{position:fixed;left:0;right:0;bottom:0;z-index:40;background:linear-gradient(transparent,rgba(0,0,0,.75) 45%);padding-top:22px;pointer-events:none}'+
   '#mbbs-footer.mf-fixed *{pointer-events:auto}#mbbs-footer.mf-flow{background:#111;border-top:1px solid rgba(255,255,255,.08)}'+
@@ -47,7 +47,7 @@
       '<a href="/privacy.html" target="_blank" rel="noopener noreferrer">개인정보처리방침</a>'+
       '<a href="/about.html" target="_blank" rel="noopener noreferrer">서비스 소개</a>'+
       '<a href="/age.html" target="_blank" rel="noopener noreferrer">연령 확인 (19+)</a></nav>';
-    var copy='<div class="mf-copy">Copyright © '+new Date().getFullYear()+' <a href="https://www.mbbs.kr/">Ent.INCODE</a> All Rights Reserved.</div>';
+    var copy='<div class="mf-copy">Copyright © '+new Date().getFullYear()+' <a href="https://www.entincode.co.kr" target="_blank" rel="noopener noreferrer">Ent.INCODE</a> All Rights Reserved.</div>';
     var nav=withGames?('<nav class="mf-games" aria-label="다른 게임">'+games.map(function(g){return g[0]===cur?'<span class="mf-cur" aria-current="page">'+g[1]+'</span>':'<a href="'+g[2]+'">'+g[1]+'</a>';}).join('')+'</nav>'):'';
     return biz+legal+nav+copy;
   }
