@@ -1091,6 +1091,7 @@ function resetAnim(el) {
 function reportError(where, err) {
   console.error(`[TCG] ${where}`, err);
   (window.TCG_ERRORS ||= []).push(`${where}: ${err?.message || err}`);
+  try { window.VRErrors?.capture?.(where, err); } catch {}
 }
 
 /** 작은 떠오르는 글자 연출 */
