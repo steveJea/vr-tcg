@@ -27,3 +27,13 @@
 .ad-nitem{display:flex;gap:6px;align-items:center;padding:8px;border-radius:8px;background:rgba(255,255,255,.05)}.ad-nitem.pin{background:rgba(245,201,106,.14)}
 .ad-ntext{flex:1;min-width:0;word-break:keep-all}.ad-ntext small{display:block;opacity:.55;font-size:11px;margin-top:2px}
 .ad-btn.ad-del,.ad-danger .ad-btn{background:#b3261e;color:#fff}.ad-danger{border:1px solid #b3261e55;border-radius:8px;padding:8px}.ad-btn:disabled{opacity:.45;cursor:not-allowed}
+
+/* 점검 모드 */
+.ad-mform{max-width:560px;background:#17122a;border:1px solid #3b2f63;border-radius:12px;padding:14px 16px}
+.ad-mhelp{margin:0 0 10px;font-size:13px;opacity:.8}
+.ad-mstatus{margin:0 0 12px;font-size:13px}
+.ad-mtoggle{display:flex;align-items:center;gap:8px;font-weight:700;margin:0 0 10px}
+.ad-mtoggle input{width:18px;height:18px}
+.ad-mlab{display:block;margin:8px 0 4px;font-size:12px;opacity:.8}
+.ad-mform textarea,.ad-mform input[type=datetime-local],.ad-mform input[type=text],.ad-mform select{width:100%;box-sizing:border-box;background:#0f0c18;color:#eee;border:1px solid #3b2f63;border-radius:8px;padding:8px;font:inherit}
+.ad-mform input[type=datetime-local]{max-width:260px;color-scheme:dark}

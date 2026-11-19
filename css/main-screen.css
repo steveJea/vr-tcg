@@ -353,3 +353,29 @@
 #intro .legal-links{margin:0;gap:0 8px}
 #intro .legal-links a{min-height:36px;font-size:13px;padding:2px 4px}
 .main-pop-card{max-height:min(90vh,720px);overflow-x:hidden;overflow-y:auto}
+
+
+/* 점검 / 곧 오픈 모드 */
+.mt-ov { position: fixed; inset: 0; z-index: 99500; display: grid; place-items: center; padding: 1.2rem; background: radial-gradient(ellipse at 50% 40%, #2a0d1a 0%, #09060c 72%); overflow: auto; }
+.mt-ov.hidden { display: none; }
+.mt-card { width: min(92vw, 400px); text-align: center; color: #fde7b0; padding: 1.4rem 1.15rem 1.15rem;
+  border: 10px solid transparent; border-radius: 6px; border-image: url(../img/ui/main/frame_btn.webp) 24 / 16px / 6px stretch;
+  background: linear-gradient(180deg, #2a0609, #120204) border-box; box-shadow: 0 12px 40px rgba(0,0,0,.8); }
+.mt-logo { display: block; width: min(72vw, 280px); height: auto; margin: 0 auto .85rem; filter: drop-shadow(0 6px 24px rgba(0,0,0,.7)); }
+.mt-title { font-family: 'Cinzel', 'Noto Sans KR', serif; font-weight: 900; font-size: 1.35rem; color: #fcd34d; margin: 0 0 .55rem; letter-spacing: .04em; word-break: keep-all; }
+.mt-soon .mt-title { font-size: 1.28rem; letter-spacing: .06em; }
+.mt-msg { font-size: .98rem; line-height: 1.6; margin: 0 0 .45rem; word-break: keep-all; overflow-wrap: anywhere; }
+.mt-until { font-size: .88rem; font-weight: 700; color: #fde68a; margin: .15rem 0 .8rem; }
+.mt-until[hidden] { display: none; }
+.mt-denied { font-size: .9rem; color: #fecaca; margin: .2rem 0 .6rem; word-break: keep-all; }
+.mt-denied.hidden, .mt-legal.hidden, .mt-login-box.hidden, .mt-admin.hidden, .mt-login-toggle.hidden { display: none; }
+.mt-legal { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px 10px; margin: .85rem 0 .55rem; }
+.mt-legal a { color: rgba(255,232,180,.95); text-decoration: underline; text-underline-offset: 2px; font-size: 13px; min-height: 32px; padding: 2px 4px; }
+.mt-foot { margin: .2rem 0 .7rem; font: 10px/1.5 system-ui, "Malgun Gothic", "Noto Sans KR", sans-serif; color: rgba(255,255,255,.7); word-break: keep-all; }
+.mt-biz span { white-space: normal; }
+.mt-biz span:not(:last-child)::after { content: " · "; white-space: pre; opacity: .7; }
+.mt-admin { margin-top: .4rem; width: 100%; }
+.mt-login-toggle { margin-top: .35rem; background: none; border: 0; color: rgba(255,232,180,.9); text-decoration: underline; text-underline-offset: 2px; font: 13px/1.4 inherit; cursor: pointer; }
+.mt-login-box { display: flex; flex-direction: column; gap: 8px; margin-top: .65rem; }
+.mt-login-box .main-btn { width: 100%; }
+@media (min-width: 768px) { .mt-biz span { white-space: nowrap; } }

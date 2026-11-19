@@ -201,6 +201,7 @@ const RNG_DEF = { CRIT_ON: RULES.CRIT_ON, EVADE_ON: RULES.EVADE_ON, EL_PASSIVE_O
 const rngOn = on => { for (const k of Object.keys(RNG_DEF)) RULES[k] = on ? RNG_DEF[k] : false; };
 async function startGame(story = null, at = null) {
   leaveBattleVoices();   // 다시하기는 서버 응답을 기다리는 동안에도 이전 결과 음성을 끊음
+  if (window.VRMaint && !await window.VRMaint.ensureOk()) return;
   if (story instanceof Event || story && typeof story.then === 'function') story = null;
   let arcadeSession=null;
   if (!story && !at && window.VRCloud?.user) { try { arcadeSession=await startArcadeVerified(ArcadeOpts.load()); } catch(e) { if (e?.code === 'account-changed') return; (window.VRGem?.toast || alert)(e.message); return; } }
@@ -2753,6 +2754,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('zoom-vi
 /** raid: { stage, bossId, bossName, hpLeft, hpMax, cap, weakLabel, deadline(ms) } → 균열 토벌 화면 (큰 보스 HP 바 · 누적 피해 · 남은 시간) */
 // music: 이 전투 동안의 BGM (PvP·토벌·전쟁). 끝나면 들어오기 전 트랙으로
 async function viewBattle(o = {}) {
+  if (window.VRMaint && !await window.VRMaint.ensureOk()) return;
   const snd = window.VRSound, prev = snd?.track, mu = o.music;
   if (mu) try { snd?.setTrack?.(mu); } catch {}
   try { return await viewBattle0(o); } finally { if (mu && snd?.track === mu && prev) try { snd.setTrack(prev); } catch {} }
