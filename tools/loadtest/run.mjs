@@ -130,13 +130,26 @@ export function estimateRun({ stages = DEFAULT_STAGES, thinkSec = 12, assets = A
   };
 }
 
-export function redact(s) {
-  return String(s ?? '').replace(/sb_publishable_[A-Za-z0-9_-]+/g, 'sb_publishable_*')
+export function redact(s, extras = []) {
+  let out = String(s ?? '').replace(/sb_publishable_[A-Za-z0-9_-]+/g, 'sb_publishable_*')
     .replace(/eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, 'jwt.*')
     .replace(/Bearer\s+\S+/gi, 'Bearer *');
+  const extra = [...extras];
+  if (typeof process !== 'undefined' && process.env?.VR_LOADTEST_PASSWORD) extra.push(process.env.VR_LOADTEST_PASSWORD);
+  for (const x of extra) {
+    if (typeof x === 'string' && x.length >= 4 && out.includes(x)) out = out.split(x).join('*');
+  }
+  return out;
 }
 
 export const DEFAULT_AUTH_FILE = '/workspace/.loadtest-accounts.json';
+export const DEFAULT_LOADTEST_EMAILS = Object.freeze([
+  'loadtest1@example.test',
+  'loadtest2@example.test',
+  'loadtest3@example.test',
+  'loadtest4@example.test',
+  'loadtest5@example.test'
+]);
 export const BATTLE_CAPS = Object.freeze({
   maxTotalVerifies: 40,
   maxPerAccount: 5,
@@ -182,6 +195,15 @@ function parseArgs(argv) {
   return out;
 }
 
+export function loadAccountsFromEnv(env = process.env) {
+  const password = env?.VR_LOADTEST_PASSWORD;
+  if (!password) return { source: null, accounts: [] };
+  const listed = String(env.VR_LOADTEST_EMAILS || '').split(',').map(s => s.trim()).filter(Boolean);
+  const emails = listed.length ? listed : [...DEFAULT_LOADTEST_EMAILS];
+  if (emails.length > 10) throw new Error('at most 10 test accounts');
+  return { source: 'env', accounts: emails.map(email => ({ email, password })) };
+}
+
 export async function loadAuthFile(path) {
   if (!path) return [];
   const raw = JSON.parse(await readFile(path, 'utf8'));
@@ -191,6 +213,18 @@ export async function loadAuthFile(path) {
     if (!r?.email || !r?.password) throw new Error('auth file entries need email and password');
     return { email: String(r.email), password: String(r.password), user_id: r.user_id || null };
   });
+}
+
+export async function loadTestAccounts({ authFile, env = process.env } = {}) {
+  const fromEnv = loadAccountsFromEnv(env);
+  if (fromEnv.accounts.length) return fromEnv;
+  try {
+    const accounts = await loadAuthFile(authFile);
+    return { source: accounts.length ? 'file' : null, accounts };
+  } catch (e) {
+    if (e && e.code === 'ENOENT') return { source: null, accounts: [] };
+    throw e;
+  }
 }
 
 export async function passwordLogin({ supabaseUrl, anonKey, email, password }) {
@@ -203,7 +237,7 @@ export async function passwordLogin({ supabaseUrl, anonKey, email, password }) {
   const j = await r.json().catch(() => ({}));
   const ms = performance.now() - t0;
   if (!r.ok || typeof j.access_token !== 'string') {
-    const msg = redact(String(j.error_description || j.msg || j.error || r.status));
+    const msg = redact(String(j.error_description || j.msg || j.error || r.status), [password]);
     return { ok: false, status: r.status, kind: r.status === 429 ? 'rate_limited' : 'http', ms, endpoint: 'auth:password', error: msg, token: null };
   }
   return { ok: true, status: r.status, kind: 'ok', ms, endpoint: 'auth:password', token: j.access_token, user_id: j.user?.id || null };
@@ -232,7 +266,7 @@ export async function edgeCall({ supabaseUrl, anonKey, accessToken, name, body }
       else if (r.status === 429) kind = 'rate_limited';
       else if (r.status === 404) kind = 'not_installed';
       else if (r.status >= 500) kind = 'server';
-      else if (/card not owned|phase locked|party size|invalid|not enough cards|login required|reward verification pending/i.test(msg)) kind = 'rejected';
+      else if (/card not owned|phase locked|party size|invalid|not enough cards|login required|reward verification pending|tampered|전투 기록이 맞지|too fast|unsupported battle|invalid replay|direct replay required/i.test(msg)) kind = 'rejected';
       else kind = 'http';
     }
     return { ok, status: r.status, kind, ms: performance.now() - t0, endpoint: 'fn:' + name + ':' + (body?.op || 'call'), error: ok ? null : redact(msg.slice(0, 180)), data: json };
@@ -379,12 +413,11 @@ async function main() {
 
   const wantAuth = args.loggedIn || args.battles;
   let accounts = [];
+  let accountSource = null;
   if (wantAuth) {
-    try { accounts = await loadAuthFile(args.authFile); }
-    catch (e) {
-      if (e.code === 'ENOENT') accounts = [];
-      else throw e;
-    }
+    const loaded = await loadTestAccounts({ authFile: args.authFile });
+    accounts = loaded.accounts;
+    accountSource = loaded.source;
   }
 
   if (!wantAuth) {
@@ -420,11 +453,11 @@ async function main() {
     }, null, 2));
     if (args.plan) return;
     if (!accounts.length) {
-      console.error('No credentials file. Create one with: node tools/loadtest/provision-accounts.mjs');
-      console.error('Expected path:', DEFAULT_AUTH_FILE);
+      console.error('No test accounts. Set VR_LOADTEST_PASSWORD (optional VR_LOADTEST_EMAILS) or provide a chmod 600 credentials file.');
+      console.error('Default file path:', DEFAULT_AUTH_FILE);
       process.exit(2);
     }
-    console.log(`loaded ${accounts.length} test account(s) from credentials file (emails/passwords not printed)`);
+    console.log(`loaded ${accounts.length} test account(s) from ${accountSource === 'env' ? 'VR_LOADTEST_PASSWORD' : 'credentials file'} (passwords not printed)`);
   }
 
   const samples = [];
@@ -507,6 +540,7 @@ async function main() {
     if (stop.reason === 'completed') stop.reason = null;
     const versions = await readEngineVersions();
     let remaining = BATTLE_CAPS.maxTotalVerifies;
+    let storyGiveupOk = null;
     const per = Array(sessions.length).fill(0);
     let inflight = 0;
     const queue = sessions.map((_, i) => i);
@@ -565,19 +599,38 @@ async function main() {
           const waitMs = Math.max(3000, Number(body.min_seconds || 0) * 1000) + 250;
           await new Promise(res => setTimeout(res, waitMs));
 
-          const verify = await edgeCall({
-            supabaseUrl: staging.supabaseUrl, anonKey: staging.anonKey, accessToken: sess.token,
-            name: 'story-direct-verify-v7',
-            body: {
-              op: 'direct',
-              id: String(body.session),
-              version: versions.story,
-              win: false,
-              actions: [{ k: 'giveup', t: 0 }],
-              cards: []
+          if (storyGiveupOk !== false) {
+            const verify = await edgeCall({
+              supabaseUrl: staging.supabaseUrl, anonKey: staging.anonKey, accessToken: sess.token,
+              name: 'story-direct-verify-v7',
+              body: {
+                op: 'direct',
+                id: String(body.session),
+                version: versions.story,
+                win: false,
+                actions: [{ k: 'giveup', t: 0 }],
+                cards: []
+              }
+            });
+            record(verify);
+            if (!verify.ok && /전투 기록이 맞지|tampered|invalid replay/i.test(verify.error || '')) {
+              storyGiveupOk = false;
+              console.log('story giveup verify is rejected by the engine; further story finishes skipped (starts will still be aborted).');
             }
-          });
-          record(verify);
+            if (!verify.ok) {
+              record(await rpcCall({
+                supabaseUrl: staging.supabaseUrl, anonKey: staging.anonKey, accessToken: sess.token,
+                fn: 'battle_session_abort_v2',
+                args: { p_session: body.session }
+              }));
+            }
+          } else {
+            record(await rpcCall({
+              supabaseUrl: staging.supabaseUrl, anonKey: staging.anonKey, accessToken: sess.token,
+              fn: 'battle_session_abort_v2',
+              args: { p_session: body.session }
+            }));
+          }
           checkStop();
           if (!stop.reason && remaining > 1 && per[idx] < BATTLE_CAPS.maxPerAccount) {
             remaining--;
@@ -652,6 +705,9 @@ async function main() {
     baselineP95_ms: baselineP95 != null ? +baselineP95.toFixed(1) : null,
     endpoints,
     parts,
+    errorSamples: samples.filter(s => !s.ok && s.error).slice(0, 12).map(s => ({
+      endpoint: s.endpoint, status: s.status, kind: s.kind, error: redact(s.error || '')
+    })),
     battleExtrapolation: battleStats,
     skippedVerifyGuestDefault: !args.battles,
     authAccountsUsed: sessions.length || accounts.length || 0

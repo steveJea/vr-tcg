@@ -15,13 +15,15 @@ node tools/loadtest/run.mjs
 
 테스트 계정은 저장소 밖 `/workspace/.loadtest-accounts.json` (chmod 600) 에만 둡니다. 비밀번호는 커밋하거나 출력하지 마세요.
 
-계정 만들기(스테이징 이메일 가입, 최대 10개):
+계정은 `VR_LOADTEST_PASSWORD` 환경 변수와 기본 주소 `loadtest1@example.test` … `loadtest5@example.test` 를 쓰는 것이 기본입니다. 비밀번호는 출력·커밋하지 않습니다. 파일에 저장하지 않는 쪽을 선호합니다.
+
+직접 가입을 시도할 때만:
 
 ```bash
 node tools/loadtest/provision-accounts.mjs
 ```
 
-이메일 인증이 필요하거나, 익명 로그인이 꺼져 있고 확인 메일을 받을 수 없으면 이 단계는 중단합니다.
+이메일 인증이 필요하거나, 익명 로그인이 꺼져 있고 확인 메일을 받을 수 없으면 가입 스크립트는 중단합니다.
 
 로그인 홈 RPC(`global_notice_list`, `camp_status`, `player_status`, `wallet_status`, `mail_list`, `mail_unread`)와 소수 전투 검증:
 

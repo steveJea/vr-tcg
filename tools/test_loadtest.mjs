@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import {
   parseStagingConfig, assertSafeTarget, estimateRun, shouldStop, quantile, summarize, DEFAULT_STAGES,
-  BATTLE_CAPS, extrapolateBattles, readEngineVersions, HOME_RPCS, DEFAULT_AUTH_FILE
+  BATTLE_CAPS, extrapolateBattles, readEngineVersions, HOME_RPCS, DEFAULT_AUTH_FILE, DEFAULT_LOADTEST_EMAILS, loadAccountsFromEnv, redact
 } from './loadtest/run.mjs';
 
 const root = new URL('../', import.meta.url);
@@ -65,4 +65,24 @@ const prov = await readFile(new URL('loadtest/provision-accounts.mjs', new URL('
 assert.match(prov, /chmod 600|0o600/);
 assert.match(prov, /refusing to write credentials inside the repo/);
 assert.match(prov, /email confirmation is required/);
+
+assert.deepEqual([...DEFAULT_LOADTEST_EMAILS], [
+  'loadtest1@example.test', 'loadtest2@example.test', 'loadtest3@example.test',
+  'loadtest4@example.test', 'loadtest5@example.test'
+]);
+assert.deepEqual(loadAccountsFromEnv({}).accounts, []);
+const envLoaded = loadAccountsFromEnv({ VR_LOADTEST_PASSWORD: 'unit-test-secret-xx', VR_LOADTEST_EMAILS: 'a@example.test,b@example.test' });
+assert.equal(envLoaded.source, 'env');
+assert.equal(envLoaded.accounts.length, 2);
+assert.equal(envLoaded.accounts[0].email, 'a@example.test');
+assert.equal(redact('bad unit-test-secret-xx login', ['unit-test-secret-xx']), 'bad * login');
+assert.doesNotMatch(JSON.stringify({ n: envLoaded.accounts.length, source: envLoaded.source }), /unit-test-secret-xx/);
+
+
+const runSrc = await readFile(new URL('loadtest/run.mjs', new URL('./', import.meta.url)), 'utf8');
+assert.match(runSrc, /전투 기록이 맞지/);
+assert.match(runSrc, /storyGiveupOk/);
+assert.match(runSrc, /errorSamples/);
+assert.match(runSrc, /VR_LOADTEST_PASSWORD/);
+
 console.log('test_loadtest ok');
