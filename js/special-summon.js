@@ -76,7 +76,7 @@
     const lines = ui(b.banner_id).intro || [];
     pop('sp-intro-pop', `<div class="sp-intro"><img class="sp-intro-img" src="${PORTRAIT(id)}" alt="${esc(c.name || b.pickup_name)}" onerror="this.onerror=null;this.src='img/thumb/${esc(id)}.webp'">
       <div class="sp-intro-txt"><div class="sp-intro-name"><span class="sp-intro-grade">${GR[c.grade] || 'UR'}</span> <b>${esc(c.name || b.pickup_name || CONFIG.pickup_name)}</b></div>
-      <div class="sp-intro-tags">${[EL[c.class] && `속성 ${EL[c.class]}`, ROLE[c.attribute] && `${ROLE[c.attribute]}형`, c.region, c.age && `${c.age}세`].filter(Boolean).map(t => `<span>${esc(t)}</span>`).join('')}</div>
+      <div class="sp-intro-tags">${[EL[c.class] && `속성 ${EL[c.class]}`, ROLE[c.attribute] && `${ROLE[c.attribute]}형`, c.region].filter(Boolean).map(t => `<span>${esc(t)}</span>`).join('')}</div>
       ${lines.length ? `<p class="sp-intro-pitch">${lines.map(esc).join('<br>')}</p>` : ''}</div></div>
       ${sk.length ? `<div class="sp-intro-skills">${sk.map(x => `<div class="sp-intro-sk"><b>${esc(x.name)}</b> <small>${x.mode === 'passive' ? '패시브' : '액티브'}${x.type ? ` · ${esc(x.type)}` : ''}</small><p>${esc(x.desc)}</p></div>`).join('')}</div>` : ''}`);
   }
@@ -113,7 +113,7 @@
     const end = b.ends_at ? new Date(b.ends_at).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }) + ' (KST)' : '종료일 미정';
     return `<div class="sp-rates"><div class="text-lg font-black mb-2">확률 안내</div>
       ${table(`스페셜 소환 · 픽업 ${pick.name}`, sp, `스페셜 소환권 1장 = 1회 · 10회 = 10장<br>UR 천장: UR 없이 ${b.pity || CONFIG.pity}회째 소환은 UR 확정 (어떤 UR이든 나오면 초기화 · 확정 UR도 픽업:그 외 = 1:1)<br>픽업 확정: 픽업 아닌 UR이 ${after}번 나오면 다음 UR은 <b>${esc(pick.name)}</b> 확정 (${esc(pick.name)}가 나오면 초기화 · 처음부터 나올 수도 있어요) · 배너별 · 서버 기록<br>기간: ${new Date(b.starts_at || CONFIG.starts_at).toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul' })} ~ ${esc(end)}`)}
-      ${table('프리미엄 소환', std(G.special, STD_DEF.special), '소환권 1장 = 1회 · 10회 소환은 HR 이상 1장 보장 · UR은 프리미엄 UR 목록에서만')}
+      ${table('프리미엄 소환', std(G.special, STD_DEF.special), '소환권 1장 = 1회 · 10회 소환은 HR 이상 1장 보장 · UR은 프리미엄 UR 목록에서만<br>UR 천장: UR 없이 50회째 소환은 UR 확정 (어떤 UR이든 나오면 초기화 · 목록에서 무작위) · 일반 소환(하루 1회 무료)에는 천장이 없어요')}
       ${table('일반 소환 (하루 1회 무료)', std(G.rates, STD_DEF.rates), '매일 자정(KST) 초기화 · UR은 프리미엄 UR 목록에서만')}
       <div class="sp-rate-note">${P.server ? '인재 목록은 서버 기준입니다.' : '인재 목록은 게임 데이터 기준(참고)입니다. 로그인하면 서버 목록을 보여 줘요.'} 각 표를 누르면 인재별 확률이 보여요.</div>
       <button data-sp-close class="w-full mt-2 py-2 rounded-xl bg-white/10">닫기</button></div>`;

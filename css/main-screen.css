@@ -96,7 +96,8 @@
 .main-pop.hidden { display: none; }
 .main-pop-card { width: min(92vw, 360px); text-align: left; color: #fde7b0; padding: 1rem 1.1rem 1.1rem;
   border: 10px solid transparent; border-radius: 6px; border-image: url(../img/ui/main/frame_btn.webp) 24 / 16px / 6px stretch;
-  background: linear-gradient(180deg, #2a0609, #120204) border-box; box-shadow: 0 12px 40px rgba(0,0,0,.8); animation: popIn .16s ease-out; }
+  background: linear-gradient(180deg, #2a0609, #120204) border-box; box-shadow: 0 12px 40px rgba(0,0,0,.8); animation: popIn .16s ease-out;
+  max-height: min(86vh, 740px); overflow-y: auto; }
 @keyframes popIn { from { transform: scale(.94); opacity: 0; } }
 .main-pop-title { font-family: 'Cinzel', 'Noto Sans KR', serif; font-weight: 900; font-size: 1.15rem; color: #fcd34d; }
 .main-pop-x { width: 32px; height: 32px; border-radius: 50%; color: #fde7b0; opacity: .8; } .main-pop-x:hover { opacity: 1; background: rgba(255,255,255,.08); }
@@ -206,7 +207,7 @@
 .gm-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: .5rem; }
 .gm-btn { display: flex; flex-direction: column; align-items: center; gap: .3rem; padding: .6rem .2rem; border-radius: 12px; background: rgba(0,0,0,.35);
   border: 1px solid rgba(245,201,106,.25); color: #fde7b0; font-size: .72rem; font-weight: 800; cursor: pointer; }
-.gm-btn img { width: 36px; height: 36px; object-fit: contain; }
+.gm-btn img { width: 36px; height: 36px; object-fit: contain; flex: none; }
 .gm-btn small { display: block; font-size: .6rem; opacity: .7; font-weight: 600; }
 .gm-btn:hover { border-color: #f5c96a; background: rgba(120,20,20,.35); }
 .gm-btn.hidden { display: none; }
@@ -303,25 +304,96 @@
 #start-screen .acct-box { flex: 0 1 auto; min-width: 38px; }
 #start-screen .acct-chip { min-width: 0; overflow: hidden; }
 @media (max-width: 480px) { #start-screen .acct-box { flex: none; } #start-screen .acct-chip { padding: 3px; } #start-screen .acct-chip .acct-name, #start-screen .acct-chip .acct-lv { display: none; } }
-/* 로비 스토리 타일: 누르면 바로 이어하기 · 오른쪽 위 '📜 스토리' = 스토리 허브(챕터 목록) */
+/* 로그인 로비: 이어하기 CTA 숨김 · 게스트는 기존 작은 스토리 타일 유지 */
+#start-screen:not(.is-guest) #story-btn { display: none !important; }
 #story-btn{position:relative}
-.main-story-hub{position:absolute;top:8px;right:8px;z-index:3;padding:5px 11px;border-radius:999px;border:1px solid rgba(245,201,106,.6);background:rgba(18,8,10,.82);color:#f5c96a;font-weight:800;font-size:12px;line-height:1.2;box-shadow:0 2px 8px rgba(0,0,0,.6);cursor:pointer}
+.main-story-hub{padding:5px 11px;border-radius:999px;border:1px solid rgba(245,201,106,.6);background:rgba(18,8,10,.82);color:#f5c96a;font-weight:800;font-size:12px;line-height:1.2;box-shadow:0 2px 8px rgba(0,0,0,.6);cursor:pointer}
 .main-story-hub:active{transform:scale(.95)}
+#story-btn .main-story-hub{position:absolute;top:8px;right:8px;z-index:3}
 #story-btn:disabled .main-story-hub{display:none}
+
+/* 로비 챕터 바로가기: 로그인 시 메인 스토리 줄. 그림은 기존 story_banner / 맵 배경 재사용 */
+#start-screen .ch-shortcuts {
+  grid-column: 1 / -1; order: -1; display: flex; flex-direction: column; gap: 6px;
+  width: 100%; max-width: 520px; overflow: visible;
+}
+#start-screen .ch-shortcuts[hidden], #start-screen.is-guest .ch-shortcuts { display: none !important; }
+.ch-shortcuts-head { display: flex; align-items: center; justify-content: space-between; padding: 0 2px; }
+.ch-shortcuts-label { font-weight: 800; font-size: .78rem; color: #fde7b0; letter-spacing: .06em; }
+#ch-shortcuts .main-story-hub { position: static; flex: none; }
+/* 소환(인재영입) 배너와 같은 한 장·화살표·0.3초 밀림 */
+.ch-shortcuts-wrap { position: relative; width: 100%; }
+.ch-shortcuts-vp { overflow: hidden; border-radius: 18px; touch-action: pan-y; }
+.ch-shortcuts-track { display: flex; gap: 0; will-change: transform; }
+.ch-shortcuts-track.anim { transition: transform .3s ease; }
+@media (prefers-reduced-motion: reduce) { .ch-shortcuts-track.anim { transition: none; } }
+.ch-short-arrow {
+  position: absolute; top: 50%; transform: translateY(-60%); z-index: 4;
+  width: 30px; height: 44px; border-radius: 12px; padding: 0;
+  background: rgba(0,0,0,.6); border: 1px solid rgba(255,255,255,.3);
+  color: #fff; font-size: 26px; font-weight: 900; line-height: 1;
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+}
+.ch-short-l { left: 6px; } .ch-short-r { right: 6px; }
+.ch-short-arrow:disabled { opacity: 0; pointer-events: none; }
+.ch-short {
+  position: relative; flex: 0 0 100%; width: 100%;
+  height: clamp(130px, 19svh, 190px);
+  overflow: hidden; border-radius: 18px; border: 1px solid rgba(245,201,106,.4);
+  background: #120204; cursor: pointer; color: #fff3cf; text-align: left; padding: 0;
+  box-shadow: 0 4px 12px rgba(0,0,0,.55);
+}
+.ch-short-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 70% 40%; }
+.ch-short::after { content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(90deg, rgba(0,0,0,.82) 0%, rgba(0,0,0,.45) 42%, transparent 72%); }
+.ch-short-t { position: absolute; left: 42px; right: 42px; bottom: 14px; z-index: 1;
+  display: flex; flex-direction: column; gap: 2px; pointer-events: none; }
+.ch-short-t small { font-size: .7rem; font-weight: 700; letter-spacing: .04em; color: #fca5a5; }
+.ch-short-t b { font-size: clamp(1.05rem, 4.2vw, 1.4rem); font-weight: 900; color: #fff3cf;
+  text-shadow: 0 1px 2px #000; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ch-short-go { font-size: .72rem; font-weight: 800; color: #fde68a; text-shadow: 0 1px 2px #000; }
+.ch-short.cur { border-color: #f5c96a; box-shadow: 0 0 0 1px #f5c96a, 0 8px 22px rgba(0,0,0,.65); }
+.ch-short.locked { filter: grayscale(.85) brightness(.62); cursor: default; }
+.ch-short-lock { position: absolute; top: 10px; right: 12px; z-index: 2; font-style: normal; font-size: 1rem; filter: drop-shadow(0 1px 2px #000); }
+.ch-short:hover:not(.locked) { filter: brightness(1.1); }
+.ch-short:active:not(.locked) { transform: scale(.98); }
+
 
 /* Shared OAuth controls. Kakao is exposed only after Supabase enables it. */
 .oauth-row{display:flex;flex-wrap:wrap;gap:8px;align-items:stretch;width:100%}
-.oauth-row>button{flex:1 1 140px;min-width:0;min-height:44px;white-space:nowrap}
-[data-oauth-provider][hidden],#main-link-google[hidden],#main-link-kakao[hidden],#main-link-x[hidden]{display:none!important}
+.oauth-row>button{flex:1 1 140px;min-width:0;min-height:44px;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+[data-oauth-provider][hidden],#main-link-google[hidden],#main-link-kakao[hidden],#main-link-x[hidden],#main-link-naver[hidden]{display:none!important}
 .oauth-kakao,.main-btn.oauth-kakao{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:#fee500;color:rgba(0,0,0,.85);border-color:#fee500;border-radius:12px;font-family:system-ui,sans-serif;text-shadow:none}
-.oauth-x,.main-btn.oauth-x{display:inline-flex;align-items:center;justify-content:center;background:#000;color:#fff;border:1px solid #777;border-image:none;border-radius:12px;font-family:system-ui,sans-serif;text-shadow:none}
-.oauth-symbol{width:18px;height:18px;flex:none;object-fit:contain}
-#intro .intro-acts{width:min(92vw,480px)}#intro .oauth-row .intro-btn{font-size:16px}
-#intro .oauth-row{width:100%}#intro .oauth-row .intro-btn{padding-left:8px;padding-right:8px}
+.oauth-x,.main-btn.oauth-x{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:#000;color:#fff;border:1px solid #777;border-image:none;border-radius:12px;font-family:system-ui,sans-serif;text-shadow:none}
+.oauth-naver,.main-btn.oauth-naver{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:#03C75A;color:#fff;border-color:#03C75A;border-image:none;border-radius:12px;font-family:system-ui,sans-serif;text-shadow:none}
+.oauth-symbol{width:24px;height:24px;flex:none;object-fit:contain}
+#intro .intro-acts{width:min(92vw,360px)}
+.intro-login-box{
+  width:100%;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;gap:.65rem;
+  padding:.7rem .8rem .9rem;
+  border:8px solid transparent;border-radius:4px;
+  border-image:url(../img/ui/main/frame_btn.webp) 24 / 12px / 4px stretch;
+  background:linear-gradient(180deg, rgba(70, 10, 14, .92), rgba(22, 3, 5, .94)) border-box;
+  box-shadow:0 4px 14px rgba(0,0,0,.6);
+}
+.intro-login-title{
+  font-family:'Cinzel','Cinzel Decorative',serif;font-weight:700;letter-spacing:.22em;
+  font-size:clamp(1.05rem,4.2vw,1.25rem);color:#fde7b0;line-height:1.2;text-align:center;margin:0;
+  text-shadow:0 1px 2px #000, 0 0 10px rgba(245,201,106,.25);
+}
+.intro-login-box .oauth-row{width:100%;flex-wrap:nowrap;justify-content:center;align-items:center;gap:clamp(8px,2.4vw,12px)}
+.intro-login-box .oauth-row>.intro-sns{
+  flex:0 0 auto;width:clamp(3.1rem,18vw,3.75rem);height:clamp(3.1rem,18vw,3.75rem);
+  min-width:0;min-height:0;padding:0;aspect-ratio:1;overflow:hidden;
+  border:0;border-image:none;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.45);
+}
+.intro-login-box .intro-sns-google{background:#fff;color:#000}
+.intro-login-box .oauth-x{border:1px solid #777}
+.intro-login-box .oauth-symbol{width:100%;height:100%}
+.intro-login-box .intro-sns:focus-visible{outline:2px solid #fde68a;outline-offset:3px}
 #acct-box .oauth-row{width:auto}#acct-box .oauth-row .acct-login{flex:0 1 auto;padding:7px 10px;min-height:36px;font-size:14px!important}
 .oauth-overlay{position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;padding:16px}
-.oauth-card{width:min(100%,360px);padding:20px;border-radius:16px;background:#1e1530;border:1px solid #91673a}
-.oauth-card h2{font-size:20px;margin:0 0 16px}.oauth-card .oauth-row{margin-bottom:12px}.oauth-close{width:100%}
+.oauth-card{width:min(92vw,360px);max-width:360px}.oauth-close{width:100%}
 
 /* 게임설정 창 하나로 통일 (js/main-menu.js VRMenu): 전투 중엔 전투 설정을 맨 위에, 이탈 항목 숨김 */
 .gm-battle { display: none; }
@@ -355,6 +427,29 @@
 .main-pop-card{max-height:min(90vh,720px);overflow-x:hidden;overflow-y:auto}
 
 
+/* 회원탈퇴 */
+#main-settings-pop .wd-btn { color: #fca5a5; border-color: #7f1d1d; background: #3f0a0a; letter-spacing: 0; }
+#main-settings-pop .wd-btn:hover { color: #fee2e2; border-color: #ef4444; }
+.wd-ov { position: fixed; inset: 0; z-index: 9800; display: grid; place-items: center; padding: 1rem; background: rgba(0,0,0,.7); backdrop-filter: blur(2px); }
+.wd-card { width: min(92vw, 360px); max-height: min(86vh, 640px); overflow-y: auto; text-align: left; color: #fde7b0; padding: 1.05rem 1.1rem 1.15rem;
+  border: 10px solid transparent; border-radius: 6px; border-image: url(../img/ui/main/frame_btn.webp) 24 / 16px / 6px stretch;
+  background: linear-gradient(180deg, #2a0609, #120204) border-box; box-shadow: 0 12px 40px rgba(0,0,0,.8); }
+.wd-title { font-family: 'Cinzel', 'Noto Sans KR', serif; font-weight: 900; font-size: 1.12rem; color: #fcd34d; margin: 0 0 .7rem; word-break: keep-all; }
+.wd-p { font-size: .9rem; line-height: 1.55; margin: 0 0 .65rem; word-break: keep-all; overflow-wrap: anywhere; }
+.wd-p b { color: #fde68a; }
+.wd-lost { margin: 0 0 .75rem; padding: 0 0 0 1.1rem; font-size: .86rem; line-height: 1.55; }
+.wd-lost li { margin: .15rem 0; }
+.wd-lab { display: block; font-size: .78rem; font-weight: 700; opacity: .8; margin: .2rem 0 .3rem; }
+.wd-inp { width: 100%; box-sizing: border-box; margin: 0 0 .85rem; padding: .55rem .7rem; border-radius: 10px; border: 1px solid rgba(212,162,74,.45);
+  background: #1c1003; color: #fde7b0; font-weight: 700; font-size: .95rem; }
+.wd-inp:focus { outline: 2px solid #f5c96a; outline-offset: 1px; }
+.wd-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.wd-row button { flex: 1 1 120px; min-width: 0; }
+.wd-no, .wd-card .wd-no { padding: .7rem .8rem; border-radius: 12px; font-weight: 800; color: #fde7b0; background: rgba(255,255,255,.06); border: 1px solid rgba(212,162,74,.35); }
+.wd-danger { background: #7f1d1d !important; color: #fee2e2 !important; border: 1px solid #ef4444 !important; }
+.wd-danger:disabled { opacity: .45; cursor: not-allowed; }
+
+
 /* 점검 / 곧 오픈 모드 */
 .mt-ov { position: fixed; inset: 0; z-index: 99500; display: grid; place-items: center; padding: 1.2rem; background: radial-gradient(ellipse at 50% 40%, #2a0d1a 0%, #09060c 72%); overflow: auto; }
 .mt-ov.hidden { display: none; }
@@ -379,3 +474,4 @@
 .mt-login-box { display: flex; flex-direction: column; gap: 8px; margin-top: .65rem; }
 .mt-login-box .main-btn { width: 100%; }
 @media (min-width: 768px) { .mt-biz span { white-space: nowrap; } }
+

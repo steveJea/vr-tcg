@@ -17,7 +17,7 @@
     r?.shard && `💠 ${n(r.shard)}`,
     r?.blood && `🩸 ${n(r.blood)}`,
     r?.dust && `✨ ${n(r.dust)}`,
-    r?.drink && `🥤 드링크 ${n(r.drink)}`,
+    r?.drink && `🥤 무료 드링크 ${n(r.drink)}`,
   ].filter(Boolean).join(' · ');
   function toast(t) { const el = document.createElement('div'); el.className = 'gem-toast'; el.textContent = t; document.body.appendChild(el); setTimeout(() => el.remove(), 2600); }
   const ERR = {
@@ -75,7 +75,7 @@
         <div class="idle-bar-wrap"><div class="daily-bar idle-bar"><i style="width:${pct}%"></i></div>
           <small>${hrsTxt(s.hours)} / ${s.max_hours}시간${s.full ? ' · 가득' : ''}</small></div>
         <div class="idle-got">${rwText(p) || '—'}</div>
-        <div class="idle-rate">시간당 ${rwText(rate)}${rate.drink_every_h ? ` · 🥤 드링크 ${rate.drink_every_h}시간당 1` : ''}</div>
+        <div class="idle-rate">시간당 ${rwText(rate)}${rate.drink_every_h ? ` · <img class="ui-ic drk-ic free" src="img/ui/cur_drink_free.webp" alt="무료 드링크"><span class="drk-name free">무료 드링크</span> ${rate.drink_every_h}시간당 1` : ''}</div>
         ${s.drink ? `<div class="idle-drink-note">무료 드링크 (거래 불가) · ${s.full ? '가득 찼어요' : `다음 1개까지 ${hrsTxt(s.drink.next_in_h)}`} · 한 번에 최대 ${s.drink.max_per_claim}개</div>` : ''}
         <button class="daily-claim" data-claim ${s.ready ? '' : 'disabled'}>쌓인 보상 받기 (무료)</button>
         <div class="idle-boost">

@@ -3,7 +3,7 @@
 (() => {
   const G = ['NORMAL', 'RARE', 'HIGH RARE', 'SUPER RARE', 'ULTRA RARE', 'MYTHIC RARE', 'LEGENDARY RARE'];
   const GS = ['N', 'R', 'HR', 'SR', 'UR', 'MR', 'LR'], GC = ['#9ca3af', '#22c55e', '#3b82f6', '#a855f7', '#f59e0b', '#ef4444', '#ef4444'];
-  const RW = { gold: '💰 골드', blood: '🩸 순수한 피', shard: '🔹 이상한 조각', soul: '🔥 각성자의 혼', gem: '🔮 심연석', tickets: '🎫 소환권', drink: '🥤 드링크' };
+  const RW = { gold: '💰 골드', blood: '🩸 순수한 피', shard: '🔹 이상한 조각', soul: '🔥 각성자의 혼', gem: '🔮 심연석', tickets: '🎫 소환권', drink: '🥤 무료 드링크' };
   const EL_IC = { WIND: 'el_wind', FIRE: 'el_fire', ICE: 'el_ice', DARK: 'el_dark', LIGHT: 'el_light', ABYSS: 'el_death' };
   const CLS_IC = { CHARGE: 'atk', CRUSH: 'critical', DEFENSE: 'def', SUPPORT: 'heal', DISTURB: 'st_disrupt', FASCINATION: 'dark_heart', OVERWHELMING: 'crown', FURIOUS: 'buff_up', PHENOMENAL: 'mr_star', EXTERMINATE: 'forbidden', BALANCE: 'balance', UNLIMITED: 'unlimited' };
   const CLS_ALT = { CHARGE: '돌격', CRUSH: '분쇄', DEFENSE: '방어', SUPPORT: '지원', DISTURB: '교란', FASCINATION: '매혹', OVERWHELMING: '압도', FURIOUS: '격노', PHENOMENAL: '경이', EXTERMINATE: '섬멸', BALANCE: '균형', UNLIMITED: '무한' };

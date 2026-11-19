@@ -81,6 +81,7 @@
         <button type="button" class="main-btn" data-mt-login="google">구글 로그인</button>
         <button type="button" class="main-btn oauth-kakao hidden" data-mt-login="kakao"><img src="img/ui/kakao-symbol.svg" class="oauth-symbol" width="18" height="18" alt="">카카오 로그인</button>
         <button type="button" class="main-btn oauth-x hidden" data-mt-login="x">X 로그인</button>
+        <button type="button" class="main-btn oauth-naver hidden" data-mt-login="naver"><img src="img/ui/v2/icon_naver.svg" class="oauth-symbol" width="18" height="18" alt="">네이버 로그인</button>
       </div>
     </div>`;
     document.body.appendChild(ov);
@@ -224,7 +225,7 @@
   function hookGuestLock() {
     document.addEventListener('click', e => {
       if (!shown || bypass) return;
-      const t = e.target.closest?.('#intro-guest, [data-promo-go], #intro-login, #intro-login-kakao, #intro-login-x');
+      const t = e.target.closest?.('#intro-guest, [data-promo-go], #intro-login, #intro-login-kakao, #intro-login-x, #intro-login-naver');
       if (!t) return;
       // 게스트·홍보 시작은 막고, 인트로 로그인 버튼은 곧 오픈 화면의 로그인으로 안내
       if (t.id === 'intro-guest' || t.hasAttribute('data-promo-go')) {

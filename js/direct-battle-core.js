@@ -5,7 +5,7 @@ import npcCsv from '../data/npc_cards.csv';
 import skillsJson from '../data/skills.json';
 import combosJson from '../data/combos.json';
 import questJson from '../data/quest.json';
-import { parseCSV, skillCountMult, RULES, canSummon, makeUnit, resolveAttack, refillMana, endTurnXp, aiPickTarget, canTarget, doAction, aiSummonOrder, aiPickSacrifice, aiWantAccel, aiWantFieldHeal, aiWantBuff, aiWantHeal, aiWantShuffle, aiPickItem, sacrifice, clearBuff, equip, setCardPool, levelUpOnce, xpToNext, gainXp, swapField } from './rules.js';
+import { parseCSV, calcPower, skillCountMult, RULES, canSummon, makeUnit, resolveAttack, refillMana, endTurnXp, aiPickTarget, canTarget, doAction, aiSummonOrder, aiPickSacrifice, aiWantAccel, aiWantFieldHeal, aiWantBuff, aiWantHeal, aiWantShuffle, aiPickItem, sacrifice, clearBuff, equip, setCardPool, levelUpOnce, xpToNext, gainXp, swapField } from './rules.js';
 import { setSkillData, skillsOf, setRng, setEmitter, getEmitter, setSpare, initPlayers, placeUnit, turnStart, turnEnd, useSkill, skillState, aiPickSkill, refreshAll, checkDeath, spareBlocked } from './skills.js';
 import { snapCard } from './pvp-core.js';
 import { leaderSkill } from './sweep-core.js';
@@ -58,7 +58,11 @@ export function storyIntrusionCard(spec, fallback) {
     || null;
   if (!raw) return null;
   if (raw.storyBoost || raw.storyLv) return raw;
-  return spec?.storyLevel ? scale(raw, spec.storyLevel) : { ...raw };
+  if (!spec?.storyLevel || !(Number(spec.storyLevel) > 1)) return { ...raw };
+  // Same as js/game.js storyScaled: power follows the scaled stats (AI target picks read card.power).
+  const o = scale(raw, spec.storyLevel);
+  o.power = calcPower(o, skillsOf(o.id));
+  return o;
 }
 
 function mustSummonOf(stage) {
@@ -302,6 +306,13 @@ export function runDirect(spec, actions, rng = null) {
     const u = placeUnit(me, { ...card }, makeUnit, true);
     raiseLevels(u, A.battleLevel || 1);
     u.hp = u.maxHp; u.mp = u.maxMp; u.canAttack = true;
+    // js/game.js awakenCheck + awakenPlayerControl (pauseOnEntrance, ch0 P3): the enemy turn stops
+    // where it is (no more attacks, no heal, no turn end) and the player gets control right away,
+    // in the same my-turn number, without turn-start passives. Every card on my field may act again.
+    if (A.pauseOnEntrance) {
+      if (state.turn === 'ai') state.awakenHold = true;
+      me.field.forEach(x => { x.canAttack = true; });
+    }
   }
   function joinAlly() {
     const J = state.joinAlly;
@@ -367,7 +378,7 @@ export function runDirect(spec, actions, rng = null) {
     if (script) {
       const u = (script.unit && ai.field.find(x => String(x.card.id) === String(script.unit) && x.hp > 0)) || ai.field.find(x => x.hp > 0);
       if (script.skill && u) { const s = (u.sk || []).find(x => x.name === script.skill); if (s) useSkill(u, s); }
-      if (script.end !== false) { if (!state.over) { endTurnXp(ai); turnEnd(ai); checkEnd(); } return; }
+      if (script.end !== false) { if (state.awakenHold) return; if (!state.over) { endTurnXp(ai); turnEnd(ai); checkEnd(); } return; }
     }
     if (aiWantShuffle(ai, me)) doAction('shuffle', ai);
     if (aiWantAccel(ai, true)) doAction('accel', ai);
@@ -379,7 +390,8 @@ export function runDirect(spec, actions, rng = null) {
     if (aiWantFieldHeal(ai)) doAction('fieldheal', ai);
     if (aiWantBuff(ai)) doAction('buff', ai);
     for (const u of [...ai.field]) {
-      if (state.over || !u.canAttack || !ai.field.includes(u)) continue;
+      if (state.over || state.awakenHold) break;
+      if (!u.canAttack || !ai.field.includes(u)) continue;
       if (spareBlocked(u)) { u.canAttack = false; continue; }
       const sk = aiPickSkill(u);
       if (sk) { useSkill(u, sk); checkEnd(); continue; }
@@ -388,7 +400,8 @@ export function runDirect(spec, actions, rng = null) {
       resolveAttack(ai, me, u, target);
       checkEnd();
     }
-    if (!state.over && aiWantHeal(ai)) doAction('heal', ai);
+    if (!state.over && !state.awakenHold && aiWantHeal(ai)) doAction('heal', ai);
+    if (state.awakenHold) return;
     if (!state.over) { endTurnXp(ai); turnEnd(ai); checkEnd(); }
     const survive = state.rules.survive;
     if (!state.over && survive && state.totalTurns >= survive * 2) done(true, 'survive');
@@ -453,7 +466,8 @@ export function runDirect(spec, actions, rng = null) {
   const max = Math.min(40, spec.rules?.maxTurns || RULES.MAX_TURNS);
   try {
     while (!state.over && state.totalTurns < max) {
-      startTurn(state.turn);
+      if (state.skipStart) state.skipStart = false;
+      else startTurn(state.turn);
       if (state.over) break;
       if (state.turn === 'me') {
         let ended = false;
@@ -468,6 +482,7 @@ export function runDirect(spec, actions, rng = null) {
       } else {
         aiAct();
         if (!state.over) state.turn = 'me';
+        if (state.awakenHold) { state.awakenHold = false; if (!state.over) { state.skipStart = true; me.field.forEach(x => { x.canAttack = true; }); } }
       }
     }
     if (!state.over) done(false, 'timeout');

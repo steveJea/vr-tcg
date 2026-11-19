@@ -8,11 +8,11 @@ begin
     raise exception 'STOP: production htarwisgkkphutxxnuak only';
   end if;
 end $guard$;
--- ===== 첫 로그인 동의 기록 (이용약관·개인정보·만 14세·마케팅 선택) =====
+-- ===== 첫 로그인 동의 기록 (이용약관·개인정보·만 19세 이상 확인(컬럼명 age14)·마케팅 선택) =====
 -- 기록은 쌓기만 함(append-only): 동의·마케팅 변경마다 새 행. 최신 행이 현재 상태. update/delete 없음.
 -- 현재 약관 버전 (클라이언트 js/consent.js 의 TERMS_VERSION/PRIVACY_VERSION 과 같아야 함)
 create or replace function public._consent_versions() returns jsonb language sql immutable set search_path = pg_catalog, public, pg_temp as $$
-  select jsonb_build_object('terms', '2026-11-draft', 'privacy', '2026-11-draft')
+  select jsonb_build_object('terms', '2026-11-19plus', 'privacy', '2026-11-19plus')
 $$;
 create table if not exists public.user_consents (
   id bigint generated always as identity primary key,

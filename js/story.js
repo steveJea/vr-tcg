@@ -206,8 +206,8 @@
   const BG_NO_GENERIC = new Set([1]);
   // img/story 에 있는 키만 요청한다. CSS url() 을 쉼표로 이어 붙이면 겹친 레이어라 두 장을 모두 받는다.
   // 화면 종류에 맞는 파일 하나를 고르고, 없으면 다음 후보 한 장, 그것도 없으면 밤색 그라데이션(요청 없음).
-  const BG_M = new Set('0 1_10111 1_10224 1_10265 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17'.split(' '));
-  const BG_PC = new Set('0 1_10111 1_10224 1_10265 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17'.split(' '));
+  const BG_M = new Set('0 1_10111 1_10224 1_10265 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19'.split(' '));
+  const BG_PC = new Set('0 1_10111 1_10224 1_10265 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19'.split(' '));
   // 허브 큰 칸(PC 약 936×300)에서 16:9 배경의 얼굴이 잘리지 않게 맞춘 background-position.
   // OpenCV YuNet 으로 ch_bg_pc_*.webp 의 얼굴을 잡아, 칸 높이의 약 38%에 오도록 계산했다.
   // 정수리가 화면 위에 붙는 그림(4·9·12)은 0%라서 머리 위를 잘라 내지 않는다.
@@ -215,14 +215,14 @@
     '0': '50% 44%', '1_10111': '50% 30%', '1_10224': '50% 12%', '1_10265': '50% 40%',
     '2': '50% 18%', '3': '50% 33%', '4': '50% 0%', '5': '50% 21%', '6': '50% 40%', '7': '50% 39%',
     '8': '50% 17%', '9': '50% 0%', '10': '50% 44%', '11': '50% 31%', '12': '50% 0%', '13': '50% 21%',
-    '14': '50% 30%', '15': '50% 30%', '16': '50% 30%', '17': '50% 28%',
+    '14': '50% 30%', '15': '50% 30%', '16': '50% 30%', '17': '50% 28%', '18': '50% 30%', '19': '50% 18%',
   };
   // 모바일 허브 큰 칸(세로 그림 1008×1792 를 넓은 칸에 cover). OpenCV YuNet 으로 ch_bg_*.webp 얼굴을 잡아 칸 높이 약 40%에 맞춤.
   const BG_FOCUS_M = {
     '0': '50% 43%', '1_10111': '50% 17%', '1_10224': '50% 15%', '1_10265': '50% 26%',
     '2': '50% 16%', '3': '50% 25%', '4': '50% 11%', '5': '50% 6%', '6': '50% 10%', '7': '50% 29%',
     '8': '50% 23%', '9': '50% 22%', '10': '50% 17%', '11': '50% 28%', '12': '50% 8%', '13': '50% 11%',
-    '14': '50% 18%', '15': '50% 14%', '16': '50% 22%', '17': '50% 12%',
+    '14': '50% 18%', '15': '50% 14%', '16': '50% 22%', '17': '50% 12%', '18': '50% 8%', '19': '50% 10%',
   };
   // css/story.css 에서 쓰던 PC 맵 조건과 같다 (가로 4:3 이상 · 너비 901px 이상).
   const mapPc = () => matchMedia('(min-aspect-ratio: 4/3) and (min-width: 901px)').matches;
@@ -723,6 +723,16 @@
     p.el.querySelector('[data-x]').onclick = () => p.close(true);
     p.el.querySelectorAll('[data-runs]').forEach(b => b.onclick = () => { p.el.querySelectorAll('[data-runs]').forEach(x => x.disabled = true); doSweep(ch, ph, +b.dataset.runs, p); });
   }
+  // 회차별 보너스(이상한 조각·각성자의 혼)가 나온 회차만 글로: "보너스: 4회차 · 8회차 · 9회차 이상한 조각". 없으면 줄 숨김
+  function sweepBonus(per) {
+    const pr = Array.isArray(per) ? per : [];
+    const parts = [['shard', '이상한 조각'], ['soul', '각성자의 혼']].map(([k, nm]) => {
+      const at = pr.map((x, i) => (+x?.[k] > 0 ? i + 1 : 0)).filter(Boolean);
+      if (!at.length) return '';
+      return `${at.length === pr.length && pr.length > 1 ? '매 회차' : at.map(i => `${i}회차`).join(' · ')} ${nm}`;
+    }).filter(Boolean);
+    return parts.length ? `<div class="text-[11px] text-zinc-400 text-center mt-2">보너스: ${parts.join(' / ')}</div>` : '';
+  }
   async function doSweep(ch, ph, n, pop) {
     const { data: r, error } = await cloud().sb.rpc('story_sweep', { p_chapter: ch.id, p_phase: ph.no, p_runs: n });
     pop.close(true);
@@ -736,7 +746,7 @@
       <div class="story-sweep-res">${line('gold', CI('gold'), '골드')}${line('blood', CI('blood'), '순수한 피')}${line('shard', CI('shard'), '이상한 조각')}${line('soul', CI('soul'), '각성자의 혼')}
         <div class="story-sweep-get">⭐ 플레이어 경험치 <b>+${fmt(r.player?.gained_xp || 0)}</b></div></div>
       ${r.player?.levelups ? `<div class="text-center text-amber-300 font-bold mt-2">LEVEL UP! Lv.${r.player.level}${r.player.levelup_gold ? ` · 🪙 +${fmt(r.player.levelup_gold)}` : ''}</div>` : ''}
-      <div class="text-[11px] text-zinc-500 text-center mt-2">회차별: ${(r.per_run || []).map(x => x.shard ? '💠' : '·').join(' ')}</div>
+      ${sweepBonus(r.per_run)}
       <div class="story-phpop-a mt-3"><button class="story-btn ghost" data-x>확인</button><button class="story-btn story-btn-sw" data-again ${againOk ? '' : 'disabled'} title="${againOk ? '' : '행동력이 부족해요'}">${SW()} 소탕하기 ×${n}<small> 🔋 ${againCost}</small></button></div>`, () => afterSweepResult(r));
     res.el.querySelector('[data-x]').onclick = () => res.close();
     // 같은 페이즈·같은 횟수로 바로 다시 소탕 (한 번만 눌리게 잠금 → 결과 팝업 새로 뜸). 다시 소탕은 close(true)라 아래 후속은 안 탄다.
@@ -842,6 +852,8 @@
       startPhase(nx.ch, nx.ph);
     };
   }
+  /** 로비 현재 챕터 칸: 이어할 페이즈가 있으면 goContinue, 없으면 그 챕터 맵 */
+  const playCurrent = () => openPage(() => { if (nextPlay()) goContinue(); else renderMap(hubCurIdx()); }, true);
 
   // ----- 스토리 다시보기 (클리어한 챕터): 시작 대사 → P1~마지막 페이즈의 전·후 대사(멀티미디어 포함)를 순서대로. 전투·보상·EXP·행동력·진행 저장 없음 -----
   // 페이즈마다 제목 화면(누르면 계속 · 나가기). 대사 화면의 '건너뛰기'는 그 장면만 넘김. 엔딩 영상은 자동 재생 안 함 (지도 '🎬 엔딩' 버튼 따로)
@@ -862,9 +874,9 @@
     const start = [...(ch.single && ch.tagline ? [{ speaker: '내레이션', text: ch.tagline.replace(/\n/g, ' ') }] : []), ...(ch.start || [])];
     card0('', esc(ch.title), esc(ch.subtitle || ''), () => start.length ? playLines(start, [], () => phase(0), 'story', ch.hero) : phase(0));
   }
-  function startPhase(ch, ph) {
+  function startPhase(ch, ph, opts = {}) {
     const enemies = ph.enemies?.ids ? pickEnemies(ph) : [];
-    show(`<div class="story-intro" id="story-intro"><div class="story-chapter-sub">${esc(ch.title)}</div><div class="story-chapter-big">Phase.${ph.no}</div><div class="story-chapter-name">${esc(ph.title)}${ph.type === 'boss' ? ' · BOSS' : ''}</div><div class="vr-more" aria-hidden="true">▼</div></div>`);
+    show(`<div class="story-intro" id="story-intro"><div class="story-chapter-sub">${opts.fromNext ? '다음 페이즈 · ' : ''}${esc(ch.title)}</div><div class="story-chapter-big">Phase.${ph.no}</div><div class="story-chapter-name">${esc(ph.title)}${ph.type === 'boss' ? ' · BOSS' : ''}</div><div class="vr-more" aria-hidden="true">▼</div></div>`);
     // 재도전·이미 본 페이즈: 시작 전 대사 생략하고 바로 전투 준비 (첫 관람·튜토리얼 페이즈 첫 진입은 대사 그대로)
     // scene: 전투 없는 스토리 페이즈 (CH16 P12 · CH17 P7/P12/P15). 대사 후 클리어.
     const skip = phaseSeen(ch, ph);
@@ -876,7 +888,9 @@
       }
       pickDeck(ch, ph, enemies);
     };
-    $('story-intro').onclick = () => skip ? proceed() : dialogue(ch, ph, enemies, proceed);
+    // 페이즈 제목 카드는 대사를 이미 봤어도 항상 보여 줌. 앞 화면(NEXT 등)에서 이어진 탭이 바로 넘기지 않게 잠깐 잠금
+    const shownAt = performance.now(), intro = $('story-intro');
+    intro.onclick = () => { if (performance.now() - shownAt < 600 || intro.dataset.go) return; intro.dataset.go = '1'; skip ? proceed() : dialogue(ch, ph, enemies, proceed); };
   }
   const PS_KEY = (ch, ph) => `vr-story-phseen-${ch.id}-${save.starter || ''}-${ph.no}`;
   function phaseSeen(ch, ph) {
@@ -1044,7 +1058,7 @@
     const draw = () => {
       popPage('story-pick', '출전 고르기');
       const pickNote = [opts?.note || '', !opts && isPool(ch, ph) ? `고른 인재 ${forced.length + slots}장이 손패가 돼요. 마나로 소환하고, 마나는 다시 차지 않아요. (필드 최대 5장 · 시작 마나 <b class="text-sky-300">${storyMana(ch, ph, deckInstances())}</b>)` : '', (ph.rules?.mustKill || []).length ? '👑 보스를 쓰러뜨리면 승리해요.' : boss ? '👑 보스전: 보스는 진영 안에서 쓰러지지 않아요. 상대 진영 HP를 0으로!' : ''].filter(Boolean).join('<br>');
-      const p = popup(`<div class="story-pop-title">출전 인재 선택 <span class="text-emerald-300">${forced.length + sel.length}/${forced.length + slots}</span></div>
+      const p = popup(`<div class="story-pop-title">출전 인재 선택 <span class="text-emerald-300">${forced.length + sel.length}/${forced.length + slots}</span></div>${ph?.no != null && ch?.title ? `<div class="story-pick-ph">${esc(ch.title)} · Phase.${ph.no}${ph.title ? ` ${esc(ph.title)}` : ''}${ph.type === 'boss' ? ' · BOSS' : ''}</div>` : ''}
         ${pickNote ? `<div class="text-xs text-zinc-400 mb-2">${pickNote}</div>` : ''}
         ${forced.length ? `<div class="story-forced-h">${ic('crown', { alt: '' })} 필수 출전 ${forced.length}장 <small>(게스트는 정해진 레벨(없으면 리더 레벨)로 함께 싸우고, 전투 EXP는 받지 않아요)</small></div><div class="story-grid story-deckpick story-forced">${forced.map(fTile).join('')}</div>
           <div class="story-forced-h">나머지 ${slots}장 고르기${notes.map(t => ` · <span class="text-red-300">${t}</span>`).join('')}</div>` : ''}${ph.enemyFirst ? '<div class="story-hint">⚡ 이번 페이즈는 적이 먼저 공격해요</div>' : ''}
@@ -1158,7 +1172,7 @@
       if (r.become) info.push(['⚠️', `${nm(r.id)}를 쓰러뜨리면 <b>${nm(r.become)}</b>이(가) 등장해요`, '쓰러뜨리지 않는 편이 유리해요']);
       else info.push(['🩸', `${nm(r.id)}: 쓰러지면 <b>${Math.max(1, r.delay | 0 || 1)}턴 후</b> 부활 (${r.level === 'keep' ? '레벨 유지' : 'Lv1'})${r.times ? ` · ${r.times}회` : ''}`]);
     }
-    if ((R.revive || []).some(r => !r.become) && !(R.expire && R.invuln != null) && !R.mustKill?.length) info.push(['✨', '부활 전에 적을 모두 쓰러뜨리면 승리']);
+    if ((R.revive || []).some(r => !r.become) && !(R.expire && R.invuln != null) && !R.mustKill?.length && !boss) info.push(['✨', '부활 전에 적을 모두 쓰러뜨리면 승리']);
     if (R.pairShield) info.push(['🛡️', `${nm(R.pairShield.id)} + ${nm(R.pairShield.with)} 함께 출전: ${nm(R.pairShield.id)} 처음 <b>${R.pairShield.turns}턴</b> 피해 무효`]);
     for (const [a, ts] of Object.entries(ph.spare || {})) info.push(['🕊️', `${nm(a)}는 ${ts.map(nm).join('·')}를 공격하지 않음`, `${ts.map(nm).join('·')}만 남으면 행동하지 않아요`]);
     for (const id of R.undying || []) info.push(['♾️', `${nm(id)}: 쓰러지지 않음 (불사)`]);
@@ -1249,7 +1263,7 @@
         try { const rq = m.requestFullscreen || m.webkitRequestFullscreen; if (!rq) throw 0; await rq.call(m, { navigationUI: 'hide' }); } catch { m.classList.add('rot'); return; }
         m.classList.remove('rot'); try { await screen.orientation?.lock?.('landscape'); } catch {}
       };
-      const exitFull = () => { try { screen.orientation?.unlock?.(); } catch {} try { if (isFs()) (document.exitFullscreen || document.webkitExitFullscreen)?.call(document)?.catch?.(() => {}); } catch {} };
+      const exitFull = () => { try { screen.orientation?.unlock?.(); } catch {} try { const el = document.fullscreenElement || document.webkitFullscreenElement; if (el === m) (document.exitFullscreen || document.webkitExitFullscreen)?.call(document)?.catch?.(() => {}); } catch {} };
       const cmd = (func, args = []) => { try { ifr.contentWindow.postMessage(JSON.stringify({ event: 'command', func, args }), '*'); } catch {} };
       let playing = false;
       const onMsg = e => { if (!/youtube/.test(e.origin || '')) return; try { const d = typeof e.data === 'string' ? JSON.parse(e.data) : e.data; const st = d?.info?.playerState ?? (d?.event === 'onStateChange' ? d.info : undefined); if (st === 1) playing = true; if (st === 0) close(); } catch {} };
@@ -1344,7 +1358,7 @@
       ${expList(r.exp)}
       ${pts ? `<div class="mt-4 text-lg">스탯 포인트 <b class="text-emerald-300">+${pts}</b> (보유 ${save.points})</div>` : ''}
       <div class="flex flex-col gap-2 max-w-xs mx-auto mt-5">${needVid ? '<button class="story-btn story-endvid" data-go="endvid">🎬 엔딩 보기</button>' : ''}<div class="story-split">${'<button class="story-btn" data-go="stats">📈 스탯업</button>'}${hasNext ? `<button class="story-btn story-next" ${needVid ? 'style="display:none"' : ''} data-go="nextch" ${nextOpen ? '' : 'disabled'} title="${nextPh ? `Phase.${nextPh.no}` : nextOpen ? esc(nextChB.title) : ''}">${nextOpen ? '▶' : '🔒'} NEXT</button>` : ''}</div><button class="story-back" data-go="map">챕터 지도로</button></div></div>`);
-    bind({ stats: () => openStats(renderMap), endvid: () => endingVideo(ch).then(() => { const n = root().querySelector('.story-next'); if (n) n.style.display = ''; }), nextch: () => { if (nextPh) startPhase(ch, nextPh); else if (nextOpen) { hubC = nextI; chapterCard(nextChB).then(() => renderMap(nextI)); } } });
+    bind({ stats: () => openStats(renderMap), endvid: () => endingVideo(ch).then(() => { const n = root().querySelector('.story-next'); if (n) n.style.display = ''; }), nextch: () => { if (nextPh) startPhase(ch, nextPh, { fromNext: true }); else if (nextOpen) { hubC = nextI; chapterCard(nextChB).then(() => renderMap(nextI)); } } });
     if (pr?.levelups) levelUpFx('PLAYER LEVEL UP!'); else if ((r.exp || []).some(e => e.level > e.from)) levelUpFx();
   }
   // 다음 챕터 진입 타이틀 카드: CHAPTER N / 부제 — 페이드 인 → 1.7초 → 페이드 아웃. 탭하면 건너뜀
@@ -1920,7 +1934,9 @@
   }
   // ----- 소환권 (특수 뽑기): 챕터 첫 클리어마다 +10. 서버 모드는 서버(story_tickets / story_ticket_draw)가 기준 -----
   const G = () => D.gacha;
-  let tickets = null, ticketSrv = null;   // ticketSrv: 서버 함수 사용 여부 (null = 아직 모름)
+  let tickets = null, ticketSrv = null, ticketMisses = null, ticketPity = 50;   // ticketSrv: 서버 함수 사용 여부 (null = 아직 모름). ticketMisses: 프리미엄 UR 천장(50) 카운터, 서버만
+  const takePity = r => { if (r && r.misses != null) { ticketMisses = r.misses | 0; if (r.pity != null) ticketPity = r.pity | 0; } };
+  const premPityLine = () => { if (ticketMisses == null) return ''; const left = Math.max(0, (ticketPity || 50) - (ticketMisses | 0)); return `<br><small id="gr-pity">${left <= 1 ? '다음 소환은 UR 확정' : `UR 확정까지 ${left}회`}</small>`; };
   const ticketMissing = e => /story_ticket|PGRST202|42883|Could not find/i.test(`${e?.code} ${e?.message}`);
   function localTicketSync() {   // 브라우저 저장 모드: 다 깬 챕터마다 한 번 +10
     const got = new Set(save.ticketChs || []); let added = 0;
@@ -1931,10 +1947,10 @@
   /** 소환권 개수 갱신 (+ 새로 받은 양). 반환 { tickets, added } */
   async function syncTickets() {
     const sb = cloud()?.sb, u = cloud()?.user;
-    if (window.__TICKET_MOCK) { const r = await window.__TICKET_MOCK.sync(); tickets = r.tickets; return r; }
+    if (window.__TICKET_MOCK) { const r = await window.__TICKET_MOCK.sync(); tickets = r.tickets; takePity(r); return r; }
     if (serverMode && sb && u && ticketSrv !== false) {
       const { data, error } = await sb.rpc('story_tickets');
-      if (!error) { ticketSrv = true; tickets = data.tickets | 0; return data; }
+      if (!error) { ticketSrv = true; tickets = data.tickets | 0; takePity(data); return data; }
       if (!ticketMissing(error)) return { tickets: tickets | 0, added: 0, error: error.message };
       ticketSrv = false;
     }
@@ -1973,7 +1989,7 @@
       if (!error) res = data; else if (!ticketMissing(error)) return { ok: false, reason: 'error', msg: error.message }; else ticketSrv = false;
     }
     if (res) {
-      if (res.ok) { tickets = res.tickets | 0; try { window.dispatchEvent(new CustomEvent('vr:gacha')); } catch {} if (!window.__TICKET_MOCK) await reload(); else for (const c of res.cards) addOwned(c.card_id); }
+      if (res.ok) { tickets = res.tickets | 0; takePity(res); try { window.dispatchEvent(new CustomEvent('vr:gacha')); } catch {} if (!window.__TICKET_MOCK) await reload(); else for (const c of res.cards) addOwned(c.card_id); }
       return res;
     }
     // 브라우저 저장 모드 (서버 함수 없음)
@@ -2090,7 +2106,7 @@
   const pct = p => `${+(p * 100).toFixed(1)}%`;
   function showRates() {
     const row = (t, rs, note) => `<div class="mb-3"><div class="font-bold mb-1">${t}</div><div class="story-rates">${rs.map(([g, p]) => `<span class="g-text-${GLOW[g]}">${RAR[g]}</span><b>${pct(p)}</b>`).join('')}</div>${note ? `<div class="text-[11px] text-zinc-400 mt-1">${note}</div>` : ''}</div>`;
-    popup(`<div class="text-lg font-black mb-3">📊 뽑기 확률</div>${row('일반 뽑기 (하루 1회 무료)', G().rates, '매일 자정(KST, 한국 시간 00:00) 초기화')}${row('특수 뽑기 (소환권 1장 = 1회)', G().special, `10회 뽑기는 HR 이상 1장 보장 · 소환권은 챕터를 처음 다 깰 때마다 +${G().ticketsPerChapter}`)}<button data-close-pop class="w-full mt-1 py-2 rounded-xl bg-white/10">닫기</button>`);
+    popup(`<div class="text-lg font-black mb-3">📊 뽑기 확률</div>${row('일반 뽑기 (하루 1회 무료)', G().rates, '매일 자정(KST, 한국 시간 00:00) 초기화')}${row('특수 뽑기 (소환권 1장 = 1회)', G().special, `10회 뽑기는 HR 이상 1장 보장 · UR 없이 50회째는 UR 확정(프리미엄 UR 목록에서 무작위, 어떤 UR이든 나오면 초기화) · 소환권은 챕터를 처음 다 깰 때마다 +${G().ticketsPerChapter}`)}<button data-close-pop class="w-full mt-1 py-2 rounded-xl bg-white/10">닫기</button>`);
   }
   // ----- 심연석 🔮 으로 소환권 사기 (js/gem.js · gem.sql): 1장 150 · 10회 1500 (사서 바로 10회 뽑기 → 기존 HR 이상 보장) -----
   const gemRow = () => window.VRGem?.now ? `${window.VRGem.priceBtn('ticket')}${window.VRGem.priceBtn('pull10', 'gem-buy10', `<b>10회</b>`)}` : '';
@@ -2131,13 +2147,13 @@
     sh?.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.closest('[data-pulled]')) { e.preventDefault(); onTap(e); } });
   }
   const GACHA_BANNERS = [{ key: 'daily', label: '일반' }, { key: 'special', label: '프리미엄' }, { key: 'pickup', label: '스페셜', img: 'special' }];   // pickup = 스페셜 소환 (이벤트 픽업)
-  const spBadge = () => `<span class="story-ticket sp-ticket" title="스페셜 소환권">✨ <b>${window.VRSpecial?.tickets ?? '…'}</b></span>`;
+  const spBadge = () => `<span class="story-ticket sp-ticket" title="스페셜 소환권"><img class="ui-ic tk-ic sp" src="img/ui/ticket_special.webp" alt="스페셜 소환권"> <b>${window.VRSpecial?.tickets ?? '…'}</b></span>`;
   /** 스페셜 소환 보유·천장 줄 */
   const spPick = () => { const S = window.VRSpecial, k = S.ursToPickup, nm = esc(S.banner().pickup_name || ''); return k <= 1 ? `다음 UR은 ${nm} 확정` : `${nm} 확정까지 UR ${k}번`; };
   function spOwn() {
     const S = window.VRSpecial, b = S?.banner();
     if (!S || !b?.open) return `<div class="gr-own sp-own" id="gr-own">스페셜 소환 <b class="sp-prep">준비 중</b></div>`;
-    return `<div class="gr-own sp-own" id="gr-own">보유 스페셜 소환권 ✨ <b id="sp-own-n">${S.tickets ?? '…'}</b><br><small id="sp-pick">${spPick()}</small> <button type="button" class="sp-help" data-sp-help aria-label="천장 안내">?</button></div>`;
+    return `<div class="gr-own sp-own" id="gr-own">보유 <span class="tk-name sp">스페셜 소환권</span> <img class="ui-ic tk-ic sp" src="img/ui/ticket_special.webp" alt="스페셜 소환권"> <b id="sp-own-n">${S.tickets ?? '…'}</b><br><small id="sp-pick">${spPick()}</small> <button type="button" class="sp-help" data-sp-help aria-label="천장 안내">?</button></div>`;
   }
   function renderShop(tab) {
     if (tab) shopTab = tab;
@@ -2156,10 +2172,10 @@
         ? `<div class="gacha-stage gr-card" id="gacha-stage"><div class="gacha-card" id="gacha-card"><div class="gacha-face gacha-back"></div><div class="gacha-face gacha-front" id="gacha-front"></div></div></div>`
         : `<div id="tk-result" class="story-tk-result"></div>`}</div>
       <div id="gacha-msg" class="gr-msg"></div>
-      ${pickup ? spOwn() : daily ? '' : `<div class="gr-own" id="gr-own">보유 소환권 ${ICN('ticket', '🎟️', '소환권')} <b>${tickets ?? '…'}</b>${urTickets ? `<span class="gr-own-ur"> · UR 확정권 🎫 <b id="gr-own-ur">${urTickets}</b></span>` : ''}</div>`}
+      ${pickup ? spOwn() : daily ? '' : `<div class="gr-own" id="gr-own">보유 소환권 ${ICN('ticket', '🎟️', '소환권')} <b>${tickets ?? '…'}</b>${urTickets ? `<span class="gr-own-ur"> · UR 확정권 🎫 <b id="gr-own-ur">${urTickets}</b></span>` : ''}${premPityLine()}</div>`}
       <div class="gr-actions">${daily
         ? `${avail ? `<button id="gacha-go" class="gr-go">${ICN('gacha', '🎴')} 뽑기</button>` : ''}<div id="gacha-next" class="gr-next"></div>`
-        : pickup ? `<button class="gr-go" data-draw="1" data-sp="1" ${spOpen && (window.VRSpecial.tickets | 0) >= 1 ? '' : 'disabled'}>1회 <small>✨1</small></button><button class="gr-go gr-go10" data-draw="10" data-sp="1" ${spOpen && (window.VRSpecial.tickets | 0) >= 10 ? '' : 'disabled'}>10회 <small>✨10</small></button>`
+        : pickup ? `<button class="gr-go" data-draw="1" data-sp="1" ${spOpen && (window.VRSpecial.tickets | 0) >= 1 ? '' : 'disabled'}>1회 <small><img class="ui-ic tk-ic sp" src="img/ui/ticket_special.webp" alt="스페셜 소환권">1</small></button><button class="gr-go gr-go10" data-draw="10" data-sp="1" ${spOpen && (window.VRSpecial.tickets | 0) >= 10 ? '' : 'disabled'}>10회 <small><img class="ui-ic tk-ic sp" src="img/ui/ticket_special.webp" alt="스페셜 소환권">10</small></button>`
         : `<button class="gr-go" data-draw="1" ${(tickets | 0) >= 1 ? '' : 'disabled'}>1회 <small>${ICN('ticket', '🎟️')}1</small></button><button class="gr-go gr-go10" data-draw="10" ${(tickets | 0) >= 10 ? '' : 'disabled'} title="HR 이상 1장 보장">10회 <small>${ICN('ticket', '🎟️')}10</small></button>${urTickets ? `<button class="gr-go gr-go-ur" data-draw="1" data-ur="1" title="고급 소환 UR 11명 중 1명 확정">UR 확정 <small>🎫1</small></button>` : ''}`}</div>
       ${daily || pickup ? '' : `<div class="gr-gem" id="gr-gem">${gemRow()}</div>`}</div>`, 'gacha');
     gateLayout(); preloadGachaVideo();
@@ -2270,9 +2286,15 @@
   // 허브 추가 섹션 훅 (예: 이벤트 스토리). 함수가 HTML 문자열을 돌려주면 챕터 목록 위에 표시, 빈 문자열이면 아무것도 안 그림
   const HUB_SECTIONS = [];
   function mountButton() {
-    const ex = $('story-btn'); if (ex) { ex.disabled = !window.TCG?.ready; ex.onclick = () => enter('go'); window.addEventListener('tcg:ready', () => { ex.disabled = false; });
-      if (!$('story-hub-btn')) { ex.insertAdjacentHTML('beforeend', '<span id="story-hub-btn" class="main-story-hub" role="button" tabindex="0" title="스토리 챕터 목록">📜 스토리</span>'); const hb = $('story-hub-btn'); const go = e => { e.stopPropagation(); e.preventDefault(); if (!ex.disabled) enter(); }; hb.addEventListener('click', go); hb.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') go(e); }); }
-      return; }   // 메인 4버튼(index.html)
+    const ex = $('story-btn');
+    if (ex) { ex.disabled = !window.TCG?.ready; ex.onclick = () => enter('go'); window.addEventListener('tcg:ready', () => { ex.disabled = false; }); }
+    const hb = $('story-hub-btn');
+    if (hb && !hb.dataset.bound) {
+      hb.dataset.bound = '1';
+      const go = e => { e.stopPropagation(); e.preventDefault(); if (window.TCG?.ready) enter(); };
+      hb.addEventListener('click', go); hb.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') go(e); });
+    }
+    if (ex) return;   // 메인 4버튼(index.html)
     const start = $('start-btn'); if (!start || $('story-btn')) return;
     const b = document.createElement('button'); b.id = 'story-btn'; b.type = 'button'; b.className = 'main-banner banner-story'; b.title = '스토리 모드 · 캐릭터별 챕터 · 인재 수집';
     b.innerHTML = '<img src="img/ui/main/banner_story.webp" srcset="img/ui/main/banner_story_600.webp 600w, img/ui/main/banner_story.webp 1200w" sizes="(max-width: 520px) 92vw, 460px" alt="" class="main-banner-img" width="1200" height="360" decoding="async"><span class="main-banner-text"><b class="main-banner-title">스토리 모드</b></span>';
@@ -2285,6 +2307,7 @@
   async function summary() {
     if (!user()) return { ok: false, reason: 'login' };
     await load(); if (!save) return { ok: false, reason: 'load' };
+    await checkChapters();
     let tk = null; try { const r = await syncTickets(); tk = r?.tickets ?? tickets; } catch {}
     const inst = deckInstances(), byUid = new Map(save.owned.map(o => [o.uid, o]));
     let deck = []; try { deck = JSON.parse(pickKeyRead('story') || '[]').filter(u => byUid.has(u)); } catch {}
@@ -2294,7 +2317,12 @@
     return {
       ok: true, serverMode, leaderUid: lead, deckUids: deck, tickets: tk, decks: decksOf().map((d, i) => ({ name: deckName(d, i), uids: (d?.uids || []).filter(u => byUid.has(u)) })),
       owned: save.owned.map(view), uniq: inst.length,
-      chapters: D.chapters.map(ch => ({ id: ch.id, title: ch.title, done: (save.cleared?.[ch.id] || []).filter(no => ch.phases.some(p => p.no === no)).length, total: ch.phases.length })),
+      chapters: D.chapters.map((base, i) => {
+        const ch = chapterFor(base), done = (save.cleared?.[base.id] || []).filter(no => ch.phases.some(p => p.no === no)).length, open = chapterOpen(i);
+        let lockWhy = '';
+        if (!open) lockWhy = (i && D.chapters[i - 1] && !chapterDone(D.chapters[i - 1])) ? '이전 챕터를 클리어하면 열려요' : (chLvLock(base) ? `Lv ${chNeedLv(base)}이 되면 열려요` : '아직 열리지 않은 챕터예요');
+        return { i, id: base.id, title: base.title, subtitle: ch.subtitle || base.subtitle || base.title, done, total: ch.phases.length, open, lockWhy, bg: bgKey(base), variant: base.byStarter ? (save?.starter || null) : routeOf(base) };
+      }),
       current: (() => { try { const i = hubCurIdx(), base = D.chapters[i], ch = chapterFor(base), nx = nextPlay(), n = clearedOf(ch).length, cv = chCover(base);
         return { i, id: base.id, bg: bgKey(base), title: base.title, subtitle: ch.subtitle || base.title, phase: nx && nx.i === i ? nx.ph.no : null, boss: nx && nx.i === i && nx.ph.type === 'boss', done: n, total: ch.phases.length, cover: coverId(cv) ? `${IMG}${coverId(cv)}.webp` : null, variant: base.byStarter ? (save?.starter || null) : routeOf(base) }; } catch { return null; } })(),
     };
@@ -2351,5 +2379,5 @@
     sort: (list, st) => { const k0 = cardSort; cardSort = st; try { return sortInst(list); } finally { cardSort = k0; } },
     next: (st, k) => st.k === k ? { k, desc: !st.desc } : { k, desc: true },
   };
-  window.VRStory = { hubSections: HUB_SECTIONS, play: () => enter('go'), canDraw: () => canDraw(), trainCard, canMergeUid, sortTool, skBadge, lendCards, reloadLend: () => loadLend(true), partyOf, pickDeck, openMap: i => openPage(() => renderMap(i)), openCards: from => openRoster(() => { rosterFrom = from === 'mypage' ? 'mypage' : null; renderCards(); }), openDecks: from => openRoster(() => { rosterFrom = from === 'mypage' ? 'mypage' : null; renderDecks(); }), openShop: () => openSummon(), api, bgm, BGM, endingVideo, videoOf, conditionsOf, battleRules, summary, enter, openGacha, renderHub, renderShop, drawOnce, kstDay, chapterArt, get save() { return save; }, renderMap, renderCards, openStats, renderSelect, playLines };
+  window.VRStory = { hubSections: HUB_SECTIONS, play: () => enter('go'), canDraw: () => canDraw(), trainCard, canMergeUid, sortTool, skBadge, lendCards, reloadLend: () => loadLend(true), partyOf, pickDeck, openMap: i => openPage(() => renderMap(i), true), /* quiet: 로비 바로가기는 허브를 건너뛰고, renderMap이 잠긴 챕터는 열린 챕터로 되돌림 */ playCurrent, goContinue, openCards: from => openRoster(() => { rosterFrom = from === 'mypage' ? 'mypage' : null; renderCards(); }), openDecks: from => openRoster(() => { rosterFrom = from === 'mypage' ? 'mypage' : null; renderDecks(); }), openShop: () => openSummon(), api, bgm, BGM, endingVideo, videoOf, conditionsOf, battleRules, summary, enter, openGacha, renderHub, renderShop, drawOnce, kstDay, chapterArt, get save() { return save; }, renderMap, renderCards, openStats, renderSelect, playLines };
 })();

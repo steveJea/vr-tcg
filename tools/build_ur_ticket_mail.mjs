@@ -5,7 +5,8 @@ import {readFile,writeFile,mkdir} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 const root=new URL('../',import.meta.url), rd=p=>readFile(new URL(p,root),'utf8');
 const STAGING_ID='7703759698107299042', PROD_ID='7692130048193495360', RELEASE='20261111b';
-// md5(prosrc) of the functions this replaces, as shipped in supabase/mail_v2.sql (same on main 12c5e00 and staging)
+// md5(prosrc) of the functions this replaces, as shipped in supabase/mail_v2.sql (same on main 12c5e00 and staging).
+// Compared after removing CR: production has exactly these bodies but pasted with CRLF line endings (A1 diagnostic 2026-11-14).
 export const BASELINE={
  '_mail_clean_payload(jsonb)':'@clean','_mail_sync(uuid)':'@sync','mail_msg_claim(bigint)':'@claim',
  'admin_mail_broadcast(text,text,jsonb,integer)':'@bcast','admin_mail_broadcasts(integer)':'@blist'};
@@ -35,7 +36,7 @@ end $ur_ticket_staging$;
 -- 확인: select public._mail_clean_payload('{"ur_tickets":1}'), (select count(*) from public.story_premium_ur) as ur_pool;
 `;
  const drift=Object.keys(BASELINE).map(s=>` ('${s}','${md5s[s]}')`).join(',\n');
- const driftQ=`with expected(sig,src) as (values\n${drift}\n)\nselect count(*) filter (where e.src is not distinct from md5(p.prosrc)) as baseline_match, count(*) filter (where e.src is distinct from md5(p.prosrc)) as differs_must_be_0, string_agg(case when e.src is distinct from md5(p.prosrc) then e.sig end, ', ') as differs_list\nfrom expected e left join pg_proc p on to_regprocedure(e.sig)=p.oid;`;
+ const driftQ=`with expected(sig,src) as (values\n${drift}\n)\nselect count(*) filter (where e.src is not distinct from md5(replace(p.prosrc, chr(13), ''))) as baseline_match, count(*) filter (where e.src is distinct from md5(replace(p.prosrc, chr(13), ''))) as differs_must_be_0, string_agg(case when e.src is distinct from md5(replace(p.prosrc, chr(13), '')) then e.sig end, ', ') as differs_list\nfrom expected e left join pg_proc p on to_regprocedure(e.sig)=p.oid;`;
  const pre=`-- 운영 후속 ${RELEASE} 읽기 전용 사전 점검. 운영 SQL Editor 에서 실행. 아무것도 바꾸지 않음.
 -- 1) ${PROD_ID} 이어야 함. 아니면 멈춤.
 select system_identifier::text as production_system_identifier, system_identifier::text='${PROD_ID}' as pinned_ok from pg_control_system();
@@ -77,7 +78,7 @@ begin
   for f in select * from (values
 ${Object.keys(BASELINE).map(s=>`    ('${s}','${md5s[s]}')`).join(',\n')}
   ) e(sig,src) loop
-    if to_regprocedure(f.sig) is null or (select md5(prosrc) from pg_proc where oid=to_regprocedure(f.sig)) is distinct from f.src then raise exception 'STOP: % differs from mail_v2.sql baseline (hand-edited in production?)', f.sig; end if;
+    if to_regprocedure(f.sig) is null or (select md5(replace(prosrc, chr(13), '')) from pg_proc where oid=to_regprocedure(f.sig)) is distinct from f.src then raise exception 'STOP: % differs from mail_v2.sql baseline (hand-edited in production?)', f.sig; end if;
   end loop;
   if (select count(*) from public.story_premium_ur w join public.story_card_pool p on p.id=w.id and p.grade='ULTRA RARE') <> 11 then raise exception 'STOP: 고급 소환 UR 목록이 11명이 아님'; end if;
 ${body}

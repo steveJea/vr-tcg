@@ -36,9 +36,12 @@
     } catch {}
   }
   const hideIntro = () => { localStorage.setItem(INTRO_KEY, '1'); intro.classList.add('hidden'); const v = $('intro-video'); v.pause(); };
-  $('intro-login').onclick = () => { localStorage.setItem(INTRO_KEY, '1'); login('google'); };
-  $('intro-login-kakao').onclick = () => { localStorage.setItem(INTRO_KEY, '1'); login('kakao'); };
-  $('intro-login-x').onclick = () => { localStorage.setItem(INTRO_KEY, '1'); login('x'); };
+  // SNS 버튼을 눌렀을 때는 인트로 완료로 미리 표시하지 않음.
+  // 미리 쓰면 로그인 실패하고 돌아왔을 때 게스트 확인 없이 로비로 들어가게 됨.
+  $('intro-login').onclick = () => { login('google'); };
+  $('intro-login-kakao').onclick = () => { login('kakao'); };
+  $('intro-login-x').onclick = () => { login('x'); };
+  $('intro-login-naver').onclick = () => { login('naver'); };
   $('intro-guest').onclick = async () => {
     const ok = await confirmYN('<b class="vc-guest-h">게스트는 아케이드만 할 수 있고, 기록은 저장되지 않아요.</b><span class="vc-guest-s">로그인하면 인재 모집, 스토리, PvP, 조직까지 다 즐길 수 있어요!</span>',
       { y: '게스트로 시작', n: '로그인하기', cls: 'vc-guest' });
@@ -47,9 +50,16 @@
     const row = intro.querySelector('.oauth-row'); row?.scrollIntoView({ block: 'center', behavior: 'smooth' });
     const btn = [...(row?.querySelectorAll('button') || [])].find(b => !b.hidden && !b.disabled); if (btn) btn.focus({ preventScroll: true }); else if (row) { row.tabIndex = -1; row.focus({ preventScroll: true }); } row?.classList.remove('oauth-flash'); void row?.offsetWidth; row?.classList.add('oauth-flash');
   };
-  if (localStorage.getItem(INTRO_KEY) !== '1' && !/[?&]code=|access_token=/.test(location.search + location.hash)) {
-    // 이미 로그인된 세션이면 바로 메인
-    let n = 0; const wait = () => { if (window.VRCloud?.ready || n++ > 30) { user() ? localStorage.setItem(INTRO_KEY, '1') : showIntro(); } else setTimeout(wait, 100); };
+  // OAuth로 돌아와도 VRCloud.ready까지 기다린 뒤 결정.
+  // 계정이 있으면 인트로 완료, 이미 게스트로 시작한 적 있으면 로비 유지, 아니면 인트로.
+  {
+    let n = 0;
+    const wait = () => {
+      if (window.VRCloud?.ready || n++ > 30) {
+        if (user()) localStorage.setItem(INTRO_KEY, '1');
+        else if (localStorage.getItem(INTRO_KEY) !== '1') showIntro();
+      } else setTimeout(wait, 100);
+    };
     wait();
   }
 
@@ -137,23 +147,129 @@
   paintLocks(); paintTut(); paintHome();
   let tries = 0; const poll = setInterval(() => { paintLocks(); if (window.VRCloud?.ready || ++tries > 40) clearInterval(poll); }, 250);
   // --- 개편 A: 상단 재화·레벨, 스토리 이어하기 카드, 하단 탭, 설정 안 푸터·로그아웃 ---
+  const escTxt = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  // 이어하기 타일·바로가기 칸 공통: 루트 배너 → 챕터 배너 → 맵 배경(PC/모바일) → 기본 그림. 파일만 추가되면 자동으로 첫 장이 쓰임.
+  function chBannerSrcs(ch) {
+    const n = ch.i | 0, bg = ch.bg, id = ch.id;
+    const urls = [
+      ch.variant && `img/ui/main/story_banner_ch${n}_${ch.variant}.webp`,
+      `img/ui/main/story_banner_ch${n}.webp`,
+      bg && `img/story/ch_bg_pc_${bg}.webp`,
+      bg && `img/story/ch_bg_${bg}.webp`,
+      id != null && String(bg) !== String(id) && `img/story/ch_bg_pc_${id}.webp`,
+      id != null && String(bg) !== String(id) && `img/story/ch_bg_${id}.webp`,
+      'img/ui/main/story_banner.webp',
+    ].filter(Boolean);
+    return [...new Set(urls)];
+  }
+  function hideChShortcuts() {
+    const row = $('ch-shortcuts'); if (!row) return;
+    const track = $('ch-shortcuts-track'); if (track) track.innerHTML = '';
+    row.hidden = true; row.classList.add('hidden');
+  }
+  function paintChShortcuts(sm) {
+    const row = $('ch-shortcuts'); if (!row) return;
+    const track = $('ch-shortcuts-track') || row;
+    const list = sm?.ok && Array.isArray(sm.chapters) ? sm.chapters : [];
+    if (!list.length) return hideChShortcuts();
+    const curI = sm.current?.i, curInfo = sm.current || {};
+    track.innerHTML = list.map(ch => {
+      const open = !!ch.open, cur = ch.i === curI;
+      const sub = ch.subtitle || '', ident = ch.id ?? ch.i;
+      const title = sub && !new RegExp('^\\s*(CHAPTER|CH\\.?|챕터)\\s*0*' + ident + '\\s*$', 'i').test(sub) ? sub : (ch.title || '');
+      const phase = cur && curInfo.phase ? ` · PHASE ${curInfo.phase}` : (cur && curInfo.done != null && curInfo.total ? ` · ${curInfo.done}/${curInfo.total}` : '');
+      const label = `CHAPTER ${ident}${phase}`;
+      const go = cur && open ? (curInfo.phase || (curInfo.done < curInfo.total) ? '▶ 이어하기' : '✔ 클리어 · 다시 하기') : '';
+      const urls = chBannerSrcs(ch);
+      const why = ch.lockWhy || '아직 열리지 않은 챕터예요';
+      const aria = label + (title ? ' · ' + title : '') + (go ? ' · ' + go : '') + (open ? '' : ' (잠김)');
+      return `<button type="button" class="ch-short${open ? '' : ' locked'}${cur ? ' cur' : ''}" data-ch="${ch.i | 0}" ${cur && open ? 'data-continue="1"' : ''} ${open ? '' : `aria-disabled="true" data-lock="${escTxt(why)}"`} aria-label="${escTxt(aria)}">
+        <img class="ch-short-img" alt="" width="1080" height="420" loading="lazy" decoding="async" src="${escTxt(urls[0])}" data-alts="${escTxt(urls.slice(1).join('|'))}">
+        <span class="ch-short-t"><small>${escTxt(label)}</small><b>${escTxt(title)}</b>${go ? `<span class="ch-short-go">${escTxt(go)}</span>` : ''}</span>
+        ${open ? '' : '<i class="ch-short-lock" aria-hidden="true">🔒</i>'}</button>`;
+    }).join('');
+    row.hidden = false; row.classList.remove('hidden');
+    track.querySelectorAll('.ch-short-img').forEach(img => {
+      const urls = [img.getAttribute('src'), ...(img.dataset.alts || '').split('|')].filter(Boolean);
+      let k = 0; img.onerror = () => { if (++k < urls.length) img.src = urls[k]; };
+    });
+    row.onclick = e => {
+      if (e.target.closest('#story-hub-btn, .main-story-hub, .ch-short-arrow, [data-ch-move]')) return;
+      const b = e.target.closest('.ch-short'); if (!b || !row.contains(b)) return;
+      const i = +b.dataset.ch;
+      if (b.classList.contains('locked') || b.getAttribute('aria-disabled') === 'true') {
+        // 잠금 표시가 예전 진행으로 그려졌을 수 있음 → 최신 진행으로 다시 그린 뒤, 그래도 잠겨 있을 때만 안내
+        const msg = b.dataset.lock || '아직 열리지 않은 챕터예요';
+        paintHome().then(() => {
+          const nb = track.querySelector(`.ch-short[data-ch="${i}"]`);
+          if (nb && !nb.classList.contains('locked')) { if (nb.dataset.continue === '1') window.VRStory?.playCurrent?.(); else window.VRStory?.openMap?.(i); return; }
+          (window.VRStory?.api?.toast || window.VRGem?.toast || (t => alert(t)))(nb?.dataset.lock || msg);
+        });
+        return;
+      }
+      if (b.dataset.continue === '1') { window.VRStory?.playCurrent?.(); return; }
+      if (Number.isFinite(i)) window.VRStory?.openMap?.(i);
+    };
+    bindChSlider(row, Math.max(0, [...track.querySelectorAll('.ch-short')].findIndex(b => b.classList.contains('cur'))), track.querySelectorAll('.ch-short').length);
+  }
+  /** 소환 배너와 같이 한 장씩 · 화살표/밀기 · 0.3초 슬라이드. 첫 장은 왼쪽, 마지막은 오른쪽 화살표를 숨김 */
+  function bindChSlider(row, startIdx, n) {
+    const vp = $('ch-shortcuts-vp'), tr = $('ch-shortcuts-track');
+    const l = row.querySelector('.ch-short-l'), r = row.querySelector('.ch-short-r');
+    const st = row._chSlide || (row._chSlide = {});
+    st.n = n | 0; st.cur = Math.max(0, Math.min((n | 0) - 1, startIdx | 0)); st.moving = false;
+    const setArrows = () => { if (l) l.disabled = st.cur <= 0 || st.n <= 1; if (r) r.disabled = st.cur >= st.n - 1 || st.n <= 1; };
+    const setX = (i, anim) => { if (!tr) return; tr.classList.toggle('anim', !!anim); tr.style.transform = 'translateX(' + (-i * 100) + '%)'; };
+    const warm = i => { tr?.querySelectorAll('.ch-short-img').forEach((img, k) => { if (Math.abs(k - i) <= 1) img.loading = 'eager'; }); };
+    const reduce = () => !!(window.matchMedia || matchMedia)?.('(prefers-reduced-motion: reduce)')?.matches;
+    const go = d => {
+      const i = st.cur + d;
+      if (st.moving || !d || i < 0 || i >= st.n) { setX(st.cur, true); return; }
+      st.moving = true; st.cur = i; setArrows();
+      if (!tr || reduce()) { setX(i, false); st.moving = false; warm(i); return; }
+      setX(i, true);
+      let fired = false; const fin = ev => { if (ev && ev.propertyName && ev.propertyName !== 'transform') return; if (!fired) { fired = true; st.moving = false; warm(st.cur); } };
+      tr.addEventListener('transitionend', fin, { once: true }); setTimeout(fin, 420);
+    };
+    st.go = go;
+    setX(st.cur, false); setArrows(); warm(st.cur);
+    if (row.dataset.slideBound) return;
+    row.dataset.slideBound = '1';
+    row.querySelectorAll('[data-ch-move]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); st.go(+b.dataset.chMove); }));
+    if (!vp || !tr) return;
+    let x0 = null, y0 = 0, dx = 0, drag = false;
+    vp.addEventListener('pointerdown', e => { if (st.moving) return; x0 = e.clientX; y0 = e.clientY; dx = 0; drag = false; }, { passive: true });
+    vp.addEventListener('pointermove', e => {
+      if (x0 == null) return; dx = e.clientX - x0;
+      if (!drag && Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(e.clientY - y0)) { drag = true; tr.classList.remove('anim'); }
+      if (drag) tr.style.transform = 'translateX(calc(-' + (st.cur * 100) + '% + ' + dx + 'px))';
+    }, { passive: true });
+    const end = () => { if (x0 == null) return; x0 = null; if (!drag) return; const w = vp.clientWidth || 1; st.go(Math.abs(dx) > Math.min(60, w * .18) ? (dx < 0 ? 1 : -1) : 0); };
+    vp.addEventListener('pointerup', end); vp.addEventListener('pointercancel', end); vp.addEventListener('pointerleave', end);
+    vp.addEventListener('click', e => { if (drag) { e.stopPropagation(); e.preventDefault(); drag = false; } }, true);
+  }
+  // 진행이 바뀐 뒤(스토리·탑 등에서 로비로 돌아옴) 다시 그림. 늦게 끝난 예전 요청이 새 결과를 덮지 않게 순번 확인
   async function paintHome() {
+    const seq = paintHome.seq = (paintHome.seq | 0) + 1, stale = () => seq !== paintHome.seq;
     const scr = $('start-screen'), u = user();
     scr.classList.toggle('is-guest', !u);
     $('main-logout').classList.toggle('hidden', !u);
-    const cur = $('main-cur'); if (!u) { cur.innerHTML = ''; return; }
+    const cur = $('main-cur'); if (!u) { cur.innerHTML = ''; hideChShortcuts(); return; }
     try {
       const [st, w, g] = await Promise.all([window.VRPlayer?.status?.(), window.VRPlayer?.wallet?.(), window.VRGem?.status?.()]);
       const n = v => (v | 0) >= 100000 ? Math.floor(v / 1000) + 'k' : (v | 0).toLocaleString();
-      if (st?.level != null) { const c = document.querySelector('#acct-box .acct-chip'); if (c && !c.querySelector('.acct-lv')) c.insertAdjacentHTML('beforeend', `<b class="acct-lv">Lv.${st.level | 0}</b>`); }
+      if (st?.level != null) { const c = document.querySelector('#acct-box .acct-chip'); if (c) { const lv = c.querySelector('.acct-lv'); if (lv) lv.textContent = `Lv.${st.level | 0}`; else c.insertAdjacentHTML('beforeend', `<b class="acct-lv">Lv.${st.level | 0}</b>`); } }
+      if (stale()) return;
       cur.innerHTML = [g && `<span title="심연석">🔮 ${n(g.gem)}</span>`, w && `<span title="골드">🪙 ${n(w.gold)}</span>`].filter(Boolean).join('');
     } catch {}
     try {
       const sm = await window.VRStory?.summary?.(), c = sm?.current;
+      if (stale()) return;
       // 배너: 고른 시작 캐릭터/루트별(story_banner_ch{N}_{variant}) → 챕터(story_banner_ch{N}) → 기본 그림
       if (c) { const im = document.querySelector('#story-btn [data-alt]'); if (im) { const i = new Image(); const urls = [c.variant && `img/ui/main/story_banner_ch${c.i | 0}_${c.variant}.webp`, `img/ui/main/story_banner_ch${c.i | 0}.webp`].filter(Boolean); let k = 0; i.onload = () => { im.src = i.src; }; i.onerror = () => { if (++k < urls.length) i.src = urls[k]; }; i.src = urls[0]; } }
       if (c) $('main-cta-sub').textContent = `CHAPTER ${c.i} · ${c.phase ? 'PHASE ' + c.phase : `${c.done}/${c.total}`}${c.title && !new RegExp('^\\s*(CHAPTER|CH\\.?|챕터)\\s*0*' + c.i + '\\s*$', 'i').test(c.title) ? ' · ' + c.title : ''}`;
-    } catch {}
+      paintChShortcuts(sm);
+    } catch { hideChShortcuts(); }
   }
   $('tab-talent').addEventListener('click', () => { if (user()) window.VRStory?.openCards?.(); });
   $('tab-home').addEventListener('click', () => document.querySelectorAll('.main-pop:not(.hidden)').forEach(p => p.classList.add('hidden')));
@@ -165,5 +281,14 @@
   // 패밀리 링크·저작권 → 설정 팝업 안으로
   { let k = 0; const mv = () => { const f = $('mbbs-footer'); if (f) $('gm-foot').appendChild(f); else if (++k < 40) setTimeout(mv, 150); }; mv(); }
   window.addEventListener('tcg:ready', paintHome);
-  window.VRMainMenu = { confirmYN, showIntro, hideIntro };
+  // 로비가 다시 보일 때마다 (스토리 처음으로·뒤로가기·다른 모드 종료) 챕터 바로가기를 최신 진행으로
+  { const scr = $('start-screen');
+    if (scr && typeof MutationObserver === 'function') {
+      let was = !scr.classList.contains('hidden'), t = 0;
+      new MutationObserver(() => { const vis = !scr.classList.contains('hidden'); if (vis && !was) { clearTimeout(t); t = setTimeout(paintHome, 60); } was = vis; }).observe(scr, { attributes: true, attributeFilter: ['class'] });
+    }
+    window.addEventListener('pageshow', e => { if (e.persisted) paintHome(); });
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && scr && !scr.classList.contains('hidden')) paintHome(); });
+  }
+  window.VRMainMenu = { confirmYN, showIntro, hideIntro, paintHome, paintChShortcuts, chBannerSrcs, slideChShortcuts: d => { const row = $("ch-shortcuts"); row?._chSlide?.go?.(d); } };
 })();

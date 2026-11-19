@@ -26,7 +26,7 @@ for(const [i,html]of pages.entries()) {
 }
 assert.match(pages[0],/2026-서울성북-1401 \(서울특별시 성북구\)/);assert.match(pages[1],/장윤석 \(대표,/);
 assert.match(pages[0],/7일/);assert.match(pages[0],/3영업일/);assert.match(pages[0],/가분적/);assert.match(pages[0],/법정대리인/);assert.match(pages[0],/청약철회를 이유로 위약금/);assert.match(pages[0],/현금 결제·심연석 충전은 준비 중/);
-for(const name of ['Supabase','Cloudflare','Google','Kakao','X','Google Analytics','jsDelivr','GitHub Pages','localStorage','sessionStorage','법정대리인','국외','처리정지','계정삭제 버튼','공유 이미지','카카오에 업로드'])assert(pages[1].includes(name),name);
+for(const name of ['Supabase','Cloudflare','Google','Kakao','X','Naver','Google Analytics','jsDelivr','GitHub Pages','localStorage','sessionStorage','법정대리인','국외','처리정지','계정삭제 버튼','공유 이미지','카카오에 업로드'])assert(pages[1].includes(name),name);
 assert.match(pages[1],/동의 배너·거부 스위치는 구현되어 있지/);assert.match(pages[1],/백업 보유·삭제 반영기간 확정 필요/);
 const index=await read('index.html'),{document:d}=parseHTML(index);
 for(const id of ['intro-legal-links','settings-legal-links']){const nav=d.getElementById(id);assert(nav);assert.deepEqual([...nav.querySelectorAll('a')].map(a=>[a.textContent,a.getAttribute('href')]),[['이용약관','/terms.html'],['개인정보처리방침','/privacy.html'],['서비스 소개','/about.html'],['상품 안내','/shop-info.html'],['연령 확인 (19+)','/age.html']]);assert(!nav.querySelector('small'));}

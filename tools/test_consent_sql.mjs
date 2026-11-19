@@ -1,4 +1,4 @@
-// 첫 로그인 동의 SQL: staging/production 가드·반복 실행·버전 확인·만14세 필수·마케팅 변경 기록·RLS(본인만) — 2026-11-12
+// 첫 로그인 동의 SQL: staging/production 가드·반복 실행·버전 확인·만19세 이상 확인(age14 컬럼) 필수·마케팅 변경 기록·RLS(본인만) — 2026-11-12
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { PGlite } from '@electric-sql/pglite';
@@ -41,4 +41,4 @@ for (const [i, sql] of files.entries()) {
   await assert.rejects(db.exec(`begin; set local role anon; select public.consent_status();`), /permission denied/); await db.exec('rollback');
   await db.close();
 }
-console.log(`Consent SQL: staging/prod guards, idempotent, version ${ver}, age14 required, marketing history, RLS own-only, no update/delete OK`);
+console.log(`Consent SQL: staging/prod guards, idempotent, version ${ver}, age14 attestation required, marketing history, RLS own-only, no update/delete OK`);

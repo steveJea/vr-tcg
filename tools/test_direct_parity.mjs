@@ -13,7 +13,7 @@ import {
   RULES, canSummon, makeUnit, resolveAttack, refillMana, endTurnXp, canTarget, doAction, levelUpOnce,
   aiSummonOrder, aiPickSacrifice, aiWantAccel, aiWantFieldHeal, aiWantBuff, aiWantHeal, aiWantShuffle,
   sacrifice, aiPickTarget, autoTarget, attackTargets, clearBuff, aiPickItem, equip, swapField, setCardPool, parseCSV,
-  gainXp, xpToNext,
+  gainXp, xpToNext, calcPower,
 } from '../js/rules.js';
 import {
   setSkillData, setRng, setEmitter, setSpare, initPlayers, placeUnit, turnStart, turnEnd,
@@ -41,7 +41,10 @@ function lvScaled(c, lv) {
 const cardOf = id => pool.find(x => String(x.id) === String(id));
 function intrusionCard(spec, fallback) {
   const raw = spec?.card || (spec?.become != null && cardOf(spec.become)) || (spec?.id != null && cardOf(spec.id)) || fallback || null;
-  return lvScaled(raw, spec?.storyLevel);
+  const o = lvScaled(raw, spec?.storyLevel);
+  // js/game.js storyScaled recomputes power from the scaled stats.
+  if (o && o !== raw && o.storyBoost && Number(spec?.storyLevel) > 1) o.power = calcPower(o, skillsOf(o.id));
+  return o;
 }
 
 function deckAt(level, ids) {
@@ -72,6 +75,7 @@ function playClient(spec, seed, policy) {
       const u = placeUnit(p, c, makeUnit);
       if (who === 'me' && spec.leaderUid && c.uid === spec.leaderUid) { u.isLeader = true; p.leaderSkill = { ...leaderSkill(c), uid: c.uid, deathPenalty: 0.3 }; }
       if (who === 'ai' && spec.bossId != null && String(c.id) === String(spec.bossId) && !p.field.some(x => x.undying)) { u.undying = true; u.boss = true; }
+      if (who === 'ai' && spec.enemyLevels) while (u.level < Math.min(spec.enemyLevels[String(c.id)] | 0, RULES.LEVEL_MAX)) levelUpOnce(u);
     }
     p.deck = [];
     p.fieldCap = Math.max(RULES.FIELD_MAX, p.field.length);
@@ -89,6 +93,9 @@ function playClient(spec, seed, policy) {
     const u = placeUnit(me, { ...card }, makeUnit, true);
     while (u.level < Math.min(A.battleLevel || 1, RULES.LEVEL_MAX)) levelUpOnce(u);
     u.hp = u.maxHp; u.mp = u.maxMp; u.canAttack = true;
+    // js/game.js pauseOnEntrance: aiTurn breaks out (S.awakenPause), skips heal and turn end,
+    // then awakenPlayerControl() hands the same my-turn back with every card ready, no startTurn.
+    if (A.pauseOnEntrance) { if (state.turn === 'ai') state.hold = true; me.field.forEach(x => { x.canAttack = true; }); }
   }
   function joinAlly() {
     const J = spec.joinAlly;
@@ -159,7 +166,8 @@ function playClient(spec, seed, policy) {
     if (aiWantFieldHeal(ai)) doAction('fieldheal', ai);
     if (aiWantBuff(ai)) doAction('buff', ai);
     for (const u of [...ai.field]) {
-      if (state.over || !ai.field.includes(u) || !u.canAttack) continue;
+      if (state.over || state.hold) break;
+      if (!ai.field.includes(u) || !u.canAttack) continue;
       if (spareBlocked(u)) { u.canAttack = false; continue; }
       const sk = aiPickSkill(u);
       if (sk) { useSkill(u, sk); checkEnd(); continue; }
@@ -168,7 +176,8 @@ function playClient(spec, seed, policy) {
       resolveAttack(ai, me, u, target);
       checkEnd();
     }
-    if (!state.over && aiWantHeal(ai)) doAction('heal', ai);
+    if (!state.over && !state.hold && aiWantHeal(ai)) doAction('heal', ai);
+    if (state.hold) return;
     if (!state.over) { endTurnXp(ai); turnEnd(ai); checkEnd(); }
   }
   function act(a) {
@@ -180,7 +189,8 @@ function playClient(spec, seed, policy) {
   }
   const max = spec.rules?.maxTurns || RULES.MAX_TURNS;
   while (!state.over && state.totalTurns < max) {
-    startTurn(state.turn);
+    if (state.held) state.held = false;
+    else startTurn(state.turn);
     if (state.over) break;
     if (state.turn === 'me') {
       const turn = { used: new Set(), scopes: new Set() };
@@ -218,6 +228,12 @@ function playClient(spec, seed, policy) {
             a = { t: state.myTurns, k: 'atk', i: me.field.indexOf(u), g: ai.field.indexOf(t) };
           } else if (tg.hero) a = { t: state.myTurns, k: 'atk', i: me.field.indexOf(u), g: -1 };
           else { u.canAttack = false; continue; }
+          if (policy === 'yuri3') {   // 0-3: [각성] 임유리 3번째 스킬 우선, 아니면 아무 스킬
+            const y = me.field.find(x => String(x.card.id) === '10326' && x.hp > 0 && x.canAttack);
+            const s3 = y && (y.sk || []).filter(x => x.mode === 'active')[2];
+            if (s3 && skillState(y, s3).ok) a = { t: state.myTurns, k: 'skill', i: me.field.indexOf(y), s: s3.name };
+            else { const s = (u.sk || []).find(x => skillState(u, x).ok); if (s) a = { t: state.myTurns, k: 'skill', i: me.field.indexOf(u), s: s.name }; }
+          }
           if (policy === 'skill') {
             const s = (u.sk || []).find(x => skillState(u, x).ok);
             if (s) a = { t: state.myTurns, k: 'skill', i: me.field.indexOf(u), s: s.name };
@@ -232,6 +248,7 @@ function playClient(spec, seed, policy) {
     } else {
       aiAct();
       if (!state.over) state.turn = 'me';
+      if (state.hold) { state.hold = false; if (!state.over) { state.held = true; me.field.forEach(x => { x.canAttack = true; }); } }
     }
   }
   if (!state.over) done(false, 'timeout');
@@ -312,14 +329,20 @@ const ch1611Boost = {
 const ch1611 = {
   me: deckAt(1, ['10200']),
   ai: ['10406', '10290', '10383', '10097', '10393', '10306'].map(id => ({ ...clone(cardOf(id)), ...ch1611Boost[id] })),
-  win: 'wipe', aiHp: null, bossId: null, heroGuard: 0, first: 'me',
+  win: 'ko', aiHp: 4250, bossId: '10406', heroGuard: 0, first: 'me',
   rules: {
-    maxTurns: 20, mustLive: ['10200'], mustKill: ['10406'],
+    maxTurns: 20, mustLive: ['10200'],
     revive: [{ id: '10290', become: '10291', delay: 0, storyLevel: 100, battleLevel: 10 }],
   },
 };
 for (const seed of [4, 7, 8, 12, 21, 100]) for (const policy of ['auto', 'manual']) add('story 16-11', ch1611, seed, policy);
-// Named-boss win: 최국선 dies first (low HP), 윤진아 is left alive so become must not be required to win.
+// Winnable 16-11: 여성 금지 준수 남성 덱으로 진영 HP 4250을 20턴 안에 깎을 수 있는지 확인.
+const ch1611Win = {
+  ...ch1611,
+  me: deckAt(60, ['10200', '10051', '10060', '10358', '10528']),
+};
+for (const seed of [4, 7, 8, 12, 21, 100]) for (const policy of ['auto', 'manual']) add('story 16-11 winnable', ch1611Win, seed, policy);
+// Named mustKill leftover: 지정 대상만 쓰러뜨리면 다른 적이 남아도 승리. 엔진 회귀용 (16-11 본경기는 더 이상 mustKill 이 아님).
 const mustKillLeft = {
   me: deckAt(40, strong),
   ai: [
@@ -332,7 +355,31 @@ const mustKillLeft = {
     revive: [{ id: '10290', become: '10291', delay: 0, storyLevel: 100, battleLevel: 10 }],
   },
 };
-for (const seed of [4, 7, 8, 12, 21, 100]) for (const policy of ['auto', 'manual']) add('story 16-11 mustKill', mustKillLeft, seed, policy);
+for (const seed of [4, 7, 8, 12, 21, 100]) for (const policy of ['auto', 'manual']) add('story mustKill leftover', mustKillLeft, seed, policy);
+// Real chapter 0 phase 3: 임유리 dies on the enemy turn, [각성] 임유리 enters with pauseOnEntrance.
+// The client stops the enemy turn and gives back the same my-turn (no turn-start passives).
+{
+  const vm = await import('node:vm');
+  const data = { chapters: [] };
+  vm.runInNewContext(rd('../js/story-data-ch0.js'), { window: { STORY_DATA: data } });
+  const p3 = data.chapters[0].phases.find(p => p.no === 3);
+  const npcPool = parseCSV(rd('../data/npc_cards.csv'));
+  assert.equal(p3.awaken.pauseOnEntrance, true);
+  const ch03 = {
+    me: [...deckAt(1, ['10325']), ...deckAt(1, p3.party.guests)],
+    ai: p3.enemies.ids.map(id => lvScaled(clone(cardOf(id) || npcPool.find(x => String(x.id) === String(id))), p3.enemies.storyLevels?.[id])),
+    enemyLevels: p3.enemies.levels,
+    win: 'wipe', aiHp: null, bossId: null, heroGuard: 0, first: 'me',
+    awaken: p3.awaken,
+  };
+  let awakenedWins = 0;
+  for (const seed of [1, 2, 3, 4, 5, 7, 8, 12, 21, 100]) for (const policy of ['manual', 'skill', 'yuri3']) {
+    add('story 0-3 awaken pause', ch03, seed, policy);
+    const row = cases[cases.length - 1];
+    if (row.client.win && row.client.log.some(a => a.k === 'skill' && /眞/.test(a.s || ''))) awakenedWins++;
+  }
+  assert.ok(awakenedWins > 0, '0-3 sample must include wins with [각성] 임유리 skills');
+}
 const joinLv = {
   me: deckAt(8, ['10074', '10080', '10445']),
   ai: deckAt(20, ['10051']).map(c => ({ ...c, HP: 800, ATK: 80, DEF: 40 })),
@@ -377,7 +424,11 @@ assert.ok(cases.filter(c => c.label === 'story awaken storyLevel').every(c => c.
 assert.ok(cases.filter(c => c.label === 'story become storyLevel').every(c => c.client.win === c.server?.win && c.client.reason === c.server?.reason && !c.error));
 assert.ok(cases.filter(c => c.label === 'story joinAlly storyLevel').every(c => c.client.win === c.server?.win && c.client.reason === c.server?.reason && !c.error));
 assert.ok(cases.filter(c => c.label === 'story 16-11').every(c => c.client.win === c.server?.win && c.client.reason === c.server?.reason && c.client.turns === c.server?.turns && !c.error));
-const mk = cases.filter(c => c.label === 'story 16-11 mustKill');
+assert.ok(cases.filter(c => c.label === 'story 16-11').every(c => c.spec.win === 'ko' && c.spec.aiHp === 4250 && c.spec.bossId === '10406' && !c.spec.rules?.mustKill));
+const chWin = cases.filter(c => c.label === 'story 16-11 winnable');
+assert.ok(chWin.length && chWin.every(c => c.client.win === c.server?.win && c.client.reason === c.server?.reason && c.client.turns === c.server?.turns && !c.error));
+assert.ok(chWin.some(c => c.client.win && c.client.reason === 'ko' && c.server?.reason === 'ko'), '16-11 진영 HP 보스는 합법 덱으로 승리 가능');
+const mk = cases.filter(c => c.label === 'story mustKill leftover');
 assert.ok(mk.length && mk.every(c => c.client.win === c.server?.win && c.client.reason === c.server?.reason && c.client.turns === c.server?.turns && !c.error));
 assert.ok(mk.some(c => c.client.win && c.client.reason === 'mustkill' && c.server?.reason === 'mustkill'));
 
@@ -476,9 +527,10 @@ const summonedOk = verifyDirect({
 assert.notEqual(summonedOk.reason, 'mustsummon', 'one end-turn must not fail the 2-turn rule');
 // 15-11 (owner report 2026-11-11): 김백중 alone on T1, then a T2 wipe before the
 // required 윤진아 is summoned. A wipe inside the 2-turn window is a win on the server.
+// (11/17: 다친다가 시트대로 20%×3으로 약해져 적 HP를 낮춤. 이 테스트는 2턴 규칙만 본다.)
 {
   const st1511 = { no: 11, type: 'normal', bossId: '10123', mana: 80, single: true, tutorial: false,
-    enemies: { ids: ['10123', '10151', '10151', '10151', '10151'], boost: { '10123': { HP: 768, ATK: 93, DEF: 152, storyLv: 83, power: 41636 }, '10151': { HP: 692, ATK: 104, DEF: 104, storyLv: 83, power: 37602 } } },
+    enemies: { ids: ['10123', '10151', '10151', '10151', '10151'], boost: { '10123': { HP: 500, ATK: 93, DEF: 152, storyLv: 83, power: 41636 }, '10151': { HP: 450, ATK: 104, DEF: 104, storyLv: 83, power: 37602 } } },
     party: { forced: ['10290'], exclude: ['10383'], mustLive: ['10290'], levels: { '10290': 83 } } };
   const s1511 = seed => ({ mode: 'story', target: '15:11', seed, snapshot: { mana: 80, leader: null, cards: [{ id: '10290', uid: 'j', level: 83 }, { id: '10058', uid: 'k', level: 100 }], stage: st1511 } });
   const t1 = [{ t: 1, k: 'summon', id: '10058' }, { t: 1, k: 'end' }];
