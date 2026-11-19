@@ -4,6 +4,7 @@
 import { config } from './config.js';
 import { ensureConsent } from './consent.js';
 import { ensureAgeGate } from './age-gate.js';
+import { ensureActive as ensureWithdrawActive } from './withdraw.js';
 import { OAUTH_PROVIDERS, profileSeed, hasIdentity, oauthRequest, discoverOAuthProviders, cleanOAuthCallback, readOAuthCallback, saveLinkIntent, takeLinkIntent, oauthErrorCode, oauthFailureMessage, resolveOAuthReturn } from './auth-oauth.js';
 const SUPABASE_URL = config.supabaseUrl;
 const SUPABASE_ANON = config.anonKey;
@@ -220,6 +221,9 @@ async function init() {
       const nextProfile = await loadProfile(u);
       if (version !== userVersion) return;
       profile = nextProfile; render(profile);
+      // 탈퇴 유예 중이면 먼저 취소 여부를 물어봄 (취소하지 않으면 로그아웃, 예약은 유지)
+      if (!await ensureWithdrawActive(sb, u, { onKeepScheduled: logout })) return;
+      if (version !== userVersion) return;
       // 첫 로그인 동의 (js/consent.js): 현재 버전 동의가 없으면 게임 전에 한 번. 동의 안 함 → 로그아웃(게스트)
       if (!await ensureConsent(sb, u, { onDecline: logout })) return;
       if (version !== userVersion) return;

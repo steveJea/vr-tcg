@@ -96,7 +96,8 @@
 .main-pop.hidden { display: none; }
 .main-pop-card { width: min(92vw, 360px); text-align: left; color: #fde7b0; padding: 1rem 1.1rem 1.1rem;
   border: 10px solid transparent; border-radius: 6px; border-image: url(../img/ui/main/frame_btn.webp) 24 / 16px / 6px stretch;
-  background: linear-gradient(180deg, #2a0609, #120204) border-box; box-shadow: 0 12px 40px rgba(0,0,0,.8); animation: popIn .16s ease-out; }
+  background: linear-gradient(180deg, #2a0609, #120204) border-box; box-shadow: 0 12px 40px rgba(0,0,0,.8); animation: popIn .16s ease-out;
+  max-height: min(86vh, 740px); overflow-y: auto; }
 @keyframes popIn { from { transform: scale(.94); opacity: 0; } }
 .main-pop-title { font-family: 'Cinzel', 'Noto Sans KR', serif; font-weight: 900; font-size: 1.15rem; color: #fcd34d; }
 .main-pop-x { width: 32px; height: 32px; border-radius: 50%; color: #fde7b0; opacity: .8; } .main-pop-x:hover { opacity: 1; background: rgba(255,255,255,.08); }
@@ -424,3 +425,26 @@
 #intro .legal-links{margin:0;gap:0 8px}
 #intro .legal-links a{min-height:36px;font-size:13px;padding:2px 4px}
 .main-pop-card{max-height:min(90vh,720px);overflow-x:hidden;overflow-y:auto}
+
+
+/* 회원탈퇴 */
+#main-settings-pop .wd-btn { color: #fca5a5; border-color: #7f1d1d; background: #3f0a0a; letter-spacing: 0; }
+#main-settings-pop .wd-btn:hover { color: #fee2e2; border-color: #ef4444; }
+.wd-ov { position: fixed; inset: 0; z-index: 9800; display: grid; place-items: center; padding: 1rem; background: rgba(0,0,0,.7); backdrop-filter: blur(2px); }
+.wd-card { width: min(92vw, 360px); max-height: min(86vh, 640px); overflow-y: auto; text-align: left; color: #fde7b0; padding: 1.05rem 1.1rem 1.15rem;
+  border: 10px solid transparent; border-radius: 6px; border-image: url(../img/ui/main/frame_btn.webp) 24 / 16px / 6px stretch;
+  background: linear-gradient(180deg, #2a0609, #120204) border-box; box-shadow: 0 12px 40px rgba(0,0,0,.8); }
+.wd-title { font-family: 'Cinzel', 'Noto Sans KR', serif; font-weight: 900; font-size: 1.12rem; color: #fcd34d; margin: 0 0 .7rem; word-break: keep-all; }
+.wd-p { font-size: .9rem; line-height: 1.55; margin: 0 0 .65rem; word-break: keep-all; overflow-wrap: anywhere; }
+.wd-p b { color: #fde68a; }
+.wd-lost { margin: 0 0 .75rem; padding: 0 0 0 1.1rem; font-size: .86rem; line-height: 1.55; }
+.wd-lost li { margin: .15rem 0; }
+.wd-lab { display: block; font-size: .78rem; font-weight: 700; opacity: .8; margin: .2rem 0 .3rem; }
+.wd-inp { width: 100%; box-sizing: border-box; margin: 0 0 .85rem; padding: .55rem .7rem; border-radius: 10px; border: 1px solid rgba(212,162,74,.45);
+  background: #1c1003; color: #fde7b0; font-weight: 700; font-size: .95rem; }
+.wd-inp:focus { outline: 2px solid #f5c96a; outline-offset: 1px; }
+.wd-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.wd-row button { flex: 1 1 120px; min-width: 0; }
+.wd-no, .wd-card .wd-no { padding: .7rem .8rem; border-radius: 12px; font-weight: 800; color: #fde7b0; background: rgba(255,255,255,.06); border: 1px solid rgba(212,162,74,.35); }
+.wd-danger { background: #7f1d1d !important; color: #fee2e2 !important; border: 1px solid #ef4444 !important; }
+.wd-danger:disabled { opacity: .45; cursor: not-allowed; }
