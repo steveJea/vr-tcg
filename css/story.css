@@ -955,7 +955,7 @@ body.story-media-on .story-dlg-skip { left: 4px; right: auto; top: calc(4px + en
 .varr-wrap > .modal-panel::-webkit-scrollbar, .varr-wrap > .end-card::-webkit-scrollbar { display: none; width: 0; height: 0; }
 .varr { position: absolute; right: 6px; z-index: 8; width: 48px; height: 28px; padding: 0; border-radius: 12px; background: rgba(0,0,0,.6); border: 1px solid rgba(255,255,255,.3); color: #fff; font-size: 13px; font-weight: 900; line-height: 1; display: flex; align-items: center; justify-content: center; cursor: pointer; }
 .varr-u { top: 6px; } .varr-d { bottom: 6px; }
-.varr-wrap:has(.modal-x) .varr-u { top: 42px; }
+.varr-wrap:has(.modal-x) .varr-u { top: 64px; }
 .varr:disabled { opacity: 0; pointer-events: none; }
 .varr:hover:not(:disabled) { background: rgba(16,185,129,.85); color: #000; }
 .varr-wrap-end { width: 100%; max-width: 24rem; margin-block: auto; }
