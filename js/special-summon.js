@@ -76,7 +76,7 @@
     const lines = ui(b.banner_id).intro || [];
     pop('sp-intro-pop', `<div class="sp-intro"><img class="sp-intro-img" src="${PORTRAIT(id)}" alt="${esc(c.name || b.pickup_name)}" onerror="this.onerror=null;this.src='img/thumb/${esc(id)}.webp'">
       <div class="sp-intro-txt"><div class="sp-intro-name"><span class="sp-intro-grade">${GR[c.grade] || 'UR'}</span> <b>${esc(c.name || b.pickup_name || CONFIG.pickup_name)}</b></div>
-      <div class="sp-intro-tags">${[EL[c.class] && `속성 ${EL[c.class]}`, ROLE[c.attribute] && `${ROLE[c.attribute]}형`, c.region, c.age && `${c.age}세`].filter(Boolean).map(t => `<span>${esc(t)}</span>`).join('')}</div>
+      <div class="sp-intro-tags">${[EL[c.class] && `속성 ${EL[c.class]}`, ROLE[c.attribute] && `${ROLE[c.attribute]}형`, c.region].filter(Boolean).map(t => `<span>${esc(t)}</span>`).join('')}</div>
       ${lines.length ? `<p class="sp-intro-pitch">${lines.map(esc).join('<br>')}</p>` : ''}</div></div>
       ${sk.length ? `<div class="sp-intro-skills">${sk.map(x => `<div class="sp-intro-sk"><b>${esc(x.name)}</b> <small>${x.mode === 'passive' ? '패시브' : '액티브'}${x.type ? ` · ${esc(x.type)}` : ''}</small><p>${esc(x.desc)}</p></div>`).join('')}</div>` : ''}`);
   }
