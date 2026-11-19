@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import {
-  parseStagingConfig, assertSafeTarget, estimateRun, shouldStop, quantile, summarize, DEFAULT_STAGES
+  parseStagingConfig, assertSafeTarget, estimateRun, shouldStop, quantile, summarize, DEFAULT_STAGES,
+  BATTLE_CAPS, extrapolateBattles, readEngineVersions, HOME_RPCS, DEFAULT_AUTH_FILE
 } from './loadtest/run.mjs';
 
 const root = new URL('../', import.meta.url);
@@ -43,6 +44,25 @@ const src = await readFile(new URL('loadtest/run.mjs', new URL('./', import.meta
 assert.match(src, /STAGING ONLY/);
 assert.doesNotMatch(src, /htarwisgkkphutxxnuak\.supabase\.co['"]\s*,\s*['"]eyJ/);
 assert.match(src, /story-direct-verify-v7/);
-assert.match(src, /Refusing --verify/);
+assert.match(src, /Refusing bare --verify/);
 
+
+assert.equal(DEFAULT_AUTH_FILE, '/workspace/.loadtest-accounts.json');
+assert.ok(!DEFAULT_AUTH_FILE.includes('vr-tcg-loadtest/tools'));
+assert.equal(BATTLE_CAPS.maxTotalVerifies, 40);
+assert.ok(BATTLE_CAPS.maxTotalVerifies <= 200);
+assert.equal(BATTLE_CAPS.maxConcurrentAccounts, 3);
+assert.ok(HOME_RPCS.map(x => x[0]).includes('global_notice_list'));
+assert.ok(HOME_RPCS.map(x => x[0]).includes('camp_status'));
+assert.ok(HOME_RPCS.map(x => x[0]).includes('mail_list'));
+const ex = extrapolateBattles({ testedConcurrent: 3, verifyP95ms: 800, fullFightUnknown: true });
+assert.ok(ex.conservativeSafeConcurrent >= 3 && ex.conservativeSafeConcurrent <= 20);
+assert.match(ex.caveat, /giveup|forfeit/);
+const ver = await readEngineVersions();
+assert.match(ver.story, /^[a-f0-9]{64}$/);
+assert.match(ver.arcade, /^[a-f0-9]{64}$/);
+const prov = await readFile(new URL('loadtest/provision-accounts.mjs', new URL('./', import.meta.url)), 'utf8');
+assert.match(prov, /chmod 600|0o600/);
+assert.match(prov, /refusing to write credentials inside the repo/);
+assert.match(prov, /email confirmation is required/);
 console.log('test_loadtest ok');
