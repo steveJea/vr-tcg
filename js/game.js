@@ -2612,7 +2612,7 @@ function skillListHTML(c, unit, myTurn, lv = 1, opt = {}) {
   const mine = unit && unit.owner === S.me;
   const head = unit && statusIcons(unit).length ? `<div class="mt-1 text-xs text-purple-300">${statusIcons(unit).map(x => `${icOf(x)} ${x.title}`).join(' · ')}</div>` : '';
   if (!list.length) return head;
-  return head + `<div class="mt-3 space-y-2 max-h-64 overflow-y-auto pr-1">${list.map((s, i) => {
+  return head + `<div class="ci-sk-list mt-3 space-y-2 max-h-64 overflow-y-auto pr-1">${list.map((s, i) => {
     const st = unit ? skillState(unit, s) : { ok: false, reason: `Lv${s.unlock} 해금` };
     const locked = (unit ? unit.level : lv) < s.unlock;
     const act = s.mode === 'active', slv = !act ? 1 : unit ? skillLvOf(unit, s) : Math.min(SKILL_LV_MAX, Math.max(1, (opt.skillLv || {})[i + 1] | 0 || 1));
@@ -2630,7 +2630,7 @@ function skillListHTML(c, unit, myTurn, lv = 1, opt = {}) {
     </div>`; }).join('')}</div>`;
 }
 
-function showModal(id) { $(id).classList.remove('hidden'); $(id).classList.add('flex'); }
+function showModal(id) { $(id).classList.remove('hidden'); $(id).classList.add('flex'); requestAnimationFrame(() => { const box = $(id); if (!box) return; box.querySelectorAll('.ci-sk-list').forEach(bindVArr); syncVArrTree(box); }); }
 function hideModal(id) { if (id === 'detail') detailHandCard = null; $(id).classList.add('hidden'); $(id).classList.remove('flex'); $(id).style.zIndex = ''; resetHScroll(); }
 // 다른 화면(마이페이지 등) 위에서 카드 정보 보기: 전투 중이 아닌 보기 전용 상세
 function showCardInfo(c, opt = {}) { if (!c) return; showDetail(c, { power: !!opt.power, hp: opt.hp, level: opt.level ?? c.slv ?? c.level ?? 1 }); $('detail').style.zIndex = ''; showModal('detail'); }   // Read-only external card detail; layer is owned by css/pages.css.
@@ -2763,7 +2763,7 @@ $('voice-toggle').onclick = e => { e.stopPropagation(); voiceOn = !voiceOn; loca
 $('se-toggle')?.addEventListener('click', e => { e.stopPropagation(); setSeOn(!seOn); });
 // 전투 기록: 📜 떠 있는 버튼 → 팝업 (최신이 아래, 열면 맨 아래로)
 { const m = $('log-modal'), lg = $('log');
-  const set = on => { m.classList.toggle('hidden', !on); if (on) lg.scrollTop = lg.scrollHeight; };
+  const set = on => { m.classList.toggle('hidden', !on); if (on) { lg.scrollTop = lg.scrollHeight; requestAnimationFrame(() => syncVArr(lg)); } };
   $('log-toggle').addEventListener('click', e => { e.stopPropagation(); set(true); });
   $('log-close').addEventListener('click', e => { e.stopPropagation(); set(false); });
   m.addEventListener('click', e => { e.stopPropagation(); if (e.target === m) set(false); }); }
@@ -3105,6 +3105,98 @@ function bindHandArr() {
   syncHandArr();
 }
 
+
+// ===== 배틀 세로 스크롤: 스크롤바 대신 ▲/▼ + 휠/길게 눌러 도르륵 이동 =====
+function syncVArr(el) {
+  const wrap = el?.parentElement;
+  if (!wrap?.classList.contains('varr-wrap')) return;
+  const u = wrap.querySelector('.varr-u'), d = wrap.querySelector('.varr-d');
+  if (!u || !d) return;
+  const max = Math.max(0, el.scrollHeight - el.clientHeight);
+  const st = el.scrollTop;
+  u.disabled = max <= 1 || st <= 1;
+  d.disabled = max <= 1 || st >= max - 1;
+}
+function syncVArrTree(root) {
+  (root || document).querySelectorAll('.varr-wrap').forEach(w => {
+    const el = w.querySelector('.varr-scroll, .log-body, .modal-panel, .end-card, .ci-sk-list') || w.firstElementChild;
+    if (el && !el.classList.contains('varr')) syncVArr(el);
+  });
+}
+function bindVArr(el) {
+  if (!el || el.__varrBound) return;
+  el.__varrBound = true;
+  let wrap = el.parentElement;
+  if (!wrap || !wrap.classList.contains('varr-wrap')) {
+    wrap = document.createElement('div');
+    wrap.className = 'varr-wrap';
+    if (el.classList.contains('end-card')) wrap.classList.add('varr-wrap-end');
+    el.before(wrap);
+    wrap.appendChild(el);
+  }
+  el.classList.add('varr-scroll');
+  const mk = (dir, label, glyph) => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'varr varr-' + dir;
+    b.setAttribute('aria-label', label); b.disabled = true; b.textContent = glyph;
+    return b;
+  };
+  const u = wrap.querySelector('.varr-u') || wrap.appendChild(mk('u', '위로', '▲'));
+  const d = wrap.querySelector('.varr-d') || wrap.appendChild(mk('d', '아래로', '▼'));
+  el.addEventListener('scroll', () => syncVArr(el), { passive: true });
+  if (window.ResizeObserver) new ResizeObserver(() => syncVArr(el)).observe(el);
+  else window.addEventListener('resize', () => syncVArr(el));
+  if (window.MutationObserver) new MutationObserver(() => syncVArr(el)).observe(el, { childList: true, subtree: true, characterData: true });
+  let holdDir = 0, held = false, holdTimer = 0, raf = 0, last = 0;
+  const SPEED = 420;
+  const tick = ts => {
+    if (!holdDir) return;
+    const dt = Math.min(32, (ts - last) || 16) / 1000; last = ts;
+    el.scrollTop += holdDir * SPEED * dt;
+    syncVArr(el);
+    raf = requestAnimationFrame(tick);
+  };
+  const stopHold = () => {
+    clearTimeout(holdTimer); holdTimer = 0;
+    if (raf) cancelAnimationFrame(raf); raf = 0;
+    const dir = holdDir; holdDir = 0;
+    if (!held && dir) {
+      const step = Math.max(80, el.clientHeight * 0.7);
+      el.scrollBy({ top: dir * step, behavior: 'smooth' });
+    }
+    held = false;
+    syncVArr(el);
+  };
+  const startHold = (dir, e) => {
+    e.preventDefault();
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+    holdDir = dir; held = false;
+    holdTimer = setTimeout(() => { held = true; last = performance.now(); raf = requestAnimationFrame(tick); }, 280);
+  };
+  u.addEventListener('pointerdown', e => startHold(-1, e));
+  d.addEventListener('pointerdown', e => startHold(1, e));
+  for (const b of [u, d]) {
+    b.addEventListener('pointerup', stopHold);
+    b.addEventListener('pointercancel', stopHold);
+    b.addEventListener('lostpointercapture', stopHold);
+  }
+  syncVArr(el);
+}
+function bindBattleVArr() {
+  bindVArr($('log'));
+  document.querySelectorAll('#detail .modal-panel, #help .modal-panel, #merc .modal-panel, #endturn-confirm .modal-panel').forEach(bindVArr);
+  bindVArr(document.querySelector('#end-screen .end-card'));
+  const end = $('end-screen');
+  if (end && window.MutationObserver && !end.__varrWatch) {
+    end.__varrWatch = new MutationObserver(() => requestAnimationFrame(() => syncVArr(end.querySelector('.end-card'))));
+    end.__varrWatch.observe(end, { attributes: true, attributeFilter: ['class'] });
+  }
+  if (window.MutationObserver && !document.body.__varrBattleWatch) {
+    document.body.__varrBattleWatch = new MutationObserver(() => requestAnimationFrame(() => syncVArr($('log'))));
+    document.body.__varrBattleWatch.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+  }
+}
+
 // ===== 전투 UI: 정렬 레이어 · 설정(⚙️) 레이어 (바깥 누르면 닫힘) =====
 { const pop = (btnId, popId) => { const b = $(btnId), p = $(popId); if (!b || !p) return;
     b.addEventListener('click', e => { e.stopPropagation(); const open = p.classList.contains('hidden'); document.querySelectorAll('.sort-pop, .bset-pop').forEach(x => x.classList.add('hidden')); p.classList.toggle('hidden', !open); p.classList.toggle('flex', open && popId === 'hand-sort'); b.setAttribute('aria-expanded', String(open)); });
@@ -3112,6 +3204,7 @@ function bindHandArr() {
     document.addEventListener('click', () => { if (!p.classList.contains('hidden')) { p.classList.add('hidden'); p.classList.remove('flex'); b.setAttribute('aria-expanded', 'false'); } }); };
   pop('act-sort', 'hand-sort');
   bindHandArr();
+  bindBattleVArr();
   // 전투 톱니도 홈과 같은 게임설정 창 (js/main-menu.js VRMenu). 전투 설정(#bset-pop)은 그 창 맨 위에 그대로 들어감
   $('bset-btn')?.addEventListener('click', e => { e.stopPropagation(); document.querySelectorAll('.sort-pop').forEach(x => { x.classList.add('hidden'); x.classList.remove('flex'); });
     if (window.VRMenu) window.VRMenu.toggle(); else { const p = $('bset-pop'); p?.classList.toggle('hidden'); } });
