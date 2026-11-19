@@ -2046,9 +2046,9 @@ const rarityOf = c => RARITY[c.grade] || RARITY.NORMAL;
 /** 지역: 끝의 '구' 제거 (강남구 → 강남), 단 '중구'는 그대로 */
 const regionShort = r => { r = String(r || '').trim(); return r === '중구' || r.length < 2 ? r : r.replace(/구$/, ''); };
 const escA = s => String(s ?? '').replace(/[&<>"']/g, ch => `&#${ch.charCodeAt(0)};`);
-/** 머리줄: 이름 (나이/지역) · showCost면 옆에 COST n */
+/** 머리줄: 이름 (지역) · showCost면 옆에 COST n. 나이는 화면에 넣지 않음 */
 function cardTitle(c, lead = '', showCost = false) {
-  const a = [c.age, regionShort(c.region)].filter(Boolean).join('/');
+  const a = regionShort(c.region);
   const cost = showCost && c.cost != null && c.cost !== '' ? ` <span class="ci-cost">COST ${fmt(c.cost)}</span>` : '';
   return `<span class="ci-name">${lead}${escA(c.name)}</span>${a ? ` <span class="ci-sub">(${escA(a)})</span>` : ''}${cost}`;
 }

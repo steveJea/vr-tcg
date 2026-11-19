@@ -14,7 +14,7 @@ assert(game.includes('const live = battleInfoCard(c, uInfo)'));
 // display-only: do not write power/ATK back onto the engine unit
 assert(!/unit\.card\.power\s*=/.test(game));
 
-// 72: HP/MP bars beside the portrait, no per-turn regen text, COST beside age/region
+// 72: HP/MP bars beside the portrait, no per-turn regen text, COST beside region
 assert(game.includes('function cardHmpBars('));
 assert(game.includes('ci-hmp-fill hp'));
 assert(game.includes('ci-hmp-fill mp'));
