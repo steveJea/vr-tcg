@@ -2361,6 +2361,7 @@ function render() {
     fixImages(hand);
     hand.__sig = hsig; hand.__len = hand.innerHTML.length;
   }
+  syncHandArr();
   // 상대 손패는 비공개라 썸네일 표시 안 함 (장수만 ai-handcount)
 }
 
@@ -3037,12 +3038,80 @@ async function viewBattle0({ session, aiName = '상대', bg = 'normal', bgKey = 
 }
 window.TCG = { get fxOff() { return FX_OFF(); }, kickoff: () => S?.kickGo?.(), viewBattle, get NPC() { return NPC; }, cardById: id => { id = window.cardIdNew ? window.cardIdNew(id) : id; return POOL.find(c => String(c.id) === String(id)) || NPC.find(c => String(c.id) === String(id)); }, isNpc, cardTitle, cardTags, cardStats, regionShort, playStinger, showCardInfo, skillsOf, combos, arcadeOpts: ArcadeOpts, openArcadeOpts, playSe, onEnter, checkEvents, showEvent, mvpVoice, gachaVoice(id) { return !!playVoiceKey(`${id}_g`); }, hasVoice: k => !!voiceSet?.has(k), get events() { return EVENTS; }, get seOn() { return seOn; }, skillListHTML: (c, lv, opt) => skillListHTML(c, null, false, lv, opt), voiceTest(k) { if (!voiceSet?.has(k)) return false; const a = voiceAudio(k); a.volume = voiceVol; a.currentTime = 0; voiceCur = a; a.play().catch(() => {}); return true; }, get voiceActive() { return voiceActive.size; }, get voice() { return { on: voiceOn, vol: voiceVol, cur: voiceCur && { src: voiceCur.src, paused: voiceCur.paused, t: voiceCur.currentTime }, set: voiceSet && voiceSet.size }; }, openZoom, closeZoom, dupCheck, get errors() { return window.TCG_ERRORS || []; }, cutIn, passiveCutIn, sortedHand, get handSort() { return handSort; }, put: debugPut, castSkill, skillState, get S() { return S; }, RULES, calcPower: c => calcPower(c, skillsOf(c?.id)), skillLvPowerMult: (id, lvMap) => skillLvPowerMult(skillsOf(id), lvMap), elementMultiplier, calcDamage, canSummon, buildDeck, summon, attack, recall, attackAll, endTurn, canRecall, recallCost, undoSummon, closeDetail: () => { if (!$('detail').classList.contains('hidden')) hideModal('detail'); }, startArcadeTut: at => startGame(null, { ...at, arcadeTut: true }), canUndoSummon, makeUnit, resolveAttack, useAction, canAction, startGame, startStory, cardHTML, get ready() { return POOL.length > 0; }, equipItem, doSacrifice, finish, attackTargets, get POOL() { return POOL; }, render, Stats };
 
+
+// ===== 손패 좌우: 스크롤바 대신 양쪽 화살표 + 휠/길게 눌러 도르륵 이동 =====
+function syncHandArr() {
+  const hand = $('me-hand'), l = $('hand-arr-l'), r = $('hand-arr-r');
+  if (!hand || !l || !r) return;
+  const max = Math.max(0, hand.scrollWidth - hand.clientWidth);
+  const sl = hand.scrollLeft;
+  l.disabled = max <= 1 || sl <= 1;
+  r.disabled = max <= 1 || sl >= max - 1;
+}
+function bindHandArr() {
+  const hand = $('me-hand'), l = $('hand-arr-l'), r = $('hand-arr-r'), wrap = hand?.closest('.hand-wrap');
+  if (!hand || !l || !r || hand.__arrBound) return;
+  hand.__arrBound = true;
+  const deltaY = e => e.deltaMode === 1 ? e.deltaY * 16 : e.deltaMode === 2 ? e.deltaY * hand.clientWidth : e.deltaY;
+  const onWheel = e => {
+    if (e.ctrlKey) return;
+    if (hand.scrollWidth <= hand.clientWidth + 1) return;
+    if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+    const dy = deltaY(e); if (!dy) return;
+    const sl = hand.scrollLeft, max = hand.scrollWidth - hand.clientWidth;
+    if ((sl <= 0 && dy < 0) || (sl >= max - 1 && dy > 0)) return;
+    e.preventDefault();
+    hand.scrollLeft += dy;
+    syncHandArr();
+  };
+  (wrap || hand).addEventListener('wheel', onWheel, { passive: false });
+  hand.addEventListener('scroll', syncHandArr, { passive: true });
+  if (window.ResizeObserver) new ResizeObserver(syncHandArr).observe(hand);
+  else window.addEventListener('resize', syncHandArr);
+  let holdDir = 0, held = false, holdTimer = 0, raf = 0, last = 0;
+  const SPEED = 420;
+  const tick = ts => {
+    if (!holdDir) return;
+    const dt = Math.min(32, (ts - last) || 16) / 1000; last = ts;
+    hand.scrollLeft += holdDir * SPEED * dt;
+    syncHandArr();
+    raf = requestAnimationFrame(tick);
+  };
+  const stopHold = () => {
+    clearTimeout(holdTimer); holdTimer = 0;
+    if (raf) cancelAnimationFrame(raf); raf = 0;
+    const dir = holdDir; holdDir = 0;
+    if (!held && dir) {
+      const card = hand.querySelector('.hand-card');
+      const w = card ? card.getBoundingClientRect().width + 8 : Math.max(80, hand.clientWidth * 0.6);
+      hand.scrollBy({ left: dir * w, behavior: 'smooth' });
+    }
+    held = false;
+    syncHandArr();
+  };
+  const startHold = (dir, e) => {
+    e.preventDefault();
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+    holdDir = dir; held = false;
+    holdTimer = setTimeout(() => { held = true; last = performance.now(); raf = requestAnimationFrame(tick); }, 280);
+  };
+  l.addEventListener('pointerdown', e => startHold(-1, e));
+  r.addEventListener('pointerdown', e => startHold(1, e));
+  for (const b of [l, r]) {
+    b.addEventListener('pointerup', stopHold);
+    b.addEventListener('pointercancel', stopHold);
+    b.addEventListener('lostpointercapture', stopHold);
+  }
+  syncHandArr();
+}
+
 // ===== 전투 UI: 정렬 레이어 · 설정(⚙️) 레이어 (바깥 누르면 닫힘) =====
 { const pop = (btnId, popId) => { const b = $(btnId), p = $(popId); if (!b || !p) return;
     b.addEventListener('click', e => { e.stopPropagation(); const open = p.classList.contains('hidden'); document.querySelectorAll('.sort-pop, .bset-pop').forEach(x => x.classList.add('hidden')); p.classList.toggle('hidden', !open); p.classList.toggle('flex', open && popId === 'hand-sort'); b.setAttribute('aria-expanded', String(open)); });
     p.addEventListener('click', e => e.stopPropagation());
     document.addEventListener('click', () => { if (!p.classList.contains('hidden')) { p.classList.add('hidden'); p.classList.remove('flex'); b.setAttribute('aria-expanded', 'false'); } }); };
   pop('act-sort', 'hand-sort');
+  bindHandArr();
   // 전투 톱니도 홈과 같은 게임설정 창 (js/main-menu.js VRMenu). 전투 설정(#bset-pop)은 그 창 맨 위에 그대로 들어감
   $('bset-btn')?.addEventListener('click', e => { e.stopPropagation(); document.querySelectorAll('.sort-pop').forEach(x => { x.classList.add('hidden'); x.classList.remove('flex'); });
     if (window.VRMenu) window.VRMenu.toggle(); else { const p = $('bset-pop'); p?.classList.toggle('hidden'); } });
