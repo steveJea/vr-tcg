@@ -3,7 +3,7 @@
 begin;
 do $details_guard$ begin
  if (select system_identifier::text from pg_catalog.pg_control_system()) is distinct from '7703759698107299042' then raise exception 'STOP: war details staging cuyqchmdcnsgzkwyclji only'; end if;
- if not exists(select 1 from public.guildbattle_policy_v4 where singleton and engine_hash='c87d5a678229e2bbc3bcd92ff3f9f4b8e32291df874a9919c4295b14831d7d07') then raise exception 'STOP: phase4 engine version mismatch'; end if;
+ if not exists(select 1 from public.guildbattle_policy_v4 where singleton and engine_hash='ef3c3c5879627ec0d156608e48d0e1e0e9bed4527879e9190ec39b7b99e6e03a') then raise exception 'STOP: phase4 engine version mismatch'; end if;
  if to_regprocedure('public._war_side_json_v4(bigint,integer)') is null then raise exception 'STOP: install phase4 first'; end if;
 end $details_guard$;
 create or replace function public._war_side_json_v4(p_mid bigint, p_side int) returns jsonb language sql stable security definer set search_path=pg_catalog,public,pg_temp as $$
