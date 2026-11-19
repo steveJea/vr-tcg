@@ -79,6 +79,7 @@ export function oauthErrorCode(error) {
   const message = text(error?.message);
   if (/^Identity is already linked(?: to another user)?[.!]?$/i.test(message)) return 'identity_already_exists';
   if (/manual linking.*disabled/i.test(message)) return 'manual_linking_disabled';
+  if (/rejoin_blocked/i.test(message)) return 'rejoin_blocked';
   return '';
 }
 export function readOAuthCallback(loc) {
@@ -126,6 +127,7 @@ function withErrorDetail(message, code, description) {
 export function oauthFailureMessage(code, intent = null, description = '') {
   const name = OAUTH_PROVIDERS[intent?.provider];
   if (['identity_already_exists', 'email_exists'].includes(code)) return name ? `이미 다른 계정에 연결된 ${name} 계정이에요.` : '이미 다른 계정에 연결된 로그인이에요.';
+  if (code === 'rejoin_blocked') return '같은 로그인으로는 탈퇴 후 7일이 지나야 다시 가입할 수 있어요.';
   if (code === 'provider_disabled') return '지금은 이 로그인을 사용할 수 없어요.';
   if (code === 'manual_linking_disabled') return '계정 연결 기능이 아직 꺼져 있어요.';
   if (['access_denied', 'user_cancelled', 'user_canceled'].includes(code)) return intent ? '계정 연결을 취소했어요.' : '로그인을 취소했어요.';
