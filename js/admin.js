@@ -48,9 +48,9 @@
   }
 
   function render() {
-    root().innerHTML = `<div class="ad-tabs"><button class="ad-btn sub ${tab === 'users' ? 'on' : ''}" data-tab="users">가입 유저</button><button class="ad-btn sub ${tab === 'logs' ? 'on' : ''}" data-tab="logs">관리자 기록</button><button class="ad-btn sub ${tab === 'notices' ? 'on' : ''}" data-tab="notices">공지</button><button class="ad-btn sub ${tab === 'trade' ? 'on' : ''}" data-tab="trade">거래</button><button class="ad-btn sub ${tab === 'mail' ? 'on' : ''}" data-tab="mail">📮 전체 우편</button></div><div id="ad-view"></div>`;
+    root().innerHTML = `<div class="ad-tabs"><button class="ad-btn sub ${tab === 'users' ? 'on' : ''}" data-tab="users">가입 유저</button><button class="ad-btn sub ${tab === 'logs' ? 'on' : ''}" data-tab="logs">관리자 기록</button><button class="ad-btn sub ${tab === 'notices' ? 'on' : ''}" data-tab="notices">공지</button><button class="ad-btn sub ${tab === 'trade' ? 'on' : ''}" data-tab="trade">거래</button><button class="ad-btn sub ${tab === 'mail' ? 'on' : ''}" data-tab="mail">📮 전체 우편</button><button class="ad-btn sub ${tab === 'maint' ? 'on' : ''}" data-tab="maint">점검</button></div><div id="ad-view"></div>`;
     root().querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { tab = b.dataset.tab; render(); });
-    tab === 'users' ? renderUsers() : tab === 'mail' ? renderMail() : tab === 'notices' ? renderNotices() : tab === 'trade' ? renderTrade() : renderLogs();
+    tab === 'users' ? renderUsers() : tab === 'mail' ? renderMail() : tab === 'notices' ? renderNotices() : tab === 'trade' ? renderTrade() : tab === 'maint' ? renderMaint() : renderLogs();
   }
   async function renderUsers(q = '') {
     const v = $('ad-view');
@@ -286,6 +286,74 @@
       };
     };
   }
+
+  const isoToKstInput = iso => {
+    if (!iso) return '';
+    const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(new Date(iso));
+    const g = t => parts.find(p => p.type === t)?.value || '';
+    return `${g('year')}-${g('month')}-${g('day')}T${g('hour')}:${g('minute')}`;
+  };
+  const kstInputToIso = v => {
+    const m = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})$/.exec(String(v || '').trim());
+    if (!m) return null;
+    return new Date(`${m[1]}T${m[2]}:00+09:00`).toISOString();
+  };
+  async function renderMaint() {
+    const v = $('ad-view');
+    v.innerHTML = '<div class="ad-msg">불러오는 중...</div>';
+    let st;
+    try { st = await rpc('maintenance_admin_get'); }
+    catch (e) {
+      const m = e?.message || '';
+      v.innerHTML = `<div class="ad-msg ad-err">${/maintenance_admin_get|Could not find|schema cache/.test(m) ? '서버에 점검 관리 함수(supabase/maintenance_admin_staging.sql)가 아직 없어요.' : /forbidden/.test(m) ? '접근 거부 (Access denied)' : esc(m)}</div>`;
+      return;
+    }
+    if (!st?.ok) { v.innerHTML = `<div class="ad-msg ad-err">점검 설정을 읽지 못했어요.</div>`; return; }
+    const badge = st.on ? '<span class="ad-ok">지금 켜짐 (플레이어에게 점검 화면)</span>' : (st.is_on ? '<span class="ad-err">플래그는 켜져 있지만 종료 시각이 지나 꺼진 것으로 보여요</span>' : '<span>지금 꺼짐</span>');
+    v.innerHTML = `<div class="ad-sec ad-mform" id="ad-mform">
+      <h3>점검 모드</h3>
+      <p class="ad-mhelp">켜면 관리자를 제외한 모든 플레이어에게 점검 화면이 떠요. 관리자 계정은 그대로 들어갈 수 있어요. 종료 시각은 한국 시간(KST)이에요. 비워 두면 직접 끌 때까지 유지됩니다.</p>
+      <div class="ad-mstatus">상태: ${badge}${st.ends_at ? ` · 종료 ${esc(fmt(st.ends_at))}` : ''}${st.updated_at ? ` · 수정 ${esc(fmt(st.updated_at))}` : ''}</div>
+      <label class="ad-mtoggle"><input type="checkbox" id="ad-mon" ${st.is_on ? 'checked' : ''}> 점검 켜기</label>
+      <label class="ad-mlab">안내 문구 (최대 300자)</label>
+      <textarea id="ad-mmsg" maxlength="300" rows="3">${esc(st.message || '지금은 점검 중이에요. 잠시 후 다시 와 주세요.')}</textarea>
+      <div class="ad-nrow"><span id="ad-mcnt"></span></div>
+      <label class="ad-mlab">종료 시각 (KST, 선택)</label>
+      <div class="ad-nrow">
+        <input type="datetime-local" id="ad-mends" value="${esc(isoToKstInput(st.ends_at))}">
+        <button type="button" class="ad-btn sub" id="ad-mclear">시각 지우기</button>
+      </div>
+      <div class="ad-nrow">
+        <button type="button" class="ad-btn" id="ad-msave">저장</button>
+        <span id="ad-mmsgbox"></span>
+      </div>
+    </div>`;
+    const cnt = () => { const n = ($('ad-mmsg').value || '').trim().length; $('ad-mcnt').textContent = `${n}/300`; };
+    cnt();
+    $('ad-mmsg').oninput = cnt;
+    $('ad-mclear').onclick = () => { $('ad-mends').value = ''; };
+    $('ad-msave').onclick = async () => {
+      const isOn = $('ad-mon').checked;
+      const message = $('ad-mmsg').value.trim();
+      const ends = kstInputToIso($('ad-mends').value);
+      if (!message) { $('ad-mmsgbox').innerHTML = '<span class="ad-err">안내 문구를 적어 주세요.</span>'; return; }
+      if ($('ad-mends').value && !ends) { $('ad-mmsgbox').innerHTML = '<span class="ad-err">종료 시각을 다시 확인해 주세요.</span>'; return; }
+      if (isOn && !st.on && !confirm('점검을 켜면 일반 플레이어는 게임에 들어가지 못해요. 켤까요?')) return;
+      $('ad-msave').disabled = true;
+      $('ad-mmsgbox').innerHTML = '<span class="ad-msg" style="padding:0">저장 중...</span>';
+      try {
+        const res = await rpc('maintenance_admin_set', { p_is_on: isOn, p_message: message, p_ends_at: ends });
+        if (!res?.ok) throw new Error('저장에 실패했어요.');
+        $('ad-mmsgbox').innerHTML = `<span class="ad-ok">${res.on ? '점검을 켰어요.' : '점검을 껐어요.'} 저장됨.</span>`;
+        renderMaint();
+      } catch (e) {
+        const m = e?.message || '';
+        $('ad-mmsgbox').innerHTML = `<span class="ad-err">${esc(/forbidden/.test(m) ? '접근 거부 (Access denied)' : /invalid message/.test(m) ? '안내 문구를 확인해 주세요.' : m)}</span>`;
+        $('ad-msave').disabled = false;
+      }
+    };
+  }
+
   function closeModal() { $('ad-modal').classList.add('hidden'); if (tab === 'users') renderUsers($('ad-q')?.value.trim() || ''); }
   $('ad-modal').addEventListener('click', e => { if (e.target.id === 'ad-modal' || e.target.closest('#ad-close')) closeModal(); });   // 바깥 클릭 = 닫기
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('ad-modal').classList.contains('hidden')) closeModal(); });
