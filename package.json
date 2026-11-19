@@ -18,15 +18,16 @@
     "test:production": "node tools/build_production_rollout.mjs --check && node tools/test_production_frozen.mjs && node tools/build_production_release.mjs --check && node tools/test_production_release.mjs",
     "build:production:release": "node tools/build_production_release.mjs",
     "test:hosting": "node tools/build_media_manifest.mjs --check && node tools/test_media_range.mjs && node tools/test_hosting_config.mjs && node tools/test_entry_images.mjs && node tools/test_voice_cache.mjs && node tools/test_thumbs_first.mjs && node tools/test_merc_egg.mjs && node tools/test_lr_rainbow.mjs && node tools/test_unified_settings.mjs && node tools/test_art_1112.mjs && node tools/test_img_sizes.mjs && node tools/test_fx_load.mjs && node tools/test_special_summon.mjs && node tools/test_attendance.mjs && node tools/test_idle_drink.mjs",
-    "check:hosting": "node --check worker/media-range.mjs && npm run test:hosting",
+    "check:hosting": "node --check worker/media-range.mjs && npm run test:hosting && npm run test:maintenance",
     "build:production:worker": "node tools/build_production_assets.mjs",
     "deploy:production:worker": "npm run check:hosting && npm run build:production:worker && wrangler deploy --config wrangler.production.jsonc",
     "test:hosting:integration": "node tools/test_media_range_integration.mjs && node tools/test_media_range_integration.mjs --production",
     "test:auth": "node tools/test_kakao_auth.mjs && node tools/test_kakao_profile_sql.mjs && node tools/test_oauth_link_callback.mjs && node tools/test_x_auth.mjs",
-    "test:legal": "node tools/test_legal_pages.mjs && node tools/test_consent_sql.mjs && node tools/test_consent_ui.mjs",
+    "test:legal": "node tools/test_legal_pages.mjs && node tools/test_consent_sql.mjs && node tools/test_consent_ui.mjs && npm run test:maintenance",
     "test:payments": "node tools/build_payments_dashboard.mjs --check && node tools/build_payments_webhook.mjs --check && node tools/test_payments.mjs && node tools/test_payments_ui.mjs && node tools/test_payments_refunds.mjs && node tools/test_payments_webhook.mjs",
     "test:shop": "node tools/test_trade_drink_sql.mjs && node tools/test_shop_bm_sql.mjs && node tools/test_shop_ui.mjs && node tools/test_mypage_nav.mjs",
-    "test:ur-ticket": "node tools/test_ur_ticket_mail.mjs && node tools/build_ur_ticket_mail.mjs --check"
+    "test:ur-ticket": "node tools/test_ur_ticket_mail.mjs && node tools/build_ur_ticket_mail.mjs --check",
+    "test:maintenance": "node tools/test_maintenance.mjs && node tools/test_maintenance_admin.mjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.15",
