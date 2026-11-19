@@ -35,6 +35,7 @@ body.bfx.vr-bfx-final .fx-dmg { animation-duration: 2.2s !important; }
 @media (min-width: 1440px) and (orientation: landscape) {
   body.bfx.bfx-battle #log-modal { display: block !important; inset: 72px auto 16px 12px; width: calc((100vw - 1024px) / 2 - 24px); max-width: 360px; background: none; padding: 0; z-index: 5; }
   body.bfx.bfx-battle #log-modal .log-panel { height: 100%; display: flex; flex-direction: column; background: rgba(24,24,27,.82); }
+  body.bfx.bfx-battle #log-modal .varr-wrap { flex: 1; min-height: 0; display: flex; flex-direction: column; }
   body.bfx.bfx-battle #log-modal .log-body { max-height: none; flex: 1; }
   body.bfx.bfx-battle #log-close, body.bfx.bfx-battle #log-toggle { display: none; }
 }

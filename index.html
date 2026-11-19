@@ -78,7 +78,7 @@
     .log-modal{position:fixed;inset:0;z-index:45;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;padding:16px}
     .log-modal.hidden{display:none}
     .log-panel{position:relative;width:100%;max-width:480px;background:#18181b;border:1px solid rgba(255,255,255,.15);border-radius:1.25rem;padding:14px 14px 10px}
-    .log-body{max-height:60vh;overflow-y:auto;background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.08);border-radius:.75rem;padding:.4rem .7rem;margin-top:8px}
+    .log-body{max-height:60vh;overflow-y:auto;scrollbar-width:none;-ms-overflow-style:none;background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.08);border-radius:.75rem;padding:.4rem .7rem;margin-top:8px}.log-body::-webkit-scrollbar{display:none;width:0}
     .ui-ic { display: inline-block; width: 1.2em; height: 1.2em; vertical-align: -0.25em; object-fit: contain; pointer-events: none; user-select: none; }
     .ui-ic-sm { width: 1em; height: 1em; vertical-align: -0.15em; }
     /* set4: 닫기·재생·완료 아이콘이 버튼/배지 안에서 글자 크기에 맞게 */
@@ -672,7 +672,7 @@
 <!-- 검증 대기: 결과창/설명/버튼 없이 전투 위에 작은 스피너만 -->
 <div id="arcade-verifying" class="hidden" role="status" aria-label="전투 결과 확인 중"><i aria-hidden="true"></i></div>
 <!-- 종료 화면 -->
-<div id="end-screen" class="hidden fixed inset-0 flex items-center justify-center z-50 p-3 overflow-y-auto">
+<div id="end-screen" class="hidden fixed inset-0 flex items-center justify-center z-50 p-3 overflow-hidden">
   <div class="end-card relative text-center w-full max-w-sm my-auto">
     <div id="end-title" class="mb-2"></div>
     <div id="end-mvp-wrap"></div>
