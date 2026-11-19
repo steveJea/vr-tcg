@@ -202,6 +202,7 @@ const RNG_DEF = { CRIT_ON: RULES.CRIT_ON, EVADE_ON: RULES.EVADE_ON, EL_PASSIVE_O
 const rngOn = on => { for (const k of Object.keys(RNG_DEF)) RULES[k] = on ? RNG_DEF[k] : false; };
 async function startGame(story = null, at = null) {
   leaveBattleVoices();   // 다시하기는 서버 응답을 기다리는 동안에도 이전 결과 음성을 끊음
+  if (window.VRMaint && !await window.VRMaint.ensureOk()) return;
   if (story instanceof Event || story && typeof story.then === 'function') story = null;
   let arcadeSession=null;
   if (!story && !at && window.VRCloud?.user) { try { arcadeSession=await startArcadeVerified(ArcadeOpts.load()); } catch(e) { if (e?.code === 'account-changed') return; (window.VRGem?.toast || alert)(e.message); return; } }
@@ -819,7 +820,9 @@ function tryBgArt(bg, keys) {
 }
 /** 전투 배경: 전투가 시작될 때만 이미지를 받음 (CSS data-bg). 아케이드·스토리 일반 = normal, 스토리 보스 = boss.
  *  o.story(챕터) / o.key 로 상황별 그림을 먼저 시도하고, 없으면 data-bg 그림 */
-/** 휴대폰 전투 전체 화면 (BFX): 전투 시작 탭 안에서만 시도, 실패·미지원은 조용히 무시. 전투 화면을 떠나면 해제 */
+/** 휴대폰 전투 전체 화면 (BFX): 전투 시작 탭 안에서만 시도, 실패·미지원은 조용히 무시.
+ *  한 번 들어가면 전투·로비가 바뀌어도 유지한다. 사용자가 제스처·Esc 로 직접 끌 때만 해제
+ *  (판마다 끄면 크롬 하단 전체화면 안내가 다시 뜸). PC·iOS(전체화면 API 없음)는 기존처럼 시도하지 않음. */
 let bfxFs = false;
 function battleFullscreen(on) {
   try {
@@ -828,9 +831,13 @@ function battleFullscreen(on) {
       if (!BFX() || bfxFs || d.fullscreenElement || !el.requestFullscreen || !matchMedia('(pointer: coarse) and (max-width: 767px)').matches) return;
       if (navigator.userActivation && !navigator.userActivation.isActive) return;
       const pr = el.requestFullscreen({ navigationUI: 'hide' }); bfxFs = true; pr?.catch?.(() => { bfxFs = false; });
-    } else if (bfxFs) { bfxFs = false; if (d.fullscreenElement && d.exitFullscreen) d.exitFullscreen().catch(() => {}); }
+    }
+    // on=false 여도 exitFullscreen 하지 않음. 사용자가 끄면 아래 fullscreenchange 가 bfxFs 를 내림.
   } catch { bfxFs = false; }
 }
+const _bfxFsSync = () => { if (!(document.fullscreenElement || document.webkitFullscreenElement)) bfxFs = false; };
+document.addEventListener('fullscreenchange', _bfxFsSync);
+document.addEventListener('webkitfullscreenchange', _bfxFsSync);
 function setBattleBg(kind, o = {}) {
   const bg = $('battle-bg'); if (!bg) return;
   battleFullscreen(true);
@@ -839,7 +846,7 @@ function setBattleBg(kind, o = {}) {
   bg.dataset.bg = kind; bg.classList.add('on');
   const cosmoBg = (() => { try { return window.VRCosmo?.boardKey?.(); } catch { return null; } })();
   tryBgArt(bg, [cosmoBg, o.key, ...battleBgKeys(kind, o.story)].filter(Boolean));
-  if (!bg._watch) { bg._watch = new MutationObserver(() => { const vis = !$('game').classList.contains('hidden'); document.body.classList.toggle('bfx-battle', vis); if (!vis) battleFullscreen(false); }); bg._watch.observe($('game'), { attributes: true, attributeFilter: ['class'] }); bg._watch2 = new MutationObserver(() => bg.classList.toggle('on', !$('game').classList.contains('hidden'))); bg._watch2.observe($('game'), { attributes: true, attributeFilter: ['class'] }); }
+  if (!bg._watch) { bg._watch = new MutationObserver(() => { const vis = !$('game').classList.contains('hidden'); document.body.classList.toggle('bfx-battle', vis); }); bg._watch.observe($('game'), { attributes: true, attributeFilter: ['class'] }); bg._watch2 = new MutationObserver(() => bg.classList.toggle('on', !$('game').classList.contains('hidden'))); bg._watch2.observe($('game'), { attributes: true, attributeFilter: ['class'] }); }
 }
 
 /** 타격감: 히트스톱(피격 순간 정지) → 하얀 섬광 + 넉백(밀려났다 복귀) + 화면 흔들림(피해량 비례).
@@ -2905,6 +2912,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('zoom-vi
 /** raid: { stage, bossId, bossName, hpLeft, hpMax, cap, weakLabel, deadline(ms) } → 균열 토벌 화면 (큰 보스 HP 바 · 누적 피해 · 남은 시간) */
 // music: 이 전투 동안의 BGM (PvP·토벌·전쟁). 끝나면 들어오기 전 트랙으로
 async function viewBattle(o = {}) {
+  if (window.VRMaint && !await window.VRMaint.ensureOk()) return;
   const snd = window.VRSound, prev = snd?.track, mu = o.music;
   if (mu) try { snd?.setTrack?.(mu); } catch {}
   try { return await viewBattle0(o); } finally { if (mu && snd?.track === mu && prev) try { snd.setTrack(prev); } catch {} }

@@ -234,7 +234,15 @@
     "account_withdraw_staging.sql": "Owner-pasted staging-only account withdrawal (30-day grace, 7-day rejoin block, payment anonymization). Not a fresh installer.",
     "account_withdraw_check_staging.sql": "Read-only single-SELECT check for account_withdraw_staging.sql.",
     "account_withdraw_production.sql": "PRODUCTION ONLY account withdrawal (not to be run yet).",
-    "account_withdraw_check_production.sql": "Read-only production check for account_withdraw_production.sql."
+    "account_withdraw_check_production.sql": "Read-only production check for account_withdraw_production.sql.",
+    "maintenance_staging.sql": "Owner-pasted staging-only maintenance mode flag + status RPC (anon readable). Not a fresh installer.",
+    "maintenance_check_staging.sql": "Read-only single-SELECT check for maintenance_staging.sql.",
+    "maintenance_on_staging.sql": "Tiny guarded staging snippet to turn maintenance on. Not a fresh installer.",
+    "maintenance_off_staging.sql": "Tiny guarded staging snippet to turn maintenance off. Not a fresh installer.",
+    "maintenance_production.sql": "PRODUCTION ONLY maintenance mode (not to be run yet).",
+    "maintenance_check_production.sql": "Read-only production check for maintenance_production.sql.",
+    "maintenance_on_production.sql": "PRODUCTION ONLY snippet to turn maintenance on (not to be run yet).",
+    "maintenance_off_production.sql": "PRODUCTION ONLY snippet to turn maintenance off (not to be run yet)."
   },
   "partial": {
     "card_id_remap.sql": "card_id_alias 설정 자료 + 최신 _war_npc_deck만; 기존 사용자 ID 일괄 변경은 제외"
