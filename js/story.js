@@ -1263,7 +1263,7 @@
         try { const rq = m.requestFullscreen || m.webkitRequestFullscreen; if (!rq) throw 0; await rq.call(m, { navigationUI: 'hide' }); } catch { m.classList.add('rot'); return; }
         m.classList.remove('rot'); try { await screen.orientation?.lock?.('landscape'); } catch {}
       };
-      const exitFull = () => { try { screen.orientation?.unlock?.(); } catch {} try { if (isFs()) (document.exitFullscreen || document.webkitExitFullscreen)?.call(document)?.catch?.(() => {}); } catch {} };
+      const exitFull = () => { try { screen.orientation?.unlock?.(); } catch {} try { const el = document.fullscreenElement || document.webkitFullscreenElement; if (el === m) (document.exitFullscreen || document.webkitExitFullscreen)?.call(document)?.catch?.(() => {}); } catch {} };
       const cmd = (func, args = []) => { try { ifr.contentWindow.postMessage(JSON.stringify({ event: 'command', func, args }), '*'); } catch {} };
       let playing = false;
       const onMsg = e => { if (!/youtube/.test(e.origin || '')) return; try { const d = typeof e.data === 'string' ? JSON.parse(e.data) : e.data; const st = d?.info?.playerState ?? (d?.event === 'onStateChange' ? d.info : undefined); if (st === 1) playing = true; if (st === 0) close(); } catch {} };

@@ -448,3 +448,17 @@
 .wd-no, .wd-card .wd-no { padding: .7rem .8rem; border-radius: 12px; font-weight: 800; color: #fde7b0; background: rgba(255,255,255,.06); border: 1px solid rgba(212,162,74,.35); }
 .wd-danger { background: #7f1d1d !important; color: #fee2e2 !important; border: 1px solid #ef4444 !important; }
 .wd-danger:disabled { opacity: .45; cursor: not-allowed; }
+
+
+/* 점검 모드 */
+.mt-ov { position: fixed; inset: 0; z-index: 99500; display: grid; place-items: center; padding: 1.2rem; background: radial-gradient(ellipse at 50% 40%, #2a0d1a 0%, #09060c 72%); }
+.mt-ov.hidden { display: none; }
+.mt-card { width: min(92vw, 380px); text-align: center; color: #fde7b0; padding: 1.4rem 1.15rem 1.3rem;
+  border: 10px solid transparent; border-radius: 6px; border-image: url(../img/ui/main/frame_btn.webp) 24 / 16px / 6px stretch;
+  background: linear-gradient(180deg, #2a0609, #120204) border-box; box-shadow: 0 12px 40px rgba(0,0,0,.8); }
+.mt-logo { display: block; width: min(72vw, 280px); height: auto; margin: 0 auto .9rem; filter: drop-shadow(0 6px 24px rgba(0,0,0,.7)); }
+.mt-title { font-family: 'Cinzel', 'Noto Sans KR', serif; font-weight: 900; font-size: 1.45rem; color: #fcd34d; margin: 0 0 .7rem; letter-spacing: .04em; }
+.mt-msg { font-size: .98rem; line-height: 1.6; margin: 0 0 .45rem; word-break: keep-all; overflow-wrap: anywhere; }
+.mt-until { font-size: .88rem; font-weight: 700; color: #fde68a; margin: .15rem 0 .8rem; }
+.mt-until[hidden] { display: none; }
+.mt-admin { margin-top: .85rem; width: 100%; }
