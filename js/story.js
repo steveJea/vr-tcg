@@ -2102,6 +2102,44 @@
     if (await playGachaVideo(grade)) { return true; }
     await playGate(grade); return false;
   }
+  /** UR 이상(UR·MR·LR) 크게 공개. 여러 장이면 높은 등급부터 한 장씩. 탭=다음, SKIP=남은 확대 전부 건너뛰고 결과로. 영상 SKIP은 여기 안 옴.
+   *  연출 스킵·움직임 줄이기여도 큰 카드는 보여주고 애니메이션만 뺌. 보이스는 가장 높은 UR 이상 1명만, 확대 시작 때 한 번. 반환: 확대를 띄웠으면 true */
+  function isUrPlus(g) { return GORDER.indexOf(g) >= GORDER.indexOf('ULTRA RARE'); }
+  async function playUrReveal(cards) {
+    const rares = (cards || []).filter(x => isUrPlus(x.grade));
+    if (!rares.length) return false;
+    rares.sort((a, b) => GORDER.indexOf(b.grade) - GORDER.indexOf(a.grade));
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches || localStorage.getItem('vrTcgSkipFx') === '1';
+    const vc = rares.find(x => { const c = card(x.card_id); return c && window.TCG?.hasVoice?.(`${c.id}_g`); });
+    if (vc) window.TCG.gachaVoice(card(vc.card_id).id);
+    const ov = document.createElement('div');
+    ov.id = 'gr-ur-zoom'; ov.className = 'gr-ur-zoom' + (reduce ? ' reduce' : '');
+    ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-modal', 'true'); ov.setAttribute('aria-label', 'UR 영입');
+    const sk = document.createElement('button'); sk.type = 'button'; sk.className = 'gr-ur-zoom-skip'; sk.setAttribute('data-noemoji', ''); sk.textContent = 'SKIP ▶▶';
+    const stage = document.createElement('div'); stage.className = 'gr-ur-zoom-stage';
+    const hint = document.createElement('div'); hint.className = 'gr-ur-zoom-hint';
+    ov.append(sk, stage, hint); document.body.appendChild(ov);
+    let i = 0, over = false;
+    const paint = () => {
+      const x = rares[i], c = card(x.card_id) || { id: x.card_id, name: x.card_id, grade: x.grade };
+      const g = GLOW[x.grade] || 'ur';
+      stage.innerHTML = `<div class="gr-ur-zoom-card g-${g}"><img src="${IMG}${c.id}.webp" alt="${esc(c.name)}"><span class="story-rar">${RAR[x.grade] || x.grade}</span></div><div class="gr-ur-zoom-meta"><b class="g-text-${g}">${RAR[x.grade] || x.grade}</b> ${esc(c.name)}</div>`;
+      hint.textContent = i < rares.length - 1 ? '탭해서 다음' : '탭해서 결과 보기';
+    };
+    await new Promise(res => {
+      const end = () => { if (over) return; over = true; document.removeEventListener('keydown', onKey, true); ov.removeEventListener('pointerdown', onPtr, true); res(); };
+      const next = () => { if (over) return; if (i >= rares.length - 1) return end(); i += 1; paint(); };
+      const onKey = e => { if (e.key === 'Escape') { e.preventDefault(); end(); } else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); next(); } };
+      const onPtr = e => { e.preventDefault(); e.stopPropagation(); if (e.target.closest('.gr-ur-zoom-skip')) end(); else next(); };
+      document.addEventListener('keydown', onKey, true);
+      ov.addEventListener('pointerdown', onPtr, true);
+      paint();
+    });
+    ov.classList.add('out');
+    await wait(reduce ? 0 : 220);
+    ov.remove();
+    return true;
+  }
   const ticketBadge = n => `<span class="story-ticket" title="소환권">${ICN('ticket', '🎟️', '소환권')} <b>${n ?? '…'}</b></span>`;
   const pct = p => `${+(p * 100).toFixed(1)}%`;
   function showRates() {
@@ -2223,6 +2261,7 @@
         const bestG = r.cards.reduce((a, c) => GORDER.indexOf(c.grade) > GORDER.indexOf(a) ? c.grade : a, 'NORMAL');
         root().querySelectorAll('.story-ticket b').forEach(x => x.textContent = tickets);
         const vid = await playSummonFx(bestG);
+        const urZoomed = await playUrReveal(r.cards);
         if (!$('tk-result')) return;
         const uids0 = newUids(before, r.cards.map(x => x.card_id));
         // 10회: 낮은 등급부터 열림 (N → R → HR → SR → UR → MR/LR). 뒷면: SR 자주 반짝 · UR 이상 금색 반짝 · 나머지 무지
@@ -2249,8 +2288,8 @@
           await new Promise(res => { const t = setTimeout(res, (0.25 + rows.length * STEP + 0.5) * 1000); wake = () => { clearTimeout(t); setTimeout(res, 250); }; });
           fin(); if (!$('tk-result')) return;
         }
-        { const vc = [...r.cards].sort((a, b) => GORDER.indexOf(b.grade) - GORDER.indexOf(a.grade)).find(x => ['SUPER RARE', 'ULTRA RARE'].includes(x.grade) && window.TCG?.hasVoice?.(`${card(x.card_id).id}_g`));
-          if (vc) window.TCG.gachaVoice(card(vc.card_id).id); }   // 영입 보이스: 가장 높은 SR·UR 1명만
+        if (!urZoomed) { const vc = [...r.cards].sort((a, b) => GORDER.indexOf(b.grade) - GORDER.indexOf(a.grade)).find(x => x.grade === 'SUPER RARE' && window.TCG?.hasVoice?.(`${card(x.card_id).id}_g`));
+          if (vc) window.TCG.gachaVoice(card(vc.card_id).id); }   // UR 이상은 확대 때 재생. 여기선 SR만
         $('gacha-msg').innerHTML = `+${r.cards.length} · <span class="g-text-${GLOW[bestG]}">최고 ${RAR[bestG]}</span>`;
         if (forcedPullOn && r.cards.length === 10) { forcedPullOn = false; await markPullDone();
           const nb = document.createElement('button'); nb.className = 'gr-go gr-forced-next'; nb.id = 'forced-pull-next'; nb.textContent = '챕터1 시작하기';
@@ -2272,13 +2311,14 @@
       go.remove();
       root().querySelectorAll('.story-gacha-btn .story-badge, [data-tab="daily"] .story-badge').forEach(x => x.remove());
       const vid = await playSummonFx(r.grade);
+      const urZoomed = await playUrReveal([{ card_id: r.card_id, grade: r.grade }]);
       if (!$('gacha-front')) return;
       $('gacha-front').innerHTML = `<img src="${IMG}${c.id}.webp" alt="${esc(c.name)}"><span class="story-rar">${RAR[c.grade]}</span><div class="gacha-name">${esc(c.name)}</div>`;
       const el = $('gacha-card'); $('gacha-stage').className = `gacha-stage gr-card g-${g}`;
       el.dataset.pulled = newUids(before, [r.card_id])[0] || ''; el.dataset.pid = c.id;
       requestAnimationFrame(() => el.classList.add('flip'));
       window.VRPolish?.summon?.(r.grade, $('gacha-stage'), 450, { noScreen: vid });   // 폴리시4: 뒤집히는 순간 등급별 빛
-      if (['SUPER RARE', 'ULTRA RARE'].includes(r.grade)) setTimeout(() => window.TCG?.gachaVoice?.(c.id), 600);   // 영입 보이스 (<id>_g)
+      if (!urZoomed && r.grade === 'SUPER RARE') setTimeout(() => window.TCG?.gachaVoice?.(c.id), 600);   // UR 이상은 확대 때 재생. 여기선 SR만
       setTimeout(() => { const m = $('gacha-msg'); if (m) m.innerHTML = `<b class="g-text-${g}">${RAR[c.grade]} · ${esc(c.name)}</b>${r.count > 1 ? ` <span class="story-dup-inline">x${r.count}</span>` : ''}`; tick(); if ($('gacha-card') === el) resultOn = true; }, 900);
     };
   }
