@@ -56,10 +56,10 @@ function masked(html, re) {
 }
 masked(index, /<div id="acct-box"[^>]*>/);
 masked(index, /<div class="oauth-row"[^>]*>/);
-for (const id of ['main-link-google', 'main-link-kakao', 'main-link-x', 'main-logout']) masked(index, new RegExp(`<button id="${id}"[^>]*>`));
+for (const id of ['main-link-google', 'main-link-kakao', 'main-link-x', 'main-link-naver', 'main-logout']) masked(index, new RegExp(`<button id="${id}"[^>]*>`));
 
 const expect = {
-  'js/cloud.js': ['class="oauth-row" data-clarity-mask="true"', 'class="acct-chip" data-clarity-mask="true"', 'class="oauth-card" data-clarity-mask="true"', 'id="nick-box" data-clarity-mask="true"'],
+  'js/cloud.js': ['class="oauth-row" data-clarity-mask="true"', 'class="acct-chip" data-clarity-mask="true"', 'class="oauth-card intro-login-box" data-clarity-mask="true"', 'id="nick-box" data-clarity-mask="true"'],
   'js/mypage.js': ['class="mp-guest" data-clarity-mask="true"', 'class="mp-who" data-clarity-mask="true"'],
   'js/shop.js': ['class="shop" data-clarity-mask="true"', "setAttribute('data-clarity-mask', 'true')"],
   'js/gem.js': ['class="gem-panel" data-clarity-mask="true"'],

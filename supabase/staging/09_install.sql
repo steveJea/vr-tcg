@@ -40,11 +40,11 @@ set local check_function_bodies = off;
 
 do $vr_install_part$
 begin
-  if exists (select 1 from vr_staging_install.parts where bundle_hash <> '2e51781f300b93c84298e678ab1ea699a95d4d5bc29d23bc3cc785cdcfebdd30' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
+  if exists (select 1 from vr_staging_install.parts where bundle_hash <> '14de29035b6a378d364aa94d3034704eebd4f8dd3f90b779efc5eb160bf48e67' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
     raise exception 'STOP: 다른 버전/DB의 설치 기록입니다. 파일을 섞지 마세요.';
   end if;
   if exists (select 1 from vr_staging_install.parts where part_no = 9) then
-    if not exists (select 1 from vr_staging_install.parts where part_no = 9 and part_hash = '8f1352ee2993a2d373c74b4677c6d99b3f6ffa5e7004f3c228ea3502230c96b9') then
+    if not exists (select 1 from vr_staging_install.parts where part_no = 9 and part_hash = '9f3b138898b629af4439d0dc9bbc472c9704e70cb11c4432864bde3dceb612ae') then
       raise exception 'STOP: 완료한 파일과 내용이 다릅니다.';
     end if;
     raise notice '09_install.sql: 이미 완료, 변경 없이 건너뜀';
@@ -55,6 +55,15 @@ begin
   end if;
   -- 설치 도중에는 클라이언트가 미완성 게임 스키마에 접근하지 못함. 마지막에만 개방.
   revoke usage on schema public from public, anon, authenticated;
+  execute $vr_statement$-- 전체 챕터 현황 (지도 표시용)
+create or replace function public.story_star_status() returns jsonb language plpgsql stable security definer set search_path = public as $$
+declare me uuid := auth.uid(); d jsonb; r jsonb := '[]'::jsonb; c int;
+begin
+  if me is null then raise exception 'login required'; end if;
+  select data into d from story_progress where user_id = me; d := coalesce(d, '{}'::jsonb);
+  for c in select distinct chapter from story_phase_config order by 1 loop r := r || _star_chapter(d, c); end loop;
+  return r;
+end $$;$vr_statement$;
   execute $vr_statement$-- 받기: 서버가 별을 다시 합산 · 한 번만
 create or replace function public.story_star_claim(p_chapter int, p_key text) returns jsonb language plpgsql security definer set search_path = public as $$
 declare me uuid := auth.uid(); d jsonb; st jsonb; m jsonb; got jsonb; t int; w jsonb;
@@ -1693,32 +1702,9 @@ end $$;$vr_statement$;
   execute $vr_statement$revoke all on function public.cosmetics_status(), public.cosmetics_equip(text, text, text, text), public.cosmetics_buy(text, text), public.cosmetics_lookup(uuid[]) from public, anon;$vr_statement$;
   execute $vr_statement$grant execute on function public.cosmetics_status(), public.cosmetics_equip(text, text, text, text), public.cosmetics_buy(text, text) to authenticated;$vr_statement$;
   execute $vr_statement$grant execute on function public.cosmetics_lookup(uuid[]) to anon, authenticated;$vr_statement$;
-  execute $vr_statement$-- ===== SOURCE: batch_ui_bugs.sql =====
--- 2026-11-05 batch UI bugs: 방치 빠른보상 · 파견 같은 인재 · 거래소 닉네임 · 스토리 소탕 미션
--- 선행: idle_box.sql · dispatch.sql · trade_direct.sql · gear_sigil.sql(story_sweep) · daily.sql · daily_social.sql
--- 여러 번 실행해도 안전 (함수 교체만)
-
--- 1) idle_box_boost: boost_n 컬럼/변수 모호함 → 변수명 v_n
-create or replace function public.idle_box_boost() returns jsonb language plpgsql security definer set search_path = public as $$
-declare uid uuid := auth.uid(); r idle_box; today date := _gem_day(); v_n int; got jsonb; res jsonb; gem jsonb;
-begin
-  if uid is null then raise exception 'login required'; end if;
-  perform pg_advisory_xact_lock(hashtext('idle:' || uid::text));
-  perform pg_advisory_xact_lock(hashtext('gem:' || uid::text));
-  r := _idle_row(uid);
-  v_n := case when r.boost_day = today then r.boost_n else 0 end;
-  if v_n >= _idle_boost_max() then raise exception 'daily limit'; end if;
-  got := _idle_amt(_idle_rate(_idle_plv(uid)), _idle_boost_hours());
-  gem := _gem_spend(uid, _idle_boost_cost(), 'idle_boost', jsonb_build_object('hours', _idle_boost_hours()));
-  res := _idle_grant(uid, got, 'idle_boost');
-  update idle_box set boost_day = today, boost_n = v_n + 1, updated_at = now() where user_id = uid;
-  select * into r from idle_box where user_id = uid;
-  return _idle_json(uid, r) || res || jsonb_build_object('got', got, 'gem', gem);
-end $$;$vr_statement$;
-  execute $vr_statement$revoke all on function public.idle_box_boost() from public, anon;$vr_statement$;
 
   insert into vr_staging_install.parts(part_no, bundle_hash, part_hash, project_ref, db_id)
-  values (9, '2e51781f300b93c84298e678ab1ea699a95d4d5bc29d23bc3cc785cdcfebdd30', '8f1352ee2993a2d373c74b4677c6d99b3f6ffa5e7004f3c228ea3502230c96b9', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
+  values (9, '14de29035b6a378d364aa94d3034704eebd4f8dd3f90b779efc5eb160bf48e67', '9f3b138898b629af4439d0dc9bbc472c9704e70cb11c4432864bde3dceb612ae', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
 end $vr_install_part$;
 commit;
 select '09_install.sql: 완료 또는 이미 완료 (9/14)' as result;

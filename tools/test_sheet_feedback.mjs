@@ -88,5 +88,5 @@ console.log('PASS #14 pending summary/save/status, navigation/back and account s
  const deck=strong.map(o=>warCard(o,byReal));const local=runRaid(deck,1,'normal',37,byReal);assert(local.damage>6000);assert.deepEqual(verifyBattle({kind:'raid',control:'auto',seed:37,stage:1,difficulty:'normal',deck:strong},null),local);
 }
 const css=fs.readFileSync('css/pages.css','utf8');assert(/#detail:not\(\.hidden\)\s*\{\s*z-index: 9660 !important/.test(css));assert(/#zoom-view.open\s*\{\s*z-index: 9680 !important/.test(css));
-assert(game.includes('hp: opt.hp, level: opt.level ?? c.slv ?? c.level ?? 1'));assert(game.includes('skillListHTML(c, unit || view, myTurn, level, { skillLv: c.skillLv })'));
+assert(game.includes('hp: opt.hp, level: opt.level ?? c.slv ?? c.level ?? 1'));assert(game.includes('skillListHTML(live, uInfo, myTurn, level, { skillLv: live.skillLv })'));
 console.log('PASS #9/#10 stage action caps 6000/6600/7260, total >6000 and identical Edge replay, repeat-hit badge 2타/3타 with no arithmetic changes; detail/zoom layering and read-only skill levels');

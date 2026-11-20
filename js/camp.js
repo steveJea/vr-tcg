@@ -62,6 +62,10 @@
   .camp-g{display:inline-block;padding:1px 6px;border-radius:6px;font-size:11px;font-weight:800;color:#111}
   .camp-pend{color:#86efac;font-weight:800}
   .camp-slot button,.camp-acts button{padding:8px 10px;border-radius:10px;border:1px solid rgba(251,191,36,.35);background:rgba(0,0,0,.3);color:#fde68a;font-weight:700;cursor:pointer;font-size:13px;white-space:nowrap}
+  .camp-slot button.camp-gear-peek{display:flex;align-items:center;gap:8px;flex:1;min-width:0;padding:4px;background:none;border:0;text-align:left;white-space:normal}
+  .camp-gear-icon{display:flex;align-items:center;justify-content:center;flex:0 0 48px;width:48px;height:48px;border:2px solid;border-radius:9px;background:rgba(255,255,255,.04)}
+  .camp-gear-icon img{width:44px;height:44px;object-fit:contain}
+  .camp-gear-peek .grow b{display:block;max-width:100%;font-size:13px}
   .camp-slot button.go,.camp-acts button.go{background:#f59e0b;color:#1a1200}
   .camp-slot button:disabled,.camp-acts button:disabled{opacity:.45}
   .camp-acts{display:flex;gap:6px;padding:8px 10px 12px;border-top:1px solid rgba(255,255,255,.08)}.camp-acts button{flex:1;padding:10px 4px}
@@ -83,7 +87,7 @@
   function close() { document.getElementById('camp-ov')?.remove(); clearInterval(tick); paint(); }
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.getElementById('camp-ov')) close(); });
 
-  async function load() { st = await rpc('camp_status'); try { const s = await window.VRStory?.summary?.(); owned = (s?.ok ? s.owned : []).map(meta); } catch { owned = []; } paint(); return st; }
+  async function load() { st = await status(); try { const s = await window.VRStory?.summary?.(); owned = (s?.ok ? s.owned : []).map(meta); } catch { owned = []; } paint(); return st; }
   async function open() {
     if (window.VRUnlocks && !window.VRUnlocks.guard('camp')) return;
     const box = shell('🏋️ 훈련소'); box.querySelector('.cbody').innerHTML = '<div class="camp-empty">불러오는 중...</div>';
@@ -95,7 +99,7 @@
   let auto = 0;
   async function autoClaim() {
     clearInterval(auto); auto = setInterval(async () => { if (!document.getElementById('camp-ov')) return clearInterval(auto);
-      try { const r = await rpc('camp_status'); if (r?.slots?.some(s => s.pending > 0)) done(await rpc('camp_claim')); } catch {} }, 600000);
+      try { const r = await status(); if (r?.got) return done(r, true); if (r?.slots?.some(s => s.pending > 0)) done(await rpc('camp_claim')); } catch {} }, 600000);
     if (!st?.slots?.some(s => s.uid && s.pending > 0)) return false;
     try { await done(await rpc('camp_claim')); return true; } catch { return false; }
   }
@@ -124,7 +128,7 @@
     bindExtra(box);
     box.querySelectorAll('[data-put]').forEach(b => b.onclick = () => pick(+b.dataset.put));
     box.querySelectorAll('[data-remove]').forEach(b => b.onclick = async () => {
-      if (!await (window.VRAsk ? window.VRAsk('빼기? (EXP 받음)') : confirm('빼기? (EXP 받음)'))) return;
+      if (!await (window.VRAsk ? window.VRAsk('본 캐릭터를 해제하면 EXP를 돌려 받습니다.') : confirm('본 캐릭터를 해제하면 EXP를 돌려 받습니다.'))) return;
       try { const r = await rpc('camp_remove', { p_slot: +b.dataset.remove }); done(r); } catch (e) { toast(errText(e)); } });
     box.querySelectorAll('[data-unlock]').forEach(b => b.onclick = async () => {
       const s = st.slots.find(x => x.slot === +b.dataset.unlock);
@@ -138,9 +142,16 @@
     paint();
   }
 
-  async function done(r) {
-    st = r; const got = (r.got || []).filter(x => x.exp > 0);
-    if (got.length) toast(`🏋️ EXP +${fmt(got.reduce((a, x) => a + x.exp, 0))}${got.some(x => x.level > x.from) ? ' · LEVEL UP!' : ''}`);
+  // 받은 EXP 알림 (camp_claim · 서버 자동 반영 camp_status 공통)
+  function gotToast(r) {
+    const got = (r?.got || []).filter(x => x.exp > 0);
+    if (got.length) toast(`🏋️ ${r.auto ? '훈련소 ' : ''}EXP +${fmt(got.reduce((a, x) => a + x.exp, 0))}${got.some(x => x.level > x.from) ? ' · LEVEL UP!' : ''}`);
+    return got.length > 0;
+  }
+  // 서버가 상태 조회(로그인 직후 · 10분마다)에서 쌓인 EXP 를 바로 반영함 (디버그 57). 반영됐으면 알림
+  async function status() { const r = await rpc('camp_status'); gotToast(r); return r; }
+  async function done(r, quiet) {
+    st = r; if (!quiet) gotToast(r);
     try { const s = await window.VRStory?.summary?.(); owned = (s?.ok ? s.owned : owned).map(meta); } catch {}
     draw();
   }
@@ -196,8 +207,9 @@
     body.innerHTML = '<div class="camp-empty">불러오는 중...</div>';
     const [ec] = await Promise.all([loadEnh(), window.VRGear?.load?.(true)]); const list = (window.VRGear?.myGear?.() || []).filter(g => g.plus < 5).sort((a, b) => b.plus - a.plus);
     const half = n => Math.ceil((n || 0) * 0.5);
-    body.innerHTML = list.map(g => { const c = ec[g.plus + 1] || {}; return `<div class="camp-slot"><div class="grow"><b>${esc(gearName(g))} +${g.plus}</b><small>⏳ ${FH[g.plus + 1]}시간</small></div><button class="go" data-g="${g.id}">💰${fmt(half(c.gold))} ✨${fmt(half(c.dust))}</button></div>`; }).join('') || '<div class="camp-empty">연마할 장비가 없어요</div>';
+    body.innerHTML = list.map(g => { const c = ec[g.plus + 1] || {}; const d = window.VRGear?._defs?.()?.[g.def]; return `<div class="camp-slot"><button type="button" class="camp-gear-peek gt${d?.tier || 1}" data-gear-peek="${g.id}" aria-label="${esc(gearName(g))} +${g.plus} 장비 정보"><span class="camp-gear-icon gt${d?.tier || 1}">${window.VRGear?.iconHTML?.(g) || ''}</span><span class="grow"><b>${esc(gearName(g))} +${g.plus}</b><small>${esc(window.VRGear?.txt?.tier?.(d?.tier) || '')} · ⏳ ${FH[g.plus + 1]}시간</small></span></button><button class="go" data-g="${g.id}">💰${fmt(half(c.gold))} ✨${fmt(half(c.dust))}</button></div>`; }).join('') || '<div class="camp-empty">연마할 장비가 없어요</div>';
     box.insertAdjacentHTML('beforeend', '<div class="camp-acts"><button data-back>뒤로</button></div>'); box.querySelector('[data-back]').onclick = draw;
+    body.querySelectorAll('[data-gear-peek]').forEach(b => b.onclick = () => { const g = list.find(x => String(x.id) === b.dataset.gearPeek); if (g) window.VRGear?.inspect?.(g); });
     body.querySelectorAll('[data-g]').forEach(b => b.onclick = async () => { b.disabled = true;
       try { st = await rpc('camp_forge_start', { p_gear: +b.dataset.g }); toast('⚒️ 연마를 시작했어요'); window.VRPlayer?.status?.(true); window.VRGear?.load?.(true); draw(); } catch (e) { toast(errText(e)); b.disabled = false; } });
   }
@@ -233,7 +245,7 @@
 
   // 마이페이지 버튼 빨간 점
   function paint() { document.querySelectorAll('[data-campdot]').forEach(el => { el.innerHTML = ready() ? '<i class="camp-dot" aria-label="받을 EXP 있음"></i>' : ''; }); }
-  async function refresh() { if (off || (!window.VRCloud?.user && !window.VRCamp?._mock)) return paint(); try { st = await rpc('camp_status'); } catch {} paint(); }
+  async function refresh() { if (off || (!window.VRCloud?.user && !window.VRCamp?._mock)) return paint(); try { st = await status(); } catch {} paint(); }
   window.addEventListener('vr:user', () => setTimeout(refresh, 2000));
   setInterval(refresh, 10 * 60e3);
   new MutationObserver(() => { if (document.querySelector('[data-campdot]:empty') && ready()) paint(); }).observe(document.body, { childList: true, subtree: true });

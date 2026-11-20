@@ -172,9 +172,10 @@ function newPlayer(name, second, deckOverride = null, hp = RULES.HERO_HP, fieldS
 function log(msg, cls = '') {
   const el = document.createElement('div');
   el.className = 'py-0.5 ' + cls; el.textContent = msg;
-  const lg = $('log'), atEnd = lg.scrollHeight - lg.scrollTop - lg.clientHeight < 24;
+  const lg = $('log'), open = !$('log-modal').classList.contains('hidden');   // 닫혀 있으면 스크롤 위치를 읽지 않음 (매 기록마다 화면 재계산 방지)
+  const atEnd = open && lg.scrollHeight - lg.scrollTop - lg.clientHeight < 24;
   lg.appendChild(el);
-  if (atEnd && !$('log-modal').classList.contains('hidden')) lg.scrollTop = lg.scrollHeight;
+  if (atEnd) lg.scrollTop = lg.scrollHeight;
 }
 
 const shuffleArr = a => { a = [...a]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
@@ -656,34 +657,145 @@ async function peekBefore(el) {
 /** 타격 때: 위에 올라가 있으면 복귀 타이머만 연장 (스크롤 안 함) */
 function peekHold(el) { if (peekOn && peekOk(el)) peekArm(); }
 function peekReset() { clearTimeout(peekT); peekOn = false; }
+/** 연출 위치 읽기: 한 번 재면 지금 실행 중인 코드가 끝날 때까지(또는 render 전까지) 전장 카드 위치를 재사용.
+ *  여러 장을 한꺼번에 때리는 스킬에서 대상마다 '이펙트 붙이기 → 다음 대상 위치 읽기'가 반복되면
+ *  읽을 때마다 화면 전체 스타일·배치를 다시 계산해서(카드가 많을수록 오래) 아이폰에서 끊겼음. */
+let fxRects = null;
+const FX_BOARD = '#ai-field [data-uid], #me-field [data-uid], #ai-boss [data-uid], #me-boss [data-uid], #ai-boss .base-ring, #me-boss .base-ring, #ai-hero, #me-hero';
+function fxRectReset() { fxRects = null; }
+function fxRect(el) {
+  if (fxRects?.has(el)) return fxRects.get(el);
+  if (!fxRects) { fxRects = new Map(); queueMicrotask(fxRectReset); }
+  const r = el.getBoundingClientRect(); fxRects.set(el, r);
+  if (!fxRects.__board) { fxRects.__board = true; for (const x of document.querySelectorAll(FX_BOARD)) if (!fxRects.has(x)) fxRects.set(x, x.getBoundingClientRect()); }   // 한 번 계산한 김에 전장 전체를 같이 재 둠
+  return r;
+}
+if (typeof window.addEventListener === 'function') { window.addEventListener('scroll', fxRectReset, { passive: true }); window.addEventListener('resize', fxRectReset); }
+window.VRFxRect = fxRect;
+/** 애니메이션 클래스 다시 시작: 안 붙어 있으면 바로 붙임(강제 재계산 없음), 이미 붙어 있으면 떼고 다음 프레임에 붙임 */
+function restartCls(el, ...cls) {
+  if (!el) return;
+  if (!cls.some(c => el.classList.contains(c))) { el.classList.add(...cls); return; }
+  el.classList.remove(...cls); requestAnimationFrame(() => { if (el.isConnected) el.classList.add(...cls); });
+}
+window.VRRestartCls = restartCls;
+/** body:has(...) 대신 body 클래스. body 에 :has 가 걸려 있으면 전투 중 DOM 이 바뀔 때마다(타격 숫자·섬광 등)
+ *  body 와 그 아래 전체 스타일을 다시 계산해서 카드가 많을수록 끊김. 클래스는 같은 프레임 안(마이크로태스크)에 맞춰짐. */
+(function bodyStateSync() {
+  try {
+    if (typeof document === 'undefined' || typeof MutationObserver !== 'function' || !document.body) return;
+    const b = document.body, g = document.getElementById('game');
+    const syncGame = () => { b.classList.toggle('vr-battle-on', !!g && !g.classList.contains('hidden')); b.classList.toggle('vr-bfx-final', !!g && g.classList.contains('bfx-final')); };
+    const syncStory = () => {
+      const scr = document.getElementById('story-screen'), pop = document.getElementById('story-pop');
+      const dlg = !!document.getElementById('story-dlg'), pick = !!(scr?.querySelector('.story-deckpick') || pop?.querySelector('.story-deckpick'));
+      b.classList.toggle('vr-story-dlg', dlg); b.classList.toggle('vr-story-focus', dlg || pick);
+      b.classList.toggle('vr-gr-forced', !!(scr?.querySelector('.gr-forced') || pop?.querySelector('.gr-forced')));
+    };
+    if (g) new MutationObserver(syncGame).observe(g, { attributes: true, attributeFilter: ['class'] });
+    const fxOnly = t => !!(t?.closest?.('#game, #fx-host, #ios-hit-layer, #stfx-layer'));   // 전투·연출 안쪽 변화는 이야기 화면과 무관
+    new MutationObserver(recs => { if (!recs.every(r => fxOnly(r.target))) syncStory(); }).observe(b, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });   // 강제 영입은 class 로 붙음
+    syncGame(); syncStory();
+  } catch {}
+})();
+// iOS: 충돌은 화면 전체가 아니라 작은 고정 레이어 안에서만. DOM은 재사용하며 동시 효과 수를 제한.
+// body 직계에 효과를 매번 붙였다 떼면 :has()/형제 선택자가 전장까지 다시 계산하게 만듦.
+const iosHitPools = new Map();
+/** 타격마다 생겼다 사라지는 효과(숫자·입자·스프라이트)는 body 직계가 아니라 이 상자 안에 — 위치·쌓임 순서는 그대로(스타일 없는 상자) */
+function fxHost() { let h = document.getElementById('fx-host'); if (!h) { h = document.createElement('div'); h.id = 'fx-host'; h.setAttribute('aria-hidden', 'true'); document.body.appendChild(h); } return h; }
+function iosHitPool(kind) {
+  let root = document.getElementById('ios-hit-layer');
+  if (!root) { root = document.createElement('div'); root.id = 'ios-hit-layer'; root.setAttribute('aria-hidden', 'true'); document.body.appendChild(root); }
+  let pool = iosHitPools.get(kind);
+  if (!pool) {
+    pool = { next: 0, slots: [] }; iosHitPools.set(kind, pool);
+    for (let i = 0; i < (kind === 'impact' ? 6 : kind === 'flash' ? 4 : 3); i++) {
+      const outer = document.createElement('div'); outer.className = 'ios-hit-slot'; outer.hidden = true;
+      const inner = document.createElement(kind === 'impact' ? 'img' : 'div'); inner.className = 'ios-hit-' + kind;
+      if (kind === 'impact') { inner.src = HIT_IMG.impact; inner.alt = ''; } else if (kind === 'crit') inner.textContent = 'CRIT';
+      outer.appendChild(inner); root.appendChild(outer); pool.slots.push({ outer, inner, anim: null });
+    }
+  }
+  return pool;
+}
+function iosHitFx(el, kind = 'impact') {
+  const r = fxRect(el); if (!r.width) return;
+  const pk = kind === 'crit' || kind === 'flash' ? kind : 'impact', pool = iosHitPool(pk);
+  const slot = pool.slots.find(s => !s.anim) || pool.slots[pool.next++ % pool.slots.length];
+  if (slot.anim) { slot.anim.onfinish = null; slot.anim.cancel(); }
+  const { outer, inner } = slot, crit = pk === 'crit', flash = pk === 'flash';
+  const size = Math.round(Math.min(crit ? 170 : 128, Math.max(r.width, r.height) * (crit ? 1.25 : 1.1)));
+  outer.style.cssText = flash ? `left:${r.left + r.width / 2}px;top:${r.top + r.height / 2}px;width:${Math.round(r.width)}px;height:${Math.round(r.height)}px`
+    : `left:${r.left + r.width / 2}px;top:${r.top + r.height / 2}px;width:${size}px;height:${size}px`;
+  if (pk === 'impact') { const src = HIT_IMG[kind] || HIT_IMG.impact; if (inner.getAttribute('src') !== src) inner.src = src; }
+  outer.hidden = false;
+  const frames = flash ? [
+    { transform: 'translate(-50%,-50%)', opacity: .9 },
+    { transform: 'translate(-50%,-50%)', opacity: 0 }
+  ] : crit ? [
+    { transform: 'translate(-50%,-50%) scale(.65) rotate(-8deg)', opacity: 0 },
+    { transform: 'translate(-50%,-50%) scale(1) rotate(-8deg)', opacity: 1, offset: .2 },
+    { transform: 'translate(-50%,-60%) scale(1.15) rotate(0deg)', opacity: 0 }
+  ] : [
+    { transform: 'translate(-50%,-50%) scale(.45)', opacity: 0 },
+    { transform: 'translate(-50%,-50%) scale(.9)', opacity: 1, offset: .2 },
+    { transform: 'translate(-50%,-50%) scale(1.2)', opacity: 0 }
+  ];
+  const anim = inner.animate(frames, { duration: crit ? 360 : flash ? 170 : 210, easing: 'ease-out', fill: 'both' }); slot.anim = anim;
+  anim.onfinish = () => { if (slot.anim !== anim) return; outer.hidden = true; anim.cancel(); slot.anim = null; };
+}
+/** iOS HP 바: 폭은 한 번에 새 값, 줄어드는 모습은 transform(scaleX)만 — 매 프레임 배치 계산 없음. 노란 잔상도 같은 방식으로 늦게 따라옴 */
+function iosHpBar(f, to) {
+  const old = parseFloat(f.style.width), nw = parseFloat(to), g = f.previousElementSibling, ghost = g?.classList.contains('hp-ghost') ? g : null;
+  if (!(old >= 0) || old === nw || REDUCED()) { f.style.width = to; if (ghost) ghost.style.width = to; return; }
+  f.style.width = to;
+  if (nw > 0) f.animate([{ transform: `scaleX(${(old / nw).toFixed(4)})` }, { transform: 'scaleX(1)' }], { duration: 350, easing: 'ease-out' });
+  if (!ghost) return;
+  if (nw > old) { ghost.style.width = to; return; }   // 회복: 잔상 없음
+  const gw = parseFloat(ghost.style.width), from = gw > nw ? gw : old;
+  ghost.getAnimations().forEach(x => x.cancel());
+  ghost.style.width = from + '%';
+  const anim = ghost.animate([{ transform: 'scaleX(1)' }, { transform: `scaleX(${(nw / from).toFixed(4)})` }], { duration: 450, delay: 300, easing: 'ease-out', fill: 'forwards' });
+  anim.onfinish = () => { ghost.style.width = to; anim.cancel(); };
+}
+const iosRecoil = new WeakMap();
+function iosCardRecoil(el, up, amp, k) {
+  const card = el.querySelector(':scope > .relative') || el;
+  const prev = iosRecoil.get(card); if (prev) prev.cancel();
+  const dy = (up ? -1 : 1) * Math.min(7, 3 + amp * .3);
+  const anim = card.animate([{ transform: 'translate3d(0,0,0)' }, { transform: `translate3d(0,${dy}px,0)`, offset: .25 }, { transform: 'translate3d(0,0,0)' }], { duration: Math.round(190*k), easing: 'ease-out' });
+  iosRecoil.set(card, anim); anim.onfinish = () => { if (iosRecoil.get(card) === anim) iosRecoil.delete(card); anim.cancel(); };
+}
 function hitFx(el, kind = 'impact') {
   peekHold(el);
   if (!el || FX_OFF() || REDUCED() || !el.isConnected) return;
-  const r = el.getBoundingClientRect(); if (!r.width) return;
+  if (IS_IOS()) { iosHitFx(el, kind); return; }
+  const r = fxRect(el); if (!r.width) return;
   const img = document.createElement('img');
   img.src = HIT_IMG[kind] || HIT_IMG.impact; img.alt = ''; img.className = `fx-hit ${kind}`; img.setAttribute('aria-hidden', 'true');
   const size = Math.round(Math.min(Math.max(r.width, r.height) * (kind === 'blood' ? 1.25 : 1.1), 340));
   img.style.width = img.style.height = size + 'px';
   img.style.left = (r.left + r.width / 2) + 'px'; img.style.top = (r.top + r.height / 2) + 'px';
   img.style.setProperty('--rot', `${Math.round(Math.random() * 60 - 30)}deg`);
-  document.body.appendChild(img);
+  fxHost().appendChild(img);
   setTimeout(() => img.remove(), 225);
 }
 /** 1-1 속성 타격 입자 (BFX, CSS 만): 불=불씨 · 얼음=조각 · 바람=칼바람 · 빛=번개 · 어둠=흡수 · 심연=독 거품 · 공허=파문 */
 const EL_PART = { FIRE: 'fire', ICE: 'ice', WIND: 'wind', LIGHT: 'light', DARK: 'dark', ABYSS: 'abyss', VOID: 'void', drain: 'drain', poison: 'abyss' };
 function elemFx(el, kind) {
-  const k = EL_PART[kind]; if (!k || !el || !BFX() || FX_OFF() || REDUCED() || !el.isConnected) return;
-  const r = el.getBoundingClientRect(); if (!r.width) return;
+  const k = EL_PART[kind]; if (IS_IOS()) return;   // 충돌 그림과 수치는 유지, 타격마다 9개씩 나오는 입자만 생략
+  if (!k || !el || !BFX() || FX_OFF() || REDUCED() || !el.isConnected) return;
+  const r = fxRect(el); if (!r.width) return;
   const box = document.createElement('div'); box.className = `fx-el fx-el-${k}`; box.setAttribute('aria-hidden', 'true');
   box.style.cssText = `left:${r.left + r.width / 2}px;top:${r.top + r.height / 2}px;--s:${Math.round(Math.max(r.width, 60))}px`;
   const n = k === 'light' ? 4 : k === 'void' ? 3 : 9;
   for (let i = 0; i < n; i++) { const a = (i / n) * Math.PI * 2 + Math.random() * 0.6, d = 0.35 + Math.random() * 0.35, q = document.createElement('i');
     q.style.setProperty('--dx', (Math.cos(a) * d).toFixed(2)); q.style.setProperty('--dy', (Math.sin(a) * d).toFixed(2)); q.style.setProperty('--i', i); q.style.setProperty('--rot', `${Math.round(a * 57)}deg`); box.appendChild(q); }
-  document.body.appendChild(box); setTimeout(() => box.remove(), 560);
+  fxHost().appendChild(box); setTimeout(() => box.remove(), 560);
 }
 let skillElAt = 0, skillEl = null;   // 최근 스킬 시전자의 속성 (스킬 피해 입자용)
 let hitPreloaded = false;
-function preloadHit() { if (hitPreloaded) return; hitPreloaded = true; for (const src of Object.values(HIT_IMG)) { const i = new Image(); i.src = src; } }
+function preloadHit() { if (IS_IOS()) { iosHitPool('impact'); iosHitPool('crit'); iosHitPool('flash'); } if (hitPreloaded) return; hitPreloaded = true; for (const src of Object.values(HIT_IMG)) { const i = new Image(); i.src = src; } }
 
 /** 새 전투 연출 (빈 진영 칸 얇게·체력 위기 경고·치명타 섬광/줌/진동·카드 HP 크게). localStorage vrBfx=0 이면 전부 끔 */
 const BFX = () => { try { return localStorage.getItem('vrBfx') !== '0'; } catch { return true; } };
@@ -708,7 +820,9 @@ function tryBgArt(bg, keys) {
 }
 /** 전투 배경: 전투가 시작될 때만 이미지를 받음 (CSS data-bg). 아케이드·스토리 일반 = normal, 스토리 보스 = boss.
  *  o.story(챕터) / o.key 로 상황별 그림을 먼저 시도하고, 없으면 data-bg 그림 */
-/** 휴대폰 전투 전체 화면 (BFX): 전투 시작 탭 안에서만 시도, 실패·미지원은 조용히 무시. 전투 화면을 떠나면 해제 */
+/** 휴대폰 전투 전체 화면 (BFX): 전투 시작 탭 안에서만 시도, 실패·미지원은 조용히 무시.
+ *  한 번 들어가면 전투·로비가 바뀌어도 유지한다. 사용자가 제스처·Esc 로 직접 끌 때만 해제
+ *  (판마다 끄면 크롬 하단 전체화면 안내가 다시 뜸). PC·iOS(전체화면 API 없음)는 기존처럼 시도하지 않음. */
 let bfxFs = false;
 function battleFullscreen(on) {
   try {
@@ -717,9 +831,13 @@ function battleFullscreen(on) {
       if (!BFX() || bfxFs || d.fullscreenElement || !el.requestFullscreen || !matchMedia('(pointer: coarse) and (max-width: 767px)').matches) return;
       if (navigator.userActivation && !navigator.userActivation.isActive) return;
       const pr = el.requestFullscreen({ navigationUI: 'hide' }); bfxFs = true; pr?.catch?.(() => { bfxFs = false; });
-    } else if (bfxFs) { bfxFs = false; if (d.fullscreenElement && d.exitFullscreen) d.exitFullscreen().catch(() => {}); }
+    }
+    // on=false 여도 exitFullscreen 하지 않음. 사용자가 끄면 아래 fullscreenchange 가 bfxFs 를 내림.
   } catch { bfxFs = false; }
 }
+const _bfxFsSync = () => { if (!(document.fullscreenElement || document.webkitFullscreenElement)) bfxFs = false; };
+document.addEventListener('fullscreenchange', _bfxFsSync);
+document.addEventListener('webkitfullscreenchange', _bfxFsSync);
 function setBattleBg(kind, o = {}) {
   const bg = $('battle-bg'); if (!bg) return;
   battleFullscreen(true);
@@ -728,7 +846,7 @@ function setBattleBg(kind, o = {}) {
   bg.dataset.bg = kind; bg.classList.add('on');
   const cosmoBg = (() => { try { return window.VRCosmo?.boardKey?.(); } catch { return null; } })();
   tryBgArt(bg, [cosmoBg, o.key, ...battleBgKeys(kind, o.story)].filter(Boolean));
-  if (!bg._watch) { bg._watch = new MutationObserver(() => { const vis = !$('game').classList.contains('hidden'); document.body.classList.toggle('bfx-battle', vis); if (!vis) battleFullscreen(false); }); bg._watch.observe($('game'), { attributes: true, attributeFilter: ['class'] }); bg._watch2 = new MutationObserver(() => bg.classList.toggle('on', !$('game').classList.contains('hidden'))); bg._watch2.observe($('game'), { attributes: true, attributeFilter: ['class'] }); }
+  if (!bg._watch) { bg._watch = new MutationObserver(() => { const vis = !$('game').classList.contains('hidden'); document.body.classList.toggle('bfx-battle', vis); }); bg._watch.observe($('game'), { attributes: true, attributeFilter: ['class'] }); bg._watch2 = new MutationObserver(() => bg.classList.toggle('on', !$('game').classList.contains('hidden'))); bg._watch2.observe($('game'), { attributes: true, attributeFilter: ['class'] }); }
 }
 
 /** 타격감: 히트스톱(피격 순간 정지) → 하얀 섬광 + 넉백(밀려났다 복귀) + 화면 흔들림(피해량 비례).
@@ -743,7 +861,12 @@ function shake(el, o = {}) {
   const stop = Math.round((crit || big ? 110 : d >= 1000 ? 85 : 60) * k);   // 히트스톱 ms
   // 흔들림 세기(px): 피해량 로그 스케일 2~7, 치명타 ×1.5, UR/MR ×1.6, 최대 12
   const amp = Math.min(12, (2 + Math.min(5, Math.log10(d + 1) * 1.4)) * (crit ? 1.5 : 1) * (big ? 1.6 : 1));
-  el.classList.remove('fx-shake', 'fx-hitflash', 'fx-knock'); void el.offsetWidth;
+  if (IS_IOS()) {   // 전체 화면/전장 흔들기·줌·히트스톱·그림자 재도색 대신 피격 카드만 transform
+    iosHitFx(el, 'flash');   // 하얀 섬광: 카드 위 고정 레이어의 opacity만
+    if (!REDUCED()) iosCardRecoil(el, !!el.closest('#ai-field, #ai-boss, #ai-hero'), amp, k);
+    return;
+  }
+  el.classList.remove('fx-shake', 'fx-knock');   // 섬광은 정지 효과라 다시 시작할 필요 없음, 흔들림은 아래 타이머에서 다시 붙음 (강제 재계산 X)
   el.classList.add('fx-hitflash');
   if (REDUCED()) { setTimeout(() => el.classList.remove('fx-hitflash'), 120); return; }
   const root = document.querySelector('main') || document.body;
@@ -761,7 +884,7 @@ function shake(el, o = {}) {
       const sh = crit || big ? root : (document.getElementById('field-box') || root);   // #8 보통 타격은 전장만, 치명타·궁극기(UR/MR)만 화면 전체
       if (sh !== root) root.classList.remove('fx-screen'); else document.getElementById('field-box')?.classList.remove('fx-screen');
       sh.style.setProperty('--amp', `${amp.toFixed(1)}px`);
-      sh.classList.remove('fx-screen'); void sh.offsetWidth; sh.classList.add('fx-screen');
+      restartCls(sh, 'fx-screen');
       clearTimeout(screenTimer); screenTimer = setTimeout(() => sh.classList.remove('fx-screen'), Math.round((crit || big ? 260 : 180) * k));
     }
   }, stop);
@@ -770,9 +893,9 @@ function shake(el, o = {}) {
 /** 치명타·큰 피해: 화면 가장자리 섬광 + 전장 살짝 줌 + 휴대폰 짧은 진동. CSS 애니메이션만 (턴 길이 그대로) */
 let bigHitTimer;
 function bigHitFx(strong) {
+  if (IS_IOS()) return;   // iOS 치명타는 작은 CRIT 링만 (전체 화면 flash/zoom 없음)
   const g = $('game'), fb = $('field-box'); if (!g) return;
-  g.classList.remove('bfx-hit', 'bfx-hit-strong'); fb?.classList.remove('bfx-zoom'); void g.offsetWidth;
-  g.classList.add('bfx-hit'); if (strong) g.classList.add('bfx-hit-strong'); fb?.classList.add('bfx-zoom');
+  g.classList.toggle('bfx-hit-strong', !!strong); restartCls(g, 'bfx-hit'); restartCls(fb, 'bfx-zoom');
   clearTimeout(bigHitTimer); bigHitTimer = setTimeout(() => { g.classList.remove('bfx-hit', 'bfx-hit-strong'); fb?.classList.remove('bfx-zoom'); }, 320);
   try { if (navigator.vibrate && matchMedia('(pointer: coarse)').matches) navigator.vibrate(strong ? 35 : 20); } catch {}
 }
@@ -781,12 +904,13 @@ function bigHitFx(strong) {
 const critSet = new Set();
 function critFx(el) {
   if (!el || FX_OFF() || !el.isConnected) return;
-  const r = el.getBoundingClientRect(); if (!r.width) return;
+  if (IS_IOS()) { iosHitFx(el, 'crit'); return; }
+  const r = fxRect(el); if (!r.width) return;
   const d = document.createElement('div'); d.className = 'fx-crit'; d.setAttribute('aria-hidden', 'true');
   const size = Math.round(Math.min(Math.max(r.width, r.height) * 1.5, 380));
   d.style.width = d.style.height = size + 'px'; d.style.left = (r.left + r.width / 2) + 'px'; d.style.top = (r.top + r.height / 2) + 'px';
   d.innerHTML = '<i></i><b>CRIT</b>';
-  document.body.appendChild(d); setTimeout(() => d.remove(), REDUCED() ? 250 : 520);
+  fxHost().appendChild(d); setTimeout(() => d.remove(), REDUCED() ? 250 : 520);
 }
 const critNum = (el, n, unit) => { const c = critSet.delete(unit); dmgNumber(el, `-${fmt(n)}`, c ? '#fde047' : undefined, false, c ? 'fx-dmg-crit' : ''); };
 const EL_FX = { guard: ['🛡️', '#7dd3fc', '얼음 방어: 피해 절반'], drain: ['🩸', '#f0abfc', '어둠 흡혈'], cleanse: ['✨', '#fef08a', '빛 정화: 디버프 해제'], darkCounter: ['🌑×2', '#c4b5fd', '어둠 반격 2배'], nullCounter: ['🚫', '#fef9c3', '빛: 반격 무효'] };
@@ -816,12 +940,12 @@ function fxStackSlot(key, text, repeat = 'times') {
   fxStacks.set(key, st);
   for (const k of fxStacks.keys()) if (k !== key && !(fxStacks.get(k) || []).some(x => x.d.isConnected)) fxStacks.delete(k);
   const same = text && st.find(x => x.text === text && x.repeat === repeat);
-  if (same) { same.n++; same.t = now; same.d.dataset.n = repeat === 'hits' ? `${same.n}타` : `×${same.n}`; same.d.classList.remove('fx-merged'); void same.d.offsetWidth; same.d.classList.add('fx-merged'); return { merged: true }; }
+  if (same) { same.n++; same.t = now; same.d.dataset.n = repeat === 'hits' ? `${same.n}타` : `×${same.n}`; restartCls(same.d, 'fx-merged'); return { merged: true }; }
   return { merged: false, i: st.length, push: d => st.push({ d, text, repeat, n: 1, t: now }) };
 }
 function dmgNumber(el, text, color, html = false, extra = '') {
   if (!el || FX_OFF()) return;
-  const r = el.getBoundingClientRect();
+  const r = fxRect(el);
   const slot = BFX() ? fxStackSlot(el, html ? null : text, extra.split(/\s+/).includes('fx-dmg-raid') ? 'hits' : 'times') : null;
   if (slot?.merged) return;
   const d = document.createElement('div');
@@ -830,7 +954,7 @@ function dmgNumber(el, text, color, html = false, extra = '') {
   d.style.left = (r.left + r.width / 2 + (slot ? 0 : (Math.random() - 0.5) * 16)) + 'px';
   d.style.top = (r.top + r.height * 0.4 - (slot ? Math.min(slot.i, 4) * 26 : 0)) + 'px';
   slot?.push(d);
-  document.body.appendChild(d);
+  fxHost().appendChild(d);
   d.addEventListener('animationend', () => d.remove(), { once: true }); setTimeout(() => d.remove(), 1800);   // 천천히 사라짐 (CSS fxDmg 1.3s · 크리 1.5s)
 }
 
@@ -967,6 +1091,7 @@ function resetAnim(el) {
 function reportError(where, err) {
   console.error(`[TCG] ${where}`, err);
   (window.TCG_ERRORS ||= []).push(`${where}: ${err?.message || err}`);
+  try { window.VRErrors?.capture?.(where, err); } catch {}
 }
 
 /** 작은 떠오르는 글자 연출 */
@@ -1266,7 +1391,9 @@ function showEnding(win, reason) {
       <div class="end-mvp-tag">MVP · ${mvp.card.name}${mvp.dmg ? ` · 피해 ${fmt(mvp.dmg)}` : ''}</div></div>` : '';
   const row = (k, v) => `<div class="flex justify-between gap-3 py-1 border-b border-white/10"><span class="text-zinc-400">${k}</span><span class="font-bold text-zinc-100">${v}</span></div>`;
   $('end-title').innerHTML = `<div class="end-slash"><div class="end-big">${title}</div></div>`;
-  $('end-mvp-wrap').innerHTML = mvpHTML;
+  // 서버가 다시 돌려본 아케이드 승리의 MVP만 도감에 등록됨 (receipt.gallery). 새로 등록된 카드면 한 줄 안내
+  const galNew = receipt?.gallery?.new === true && mvp ? `<div class="gal-promo vip-yellow end-gal-new">📖 ${escA(mvp.card.name)} 도감에 새로 등록됐어요!</div>` : '';
+  $('end-mvp-wrap').innerHTML = mvpHTML + galNew;
   $('end-stats').innerHTML = row('진행 턴', `${S.myTurns || S.turnNo}턴 (${S.turnNo}라운드)`) + row('준 피해 합계', BFX() ? `<span data-count="${L.total || 0}">${fmt(L.total)}</span>` : fmt(L.total)) + row('사용한 스킬', BFX() ? `<span data-count="${L.skills || 0}" data-suf="회">${L.skills}회</span>` : `${L.skills}회`)
     + row('고용한 용병', L.merc ? `${ic('merc')} ${L.merc.name}` : '없음') + row('진영 HP', `나 ${fmt(Math.max(0, S.me.hp))} : ${fmt(Math.max(0, S.ai.hp))} 상대`);
   S.endShare = `Violence Royale : The Abyss Gate에서 ${sub}${mvp ? ` MVP는 ${mvp.card.name}!` : ''} (${S.turnNo}라운드, 피해 ${fmt(L.total)})`;
@@ -1927,8 +2054,36 @@ const rarityOf = c => RARITY[c.grade] || RARITY.NORMAL;
 /** 지역: 끝의 '구' 제거 (강남구 → 강남), 단 '중구'는 그대로 */
 const regionShort = r => { r = String(r || '').trim(); return r === '중구' || r.length < 2 ? r : r.replace(/구$/, ''); };
 const escA = s => String(s ?? '').replace(/[&<>"']/g, ch => `&#${ch.charCodeAt(0)};`);
-/** 머리줄: 이름 (나이/지역) */
-function cardTitle(c, lead = '') { const a = [c.age, regionShort(c.region)].filter(Boolean).join('/'); return `<span class="ci-name">${lead}${escA(c.name)}</span>${a ? ` <span class="ci-sub">(${escA(a)})</span>` : ''}`; }
+/** 머리줄: 이름 (지역) · showCost면 옆에 COST n. 나이는 화면에 넣지 않음 */
+function cardTitle(c, lead = '', showCost = false) {
+  const a = regionShort(c.region);
+  const cost = showCost && c.cost != null && c.cost !== '' ? ` <span class="ci-cost">COST ${fmt(c.cost)}</span>` : '';
+  return `<span class="ci-name">${lead}${escA(c.name)}</span>${a ? ` <span class="ci-sub">(${escA(a)})</span>` : ''}${cost}`;
+}
+/** 전투 중 표시용 스탯: 레벨·버프가 반영된 사본. 원본/엔진 값은 건드리지 않음 */
+function fieldUnitByUid(uid) {
+  if (uid == null || uid === '' || !S) return null;
+  return (S.me?.field || []).concat(S.ai?.field || []).find(x => String(x.uid) === String(uid)) || null;
+}
+function battleInfoCard(c, unit) {
+  if (!c || !unit) return c;
+  const live = { ...c, ATK: unit.card.ATK, DEF: unit.card.DEF, HP: unit.maxHp ?? unit.card.HP, cost: unit.card.cost ?? c.cost };
+  live.power = calcPower(live, skillsOf(live.id));
+  return live;
+}
+/** 상세·확대 공통: 이미지 옆 하단 HP(빨강)·MP(파랑) 바 */
+function cardHmpBars(unit, hp) {
+  if (!unit) return '';
+  const maxHp = unit.maxHp || unit.card?.HP || 0;
+  const curHp = hp != null && hp !== '' ? +hp : unit.hp;
+  const hpPct = maxHp ? Math.max(0, Math.min(100, curHp / maxHp * 100)) : 0;
+  const maxMp = unit.maxMp || 0, curMp = unit.mp || 0;
+  const mpPct = maxMp ? Math.max(0, Math.min(100, curMp / maxMp * 100)) : 0;
+  return `<div class="ci-hmp"><div class="ci-hmp-col" title="HP ${fmt(curHp)}/${fmt(maxHp)}"><div class="ci-hmp-lab"><span>HP</span><b>${fmt(curHp)}/${fmt(maxHp)}</b></div><div class="ci-hmp-track"><div class="ci-hmp-fill hp" style="width:${hpPct}%"></div></div></div><div class="ci-hmp-col" title="MP ${fmt(curMp)}/${fmt(maxMp)}"><div class="ci-hmp-lab"><span>MP</span><b>${fmt(curMp)}/${fmt(maxMp)}</b></div><div class="ci-hmp-track"><div class="ci-hmp-fill mp" style="width:${mpPct}%"></div></div></div></div>`;
+}
+function cardStatRow(c, hp, power, unit) {
+  return `<div class="ci-statrow">${cardStats(c, unit ? null : hp, power, !!unit)}${cardHmpBars(unit, hp)}</div>`;
+}
 /** 스킬 수 아이콘: 그림순이 img/ui/skill_count.webp (icons.js skill_count), 없으면 📜 */
 /** 태그줄: 등급 약자 · 속성 아이콘 · 스킬 수 · 클래스 + 작은 태그(추가) */
 function cardTags(c, extra = []) {
@@ -1936,10 +2091,10 @@ function cardTags(c, extra = []) {
   return `<div class="ci-tags"><span class="rar-badge rar-inline ${r.cls}" title="${r.label}">${r.short}</span><span class="ci-el" title="${e.label}">${icOf(e)}</span>${n ? `<span class="ci-tag" title="스킬 ${n}개">${window.VRIcon?.or?.('skill_count', '📜') || '📜'}${n}</span>` : ''}<span class="ci-tag ci-cls">${escA(c.attribute || '')}</span>${extra.filter(Boolean).map(t => `<span class="ci-tag">${t}</span>`).join('')}</div>`;
 }
 /** ATK/DEF/HP: 아이콘 + 숫자 */
-function cardStats(c, hp = null, power = false) {
-  return `${power ? `<div class="ci-power" title="전투력 (레벨 반영)">⚡ <span>POWER</span> <b>${fmt(c.power)}</b></div>` : ''}<div class="ci-stats"><span class="ci-st atk" title="ATK">${ic('atk', { alt: 'ATK' })}<b>${fmt(c.ATK)}</b></span><span class="ci-st def" title="DEF">${ic('def', { alt: 'DEF' })}<b>${fmt(c.DEF)}</b></span><span class="ci-st hp" title="HP">${ic('hp', { alt: 'HP' })}<b>${hp != null ? fmt(+hp) + '/' : ''}${fmt(c.HP)}</b></span></div>`;
+function cardStats(c, hp = null, power = false, hideHp = false) {
+  return `${power ? `<div class="ci-power" title="전투력 (레벨 반영)">⚡ <span>POWER</span> <b>${fmt(c.power)}</b></div>` : ''}<div class="ci-stats"><span class="ci-st atk" title="ATK">${ic('atk', { alt: 'ATK' })}<b>${fmt(c.ATK)}</b></span><span class="ci-st def" title="DEF">${ic('def', { alt: 'DEF' })}<b>${fmt(c.DEF)}</b></span>${hideHp ? '' : `<span class="ci-st hp" title="HP">${ic('hp', { alt: 'HP' })}<b>${hp != null ? fmt(+hp) + '/' : ''}${fmt(c.HP)}</b></span>`}</div>`;
 }
-function cardHTML(c, { hp, size = 'md', dim = false, mine = false } = {}) {
+function cardHTML(c, { hp, size = 'md', dim = false, mine = false, uid } = {}) {
   const e = ELEMENTS[c.class] || ELEMENTS.WIND;
   const small = size === 'sm';
   const rar = rarityOf(c), nSk = skillsOf(c.id).length;
@@ -1947,7 +2102,7 @@ function cardHTML(c, { hp, size = 'md', dim = false, mine = false } = {}) {
   return `
   <div class="card-frame ${rar.cls} relative ${small ? 'w-[64px] md:w-[96px]' : 'w-[78px] md:w-[110px]'} bg-zinc-900 rounded-xl overflow-hidden ${dim ? 'opacity-50' : ''} shadow-lg" data-grade="${rar.short}">
     ${bdr}<img src="${cardThumb(c.id)}" data-id="${c.id}" class="card-img w-full aspect-[3/4] object-cover" alt="${c.name}">
-    <button type="button" class="zoom-btn absolute bottom-[46px] md:bottom-[58px] right-1" data-zoom="${c.id}"${hp != null ? ` data-hp="${hp}"` : ''} title="크게 보기" aria-label="크게 보기">🔍</button>
+    <button type="button" class="zoom-btn absolute bottom-[46px] md:bottom-[58px] right-1" data-zoom="${c.id}"${uid != null ? ` data-uid="${uid}"` : ''}${hp != null ? ` data-hp="${hp}"` : ''} title="크게 보기" aria-label="크게 보기">🔍</button>
     <div class="absolute top-1 left-1 w-6 h-6 md:w-7 md:h-7 rounded-full bg-sky-600 text-white text-[11px] md:text-xs font-black flex items-center justify-center border border-white/40">${c.cost}</div>
     <div class="absolute top-1 right-1 text-sm md:text-base" title="${e.label}">${icOf(e)}</div>
     <div class="rar-badge absolute left-1 top-7 md:top-9" title="${rar.label}">${rar.short}</div>
@@ -2061,6 +2216,7 @@ function turnBanner(mine) {
   setTimeout(() => b.remove(), 650);
 }
 function render() {
+  fxRectReset();
   fitBoardSoon();
   renderAutoBtn();
   maybeAutoEndTurn();
@@ -2143,7 +2299,7 @@ function render() {
       const hero = u.level >= RULES.LEVEL_MAX;
       const sts = statusIcons(u);
       const icons = [u.items?.weapon && icOf(ITEMS.weapon), u.items?.armor && icOf(ITEMS.armor), ...u.skills.map(k => icOf(SKILLS[k]))].filter(Boolean);
-      w.__h = `<div class="relative ${hero ? 'hero-card' : ''}">${cardHTML(u.card, { hp: u.hp, size: 'sm', dim: who === 'me' && !u.canAttack && myTurn, mine: who === 'me' })}${statusDecor(u)}${skReady ? '<button type="button" class="skill-btn sk-ready-badge" title="스킬 사용 가능" aria-label="스킬">✦</button>' : ''}` +
+      w.__h = `<div class="relative ${hero ? 'hero-card' : ''}">${cardHTML(u.card, { hp: u.hp, size: 'sm', dim: who === 'me' && !u.canAttack && myTurn, mine: who === 'me', uid: u.uid })}${statusDecor(u)}${skReady ? '<button type="button" class="skill-btn sk-ready-badge" title="스킬 사용 가능" aria-label="스킬">✦</button>' : ''}` +
         `<div class="lv-badge absolute -top-1.5 left-1/2 -translate-x-1/2 px-1.5 rounded-full ${hero ? 'bg-gradient-to-r from-yellow-300 to-amber-500 shadow-[0_0_8px_#fbbf24]' : u.level > 1 ? 'bg-amber-400' : 'bg-zinc-600 text-white'} text-black text-[9px] md:text-[10px] font-black whitespace-nowrap">${hero ? ic('crown', { cls: 'ui-ic-sm' }) + ' ' : ''}Lv${u.level}</div>` +
         (icons.length ? `<div class="item-icons absolute top-7 right-0.5 flex flex-col text-[11px] md:text-sm leading-tight drop-shadow">${icons.map(x => `<span>${x}</span>`).join('')}</div>` : '') +
         (sts.length ? `<div class="status-icons absolute top-7 left-0.5 flex flex-col text-[11px] md:text-sm leading-tight drop-shadow">${sts.map(x => { const big = isStatusFxKind(x.kind), au = big && statusIconUrl(x.kind); return `<span title="${x.title}"${big ? ` class="st-big ${x.kind}"` : ''}>${au ? `<img class="st-asset" src="${au}" alt="">` : icOf(x)}${x.t > 0 ? `<b class="st-turns">${x.t}</b>` : ''}</span>`; }).join('')}</div>` : '') + `</div>` +
@@ -2182,7 +2338,7 @@ function render() {
     for (const [uid, fn] of binds) { const el = (box.querySelector(`[data-uid="${uid}"]`) || bossBox?.querySelector(`[data-uid="${uid}"]`)); if (el) fn(el); }
     fixImages(box); if (bossBox) fixImages(bossBox);
     stampSigs(box, nb); if (bossBox) stampSigs(bossBox, nbb);
-    requestAnimationFrame(() => [...box.querySelectorAll('.hp-fill'), ...(bossBox ? bossBox.querySelectorAll('.hp-fill') : [])].forEach(f => { const to = f.dataset.to + '%'; if (f.style.width !== to) f.style.width = to; const g = f.previousElementSibling; if (g?.classList.contains('hp-ghost') && g.style.width !== to) g.style.width = to;   /* 잔상 바: CSS 로 늦게 따라옴 */ hpPrev.set(f.closest('[data-uid]').dataset.uid, +f.dataset.to); }) || restampLen(box, bossBox));
+    requestAnimationFrame(() => [...box.querySelectorAll('.hp-fill'), ...(bossBox ? bossBox.querySelectorAll('.hp-fill') : [])].forEach(f => { const to = f.dataset.to + '%'; if (IS_IOS()) iosHpBar(f, to); else { if (f.style.width !== to) f.style.width = to; const g = f.previousElementSibling; if (g?.classList.contains('hp-ghost') && g.style.width !== to) g.style.width = to; }   /* 잔상 바: CSS 로 늦게 따라옴 */ hpPrev.set(f.closest('[data-uid]').dataset.uid, +f.dataset.to); }) || restampLen(box, bossBox));
   }
 
   closeStaleHandDetail();   // 손패 카드 상세가 떠 있는데 그 카드가 손패에서 빠졌으면(소환·회수·자동·이벤트 등 어떤 경로든) 닫기
@@ -2205,6 +2361,7 @@ function render() {
     fixImages(hand);
     hand.__sig = hsig; hand.__len = hand.innerHTML.length;
   }
+  syncHandArr();
   // 상대 손패는 비공개라 썸네일 표시 안 함 (장수만 ai-handcount)
 }
 
@@ -2392,16 +2549,18 @@ function showDetail(c, { fromHand = false, hp, unit = null, view = null, power =
   const e = ELEMENTS[c.class] || ELEMENTS.WIND;
   const check = fromHand ? canSummon(c, S.me, S.ai) : null;
   const myTurn = !!S && S.turn === 'me' && !S.over && !S.busy;
+  const uInfo = unit || view;
+  const live = battleInfoCard(c, uInfo);
   $('detail-body').innerHTML = `
     <div class="flex gap-4">
-      <div class="relative shrink-0"><img src="${cardThumb(c.id)}" data-id="${c.id}" class="card-img w-32 md:w-40 aspect-[3/4] object-cover rounded-xl ring-2 ${e.ring}">${window.rarityStars?.(c, S?.story || c.ex ? 'story' : 'base', 'rstars-over', c.ex) || ''}<button type="button" class="zoom-btn absolute bottom-1 right-1" data-zoom="${c.id}"${S?.story || c.ex ? ' data-st="1"' : ''}${c.ex ? ` data-ex="${c.ex}" data-name="${String(c.name).replace(/[&"<>]/g, ch => `&#${ch.charCodeAt(0)};`)}"` : ''}${hp != null ? ` data-hp="${hp}"` : ''} title="크게 보기" aria-label="크게 보기">🔍</button></div>
+      <div class="relative shrink-0"><img src="${cardThumb(live.id)}" data-id="${live.id}" class="card-img w-32 md:w-40 aspect-[3/4] object-cover rounded-xl ring-2 ${e.ring}">${window.rarityStars?.(live, S?.story || live.ex ? 'story' : 'base', 'rstars-over', live.ex) || ''}<button type="button" class="zoom-btn absolute bottom-1 right-1" data-zoom="${live.id}"${uInfo ? ` data-uid="${uInfo.uid}"` : ''}${S?.story || live.ex ? ' data-st="1"' : ''}${live.ex ? ` data-ex="${live.ex}" data-name="${String(live.name).replace(/[&"<>]/g, ch => `&#${ch.charCodeAt(0)};`)}"` : ''}${hp != null ? ` data-hp="${hp}"` : ''} title="크게 보기" aria-label="크게 보기">🔍</button></div>
       <div class="flex-1 min-w-0">
-        <div class="text-xl font-black leading-tight">${cardTitle(c)}</div>
-        ${cardTags(c, [power ? '' : `⚡${fmt(c.power)}`, `${ic('mana', { alt: '코스트' })}${c.cost}`])}
-        ${cardStats(c, hp, power)}
+        <div class="text-xl font-black leading-tight ci-head">${cardTitle(live, '', true)}</div>
+        ${cardTags(live, [power ? '' : `⚡${fmt(live.power)}`])}
+        ${cardStatRow(live, hp, power, uInfo)}
       </div>
     </div>
-    ${skillListHTML(c, unit || view, myTurn, level, { skillLv: c.skillLv })}
+    ${skillListHTML(live, uInfo, myTurn, level, { skillLv: live.skillLv })}
     ${fromHand ? `
       ${check.ok || !myTurn ? '' : `<div id="summon-reason" class="mt-3 text-sm text-red-400">${check.reason}</div>`}
       <button id="summon-btn" ${check.ok && myTurn ? '' : 'disabled'} class="mt-4 w-full py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 text-black font-bold">소환하기</button>
@@ -2451,10 +2610,9 @@ function showDetail(c, { fromHand = false, hp, unit = null, view = null, power =
 function skillListHTML(c, unit, myTurn, lv = 1, opt = {}) {
   const list = unit ? unit.sk : skillsOf(c.id);
   const mine = unit && unit.owner === S.me;
-  const head = unit ? `<div class="mt-3 flex items-center gap-2 text-xs"><span class="text-blue-300 font-bold">MP ${unit.mp}/${unit.maxMp}</span><div class="flex-1 h-2 bg-white/10 rounded-full overflow-hidden"><div class="h-full bg-blue-500" style="width:${unit.mp / unit.maxMp * 100}%"></div></div><span class="text-zinc-400">턴당 +${unit.mpRegen}</span></div>` +
-    (statusIcons(unit).length ? `<div class="mt-1 text-xs text-purple-300">${statusIcons(unit).map(x => `${icOf(x)} ${x.title}`).join(' · ')}</div>` : '') : '';
+  const head = unit && statusIcons(unit).length ? `<div class="mt-1 text-xs text-purple-300">${statusIcons(unit).map(x => `${icOf(x)} ${x.title}`).join(' · ')}</div>` : '';
   if (!list.length) return head;
-  return head + `<div class="mt-3 space-y-2 max-h-64 overflow-y-auto pr-1">${list.map((s, i) => {
+  return head + `<div class="ci-sk-list mt-3 space-y-2 max-h-64 overflow-y-auto pr-1">${list.map((s, i) => {
     const st = unit ? skillState(unit, s) : { ok: false, reason: `Lv${s.unlock} 해금` };
     const locked = (unit ? unit.level : lv) < s.unlock;
     const act = s.mode === 'active', slv = !act ? 1 : unit ? skillLvOf(unit, s) : Math.min(SKILL_LV_MAX, Math.max(1, (opt.skillLv || {})[i + 1] | 0 || 1));
@@ -2472,7 +2630,7 @@ function skillListHTML(c, unit, myTurn, lv = 1, opt = {}) {
     </div>`; }).join('')}</div>`;
 }
 
-function showModal(id) { $(id).classList.remove('hidden'); $(id).classList.add('flex'); }
+function showModal(id) { $(id).classList.remove('hidden'); $(id).classList.add('flex'); requestAnimationFrame(() => { const box = $(id); if (!box) return; box.querySelectorAll('.ci-sk-list').forEach(bindVArr); syncVArrTree(box); }); }
 function hideModal(id) { if (id === 'detail') detailHandCard = null; $(id).classList.add('hidden'); $(id).classList.remove('flex'); $(id).style.zIndex = ''; resetHScroll(); }
 // 다른 화면(마이페이지 등) 위에서 카드 정보 보기: 전투 중이 아닌 보기 전용 상세
 function showCardInfo(c, opt = {}) { if (!c) return; showDetail(c, { power: !!opt.power, hp: opt.hp, level: opt.level ?? c.slv ?? c.level ?? 1 }); $('detail').style.zIndex = ''; showModal('detail'); }   // Read-only external card detail; layer is owned by css/pages.css.
@@ -2482,7 +2640,7 @@ window.addEventListener('scroll', () => { if (window.scrollX) resetHScroll(); },
 
 function renderStats() {
   const s = Stats.load();
-  $('stats').textContent = `${window.VRCloud?.user ? '☁️ 아케이드 검증 전적' : '아케이드 연습 전적'}: ${s.wins}승 ${s.losses}패${s.draws ? ` ${s.draws}무` : ''}`;
+  $('stats').textContent = `${window.VRCloud?.user ? '☁️ 아케이드 전적' : '아케이드 연습 전적'}: ${s.wins}승 ${s.losses}패${s.draws ? ` ${s.draws}무` : ''}`;
 }
 
 // ===== 용병 고용 UI =====
@@ -2605,7 +2763,7 @@ $('voice-toggle').onclick = e => { e.stopPropagation(); voiceOn = !voiceOn; loca
 $('se-toggle')?.addEventListener('click', e => { e.stopPropagation(); setSeOn(!seOn); });
 // 전투 기록: 📜 떠 있는 버튼 → 팝업 (최신이 아래, 열면 맨 아래로)
 { const m = $('log-modal'), lg = $('log');
-  const set = on => { m.classList.toggle('hidden', !on); if (on) lg.scrollTop = lg.scrollHeight; };
+  const set = on => { m.classList.toggle('hidden', !on); if (on) { lg.scrollTop = lg.scrollHeight; requestAnimationFrame(() => syncVArr(lg)); } };
   $('log-toggle').addEventListener('click', e => { e.stopPropagation(); set(true); });
   $('log-close').addEventListener('click', e => { e.stopPropagation(); set(false); });
   m.addEventListener('click', e => { e.stopPropagation(); if (e.target === m) set(false); }); }
@@ -2733,12 +2891,14 @@ function openZoom({ src, title, sub = '', stats = '', stars = '' }) {
 }
 function closeZoom() { const ov = $('zoom-view'); if (ov) ov.classList.remove('open'); }
 function zoomFromBtn(b) {
-  const c = POOL.find(x => String(x.id) === b.dataset.zoom) || NPC.find(x => String(x.id) === b.dataset.zoom); if (!c) return;   // 스토리 NPC(불량배 등)도 같은 정보창
-  const r = rarityOf(c), e = ELEMENTS[c.class] || ELEMENTS.WIND, hp = b.dataset.hp;
+  const base = POOL.find(x => String(x.id) === b.dataset.zoom) || NPC.find(x => String(x.id) === b.dataset.zoom); if (!base) return;   // 스토리 NPC(불량배 등)도 같은 정보창
+  const unit = fieldUnitByUid(b.dataset.uid);
+  const c = battleInfoCard({ ...base, name: b.dataset.name || base.name }, unit);
+  const hp = unit ? unit.hp : (b.dataset.hp != null && b.dataset.hp !== '' ? +b.dataset.hp : null);
   openZoom({ src: `${IMG}${c.id}.webp`, stars: window.rarityStars?.(c, b.dataset.st || b.dataset.ex ? 'story' : 'base', 'rstars-lg', +b.dataset.ex || 0) || '',   // 스토리 EX 카드: 빨간 별
-    title: cardTitle({ ...c, name: b.dataset.name || c.name }),
-    sub: cardTags(c, [`⚡${fmt(c.power)}`, `${ic('mana', { alt: '코스트' })}${c.cost}`]),
-    stats: cardStats(c, hp != null ? +hp : null) });
+    title: cardTitle(c, '', true),
+    sub: cardTags(c, [`⚡${fmt(c.power)}`]),
+    stats: cardStatRow(c, hp, false, unit) });
 }
 // 캡처 단계에서 가로채서 카드 선택/드래그/상세창이 같이 동작하지 않게 함
 ['pointerdown', 'mousedown', 'touchstart'].forEach(t => document.addEventListener(t, e => { if (e.target.closest?.('.zoom-btn')) e.stopPropagation(); }, { capture: true, passive: true }));
@@ -2878,12 +3038,173 @@ async function viewBattle0({ session, aiName = '상대', bg = 'normal', bgKey = 
 }
 window.TCG = { get fxOff() { return FX_OFF(); }, kickoff: () => S?.kickGo?.(), viewBattle, get NPC() { return NPC; }, cardById: id => { id = window.cardIdNew ? window.cardIdNew(id) : id; return POOL.find(c => String(c.id) === String(id)) || NPC.find(c => String(c.id) === String(id)); }, isNpc, cardTitle, cardTags, cardStats, regionShort, playStinger, showCardInfo, skillsOf, combos, arcadeOpts: ArcadeOpts, openArcadeOpts, playSe, onEnter, checkEvents, showEvent, mvpVoice, gachaVoice(id) { return !!playVoiceKey(`${id}_g`); }, hasVoice: k => !!voiceSet?.has(k), get events() { return EVENTS; }, get seOn() { return seOn; }, skillListHTML: (c, lv, opt) => skillListHTML(c, null, false, lv, opt), voiceTest(k) { if (!voiceSet?.has(k)) return false; const a = voiceAudio(k); a.volume = voiceVol; a.currentTime = 0; voiceCur = a; a.play().catch(() => {}); return true; }, get voiceActive() { return voiceActive.size; }, get voice() { return { on: voiceOn, vol: voiceVol, cur: voiceCur && { src: voiceCur.src, paused: voiceCur.paused, t: voiceCur.currentTime }, set: voiceSet && voiceSet.size }; }, openZoom, closeZoom, dupCheck, get errors() { return window.TCG_ERRORS || []; }, cutIn, passiveCutIn, sortedHand, get handSort() { return handSort; }, put: debugPut, castSkill, skillState, get S() { return S; }, RULES, calcPower: c => calcPower(c, skillsOf(c?.id)), skillLvPowerMult: (id, lvMap) => skillLvPowerMult(skillsOf(id), lvMap), elementMultiplier, calcDamage, canSummon, buildDeck, summon, attack, recall, attackAll, endTurn, canRecall, recallCost, undoSummon, closeDetail: () => { if (!$('detail').classList.contains('hidden')) hideModal('detail'); }, startArcadeTut: at => startGame(null, { ...at, arcadeTut: true }), canUndoSummon, makeUnit, resolveAttack, useAction, canAction, startGame, startStory, cardHTML, get ready() { return POOL.length > 0; }, equipItem, doSacrifice, finish, attackTargets, get POOL() { return POOL; }, render, Stats };
 
+
+// ===== 손패 좌우: 스크롤바 대신 양쪽 화살표 + 휠/길게 눌러 도르륵 이동 =====
+function syncHandArr() {
+  const hand = $('me-hand'), l = $('hand-arr-l'), r = $('hand-arr-r');
+  if (!hand || !l || !r) return;
+  const max = Math.max(0, hand.scrollWidth - hand.clientWidth);
+  const sl = hand.scrollLeft;
+  l.disabled = max <= 1 || sl <= 1;
+  r.disabled = max <= 1 || sl >= max - 1;
+}
+function bindHandArr() {
+  const hand = $('me-hand'), l = $('hand-arr-l'), r = $('hand-arr-r'), wrap = hand?.closest('.hand-wrap');
+  if (!hand || !l || !r || hand.__arrBound) return;
+  hand.__arrBound = true;
+  const deltaY = e => e.deltaMode === 1 ? e.deltaY * 16 : e.deltaMode === 2 ? e.deltaY * hand.clientWidth : e.deltaY;
+  const onWheel = e => {
+    if (e.ctrlKey) return;
+    if (hand.scrollWidth <= hand.clientWidth + 1) return;
+    if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+    const dy = deltaY(e); if (!dy) return;
+    const sl = hand.scrollLeft, max = hand.scrollWidth - hand.clientWidth;
+    if ((sl <= 0 && dy < 0) || (sl >= max - 1 && dy > 0)) return;
+    e.preventDefault();
+    hand.scrollLeft += dy;
+    syncHandArr();
+  };
+  (wrap || hand).addEventListener('wheel', onWheel, { passive: false });
+  hand.addEventListener('scroll', syncHandArr, { passive: true });
+  if (window.ResizeObserver) new ResizeObserver(syncHandArr).observe(hand);
+  else window.addEventListener('resize', syncHandArr);
+  let holdDir = 0, held = false, holdTimer = 0, raf = 0, last = 0;
+  const SPEED = 420;
+  const tick = ts => {
+    if (!holdDir) return;
+    const dt = Math.min(32, (ts - last) || 16) / 1000; last = ts;
+    hand.scrollLeft += holdDir * SPEED * dt;
+    syncHandArr();
+    raf = requestAnimationFrame(tick);
+  };
+  const stopHold = () => {
+    clearTimeout(holdTimer); holdTimer = 0;
+    if (raf) cancelAnimationFrame(raf); raf = 0;
+    const dir = holdDir; holdDir = 0;
+    if (!held && dir) {
+      const card = hand.querySelector('.hand-card');
+      const w = card ? card.getBoundingClientRect().width + 8 : Math.max(80, hand.clientWidth * 0.6);
+      hand.scrollBy({ left: dir * w, behavior: 'smooth' });
+    }
+    held = false;
+    syncHandArr();
+  };
+  const startHold = (dir, e) => {
+    e.preventDefault();
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+    holdDir = dir; held = false;
+    holdTimer = setTimeout(() => { held = true; last = performance.now(); raf = requestAnimationFrame(tick); }, 280);
+  };
+  l.addEventListener('pointerdown', e => startHold(-1, e));
+  r.addEventListener('pointerdown', e => startHold(1, e));
+  for (const b of [l, r]) {
+    b.addEventListener('pointerup', stopHold);
+    b.addEventListener('pointercancel', stopHold);
+    b.addEventListener('lostpointercapture', stopHold);
+  }
+  syncHandArr();
+}
+
+
+// ===== 배틀 세로 스크롤: 스크롤바 대신 ▲/▼ + 휠/길게 눌러 도르륵 이동 =====
+function syncVArr(el) {
+  const wrap = el?.parentElement;
+  if (!wrap?.classList.contains('varr-wrap')) return;
+  const u = wrap.querySelector('.varr-u'), d = wrap.querySelector('.varr-d');
+  if (!u || !d) return;
+  const max = Math.max(0, el.scrollHeight - el.clientHeight);
+  const st = el.scrollTop;
+  u.disabled = max <= 1 || st <= 1;
+  d.disabled = max <= 1 || st >= max - 1;
+}
+function syncVArrTree(root) {
+  (root || document).querySelectorAll('.varr-wrap').forEach(w => {
+    const el = w.querySelector('.varr-scroll, .log-body, .modal-panel, .end-card, .ci-sk-list') || w.firstElementChild;
+    if (el && !el.classList.contains('varr')) syncVArr(el);
+  });
+}
+function bindVArr(el) {
+  if (!el || el.__varrBound) return;
+  el.__varrBound = true;
+  let wrap = el.parentElement;
+  if (!wrap || !wrap.classList.contains('varr-wrap')) {
+    wrap = document.createElement('div');
+    wrap.className = 'varr-wrap';
+    if (el.classList.contains('end-card')) wrap.classList.add('varr-wrap-end');
+    el.before(wrap);
+    wrap.appendChild(el);
+  }
+  el.classList.add('varr-scroll');
+  const mk = (dir, label, glyph) => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'varr varr-' + dir;
+    b.setAttribute('aria-label', label); b.disabled = true; b.textContent = glyph;
+    return b;
+  };
+  const u = wrap.querySelector('.varr-u') || wrap.appendChild(mk('u', '위로', '▲'));
+  const d = wrap.querySelector('.varr-d') || wrap.appendChild(mk('d', '아래로', '▼'));
+  el.addEventListener('scroll', () => syncVArr(el), { passive: true });
+  if (window.ResizeObserver) new ResizeObserver(() => syncVArr(el)).observe(el);
+  else window.addEventListener('resize', () => syncVArr(el));
+  if (window.MutationObserver) new MutationObserver(() => syncVArr(el)).observe(el, { childList: true, subtree: true, characterData: true });
+  let holdDir = 0, held = false, holdTimer = 0, raf = 0, last = 0;
+  const SPEED = 420;
+  const tick = ts => {
+    if (!holdDir) return;
+    const dt = Math.min(32, (ts - last) || 16) / 1000; last = ts;
+    el.scrollTop += holdDir * SPEED * dt;
+    syncVArr(el);
+    raf = requestAnimationFrame(tick);
+  };
+  const stopHold = () => {
+    clearTimeout(holdTimer); holdTimer = 0;
+    if (raf) cancelAnimationFrame(raf); raf = 0;
+    const dir = holdDir; holdDir = 0;
+    if (!held && dir) {
+      const step = Math.max(80, el.clientHeight * 0.7);
+      el.scrollBy({ top: dir * step, behavior: 'smooth' });
+    }
+    held = false;
+    syncVArr(el);
+  };
+  const startHold = (dir, e) => {
+    e.preventDefault();
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+    holdDir = dir; held = false;
+    holdTimer = setTimeout(() => { held = true; last = performance.now(); raf = requestAnimationFrame(tick); }, 280);
+  };
+  u.addEventListener('pointerdown', e => startHold(-1, e));
+  d.addEventListener('pointerdown', e => startHold(1, e));
+  for (const b of [u, d]) {
+    b.addEventListener('pointerup', stopHold);
+    b.addEventListener('pointercancel', stopHold);
+    b.addEventListener('lostpointercapture', stopHold);
+  }
+  syncVArr(el);
+}
+function bindBattleVArr() {
+  bindVArr($('log'));
+  document.querySelectorAll('#detail .modal-panel, #help .modal-panel, #merc .modal-panel, #endturn-confirm .modal-panel').forEach(bindVArr);
+  bindVArr(document.querySelector('#end-screen .end-card'));
+  const end = $('end-screen');
+  if (end && window.MutationObserver && !end.__varrWatch) {
+    end.__varrWatch = new MutationObserver(() => requestAnimationFrame(() => syncVArr(end.querySelector('.end-card'))));
+    end.__varrWatch.observe(end, { attributes: true, attributeFilter: ['class'] });
+  }
+  if (window.MutationObserver && !document.body.__varrBattleWatch) {
+    document.body.__varrBattleWatch = new MutationObserver(() => requestAnimationFrame(() => syncVArr($('log'))));
+    document.body.__varrBattleWatch.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+  }
+}
+
 // ===== 전투 UI: 정렬 레이어 · 설정(⚙️) 레이어 (바깥 누르면 닫힘) =====
 { const pop = (btnId, popId) => { const b = $(btnId), p = $(popId); if (!b || !p) return;
     b.addEventListener('click', e => { e.stopPropagation(); const open = p.classList.contains('hidden'); document.querySelectorAll('.sort-pop, .bset-pop').forEach(x => x.classList.add('hidden')); p.classList.toggle('hidden', !open); p.classList.toggle('flex', open && popId === 'hand-sort'); b.setAttribute('aria-expanded', String(open)); });
     p.addEventListener('click', e => e.stopPropagation());
     document.addEventListener('click', () => { if (!p.classList.contains('hidden')) { p.classList.add('hidden'); p.classList.remove('flex'); b.setAttribute('aria-expanded', 'false'); } }); };
   pop('act-sort', 'hand-sort');
+  bindHandArr();
+  bindBattleVArr();
   // 전투 톱니도 홈과 같은 게임설정 창 (js/main-menu.js VRMenu). 전투 설정(#bset-pop)은 그 창 맨 위에 그대로 들어감
   $('bset-btn')?.addEventListener('click', e => { e.stopPropagation(); document.querySelectorAll('.sort-pop').forEach(x => { x.classList.add('hidden'); x.classList.remove('flex'); });
     if (window.VRMenu) window.VRMenu.toggle(); else { const p = $('bset-pop'); p?.classList.toggle('hidden'); } });

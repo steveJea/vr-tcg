@@ -40,11 +40,11 @@ set local check_function_bodies = off;
 
 do $vr_install_part$
 begin
-  if exists (select 1 from vr_staging_install.parts where bundle_hash <> '2e51781f300b93c84298e678ab1ea699a95d4d5bc29d23bc3cc785cdcfebdd30' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
+  if exists (select 1 from vr_staging_install.parts where bundle_hash <> '14de29035b6a378d364aa94d3034704eebd4f8dd3f90b779efc5eb160bf48e67' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
     raise exception 'STOP: 다른 버전/DB의 설치 기록입니다. 파일을 섞지 마세요.';
   end if;
   if exists (select 1 from vr_staging_install.parts where part_no = 13) then
-    if not exists (select 1 from vr_staging_install.parts where part_no = 13 and part_hash = '229e284d77ff2ce4fa99eff57bd7a521571593a1e55fe63c45bcf28061563aa9') then
+    if not exists (select 1 from vr_staging_install.parts where part_no = 13 and part_hash = 'b3567c036a666f025b1da98950377404ce59e9857915c04e3dfcae1446e18952') then
       raise exception 'STOP: 완료한 파일과 내용이 다릅니다.';
     end if;
     raise notice '13_install.sql: 이미 완료, 변경 없이 건너뜀';
@@ -55,6 +55,178 @@ begin
   end if;
   -- 설치 도중에는 클라이언트가 미완성 게임 스키마에 접근하지 못함. 마지막에만 개방.
   revoke usage on schema public from public, anon, authenticated;
+  execute $vr_statement$create or replace function public._clear_close_v2(s public.battle_sessions_v2,st text) returns void language plpgsql security definer
+set search_path=pg_catalog,public,pg_temp as $$
+declare d jsonb;
+begin
+ if s.status<>'issued' then return; end if;
+ if s.mode='story' then
+  d:=public._story_lock(s.user_id);
+  if d->'battle'->>'session'=s.id::text then perform public._phase2_old_story_abort_phase(); end if;
+ end if;
+ update public.battle_sessions_v2 set status=st,finished_at=clock_timestamp() where id=s.id and status='issued';
+end $$;$vr_statement$;
+  execute $vr_statement$create or replace function public.battle_session_start_v2(p_mode text,p_target text,p_party jsonb,p_request uuid) returns jsonb
+language plpgsql security definer set search_path=pg_catalog,public,pg_temp as $$
+declare u uuid:=auth.uid(); s public.battle_sessions_v2; old public.battle_sessions_v2; cfg jsonb; d jsonb; variant_ text;
+ ch int; ph int; fl int; tw text; r public.tower_progress; cards jsonb:='[]'; o jsonb; x text; cid text; ids text[]:='{}';
+ forced jsonb; allowed jsonb; pp jsonb; v text; snap jsonb; cost int:=0; mana_ int; seed_ int; min_ numeric; lv int; max_ int;
+begin
+ if u is null then raise exception 'login required'; end if;
+ if p_mode is null or not public._clear_enabled_v2(p_mode) then raise exception 'reward verification pending'; end if;
+ if p_target is null or length(p_target)>40 or p_request is null or jsonb_typeof(p_party) is distinct from 'array'
+ or jsonb_array_length(p_party)>10 or octet_length(p_party::text)>2048
+ or exists(select 1 from jsonb_array_elements(p_party) a where jsonb_typeof(a)<>'string') then raise exception 'invalid battle request'; end if;
+ perform pg_advisory_xact_lock(hashtext('battle-v2:'||u::text));
+ perform pg_advisory_xact_lock(hashtext('gem:'||u::text));
+ select * into s from public.battle_sessions_v2 where user_id=u and request_id=p_request for update;
+ if found then
+  if s.mode<>p_mode or s.target<>p_target or s.party<>p_party then raise exception 'request conflict'; end if;
+  if s.status='issued' and s.expires_at<=clock_timestamp() then perform public._clear_close_v2(s,'expired'); select * into s from public.battle_sessions_v2 where id=s.id; end if;
+  return public._clear_session_v2(s);
+ end if;
+ if (select count(*) from public.battle_sessions_v2 where user_id=u and issued_at >= (public._gem_day()::timestamp at time zone 'Asia/Seoul'))>=500 then raise exception 'session issuance limit'; end if;
+ insert into public.battle_legacy_access_v2(user_id) values(u) on conflict do nothing;
+ -- Starting a different battle replaces/refunds an unfinished story battle exactly
+ -- as before; the old token becomes unusable. Reissued stage keeps the same seed.
+ for old in select * from public.battle_sessions_v2 where user_id=u and status='issued' for update loop
+  perform public._clear_close_v2(old,case when old.expires_at<=clock_timestamp() then 'expired' else 'aborted' end);
+ end loop;
+ d:=public._story_lock(u); lv:=(public._player_sync(u)).level;
+ if p_mode='tutorial' then
+  if p_target!~'^[1-3]$' or p_party<>'[]' then raise exception 'invalid tutorial stage or party'; end if;
+  ph:=p_target::int;
+  if ph>1 and not public._clear_access_v2(u,'tutorial',(ph-1)::text) then raise exception 'previous tutorial first'; end if;
+  select definition into cfg from public.battle_tutorial_defs_v2 where stage=ph;
+  min_:=3;
+ elsif p_mode='story' then
+  if p_target!~'^(0|[1-9][0-9]?):[1-9][0-9]?$' then raise exception 'invalid story target'; end if;
+  ch:=split_part(p_target,':',1)::int; ph:=split_part(p_target,':',2)::int;
+  select definition into cfg from public.battle_story_defs_v2 where chapter=ch and phase=ph and variant='';
+  if cfg is null then raise exception 'invalid phase'; end if;
+  variant_:=case cfg->>'variantKind' when 'starter' then d->>'starter' when 'route' then d->'routes'->>ch::text else '' end;
+  if coalesce(variant_,'')<>'' then select definition into cfg from public.battle_story_defs_v2 where chapter=ch and phase=ph and variant=variant_; end if;
+  if cfg is null then raise exception 'invalid story variant'; end if;
+  if exists(select 1 from public.story_phase_config c where (c.chapter<ch or(c.chapter=ch and c.phase<ph)) and (c.chapter<>0 or ch=0)
+   and not public._clear_access_v2(u,'story',c.chapter::text||':'||c.phase::text)) then raise exception 'phase locked'; end if;
+  if cfg->>'variantKind' in ('starter','route') and coalesce(variant_,'')='' then raise exception 'story variant required'; end if;
+  pp:=coalesce(cfg->'party','{}'); forced:=coalesce(pp->'forced','[]');
+  allowed:=forced||coalesce(pp->'guests','[]')||coalesce(cfg->'loan','[]')||coalesce(cfg->'reserve','[]');
+  min_:=public._story_min_battle_secs();
+  max_:=case when coalesce((cfg->>'tutorial')::boolean,false) and not coalesce((cfg->>'pool')::boolean,false) then 5 else 10 end;
+  if coalesce((pp->>'solo')::boolean,false) then max_:=greatest(1,jsonb_array_length(forced)); end if;
+  max_:=least(max_,coalesce((pp->>'max')::int,max_));
+  if jsonb_array_length(p_party) not between 1 and max_ then raise exception 'party size'; end if;
+ else
+  if p_target!~'^(normal|wind|ice|fire|light|dark):[1-9][0-9]{0,2}$' then raise exception 'invalid tower target'; end if;
+  tw:=split_part(p_target,':',1); fl:=split_part(p_target,':',2)::int;
+  r:=public._tower_row(u,tw); perform public._tower_gate(u,tw,r);
+  if fl>public._tower_max_floor(tw) or (fl>1 and not public._clear_access_v2(u,'tower',tw||':'||(fl-1)::text)) then raise exception 'floor locked'; end if;
+  if p_mode='tower_sweep' and (fl%10=0 or fl<>r.best_floor+1) then raise exception 'boss floor or stale sweep'; end if;
+  if jsonb_array_length(p_party) not between 1 and 5 then raise exception 'party size'; end if;
+  cfg:=jsonb_build_object('tower',tw,'floor',fl); min_:=case when p_mode='tower_sweep' then public._quest_sweep_secs() else public._quest_min_secs() end;
+ end if;
+ if p_mode<>'tutorial' then
+  for x in select jsonb_array_elements_text(p_party) loop
+   o:=null;
+   if x like 'guest:lend:%' then
+    select jsonb_build_object('uid',x,'id',card_id,'guest',true,'level',snap->'level','loan',snap) into o from public.guild_loans
+     where borrower=u and id::text=substr(x,12) and expires_at>now();
+   elsif x like 'guest:%' then
+    cid:=substr(x,7);
+    if p_mode<>'story' or not allowed @> to_jsonb(cid) then raise exception 'guest not allowed'; end if;
+    o:=jsonb_build_object('uid',x,'id',cid,'guest',true,'level',coalesce((pp->'fixedLevel'->>cid)::int,case when not forced @> to_jsonb(cid) then (cfg->'loanLevel'->>cid)::int end,(pp->'levels'->>cid)::int,lv));
+   else o:=public._pvp_snap(u,jsonb_build_array(x),'open')->'cards'->0;
+   end if;
+   if o is null then raise exception 'card not owned or loan expired'; end if;
+   cid:=o->>'id';
+   -- story floorLv (js/story.js partyOf): an owned forced/loan card below the sheet level fights at the sheet level
+   -- for this battle only (saved level untouched). The v7 replay must see the same level or it reads 'tampered'.
+   if p_mode='story' and not coalesce((o->>'guest')::boolean,false) then
+    v:=case when forced @> to_jsonb(cid) then case when pp->'fixedLevel' ? cid then null else pp->'levels'->>cid end
+     when coalesce(cfg->'loan','[]') @> to_jsonb(cid) and not coalesce(pp->'guests','[]') @> to_jsonb(cid) then coalesce(cfg->'loanLevel'->>cid,pp->'levels'->>cid) end;
+    if v ~ '^[0-9]{1,3}$' and coalesce((o->>'level')::int,1) < least(100,greatest(1,v::int)) then o:=jsonb_set(o,'{level}',to_jsonb(least(100,greatest(1,v::int)))); end if;
+   end if;
+   if p_mode='story' and not forced @> to_jsonb(cid) and not coalesce(pp->'guests','[]') @> to_jsonb(cid) then
+    if coalesce((pp->>'solo')::boolean,false) or coalesce((pp->>'noExtra')::boolean,false) or coalesce(pp->'exclude','[]') @> to_jsonb(cid)
+      or (pp ? 'only' and not pp->'only' @> to_jsonb(cid)) then raise exception 'party restriction'; end if;
+    select definition into snap from public.battle_card_meta_v2 where id=cid;
+    if (coalesce((pp->>'noMale')::boolean,false) and snap->>'gender'='MALE')
+      or (coalesce((pp->>'noFemale')::boolean,false) and snap->>'gender'='FEMALE')
+      or (pp ? 'maxMor' and (snap->>'MOR')::numeric > (pp->>'maxMor')::numeric)
+      or (pp ? 'costBelow' and (snap->>'cost')::numeric >= (pp->>'costBelow')::numeric)
+      or (pp ? 'onlyClass' and snap->>'class'<>pp->>'onlyClass')
+      or coalesce(pp->'banClass','[]') @> to_jsonb(snap->>'class')
+      or (pp ? 'maxGrade' and array_position(array['NORMAL','RARE','HIGH RARE','SUPER RARE','ULTRA RARE','MYTHIC RARE','LEGENDARY RARE'],snap->>'grade') > array_position(array['NORMAL','RARE','HIGH RARE','SUPER RARE','ULTRA RARE','MYTHIC RARE','LEGENDARY RARE'],pp->>'maxGrade'))
+      then raise exception 'party restriction'; end if;
+   end if;
+   if cid=any(ids) then raise exception 'duplicate card'; end if;
+   ids:=ids||cid; cards:=cards||jsonb_build_array(o);
+   if p_mode like 'tower%' and tw<>'normal' and not exists(select 1 from public.battle_card_meta_v2 where id=cid and definition->>'class'=upper(tw)) then raise exception 'tower element'; end if;
+  end loop;
+  if p_mode='story' then
+   for v in select jsonb_array_elements_text(forced) loop if not v=any(ids) then raise exception 'required card missing'; end if; end loop;
+   -- Reserve cards are server-defined participants, never arbitrary XP targets.
+   for v in select jsonb_array_elements_text(coalesce(cfg->'reserve','[]')) loop
+    select o0 into o from jsonb_array_elements(public._story_owned(d)) o0 where o0->>'id'=v order by (o0->>'uid'=d->>'leader') desc nulls last,coalesce((o0->>'ex')::int,0) desc,coalesce((o0->>'level')::int,1) desc limit 1;
+    if o is not null and not v=any(ids) then cards:=cards||jsonb_build_array(public._pvp_snap(u,jsonb_build_array(o->>'uid'),'open')->'cards'->0); end if;
+   end loop;
+   d:=public._phase2_old_story_start_phase(ch,ph); cost:=coalesce((d->'battle'->>'stamina')::int,0);
+   if not coalesce((cfg->>'tutorial')::boolean,false) or coalesce((cfg->>'pool')::boolean,false) then
+    mana_:=coalesce((cfg->>'mana')::int,80+15*ch+2*lv+case when cfg->>'type'='boss' then 40 else 0 end+coalesce((cfg->>'manaBonus')::int,0));
+   end if;
+  end if;
+ end if;
+ insert into public.battle_session_seeds_v2(user_id,mode,target,seed) values(u,p_mode,p_target,1+floor(random()*2147483646)::int) on conflict do nothing;
+ select seed into seed_ from public.battle_session_seeds_v2 where user_id=u and mode=p_mode and target=p_target and rule_version=3;
+ snap:=jsonb_build_object('stage',cfg,'cards',cards,'player_level',lv,'starter',d->'starter','leader',d->'leader','cost',cost,'mana',mana_,'min_seconds',min_);
+ insert into public.battle_sessions_v2(user_id,request_id,mode,target,party,seed,snapshot) values(u,p_request,p_mode,p_target,p_party,seed_,snap) returning * into s;
+ if p_mode='story' then perform public._story_save(u,jsonb_set(d,'{battle,session}',to_jsonb(s.id::text))); end if;
+ if p_mode like 'tower%' then insert into public.battle_events_v2(session_id,user_id,mode,win,skills,day,week) values(s.id,u,'tower',false,0,public._gem_day(),public._weekly_week()); end if;
+ return public._clear_session_v2(s);
+end $$;$vr_statement$;
+  execute $vr_statement$create or replace function public.arcade_tut_status() returns jsonb language plpgsql stable security definer set search_path=pg_catalog,public,pg_temp as $$
+declare u uuid:=auth.uid(); begin
+ if u is null then raise exception 'login required'; end if;
+ return jsonb_build_object('ok',true,'reward_held',not public._clear_enabled_v2('tutorial'),
+ 'claimed',coalesce((select jsonb_agg(stage order by stage) from public.arcade_tut_claims where user_id=u),'[]'),
+ 'completed',coalesce((select jsonb_agg(target::int order by target::int) from public.battle_clear_receipts_v2 where user_id=u and mode='tutorial'),'[]'),
+ 'rewards',jsonb_build_object('1',public._arcade_tut_rw(1),'2',public._arcade_tut_rw(2),'3',public._arcade_tut_rw(3)));
+end $$;$vr_statement$;
+  execute $vr_statement$create or replace function public.arcade_tut_claim(p_stage int) returns jsonb language plpgsql security definer set search_path=pg_catalog,public,pg_temp as $$
+declare u uuid:=auth.uid(); rw jsonb:=public._arcade_tut_rw(p_stage); r jsonb; k text; n int;
+begin
+ if u is null then raise exception 'login required'; end if;
+ perform pg_advisory_xact_lock(hashtext('battle-v2:'||u::text)); perform pg_advisory_xact_lock(hashtext('gem:'||u::text));
+ if rw is null then raise exception 'invalid tutorial stage'; end if;
+ k:=rw->>'kind'; n:=(rw->>'n')::int;
+ if exists(select 1 from public.arcade_tut_claims where user_id=u and stage=p_stage) then return jsonb_build_object('ok',true,'already',true,'stage',p_stage,'kind',k); end if;
+ if not public._clear_enabled_v2('tutorial') then raise exception 'reward verification pending'; end if;
+ if not exists(select 1 from public.battle_clear_receipts_v2 where user_id=u and mode='tutorial' and target=p_stage::text) then raise exception 'verified tutorial session required'; end if;
+ r:=public._clear_grant_v2(u,jsonb_build_object(k,n),'tutorial_v2','arcade_tut:'||p_stage);
+ insert into public.arcade_tut_claims(user_id,stage,tickets,kind) values(u,p_stage,n,k);
+ return r||jsonb_build_object('ok',true,'kind',k,'stage',p_stage,'gave',n);
+end $$;$vr_statement$;
+  execute $vr_statement$create or replace function public._story_ticket_sync(uid uuid) returns jsonb language plpgsql security definer set search_path=pg_catalog,public,pg_temp as $$
+declare ch int; got int[]; added int:=0; chapters jsonb:='[]'; rw jsonb; r jsonb; tk int;
+begin
+ if uid is null then raise exception 'login required'; end if;
+ perform pg_advisory_xact_lock(hashtext('gem:'||uid::text));
+ insert into public.story_gacha(user_id,last_draw) values(uid,public._gem_day()-1) on conflict do nothing;
+ select ticket_chapters into got from public.story_gacha where user_id=uid for update;
+ if public._clear_enabled_v2('story') then
+ for ch in select chapter from public.story_phase_config c group by chapter having bool_and(exists(
+  select 1 from public.battle_clear_receipts_v2 v where v.user_id=uid and v.mode='story' and v.target=c.chapter::text||':'||c.phase::text)) order by chapter loop
+  if exists(select 1 from public.reward_claims where user_id=uid and reward_kind='chapter_v2' and source_or_period='chapter:'||ch) then continue; end if;
+  rw:=jsonb_build_object('tickets',case when ch=any(got) then 0 else 10 end,'gem',case when exists(
+   select 1 from public.gem_ledger where user_id=uid and ref='chapter:'||ch) then 0 else public._gem_chapter_reward() end);
+  r:=public._clear_grant_v2(uid,rw,'chapter_v2','chapter:'||ch);
+  if not ch=any(got) then got:=got||ch; end if;
+  added:=added+(rw->>'tickets')::int; chapters:=chapters||to_jsonb(ch);
+ end loop; end if;
+ update public.story_gacha set ticket_chapters=got where user_id=uid returning tickets into tk;
+ return jsonb_build_object('tickets',tk,'added',added,'chapters',chapters,'reward_held',not public._clear_enabled_v2('story'));
+end $$;$vr_statement$;
   execute $vr_statement$create or replace function public.battle_session_finish_v2(p_session uuid,p_report jsonb) returns jsonb language plpgsql security definer
 set search_path=pg_catalog,public,pg_temp as $$
 declare u uuid:=auth.uid(); s public.battle_sessions_v2; cfg jsonb; d jsonb; res jsonb:='{}'; x jsonb; o jsonb; stats jsonb:='[]';
@@ -83,8 +255,9 @@ begin
  or (win_ and reason_='giveup') or length(reason_)>40 then raise exception 'implausible turns or skills'; end if;
  -- Field-entry passives can legitimately win story/manual tower before turn 1.
  if s.mode in ('tower_sweep','tutorial') and win_ and tr<1 then raise exception 'implausible zero-turn win'; end if;
- if reason_ not in ('ko','wipe','survive','timeout','giveup','mustlive','mustsummon','hp','cards','draw')
+ if reason_ not in ('ko','wipe','survive','timeout','giveup','mustlive','mustsummon','hp','cards','draw','mustkill')
  or (win_ and reason_ in ('timeout','giveup','mustlive','mustsummon','draw'))
+ or (reason_='mustkill' and (not win_ or jsonb_typeof(cfg->'rules'->'mustKill') is distinct from 'array' or cfg->'rules'->'mustKill'='[]'::jsonb))
  or (reason_='survive' and (not win_ or cfg->'rules'->>'survive' is null or tr<2*(cfg->'rules'->>'survive')::int)) then raise exception 'implausible end reason'; end if;
  if (select count(*) from public.battle_events_v2 where user_id=u and day=public._gem_day() and session_id<>s.id)>=500 then raise exception 'completion rate limit'; end if;
  clear_:=win_ or (s.mode='story' and coalesce((cfg->>'loseClears')::boolean,false) and reason_ not in ('giveup',''));
@@ -339,7 +512,7 @@ end $acl$;$vr_statement$;
 
 create table if not exists public.pvp_policy_v3(
  singleton boolean primary key default true check(singleton), engine_hash text not null check(length(engine_hash)=64), enabled boolean not null default true);$vr_statement$;
-  execute $vr_statement$insert into public.pvp_policy_v3(singleton,engine_hash) values(true,'bef887c77a009121ae99301ca91db7d73a7bd9ce30d70e1ec7a18d10742cd16f')
+  execute $vr_statement$insert into public.pvp_policy_v3(singleton,engine_hash) values(true,'c5b478a735b1798bd7b9c51902ae85efe5ed861e9ab2936cecf753b4e250a648')
  on conflict(singleton) do update set engine_hash=excluded.engine_hash;$vr_statement$;
   execute $vr_statement$-- A clean, verified ladder. Legacy rows remain intact, NOT copied as proof.
 create table if not exists public.pvp_ratings_v3(
@@ -678,7 +851,7 @@ end $acl$;$vr_statement$;
 -- Phase4 cluster guard is enforced by installer outer guard.
 set local check_function_bodies=off;$vr_statement$;
   execute $vr_statement$create table if not exists public.guildbattle_policy_v4(singleton boolean primary key default true check(singleton),engine_hash text not null,enabled boolean not null default true);$vr_statement$;
-  execute $vr_statement$insert into public.guildbattle_policy_v4(singleton,engine_hash) values(true,'819b116c1e1ccd7d66ba589e3bc5e4e8d436a43ebf2dfe4543c250cbf5166cd0') on conflict(singleton) do update set engine_hash=excluded.engine_hash;$vr_statement$;
+  execute $vr_statement$insert into public.guildbattle_policy_v4(singleton,engine_hash) values(true,'c87d5a678229e2bbc3bcd92ff3f9f4b8e32291df874a9919c4295b14831d7d07') on conflict(singleton) do update set engine_hash=excluded.engine_hash;$vr_statement$;
   execute $vr_statement$do $$ begin
  if not exists(select 1 from pvp_policy_v3) then raise exception 'STOP: install phases 1-3 first'; end if;
 end $$;$vr_statement$;
@@ -1174,125 +1347,9 @@ begin
       'atk', (select coalesce(jsonb_object_agg(deck, jsonb_build_object('alive', (select count(*) from jsonb_array_elements(snap) c where coalesce((state->>(c->>'uid'))::int, 1) > 0))), '{}'::jsonb) from war_atk_state_v4 where match_id = mt.id and user_id = uid)),
     'mine', _war_side_json_v4(mt.id, my), 'enemy', _war_side_json_v4(mt.id, 1 - my)));
 end $$;$vr_statement$;
-  execute $vr_statement$create or replace function public._war_sum_v4(a jsonb, b jsonb) returns jsonb language sql immutable as $$
-  select coalesce(jsonb_object_agg(k, coalesce((a->>k)::int, 0) + coalesce((b->>k)::int, 0)), '{}'::jsonb) from (select jsonb_object_keys(a) k union select jsonb_object_keys(b)) x $$;$vr_statement$;
-  execute $vr_statement$create or replace function public._war_pending_v4(p_uid uuid) returns jsonb language plpgsql stable security definer set search_path=pg_catalog,public,pg_temp as $$
-declare out jsonb := '[]'::jsonb; r record; N jsonb := _war_numbers_v4(); rk int;
-begin
-  for r in select mt.*, wr.guild_id gid from war_roster_v4 wr join war_matches_v4 mt on mt.season = wr.season and (mt.guild_a = wr.guild_id or mt.guild_b = wr.guild_id)
-            where wr.user_id = p_uid and mt.settled and wr.season >= _war_season_v4() - 62 loop
-    continue when exists (select 1 from guild_claims where user_id = p_uid and ref = 'warm:' || r.id || ':v4');
-    out := out || jsonb_build_object('ref', 'warm:' || r.id, 'gid', r.gid, 'reward', case when r.draw then N->'match_draw' when r.winner is distinct from r.gid then N->'match_loss' else (N->'match_win') ||
-      case when r.boss_kill then _war_sum_v4(N->'match_win', N->'match_boss_kill') else '{}'::jsonb end end);
-  end loop;
-  for r in select wr.season, wr.guild_id from war_roster_v4 wr join war_entries_v4 e on e.season = wr.season and e.guild_id = wr.guild_id and e.status = 'in' and e.locked and (select count(distinct wm.day) from war_matches_v4 wm where wm.season=wr.season and (wm.guild_a=wr.guild_id or wm.guild_b=wr.guild_id) and wm.settled)=5
-            where wr.user_id = p_uid and wr.season >= _war_season_v4() - 62 and _war_now_v4() >= _war_at_v4(wr.season, 5, (N->>'close_hour')::int) loop
-    continue when exists (select 1 from guild_claims where user_id = p_uid and ref = 'wars:' || r.season || ':v4');
-    select x.rk into rk from (select guild_id, row_number() over (order by points desc, boss_kills desc, score_total desc, guild_id) rk from war_entries_v4 where season = r.season and status = 'in') x where x.guild_id = r.guild_id;
-    out := out || jsonb_build_object('ref', 'wars:' || r.season, 'gid', r.guild_id, 'rank', rk, 'reward', _war_sum_v4(N->'season_member',
-      coalesce((select q->'reward' from jsonb_array_elements(N->'season_rank') q where rk between (q->>'from')::int and (q->>'to')::int), '{}'::jsonb)));
-  end loop;
-  return out;
-end $$;$vr_statement$;
-  execute $vr_statement$create or replace function public._war_claimable_v4() returns int language sql stable security definer set search_path=pg_catalog,public,pg_temp as $$ select jsonb_array_length(_war_pending_v4(auth.uid())) $$;$vr_statement$;
-  execute $vr_statement$create or replace function public._war_claim_v4() returns jsonb language plpgsql security definer set search_path=pg_catalog,public,pg_temp as $$
-declare uid uuid := auth.uid(); p jsonb; x jsonb; got jsonb := '{}'::jsonb; k text;
-begin
-  if uid is null then raise exception 'login required'; end if;
-  perform _war_tick_v4();
-  p := _war_pending_v4(uid);
-  if jsonb_array_length(p) = 0 then raise exception 'nothing to claim'; end if;
-  for x in select * from jsonb_array_elements(p) loop
-    perform _guild_reward_v4(uid, (x->>'gid')::bigint, x->'reward', 'war_reward', x->>'ref');
-    for k in select jsonb_object_keys(x->'reward') loop got := jsonb_set(got, array[k], to_jsonb(coalesce((got->>k)::int, 0) + (x->'reward'->>k)::int)); end loop;
-    if x ? 'rank' then got := got || jsonb_build_object('rank', x->'rank'); end if;
-  end loop;
-  return _war_status_v4() || jsonb_build_object('got', got);
-end $$;$vr_statement$;
-  execute $vr_statement$create or replace function public._war_leader_card_v4(p_uid uuid) returns text language sql stable security definer set search_path=pg_catalog,public,pg_temp as $$
-  select o->>'id' from story_progress sp, jsonb_array_elements(coalesce(sp.data->'owned', '[]'::jsonb)) o where sp.user_id = p_uid and o->>'uid' = sp.data->>'leader' limit 1 $$;$vr_statement$;
-  execute $vr_statement$create or replace function public._war_ui_v4() returns jsonb language plpgsql security definer set search_path=pg_catalog,public,pg_temp as $$
-declare uid uuid := auth.uid(); m guild_members; s date; d int; mid bigint;
-begin
-  if uid is null then raise exception 'login required'; end if;
-  s := _war_season_v4(); d := _war_day_v4(s); m := _guild_me(uid);
-  if m.user_id is null then return jsonb_build_object('ok', true, 'signed', '[]'::jsonb, 'me_signed', false, 'cards', '{}'::jsonb); end if;
-  select id into mid from war_matches_v4 where season = s and day = d and (guild_a = m.guild_id or guild_b = m.guild_id);
-  return jsonb_build_object('ok', true,
-    'signed', (select coalesce(jsonb_agg(user_id), '[]'::jsonb) from war_signups where season = s and guild_id = m.guild_id),
-    'me_signed', exists (select 1 from war_signups where season = s and user_id = uid),
-    'cards', (select coalesce(jsonb_object_agg(u, _war_leader_card_v4(u)) filter (where _war_leader_card_v4(u) is not null), '{}'::jsonb) from (
-       select gm.user_id u from guild_members gm where gm.guild_id = m.guild_id
-       union select a.user_id from war_ajits_v4 a where a.match_id = mid and a.user_id is not null) x));
-end $$;$vr_statement$;
-  execute $vr_statement$create or replace function public._war_min_level_v4() returns int language sql immutable as $$ select 3 $$;$vr_statement$;
-  execute $vr_statement$create or replace function public._war_card_score_v4(p_id text, p_level int, p_ex int) returns numeric language sql stable security definer set search_path=pg_catalog,public,pg_temp as $$
-  select coalesce((select case m.grade when 'LEGENDARY RARE' then 7 when 'MYTHIC RARE' then 6 when 'ULTRA RARE' then 5 when 'SUPER RARE' then 4 when 'HIGH RARE' then 3 when 'RARE' then 2 else 1 end
-                   from pvp_card_meta m where m.id = p_id), 0) * 1000 + coalesce(p_level, 1) * 20 + coalesce(p_ex, 0) * 50 $$;$vr_statement$;
-  execute $vr_statement$create or replace function public._war_power_v4(p_user uuid) returns numeric language sql stable security definer set search_path=pg_catalog,public,pg_temp as $$
-  select coalesce(sum(_war_card_score_v4(x->>'id', (x->>'level')::int, (x->>'ex')::int)), 0) from story_progress sp,
-    jsonb_array_elements(case when jsonb_typeof(sp.data->'owned') = 'array' then sp.data->'owned' else '[]'::jsonb end) x
-  where sp.user_id = p_user and x->>'uid' in (select jsonb_array_elements_text(_war_top5(p_user))) $$;$vr_statement$;
-  execute $vr_statement$create or replace function public._war_auto_deck_v4(p_user uuid) returns void language plpgsql security definer set search_path=pg_catalog,public,pg_temp as $$
-declare t jsonb; sn jsonb;
-begin
-  if p_user is null then return; end if;
-  if exists (select 1 from war_decks_v4 where user_id = p_user and def1 is not null and atk1 is not null) then return; end if;
-  t := _war_top5(p_user); if jsonb_array_length(t) = 0 then return; end if;
-  begin sn := _pvp_snap(p_user, t, 'open')->'cards'; exception when others then return; end;
-  insert into war_decks_v4 (user_id) values (p_user) on conflict do nothing;
-  update war_decks_v4 set def1 = coalesce(def1, case when def2 is null or not exists (select 1 from jsonb_array_elements(sn) a, jsonb_array_elements(def2) b where a->>'id' = b->>'id') then sn end),
-                       atk1 = coalesce(atk1, case when atk2 is null or not exists (select 1 from jsonb_array_elements(sn) a, jsonb_array_elements(atk2) b where a->>'id' = b->>'id') then sn end),
-                       updated_at = now() where user_id = p_user;
-end $$;$vr_statement$;
-  execute $vr_statement$create or replace function public._war_auto_enter_v4(p_season date) returns void language sql security definer set search_path=pg_catalog,public,pg_temp as $$
-  insert into war_entries_v4 (season, guild_id) select p_season, g.id from guilds g where g.level >= _war_min_level_v4() and (not exists(select 1 from guildbattle_test_clock_v4 where expires_at>clock_timestamp()) or g.id in(select unnest(guild_ids) from guildbattle_test_clock_v4 where singleton)) on conflict do nothing $$;$vr_statement$;
-  execute $vr_statement$create or replace function public._war_auto_assign_v4() returns jsonb language plpgsql security definer set search_path=pg_catalog,public,pg_temp as $$
-declare uid uuid := auth.uid(); m guild_members; s date := _war_tick_v4(); e war_entries_v4; u record; i int := 0;
-        ord int[] := array[14,1,2,3,4,5,6,7,8,9,10,11,12,13,15,16,17,18,19,20,21];
-begin
-  m := _guild_me(uid);
-  if m.user_id is null or m.role <> 'boss' then raise exception 'not allowed'; end if;
-  select * into e from war_entries_v4 where season = s and guild_id = m.guild_id;
-  if e.guild_id is null then raise exception 'not entered'; end if;
-  if e.locked then raise exception 'roster locked'; end if;
-  delete from war_roster_v4 where season = s and guild_id = m.guild_id;
-  for u in select gm.user_id from guild_members gm where gm.guild_id = m.guild_id order by _war_power_v4(gm.user_id) desc, gm.joined_at loop
-    i := i + 1; exit when i > 21;
-    insert into war_roster_v4 (season, guild_id, slot, user_id) values (s, m.guild_id, ord[i], u.user_id);
-    perform _war_auto_deck_v4(u.user_id);
-  end loop;
-  return _war_status_v4();
-end $$;$vr_statement$;
-  execute $vr_statement$create or replace function public._war_meta_v4() returns jsonb language plpgsql stable security definer set search_path=pg_catalog,public,pg_temp as $$
-declare uid uuid := auth.uid(); m guild_members;
-begin
-  if uid is null then raise exception 'login required'; end if;
-  m := _guild_me(uid);
-  return jsonb_build_object('ok', true, 'min_level', _war_min_level_v4(),
-    'guild_level', (select level from guilds where id = m.guild_id),
-    'need_deck', m.user_id is not null and not exists (select 1 from war_decks_v4 d where d.user_id = uid and d.def1 is not null and d.atk1 is not null));
-end $$;$vr_statement$;
-  execute $vr_statement$create or replace function public._raid_start_v4(p_uids jsonb) returns jsonb language plpgsql security definer set search_path=pg_catalog,public,pg_temp as $$
-declare uid uuid := auth.uid(); m guild_members; w date := _raid_week_v4(); r guild_raids_v4; N jsonb := _raid_numbers_v4(); snap jsonb; seed bigint; aid bigint;
-begin
-  m := _guild_me(uid);
-  if m.user_id is null then raise exception 'not in guild'; end if;
-  if _raid_now_v4() >= _raid_end_v4(w) then raise exception 'raid ended'; end if;
-  perform pg_advisory_xact_lock(hashtext('raid:' || uid));
-  -- 끝내지 않은 판은 0 피해로 마감 (횟수는 이미 씀)
-  update guild_raid_attempts_v4 set finished_at = now(), damage = 0 where user_id = uid and finished_at is null;
-  if _guildbattle_used_v4(uid,'raid') >= (N->>'attempts_per_day')::int then raise exception 'no attempts'; end if;
-  r := _raid_get_v4(m.guild_id, w);
-  snap := _pvp_snap(uid, p_uids, 'open')->'cards';
-  seed := floor(random() * 2147483647)::bigint;
-  insert into guild_raid_attempts_v4 (user_id, guild_id, week, day, kind, stage, difficulty, seed, snap)
-    values (uid, m.guild_id, w, _raid_day_v4(), 'fight', r.stage, r.difficulty, seed, snap) returning id into aid;
-  return jsonb_build_object('ok', true, 'id', aid, 'seed', seed, 'deck', snap, 'stage', r.stage, 'difficulty', r.difficulty, 'boss', _raid_boss_v4(r.stage));
-end $$;$vr_statement$;
 
   insert into vr_staging_install.parts(part_no, bundle_hash, part_hash, project_ref, db_id)
-  values (13, '2e51781f300b93c84298e678ab1ea699a95d4d5bc29d23bc3cc785cdcfebdd30', '229e284d77ff2ce4fa99eff57bd7a521571593a1e55fe63c45bcf28061563aa9', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
+  values (13, '14de29035b6a378d364aa94d3034704eebd4f8dd3f90b779efc5eb160bf48e67', 'b3567c036a666f025b1da98950377404ce59e9857915c04e3dfcae1446e18952', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
 end $vr_install_part$;
 commit;
 select '13_install.sql: 완료 또는 이미 완료 (13/14)' as result;

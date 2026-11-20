@@ -16,8 +16,8 @@
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const K = {
     gold: ['골드', 'img/ui/cur_gold.webp'], blood: ['피', 'img/ui/cur_blood.webp'], shard: ['조각', 'img/ui/cur_shard_small.webp'],
-    gem_free: ['무료 심연석', 'img/ui/guild/cur_gem.webp'], drink: ['무료 드링크', 'img/ui/cur_drink.webp'],
-    tickets: ['소환권', 'img/ui/ticket.webp'], special_tickets: ['스페셜 소환권', null],
+    gem_free: ['무료 심연석', 'img/ui/guild/cur_gem.webp'], drink: ['무료 드링크', 'img/ui/cur_drink_free.webp'],
+    tickets: ['소환권', 'img/ui/ticket.webp'], special_tickets: ['스페셜 소환권', 'img/ui/ticket_special.webp'],
   };
   const ORDER = Object.keys(K);
   const ents = r => ORDER.filter(k => r?.[k]).map(k => [k, r[k]]);

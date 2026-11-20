@@ -38,6 +38,7 @@
   <link rel="stylesheet" href="css/howto.css">
   <script src="js/id-alias.js"></script>   <!-- 카드 ID 변경 대비: 옛 ID → 새 ID (가장 먼저) -->
   <script src="js/img-fallback.js"></script>
+  <script src="js/client-errors.js"></script>
   <style>
     /* 한글은 띄어쓰기(단어)에서만 줄바꿈. 칸보다 긴 URL·코드·닉네임만 그 자리에서 자름 */
     html { word-break: keep-all; overflow-wrap: anywhere; }
@@ -49,8 +50,9 @@
     }
     #zoom-view{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.92);display:none;flex-direction:column;align-items:center;justify-content:center;padding:16px;gap:10px;-webkit-touch-callout:none;user-select:none}
     #zoom-view.open{display:flex}
-    #zoom-view .zoom-img{max-width:100%;max-height:calc(100dvh - 140px);object-fit:contain;border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,.6);-webkit-touch-callout:none}
-    #zoom-view .zoom-info{text-align:center;color:#fff}
+    #zoom-view .zoom-img{max-width:100%;max-height:calc(100dvh - 140px);object-fit:contain;border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,.6);-webkit-touch-callout:none;min-height:0}
+    #zoom-view .zoom-info{text-align:center;color:#fff;flex-shrink:0}
+    @media (min-width: 768px) { #zoom-view .zoom-img{max-height:calc(100dvh - 12rem)} }
     #zoom-view .zoom-close{position:absolute;top:12px;right:12px;width:40px;height:40px;border-radius:9999px;background:#27272a;color:#fff;font-size:18px}
     .card-img{-webkit-touch-callout:none}
     body { font-family: 'Inter', 'Noto Sans KR', system-ui, sans-serif; }
@@ -77,7 +79,7 @@
     .log-modal{position:fixed;inset:0;z-index:45;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;padding:16px}
     .log-modal.hidden{display:none}
     .log-panel{position:relative;width:100%;max-width:480px;background:#18181b;border:1px solid rgba(255,255,255,.15);border-radius:1.25rem;padding:14px 14px 10px}
-    .log-body{max-height:60vh;overflow-y:auto;background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.08);border-radius:.75rem;padding:.4rem .7rem;margin-top:8px}
+    .log-body{max-height:60vh;overflow-y:auto;scrollbar-width:none;-ms-overflow-style:none;background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.08);border-radius:.75rem;padding:.4rem .7rem;margin-top:8px}.log-body::-webkit-scrollbar{display:none;width:0}
     .ui-ic { display: inline-block; width: 1.2em; height: 1.2em; vertical-align: -0.25em; object-fit: contain; pointer-events: none; user-select: none; }
     .ui-ic-sm { width: 1em; height: 1em; vertical-align: -0.15em; }
     /* set4: 닫기·재생·완료 아이콘이 버튼/배지 안에서 글자 크기에 맞게 */
@@ -133,7 +135,7 @@
     #game.view-raid #ai-field .unit .hp-bar, #game.view-raid #ai-field .unit .mp-bar { display:none; }
     .fx-dmg.fx-dmg-raid { font-size:34px !important; }
     /* PvP·구역 전쟁 화면(TCG.viewBattle): 마나 없음 → 마나 액션·손패·마나 표시 숨김 */
-    #game.view-battle #action-bar, #game.view-battle #me-hand, #game.view-battle #act-sort, #game.view-battle #hand-sort, #game.view-battle .mana-line, #game.view-battle #act-merc { display: none !important; }
+    #game.view-battle #action-bar, #game.view-battle #me-hand, #game.view-battle #act-sort, #game.view-battle #hand-sort, #game.view-battle .hand-arr, #game.view-battle .mana-line, #game.view-battle #act-merc { display: none !important; }
     @media (min-aspect-ratio: 1/1) {
       #battle-bg[data-bg="normal"] { background-image: url(img/ui/bg_normal_wide.webp); }
       #battle-bg[data-bg="boss"] { background-image: url(img/ui/bg_boss_wide.webp); }
@@ -235,6 +237,29 @@
     }
     /* 카드 정보 공통 (cardTitle·cardTags·cardStats) */
     .ci-name { font-weight: 900; } .ci-sub { font-size: .72em; font-weight: 600; color: #a1a1aa; }
+    .ci-cost { font-size: .72em; font-weight: 800; color: #7dd3fc; letter-spacing: .04em; white-space: nowrap; }
+    .ci-statrow { display: flex; flex-direction: column; min-width: 0; width: 100%; }
+    .ci-hmp { display: flex; gap: 8px; margin-top: 8px; width: 100%; min-width: 0; }
+    .ci-hmp-col { flex: 1; min-width: 0; }
+    .ci-hmp-lab { display: flex; justify-content: space-between; align-items: baseline; gap: 4px; font-size: 10px; font-weight: 700; color: #a1a1aa; margin-bottom: 2px; }
+    .ci-hmp-lab, .ci-hmp-lab span, .ci-hmp-lab b { white-space: nowrap; overflow-wrap: normal; word-break: keep-all; }
+    .ci-hmp-lab b { font-weight: 800; color: #e4e4e7; }
+    .ci-hmp-track { height: 8px; border-radius: 999px; background: rgba(255,255,255,.1); overflow: hidden; }
+    .ci-hmp-fill { height: 100%; border-radius: inherit; }
+    .ci-hmp-fill.hp { background: #ef4444; }
+    .ci-hmp-fill.mp { background: #3b82f6; }
+    .zoom-info .ci-hmp { flex-basis: 100%; max-width: 22rem; margin-left: auto; margin-right: auto; }
+    .zoom-info .ci-statrow { align-items: stretch; justify-content: center; }
+    @media (max-width: 379px) { .ci-hmp { gap: 6px; } .ci-hmp-lab { font-size: 9px; } .ci-head { font-size: 1.05rem; } }
+    /* PC: HP·MP 바를 방어력 옆 한 줄에, 두 칸 너비 동일. 라벨·숫자(1,234/1,234)는 줄바꿈 없음. 모바일 배치는 그대로 */
+    @media (min-width: 768px) {
+      .ci-statrow { flex-direction: row; flex-wrap: nowrap; align-items: flex-end; gap: 12px; width: auto; max-width: 100%; }
+      .ci-statrow .ci-stats { flex: 0 0 auto; margin-top: 6px; }
+      .ci-statrow .ci-hmp { flex: 0 0 16.5rem; width: 16.5rem; min-width: 16.5rem; max-width: 16.5rem; margin-top: 6px; gap: 8px; }
+      .ci-statrow .ci-hmp-col { flex: 1 1 0; width: 0; min-width: 0; }
+      .zoom-info .ci-hmp { flex-basis: 16.5rem; max-width: 16.5rem; margin: 0; }
+      .zoom-info .ci-statrow { justify-content: center; flex-wrap: nowrap; }
+    }
     .ci-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 4px; font-size: 11px; justify-content: inherit; }
     .ci-tag { display: inline-flex; align-items: center; gap: 2px; padding: 1px 6px; border-radius: 999px; background: rgba(255,255,255,.08); color: #d4d4d8; font-weight: 700; white-space: nowrap; }
     .ci-tag img, .ci-el img, .ci-st img { width: 14px; height: 14px; }
@@ -268,7 +293,7 @@
 .turns-warn-p i.on{background:#fb923c!important}.turns-crit-p i.on{background:#ef4444!important}
 .last-turn-toast{position:fixed;left:50%;top:40%;transform:translate(-50%,-50%);z-index:60;padding:14px 28px;border-radius:18px;background:linear-gradient(135deg,#dc2626,#f97316);color:#fff;font-weight:900;font-size:clamp(22px,6vw,40px);box-shadow:0 0 40px #ef4444;pointer-events:none;animation:toastIn 2.2s ease forwards}
 @keyframes toastIn{0%{opacity:0;transform:translate(-50%,-50%) scale(.6)}12%{opacity:1;transform:translate(-50%,-50%) scale(1.1)}20%{transform:translate(-50%,-50%) scale(1)}80%{opacity:1}100%{opacity:0;transform:translate(-50%,-60%) scale(1)}}
-#me-field .unit, #me-field .unit img { -webkit-user-drag: none; user-select: none; } #me-field .unit.dragging { opacity: .9; filter: drop-shadow(0 0 12px #a78bfa); cursor: grabbing; } #me-hand::-webkit-scrollbar { height: 6px; } #me-hand::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 3px; }
+#me-field .unit, #me-field .unit img { -webkit-user-drag: none; user-select: none; } #me-field .unit.dragging { opacity: .9; filter: drop-shadow(0 0 12px #a78bfa); cursor: grabbing; }
     /* 모바일: 상단 버튼이 상대 진영 칸을 좁히지 않게 버튼 줄 → 상대 진영(전체 폭) 두 줄 배치 (내 진영과 같은 모양) */
     @media (max-width: 640px) {
       #top-bar { flex-wrap: wrap; justify-content: flex-end; row-gap: .4rem; }
@@ -357,10 +382,14 @@
   <div class="intro-body">
     <img src="img/ui/main/logo_v2.webp" alt="Violence Royale : The Abyss Gate" class="intro-logo" width="1200" height="595">
     <div class="intro-acts">
-      <div class="oauth-row" data-clarity-mask="true">
-        <button id="intro-login" data-oauth-provider="google" class="main-btn intro-btn" type="button"><img src="img/ui/login.webp" alt="" class="ui-ic"> 구글 로그인</button>
-        <button id="intro-login-kakao" class="main-btn intro-btn oauth-kakao" type="button" data-oauth-provider="kakao" hidden><img src="img/ui/kakao-symbol.svg" class="oauth-symbol" width="18" height="18" alt="">카카오 로그인</button>
-        <button id="intro-login-x" class="main-btn intro-btn oauth-x" type="button" data-oauth-provider="x" hidden>X 로그인</button>
+      <div class="intro-login-box" role="group" aria-labelledby="intro-login-title">
+        <div id="intro-login-title" class="intro-login-title">LOG IN</div>
+        <div class="oauth-row" data-clarity-mask="true">
+          <button id="intro-login" data-oauth-provider="google" class="main-btn intro-btn intro-sns intro-sns-google" type="button" aria-label="구글로 로그인" title="구글로 로그인"><img src="img/ui/v2/icon_google.svg" alt="" class="oauth-symbol" width="24" height="24"></button>
+          <button id="intro-login-kakao" class="main-btn intro-btn intro-sns oauth-kakao" type="button" data-oauth-provider="kakao" hidden aria-label="카카오로 로그인" title="카카오로 로그인"><img src="img/ui/v2/icon_kakao.svg" alt="" class="oauth-symbol" width="24" height="24"></button>
+          <button id="intro-login-x" class="main-btn intro-btn intro-sns oauth-x" type="button" data-oauth-provider="x" hidden aria-label="X로 로그인" title="X로 로그인"><img src="img/ui/v2/icon_x.svg" alt="" class="oauth-symbol" width="24" height="24"></button>
+          <button id="intro-login-naver" class="main-btn intro-btn intro-sns oauth-naver" type="button" data-oauth-provider="naver" hidden aria-label="네이버로 로그인" title="네이버로 로그인"><img src="img/ui/v2/icon_naver.svg" alt="" class="oauth-symbol" width="24" height="24"></button>
+        </div>
       </div>
       <button id="intro-guest" class="intro-guest" type="button">게스트로 시작</button>
       <nav id="intro-legal-links" class="legal-links" aria-label="서비스 정책"><a href="/terms.html" target="_blank" rel="noopener noreferrer">이용약관</a><a href="/privacy.html" target="_blank" rel="noopener noreferrer">개인정보처리방침</a><a href="/about.html" target="_blank" rel="noopener noreferrer">서비스 소개</a><a href="/shop-info.html" target="_blank" rel="noopener noreferrer">상품 안내</a><a href="/age.html" target="_blank" rel="noopener noreferrer">연령 확인 (19+)</a></nav>
@@ -400,6 +429,19 @@
     <div class="main-menu main-grid w-full" role="group" aria-label="메뉴">
       <button id="story-btn" disabled class="main-tile tile-story main-cta" type="button" data-mode="story" data-auth>
         <img src="img/ui/v2/btn_story.webp" alt="" class="main-tile-img" decoding="async" data-alt="img/ui/main/story_banner.webp"><span class="main-cta-t"><small id="main-cta-sub">STORY</small><b class="main-tile-t">▶ 스토리 이어하기</b></span><i class="main-tile-lock">🔒</i></button>
+      <div id="ch-shortcuts" class="ch-shortcuts hidden" hidden aria-label="챕터 바로가기">
+        <div class="ch-shortcuts-head">
+          <span class="ch-shortcuts-label">스토리</span>
+          <span id="story-hub-btn" class="main-story-hub" role="button" tabindex="0" title="스토리 챕터 목록">📜 스토리</span>
+        </div>
+        <div class="ch-shortcuts-wrap">
+          <button type="button" class="ch-short-arrow ch-short-l" data-ch-move="-1" aria-label="이전 챕터" disabled>‹</button>
+          <div id="ch-shortcuts-vp" class="ch-shortcuts-vp">
+            <div id="ch-shortcuts-track" class="ch-shortcuts-track"></div>
+          </div>
+          <button type="button" class="ch-short-arrow ch-short-r" data-ch-move="1" aria-label="다음 챕터" disabled>›</button>
+        </div>
+      </div>
       <button id="start-btn" disabled class="main-tile tile-arcade" type="button" data-mode="arcade">
         <img src="img/ui/v2/btn_arcade.webp" alt="" class="main-tile-img" decoding="async"><b class="main-tile-t main-banner-title">불러오는 중...</b></button>
       <button id="main-pvp" class="main-tile tile-pvp" type="button" data-mode="pvp" data-auth title="PvP">
@@ -426,9 +468,10 @@
         <button id="arcade-opts-btn" class="gm-btn" type="button" aria-haspopup="dialog" data-gm-home><img src="img/ui/v2/icon_arcade_settings.webp" alt=""><span>아케이드 설정 <small id="arcade-opts-sum"></small></span></button>
         <button id="main-rank" class="gm-btn" type="button" data-gm-nobattle><img src="img/ui/v2/icon_ranking.webp" alt=""><span>랭킹</span></button>
         <button id="main-gallery" class="gm-btn" type="button" data-gm-nobattle><img src="img/ui/v2/icon_gallery.webp" alt=""><span>갤러리</span></button>
-        <button id="main-link-google" class="gm-btn" type="button" data-gm-nobattle hidden data-clarity-mask="true"><span>구글 연결</span></button>
-        <button id="main-link-kakao" class="gm-btn" type="button" data-gm-nobattle hidden data-clarity-mask="true"><span>카카오 연결</span></button>
-        <button id="main-link-x" class="gm-btn" type="button" data-gm-nobattle hidden data-clarity-mask="true"><span>X 연결</span></button>
+        <button id="main-link-google" class="gm-btn" type="button" data-gm-nobattle hidden data-clarity-mask="true"><img src="img/ui/v2/icon_google.svg" alt=""><span>구글 연결</span></button>
+        <button id="main-link-kakao" class="gm-btn" type="button" data-gm-nobattle hidden data-clarity-mask="true"><img src="img/ui/v2/icon_kakao.svg" alt=""><span>카카오 연결</span></button>
+        <button id="main-link-x" class="gm-btn" type="button" data-gm-nobattle hidden data-clarity-mask="true"><img src="img/ui/v2/icon_x.svg" alt=""><span>X 연결</span></button>
+        <button id="main-link-naver" class="gm-btn" type="button" data-gm-nobattle hidden data-clarity-mask="true"><img src="img/ui/v2/icon_naver.svg" alt=""><span>네이버 연결</span></button>
         <button id="main-logout" class="gm-btn hidden" type="button" data-gm-nobattle data-clarity-mask="true"><img src="img/ui/login.webp" alt=""><span>로그아웃</span></button>
       </div>
       <nav id="settings-legal-links" class="legal-links" aria-label="서비스 정책"><a href="/terms.html" target="_blank" rel="noopener noreferrer">이용약관</a><a href="/privacy.html" target="_blank" rel="noopener noreferrer">개인정보처리방침</a><a href="/about.html" target="_blank" rel="noopener noreferrer">서비스 소개</a><a href="/shop-info.html" target="_blank" rel="noopener noreferrer">상품 안내</a><a href="/age.html" target="_blank" rel="noopener noreferrer">연령 확인 (19+)</a></nav>
@@ -448,6 +491,7 @@
       <div id="as-prog" class="as-prog" hidden><div class="as-bar"><i></i></div><div class="as-prog-row"><span class="as-txt">0%</span><button id="as-cancel" class="as-cancel" type="button">그만 받기</button></div></div>
       <div class="set-row"><span class="set-label">🧹 캐시 삭제<small id="as-have" class="as-sum"></small></span><button id="as-clear" class="set-toggle as-btn" type="button">삭제</button></div>
       <div id="consent-settings" class="hidden" data-clarity-mask="true"></div>
+      <div id="withdraw-settings" data-clarity-mask="true"></div>
       <button class="main-btn w-full mt-4" type="button" data-close-settings>닫기</button>
     </div>
   </div>
@@ -533,7 +577,9 @@
   <div id="hand-sort" class="sort-pop hidden flex-wrap items-center gap-1 text-[11px] md:text-xs font-bold"></div>
   <div class="hand-wrap relative">
     <button id="act-sort" class="hand-sort-btn bg-zinc-900/90 border border-emerald-500/40 hover:border-emerald-400 rounded-full font-bold" title="정렬" aria-label="손패 정렬" aria-expanded="false"><span class="act-ico">↕️</span> 정렬</button>
-  <div id="me-hand" class="flex gap-2 overflow-x-auto pb-2 pt-3 px-1"></div>
+    <button type="button" id="hand-arr-l" class="hand-arr hand-arr-l" aria-label="손패 왼쪽" disabled>‹</button>
+  <div id="me-hand" class="flex gap-2 overflow-x-auto pb-1 pt-3 px-1"></div>
+    <button type="button" id="hand-arr-r" class="hand-arr hand-arr-r" aria-label="손패 오른쪽" disabled>›</button>
   </div>
   <button id="log-toggle" class="log-fab" type="button" title="전투 기록" aria-label="전투 기록" aria-haspopup="dialog" aria-controls="log-modal">📜</button>
   </div>
@@ -627,7 +673,7 @@
 <!-- 검증 대기: 결과창/설명/버튼 없이 전투 위에 작은 스피너만 -->
 <div id="arcade-verifying" class="hidden" role="status" aria-label="전투 결과 확인 중"><i aria-hidden="true"></i></div>
 <!-- 종료 화면 -->
-<div id="end-screen" class="hidden fixed inset-0 flex items-center justify-center z-50 p-3 overflow-y-auto">
+<div id="end-screen" class="hidden fixed inset-0 flex items-center justify-center z-50 p-3 overflow-hidden">
   <div class="end-card relative text-center w-full max-w-sm my-auto">
     <div id="end-title" class="mb-2"></div>
     <div id="end-mvp-wrap"></div>
@@ -678,6 +724,8 @@
 <script src="js/story-data-ch15.js"></script>
 <script src="js/story-data-ch16.js"></script>
 <script src="js/story-data-ch17.js"></script>
+<script src="js/story-data-ch18.js"></script>
+<script src="js/story-data-ch19.js"></script>
 <script src="js/player.js"></script>
 <script src="js/unlock-policy.js"></script>
 <script src="js/unlocks.js"></script>

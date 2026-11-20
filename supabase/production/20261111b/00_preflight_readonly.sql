@@ -11,7 +11,7 @@ with expected(sig,src) as (values
  ('admin_mail_broadcast(text,text,jsonb,integer)','62d8597bec375c87839543e818a55927'),
  ('admin_mail_broadcasts(integer)','6d64fed3850203290e87322c6a071a72')
 )
-select count(*) filter (where e.src is not distinct from md5(p.prosrc)) as baseline_match, count(*) filter (where e.src is distinct from md5(p.prosrc)) as differs_must_be_0, string_agg(case when e.src is distinct from md5(p.prosrc) then e.sig end, ', ') as differs_list
+select count(*) filter (where e.src is not distinct from md5(replace(p.prosrc, chr(13), ''))) as baseline_match, count(*) filter (where e.src is distinct from md5(replace(p.prosrc, chr(13), ''))) as differs_must_be_0, string_agg(case when e.src is distinct from md5(replace(p.prosrc, chr(13), '')) then e.sig end, ', ') as differs_list
 from expected e left join pg_proc p on to_regprocedure(e.sig)=p.oid;
 -- 4) UR 확정권 풀: 고급 소환 UR 11명이어야 함 (전부 ULTRA RARE).
 select w.id, w.name, p.grade, p.grade='ULTRA RARE' as ur_ok from public.story_premium_ur w left join public.story_card_pool p on p.id=w.id order by w.id;

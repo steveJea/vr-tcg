@@ -1,5 +1,5 @@
 // Public OAuth helpers only: provider secrets belong in Supabase, never in this bundle.
-export const OAUTH_PROVIDERS = Object.freeze({ google: '구글', kakao: '카카오', x: 'X', twitter: 'X' });
+export const OAUTH_PROVIDERS = Object.freeze({ google: '구글', kakao: '카카오', x: 'X', twitter: 'X', naver: '네이버', 'custom:naver': '네이버' });
 const text = v => typeof v === 'string' ? v.trim() : '';
 export function profileSeed(u) {
   const m = u?.user_metadata || {};
@@ -14,7 +14,7 @@ export function oauthRequest(provider, redirectTo) {
   return { provider, options: { redirectTo } };
 }
 export async function discoverOAuthProviders(config, fetcher = fetch, timeout = 4000) {
-  let known = { google:false, kakao:false, x:null };
+  let known = { google:false, kakao:false, x:null, naver:false };
   if (!config.enabled) return known;
   const controller = new AbortController();
   const options = { headers:{ apikey:config.anonKey }, credentials:'omit', redirect:'manual', signal:controller.signal, cache:'no-store' };
@@ -27,22 +27,40 @@ export async function discoverOAuthProviders(config, fetcher = fetch, timeout = 
         const external = (await res.json())?.external;
         if (!external || typeof external !== 'object' || Array.isArray(external)) return known;
         known = { google:external.google === true, kakao:external.kakao === true,
-          x:external.x === true ? 'x' : external.x === false && external.twitter === true ? 'twitter' : null };
-        // Auth v2.197.0 supports X but omits external.x from /settings.
+          x:external.x === true ? 'x' : external.x === false && external.twitter === true ? 'twitter' : null,
+          naver: external['custom:naver'] === true || external.naver === true };
+        // Auth v2.197+ may omit X and never lists custom providers in /settings.
         // An incomplete PKCE pair is rejected AFTER provider validation and BEFORE
         // any flow/session row, token or external request is created. Never follow redirects.
+        const pkceNeeded = error => error?.error_code === 'validation_failed' && error.msg === 'PKCE flow requires code_challenge_method and code_challenge';
+        const authorize = provider => fetcher(config.supabaseUrl + '/auth/v1/authorize?provider=' + encodeURIComponent(provider) + '&code_challenge_method=S256', options);
+        const probes = [];
         if (!Object.hasOwn(external, 'x')) {
-          try {
-            const probe = await fetcher(config.supabaseUrl + '/auth/v1/authorize?provider=x&code_challenge_method=S256', options);
-            if (probe.status === 400) {
-              const error = await probe.json();
-              if (error.error_code === 'validation_failed') {
-                if (error.msg === 'PKCE flow requires code_challenge_method and code_challenge') known = {...known, x:'x'};
-                else if (/^Unsupported provider: (?:provider is not enabled|Provider x could not be found)$/i.test(error.msg) && external.twitter === true) known = {...known, x:'twitter'};
+          probes.push((async () => {
+            try {
+              const probe = await authorize('x');
+              if (probe.status === 400) {
+                const error = await probe.json();
+                if (error.error_code === 'validation_failed') {
+                  if (pkceNeeded(error)) known = {...known, x:'x'};
+                  else if (/^Unsupported provider: (?:provider is not enabled|Provider x could not be found)$/i.test(error.msg) && external.twitter === true) known = {...known, x:'twitter'};
+                }
               }
-            }
-          } catch { /* Keep Google/Kakao; never switch identity namespaces on an unknown X status. */ }
+            } catch { /* Keep Google/Kakao; never switch identity namespaces on an unknown X status. */ }
+          })());
         }
+        if (!Object.hasOwn(external, 'custom:naver') && !Object.hasOwn(external, 'naver')) {
+          probes.push((async () => {
+            try {
+              const probe = await authorize('custom:naver');
+              if (probe.status === 400) {
+                const error = await probe.json();
+                if (pkceNeeded(error)) known = {...known, naver:true};
+              }
+            } catch { /* Keep Google/Kakao/X; hide Naver when status is unknown. */ }
+          })());
+        }
+        if (probes.length) await Promise.all(probes);
         return known;
       })(),
       new Promise(resolve => { timer = setTimeout(() => { controller.abort(); resolve(known); }, timeout); })
@@ -61,6 +79,7 @@ export function oauthErrorCode(error) {
   const message = text(error?.message);
   if (/^Identity is already linked(?: to another user)?[.!]?$/i.test(message)) return 'identity_already_exists';
   if (/manual linking.*disabled/i.test(message)) return 'manual_linking_disabled';
+  if (/rejoin_blocked/i.test(message)) return 'rejoin_blocked';
   return '';
 }
 export function readOAuthCallback(loc) {
@@ -69,7 +88,8 @@ export function readOAuthCallback(loc) {
   const has = key => url.searchParams.has(key) || hash.has(key);
   const failed = ['error', 'error_code', 'error_description'].some(has);
   return { attempted: CALLBACK_KEYS.some(has), failed, hasCode: has('code'),
-    errorCode: failed ? oauthErrorCode({code:value('error_code'),message:value('error_description')}) || value('error') : '' };
+    errorCode: failed ? oauthErrorCode({code:value('error_code'),message:value('error_description')}) || value('error') : '',
+    errorDescription: failed ? value('error_description') : '' };
 }
 export function cleanOAuthCallback(loc, hist) {
   const url = new URL(loc.href), hash = new URLSearchParams(url.hash.slice(1));
@@ -95,18 +115,30 @@ export function takeLinkIntent(storage, project, now = Date.now()) {
     return intent && typeof intent.uid === 'string' && intent.uid && Object.hasOwn(OAUTH_PROVIDERS, intent.provider) && Number.isFinite(intent.startedAt) && intent.startedAt <= now && now - intent.startedAt <= 20 * 60 * 1000 ? intent : null;
   } catch { return null; }
 }
-export function oauthFailureMessage(code, intent = null) {
+function withErrorDetail(message, code, description) {
+  const c = text(code), d = text(description);
+  let detail = d;
+  if (detail.length > 160) detail = detail.slice(0, 157) + '...';
+  if (/eyJ[A-Za-z0-9_-]{20,}|access_token|refresh_token|secret|bearer\s+\S+/i.test(detail)) detail = '';
+  const bits = [c, detail].filter(v => v && !message.includes(v));
+  const unique = [...new Set(bits)];
+  return unique.length ? message + ' (' + unique.join(' · ') + ')' : message;
+}
+export function oauthFailureMessage(code, intent = null, description = '') {
   const name = OAUTH_PROVIDERS[intent?.provider];
   if (['identity_already_exists', 'email_exists'].includes(code)) return name ? `이미 다른 계정에 연결된 ${name} 계정이에요.` : '이미 다른 계정에 연결된 로그인이에요.';
+  if (code === 'rejoin_blocked') return '같은 로그인으로는 탈퇴 후 7일이 지나야 다시 가입할 수 있어요.';
   if (code === 'provider_disabled') return '지금은 이 로그인을 사용할 수 없어요.';
   if (code === 'manual_linking_disabled') return '계정 연결 기능이 아직 꺼져 있어요.';
   if (['access_denied', 'user_cancelled', 'user_canceled'].includes(code)) return intent ? '계정 연결을 취소했어요.' : '로그인을 취소했어요.';
   if (['bad_code_verifier', 'flow_state_expired', 'flow_state_not_found'].includes(code)) return '같은 브라우저에서 다시 시도해 주세요.';
-  return intent ? '계정 연결을 완료하지 못했어요. 다시 시도해 주세요.' : '로그인이 취소되었거나 완료되지 않았어요. 다시 시도해 주세요.';
+  if (code === 'over_email_send_rate_limit') return withErrorDetail('지금은 로그인 확인 메일을 너무 많이 보내서 잠시 막혀 있어요. 조금 뒤에 다시 시도해 주세요.', code, description);
+  return withErrorDetail(intent ? '계정 연결을 완료하지 못했어요. 다시 시도해 주세요.' : '로그인이 취소되었거나 완료되지 않았어요. 다시 시도해 주세요.', code, description);
 }
 export async function resolveOAuthReturn(auth, callback, intent, sessionUser, initError = null, timeout = 6000) {
   const code = callback.errorCode || oauthErrorCode(initError);
-  if (!intent) return { user:sessionUser, message:callback.failed || initError ? oauthFailureMessage(code) : '' };
+  const description = text(callback.errorDescription) || text(initError?.message);
+  if (!intent) return { user:sessionUser, message:callback.failed || initError ? oauthFailureMessage(code, null, description) : '' };
   let timer;
   try {
     const result = await Promise.race([
@@ -119,8 +151,8 @@ export async function resolveOAuthReturn(auth, callback, intent, sessionUser, in
     // A linked identity on the SAME server-verified UUID is the success criterion,
     // not a stale session cache, a successful redirect, or an error fragment alone.
     if (hasIdentity(verified, intent.provider)) return { user:verified, message:`${OAUTH_PROVIDERS[intent.provider]} 계정이 연결되었어요.` };
-    return { user:verified, message:oauthFailureMessage(code, intent) };
+    return { user:verified, message:oauthFailureMessage(code, intent, description) };
   } catch {
-    return { user:sessionUser, message:callback.failed || initError ? oauthFailureMessage(code, intent) : '연결 상태를 확인하지 못했어요. 새로고침해 주세요.', retry:!callback.failed && !initError };
+    return { user:sessionUser, message:callback.failed || initError ? oauthFailureMessage(code, intent, description) : '연결 상태를 확인하지 못했어요. 새로고침해 주세요.', retry:!callback.failed && !initError };
   } finally { clearTimeout(timer); }
 }

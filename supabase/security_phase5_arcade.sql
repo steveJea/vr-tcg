@@ -10,7 +10,7 @@ begin
 end $phase5_staging_guard$;
 create table if not exists public.arcade_policy_v5 (
  singleton boolean primary key default true check(singleton), enabled boolean not null default true, engine_hash text not null check(engine_hash ~ '^[a-f0-9]{64}$'));
-insert into public.arcade_policy_v5(singleton,engine_hash) values(true,'7c47d4ccb224c0cd7cf8ff9a11a465e68fd645510588249fabb6c8859a39663a')
+insert into public.arcade_policy_v5(singleton,engine_hash) values(true,'d2624efb090ffc55d062b84b9fb7619d205f5a531761cb7a9f991e4cec813f8f')
 on conflict(singleton) do update set engine_hash=excluded.engine_hash;
 create table if not exists public.arcade_sessions_v5 (
  id bigint generated always as identity primary key,

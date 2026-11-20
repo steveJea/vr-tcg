@@ -7,3 +7,6 @@ verify_jwt = true
 
 [functions.story-direct-verify-v7]
 verify_jwt = true
+
+[functions.naver-userinfo]
+verify_jwt = false

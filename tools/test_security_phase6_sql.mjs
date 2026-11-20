@@ -119,6 +119,46 @@ try {
   const sql = migration.replaceAll("'7703759698107299042'", `'${system}'`);
   await db.exec(sql);
   await db.exec(sql);
+  // fix_finish_v2_mustkill_*.sql: patch an installed pre-fix legacy body (now _phase6_old_finish_v2) in place.
+  {
+    const legacy = `public._phase6_old_finish_v2(uuid,jsonb)`;
+    const mk = await rd('supabase/fix_finish_v2_mustkill_staging.sql');
+    const newRule = mk.match(/new_rule text := \$q\$([\s\S]*?)\$q\$;/)[1], oldRule = mk.match(/old_rule text := \$q\$([\s\S]*?)\$q\$;/)[1];
+    const def = await val(`select pg_get_functiondef($1::regprocedure) v`, [legacy]);
+    assert.ok(def.includes(newRule), 'fresh install already has the mustkill rule');
+    await db.exec(def.replace(newRule, oldRule).replace(`'draw','mustkill')`, `'draw')`));
+    assert.doesNotMatch(await val(`select prosrc v from pg_proc where oid=$1::regprocedure`, [legacy]), /mustkill/);
+    const check = await rd('supabase/fix_finish_v2_mustkill_check_staging.sql');
+    const local = t => t.replaceAll("'7703759698107299042'", `'${system}'`);
+    assert.equal(await val(local(check).replace(/^--.*$/gm, '').replace(/\) as ok;\s*$/, ') as v')), false, 'check is false before the fix');
+    await assert.rejects(db.exec(mk), /STOP: this file is for staging only/);
+    await assert.rejects(db.exec(await rd('supabase/fix_finish_v2_mustkill_production.sql')), /STOP: this file is for production only/);
+    await db.exec(local(mk)); await db.exec(local(mk));
+    assert.equal(await val(`select prosrc v from pg_proc where oid=$1::regprocedure`, [legacy]), def.slice(def.indexOf('AS $function$') + 13, def.lastIndexOf('$function$')), 'patched body equals the fresh-install body');
+    assert.equal(await val(local(check).replace(/^--.*$/gm, '').replace(/\) as ok;\s*$/, ') as v')), true, 'check is true after the fix');
+    assert.match(check, /^select \($/m);
+  }
+  // fix_start_v2_level_floor_*.sql: patch an installed pre-fix battle_session_start_v2 in place.
+  {
+    const fn = `public.battle_session_start_v2(text,text,jsonb,uuid)`;
+    const fx = await rd('supabase/fix_start_v2_level_floor_staging.sql');
+    const grab = k => fx.match(new RegExp(`${k} text := \\$q\\$([\\s\\S]*?)\\$q\\$;`))[1];
+    const def = await val(`select pg_get_functiondef($1::regprocedure) v`, [fn]);
+    assert.ok(def.includes(grab('new_guest')) && def.includes(grab('new_cid')), 'fresh install already floors story levels');
+    await db.exec(def.replace(grab('new_guest'), grab('old_guest')).replace(grab('new_cid'), grab('old_cid')));
+    assert.doesNotMatch(await val(`select prosrc v from pg_proc where oid=$1::regprocedure`, [fn]), /story floorLv/);
+    const check = await rd('supabase/fix_start_v2_level_floor_check_staging.sql');
+    const local = t => t.replaceAll("'7703759698107299042'", `'${system}'`);
+    const ok = async () => val(local(check).replace(/^--.*$/gm, '').replace(/\) as ok;\s*$/, ') as v'));
+    assert.equal(await ok(), false, 'check is false before the fix');
+    await assert.rejects(db.exec(fx), /STOP: this file is for staging only/);
+    await assert.rejects(db.exec(await rd('supabase/fix_start_v2_level_floor_production.sql')), /STOP: this file is for production only/);
+    await db.exec(local(fx)); await db.exec(local(fx));
+    assert.equal(await val(`select prosrc v from pg_proc where oid=$1::regprocedure`, [fn]), def.slice(def.indexOf('AS $function$') + 13, def.lastIndexOf('$function$')), 'patched body equals the fresh-install body');
+    assert.equal(await ok(), true, 'check is true after the fix');
+    assert.equal(await val(local((await rd('supabase/fix_start_v2_level_floor_check_production.sql')).replaceAll("'7692130048193495360'", `'${system}'`)).replace(/^--.*$/gm, '').replace(/\) as ok;\s*$/, ') as v')), true);
+    assert.match(check, /^select \($/m);
+  }
   assert.equal(await val('select enabled v from battle_replay_policy_v6'), false, 'install leaves sweep replay off');
   await reject(`select battle_sweep_session_v6($1,$2)`, [me, req(1)]);
   await reject(`select battle_sweep_settle_v6($1,$2,$3,$4::jsonb)`, [me, req(1), ENGINE_VERSION, '{"win":true,"reason":"wipe","turns":2,"my_turns":1}']);
@@ -163,6 +203,44 @@ try {
   const survived = await finish(survive.session, { win: true, reason: 'survive', turns: 2, my_turns: 1, mana: survive.snapshot.mana, skills: 0, cards: [] });
   assert.equal(survived.validation, 'plausibility-v3', 'survive turns are still a bounded report, not a combat replay');
   assert.equal(survived.cleared, true);
+
+  // 16-11 style mustKill: win reason 'mustkill' is accepted only when the stage snapshot names a mustKill target.
+  await unlockBefore(1, 3);
+  const noKill = await start('story', '1:3', [owned.uid], req(24));
+  await age(noKill.session);
+  await reject(`select battle_session_finish_v2($1,$2::jsonb)`, [noKill.session, JSON.stringify({ ...report, reason: 'mustkill', mana: noKill.snapshot.mana })], /end reason/);
+  const kill = await start('story', '1:3', [owned.uid], req(25));
+  await q(`update battle_sessions_v2 set snapshot=jsonb_set(snapshot,'{stage,rules}',coalesce(snapshot->'stage'->'rules','{}')||'{"mustKill":["10406"]}') where id=$1`, [kill.session]);
+  await age(kill.session);
+  await reject(`select battle_session_finish_v2($1,$2::jsonb)`, [kill.session, JSON.stringify({ ...report, win: false, reason: 'mustkill', mana: kill.snapshot.mana })], /end reason/);
+  const killed = await finish(kill.session, { ...report, reason: 'mustkill', mana: kill.snapshot.mana, cards: [{ uid: owned.uid, kills: 1, blocks: 0 }] });
+  assert.equal(killed.validation, 'plausibility-v3');
+  assert.equal(killed.win, true);
+  assert.equal(killed.cleared, true, 'mustkill win clears the phase');
+
+  // 16-11 소민섭 Lv60 style: an owned forced/loan card below the sheet level is snapshotted at the sheet level
+  // (client floorLv), a higher one keeps its own level, and a guest loan uses chapter loanLevel.
+  {
+    const rows0 = await q(`select variant, definition from battle_story_defs_v2 where chapter=1 and phase=3`);
+    const def0 = rows0.find(r => r.variant === '').definition;
+    // Same override on every variant row (1:3 may resolve to a starter variant); variantKind kept from the base row.
+    const put = d => d === def0 ? Promise.all(rows0.map(r => q(`update battle_story_defs_v2 set definition=$1::jsonb where chapter=1 and phase=3 and variant=$2`, [JSON.stringify(r.definition), r.variant])))
+      : Promise.all(rows0.map(r => q(`update battle_story_defs_v2 set definition=$1::jsonb where chapter=1 and phase=3 and variant=$2`, [JSON.stringify({ ...r.definition, ...d, variantKind: r.definition.variantKind }), r.variant])));
+    const lvOf = (s, uid) => s.snapshot.cards.find(c => c.uid === uid).level;
+    await put({ ...def0, party: { ...(def0.party || {}), forced: ['10229'], levels: { 10229: 60 } } });
+    const floored = await start('story', '1:3', [heroine.uid], req(126));
+    assert.equal(lvOf(floored, heroine.uid), 60, 'forced owned card fights at the sheet level');
+    await put({ ...def0, party: { ...(def0.party || {}), forced: ['10229'], levels: { 10229: 1 } } });
+    assert.equal(lvOf(await start('story', '1:3', [heroine.uid], req(127)), heroine.uid), heroine.level || 1, 'never lowered');
+    await put({ ...def0, party: { ...(def0.party || {}), forced: ['10229'], fixedLevel: { 10229: 70 } } });
+    assert.equal(lvOf(await start('story', '1:3', [heroine.uid], req(128)), heroine.uid), heroine.level || 1, 'fixedLevel is a guest-only rule');
+    await put({ ...def0, party: { ...(def0.party || {}), forced: [] }, loan: ['10229', '10300'], loanLevel: { 10229: 55, 10300: 80 } });
+    const loaned = await start('story', '1:3', [heroine.uid, 'guest:10300'], req(130));
+    assert.equal(lvOf(loaned, heroine.uid), 55, 'owned loan card fights at loanLevel');
+    assert.equal(lvOf(loaned, 'guest:10300'), 80, 'guest loan uses loanLevel');
+    await put(def0);
+    assert.equal(await val(`select level v from jsonb_to_recordset((select data->'owned' from story_progress where user_id=$1)) as x(uid text, level int) where uid=$2`, [me, heroine.uid]), heroine.level || 1, 'saved level untouched');
+  }
 
   const held = await start('tower_sweep', 'normal:1', [owned.uid], req(29));
   await age(held.session);
@@ -253,6 +331,39 @@ try {
   const restored = await http({ op: 'sweep', id: bad.session, version: ENGINE_VERSION });
   assert.equal(restored.status, 200, JSON.stringify(restored));
   assert.equal(restored.data.validation, 'replay-v6');
+  // fix_scene_access_*.sql: a story-only scene (16-12) must open the next phase on the server too.
+  {
+    const local = t => t.replaceAll("'7703759698107299042'", `'${system}'`);
+    const { execFileSync } = await import('node:child_process');
+    const preFix = execFileSync('git', ['show', '7c7a4e6da6aee9e09cb91628a7ba403becdda5f8:supabase/story_ch16_17.sql'], { cwd: new URL('..', import.meta.url), encoding: 'utf8' });
+    if (preFix.includes('battle_legacy_access_v2')) throw Error('pinned ref already has the fix');
+    await db.exec(local(preFix));
+    await unlockBefore(16, 12);
+    await q(`update battle_sessions_v2 set issued_at=issued_at-interval '2 days' where user_id=$1 and party='[]' and status='settled'`, [me]);   // fixture rows, not today's issuance
+    const access = t => val(`select _clear_access_v2($1,'story',$2) v`, [me, t]);
+    assert.equal(await access('16:11'), true);
+    await rpc(`select story_complete_scene(16,12) v`);
+    assert.equal(await access('16:12'), false, 'pre-fix: the scene is saved in story_progress only');
+    await reject(`select battle_session_start_v2('story','17:1',$1::jsonb,$2)`, [JSON.stringify([owned.uid]), req(140)], /phase locked/);
+    const fx = await rd('supabase/fix_scene_access_staging.sql'), check = await rd('supabase/fix_scene_access_check_staging.sql');
+    const ok = async () => (await q(local(check).replace(/^--.*$/gm, '')))[0];
+    assert.deepEqual(await ok(), { ok: false, stuck: 1 }, 'check sees the stuck scene before the fix');
+    await assert.rejects(db.exec(fx), /STOP: this file is for staging only/);
+    await assert.rejects(db.exec(await rd('supabase/fix_scene_access_production.sql')), /STOP: this file is for production only/);
+    await db.exec(local(fx)); await db.exec(local(fx));
+    assert.equal(await access('16:12'), true, 'backfill opens 17-1');
+    assert.deepEqual(await ok(), { ok: true, stuck: 0 });
+    const err = await as(me, () => q(`select battle_session_start_v2('story','17:1',$1::jsonb,$2)`, [JSON.stringify([owned.uid]), req(141)]).then(() => null, e => e.message));
+    assert.doesNotMatch(String(err), /phase locked/);
+    // Patched function records access itself (fresh scene clear: 17-7 after 17-1..6).
+    await db.exec(local(await rd('supabase/story_ch16_17.sql')));
+    assert.match(await val(`select prosrc v from pg_proc where oid='public.story_complete_scene(integer,integer)'::regprocedure`), /battle_legacy_access_v2 as a/, 'source = patched body');
+    await unlockBefore(17, 7);
+    await rpc(`select story_complete_scene(17,7) v`);
+    assert.equal(await access('17:7'), true, 'scene clear records access');
+    assert.equal(await val(`select count(*)::int v from battle_clear_receipts_v2 where user_id=$1 and target='17:7'`, [me]), 0, 'scene adds no receipt');
+    assert.equal((await ok()).ok, true);
+  }
   console.log('phase6 SQL + ' + (process.argv.includes('--dashboard') ? 'Dashboard' : 'modular') + ' handler: story plausibility kept, sweep replay/idempotency/ACL/locks OK');
 } catch (e) {
   console.error(e);

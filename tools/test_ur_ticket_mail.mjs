@@ -89,6 +89,11 @@ for(const [p,t] of Object.entries(files)) assert.equal(await rd(p),t,p+' is stal
  await assert.rejects(db.exec(inst),/STOP: release 20261111 is not installed/); await db.exec('rollback');
  await q("insert into vr_rollout_private.releases(release_id,bundle_hash,db_id) values('20261111','x',$1)",[id]);
  await assert.rejects(db.exec(files['supabase/production/20261111b/01_install.sql']),/STOP: production system_identifier mismatch/); await db.exec('rollback');
+ // Real production (A1 2026-11-14): the 5 mail functions are mail_v2.sql's bodies with CRLF line endings → must pass the pins.
+ const PROD_CRLF={'_mail_clean_payload(jsonb)':'125dfc1e8d99c46579b994c7da196fa7','_mail_sync(uuid)':'b52bd3fa5fabfa6e7e4d463bb41f6da8','mail_msg_claim(bigint)':'bfb33483b8c0ba8d84cb0284f7127bac','admin_mail_broadcast(text,text,jsonb,integer)':'3bba54492c0ffa8fe750d77f42c9a248','admin_mail_broadcasts(integer)':'ec4f33b924b6761ae7b09483516c81b2'};
+ const ddl=async sig=>val('select pg_get_functiondef(to_regprocedure($1)) v',[sig]);
+ for(const sig of Object.keys(PROD_CRLF)) await db.exec((await ddl(sig)).replace(/\n/g,'\r\n'));
+ for(const [sig,m] of Object.entries(PROD_CRLF)) assert.equal(await val('select md5(prosrc) v from pg_proc where oid=to_regprocedure($1)',[sig]),m,'production CRLF '+sig);
  await db.exec(sub(files['supabase/production/20261111b/00_preflight_readonly.sql']));   // read-only, runs clean
  const drift=(await q(sub(files['supabase/production/20261111b/00_preflight_readonly.sql']).split('-- 3)')[1].split('-- 4)')[0].replace(/^[^\n]*\n/,'')))[0];
  assert.equal(Number(drift.differs_must_be_0),0);
@@ -102,6 +107,11 @@ for(const [p,t] of Object.entries(files)) assert.equal(await rd(p),t,p+' is stal
  await rpc(other,'select mail_list() v'); const om=(await rpc(other,'select mail_list() v'))[0]; await rpc(other,'select mail_msg_claim($1) v',[om.id]);
  // 03 before install refuses
  await assert.rejects(db.exec(sub(files['supabase/production/20261111b/03_mark_currency_mail_existing_only.sql'])),/먼저 설치/);
+ // a real logic change (not just line endings) is still refused
+ const keep=await ddl('_mail_sync(uuid)');
+ await db.exec(keep.replace("'msg'","'msg' /* hand edit */"));
+ await assert.rejects(db.exec(inst),/STOP: _mail_sync\(uuid\) differs/); await db.exec('rollback');
+ await db.exec(keep);
  await db.exec(inst); await db.exec(inst);   // rerun = no-op
  const post=(await q(sub(files['supabase/production/20261111b/02_postflight_readonly.sql'])))[0];
  for(const [k,v] of Object.entries(post)) assert.equal(v,true,k);

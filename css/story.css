@@ -190,7 +190,7 @@ span.story-lvpct { background: rgba(251,191,36,.12); border: 1px solid rgba(251,
 .story-rule { font-size: 11px; color: #a1a1aa; line-height: 1.5; max-width: 560px; margin: 4px auto; }
 
 /* ===== 스토리 필드 전투: 손패·드로우·용병 없음, 보스는 진영 안 ===== */
-#game.story-field #me-hand, #game.story-field #hand-sort, #game.story-field #act-merc, #game.story-field #act-shuffle, #game.story-field #act-heal, #game.story-field .deck-info, #game.story-field #ai-handcards { display: none !important; }
+#game.story-field #me-hand, #game.story-field #hand-sort, #game.story-field .hand-arr, #game.story-field #act-merc, #game.story-field #act-shuffle, #game.story-field #act-heal, #game.story-field .deck-info, #game.story-field #ai-handcards { display: none !important; }
 /* 스토리 전투 모바일: 손패가 없어 아래 절반이 비고 필드 카드가 작게 떠 보이던 문제 → 필드가 남는 높이를 채움 (카드 크기는 장수와 관계없이 고정, 가운데 정렬) */
 #game.story-field { min-height: 100dvh; }
 #game.story-field #field-box { flex: 1 1 auto; justify-content: space-evenly; }
@@ -673,7 +673,7 @@ span.story-lvpct { background: rgba(251,191,36,.12); border: 1px solid rgba(251,
 .kickoff-btn { padding: 16px 44px; border-radius: 999px; font-size: 22px; font-weight: 900; color: #1a1205; background: linear-gradient(#fde68a,#f59e0b); box-shadow: 0 0 24px rgba(245,158,11,.6); animation: kickPulse 1.4s ease-in-out infinite; }
 @keyframes kickPulse { 50% { transform: scale(1.06); } }
 /* 챕터 0 강제 10회 프리미엄 영입: 나가기·탭·1회·젬 숨김 */
-.gr-forced ~ * .story-back, body:has(.gr-forced) .story-back, body:has(.gr-forced) .story-nav, .gr-forced .gr-banners, .gr-forced [data-draw="1"], .gr-forced .gr-gem { display: none !important; }
+.gr-forced ~ * .story-back, body.vr-gr-forced .story-back, body.vr-gr-forced .story-nav, .gr-forced .gr-banners, .gr-forced [data-draw="1"], .gr-forced .gr-gem { display: none !important; }
 
 /* 전투 스킬 설명: ⓘ 버튼 · 길게 누르기 팝업 (바깥 누르면 닫힘) */
 .sk-info{flex:none;width:34px;border-radius:10px;background:#3f3f46;color:#e9d5ff;font:italic 900 15px/1 Georgia,serif;border:1px solid rgba(233,213,255,.35)}
@@ -728,6 +728,7 @@ span.story-lvpct { background: rgba(251,191,36,.12); border: 1px solid rgba(251,
 }
 /* 스토리 제한 마나: 출전 카드가 손패에서 시작 → 손패 보이기 · 남은 마나 크게 */
 #game.story-field.story-pool #me-hand { display: flex !important; }
+#game.story-field.story-pool .hand-arr { display: flex !important; }
 #game.story-field.story-pool #hand-sort:not(.hidden) { display: flex !important; }   /* 아케이드처럼 정렬 탭 + 한 줄 가로 스크롤 손패 */
 #game.story-pool .mana-line { font-size: 13px; }
 #game.story-pool .pool-mana { font-size: 18px; color: #7dd3fc; }
@@ -789,7 +790,10 @@ body.story-media-on .story-dlg-skip { left: 4px; right: auto; top: calc(4px + en
 .story-zoom { position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,.94); display: flex; align-items: center; justify-content: center; animation: storyFade .25s; }
 .story-zoom img { max-width: 100vw; max-height: 100vh; object-fit: contain; }
 .story-zoom-x { position: absolute; top: calc(10px + env(safe-area-inset-top)); right: 12px; width: 44px; height: 44px; border-radius: 999px; background: rgba(255,255,255,.15); font-size: 20px; color: #fff; }
-/* 이벤트 원본 그림은 확대/크롭 없이 대사 위 가용 화면 안에 전부 표시. */
+/* 세로 화면: 가로 CG를 대사 상자 위 높이에 맞춰 채우고(cover) 양옆을 가운데 기준으로 자른다. PC·가로는 위 contain 그대로. 돋보기(.story-zoom)는 원본 전체를 보여 줌. */
+@media (orientation: portrait) {
+  .story-media img { object-fit: cover; object-position: center; }
+}
 
 /* 10회 뽑기 결과: 카드 뒷면 → 낮은 등급부터 차례로 뒤집힘 (--fd = 열리는 시각). SR 자주 · UR 이상 금색 반짝, 나머지 무지 */
 .story-tk-card.tk-flip{opacity:1;animation:none;background:transparent;border-color:transparent;box-shadow:none;overflow:visible;perspective:600px;transition:border-color .2s var(--fd),box-shadow .2s var(--fd)}
@@ -935,6 +939,28 @@ body.story-media-on .story-dlg-skip { left: 4px; right: auto; top: calc(4px + en
 #game.story-pool #me-hand { padding-top: 34px !important; }
 #game.story-field:not(.story-pool) #act-sort { display: none; }
 #game.story-pool .hand-sort-btn { top: 4px; height: 26px; }
+#me-hand { scrollbar-width: none; -ms-overflow-style: none; }
+#me-hand::-webkit-scrollbar { display: none; height: 0; }
+.hand-arr { position: absolute; top: 18px; bottom: 0; margin: auto 0; z-index: 5; width: 28px; height: 48px; padding: 0; border-radius: 12px; background: rgba(0,0,0,.6); border: 1px solid rgba(255,255,255,.3); color: #fff; font-size: 26px; font-weight: 900; line-height: 1; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.hand-arr-l { left: 2px; } .hand-arr-r { right: 2px; }
+.hand-arr:disabled { opacity: 0; pointer-events: none; }
+.hand-arr:hover:not(:disabled) { background: rgba(16,185,129,.85); color: #000; }
+#game.story-pool .hand-arr { top: 34px; }
+/* 배틀 화면 세로 스크롤: 스크롤바 대신 ▲/▼ + 도르륵 */
+.varr-wrap { position: relative; min-width: 0; max-width: 100%; }
+.varr-scroll, .varr-wrap > .log-body, .varr-wrap > .modal-panel, .varr-wrap > .end-card {
+  scrollbar-width: none; -ms-overflow-style: none; -webkit-overflow-scrolling: touch;
+}
+.varr-scroll::-webkit-scrollbar, .varr-wrap > .log-body::-webkit-scrollbar,
+.varr-wrap > .modal-panel::-webkit-scrollbar, .varr-wrap > .end-card::-webkit-scrollbar { display: none; width: 0; height: 0; }
+.varr { position: absolute; right: 6px; z-index: 8; width: 48px; height: 28px; padding: 0; border-radius: 12px; background: rgba(0,0,0,.6); border: 1px solid rgba(255,255,255,.3); color: #fff; font-size: 13px; font-weight: 900; line-height: 1; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.varr-u { top: 6px; } .varr-d { bottom: 6px; }
+.varr-wrap:has(.modal-x) .varr-u { top: 64px; }
+.varr:disabled { opacity: 0; pointer-events: none; }
+.varr:hover:not(:disabled) { background: rgba(16,185,129,.85); color: #000; }
+.varr-wrap-end { width: 100%; max-width: 24rem; margin-block: auto; }
+.varr-wrap-end > .end-card { max-height: calc(100dvh - 1.5rem); overflow-y: auto; width: 100%; }
+@media (max-width: 640px) { .varr { width: 40px; height: 26px; } }
 /* 📮 우편: 메인 상단(설정 옆)·스토리 허브 상단에도 */
 .main-mail{flex:none}.main-cur:empty+.main-mail{margin-left:auto}
 .main-mail .story-mailbtn,.story-top [data-mailbtn] .story-mailbtn{min-height:34px}
@@ -1181,3 +1207,9 @@ body.gnb-on:not(.gnb-hidden) #story-screen { --wrap-pb: 12px; }   /* 하단 메�
 .gr-bn-wrap .gr-rates{right:8px;top:12px}
 .gr-bn-wrap .gr-bn .story-badge{right:auto;left:10px}
 .sp-intro-grade{font-weight:900;color:#fbbf24;background:linear-gradient(180deg,#fde68a,#f59e0b 60%,#b45309);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;text-shadow:none;filter:drop-shadow(0 0 4px rgba(251,191,36,.45))}
+
+/* 출전 고르기: 어느 페이즈인지 (다음 페이즈로 넘어온 걸 알 수 있게) */
+.story-pick-ph{margin:-2px 0 8px;font-size:12px;color:#fcd34d;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+.story-ticket.sp-ticket{background:linear-gradient(180deg,#67e8f9,#0e7490);color:#012a33}
+.story-ticket.sp-ticket .ui-ic{width:1.3em;height:1.3em}

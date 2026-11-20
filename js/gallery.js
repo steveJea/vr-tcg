@@ -1,5 +1,5 @@
 // ===== 카드 갤러리 =====
-// 획득은 서버 거래에서 등록. 미검증 아케이드 결과로는 도감/MVP를 증가시키지 않는다.
+// 획득은 서버 거래에서 등록. 아케이드는 서버가 다시 돌려본 승리의 MVP 한 장만 서버가 등록 (_arcade_gallery_v5). 브라우저는 도감/MVP를 쓰지 않는다.
 // 조회는 Supabase gallery 테이블. 스킬 이미지는 VIP 왕관 등급으로 개방된 것만 노출.
 (() => {
   const IC = n => window.VRIcon?.icon(n) || '';   // js/icons.js
@@ -86,19 +86,8 @@
     owned = new Map(data.map(r => [r.card_id, r]));
   }
   // --- 종료 화면 ---
-  function endBox() {
-    let el = $('gal-end');
-    if (!el) {
-      el = document.createElement('div'); el.id = 'gal-end'; el.className = 'gal-end';
-      const anchor = $('end-actions') || $('restart-btn');
-      anchor.parentNode.insertBefore(el, anchor);
-    }
-    return el;
-  }
-  window.addEventListener('vr:match', () => {
-    if (!logged()) return;
-    endBox().textContent = '도감·MVP 반영 보류';
-  });
+  // 종료 화면 '도감·MVP 반영 보류' 문구는 표시하지 않음 (빈 칸도 남기지 않게 혹시 있던 칸은 지움)
+  window.addEventListener('vr:match', () => { $('gal-end')?.remove(); });
 
   function promoNote(items, mvp) {
     const it = items.find(x => x.c.id === mvp && x.r); if (!it) return '';

@@ -3,6 +3,8 @@
 // Supabase 접속 실패 시 조용히 게스트 모드로 동작.
 import { config } from './config.js';
 import { ensureConsent } from './consent.js';
+import { ensureAgeGate } from './age-gate.js';
+import { ensureActive as ensureWithdrawActive } from './withdraw.js';
 import { OAUTH_PROVIDERS, profileSeed, hasIdentity, oauthRequest, discoverOAuthProviders, cleanOAuthCallback, readOAuthCallback, saveLinkIntent, takeLinkIntent, oauthErrorCode, oauthFailureMessage, resolveOAuthReturn } from './auth-oauth.js';
 const SUPABASE_URL = config.supabaseUrl;
 const SUPABASE_ANON = config.anonKey;
@@ -15,7 +17,7 @@ const STATS_KEY = 'vrTcgStats.v1';
 const SYNC_KEYS = ['vrTcgSkipFx', 'vrTcgVoiceOn', 'vrTcgVoiceVol', 'vrTcgSound', 'tcg_hand_sort', 'tcg_skip_endturn_confirm', 'vrTutorialDone'];
 
 let sb = null, user = null, profile = null, ready = false, pushTimer = null, applying = false;
-let oauthProviders = { kakao:false, x:null };
+let oauthProviders = { kakao:false, x:null, naver:false };
 let oauthBusy = false, oauthTimer = null, userVersion = 0;
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -98,10 +100,9 @@ function render(p) {
   const box = $('acct-box'); if (!box) return;
   if (!ready) { paintOAuth(); box.innerHTML = ''; return; }
   if (!user) {
-    box.innerHTML = `<div class="oauth-row" data-clarity-mask="true"><button id="acct-login" type="button" class="main-btn acct-login" data-oauth-provider="google">구글 로그인</button><button id="acct-login-kakao" type="button" class="main-btn acct-login oauth-kakao" data-oauth-provider="kakao" aria-label="카카오 로그인" hidden><img src="img/ui/kakao-symbol.svg" class="oauth-symbol" width="18" height="18" alt="">로그인</button><button id="acct-login-x" type="button" class="main-btn acct-login oauth-x" data-oauth-provider="x" hidden>X 로그인</button></div>`;
-    $('acct-login').onclick = () => login('google');
-    $('acct-login-kakao').onclick = () => login('kakao');
-    $('acct-login-x').onclick = () => login('x');
+    // 상단 로그인: 버튼 하나 → 고르는 창(구글·카카오·X·네이버 중 켜진 것). 켜진 게 구글뿐이면 바로 구글
+    box.innerHTML = `<div class="oauth-row" data-clarity-mask="true"><button id="acct-login" type="button" class="main-btn acct-login" aria-haspopup="dialog">로그인</button></div>`;
+    $('acct-login').onclick = () => login();
   } else {
     const av = p?.avatar_url
       ? `<img src="${esc(p.avatar_url)}" alt="" referrerpolicy="no-referrer" class="acct-avatar" onerror="this.onerror=null;this.src='img/ui/profile.webp'">`
@@ -115,14 +116,14 @@ function render(p) {
 }
 
 const notify = message => (window.VRGem?.toast || alert)(message);
-const backendProvider = provider => ['x', 'twitter'].includes(provider) ? oauthProviders.x : provider;
-const canLogin = provider => !!sb && ready && (provider === 'google' || (provider === 'kakao' && oauthProviders.kakao) || (['x', 'twitter'].includes(provider) && !!oauthProviders.x));
+const backendProvider = provider => ['x', 'twitter'].includes(provider) ? oauthProviders.x : (provider === 'naver' || provider === 'custom:naver' ? 'custom:naver' : provider);
+const canLogin = provider => !!sb && ready && (provider === 'google' || (provider === 'kakao' && oauthProviders.kakao) || (['x', 'twitter'].includes(provider) && !!oauthProviders.x) || (['naver', 'custom:naver'].includes(provider) && oauthProviders.naver));
 function paintOAuth() {
   document.querySelectorAll('[data-oauth-provider]').forEach(button => {
     button.hidden = button.dataset.oauthProvider !== 'google' && !canLogin(button.dataset.oauthProvider);
     button.disabled = oauthBusy || !ready;
   });
-  for (const provider of ['google', 'kakao', 'x']) {
+  for (const provider of ['google', 'kakao', 'x', 'naver']) {
     const button = $('main-link-' + provider);
     if (!button) continue;
     button.hidden = !user || !canLogin(provider) || hasIdentity(user, backendProvider(provider));
@@ -134,7 +135,7 @@ function paintOAuth() {
 function chooseLogin() {
   if (document.getElementById('oauth-choose')) return;
   const ov = document.createElement('div'); ov.id = 'oauth-choose'; ov.className = 'oauth-overlay';
-  ov.innerHTML = `<div class="oauth-card" data-clarity-mask="true" role="dialog" aria-modal="true" aria-labelledby="oauth-title"><h2 id="oauth-title">로그인</h2><div class="oauth-row"><button type="button" class="main-btn" data-oauth-provider="google">구글 로그인</button><button type="button" class="main-btn oauth-kakao" data-oauth-provider="kakao"><img src="img/ui/kakao-symbol.svg" class="oauth-symbol" width="18" height="18" alt="">카카오 로그인</button><button type="button" class="main-btn oauth-x" data-oauth-provider="x" hidden>X 로그인</button></div><button type="button" class="main-btn oauth-close">닫기</button></div>`;
+  ov.innerHTML = `<div class="oauth-card intro-login-box" data-clarity-mask="true" role="dialog" aria-modal="true" aria-labelledby="oauth-title"><h2 id="oauth-title" class="intro-login-title">LOG IN</h2><div class="oauth-row"><button type="button" class="main-btn intro-sns intro-sns-google" data-oauth-provider="google" aria-label="구글로 로그인" title="구글로 로그인"><img src="img/ui/v2/icon_google.svg" alt="" class="oauth-symbol" width="24" height="24"></button><button type="button" class="main-btn intro-sns oauth-kakao" data-oauth-provider="kakao" aria-label="카카오로 로그인" title="카카오로 로그인"><img src="img/ui/v2/icon_kakao.svg" alt="" class="oauth-symbol" width="24" height="24"></button><button type="button" class="main-btn intro-sns oauth-x" data-oauth-provider="x" hidden aria-label="X로 로그인" title="X로 로그인"><img src="img/ui/v2/icon_x.svg" alt="" class="oauth-symbol" width="24" height="24"></button><button type="button" class="main-btn intro-sns oauth-naver" data-oauth-provider="naver" hidden aria-label="네이버로 로그인" title="네이버로 로그인"><img src="img/ui/v2/icon_naver.svg" alt="" class="oauth-symbol" width="24" height="24"></button></div><button type="button" class="main-btn oauth-close">닫기</button></div>`;
   const close = () => { ov.remove(); document.removeEventListener('keydown', onKey); };
   const onKey = e => { if (e.key === 'Escape') close(); };
   ov.querySelectorAll('[data-oauth-provider]').forEach(b => { b.onclick = () => { close(); login(b.dataset.oauthProvider); }; });
@@ -168,7 +169,9 @@ async function startOAuth(provider, linking) {
   } catch (e) {
     if (linking) takeLinkIntent(sessionStorage, SUPABASE_URL);
     const code = oauthErrorCode(e);
-    notify(code ? oauthFailureMessage(code, linking ? {provider} : null) : linking ? '로그인을 연결하지 못했어요. 기존 계정은 그대로예요.' : '로그인을 시작하지 못했어요. 다시 시도해 주세요.');
+    const message = code ? oauthFailureMessage(code, linking ? {provider} : null, e?.message) : linking ? '로그인을 연결하지 못했어요. 기존 계정은 그대로예요.' : '로그인을 시작하지 못했어요. 다시 시도해 주세요.';
+    console.warn('[cloud] oauth start failed', { code, message: e?.message, provider });
+    notify(message);
   } finally {
     if (!oauthTimer) { oauthBusy = false; paintOAuth(); }
   }
@@ -176,7 +179,7 @@ async function startOAuth(provider, linking) {
 async function login(provider) {
   if (user) return;
   if (!sb || !ready) return notify('지금은 로그인 서버에 연결할 수 없어요.');
-  if (provider === undefined) { if (canLogin('kakao') || canLogin('x')) return chooseLogin(); provider = 'google'; }
+  if (provider === undefined) { if (canLogin('kakao') || canLogin('x') || canLogin('naver')) return chooseLogin(); provider = 'google'; }
   return startOAuth(provider, false);
 }
 async function linkProvider(provider) { return startOAuth(provider, true); }
@@ -218,8 +221,13 @@ async function init() {
       const nextProfile = await loadProfile(u);
       if (version !== userVersion) return;
       profile = nextProfile; render(profile);
+      // 탈퇴 유예 중이면 먼저 취소 여부를 물어봄 (취소하지 않으면 로그아웃, 예약은 유지)
+      if (!await ensureWithdrawActive(sb, u, { onKeepScheduled: logout })) return;
+      if (version !== userVersion) return;
       // 첫 로그인 동의 (js/consent.js): 현재 버전 동의가 없으면 게임 전에 한 번. 동의 안 함 → 로그아웃(게스트)
       if (!await ensureConsent(sb, u, { onDecline: logout })) return;
+      if (version !== userVersion) return;
+      if (!await ensureAgeGate(sb, u)) return;
       if (version !== userVersion) return;
       if (profile && profile.nick_set === false) askNickname(true);
     };
@@ -234,7 +242,10 @@ async function init() {
     await onUser(returned.user);
     // Successful PKCE exchange is owned by SDK.initialize(), exactly once.
     cleanOAuthCallback(location, history);
-    if (returned.message) notify(returned.message);
+    if (returned.message) {
+      if (callback.failed || initError) console.warn('[cloud] oauth return', { errorCode: callback.errorCode, errorDescription: callback.errorDescription, initError: initError ? { code: initError.code, message: initError.message } : null, message: returned.message });
+      notify(returned.message);
+    }
   } catch (e) {
     console.warn('[cloud] Supabase 연결 실패 - 게스트 모드', e);
     sb = null; ready = false; render();

@@ -525,7 +525,8 @@ insert into public.reward_card_catalog(card_id) values
   ('10529'),
   ('10530'),
   ('10531'),
-  ('10532')
+  ('10532'),
+  ('10533')
 on conflict do nothing;
 
 create or replace function public._gallery_total() returns int

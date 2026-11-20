@@ -18,7 +18,7 @@ const makeContext = () => {
     selected: null, fastForward: true, autoEndTimer: 1, fxQueue: [],
     makeUnit() {}, RULES: { LEVEL_MAX: 10 }, clearTimeout() {}, setTimeout() {},
     placeUnit(p, card) { const u = { card, level: 1, maxHp: 100, maxMp: 100 }; p.field.push(u); return u; },
-    levelUpOnce(u) { u.level++; }, log() {}, render() {}, playSe() {}, runFxQueue() {},
+    levelUpOnce(u) { u.level++; }, log() {}, render() {}, playSe() {}, runFxQueue() {}, storyIntrusionCard: A => A.card,
     document: { createElement: () => ({ remove() {} }), body: { appendChild() {} } },
     escHtml: s => s, withTimeout: p => p, cutIn: async () => {}, TUT() {},
     turnScroll() { throw Error('turn advanced during entrance hold'); },

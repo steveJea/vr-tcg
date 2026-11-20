@@ -34,8 +34,11 @@ ok(ch16 && ch16.phases.length === 12 && ch16.subtitle === '젊은 베르테르�
 ok(ch17 && ch17.phases.length === 15 && ch17.subtitle === '폭풍의 언덕' && ch17.hero === '10307' && ch17.endingVideo === 'jhBi0xojOOM', 'CH17 15페이즈 · 제목 · 주인공 이영하 · 엔딩 영상');
 ok([...ch16.phases, ...ch17.phases].filter(p => !p.scene).every(p => p.enemies.ids.every(id => cards[id])), '전투 페이즈 적 카드 모두 존재');
 ok(P(ch16, 1).enemies.ids[0] === '10514' && P(ch16, 11).enemies.ids.includes('10306') && P(ch16, 11).party.forced[0] === '10200', '16-1 강두식 · 16-11 이영아(10306) · 필수 소민섭');
-ok(P(ch16, 11).type === 'normal' && P(ch16, 11).rules.mustKill?.[0] === '10406' && P(ch16, 11).enemies.ids.length === 6 && P(ch16, 11).rules.revive[0].become === '10291', '16-11 최국선 mustKill · 적 6명 · 윤진아 사망 시 [각성] 윤진아 · type normal 유지');
-ok(P(ch16, 6).party.solo && P(ch16, 6).party.forced.join() === '10123,10025,10183' && P(ch16, 12).scene, '16-6 빈소 필수 3인 단독 · 16-12 스토리 페이즈');
+ok(P(ch16, 11).type === 'boss' && !P(ch16, 11).rules.mustKill && P(ch16, 11).bossId === '10406' && P(ch16, 11).enemies.ids.length === 6 && P(ch16, 11).rules.revive[0].become === '10291', '16-11 최국선 진영 보스 · mustKill 없음 · 적 6명 · 윤진아 사망 시 [각성] 윤진아');
+ok(P(ch16, 6).party.solo && P(ch16, 6).party.forced.join() === '10123,10025,10183' && !(P(ch16, 6).lines?.default||[]).length && (P(ch16, 6).after||[]).length === 11 && P(ch16, 6).after[0].text.startsWith('그러던 중, 갑자기 조윤이가') && P(ch16, 12).scene, '16-6 빈소 필수 3인 단독 · 전투 전 대사 없음 · 후 11줄 · 16-12 스토리 페이즈');
+const js16 = readFileSync(new URL('../js/story-data-ch16.js', import.meta.url), 'utf8');
+ok(!js16.includes('B-43의 노란머리') && js16.includes('그 지역의 노란머리') && !js16.includes('43지역 접수래') && js16.includes('이 지역 접수래') && !js16.includes('민섭 형님 사무실') && js16.includes('민섭 오빠 사무실'), 'CH16 빨간 대사 반영 (그 지역·이 지역·오빠)');
+
 ok(P(ch16, 1).party.noFemale && P(ch16, 1).party.maxGrade === 'SUPER RARE' && P(ch16, 1).mana === 100, '16-1 여성 금지 · SR 이하 · 마나 100');
 ok(ch16.phases.some(p => (p.lines.default || []).some(L => L.slug === 'jo_yuni_school')), '조윤이 ch16 교복 slug');
 ok(P(ch17, 1).party.noMale && P(ch17, 1).party.maxGrade === 'SUPER RARE' && P(ch17, 14).enemyFirst && P(ch17, 14).awaken?.id === '10311' && P(ch17, 14).party.mustLive[0] === '10311', '17-1 남성 금지 · 17-14 적 선공 · 이지영 난입/생존');
@@ -54,7 +57,7 @@ const lu = readFileSync(new URL('../supabase/level_unlocks_staging.sql', import.
 await db.exec(lu); await db.exec(sql16);
 const g = await db.query("select public._player_unlock_level('chapter_16') a, public._player_unlock_level('chapter_17') b, public._player_unlock_level('skill') s, public._player_unlock_level('equip') e");
 ok(g.rows[0].a === 1 && g.rows[0].b === 1 && g.rows[0].s === 13 && g.rows[0].e === 3, '재실행 후에도 11-08 정책 유지 (챕터 1 · 스킬 13 · 장비 3)');
-ok(/mustKill":\["10406"\]/.test(chSrc) && (await db.query('select type, points from public.story_phase_config where chapter=16 and phase=11')).rows[0].type === 'normal' && (await db.query('select points from public.story_phase_config where chapter=16 and phase=11')).rows[0].points === 3, '16-11 catalog mustKill · type normal · points 3');
+ok(!/mustKill":\["10406"\]/.test(chSrc) && /"type":"boss"/.test(chSrc) && (await db.query('select type, points from public.story_phase_config where chapter=16 and phase=11')).rows[0].type === 'boss' && (await db.query('select points from public.story_phase_config where chapter=16 and phase=11')).rows[0].points === 3, '16-11 catalog type boss · mustKill 없음 · points 3');
 const fix = readFileSync(new URL('../supabase/fix_16_11_mustkill.sql', import.meta.url), 'utf8');
 ok(fix.includes("7703759698107299042") && fix.includes("c128e31ac46bd40d34f934af334021693f998f48a6d5b47ad8c414a62588688e") && fix.includes("fe63c33c17f3019f771b7b393cd7c53325cb743aefe9ebc476ce082c3a0a68f7") && fix.includes("c7957db40094278cd3593d56a0cb993634cbabdbdc565d2eb6827a2472b3c05e"), 'fix_16_11_mustkill.sql 가드 + 양쪽 이전 해시 → 새 해시');
 ok(fix.includes("{rules,mustKill}") && fix.includes('["10406"]') && fix.includes('fix_direct_v7_become.sql'), '16-11 mustKill jsonb_set · become SQL 대체 명시');
@@ -70,4 +73,16 @@ ok((await db.query('select engine_hash v from public.battle_replay_policy_v7')).
 await db.exec("update public.battle_replay_policy_v7 set engine_hash='c7957db40094278cd3593d56a0cb993634cbabdbdc565d2eb6827a2472b3c05e'");
 await db.exec(local);
 ok((await db.query('select engine_hash v from public.battle_replay_policy_v7')).rows[0].v === 'c128e31ac46bd40d34f934af334021693f998f48a6d5b47ad8c414a62588688e', 'fix SQL: c7957db4(become)도 새 해시로 승계');
+const bossFix = readFileSync(new URL('../supabase/fix_16_11_boss_staging.sql', import.meta.url), 'utf8');
+ok(bossFix.includes("7703759698107299042") && bossFix.includes("type") && bossFix.includes("{rules,mustKill}") && !/engine_hash/.test(bossFix), 'boss SQL 가드 · mustKill 제거 · 해시 회전 없음');
+await db.exec(`truncate public.battle_story_defs_v2;
+insert into public.battle_story_defs_v2 values (16,11,'','{"type":"normal","bossId":"10406","rules":{"maxTurns":20,"mustKill":["10406"],"revive":[{"id":"10290","become":"10291"}]}}'::jsonb);`);
+try { await db.exec(bossFix); ok(false, 'boss SQL 가드는 스테이징이 아니면 거부'); } catch (e) { ok(/STOP: 16-11 boss conversion/.test(String(e.message||e)), 'boss SQL 가드는 스테이징이 아니면 거부'); }
+const bossLocal = bossFix.replace("is distinct from '7703759698107299042'", "is distinct from (select system_identifier::text from pg_catalog.pg_control_system())");
+await db.exec(bossLocal); await db.exec(bossLocal);
+const bossRow = (await db.query("select definition->>'type' typ, definition->>'bossId' bid, definition#>'{rules,mustKill}' mk, definition#>>'{rules,revive,0,become}' bec from public.battle_story_defs_v2 where chapter=16 and phase=11 and variant=''")).rows[0];
+ok(bossRow.typ === 'boss' && bossRow.bid === '10406' && bossRow.mk == null && bossRow.bec === '10291' && (await db.query('select type from public.story_phase_config where chapter=16 and phase=11')).rows[0].type === 'boss', 'boss SQL: type=boss · mustKill 제거 · revive 유지 · 멱등');
+const bossCheck = readFileSync(new URL('../supabase/fix_16_11_boss_check_staging.sql', import.meta.url), 'utf8');
+ok(/^select \($/m.test(bossCheck) && bossCheck.includes('ok') && !/^\s*update /im.test(bossCheck), 'boss 확인 SQL은 단일 SELECT');
 console.log(fails ? `${fails} FAIL` : 'ALL OK'); process.exit(fails ? 1 : 0);
+
