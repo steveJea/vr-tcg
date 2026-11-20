@@ -1,11 +1,11 @@
 // ===== 👥 친구 + 일일 선물 — 서버: supabase/friends.sql · daily_social.sql =====
 // 버튼: [data-friendbtn] (마이페이지 상단) · 받은 신청·선물 수 뱃지: 버튼 + 마이 탭([data-friendbadge])
-// 탭: 친구 목록 / 받은 신청 / 보낸 신청 / 찾기 / 선물
+// 탭: 친구 목록 / 받은 신청 / 보낸 신청 / 찾기 / 선물 / (플래그·관리자) 쪽지·차단
 // 접속 상태: 3분마다 friends_ping, 5분 이내면 🟢 접속 중
 // SQL 실행 전이거나 비로그인이면 버튼이 안 보임
 (() => {
   const missing = e => /PGRST202|PGRST205|42883|42P01|Could not find|does not exist/i.test(`${e?.code} ${e?.message}`);
-  let cache = null, rec = null, fbMode = '1v1', off = false, pending = 0, gifts = 0, tab = 'list', found = null, lastQ = '';
+  let cache = null, rec = null, fbMode = '1v1', off = false, pending = 0, gifts = 0, tab = 'list', found = null, lastQ = '', memoOn = false, memoUnread = 0, redrawFn = null;
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   async function rpc(name, args) {
     const c = window.VRCloud, sb = c?.sb; if (!sb || !c?.user) return null;
@@ -26,7 +26,7 @@
     'already sent': '오늘 이미 보냈어요', 'already claimed': '이미 받았어요', 'claim cap': '오늘 받을 수 있는 선물을 다 받았어요', 'gift not found': '없는 선물이에요', 'nothing to claim': '받을 선물이 없어요' };
   const errText = e => { const m = String(e?.message || e); const k = Object.keys(ERR).find(x => m.includes(x)); return k ? ERR[k] : m.slice(0, 60); };
   const ago = t => { if (!t) return '기록 없음'; const m = (Date.now() - new Date(t)) / 6e4; return m < 5 ? '접속 중' : m < 60 ? `${Math.floor(m)}분 전` : m < 1440 ? `${Math.floor(m / 60)}시간 전` : `${Math.floor(m / 1440)}일 전`; };
-  const badgeN = () => pending + (gifts > 0 ? gifts : 0);
+  const badgeN = () => pending + (gifts > 0 ? gifts : 0) + (memoOn ? memoUnread : 0);
   const rwGift = r => r?.stamina ? `🔋 +${r.stamina}` : r?.gold ? `🪙 ${Number(r.gold).toLocaleString('ko-KR')}` : '선물';
 
   async function ping() { if (off || !window.VRCloud?.user) return; try { const r = await rpc('friends_ping'); if (r) { pending = r.pending | 0; gifts = r.gifts | 0; paint(); } } catch (e) { console.warn('[friends]', e?.message); } }
@@ -57,14 +57,15 @@
       const hasGift = !!s?.gifts;
       const gInbox = s?.gifts?.inbox?.length | 0;
       if (tab === 'gift' && !hasGift) tab = 'list';
-      const tabs = [['list', `친구 ${s ? s.friends.length : ''}${s ? '/' + s.cap : ''}`], ...(hasGift ? [['gift', `선물${gInbox ? ` <i class="story-badge">${gInbox}</i>` : ''}`]] : []), ['in', `받은 신청${s?.incoming.length ? ` <i class="story-badge">${s.incoming.length}</i>` : ''}`], ['out', '보낸 신청'], ['find', '🔍 찾기']];
+      const memoTabs = (memoOn && window.VRMemos?.tabs?.()) || [];
+      const tabs = [['list', `친구 ${s ? s.friends.length : ''}${s ? '/' + s.cap : ''}`], ...(hasGift ? [['gift', `선물${gInbox ? ` <i class="story-badge">${gInbox}</i>` : ''}`]] : []), ...memoTabs, ['in', `받은 신청${s?.incoming.length ? ` <i class="story-badge">${s.incoming.length}</i>` : ''}`], ['out', '보낸 신청'], ['find', '🔍 찾기']];
       let body = '';
-      if (!s) body = empty('불러오는 중...');
+      if (!s && tab !== 'memo-in' && tab !== 'memo-out' && tab !== 'blocks') body = empty('불러오는 중...');
       else if (tab === 'list') {
         const sendable = hasGift ? s.friends.filter(f => !f.gift_sent) : [];
         body = s.friends.length ? (rec ? `<div class="fr-fb">⚔️ 친구 대전 <button class="fr-tab ${fbMode === '1v1' ? 'on' : ''}" data-fbm="1v1">1v1</button><button class="fr-tab ${fbMode === '3v3' ? 'on' : ''}" data-fbm="3v3">3v3</button><small>오늘 ${rec.left}회 · 무제한 리그 덱</small></div>` : '')
           + (sendable.length ? `<div class="fr-giftbar"><button class="fr-b" data-sendall>🎁 모두 보내기 (${sendable.length})</button><small>${rwGift(s.gifts?.reward)}</small></div>` : '')
-          + s.friends.map(f => row(f, `${rec ? `${rec.records?.[f.user_id] ? `<span class="fr-st">${rec.records[f.user_id].w}승 ${rec.records[f.user_id].l}패</span>` : ''}<button class="fr-b" data-fb="${f.user_id}">⚔️ 대전</button>` : ''}${hasGift ? `<button class="fr-b ${f.gift_sent ? 'ghost' : ''}" data-gift="${f.user_id}" ${f.gift_sent ? 'disabled' : ''}>${f.gift_sent ? '보냄' : '🎁'}</button>` : ''}<button class="fr-b ghost" data-rm="${f.user_id}" data-nm="${esc(f.name)}">삭제</button>`)).join('')
+          + s.friends.map(f => row(f, `${rec ? `${rec.records?.[f.user_id] ? `<span class="fr-st">${rec.records[f.user_id].w}승 ${rec.records[f.user_id].l}패</span>` : ''}<button class="fr-b" data-fb="${f.user_id}">⚔️ 대전</button>` : ''}${hasGift ? `<button class="fr-b ${f.gift_sent ? 'ghost' : ''}" data-gift="${f.user_id}" ${f.gift_sent ? 'disabled' : ''}>${f.gift_sent ? '보냄' : '🎁'}</button>` : ''}${memoOn ? `<button class="fr-b" data-memo="${f.user_id}" data-nm="${esc(f.name)}">쪽지</button><button class="fr-b ghost" data-block="${f.user_id}" data-nm="${esc(f.name)}">차단</button>` : ''}<button class="fr-b ghost" data-rm="${f.user_id}" data-nm="${esc(f.name)}">삭제</button>`)).join('')
           : empty('친구 없음');
       } else if (tab === 'gift') {
         const g = s.gifts || {};
@@ -73,6 +74,7 @@
             : empty((g.claimed_today | 0) >= (g.cap | 20) ? '오늘 받을 수 있는 선물을 다 받았어요' : '받은 선물이 없어요'));
       } else if (tab === 'in') body = s.incoming.length ? s.incoming.map(r => row(r, `<button class="fr-b" data-acc="${r.req_id}">수락</button><button class="fr-b ghost" data-dec="${r.req_id}">거절</button>`)).join('') : empty('받은 신청이 없어요');
       else if (tab === 'out') body = s.outgoing.length ? s.outgoing.map(r => row(r, `<button class="fr-b ghost" data-cancel="${r.req_id}">취소</button>`)).join('') : empty('보낸 신청이 없어요');
+      else if (tab === 'memo-in' || tab === 'memo-out' || tab === 'blocks') body = window.VRMemos?.boxHtml?.(tab === 'memo-in' ? 'inbox' : tab === 'memo-out' ? 'sent' : 'blocks') || empty('불러오는 중...');
       else body = `<form class="fr-search" data-clarity-mask="true"><input name="q" maxlength="20" placeholder="닉네임 또는 친구 코드" value="${esc(lastQ)}" autocomplete="off"><button class="fr-b">검색</button></form>
         ${found == null ? empty('닉네임 / 코드') : found.length ? found.map(p => row(p,
           p.state === 'friend' ? '<span class="fr-st">친구</span>' : p.state === 'sent' ? '<span class="fr-st">신청함</span>'
@@ -83,13 +85,16 @@
         <div class="fr-body">${body}</div></div>`;
       pop.querySelector('[data-x]').onclick = () => pop.remove();
       pop.querySelector('.fr-code')?.addEventListener('click', () => { navigator.clipboard?.writeText(s.me.code); toast('친구 코드를 복사했어요'); });
-      pop.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { tab = b.dataset.tab; draw(); });
+      pop.querySelectorAll('[data-tab]').forEach(b => b.onclick = async () => { tab = b.dataset.tab; if (memoOn) await window.VRMemos?.prepare?.(tab); draw(); });
       pop.querySelectorAll('[data-acc]').forEach(b => b.onclick = () => act('friend_respond', { p_req: +b.dataset.acc, p_accept: true }, '친구가 되었어요 🎉'));
       pop.querySelectorAll('[data-dec]').forEach(b => b.onclick = () => act('friend_respond', { p_req: +b.dataset.dec, p_accept: false }, '신청을 거절했어요'));
       pop.querySelectorAll('[data-cancel]').forEach(b => b.onclick = () => act('friend_cancel', { p_req: +b.dataset.cancel }, '신청을 취소했어요'));
       pop.querySelectorAll('[data-fbm]').forEach(b => b.onclick = () => { fbMode = b.dataset.fbm; draw(); });
       pop.querySelectorAll('[data-fb]').forEach(b => b.onclick = async () => { if (!window.VRPvp?.friendFight) return; b.disabled = true; pop.remove(); await window.VRPvp.friendFight(b.dataset.fb, fbMode); load(); });
       pop.querySelectorAll('[data-rm]').forEach(b => b.onclick = async () => { if (await window.VRAsk(`${b.dataset.nm}님을 친구에서 삭제할까요?`)) act('friend_remove', { p_user: b.dataset.rm }, '친구를 삭제했어요'); });
+      pop.querySelectorAll('[data-memo]').forEach(b => b.onclick = () => window.VRMemos?.compose?.(b.dataset.memo, b.dataset.nm));
+      pop.querySelectorAll('[data-block]').forEach(b => b.onclick = () => window.VRMemos?.blockUser?.(b.dataset.block, b.dataset.nm));
+      if (memoOn) window.VRMemos?.bindBox?.(pop);
       pop.querySelectorAll('[data-gift]').forEach(b => b.onclick = () => act('friend_gift_send', { p_user: b.dataset.gift }, '선물을 보냈어요 🎁'));
       pop.querySelector('[data-sendall]')?.addEventListener('click', async () => {
         const list = (cache?.friends || []).filter(f => !f.gift_sent); let ok = 0;
@@ -110,9 +115,11 @@
     };
     pop.onclick = e => { if (e.target === pop) pop.remove(); };
     if (!window.VRPages?.host?.('friends', '👥 친구', pop)) document.body.appendChild(pop);
-    draw(); load().then(draw);
+    redrawFn = draw;
+    window.VRMemos?.poll?.('open');
+    draw(); load().then(async () => { if (memoOn) await window.VRMemos?.prepare?.(tab); draw(); });
   }
-  window.VRFriends = { open, load, ping, paint, get data() { return cache; } };
+  window.VRFriends = { open, load, ping, paint, redraw: () => redrawFn?.(), setMemoBadge(on, n) { const was = memoOn; memoOn = !!on; memoUnread = n | 0; paint(); if (!!on !== was && redrawFn && document.querySelector('.friend-pop')) redrawFn(); }, get data() { return cache; } };
   setTimeout(() => { paint(); ping(); }, 1500); setTimeout(() => { paint(); ping(); }, 4000);
   setInterval(() => { if (!document.hidden) ping(); }, 180000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) ping(); });
