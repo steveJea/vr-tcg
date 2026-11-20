@@ -6,6 +6,7 @@
 .kfx-half, .kfx-shard, .kfx-frost-card, .kfx-burn-card, .kfx-shock-card, .kfx-fade {
   position: absolute; inset: 0; width: 100%; height: 100%; overflow: hidden; border-radius: inherit;
 }
+.kfx-shard { overflow: visible; background-repeat: no-repeat; background-position: center; }
 
 /* 서걱: 대각선으로 갈라져 양쪽으로 미끄러짐 */
 .kfx-half-a { clip-path: polygon(0 0, 100% 0, 0 100%); animation: kfxSlashA .85s ease-in forwards; }
@@ -18,6 +19,11 @@
 /* 바사삭: 위에서부터 조각이 떨어짐 */
 .kfx-shard { animation: kfxShard .9s cubic-bezier(.2,.7,.35,1) forwards; animation-delay: var(--delay, 0s); transform-origin: center; }
 @keyframes kfxShard { 0% { opacity: 1; transform: translate(0,0) rotate(0); } 100% { opacity: 0; transform: translate(var(--dx), var(--dy)) rotate(var(--rot)); } }
+.kfx-cracks { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 3; overflow: visible; pointer-events: none; }
+.kfx-cracks polyline { fill: none; stroke: #e0f2fe; stroke-width: 1.15; stroke-linecap: round; stroke-linejoin: round;
+  stroke-dasharray: 140; stroke-dashoffset: 140; filter: drop-shadow(0 0 1.6px #7dd3fc);
+  animation: kfxCrack .42s ease-out forwards; }
+@keyframes kfxCrack { 0% { stroke-dashoffset: 140; opacity: 0; } 18% { opacity: 1; } 70% { opacity: 1; stroke-dashoffset: 0; } 100% { opacity: 0; stroke-dashoffset: 0; } }
 
 /* 얼음: 서리 → 차가운 파열 */
 .kfx-frost-card { animation: kfxFrostCard .5s ease-out forwards; filter: hue-rotate(180deg) saturate(1.3) brightness(1.15); }
@@ -69,6 +75,6 @@
 .kfx-reduced .kfx-fade, .kfx-fade { animation: kfxQuickFade .15s ease-in forwards; }
 @keyframes kfxQuickFade { to { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) {
-  .kfx-half-a, .kfx-half-b, .kfx-shard, .kfx-frost-card, .kfx-frost, .kfx-burn-card, .kfx-burn-edge,
+  .kfx-half-a, .kfx-half-b, .kfx-shard, .kfx-frost-card, .kfx-frost, .kfx-cracks polyline, .kfx-burn-card, .kfx-burn-edge,
   .kfx-ember, .kfx-ash, .kfx-shock-card, .kfx-flash, .kfx-bolt, .kfx-gleam { animation-duration: .15s !important; animation-delay: 0s !important; }
 }
