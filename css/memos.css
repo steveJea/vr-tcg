@@ -1,0 +1,13 @@
+/* 친구 1:1 쪽지 (js/memos.js). 친구 창 탭·보내기/읽기 팝업 */
+.mm-row{width:100%;text-align:left;cursor:pointer;border:0;color:inherit;font:inherit;background:rgba(255,255,255,.05)}
+.mm-row.unread{background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.35)}
+.mm-prev{display:block;margin-top:3px;color:#d4d4d8;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mm-panel{max-width:420px}
+.mm-to{margin:0 0 8px;color:#fde68a;font-size:13px}
+.mm-to small{color:#a1a1aa;font-weight:400}
+.mm-body,.mm-text{width:100%;box-sizing:border-box;padding:10px;border-radius:10px;background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.18);color:#fff;font:13px/1.5 sans-serif;resize:vertical}
+.mm-text{min-height:80px;white-space:pre-wrap;word-break:break-word}
+.mm-foot{display:flex;align-items:center;gap:8px;margin-top:8px}
+.mm-foot .mm-cnt{flex:1;color:#a1a1aa;font-size:12px}
+.mm-acts{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.mm-warn{margin:0 0 8px;padding:8px 10px;border-radius:8px;background:rgba(239,68,68,.15);color:#fecaca;font-size:12px}

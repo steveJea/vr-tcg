@@ -23,7 +23,7 @@
   }
   const SHORT = { 'NORMAL': 'N', 'RARE': 'R', 'HIGH RARE': 'HR', 'SUPER RARE': 'SR', 'ULTRA RARE': 'UR', 'MYTHIC RARE': 'MR', 'LEGENDARY RARE': 'LR' };
   const CUR = [['gold', '🪙', '골드'], ['blood', '🩸', '순수한 피'], ['shard', '💠', '이상한 조각'], ['soul', '🔥', '각성자의 혼']];
-  const ACT = { reset_account: '계정 초기화', trade_void_listing: '거래 글 강제 내림', trade_refund_offer: '거래 제안 강제 환불', grant_drink: '드링크 지급', grant_tickets: '소환권 지급', grant_gold: '골드 지급', grant_blood: '순수한 피 지급', grant_shard: '이상한 조각 지급', grant_soul: '각성자의 혼 지급', mail_send: '📮 우편 보내기', mail_broadcast: '📮 전체 우편' };
+  const ACT = { reset_account: '계정 초기화', trade_void_listing: '거래 글 강제 내림', trade_refund_offer: '거래 제안 강제 환불', grant_drink: '드링크 지급', grant_tickets: '소환권 지급', grant_gold: '골드 지급', grant_blood: '순수한 피 지급', grant_shard: '이상한 조각 지급', grant_soul: '각성자의 혼 지급', mail_send: '📮 우편 보내기', mail_broadcast: '📮 전체 우편', flag_set: '기능 플래그', memo_hide: '쪽지 숨김', memo_delete: '쪽지 삭제', chat_mute: '쪽지 뮤트', chat_suspend: '쪽지 정지', chat_lift: '쪽지 제재 해제' };
   const cname = id => names.get(String(id))?.name || id;
 
   async function waitCloud() {
@@ -48,9 +48,9 @@
   }
 
   function render() {
-    root().innerHTML = `<div class="ad-tabs"><button class="ad-btn sub ${tab === 'users' ? 'on' : ''}" data-tab="users">가입 유저</button><button class="ad-btn sub ${tab === 'logs' ? 'on' : ''}" data-tab="logs">관리자 기록</button><button class="ad-btn sub ${tab === 'notices' ? 'on' : ''}" data-tab="notices">공지</button><button class="ad-btn sub ${tab === 'trade' ? 'on' : ''}" data-tab="trade">거래</button><button class="ad-btn sub ${tab === 'mail' ? 'on' : ''}" data-tab="mail">📮 전체 우편</button><button class="ad-btn sub ${tab === 'maint' ? 'on' : ''}" data-tab="maint">점검</button></div><div id="ad-view"></div>`;
+    root().innerHTML = `<div class="ad-tabs"><button class="ad-btn sub ${tab === 'users' ? 'on' : ''}" data-tab="users">가입 유저</button><button class="ad-btn sub ${tab === 'logs' ? 'on' : ''}" data-tab="logs">관리자 기록</button><button class="ad-btn sub ${tab === 'notices' ? 'on' : ''}" data-tab="notices">공지</button><button class="ad-btn sub ${tab === 'trade' ? 'on' : ''}" data-tab="trade">거래</button><button class="ad-btn sub ${tab === 'mail' ? 'on' : ''}" data-tab="mail">📮 전체 우편</button><button class="ad-btn sub ${tab === 'memos' ? 'on' : ''}" data-tab="memos">✉️ 쪽지</button><button class="ad-btn sub ${tab === 'maint' ? 'on' : ''}" data-tab="maint">점검</button></div><div id="ad-view"></div>`;
     root().querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { tab = b.dataset.tab; render(); });
-    tab === 'users' ? renderUsers() : tab === 'mail' ? renderMail() : tab === 'notices' ? renderNotices() : tab === 'trade' ? renderTrade() : tab === 'maint' ? renderMaint() : renderLogs();
+    tab === 'users' ? renderUsers() : tab === 'mail' ? renderMail() : tab === 'notices' ? renderNotices() : tab === 'trade' ? renderTrade() : tab === 'memos' ? renderMemos() : tab === 'maint' ? renderMaint() : renderLogs();
   }
   async function renderUsers(q = '') {
     const v = $('ad-view');
@@ -353,6 +353,85 @@
       }
     };
   }
+
+
+  // --- 쪽지 검열 (supabase/friend_memos_staging.sql). 플래그 friend_memos 기본 OFF. 꺼져 있어도 관리자 계정은 테스트 가능.
+  async function renderMemos() {
+    const v = $('ad-view');
+    v.innerHTML = '<div class="ad-msg">불러오는 중...</div>';
+    const fail = e => { v.innerHTML = `<div class="ad-err">${/admin_feature_flag|admin_chat_reports|Could not find|schema cache/.test(e?.message || '') ? '서버에 쪽지 관리 함수(supabase/friend_memos_staging.sql)가 아직 없어요.' : /forbidden/.test(e?.message || '') ? '접근 거부 (Access denied)' : esc(e?.message)}</div>`; };
+    let flags, items, st = v.dataset.memoSt || 'open';
+    try {
+      flags = await rpc('admin_feature_flag_get');
+      items = (await rpc('admin_chat_reports', { p_status: st, p_limit: 100 }))?.items || [];
+    } catch (e) { return fail(e); }
+    const flag = (flags?.flags || []).find(f => f.key === 'friend_memos') || { enabled: false };
+    const nm = x => esc(x?.name || x?.user_id || '-');
+    const ask = t => { const r = prompt(`${t}\n사유 (필수):`); return r && r.trim() ? r.trim() : null; };
+    v.innerHTML = `<div class="ad-danger" style="margin-bottom:12px">
+        <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px">
+          <b>기능 플래그 friend_memos</b>
+          <span class="${flag.enabled ? 'ad-ok' : 'ad-err'}">${flag.enabled ? '일반 유저에게 열려 있음' : '꺼짐 (기본). 관리자만 테스트 가능'}</span>
+          <button class="ad-btn ${flag.enabled ? 'ad-del' : ''}" id="ad-flag">${flag.enabled ? '일반 유저에게 끄기' : '일반 유저에게 열기'}</button>
+        </div>
+        <p style="margin:8px 0 0;font-size:13px;opacity:.85">본인인증(포트원)과 약관·개인정보 문구가 준비되기 전에는 열지 마세요. 꺼져 있어도 stevejean77@gmail.com 계정은 쪽지를 시험할 수 있습니다. SQL: <code>select public.admin_feature_flag_set('friend_memos', true);</code></p>
+      </div>
+      <div class="ad-bar">
+        ${[['open','접수'],['reviewed','검토 완료'],['dismissed','기각'],['all','전체']].map(([k,l]) => `<button class="ad-btn sub ${st===k?'on':''}" data-st="${k}">${l}</button>`).join('')}
+      </div>
+      <div class="ad-wrap"><table class="ad-table"><thead><tr><th>시각</th><th>신고자</th><th>보낸 이</th><th>받는 이</th><th>본문</th><th>사유</th><th>상태</th><th>조치</th></tr></thead><tbody>
+        ${items.length ? items.map(r => `<tr data-rid="${r.id}" data-mid="${r.memo_id}" data-from="${esc(r.from?.user_id || '')}">
+          <td>${fmt(r.created_at)}</td><td>${nm(r.reporter)}</td><td>${nm(r.from)}</td><td>${nm(r.to)}</td>
+          <td style="white-space:normal;max-width:220px">${esc(r.body)}${r.hidden?' <small>숨김</small>':''}${r.deleted?' <small>삭제</small>':''}</td>
+          <td style="white-space:normal">${esc(r.reason)}</td><td>${esc(r.status)}</td>
+          <td style="white-space:normal">
+            <button class="ad-btn sub" data-hide="${r.memo_id}">숨김</button>
+            <button class="ad-btn sub ad-del" data-del="${r.memo_id}">삭제</button>
+            <button class="ad-btn sub" data-mute="${esc(r.from?.user_id || '')}">뮤트</button>
+            <button class="ad-btn sub ad-del" data-sus="${esc(r.from?.user_id || '')}">정지</button>
+            <button class="ad-btn sub" data-lift="${esc(r.from?.user_id || '')}">해제</button>
+            ${r.status==='open' ? `<button class="ad-btn sub" data-rv="${r.id}">검토</button><button class="ad-btn sub" data-ds="${r.id}">기각</button>` : ''}
+          </td></tr>`).join('') : '<tr><td colspan="8">신고 없음</td></tr>'}
+      </tbody></table></div>
+      <div class="ad-bar" style="margin-top:14px">
+        <input id="ad-mu" placeholder="제재/해제할 유저 UUID">
+        <button class="ad-btn sub" id="ad-mu-mute">뮤트 24시간</button>
+        <button class="ad-btn sub ad-del" id="ad-mu-sus">정지 7일</button>
+        <button class="ad-btn sub" id="ad-mu-lift">제재 해제</button>
+      </div>`;
+    v.dataset.memoSt = st;
+    v.querySelectorAll('[data-st]').forEach(b => b.onclick = () => { v.dataset.memoSt = b.dataset.st; renderMemos(); });
+    $('ad-flag').onclick = async () => {
+      const turnOn = !flag.enabled;
+      if (turnOn && !confirm('본인인증·약관이 준비되기 전에 일반 유저에게 열면 안 됩니다. 정말 열까요?')) return;
+      try { await rpc('admin_feature_flag_set', { p_key: 'friend_memos', p_enabled: turnOn }); renderMemos(); }
+      catch (e) { alert(e.message); }
+    };
+    const hoursPick = () => {
+      const h = prompt('기간(시간). 비우면 무기한. 예: 1, 24, 168', '24');
+      if (h === null) return undefined;
+      const t = h.trim(); if (!t) return null;
+      const n = +t; if (!Number.isFinite(n) || n < 1) { alert('시간을 확인해 주세요'); return undefined; }
+      return n;
+    };
+    v.querySelectorAll('[data-hide]').forEach(b => b.onclick = async ev => { ev.stopPropagation(); const r = ask('이 쪽지를 숨길까요?'); if (!r) return; try { await rpc('admin_memo_hide', { p_id: +b.dataset.hide, p_reason: r }); renderMemos(); } catch (e) { alert(e.message); } });
+    v.querySelectorAll('[data-del]').forEach(b => b.onclick = async ev => { ev.stopPropagation(); const r = ask('이 쪽지를 삭제(소프트)할까요? 신고 기록은 남습니다.'); if (!r) return; try { await rpc('admin_memo_delete', { p_id: +b.dataset.del, p_reason: r }); renderMemos(); } catch (e) { alert(e.message); } });
+    const sanction = async (uid, kind) => {
+      if (!uid) return; const hours = hoursPick(); if (hours === undefined) return;
+      const r = ask(kind === 'suspend' ? '쪽지 이용을 정지할까요?' : '쪽지를 뮤트할까요?'); if (!r) return;
+      try { await rpc('admin_chat_mute', { p_user: uid, p_kind: kind, p_hours: hours, p_reason: r }); renderMemos(); }
+      catch (e) { alert(e.message); }
+    };
+    v.querySelectorAll('[data-mute]').forEach(b => b.onclick = ev => { ev.stopPropagation(); sanction(b.dataset.mute, 'mute'); });
+    v.querySelectorAll('[data-sus]').forEach(b => b.onclick = ev => { ev.stopPropagation(); sanction(b.dataset.sus, 'suspend'); });
+    v.querySelectorAll('[data-lift]').forEach(b => b.onclick = async ev => { ev.stopPropagation(); const uid = b.dataset.lift; if (!uid) return; const r = ask('제재를 해제할까요?'); if (!r) return; try { await rpc('admin_chat_lift', { p_user: uid, p_reason: r }); renderMemos(); } catch (e) { alert(e.message); } });
+    v.querySelectorAll('[data-rv]').forEach(b => b.onclick = async ev => { ev.stopPropagation(); try { await rpc('admin_chat_report_review', { p_id: +b.dataset.rv, p_status: 'reviewed' }); renderMemos(); } catch (e) { alert(e.message); } });
+    v.querySelectorAll('[data-ds]').forEach(b => b.onclick = async ev => { ev.stopPropagation(); try { await rpc('admin_chat_report_review', { p_id: +b.dataset.ds, p_status: 'dismissed' }); renderMemos(); } catch (e) { alert(e.message); } });
+    $('ad-mu-mute').onclick = () => sanction($('ad-mu').value.trim(), 'mute');
+    $('ad-mu-sus').onclick = () => { const uid = $('ad-mu').value.trim(); if (!uid) return; const r = ask('쪽지 이용을 7일 정지할까요?'); if (!r) return; rpc('admin_chat_mute', { p_user: uid, p_kind: 'suspend', p_hours: 168, p_reason: r }).then(renderMemos).catch(e => alert(e.message)); };
+    $('ad-mu-lift').onclick = async () => { const uid = $('ad-mu').value.trim(); if (!uid) return; const r = ask('제재를 해제할까요?'); if (!r) return; try { await rpc('admin_chat_lift', { p_user: uid, p_reason: r }); renderMemos(); } catch (e) { alert(e.message); } };
+  }
+
 
   function closeModal() { $('ad-modal').classList.add('hidden'); if (tab === 'users') renderUsers($('ad-q')?.value.trim() || ''); }
   $('ad-modal').addEventListener('click', e => { if (e.target.id === 'ad-modal' || e.target.closest('#ad-close')) closeModal(); });   // 바깥 클릭 = 닫기
