@@ -10,8 +10,8 @@ for (const [id, k] of Object.entries(KILL_FX)) {
   ok(`id ${id} is 5-digit`, /^\d{5}$/.test(id));
   ok(`${id} kind valid`, k in KILL_FX_MS);
 }
-ok('slash 20', kinds.slash === 20, kinds.slash);
-ok('shatter 18', kinds.shatter === 18, kinds.shatter);
+ok('slash 15', kinds.slash === 15, kinds.slash);
+ok('shatter 23', kinds.shatter === 23, kinds.shatter);
 ok('burn 11', kinds.burn === 11, kinds.burn);
 ok('shock 4', kinds.shock === 4, kinds.shock);
 ok('freeze 4', kinds.freeze === 4, kinds.freeze);
@@ -22,13 +22,13 @@ for (const [k, code] of Object.entries(KILL_FX_SE)) {
   ok(`SE ${k} ${f}`, existsSync(f));
 }
 
-beginSkillKill({ card: { id: '10051' } });
+beginSkillKill({ card: { id: '10322' } });
 ok('skill killer slash', skillKillKind() === 'slash');
 beginSkillKill({ card: { id: '10304' } });
 ok('skill killer burn', skillKillKind() === 'burn');
 endSkillKill();
 ok('no killer after end', skillKillKind() === null);
-ok('normal attack context has no kind', skillKillKind({ card: { id: '10051' } }) === 'slash'); // explicit unit still works
+ok('explicit unit still maps', skillKillKind({ card: { id: '10322' } }) === 'slash'); // explicit unit still works
 ok('unmapped id', skillKillKind({ card: { id: '10013' } }) === null);
 
 const game = readFileSync('js/game.js', 'utf8');
