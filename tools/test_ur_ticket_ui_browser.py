@@ -5,7 +5,7 @@ from playwright.async_api import async_playwright
 URL=os.environ.get('URL','http://localhost:8767/')
 MOCK="""window.__ur=2;window.__TICKET_MOCK={sync:async()=>({tickets:3,added:0}),draw:async n=>({ok:false,reason:'tickets',tickets:3}),
 ur:async()=>window.__ur,urDraw:async()=>{if(window.__ur<1)return{ok:false,reason:'ur_tickets',ur_tickets:0};window.__ur--;return{ok:true,cards:[{card_id:'10325',grade:'ULTRA RARE'}],ur_tickets:window.__ur,tickets:3}}};
-localStorage.setItem('vrTutorialDone','1');localStorage.setItem('vrTcgIntroSeen','1');localStorage.setItem('vrTcgSkipFx','1');
+localStorage.setItem('vrTutorialDone','1');localStorage.setItem('vrTcgIntroSeen','1');localStorage.setItem('vrTcgSkipFx','1');localStorage.setItem('vrGachaVideo','0');
 (()=>{let save={v:1,openingSeen:true,startSeen:true,ch0Pull:true,starter:'10111',points:0,statV:99,cleared:{'1':[1,2,3]},leader:'u1',owned:[{uid:'u1',id:'10111',level:5}]};
 const ok=d=>Promise.resolve({data:d,error:null});
 const sb={from:()=>({select:()=>({eq:()=>({maybeSingle:()=>ok({data:save})})})}),rpc:(n,a)=>{if(n==='player_status')return ok({ok:true,level:20,max_level:100,xp:1,xp_next:9,stamina:40,stamina_max:40,regen_secs:360,next_regen_secs:1,cost:{story:6},unlocks:{}});
@@ -23,9 +23,14 @@ async def main():
     assert (await pg.inner_text('#gr-own-ur')).strip()=='2'
     await pg.screenshot(path='/workspace/shots/ur-1.png')
     await pg.click('.gr-go-ur')
-    for _ in range(40):
-      if '10325' in (await pg.inner_html('#tk-result')): break
-      await pg.mouse.click(195,300); await pg.wait_for_timeout(500)
+    await pg.wait_for_selector('#gr-ur-zoom', timeout=20000)
+    zoom=await pg.inner_html('#gr-ur-zoom')
+    assert '10325' in zoom, 'UR 확대 카드'
+    assert 'NEW' not in (await pg.inner_text('#gr-ur-zoom')), 'NEW 배지 없음'
+    assert await pg.locator('#gr-ur-zoom.reduce, #gr-ur-zoom.gr-ur-zoom').count()
+    await pg.screenshot(path='/workspace/ur-zoom-ticket-mobile.png')
+    await pg.locator('.gr-ur-zoom-skip').click()
+    await pg.wait_for_selector('#gr-ur-zoom', state='detached', timeout=5000)
     assert '10325' in (await pg.inner_html('#tk-result')), 'UR 결과'
     assert (await pg.inner_text('#gr-own-ur')).strip()=='1'
     await pg.screenshot(path='/workspace/shots/ur-2.png')

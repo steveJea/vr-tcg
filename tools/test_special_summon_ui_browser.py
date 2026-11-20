@@ -5,7 +5,7 @@ from playwright.async_api import async_playwright
 URL=os.environ.get('URL','http://localhost:8767/'); SHOTS=os.environ.get('SHOTS','/tmp')
 MOCK="""window.__ur=0;window.__sp={t:23,m:48,o:2};window.__SPECIAL_MOCK=window.__SP_OFF?null:{status:async()=>({ok:true,tickets:window.__sp.t,misses:window.__sp.m,off_urs:window.__sp.o,banner:{banner_id:'hajihye-20261113',pickup_id:'10440',pickup_name:'하지혜',starts_at:'2026-11-13T00:00:00+09:00',ends_at:null,pity:50,pickup_after:2,open:true,rates:{'NORMAL':5000,'RARE':3000,'HIGH RARE':1000,'SUPER RARE':800,pickup:100,other_ur:100}}}),draw:async n=>{if(window.__sp.t<n)return{ok:false,reason:'special_tickets',tickets:window.__sp.t};window.__sp.t-=n;const cards=[];for(let i=0;i<n;i++){if(window.__sp.m>=49){const pk=window.__sp.o>=2;cards.push({card_id:pk?'10440':'10325',grade:'ULTRA RARE',guaranteed:true,guarantee:pk?'pickup':'ur_pity'});window.__sp.m=0;window.__sp.o=pk?0:window.__sp.o+1}else{window.__sp.m++;cards.push({card_id:'10111',grade:'NORMAL'})}}return{ok:true,cards,tickets:window.__sp.t,misses:window.__sp.m,off_urs:window.__sp.o}}};window.__TICKET_MOCK={sync:async()=>({tickets:3,added:0}),draw:async n=>({ok:false,reason:'tickets',tickets:3}),
 ur:async()=>window.__ur,urDraw:async()=>{if(window.__ur<1)return{ok:false,reason:'ur_tickets',ur_tickets:0};window.__ur--;return{ok:true,cards:[{card_id:'10325',grade:'ULTRA RARE'}],ur_tickets:window.__ur,tickets:3}}};
-localStorage.setItem('vrTutorialDone','1');localStorage.setItem('vrTcgIntroSeen','1');localStorage.setItem('vrTcgSkipFx','1');
+localStorage.setItem('vrTutorialDone','1');localStorage.setItem('vrTcgIntroSeen','1');localStorage.setItem('vrTcgSkipFx','1');localStorage.setItem('vrGachaVideo','0');
 (()=>{let save={v:1,openingSeen:true,startSeen:true,ch0Pull:true,starter:'10111',points:0,statV:99,cleared:{'1':[1,2,3]},leader:'u1',owned:[{uid:'u1',id:'10111',level:5}]};
 const ok=d=>Promise.resolve({data:d,error:null});
 const sb={from:()=>({select:()=>({eq:()=>({maybeSingle:()=>ok({data:save})})})}),rpc:(n,a)=>{if(n==='player_status')return ok({ok:true,level:20,max_level:100,xp:1,xp_next:9,stamina:40,stamina_max:40,regen_secs:360,next_regen_secs:1,cost:{story:6},unlocks:{}});
@@ -63,9 +63,13 @@ async def main():
     t=await pg.inner_text('#sp-intro-pop'); assert '하지혜' in t and '공방 특화' in t and '죽이지 않으면 죽어' in t and '바람' in t and 'UR' in t, t
     await pg.wait_for_timeout(1200); await pg.screenshot(path=f'{SHOTS}/summon_pickup_intro.png'); await pg.click('#sp-intro-pop [data-sp-close]')
     await pg.click('[data-sp="1"][data-draw="10"]')
-    for _ in range(40):
-      if '10440' in (await pg.inner_html('#tk-result')): break
-      await pg.mouse.click(195,300); await pg.wait_for_timeout(500)
+    await pg.wait_for_selector('#gr-ur-zoom', timeout=20000)
+    zoom=await pg.inner_html('#gr-ur-zoom')
+    assert '10440' in zoom, '천장 하지혜 확대'
+    assert 'NEW' not in (await pg.inner_text('#gr-ur-zoom')), 'NEW 배지 없음'
+    await pg.screenshot(path='/workspace/ur-zoom-special-mobile.png')
+    await pg.locator('.gr-ur-zoom-skip').click()
+    await pg.wait_for_selector('#gr-ur-zoom', state='detached', timeout=5000)
     assert '10440' in (await pg.inner_html('#tk-result')), '천장 하지혜'
     await pg.wait_for_timeout(800); own=await pg.inner_text('#gr-own'); print(own); assert '13' in own and 'UR 천장' not in own and '하지혜 확정까지 UR 3번' in own, own
     await pg.screenshot(path=f'{SHOTS}/special_summon_result.png')

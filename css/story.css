@@ -1064,6 +1064,30 @@ body.story-media-on .story-dlg-skip { left: 4px; right: auto; top: calc(4px + en
 .gr-vid-v{width:100%;height:100%;object-fit:cover;background:#07060c}
 .gr-vid-skip{position:absolute;right:max(14px,env(safe-area-inset-right));top:max(14px,env(safe-area-inset-top));padding:8px 16px;border-radius:999px;background:rgba(0,0,0,.55);color:#fff;font-weight:800;font-size:14px;letter-spacing:.04em;border:1px solid rgba(255,255,255,.35);backdrop-filter:blur(4px);z-index:1}
 .gr-vid-skip:active{transform:scale(.96)}
+/* UR 이상 확대 공개 (story.js playUrReveal): 영상 다음·결과 그리드 앞. 페이지 팝업 층(9600+), 확인창·토스트(9700+) 아래 */
+.gr-ur-zoom{position:fixed;inset:0;z-index:9600;background:#07060c;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:max(48px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));-webkit-user-select:none;user-select:none;touch-action:manipulation;transition:opacity .2s}
+.gr-ur-zoom.out{opacity:0;pointer-events:none}
+.gr-ur-zoom-skip{position:absolute;right:max(14px,env(safe-area-inset-right));top:max(14px,env(safe-area-inset-top));padding:8px 16px;border-radius:999px;background:rgba(0,0,0,.55);color:#fff;font-weight:800;font-size:14px;letter-spacing:.04em;border:1px solid rgba(255,255,255,.35);backdrop-filter:blur(4px);z-index:1}
+.gr-ur-zoom-skip:active{transform:scale(.96)}
+.gr-ur-zoom-stage{display:flex;flex-direction:column;align-items:center;gap:10px;max-width:100%;min-height:0}
+.gr-ur-zoom-card{position:relative;width:min(86vw,calc(70dvh * 3 / 4));max-height:70dvh;aspect-ratio:3/4;border-radius:14px;overflow:hidden;background:#111;border:3px solid #facc15;box-shadow:0 0 36px #facc15cc,0 16px 40px rgba(0,0,0,.6)}
+.gr-ur-zoom-card img{width:100%;height:100%;object-fit:cover;display:block}
+.gr-ur-zoom-card .story-rar{position:absolute;top:8px;left:8px}
+.gr-ur-zoom-card.g-mr{border-color:#ef4444;box-shadow:0 0 36px #f87171,0 16px 40px rgba(0,0,0,.6)}
+.gr-ur-zoom-card.g-lr{border-color:#e879f9;box-shadow:0 0 36px #e879f9,0 16px 40px rgba(0,0,0,.6)}
+.gr-ur-zoom-meta{text-align:center;color:#fff;font-weight:900;font-size:18px;text-shadow:0 1px 4px #000;max-width:86vw}
+.gr-ur-zoom-hint{color:#d4d4d8;font-weight:700;font-size:13px;letter-spacing:.02em;opacity:.85}
+.gr-ur-zoom:not(.reduce) .gr-ur-zoom-card{animation:grUrIn .45s cubic-bezier(.2,1.2,.4,1)}
+@keyframes grUrIn{from{opacity:0;transform:scale(.86)}to{opacity:1;transform:none}}
+.gr-ur-zoom.reduce .gr-ur-zoom-card,.gr-ur-zoom.reduce.out{animation:none;transition:none}
+@media (prefers-reduced-motion:reduce){.gr-ur-zoom-card{animation:none!important}.gr-ur-zoom{transition:none}}
+@media (orientation:landscape){
+  .gr-ur-zoom{flex-direction:row;gap:28px;padding-left:max(24px,env(safe-area-inset-left));padding-right:max(24px,env(safe-area-inset-right))}
+  .gr-ur-zoom-stage{flex-direction:row;align-items:center;gap:24px}
+  .gr-ur-zoom-card{width:auto;height:min(80dvh,calc(86vw * .75));max-width:50vw;max-height:80dvh}
+  .gr-ur-zoom-meta{text-align:left;font-size:22px;max-width:36vw}
+  .gr-ur-zoom-hint{position:absolute;bottom:max(18px,env(safe-area-inset-bottom));left:0;right:0;text-align:center}
+}
 /* 스토리 허브 제목 */
 .hub-top-r1 .hub-title{flex:1;min-width:0;text-align:center;font-weight:900;color:#f5c96a;font-size:15px;white-space:nowrap;text-shadow:0 1px 4px #000}
 /* 높이 맞춤 (2026-11-03): #story-screen 위·아래에 상단 바(--tnb-pad)·하단 메뉴(--gnb-pad) 여백이 붙은 만큼
