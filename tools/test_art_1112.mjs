@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
 import vm from 'node:vm';
 const PORTRAITS = ['10059', '10321', '10329', '10459', '10460', '10461', '10470'];
-const FX = { 10025: ['10025_1.webp', '10025_2.webp'], 10321: ['10321_1.webp', '10321_2.webp'], 10329: ['10329_1.webp', '10329_2.webp'] };
+const FX = { 10025: ['10025_1.webp', '10025_2.webp'], 10321: ['10321_1.webp', '10321_2.webp'], 10329: ['10329_1.webp', '10329_2.webp'], 10247: ['10247_1.webp'], 10462: ['10462_1.webp'] };
 const dims = f => { const b = readFileSync(f); assert.equal(b.toString('ascii', 0, 4), 'RIFF', f); assert.equal(b.toString('ascii', 8, 12), 'WEBP', f);
   const k = b.toString('ascii', 12, 16);
   if (k === 'VP8X') return [1 + b.readUIntLE(24, 3), 1 + b.readUIntLE(27, 3)];
@@ -41,4 +41,4 @@ for (const [f, re] of [['js/game.js', /VRSkillFx\?\.\(sk\);[^\n]*\n\s*setSkillDa
   for (const id of sr) { const list = sk[id] || []; if (!list.length) miss.push(id + ':none');
     list.forEach((s, i) => { if (!s.fx || !existsSync('data/fx/' + s.fx)) miss.push(`${id}_${i + 1}`); }); }
   assert.deepEqual(miss, [], 'SR skill images'); }
-console.log('Art 11-12: all 50 SR skills have images · 7 portraits (576x864 + 300x450 thumb, OVERRIDE) · 6 skill fx (1280x720) via VRSkillFx, skills.json untouched OK');
+console.log('Art 11-12: all 50 SR skills have images · 7 portraits (576x864 + 300x450 thumb, OVERRIDE) · skill fx (1280x720) via VRSkillFx, skills.json untouched OK');
