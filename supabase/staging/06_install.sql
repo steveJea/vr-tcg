@@ -40,11 +40,11 @@ set local check_function_bodies = off;
 
 do $vr_install_part$
 begin
-  if exists (select 1 from vr_staging_install.parts where bundle_hash <> '14de29035b6a378d364aa94d3034704eebd4f8dd3f90b779efc5eb160bf48e67' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
+  if exists (select 1 from vr_staging_install.parts where bundle_hash <> '34bc3eed9ce976cacec145ea1f0c0fa3e17b15c28dbb1830940f68bf22d3e980' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
     raise exception 'STOP: 다른 버전/DB의 설치 기록입니다. 파일을 섞지 마세요.';
   end if;
   if exists (select 1 from vr_staging_install.parts where part_no = 6) then
-    if not exists (select 1 from vr_staging_install.parts where part_no = 6 and part_hash = '3ab57a984bef501ac1a360805d30dbd17b38cc4fae1ed81a01209fdf40f3d679') then
+    if not exists (select 1 from vr_staging_install.parts where part_no = 6 and part_hash = '6e38e52e63b9c93fa92698f410a3736aa7dbbc27f19d08e84cdc0ebe67d34e62') then
       raise exception 'STOP: 완료한 파일과 내용이 다릅니다.';
     end if;
     raise notice '06_install.sql: 이미 완료, 변경 없이 건너뜀';
@@ -1042,7 +1042,7 @@ create table if not exists public.card_id_alias (old_id text primary key, new_id
   ('1000100013','10080','김홍민'),
   ('1000600120','10081','김후'),
   ('1000000033','10082','김후 환영'),
-  ('2000300068','10083','김희건'),
+  ('2000300068','10083','김희자'),
   ('2001100238','10084','나윤아'),
   ('2001100239','10085','나윤영'),
   ('1000200033','10086','남경택'),
@@ -1057,7 +1057,7 @@ create table if not exists public.card_id_alias (old_id text primary key, new_id
   ('2000700139','10095','노정아'),
   ('2000700140','10096','노정은'),
   ('2000900236','10097','동지선'),
-  ('1000500112','10098','두윤창'),
+  ('1000500112','10098','윤수두'),
   ('2000700159','10099','류장미'),
   ('2001100220','10100','류태연'),
   ('2000700158','10101','류하늘'),
@@ -1403,7 +1403,7 @@ create table if not exists public.card_id_alias (old_id text primary key, new_id
   ('1001500296','10441','하혁'),
   ('2000600116','10442','한겨울'),
   ('2002300373','10443','한믿음'),
-  ('1000300058','10444','한석열'),
+  ('1000300058','10444','윤부자'),
   ('1000100014','10445','한재'),
   ('2002400379','10446','한하루'),
   ('2000700153','10447','허동아'),
@@ -1796,7 +1796,7 @@ end $$;$vr_statement$;
   execute $vr_statement$select 'guild_lend_notice ok' as result;$vr_statement$;
 
   insert into vr_staging_install.parts(part_no, bundle_hash, part_hash, project_ref, db_id)
-  values (6, '14de29035b6a378d364aa94d3034704eebd4f8dd3f90b779efc5eb160bf48e67', '3ab57a984bef501ac1a360805d30dbd17b38cc4fae1ed81a01209fdf40f3d679', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
+  values (6, '34bc3eed9ce976cacec145ea1f0c0fa3e17b15c28dbb1830940f68bf22d3e980', '6e38e52e63b9c93fa92698f410a3736aa7dbbc27f19d08e84cdc0ebe67d34e62', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
 end $vr_install_part$;
 commit;
 select '06_install.sql: 완료 또는 이미 완료 (6/14)' as result;

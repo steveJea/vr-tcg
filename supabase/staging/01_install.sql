@@ -40,11 +40,11 @@ set local check_function_bodies = off;
 
 do $vr_install_part$
 begin
-  if exists (select 1 from vr_staging_install.parts where bundle_hash <> '14de29035b6a378d364aa94d3034704eebd4f8dd3f90b779efc5eb160bf48e67' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
+  if exists (select 1 from vr_staging_install.parts where bundle_hash <> '34bc3eed9ce976cacec145ea1f0c0fa3e17b15c28dbb1830940f68bf22d3e980' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
     raise exception 'STOP: 다른 버전/DB의 설치 기록입니다. 파일을 섞지 마세요.';
   end if;
   if exists (select 1 from vr_staging_install.parts where part_no = 1) then
-    if not exists (select 1 from vr_staging_install.parts where part_no = 1 and part_hash = '7267bc440ad8325a1fc3af18c2ac8346158234e7c681761f7b742f5099fc5080') then
+    if not exists (select 1 from vr_staging_install.parts where part_no = 1 and part_hash = '7f99a2f63b31cb539ece123570d24ef4d5e4e5b58a13ad30e0d736fc53efc4cc') then
       raise exception 'STOP: 완료한 파일과 내용이 다릅니다.';
     end if;
     raise notice '01_install.sql: 이미 완료, 변경 없이 건너뜀';
@@ -981,7 +981,7 @@ alter table public.story_card_pool add column if not exists name text;$vr_statem
   ('10001','NORMAL','가윤우',true),
   ('10183','SUPER RARE','서태우',true),
   ('10064','NORMAL','김자근',true),
-  ('10444','NORMAL','한석열',true),
+  ('10444','NORMAL','윤부자',true),
   ('10279','NORMAL','윤동훈',true),
   ('10225','RARE','안용태',true),
   ('10431','NORMAL','표정재',true),
@@ -1011,7 +1011,7 @@ alter table public.story_card_pool add column if not exists name text;$vr_statem
   ('10406','HIGH RARE','최국선',true),
   ('10328','NORMAL','임창수',true),
   ('10329','SUPER RARE','임창열',true),
-  ('10098','RARE','두윤창',true),
+  ('10098','RARE','윤수두',true),
   ('10187','RARE','선영운',true),
   ('10319','RARE','이후남',true),
   ('10081','HIGH RARE','김후',true),
@@ -1148,7 +1148,7 @@ alter table public.story_card_pool add column if not exists name text;$vr_statem
   ('10466','RARE','황예은',true),
   ('10002','NORMAL','강나빛',true),
   ('10289','NORMAL','윤정하',true),
-  ('10083','NORMAL','김희건',true),
+  ('10083','NORMAL','김희자',true),
   ('10079','NORMAL','김현진',true),
   ('10338','HIGH RARE','장아유',true),
   ('10336','HIGH RARE','장세유',true),
@@ -2187,7 +2187,7 @@ end $$;$vr_statement$;
   execute $vr_statement$grant execute on function public.story_merge(text, text) to authenticated;$vr_statement$;
 
   insert into vr_staging_install.parts(part_no, bundle_hash, part_hash, project_ref, db_id)
-  values (1, '14de29035b6a378d364aa94d3034704eebd4f8dd3f90b779efc5eb160bf48e67', '7267bc440ad8325a1fc3af18c2ac8346158234e7c681761f7b742f5099fc5080', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
+  values (1, '34bc3eed9ce976cacec145ea1f0c0fa3e17b15c28dbb1830940f68bf22d3e980', '7f99a2f63b31cb539ece123570d24ef4d5e4e5b58a13ad30e0d736fc53efc4cc', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
 end $vr_install_part$;
 commit;
 select '01_install.sql: 완료 또는 이미 완료 (1/14)' as result;

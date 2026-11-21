@@ -40,11 +40,11 @@ set local check_function_bodies = off;
 
 do $vr_install_part$
 begin
-  if exists (select 1 from vr_staging_install.parts where bundle_hash <> '14de29035b6a378d364aa94d3034704eebd4f8dd3f90b779efc5eb160bf48e67' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
+  if exists (select 1 from vr_staging_install.parts where bundle_hash <> '34bc3eed9ce976cacec145ea1f0c0fa3e17b15c28dbb1830940f68bf22d3e980' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
     raise exception 'STOP: 다른 버전/DB의 설치 기록입니다. 파일을 섞지 마세요.';
   end if;
   if exists (select 1 from vr_staging_install.parts where part_no = 10) then
-    if not exists (select 1 from vr_staging_install.parts where part_no = 10 and part_hash = '0da5d7fb51f7b8693fabeffe4de02914e249ee20d3bc91b932f60c598fd84da0') then
+    if not exists (select 1 from vr_staging_install.parts where part_no = 10 and part_hash = '89f34b6103ec2b4cd3d63e801d033672dabd6159e3a4d28ad124385f81c0f4bb') then
       raise exception 'STOP: 완료한 파일과 내용이 다릅니다.';
     end if;
     raise notice '10_install.sql: 이미 완료, 변경 없이 건너뜀';
@@ -55,6 +55,9 @@ begin
   end if;
   -- 설치 도중에는 클라이언트가 미완성 게임 스키마에 접근하지 못함. 마지막에만 개방.
   revoke usage on schema public from public, anon, authenticated;
+  execute $vr_statement$revoke all on function public.cosmetics_status(), public.cosmetics_equip(text, text, text, text), public.cosmetics_buy(text, text), public.cosmetics_lookup(uuid[]) from public, anon;$vr_statement$;
+  execute $vr_statement$grant execute on function public.cosmetics_status(), public.cosmetics_equip(text, text, text, text), public.cosmetics_buy(text, text) to authenticated;$vr_statement$;
+  execute $vr_statement$grant execute on function public.cosmetics_lookup(uuid[]) to anon, authenticated;$vr_statement$;
   execute $vr_statement$-- ===== SOURCE: batch_ui_bugs.sql =====
 -- 2026-11-05 batch UI bugs: 방치 빠른보상 · 파견 같은 인재 · 거래소 닉네임 · 스토리 소탕 미션
 -- 선행: idle_box.sql · dispatch.sql · trade_direct.sql · gear_sigil.sql(story_sweep) · daily.sql · daily_social.sql
@@ -1769,7 +1772,7 @@ on conflict (chapter,phase,variant) do update set definition=excluded.definition
 on conflict (chapter,phase,variant) do update set definition=excluded.definition;$vr_statement$;
 
   insert into vr_staging_install.parts(part_no, bundle_hash, part_hash, project_ref, db_id)
-  values (10, '14de29035b6a378d364aa94d3034704eebd4f8dd3f90b779efc5eb160bf48e67', '0da5d7fb51f7b8693fabeffe4de02914e249ee20d3bc91b932f60c598fd84da0', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
+  values (10, '34bc3eed9ce976cacec145ea1f0c0fa3e17b15c28dbb1830940f68bf22d3e980', '89f34b6103ec2b4cd3d63e801d033672dabd6159e3a4d28ad124385f81c0f4bb', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
 end $vr_install_part$;
 commit;
 select '10_install.sql: 완료 또는 이미 완료 (10/14)' as result;

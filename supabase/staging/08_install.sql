@@ -40,11 +40,11 @@ set local check_function_bodies = off;
 
 do $vr_install_part$
 begin
-  if exists (select 1 from vr_staging_install.parts where bundle_hash <> '14de29035b6a378d364aa94d3034704eebd4f8dd3f90b779efc5eb160bf48e67' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
+  if exists (select 1 from vr_staging_install.parts where bundle_hash <> '34bc3eed9ce976cacec145ea1f0c0fa3e17b15c28dbb1830940f68bf22d3e980' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
     raise exception 'STOP: 다른 버전/DB의 설치 기록입니다. 파일을 섞지 마세요.';
   end if;
   if exists (select 1 from vr_staging_install.parts where part_no = 8) then
-    if not exists (select 1 from vr_staging_install.parts where part_no = 8 and part_hash = '12b974d8c9c6dd6afe5acbe8907cce56008f87caa8c5461440fcc3adc8b0aa63') then
+    if not exists (select 1 from vr_staging_install.parts where part_no = 8 and part_hash = '096c56a29b022c3e67482da73cf0530a02f9d7a4dc35e5d252c57dc9e5f782d3') then
       raise exception 'STOP: 완료한 파일과 내용이 다릅니다.';
     end if;
     raise notice '08_install.sql: 이미 완료, 변경 없이 건너뜀';
@@ -1761,6 +1761,16 @@ on conflict (card_id, idx) do update set unlock = excluded.unlock;$vr_statement$
   ('10531','SUPER RARE',35),
   ('10532','SUPER RARE',35)
 on conflict (id) do update set grade = excluded.grade, cost = excluded.cost;$vr_statement$;
+  execute $vr_statement$-- ===== SOURCE: sheet_skills1121_meta.sql =====
+-- 2026-11-21 시트: 새/변경 액티브 스킬 4개 해금 레벨 (스킬 레벨업). 패시브는 레벨업 대상 아님.
+-- data/skills.json 에서: 황보예(기존 사망 패시브 → 액티브), 왕유영·주슬기·허유리 (각 1개, Lv2).
+-- staging installer 에 포함. 운영 DB에는 sheet_skills1121_hash_staging.sql 로 같이 반영 (이 파일만 따로 실행할 필요 없음).
+insert into public.story_skill_meta (card_id, idx, unlock) values
+  ('10462',1,2),
+  ('10264',1,2),
+  ('10389',1,2),
+  ('10451',1,2)
+on conflict (card_id, idx) do update set unlock = excluded.unlock;$vr_statement$;
   execute $vr_statement$-- ===== SOURCE: card_10533.sql =====
 -- =====================================================================
 -- 2026-11-17 신규 카드 우승찬(10533, RARE, 코스트 25): 카드 목록 · PVP 덱 검증 · 도감 카탈로그 FK
@@ -1869,26 +1879,9 @@ select w.id, w.name, p.grade from public.story_premium_ur w left join public.sto
 -- 받은 기록: data.starClaims = { "<챕터>": ["9", "18", "all"] } · 보상: 소환권(story_gacha.tickets) + 골드(_wallet_add)
 create or replace function public._star_milestones() returns jsonb language sql immutable as $$
   select '[{"key":"9","need":9,"tickets":1,"gold":3000},{"key":"18","need":18,"tickets":1,"gold":5000},{"key":"all","need":null,"tickets":2,"gold":10000}]'::jsonb $$;$vr_statement$;
-  execute $vr_statement$-- 챕터 별 현황: { total, max, milestones:[{key, need, tickets, gold, claimed, ready}] }
-create or replace function public._star_chapter(d jsonb, p_chapter int) returns jsonb language plpgsql stable security definer set search_path = public as $$
-declare mx int; tot int; cl jsonb := coalesce(d->'cleared'->(p_chapter::text), '[]'::jsonb); got jsonb := coalesce(d->'starClaims'->(p_chapter::text), '[]'::jsonb); ms jsonb := '[]'::jsonb; m jsonb; need int;
-begin
-  select 3 * count(*) into mx from story_phase_config where chapter = p_chapter and (p_chapter >= 1 or phase = 4);
-  select coalesce(sum(least(3, greatest(0, (s.value)::int))), 0) into tot
-    from jsonb_each_text(case when jsonb_typeof(d->'stars'->(p_chapter::text)) = 'object' then d->'stars'->(p_chapter::text) else '{}'::jsonb end) s
-    where s.key ~ '^\d+$' and cl @> to_jsonb(s.key::int)
-      and exists (select 1 from story_phase_config c where c.chapter = p_chapter and c.phase = s.key::int and (p_chapter >= 1 or c.phase = 4));
-  tot := least(tot, mx);
-  for m in select * from jsonb_array_elements(_star_milestones()) loop
-    need := coalesce((m->>'need')::int, mx);
-    if mx = 0 or need > mx or (m->>'key' <> 'all' and need >= mx) then continue; end if;   -- 최대보다 크거나 '전부'와 같으면 생략
-    ms := ms || (m || jsonb_build_object('need', need, 'claimed', got @> to_jsonb(m->>'key'), 'ready', tot >= need));
-  end loop;
-  return jsonb_build_object('chapter', p_chapter, 'total', tot, 'max', mx, 'milestones', ms);
-end $$;$vr_statement$;
 
   insert into vr_staging_install.parts(part_no, bundle_hash, part_hash, project_ref, db_id)
-  values (8, '14de29035b6a378d364aa94d3034704eebd4f8dd3f90b779efc5eb160bf48e67', '12b974d8c9c6dd6afe5acbe8907cce56008f87caa8c5461440fcc3adc8b0aa63', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
+  values (8, '34bc3eed9ce976cacec145ea1f0c0fa3e17b15c28dbb1830940f68bf22d3e980', '096c56a29b022c3e67482da73cf0530a02f9d7a4dc35e5d252c57dc9e5f782d3', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
 end $vr_install_part$;
 commit;
 select '08_install.sql: 완료 또는 이미 완료 (8/14)' as result;

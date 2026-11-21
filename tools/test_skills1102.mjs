@@ -16,8 +16,9 @@ const kill = u => { u.hp = 0; return checkDeath(u, null); };
 const N = ['10074', '10080', '10445'];
 { const { A, B } = sides(['10395'], N); kill(A[0]); ok('지유현: 적 전원 마비', B.every(t => t.st.para), B.map(t => !!t.st.para));
   ok('지유현: 적 전원 DEF -40% 2턴', B.every(t => Object.values(t.st).some(s => s.def < 0 && s.t >= 2))); }
-{ const { A } = sides(['10462', '10074', '10080'], N); const hi = A.slice(1).sort((x, y) => y.card.cost - x.card.cost)[0]; kill(A[0]);
-  ok('황보예: HR 이하 최고 코스트 아군 피해 면역 2턴', hi.st.immune && hi.st.immune.t >= 2, hi.card.name); ok('다른 아군은 면역 없음', A.slice(1).filter(x => x !== hi).every(x => !x.st.immune)); }
+// 황보예 사망 패시브는 11/21 시트에서 SR 이하 적 공격 액티브로 교체됨 (test_skills1121.mjs).
+{ const { A } = sides(['10462', '10074', '10080'], N); kill(A[0]);
+  ok('황보예: 교체된 옛 사망 패시브는 더 이상 발동하지 않음', A.slice(1).every(x => !x.st.immune)); }
 { const { A, B } = sides(['10247'], N); const before = B.map(t => t.hp); kill(A[0]);
   ok('예유나: SR 미만 적 HP 70% 하락', B.every((t, i) => t.hp === before[i] - Math.floor(before[i] * 0.7)), B.map(t => t.hp) + ' / ' + before); }
 console.log(fails ? `${fails} FAIL` : 'ALL PASS');
