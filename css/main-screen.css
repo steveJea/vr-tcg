@@ -109,6 +109,7 @@
   color: #a1a1aa; background: #1c1917; border: 1px solid #52525b; transition: background .15s, color .15s, border-color .15s; }
 .set-toggle.on { color: #1c1003; background: linear-gradient(180deg, #fde68a, #d4a24a); border-color: #f5c96a; box-shadow: 0 0 10px rgba(245, 201, 106, .4); }
 .set-toggle:active { transform: scale(.95); }
+.set-seg { flex: none; display: flex; gap: .35rem; }   /* 보이스 언어: 영어 / 일본어 */
 
 /* 모바일: 로고 + 배너가 첫 화면 안에 */
 @media (max-width: 767px) {
