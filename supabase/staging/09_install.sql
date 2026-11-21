@@ -40,11 +40,11 @@ set local check_function_bodies = off;
 
 do $vr_install_part$
 begin
-  if exists (select 1 from vr_staging_install.parts where bundle_hash <> '14de29035b6a378d364aa94d3034704eebd4f8dd3f90b779efc5eb160bf48e67' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
+  if exists (select 1 from vr_staging_install.parts where bundle_hash <> '151edd264d39752533c776a7da0c4d2bbf3aeee7b5c268ec7bd1528acd7e8fd9' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
     raise exception 'STOP: 다른 버전/DB의 설치 기록입니다. 파일을 섞지 마세요.';
   end if;
   if exists (select 1 from vr_staging_install.parts where part_no = 9) then
-    if not exists (select 1 from vr_staging_install.parts where part_no = 9 and part_hash = '9f3b138898b629af4439d0dc9bbc472c9704e70cb11c4432864bde3dceb612ae') then
+    if not exists (select 1 from vr_staging_install.parts where part_no = 9 and part_hash = 'e67d66013e14cc6ead2cbf2042d2de3a355bf47f46bd2d9e5efbc875ce0cb3fb') then
       raise exception 'STOP: 완료한 파일과 내용이 다릅니다.';
     end if;
     raise notice '09_install.sql: 이미 완료, 변경 없이 건너뜀';
@@ -55,6 +55,23 @@ begin
   end if;
   -- 설치 도중에는 클라이언트가 미완성 게임 스키마에 접근하지 못함. 마지막에만 개방.
   revoke usage on schema public from public, anon, authenticated;
+  execute $vr_statement$-- 챕터 별 현황: { total, max, milestones:[{key, need, tickets, gold, claimed, ready}] }
+create or replace function public._star_chapter(d jsonb, p_chapter int) returns jsonb language plpgsql stable security definer set search_path = public as $$
+declare mx int; tot int; cl jsonb := coalesce(d->'cleared'->(p_chapter::text), '[]'::jsonb); got jsonb := coalesce(d->'starClaims'->(p_chapter::text), '[]'::jsonb); ms jsonb := '[]'::jsonb; m jsonb; need int;
+begin
+  select 3 * count(*) into mx from story_phase_config where chapter = p_chapter and (p_chapter >= 1 or phase = 4);
+  select coalesce(sum(least(3, greatest(0, (s.value)::int))), 0) into tot
+    from jsonb_each_text(case when jsonb_typeof(d->'stars'->(p_chapter::text)) = 'object' then d->'stars'->(p_chapter::text) else '{}'::jsonb end) s
+    where s.key ~ '^\d+$' and cl @> to_jsonb(s.key::int)
+      and exists (select 1 from story_phase_config c where c.chapter = p_chapter and c.phase = s.key::int and (p_chapter >= 1 or c.phase = 4));
+  tot := least(tot, mx);
+  for m in select * from jsonb_array_elements(_star_milestones()) loop
+    need := coalesce((m->>'need')::int, mx);
+    if mx = 0 or need > mx or (m->>'key' <> 'all' and need >= mx) then continue; end if;   -- 최대보다 크거나 '전부'와 같으면 생략
+    ms := ms || (m || jsonb_build_object('need', need, 'claimed', got @> to_jsonb(m->>'key'), 'ready', tot >= need));
+  end loop;
+  return jsonb_build_object('chapter', p_chapter, 'total', tot, 'max', mx, 'milestones', ms);
+end $$;$vr_statement$;
   execute $vr_statement$-- 전체 챕터 현황 (지도 표시용)
 create or replace function public.story_star_status() returns jsonb language plpgsql stable security definer set search_path = public as $$
 declare me uuid := auth.uid(); d jsonb; r jsonb := '[]'::jsonb; c int;
@@ -1699,12 +1716,9 @@ begin
       'frame_name', coalesce((select d->>'name' from jsonb_array_elements(_cosmo_frame_defs()) d where d->>'id' = coalesce(p.cosmo_frame, 'frame_basic')), '')))
     from profiles p where p.id = any(coalesce(p_ids, '{}'::uuid[]))), '{}'::jsonb);
 end $$;$vr_statement$;
-  execute $vr_statement$revoke all on function public.cosmetics_status(), public.cosmetics_equip(text, text, text, text), public.cosmetics_buy(text, text), public.cosmetics_lookup(uuid[]) from public, anon;$vr_statement$;
-  execute $vr_statement$grant execute on function public.cosmetics_status(), public.cosmetics_equip(text, text, text, text), public.cosmetics_buy(text, text) to authenticated;$vr_statement$;
-  execute $vr_statement$grant execute on function public.cosmetics_lookup(uuid[]) to anon, authenticated;$vr_statement$;
 
   insert into vr_staging_install.parts(part_no, bundle_hash, part_hash, project_ref, db_id)
-  values (9, '14de29035b6a378d364aa94d3034704eebd4f8dd3f90b779efc5eb160bf48e67', '9f3b138898b629af4439d0dc9bbc472c9704e70cb11c4432864bde3dceb612ae', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
+  values (9, '151edd264d39752533c776a7da0c4d2bbf3aeee7b5c268ec7bd1528acd7e8fd9', 'e67d66013e14cc6ead2cbf2042d2de3a355bf47f46bd2d9e5efbc875ce0cb3fb', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
 end $vr_install_part$;
 commit;
 select '09_install.sql: 완료 또는 이미 완료 (9/14)' as result;

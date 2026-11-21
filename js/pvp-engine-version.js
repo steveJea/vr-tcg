@@ -1,2 +1,2 @@
 // GENERATED: node tools/build_phase3_engine.mjs
-export const PVP_ENGINE_VERSION = "5e6ec74db1ddae269734a9e26fa794dcc663d720ff9501ff9546f3970807950d";
+export const PVP_ENGINE_VERSION = "abe96a83071bc0113dd991a0c72a6dc839fc22249a542c9d983ee998becf9537";

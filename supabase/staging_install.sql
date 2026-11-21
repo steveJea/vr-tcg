@@ -976,7 +976,7 @@ insert into public.story_card_pool (id, grade, name, gacha) values
   ('10001','NORMAL','가윤우',true),
   ('10183','SUPER RARE','서태우',true),
   ('10064','NORMAL','김자근',true),
-  ('10444','NORMAL','한석열',true),
+  ('10444','NORMAL','윤부자',true),
   ('10279','NORMAL','윤동훈',true),
   ('10225','RARE','안용태',true),
   ('10431','NORMAL','표정재',true),
@@ -1006,7 +1006,7 @@ insert into public.story_card_pool (id, grade, name, gacha) values
   ('10406','HIGH RARE','최국선',true),
   ('10328','NORMAL','임창수',true),
   ('10329','SUPER RARE','임창열',true),
-  ('10098','RARE','두윤창',true),
+  ('10098','RARE','윤수두',true),
   ('10187','RARE','선영운',true),
   ('10319','RARE','이후남',true),
   ('10081','HIGH RARE','김후',true),
@@ -1143,7 +1143,7 @@ insert into public.story_card_pool (id, grade, name, gacha) values
   ('10466','RARE','황예은',true),
   ('10002','NORMAL','강나빛',true),
   ('10289','NORMAL','윤정하',true),
-  ('10083','NORMAL','김희건',true),
+  ('10083','NORMAL','김희자',true),
   ('10079','NORMAL','김현진',true),
   ('10338','HIGH RARE','장아유',true),
   ('10336','HIGH RARE','장세유',true),
@@ -9862,7 +9862,7 @@ insert into public.card_id_alias (old_id, new_id, name) values
   ('1000100013','10080','김홍민'),
   ('1000600120','10081','김후'),
   ('1000000033','10082','김후 환영'),
-  ('2000300068','10083','김희건'),
+  ('2000300068','10083','김희자'),
   ('2001100238','10084','나윤아'),
   ('2001100239','10085','나윤영'),
   ('1000200033','10086','남경택'),
@@ -9877,7 +9877,7 @@ insert into public.card_id_alias (old_id, new_id, name) values
   ('2000700139','10095','노정아'),
   ('2000700140','10096','노정은'),
   ('2000900236','10097','동지선'),
-  ('1000500112','10098','두윤창'),
+  ('1000500112','10098','윤수두'),
   ('2000700159','10099','류장미'),
   ('2001100220','10100','류태연'),
   ('2000700158','10101','류하늘'),
@@ -10223,7 +10223,7 @@ insert into public.card_id_alias (old_id, new_id, name) values
   ('1001500296','10441','하혁'),
   ('2000600116','10442','한겨울'),
   ('2002300373','10443','한믿음'),
-  ('1000300058','10444','한석열'),
+  ('1000300058','10444','윤부자'),
   ('1000100014','10445','한재'),
   ('2002400379','10446','한하루'),
   ('2000700153','10447','허동아'),
@@ -13944,6 +13944,18 @@ insert into public.pvp_card_meta (id, grade, cost) values
   ('10531','SUPER RARE',35),
   ('10532','SUPER RARE',35)
 on conflict (id) do update set grade = excluded.grade, cost = excluded.cost;
+
+
+-- ===== SOURCE: sheet_skills1121_meta.sql =====
+-- 2026-11-21 시트: 새/변경 액티브 스킬 4개 해금 레벨 (스킬 레벨업). 패시브는 레벨업 대상 아님.
+-- data/skills.json 에서: 황보예(기존 사망 패시브 → 액티브), 왕유영·주슬기·허유리 (각 1개, Lv2).
+-- staging installer 에 포함. 운영 DB에는 sheet_skills1121_hash_staging.sql 로 같이 반영 (이 파일만 따로 실행할 필요 없음).
+insert into public.story_skill_meta (card_id, idx, unlock) values
+  ('10462',1,2),
+  ('10264',1,2),
+  ('10389',1,2),
+  ('10451',1,2)
+on conflict (card_id, idx) do update set unlock = excluded.unlock;
 
 
 -- ===== SOURCE: card_10533.sql =====
@@ -18935,7 +18947,7 @@ notify pgrst,'reload schema';
 
 create table if not exists public.pvp_policy_v3(
  singleton boolean primary key default true check(singleton), engine_hash text not null check(length(engine_hash)=64), enabled boolean not null default true);
-insert into public.pvp_policy_v3(singleton,engine_hash) values(true,'c5b478a735b1798bd7b9c51902ae85efe5ed861e9ab2936cecf753b4e250a648')
+insert into public.pvp_policy_v3(singleton,engine_hash) values(true,'abe96a83071bc0113dd991a0c72a6dc839fc22249a542c9d983ee998becf9537')
  on conflict(singleton) do update set engine_hash=excluded.engine_hash;
 -- A clean, verified ladder. Legacy rows remain intact, NOT copied as proof.
 create table if not exists public.pvp_ratings_v3(
@@ -19276,7 +19288,7 @@ revoke all on sequence public.pvp_attempts_id_seq from public,anon,authenticated
 -- Phase4 cluster guard is enforced by installer outer guard.
 set local check_function_bodies=off;
 create table if not exists public.guildbattle_policy_v4(singleton boolean primary key default true check(singleton),engine_hash text not null,enabled boolean not null default true);
-insert into public.guildbattle_policy_v4(singleton,engine_hash) values(true,'c87d5a678229e2bbc3bcd92ff3f9f4b8e32291df874a9919c4295b14831d7d07') on conflict(singleton) do update set engine_hash=excluded.engine_hash;
+insert into public.guildbattle_policy_v4(singleton,engine_hash) values(true,'2cc3e78c3ed78bc08a3da4c8eb21bfdcebe40e1312916c7eb58f167e9d61914c') on conflict(singleton) do update set engine_hash=excluded.engine_hash;
 do $$ begin
  if not exists(select 1 from pvp_policy_v3) then raise exception 'STOP: install phases 1-3 first'; end if;
 end $$;
@@ -20573,7 +20585,7 @@ notify pgrst,'reload schema';
 -- Phase5 cluster guard is enforced by installer outer guard.
 create table if not exists public.arcade_policy_v5 (
  singleton boolean primary key default true check(singleton), enabled boolean not null default true, engine_hash text not null check(engine_hash ~ '^[a-f0-9]{64}$'));
-insert into public.arcade_policy_v5(singleton,engine_hash) values(true,'fc7c0deaec9781badc9adc4b6895bbc2bc39ffe42e51dc3ae4deab647790e063')
+insert into public.arcade_policy_v5(singleton,engine_hash) values(true,'d033151109938fa00c57df14afaf6960eb01a7f7f2e3f4834dad27e00c79f104')
 on conflict(singleton) do update set engine_hash=excluded.engine_hash;
 create table if not exists public.arcade_sessions_v5 (
  id bigint generated always as identity primary key,
@@ -20812,7 +20824,7 @@ create table if not exists public.battle_replay_policy_v6 (
  engine_hash text not null check (engine_hash ~ '^[a-f0-9]{64}$'));
 -- Starts off. Re-running this file updates the engine hash only and does not turn enforcement on.
 insert into public.battle_replay_policy_v6(singleton, enabled, engine_hash)
- values (true, false, '1d1092662cfa90fd1c118baf7ffb4d83dcb767ef17564e30f9efdecfc3270bd7')
+ values (true, false, 'db895f9df849a6e72133d5a9e7af23c2a97ef2518243a28390ad7caaacb46ff4')
  on conflict (singleton) do update set engine_hash = excluded.engine_hash;
 alter table public.battle_replay_policy_v6 enable row level security;
 revoke all on public.battle_replay_policy_v6 from public, anon, authenticated;

@@ -340,11 +340,13 @@ export function checkDeath(u, killer = null) {
   if (p.foe && hasPassive(u, '지아는 약하지 않아!')) { emit({ type: 'passive', unit: u, name: '지아는 약하지 않아!' }); stats.count('지아는 약하지 않아!'); live(p.foe).forEach(t => addStatus(t, '지아는 약하지 않아!', 1, { atk: -0.7, label: 'ATK -70%' }, 'mod')); }
   if (p.foe && hasPassive(u, '나는 멈춘다')) { emit({ type: 'passive', unit: u, name: '나는 멈춘다' }); stats.count('나는 멈춘다'); live(p.foe).forEach(t => addStatus(t, 'para', 1, {}, 'para')); }
   if (p.foe && hasPassive(u, '더는 나를 밀지마')) { emit({ type: 'passive', unit: u, name: '더는 나를 밀지마' }); stats.count('더는 나를 밀지마'); live(p.foe).forEach(t => bleedOn(t, u, 2)); }
-  // 2026-11-02 시트 신규 사망 패시브 (지유현·황보예·예유나)
+  // 2026-11-02 시트 신규 사망 패시브 (지유현·예유나)
   if (p.foe && hasPassive(u, '이렇게 사라질 수는 없어..')) { emit({ type: 'passive', unit: u, name: '이렇게 사라질 수는 없어..', text: '저주: 마비 1턴 · DEF -40% 2턴' }); stats.count('이렇게 사라질 수는 없어..');
     live(p.foe).forEach(t => { addStatus(t, 'para', 1, {}, 'para'); addStatus(t, '이렇게 사라질 수는 없어..', 2, { def: -0.4, label: 'DEF -40%' }, 'mod'); }); }
-  if (hasPassive(u, '나 가거든')) { const t = by(p.field.filter(x => x !== u && x.hp > 0 && gradeIdx(x) <= gradeIdx('HIGH RARE')), x => x.card.cost, -1);
-    if (t) { emit({ type: 'passive', unit: u, name: '나 가거든', text: `${t.card.name} 2턴 피해 면역` }); stats.count('나 가거든'); addStatus(t, 'immune', 2, {}, 'immune'); } }
+  // 류태연 [제가...잘못한 게 맞아요.] (시트 11/21): 사망 시 HR 이하 적 전체 최대 HP 50% 고정 피해 → HP 50% 이하이던 적은 사망 (피해 면역·불사는 뚫지 않음)
+  if (p.foe && hasPassive(u, '제가...잘못한 게 맞아요.')) { emit({ type: 'passive', unit: u, name: '제가...잘못한 게 맞아요.', text: 'HR 이하 적 HP -50% (최대 HP 기준)' }); stats.count('제가...잘못한 게 맞아요.');
+    const ts = live(p.foe).filter(t => gradeIdx(t) <= gradeIdx('HIGH RARE'));
+    ts.forEach(t => damageUnit(t, Math.ceil(t.maxHp * 0.5), null)); ts.forEach(t => checkDeath(t, null)); }
   if (p.foe && hasPassive(u, '더 이상은 싫어!')) { emit({ type: 'passive', unit: u, name: '더 이상은 싫어!', text: 'SR 미만 적 HP -70%' }); stats.count('더 이상은 싫어!');
     for (const t of live(p.foe)) { if (gradeIdx(t) >= gradeIdx('SUPER RARE') || t.hp <= 1) continue;   // 현재 HP 70% 고정 피해 (피해 면역·불사는 뚫지 않음, 이 효과로는 죽지 않음)
       damageUnit(t, Math.floor(t.hp * 0.7), null); } }
@@ -419,6 +421,7 @@ const PASSIVE_ONCE = {
   '잔상': (u, p) => { for (const a of p.field) addStatus(a, 'endure', 2, { label: '잔상: 사망하지 않음 (즉사 포함)' }, 'endure'); },   // 이영아
   '언니는 강해요!': (u, p) => immuneAllies(p, a => a !== u && a.base.gender === 'FEMALE' && a.card.cost < u.card.cost, 2, '언니는 강해요!'),   // 정지선
   '몸은 약해요. 하지만 정신은 그렇지 않아!': u => { addStatus(u, 'taunt', 1, {}, 'taunt'); addStatus(u, 'endure', 1, { label: '최소 HP 1 유지' }, 'endure'); },   // 예유진
+  '제가 희생양인가요?': u => { addStatus(u, 'taunt', 1, {}, 'taunt'); addStatus(u, 'endure', 1, { label: '최소 HP 1 유지' }, 'endure'); },   // 하지연 (시트 11/21, 예유진과 같은 효과)
   '반야': u => { for (const [k, s] of Object.entries(u.st)) if (STATUS[s.kind]?.debuff || s.atk < 0 || s.def < 0) delete u.st[k]; u.curse = 0; },
 };
 
@@ -470,6 +473,13 @@ function multiHit(src, t, n, pct, opt = {}) {
 function hitAll(src, f, n, pct, opt = {}) {
   const targets = live(f); let dead = 0;
   for (let i = 0; i < n; i++) for (const t of targets) if (f.field.includes(t) && t.hp > 0) damageUnit(t, skillDamage(src, t, pct, opt), src);
+  for (const t of targets) if (checkDeath(t, src)) dead++;
+  return dead;
+}
+/** 조건에 맞는 적만 n회 타격. 반환: 사망자 수 */
+function hitAllWhere(src, f, n, pct, pred) {
+  const targets = live(f).filter(pred); let dead = 0;
+  for (let i = 0; i < n; i++) for (const t of targets) if (f.field.includes(t) && t.hp > 0) damageUnit(t, skillDamage(src, t, pct), src);
   for (const t of targets) if (checkDeath(t, src)) dead++;
   return dead;
 }
@@ -629,6 +639,11 @@ export const ACTIVE = {
   '예리 언니만 있으면 돼!': (u, p) => immuneAllies(p, youngGuard, 2),
   '어른들이란...': (u, p) => immuneAllies(p, youngGuard, 2),
   '난...버려진 게 아니라고요!': (u, p, f) => hitAll(u, f, 3, 0.2),
+  // ===== 2026-11-21 시트 =====
+  '나 갈거거든?': (u, p, f) => hitAllWhere(u, f, 2, 0.2, t => gradeIdx(t) <= gradeIdx('SUPER RARE')),   // 황보예 (패시브 '나 가거든' → 액티브)
+  '우리는 아직 어린걸요?': (u, p) => immuneAllies(p, () => true, 1),   // 왕유영
+  '사실 내가 더 예쁘지?': (u, p) => immuneAllies(p, () => true, 1),   // 허유리
+  '이건 너무 불합리해!': (u, p, f) => fixedAll(u, f, 60),   // 주슬기
   '난 착한 어린이가 아니야!': (u, p, f) => hitAll(u, f, 3, 0.2),
   '빠르고 쉽게 가시죠?': (u, p, f) => hitAll(u, f, 3, 0.2),
   // 어린 임예리 10535: 적 전체 30%×5, 처치 수만큼 쿨타임 -1
@@ -1327,6 +1342,8 @@ export function aiSkillScores(u, { noSave = false } = {}) {
       case '제가 모시겠습니다.': sc = n >= 2 && !canKill ? 84 + n * 3 : 0; break;
       case '용서가...안...되는...데?': case '절대...복수한...다...': sc = n >= 2 ? 92 + n * 4 : n ? 74 : 0; break;
       case '이정도는 가뿐하다고요!': case '예리 언니만 있으면 돼!': case '어른들이란...': { const c = p.field.filter(a => youngGuard(a) && !a.st.immune).length; sc = n && c >= 2 && !canKill ? 80 + c * 4 : 0; break; }
+      case '나 갈거거든?': { const k = f.field.filter(t => gradeIdx(t) <= gradeIdx('SUPER RARE')).length; sc = k ? 90 + k * 6 : 0; break; }
+      case '우리는 아직 어린걸요?': case '사실 내가 더 예쁘지?': { const c = p.field.filter(a => !a.st.immune).length; sc = n && c >= 2 && !canKill ? 80 + c * 4 : 0; break; }
       case '그녀를 따라와요': case '그녀가 따라가요': case '꿈은 이룰 수 있어': { const k = males(f).length; sc = k ? 82 + k * 5 : 0; break; }
       case '백의의 천사가 꿈이었어': { const k = males(f).length; sc = k ? 88 + k * 6 : 0; break; }
       default:

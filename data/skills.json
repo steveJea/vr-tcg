@@ -3850,17 +3850,17 @@
  "10462": [
   {
    "card": "황보예",
-   "name": "나 가거든",
-   "type": "버프",
-   "mode": "passive",
-   "target": "아군 단일",
-   "desc": "황보예 사망 시 HR 이하의 아군 중 코스트가 가장 높은 대상은 2턴 간 피해면역.",
-   "value": "100%",
-   "duration": 2,
-   "mp": 0,
-   "cooldown": 0,
-   "unlock": 1,
-   "fx": "",
+   "name": "나 갈거거든?",
+   "type": "공격",
+   "mode": "active",
+   "target": "적 전체",
+   "desc": "SR이하의 적에게 공격력 20%로 2회 타격한다.",
+   "value": "",
+   "duration": 0,
+   "mp": 30,
+   "cooldown": 2,
+   "unlock": 2,
+   "fx": "10462_1.webp",
    "note": ""
   }
  ],
@@ -4738,6 +4738,91 @@
    "cooldown": 4,
    "unlock": 5,
    "fx": "10538_2.webp",
+   "note": ""
+  }
+ ],
+ "10100": [
+  {
+   "card": "류태연",
+   "name": "제가...잘못한 게 맞아요.",
+   "type": "공격",
+   "mode": "passive",
+   "target": "적 전체",
+   "desc": "류태연 사망 시 HR이하의 모든 적의 HP는 전체 HP에서 50% 제거된다. 상대방 HP가 50% 미만일 경우 사망한다.",
+   "value": "",
+   "duration": 0,
+   "mp": 0,
+   "cooldown": 0,
+   "unlock": 1,
+   "fx": "10100_1.webp",
+   "note": ""
+  }
+ ],
+ "10264": [
+  {
+   "card": "왕유영",
+   "name": "우리는 아직 어린걸요?",
+   "type": "버프",
+   "mode": "active",
+   "target": "아군 전체",
+   "desc": "아군 전체는 1턴 간 피해 면역이 된다.",
+   "value": "",
+   "duration": 1,
+   "mp": 40,
+   "cooldown": 4,
+   "unlock": 2,
+   "fx": "10264_1.webp",
+   "note": ""
+  }
+ ],
+ "10438": [
+  {
+   "card": "하지연",
+   "name": "제가 희생양인가요?",
+   "type": "버프",
+   "mode": "passive",
+   "target": "아군 전체",
+   "desc": "1턴 간 모든 공격은 하지연에게 집중된다. 이때 하지연은 사망하지 않는다.(최소 HP 1 유지)",
+   "value": "",
+   "duration": 1,
+   "mp": 0,
+   "cooldown": 0,
+   "unlock": 1,
+   "fx": "10438_1.webp",
+   "note": ""
+  }
+ ],
+ "10389": [
+  {
+   "card": "주슬기",
+   "name": "이건 너무 불합리해!",
+   "type": "공격",
+   "mode": "active",
+   "target": "적 전체",
+   "desc": "적 전체에게 60 고정 데미지로 1회 타격한다.",
+   "value": "",
+   "duration": 0,
+   "mp": 40,
+   "cooldown": 4,
+   "unlock": 2,
+   "fx": "10389_1.webp",
+   "note": ""
+  }
+ ],
+ "10451": [
+  {
+   "card": "허유리",
+   "name": "사실 내가 더 예쁘지?",
+   "type": "버프",
+   "mode": "active",
+   "target": "아군 전체",
+   "desc": "아군 전체가 1턴 간 피해 면역 된다.",
+   "value": "",
+   "duration": 1,
+   "mp": 40,
+   "cooldown": 5,
+   "unlock": 2,
+   "fx": "10451_1.webp",
    "note": ""
   }
  ]
