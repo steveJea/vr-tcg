@@ -3860,7 +3860,7 @@
    "mp": 30,
    "cooldown": 2,
    "unlock": 2,
-   "fx": "",
+   "fx": "10462_1.webp",
    "note": ""
   }
  ],
@@ -4754,7 +4754,7 @@
    "mp": 0,
    "cooldown": 0,
    "unlock": 1,
-   "fx": "",
+   "fx": "10100_1.webp",
    "note": ""
   }
  ],
@@ -4771,7 +4771,7 @@
    "mp": 40,
    "cooldown": 4,
    "unlock": 2,
-   "fx": "",
+   "fx": "10264_1.webp",
    "note": ""
   }
  ],
@@ -4788,7 +4788,7 @@
    "mp": 0,
    "cooldown": 0,
    "unlock": 1,
-   "fx": "",
+   "fx": "10438_1.webp",
    "note": ""
   }
  ],
@@ -4805,7 +4805,7 @@
    "mp": 40,
    "cooldown": 4,
    "unlock": 2,
-   "fx": "",
+   "fx": "10389_1.webp",
    "note": ""
   }
  ],
@@ -4822,7 +4822,7 @@
    "mp": 40,
    "cooldown": 5,
    "unlock": 2,
-   "fx": "",
+   "fx": "10451_1.webp",
    "note": ""
   }
  ]

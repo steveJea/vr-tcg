@@ -13,9 +13,9 @@ lock table public.pvp_policy_v3,public.guildbattle_policy_v4 in access exclusive
 do $feedback16_engines$
 declare
  old_pvp constant text := 'ff3c2c77c26429a0fbf85f1d1ab73edb882af342a152727c1aed64c49160dd2a';
- new_pvp constant text := 'ddd3528a4d2d30e8be7e43c2b4a9ec0248289e54a5bef8ecaf9e8dedd1b21a5c';
+ new_pvp constant text := 'abe96a83071bc0113dd991a0c72a6dc839fc22249a542c9d983ee998becf9537';
  old_guild constant text := 'a00f5c9824515cfce4fcbd6d579deb5e971335035b264454d427fdb93669819e';
- new_guild constant text := 'd5b7e6356faa93ae008fd332844a36311bbe545422ad76eae66d561662b77935';
+ new_guild constant text := '2cc3e78c3ed78bc08a3da4c8eb21bfdcebe40e1312916c7eb58f167e9d61914c';
  p text; g text;
 begin
  select engine_hash into p from public.pvp_policy_v3 where singleton;

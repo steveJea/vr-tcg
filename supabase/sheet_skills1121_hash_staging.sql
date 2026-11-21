@@ -22,16 +22,16 @@ insert into public.story_skill_meta (card_id, idx, unlock) values
 on conflict (card_id, idx) do update set unlock = excluded.unlock;
 do $hash$
 begin
-  update public.pvp_policy_v3 set engine_hash = 'ddd3528a4d2d30e8be7e43c2b4a9ec0248289e54a5bef8ecaf9e8dedd1b21a5c' where singleton and engine_hash in ('5e6ec74db1ddae269734a9e26fa794dcc663d720ff9501ff9546f3970807950d', 'ddd3528a4d2d30e8be7e43c2b4a9ec0248289e54a5bef8ecaf9e8dedd1b21a5c');
-  update public.guildbattle_policy_v4 set engine_hash = 'd5b7e6356faa93ae008fd332844a36311bbe545422ad76eae66d561662b77935' where singleton and engine_hash in ('ef3c3c5879627ec0d156608e48d0e1e0e9bed4527879e9190ec39b7b99e6e03a', 'd5b7e6356faa93ae008fd332844a36311bbe545422ad76eae66d561662b77935');
-  update public.arcade_policy_v5 set engine_hash = '380cd4138c6a119144409d4b6a9e8ec59a46c42548317b87c8af942613a15f04' where singleton and engine_hash in ('d2624efb090ffc55d062b84b9fb7619d205f5a531761cb7a9f991e4cec813f8f', '380cd4138c6a119144409d4b6a9e8ec59a46c42548317b87c8af942613a15f04');
-  update public.battle_replay_policy_v6 set engine_hash = '972e2458e4ea4aa38d924238f414b7c7e601acb342232dd6f95d83d6ff495c58' where singleton and engine_hash in ('6ec3f7fe99fe0c32c2bae9a578d60496609540cb8f9f35d9f65e76c879c54f41', '972e2458e4ea4aa38d924238f414b7c7e601acb342232dd6f95d83d6ff495c58');
-  update public.battle_replay_policy_v7 set engine_hash = 'f10146d7143064f5a7411cf37ee10c17f9f2beb6a611c59d1f7f6cdfef346873' where singleton and engine_hash in ('69f253990447d4373e37d99c6eda34f01f2f63ee43c7b6649cb901be02528dfb', 'f10146d7143064f5a7411cf37ee10c17f9f2beb6a611c59d1f7f6cdfef346873');
-  if not exists (select 1 from public.pvp_policy_v3 where singleton and engine_hash = 'ddd3528a4d2d30e8be7e43c2b4a9ec0248289e54a5bef8ecaf9e8dedd1b21a5c')
-     or not exists (select 1 from public.guildbattle_policy_v4 where singleton and engine_hash = 'd5b7e6356faa93ae008fd332844a36311bbe545422ad76eae66d561662b77935')
-     or not exists (select 1 from public.arcade_policy_v5 where singleton and engine_hash = '380cd4138c6a119144409d4b6a9e8ec59a46c42548317b87c8af942613a15f04')
-     or not exists (select 1 from public.battle_replay_policy_v6 where singleton and engine_hash = '972e2458e4ea4aa38d924238f414b7c7e601acb342232dd6f95d83d6ff495c58')
-     or not exists (select 1 from public.battle_replay_policy_v7 where singleton and engine_hash = 'f10146d7143064f5a7411cf37ee10c17f9f2beb6a611c59d1f7f6cdfef346873')
+  update public.pvp_policy_v3 set engine_hash = 'abe96a83071bc0113dd991a0c72a6dc839fc22249a542c9d983ee998becf9537' where singleton and engine_hash in ('5e6ec74db1ddae269734a9e26fa794dcc663d720ff9501ff9546f3970807950d', 'abe96a83071bc0113dd991a0c72a6dc839fc22249a542c9d983ee998becf9537');
+  update public.guildbattle_policy_v4 set engine_hash = '2cc3e78c3ed78bc08a3da4c8eb21bfdcebe40e1312916c7eb58f167e9d61914c' where singleton and engine_hash in ('ef3c3c5879627ec0d156608e48d0e1e0e9bed4527879e9190ec39b7b99e6e03a', '2cc3e78c3ed78bc08a3da4c8eb21bfdcebe40e1312916c7eb58f167e9d61914c');
+  update public.arcade_policy_v5 set engine_hash = 'd033151109938fa00c57df14afaf6960eb01a7f7f2e3f4834dad27e00c79f104' where singleton and engine_hash in ('d2624efb090ffc55d062b84b9fb7619d205f5a531761cb7a9f991e4cec813f8f', 'd033151109938fa00c57df14afaf6960eb01a7f7f2e3f4834dad27e00c79f104');
+  update public.battle_replay_policy_v6 set engine_hash = 'db895f9df849a6e72133d5a9e7af23c2a97ef2518243a28390ad7caaacb46ff4' where singleton and engine_hash in ('6ec3f7fe99fe0c32c2bae9a578d60496609540cb8f9f35d9f65e76c879c54f41', 'db895f9df849a6e72133d5a9e7af23c2a97ef2518243a28390ad7caaacb46ff4');
+  update public.battle_replay_policy_v7 set engine_hash = '648c70496e80bb3382186ac616f2da1f8caee7ccdec7e8b3a15e3abc1a12e275' where singleton and engine_hash in ('69f253990447d4373e37d99c6eda34f01f2f63ee43c7b6649cb901be02528dfb', '648c70496e80bb3382186ac616f2da1f8caee7ccdec7e8b3a15e3abc1a12e275');
+  if not exists (select 1 from public.pvp_policy_v3 where singleton and engine_hash = 'abe96a83071bc0113dd991a0c72a6dc839fc22249a542c9d983ee998becf9537')
+     or not exists (select 1 from public.guildbattle_policy_v4 where singleton and engine_hash = '2cc3e78c3ed78bc08a3da4c8eb21bfdcebe40e1312916c7eb58f167e9d61914c')
+     or not exists (select 1 from public.arcade_policy_v5 where singleton and engine_hash = 'd033151109938fa00c57df14afaf6960eb01a7f7f2e3f4834dad27e00c79f104')
+     or not exists (select 1 from public.battle_replay_policy_v6 where singleton and engine_hash = 'db895f9df849a6e72133d5a9e7af23c2a97ef2518243a28390ad7caaacb46ff4')
+     or not exists (select 1 from public.battle_replay_policy_v7 where singleton and engine_hash = '648c70496e80bb3382186ac616f2da1f8caee7ccdec7e8b3a15e3abc1a12e275')
   then
     raise exception 'STOP: 엔진 해시가 예상과 다릅니다. rename_three_cards_hash_staging.sql 을 먼저 돌렸는지 확인해 주세요.';
   end if;

@@ -40,7 +40,7 @@ set local check_function_bodies = off;
 
 do $vr_install_part$
 begin
-  if exists (select 1 from vr_staging_install.parts where bundle_hash <> '34bc3eed9ce976cacec145ea1f0c0fa3e17b15c28dbb1830940f68bf22d3e980' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
+  if exists (select 1 from vr_staging_install.parts where bundle_hash <> '151edd264d39752533c776a7da0c4d2bbf3aeee7b5c268ec7bd1528acd7e8fd9' or project_ref <> 'cuyqchmdcnsgzkwyclji' or db_id <> '7703759698107299042') then
     raise exception 'STOP: 다른 버전/DB의 설치 기록입니다. 파일을 섞지 마세요.';
   end if;
   if exists (select 1 from vr_staging_install.parts where part_no = 8) then
@@ -1881,7 +1881,7 @@ create or replace function public._star_milestones() returns jsonb language sql 
   select '[{"key":"9","need":9,"tickets":1,"gold":3000},{"key":"18","need":18,"tickets":1,"gold":5000},{"key":"all","need":null,"tickets":2,"gold":10000}]'::jsonb $$;$vr_statement$;
 
   insert into vr_staging_install.parts(part_no, bundle_hash, part_hash, project_ref, db_id)
-  values (8, '34bc3eed9ce976cacec145ea1f0c0fa3e17b15c28dbb1830940f68bf22d3e980', '096c56a29b022c3e67482da73cf0530a02f9d7a4dc35e5d252c57dc9e5f782d3', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
+  values (8, '151edd264d39752533c776a7da0c4d2bbf3aeee7b5c268ec7bd1528acd7e8fd9', '096c56a29b022c3e67482da73cf0530a02f9d7a4dc35e5d252c57dc9e5f782d3', 'cuyqchmdcnsgzkwyclji', '7703759698107299042');
 end $vr_install_part$;
 commit;
 select '08_install.sql: 완료 또는 이미 완료 (8/14)' as result;
