@@ -50,6 +50,7 @@
   const skillsOf = id => (skills && skills[id]) || [];
   // 도감 보이스 재생: 오디오 하나를 계속 다시 씀 (누를 때마다 새로 만들어 쌓이지 않게)
   let voiceAudio = null;
+  window.VRVoice?.onLang?.(() => { if (!voiceAudio) return; try { voiceAudio.pause(); voiceAudio.removeAttribute('src'); voiceAudio.load(); } catch {} voiceAudio = null; });
   function galleryAudio() {
     if (voiceAudio) return voiceAudio;
     const a = voiceAudio = new Audio(); a.preload = 'auto'; window.VRVoice?.track(a);
@@ -62,7 +63,7 @@
   function playVoice(key) {
     try {
       const a = galleryAudio();
-      a.pause(); a.src = `data/voice/${key}.mp3`; a.currentTime = 0;
+      a.pause(); a.src = window.VRVoice?.path ? window.VRVoice.path(key) : `data/voice/${key}.mp3`; a.currentTime = 0;   // 보이스 언어 설정 반영
       a.play().catch(a._off);
     } catch {}
   }

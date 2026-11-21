@@ -1489,10 +1489,20 @@ function trimVoiceCache() {
     try { a.removeAttribute('src'); a.load(); } catch {}
   }
 }
+// 보이스 파일 경로: js/voice.js 의 VRVoice.path 하나로 (보이스 언어 설정 반영, 일본어 없으면 기본 파일)
+function voicePath(k) { return globalThis.VRVoice?.path ? globalThis.VRVoice.path(k) : `data/voice/${k}.mp3`; }
+// 언어를 바꾸면 받아 둔 보이스(다른 언어 파일)를 전부 버림 → 다음 재생부터 새 언어로
+function clearVoiceCache() {
+  try { if (voiceCur) voiceCur.pause(); } catch {}
+  voiceCur = null;
+  for (const a of voiceCache.values()) { try { a.pause(); a.removeAttribute('src'); a.load(); } catch {} }
+  voiceCache.clear();
+}
+globalThis.VRVoice?.onLang?.(() => { clearVoiceCache(); renderVoiceLang(); });
 function voiceAudio(k) {
   let a = voiceCache.get(k);
   if (a) voiceCache.delete(k);   // 맨 뒤(가장 최근)로 옮김
-  else { a = new Audio(); a.preload = 'auto'; a.src = `data/voice/${k}.mp3`; trackVoice(a); }
+  else { a = new Audio(); a.preload = 'auto'; a.src = voicePath(k); trackVoice(a); }
   a._vUsed = performance.now(); voiceCache.set(k, a); trimVoiceCache();
   return a;
 }
@@ -1530,6 +1540,12 @@ function renderVoiceBtn() {
   const m = document.getElementById('main-voice'), mr = document.getElementById('main-voice-vol');
   if (m) { m.textContent = voiceOn ? 'ON' : 'OFF'; m.setAttribute('aria-checked', String(voiceOn)); m.classList.toggle('on', voiceOn); }
   if (mr) { mr.value = String(Math.round(voiceVol * 100)); mr.disabled = !voiceOn; }
+  renderVoiceLang();
+}
+// 게임설정 → 설정 → 보이스 언어 (영어 = 지금 보이스 / 일본어). localStorage vrTcgVoiceLang
+function renderVoiceLang() {
+  const cur = window.VRVoice?.lang || 'en';
+  document.querySelectorAll('[data-voice-lang]').forEach(b => { const on = b.dataset.voiceLang === cur; b.classList.toggle('on', on); b.setAttribute('aria-checked', String(on)); });
 }
 // ===== 효과음 (SE 시트: 코드 → audio/se/00코드_0n.mp3, 변형 중 무작위) =====
 // 1 맞는 소리 · 2 카드 소환 · 3 본진 타격 · 4 버튼 클릭 · 5 UR 소환 · 6 MR 소환 · 7 공격하는 소리 · 8 서걱 · 9 바사삭 · 10 얼음 · 11 불 · 12 감전
@@ -2786,6 +2802,7 @@ $('voice-vol').onclick = e => e.stopPropagation();
 // 게임설정 → 설정 창의 스킬 보이스·음량 (전투 설정과 같은 값)
 $('main-voice')?.addEventListener('click', e => { e.stopPropagation(); $('voice-toggle').click(); });
 $('main-voice-vol')?.addEventListener('input', e => { voiceVol = (+e.target.value || 0) / 100; localStorage.setItem(VOICE_VOL_KEY, String(voiceVol)); if (voiceCur) voiceCur.volume = voiceVol; renderVoiceBtn(); });
+document.querySelectorAll('[data-voice-lang]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); window.VRVoice?.setLang?.(b.dataset.voiceLang); renderVoiceLang(); }));
 renderVoiceBtn();
 $('fx-skip').onclick = e => { e.stopPropagation(); if (TUT_LOCK('skip')) return; skipFx = !skipFx; localStorage.setItem(SKIP_KEY, skipFx ? '1' : '0'); if (S?.busy) fastForward = true; renderSkipBtn(); };
 // 연출 중 화면을 누르면 현재 연출 빨리 감기

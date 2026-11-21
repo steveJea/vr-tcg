@@ -132,7 +132,7 @@
   async function background() {
     if (!hasCache || swOff || slowNet() || window.__VR_NO_PREFETCH) return;
     const st = await status(); if (!st) return;
-    const rank = p => { const i = BG_ORDER.findIndex(x => p.startsWith(x)); return i < 0 ? 99 : i; };
+    const rank = p => { if (p.startsWith('/data/voice/ja/') && window.VRVoice?.lang !== 'ja') return 99; const i = BG_ORDER.findIndex(x => p.startsWith(x)); return i < 0 ? 99 : i; };   // 일본어 보이스는 그 언어를 고른 기기만 미리 받음
     const list = st.need.filter(([p, sz]) => rank(p) < 99 && sz <= BG_MAX_FILE).sort((a, b) => rank(a[0]) - rank(b[0]) || a[0].localeCompare(b[0]));
     const c = await caches.open(CACHE); let used = 0, files = 0;
     const worker = async () => {

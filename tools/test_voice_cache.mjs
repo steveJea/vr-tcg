@@ -32,4 +32,18 @@ a.paused = false; a.fire('play'); a.paused = true; a.fire('ended');
 a.paused = false; a.fire('play'); w.VRVoice.stopAll(); assert(a.paused, 'replayed voice still stoppable');
 assert.match(v, /\['pause', 'ended', 'error', 'abort', 'emptied'\]\.forEach\(ev => a\.addEventListener\(ev, off\)\)/, 'finished voices released');
 assert.doesNotMatch(gal, /new Audio\(`data\/voice/, 'gallery reuses one audio element');
+// 보이스 언어: 기본 = data/voice, 일본어 = data/voice/ja (목록에 없는 줄은 기본), 바꾸면 구독자(캐시 비우기) 호출·저장
+{
+  const store = {}, w2 = { performance: { now: () => 0 }, document: { readyState: 'complete', getElementById: () => null, addEventListener() {} }, addEventListener() {}, MutationObserver: class { observe() {} },
+    localStorage: { getItem: k => store[k] ?? null, setItem: (k, v) => { store[k] = String(v); } }, fetch: async u => ({ ok: true, json: async () => (u === 'data/voice/ja/index.json' ? ['7_0'] : []) }) };
+  w2.window = w2; vm.runInContext(v, vm.createContext(w2));
+  const V = w2.VRVoice; let fired = 0; V.onLang(() => fired++);
+  assert.equal(V.lang, 'en'); assert.equal(V.path('7_0'), 'data/voice/7_0.mp3');
+  await V.setLang('ja'); assert.equal(store.vrTcgVoiceLang, 'ja'); assert(fired >= 1, 'cache cleared on switch');
+  assert.equal(V.path('7_0'), 'data/voice/ja/7_0.mp3'); assert.equal(V.path('7_1'), 'data/voice/7_1.mp3', 'fallback to default file');
+  const n = fired; await V.setLang('en'); assert(fired > n); assert.equal(V.path('7_0'), 'data/voice/7_0.mp3'); assert.equal(store.vrTcgVoiceLang, 'en');
+  assert.match(g, /a\.src = voicePath\(k\)/, 'battle voices use shared path'); assert.match(gal, /VRVoice\.path\(key\)/, 'gallery uses shared path');
+  assert.equal(V.RATE, 1.15);
+}
+console.log('Voice lang: en/ja path + fallback + switch clears cache OK');
 console.log('Voice cache: LRU 60 + keep window, _0-only battle preload, skill voices on hand/field, VRVoice releases finished, gallery single audio OK');
